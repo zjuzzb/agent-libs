@@ -84,8 +84,11 @@ class k8s_namespace;
 class k8s_node;
 class k8s_pod;
 class k8s_replication_controller;
+class k8s_replica_set;
 class k8s_service;
 class k8s_service_net_port;
+class k8s_deployment;
+class k8s_daemonset;
 class k8s_state;
 class mesos_pair;
 class mesos_common;
@@ -7066,6 +7069,110 @@ class k8s_replication_controller : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class k8s_replica_set : public ::google::protobuf::Message {
+ public:
+  k8s_replica_set();
+  virtual ~k8s_replica_set();
+
+  k8s_replica_set(const k8s_replica_set& from);
+
+  inline k8s_replica_set& operator=(const k8s_replica_set& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_replica_set& default_instance();
+
+  void Swap(k8s_replica_set* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_replica_set* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_replica_set& from);
+  void MergeFrom(const k8s_replica_set& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.k8s_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::k8s_common& common() const;
+  inline ::draiosproto::k8s_common* mutable_common();
+  inline ::draiosproto::k8s_common* release_common();
+  inline void set_allocated_common(::draiosproto::k8s_common* common);
+
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
+
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_replica_set)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_replica_set* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class k8s_service_net_port : public ::google::protobuf::Message {
  public:
   k8s_service_net_port();
@@ -7297,6 +7404,214 @@ class k8s_service : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class k8s_deployment : public ::google::protobuf::Message {
+ public:
+  k8s_deployment();
+  virtual ~k8s_deployment();
+
+  k8s_deployment(const k8s_deployment& from);
+
+  inline k8s_deployment& operator=(const k8s_deployment& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_deployment& default_instance();
+
+  void Swap(k8s_deployment* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_deployment* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_deployment& from);
+  void MergeFrom(const k8s_deployment& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.k8s_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::k8s_common& common() const;
+  inline ::draiosproto::k8s_common* mutable_common();
+  inline ::draiosproto::k8s_common* release_common();
+  inline void set_allocated_common(::draiosproto::k8s_common* common);
+
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
+
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_deployment)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_deployment* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class k8s_daemonset : public ::google::protobuf::Message {
+ public:
+  k8s_daemonset();
+  virtual ~k8s_daemonset();
+
+  k8s_daemonset(const k8s_daemonset& from);
+
+  inline k8s_daemonset& operator=(const k8s_daemonset& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_daemonset& default_instance();
+
+  void Swap(k8s_daemonset* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_daemonset* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_daemonset& from);
+  void MergeFrom(const k8s_daemonset& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.k8s_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::k8s_common& common() const;
+  inline ::draiosproto::k8s_common* mutable_common();
+  inline ::draiosproto::k8s_common* release_common();
+  inline void set_allocated_common(::draiosproto::k8s_common* common);
+
+  // optional uint32 current_scheduled = 2;
+  inline bool has_current_scheduled() const;
+  inline void clear_current_scheduled();
+  static const int kCurrentScheduledFieldNumber = 2;
+  inline ::google::protobuf::uint32 current_scheduled() const;
+  inline void set_current_scheduled(::google::protobuf::uint32 value);
+
+  // optional uint32 desired_scheduled = 3;
+  inline bool has_desired_scheduled() const;
+  inline void clear_desired_scheduled();
+  static const int kDesiredScheduledFieldNumber = 3;
+  inline ::google::protobuf::uint32 desired_scheduled() const;
+  inline void set_desired_scheduled(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_daemonset)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_current_scheduled();
+  inline void clear_has_current_scheduled();
+  inline void set_has_desired_scheduled();
+  inline void clear_has_desired_scheduled();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 current_scheduled_;
+  ::google::protobuf::uint32 desired_scheduled_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_daemonset* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class k8s_state : public ::google::protobuf::Message {
  public:
   k8s_state();
@@ -7411,6 +7726,42 @@ class k8s_state : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service >*
       mutable_services();
 
+  // repeated .draiosproto.k8s_replica_set replica_sets = 6;
+  inline int replica_sets_size() const;
+  inline void clear_replica_sets();
+  static const int kReplicaSetsFieldNumber = 6;
+  inline const ::draiosproto::k8s_replica_set& replica_sets(int index) const;
+  inline ::draiosproto::k8s_replica_set* mutable_replica_sets(int index);
+  inline ::draiosproto::k8s_replica_set* add_replica_sets();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >&
+      replica_sets() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >*
+      mutable_replica_sets();
+
+  // repeated .draiosproto.k8s_deployment deployments = 7;
+  inline int deployments_size() const;
+  inline void clear_deployments();
+  static const int kDeploymentsFieldNumber = 7;
+  inline const ::draiosproto::k8s_deployment& deployments(int index) const;
+  inline ::draiosproto::k8s_deployment* mutable_deployments(int index);
+  inline ::draiosproto::k8s_deployment* add_deployments();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >&
+      deployments() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >*
+      mutable_deployments();
+
+  // repeated .draiosproto.k8s_daemonset daemonsets = 8;
+  inline int daemonsets_size() const;
+  inline void clear_daemonsets();
+  static const int kDaemonsetsFieldNumber = 8;
+  inline const ::draiosproto::k8s_daemonset& daemonsets(int index) const;
+  inline ::draiosproto::k8s_daemonset* mutable_daemonsets(int index);
+  inline ::draiosproto::k8s_daemonset* add_daemonsets();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >&
+      daemonsets() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >*
+      mutable_daemonsets();
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_state)
  private:
 
@@ -7421,9 +7772,12 @@ class k8s_state : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_pod > pods_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replication_controller > controllers_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service > services_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set > replica_sets_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment > deployments_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset > daemonsets_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -19318,6 +19672,92 @@ inline void k8s_replication_controller::set_replicas_running(::google::protobuf:
 
 // -------------------------------------------------------------------
 
+// k8s_replica_set
+
+// required .draiosproto.k8s_common common = 1;
+inline bool k8s_replica_set::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_replica_set::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_replica_set::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_replica_set::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::k8s_common& k8s_replica_set::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::k8s_common* k8s_replica_set::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::k8s_common;
+  return common_;
+}
+inline ::draiosproto::k8s_common* k8s_replica_set::release_common() {
+  clear_has_common();
+  ::draiosproto::k8s_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void k8s_replica_set::set_allocated_common(::draiosproto::k8s_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// optional uint32 replicas_desired = 2;
+inline bool k8s_replica_set::has_replicas_desired() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_replica_set::set_has_replicas_desired() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_replica_set::clear_has_replicas_desired() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_replica_set::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
+}
+inline ::google::protobuf::uint32 k8s_replica_set::replicas_desired() const {
+  return replicas_desired_;
+}
+inline void k8s_replica_set::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
+}
+
+// optional uint32 replicas_running = 3;
+inline bool k8s_replica_set::has_replicas_running() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_replica_set::set_has_replicas_running() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_replica_set::clear_has_replicas_running() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_replica_set::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
+}
+inline ::google::protobuf::uint32 k8s_replica_set::replicas_running() const {
+  return replicas_running_;
+}
+inline void k8s_replica_set::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // k8s_service_net_port
 
 // required uint32 port = 1;
@@ -19595,6 +20035,178 @@ k8s_service::mutable_ports() {
 
 // -------------------------------------------------------------------
 
+// k8s_deployment
+
+// required .draiosproto.k8s_common common = 1;
+inline bool k8s_deployment::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_deployment::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_deployment::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_deployment::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::k8s_common& k8s_deployment::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::k8s_common* k8s_deployment::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::k8s_common;
+  return common_;
+}
+inline ::draiosproto::k8s_common* k8s_deployment::release_common() {
+  clear_has_common();
+  ::draiosproto::k8s_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void k8s_deployment::set_allocated_common(::draiosproto::k8s_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// optional uint32 replicas_desired = 2;
+inline bool k8s_deployment::has_replicas_desired() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_deployment::set_has_replicas_desired() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_deployment::clear_has_replicas_desired() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_deployment::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
+}
+inline ::google::protobuf::uint32 k8s_deployment::replicas_desired() const {
+  return replicas_desired_;
+}
+inline void k8s_deployment::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
+}
+
+// optional uint32 replicas_running = 3;
+inline bool k8s_deployment::has_replicas_running() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_deployment::set_has_replicas_running() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_deployment::clear_has_replicas_running() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_deployment::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
+}
+inline ::google::protobuf::uint32 k8s_deployment::replicas_running() const {
+  return replicas_running_;
+}
+inline void k8s_deployment::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// k8s_daemonset
+
+// required .draiosproto.k8s_common common = 1;
+inline bool k8s_daemonset::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_daemonset::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_daemonset::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_daemonset::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::k8s_common& k8s_daemonset::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::k8s_common* k8s_daemonset::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::k8s_common;
+  return common_;
+}
+inline ::draiosproto::k8s_common* k8s_daemonset::release_common() {
+  clear_has_common();
+  ::draiosproto::k8s_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void k8s_daemonset::set_allocated_common(::draiosproto::k8s_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// optional uint32 current_scheduled = 2;
+inline bool k8s_daemonset::has_current_scheduled() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_daemonset::set_has_current_scheduled() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_daemonset::clear_has_current_scheduled() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_daemonset::clear_current_scheduled() {
+  current_scheduled_ = 0u;
+  clear_has_current_scheduled();
+}
+inline ::google::protobuf::uint32 k8s_daemonset::current_scheduled() const {
+  return current_scheduled_;
+}
+inline void k8s_daemonset::set_current_scheduled(::google::protobuf::uint32 value) {
+  set_has_current_scheduled();
+  current_scheduled_ = value;
+}
+
+// optional uint32 desired_scheduled = 3;
+inline bool k8s_daemonset::has_desired_scheduled() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_daemonset::set_has_desired_scheduled() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_daemonset::clear_has_desired_scheduled() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_daemonset::clear_desired_scheduled() {
+  desired_scheduled_ = 0u;
+  clear_has_desired_scheduled();
+}
+inline ::google::protobuf::uint32 k8s_daemonset::desired_scheduled() const {
+  return desired_scheduled_;
+}
+inline void k8s_daemonset::set_desired_scheduled(::google::protobuf::uint32 value) {
+  set_has_desired_scheduled();
+  desired_scheduled_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // k8s_state
 
 // repeated .draiosproto.k8s_namespace namespaces = 1;
@@ -19720,6 +20332,81 @@ k8s_state::services() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service >*
 k8s_state::mutable_services() {
   return &services_;
+}
+
+// repeated .draiosproto.k8s_replica_set replica_sets = 6;
+inline int k8s_state::replica_sets_size() const {
+  return replica_sets_.size();
+}
+inline void k8s_state::clear_replica_sets() {
+  replica_sets_.Clear();
+}
+inline const ::draiosproto::k8s_replica_set& k8s_state::replica_sets(int index) const {
+  return replica_sets_.Get(index);
+}
+inline ::draiosproto::k8s_replica_set* k8s_state::mutable_replica_sets(int index) {
+  return replica_sets_.Mutable(index);
+}
+inline ::draiosproto::k8s_replica_set* k8s_state::add_replica_sets() {
+  return replica_sets_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >&
+k8s_state::replica_sets() const {
+  return replica_sets_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >*
+k8s_state::mutable_replica_sets() {
+  return &replica_sets_;
+}
+
+// repeated .draiosproto.k8s_deployment deployments = 7;
+inline int k8s_state::deployments_size() const {
+  return deployments_.size();
+}
+inline void k8s_state::clear_deployments() {
+  deployments_.Clear();
+}
+inline const ::draiosproto::k8s_deployment& k8s_state::deployments(int index) const {
+  return deployments_.Get(index);
+}
+inline ::draiosproto::k8s_deployment* k8s_state::mutable_deployments(int index) {
+  return deployments_.Mutable(index);
+}
+inline ::draiosproto::k8s_deployment* k8s_state::add_deployments() {
+  return deployments_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >&
+k8s_state::deployments() const {
+  return deployments_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >*
+k8s_state::mutable_deployments() {
+  return &deployments_;
+}
+
+// repeated .draiosproto.k8s_daemonset daemonsets = 8;
+inline int k8s_state::daemonsets_size() const {
+  return daemonsets_.size();
+}
+inline void k8s_state::clear_daemonsets() {
+  daemonsets_.Clear();
+}
+inline const ::draiosproto::k8s_daemonset& k8s_state::daemonsets(int index) const {
+  return daemonsets_.Get(index);
+}
+inline ::draiosproto::k8s_daemonset* k8s_state::mutable_daemonsets(int index) {
+  return daemonsets_.Mutable(index);
+}
+inline ::draiosproto::k8s_daemonset* k8s_state::add_daemonsets() {
+  return daemonsets_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >&
+k8s_state::daemonsets() const {
+  return daemonsets_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >*
+k8s_state::mutable_daemonsets() {
+  return &daemonsets_;
 }
 
 // -------------------------------------------------------------------

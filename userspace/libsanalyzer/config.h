@@ -14,6 +14,9 @@ using ports_set = bitset<numeric_limits<uint16_t>::max()>;
 class SINSP_PUBLIC sinsp_configuration
 {
 public:
+	typedef std::set<std::string>      k8s_ext_list_t;
+	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
+
 	sinsp_configuration();
 	sinsp_configuration(const sinsp_configuration& configuration);
 	uint64_t get_connection_timeout_ns() const;
@@ -91,6 +94,8 @@ public:
 	int get_k8s_delegated_nodes() const;
 	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
 	const string & get_k8s_bt_auth_token() const;
+	void set_k8s_extensions(const std::set<std::string>& k8s_extensions);
+	const std::set<std::string>& get_k8s_extensions() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
 	const string & get_mesos_state_uri() const;
@@ -150,6 +155,7 @@ private:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	std::set<std::string> m_k8s_extensions;
 
 	unsigned m_statsd_limit;
 

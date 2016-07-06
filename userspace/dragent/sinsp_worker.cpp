@@ -141,6 +141,11 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
 
+	if(m_configuration->m_k8s_extensions.size())
+	{
+		m_analyzer->get_configuration()->set_k8s_extensions(m_configuration->m_k8s_extensions);
+	}
+
 	//
 	// mesos
 	//
