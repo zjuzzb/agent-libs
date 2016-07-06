@@ -618,6 +618,7 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 {
 	if(dragent_configuration::m_signal_dump)
 	{
+		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
 
 		SharedPtr<sinsp_worker::dump_job_request> job_request(
