@@ -55,7 +55,8 @@ k8s_delegator::k8s_delegator(sinsp* inspector,
 
 	std::ostringstream os;
 	sinsp_curl::check_error(m_curl.get_data(os));
-	if(handler_t::json_ptr_t json = handler_t::try_parse(m_jq, os.str(), STATE_FILTER, "k8s_delegator", url))
+	handler_t::json_ptr_t json = handler_t::try_parse(m_jq, os.str(), STATE_FILTER, "k8s_delegator", url);
+	if(json)
 	{
 		handle_json(std::move(*json));
 	}
@@ -272,7 +273,14 @@ k8s_delegator::ip_addr_list_t k8s_delegator::hostname_to_ip(const std::string& h
 
 void k8s_delegator::set_event_json(json_ptr_t json, const std::string&)
 {
-	m_events.emplace_back(json);
+	if(json)
+	{
+		m_events.emplace_back(json);
+	}
+	else
+	{
+		g_logger.log("K8s: delegator received null JSON", sinsp_logger::SEV_ERROR);
+	}
 }
 
 bool k8s_delegator::is_delegated(bool trace)
