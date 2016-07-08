@@ -473,7 +473,10 @@ void dragent_configuration::init(Application* app)
 	//     collection enabled and delegation disabled, unless delegation is manually enabled
 	//////////////////////////////////////////////////////////////////////////////////////////
 	bool k8s_api_server_empty = m_k8s_api_server.empty();
-	if(k8s_api_server_empty) { configure_k8s_from_env(); }
+	if(k8s_api_server_empty && m_k8s_autodetect)
+	{ 
+		configure_k8s_from_env();
+	}
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
 	{
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
