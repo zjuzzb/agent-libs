@@ -456,6 +456,16 @@ const string & sinsp_configuration::get_k8s_bt_auth_token() const
 	return m_k8s_bt_auth_token;
 }
 
+void sinsp_configuration::set_k8s_extensions(const std::set<std::string>& k8s_extensions)
+{
+	m_k8s_extensions = k8s_extensions;
+}
+
+const std::set<std::string>& sinsp_configuration::get_k8s_extensions() const
+{
+	return m_k8s_extensions;
+}
+
 unsigned sinsp_configuration::get_statsd_limit() const
 {
 	return m_statsd_limit;

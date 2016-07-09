@@ -470,12 +470,17 @@ void dragent_configuration::init(Application* app)
 	// - discovered automatically because (process is running on localhost):
 	//     collection enabled and delegation disabled (handled in analyzer)
 	// - discovered automatically via environment variables (agent running in a K8s pod):
-	//     collection enabled and delegation enabled
+	//     collection enabled and delegation enabled (default 2 delegated nodes, can be
+	//     changed with k8s_delegated_nodes setting)
 	// - configured statically:
 	//     collection enabled and delegation disabled, unless delegation is manually enabled
+	//     with k8s_delegated_nodes > 0
 	//////////////////////////////////////////////////////////////////////////////////////////
 	bool k8s_api_server_empty = m_k8s_api_server.empty();
-	if(k8s_api_server_empty) { configure_k8s_from_env(); }
+	if(k8s_api_server_empty && m_k8s_autodetect)
+	{ 
+		configure_k8s_from_env();
+	}
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
 	{
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
@@ -484,6 +489,8 @@ void dragent_configuration::init(Application* app)
 	{
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
 	}
+
+	m_k8s_extensions = yaml_configuration::get_deep_sequence<k8s_ext_list_t>(*m_config, m_config->get_root(), "k8s_extensions");
 	// End K8s
 
 	// Mesos
@@ -580,7 +587,7 @@ void dragent_configuration::print_configuration()
 		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local())
 		{
 			m_k8s_delegated_nodes = 0;
-			g_logger.log("K8s API server not auto-discovered from environment, k8s_delegated_nodes (" +
+			g_logger.log("K8s API server is local, k8s_delegated_nodes (" +
 						 std::to_string(m_k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
 		}
 	}
@@ -616,6 +623,16 @@ void dragent_configuration::print_configuration()
 	if (!m_k8s_bt_auth_token.empty())
 	{
 		g_log->information("K8S bearer token authorization: " + m_k8s_bt_auth_token);
+	}
+	if(!m_k8s_extensions.empty())
+	{
+		std::ostringstream os;
+		os << std::endl;
+		for(const auto& ext : m_k8s_extensions)
+		{
+			os << ext << std::endl;
+		}
+		g_log->information("K8S extensions:" + os.str());
 	}
 	if(!m_blacklisted_ports.empty())
 	{

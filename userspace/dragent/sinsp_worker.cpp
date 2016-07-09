@@ -141,6 +141,11 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
 
+	if(m_configuration->m_k8s_extensions.size())
+	{
+		m_analyzer->get_configuration()->set_k8s_extensions(m_configuration->m_k8s_extensions);
+	}
+
 	//
 	// mesos
 	//
@@ -620,6 +625,7 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 {
 	if(dragent_configuration::m_signal_dump)
 	{
+		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
 
 		SharedPtr<sinsp_worker::dump_job_request> job_request(

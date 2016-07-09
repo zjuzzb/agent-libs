@@ -491,6 +491,9 @@ public:
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
 
+	typedef std::set<std::string>      k8s_ext_list_t;
+	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
+
 	std::string m_k8s_api_server;
 	bool m_k8s_autodetect;
 	string m_k8s_ssl_cert_type;
@@ -502,6 +505,7 @@ public:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	k8s_ext_list_t m_k8s_extensions;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
