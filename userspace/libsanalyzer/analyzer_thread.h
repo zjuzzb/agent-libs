@@ -146,11 +146,11 @@ public:
 		m_th_analysis_flags |= AF_APP_CHECK_FOUND;
 	}
 
-	inline set<uint16_t> listening_ports()
+	inline const set<uint16_t>& listening_ports()
 	{
-		// Assume that this function is called when the process has already bound to
-		// all needed ports. Cache the result because fdtable may grow a lot for busy processes
-		if(!m_listening_ports)
+		// Scan all fd for listening ports only if fdtable isn't too big
+		// otherwise use cached value
+		if(!m_listening_ports || m_tinfo->get_fd_opencount() < LISTENING_PORT_SCAN_FDLIMIT)
 		{
 			scan_listening_ports();
 		}
