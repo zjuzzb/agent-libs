@@ -161,7 +161,7 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						{
 							np.m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
 						}
-						else
+						if(fdinfo->m_sockinfo.m_ipv4serverinfo.m_l4proto == SCAP_L4_UDP)
 						{
 							np.m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
 						}
@@ -605,9 +605,8 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
 				cdelta);
 		}
-		else
+		else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 		{
-			ASSERT(tuple.m_fields.m_l4proto == SCAP_L4_UDP);
 			pinfo.m_server_ports.add_r_udp(tuple.m_fields.m_dport,
 				cdelta);
 			pinfo.m_ip_endpoints.add_udp(tuple.m_fields.m_dip,
