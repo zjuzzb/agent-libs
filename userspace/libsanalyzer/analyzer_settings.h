@@ -227,3 +227,5 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #endif
 
 static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
+
+static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
