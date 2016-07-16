@@ -1123,6 +1123,28 @@ public:
 };
 
 //
+// Container Information
+//
+class blcontainer
+{
+public:
+	blcontainer(string name, string image_name, string image_id)
+	{
+		m_name = name;
+		m_image_name = image_name;
+		m_image_id = image_id;
+	}
+
+	blcontainer()
+	{
+	}
+
+	string m_name;
+	string m_image_name;
+	string m_image_id;
+};
+
+//
 // The baseliner class
 //
 class sisnp_baseliner
@@ -1154,8 +1176,8 @@ private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram> m_progtable;
+	unordered_map<string, blcontainer> m_container_table;
 #ifndef HAS_ANALYZER
-	unordered_map<string, sinsp_container_info> m_container_table;
 	string m_hostname;
 	uint64_t m_hostid;
 #endif	

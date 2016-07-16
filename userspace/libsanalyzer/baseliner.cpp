@@ -33,9 +33,7 @@ void sisnp_baseliner::load_tables(uint64_t time)
 void sisnp_baseliner::clear_tables()
 {
 	m_progtable.clear();
-#ifndef HAS_ANALYZER
 	m_container_table.clear();
-#endif
 }
 
 void sisnp_baseliner::init_programs(uint64_t time)
@@ -188,9 +186,13 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 void sisnp_baseliner::init_containers()
 {
-#ifndef HAS_ANALYZER
-	m_container_table = *(m_inspector->m_container_manager.get_containers());
-#endif
+	const unordered_map<string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
+
+	for(auto& it : *containers)
+	{
+		m_container_table[it.first] = blcontainer(it.second.m_name, 
+			it.second.m_image, "XXX");
+	}
 }
 
 void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
@@ -315,21 +317,20 @@ void sisnp_baseliner::serialize_json(string filename)
 
 	root["progs"] = table;
 	
-#ifndef HAS_ANALYZER
 	for(auto& it : m_container_table)
 	{
 		Json::Value cinfo;
-		cinfo["image"] = it.second.m_image;
 		cinfo["name"] = it.second.m_name;
+		cinfo["image_name"] = it.second.m_image_name;
+		cinfo["image_id"] = it.second.m_image_id;
 
-		ctable[it.second.m_id] = cinfo;
+		ctable[it.first] = cinfo;
 	}
 
 	root["containers"] = ctable;
 
 	root["machine"]["hostname"] = m_hostname;
 	root["machine"]["hostid"] = to_string(m_hostid);
-#endif
 
 	ofs << root << std::endl;
 }
@@ -707,7 +708,5 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
-#ifndef HAS_ANALYZER
-	m_container_table[container_info.m_id] = container_info;
-#endif
+	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, container_info.m_image, "XXX");;
 }
