@@ -855,6 +855,14 @@ message falco_prog {
     repeated falco_category cats = 6;
 }
 
+message falco_container {
+    required string id = 1;
+    required string name = 2;
+    optional string image_name = 3;
+    optional string image_id = 4;
+}
+
 message falco_baseline {
     repeated falco_prog progs = 1;
+    repeated falco_container containers = 2;
 }
