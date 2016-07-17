@@ -191,7 +191,7 @@ void sisnp_baseliner::init_containers()
 	for(auto& it : *containers)
 	{
 		m_container_table[it.first] = blcontainer(it.second.m_name, 
-			it.second.m_image, "XXX");
+			it.second.m_image, it.second.m_imageid);
 	}
 }
 
@@ -329,8 +329,10 @@ void sisnp_baseliner::serialize_json(string filename)
 
 	root["containers"] = ctable;
 
+#ifndef HAS_ANALYZER
 	root["machine"]["hostname"] = m_hostname;
 	root["machine"]["hostid"] = to_string(m_hostid);
+#endif
 
 	ofs << root << std::endl;
 }
@@ -708,5 +710,7 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 
 void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
-	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, container_info.m_image, "XXX");;
+	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, 
+		container_info.m_image, 
+		container_info.m_imageid);
 }
