@@ -113,6 +113,7 @@ class falco_subcategory;
 class falco_subcategory_container;
 class falco_category;
 class falco_prog;
+class falco_container;
 class falco_baseline;
 
 enum sql_statement_type {
@@ -10926,6 +10927,138 @@ class falco_prog : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class falco_container : public ::google::protobuf::Message {
+ public:
+  falco_container();
+  virtual ~falco_container();
+
+  falco_container(const falco_container& from);
+
+  inline falco_container& operator=(const falco_container& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_container& default_instance();
+
+  void Swap(falco_container* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_container* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_container& from);
+  void MergeFrom(const falco_container& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // required string name = 2;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 2;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string image_name = 3;
+  inline bool has_image_name() const;
+  inline void clear_image_name();
+  static const int kImageNameFieldNumber = 3;
+  inline const ::std::string& image_name() const;
+  inline void set_image_name(const ::std::string& value);
+  inline void set_image_name(const char* value);
+  inline void set_image_name(const char* value, size_t size);
+  inline ::std::string* mutable_image_name();
+  inline ::std::string* release_image_name();
+  inline void set_allocated_image_name(::std::string* image_name);
+
+  // optional string image_id = 4;
+  inline bool has_image_id() const;
+  inline void clear_image_id();
+  static const int kImageIdFieldNumber = 4;
+  inline const ::std::string& image_id() const;
+  inline void set_image_id(const ::std::string& value);
+  inline void set_image_id(const char* value);
+  inline void set_image_id(const char* value, size_t size);
+  inline ::std::string* mutable_image_id();
+  inline ::std::string* release_image_id();
+  inline void set_allocated_image_id(::std::string* image_id);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_container)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_image_name();
+  inline void clear_has_image_name();
+  inline void set_has_image_id();
+  inline void clear_has_image_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::std::string* name_;
+  ::std::string* image_name_;
+  ::std::string* image_id_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_container* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class falco_baseline : public ::google::protobuf::Message {
  public:
   falco_baseline();
@@ -10992,15 +11125,28 @@ class falco_baseline : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog >*
       mutable_progs();
 
+  // repeated .draiosproto.falco_container containers = 2;
+  inline int containers_size() const;
+  inline void clear_containers();
+  static const int kContainersFieldNumber = 2;
+  inline const ::draiosproto::falco_container& containers(int index) const;
+  inline ::draiosproto::falco_container* mutable_containers(int index);
+  inline ::draiosproto::falco_container* add_containers();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >&
+      containers() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >*
+      mutable_containers();
+
   // @@protoc_insertion_point(class_scope:draiosproto.falco_baseline)
  private:
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog > progs_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container > containers_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -26436,6 +26582,290 @@ falco_prog::mutable_cats() {
 
 // -------------------------------------------------------------------
 
+// falco_container
+
+// required string id = 1;
+inline bool falco_container::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void falco_container::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void falco_container::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void falco_container::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& falco_container::id() const {
+  return *id_;
+}
+inline void falco_container::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void falco_container::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void falco_container::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* falco_container::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string name = 2;
+inline bool falco_container::has_name() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void falco_container::set_has_name() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void falco_container::clear_has_name() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void falco_container::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& falco_container::name() const {
+  return *name_;
+}
+inline void falco_container::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_container::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_container::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* falco_container::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string image_name = 3;
+inline bool falco_container::has_image_name() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void falco_container::set_has_image_name() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void falco_container::clear_has_image_name() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void falco_container::clear_image_name() {
+  if (image_name_ != &::google::protobuf::internal::kEmptyString) {
+    image_name_->clear();
+  }
+  clear_has_image_name();
+}
+inline const ::std::string& falco_container::image_name() const {
+  return *image_name_;
+}
+inline void falco_container::set_image_name(const ::std::string& value) {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  image_name_->assign(value);
+}
+inline void falco_container::set_image_name(const char* value) {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  image_name_->assign(value);
+}
+inline void falco_container::set_image_name(const char* value, size_t size) {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  image_name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_image_name() {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  return image_name_;
+}
+inline ::std::string* falco_container::release_image_name() {
+  clear_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_name_;
+    image_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_image_name(::std::string* image_name) {
+  if (image_name_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_name_;
+  }
+  if (image_name) {
+    set_has_image_name();
+    image_name_ = image_name;
+  } else {
+    clear_has_image_name();
+    image_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string image_id = 4;
+inline bool falco_container::has_image_id() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void falco_container::set_has_image_id() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void falco_container::clear_has_image_id() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void falco_container::clear_image_id() {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    image_id_->clear();
+  }
+  clear_has_image_id();
+}
+inline const ::std::string& falco_container::image_id() const {
+  return *image_id_;
+}
+inline void falco_container::set_image_id(const ::std::string& value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void falco_container::set_image_id(const char* value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void falco_container::set_image_id(const char* value, size_t size) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_image_id() {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  return image_id_;
+}
+inline ::std::string* falco_container::release_image_id() {
+  clear_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_id_;
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_image_id(::std::string* image_id) {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_id_;
+  }
+  if (image_id) {
+    set_has_image_id();
+    image_id_ = image_id;
+  } else {
+    clear_has_image_id();
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
 // falco_baseline
 
 // repeated .draiosproto.falco_prog progs = 1;
@@ -26461,6 +26891,31 @@ falco_baseline::progs() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog >*
 falco_baseline::mutable_progs() {
   return &progs_;
+}
+
+// repeated .draiosproto.falco_container containers = 2;
+inline int falco_baseline::containers_size() const {
+  return containers_.size();
+}
+inline void falco_baseline::clear_containers() {
+  containers_.Clear();
+}
+inline const ::draiosproto::falco_container& falco_baseline::containers(int index) const {
+  return containers_.Get(index);
+}
+inline ::draiosproto::falco_container* falco_baseline::mutable_containers(int index) {
+  return containers_.Mutable(index);
+}
+inline ::draiosproto::falco_container* falco_baseline::add_containers() {
+  return containers_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >&
+falco_baseline::containers() const {
+  return containers_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >*
+falco_baseline::mutable_containers() {
+  return &containers_;
 }
 
 
