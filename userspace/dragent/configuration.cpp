@@ -268,7 +268,7 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
-	
+
 	if(m_customer_id.empty())
 	{
 		m_customer_id = m_config->get_scalar<string>("customerid", "");
@@ -464,7 +464,7 @@ void dragent_configuration::init(Application* app)
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
-	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is 
+	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
 	// - discovered automatically because (process is running on localhost):
 	//     collection enabled and delegation disabled (handled in analyzer)
 	// - discovered automatically via environment variables (agent running in a K8s pod):
@@ -476,7 +476,7 @@ void dragent_configuration::init(Application* app)
 	//////////////////////////////////////////////////////////////////////////////////////////
 	bool k8s_api_server_empty = m_k8s_api_server.empty();
 	if(k8s_api_server_empty && m_k8s_autodetect)
-	{ 
+	{
 		configure_k8s_from_env();
 	}
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
@@ -684,7 +684,7 @@ void dragent_configuration::print_configuration()
 
 void dragent_configuration::refresh_aws_metadata()
 {
-	try 
+	try
 	{
 		HTTPClientSession client("169.254.169.254", 80);
 		client.setTimeout(1000000);
@@ -693,8 +693,8 @@ void dragent_configuration::refresh_aws_metadata()
 			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/public-ipv4");
 			client.sendRequest(request);
 
-			HTTPResponse response; 
-			std::istream& rs = client.receiveResponse(response); 
+			HTTPResponse response;
+			std::istream& rs = client.receiveResponse(response);
 
 			string s;
 			StreamCopier::copyToString(rs, s);
@@ -717,8 +717,8 @@ void dragent_configuration::refresh_aws_metadata()
 			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/instance-id");
 			client.sendRequest(request);
 
-			HTTPResponse response; 
-			std::istream& rs = client.receiveResponse(response); 
+			HTTPResponse response;
+			std::istream& rs = client.receiveResponse(response);
 
 			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
 			if(m_aws_metadata.m_instance_id.find("i-") != 0)
