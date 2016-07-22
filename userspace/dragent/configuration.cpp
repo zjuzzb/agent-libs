@@ -62,6 +62,9 @@ dragent_configuration::dragent_configuration()
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
+	m_enable_falco_engine = false;
+	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
+	m_falco_engine_sampling_multiplier = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -505,6 +508,26 @@ void dragent_configuration::init(Application* app)
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
+	m_enable_falco_engine = m_config->get_scalar<bool>("falco_engine", "enabled", false);
+	m_falco_default_rules_filename = m_config->get_scalar<string>("falco_engine", "default_rules_filename",
+								      m_root_dir + "/etc/falco_rules.default.yaml");
+	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
+							      m_root_dir + "/etc/falco_rules.yaml");
+	m_falco_engine_disabled_rule_patterns = m_config->get_deep_sequence<set<string>>(*m_config, m_config->get_root(), "falco_engine", "disabled_rule_patterns");
+	m_falco_engine_sampling_multiplier = m_config->get_scalar<double>("falco_engine", "sampling_multiplier", 0);
+
+	//
+        // If falco is enabled, check to see if the rules file exists and
+        // switch to a built-in default if it does not.
+	//
+	if(m_enable_falco_engine)
+	{
+		File rules_file(m_falco_default_rules_filename);
+		if(!rules_file.exists())
+		{
+			m_falco_default_rules_filename = m_falco_fallback_default_rules_filename;
+		}
+	}
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -663,6 +686,18 @@ void dragent_configuration::print_configuration()
 	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
 	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
+	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
+	if(m_enable_falco_engine)
+	{
+		g_log->information("Falco engine default rules file: " + m_falco_default_rules_filename);
+		g_log->information("Falco engine rules file: " + m_falco_rules_filename);
+		g_log->information("Falco disabled rule patterns: ");
+		for(auto pattern : m_falco_engine_disabled_rule_patterns)
+		{
+			g_log->information("  " + pattern);
+		}
+		g_log->information("Falco engine sampling multiplier: " + NumberFormatter::format(m_falco_engine_sampling_multiplier));
+	}
 
 	if(m_k8s_event_filter)
 	{

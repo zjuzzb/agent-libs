@@ -285,6 +285,14 @@ void sinsp_worker::init()
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 
 	m_analyzer->set_user_event_queue(m_user_event_queue);
+
+	if(m_configuration->m_enable_falco_engine)
+	{
+		m_analyzer->enable_falco(m_configuration->m_falco_default_rules_filename,
+					 m_configuration->m_falco_rules_filename,
+					 m_configuration->m_falco_engine_disabled_rule_patterns,
+					 m_configuration->m_falco_engine_sampling_multiplier);
+	}
 }
 
 void sinsp_worker::run()

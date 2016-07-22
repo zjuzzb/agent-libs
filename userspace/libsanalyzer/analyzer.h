@@ -5,6 +5,8 @@
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
+#include <set>
+#include <string>
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
@@ -44,6 +46,8 @@ class k8s_delegator;
 class mesos;
 class docker;
 class uri;
+class falco_engine;
+class falco_events;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -344,6 +348,11 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+	void enable_falco(const string &rules_filename,
+			  const string &user_rules_filename,
+			  std::set<std::string> &disabled_rule_patterns,
+			  double sampling_multiplier);
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
 
@@ -568,6 +577,9 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
+
+	unique_ptr<falco_engine> m_falco_engine;
+	unique_ptr<falco_events> m_falco_events;
 
 	user_event_queue::ptr_t m_user_event_queue;
 

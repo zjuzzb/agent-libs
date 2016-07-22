@@ -282,6 +282,39 @@ if [ ! -d "${POSTGRES_DIR}" ]; then
 	make -C src/interfaces install
 fi
 
+# Falco Engine dependencies
+LPEG_DIR=$DEPENDENCIES/lpeg-1.0.0
+if [ ! -d "${LPEG_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/lpeg-1.0.0.tar.gz
+	tar -xzf lpeg-1.0.0.tar.gz
+	cd $LPEG_DIR
+	LUA_INCLUDE=${LUAJIT_DIR}/src "${WORKDIR}/falco/scripts/build-lpeg.sh" "${LPEG_DIR}/target"
+fi
+
+LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.4
+if [ ! -d "${LIBYAML_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/libyaml-0.1.4.tar.gz
+	tar -xzf libyaml-0.1.4.tar.gz
+	cd $LIBYAML_DIR
+	./bootstrap && ./configure --prefix=$LIBYAML_DIR/target
+	make
+	make install
+fi
+
+LYAML_DIR=$DEPENDENCIES/lyaml-release-v6.0
+if [ ! -d "${LYAML_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/lyaml-release-v6.0.tar.gz
+	tar -xzf lyaml-release-v6.0.tar.gz
+	cd $LYAML_DIR
+	./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/luajit
+	make
+	make install
+	sh -c "cp -R ${LYAML_DIR}/lib/* ${WORKDIR}/falco/userspace/engine/lua"
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1dev"
 fi
