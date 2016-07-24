@@ -473,7 +473,7 @@ unsigned sinsp_configuration::get_statsd_limit() const
 
 void sinsp_configuration::set_statsd_limit(unsigned value)
 {
-	m_statsd_limit = value;
+	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
 const string & sinsp_configuration::get_mesos_state_uri() const
