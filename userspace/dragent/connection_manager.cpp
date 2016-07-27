@@ -7,6 +7,11 @@
 #include "update_worker.h"
 #include "utils.h"
 
+#ifndef TCP_USER_TIMEOUT
+// Define it here because old glibc versions do not have this flag (eg, Centos6)
+#define TCP_USER_TIMEOUT	 18 /* How long for loss retry before timeout */
+#endif
+
 const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
@@ -124,6 +129,8 @@ bool connection_manager::connect()
 		m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
 		m_socket->setSendTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 		m_socket->setReceiveTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
+		// This option makes the connection fail earlier in case of unplugged cable
+		m_socket->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, SOCKET_TCP_TIMEOUT_MS);
 
 		g_log->information("Connected to collector");
 		m_connected = true;
