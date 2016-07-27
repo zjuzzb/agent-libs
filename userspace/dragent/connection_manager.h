@@ -47,6 +47,7 @@ private:
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
 	static const uint32_t RECONNECT_MIN_INTERVAL_S;
 	static const uint32_t RECONNECT_MAX_INTERVAL_S;
+	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 	static const chrono::seconds WORKING_INTERVAL_S;
 	static const string m_name;
 
