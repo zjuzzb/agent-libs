@@ -41,6 +41,7 @@ local filespattern
 local term
 local fbuf
 local metric_name
+local fdtype
 
 function on_set_arg(name, val)
 	if name == "filespattern" then
