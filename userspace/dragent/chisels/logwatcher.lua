@@ -71,7 +71,7 @@ function on_init()
 		fdtype = "file"
 	end
 
-	if metric_name == null then
+	if metric_name == nil then
 		metric_name = "logwatcher." .. filespattern .. "." .. term
 	end
 
