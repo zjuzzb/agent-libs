@@ -72,6 +72,10 @@ file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/dragent.default.yaml
 file(COPY chisels
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
+file(COPY ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
+		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
+		DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/chisels)
+
 install(TARGETS dragent 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
@@ -87,5 +91,9 @@ install(FILES dragent.default.yaml
 install(DIRECTORY chisels
 	DESTINATION ${DRAIOS_BIN_PREFIX}/share
 	COMPONENT agent)
+
+install(FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
+		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
+		DESTINATION ${DRAIOS_BIN_PREFIX}/share/chisels)
 
 configure_file(config.h.in config.h)
