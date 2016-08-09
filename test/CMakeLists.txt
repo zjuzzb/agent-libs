@@ -35,6 +35,7 @@ add_executable(tests
 	capture_to_file_test.cpp
 	container.cpp
 	event_capture.cpp
+	falco_events_test.cpp
 	forking.cpp
 	fs.cpp
 	tracers.cpp
