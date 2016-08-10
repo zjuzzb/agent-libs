@@ -527,6 +527,9 @@ public:
 	double m_falco_engine_sampling_multiplier;
 	std::set<std::string> m_falco_engine_disabled_rule_patterns;
 
+	uint64_t m_user_events_rate;
+	uint64_t m_user_max_burst_events;
+
 	bool java_present()
 	{
 		return !m_java_binary.empty();

@@ -102,7 +102,8 @@ add_library(sanalyzer STATIC
 	statsite_proxy.cpp
 	app_checks.cpp
 	posix_queue.cpp
-	sdc_internal.pb.cc)
+	sdc_internal.pb.cc
+	token_bucket.cpp)
 
 target_link_libraries(sanalyzer
 	scap 

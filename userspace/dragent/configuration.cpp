@@ -65,6 +65,8 @@ dragent_configuration::dragent_configuration()
 	m_enable_falco_engine = false;
 	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
 	m_falco_engine_sampling_multiplier = 0;
+	m_user_events_rate = 1;
+	m_user_max_burst_events = 1000;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -516,6 +518,9 @@ void dragent_configuration::init(Application* app)
 	m_falco_engine_disabled_rule_patterns = m_config->get_deep_sequence<set<string>>(*m_config, m_config->get_root(), "falco_engine", "disabled_rule_patterns");
 	m_falco_engine_sampling_multiplier = m_config->get_scalar<double>("falco_engine", "sampling_multiplier", 0);
 
+	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
+	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
+
 	//
         // If falco is enabled, check to see if the rules file exists and
         // switch to a built-in default if it does not.
@@ -586,6 +591,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
+	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
+	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));

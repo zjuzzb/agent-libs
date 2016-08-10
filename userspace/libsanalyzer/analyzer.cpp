@@ -3668,6 +3668,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		if(resp && m_falco_events)
 		{
 			unique_ptr<falco_engine::rule_result> res(resp);
+
 			m_falco_events->generate_user_event(res);
 		}
 	}

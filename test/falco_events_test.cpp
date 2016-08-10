@@ -47,10 +47,11 @@ protected:
 	{
 		if(m_enable_falco)
 		{
+			double sampling_multiplier = 0;
 			m_analyzer->enable_falco("./resources/falco/falco_rules.yaml",
 						 "./resources/falco/user_falco_rules.yaml",
 						 m_disabled_patterns,
-						 0);
+						 sampling_multiplier);
 		}
 		m_inspector->open(scap_file);
 	}

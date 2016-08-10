@@ -55,6 +55,7 @@ add_executable(tests
 	yaml_configuration.cpp
 	statsd.cpp
 	jmx_proxy.cpp
+	token_bucket_test.cpp
 	user_event.cpp
 	uri.cpp
 	json_query.cpp)
