@@ -987,7 +987,49 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 						{
 							std::string ext_name = ext.asString();
 							g_logger.log("K8s extension discovered: " + ext_name, sinsp_logger::SEV_INFO);
-							ext_list.insert(ext_name);
+							ext_name.insert(0, 1, '/');
+							sc.reset(new sinsp_curl(uri(url.to_string() + ext_name), m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
+							json = sc->get_data();
+							filter = "[.resources[].name]";
+							if(jq.process(json, filter))
+							{
+								json = jq.result();
+								Json::Value root;
+								Json::Reader reader;
+								if(reader.parse(json, root))
+								{
+									if(!root.isNull())
+									{
+										if(root.isArray())
+										{
+											for(const auto& extension : root)
+											{
+												if(!extension.isNull() && extension.isConvertibleTo(Json::stringValue))
+												{
+													ext_list.insert(extension.asString());
+												}
+												else
+												{
+													g_logger.log("K8s extensions discovery error, extension found but null or not string.",
+														 sinsp_logger::SEV_WARNING);
+												}
+											}
+										}
+										else
+										{
+											g_logger.log("K8s extensions discovery error, extensions found but not array.",
+														 sinsp_logger::SEV_ERROR);
+											return nullptr;
+										}
+									}
+									else
+									{
+											g_logger.log("K8s extensions discovery error, extensions found but null.",
+														 sinsp_logger::SEV_WARNING);
+											return nullptr;
+									}
+								}
+							}
 						}
 						else
 						{
@@ -1050,6 +1092,21 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const std::string& k8s_api, user
 					else
 					{
 						ext_list_ptr = k8s_discover_ext(k8s_api);
+					}
+					if(ext_list_ptr)
+					{
+						std::ostringstream exts;
+						for(const auto& ext : *ext_list_ptr)
+						{
+							exts << std::endl << ext;
+						}
+						g_logger.log("Kubernetes API extensions found at " + uri(k8s_api).to_string(false) + exts.str(),
+									 sinsp_logger::SEV_DEBUG);
+					}
+					else
+					{
+						g_logger.log("Kubernetes API extensions NOT found at " + uri(k8s_api).to_string(false),
+									 sinsp_logger::SEV_INFO);
 					}
 					return new k8s(k8s_api, true, false, false,
 								   curl.get_ssl(), curl.get_bt(), curl_dbg,
