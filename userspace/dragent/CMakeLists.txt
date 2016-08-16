@@ -40,8 +40,6 @@ add_executable(dragent
 	subprocesses_logger.cpp
 	user_event_channel.cpp)
 
-add_dependencies(dragent sdjagent sdjagentjni sdchecks)
-
 target_link_libraries(dragent
 	pthread
 	sanalyzer

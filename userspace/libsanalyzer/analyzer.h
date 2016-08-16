@@ -359,9 +359,13 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
+
+	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
+	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_delegation();
 	bool check_k8s_server(const string& addr);
+	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
 	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter);
 	k8s* get_k8s(const uri& k8s_api);

@@ -32,10 +32,10 @@ LIBS=-Wl,-Bstatic -lprotobuf -lPocoNetSSL -lPocoUtil -lPocoXML -lPocoCrypto -lPo
 
 ODIR=$(MAKEDIR)/obj
 
-_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_state.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_collector.h uri.h
+_DEPS = k8s.h k8s_net.h k8s_event_data.h k8s_dispatcher.h k8s_state.h k8s_component.h k8s_proto.h draios.pb.h k8s_http.h k8s_collector.h uri.h user_event.h uri_parser.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_state.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_collector.o uri.o
+_OBJ = k8s.o k8s_net.o k8s_event_data.o k8s_dispatcher.o k8s_state.o k8s_component.o k8s_proto.o jsoncpp.o draios.pb.o k8s_http.o k8s_collector.o uri.o user_event.o uri_parser.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 all: directory kubeget
@@ -44,6 +44,9 @@ kubeget: $(ODIR)/kubeget.o $(OBJ)
 	$(CC) -o $@ $^ $(LFLAGS) $(LIBS)
 
 $(ODIR)/%.o: $(SDIR)/%.cpp $(DEPS)
+	$(CC) -g3 -c -D_DEBUG -o $@ $< $(CFLAGS)
+
+$(ODIR)/%.o: $(SDIR)/%.c $(DEPS)
 	$(CC) -g3 -c -D_DEBUG -o $@ $< $(CFLAGS)
 
 $(ODIR)/kubeget.o: $(SDIR)/kubeget.cpp

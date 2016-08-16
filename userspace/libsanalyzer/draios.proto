@@ -609,7 +609,6 @@ message k8s_node {
 
 message k8s_pod {
     required k8s_common common = 1;
-    // pods have no selectors
     repeated string container_ids = 2;
     optional string node_name = 3;
     optional string host_ip = 4;
@@ -618,6 +617,12 @@ message k8s_pod {
 }
 
 message k8s_replication_controller {
+    required k8s_common common = 1;
+    optional uint32 replicas_desired = 2;
+    optional uint32 replicas_running = 3;
+}
+
+message k8s_replica_set {
     required k8s_common common = 1;
     optional uint32 replicas_desired = 2;
     optional uint32 replicas_running = 3;
@@ -635,12 +640,27 @@ message k8s_service {
     repeated net_port ports = 3;
 }
 
+message k8s_deployment {
+    required k8s_common common = 1;
+    optional uint32 replicas_desired = 2;
+    optional uint32 replicas_running = 3;
+}
+
+message k8s_daemonset {
+    required k8s_common common = 1;
+    optional uint32 current_scheduled = 2;
+    optional uint32 desired_scheduled = 3;
+}
+
 message k8s_state {
     repeated k8s_namespace namespaces = 1;
     repeated k8s_node nodes = 2;
     repeated k8s_pod pods = 3;
     repeated k8s_replication_controller controllers = 4;
     repeated k8s_service services = 5;
+    repeated k8s_replica_set replica_sets = 6;
+    repeated k8s_deployment deployments = 7;
+    repeated k8s_daemonset daemonsets = 8;
 }
 
 //

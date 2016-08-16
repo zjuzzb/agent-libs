@@ -32,6 +32,7 @@ using namespace google::protobuf::io;
 #include "../../driver/ppm_ringbuffer.h"
 
 #ifdef HAS_ANALYZER
+#include "json_query.h"
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
@@ -822,7 +823,7 @@ bool sinsp_analyzer::check_k8s_server(const string& addr)
 		Json::Reader reader;
 		if(reader.parse(json, root))
 		{
-			Json::Value vers = root["versions"];
+			const Json::Value& vers = root["versions"];
 			if(vers.isArray())
 			{
 				for (const auto& ver : vers)
@@ -943,7 +944,130 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 	}
 }
 
-k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter)
+sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::string& addr)
+{
+	string path = "/apis/extensions";
+	uri url(addr + path);
+	g_logger.log("Detecting K8S extensions at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
+	std::unique_ptr<sinsp_curl> sc;
+	if(url.is_secure() && !m_k8s_ssl)
+	{
+		const std::string& cert          = m_configuration->get_k8s_ssl_cert();
+		const std::string& key           = m_configuration->get_k8s_ssl_key();
+		const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
+		const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
+		bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
+		const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
+		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
+	}
+	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+	if(!m_k8s_bt && !bt_auth_token.empty())
+	{
+		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+	}
+	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
+	string json = sc->get_data();
+	if(!json.empty())
+	{
+		std::string filter = "[.versions[].version]";
+		json_query jq;
+		if(jq.process(json, filter))
+		{
+			json = jq.result();
+			Json::Value root;
+			Json::Reader reader;
+			if(reader.parse(json, root))
+			{
+				if(!root.isNull() && root.isArray())
+				{
+					k8s_ext_list_t ext_list;
+					for(const auto& ext : root)
+					{
+						if(!ext.isNull() && ext.isString())
+						{
+							std::string ext_name = ext.asString();
+							g_logger.log("K8s extension discovered: " + ext_name, sinsp_logger::SEV_INFO);
+							ext_name.insert(0, 1, '/');
+							sc.reset(new sinsp_curl(uri(url.to_string() + ext_name), m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
+							json = sc->get_data();
+							filter = "[.resources[].name]";
+							if(jq.process(json, filter))
+							{
+								json = jq.result();
+								Json::Value root;
+								Json::Reader reader;
+								if(reader.parse(json, root))
+								{
+									if(!root.isNull())
+									{
+										if(root.isArray())
+										{
+											for(const auto& extension : root)
+											{
+												if(!extension.isNull() && extension.isConvertibleTo(Json::stringValue))
+												{
+													ext_list.insert(extension.asString());
+												}
+												else
+												{
+													g_logger.log("K8s extensions discovery error, extension found but null or not string.",
+														 sinsp_logger::SEV_WARNING);
+												}
+											}
+										}
+										else
+										{
+											g_logger.log("K8s extensions discovery error, extensions found but not array.",
+														 sinsp_logger::SEV_ERROR);
+											return nullptr;
+										}
+									}
+									else
+									{
+											g_logger.log("K8s extensions discovery error, extensions found but null.",
+														 sinsp_logger::SEV_WARNING);
+											return nullptr;
+									}
+								}
+							}
+						}
+						else
+						{
+							g_logger.log("K8s extensions discovery error, extension present but empty or not string.",
+								 sinsp_logger::SEV_WARNING);
+						}
+					}
+					if(!ext_list.empty())
+					{
+						return std::make_shared<k8s_ext_list_t>(ext_list);
+					}
+					else
+					{
+						g_logger.log("K8s extensions detected, but none discovered.", sinsp_logger::SEV_WARNING);
+					}
+				}
+				else
+				{
+					g_logger.log("K8s extensions discovery error, JSON: " + json_as_string(root) +
+								 ", jq filter: <" + filter + '>',
+								 sinsp_logger::SEV_ERROR);
+				}
+			}
+		}
+		else
+		{
+			g_logger.log("K8s extensions discovery error, JSON: " + json + ", jq filter: <" + filter + '>',
+						 sinsp_logger::SEV_ERROR);
+		}
+	}
+	else
+	{
+		g_logger.log("K8s extensions discovery error, JSON empty", sinsp_logger::SEV_ERROR);
+	}
+	return nullptr;
+}
+
+k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const std::string& k8s_api, user_event_filter_t::ptr_t event_filter)
 {
 	Json::Value root;
 	Json::Reader reader;
@@ -959,7 +1083,34 @@ k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const string& k8s_api, user_even
 					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
 						sinsp_logger::SEV_INFO);
 					bool curl_dbg = m_configuration->get_curl_debug();
-					return new k8s(k8s_api, true, false, false, "/api/v1", curl.get_ssl(), curl.get_bt(), curl_dbg, event_filter);
+					const k8s_ext_list_t& ext_list = m_configuration->get_k8s_extensions();
+					k8s_ext_list_ptr_t ext_list_ptr;
+					if(ext_list.size())
+					{
+						ext_list_ptr.reset(new k8s_ext_list_t(ext_list));
+					}
+					else
+					{
+						ext_list_ptr = k8s_discover_ext(k8s_api);
+					}
+					if(ext_list_ptr)
+					{
+						std::ostringstream exts;
+						for(const auto& ext : *ext_list_ptr)
+						{
+							exts << std::endl << ext;
+						}
+						g_logger.log("Kubernetes API extensions found at " + uri(k8s_api).to_string(false) + exts.str(),
+									 sinsp_logger::SEV_DEBUG);
+					}
+					else
+					{
+						g_logger.log("Kubernetes API extensions NOT found at " + uri(k8s_api).to_string(false),
+									 sinsp_logger::SEV_INFO);
+					}
+					return new k8s(k8s_api, true, false, false,
+								   curl.get_ssl(), curl.get_bt(), curl_dbg,
+								   event_filter, ext_list_ptr);
 				}
 			}
 		}

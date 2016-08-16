@@ -81,6 +81,19 @@ void k8s_proto::make_protobuf(const k8s_state_t& state)
 		}
 	}
 
+	for (auto& rs : state.get_rss())
+	{
+		k8s_replica_set* rss = m_proto.add_replica_sets();
+		populate_component(rs, rss);
+		int spec_replicas = rs.get_spec_replicas();
+		int stat_replicas = rs.get_stat_replicas();
+		if(spec_replicas >= 0 && stat_replicas >= 0)
+		{
+			rss->set_replicas_desired(spec_replicas);
+			rss->set_replicas_running(stat_replicas);
+		}
+	}
+
 	for (auto& service : state.get_services())
 	{
 		k8s_service* services = m_proto.add_services();
@@ -99,6 +112,32 @@ void k8s_proto::make_protobuf(const k8s_state_t& state)
 			{
 				p->set_node_port(port.m_node_port);
 			}
+		}
+	}
+
+	for (auto& d : state.get_deployments())
+	{
+		k8s_deployment* deployment = m_proto.add_deployments();
+		populate_component(d, deployment);
+		int spec_replicas = d.get_spec_replicas();
+		int stat_replicas = d.get_stat_replicas();
+		if(spec_replicas >= 0 && stat_replicas >= 0)
+		{
+			deployment->set_replicas_desired(spec_replicas);
+			deployment->set_replicas_running(stat_replicas);
+		}
+	}
+
+	for (auto& d : state.get_daemonsets())
+	{
+		k8s_daemonset* daemonset = m_proto.add_daemonsets();
+		populate_component(d, daemonset);
+		int current_scheduled = d.get_current_scheduled();
+		int desired_scheduled = d.get_desired_scheduled();
+		if(desired_scheduled >= 0 && current_scheduled >= 0)
+		{
+			daemonset->set_current_scheduled(current_scheduled);
+			daemonset->set_desired_scheduled(desired_scheduled);
 		}
 	}
 }
