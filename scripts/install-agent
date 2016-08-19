@@ -36,6 +36,8 @@ function install_rpm {
 	elif [[ $KERNEL_VERSION == *stab* ]]; then
 		# It's OpenVZ kernel and we should install another package
 		yum -q -y install vzkernel-devel-$KERNEL_VERSION || kernel_warning
+	elif [[ $KERNEL_VERSION == *uek* ]]; then
+		yum -q -y install kernel-uek-devel-$KERNEL_VERSION || kernel_warning
 	else
 		yum -q -y install kernel-devel-$KERNEL_VERSION || kernel_warning
 	fi
