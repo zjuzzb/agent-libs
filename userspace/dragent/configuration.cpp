@@ -19,6 +19,7 @@ using namespace Poco::Net;
 volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
 volatile bool dragent_configuration::m_send_log_report = false;
+volatile bool dragent_configuration::m_config_update = false;
 
 static std::string bool_as_text(bool b)
 {
@@ -522,14 +523,18 @@ void dragent_configuration::init(Application* app)
 
 	// Caches digest of "dragent.auto.yaml" file
 	File auto_config_file(DRAGENT_AUTO_YAML_PATH);
-	string file_data;
+	m_sha1_engine.reset();
 	if(auto_config_file.exists())
 	{
 		ifstream auto_config_f(auto_config_file.path());
-		auto_config_f >> file_data;
+		auto readbuf = new char[4096];
+		while(auto_config_f.good())
+		{
+			auto_config_f.read(readbuf, 4096);
+			m_sha1_engine.update(readbuf, auto_config_f.gcount());
+		}
+		delete readbuf;
 	}
-	m_sha1_engine.reset();
-	m_sha1_engine.update(file_data);
 	m_dragent_auto_yaml_digest = m_sha1_engine.digest();
 }
 
@@ -878,6 +883,7 @@ void dragent_configuration::parse_services_file()
 
 void dragent_configuration::save_auto_config(const string& config_data)
 {
+	cerr << __FUNCTION__ << ":" << __LINE__ << config_data << endl;
 	m_sha1_engine.reset();
 	m_sha1_engine.update(config_data);
 	auto new_digest = m_sha1_engine.digest();

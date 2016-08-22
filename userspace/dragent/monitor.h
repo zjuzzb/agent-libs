@@ -64,6 +64,7 @@ public:
 	}
 
 	static const uint8_t DONT_RESTART_EXIT_CODE = 17;
+	static const uint8_t CONFIG_UPDATE_EXIT_CODE = 18;
 private:
 	string m_pidfile;
 	vector<monitored_process> m_processes;

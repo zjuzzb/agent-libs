@@ -452,6 +452,7 @@ int dragent_app::sdagent_main()
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
+
 	if(m_statsite_pipes)
 	{
 		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
@@ -500,7 +501,7 @@ int dragent_app::sdagent_main()
 	else if(dragent_configuration::m_config_update)
 	{
 		g_log->information("Application::EXIT_CONFIG_UPDATE");
-		exit_code = monitor::CONFIG_UPDATE_EXIT_CODE;
+		exit_code = ExitCode(monitor::CONFIG_UPDATE_EXIT_CODE);
 	}
 	else
 	{
