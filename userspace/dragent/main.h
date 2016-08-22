@@ -73,6 +73,8 @@
 #include "Poco/PipeStream.h"
 #include "Poco/StringTokenizer.h"
 #include "Poco/Random.h"
+#include "Poco/DigestEngine.h"
+#include "Poco/SHA1Engine.h"
 
 #include <sinsp.h>
 #include "config.h"
@@ -123,6 +125,8 @@ using Poco::ProcessHandle;
 using Poco::Pipe;
 using Poco::PipeInputStream;
 using Poco::StringTokenizer;
+using Poco::SHA1Engine;
+using Poco::DigestEngine;
 
 #ifdef ASSERT
 #undef ASSERT

@@ -497,6 +497,11 @@ int dragent_app::sdagent_main()
 		g_log->error("Application::EXIT_SOFTWARE");
 		exit_code = Application::EXIT_SOFTWARE;
 	}
+	else if(dragent_configuration::m_config_update)
+	{
+		g_log->information("Application::EXIT_CONFIG_UPDATE");
+		exit_code = monitor::CONFIG_UPDATE_EXIT_CODE;
+	}
 	else
 	{
 		g_log->information("Application::EXIT_OK");

@@ -157,10 +157,11 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 	}
 
 	user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_root(), "events", system, component);
+	/* FIXME: broken
 	if(user_events.empty()) // nothing in dragent.yaml, fail over to dragent.default.yaml
 	{
 		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, *m_config->get_default_root(), "events", system, component);
-	}
+	}*/
 	if(user_events.size())
 	{
 		if(user_events.find("none") == user_events.end())
@@ -259,7 +260,7 @@ void dragent_configuration::init(Application* app)
 		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
 	}
 
-	m_config = make_shared<yaml_configuration>(m_conf_file, m_defaults_conf_file);
+	m_config.reset(new yaml_configuration({ m_conf_file, string(DRAGENT_AUTO_YAML_PATH), m_defaults_conf_file }));
 	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
 
 	if(!m_config->get_scalar<string>("metricsfile", "location", "").empty())
@@ -518,6 +519,18 @@ void dragent_configuration::init(Application* app)
 		write_statsite_configuration();
 	}
 	parse_services_file();
+
+	// Caches digest of "dragent.auto.yaml" file
+	File auto_config_file(DRAGENT_AUTO_YAML_PATH);
+	string file_data;
+	if(auto_config_file.exists())
+	{
+		ifstream auto_config_f(auto_config_file.path());
+		auto_config_f >> file_data;
+	}
+	m_sha1_engine.reset();
+	m_sha1_engine.update(file_data);
+	m_dragent_auto_yaml_digest = m_sha1_engine.digest();
 }
 
 void dragent_configuration::print_configuration()
@@ -525,6 +538,10 @@ void dragent_configuration::print_configuration()
 	for(const auto& item : m_config->errors())
 	{
 		g_log->critical(item);
+	}
+	for(const auto& item : m_config->warnings())
+	{
+		g_log->debug(item);
 	}
 	g_log->information("Distribution: " + get_distribution());
 	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
@@ -581,6 +598,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
 	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
+
 	if (!m_k8s_api_server.empty())
 	{
 		g_log->information("K8S API server: " + m_k8s_api_server);
@@ -683,6 +701,7 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Docker events not enabled.");
 	}
+	g_log->information("Auto config file digest: " + DigestEngine::digestToHex(m_dragent_auto_yaml_digest));
 }
 
 void dragent_configuration::refresh_aws_metadata()
@@ -855,6 +874,43 @@ void dragent_configuration::parse_services_file()
 		service = getservent();
 	}
 	endservent();
+}
+
+void dragent_configuration::save_auto_config(const string& config_data)
+{
+	m_sha1_engine.reset();
+	m_sha1_engine.update(config_data);
+	auto new_digest = m_sha1_engine.digest();
+	if(new_digest != m_dragent_auto_yaml_digest)
+	{
+		// TODO: validate YAML
+		yaml_configuration new_conf(config_data);
+		if(!new_conf.errors().empty())
+		{
+			g_log->warning("New auto config is not valid, skipping it");
+			return;
+		}
+
+		if(config_data.empty())
+		{
+			File auto_config_f(DRAGENT_AUTO_YAML_PATH);
+			auto_config_f.remove();
+		}
+		else
+		{
+			ofstream auto_config_f(DRAGENT_AUTO_YAML_PATH);
+			auto_config_f << config_data;
+			auto_config_f.close();
+		}
+
+		g_log->information("New auto config file applied");
+		m_config_update = true;
+		m_terminate = true;
+	}
+	else
+	{
+		g_log->debug("Auto config file is already up-to-date");
+	}
 }
 
 bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
