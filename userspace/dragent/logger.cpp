@@ -347,3 +347,29 @@ void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 		ASSERT(false);
 	}
 }
+
+avoid_block_channel::avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel):
+	m_file_channel(file_channel)
+{
+}
+
+void avoid_block_channel::log(const Message &message)
+{
+	try
+	{
+		m_file_channel->log(message);
+	} catch (const Poco::WriteFileException& ex)
+	{
+		cerr << "Cannot write to draios.log" << endl;
+	}
+}
+
+void avoid_block_channel::open()
+{
+	m_file_channel->open();
+}
+
+void avoid_block_channel::close()
+{
+	m_file_channel->close();
+}

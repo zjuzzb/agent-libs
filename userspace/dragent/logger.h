@@ -2,6 +2,19 @@
 
 #include "main.h"
 
+class avoid_block_channel : public Poco::Channel
+{
+public:
+	avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel);
+
+	virtual void log(const Poco::Message& message) override;
+	virtual void open() override;
+	virtual void close() override;
+
+private:
+	AutoPtr<Poco::FileChannel> m_file_channel;
+};
+
 class dragent_logger
 {
 public:
