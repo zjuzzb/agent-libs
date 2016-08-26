@@ -23,17 +23,15 @@ public class Config {
     private YamlConfig yamlConfig;
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
     private static final String ETCDIR = "/opt/draios/etc";
-    private static final String[] CONFIG_FILES = {"dragent.yaml", ETCDIR + "/dragent.yaml" };
-    private static final String[] DEFAULT_CONFIG_FILES = {"dragent.default.yaml", ETCDIR + "/dragent.default.yaml" };
 
     private List<BeanQuery> defaultBeanQueries;
     private Map<String, Process> processes;
 
     public Config() throws FileNotFoundException {
         List<String> configFiles = new ArrayList<String>();
-        configFiles.add(getFirstAvailableFile(CONFIG_FILES));
+        configFiles.add(ETCDIR + "dragent.yaml");
         configFiles.add(ETCDIR + "/dragent.auto.yaml");
-        configFiles.add(getFirstAvailableFile(DEFAULT_CONFIG_FILES));
+        configFiles.add(ETCDIR + "/dragent.default.yaml");
 
         yamlConfig = new YamlConfig(configFiles);
         defaultBeanQueries = yamlConfig.getMergedSequence("jmx.default_beans", BeanQuery.class);
@@ -42,20 +40,6 @@ public class Config {
             LOGGER.fine("jmx.default_beans is empty, probably a configuration error");
         }
         processes = yamlConfig.getMergedMap("jmx.per_process_beans", Process.class);
-    }
-
-    private static String getFirstAvailableFile(String[] files) throws FileNotFoundException {
-        // Load config from file
-        for (String configFilePath : files)
-        {
-            File conf_file = new File(configFilePath);
-            if (conf_file.exists())
-            {
-                LOGGER.info("Using config file: " + configFilePath);
-                return configFilePath;
-            }
-        }
-        return null;
     }
 
     public Level getLogLevel() {

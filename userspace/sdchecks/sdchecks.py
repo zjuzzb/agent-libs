@@ -57,8 +57,10 @@ class YamlConfig:
             except Exception as ex:
                 sys.stderr.write("%d:ERROR:Cannot parse config file %s: %s\n" % (os.getpid(), path, ex))
 
-    def get_merged_sequence(self, key, default=[]):
+    def get_merged_sequence(self, key, default=None):
         ret = default
+        if ret is None:
+            ret = []
         for root in self._roots:
             if root.has_key(key):
                 try:
