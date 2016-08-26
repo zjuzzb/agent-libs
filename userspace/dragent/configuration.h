@@ -258,9 +258,9 @@ public:
 	unordered_map<string, T> get_merged_map(const string& key)
 	{
 		unordered_map<string, T> ret;
-		for(const auto& root : m_roots)
+		for(auto it = m_roots.rbegin(); it != m_roots.rend(); ++it)
 		{
-			for(const auto& item : root[key])
+			for(const auto& item : (*it)[key])
 			{
 				try
 				{
@@ -481,6 +481,7 @@ public:
 	user_event_filter_t::ptr_t m_docker_event_filter;
 
 	bool m_enable_coredump;
+	bool m_auto_config;
 
 	bool java_present()
 	{

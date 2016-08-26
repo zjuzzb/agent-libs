@@ -63,6 +63,7 @@ dragent_configuration::dragent_configuration()
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
+	m_auto_config = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -521,6 +522,7 @@ void dragent_configuration::init(Application* app)
 	}
 	parse_services_file();
 
+	m_auto_config = m_config->get_scalar("auto_config", true);
 	// Caches digest of "dragent.auto.yaml" file
 	File auto_config_file(DRAGENT_AUTO_YAML_PATH);
 	m_sha1_engine.reset();
@@ -706,7 +708,14 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Docker events not enabled.");
 	}
-	g_log->information("Auto config file digest: " + DigestEngine::digestToHex(m_dragent_auto_yaml_digest));
+	if(m_auto_config)
+	{
+		g_log->information("Auto config enabled, file digest: " + DigestEngine::digestToHex(m_dragent_auto_yaml_digest));
+	}
+	else
+	{
+		g_log->information("Auto config disabled");
+	}
 }
 
 void dragent_configuration::refresh_aws_metadata()
@@ -883,8 +892,12 @@ void dragent_configuration::parse_services_file()
 
 void dragent_configuration::save_auto_config(const string& config_data)
 {
-	cerr << __FUNCTION__ << ":" << __LINE__ << config_data << endl;
+	const static auto AUTO_CONFIG_HEADER = "#\n"
+	"# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
+	"#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
+	"#\n";
 	m_sha1_engine.reset();
+	m_sha1_engine.update(AUTO_CONFIG_HEADER);
 	m_sha1_engine.update(config_data);
 	auto new_digest = m_sha1_engine.digest();
 	if(new_digest != m_dragent_auto_yaml_digest)
@@ -905,7 +918,7 @@ void dragent_configuration::save_auto_config(const string& config_data)
 		else
 		{
 			ofstream auto_config_f(DRAGENT_AUTO_YAML_PATH);
-			auto_config_f << config_data;
+			auto_config_f << AUTO_CONFIG_HEADER << config_data;
 			auto_config_f.close();
 		}
 

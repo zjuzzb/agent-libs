@@ -542,18 +542,24 @@ void connection_manager::handle_auto_update()
 
 void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
 {
-	draiosproto::config_data request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
+	if(m_configuration->m_auto_config)
 	{
-		return;
-	}
-
-	for(const auto& config_file_proto : request.config_files())
-	{
-		if(config_file_proto.name() == "dragent.auto.yaml")
+		draiosproto::config_data request;
+		if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
 		{
-			m_configuration->save_auto_config(config_file_proto.content());
-			break;
+			return;
 		}
+		for(const auto& config_file_proto : request.config_files())
+		{
+			if(config_file_proto.name() == "dragent.auto.yaml")
+			{
+				m_configuration->save_auto_config(config_file_proto.content());
+				break;
+			}
+		}
+	}
+	else
+	{
+		g_log->debug("Auto config disabled, ignoring CONFIG_DATA message");
 	}
 }
