@@ -324,6 +324,9 @@ void dragent_configuration::init(Application* app)
 		add_event_filter(m_k8s_event_filter, "kubernetes", "node");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "pod");
 		add_event_filter(m_k8s_event_filter, "kubernetes", "replicationController");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "replicaSet");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "daemonSet");
+		add_event_filter(m_k8s_event_filter, "kubernetes", "deployment");
 
 		// docker
 		add_event_filter(m_docker_event_filter, "docker", "container");

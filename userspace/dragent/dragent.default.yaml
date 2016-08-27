@@ -885,6 +885,19 @@ events:
       - FailedCreate        # Pod Create Failed (warning)
       - SuccessfulDelete    # Pod Deleted       (information)
       - FailedDelete        # Pod Delete Failed (warning)
+    replicaSet:
+      - SuccessfulCreate    # Pod Created       (information)
+      - FailedCreate        # Pod Create Failed (warning)
+      - SuccessfulDelete    # Pod Deleted       (information)
+      - FailedDelete        # Pod Delete Failed (warning)
+    deployment:
+      - SelectingAll                        # Selecting All Pods       (warning)
+      - ScalingReplicaSet                   # Scaling Replica Set      (information)
+      - DeploymentRollbackRevisionNotFound  # No revision to roll back (warning)
+      - DeploymentRollbackTemplateUnchanged # Skipping Rollback        (warning)
+      - DeploymentRollback                  # Rollback Done            (information)
+    daemonSet:
+      - SelectingAll                        # Selecting All Pods       (warning)
   docker:
     container:
 #      - attach      # Container Attached      (information)
