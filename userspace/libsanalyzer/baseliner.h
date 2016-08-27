@@ -34,30 +34,30 @@ public:
 
 	inline void insert(set<string>* table, string* name)
 	{
-		if(m_reduced)
-		{
-			size_t pos = name->find('/');
-			const char* rs = name->c_str();
-			const char* ss = NULL;
+		//if(m_reduced)
+		//{
+		//	size_t pos = name->find('/');
+		//	const char* rs = name->c_str();
+		//	const char* ss = NULL;
 
-			while(pos != string::npos)
-			{
-				const char* se = rs + pos + 1;
-				if(ss != NULL)
-				{
-					string dirs(ss, se - 1);
-					int a = 0;
-				}
-				pos = name->find('/', pos + 1);
-				ss = se;
-			}
+		//	while(pos != string::npos)
+		//	{
+		//		const char* se = rs + pos + 1;
+		//		if(ss != NULL)
+		//		{
+		//			string dirs(ss, se - 1);
+		//			int a = 0;
+		//		}
+		//		pos = name->find('/', pos + 1);
+		//		ss = se;
+		//	}
 
-			int a = 0;
-		}
-		else
-		{
+		//	int a = 0;
+		//}
+		//else
+		//{
 			table->insert(*name);
-		}
+		//}
 	}
 
 	inline void erase_from_uncategorized(string* name)
