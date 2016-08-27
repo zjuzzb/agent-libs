@@ -1,4 +1,5 @@
 #define BL_MAX_FILE_TABLE_SIZE 256
+#define BL_MAX_DIRS_TABLE_SIZE 4096 * 4
 #define BL_MAX_PROG_TABLE_SIZE 1024
 #define BL_STARTUP_TIME_NS (30LL * 1000000000)
 
@@ -15,7 +16,8 @@ public:
 		m_is_c_full = false;
 		m_is_other_full = false;
 		m_is_uncategorized_full = false;
-		m_reduced = false;
+		//m_reduced = false;
+		m_max_table_size = BL_MAX_FILE_TABLE_SIZE;
 	}
 
 	void clear()
@@ -80,7 +82,7 @@ public:
 			if(!m_is_rw_full)
 			{
 				insert(&m_rw, &name);
-				if(m_rw.size() >= BL_MAX_FILE_TABLE_SIZE)
+				if(m_rw.size() >= m_max_table_size)
 				{
 					m_is_rw_full = true;
 				}
@@ -93,7 +95,7 @@ public:
 			if(!m_is_r_full)
 			{
 				insert(&m_r, &name);
-				if(m_r.size() >= BL_MAX_FILE_TABLE_SIZE)
+				if(m_r.size() >= m_max_table_size)
 				{
 					m_is_r_full = true;
 				}
@@ -108,7 +110,7 @@ public:
 				if(!m_is_uncategorized_full)
 				{
 					insert(&m_uncategorized, &name);
-					if(m_uncategorized.size() >= BL_MAX_FILE_TABLE_SIZE)
+					if(m_uncategorized.size() >= m_max_table_size)
 					{
 						m_is_uncategorized_full = true;
 					}
@@ -119,7 +121,7 @@ public:
 				if(!m_is_other_full)
 				{
 					insert(&m_other, &name);
-					if(m_other.size() >= BL_MAX_FILE_TABLE_SIZE)
+					if(m_other.size() >= m_max_table_size)
 					{
 						m_is_other_full = true;
 					}
@@ -302,7 +304,8 @@ public:
 	bool m_is_c_full;
 	bool m_is_other_full;
 	bool m_is_uncategorized_full;
-	bool m_reduced;
+//	bool m_reduced;
+	uint32_t m_max_table_size;
 };
 
 //
@@ -1136,6 +1139,8 @@ public:
 	{
 //		m_dirs_reduced.m_regular_table.m_reduced = true;
 //		m_dirs_reduced.m_startup_table.m_reduced = true;
+		m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+		m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 	}
 
 	blprogram(string& comm)
