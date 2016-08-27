@@ -15,6 +15,7 @@ public:
 		m_is_c_full = false;
 		m_is_other_full = false;
 		m_is_uncategorized_full = false;
+		m_reduced = false;
 	}
 
 	void clear()
@@ -31,48 +32,73 @@ public:
 		m_uncategorized.clear();
 	}
 
+	inline void insert(set<string>* table, string* name)
+	{
+		if(m_reduced)
+		{
+			size_t pos = name->find('/');
+			const char* rs = name->c_str();
+			const char* ss = NULL;
+
+			while(pos != string::npos)
+			{
+				const char* se = rs + pos + 1;
+				if(ss != NULL)
+				{
+					string dirs(ss, se - 1);
+					int a = 0;
+				}
+				pos = name->find('/', pos + 1);
+				ss = se;
+			}
+
+			int a = 0;
+		}
+		else
+		{
+			table->insert(*name);
+		}
+	}
+
+	inline void erase_from_uncategorized(string* name)
+	{
+		if(m_uncategorized.size() != 0)
+		{
+			auto it = m_uncategorized.find(*name);
+
+			if(it != m_uncategorized.end())
+			{
+				m_uncategorized.erase(it);
+			}
+		}
+	}
+
 	inline void add(string& name, uint32_t openflags, bool uncategorized)
 	{
 		if(openflags & PPM_O_WRONLY)
 		{
 			if(!m_is_rw_full)
 			{
-				m_rw.insert(name);
+				insert(&m_rw, &name);
 				if(m_rw.size() >= BL_MAX_FILE_TABLE_SIZE)
 				{
 					m_is_rw_full = true;
 				}
 
-				if(m_uncategorized.size() != 0)
-				{
-					auto it = m_uncategorized.find(name);
-				
-					if(it != m_uncategorized.end())
-					{
-						m_uncategorized.erase(it);
-					}
-				}
+				erase_from_uncategorized(&name);
 			}
 		}
 		else if(openflags & PPM_O_RDONLY)
 		{
 			if(!m_is_r_full)
 			{
-				m_r.insert(name);
+				insert(&m_r, &name);
 				if(m_r.size() >= BL_MAX_FILE_TABLE_SIZE)
 				{
 					m_is_r_full = true;
 				}
 
-				if(m_uncategorized.size() != 0)
-				{
-					auto it = m_uncategorized.find(name);
-				
-					if(it != m_uncategorized.end())
-					{
-						m_uncategorized.erase(it);
-					}
-				}
+				erase_from_uncategorized(&name);
 			}
 		}
 		else
@@ -81,7 +107,7 @@ public:
 			{
 				if(!m_is_uncategorized_full)
 				{
-					m_uncategorized.insert(name);
+					insert(&m_uncategorized, &name);
 					if(m_uncategorized.size() >= BL_MAX_FILE_TABLE_SIZE)
 					{
 						m_is_uncategorized_full = true;
@@ -92,21 +118,13 @@ public:
 			{
 				if(!m_is_other_full)
 				{
-					m_other.insert(name);
+					insert(&m_other, &name);
 					if(m_other.size() >= BL_MAX_FILE_TABLE_SIZE)
 					{
 						m_is_other_full = true;
 					}
 
-					if(m_uncategorized.size() != 0)
-					{
-						auto it = m_uncategorized.find(name);
-				
-						if(it != m_uncategorized.end())
-						{
-							m_uncategorized.erase(it);
-						}
-					}
+					erase_from_uncategorized(&name);
 				}
 			}
 		}
@@ -114,24 +132,52 @@ public:
 
 	//
 	// Convert a filename into a directory by filtering out the last part and 
-	// then add it
+	// then add it as we would add a normal file
 	//
-	inline void add_dir(string& filename, uint32_t openflags, bool uncategorized)
+	inline static string file_to_dir(string& filename)
 	{
 		size_t pos = filename.rfind('/');
+
 		if(pos != string::npos)
 		{
 			if(pos < filename.size() - 1)
 			{
 				string ts(filename, 0, pos + 1);
-				add(ts, openflags, uncategorized);
+				return ts;
 			}
 		}
 		else
 		{
 			string ts("/");
-			add(ts, openflags, uncategorized);
+			return ts;
 		}
+
+		ASSERT(false);
+	}
+
+	//
+	// Convert a filename into a directory by filtering out the last part and 
+	// then add it as we would add a normal file
+	//
+	inline static string reduce_dir(string& filename)
+	{
+		size_t pos = filename.rfind('/');
+
+		if(pos != string::npos)
+		{
+			if(pos < filename.size() - 1)
+			{
+				string ts(filename, 0, pos + 1);
+				return ts;
+			}
+		}
+		else
+		{
+			string ts("/");
+			return ts;
+		}
+
+		ASSERT(false);
 	}
 
 #ifdef HAS_ANALYZER
@@ -255,6 +301,7 @@ public:
 	bool m_is_c_full;
 	bool m_is_other_full;
 	bool m_is_uncategorized_full;
+	bool m_reduced;
 };
 
 //
@@ -279,18 +326,6 @@ public:
 		else
 		{
 			m_regular_table.add(name, openflags, uncategorized);
-		}
-	}
-
-	inline void add_dir(string& filename, uint32_t openflags, bool uncategorized, uint64_t time_from_clone)
-	{
-		if(time_from_clone < BL_STARTUP_TIME_NS)
-		{
-			m_startup_table.add_dir(filename, openflags, uncategorized);
-		}
-		else
-		{
-			m_regular_table.add_dir(filename, openflags, uncategorized);
 		}
 	}
 
@@ -1098,6 +1133,8 @@ class blprogram
 public:
 	blprogram()
 	{
+//		m_dirs_reduced.m_regular_table.m_reduced = true;
+//		m_dirs_reduced.m_startup_table.m_reduced = true;
 	}
 
 	blprogram(string& comm)
@@ -1115,6 +1152,7 @@ public:
 	uint32_t m_user_id; // user id
 	blfiletable_split m_files;
 	blfiletable_split m_dirs;
+//	blfiletable_split m_dirs_reduced;
 	blprogtable_split m_executed_programs;
 	blporttable_split m_server_ports;
 	blporttable_split m_bound_ports;

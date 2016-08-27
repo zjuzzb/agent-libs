@@ -100,19 +100,25 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						np.m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
 
 						//
-						// Add the entry to the directory table
+						// Add the entry to the directory tables
 						//
-						np.m_dirs.add_dir(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
+						string sdir = blfiletable::file_to_dir(fdinfo->m_name);
+						np.m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
+//						np.m_dirs_reduced.add(sdir, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					}
 					case SCAP_FD_DIRECTORY:
+					{
 						//
-						// Add the entry to the directory table
+						// Add the entry to the directory tables
 						//
-						np.m_dirs.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
+						string sdir = fdinfo->m_name + '/';
+						np.m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
+//						np.m_dirs_reduced.add(sdir, fdinfo->m_openflags, true, cdelta);
 
 						break;
+					}
 					case SCAP_FD_IPV4_SOCK:
 						{
 							ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
@@ -272,6 +278,14 @@ void sisnp_baseliner::serialize_json(string filename)
 			eprog["dirs"] = edirs;
 		}
 
+		// Dirs reduced
+		//Json::Value edirsr;
+		//it.second.m_dirs_reduced.serialize_json(edirsr);
+		//if(!edirsr.empty())
+		//{
+		//	eprog["dirsr"] = edirsr;
+		//}
+
 		// Executed Programs
 		Json::Value eeprogs;
 		it.second.m_executed_programs.serialize_json(eeprogs);
@@ -387,6 +401,14 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 			it.second.m_dirs.serialize_protobuf(cdirs);
 		}
 
+		// Dirs reduced
+		if(it.second.m_dirs_reduced.has_data())
+		{
+			draiosproto::falco_category* cdirs = prog->add_cats();
+			cdirs->set_name("dirsr");
+			it.second.m_dirs_reduced.serialize_protobuf(cdirs);
+		}
+
 		// Executed Programs
 		if(it.second.m_executed_programs.has_data())
 		{
@@ -496,14 +518,22 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
 	}
 
+	//
+	// Add the entry to the file table
+	//
 	pinfo.m_files.add(name, openflags, false, 
 		evt->get_ts() - clone_ts);
 
 	//
-	// Add the entry to the directory table
+	// Add the entry to the directory tables
 	//
-	pinfo.m_dirs.add_dir(name, openflags, false,
+	string sdir = blfiletable::file_to_dir(name);
+
+	pinfo.m_dirs.add(sdir, openflags, false,
 		evt->get_ts() - clone_ts);
+
+//	pinfo.m_dirs_reduced.add(sdir, openflags, false,
+//		evt->get_ts() - clone_ts);
 }
 
 void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
