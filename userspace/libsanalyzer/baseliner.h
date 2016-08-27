@@ -153,6 +153,7 @@ public:
 		}
 
 		ASSERT(false);
+		return "/";
 	}
 
 	//
