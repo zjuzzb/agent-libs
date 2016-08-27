@@ -402,12 +402,12 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		}
 
 		// Dirs reduced
-		if(it.second.m_dirs_reduced.has_data())
-		{
-			draiosproto::falco_category* cdirs = prog->add_cats();
-			cdirs->set_name("dirsr");
-			it.second.m_dirs_reduced.serialize_protobuf(cdirs);
-		}
+		//if(it.second.m_dirs_reduced.has_data())
+		//{
+		//	draiosproto::falco_category* cdirs = prog->add_cats();
+		//	cdirs->set_name("dirsr");
+		//	it.second.m_dirs_reduced.serialize_protobuf(cdirs);
+		//}
 
 		// Executed Programs
 		if(it.second.m_executed_programs.has_data())
