@@ -184,8 +184,10 @@ void sisnp_baseliner::init_programs(uint64_t time)
 			{
 				return;
 			}
-		
+
 			m_progtable[tinfo->m_program_hash_falco] = np;
+			m_progtable[tinfo->m_program_hash_falco].m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+			m_progtable[tinfo->m_program_hash_falco].m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 		}
 	}
 }
@@ -545,6 +547,8 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 		//insert_res.first->second.m_env = tinfo->m_env;
 		insert_res.first->second.m_container_id = tinfo->m_container_id;
 		insert_res.first->second.m_user_id = tinfo->m_uid;
+		insert_res.first->second.m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+		insert_res.first->second.m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 
 		sinsp_threadinfo* ptinfo = m_inspector->get_thread(tinfo->m_ptid);
 
