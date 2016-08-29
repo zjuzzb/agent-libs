@@ -2,6 +2,8 @@ mykey: mystring
 mynested:
   firstkey:
     subkey: 78
+  secondkey:
+    subkey: 40
 myarray:
   - 1
   - 6
