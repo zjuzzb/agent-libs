@@ -92,6 +92,7 @@ install(DIRECTORY chisels
 
 install(FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
 		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
-		DESTINATION ${DRAIOS_BIN_PREFIX}/share/chisels)
+		DESTINATION ${DRAIOS_BIN_PREFIX}/share/chisels
+		COMPONENT agent)
 
 configure_file(config.h.in config.h)
