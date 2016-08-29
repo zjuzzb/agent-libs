@@ -253,7 +253,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
-		m_jmx_pipes = make_shared<errpipe_manager>();
+		m_jmx_pipes = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
@@ -417,8 +417,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 		});
 	}
 	monitor_process.set_cleanup_function(
-			[](void)
+			[this](void)
 			{
+				this->m_sdchecks_pipes.reset();
+				this->m_jmx_pipes.reset();
+				this->m_mounted_fs_reader_pipe.reset();
+				this->m_statsite_pipes.reset();
 				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
 									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
 									  "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
