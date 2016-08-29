@@ -356,6 +356,9 @@ void sisnp_baseliner::serialize_json(string filename)
 #ifdef HAS_ANALYZER
 void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
+	//
+	// Serialize the programs
+	//
 	for(auto& it : m_progtable)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
@@ -449,6 +452,27 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 			draiosproto::falco_category* cc_subnet_endpoints = prog->add_cats();
 			cc_subnet_endpoints->set_name("c_subnet_endpoints");
 			it.second.m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
+		}
+	}
+
+	//
+	// Serialize the containers
+	//
+	for (auto& it : m_container_table)
+	{
+		draiosproto::falco_container* cont = pbentry->add_containers();
+
+		cont->set_id(it.first);
+		cont->set_name(it.second.m_name);
+
+		if (it.second.m_image_name != "")
+		{
+			cont->set_image_name(it.second.m_image_name);
+		}
+
+		if (it.second.m_image_id != "")
+		{
+			cont->set_image_id(it.second.m_image_id);
 		}
 	}
 }
