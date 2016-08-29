@@ -129,8 +129,16 @@ bool connection_manager::connect()
 		m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
 		m_socket->setSendTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
 		m_socket->setReceiveTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
-		// This option makes the connection fail earlier in case of unplugged cable
-		m_socket->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, SOCKET_TCP_TIMEOUT_MS);
+		try
+		{
+			// This option makes the connection fail earlier in case of unplugged cable
+			m_socket->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, SOCKET_TCP_TIMEOUT_MS);
+		}
+		catch(std::exception&)
+		{
+			// ignore if kernel does not support this
+			// alternatively, could be a setsockopt() call to avoid exception
+		}
 
 		g_log->information("Connected to collector");
 		m_connected = true;

@@ -37,10 +37,10 @@ inline void user_event_channel::log(const Message& msg)
 		uint64_t ts = yaml.get_scalar<uint64_t>("timestamp", msg.getTime().epochTime());
 		uint32_t prio = yaml.get_scalar<uint32_t>("priority", static_cast<uint32_t>(msg.getPriority()));
 		add(ts,
-			std::move(yaml.get_scalar<string>("name")),
-			std::move(yaml.get_scalar<string>("description", "")),
-			std::move(yaml.get_scalar<string>("scope", "")),
-			std::move(yaml.get_merged_map<string>("tags")),
+			yaml.get_scalar<string>("name"),
+			yaml.get_scalar<string>("description", ""),
+			yaml.get_scalar<string>("scope", ""),
+			yaml.get_merged_map<string>("tags"),
 			prio);
 	}
 	catch(YAML::ParserException& ex)
