@@ -542,13 +542,12 @@ void dragent_configuration::init(Application* app)
 	if(auto_config_file.exists())
 	{
 		ifstream auto_config_f(auto_config_file.path());
-		auto readbuf = new char[4096];
+		char readbuf[4096];
 		while(auto_config_f.good())
 		{
-			auto_config_f.read(readbuf, 4096);
+			auto_config_f.read(readbuf, sizeof(readbuf));
 			m_sha1_engine.update(readbuf, auto_config_f.gcount());
 		}
-		delete readbuf;
 	}
 	m_dragent_auto_yaml_digest = m_sha1_engine.digest();
 }
