@@ -416,6 +416,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return proc.run();
 		});
 	}
+	monitor_process.set_cleanup_function(
+			[](void)
+			{
+				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
+									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
+									  "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
+				{
+					posix_queue::remove(queue);
+				}
+			});
 	return monitor_process.run();
 #else
 	return sdagent_main();

@@ -130,7 +130,8 @@ int monitor::run()
 								waitpid(process.pid(), NULL, 0);
 							}
 						}
-						execl("/opt/draios/bin/dragent", "dragent", NULL);
+						m_cleanup_function();
+						execl("/opt/draios/bin/dragent", "dragent", (char*)NULL);
 
 						delete_pid_file(m_pidfile);
 						exit(EXIT_FAILURE);
@@ -201,12 +202,7 @@ int monitor::run()
 		}
 	}
 
-	for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
-							 "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
-							 "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
-	{
-		posix_queue::remove(queue);
-	}
+	m_cleanup_function();
 	delete_pid_file(m_pidfile);
 	return(EXIT_SUCCESS);
 }
