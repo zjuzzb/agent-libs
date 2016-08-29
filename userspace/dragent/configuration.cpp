@@ -140,7 +140,7 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 	typedef std::set<string, ci_compare> seq_t;
 
 	// shortcut to enable or disable all in dragent.yaml (overriding default)
-	seq_t user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_root(), "events", system);
+	seq_t user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_roots().front(), "events", system);
 	if(user_events.size())
 	{
 		if(user_events.find("all") != user_events.end())
@@ -158,12 +158,16 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 		}
 	}
 
-	user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_root(), "events", system, component);
-	/* FIXME: broken
-	if(user_events.empty()) // nothing in dragent.yaml, fail over to dragent.default.yaml
+	// find the first `user_events` across our files
+	const auto& roots = m_config->get_roots();
+	for(const auto& root : roots)
 	{
-		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, *m_config->get_default_root(), "events", system, component);
-	}*/
+		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, root, "events", system, component);
+		if(!user_events.empty())
+		{
+			break;
+		}
+	}
 	if(user_events.size())
 	{
 		if(user_events.find("none") == user_events.end())
@@ -436,24 +440,32 @@ void dragent_configuration::init(Application* app)
 	}
 	m_blacklisted_ports = m_config->get_merged_sequence<uint16_t>("blacklisted_ports");
 
-	for(auto ch : m_config->get_root()["chisels"])
+	for(const auto& root : m_config->get_roots())
 	{
-		sinsp_chisel_details details;
-
-		try
+		const auto& node = root["chisels"];
+		if(!node.IsSequence())
 		{
-			details.m_name = ch["name"].as<string>();
-
-			for(auto arg : ch["args"])
-			{
-				details.m_args.push_back(pair<string, string>(arg.first.as<string>().c_str(), arg.second.as<string>().c_str()));
-			}
-
-			m_chisel_details.push_back(details);
+			break;
 		}
-		catch (const YAML::BadConversion& ex)
+		for(auto ch : node)
 		{
-			throw sinsp_exception("config file error at key: chisels");
+			sinsp_chisel_details details;
+
+			try
+			{
+				details.m_name = ch["name"].as<string>();
+
+				for(auto arg : ch["args"])
+				{
+					details.m_args.push_back(pair<string, string>(arg.first.as<string>().c_str(), arg.second.as<string>().c_str()));
+				}
+
+				m_chisel_details.push_back(details);
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				throw sinsp_exception("config file error at key: chisels");
+			}
 		}
 	}
 
@@ -494,7 +506,8 @@ void dragent_configuration::init(Application* app)
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
 	}
 
-	m_k8s_extensions = yaml_configuration::get_deep_sequence<k8s_ext_list_t>(*m_config, m_config->get_root(), "k8s_extensions");
+	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
+	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 	// End K8s
 
 	// Mesos

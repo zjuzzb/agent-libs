@@ -285,21 +285,10 @@ public:
 		return m_warnings;
 	}
 
-	const YAML::Node& get_root() const
+	const vector<YAML::Node>& get_roots() const
 	{
-		return m_roots.front();
+		return m_roots;
 	}
-
-	/*
-	const std::shared_ptr<YAML::Node> get_default_root() const
-	{
-		if(m_default_root)
-		{
-			return m_default_root;
-		}
-		m_errors.emplace_back("Non-existing default root requested.");
-		return nullptr;
-	}*/
 
 	void add_error(const std::string& err)
 	{
