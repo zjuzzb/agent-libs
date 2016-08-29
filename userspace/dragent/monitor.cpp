@@ -126,7 +126,8 @@ int monitor::run()
 									delete_pid_file(m_pidfile);
 									exit(EXIT_FAILURE);
 								}
-								// FIXME: locking wait here
+								// locking wait here, but we are using SIGKILL
+								// so it should not be a problem
 								waitpid(process.pid(), NULL, 0);
 							}
 						}
