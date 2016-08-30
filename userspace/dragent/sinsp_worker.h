@@ -46,7 +46,7 @@ public:
 		bool m_send_file;
 	};
 
-	sinsp_worker(dragent_configuration* configuration, 
+	sinsp_worker(dragent_configuration* configuration,
 		connection_manager* connection_manager, protocol_queue* queue);
 	~sinsp_worker();
 

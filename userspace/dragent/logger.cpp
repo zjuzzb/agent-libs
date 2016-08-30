@@ -9,6 +9,11 @@ dragent_logger::dragent_logger(Logger* file_log, Logger* console_log, Logger* ev
 {
 }
 
+void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_burst)
+{
+	m_user_events_tb.init(rate, max_burst);
+}
+
 //
 // regular logging
 //
@@ -292,6 +297,19 @@ void dragent_logger::trace_event(string&& str)
 void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 {
 	ASSERT(g_log != NULL);
+
+	// For user event severities, only log the event if allowed by
+	// the token bucket.
+
+	if (sev >= sinsp_logger::SEV_EVT_MIN &&
+	    sev <= sinsp_logger::SEV_EVT_MAX)
+	{
+		if (! g_log->m_user_events_tb.claim())
+		{
+			g_log->warning("User event throttled: msg=" + str);
+			return;
+		}
+	}
 
 	switch(sev)
 	{

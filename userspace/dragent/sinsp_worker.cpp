@@ -6,7 +6,7 @@
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
-sinsp_worker::sinsp_worker(dragent_configuration* configuration, 
+sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	connection_manager* connection_manager, protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
@@ -54,7 +54,7 @@ void sinsp_worker::init()
 
 	m_inspector->set_debug_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
-	
+
 	//
 	// Attach our transmit callback to the analyzer
 	//
@@ -221,7 +221,7 @@ void sinsp_worker::init()
 		g_log->information("Setting host hidden");
 		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
 	}
-	
+
 	if(m_configuration->m_autodrop_enabled)
 	{
 		g_log->information("Setting autodrop");
@@ -244,7 +244,7 @@ void sinsp_worker::init()
 		g_log->information("Loading chisel " + chinfo.m_name);
 		m_analyzer->add_chisel(&chinfo);
 	}
-	
+
 	m_analyzer->initialize_chisels();
 
 	//
@@ -268,11 +268,11 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_aws_metadata.m_public_ipv4)
 	{
-		sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4, 
+		sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
 			m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 		m_inspector->import_ipv4_interface(aws_interface);
 	}
-	
+
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
 	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
@@ -285,6 +285,14 @@ void sinsp_worker::init()
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 
 	m_analyzer->set_user_event_queue(m_user_event_queue);
+
+	if(m_configuration->m_enable_falco_engine)
+	{
+		m_analyzer->enable_falco(m_configuration->m_falco_default_rules_filename,
+					 m_configuration->m_falco_rules_filename,
+					 m_configuration->m_falco_engine_disabled_rule_patterns,
+					 m_configuration->m_falco_engine_sampling_multiplier);
+	}
 }
 
 void sinsp_worker::run()
@@ -329,7 +337,7 @@ void sinsp_worker::run()
 		}
 
 		//
-		// Update the time 
+		// Update the time
 		//
 		ts = ev->get_ts();
 		m_last_loop_ns = ts;
@@ -397,8 +405,8 @@ void sinsp_worker::prepare_response(const string& token, draiosproto::dump_respo
 bool sinsp_worker::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
 {
 	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
-		draiosproto::message_type::DUMP_RESPONSE, 
-		response, 
+		draiosproto::message_type::DUMP_RESPONSE,
+		response,
 		m_configuration->m_compression_enabled);
 
 	if(buffer.isNull())
@@ -464,20 +472,20 @@ void sinsp_worker::run_jobs(sinsp_evt* ev)
 		if(!m_configuration->m_capture_dragent_events &&
 			tinfo &&
 			tinfo->m_pid == m_inspector->m_sysdig_pid &&
-			etype != PPME_SCHEDSWITCH_1_E && 
+			etype != PPME_SCHEDSWITCH_1_E &&
 			etype != PPME_SCHEDSWITCH_6_E)
 		{
 			continue;
 		}
 
-		if(job->m_max_size && 
+		if(job->m_max_size &&
 			job->m_file_size > job->m_max_size)
 		{
 			stop_job(job);
 			continue;
 		}
 
-		if(job->m_duration_ns && 
+		if(job->m_duration_ns &&
 			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
 		{
 			stop_job(job);
@@ -502,7 +510,7 @@ void sinsp_worker::stop_job(dump_job_state* job)
 	ASSERT(!job->m_terminated);
 	job->m_terminated = true;
 
-	g_log->information("Job " + job->m_token + " stopped, captured events: " 
+	g_log->information("Job " + job->m_token + " stopped, captured events: "
 		+ NumberFormatter::format(job->m_n_events));
 
 	//
@@ -519,7 +527,7 @@ void sinsp_worker::send_error(const string& token, const string& error)
 	draiosproto::dump_response response;
 	prepare_response(token, &response);
 	response.set_error(error);
-	queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);	
+	queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
 }
 
 void sinsp_worker::send_dump_chunks(dump_job_state* job)
@@ -541,8 +549,8 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 			progress = (job->m_last_chunk_offset * 100) / job->m_file_size;
 		}
 
-		g_log->information(m_name + ": " + job->m_file + ": Sending chunk " 
-			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size " 
+		g_log->information(m_name + ": " + job->m_file + ": Sending chunk "
+			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size "
 			+ NumberFormatter::format(job->m_last_chunk.size())
 			+ ", progress " + NumberFormatter::format(progress) + "%%");
 
@@ -561,10 +569,10 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 		{
 			response.set_final_size_bytes(job->m_file_size);
 		}
-		
+
 		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
 		{
-			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk " 
+			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk "
 				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
 			return;
 		}
@@ -583,7 +591,7 @@ void sinsp_worker::read_chunk(dump_job_state* job)
 
 	while(!eof && chunk_size)
 	{
-		size_t to_read = min<u_int64_t>(buffer.size(), chunk_size); 
+		size_t to_read = min<u_int64_t>(buffer.size(), chunk_size);
 		ASSERT(job->m_fp);
 		size_t res = fread(buffer.begin(), 1, to_read, job->m_fp);
 		if(res != to_read)
@@ -629,7 +637,7 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 		job_request->m_duration_ns = 20000000000LL;
 		job_request->m_delete_file_when_done = false;
 		job_request->m_send_file = false;
-		
+
 		queue_job_request(job_request);
 	}
 
@@ -690,7 +698,7 @@ void sinsp_worker::start_job(const dump_job_request& request, uint64_t ts)
 	job_state->m_token = request.m_token;
 	job_state->m_dumper = new sinsp_dumper(m_inspector);
 	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
-	g_log->information("Starting dump job in " + job_state->m_file + 
+	g_log->information("Starting dump job in " + job_state->m_file +
 		", filter '" + request.m_filter + "'");
 	job_state->m_dumper->open(job_state->m_file, true);
 
@@ -726,14 +734,14 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 	{
 		SharedPtr<dump_job_state> job = *it;
 
-		if((ts - job->m_last_keepalive_ns > m_keepalive_interval_ns) 
+		if((ts - job->m_last_keepalive_ns > m_keepalive_interval_ns)
 			&& job->m_send_file)
 		{
 			job->m_last_keepalive_ns = ts;
 			draiosproto::dump_response response;
 			prepare_response(job->m_token, &response);
 			response.set_keep_alive(true);
-			g_log->information("Job " + job->m_token + ": sending keepalive"); 
+			g_log->information("Job " + job->m_token + ": sending keepalive");
 			queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
 		}
 
@@ -755,8 +763,8 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 
 		if(job->m_error)
 		{
-			g_log->information("Job " + job->m_token 
-				+ ": in error state, deleting"); 
+			g_log->information("Job " + job->m_token
+				+ ": in error state, deleting");
 			it = m_running_dump_jobs.erase(it);
 		}
 		else if(job->m_terminated &&
@@ -764,8 +772,8 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 			job->m_last_chunk_offset >= job->m_file_size))
 		{
 			ASSERT(job->m_last_chunk_offset <= job->m_file_size);
-			g_log->information("Job " + job->m_token 
-				+ ": sent all chunks to backend, deleting"); 
+			g_log->information("Job " + job->m_token
+				+ ": sent all chunks to backend, deleting");
 			it = m_running_dump_jobs.erase(it);
 		}
 		else
@@ -776,7 +784,7 @@ void sinsp_worker::flush_jobs(uint64_t ts)
 		if(m_running_dump_jobs.empty())
 		{
 			g_log->information("Restoring dropping mode state");
-			
+
 			if(m_configuration->m_autodrop_enabled)
 			{
 				m_analyzer->set_autodrop_enabled(true);

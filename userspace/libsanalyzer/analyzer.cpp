@@ -64,6 +64,8 @@ using namespace google::protobuf::io;
 #include <memory>
 #include <iostream>
 #include <numeric>
+#include "falco_engine.h"
+#include "falco_events.h"
 
 bool sinsp_analyzer::m_mesos_bad_config = false;
 
@@ -119,6 +121,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_flush_wall_time = 0;
 	m_die = false;
 	m_run_chisels = false;
+
+	m_falco_engine = NULL;
+	m_falco_events = NULL;
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -712,8 +717,8 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//
 	// Mark the top memory consumers
 	//
-	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + howmany, 
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
 		prog_sortable_list.end(),
 		(cs_only)?threadinfo_cmp_memory_cs:threadinfo_cmp_memory);
 
@@ -732,8 +737,8 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//
 	// Mark the top disk I/O consumers
 	//
-	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + howmany, 
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
 		prog_sortable_list.end(),
 		(cs_only)?threadinfo_cmp_io_cs:threadinfo_cmp_io);
 
@@ -754,8 +759,8 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//
 	// Mark the top network I/O consumers
 	//
-	partial_sort(prog_sortable_list.begin(), 
-		prog_sortable_list.begin() + howmany, 
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
 		prog_sortable_list.end(),
 		(cs_only)?threadinfo_cmp_net_cs:threadinfo_cmp_net);
 
@@ -776,8 +781,8 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//
 	// Mark the top transaction generators
 	//
-	//partial_sort(prog_sortable_list.begin(), 
-	//	prog_sortable_list.begin() + howmany, 
+	//partial_sort(prog_sortable_list.begin(),
+	//	prog_sortable_list.begin() + howmany,
 	//	prog_sortable_list.end(),
 	//	threadinfo_cmp_transactions);
 
@@ -1320,7 +1325,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, 
+		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"thread table size:%d",
 			m_inspector->m_thread_manager->get_thread_count());
 	}
@@ -1329,7 +1334,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, 
+			g_logger.format(sinsp_logger::SEV_ERROR,
 				"IPv4 table size:%d",
 				m_ipv4_connections->m_connections.size());
 		}
@@ -1374,9 +1379,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// First pass of the list of threads: emit the metrics (if defined)
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{		
+	{
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 
@@ -1439,7 +1444,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 			if(delta > (int64_t)sample_duration)
 			{
-				delta = (tinfo->m_lastevent_ts / sample_duration * sample_duration + sample_duration) - 
+				delta = (tinfo->m_lastevent_ts / sample_duration * sample_duration + sample_duration) -
 					tinfo->m_lastevent_ts;
 			}
 
@@ -1456,8 +1461,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				cat = &tcat;
 			}
 
-			add_syscall_time(&ainfo->m_metrics, 
-				cat, 
+			add_syscall_time(&ainfo->m_metrics,
+				cat,
 				delta,
 				0,
 				false);
@@ -1485,7 +1490,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		uint64_t trtimeout;
 		bool is_subsampling;
-		
+
 		if(flshflags == sinsp_analyzer::DF_NONE)
 		{
 			trtimeout = TRANSACTION_TIMEOUT_NS;
@@ -1517,8 +1522,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						if(!m_skip_proc_parsing)
 						{
-							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid, 
-								&ainfo->m_old_proc_jiffies, 
+							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid,
+								&ainfo->m_old_proc_jiffies,
 								cur_global_total_jiffies - m_old_global_total_jiffies);
 						}
 
@@ -2151,7 +2156,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		m_old_global_total_jiffies = cur_global_total_jiffies;
 	}
-	
+
 #ifndef _WIN32
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -2180,15 +2185,15 @@ void sinsp_analyzer::flush_processes()
 	m_threads_to_remove.clear();
 }
 
-bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src, 
+bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src,
 					pair<const process_tuple*, sinsp_connection*>& dst)
 {
-	uint64_t s = src.second->m_metrics.m_client.m_bytes_in + 
+	uint64_t s = src.second->m_metrics.m_client.m_bytes_in +
 		src.second->m_metrics.m_client.m_bytes_out +
 		src.second->m_metrics.m_server.m_bytes_in +
 		src.second->m_metrics.m_server.m_bytes_out;
 
-	uint64_t d = dst.second->m_metrics.m_client.m_bytes_in + 
+	uint64_t d = dst.second->m_metrics.m_client.m_bytes_in +
 		dst.second->m_metrics.m_client.m_bytes_out +
 		dst.second->m_metrics.m_server.m_bytes_in +
 		dst.second->m_metrics.m_server.m_bytes_out;
@@ -2196,7 +2201,7 @@ bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src,
 	return (s > d);
 }
 
-bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connection*>& src, 
+bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connection*>& src,
 					pair<const process_tuple*, sinsp_connection*>& dst)
 {
 	uint64_t s = src.second->m_timestamp;
@@ -2224,8 +2229,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// First partial pass to determine if external connections need to be coalesced
 	//
-	for(cit = m_ipv4_connections->m_connections.begin(); 
-		cit != m_ipv4_connections->m_connections.end(); 
+	for(cit = m_ipv4_connections->m_connections.begin();
+		cit != m_ipv4_connections->m_connections.end();
 		++cit)
 	{
 		if(cit->second.is_server_only())
@@ -2248,7 +2253,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// Second pass to perform the aggegation
 	//
-	for(cit = m_ipv4_connections->m_connections.begin(); 
+	for(cit = m_ipv4_connections->m_connections.begin();
 		cit != m_ipv4_connections->m_connections.end();)
 	{
 		//
@@ -2306,7 +2311,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				if(cit->second.is_server_only())
 				{
 					//
-					// If external client aggregation is enabled, this is a server connection, and 
+					// If external client aggregation is enabled, this is a server connection, and
 					// the client address is outside the subnet, mask it so it gets aggregated
 					//
 					if(aggregate_external_clients)
@@ -2418,7 +2423,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Prepare the sortable list
 		//
-		for(auto sit = m_reduced_ipv4_connections->begin(); 
+		for(auto sit = m_reduced_ipv4_connections->begin();
 			sit != m_reduced_ipv4_connections->end(); ++sit)
 		{
 			sortable_conns_entry.first = &(sit->first);
@@ -2428,10 +2433,10 @@ void sinsp_analyzer::emit_aggregated_connections()
 		}
 
 		//
-		// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE 
+		// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
 		// connections
 		//
-		partial_sort(sortable_conns.begin(), 
+		partial_sort(sortable_conns.begin(),
 			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
 			sortable_conns.end(),
 			conn_cmp_n_aggregated_connections);
@@ -2440,21 +2445,21 @@ void sinsp_analyzer::emit_aggregated_connections()
 		{
 			//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
 
-			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
+			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
 				*(sortable_conns[j].second);
 		}
 
 		//
 		// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
 		//
-		partial_sort(sortable_conns.begin(), 
+		partial_sort(sortable_conns.begin(),
 			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
 			sortable_conns.end(),
 			conn_cmp_bytes);
 
 		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
 		{
-			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] = 
+			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
 				*(sortable_conns[j].second);
 		}
 
@@ -2465,7 +2470,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	// Emit the aggregated table into the sample
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = connection_to_emit->begin(); 
+	for(acit = connection_to_emit->begin();
 		acit != connection_to_emit->end(); ++acit)
 	{
 		//
@@ -2494,9 +2499,9 @@ void sinsp_analyzer::emit_aggregated_connections()
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
 			conn->mutable_counters()->mutable_min_transaction_counters(),
-			conn->mutable_counters()->mutable_max_transaction_counters(), 
+			conn->mutable_counters()->mutable_max_transaction_counters(),
 			m_sampling_ratio);
-		
+
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//
@@ -2508,7 +2513,7 @@ void sinsp_analyzer::emit_full_connections()
 {
 	unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
 
-	for(cit = m_ipv4_connections->m_connections.begin(); 
+	for(cit = m_ipv4_connections->m_connections.begin();
 		cit != m_ipv4_connections->m_connections.end();)
 	{
 		//
@@ -2531,7 +2536,7 @@ void sinsp_analyzer::emit_full_connections()
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
 				conn->mutable_counters()->mutable_min_transaction_counters(),
-				conn->mutable_counters()->mutable_max_transaction_counters(), 
+				conn->mutable_counters()->mutable_max_transaction_counters(),
 				m_sampling_ratio);
 		}
 
@@ -2590,7 +2595,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			m_seconds_above_thresholds++;
 
 			g_logger.format(sinsp_logger::SEV_INFO, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
-				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds, 
+				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds,
 				m_configuration->get_drop_treshold_consecutive_seconds());
 		}
 		else
@@ -2632,11 +2637,11 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 		if(treshold_metric <= (double)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus))
 		{
 			m_seconds_below_thresholds++;
-	
+
 			if(m_is_sampling && m_sampling_ratio > 1)
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32, 
-					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds, 
+				g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds,
 					m_configuration->get_drop_treshold_consecutive_seconds());
 			}
 		}
@@ -2694,7 +2699,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_executed_command& dst)
 {
-	return (src.m_ts < dst.m_ts); 
+	return (src.m_ts < dst.m_ts);
 }
 
 void sinsp_analyzer::emit_executed_commands()
@@ -2928,7 +2933,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					if(m_inspector->is_live())
 					{
-						g_logger.format(sinsp_logger::SEV_ERROR, 
+						g_logger.format(sinsp_logger::SEV_ERROR,
 							"sample emission too fast (%" PRId64 "), skipping scanning proc",
 							(int64_t)(wall_time - m_prev_flush_wall_time));
 					}
@@ -2979,13 +2984,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, 
+				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"IPv4 table size:%d",
 					m_ipv4_connections->m_connections.size());
 
 				if(m_ipv4_connections->get_n_drops() != 0)
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, 
+					g_logger.format(sinsp_logger::SEV_ERROR,
 						"IPv4 table drops:%d",
 						m_ipv4_connections->get_n_drops());
 
@@ -2999,13 +3004,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 #ifdef HAS_UNIX_CONNECTIONS
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, 
+				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"unix table size:%d",
 					m_unix_connections->m_connections.size());
 
 				if(m_unix_connections->get_n_drops() != 0)
 				{
-					g_logger.format(sinsp_logger::SEV_ERROR, 
+					g_logger.format(sinsp_logger::SEV_ERROR,
 						"IPv4 table size:%d",
 						m_unix_connections->m_connections.size());
 
@@ -3014,7 +3019,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			unordered_map<unix_tuple, sinsp_connection, unixt_hash, unixt_cmp>::iterator ucit;
-			for(ucit = m_unix_connections->m_connections.begin(); 
+			for(ucit = m_unix_connections->m_connections.begin();
 				ucit != m_unix_connections->m_connections.end();)
 			{
 				//
@@ -3040,13 +3045,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, 
+				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"pipe table size:%d",
 					m_pipe_connections->m_connections.size());
 			}
 
 			unordered_map<uint64_t, sinsp_connection, hash<uint64_t>, equal_to<uint64_t>>::iterator pcit;
-			for(pcit = m_pipe_connections->m_connections.begin(); 
+			for(pcit = m_pipe_connections->m_connections.begin();
 				pcit != m_pipe_connections->m_connections.end();)
 			{
 				//
@@ -3199,7 +3204,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Mesos
 			//
 			emit_mesos();
-			
+
 			//
 			// Docker
 			//
@@ -3247,7 +3252,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(),
 				m_metrics->mutable_hostinfo()->mutable_min_transaction_counters(),
-				m_metrics->mutable_hostinfo()->mutable_max_transaction_counters(), 
+				m_metrics->mutable_hostinfo()->mutable_max_transaction_counters(),
 				m_sampling_ratio);
 
 			if(m_host_transaction_delays.m_local_processing_delay_ns != -1)
@@ -3328,7 +3333,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////////////////////////
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				uint64_t serialize_sample_time = 
+				uint64_t serialize_sample_time =
 				m_prev_flush_time_ns - m_prev_flush_time_ns % m_configuration->get_analyzer_original_sample_len_ns();
 
 				serialize(evt, serialize_sample_time);
@@ -3351,10 +3356,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	//
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, 
+		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"# Client Transactions:%d",
 			m_trans_table->m_n_client_transactions * m_sampling_ratio);
-		g_logger.format(sinsp_logger::SEV_DEBUG, 
+		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"# Server Transactions:%d",
 			m_trans_table->m_n_server_transactions * m_sampling_ratio);
 	}
@@ -3390,7 +3395,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	// Clear the executed command list
 	//
 	m_executed_commands.clear();
-	
+
 	//
 	// If there were tid collisions report them in the log and then clear the list
 	//
@@ -3404,7 +3409,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			tcb += " ";
 		}
 
-		g_logger.format(sinsp_logger::SEV_INFO, 
+		g_logger.format(sinsp_logger::SEV_INFO,
 			"%d TID collisions (%s)", (int)m_inspector->m_tid_collisions.size(),
 			tcb.c_str());
 
@@ -3422,7 +3427,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	remove_expired_connections(ts);
 	m_inspector->remove_inactive_threads();
 	m_inspector->m_container_manager.remove_inactive_containers();
-	
+
 	if(evt)
 	{
 		if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -3472,11 +3477,11 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 
 			if(wd > 0)
 			{
-				ws = we - wd; 
+				ws = we - wd;
 			}
 			else
 			{
-				ws = we + wd; 
+				ws = we + wd;
 			}
 
 			delta = we - MAX(ws, m_prev_flush_time_ns);
@@ -3583,7 +3588,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	thread_analyzer_info* tainfo;
 
 	//
-	// If there is no event, assume that this is an EOF and use the 
+	// If there is no event, assume that this is an EOF and use the
 	// next sample event as target time
 	//
 	if(evt != NULL)
@@ -3692,7 +3697,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	// This is where normal event parsing starts.
 	// The following code is executed for every event
 	//
-	if(evt->m_tinfo == NULL || 
+	if(evt->m_tinfo == NULL ||
 		etype == PPME_SCHEDSWITCH_1_E ||
 		etype == PPME_SCHEDSWITCH_6_E)
 	{
@@ -3712,6 +3717,17 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		//
 		ASSERT(false);
 		return;
+	}
+
+	if(m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
+	{
+		falco_engine::rule_result *resp = m_falco_engine->process_event(evt);
+		if(resp && m_falco_events)
+		{
+			unique_ptr<falco_engine::rule_result> res(resp);
+
+			m_falco_events->generate_user_event(res);
+		}
 	}
 
 	//
@@ -3734,7 +3750,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	if((tainfo->m_th_analysis_flags & thread_analyzer_info::AF_PARTIAL_METRIC) != 0)
 	{
 		//
-		// Part of this event has already been attributed to the previous sample, 
+		// Part of this event has already been attributed to the previous sample,
 		// we just include the remaining part
 		//
 		tainfo->m_th_analysis_flags &= ~(thread_analyzer_info::AF_PARTIAL_METRIC);
@@ -3755,7 +3771,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	if(PPME_IS_ENTER(etype))
 	{
 		//
-		// remember the category in the thread info. We'll use 
+		// remember the category in the thread info. We'll use
 		// it if we need to flush the sample.
 		//
 		evt->m_tinfo->m_lastevent_category = cat;
@@ -3796,9 +3812,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	//
 	bool do_inc_counter = (cat.m_category != EC_PROCESSING);
 
-	add_syscall_time(&tainfo->m_metrics, 
+	add_syscall_time(&tainfo->m_metrics,
 		&cat,
-		delta, 
+		delta,
 		evt->get_iosize(),
 		do_inc_counter);
 
@@ -3807,12 +3823,12 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	//
 	if(evt->m_errorcode != 0)
 	{
-		if((evt->m_errorcode != SE_EINPROGRESS) && 
-			(evt->m_errorcode != SE_EAGAIN) && 
+		if((evt->m_errorcode != SE_EINPROGRESS) &&
+			(evt->m_errorcode != SE_EAGAIN) &&
 			(evt->m_errorcode != SE_ETIMEDOUT))
 		{
 			m_host_metrics.m_syscall_errors.add(evt);
-			
+
 			ASSERT(evt->m_tinfo);
 			ASSERT(evt->m_tinfo->m_ainfo);
 
@@ -3826,10 +3842,10 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 }
 
-void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics, 
-									  sinsp_evt::category* cat, 
-									  uint64_t delta, 
-									  uint32_t bytes, 
+void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
+									  sinsp_evt::category* cat,
+									  uint64_t delta,
+									  uint32_t bytes,
 									  bool inc_count)
 {
 	uint32_t cnt_delta = (inc_count)? 1 : 0;
@@ -4301,8 +4317,8 @@ void sinsp_analyzer::emit_top_files()
 
 	if(files_sortable_list.size() > TOP_FILES_IN_SAMPLE)
 	{
-		partial_sort(files_sortable_list.begin(), 
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE, 
+		partial_sort(files_sortable_list.begin(),
+			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
 			files_sortable_list.end(),
 			analyzer_file_stat::cmp_bytes);
 
@@ -4311,8 +4327,8 @@ void sinsp_analyzer::emit_top_files()
 			files_sortable_list[j]->m_exclude_from_sample = false;
 		}
 
-		partial_sort(files_sortable_list.begin(), 
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE, 
+		partial_sort(files_sortable_list.begin(),
+			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
 			files_sortable_list.end(),
 			analyzer_file_stat::cmp_time);
 
@@ -4321,8 +4337,8 @@ void sinsp_analyzer::emit_top_files()
 			files_sortable_list[j]->m_exclude_from_sample = false;
 		}
 
-		partial_sort(files_sortable_list.begin(), 
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE, 
+		partial_sort(files_sortable_list.begin(),
+			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
 			files_sortable_list.end(),
 			analyzer_file_stat::cmp_errors);
 
@@ -4331,8 +4347,8 @@ void sinsp_analyzer::emit_top_files()
 			files_sortable_list[j]->m_exclude_from_sample = false;
 		}
 
-		partial_sort(files_sortable_list.begin(), 
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE, 
+		partial_sort(files_sortable_list.begin(),
+			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
 			files_sortable_list.end(),
 			analyzer_file_stat::cmp_open_count);
 
@@ -4850,14 +4866,14 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	uint32_t nqueuedtransactions_client_capacity = 0;
 	uint32_t nqueuedtransactions_server_capacity = 0;
 
-	len = snprintf(reportbuf + pos, reportbuflen - pos, 
+	len = snprintf(reportbuf + pos, reportbuflen - pos,
 		"threads: %d\n", (int)m_inspector->m_thread_manager->m_threadtable.size());
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"connections: %d\n", (int)m_ipv4_connections->size());
 	MR_UPDATE_POS;
 
-	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin(); 
+	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
 		thread_analyzer_info* ainfo = it->second.m_ainfo;
@@ -4865,25 +4881,25 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 		for(uint32_t j = 0; j < ainfo->m_dynstate->m_server_transactions_per_cpu.size(); j++)
 		{
 			nqueuedtransactions_server += ainfo->m_dynstate->m_server_transactions_per_cpu[j].size();
-			nqueuedtransactions_server_capacity += 
+			nqueuedtransactions_server_capacity +=
 				ainfo->m_dynstate->m_server_transactions_per_cpu[j].capacity();
 		}
 
 		for(uint32_t j = 0; j < ainfo->m_dynstate->m_client_transactions_per_cpu.size(); j++)
 		{
 			nqueuedtransactions_client += ainfo->m_dynstate->m_client_transactions_per_cpu[j].size();
-			nqueuedtransactions_client_capacity += 
+			nqueuedtransactions_client_capacity +=
 				ainfo->m_dynstate->m_client_transactions_per_cpu[j].capacity();
 		}
 
 		if(do_complete_report)
 		{
-			len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+			len =  snprintf(reportbuf + pos, reportbuflen - pos,
 				"    tid: %d comm: %s nfds:%d\n", (int)it->first, it->second.m_comm.c_str(), (int)it->second.m_fdtable.size());
 			MR_UPDATE_POS;
 		}
 
-		for(auto fdit = it->second.m_fdtable.m_table.begin(); 
+		for(auto fdit = it->second.m_fdtable.m_table.begin();
 			fdit != it->second.m_fdtable.m_table.end(); ++fdit)
 		{
 			nfds++;
@@ -4973,63 +4989,63 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 		}
 	}
 
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"FDs: %d\n", (int)nfds);
 	MR_UPDATE_POS;
 
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  ipv4: %d\n", (int)nfds_ipv4);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  ipv6: %d\n", (int)nfds_ipv6);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  dir: %d\n", (int)nfds_dir);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  ipv4s: %d\n", (int)nfds_ipv4s);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  ipv6s: %d\n", (int)nfds_ipv6s);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  fifo: %d\n", (int)nfds_fifo);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  unix: %d\n", (int)nfds_unix);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  event: %d\n", (int)nfds_event);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  file: %d\n", (int)nfds_file);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  unknown: %d\n", (int)nfds_unknown);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  unsupported: %d\n", (int)nfds_unsupported);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  signal: %d\n", (int)nfds_signal);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  evtpoll: %d\n", (int)nfds_evtpoll);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  inotify: %d\n", (int)nfds_inotify);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  timerfd: %d\n", (int)nfds_timerfd);
 	MR_UPDATE_POS;
 
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"transactions: %d\n", (int)ntransactions);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  http: %d\n", (int)ntransactions_http);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  mysql: %d\n", (int)ntransactions_mysql);
 	MR_UPDATE_POS;
 	len =  snprintf(reportbuf + pos, reportbuflen - pos,
@@ -5038,16 +5054,16 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  mongodb: %d\n", (int)ntransactions_mongodb);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  queued client: %d\n", (int)nqueuedtransactions_client);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  queued server: %d\n", (int)nqueuedtransactions_server);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  queue client capacity: %d\n", (int)nqueuedtransactions_client_capacity);
 	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos, 
+	len =  snprintf(reportbuf + pos, reportbuflen - pos,
 		"  queue server capacity: %d\n", (int)nqueuedtransactions_server_capacity);
 	MR_UPDATE_POS;
 
@@ -5066,11 +5082,21 @@ void sinsp_analyzer::stop_dropping_mode()
 {
 	m_inspector->stop_dropping_mode();
 	m_driver_stopped_dropping = false;
+
+	if(m_falco_engine)
+	{
+		m_falco_engine->set_sampling_ratio(1);
+	}
 }
 
 void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 {
 	m_inspector->start_dropping_mode(sampling_ratio);
+
+	if(m_falco_engine)
+	{
+		m_falco_engine->set_sampling_ratio(sampling_ratio);
+	}
 }
 
 bool sinsp_analyzer::driver_stopped_dropping()
@@ -5095,6 +5121,37 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 	{
 		m_mounted_fs_proxy.reset();
 	}
+}
+
+void sinsp_analyzer::enable_falco(const string &rules_filename,
+				  const string &user_rules_filename,
+				  set<string> &disabled_rule_patterns,
+				  double sampling_multiplier)
+{
+	bool verbose = false;
+	bool all_events = true;
+
+	m_falco_engine = make_unique<falco_engine>();
+	m_falco_engine->set_inspector(m_inspector);
+	m_falco_engine->set_sampling_multiplier(sampling_multiplier);
+	m_falco_engine->load_rules_file(rules_filename, verbose, all_events);
+
+	//
+	// Only load the user rules file if it exists
+	//
+	Poco::File user_rules_file(user_rules_filename);
+	if(user_rules_file.exists())
+	{
+		m_falco_engine->load_rules_file(user_rules_filename, verbose, all_events);
+	}
+
+	for (auto pattern : disabled_rule_patterns)
+	{
+		m_falco_engine->enable_rule(pattern, false);
+	}
+
+	m_falco_events = make_unique<falco_events>();
+	m_falco_events->init(m_inspector, m_configuration->get_machine_id());
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

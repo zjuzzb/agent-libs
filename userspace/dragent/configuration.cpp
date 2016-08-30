@@ -62,6 +62,11 @@ dragent_configuration::dragent_configuration()
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
+	m_enable_falco_engine = false;
+	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
+	m_falco_engine_sampling_multiplier = 0;
+	m_user_events_rate = 1;
+	m_user_max_burst_events = 1000;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -268,7 +273,7 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
-	
+
 	if(m_customer_id.empty())
 	{
 		m_customer_id = m_config->get_scalar<string>("customerid", "");
@@ -467,7 +472,7 @@ void dragent_configuration::init(Application* app)
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
-	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is 
+	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
 	// - discovered automatically because (process is running on localhost):
 	//     collection enabled and delegation disabled (handled in analyzer)
 	// - discovered automatically via environment variables (agent running in a K8s pod):
@@ -479,7 +484,7 @@ void dragent_configuration::init(Application* app)
 	//////////////////////////////////////////////////////////////////////////////////////////
 	bool k8s_api_server_empty = m_k8s_api_server.empty();
 	if(k8s_api_server_empty && m_k8s_autodetect)
-	{ 
+	{
 		configure_k8s_from_env();
 	}
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
@@ -508,6 +513,29 @@ void dragent_configuration::init(Application* app)
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
+	m_enable_falco_engine = m_config->get_scalar<bool>("falco_engine", "enabled", false);
+	m_falco_default_rules_filename = m_config->get_scalar<string>("falco_engine", "default_rules_filename",
+								      m_root_dir + "/etc/falco_rules.default.yaml");
+	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
+							      m_root_dir + "/etc/falco_rules.yaml");
+	m_falco_engine_disabled_rule_patterns = m_config->get_deep_sequence<set<string>>(*m_config, m_config->get_root(), "falco_engine", "disabled_rule_patterns");
+	m_falco_engine_sampling_multiplier = m_config->get_scalar<double>("falco_engine", "sampling_multiplier", 0);
+
+	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
+	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
+
+	//
+        // If falco is enabled, check to see if the rules file exists and
+        // switch to a built-in default if it does not.
+	//
+	if(m_enable_falco_engine)
+	{
+		File rules_file(m_falco_default_rules_filename);
+		if(!rules_file.exists())
+		{
+			m_falco_default_rules_filename = m_falco_fallback_default_rules_filename;
+		}
+	}
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -566,6 +594,8 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
+	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
+	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
@@ -666,6 +696,18 @@ void dragent_configuration::print_configuration()
 	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
 	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
+	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
+	if(m_enable_falco_engine)
+	{
+		g_log->information("Falco engine default rules file: " + m_falco_default_rules_filename);
+		g_log->information("Falco engine rules file: " + m_falco_rules_filename);
+		g_log->information("Falco disabled rule patterns: ");
+		for(auto pattern : m_falco_engine_disabled_rule_patterns)
+		{
+			g_log->information("  " + pattern);
+		}
+		g_log->information("Falco engine sampling multiplier: " + NumberFormatter::format(m_falco_engine_sampling_multiplier));
+	}
 
 	if(m_k8s_event_filter)
 	{
@@ -687,7 +729,7 @@ void dragent_configuration::print_configuration()
 
 void dragent_configuration::refresh_aws_metadata()
 {
-	try 
+	try
 	{
 		HTTPClientSession client("169.254.169.254", 80);
 		client.setTimeout(1000000);
@@ -696,8 +738,8 @@ void dragent_configuration::refresh_aws_metadata()
 			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/public-ipv4");
 			client.sendRequest(request);
 
-			HTTPResponse response; 
-			std::istream& rs = client.receiveResponse(response); 
+			HTTPResponse response;
+			std::istream& rs = client.receiveResponse(response);
 
 			string s;
 			StreamCopier::copyToString(rs, s);
@@ -720,8 +762,8 @@ void dragent_configuration::refresh_aws_metadata()
 			HTTPRequest request(HTTPRequest::HTTP_GET, "/latest/meta-data/instance-id");
 			client.sendRequest(request);
 
-			HTTPResponse response; 
-			std::istream& rs = client.receiveResponse(response); 
+			HTTPResponse response;
+			std::istream& rs = client.receiveResponse(response);
 
 			StreamCopier::copyToString(rs, m_aws_metadata.m_instance_id);
 			if(m_aws_metadata.m_instance_id.find("i-") != 0)
