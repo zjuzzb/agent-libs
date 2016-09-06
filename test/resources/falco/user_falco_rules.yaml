@@ -1,0 +1,11 @@
+- macro: open_write
+  condition: (evt.type=open or evt.type=openat) and evt.is_open_write=true and fd.typechar='f'
+
+- macro: etc_dir
+  condition: fd.name startswith /etc
+
+- rule: write_etc
+  desc: an attempt to write to any file below /etc, not in a pipe installer session
+  condition: etc_dir and evt.dir = < and open_write
+  output: "File below /etc opened for writing (user=%user.name command=%proc.cmdline file=%fd.name)"
+  priority: ERROR

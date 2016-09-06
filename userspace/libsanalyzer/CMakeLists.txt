@@ -21,6 +21,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 add_definitions( -DHAS_ANALYZER )
 add_definitions(-DK8S_DISABLE_THREAD)
@@ -39,6 +40,7 @@ add_library(sanalyzer STATIC
 	config.cpp
 	delays.cpp
 	draios.pb.cc
+	falco_events.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
@@ -51,6 +53,8 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser_api.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
@@ -99,10 +103,12 @@ add_library(sanalyzer STATIC
 	statsite_proxy.cpp
 	app_checks.cpp
 	posix_queue.cpp
-	sdc_internal.pb.cc)
+	sdc_internal.pb.cc
+	token_bucket.cpp)
 
 target_link_libraries(sanalyzer
 	scap 
+	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src/.libs/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src/libluajit.a
