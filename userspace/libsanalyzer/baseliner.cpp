@@ -190,6 +190,44 @@ void sisnp_baseliner::init_programs(uint64_t time)
 			m_progtable[tinfo->m_program_hash_falco].m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 		}
 	}
+
+	//
+	// In this second pass, we go over the thread table and add all of the main processes
+	// to their prarents' executed program list
+	//
+	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
+		it != m_inspector->m_thread_manager->m_threadtable.end();
+		++it)
+	{
+		sinsp_threadinfo* tinfo = &it->second;
+
+		if(tinfo->is_main_thread())
+		{
+			auto ptinfo = tinfo->get_parent_thread();
+
+			if(ptinfo == NULL)
+			{
+				continue;
+			}
+
+			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
+
+			if(itp != m_progtable.end())
+			{
+				uint64_t cdelta = 0;
+				uint64_t clone_ts;
+
+				if(time != 0)
+				{
+					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+					cdelta = time - clone_ts;
+				}
+
+				itp->second.m_executed_programs.add(tinfo->m_exe, cdelta);
+			}
+		}
+	}
+
 }
 
 void sisnp_baseliner::init_containers()
