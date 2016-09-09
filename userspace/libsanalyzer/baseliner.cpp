@@ -204,7 +204,6 @@ void sisnp_baseliner::init_programs(uint64_t time)
 		if(tinfo->is_main_thread())
 		{
 			auto ptinfo = tinfo->get_parent_thread();
-
 			if(ptinfo == NULL)
 			{
 				continue;
