@@ -375,11 +375,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("sdchecks", [this](void)
 		{
 			this->m_sdchecks_pipes->attach_child();
-			const char* env[] = {
-					"LD_LIBRARY_PATH=/opt/draios/lib",
-					NULL
-			};
-			execle(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL, env);
+
+			setenv("LD_LIBRARY_PATH", "/opt/draios/lib", 1);
+
+			execl(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL);
 			return (EXIT_FAILURE);
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
