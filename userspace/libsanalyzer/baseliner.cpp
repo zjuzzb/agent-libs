@@ -222,7 +222,7 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					cdelta = time - clone_ts;
 				}
 
-				itp->second.m_executed_programs.add(tinfo->m_exe, cdelta);
+				itp->second.m_executed_programs.add(tinfo->m_comm, cdelta);
 			}
 		}
 	}
@@ -631,7 +631,7 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
 				}
 
-				itp->second.m_executed_programs.add(tinfo->m_exe,
+				itp->second.m_executed_programs.add(tinfo->m_comm,
 					evt->get_ts() - clone_ts);
 			}
 		}
