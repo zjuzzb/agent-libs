@@ -540,7 +540,8 @@ void dragent_configuration::init(Application* app)
 								      m_root_dir + "/etc/falco_rules.default.yaml");
 	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
 							      m_root_dir + "/etc/falco_rules.yaml");
-	m_falco_engine_disabled_rule_patterns = m_config->get_deep_sequence<set<string>>(*m_config, m_config->get_root(), "falco_engine", "disabled_rule_patterns");
+
+	m_falco_engine_disabled_rule_patterns = m_config->get_deep_merged_sequence<set<string>>("falco_engine", "disabled_rule_patterns");
 	m_falco_engine_sampling_multiplier = m_config->get_scalar<double>("falco_engine", "sampling_multiplier", 0);
 
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
