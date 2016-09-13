@@ -12,6 +12,7 @@ fi
 
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/sysdig/ /code/sysdig/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude=userspace/engine/lua /draios/falco/ /code/falco/
 cd /code/agent
 scl enable devtoolset-2 ./bootstrap-agent
 cd build/release
