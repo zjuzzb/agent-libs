@@ -496,6 +496,8 @@ private:
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
 
+	static const string AUTO_CONFIG_HEADER;
+	static const vector<string> AUTOCONFIG_FORBIDDEN_KEYS;
 	SHA1Engine m_sha1_engine;
 	DigestEngine::Digest m_dragent_auto_yaml_digest;
 	friend class aws_metadata_refresher;

@@ -20,6 +20,12 @@ volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
 volatile bool dragent_configuration::m_send_log_report = false;
 volatile bool dragent_configuration::m_config_update = false;
+const string dragent_configuration::AUTO_CONFIG_HEADER = "#\n"
+		"# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
+		"#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
+		"#\n";
+const vector<string> dragent_configuration::AUTOCONFIG_FORBIDDEN_KEYS = { "auto_config", "customerid", "collector", "collector_port",
+											   "ssl", "ssl_verify_certificate", "ca_certificate", "compression" };
 
 static std::string bool_as_text(bool b)
 {
@@ -904,24 +910,15 @@ void dragent_configuration::parse_services_file()
 
 void dragent_configuration::save_auto_config(const string& config_data)
 {
-	const static auto AUTO_CONFIG_HEADER = "#\n"
-	"# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
-	"#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
-	"#\n";
 	m_sha1_engine.reset();
-	m_sha1_engine.update(AUTO_CONFIG_HEADER);
-	m_sha1_engine.update(config_data);
+	if(!config_data.empty())
+	{
+		m_sha1_engine.update(AUTO_CONFIG_HEADER);
+		m_sha1_engine.update(config_data);
+	}
 	auto new_digest = m_sha1_engine.digest();
 	if(new_digest != m_dragent_auto_yaml_digest)
 	{
-		// TODO: validate YAML
-		yaml_configuration new_conf(config_data);
-		if(!new_conf.errors().empty())
-		{
-			g_log->warning("New auto config is not valid, skipping it");
-			return;
-		}
-
 		if(config_data.empty())
 		{
 			File auto_config_f(DRAGENT_AUTO_YAML_PATH);
@@ -929,6 +926,19 @@ void dragent_configuration::save_auto_config(const string& config_data)
 		}
 		else
 		{
+			yaml_configuration new_conf(config_data);
+			if(!new_conf.errors().empty())
+			{
+				g_log->warning("New auto config is not valid, skipping it");
+				return;
+			}
+			for(const auto& key : AUTOCONFIG_FORBIDDEN_KEYS)
+			{
+				if(new_conf.get_scalar<string>(key, "default") != "default" || !new_conf.errors().empty()) {
+					g_log->warning("Overriding key=" + key + "on autoconfig is forbidden");
+					return;
+				}
+			}
 			ofstream auto_config_f(DRAGENT_AUTO_YAML_PATH);
 			auto_config_f << AUTO_CONFIG_HEADER << config_data;
 			auto_config_f.close();
