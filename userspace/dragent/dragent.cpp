@@ -30,7 +30,7 @@ static void g_usr2_signal_callback(int sig)
 	dragent_configuration::m_send_log_report = true;
 }
 
-dragent_app::dragent_app(): 
+dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
@@ -50,7 +50,7 @@ void dragent_app::initialize(Application& self)
 {
 	ServerApplication::initialize(self);
 }
-		
+
 void dragent_app::uninitialize()
 {
 	ServerApplication::uninitialize();
@@ -59,7 +59,7 @@ void dragent_app::uninitialize()
 void dragent_app::defineOptions(OptionSet& options)
 {
 	ServerApplication::defineOptions(options);
-	
+
 	options.addOption(
 		Option("help", "h", "display help information on command line arguments")
 			.required(false)
@@ -212,7 +212,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigemptyset(&sigs);
 	sigaddset(&sigs, SIGQUIT);
 	sigaddset(&sigs, SIGTERM);
-	sigaddset(&sigs, SIGPIPE); 
+	sigaddset(&sigs, SIGPIPE);
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
 	// Add our main process
@@ -375,11 +375,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("sdchecks", [this](void)
 		{
 			this->m_sdchecks_pipes->attach_child();
-			const char* env[] = {
-					"LD_LIBRARY_PATH=/opt/draios/lib",
-					NULL
-			};
-			execle(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL, env);
+
+			setenv("LD_LIBRARY_PATH", "/opt/draios/lib", 1);
+
+			execl(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL);
 			return (EXIT_FAILURE);
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
@@ -541,7 +540,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns() 
+		int64_t diff = sinsp_utils::get_current_time_ns()
 			- m_sinsp_worker.get_last_loop_ns();
 
 #if _DEBUG
@@ -577,7 +576,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns() 
+		int64_t diff = sinsp_utils::get_current_time_ns()
 			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
 #if _DEBUG
@@ -595,7 +594,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_connection_manager.get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns() 
+		int64_t diff = sinsp_utils::get_current_time_ns()
 			- m_connection_manager.get_last_loop_ns();
 
 #if _DEBUG
@@ -767,7 +766,7 @@ void dragent_app::initialize_logging()
 
 	crash_handler::set_crashdump_file(p.toString());
 	crash_handler::set_sinsp_worker(&m_sinsp_worker);
-	
+
 	//
 	// Setup the logging
 	//
@@ -785,4 +784,7 @@ void dragent_app::initialize_logging()
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
 
 	g_log = new dragent_logger(&loggerf, make_console_channel(formatter), make_event_channel());
+
+	g_log->init_user_events_throttling(m_configuration.m_user_events_rate,
+					   m_configuration.m_user_max_burst_events);
 }

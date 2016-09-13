@@ -35,6 +35,7 @@ add_executable(tests
 	capture_to_file_test.cpp
 	container.cpp
 	event_capture.cpp
+	falco_events_test.cpp
 	forking.cpp
 	fs.cpp
 	tracers.cpp
@@ -54,6 +55,7 @@ add_executable(tests
 	yaml_configuration.cpp
 	statsd.cpp
 	jmx_proxy.cpp
+	token_bucket_test.cpp
 	user_event.cpp
 	uri.cpp
 	json_query.cpp)

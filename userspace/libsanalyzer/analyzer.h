@@ -5,6 +5,8 @@
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
+#include <set>
+#include <string>
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
@@ -44,6 +46,8 @@ class k8s_delegator;
 class mesos;
 class docker;
 class uri;
+class falco_engine;
+class falco_events;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -55,7 +59,7 @@ class sinsp_connection_aggregator;
 //
 typedef union _process_tuple
 {
-	struct 
+	struct
 	{
 		uint64_t m_spid;
 		uint64_t m_dpid;
@@ -135,7 +139,7 @@ public:
 		m_index(0),
 		m_previouscputime(0)
 	{}
-	
+
 	void begin_flush();
 	void end_flush();
 	double calc_flush_percent();
@@ -182,7 +186,7 @@ public:
 	void set_sample_callback(analyzer_callback_interface* cb);
 
 	//
-	// Called by the engine after opening the event source and before 
+	// Called by the engine after opening the event source and before
 	// receiving the first event. Can be used to make adjustments based on
 	// the user's changes to the configuration.
 	//
@@ -212,9 +216,9 @@ public:
 	void process_event(sinsp_evt* evt, flush_flags flshflags);
 
 	void add_syscall_time(sinsp_counters* metrics,
-		sinsp_evt::category* cat, 
-		uint64_t delta, 
-		uint32_t bytes, 
+		sinsp_evt::category* cat,
+		uint64_t delta,
+		uint32_t bytes,
 		bool inc_count);
 
 	uint64_t get_last_sample_time_ns()
@@ -262,7 +266,7 @@ public:
 	{
 		m_is_sampling = is_sampling;
 	}
-	
+
 #ifndef _WIN32
 	inline void enable_jmx(bool print_json)
 	{
@@ -344,6 +348,11 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+	void enable_falco(const string &rules_filename,
+			  const string &user_rules_filename,
+			  std::set<std::string> &disabled_rule_patterns,
+			  double sampling_multiplier);
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
 
@@ -387,7 +396,7 @@ VISIBILITY_PRIVATE
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands();
 	void get_statsd();
-	
+
 #ifndef _WIN32
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 						   unsigned limit);
@@ -486,7 +495,7 @@ VISIBILITY_PRIVATE
 	// Transaction-related state
 	//
 	set<uint64_t> m_server_programs;
-	sinsp_transaction_counters m_host_transaction_counters; 
+	sinsp_transaction_counters m_host_transaction_counters;
 	uint64_t m_client_tr_time_by_servers;
 	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
 	vector<vector<sinsp_trlist_entry>> m_host_client_transactions;
@@ -568,6 +577,9 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
+
+	unique_ptr<falco_engine> m_falco_engine;
+	unique_ptr<falco_events> m_falco_events;
 
 	user_event_queue::ptr_t m_user_event_queue;
 

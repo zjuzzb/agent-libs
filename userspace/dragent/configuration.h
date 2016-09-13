@@ -6,6 +6,8 @@
 #include <yaml-cpp/yaml.h>
 #include <atomic>
 #include <memory>
+#include <set>
+#include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -32,7 +34,7 @@ public:
 	aws_metadata():
 		m_public_ipv4(0)
 	{}
-	
+
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
@@ -473,6 +475,16 @@ public:
 
 	bool m_enable_coredump;
 	bool m_auto_config;
+
+	bool m_enable_falco_engine;
+	string m_falco_default_rules_filename;
+	string m_falco_fallback_default_rules_filename;
+	string m_falco_rules_filename;
+	double m_falco_engine_sampling_multiplier;
+	std::set<std::string> m_falco_engine_disabled_rule_patterns;
+
+	uint64_t m_user_events_rate;
+	uint64_t m_user_max_burst_events;
 
 	bool java_present()
 	{
