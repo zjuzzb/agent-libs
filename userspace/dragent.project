@@ -110,6 +110,10 @@
     <File Name="libsanalyzer/mesos_proto.cpp"/>
     <File Name="libsanalyzer/k8s_delegator.cpp"/>
     <File Name="libsanalyzer/k8s_delegator.h"/>
+    <File Name="libsanalyzer/k8s_api_handler.cpp"/>
+    <File Name="libsanalyzer/k8s_api_handler.h"/>
+    <File Name="libsanalyzer/k8s_ext_handler.h"/>
+    <File Name="libsanalyzer/k8s_ext_handler.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

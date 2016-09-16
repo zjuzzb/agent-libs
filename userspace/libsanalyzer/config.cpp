@@ -435,6 +435,16 @@ int sinsp_configuration::get_k8s_delegated_nodes() const
 	return m_k8s_delegated_nodes;
 }
 
+void sinsp_configuration::set_k8s_simulate_delegation(bool k8s_simulate_delegation)
+{
+	m_k8s_simulate_delegation = k8s_simulate_delegation;
+}
+
+bool sinsp_configuration::get_k8s_simulate_delegation() const
+{
+	return m_k8s_simulate_delegation;
+}
+
 void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
 {
 	m_k8s_bt_auth_token = k8s_bt_auth_token;

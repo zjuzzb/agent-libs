@@ -5,8 +5,6 @@
 #include "k8s_delegator.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
-#include "ifinfo.h"
-#include <sstream>
 
 // filters normalize state and event JSONs, so they can be processed generically:
 // event is turned into a single-node array, state is turned into ADDED event
@@ -41,114 +39,18 @@ k8s_delegator::k8s_delegator(sinsp* inspector,
 	std::string url,
 	int delegate_count,
 	const std::string& http_version,
-	int timeout_ms,
 	ssl_ptr_t ssl,
-	bt_ptr_t bt,
-	bool curl_debug): m_inspector(inspector),
-		m_id("k8s_delegator"),
-		m_collector(false),
-		m_timeout_ms(timeout_ms),
-		m_curl(url.append("/api/v1/nodes"), ssl, bt, timeout_ms, curl_debug),
+	bt_ptr_t bt):
+		k8s_handler("k8s_delegator", false, url, "/api/v1/nodes",
+					STATE_FILTER, EVENT_FILTER, std::make_shared<k8s_handler::collector_t>(),
+					http_version, 1000L, ssl, bt),
+		m_inspector(inspector),
 		m_delegate_count(delegate_count)
 {
-	g_logger.log(std::string("Creating K8s delegator object for " + url), sinsp_logger::SEV_DEBUG);
-
-	std::ostringstream os;
-	sinsp_curl::check_error(m_curl.get_data(os));
-	handler_t::json_ptr_t json = handler_t::try_parse(m_jq, os.str(), STATE_FILTER, "k8s_delegator", url);
-	if(json)
-	{
-		handle_json(std::move(*json));
-	}
-	else
-	{
-		throw sinsp_exception("K8s delegator: could not get data from [" + url + ']');
-	}
-	m_http = std::make_shared<handler_t>(*this, "k8s_delegator",
-										 url, "/api/v1/watch/nodes", http_version, timeout_ms,
-										 ssl, bt);
-	m_http->set_json_callback(&k8s_delegator::set_event_json);
-	m_http->set_json_end("}\n");
-	m_http->set_json_filter(EVENT_FILTER);
-	m_collector.add(m_http);
-	send_data_request();
 }
 
 k8s_delegator::~k8s_delegator()
 {
-}
-
-void k8s_delegator::send_event_data_request()
-{
-	if(m_http)
-	{
-		m_http->send_request();
-	}
-	else
-	{
-		throw sinsp_exception("k8s_delegator event HTTP client is null.");
-	}
-}
-
-void k8s_delegator::connect()
-{
-	if(!connect(m_http, &k8s_delegator::set_event_json, 1))
-	{
-		throw sinsp_exception("Connection to k8s_delegator API failed.");
-	}
-}
-
-bool k8s_delegator::is_alive() const
-{
-	if(m_http && !m_http->is_connected())
-	{
-		g_logger.log("k8s_delegator state connection loss.", sinsp_logger::SEV_WARNING);
-		return false;
-	}
-	return true;
-}
-
-void k8s_delegator::check_collector_status(int expected)
-{
-	if(!m_collector.is_healthy(expected))
-	{
-		throw sinsp_exception("k8s_delegator collector not healthy (has " + std::to_string(m_collector.subscription_count()) +
-							  " connections, expected " + std::to_string(expected) + "); giving up on data collection in this cycle ...");
-	}
-}
-
-void k8s_delegator::send_data_request(bool collect)
-{
-	if(m_events.size()) { return; }
-	connect();
-	send_event_data_request();
-	g_logger.log("k8s_delegator event request sent.", sinsp_logger::SEV_DEBUG);
-	if(collect) { collect_data(); }
-}
-
-void k8s_delegator::collect_data()
-{
-	if(m_collector.subscription_count())
-	{
-		m_collector.get_data();
-		if(m_events.size())
-		{
-			for(auto evt : m_events)
-			{
-				if(evt && !evt->isNull())
-				{
-					handle_json(std::move(*evt));
-				}
-				else
-				{
-					g_logger.log(std::string("k8s_delegator event error: ") +
-								(!evt ? "event is null." : (evt->isNull() ? "JSON is null." : "Unknown")),
-								sinsp_logger::SEV_ERROR);
-				}
-			}
-			m_events.clear();
-		}
-	}
 }
 
 void k8s_delegator::refresh_ipv4_list()
@@ -161,12 +63,6 @@ void k8s_delegator::refresh_ipv4_list()
 			m_local_ip_addrs.emplace(iface.address());
 		}
 	}
-}
-
-bool k8s_delegator::is_ip_address(const std::string& addr)
-{
-	struct sockaddr_in serv_addr = {0};
-	return inet_aton(addr.c_str(), &serv_addr.sin_addr);
 }
 
 k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json::Value& addrs)
@@ -246,43 +142,6 @@ bool k8s_delegator::remove_node(time_t timestamp, const Json::Value& addrs)
 	return false;
 }
 
-k8s_delegator::ip_addr_list_t k8s_delegator::hostname_to_ip(const std::string& hostname)
-{
-	ip_addr_list_t ip_addrs;
-	struct addrinfo *servinfo = 0;
-
-	struct addrinfo hints = {0};
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_STREAM;
-
-	if((getaddrinfo(hostname.c_str(), NULL, &hints, &servinfo)) != 0)
-	{
-		g_logger.log("Can't determine IP address for hostname: " + hostname, sinsp_logger::SEV_WARNING);
-		return ip_addrs;
-	}
-
-	for(struct addrinfo* p = servinfo; p != NULL; p = p->ai_next)
-	{
-		struct sockaddr_in* h = (struct sockaddr_in*)p->ai_addr;
-		ip_addrs.emplace(inet_ntoa(h->sin_addr));
-	}
-
-	freeaddrinfo(servinfo);
-	return ip_addrs;
-}
-
-void k8s_delegator::set_event_json(json_ptr_t json, const std::string&)
-{
-	if(json)
-	{
-		m_events.emplace_back(json);
-	}
-	else
-	{
-		g_logger.log("K8s: delegator received null JSON", sinsp_logger::SEV_ERROR);
-	}
-}
-
 bool k8s_delegator::is_delegated(bool trace)
 {
 	refresh_ipv4_list(); // get current list of local IP addresses
@@ -314,17 +173,13 @@ bool k8s_delegator::is_delegated(bool trace)
 	return false;
 }
 
-void k8s_delegator::handle_json(Json::Value&& root)
+bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 {
-	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
-	{
-		g_logger.log(json_as_string(root), sinsp_logger::SEV_TRACE);
-	}
-
 	bool added = false;
 	bool deleted = false;
+	bool ret = true;
 
-	const Json::Value& nodes = root["nodes"];
+	const Json::Value& nodes = json["nodes"];
 	if(!nodes.isNull() && nodes.isArray())
 	{
 		for(const auto& node : nodes)
@@ -344,33 +199,45 @@ void k8s_delegator::handle_json(Json::Value&& root)
 				{
 					g_logger.log("K8s delegator: Couldn't determine node name (null or not a string).", sinsp_logger::SEV_WARNING);
 				}
-				std::string type = get_json_string(root, "type");
+				std::string type = get_json_string(json, "type");
 				added = (type == "ADDED");
 				deleted = (type == "DELETED");
 				if(added)
 				{
 					if(add_node(tm, node["addresses"]))
-					{ g_logger.log("K8s delegator: Added node to list: " + nname, sinsp_logger::SEV_DEBUG); }
+					{
+						g_logger.log("K8s delegator: Added node to list: " + nname, sinsp_logger::SEV_DEBUG);
+					}
 					else
-					{ g_logger.log("K8s delegator: Node not added to list: " + nname, sinsp_logger::SEV_TRACE); }
+					{
+						g_logger.log("K8s delegator: Node not added to list: " + nname, sinsp_logger::SEV_TRACE);
+						ret = false;
+					}
 				}
 				else if(deleted)
 				{
 					if(remove_node(tm, node["addresses"]))
-					{ g_logger.log("K8s delegator: Removed node from the list: " + nname, sinsp_logger::SEV_DEBUG); }
+					{
+						g_logger.log("K8s delegator: Removed node from the list: " + nname, sinsp_logger::SEV_DEBUG);
+					}
 					else
-					{ g_logger.log("K8s delegator: Removed node event for non-existent node: " + nname, sinsp_logger::SEV_WARNING); }
+					{
+						g_logger.log("K8s delegator: Removed node event for non-existent node: " + nname, sinsp_logger::SEV_WARNING);
+						ret = false;
+					}
 				}
 			}
 			else
 			{
 				g_logger.log("K8s delegator: timestamp is null or not string.", sinsp_logger::SEV_WARNING);
+				ret = false;
 			}
 		} // end for nodes
 	}
 	else
 	{
 		g_logger.log("K8s delegator: nodes are empty or not an array.", sinsp_logger::SEV_WARNING);
+		ret = false;
 	}
 
 	if(added || deleted)
@@ -389,5 +256,20 @@ void k8s_delegator::handle_json(Json::Value&& root)
 			for(const auto& n : node.second) { os << n << ", "; }
 			g_logger.log(std::to_string(node.first) + ':' + os.str(), sinsp_logger::SEV_TRACE);
 		}
+	}
+	return ret;
+}
+
+void k8s_delegator::handle_json(Json::Value&& root)
+{
+	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+	{
+		g_logger.log(json_as_string(root), sinsp_logger::SEV_TRACE);
+	}
+
+	if(!handle_component(root))
+	{
+		g_logger.log("K8s delegator: error occurred while handling event.",
+					 sinsp_logger::SEV_ERROR);
 	}
 }
