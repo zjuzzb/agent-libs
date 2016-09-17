@@ -914,10 +914,8 @@ void sinsp_analyzer::make_mesos(string&& json)
 				}
 
 				if(m_mesos) { m_mesos.reset(); }
-				m_mesos.reset(new mesos(mesos_state, mesos::default_state_api,
+				m_mesos.reset(new mesos(mesos_state,
 					marathon_uris,
-					mesos::default_groups_api,
-					mesos::default_apps_api,
 					m_configuration->get_mesos_follow_leader(),
 					m_configuration->get_mesos_timeout_ms()));
 			}
