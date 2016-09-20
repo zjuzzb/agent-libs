@@ -149,28 +149,32 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 	if(!m_config) { return; }
 
 	typedef std::set<string, ci_compare> seq_t;
+	const auto& roots = m_config->get_roots();
 
-	// shortcut to enable or disable all in dragent.yaml (overriding default)
-	seq_t user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, m_config->get_roots().front(), "events", system);
-	if(user_events.size())
+	// shortcut to enable or disable all in dragent.yaml or dragent.auto.yaml (overriding default)
+	seq_t user_events;
+	for (const auto& root: roots)
 	{
-		if(user_events.find("all") != user_events.end())
+		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, root, "events", system);
+		if(user_events.size())
 		{
-			if(!flt)
+			if(user_events.find("all") != user_events.end())
 			{
-				flt = std::make_shared<user_event_filter_t>();
+				if(!flt)
+				{
+					flt = std::make_shared<user_event_filter_t>();
+				}
+				flt->add(user_event_meta_t({ "all", { "all" } }));
+				return;
 			}
-			flt->add(user_event_meta_t({ "all", { "all" } }));
-			return;
-		}
-		else if(user_events.find("none") != user_events.end())
-		{
-			return;
+			else if(user_events.find("none") != user_events.end())
+			{
+				return;
+			}
 		}
 	}
 
 	// find the first `user_events` across our files
-	const auto& roots = m_config->get_roots();
 	for(const auto& root : roots)
 	{
 		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, root, "events", system, component);
