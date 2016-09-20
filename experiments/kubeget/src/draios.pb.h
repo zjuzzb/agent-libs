@@ -66,6 +66,7 @@ class app_metric;
 class app_check;
 class app_info;
 class proto_info;
+class network_by_port;
 class host;
 class process;
 class program;
@@ -83,9 +84,20 @@ class k8s_namespace;
 class k8s_node;
 class k8s_pod;
 class k8s_replication_controller;
+class k8s_replica_set;
 class k8s_service;
 class k8s_service_net_port;
+class k8s_deployment;
+class k8s_daemonset;
 class k8s_state;
+class mesos_pair;
+class mesos_common;
+class mesos_task;
+class marathon_app;
+class marathon_group;
+class mesos_framework;
+class mesos_slave;
+class mesos_state;
 class metrics;
 class dump_request_start;
 class dump_request_stop;
@@ -95,6 +107,8 @@ class ssh_data;
 class ssh_close_channel;
 class auto_update_request;
 class dirty_shutdown_report;
+class key_value;
+class agent_event;
 
 enum sql_statement_type {
   SOP_NONE = 0,
@@ -347,11 +361,12 @@ enum container_type {
   DOCKER = 1,
   LXC = 2,
   LIBVIRT_LXC = 3,
-  MESOS = 4
+  MESOS = 4,
+  RKT = 5
 };
 bool container_type_IsValid(int value);
 const container_type container_type_MIN = DOCKER;
-const container_type container_type_MAX = MESOS;
+const container_type container_type_MAX = RKT;
 const int container_type_ARRAYSIZE = container_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* container_type_descriptor();
@@ -1536,6 +1551,41 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 fd_count() const;
   inline void set_fd_count(::google::protobuf::uint32 value);
 
+  // optional uint32 cpu_shares = 24;
+  inline bool has_cpu_shares() const;
+  inline void clear_cpu_shares();
+  static const int kCpuSharesFieldNumber = 24;
+  inline ::google::protobuf::uint32 cpu_shares() const;
+  inline void set_cpu_shares(::google::protobuf::uint32 value);
+
+  // optional uint32 cpu_shares_usage_pct = 25;
+  inline bool has_cpu_shares_usage_pct() const;
+  inline void clear_cpu_shares_usage_pct();
+  static const int kCpuSharesUsagePctFieldNumber = 25;
+  inline ::google::protobuf::uint32 cpu_shares_usage_pct() const;
+  inline void set_cpu_shares_usage_pct(::google::protobuf::uint32 value);
+
+  // optional uint32 memory_limit_kb = 26;
+  inline bool has_memory_limit_kb() const;
+  inline void clear_memory_limit_kb();
+  static const int kMemoryLimitKbFieldNumber = 26;
+  inline ::google::protobuf::uint32 memory_limit_kb() const;
+  inline void set_memory_limit_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 swap_limit_kb = 27;
+  inline bool has_swap_limit_kb() const;
+  inline void clear_swap_limit_kb();
+  static const int kSwapLimitKbFieldNumber = 27;
+  inline ::google::protobuf::uint32 swap_limit_kb() const;
+  inline void set_swap_limit_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 cpu_quota_used_pct = 28;
+  inline bool has_cpu_quota_used_pct() const;
+  inline void clear_cpu_quota_used_pct();
+  static const int kCpuQuotaUsedPctFieldNumber = 28;
+  inline ::google::protobuf::uint32 cpu_quota_used_pct() const;
+  inline void set_cpu_quota_used_pct(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1560,6 +1610,16 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_minor_pagefaults();
   inline void set_has_fd_count();
   inline void clear_has_fd_count();
+  inline void set_has_cpu_shares();
+  inline void clear_has_cpu_shares();
+  inline void set_has_cpu_shares_usage_pct();
+  inline void clear_has_cpu_shares_usage_pct();
+  inline void set_has_memory_limit_kb();
+  inline void clear_has_memory_limit_kb();
+  inline void set_has_swap_limit_kb();
+  inline void clear_has_swap_limit_kb();
+  inline void set_has_cpu_quota_used_pct();
+  inline void clear_has_cpu_quota_used_pct();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1574,9 +1634,14 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint64 major_pagefaults_;
   ::google::protobuf::uint64 minor_pagefaults_;
   ::google::protobuf::uint32 fd_count_;
+  ::google::protobuf::uint32 cpu_shares_;
+  ::google::protobuf::uint32 cpu_shares_usage_pct_;
+  ::google::protobuf::uint32 memory_limit_kb_;
+  ::google::protobuf::uint32 swap_limit_kb_;
+  ::google::protobuf::uint32 cpu_quota_used_pct_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4440,6 +4505,100 @@ class proto_info : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class network_by_port : public ::google::protobuf::Message {
+ public:
+  network_by_port();
+  virtual ~network_by_port();
+
+  network_by_port(const network_by_port& from);
+
+  inline network_by_port& operator=(const network_by_port& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const network_by_port& default_instance();
+
+  void Swap(network_by_port* other);
+
+  // implements Message ----------------------------------------------
+
+  network_by_port* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const network_by_port& from);
+  void MergeFrom(const network_by_port& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint32 port = 1;
+  inline bool has_port() const;
+  inline void clear_port();
+  static const int kPortFieldNumber = 1;
+  inline ::google::protobuf::uint32 port() const;
+  inline void set_port(::google::protobuf::uint32 value);
+
+  // required .draiosproto.connection_categories counters = 2;
+  inline bool has_counters() const;
+  inline void clear_counters();
+  static const int kCountersFieldNumber = 2;
+  inline const ::draiosproto::connection_categories& counters() const;
+  inline ::draiosproto::connection_categories* mutable_counters();
+  inline ::draiosproto::connection_categories* release_counters();
+  inline void set_allocated_counters(::draiosproto::connection_categories* counters);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.network_by_port)
+ private:
+  inline void set_has_port();
+  inline void clear_has_port();
+  inline void set_has_counters();
+  inline void clear_has_counters();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::connection_categories* counters_;
+  ::google::protobuf::uint32 port_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static network_by_port* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class host : public ::google::protobuf::Message {
  public:
   host();
@@ -4630,6 +4789,18 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bytes* release_external_io_net();
   inline void set_allocated_external_io_net(::draiosproto::counter_time_bytes* external_io_net);
 
+  // repeated .draiosproto.network_by_port network_by_serverports = 24;
+  inline int network_by_serverports_size() const;
+  inline void clear_network_by_serverports();
+  static const int kNetworkByServerportsFieldNumber = 24;
+  inline const ::draiosproto::network_by_port& network_by_serverports(int index) const;
+  inline ::draiosproto::network_by_port* mutable_network_by_serverports(int index);
+  inline ::draiosproto::network_by_port* add_network_by_serverports();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+      network_by_serverports() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+      mutable_network_by_serverports();
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -4675,10 +4846,11 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::resource_categories* resource_counters_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(15 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5500,6 +5672,20 @@ class mounted_fs : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 available_bytes() const;
   inline void set_available_bytes(::google::protobuf::uint64 value);
 
+  // optional uint64 total_inodes = 10;
+  inline bool has_total_inodes() const;
+  inline void clear_total_inodes();
+  static const int kTotalInodesFieldNumber = 10;
+  inline ::google::protobuf::uint64 total_inodes() const;
+  inline void set_total_inodes(::google::protobuf::uint64 value);
+
+  // optional uint64 used_inodes = 11;
+  inline bool has_used_inodes() const;
+  inline void clear_used_inodes();
+  static const int kUsedInodesFieldNumber = 11;
+  inline ::google::protobuf::uint64 used_inodes() const;
+  inline void set_used_inodes(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.mounted_fs)
  private:
   inline void set_has_device();
@@ -5514,6 +5700,10 @@ class mounted_fs : public ::google::protobuf::Message {
   inline void clear_has_used_bytes();
   inline void set_has_available_bytes();
   inline void clear_has_available_bytes();
+  inline void set_has_total_inodes();
+  inline void clear_has_total_inodes();
+  inline void set_has_used_inodes();
+  inline void clear_has_used_inodes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -5523,9 +5713,11 @@ class mounted_fs : public ::google::protobuf::Message {
   ::google::protobuf::uint64 size_bytes_;
   ::google::protobuf::uint64 used_bytes_;
   ::google::protobuf::uint64 available_bytes_;
+  ::google::protobuf::uint64 total_inodes_;
+  ::google::protobuf::uint64 used_inodes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6084,6 +6276,42 @@ class container : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label >*
       mutable_labels();
 
+  // repeated .draiosproto.mounted_fs mounts = 21;
+  inline int mounts_size() const;
+  inline void clear_mounts();
+  static const int kMountsFieldNumber = 21;
+  inline const ::draiosproto::mounted_fs& mounts(int index) const;
+  inline ::draiosproto::mounted_fs* mutable_mounts(int index);
+  inline ::draiosproto::mounted_fs* add_mounts();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+      mounts() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+      mutable_mounts();
+
+  // repeated .draiosproto.network_by_port network_by_serverports = 22;
+  inline int network_by_serverports_size() const;
+  inline void clear_network_by_serverports();
+  static const int kNetworkByServerportsFieldNumber = 22;
+  inline const ::draiosproto::network_by_port& network_by_serverports(int index) const;
+  inline ::draiosproto::network_by_port* mutable_network_by_serverports(int index);
+  inline ::draiosproto::network_by_port* add_network_by_serverports();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+      network_by_serverports() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+      mutable_network_by_serverports();
+
+  // optional string mesos_task_id = 23;
+  inline bool has_mesos_task_id() const;
+  inline void clear_mesos_task_id();
+  static const int kMesosTaskIdFieldNumber = 23;
+  inline const ::std::string& mesos_task_id() const;
+  inline void set_mesos_task_id(const ::std::string& value);
+  inline void set_mesos_task_id(const char* value);
+  inline void set_mesos_task_id(const char* value, size_t size);
+  inline ::std::string* mutable_mesos_task_id();
+  inline ::std::string* release_mesos_task_id();
+  inline void set_allocated_mesos_task_id(::std::string* mesos_task_id);
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6114,6 +6342,8 @@ class container : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_protos();
   inline void clear_has_protos();
+  inline void set_has_mesos_task_id();
+  inline void clear_has_mesos_task_id();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -6132,10 +6362,13 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_port_mapping > port_mappings_;
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container_label > labels_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
+  ::std::string* mesos_task_id_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6691,6 +6924,13 @@ class k8s_pod : public ::google::protobuf::Message {
   inline ::std::string* release_internal_ip();
   inline void set_allocated_internal_ip(::std::string* internal_ip);
 
+  // optional uint32 restart_count = 6;
+  inline bool has_restart_count() const;
+  inline void clear_restart_count();
+  static const int kRestartCountFieldNumber = 6;
+  inline ::google::protobuf::uint32 restart_count() const;
+  inline void set_restart_count(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_pod)
  private:
   inline void set_has_common();
@@ -6701,6 +6941,8 @@ class k8s_pod : public ::google::protobuf::Message {
   inline void clear_has_host_ip();
   inline void set_has_internal_ip();
   inline void clear_has_internal_ip();
+  inline void set_has_restart_count();
+  inline void clear_has_restart_count();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -6709,9 +6951,10 @@ class k8s_pod : public ::google::protobuf::Message {
   ::std::string* node_name_;
   ::std::string* host_ip_;
   ::std::string* internal_ip_;
+  ::google::protobuf::uint32 restart_count_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6785,17 +7028,37 @@ class k8s_replication_controller : public ::google::protobuf::Message {
   inline ::draiosproto::k8s_common* release_common();
   inline void set_allocated_common(::draiosproto::k8s_common* common);
 
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
+
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_replication_controller)
  private:
   inline void set_has_common();
   inline void clear_has_common();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6803,6 +7066,110 @@ class k8s_replication_controller : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static k8s_replication_controller* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class k8s_replica_set : public ::google::protobuf::Message {
+ public:
+  k8s_replica_set();
+  virtual ~k8s_replica_set();
+
+  k8s_replica_set(const k8s_replica_set& from);
+
+  inline k8s_replica_set& operator=(const k8s_replica_set& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_replica_set& default_instance();
+
+  void Swap(k8s_replica_set* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_replica_set* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_replica_set& from);
+  void MergeFrom(const k8s_replica_set& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.k8s_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::k8s_common& common() const;
+  inline ::draiosproto::k8s_common* mutable_common();
+  inline ::draiosproto::k8s_common* release_common();
+  inline void set_allocated_common(::draiosproto::k8s_common* common);
+
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
+
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_replica_set)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_replica_set* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -7037,6 +7404,214 @@ class k8s_service : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class k8s_deployment : public ::google::protobuf::Message {
+ public:
+  k8s_deployment();
+  virtual ~k8s_deployment();
+
+  k8s_deployment(const k8s_deployment& from);
+
+  inline k8s_deployment& operator=(const k8s_deployment& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_deployment& default_instance();
+
+  void Swap(k8s_deployment* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_deployment* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_deployment& from);
+  void MergeFrom(const k8s_deployment& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.k8s_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::k8s_common& common() const;
+  inline ::draiosproto::k8s_common* mutable_common();
+  inline ::draiosproto::k8s_common* release_common();
+  inline void set_allocated_common(::draiosproto::k8s_common* common);
+
+  // optional uint32 replicas_desired = 2;
+  inline bool has_replicas_desired() const;
+  inline void clear_replicas_desired();
+  static const int kReplicasDesiredFieldNumber = 2;
+  inline ::google::protobuf::uint32 replicas_desired() const;
+  inline void set_replicas_desired(::google::protobuf::uint32 value);
+
+  // optional uint32 replicas_running = 3;
+  inline bool has_replicas_running() const;
+  inline void clear_replicas_running();
+  static const int kReplicasRunningFieldNumber = 3;
+  inline ::google::protobuf::uint32 replicas_running() const;
+  inline void set_replicas_running(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_deployment)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_replicas_desired();
+  inline void clear_has_replicas_desired();
+  inline void set_has_replicas_running();
+  inline void clear_has_replicas_running();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 replicas_desired_;
+  ::google::protobuf::uint32 replicas_running_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_deployment* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class k8s_daemonset : public ::google::protobuf::Message {
+ public:
+  k8s_daemonset();
+  virtual ~k8s_daemonset();
+
+  k8s_daemonset(const k8s_daemonset& from);
+
+  inline k8s_daemonset& operator=(const k8s_daemonset& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const k8s_daemonset& default_instance();
+
+  void Swap(k8s_daemonset* other);
+
+  // implements Message ----------------------------------------------
+
+  k8s_daemonset* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const k8s_daemonset& from);
+  void MergeFrom(const k8s_daemonset& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.k8s_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::k8s_common& common() const;
+  inline ::draiosproto::k8s_common* mutable_common();
+  inline ::draiosproto::k8s_common* release_common();
+  inline void set_allocated_common(::draiosproto::k8s_common* common);
+
+  // optional uint32 current_scheduled = 2;
+  inline bool has_current_scheduled() const;
+  inline void clear_current_scheduled();
+  static const int kCurrentScheduledFieldNumber = 2;
+  inline ::google::protobuf::uint32 current_scheduled() const;
+  inline void set_current_scheduled(::google::protobuf::uint32 value);
+
+  // optional uint32 desired_scheduled = 3;
+  inline bool has_desired_scheduled() const;
+  inline void clear_desired_scheduled();
+  static const int kDesiredScheduledFieldNumber = 3;
+  inline ::google::protobuf::uint32 desired_scheduled() const;
+  inline void set_desired_scheduled(::google::protobuf::uint32 value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.k8s_daemonset)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_current_scheduled();
+  inline void clear_has_current_scheduled();
+  inline void set_has_desired_scheduled();
+  inline void clear_has_desired_scheduled();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::k8s_common* common_;
+  ::google::protobuf::uint32 current_scheduled_;
+  ::google::protobuf::uint32 desired_scheduled_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static k8s_daemonset* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class k8s_state : public ::google::protobuf::Message {
  public:
   k8s_state();
@@ -7151,6 +7726,42 @@ class k8s_state : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service >*
       mutable_services();
 
+  // repeated .draiosproto.k8s_replica_set replica_sets = 6;
+  inline int replica_sets_size() const;
+  inline void clear_replica_sets();
+  static const int kReplicaSetsFieldNumber = 6;
+  inline const ::draiosproto::k8s_replica_set& replica_sets(int index) const;
+  inline ::draiosproto::k8s_replica_set* mutable_replica_sets(int index);
+  inline ::draiosproto::k8s_replica_set* add_replica_sets();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >&
+      replica_sets() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >*
+      mutable_replica_sets();
+
+  // repeated .draiosproto.k8s_deployment deployments = 7;
+  inline int deployments_size() const;
+  inline void clear_deployments();
+  static const int kDeploymentsFieldNumber = 7;
+  inline const ::draiosproto::k8s_deployment& deployments(int index) const;
+  inline ::draiosproto::k8s_deployment* mutable_deployments(int index);
+  inline ::draiosproto::k8s_deployment* add_deployments();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >&
+      deployments() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >*
+      mutable_deployments();
+
+  // repeated .draiosproto.k8s_daemonset daemonsets = 8;
+  inline int daemonsets_size() const;
+  inline void clear_daemonsets();
+  static const int kDaemonsetsFieldNumber = 8;
+  inline const ::draiosproto::k8s_daemonset& daemonsets(int index) const;
+  inline ::draiosproto::k8s_daemonset* mutable_daemonsets(int index);
+  inline ::draiosproto::k8s_daemonset* add_daemonsets();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >&
+      daemonsets() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >*
+      mutable_daemonsets();
+
   // @@protoc_insertion_point(class_scope:draiosproto.k8s_state)
  private:
 
@@ -7161,9 +7772,12 @@ class k8s_state : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_pod > pods_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replication_controller > controllers_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service > services_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set > replica_sets_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment > deployments_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset > daemonsets_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(8 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -7171,6 +7785,831 @@ class k8s_state : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static k8s_state* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mesos_pair : public ::google::protobuf::Message {
+ public:
+  mesos_pair();
+  virtual ~mesos_pair();
+
+  mesos_pair(const mesos_pair& from);
+
+  inline mesos_pair& operator=(const mesos_pair& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mesos_pair& default_instance();
+
+  void Swap(mesos_pair* other);
+
+  // implements Message ----------------------------------------------
+
+  mesos_pair* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mesos_pair& from);
+  void MergeFrom(const mesos_pair& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string key = 1;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 1;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
+
+  // required string value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::std::string& value() const;
+  inline void set_value(const ::std::string& value);
+  inline void set_value(const char* value);
+  inline void set_value(const char* value, size_t size);
+  inline ::std::string* mutable_value();
+  inline ::std::string* release_value();
+  inline void set_allocated_value(::std::string* value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mesos_pair)
+ private:
+  inline void set_has_key();
+  inline void clear_has_key();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* key_;
+  ::std::string* value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mesos_pair* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mesos_common : public ::google::protobuf::Message {
+ public:
+  mesos_common();
+  virtual ~mesos_common();
+
+  mesos_common(const mesos_common& from);
+
+  inline mesos_common& operator=(const mesos_common& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mesos_common& default_instance();
+
+  void Swap(mesos_common* other);
+
+  // implements Message ----------------------------------------------
+
+  mesos_common* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mesos_common& from);
+  void MergeFrom(const mesos_common& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string uid = 1;
+  inline bool has_uid() const;
+  inline void clear_uid();
+  static const int kUidFieldNumber = 1;
+  inline const ::std::string& uid() const;
+  inline void set_uid(const ::std::string& value);
+  inline void set_uid(const char* value);
+  inline void set_uid(const char* value, size_t size);
+  inline ::std::string* mutable_uid();
+  inline ::std::string* release_uid();
+  inline void set_allocated_uid(::std::string* uid);
+
+  // optional string name = 2;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 2;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // repeated .draiosproto.mesos_pair labels = 3;
+  inline int labels_size() const;
+  inline void clear_labels();
+  static const int kLabelsFieldNumber = 3;
+  inline const ::draiosproto::mesos_pair& labels(int index) const;
+  inline ::draiosproto::mesos_pair* mutable_labels(int index);
+  inline ::draiosproto::mesos_pair* add_labels();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_pair >&
+      labels() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_pair >*
+      mutable_labels();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mesos_common)
+ private:
+  inline void set_has_uid();
+  inline void clear_has_uid();
+  inline void set_has_name();
+  inline void clear_has_name();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* uid_;
+  ::std::string* name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_pair > labels_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mesos_common* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mesos_task : public ::google::protobuf::Message {
+ public:
+  mesos_task();
+  virtual ~mesos_task();
+
+  mesos_task(const mesos_task& from);
+
+  inline mesos_task& operator=(const mesos_task& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mesos_task& default_instance();
+
+  void Swap(mesos_task* other);
+
+  // implements Message ----------------------------------------------
+
+  mesos_task* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mesos_task& from);
+  void MergeFrom(const mesos_task& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.mesos_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::mesos_common& common() const;
+  inline ::draiosproto::mesos_common* mutable_common();
+  inline ::draiosproto::mesos_common* release_common();
+  inline void set_allocated_common(::draiosproto::mesos_common* common);
+
+  // required string slave_id = 2;
+  inline bool has_slave_id() const;
+  inline void clear_slave_id();
+  static const int kSlaveIdFieldNumber = 2;
+  inline const ::std::string& slave_id() const;
+  inline void set_slave_id(const ::std::string& value);
+  inline void set_slave_id(const char* value);
+  inline void set_slave_id(const char* value, size_t size);
+  inline ::std::string* mutable_slave_id();
+  inline ::std::string* release_slave_id();
+  inline void set_allocated_slave_id(::std::string* slave_id);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mesos_task)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+  inline void set_has_slave_id();
+  inline void clear_has_slave_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::mesos_common* common_;
+  ::std::string* slave_id_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mesos_task* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class marathon_app : public ::google::protobuf::Message {
+ public:
+  marathon_app();
+  virtual ~marathon_app();
+
+  marathon_app(const marathon_app& from);
+
+  inline marathon_app& operator=(const marathon_app& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const marathon_app& default_instance();
+
+  void Swap(marathon_app* other);
+
+  // implements Message ----------------------------------------------
+
+  marathon_app* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const marathon_app& from);
+  void MergeFrom(const marathon_app& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // repeated string task_ids = 2;
+  inline int task_ids_size() const;
+  inline void clear_task_ids();
+  static const int kTaskIdsFieldNumber = 2;
+  inline const ::std::string& task_ids(int index) const;
+  inline ::std::string* mutable_task_ids(int index);
+  inline void set_task_ids(int index, const ::std::string& value);
+  inline void set_task_ids(int index, const char* value);
+  inline void set_task_ids(int index, const char* value, size_t size);
+  inline ::std::string* add_task_ids();
+  inline void add_task_ids(const ::std::string& value);
+  inline void add_task_ids(const char* value);
+  inline void add_task_ids(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& task_ids() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_task_ids();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.marathon_app)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> task_ids_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static marathon_app* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class marathon_group : public ::google::protobuf::Message {
+ public:
+  marathon_group();
+  virtual ~marathon_group();
+
+  marathon_group(const marathon_group& from);
+
+  inline marathon_group& operator=(const marathon_group& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const marathon_group& default_instance();
+
+  void Swap(marathon_group* other);
+
+  // implements Message ----------------------------------------------
+
+  marathon_group* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const marathon_group& from);
+  void MergeFrom(const marathon_group& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // repeated .draiosproto.marathon_app apps = 2;
+  inline int apps_size() const;
+  inline void clear_apps();
+  static const int kAppsFieldNumber = 2;
+  inline const ::draiosproto::marathon_app& apps(int index) const;
+  inline ::draiosproto::marathon_app* mutable_apps(int index);
+  inline ::draiosproto::marathon_app* add_apps();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
+      apps() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
+      mutable_apps();
+
+  // repeated .draiosproto.marathon_group groups = 3;
+  inline int groups_size() const;
+  inline void clear_groups();
+  static const int kGroupsFieldNumber = 3;
+  inline const ::draiosproto::marathon_group& groups(int index) const;
+  inline ::draiosproto::marathon_group* mutable_groups(int index);
+  inline ::draiosproto::marathon_group* add_groups();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+      groups() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+      mutable_groups();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.marathon_group)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app > apps_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group > groups_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static marathon_group* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mesos_framework : public ::google::protobuf::Message {
+ public:
+  mesos_framework();
+  virtual ~mesos_framework();
+
+  mesos_framework(const mesos_framework& from);
+
+  inline mesos_framework& operator=(const mesos_framework& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mesos_framework& default_instance();
+
+  void Swap(mesos_framework* other);
+
+  // implements Message ----------------------------------------------
+
+  mesos_framework* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mesos_framework& from);
+  void MergeFrom(const mesos_framework& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.mesos_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::mesos_common& common() const;
+  inline ::draiosproto::mesos_common* mutable_common();
+  inline ::draiosproto::mesos_common* release_common();
+  inline void set_allocated_common(::draiosproto::mesos_common* common);
+
+  // repeated .draiosproto.mesos_task tasks = 2;
+  inline int tasks_size() const;
+  inline void clear_tasks();
+  static const int kTasksFieldNumber = 2;
+  inline const ::draiosproto::mesos_task& tasks(int index) const;
+  inline ::draiosproto::mesos_task* mutable_tasks(int index);
+  inline ::draiosproto::mesos_task* add_tasks();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >&
+      tasks() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >*
+      mutable_tasks();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mesos_framework)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::mesos_common* common_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task > tasks_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mesos_framework* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mesos_slave : public ::google::protobuf::Message {
+ public:
+  mesos_slave();
+  virtual ~mesos_slave();
+
+  mesos_slave(const mesos_slave& from);
+
+  inline mesos_slave& operator=(const mesos_slave& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mesos_slave& default_instance();
+
+  void Swap(mesos_slave* other);
+
+  // implements Message ----------------------------------------------
+
+  mesos_slave* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mesos_slave& from);
+  void MergeFrom(const mesos_slave& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .draiosproto.mesos_common common = 1;
+  inline bool has_common() const;
+  inline void clear_common();
+  static const int kCommonFieldNumber = 1;
+  inline const ::draiosproto::mesos_common& common() const;
+  inline ::draiosproto::mesos_common* mutable_common();
+  inline ::draiosproto::mesos_common* release_common();
+  inline void set_allocated_common(::draiosproto::mesos_common* common);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mesos_slave)
+ private:
+  inline void set_has_common();
+  inline void clear_has_common();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::draiosproto::mesos_common* common_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mesos_slave* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class mesos_state : public ::google::protobuf::Message {
+ public:
+  mesos_state();
+  virtual ~mesos_state();
+
+  mesos_state(const mesos_state& from);
+
+  inline mesos_state& operator=(const mesos_state& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const mesos_state& default_instance();
+
+  void Swap(mesos_state* other);
+
+  // implements Message ----------------------------------------------
+
+  mesos_state* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const mesos_state& from);
+  void MergeFrom(const mesos_state& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.mesos_framework frameworks = 1;
+  inline int frameworks_size() const;
+  inline void clear_frameworks();
+  static const int kFrameworksFieldNumber = 1;
+  inline const ::draiosproto::mesos_framework& frameworks(int index) const;
+  inline ::draiosproto::mesos_framework* mutable_frameworks(int index);
+  inline ::draiosproto::mesos_framework* add_frameworks();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >&
+      frameworks() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >*
+      mutable_frameworks();
+
+  // repeated .draiosproto.marathon_group groups = 2;
+  inline int groups_size() const;
+  inline void clear_groups();
+  static const int kGroupsFieldNumber = 2;
+  inline const ::draiosproto::marathon_group& groups(int index) const;
+  inline ::draiosproto::marathon_group* mutable_groups(int index);
+  inline ::draiosproto::marathon_group* add_groups();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+      groups() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+      mutable_groups();
+
+  // repeated .draiosproto.mesos_slave slaves = 3;
+  inline int slaves_size() const;
+  inline void clear_slaves();
+  static const int kSlavesFieldNumber = 3;
+  inline const ::draiosproto::mesos_slave& slaves(int index) const;
+  inline ::draiosproto::mesos_slave* mutable_slaves(int index);
+  inline ::draiosproto::mesos_slave* add_slaves();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_slave >&
+      slaves() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_slave >*
+      mutable_slaves();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.mesos_state)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework > frameworks_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group > groups_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_slave > slaves_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static mesos_state* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -7444,6 +8883,27 @@ class metrics : public ::google::protobuf::Message {
   inline ::draiosproto::k8s_state* release_kubernetes();
   inline void set_allocated_kubernetes(::draiosproto::k8s_state* kubernetes);
 
+  // optional .draiosproto.mesos_state mesos = 25;
+  inline bool has_mesos() const;
+  inline void clear_mesos();
+  static const int kMesosFieldNumber = 25;
+  inline const ::draiosproto::mesos_state& mesos() const;
+  inline ::draiosproto::mesos_state* mutable_mesos();
+  inline ::draiosproto::mesos_state* release_mesos();
+  inline void set_allocated_mesos(::draiosproto::mesos_state* mesos);
+
+  // repeated .draiosproto.agent_event events = 26;
+  inline int events_size() const;
+  inline void clear_events();
+  static const int kEventsFieldNumber = 26;
+  inline const ::draiosproto::agent_event& events(int index) const;
+  inline ::draiosproto::agent_event* mutable_events(int index);
+  inline ::draiosproto::agent_event* add_events();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >&
+      events() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >*
+      mutable_events();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -7472,6 +8932,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_protos();
   inline void set_has_kubernetes();
   inline void clear_has_kubernetes();
+  inline void set_has_mesos();
+  inline void clear_has_mesos();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -7495,9 +8957,11 @@ class metrics : public ::google::protobuf::Message {
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::container > containers_;
   ::draiosproto::k8s_state* kubernetes_;
+  ::draiosproto::mesos_state* mesos_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event > events_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(22 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8721,6 +10185,258 @@ class dirty_shutdown_report : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static dirty_shutdown_report* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class key_value : public ::google::protobuf::Message {
+ public:
+  key_value();
+  virtual ~key_value();
+
+  key_value(const key_value& from);
+
+  inline key_value& operator=(const key_value& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const key_value& default_instance();
+
+  void Swap(key_value* other);
+
+  // implements Message ----------------------------------------------
+
+  key_value* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const key_value& from);
+  void MergeFrom(const key_value& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string key = 1;
+  inline bool has_key() const;
+  inline void clear_key();
+  static const int kKeyFieldNumber = 1;
+  inline const ::std::string& key() const;
+  inline void set_key(const ::std::string& value);
+  inline void set_key(const char* value);
+  inline void set_key(const char* value, size_t size);
+  inline ::std::string* mutable_key();
+  inline ::std::string* release_key();
+  inline void set_allocated_key(::std::string* key);
+
+  // required string value = 2;
+  inline bool has_value() const;
+  inline void clear_value();
+  static const int kValueFieldNumber = 2;
+  inline const ::std::string& value() const;
+  inline void set_value(const ::std::string& value);
+  inline void set_value(const char* value);
+  inline void set_value(const char* value, size_t size);
+  inline ::std::string* mutable_value();
+  inline ::std::string* release_value();
+  inline void set_allocated_value(::std::string* value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.key_value)
+ private:
+  inline void set_has_key();
+  inline void clear_has_key();
+  inline void set_has_value();
+  inline void clear_has_value();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* key_;
+  ::std::string* value_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static key_value* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class agent_event : public ::google::protobuf::Message {
+ public:
+  agent_event();
+  virtual ~agent_event();
+
+  agent_event(const agent_event& from);
+
+  inline agent_event& operator=(const agent_event& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const agent_event& default_instance();
+
+  void Swap(agent_event* other);
+
+  // implements Message ----------------------------------------------
+
+  agent_event* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const agent_event& from);
+  void MergeFrom(const agent_event& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional uint64 timestamp_sec = 1;
+  inline bool has_timestamp_sec() const;
+  inline void clear_timestamp_sec();
+  static const int kTimestampSecFieldNumber = 1;
+  inline ::google::protobuf::uint64 timestamp_sec() const;
+  inline void set_timestamp_sec(::google::protobuf::uint64 value);
+
+  // optional string scope = 2;
+  inline bool has_scope() const;
+  inline void clear_scope();
+  static const int kScopeFieldNumber = 2;
+  inline const ::std::string& scope() const;
+  inline void set_scope(const ::std::string& value);
+  inline void set_scope(const char* value);
+  inline void set_scope(const char* value, size_t size);
+  inline ::std::string* mutable_scope();
+  inline ::std::string* release_scope();
+  inline void set_allocated_scope(::std::string* scope);
+
+  // optional string title = 3;
+  inline bool has_title() const;
+  inline void clear_title();
+  static const int kTitleFieldNumber = 3;
+  inline const ::std::string& title() const;
+  inline void set_title(const ::std::string& value);
+  inline void set_title(const char* value);
+  inline void set_title(const char* value, size_t size);
+  inline ::std::string* mutable_title();
+  inline ::std::string* release_title();
+  inline void set_allocated_title(::std::string* title);
+
+  // optional string description = 4;
+  inline bool has_description() const;
+  inline void clear_description();
+  static const int kDescriptionFieldNumber = 4;
+  inline const ::std::string& description() const;
+  inline void set_description(const ::std::string& value);
+  inline void set_description(const char* value);
+  inline void set_description(const char* value, size_t size);
+  inline ::std::string* mutable_description();
+  inline ::std::string* release_description();
+  inline void set_allocated_description(::std::string* description);
+
+  // optional uint32 severity = 5;
+  inline bool has_severity() const;
+  inline void clear_severity();
+  static const int kSeverityFieldNumber = 5;
+  inline ::google::protobuf::uint32 severity() const;
+  inline void set_severity(::google::protobuf::uint32 value);
+
+  // repeated .draiosproto.key_value tags = 6;
+  inline int tags_size() const;
+  inline void clear_tags();
+  static const int kTagsFieldNumber = 6;
+  inline const ::draiosproto::key_value& tags(int index) const;
+  inline ::draiosproto::key_value* mutable_tags(int index);
+  inline ::draiosproto::key_value* add_tags();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >&
+      tags() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >*
+      mutable_tags();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.agent_event)
+ private:
+  inline void set_has_timestamp_sec();
+  inline void clear_has_timestamp_sec();
+  inline void set_has_scope();
+  inline void clear_has_scope();
+  inline void set_has_title();
+  inline void clear_has_title();
+  inline void set_has_description();
+  inline void clear_has_description();
+  inline void set_has_severity();
+  inline void clear_has_severity();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 timestamp_sec_;
+  ::std::string* scope_;
+  ::std::string* title_;
+  ::std::string* description_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value > tags_;
+  ::google::protobuf::uint32 severity_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static agent_event* default_instance_;
 };
 // ===================================================================
 
@@ -10414,6 +12130,116 @@ inline ::google::protobuf::uint32 resource_categories::fd_count() const {
 inline void resource_categories::set_fd_count(::google::protobuf::uint32 value) {
   set_has_fd_count();
   fd_count_ = value;
+}
+
+// optional uint32 cpu_shares = 24;
+inline bool resource_categories::has_cpu_shares() const {
+  return (_has_bits_[0] & 0x00000800u) != 0;
+}
+inline void resource_categories::set_has_cpu_shares() {
+  _has_bits_[0] |= 0x00000800u;
+}
+inline void resource_categories::clear_has_cpu_shares() {
+  _has_bits_[0] &= ~0x00000800u;
+}
+inline void resource_categories::clear_cpu_shares() {
+  cpu_shares_ = 0u;
+  clear_has_cpu_shares();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_shares() const {
+  return cpu_shares_;
+}
+inline void resource_categories::set_cpu_shares(::google::protobuf::uint32 value) {
+  set_has_cpu_shares();
+  cpu_shares_ = value;
+}
+
+// optional uint32 cpu_shares_usage_pct = 25;
+inline bool resource_categories::has_cpu_shares_usage_pct() const {
+  return (_has_bits_[0] & 0x00001000u) != 0;
+}
+inline void resource_categories::set_has_cpu_shares_usage_pct() {
+  _has_bits_[0] |= 0x00001000u;
+}
+inline void resource_categories::clear_has_cpu_shares_usage_pct() {
+  _has_bits_[0] &= ~0x00001000u;
+}
+inline void resource_categories::clear_cpu_shares_usage_pct() {
+  cpu_shares_usage_pct_ = 0u;
+  clear_has_cpu_shares_usage_pct();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_shares_usage_pct() const {
+  return cpu_shares_usage_pct_;
+}
+inline void resource_categories::set_cpu_shares_usage_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_shares_usage_pct();
+  cpu_shares_usage_pct_ = value;
+}
+
+// optional uint32 memory_limit_kb = 26;
+inline bool resource_categories::has_memory_limit_kb() const {
+  return (_has_bits_[0] & 0x00002000u) != 0;
+}
+inline void resource_categories::set_has_memory_limit_kb() {
+  _has_bits_[0] |= 0x00002000u;
+}
+inline void resource_categories::clear_has_memory_limit_kb() {
+  _has_bits_[0] &= ~0x00002000u;
+}
+inline void resource_categories::clear_memory_limit_kb() {
+  memory_limit_kb_ = 0u;
+  clear_has_memory_limit_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::memory_limit_kb() const {
+  return memory_limit_kb_;
+}
+inline void resource_categories::set_memory_limit_kb(::google::protobuf::uint32 value) {
+  set_has_memory_limit_kb();
+  memory_limit_kb_ = value;
+}
+
+// optional uint32 swap_limit_kb = 27;
+inline bool resource_categories::has_swap_limit_kb() const {
+  return (_has_bits_[0] & 0x00004000u) != 0;
+}
+inline void resource_categories::set_has_swap_limit_kb() {
+  _has_bits_[0] |= 0x00004000u;
+}
+inline void resource_categories::clear_has_swap_limit_kb() {
+  _has_bits_[0] &= ~0x00004000u;
+}
+inline void resource_categories::clear_swap_limit_kb() {
+  swap_limit_kb_ = 0u;
+  clear_has_swap_limit_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_limit_kb() const {
+  return swap_limit_kb_;
+}
+inline void resource_categories::set_swap_limit_kb(::google::protobuf::uint32 value) {
+  set_has_swap_limit_kb();
+  swap_limit_kb_ = value;
+}
+
+// optional uint32 cpu_quota_used_pct = 28;
+inline bool resource_categories::has_cpu_quota_used_pct() const {
+  return (_has_bits_[0] & 0x00008000u) != 0;
+}
+inline void resource_categories::set_has_cpu_quota_used_pct() {
+  _has_bits_[0] |= 0x00008000u;
+}
+inline void resource_categories::clear_has_cpu_quota_used_pct() {
+  _has_bits_[0] &= ~0x00008000u;
+}
+inline void resource_categories::clear_cpu_quota_used_pct() {
+  cpu_quota_used_pct_ = 0u;
+  clear_has_cpu_quota_used_pct();
+}
+inline ::google::protobuf::uint32 resource_categories::cpu_quota_used_pct() const {
+  return cpu_quota_used_pct_;
+}
+inline void resource_categories::set_cpu_quota_used_pct(::google::protobuf::uint32 value) {
+  set_has_cpu_quota_used_pct();
+  cpu_quota_used_pct_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -13895,6 +15721,70 @@ inline void proto_info::set_allocated_app(::draiosproto::app_info* app) {
 
 // -------------------------------------------------------------------
 
+// network_by_port
+
+// required uint32 port = 1;
+inline bool network_by_port::has_port() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void network_by_port::set_has_port() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void network_by_port::clear_has_port() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void network_by_port::clear_port() {
+  port_ = 0u;
+  clear_has_port();
+}
+inline ::google::protobuf::uint32 network_by_port::port() const {
+  return port_;
+}
+inline void network_by_port::set_port(::google::protobuf::uint32 value) {
+  set_has_port();
+  port_ = value;
+}
+
+// required .draiosproto.connection_categories counters = 2;
+inline bool network_by_port::has_counters() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void network_by_port::set_has_counters() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void network_by_port::clear_has_counters() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void network_by_port::clear_counters() {
+  if (counters_ != NULL) counters_->::draiosproto::connection_categories::Clear();
+  clear_has_counters();
+}
+inline const ::draiosproto::connection_categories& network_by_port::counters() const {
+  return counters_ != NULL ? *counters_ : *default_instance_->counters_;
+}
+inline ::draiosproto::connection_categories* network_by_port::mutable_counters() {
+  set_has_counters();
+  if (counters_ == NULL) counters_ = new ::draiosproto::connection_categories;
+  return counters_;
+}
+inline ::draiosproto::connection_categories* network_by_port::release_counters() {
+  clear_has_counters();
+  ::draiosproto::connection_categories* temp = counters_;
+  counters_ = NULL;
+  return temp;
+}
+inline void network_by_port::set_allocated_counters(::draiosproto::connection_categories* counters) {
+  delete counters_;
+  counters_ = counters;
+  if (counters) {
+    set_has_counters();
+  } else {
+    clear_has_counters();
+  }
+}
+
+// -------------------------------------------------------------------
+
 // host
 
 // optional string hostname = 1;
@@ -14407,6 +16297,31 @@ inline void host::set_allocated_external_io_net(::draiosproto::counter_time_byte
   } else {
     clear_has_external_io_net();
   }
+}
+
+// repeated .draiosproto.network_by_port network_by_serverports = 24;
+inline int host::network_by_serverports_size() const {
+  return network_by_serverports_.size();
+}
+inline void host::clear_network_by_serverports() {
+  network_by_serverports_.Clear();
+}
+inline const ::draiosproto::network_by_port& host::network_by_serverports(int index) const {
+  return network_by_serverports_.Get(index);
+}
+inline ::draiosproto::network_by_port* host::mutable_network_by_serverports(int index) {
+  return network_by_serverports_.Mutable(index);
+}
+inline ::draiosproto::network_by_port* host::add_network_by_serverports() {
+  return network_by_serverports_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+host::network_by_serverports() const {
+  return network_by_serverports_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+host::mutable_network_by_serverports() {
+  return &network_by_serverports_;
 }
 
 // -------------------------------------------------------------------
@@ -15618,6 +17533,50 @@ inline void mounted_fs::set_available_bytes(::google::protobuf::uint64 value) {
   available_bytes_ = value;
 }
 
+// optional uint64 total_inodes = 10;
+inline bool mounted_fs::has_total_inodes() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void mounted_fs::set_has_total_inodes() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void mounted_fs::clear_has_total_inodes() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void mounted_fs::clear_total_inodes() {
+  total_inodes_ = GOOGLE_ULONGLONG(0);
+  clear_has_total_inodes();
+}
+inline ::google::protobuf::uint64 mounted_fs::total_inodes() const {
+  return total_inodes_;
+}
+inline void mounted_fs::set_total_inodes(::google::protobuf::uint64 value) {
+  set_has_total_inodes();
+  total_inodes_ = value;
+}
+
+// optional uint64 used_inodes = 11;
+inline bool mounted_fs::has_used_inodes() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void mounted_fs::set_has_used_inodes() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void mounted_fs::clear_has_used_inodes() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void mounted_fs::clear_used_inodes() {
+  used_inodes_ = GOOGLE_ULONGLONG(0);
+  clear_has_used_inodes();
+}
+inline ::google::protobuf::uint64 mounted_fs::used_inodes() const {
+  return used_inodes_;
+}
+inline void mounted_fs::set_used_inodes(::google::protobuf::uint64 value) {
+  set_has_used_inodes();
+  used_inodes_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // file_stat
@@ -16651,6 +18610,126 @@ container::mutable_labels() {
   return &labels_;
 }
 
+// repeated .draiosproto.mounted_fs mounts = 21;
+inline int container::mounts_size() const {
+  return mounts_.size();
+}
+inline void container::clear_mounts() {
+  mounts_.Clear();
+}
+inline const ::draiosproto::mounted_fs& container::mounts(int index) const {
+  return mounts_.Get(index);
+}
+inline ::draiosproto::mounted_fs* container::mutable_mounts(int index) {
+  return mounts_.Mutable(index);
+}
+inline ::draiosproto::mounted_fs* container::add_mounts() {
+  return mounts_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >&
+container::mounts() const {
+  return mounts_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs >*
+container::mutable_mounts() {
+  return &mounts_;
+}
+
+// repeated .draiosproto.network_by_port network_by_serverports = 22;
+inline int container::network_by_serverports_size() const {
+  return network_by_serverports_.size();
+}
+inline void container::clear_network_by_serverports() {
+  network_by_serverports_.Clear();
+}
+inline const ::draiosproto::network_by_port& container::network_by_serverports(int index) const {
+  return network_by_serverports_.Get(index);
+}
+inline ::draiosproto::network_by_port* container::mutable_network_by_serverports(int index) {
+  return network_by_serverports_.Mutable(index);
+}
+inline ::draiosproto::network_by_port* container::add_network_by_serverports() {
+  return network_by_serverports_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >&
+container::network_by_serverports() const {
+  return network_by_serverports_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
+container::mutable_network_by_serverports() {
+  return &network_by_serverports_;
+}
+
+// optional string mesos_task_id = 23;
+inline bool container::has_mesos_task_id() const {
+  return (_has_bits_[0] & 0x00040000u) != 0;
+}
+inline void container::set_has_mesos_task_id() {
+  _has_bits_[0] |= 0x00040000u;
+}
+inline void container::clear_has_mesos_task_id() {
+  _has_bits_[0] &= ~0x00040000u;
+}
+inline void container::clear_mesos_task_id() {
+  if (mesos_task_id_ != &::google::protobuf::internal::kEmptyString) {
+    mesos_task_id_->clear();
+  }
+  clear_has_mesos_task_id();
+}
+inline const ::std::string& container::mesos_task_id() const {
+  return *mesos_task_id_;
+}
+inline void container::set_mesos_task_id(const ::std::string& value) {
+  set_has_mesos_task_id();
+  if (mesos_task_id_ == &::google::protobuf::internal::kEmptyString) {
+    mesos_task_id_ = new ::std::string;
+  }
+  mesos_task_id_->assign(value);
+}
+inline void container::set_mesos_task_id(const char* value) {
+  set_has_mesos_task_id();
+  if (mesos_task_id_ == &::google::protobuf::internal::kEmptyString) {
+    mesos_task_id_ = new ::std::string;
+  }
+  mesos_task_id_->assign(value);
+}
+inline void container::set_mesos_task_id(const char* value, size_t size) {
+  set_has_mesos_task_id();
+  if (mesos_task_id_ == &::google::protobuf::internal::kEmptyString) {
+    mesos_task_id_ = new ::std::string;
+  }
+  mesos_task_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container::mutable_mesos_task_id() {
+  set_has_mesos_task_id();
+  if (mesos_task_id_ == &::google::protobuf::internal::kEmptyString) {
+    mesos_task_id_ = new ::std::string;
+  }
+  return mesos_task_id_;
+}
+inline ::std::string* container::release_mesos_task_id() {
+  clear_has_mesos_task_id();
+  if (mesos_task_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = mesos_task_id_;
+    mesos_task_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container::set_allocated_mesos_task_id(::std::string* mesos_task_id) {
+  if (mesos_task_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete mesos_task_id_;
+  }
+  if (mesos_task_id) {
+    set_has_mesos_task_id();
+    mesos_task_id_ = mesos_task_id;
+  } else {
+    clear_has_mesos_task_id();
+    mesos_task_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
 // -------------------------------------------------------------------
 
 // k8s_pair
@@ -17483,6 +19562,28 @@ inline void k8s_pod::set_allocated_internal_ip(::std::string* internal_ip) {
   }
 }
 
+// optional uint32 restart_count = 6;
+inline bool k8s_pod::has_restart_count() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void k8s_pod::set_has_restart_count() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void k8s_pod::clear_has_restart_count() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void k8s_pod::clear_restart_count() {
+  restart_count_ = 0u;
+  clear_has_restart_count();
+}
+inline ::google::protobuf::uint32 k8s_pod::restart_count() const {
+  return restart_count_;
+}
+inline void k8s_pod::set_restart_count(::google::protobuf::uint32 value) {
+  set_has_restart_count();
+  restart_count_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // k8s_replication_controller
@@ -17523,6 +19624,136 @@ inline void k8s_replication_controller::set_allocated_common(::draiosproto::k8s_
   } else {
     clear_has_common();
   }
+}
+
+// optional uint32 replicas_desired = 2;
+inline bool k8s_replication_controller::has_replicas_desired() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_replication_controller::set_has_replicas_desired() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_replication_controller::clear_has_replicas_desired() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_replication_controller::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
+}
+inline ::google::protobuf::uint32 k8s_replication_controller::replicas_desired() const {
+  return replicas_desired_;
+}
+inline void k8s_replication_controller::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
+}
+
+// optional uint32 replicas_running = 3;
+inline bool k8s_replication_controller::has_replicas_running() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_replication_controller::set_has_replicas_running() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_replication_controller::clear_has_replicas_running() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_replication_controller::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
+}
+inline ::google::protobuf::uint32 k8s_replication_controller::replicas_running() const {
+  return replicas_running_;
+}
+inline void k8s_replication_controller::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// k8s_replica_set
+
+// required .draiosproto.k8s_common common = 1;
+inline bool k8s_replica_set::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_replica_set::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_replica_set::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_replica_set::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::k8s_common& k8s_replica_set::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::k8s_common* k8s_replica_set::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::k8s_common;
+  return common_;
+}
+inline ::draiosproto::k8s_common* k8s_replica_set::release_common() {
+  clear_has_common();
+  ::draiosproto::k8s_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void k8s_replica_set::set_allocated_common(::draiosproto::k8s_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// optional uint32 replicas_desired = 2;
+inline bool k8s_replica_set::has_replicas_desired() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_replica_set::set_has_replicas_desired() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_replica_set::clear_has_replicas_desired() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_replica_set::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
+}
+inline ::google::protobuf::uint32 k8s_replica_set::replicas_desired() const {
+  return replicas_desired_;
+}
+inline void k8s_replica_set::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
+}
+
+// optional uint32 replicas_running = 3;
+inline bool k8s_replica_set::has_replicas_running() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_replica_set::set_has_replicas_running() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_replica_set::clear_has_replicas_running() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_replica_set::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
+}
+inline ::google::protobuf::uint32 k8s_replica_set::replicas_running() const {
+  return replicas_running_;
+}
+inline void k8s_replica_set::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -17804,6 +20035,178 @@ k8s_service::mutable_ports() {
 
 // -------------------------------------------------------------------
 
+// k8s_deployment
+
+// required .draiosproto.k8s_common common = 1;
+inline bool k8s_deployment::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_deployment::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_deployment::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_deployment::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::k8s_common& k8s_deployment::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::k8s_common* k8s_deployment::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::k8s_common;
+  return common_;
+}
+inline ::draiosproto::k8s_common* k8s_deployment::release_common() {
+  clear_has_common();
+  ::draiosproto::k8s_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void k8s_deployment::set_allocated_common(::draiosproto::k8s_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// optional uint32 replicas_desired = 2;
+inline bool k8s_deployment::has_replicas_desired() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_deployment::set_has_replicas_desired() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_deployment::clear_has_replicas_desired() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_deployment::clear_replicas_desired() {
+  replicas_desired_ = 0u;
+  clear_has_replicas_desired();
+}
+inline ::google::protobuf::uint32 k8s_deployment::replicas_desired() const {
+  return replicas_desired_;
+}
+inline void k8s_deployment::set_replicas_desired(::google::protobuf::uint32 value) {
+  set_has_replicas_desired();
+  replicas_desired_ = value;
+}
+
+// optional uint32 replicas_running = 3;
+inline bool k8s_deployment::has_replicas_running() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_deployment::set_has_replicas_running() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_deployment::clear_has_replicas_running() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_deployment::clear_replicas_running() {
+  replicas_running_ = 0u;
+  clear_has_replicas_running();
+}
+inline ::google::protobuf::uint32 k8s_deployment::replicas_running() const {
+  return replicas_running_;
+}
+inline void k8s_deployment::set_replicas_running(::google::protobuf::uint32 value) {
+  set_has_replicas_running();
+  replicas_running_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// k8s_daemonset
+
+// required .draiosproto.k8s_common common = 1;
+inline bool k8s_daemonset::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void k8s_daemonset::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void k8s_daemonset::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void k8s_daemonset::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::k8s_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::k8s_common& k8s_daemonset::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::k8s_common* k8s_daemonset::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::k8s_common;
+  return common_;
+}
+inline ::draiosproto::k8s_common* k8s_daemonset::release_common() {
+  clear_has_common();
+  ::draiosproto::k8s_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void k8s_daemonset::set_allocated_common(::draiosproto::k8s_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// optional uint32 current_scheduled = 2;
+inline bool k8s_daemonset::has_current_scheduled() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void k8s_daemonset::set_has_current_scheduled() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void k8s_daemonset::clear_has_current_scheduled() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void k8s_daemonset::clear_current_scheduled() {
+  current_scheduled_ = 0u;
+  clear_has_current_scheduled();
+}
+inline ::google::protobuf::uint32 k8s_daemonset::current_scheduled() const {
+  return current_scheduled_;
+}
+inline void k8s_daemonset::set_current_scheduled(::google::protobuf::uint32 value) {
+  set_has_current_scheduled();
+  current_scheduled_ = value;
+}
+
+// optional uint32 desired_scheduled = 3;
+inline bool k8s_daemonset::has_desired_scheduled() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void k8s_daemonset::set_has_desired_scheduled() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void k8s_daemonset::clear_has_desired_scheduled() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void k8s_daemonset::clear_desired_scheduled() {
+  desired_scheduled_ = 0u;
+  clear_has_desired_scheduled();
+}
+inline ::google::protobuf::uint32 k8s_daemonset::desired_scheduled() const {
+  return desired_scheduled_;
+}
+inline void k8s_daemonset::set_desired_scheduled(::google::protobuf::uint32 value) {
+  set_has_desired_scheduled();
+  desired_scheduled_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // k8s_state
 
 // repeated .draiosproto.k8s_namespace namespaces = 1;
@@ -17929,6 +20332,936 @@ k8s_state::services() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_service >*
 k8s_state::mutable_services() {
   return &services_;
+}
+
+// repeated .draiosproto.k8s_replica_set replica_sets = 6;
+inline int k8s_state::replica_sets_size() const {
+  return replica_sets_.size();
+}
+inline void k8s_state::clear_replica_sets() {
+  replica_sets_.Clear();
+}
+inline const ::draiosproto::k8s_replica_set& k8s_state::replica_sets(int index) const {
+  return replica_sets_.Get(index);
+}
+inline ::draiosproto::k8s_replica_set* k8s_state::mutable_replica_sets(int index) {
+  return replica_sets_.Mutable(index);
+}
+inline ::draiosproto::k8s_replica_set* k8s_state::add_replica_sets() {
+  return replica_sets_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >&
+k8s_state::replica_sets() const {
+  return replica_sets_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_replica_set >*
+k8s_state::mutable_replica_sets() {
+  return &replica_sets_;
+}
+
+// repeated .draiosproto.k8s_deployment deployments = 7;
+inline int k8s_state::deployments_size() const {
+  return deployments_.size();
+}
+inline void k8s_state::clear_deployments() {
+  deployments_.Clear();
+}
+inline const ::draiosproto::k8s_deployment& k8s_state::deployments(int index) const {
+  return deployments_.Get(index);
+}
+inline ::draiosproto::k8s_deployment* k8s_state::mutable_deployments(int index) {
+  return deployments_.Mutable(index);
+}
+inline ::draiosproto::k8s_deployment* k8s_state::add_deployments() {
+  return deployments_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >&
+k8s_state::deployments() const {
+  return deployments_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_deployment >*
+k8s_state::mutable_deployments() {
+  return &deployments_;
+}
+
+// repeated .draiosproto.k8s_daemonset daemonsets = 8;
+inline int k8s_state::daemonsets_size() const {
+  return daemonsets_.size();
+}
+inline void k8s_state::clear_daemonsets() {
+  daemonsets_.Clear();
+}
+inline const ::draiosproto::k8s_daemonset& k8s_state::daemonsets(int index) const {
+  return daemonsets_.Get(index);
+}
+inline ::draiosproto::k8s_daemonset* k8s_state::mutable_daemonsets(int index) {
+  return daemonsets_.Mutable(index);
+}
+inline ::draiosproto::k8s_daemonset* k8s_state::add_daemonsets() {
+  return daemonsets_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >&
+k8s_state::daemonsets() const {
+  return daemonsets_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::k8s_daemonset >*
+k8s_state::mutable_daemonsets() {
+  return &daemonsets_;
+}
+
+// -------------------------------------------------------------------
+
+// mesos_pair
+
+// required string key = 1;
+inline bool mesos_pair::has_key() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mesos_pair::set_has_key() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mesos_pair::clear_has_key() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mesos_pair::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
+  }
+  clear_has_key();
+}
+inline const ::std::string& mesos_pair::key() const {
+  return *key_;
+}
+inline void mesos_pair::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void mesos_pair::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void mesos_pair::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_pair::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  return key_;
+}
+inline ::std::string* mesos_pair::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_pair::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (key) {
+    set_has_key();
+    key_ = key;
+  } else {
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string value = 2;
+inline bool mesos_pair::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mesos_pair::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mesos_pair::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mesos_pair::clear_value() {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    value_->clear();
+  }
+  clear_has_value();
+}
+inline const ::std::string& mesos_pair::value() const {
+  return *value_;
+}
+inline void mesos_pair::set_value(const ::std::string& value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void mesos_pair::set_value(const char* value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void mesos_pair::set_value(const char* value, size_t size) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_pair::mutable_value() {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  return value_;
+}
+inline ::std::string* mesos_pair::release_value() {
+  clear_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = value_;
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_pair::set_allocated_value(::std::string* value) {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (value) {
+    set_has_value();
+    value_ = value;
+  } else {
+    clear_has_value();
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// mesos_common
+
+// required string uid = 1;
+inline bool mesos_common::has_uid() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mesos_common::set_has_uid() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mesos_common::clear_has_uid() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mesos_common::clear_uid() {
+  if (uid_ != &::google::protobuf::internal::kEmptyString) {
+    uid_->clear();
+  }
+  clear_has_uid();
+}
+inline const ::std::string& mesos_common::uid() const {
+  return *uid_;
+}
+inline void mesos_common::set_uid(const ::std::string& value) {
+  set_has_uid();
+  if (uid_ == &::google::protobuf::internal::kEmptyString) {
+    uid_ = new ::std::string;
+  }
+  uid_->assign(value);
+}
+inline void mesos_common::set_uid(const char* value) {
+  set_has_uid();
+  if (uid_ == &::google::protobuf::internal::kEmptyString) {
+    uid_ = new ::std::string;
+  }
+  uid_->assign(value);
+}
+inline void mesos_common::set_uid(const char* value, size_t size) {
+  set_has_uid();
+  if (uid_ == &::google::protobuf::internal::kEmptyString) {
+    uid_ = new ::std::string;
+  }
+  uid_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_common::mutable_uid() {
+  set_has_uid();
+  if (uid_ == &::google::protobuf::internal::kEmptyString) {
+    uid_ = new ::std::string;
+  }
+  return uid_;
+}
+inline ::std::string* mesos_common::release_uid() {
+  clear_has_uid();
+  if (uid_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = uid_;
+    uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_common::set_allocated_uid(::std::string* uid) {
+  if (uid_ != &::google::protobuf::internal::kEmptyString) {
+    delete uid_;
+  }
+  if (uid) {
+    set_has_uid();
+    uid_ = uid;
+  } else {
+    clear_has_uid();
+    uid_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string name = 2;
+inline bool mesos_common::has_name() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mesos_common::set_has_name() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mesos_common::clear_has_name() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mesos_common::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& mesos_common::name() const {
+  return *name_;
+}
+inline void mesos_common::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void mesos_common::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void mesos_common::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_common::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* mesos_common::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_common::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.mesos_pair labels = 3;
+inline int mesos_common::labels_size() const {
+  return labels_.size();
+}
+inline void mesos_common::clear_labels() {
+  labels_.Clear();
+}
+inline const ::draiosproto::mesos_pair& mesos_common::labels(int index) const {
+  return labels_.Get(index);
+}
+inline ::draiosproto::mesos_pair* mesos_common::mutable_labels(int index) {
+  return labels_.Mutable(index);
+}
+inline ::draiosproto::mesos_pair* mesos_common::add_labels() {
+  return labels_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_pair >&
+mesos_common::labels() const {
+  return labels_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_pair >*
+mesos_common::mutable_labels() {
+  return &labels_;
+}
+
+// -------------------------------------------------------------------
+
+// mesos_task
+
+// required .draiosproto.mesos_common common = 1;
+inline bool mesos_task::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mesos_task::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mesos_task::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mesos_task::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::mesos_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::mesos_common& mesos_task::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::mesos_common* mesos_task::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::mesos_common;
+  return common_;
+}
+inline ::draiosproto::mesos_common* mesos_task::release_common() {
+  clear_has_common();
+  ::draiosproto::mesos_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void mesos_task::set_allocated_common(::draiosproto::mesos_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// required string slave_id = 2;
+inline bool mesos_task::has_slave_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void mesos_task::set_has_slave_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void mesos_task::clear_has_slave_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void mesos_task::clear_slave_id() {
+  if (slave_id_ != &::google::protobuf::internal::kEmptyString) {
+    slave_id_->clear();
+  }
+  clear_has_slave_id();
+}
+inline const ::std::string& mesos_task::slave_id() const {
+  return *slave_id_;
+}
+inline void mesos_task::set_slave_id(const ::std::string& value) {
+  set_has_slave_id();
+  if (slave_id_ == &::google::protobuf::internal::kEmptyString) {
+    slave_id_ = new ::std::string;
+  }
+  slave_id_->assign(value);
+}
+inline void mesos_task::set_slave_id(const char* value) {
+  set_has_slave_id();
+  if (slave_id_ == &::google::protobuf::internal::kEmptyString) {
+    slave_id_ = new ::std::string;
+  }
+  slave_id_->assign(value);
+}
+inline void mesos_task::set_slave_id(const char* value, size_t size) {
+  set_has_slave_id();
+  if (slave_id_ == &::google::protobuf::internal::kEmptyString) {
+    slave_id_ = new ::std::string;
+  }
+  slave_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* mesos_task::mutable_slave_id() {
+  set_has_slave_id();
+  if (slave_id_ == &::google::protobuf::internal::kEmptyString) {
+    slave_id_ = new ::std::string;
+  }
+  return slave_id_;
+}
+inline ::std::string* mesos_task::release_slave_id() {
+  clear_has_slave_id();
+  if (slave_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = slave_id_;
+    slave_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void mesos_task::set_allocated_slave_id(::std::string* slave_id) {
+  if (slave_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete slave_id_;
+  }
+  if (slave_id) {
+    set_has_slave_id();
+    slave_id_ = slave_id;
+  } else {
+    clear_has_slave_id();
+    slave_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// marathon_app
+
+// required string id = 1;
+inline bool marathon_app::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void marathon_app::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void marathon_app::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void marathon_app::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& marathon_app::id() const {
+  return *id_;
+}
+inline void marathon_app::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_app::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_app::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* marathon_app::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* marathon_app::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void marathon_app::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated string task_ids = 2;
+inline int marathon_app::task_ids_size() const {
+  return task_ids_.size();
+}
+inline void marathon_app::clear_task_ids() {
+  task_ids_.Clear();
+}
+inline const ::std::string& marathon_app::task_ids(int index) const {
+  return task_ids_.Get(index);
+}
+inline ::std::string* marathon_app::mutable_task_ids(int index) {
+  return task_ids_.Mutable(index);
+}
+inline void marathon_app::set_task_ids(int index, const ::std::string& value) {
+  task_ids_.Mutable(index)->assign(value);
+}
+inline void marathon_app::set_task_ids(int index, const char* value) {
+  task_ids_.Mutable(index)->assign(value);
+}
+inline void marathon_app::set_task_ids(int index, const char* value, size_t size) {
+  task_ids_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* marathon_app::add_task_ids() {
+  return task_ids_.Add();
+}
+inline void marathon_app::add_task_ids(const ::std::string& value) {
+  task_ids_.Add()->assign(value);
+}
+inline void marathon_app::add_task_ids(const char* value) {
+  task_ids_.Add()->assign(value);
+}
+inline void marathon_app::add_task_ids(const char* value, size_t size) {
+  task_ids_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+marathon_app::task_ids() const {
+  return task_ids_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+marathon_app::mutable_task_ids() {
+  return &task_ids_;
+}
+
+// -------------------------------------------------------------------
+
+// marathon_group
+
+// required string id = 1;
+inline bool marathon_group::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void marathon_group::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void marathon_group::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void marathon_group::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& marathon_group::id() const {
+  return *id_;
+}
+inline void marathon_group::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_group::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void marathon_group::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* marathon_group::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* marathon_group::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void marathon_group::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.marathon_app apps = 2;
+inline int marathon_group::apps_size() const {
+  return apps_.size();
+}
+inline void marathon_group::clear_apps() {
+  apps_.Clear();
+}
+inline const ::draiosproto::marathon_app& marathon_group::apps(int index) const {
+  return apps_.Get(index);
+}
+inline ::draiosproto::marathon_app* marathon_group::mutable_apps(int index) {
+  return apps_.Mutable(index);
+}
+inline ::draiosproto::marathon_app* marathon_group::add_apps() {
+  return apps_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >&
+marathon_group::apps() const {
+  return apps_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_app >*
+marathon_group::mutable_apps() {
+  return &apps_;
+}
+
+// repeated .draiosproto.marathon_group groups = 3;
+inline int marathon_group::groups_size() const {
+  return groups_.size();
+}
+inline void marathon_group::clear_groups() {
+  groups_.Clear();
+}
+inline const ::draiosproto::marathon_group& marathon_group::groups(int index) const {
+  return groups_.Get(index);
+}
+inline ::draiosproto::marathon_group* marathon_group::mutable_groups(int index) {
+  return groups_.Mutable(index);
+}
+inline ::draiosproto::marathon_group* marathon_group::add_groups() {
+  return groups_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+marathon_group::groups() const {
+  return groups_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+marathon_group::mutable_groups() {
+  return &groups_;
+}
+
+// -------------------------------------------------------------------
+
+// mesos_framework
+
+// required .draiosproto.mesos_common common = 1;
+inline bool mesos_framework::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mesos_framework::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mesos_framework::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mesos_framework::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::mesos_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::mesos_common& mesos_framework::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::mesos_common* mesos_framework::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::mesos_common;
+  return common_;
+}
+inline ::draiosproto::mesos_common* mesos_framework::release_common() {
+  clear_has_common();
+  ::draiosproto::mesos_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void mesos_framework::set_allocated_common(::draiosproto::mesos_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// repeated .draiosproto.mesos_task tasks = 2;
+inline int mesos_framework::tasks_size() const {
+  return tasks_.size();
+}
+inline void mesos_framework::clear_tasks() {
+  tasks_.Clear();
+}
+inline const ::draiosproto::mesos_task& mesos_framework::tasks(int index) const {
+  return tasks_.Get(index);
+}
+inline ::draiosproto::mesos_task* mesos_framework::mutable_tasks(int index) {
+  return tasks_.Mutable(index);
+}
+inline ::draiosproto::mesos_task* mesos_framework::add_tasks() {
+  return tasks_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >&
+mesos_framework::tasks() const {
+  return tasks_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_task >*
+mesos_framework::mutable_tasks() {
+  return &tasks_;
+}
+
+// -------------------------------------------------------------------
+
+// mesos_slave
+
+// required .draiosproto.mesos_common common = 1;
+inline bool mesos_slave::has_common() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void mesos_slave::set_has_common() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void mesos_slave::clear_has_common() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void mesos_slave::clear_common() {
+  if (common_ != NULL) common_->::draiosproto::mesos_common::Clear();
+  clear_has_common();
+}
+inline const ::draiosproto::mesos_common& mesos_slave::common() const {
+  return common_ != NULL ? *common_ : *default_instance_->common_;
+}
+inline ::draiosproto::mesos_common* mesos_slave::mutable_common() {
+  set_has_common();
+  if (common_ == NULL) common_ = new ::draiosproto::mesos_common;
+  return common_;
+}
+inline ::draiosproto::mesos_common* mesos_slave::release_common() {
+  clear_has_common();
+  ::draiosproto::mesos_common* temp = common_;
+  common_ = NULL;
+  return temp;
+}
+inline void mesos_slave::set_allocated_common(::draiosproto::mesos_common* common) {
+  delete common_;
+  common_ = common;
+  if (common) {
+    set_has_common();
+  } else {
+    clear_has_common();
+  }
+}
+
+// -------------------------------------------------------------------
+
+// mesos_state
+
+// repeated .draiosproto.mesos_framework frameworks = 1;
+inline int mesos_state::frameworks_size() const {
+  return frameworks_.size();
+}
+inline void mesos_state::clear_frameworks() {
+  frameworks_.Clear();
+}
+inline const ::draiosproto::mesos_framework& mesos_state::frameworks(int index) const {
+  return frameworks_.Get(index);
+}
+inline ::draiosproto::mesos_framework* mesos_state::mutable_frameworks(int index) {
+  return frameworks_.Mutable(index);
+}
+inline ::draiosproto::mesos_framework* mesos_state::add_frameworks() {
+  return frameworks_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >&
+mesos_state::frameworks() const {
+  return frameworks_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_framework >*
+mesos_state::mutable_frameworks() {
+  return &frameworks_;
+}
+
+// repeated .draiosproto.marathon_group groups = 2;
+inline int mesos_state::groups_size() const {
+  return groups_.size();
+}
+inline void mesos_state::clear_groups() {
+  groups_.Clear();
+}
+inline const ::draiosproto::marathon_group& mesos_state::groups(int index) const {
+  return groups_.Get(index);
+}
+inline ::draiosproto::marathon_group* mesos_state::mutable_groups(int index) {
+  return groups_.Mutable(index);
+}
+inline ::draiosproto::marathon_group* mesos_state::add_groups() {
+  return groups_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >&
+mesos_state::groups() const {
+  return groups_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::marathon_group >*
+mesos_state::mutable_groups() {
+  return &groups_;
+}
+
+// repeated .draiosproto.mesos_slave slaves = 3;
+inline int mesos_state::slaves_size() const {
+  return slaves_.size();
+}
+inline void mesos_state::clear_slaves() {
+  slaves_.Clear();
+}
+inline const ::draiosproto::mesos_slave& mesos_state::slaves(int index) const {
+  return slaves_.Get(index);
+}
+inline ::draiosproto::mesos_slave* mesos_state::mutable_slaves(int index) {
+  return slaves_.Mutable(index);
+}
+inline ::draiosproto::mesos_slave* mesos_state::add_slaves() {
+  return slaves_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_slave >&
+mesos_state::slaves() const {
+  return slaves_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::mesos_slave >*
+mesos_state::mutable_slaves() {
+  return &slaves_;
 }
 
 // -------------------------------------------------------------------
@@ -18778,6 +22111,69 @@ inline void metrics::set_allocated_kubernetes(::draiosproto::k8s_state* kubernet
   } else {
     clear_has_kubernetes();
   }
+}
+
+// optional .draiosproto.mesos_state mesos = 25;
+inline bool metrics::has_mesos() const {
+  return (_has_bits_[0] & 0x00100000u) != 0;
+}
+inline void metrics::set_has_mesos() {
+  _has_bits_[0] |= 0x00100000u;
+}
+inline void metrics::clear_has_mesos() {
+  _has_bits_[0] &= ~0x00100000u;
+}
+inline void metrics::clear_mesos() {
+  if (mesos_ != NULL) mesos_->::draiosproto::mesos_state::Clear();
+  clear_has_mesos();
+}
+inline const ::draiosproto::mesos_state& metrics::mesos() const {
+  return mesos_ != NULL ? *mesos_ : *default_instance_->mesos_;
+}
+inline ::draiosproto::mesos_state* metrics::mutable_mesos() {
+  set_has_mesos();
+  if (mesos_ == NULL) mesos_ = new ::draiosproto::mesos_state;
+  return mesos_;
+}
+inline ::draiosproto::mesos_state* metrics::release_mesos() {
+  clear_has_mesos();
+  ::draiosproto::mesos_state* temp = mesos_;
+  mesos_ = NULL;
+  return temp;
+}
+inline void metrics::set_allocated_mesos(::draiosproto::mesos_state* mesos) {
+  delete mesos_;
+  mesos_ = mesos;
+  if (mesos) {
+    set_has_mesos();
+  } else {
+    clear_has_mesos();
+  }
+}
+
+// repeated .draiosproto.agent_event events = 26;
+inline int metrics::events_size() const {
+  return events_.size();
+}
+inline void metrics::clear_events() {
+  events_.Clear();
+}
+inline const ::draiosproto::agent_event& metrics::events(int index) const {
+  return events_.Get(index);
+}
+inline ::draiosproto::agent_event* metrics::mutable_events(int index) {
+  return events_.Mutable(index);
+}
+inline ::draiosproto::agent_event* metrics::add_events() {
+  return events_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >&
+metrics::events() const {
+  return events_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >*
+metrics::mutable_events() {
+  return &events_;
 }
 
 // -------------------------------------------------------------------
@@ -21402,6 +24798,433 @@ inline void dirty_shutdown_report::set_allocated_log(::std::string* log) {
     clear_has_log();
     log_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// -------------------------------------------------------------------
+
+// key_value
+
+// required string key = 1;
+inline bool key_value::has_key() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void key_value::set_has_key() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void key_value::clear_has_key() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void key_value::clear_key() {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    key_->clear();
+  }
+  clear_has_key();
+}
+inline const ::std::string& key_value::key() const {
+  return *key_;
+}
+inline void key_value::set_key(const ::std::string& value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void key_value::set_key(const char* value) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(value);
+}
+inline void key_value::set_key(const char* value, size_t size) {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  key_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* key_value::mutable_key() {
+  set_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    key_ = new ::std::string;
+  }
+  return key_;
+}
+inline ::std::string* key_value::release_key() {
+  clear_has_key();
+  if (key_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = key_;
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void key_value::set_allocated_key(::std::string* key) {
+  if (key_ != &::google::protobuf::internal::kEmptyString) {
+    delete key_;
+  }
+  if (key) {
+    set_has_key();
+    key_ = key;
+  } else {
+    clear_has_key();
+    key_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string value = 2;
+inline bool key_value::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void key_value::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void key_value::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void key_value::clear_value() {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    value_->clear();
+  }
+  clear_has_value();
+}
+inline const ::std::string& key_value::value() const {
+  return *value_;
+}
+inline void key_value::set_value(const ::std::string& value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void key_value::set_value(const char* value) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(value);
+}
+inline void key_value::set_value(const char* value, size_t size) {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  value_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* key_value::mutable_value() {
+  set_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    value_ = new ::std::string;
+  }
+  return value_;
+}
+inline ::std::string* key_value::release_value() {
+  clear_has_value();
+  if (value_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = value_;
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void key_value::set_allocated_value(::std::string* value) {
+  if (value_ != &::google::protobuf::internal::kEmptyString) {
+    delete value_;
+  }
+  if (value) {
+    set_has_value();
+    value_ = value;
+  } else {
+    clear_has_value();
+    value_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// agent_event
+
+// optional uint64 timestamp_sec = 1;
+inline bool agent_event::has_timestamp_sec() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void agent_event::set_has_timestamp_sec() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void agent_event::clear_has_timestamp_sec() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void agent_event::clear_timestamp_sec() {
+  timestamp_sec_ = GOOGLE_ULONGLONG(0);
+  clear_has_timestamp_sec();
+}
+inline ::google::protobuf::uint64 agent_event::timestamp_sec() const {
+  return timestamp_sec_;
+}
+inline void agent_event::set_timestamp_sec(::google::protobuf::uint64 value) {
+  set_has_timestamp_sec();
+  timestamp_sec_ = value;
+}
+
+// optional string scope = 2;
+inline bool agent_event::has_scope() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void agent_event::set_has_scope() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void agent_event::clear_has_scope() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void agent_event::clear_scope() {
+  if (scope_ != &::google::protobuf::internal::kEmptyString) {
+    scope_->clear();
+  }
+  clear_has_scope();
+}
+inline const ::std::string& agent_event::scope() const {
+  return *scope_;
+}
+inline void agent_event::set_scope(const ::std::string& value) {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  scope_->assign(value);
+}
+inline void agent_event::set_scope(const char* value) {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  scope_->assign(value);
+}
+inline void agent_event::set_scope(const char* value, size_t size) {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  scope_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* agent_event::mutable_scope() {
+  set_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    scope_ = new ::std::string;
+  }
+  return scope_;
+}
+inline ::std::string* agent_event::release_scope() {
+  clear_has_scope();
+  if (scope_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = scope_;
+    scope_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void agent_event::set_allocated_scope(::std::string* scope) {
+  if (scope_ != &::google::protobuf::internal::kEmptyString) {
+    delete scope_;
+  }
+  if (scope) {
+    set_has_scope();
+    scope_ = scope;
+  } else {
+    clear_has_scope();
+    scope_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string title = 3;
+inline bool agent_event::has_title() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void agent_event::set_has_title() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void agent_event::clear_has_title() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void agent_event::clear_title() {
+  if (title_ != &::google::protobuf::internal::kEmptyString) {
+    title_->clear();
+  }
+  clear_has_title();
+}
+inline const ::std::string& agent_event::title() const {
+  return *title_;
+}
+inline void agent_event::set_title(const ::std::string& value) {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  title_->assign(value);
+}
+inline void agent_event::set_title(const char* value) {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  title_->assign(value);
+}
+inline void agent_event::set_title(const char* value, size_t size) {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  title_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* agent_event::mutable_title() {
+  set_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    title_ = new ::std::string;
+  }
+  return title_;
+}
+inline ::std::string* agent_event::release_title() {
+  clear_has_title();
+  if (title_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = title_;
+    title_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void agent_event::set_allocated_title(::std::string* title) {
+  if (title_ != &::google::protobuf::internal::kEmptyString) {
+    delete title_;
+  }
+  if (title) {
+    set_has_title();
+    title_ = title;
+  } else {
+    clear_has_title();
+    title_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string description = 4;
+inline bool agent_event::has_description() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void agent_event::set_has_description() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void agent_event::clear_has_description() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void agent_event::clear_description() {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    description_->clear();
+  }
+  clear_has_description();
+}
+inline const ::std::string& agent_event::description() const {
+  return *description_;
+}
+inline void agent_event::set_description(const ::std::string& value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void agent_event::set_description(const char* value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void agent_event::set_description(const char* value, size_t size) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* agent_event::mutable_description() {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  return description_;
+}
+inline ::std::string* agent_event::release_description() {
+  clear_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = description_;
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void agent_event::set_allocated_description(::std::string* description) {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    delete description_;
+  }
+  if (description) {
+    set_has_description();
+    description_ = description;
+  } else {
+    clear_has_description();
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint32 severity = 5;
+inline bool agent_event::has_severity() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void agent_event::set_has_severity() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void agent_event::clear_has_severity() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void agent_event::clear_severity() {
+  severity_ = 0u;
+  clear_has_severity();
+}
+inline ::google::protobuf::uint32 agent_event::severity() const {
+  return severity_;
+}
+inline void agent_event::set_severity(::google::protobuf::uint32 value) {
+  set_has_severity();
+  severity_ = value;
+}
+
+// repeated .draiosproto.key_value tags = 6;
+inline int agent_event::tags_size() const {
+  return tags_.size();
+}
+inline void agent_event::clear_tags() {
+  tags_.Clear();
+}
+inline const ::draiosproto::key_value& agent_event::tags(int index) const {
+  return tags_.Get(index);
+}
+inline ::draiosproto::key_value* agent_event::mutable_tags(int index) {
+  return tags_.Mutable(index);
+}
+inline ::draiosproto::key_value* agent_event::add_tags() {
+  return tags_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >&
+agent_event::tags() const {
+  return tags_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >*
+agent_event::mutable_tags() {
+  return &tags_;
 }
 
 

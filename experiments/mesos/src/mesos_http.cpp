@@ -19,7 +19,7 @@
 #include <sys/ioctl.h>
 #include <string.h>
 
-mesos_http::mesos_http(mesos& m, const uri& url, bool discover, int timeout_ms):
+mesos_http::mesos_http(mesos& m, const uri& url, bool discover_mesos_lead_master, bool discover_marathon, int timeout_ms):
 	m_sync_curl(curl_easy_init()),
 	m_select_curl(curl_easy_init()),
 	m_mesos(m),
@@ -31,17 +31,18 @@ mesos_http::mesos_http(mesos& m, const uri& url, bool discover, int timeout_ms):
 	m_curl_version(curl_version_info(CURLVERSION_NOW)),
 	m_request(make_request(url, m_curl_version)),
 	m_is_mesos_state(url.to_string().find(mesos::default_state_api) != std::string::npos),
-	m_discover_lead_master(discover)
+	m_discover_lead_master(discover_mesos_lead_master),
+	m_discover_marathon(discover_marathon)
 {
 	if(!m_sync_curl || !m_select_curl)
 	{
-		throw sinsp_exception("CURL initialization failed.");
+		throw sinsp_exception("Mesos http: CURL initialization failed.");
 	}
 
 	ASSERT(m_curl_version);
 	if((m_url.get_scheme() == "https") && (m_curl_version && !(m_curl_version->features | CURL_VERSION_SSL)))
 	{
-		throw sinsp_exception("HTTPS NOT supported");
+		throw sinsp_exception("Mesos: HTTPS NOT supported");
 	}
 
 	check_error(curl_easy_setopt(m_sync_curl, CURLOPT_FORBID_REUSE, 1L));
@@ -218,51 +219,66 @@ void mesos_http::discover_framework_uris(const Json::Value& frameworks)
 	}
 	if(frameworks.isArray())
 	{
+		g_logger.log("Discovered " + std::to_string(frameworks.size()) + " frameworks.", sinsp_logger::SEV_DEBUG);
 		for(const auto& framework : frameworks)
 		{
-			Json::Value id = framework["id"];
+			const Json::Value& id = framework["id"];
 			if(id.isNull() || !id.isString())
 			{
 				throw sinsp_exception("Unexpected condition while detecting Marathon framework: ID entry not found.");
 			}
 			else
 			{
-				Json::Value active = framework["active"];
-				Json::Value fw_name = framework["name"];
-				std::string name, id;
-				if(!fw_name.isNull() && fw_name.isString() && !fw_name.asString().empty())
+				const Json::Value& active = framework["active"];
+				const Json::Value& fw_name = framework["name"];
+				std::string name;
+				if(!fw_name.isNull() && fw_name.isString())
 				{
 					name = fw_name.asString();
 				}
-				Json::Value fw_id = framework["id"];
-				if(!fw_id.isNull() && fw_id.isString() && !fw_id.asString().empty())
-				{
-					id = fw_id.asString();
-				}
+				g_logger.log("Examining " + name + " [" + id.asString() + "] framework.", sinsp_logger::SEV_DEBUG);
 				if(!active.isNull() && active.isBool() && active.asBool())
 				{
 					std::string framework_url = get_framework_url(framework);
 					if(!framework_url.empty())
 					{
-						if(mesos_framework::is_marathon(name))
+						if(m_discover_marathon)
 						{
-							g_logger.log(std::string("Found Marathon framework ").append(name).append(" (").append(id).append(") at [").append(framework_url).append(1, ']'),
-										 sinsp_logger::SEV_INFO);
-							m_marathon_uris.emplace_back(framework_url);
+							if(mesos_framework::is_root_marathon(name))
+							{
+								g_logger.log(std::string("Found Marathon framework ").append(name).append(" (").append(id.asString()).append(") at [").append(framework_url).append(1, ']'),
+											 sinsp_logger::SEV_INFO);
+								if(!m_marathon_uris.size())
+								{
+									m_marathon_uris.emplace_back(get_framework_url(framework));
+								}
+								else
+								{
+									g_logger.log("Multiple marathon URIs discovered; only the first one (" + m_marathon_uris[0] + ") will have effect;"
+										" others will be treated as generic frameworks.", sinsp_logger::SEV_WARNING);
+								}
+							}
+							else
+							{
+								g_logger.log(std::string("Skipping non-Marathon framework URL detection ").append(name).append(" (").append(id.asString()).append(1, ')'), sinsp_logger::SEV_DEBUG);
+							}
 						}
 						else
 						{
-							g_logger.log(std::string("Skipping non-Marathon framework URL detection ").append(name).append(" (").append(id).append(1, ')'), sinsp_logger::SEV_DEBUG);
+							g_logger.log(std::string("Marathon detection not enabled."), sinsp_logger::SEV_DEBUG);
 						}
 					}
 					else
 					{
-						throw sinsp_exception(std::string("Can not obtain URL for framework ").append(name));
+						if(m_discover_marathon && mesos_framework::is_root_marathon(name))
+						{
+							g_logger.log("Can not obtain URL for Marathon framework.", sinsp_logger::SEV_ERROR);
+						}
 					}
 				}
 				else // framework exists, but is not active - remove it if we were watching it so far
 				{
-						g_logger.log(std::string("Mesos framework ").append(name).append(" (").append(id).append(") deactivated."), sinsp_logger::SEV_INFO);
+						g_logger.log(std::string("Mesos framework ").append(name).append(" (").append(id.asString()).append(") deactivated."), sinsp_logger::SEV_INFO);
 						std::string framework_url = get_framework_url(framework);
 						for(marathon_uri_t::iterator it = m_marathon_uris.begin(); it != m_marathon_uris.end();)
 						{
@@ -593,7 +609,7 @@ bool mesos_http::on_data()
 		int loop_counter = 0;
 		do
 		{
-			size_t iolen = 0;
+			ssize_t iolen = 0;
 			int count = 0;
 			int ioret = 0;
 			ioret = ioctl(m_watch_socket, FIONREAD, &count);
@@ -606,7 +622,8 @@ bool mesos_http::on_data()
 				iolen = recv(m_watch_socket, &buf[0], count, 0);
 				if(iolen > 0)
 				{
-					data.append(&buf[0], iolen <= buf.size() ? iolen : buf.size());
+					ssize_t buf_size = static_cast<ssize_t>(buf.size());
+					data.append(&buf[0], iolen <= buf_size ? iolen : buf_size);
 				}
 				else if(iolen == 0) { goto connection_closed; }
 				else if(iolen < 0) { goto connection_error; }

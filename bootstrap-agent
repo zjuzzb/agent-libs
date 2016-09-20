@@ -309,7 +309,7 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	wget $DEPENDENCIES_URL/lyaml-release-v6.0.tar.gz
 	tar -xzf lyaml-release-v6.0.tar.gz
 	cd $LYAML_DIR
-	./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/luajit
+	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/luajit
 	make
 	make install
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${WORKDIR}/falco/userspace/engine/lua"

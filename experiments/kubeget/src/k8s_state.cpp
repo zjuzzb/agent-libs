@@ -23,14 +23,14 @@ k8s_state_t::k8s_state_t(bool is_captured) : m_is_captured(is_captured)
 // state/pods
 
 void k8s_state_t::update_pod(k8s_pod_t& pod, const Json::Value& item)
-{
+{/*
 	k8s_pod_t::container_id_list container_ids = k8s_component::extract_pod_container_ids(item);
 	k8s_container::list containers = k8s_component::extract_pod_containers(item);
 	k8s_component::extract_pod_data(item, pod);
 	pod.set_restart_count(k8s_component::extract_pod_restart_count(item));
 	pod.set_container_ids(std::move(container_ids));
 	pod.set_containers(std::move(containers));
-}
+*/}
 
 bool k8s_state_t::has_pod(k8s_pod_t& pod)
 {

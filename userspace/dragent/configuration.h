@@ -462,6 +462,7 @@ public:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
 
 	string m_mesos_state_uri;

@@ -90,6 +90,8 @@ public:
 	bool get_k8s_ssl_verify_certificate() const;
 	void set_k8s_timeout_ms(int k8s_timeout_ms);
 	int get_k8s_timeout_ms() const;
+	void set_k8s_simulate_delegation(bool k8s_simulate_delegation);
+	bool get_k8s_simulate_delegation() const;
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
 	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
@@ -155,6 +157,7 @@ private:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
 
 	unsigned m_statsd_limit;

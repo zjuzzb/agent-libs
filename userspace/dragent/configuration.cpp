@@ -508,6 +508,10 @@ void dragent_configuration::init(Application* app)
 	{
 		configure_k8s_from_env();
 	}
+	if(k8s_api_server_empty && m_k8s_api_server.empty())
+	{
+		m_k8s_delegated_nodes = 0;
+	}
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
 	{
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
@@ -517,6 +521,18 @@ void dragent_configuration::init(Application* app)
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
 	}
 
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	// non-production private setting, only used for testing - to simulate delegation when     //
+	// running [outside pod] AND [on the same host as K8s API server]                          //
+	// it will work if localhost K8s API server is manually configured OR auto-detected        //
+	// this setting will NOT work reliably when agent is running on another host and it should //
+	// *never* be set to true in production                                                    //
+	m_k8s_simulate_delegation = m_config->get_scalar<bool>("k8s_simulate_delegation", false);  //
+	if(m_k8s_simulate_delegation)                                                              //
+	{                                                                                          //
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);           //
+	}                                                                                          //
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 	// End K8s
@@ -658,12 +674,16 @@ void dragent_configuration::print_configuration()
 	if (!m_k8s_api_server.empty())
 	{
 		g_log->information("K8S API server: " + m_k8s_api_server);
-		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local())
+		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local() && !m_k8s_simulate_delegation)
 		{
 			m_k8s_delegated_nodes = 0;
 			g_logger.log("K8s API server is local, k8s_delegated_nodes (" +
 						 std::to_string(m_k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
 		}
+	}
+	if(m_k8s_simulate_delegation)
+	{
+		g_log->warning("!!! K8S delegation simulation enabled (non-production setting) !!!");
 	}
 	if(m_k8s_delegated_nodes)
 	{
