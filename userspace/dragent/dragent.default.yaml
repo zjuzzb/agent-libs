@@ -759,6 +759,7 @@ app_checks:
 # mesos_autodetect: true
 # mesos_timeout_ms: 30000
 # mesos_follow_leader: false
+# marathon_follow_leader: false
 #
 
 # End of mesos section
