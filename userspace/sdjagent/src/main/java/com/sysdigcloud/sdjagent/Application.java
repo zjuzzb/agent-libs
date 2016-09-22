@@ -93,6 +93,7 @@ public class Application {
     private void runWithArgs(String[] args) throws IOException {
         if(args[0].equals("getVMHandle") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
+            request.setSkipUidAndGid(true);
             final MonitoredVM vm = new MonitoredVM(request);
             final Map<String, Object> vmInfo = new HashMap<String, Object>();
             vmInfo.put("available", vm.isAvailable());

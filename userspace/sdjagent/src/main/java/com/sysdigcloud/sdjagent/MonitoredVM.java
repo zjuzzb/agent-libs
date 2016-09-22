@@ -78,14 +78,12 @@ public class MonitoredVM {
     private void retrieveVmInfoFromContainer(VMRequest request) {
         String data = null;
         final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
-        final String libsdjagentjniPath = String.format("%s/tmp/libsdjagentjni.so", request.getRoot());
-        LOGGER.fine(String.format("Copying sdjagent files to %s and %s", sdjagentPath, libsdjagentjniPath));
-        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath) &&
-           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), libsdjagentjniPath)) {
-            final String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+        LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
+        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
+            final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
             // Using /proc/<pid>/exe because sometimes java command is not on PATH
             final String javaExe = String.format("/proc/%d/exe", request.getVpid());
-            data = CLibrary.runOnContainer(request.getPid(), javaExe, command, request.getRoot());
+            data = CLibrary.runOnContainer(request.getPid(), request.getVpid(), javaExe, command, request.getRoot());
         } else {
             // These logs are with debug priority because may happen for every short lived java process
             LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
@@ -93,7 +91,6 @@ public class MonitoredVM {
         }
 
         CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
-        CLibrary.rmFromContainer(request.getPid(), libsdjagentjniPath);
 
         if (data != null && !data.isEmpty())
         {
@@ -124,22 +121,23 @@ public class MonitoredVM {
         // To load the agent, we need to be the same user and group
         // of the process
         boolean uidChanged = false;
-        try {
-            long[] idInfo = CLibrary.getUidAndGid(request.getPid());
-            int gid_error = CLibrary.setegid(idInfo[1]);
-            int uid_error = CLibrary.seteuid(idInfo[0]);
-            if (uid_error == 0 && gid_error == 0) {
-                LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
-            } else {
-                LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
-                        uid_error, gid_error));
+        if(!request.skipUidAndGid()) {
+            try {
+                long[] idInfo = CLibrary.getUidAndGid(request.getPid());
+                int gid_error = CLibrary.setegid(idInfo[1]);
+                int uid_error = CLibrary.seteuid(idInfo[0]);
+                if (uid_error == 0 && gid_error == 0) {
+                    LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
+                } else {
+                    LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
+                            uid_error, gid_error));
+                }
+                uidChanged = true;
+            } catch (IOException ex)
+            {
+                LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
             }
-            uidChanged = true;
-        } catch (IOException ex)
-        {
-            LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
         }
-
 
         try {
             JvmstatVM jvmstat;
