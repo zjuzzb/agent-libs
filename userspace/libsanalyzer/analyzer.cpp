@@ -917,6 +917,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 				m_mesos.reset(new mesos(mesos_state,
 					marathon_uris,
 					m_configuration->get_mesos_follow_leader(),
+					m_configuration->get_marathon_follow_leader(),
 					m_configuration->get_mesos_timeout_ms()));
 			}
 		}
@@ -1168,6 +1169,10 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 				g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
 				mesos_not_present = false;
 				m_configuration->set_mesos_follow_leader(true);
+				if(m_configuration->get_marathon_uris().empty())
+				{
+					m_configuration->set_marathon_follow_leader(true);
+				}
 				g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
 			}
 			else

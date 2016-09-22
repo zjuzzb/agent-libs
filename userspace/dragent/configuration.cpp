@@ -552,6 +552,8 @@ void dragent_configuration::init(Application* app)
 	m_mesos_timeout_ms = m_config->get_scalar<int>("mesos_timeout_ms", 10000);
 	m_mesos_follow_leader = m_config->get_scalar<bool>("mesos_follow_leader",
 							m_mesos_state_uri.empty() && m_mesos_autodetect ? true : false);
+	m_marathon_follow_leader = m_config->get_scalar<bool>("marathon_follow_leader",
+							marathon_uris.empty() && m_mesos_autodetect ? true : false);
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
@@ -677,7 +679,7 @@ void dragent_configuration::print_configuration()
 
 	if (!m_k8s_api_server.empty())
 	{
-		g_log->information("K8S API server: " + m_k8s_api_server);
+		g_log->information("K8S API server: " + uri(m_k8s_api_server).to_string(false));
 		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local() && !m_k8s_simulate_delegation)
 		{
 			m_k8s_delegated_nodes = 0;
@@ -752,8 +754,8 @@ void dragent_configuration::print_configuration()
 	{
 		for(const auto& marathon_uri : m_marathon_uris)
 		{
-			g_log->information("Marathon groups API server: " + marathon_uri);
-			g_log->information("Marathon apps API server: " + marathon_uri);
+			g_log->information("Marathon groups API server: " + uri(marathon_uri).to_string(false));
+			g_log->information("Marathon apps API server: " + uri(marathon_uri).to_string(false));
 		}
 	}
 	else
@@ -763,6 +765,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
 	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
 	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
+	g_log->information("Marathon leader following enabled: " + bool_as_text(m_marathon_follow_leader));
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
 	if(m_enable_falco_engine)

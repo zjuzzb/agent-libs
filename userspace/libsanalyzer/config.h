@@ -110,6 +110,8 @@ public:
 	int get_mesos_timeout_ms() const;
 	bool get_mesos_follow_leader() const;
 	void set_mesos_follow_leader(bool enabled);
+	bool get_marathon_follow_leader() const;
+	void set_marathon_follow_leader(bool enabled);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
@@ -167,6 +169,7 @@ private:
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
+	bool m_marathon_follow_leader;
 
 	bool m_curl_debug;
 
