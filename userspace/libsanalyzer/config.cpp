@@ -491,7 +491,10 @@ string sinsp_configuration::get_mesos_state_uri() const
 
 void sinsp_configuration::set_mesos_state_uri(const string & url)
 {
-	uri::check(url);
+	if(!url.empty())
+	{
+		uri::check(url);
+	}
 	m_mesos_state_uri = url;
 }
 
@@ -519,7 +522,10 @@ void sinsp_configuration::set_marathon_uris(const vector<string> & uris)
 {
 	for(const auto& u : uris)
 	{
-		uri::check(u);
+		if(!u.empty())
+		{
+			uri::check(u);
+		}
 	}
 	m_marathon_uris = uris;
 }
