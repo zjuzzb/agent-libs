@@ -86,6 +86,10 @@ k8s_component::k8s_component(type comp_type, const std::string& name, const std:
 {
 }
 
+k8s_component::~k8s_component()
+{
+}
+
 k8s_pair_list k8s_component::extract_object(const Json::Value& object, const std::string& name)
 {
 	k8s_pair_list entry_list;
@@ -107,10 +111,10 @@ k8s_pair_list k8s_component::extract_object(const Json::Value& object, const std
 	}
 	return entry_list;
 }
-
+#if 0
 bool k8s_component::is_pod_active(const Json::Value& item)
 {
-	const Json::Value& status = item["status"];
+	/*const Json::Value& status = item["status"];
 	if(!status.isNull())
 	{
 		const Json::Value& phase = status["phase"];
@@ -121,14 +125,14 @@ bool k8s_component::is_pod_active(const Json::Value& item)
 				return true;
 			}
 		}
-	}
+	}*/
 	return false;
 }
 
 std::vector<std::string> k8s_component::extract_pod_container_ids(const Json::Value& item)
 {
 	std::vector<std::string> container_list;
-	const Json::Value& status = item["status"];
+/*	const Json::Value& status = item["status"];
 	if(!status.isNull())
 	{
 		const Json::Value& containers = status["containerStatuses"];
@@ -143,14 +147,14 @@ std::vector<std::string> k8s_component::extract_pod_container_ids(const Json::Va
 				}
 			}
 		}
-	}
+	}*/
 	return container_list;
 }
 
 size_t k8s_component::extract_pod_restart_count(const Json::Value& item)
 {
 	size_t restart_count = 0;
-	const Json::Value& status = item["status"];
+	/*const Json::Value& status = item["status"];
 	if(!status.isNull())
 	{
 		const Json::Value& containers = status["containerStatuses"];
@@ -165,14 +169,14 @@ size_t k8s_component::extract_pod_restart_count(const Json::Value& item)
 				}
 			}
 		}
-	}
+	}*/
 	return restart_count;
 }
 
 k8s_container::list k8s_component::extract_pod_containers(const Json::Value& item)
 {
 	k8s_container::list ext_containers;
-	const Json::Value& spec = item["spec"];
+	/*const Json::Value& spec = item["spec"];
 	if(!spec.isNull())
 	{
 		const Json::Value& containers = spec["containers"];
@@ -220,12 +224,12 @@ k8s_container::list k8s_component::extract_pod_containers(const Json::Value& ite
 				ext_containers.emplace_back(k8s_container(cont_name, cont_ports));
 			}
 		}
-	}
+	}*/
 	return ext_containers;
 }
 
 void k8s_component::extract_pod_data(const Json::Value& item, k8s_pod_t& pod)
-{
+{/*
 	const Json::Value& spec = item["spec"];
 	if(!spec.isNull())
 	{
@@ -261,10 +265,10 @@ void k8s_component::extract_pod_data(const Json::Value& item, k8s_pod_t& pod)
 			}
 		}
 	}
-}
+*/}
 
 void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_t& service, const k8s_pods& pods)
-{
+{/*
 	if(!spec.isNull())
 	{
 		const Json::Value& cluster_ip = spec["clusterIP"];
@@ -353,8 +357,8 @@ void k8s_component::extract_services_data(const Json::Value& spec, k8s_service_t
 			service.set_port_list(std::move(pl));
 		}
 	}
-}
-
+*/}
+#endif // if 0
 std::string k8s_component::get_name(type t)
 {
 	switch (t)
@@ -431,6 +435,58 @@ k8s_component::type k8s_component::get_type(const std::string& name)
 	throw sinsp_exception(os.str().c_str());
 }
 
+std::string k8s_component::get_selector(type t)
+{
+	switch (t)
+	{
+	case K8S_PODS:
+		return "?fieldSelector=status.phase%3DRunning";
+	default:
+		break;
+	}
+	return "";
+}
+
+std::string k8s_component::get_selector(const component_pair& p)
+{
+	return get_selector(p.first);
+}
+
+std::string k8s_component::get_selector(const std::string& name)
+{
+	return get_selector(get_type(name));
+}
+
+bool k8s_component::is_critical(type t)
+{
+	switch (t)
+	{
+		case K8S_NODES:
+		case K8S_NAMESPACES:
+		case K8S_PODS:
+		case K8S_REPLICATIONCONTROLLERS:
+		case K8S_SERVICES:
+			return true;
+		case K8S_EVENTS:
+		case K8S_REPLICASETS:
+		case K8S_DAEMONSETS:
+		case K8S_DEPLOYMENTS:
+		default:
+			break;
+	}
+	return false;
+}
+
+bool k8s_component::is_critical(const component_pair& p)
+{
+	return is_critical(p.first);
+}
+
+bool k8s_component::is_critical(const std::string& name)
+{
+	return is_critical(get_type(name));
+}
+
 std::string k8s_component::get_api(type t, ext_list_ptr_t extensions)
 {
 	switch (t)
@@ -445,7 +501,7 @@ std::string k8s_component::get_api(type t, ext_list_ptr_t extensions)
 	case K8S_REPLICASETS:
 	case K8S_DAEMONSETS:
 	case K8S_DEPLOYMENTS:
-		if(extensions && extensions->find("v1beta1") != extensions->end())
+		if(extensions && extensions->size())
 		{
 			return "/apis/extensions/v1beta1/";
 		}
@@ -654,32 +710,68 @@ int k8s_replicas_t::get_count(const Json::Value& item, const std::string& replic
 		}
 	}
 
-	std::string name;
-	const Json::Value& tpl = item["template"];
-	if(!tpl.isNull())
+	if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 	{
-		const Json::Value& md = tpl["metadata"];
-		if(!md.isNull())
+		g_logger.log("K8s: Can not find " + replica_name + " in \n" + Json::FastWriter().write(item),
+					 sinsp_logger::SEV_DEBUG);
+
+		std::string name;
+		const Json::Value& tpl = item["template"];
+		if(!tpl.isNull())
 		{
-			const Json::Value& lbl = md["labels"];
-			if(!lbl.isNull())
+			const Json::Value& md = tpl["metadata"];
+			if(!md.isNull())
 			{
-				const Json::Value& n = lbl["name"];
-				if(!n.isNull() && n.isString())
+				const Json::Value& lbl = md["labels"];
+				if(!lbl.isNull())
 				{
-					name = n.asString();
+					const Json::Value& n = lbl["name"];
+					if(!n.isNull() && n.isString())
+					{
+						name = n.asString();
+					}
+					else
+					{
+						const Json::Value& n = lbl["app"];
+						if(!n.isNull() && n.isString())
+						{
+							name = n.asString();
+						}
+					}
 				}
 			}
 		}
-	}
 
-	g_logger.log("K8s: Can not determine number of replicas" +
-				 (name.empty() ? std::string() : std::string(" for ").append(name)),
-				 sinsp_logger::SEV_ERROR);
+		g_logger.log("K8s: Can not determine number of replicas" +
+					 (name.empty() ? std::string() : std::string(" for ").append(name)),
+					 sinsp_logger::SEV_DEBUG);
+	}
 
 	return k8s_replicas_t::UNKNOWN_REPLICAS;
 }
 
+void k8s_replicas_t::set_replicas(k8s_replicas_t& replicas, const Json::Value& item)
+{
+	int replica_count = k8s_replicas_t::get_count(item["spec"], "replicas");
+	if(replica_count != k8s_replicas_t::UNKNOWN_REPLICAS)
+	{
+		replicas.set_spec_replicas(replica_count);
+	}
+	replica_count = k8s_replicas_t::get_count(item["status"], "replicas");
+	if(replica_count != k8s_replicas_t::UNKNOWN_REPLICAS)
+	{
+		replicas.set_stat_replicas(replica_count);
+	}
+	else
+	{
+		int unavailable_replicas = k8s_replicas_t::get_count(item["status"], "unavailableReplicas");
+		int spec_replicas = replicas.get_spec_replicas();
+		if(spec_replicas != k8s_replicas_t::UNKNOWN_REPLICAS && unavailable_replicas < spec_replicas)
+		{
+			replicas.set_stat_replicas(spec_replicas - unavailable_replicas);
+		}
+	}
+}
 
 //
 // replication controller
@@ -701,6 +793,12 @@ std::vector<const k8s_pod_t*> k8s_rc_t::get_selected_pods(const std::vector<k8s_
 		}
 	}
 	return pod_vec;
+}
+
+void k8s_rc_t::set_replicas(int spec, int stat)
+{
+	set_spec_replicas(spec);
+	set_stat_replicas(stat);
 }
 
 //
@@ -768,6 +866,9 @@ k8s_event_t::k8s_event_t(const std::string& name, const std::string& uid, const 
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/controller_utils.go
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/node/nodecontroller.go
 		// https://github.com/kubernetes/kubernetes/blob/master/pkg/kubelet/kubelet.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/daemon/controller.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/deployment/deployment_controller.go
+		// https://github.com/kubernetes/kubernetes/blob/master/pkg/controller/deployment/util/deployment_util.go
 		//
 
 		//
@@ -844,7 +945,29 @@ k8s_event_t::k8s_event_t(const std::string& name, const std::string& uid, const 
 		{ "SuccessfulCreate",  "Pod Created"      },
 		{ "FailedCreate",      "Pod Create Failed"},
 		{ "SuccessfulDelete",  "Pod Deleted"      },
-		{ "FailedDelete",      "Pod Delete Failed"}
+		{ "FailedDelete",      "Pod Delete Failed"},
+
+		//
+		// Replica Set
+		//
+		// { "SuccessfulCreate",  "Pod Created"      }, duplicate
+		// { "FailedCreate",      "Pod Create Failed"}, duplicate
+		// { "SuccessfulDelete",  "Pod Deleted"      }, duplicate
+		// { "FailedDelete",      "Pod Delete Failed"}  duplicate
+
+		//
+		// Deployment
+		//
+		{ "SelectingAll",                        "Selecting All Pods"       },
+		{ "ScalingReplicaSet",                   "Scaling Replica Set"      },
+		{ "DeploymentRollbackRevisionNotFound",  "No revision to roll back" },
+		{ "DeploymentRollbackTemplateUnchanged", "Skipping Rollback"        },
+		{ "DeploymentRollback",                  "Rollback Done"            }
+
+		//
+		// Daemon Set
+		//
+		// { "SelectingAll", "Selecting All Pods" } duplicate
 	}
 {
 }

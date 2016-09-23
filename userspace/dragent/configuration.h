@@ -507,6 +507,7 @@ public:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
 
 	string m_mesos_state_uri;
@@ -514,6 +515,9 @@ public:
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
+	bool m_marathon_follow_leader;
+	mesos::credentials_t m_mesos_credentials;
+	mesos::credentials_t m_marathon_credentials;
 
 	bool m_falco_baselining_enabled;
 

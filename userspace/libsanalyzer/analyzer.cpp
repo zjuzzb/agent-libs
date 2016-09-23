@@ -918,7 +918,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 				string mesos_state = m_configuration->get_mesos_state_uri();
 				vector<string> marathon_uris = m_configuration->get_marathon_uris();
 
-				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
+				g_logger.log("Mesos master version [" + version + "] found at " + uri(mesos_state).to_string(false),
 					sinsp_logger::SEV_INFO);
 				g_logger.log("Mesos state: [" + uri(mesos_state + mesos::default_state_api).to_string(false) + ']',
 					sinsp_logger::SEV_INFO);
@@ -931,11 +931,12 @@ void sinsp_analyzer::make_mesos(string&& json)
 				}
 
 				if(m_mesos) { m_mesos.reset(); }
-				m_mesos.reset(new mesos(mesos_state, mesos::default_state_api,
+				m_mesos.reset(new mesos(mesos_state,
 					marathon_uris,
-					mesos::default_groups_api,
-					mesos::default_apps_api,
 					m_configuration->get_mesos_follow_leader(),
+					m_configuration->get_marathon_follow_leader(),
+					m_configuration->get_mesos_credentials(),
+					m_configuration->get_marathon_credentials(),
 					m_configuration->get_mesos_timeout_ms()));
 			}
 		}
@@ -966,178 +967,87 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 	}
 }
 
-sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::string& addr)
+sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::string& k8s_api)
 {
-	string path = "/apis/extensions";
-	uri url(addr + path);
-	g_logger.log("Detecting K8S extensions at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
-	std::unique_ptr<sinsp_curl> sc;
-	if(url.is_secure() && !m_k8s_ssl)
+	const k8s_ext_list_t& ext_list = m_configuration->get_k8s_extensions();
+	if(ext_list.size())
 	{
-		const std::string& cert          = m_configuration->get_k8s_ssl_cert();
-		const std::string& key           = m_configuration->get_k8s_ssl_key();
-		const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
-		const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
-		bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
-		const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
-		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
-	}
-	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-	if(!m_k8s_bt && !bt_auth_token.empty())
-	{
-		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
-	}
-	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
-	string json = sc->get_data();
-	if(!json.empty())
-	{
-		std::string filter = "[.versions[].version]";
-		json_query jq;
-		if(jq.process(json, filter))
-		{
-			json = jq.result();
-			Json::Value root;
-			Json::Reader reader;
-			if(reader.parse(json, root))
-			{
-				if(!root.isNull() && root.isArray())
-				{
-					k8s_ext_list_t ext_list;
-					for(const auto& ext : root)
-					{
-						if(!ext.isNull() && ext.isString())
-						{
-							std::string ext_name = ext.asString();
-							g_logger.log("K8s extension discovered: " + ext_name, sinsp_logger::SEV_INFO);
-							ext_name.insert(0, 1, '/');
-							sc.reset(new sinsp_curl(uri(url.to_string() + ext_name), m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
-							json = sc->get_data();
-							filter = "[.resources[].name]";
-							if(jq.process(json, filter))
-							{
-								json = jq.result();
-								Json::Value root;
-								Json::Reader reader;
-								if(reader.parse(json, root))
-								{
-									if(!root.isNull())
-									{
-										if(root.isArray())
-										{
-											for(const auto& extension : root)
-											{
-												if(!extension.isNull() && extension.isConvertibleTo(Json::stringValue))
-												{
-													ext_list.insert(extension.asString());
-												}
-												else
-												{
-													g_logger.log("K8s extensions discovery error, extension found but null or not string.",
-														 sinsp_logger::SEV_WARNING);
-												}
-											}
-										}
-										else
-										{
-											g_logger.log("K8s extensions discovery error, extensions found but not array.",
-														 sinsp_logger::SEV_ERROR);
-											return nullptr;
-										}
-									}
-									else
-									{
-											g_logger.log("K8s extensions discovery error, extensions found but null.",
-														 sinsp_logger::SEV_WARNING);
-											return nullptr;
-									}
-								}
-							}
-						}
-						else
-						{
-							g_logger.log("K8s extensions discovery error, extension present but empty or not string.",
-								 sinsp_logger::SEV_WARNING);
-						}
-					}
-					if(!ext_list.empty())
-					{
-						return std::make_shared<k8s_ext_list_t>(ext_list);
-					}
-					else
-					{
-						g_logger.log("K8s extensions detected, but none discovered.", sinsp_logger::SEV_WARNING);
-					}
-				}
-				else
-				{
-					g_logger.log("K8s extensions discovery error, JSON: " + json_as_string(root) +
-								 ", jq filter: <" + filter + '>',
-								 sinsp_logger::SEV_ERROR);
-				}
-			}
-		}
-		else
-		{
-			g_logger.log("K8s extensions discovery error, JSON: " + json + ", jq filter: <" + filter + '>',
-						 sinsp_logger::SEV_ERROR);
-		}
+		m_ext_list_ptr.reset(new k8s_ext_list_t(ext_list));
+		m_k8s_ext_detect_done = true;
 	}
 	else
 	{
-		g_logger.log("K8s extensions discovery error, JSON empty", sinsp_logger::SEV_ERROR);
-	}
-	return nullptr;
-}
-
-k8s* sinsp_analyzer::make_k8s(sinsp_curl& curl, const std::string& k8s_api, user_event_filter_t::ptr_t event_filter)
-{
-	Json::Value root;
-	Json::Reader reader;
-	if(reader.parse(curl.get_data(), root, false))
-	{
-		Json::Value vers = root["versions"];
-		if(vers.isArray())
+		static time_t last_connect_attempt;
+		try
 		{
-			for (const auto& ver : vers)
+			if(!m_k8s_ext_detect_done)
 			{
-				if(ver.asString() == "v1")
+				g_logger.log("K8s API extensions handler: detecting extensions.", sinsp_logger::SEV_TRACE);
+				if(!m_k8s_ext_handler)
 				{
-					g_logger.log("Kubernetes v1 API server found at " + uri(k8s_api).to_string(false),
-						sinsp_logger::SEV_INFO);
-					bool curl_dbg = m_configuration->get_curl_debug();
-					const k8s_ext_list_t& ext_list = m_configuration->get_k8s_extensions();
-					k8s_ext_list_ptr_t ext_list_ptr;
-					if(ext_list.size())
+					if(!m_k8s_collector)
 					{
-						ext_list_ptr.reset(new k8s_ext_list_t(ext_list));
+						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
 					}
-					else
+					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
+					m_k8s_ext_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/apis/extensions/v1beta1", "[.resources[].name]", "1.0", m_k8s_ssl, m_k8s_bt));
+					g_logger.log("K8s API extensions handler: collector created.", sinsp_logger::SEV_TRACE);
+					return nullptr;
+				}
+				else
+				{
+					g_logger.log("K8s API extensions handler: collecting data.", sinsp_logger::SEV_TRACE);
+					m_k8s_ext_handler->collect_data();
+					if(m_k8s_ext_handler->ready())
 					{
-						ext_list_ptr = k8s_discover_ext(k8s_api);
-					}
-					if(ext_list_ptr)
-					{
-						std::ostringstream exts;
-						for(const auto& ext : *ext_list_ptr)
+						g_logger.log("K8s API extensions handler: data received.", sinsp_logger::SEV_TRACE);
+						if(m_k8s_ext_handler->error())
 						{
-							exts << std::endl << ext;
+							g_logger.log("K8s API extensions handler: data error occurred while detecting API extensions.",
+										 sinsp_logger::SEV_WARNING);
+							m_ext_list_ptr.reset();
 						}
-						g_logger.log("Kubernetes API extensions found at " + uri(k8s_api).to_string(false) + exts.str(),
-									 sinsp_logger::SEV_DEBUG);
+						else
+						{
+							const k8s_api_handler::api_list_t& exts = m_k8s_ext_handler->extensions();
+							std::ostringstream ostr;
+							k8s_ext_list_t ext_list;
+							for(const auto& ext : exts)
+							{
+								ext_list.insert(ext);
+								ostr << std::endl << ext;
+							}
+							g_logger.log("K8s API extensions handler extensions found: " + ostr.str(),
+										 sinsp_logger::SEV_DEBUG);
+							m_ext_list_ptr.reset(new k8s_ext_list_t(ext_list));
+						}
+						m_k8s_ext_detect_done = true;
+						m_k8s_collector.reset();
+						m_k8s_ext_handler.reset();
 					}
 					else
 					{
-						g_logger.log("Kubernetes API extensions NOT found at " + uri(k8s_api).to_string(false),
-									 sinsp_logger::SEV_INFO);
+						g_logger.log("K8s API extensions handler: not ready.", sinsp_logger::SEV_TRACE);
+						return nullptr;
 					}
-					return new k8s(k8s_api, true, false, false,
-								   curl.get_ssl(), curl.get_bt(), curl_dbg,
-								   event_filter, ext_list_ptr);
 				}
 			}
 		}
+		catch(std::exception& ex)
+		{
+			time_t now; time(&now);
+			if(difftime(now, last_connect_attempt) > m_k8s_retry_seconds)
+			{
+				last_connect_attempt = now;
+				g_logger.log(std::string("K8s API extensions handler error: ").append(ex.what()),
+							 sinsp_logger::SEV_ERROR);
+			}
+			m_k8s_ext_detect_done = true;
+			m_k8s_collector.reset();
+			m_k8s_ext_handler.reset();
+		}
 	}
-	return 0;
+	return m_ext_list_ptr;
 }
 
 void sinsp_analyzer::init_k8s_ssl(const uri& url)
@@ -1150,63 +1060,77 @@ void sinsp_analyzer::init_k8s_ssl(const uri& url)
 		const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
 		bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
 		const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
-		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
+		m_k8s_ssl = std::make_shared<sinsp_ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 	}
 	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
 	if(!bt_auth_token.empty() && !m_k8s_bt)
 	{
-		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
+		m_k8s_bt = std::make_shared<sinsp_bearer_token>(bt_auth_token);
 	}
 }
 
-k8s* sinsp_analyzer::get_k8s(const uri& k8s_api)
+k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 {
-	uri url(k8s_api.to_string() + "/api");
-	std::unique_ptr<sinsp_curl> curl;
-
+	static time_t last_connect_attempt;
 	try
 	{
-		if(url.is_secure()) { init_k8s_ssl(url); }
-		curl.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, m_configuration->get_k8s_timeout_ms(), m_configuration->get_curl_debug()));
-		if(curl)
+		if(k8s_api.is_secure()) { init_k8s_ssl(k8s_api); }
+		k8s_discover_ext(k8s_api.to_string());
+		if(m_k8s_ext_detect_done)
 		{
-			return make_k8s(*curl, k8s_api.to_string(), m_configuration->get_k8s_event_filter());
+			m_k8s_ext_detect_done = false;
+			time_t now; time(&now);
+			if(difftime(now, last_connect_attempt) > m_k8s_retry_seconds)
+			{
+				last_connect_attempt = now;
+				g_logger.log(msg, sinsp_logger::SEV_INFO);
+				return new k8s(k8s_api.to_string(), false /*not captured*/,
+							   m_k8s_ssl, m_k8s_bt,
+							   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
+			}
 		}
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log("Error connecting to K8S at [" + uri(k8s_api).to_string(false) + "]. Error: " + ex.what(),
-					sinsp_logger::SEV_ERROR);
+		time_t now; time(&now);
+		if(difftime(now, last_connect_attempt) > m_k8s_retry_seconds)
+		{
+			last_connect_attempt = now;
+			g_logger.log(std::string("K8s framework creation error: ").append(ex.what()), sinsp_logger::SEV_ERROR);
+		}
 	}
-	return 0;
+	return nullptr;
 }
 
 std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 {
-	static bool k8s_not_present = false;
-	static string kube_apiserver_process;
-
 	string k8s_api_server = m_configuration->get_k8s_api_server();
-	if(k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
+	if(main_tinfo && k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
 	{
-		if(main_tinfo)
+		static bool k8s_not_present = false;
+		static string kube_apiserver_process;
+
+		if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 		{
-			if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+			kube_apiserver_process = "kube-apiserver";
+		}
+		else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+		{
+			for(const auto& arg : main_tinfo->m_args)
 			{
-				kube_apiserver_process = "kube-apiserver";
-			}
-			else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
-			{
-				for(const auto& arg : main_tinfo->m_args)
+				if(arg == "apiserver")
 				{
-					if(arg == "apiserver")
-					{
-						kube_apiserver_process = "hyperkube apiserver";
-						break;
-					}
+					kube_apiserver_process = "hyperkube apiserver";
+					break;
 				}
 			}
 		}
+		else
+		{
+			kube_apiserver_process.clear();
+			k8s_api_server.clear();
+		}
+
 		if(!kube_apiserver_process.empty())
 		{
 			g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
@@ -1225,14 +1149,19 @@ std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 			else
 			{
 				g_logger.log("K8S API server process detected but server not found.", sinsp_logger::SEV_WARNING);
+				kube_apiserver_process.clear();
+				k8s_api_server.clear();
+				m_configuration->set_k8s_api_server("");
 			}
 		}
-	}
 
-	if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
-	{
-		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
-		k8s_not_present = true;
+
+		if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
+		{
+			g_logger.log("K8S API server not configured or auto-detected at this time; K8S information may not be available.",
+						 sinsp_logger::SEV_INFO);
+			k8s_not_present = true;
+		}
 	}
 	return k8s_api_server;
 }
@@ -1259,6 +1188,10 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 				g_logger.log("Mesos API server set to: " + mesos_api_server, sinsp_logger::SEV_INFO);
 				mesos_not_present = false;
 				m_configuration->set_mesos_follow_leader(true);
+				if(m_configuration->get_marathon_uris().empty())
+				{
+					m_configuration->set_marathon_follow_leader(true);
+				}
 				g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server, sinsp_logger::SEV_INFO);
 			}
 			else
@@ -1270,7 +1203,8 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 
 	if(!mesos_not_present && m_configuration->get_mesos_autodetect_enabled() && m_configuration->get_mesos_state_uri().empty())
 	{
-		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
+		g_logger.log("Mesos API server not configured or auto-detected at this time; Mesos information may not be available.",
+					 sinsp_logger::SEV_INFO);
 		mesos_not_present = true;
 	}
 	return mesos_api_server;
@@ -1656,19 +1590,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 	}
 
-/*
-	if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
-	{
-		g_logger.log("K8S API server not configured or auto-detected; K8S information will not be available.", sinsp_logger::SEV_INFO);
-		k8s_not_present = true;
-	}
-
-	if(!mesos_not_present && m_configuration->get_mesos_autodetect_enabled() && m_configuration->get_mesos_state_uri().empty())
-	{
-		g_logger.log("Mesos API server not configured or auto-detected; Mesos information will not be available.", sinsp_logger::SEV_INFO);
-		mesos_not_present = true;
-	}
-*/
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -4085,22 +4006,36 @@ void sinsp_analyzer::get_k8s_data()
 	}
 }
 
-void sinsp_analyzer::connect_k8s(const std::string& k8s_api)
+void sinsp_analyzer::reset_k8s(time_t& last_attempt, const std::string& err)
+{
+	log_timed_error(last_attempt, err);
+	m_k8s_api_detected = false;
+	m_k8s_ext_detect_done = false;
+	m_k8s_delegator.reset();
+	m_k8s_collector.reset();
+	m_k8s_api_handler.reset();
+	m_ext_list_ptr.reset();
+	m_k8s.reset();
+}
+
+void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 {
 	if(!k8s_api.empty())
 	{
 		uri k8s_uri(k8s_api);
 		try
 		{
+			std::ostringstream log;
 			if(!m_k8s)
 			{
-				g_logger.log("Connecting to K8S API server at: [" + k8s_uri.to_string(false) + ']', sinsp_logger::SEV_INFO);
-				m_k8s.reset(get_k8s(k8s_uri));
+				log << "Connecting to K8S API server at: [" << k8s_uri.to_string(false) << ']';
+				m_k8s.reset(get_k8s(k8s_uri, log.str()));
 			}
 			else if(m_k8s && !m_k8s->is_alive())
 			{
-				g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-				m_k8s.reset(get_k8s(k8s_uri));
+				log << "Existing K8S connection [" << k8s_uri.to_string(false) << "] error detected (not alive). "
+					<< "Trying to reconnect ...";
+				m_k8s.reset(get_k8s(k8s_uri, log.str()));
 			}
 
 			if(m_k8s)
@@ -4111,28 +4046,22 @@ void sinsp_analyzer::connect_k8s(const std::string& k8s_api)
 				}
 				if(!m_k8s->is_alive())
 				{
-					g_logger.log("Existing K8S connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
-					m_k8s.reset(get_k8s(k8s_uri));
+					log.str("");
+					log << "Existing K8S connection [" << k8s_uri.to_string(false) << "] error detected (not alive). "
+						<< "Trying to reconnect ...";
+					m_k8s.reset(get_k8s(k8s_uri, log.str()));
 					if(m_k8s && m_k8s->is_alive())
 					{
 						g_logger.log("K8S connection re-established.", sinsp_logger::SEV_INFO);
 						get_k8s_data();
 					}
-					else
-					{
-						g_logger.log("K8S connection attempt failed. Will retry in next cycle.", sinsp_logger::SEV_ERROR);
-					}
 				}
 			}
-			else
-			{
-				g_logger.log("K8S connection not established.", sinsp_logger::SEV_ERROR);
-			}
 		}
-		catch(std::exception& e)
+		catch(std::exception& ex)
 		{
-			g_logger.log(std::string("Error fetching K8S state: ").append(e.what()), sinsp_logger::SEV_ERROR);
-			m_k8s.reset();
+			static time_t last_attempt;
+			reset_k8s(last_attempt, std::string("Error colecting K8s data:").append(ex.what()));
 		}
 	}
 }
@@ -4154,36 +4083,82 @@ void sinsp_analyzer::emit_k8s()
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
-	std::string k8s_api = m_configuration->get_k8s_api_server();
-
-	if(!k8s_api.empty())
+	try
 	{
-		if(uri(k8s_api).is_local())
+		std::string k8s_api = m_configuration->get_k8s_api_server();
+		if(!k8s_api.empty())
 		{
-			static bool logged = false;
-			if(!logged && m_configuration->get_k8s_delegated_nodes())
+			if(uri(k8s_api).is_local())
 			{
-				g_logger.log(std::string("K8s: incompatible settings (local URI and node auto-delegation), "
-										 "node auto-delegation ignored"),
-							 sinsp_logger::SEV_WARNING);
-				logged = true;
+				static bool logged = false;
+				if(!logged && m_configuration->get_k8s_delegated_nodes() && !m_configuration->get_k8s_simulate_delegation())
+				{
+					g_logger.log(std::string("K8s: incompatible settings (local URI and node auto-delegation), "
+											 "node auto-delegation ignored"),
+								 sinsp_logger::SEV_WARNING);
+					logged = true;
+				}
+				else if(m_configuration->get_k8s_simulate_delegation() && m_configuration->get_k8s_delegated_nodes())
+				{
+					// simulation, force delegation check
+					if(!check_k8s_delegation()) { return; }
+				}
+			}
+			else if(m_configuration->get_k8s_delegated_nodes())
+			{
+				if(!check_k8s_delegation()) { return; }
 			}
 		}
-		else if(m_configuration->get_k8s_delegated_nodes())
+		else
 		{
-			if(!check_k8s_delegation()) { return; }
+			if(m_configuration->get_k8s_autodetect_enabled())
+			{
+				k8s_api = detect_k8s();
+			}
+		}
+		if(!k8s_api.empty())
+		{
+			if(!m_k8s_api_detected)
+			{
+				if(!m_k8s_api_handler)
+				{
+					if(!m_k8s_collector)
+					{
+						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
+					}
+					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
+					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/api", ".versions", "1.0", m_k8s_ssl, m_k8s_bt));
+				}
+				else
+				{
+					m_k8s_api_handler->collect_data();
+					if(m_k8s_api_handler->ready())
+					{
+						g_logger.log("K8s API handler data received.", sinsp_logger::SEV_TRACE);
+						if(m_k8s_api_handler->error())
+						{
+							g_logger.log("K8s API handler data error occurred while detecting API versions.",
+										 sinsp_logger::SEV_ERROR);
+						}
+						else
+						{
+							m_k8s_api_detected = m_k8s_api_handler->has("v1");// TODO: make version configurable
+						}
+						m_k8s_collector.reset();
+						m_k8s_api_handler.reset();
+					}
+				}
+			}
+			if(m_k8s_api_detected)
+			{
+				collect_k8s(k8s_api);
+			}
 		}
 	}
-	else
+	catch(std::exception& ex)
 	{
-		if(m_configuration->get_k8s_autodetect_enabled())
-		{
-			k8s_api = detect_k8s();
-		}
-	}
-	if(!k8s_api.empty())
-	{
-		connect_k8s(k8s_api);
+		static time_t last_attempt;
+		reset_k8s(last_attempt, std::string("Error emitting K8s data:").append(ex.what()));
 	}
 }
 
@@ -4255,7 +4230,7 @@ void sinsp_analyzer::emit_mesos()
 		{
 			if(!m_mesos && !m_mesos_bad_config)
 			{
-				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to Mesos API server at [" + uri(mesos_uri).to_string(false) + "] ...", sinsp_logger::SEV_INFO);
 				get_mesos(mesos_uri);
 			}
 			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
@@ -4298,13 +4273,23 @@ void sinsp_analyzer::emit_mesos()
 	}
 }
 
+void sinsp_analyzer::log_timed_error(time_t& last_attempt, const std::string& err)
+{
+	time_t now; time(&now);
+	if(difftime(now, last_attempt) > m_k8s_retry_seconds)
+	{
+		last_attempt = now;
+		g_logger.log(err, sinsp_logger::SEV_ERROR);
+	}
+}
+
 bool sinsp_analyzer::check_k8s_delegation()
 {
 	const std::string& k8s_uri = m_configuration->get_k8s_api_server();
 	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
 	if(!k8s_uri.empty())
 	{
-		if(uri(k8s_uri).is_local())
+		if(uri(k8s_uri).is_local() && !m_configuration->get_k8s_simulate_delegation())
 		{
 			static bool logged = false;
 			if(!logged && delegated_nodes)
@@ -4319,6 +4304,7 @@ bool sinsp_analyzer::check_k8s_delegation()
 		{
 			try
 			{
+				static time_t last_attempt;
 				if(m_k8s_delegator)
 				{
 					m_k8s_delegator->collect_data();
@@ -4326,33 +4312,47 @@ bool sinsp_analyzer::check_k8s_delegation()
 				}
 				else
 				{
-					g_logger.log("Creating K8s delegator object ...", sinsp_logger::SEV_INFO);
+					bool log = false;
+					time_t now; time(&now);
+					if(difftime(now, last_attempt) > m_k8s_retry_seconds)
+					{
+						log = true;
+						last_attempt = now;
+					}
+					if(log)
+					{
+						g_logger.log("Creating K8s delegator object ...", sinsp_logger::SEV_INFO);
+					}
 					if(uri(k8s_uri).is_secure()) { init_k8s_ssl(k8s_uri); }
 					m_k8s_delegator.reset(new k8s_delegator(m_inspector,
 															k8s_uri,
 															delegated_nodes,
 															"1.0", // http version
-															m_configuration->get_k8s_timeout_ms(),
 															m_k8s_ssl,
-															m_k8s_bt,
-															m_configuration->get_curl_debug()));
+															m_k8s_bt));
 					if(m_k8s_delegator)
 					{
-						g_logger.log("Created K8s delegator object, collecting data...", sinsp_logger::SEV_INFO);
+						if(log)
+						{
+							g_logger.log("Created K8s delegator object, collecting data...", sinsp_logger::SEV_INFO);
+						}
 						m_k8s_delegator->collect_data();
 						return m_k8s_delegator->is_delegated();
 					}
 					else
 					{
-						g_logger.log("Can't create K8s delegator object.", sinsp_logger::SEV_ERROR);
+						if(log)
+						{
+							g_logger.log("Can't create K8s delegator object.", sinsp_logger::SEV_ERROR);
+						}
 						m_k8s_delegator.reset();
 					}
 				}
 			}
 			catch(std::exception& ex)
 			{
-				g_logger.log(std::string("K8s delegator error: ") + ex.what(), sinsp_logger::SEV_ERROR);
-				m_k8s_delegator.reset();
+				static time_t last_attempt;
+				reset_k8s(last_attempt, std::string("K8s delegator error: ") + ex.what());
 			}
 		}
 	}

@@ -759,6 +759,11 @@ app_checks:
 # mesos_autodetect: true
 # mesos_timeout_ms: 30000
 # mesos_follow_leader: false
+# marathon_follow_leader: false
+# mesos_user: mesos_admin
+# mesos_password: mesos_secret
+# marathon_user: marathon_admin
+# marathon_password: marathon_secret
 #
 
 # End of mesos section

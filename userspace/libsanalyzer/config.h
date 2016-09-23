@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "user_event.h"
+#include "mesos.h"
 
 using ports_set = bitset<numeric_limits<uint16_t>::max()>;
 
@@ -90,6 +91,8 @@ public:
 	bool get_k8s_ssl_verify_certificate() const;
 	void set_k8s_timeout_ms(int k8s_timeout_ms);
 	int get_k8s_timeout_ms() const;
+	void set_k8s_simulate_delegation(bool k8s_simulate_delegation);
+	bool get_k8s_simulate_delegation() const;
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
 	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
@@ -98,7 +101,7 @@ public:
 	const std::set<std::string>& get_k8s_extensions() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
-	const string & get_mesos_state_uri() const;
+	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	const vector<string> & get_marathon_uris() const;
 	void set_marathon_uris(const vector<string> & uris);
@@ -108,6 +111,12 @@ public:
 	int get_mesos_timeout_ms() const;
 	bool get_mesos_follow_leader() const;
 	void set_mesos_follow_leader(bool enabled);
+	bool get_marathon_follow_leader() const;
+	void set_marathon_follow_leader(bool enabled);
+	const mesos::credentials_t& get_mesos_credentials() const;
+	void set_mesos_credentials(const mesos::credentials_t& creds);
+	const mesos::credentials_t& get_marathon_credentials() const;
+	void set_marathon_credentials(const mesos::credentials_t& creds);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
@@ -157,15 +166,19 @@ private:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
 
 	unsigned m_statsd_limit;
 
 	string m_mesos_state_uri;
-	vector<string> m_marathon_uris;
+	mutable vector<string> m_marathon_uris;
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
+	bool m_marathon_follow_leader;
+	mesos::credentials_t m_mesos_credentials;
+	mesos::credentials_t m_marathon_credentials;
 
 	bool m_curl_debug;
 

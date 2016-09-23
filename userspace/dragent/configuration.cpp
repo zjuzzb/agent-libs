@@ -489,6 +489,10 @@ void dragent_configuration::init(Application* app)
 	{
 		configure_k8s_from_env();
 	}
+	if(k8s_api_server_empty && m_k8s_api_server.empty())
+	{
+		m_k8s_delegated_nodes = 0;
+	}
 	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
 	{
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
@@ -497,7 +501,18 @@ void dragent_configuration::init(Application* app)
 	{
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
 	}
-
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	// non-production private setting, only used for testing - to simulate delegation when     //
+	// running [outside pod] AND [on the same host as K8s API server]                          //
+	// it will work if localhost K8s API server is manually configured OR auto-detected        //
+	// this setting will NOT work reliably when agent is running on another host and it should //
+	// *never* be set to true in production                                                    //
+	m_k8s_simulate_delegation = m_config->get_scalar<bool>("k8s_simulate_delegation", false);  //
+	if(m_k8s_simulate_delegation)                                                              //
+	{                                                                                          //
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);           //
+	}                                                                                          //
+	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	m_k8s_extensions = yaml_configuration::get_deep_sequence<k8s_ext_list_t>(*m_config, m_config->get_root(), "k8s_extensions");
 	// End K8s
 
@@ -512,6 +527,12 @@ void dragent_configuration::init(Application* app)
 	m_mesos_timeout_ms = m_config->get_scalar<int>("mesos_timeout_ms", 10000);
 	m_mesos_follow_leader = m_config->get_scalar<bool>("mesos_follow_leader",
 							m_mesos_state_uri.empty() && m_mesos_autodetect ? true : false);
+	m_marathon_follow_leader = m_config->get_scalar<bool>("marathon_follow_leader",
+							marathon_uris.empty() && m_mesos_autodetect ? true : false);
+	m_mesos_credentials.first = m_config->get_scalar<std::string>("mesos_user", "");
+	m_mesos_credentials.second = m_config->get_scalar<std::string>("mesos_password", "");
+	m_marathon_credentials.first = m_config->get_scalar<std::string>("marathon_user", "");
+	m_marathon_credentials.second = m_config->get_scalar<std::string>("marathon_password", "");
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
@@ -616,13 +637,17 @@ void dragent_configuration::print_configuration()
 	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
 	if (!m_k8s_api_server.empty())
 	{
-		g_log->information("K8S API server: " + m_k8s_api_server);
-		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local())
+		g_log->information("K8S API server: " + uri(m_k8s_api_server).to_string(false));
+		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local() && !m_k8s_simulate_delegation)
 		{
 			m_k8s_delegated_nodes = 0;
 			g_logger.log("K8s API server is local, k8s_delegated_nodes (" +
 						 std::to_string(m_k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
 		}
+	}
+	if(m_k8s_simulate_delegation)
+	{
+		g_log->warning("!!! K8S delegation simulation enabled (non-production setting) !!!");
 	}
 	if(m_k8s_delegated_nodes)
 	{
@@ -687,8 +712,8 @@ void dragent_configuration::print_configuration()
 	{
 		for(const auto& marathon_uri : m_marathon_uris)
 		{
-			g_log->information("Marathon groups API server: " + marathon_uri);
-			g_log->information("Marathon apps API server: " + marathon_uri);
+			g_log->information("Marathon groups API server: " + uri(marathon_uri).to_string(false));
+			g_log->information("Marathon apps API server: " + uri(marathon_uri).to_string(false));
 		}
 	}
 	else
@@ -698,6 +723,15 @@ void dragent_configuration::print_configuration()
 	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
 	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
 	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
+	g_log->information("Marathon leader following enabled: " + bool_as_text(m_marathon_follow_leader));
+	if(!m_mesos_credentials.first.empty())
+	{
+		g_log->information("Mesos credentials provided.");
+	}
+	if(!m_marathon_credentials.first.empty())
+	{
+		g_log->information("Marathon credentials provided.");
+	}
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
 	if(m_enable_falco_engine)

@@ -139,6 +139,7 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
 
+	m_analyzer->get_configuration()->set_k8s_simulate_delegation(m_configuration->m_k8s_simulate_delegation);
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
 
 	if(m_configuration->m_k8s_extensions.size())
@@ -162,6 +163,9 @@ void sinsp_worker::init()
 	{
 		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
 	}
+	m_analyzer->get_configuration()->set_marathon_follow_leader(m_configuration->m_marathon_follow_leader);
+	m_analyzer->get_configuration()->set_mesos_credentials(m_configuration->m_mesos_credentials);
+	m_analyzer->get_configuration()->set_marathon_credentials(m_configuration->m_marathon_credentials);
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);

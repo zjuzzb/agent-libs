@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include "sinsp_curl.h"
 #include "user_event.h"
+#include "k8s_api_handler.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -369,7 +370,7 @@ VISIBILITY_PRIVATE
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
-
+	void log_timed_error(time_t& last_attempt, const std::string& err);
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
@@ -377,11 +378,11 @@ VISIBILITY_PRIVATE
 	bool check_k8s_server(const string& addr);
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
-	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter);
-	k8s* get_k8s(const uri& k8s_api);
-	void connect_k8s(const std::string& k8s_api);
+	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
+	void collect_k8s(const std::string& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
+	void reset_k8s(time_t& last_attempt, const std::string& err);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(const string& addr);
 	void make_mesos(string&& json);
@@ -573,9 +574,16 @@ VISIBILITY_PRIVATE
 	unique_ptr<k8s> m_k8s;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
-	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
-	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
+	sinsp_ssl::ptr_t          m_k8s_ssl;
+	sinsp_bearer_token::ptr_t m_k8s_bt;
 #endif
+	shared_ptr<k8s_handler::collector_t> m_k8s_collector;
+	unique_ptr<k8s_api_handler>          m_k8s_api_handler;
+	bool                                 m_k8s_api_detected = false;
+	unique_ptr<k8s_api_handler>          m_k8s_ext_handler;
+	k8s_ext_list_ptr_t                   m_ext_list_ptr;
+	bool                                 m_k8s_ext_detect_done = false;
+	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 
 	unique_ptr<mesos> m_mesos;
 	static bool m_mesos_bad_config;

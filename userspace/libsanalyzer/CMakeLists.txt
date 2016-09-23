@@ -58,15 +58,26 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_auth.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_curl.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_api_error.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_api_handler.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_component.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_daemonset_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_deployment_handler.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_dispatcher.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_data.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_namespace_handler.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_net.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_http.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_collector.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_node_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_pod_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_replicationcontroller_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_replicaset_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_service_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_query.cpp
 	k8s_proto.cpp
 	k8s_delegator.cpp
@@ -123,6 +134,7 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
 	rt
 	dl
+	anl
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a)
 

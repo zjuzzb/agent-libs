@@ -446,6 +446,16 @@ int sinsp_configuration::get_k8s_delegated_nodes() const
 	return m_k8s_delegated_nodes;
 }
 
+void sinsp_configuration::set_k8s_simulate_delegation(bool k8s_simulate_delegation)
+{
+	m_k8s_simulate_delegation = k8s_simulate_delegation;
+}
+
+bool sinsp_configuration::get_k8s_simulate_delegation() const
+{
+	return m_k8s_simulate_delegation;
+}
+
 void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
 {
 	m_k8s_bt_auth_token = k8s_bt_auth_token;
@@ -476,9 +486,14 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
-const string & sinsp_configuration::get_mesos_state_uri() const
+string sinsp_configuration::get_mesos_state_uri() const
 {
-	return m_mesos_state_uri;
+	uri url(m_mesos_state_uri);
+	if(!m_mesos_credentials.first.empty())
+	{
+		url.set_credentials(m_mesos_credentials);
+	}
+	return url.to_string(true);
 }
 
 void sinsp_configuration::set_mesos_state_uri(const string & uri)
@@ -486,8 +501,17 @@ void sinsp_configuration::set_mesos_state_uri(const string & uri)
 	m_mesos_state_uri = uri;
 }
 
-const vector<string> & sinsp_configuration::get_marathon_uris() const
+const vector<string>& sinsp_configuration::get_marathon_uris() const
 {
+	for(vector<string>::iterator it = m_marathon_uris.begin(); it != m_marathon_uris.end(); ++it)
+	{
+		uri url(*it);
+		if(!m_marathon_credentials.first.empty())
+		{
+			url.set_credentials(m_marathon_credentials);
+		}
+		*it = url.to_string(true);
+	}
 	return m_marathon_uris;
 }
 
@@ -524,6 +548,38 @@ bool sinsp_configuration::get_mesos_follow_leader() const
 void sinsp_configuration::set_mesos_follow_leader(bool enabled)
 {
 	m_mesos_follow_leader = enabled;
+}
+
+bool sinsp_configuration::get_marathon_follow_leader() const
+{
+	return m_marathon_follow_leader;
+}
+
+void sinsp_configuration::set_marathon_follow_leader(bool enabled)
+{
+	m_marathon_follow_leader = enabled;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_mesos_credentials() const
+{
+	return m_mesos_credentials;
+}
+
+void sinsp_configuration::set_mesos_credentials(const mesos::credentials_t& creds)
+{
+	m_mesos_credentials.first = creds.first;
+	m_mesos_credentials.second = creds.second;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_marathon_credentials() const
+{
+	return m_marathon_credentials;
+}
+
+void sinsp_configuration::set_marathon_credentials(const mesos::credentials_t& creds)
+{
+	m_marathon_credentials.first = creds.first;
+	m_marathon_credentials.second = creds.second;
 }
 
 bool sinsp_configuration::get_curl_debug() const
