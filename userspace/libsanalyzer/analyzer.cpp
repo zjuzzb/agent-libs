@@ -901,7 +901,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 				string mesos_state = m_configuration->get_mesos_state_uri();
 				vector<string> marathon_uris = m_configuration->get_marathon_uris();
 
-				g_logger.log("Mesos master version [" + version + "] found at " + mesos_state,
+				g_logger.log("Mesos master version [" + version + "] found at " + uri(mesos_state).to_string(false),
 					sinsp_logger::SEV_INFO);
 				g_logger.log("Mesos state: [" + uri(mesos_state + mesos::default_state_api).to_string(false) + ']',
 					sinsp_logger::SEV_INFO);
@@ -918,6 +918,8 @@ void sinsp_analyzer::make_mesos(string&& json)
 					marathon_uris,
 					m_configuration->get_mesos_follow_leader(),
 					m_configuration->get_marathon_follow_leader(),
+					m_configuration->get_mesos_credentials(),
+					m_configuration->get_marathon_credentials(),
 					m_configuration->get_mesos_timeout_ms()));
 			}
 		}
@@ -4140,7 +4142,7 @@ void sinsp_analyzer::emit_mesos()
 		{
 			if(!m_mesos && !m_mesos_bad_config)
 			{
-				g_logger.log("Connecting to Mesos API server at [" + mesos_uri + "] ...", sinsp_logger::SEV_INFO);
+				g_logger.log("Connecting to Mesos API server at [" + uri(mesos_uri).to_string(false) + "] ...", sinsp_logger::SEV_INFO);
 				get_mesos(mesos_uri);
 			}
 			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)

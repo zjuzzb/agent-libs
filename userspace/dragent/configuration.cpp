@@ -527,6 +527,10 @@ void dragent_configuration::init(Application* app)
 							m_mesos_state_uri.empty() && m_mesos_autodetect ? true : false);
 	m_marathon_follow_leader = m_config->get_scalar<bool>("marathon_follow_leader",
 							marathon_uris.empty() && m_mesos_autodetect ? true : false);
+	m_mesos_credentials.first = m_config->get_scalar<std::string>("mesos_user", "");
+	m_mesos_credentials.second = m_config->get_scalar<std::string>("mesos_password", "");
+	m_marathon_credentials.first = m_config->get_scalar<std::string>("marathon_user", "");
+	m_marathon_credentials.second = m_config->get_scalar<std::string>("marathon_password", "");
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
@@ -717,6 +721,14 @@ void dragent_configuration::print_configuration()
 	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
 	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
 	g_log->information("Marathon leader following enabled: " + bool_as_text(m_marathon_follow_leader));
+	if(!m_mesos_credentials.first.empty())
+	{
+		g_log->information("Mesos credentials provided.");
+	}
+	if(!m_marathon_credentials.first.empty())
+	{
+		g_log->information("Marathon credentials provided.");
+	}
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
 	if(m_enable_falco_engine)
