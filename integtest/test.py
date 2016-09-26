@@ -76,6 +76,21 @@ CASSANDRA_HINTEDHANDOFF = set([
   "cassandra-2.1",
   "cassandra-2.2",
   "cassandra-latest",
+  "jmx-example-alpine"
+])
+def test_jmx_available(env):
+  jmxFound = False
+  for m in lastMetricsFile(env):
+    for program in m.programs:
+      java = program.procinfo.protos.java
+      if java and (java.process_name == "cassandra" or java.process_name == "/TestJMX.jar"):
+        jmxFound = len(java.beans) > 0
+  assert jmxFound
+
+@pytest.mark.parametrize("env", [
+  "cassandra-2.1",
+  "cassandra-2.2",
+  "cassandra-latest",
 ])
 def test_cassandra_beans(env):
   cassandraFound=False

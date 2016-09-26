@@ -1,0 +1,2 @@
+jmx:
+  image: "luca3m/jmx-example:alpine"

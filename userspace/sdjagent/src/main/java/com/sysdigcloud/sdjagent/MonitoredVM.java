@@ -6,9 +6,6 @@
 package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sun.tools.attach.AgentInitializationException;
-import com.sun.tools.attach.AgentLoadException;
-import com.sun.tools.attach.VirtualMachine;
 import sun.jvmstat.monitor.MonitorException;
 
 import javax.management.*;
@@ -78,14 +75,12 @@ public class MonitoredVM {
     private void retrieveVmInfoFromContainer(VMRequest request) {
         String data = null;
         final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
-        final String libsdjagentjniPath = String.format("%s/tmp/libsdjagentjni.so", request.getRoot());
-        LOGGER.fine(String.format("Copying sdjagent files to %s and %s", sdjagentPath, libsdjagentjniPath));
-        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath) &&
-           CLibrary.copyToContainer("/opt/draios/lib/libsdjagentjni.so", request.getPid(), libsdjagentjniPath)) {
-            final String[] command = {"java", "-Djava.library.path=/tmp", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
+        LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
+        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
+            final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
             // Using /proc/<pid>/exe because sometimes java command is not on PATH
             final String javaExe = String.format("/proc/%d/exe", request.getVpid());
-            data = CLibrary.runOnContainer(request.getPid(), javaExe, command, request.getRoot());
+            data = CLibrary.runOnContainer(request.getPid(), request.getVpid(), javaExe, command, request.getRoot());
         } else {
             // These logs are with debug priority because may happen for every short lived java process
             LOGGER.fine(String.format("Cannot copy sdjagent files on container for pid (%d:%d)", request.getPid(),
@@ -93,7 +88,6 @@ public class MonitoredVM {
         }
 
         CLibrary.rmFromContainer(request.getPid(), sdjagentPath);
-        CLibrary.rmFromContainer(request.getPid(), libsdjagentjniPath);
 
         if (data != null && !data.isEmpty())
         {
@@ -124,22 +118,23 @@ public class MonitoredVM {
         // To load the agent, we need to be the same user and group
         // of the process
         boolean uidChanged = false;
-        try {
-            long[] idInfo = CLibrary.getUidAndGid(request.getPid());
-            int gid_error = CLibrary.setegid(idInfo[1]);
-            int uid_error = CLibrary.seteuid(idInfo[0]);
-            if (uid_error == 0 && gid_error == 0) {
-                LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
-            } else {
-                LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
-                        uid_error, gid_error));
+        if(!request.skipUidAndGid()) {
+            try {
+                long[] idInfo = CLibrary.getUidAndGid(request.getPid());
+                int gid_error = CLibrary.setegid(idInfo[1]);
+                int uid_error = CLibrary.seteuid(idInfo[0]);
+                if (uid_error == 0 && gid_error == 0) {
+                    LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
+                } else {
+                    LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
+                            uid_error, gid_error));
+                }
+                uidChanged = true;
+            } catch (IOException ex)
+            {
+                LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
             }
-            uidChanged = true;
-        } catch (IOException ex)
-        {
-            LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
         }
-
 
         try {
             JvmstatVM jvmstat;
@@ -159,7 +154,7 @@ public class MonitoredVM {
         {
             try
             {
-                this.address = loadManagementAgent(request.getPid());
+                this.address = AttachAPI.loadManagementAgent(request.getPid());
             } catch (IOException e)
             {
                 LOGGER.warning(String.format("Cannot load agent on process %d: %s", this.pid, e.getMessage()));
@@ -361,60 +356,6 @@ public class MonitoredVM {
         }
     }
 
-    private static final String LOCAL_CONNECTOR_ADDRESS_PROP =
-            "com.sun.management.jmxremote.localConnectorAddress";
-
-    private static String loadManagementAgent(int pid) throws IOException {
-        VirtualMachine vm;
-        String vmId = String.valueOf(pid);
-
-        try {
-            vm = VirtualMachine.attach(vmId);
-        } catch (Throwable x) {
-            throw new IOException(x);
-        }
-        
-        // try to enable local JMX via jcmd command
-        //if (!loadManagementAgentViaJcmd(vm)) {
-            // load the management agent into the target VM
-            loadManagementAgentViaJar(vm);
-        //}
-
-        // get the connector address
-        Properties agentProps = vm.getAgentProperties();
-        String address = (String) agentProps.get(LOCAL_CONNECTOR_ADDRESS_PROP);
-
-        vm.detach();
-
-        return address;
-    }
-
-    private static void loadManagementAgentViaJar(VirtualMachine vm) throws IOException {
-        // Normally in ${java.home}/jre/lib/management-agent.jar but might
-        // be in ${java.home}/lib in build environments.
-        String javaHome = vm.getSystemProperties().getProperty("java.home");
-        String agent = javaHome + File.separator + "jre" + File.separator + // NOI18N
-                "lib" + File.separator + "management-agent.jar";    // NOI18N
-        File f = new File(agent);
-        if (!f.exists()) {
-            agent = javaHome + File.separator + "lib" + File.separator +    // NOI18N
-                    "management-agent.jar"; // NOI18N
-            f = new File(agent);
-            if (!f.exists()) {
-                throw new IOException("Management agent not found");    // NOI18N
-            }
-        }
-
-        agent = f.getCanonicalPath();
-        try {
-            vm.loadAgent(agent, "com.sun.management.jmxremote");    // NOI18N
-        } catch (AgentLoadException x) {
-            throw new IOException(x);
-        } catch (AgentInitializationException x) {
-            throw new IOException(x);
-        }
-    }
-
     /**
      * Cleanup resources used by MonitoredVM, to be used just before removing
      * this object. After this call, the object will be in an unusable state
@@ -422,38 +363,6 @@ public class MonitoredVM {
     public void cleanUp() {
         disconnect();
     }
-
-    /*
-    This doesn't work with Java 1.6
-
-    private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
-    private boolean loadManagementAgentViaJcmd(VirtualMachine vm) throws IOException {
-        if (vm instanceof HotSpotVirtualMachine) {
-            HotSpotVirtualMachine hsvm = (HotSpotVirtualMachine) vm;
-            InputStream in = null;
-            try {
-                byte b[] = new byte[256];
-                int n;
-
-                in = hsvm.executeJCmd(ENABLE_LOCAL_AGENT_JCMD);
-                do {
-                    n = in.read(b);
-                    if (n > 0) {
-                        String s = new String(b, 0, n, "UTF-8");    // NOI18N
-                        System.out.print(s);
-                    }
-                } while (n > 0);
-                return true;
-            } catch (IOException ex) {
-                LOGGER.log(Level.INFO, "jcmd command \"" + ENABLE_LOCAL_AGENT_JCMD + "\" for PID " + pid + " failed", ex); // NOI18N
-            } finally {
-                if (in != null) {
-                    in.close();
-                }
-            }
-        }
-        return false;
-    }*/
 
     static private class BeanInstance {
         private ObjectName name;
