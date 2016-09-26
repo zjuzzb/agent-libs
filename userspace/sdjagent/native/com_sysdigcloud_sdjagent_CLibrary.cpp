@@ -379,7 +379,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			}
 		}
 		proc_status.close();
-		cerr << "{\"pid\":" << getpid() << ", \"level\": \"FINE\", \"message\": \"Read uid= " << uid << " and gid=" << gid << " of target process\" }" << endl;
+		log("FINE", "Read uid=%d and gid=%d of target process", uid, gid);
 
 		// set process root
 		if(strncmp(root_s.c_str(), "/", 2) != 0)
@@ -387,7 +387,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			auto ret = chroot(root_s.c_str());
 			if(ret != 0)
 			{
-				cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot chroot inside container, errno: " << strerror(errno) <<"\" }" << endl;
+				log("SEVERE", "Cannot chroot inside container, errno=%s", strerror(errno));
 				exit(1);
 			}
 			chdir("/");
@@ -398,7 +398,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
 		free(container_environ_ptr);
-		cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent inside container, errno: " << strerror(errno) <<"\" }" << endl;
+		log("SEVERE", "Cannot load sdjagent inside container, errno=%s", strerror(errno));
 		exit(1);
 	}
 	else
