@@ -35,11 +35,44 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 	return ret;
 }
 
-app_process::app_process(string check_name, sinsp_threadinfo *tinfo):
+app_check::app_check(const Json::Value &json)
+{
+	m_name = json["name"].asString();
+	m_enabled = true;
+
+	auto pattern_node = json["pattern"];
+	if(pattern_node.isObject())
+	{
+		auto comm_node = pattern_node["comm"];
+		if(comm_node.isString())
+		{
+			m_comm_pattern = comm_node.asString();
+		}
+		auto exe_node = pattern_node["exe"];
+		if(exe_node.isString())
+		{
+			m_exe_pattern = exe_node.asString();
+		}
+		auto port_node = pattern_node["port"];
+		if(port_node.isUInt())
+		{
+			m_port_pattern = port_node.asUInt();
+		}
+		auto arg_node = pattern_node["arg"];
+		if(arg_node.isString())
+		{
+			m_arg_pattern = arg_node.asString();
+		}
+	}
+	m_conf = json["conf"];
+}
+
+app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 	m_pid(tinfo->m_pid),
 	m_vpid(tinfo->m_vpid),
-	m_check_name(move(check_name)),
-	m_ports(tinfo->m_ainfo->listening_ports())
+	m_check_name(check.name()),
+	m_ports(tinfo->m_ainfo->listening_ports()),
+	m_conf(check.conf())
 {
 
 }
@@ -54,6 +87,10 @@ Json::Value app_process::to_json() const
 	for(auto port : m_ports)
 	{
 		ret["ports"].append(Json::UInt(port));
+	}
+	if(!m_conf.empty())
+	{
+		ret["conf"] = m_conf;
 	}
 	return ret;
 }

@@ -1557,14 +1557,32 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 				else
 				{
-					for(const auto& check : m_app_checks)
+					if(!ainfo->app_checks().empty())
 					{
-						if(check.match(tinfo))
+						for(const auto& check : ainfo->app_checks())
 						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-							app_checks_processes.emplace_back(check.name(), tinfo);
-							mtinfo->m_ainfo->set_app_check_found();
-							break;
+							if(check.match(tinfo))
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from env",
+												check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+								app_checks_processes.emplace_back(check, tinfo);
+								mtinfo->m_ainfo->set_app_check_found();
+								break;
+							}
+						}
+					}
+					else
+					{
+						for(const auto &check : m_app_checks)
+						{
+							if(check.match(tinfo))
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d",
+												check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+								app_checks_processes.emplace_back(check, tinfo);
+								mtinfo->m_ainfo->set_app_check_found();
+								break;
+							}
 						}
 					}
 				}

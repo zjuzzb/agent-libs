@@ -5,6 +5,8 @@
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
+#include "third-party/jsoncpp/json/json.h"
+#include "app_checks.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -136,6 +138,11 @@ public:
 		}
 	}
 
+	inline const vector<app_check>& app_checks()
+	{
+		return m_app_checks;
+	}
+
 	inline bool app_check_found()
 	{
 		return (m_th_analysis_flags & AF_APP_CHECK_FOUND) != 0;
@@ -195,6 +202,8 @@ public:
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
+	vector<app_check> m_app_checks;
+	static Json::Reader m_json_reader;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

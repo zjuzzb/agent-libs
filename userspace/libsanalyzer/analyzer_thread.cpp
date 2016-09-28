@@ -90,6 +90,9 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 ///////////////////////////////////////////////////////////////////////////////
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
+
+Json::Reader thread_analyzer_info::m_json_reader;
+
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
@@ -111,6 +114,16 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_dynstate->m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
+	auto conf = tinfo->get_env("SYSDIG_AGENT_CONF");
+	if(!conf.empty())
+	{
+		Json::Value json;
+		m_json_reader.parse(conf, json, false);
+		for(const auto& check : json["app_checks"])
+		{
+			m_app_checks.emplace_back(check);
+		}
+	}
 }
 
 void thread_analyzer_info::destroy()

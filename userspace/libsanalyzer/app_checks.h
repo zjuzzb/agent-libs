@@ -24,6 +24,8 @@ public:
 		m_enabled(true)
 	{}
 
+	explicit app_check(const Json::Value& json);
+
 	bool match(sinsp_threadinfo* tinfo) const;
 
 	const string& name() const
@@ -35,6 +37,11 @@ public:
 		return m_enabled;
 	}
 
+	const Json::Value& conf() const
+	{
+		return m_conf;
+	}
+
 private:
 	friend class YAML::convert<app_check>;
 
@@ -44,12 +51,13 @@ private:
 	string m_arg_pattern;
 	string m_name;
 	bool m_enabled;
+	Json::Value m_conf;
 };
 
 class app_process
 {
 public:
-	explicit app_process(string check_name, sinsp_threadinfo* tinfo);
+	explicit app_process(const app_check& check, sinsp_threadinfo* tinfo);
 
 	Json::Value to_json() const;
 
@@ -58,6 +66,7 @@ private:
 	int m_vpid;
 	string m_check_name;
 	set<uint16_t> m_ports;
+	Json::Value m_conf;
 };
 
 

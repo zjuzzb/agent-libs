@@ -361,10 +361,13 @@ class Application:
                     logging.debug("Process with pid=%d is blacklisted", pid)
                     continue
                 try:
-                    check_conf = self.config.checks[p["check"]]
+                    check_conf = AppCheck({"name": p["check"], "conf": p["conf"]})
                 except KeyError:
-                    logging.error("Cannot find check configuration for name: %s", p["check"])
-                    continue
+                    try:
+                        check_conf = self.config.checks[p["check"]]
+                    except KeyError:
+                        logging.error("Cannot find check configuration for name: %s", p["check"])
+                        continue
                 try:
                     check_instance = AppCheckInstance(check_conf, p)
                 except AppCheckException as ex:
