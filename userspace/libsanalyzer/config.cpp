@@ -475,13 +475,13 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
-string sinsp_configuration::get_mesos_state_uri() const
+string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
-	if(m_mesos_state_uri.empty())
+	if(sought_url.empty())
 	{
-		return m_mesos_state_uri;
+		return sought_url;
 	}
-	uri url(m_mesos_state_uri);
+	uri url(sought_url);
 	if(!m_mesos_credentials.first.empty())
 	{
 		url.set_credentials(m_mesos_credentials);
@@ -489,13 +489,43 @@ string sinsp_configuration::get_mesos_state_uri() const
 	return url.to_string(true);
 }
 
+void sinsp_configuration::set_mesos_uri(string& url, const string & new_url)
+{
+	if(!new_url.empty())
+	{
+		try
+		{
+			uri u(new_url);
+			u.set_path("");
+			url = u.to_string(true);
+		}
+		catch(sinsp_exception& ex)
+		{
+			g_logger.log(std::string("Error setting Mesos URI: ").append(ex.what()), sinsp_logger::SEV_ERROR);
+		}
+		return;
+	}
+	url.clear();
+}
+
+string sinsp_configuration::get_mesos_state_uri() const
+{
+	return get_mesos_uri(m_mesos_state_uri);
+}
+
 void sinsp_configuration::set_mesos_state_uri(const string & url)
 {
-	if(!url.empty())
-	{
-		uri::check(url);
-	}
-	m_mesos_state_uri = url;
+	set_mesos_uri(m_mesos_state_uri, url);
+}
+
+string sinsp_configuration::get_mesos_state_original_uri() const
+{
+	return get_mesos_uri(m_mesos_state_original_uri);
+}
+
+void sinsp_configuration::set_mesos_state_original_uri(const string & url)
+{
+	set_mesos_uri(m_mesos_state_original_uri, url);
 }
 
 const vector<string>& sinsp_configuration::get_marathon_uris() const

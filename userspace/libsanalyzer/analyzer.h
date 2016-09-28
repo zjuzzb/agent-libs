@@ -355,7 +355,7 @@ public:
 			  double sampling_multiplier);
 
 VISIBILITY_PRIVATE
-	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
+	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -374,7 +374,7 @@ VISIBILITY_PRIVATE
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_delegation();
-	bool check_k8s_server(const string& addr);
+	bool check_k8s_server(string& addr);
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
 	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
@@ -382,12 +382,14 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
+	std::string& detect_mesos(std::string& mesos_api_server);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
-	bool check_mesos_server(const string& addr);
+	bool check_mesos_server(string& addr);
 	void make_mesos(string&& json);
 	void get_mesos(const string& mesos_uri);
 	void get_mesos_data();
 	void emit_mesos();
+	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
 	vector<string> emit_containers(const vector<string>& active_containers);
@@ -579,6 +581,8 @@ VISIBILITY_PRIVATE
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;
+
+	int m_detect_retry_seconds = 60; // TODO move to config?
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
