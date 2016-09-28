@@ -409,6 +409,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		auto wait_res = wait_pid.wait(child);
 		if(wait_res == 0)
 		{
+			// The process ended correctly, read the result
 			FILE* output = fdopen(child_pipe[0], "r");
 			char output_buffer[1024];
 			if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
@@ -419,9 +420,13 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		}
 		else
 		{
+			// The process didn't end correctly,
+			// just cleanup resources
 			close(child_pipe[0]);
 			if (wait_res < 0)
 			{
+				// The process didn't end within the wait timeout
+				// kill and reap it
 				kill(child, SIGKILL);
 				waitpid(child, NULL, 0);
 			}
