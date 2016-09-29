@@ -820,8 +820,8 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 	{
 		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
 	}
-	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, /*m_configuration->get_k8s_timeout_ms()*/500, m_configuration->get_curl_debug()));
-	string json = sc->get_data();
+	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, 500, m_configuration->get_curl_debug()));
+	string json = sc->get_data(false);
 	if(!json.empty())
 	{
 		Json::Value root;
