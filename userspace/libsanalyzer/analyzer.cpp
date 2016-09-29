@@ -1083,6 +1083,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			{
 				last_connect_attempt = now;
 				g_logger.log(msg, sinsp_logger::SEV_INFO);
+				m_k8s_present = true;
 				return new k8s(k8s_api.to_string(), false /*not captured*/,
 							   m_k8s_ssl, m_k8s_bt,
 							   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
@@ -1101,13 +1102,41 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 	return nullptr;
 }
 
+std::string sinsp_analyzer::detect_k8s(std::string& k8s_api_server)
+{
+	k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
+	if(k8s_api_server.empty())
+	{
+		k8s_api_server = detect_local_server("https", 443, &sinsp_analyzer::check_k8s_server);
+	}
+
+	if(!k8s_api_server.empty())
+	{
+		m_configuration->set_k8s_api_server(k8s_api_server);
+		g_logger.log("K8S API server auto-detected and set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
+	}
+	else
+	{
+		// not to flood logs, log only once a minute
+		static time_t last_log;
+		time_t now; time(&now);
+		if(m_k8s_present && (difftime(now, last_log) > m_detect_retry_seconds))
+		{
+			last_log = now;
+			g_logger.log("K8S API server not found.", sinsp_logger::SEV_WARNING);
+			k8s_api_server.clear();
+			m_configuration->set_k8s_api_server("");
+		}
+	}
+	return k8s_api_server;
+}
+
 std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 {
 	string k8s_api_server = m_configuration->get_k8s_api_server();
 	if(main_tinfo && k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
 	{
-		static bool k8s_not_present = false;
-		static string kube_apiserver_process;
+		string kube_apiserver_process;
 
 		if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
 		{
@@ -1133,33 +1162,7 @@ std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 		if(!kube_apiserver_process.empty())
 		{
 			g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
-			k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
-			if(k8s_api_server.empty())
-			{
-				k8s_api_server = detect_local_server("https", 443, &sinsp_analyzer::check_k8s_server);
-			}
-
-			if(!k8s_api_server.empty())
-			{
-				m_configuration->set_k8s_api_server(k8s_api_server);
-				g_logger.log("K8S API server set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
-				k8s_not_present = false;
-			}
-			else
-			{
-				g_logger.log("K8S API server process detected but server not found.", sinsp_logger::SEV_WARNING);
-				kube_apiserver_process.clear();
-				k8s_api_server.clear();
-				m_configuration->set_k8s_api_server("");
-			}
-		}
-
-
-		if(!k8s_not_present && m_configuration->get_k8s_autodetect_enabled() && m_configuration->get_k8s_api_server().empty())
-		{
-			g_logger.log("K8S API server not configured or auto-detected at this time; K8S information may not be available.",
-						 sinsp_logger::SEV_INFO);
-			k8s_not_present = true;
+			detect_k8s(k8s_api_server);
 		}
 	}
 	return k8s_api_server;
@@ -1327,11 +1330,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 
 	bool try_detect_mesos = (m_configuration->get_mesos_autodetect_enabled() &&
-			   m_configuration->get_mesos_state_original_uri().empty() &&
-			   (!m_mesos /*|| (m_mesos && !m_mesos->is_alive())*/) &&
-			   !m_mesos_bad_config);
+							 m_configuration->get_mesos_state_original_uri().empty() &&
+							 !m_mesos && !m_mesos_bad_config);
+	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
+						   m_configuration->get_k8s_api_server().empty());
 	bool mesos_detected = false, k8s_detected = false;
-	static bool been_here = false;
+	static bool mesos_been_here = false, k8s_been_here = false;
 
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
@@ -1385,7 +1389,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
-				if(m_configuration->get_k8s_autodetect_enabled())
+				if(try_detect_k8s)
 				{
 					k8s_detected = !(detect_k8s(main_tinfo).empty());
 				}
@@ -1602,11 +1606,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #endif
 	}
 
-	if(!been_here && try_detect_mesos && !mesos_detected)
+	if(!mesos_been_here && try_detect_mesos && !mesos_detected)
 	{
-		been_here = true;
+		mesos_been_here = true;
 		g_logger.log("Mesos API server not configured or auto-detected at this time; "
 					 "Mesos information may not be available.",
+					 sinsp_logger::SEV_INFO);
+	}
+
+	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
+	{
+		k8s_been_here = true;
+		g_logger.log("K8s API server not configured or auto-detected at this time; "
+					 "K8s information may not be available.",
 					 sinsp_logger::SEV_INFO);
 	}
 

@@ -372,6 +372,7 @@ VISIBILITY_PRIVATE
 	void log_timed_error(time_t& last_attempt, const std::string& err);
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
+	std::string detect_k8s(std::string& k8s_api_server);
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_delegation();
 	bool check_k8s_server(string& addr);
@@ -563,6 +564,9 @@ VISIBILITY_PRIVATE
 #endif
 
 	unique_ptr<k8s> m_k8s;
+	// flag indicating that mesos connection either exist or has existed once
+	// used to filter logs about Mesos API server unavailablity
+	bool m_k8s_present = false;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_ssl::ptr_t          m_k8s_ssl;
