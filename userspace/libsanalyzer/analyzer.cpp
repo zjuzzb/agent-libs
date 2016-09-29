@@ -923,6 +923,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 						sinsp_logger::SEV_INFO);
 				}
 
+				m_mesos_present = true;
 				if(m_mesos) { m_mesos.reset(); }
 				m_mesos.reset(new mesos(mesos_state,
 					marathon_uris,
@@ -1181,11 +1182,12 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
 	}
 	else
 	{
-		static time_t last_connect_attempt;
+		// not to flood logs, log only once a minute
+		static time_t last_log;
 		time_t now; time(&now);
-		if(difftime(now, last_connect_attempt) > m_detect_retry_seconds)
+		if(m_mesos_present && (difftime(now, last_log) > m_detect_retry_seconds))
 		{
-			last_connect_attempt = now;
+			last_log = now;
 			g_logger.log("Mesos API server not found.", sinsp_logger::SEV_WARNING);
 		}
 	}
@@ -1207,7 +1209,6 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 		if(!mesos_apiserver_process.empty())
 		{
 			g_logger.log("Mesos: Detected '"+ mesos_apiserver_process + "' process", sinsp_logger::SEV_INFO);
-			//last_connect_attempt = now;
 			detect_mesos(mesos_api_server);
 		}
 	}

@@ -577,6 +577,9 @@ VISIBILITY_PRIVATE
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 
 	unique_ptr<mesos> m_mesos;
+	// flag indicating that mesos connection either exist or has existed once
+	// used to filter logs about Mesos API server unavailablity
+	bool m_mesos_present = false;
 	static bool m_mesos_bad_config;
 
 	unique_ptr<docker> m_docker;
