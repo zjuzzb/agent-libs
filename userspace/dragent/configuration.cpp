@@ -208,7 +208,7 @@ void dragent_configuration::configure_k8s_from_env()
 					}
 					else
 					{
-						g_logger.log("Berarer token not found at default location (" + k8s_bearer_token_file_name +
+						g_logger.log("Bearer token not found at default location (" + k8s_bearer_token_file_name +
 									 "), authentication may not work. "
 									 "If needed, please specify the location using k8s_bt_auth_token config entry.",
 									 sinsp_logger::SEV_WARNING);
