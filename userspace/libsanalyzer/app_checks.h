@@ -16,7 +16,9 @@ class app_check
 public:
 	explicit app_check():
 		m_port_pattern(0),
-		m_enabled(true)
+		m_enabled(true),
+		m_interval(-1),
+		m_conf(YAML::NodeType::Map)
 	{}
 
 	bool match(sinsp_threadinfo* tinfo) const;
@@ -38,7 +40,9 @@ private:
 	uint16_t m_port_pattern;
 	string m_arg_pattern;
 	string m_name;
+	string m_check_module;
 	bool m_enabled;
+	int m_interval;
 	YAML::Node m_conf;
 };
 

@@ -49,6 +49,11 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	 *	The conf part is not used by dragent
 	 */
 	rhs.m_name = node["name"].as<string>();
+	auto check_module_node = node["check_module"];
+	if(check_module_node.IsScalar())
+	{
+		rhs.m_check_module = check_module_node.as<string>();
+	}
 	auto enabled_node = node["enabled"];
 	if(enabled_node.IsScalar())
 	{
@@ -79,8 +84,15 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 			rhs.m_arg_pattern = arg_node.as<string>();
 		}
 	}
+
+	auto interval_node = node["interval"];
+	if(interval_node.IsScalar())
+	{
+		rhs.m_interval = interval_node.as<int>();
+	}
+
 	auto conf_node = node["conf"];
-	if (conf_node.IsDefined())
+	if (conf_node.IsMap())
 	{
 		rhs.m_conf = conf_node;
 	}
@@ -91,12 +103,15 @@ YAML::Node YAML::convert<app_check>::encode(const app_check &rhs)
 {
 
 	YAML::Node ret;
-	if(rhs.m_conf.IsDefined())
+	ret["name"] = rhs.m_name;
+	if(!rhs.m_check_module.empty())
 	{
-		ret["name"] = rhs.m_name;
-		ret["conf"] = rhs.m_conf;
-	} else {
-		ret = rhs.m_name;
+		ret["check_module"] = rhs.m_check_module;
+	}
+	ret["conf"] = rhs.m_conf;
+	if(rhs.m_interval > 0)
+	{
+		ret["interval"] = rhs.m_interval;
 	}
 	return ret;
 }
