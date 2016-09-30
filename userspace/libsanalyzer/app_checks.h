@@ -9,12 +9,7 @@
 #include "third-party/jsoncpp/json/json.h"
 #include "posix_queue.h"
 #include "draios.pb.h"
-
-namespace YAML
-{
-template<typename T>
-struct convert;
-}
+#include <yaml-cpp/yaml.h>
 
 class app_check
 {
@@ -23,8 +18,6 @@ public:
 		m_port_pattern(0),
 		m_enabled(true)
 	{}
-
-	explicit app_check(const Json::Value& json);
 
 	bool match(sinsp_threadinfo* tinfo) const;
 
@@ -37,11 +30,6 @@ public:
 		return m_enabled;
 	}
 
-	const Json::Value& conf() const
-	{
-		return m_conf;
-	}
-
 private:
 	friend class YAML::convert<app_check>;
 
@@ -51,8 +39,17 @@ private:
 	string m_arg_pattern;
 	string m_name;
 	bool m_enabled;
-	Json::Value m_conf;
+	YAML::Node m_conf;
 };
+
+namespace YAML {
+	template<>
+	struct convert<app_check> {
+		static Node encode(const app_check& rhs);
+
+		static bool decode(const Node& node, app_check& rhs);
+	};
+}
 
 class app_process
 {
@@ -64,9 +61,8 @@ public:
 private:
 	int m_pid;
 	int m_vpid;
-	string m_check_name;
 	set<uint16_t> m_ports;
-	Json::Value m_conf;
+	const app_check& m_check;
 };
 
 

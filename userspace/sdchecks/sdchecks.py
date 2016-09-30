@@ -360,14 +360,19 @@ class Application:
                 if pid in self.blacklisted_pids:
                     logging.debug("Process with pid=%d is blacklisted", pid)
                     continue
-                try:
-                    check_conf = AppCheck({"name": p["check"], "conf": p["conf"]})
-                except KeyError:
+                check_conf_yaml = yaml.load(p["check"])
+                logging.debug("Requested check %s", repr(check_conf_yaml))
+                if type(check_conf_yaml) is str:
                     try:
                         check_conf = self.config.checks[p["check"]]
                     except KeyError:
                         logging.error("Cannot find check configuration for name: %s", p["check"])
                         continue
+                elif type(check_conf_yaml) is dict:
+                    check_conf = AppCheck(check_conf_yaml)
+                else:
+                    continue
+
                 try:
                     check_instance = AppCheckInstance(check_conf, p)
                 except AppCheckException as ex:

@@ -117,11 +117,10 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	auto conf = tinfo->get_env("SYSDIG_AGENT_CONF");
 	if(!conf.empty())
 	{
-		Json::Value json;
-		m_json_reader.parse(conf, json, false);
-		for(const auto& check : json["app_checks"])
+		YAML::Node root = YAML::Load(conf);
+		for(const auto& check_node : root["app_checks"])
 		{
-			m_app_checks.emplace_back(check);
+			m_app_checks.emplace_back(check_node.as<app_check>());
 		}
 	}
 }

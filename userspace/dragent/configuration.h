@@ -398,15 +398,6 @@ private:
 	mutable vector<string> m_errors;
 };
 
-namespace YAML {
-	template<>
-	struct convert<app_check> {
-		static Node encode(const app_check& rhs);
-
-		static bool decode(const Node& node, app_check& rhs);
-	};
-}
-
 class dragent_configuration
 {
 public:

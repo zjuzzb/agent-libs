@@ -35,44 +35,77 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 	return ret;
 }
 
-app_check::app_check(const Json::Value &json)
+bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 {
-	m_name = json["name"].asString();
-	m_enabled = true;
+	/*
+	 * Example:
+	 * name: redisdb
+	 *	pattern:
+	 *	  comm: redis-server
+	 *	conf:
+	 *	  host: 127.0.0.1
+	 *	  port: {port}
+	 *
+	 *	The conf part is not used by dragent
+	 */
+	rhs.m_name = node["name"].as<string>();
+	auto enabled_node = node["enabled"];
+	if(enabled_node.IsScalar())
+	{
+		rhs.m_enabled = enabled_node.as<bool>();
+	}
 
-	auto pattern_node = json["pattern"];
-	if(pattern_node.isObject())
+	auto pattern_node = node["pattern"];
+	if(pattern_node.IsMap())
 	{
 		auto comm_node = pattern_node["comm"];
-		if(comm_node.isString())
+		if(comm_node.IsScalar())
 		{
-			m_comm_pattern = comm_node.asString();
+			rhs.m_comm_pattern = comm_node.as<string>();
 		}
 		auto exe_node = pattern_node["exe"];
-		if(exe_node.isString())
+		if(exe_node.IsScalar())
 		{
-			m_exe_pattern = exe_node.asString();
+			rhs.m_exe_pattern = exe_node.as<string>();
 		}
 		auto port_node = pattern_node["port"];
-		if(port_node.isUInt())
+		if(port_node.IsScalar())
 		{
-			m_port_pattern = port_node.asUInt();
+			rhs.m_port_pattern = port_node.as<uint16_t>();
 		}
 		auto arg_node = pattern_node["arg"];
-		if(arg_node.isString())
+		if(arg_node.IsScalar())
 		{
-			m_arg_pattern = arg_node.asString();
+			rhs.m_arg_pattern = arg_node.as<string>();
 		}
 	}
-	m_conf = json["conf"];
+	auto conf_node = node["conf"];
+	if (conf_node.IsDefined())
+	{
+		rhs.m_conf = conf_node;
+	}
+	return true;
+}
+
+YAML::Node YAML::convert<app_check>::encode(const app_check &rhs)
+{
+
+	YAML::Node ret;
+	if(rhs.m_conf.IsDefined())
+	{
+		ret["name"] = rhs.m_name;
+		ret["conf"] = rhs.m_conf;
+	} else {
+		ret = rhs.m_name;
+	}
+	return ret;
 }
 
 app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 	m_pid(tinfo->m_pid),
 	m_vpid(tinfo->m_vpid),
-	m_check_name(check.name()),
 	m_ports(tinfo->m_ainfo->listening_ports()),
-	m_conf(check.conf())
+	m_check(check)
 {
 
 }
@@ -82,15 +115,15 @@ Json::Value app_process::to_json() const
 	Json::Value ret;
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
-	ret["check"] = m_check_name;
+	stringstream ss;
+	YAML::Emitter emitter(ss);
+	emitter << YAML::Flow;
+	emitter << YAML::Node(m_check);
+	ret["check"] = ss.str();
 	ret["ports"] = Json::Value(Json::arrayValue);
 	for(auto port : m_ports)
 	{
 		ret["ports"].append(Json::UInt(port));
-	}
-	if(!m_conf.empty())
-	{
-		ret["conf"] = m_conf;
 	}
 	return ret;
 }
