@@ -356,7 +356,7 @@ public:
 			  double sampling_multiplier);
 
 VISIBILITY_PRIVATE
-	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
+	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -373,9 +373,10 @@ VISIBILITY_PRIVATE
 	void log_timed_error(time_t& last_attempt, const std::string& err);
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
+	std::string detect_k8s(std::string& k8s_api_server);
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_delegation();
-	bool check_k8s_server(const string& addr);
+	bool check_k8s_server(string& addr);
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
 	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
@@ -383,12 +384,14 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
+	std::string& detect_mesos(std::string& mesos_api_server);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
-	bool check_mesos_server(const string& addr);
+	bool check_mesos_server(string& addr);
 	void make_mesos(string&& json);
 	void get_mesos(const string& mesos_uri);
 	void get_mesos_data();
 	void emit_mesos();
+	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
 	vector<string> emit_containers(const vector<string>& active_containers);
@@ -572,6 +575,9 @@ VISIBILITY_PRIVATE
 #endif
 
 	unique_ptr<k8s> m_k8s;
+	// flag indicating that mesos connection either exist or has existed once
+	// used to filter logs about Mesos API server unavailablity
+	bool m_k8s_present = false;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_ssl::ptr_t          m_k8s_ssl;
@@ -586,10 +592,15 @@ VISIBILITY_PRIVATE
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 
 	unique_ptr<mesos> m_mesos;
+	// flag indicating that mesos connection either exist or has existed once
+	// used to filter logs about Mesos API server unavailablity
+	bool m_mesos_present = false;
 	static bool m_mesos_bad_config;
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;
+
+	int m_detect_retry_seconds = 60; // TODO move to config?
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

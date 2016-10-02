@@ -103,6 +103,7 @@ public:
 	void set_statsd_limit(unsigned value);
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
+	string get_mesos_state_original_uri() const;
 	const vector<string> & get_marathon_uris() const;
 	void set_marathon_uris(const vector<string> & uris);
 	bool get_mesos_autodetect_enabled() const;
@@ -129,6 +130,11 @@ public:
 	void set_falco_baselining_enabled(bool enabled);
 
 private:
+	string get_mesos_uri(const std::string& sought_url) const;
+	void set_mesos_uri(string& url, const string & new_url);
+	void set_mesos_state_original_uri(const string & uri);
+	friend class sinsp_worker;
+
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
 	bool m_emit_metrics_to_file;
@@ -172,6 +178,7 @@ private:
 	unsigned m_statsd_limit;
 
 	string m_mesos_state_uri;
+	string m_mesos_state_original_uri;
 	mutable vector<string> m_marathon_uris;
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;

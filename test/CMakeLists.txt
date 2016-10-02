@@ -44,6 +44,7 @@ add_executable(tests
 	net.cpp
 	paths.cpp
 	pipe.cpp
+	prefix_search_test.cpp
 	process.cpp
 	socketpair.cpp
 	sql.cpp

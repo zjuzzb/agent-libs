@@ -150,22 +150,23 @@ void sinsp_worker::init()
 	//
 	// mesos
 	//
+	m_analyzer->get_configuration()->set_mesos_credentials(m_configuration->m_mesos_credentials);
 	if(!m_configuration->m_mesos_state_uri.empty())
 	{
 		m_analyzer->get_configuration()->set_mesos_state_uri(m_configuration->m_mesos_state_uri);
+		m_analyzer->get_configuration()->set_mesos_state_original_uri(m_configuration->m_mesos_state_uri);
 	}
 	m_analyzer->get_configuration()->set_mesos_autodetect_enabled(m_configuration->m_mesos_autodetect);
 	m_analyzer->get_configuration()->set_mesos_follow_leader(m_configuration->m_mesos_follow_leader);
 	m_analyzer->get_configuration()->set_mesos_timeout_ms(m_configuration->m_mesos_timeout_ms);
 
 	// marathon
+	m_analyzer->get_configuration()->set_marathon_credentials(m_configuration->m_marathon_credentials);
 	if(!m_configuration->m_marathon_uris.empty())
 	{
 		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
 	}
 	m_analyzer->get_configuration()->set_marathon_follow_leader(m_configuration->m_marathon_follow_leader);
-	m_analyzer->get_configuration()->set_mesos_credentials(m_configuration->m_mesos_credentials);
-	m_analyzer->get_configuration()->set_marathon_credentials(m_configuration->m_marathon_credentials);
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);

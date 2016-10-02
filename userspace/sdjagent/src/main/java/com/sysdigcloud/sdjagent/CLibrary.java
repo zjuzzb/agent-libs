@@ -52,11 +52,16 @@ final public class CLibrary {
             LOGGER.severe(String.format("Error while reading /proc/self/status: %s", ex.getMessage()));
         }
 
-        try {
-            System.loadLibrary("sdjagentjni");
-            libraryLoaded = true;
-        } catch ( UnsatisfiedLinkError ex) {
-            LOGGER.warning(String.format("Cannot load JNI library: %s", ex.getMessage()));
+        String loadJniFlag = System.getProperty("sdjagent.loadjnilibrary");
+        if(loadJniFlag == null || loadJniFlag.equals("true")) {
+            try {
+                System.loadLibrary("sdjagentjni");
+                libraryLoaded = true;
+            } catch ( UnsatisfiedLinkError ex) {
+                LOGGER.warning(String.format("Cannot load JNI library: %s", ex.getMessage()));
+            }
+        } else {
+            LOGGER.fine("sdjagent.loadjnilibrary=false, skipping JNI library");
         }
 
         if (libraryLoaded) {
@@ -166,9 +171,9 @@ final public class CLibrary {
         }
     }
 
-    public static String runOnContainer(int pid, String exe, String[] command, String root) {
+    public static String runOnContainer(int pid, int vpid, String exe, String[] command, String root) {
         if (libraryLoaded) {
-            return realRunOnContainer(pid, exe, command, root);
+            return realRunOnContainer(pid, vpid, exe, command, root);
         } else {
             return "";
         }
@@ -205,7 +210,7 @@ final public class CLibrary {
     private static native int open_fd(String path);
     private static native int close_fd(int fd);
     private static native int realCopyToContainer(String source, int pid, String destination);
-    private static native String realRunOnContainer(int pid, String exe, String[] command, String root);
+    private static native String realRunOnContainer(int pid, int vpid, String exe, String[] command, String root);
     private static native int realRmFromContainer(int pid, String filepath);
     private static native long getInodeOfFile(String path);
 

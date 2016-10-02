@@ -5,6 +5,7 @@
 
 #include <jni.h>
 #include <stdint.h>
+#include <unistd.h>
 
 // Wraps the conversion between a jstring and a const char*
 class java_string
@@ -67,3 +68,13 @@ private:
 	JNIEnv* m_env;
 	jstring m_java_ptr;
 };
+
+template<typename... Args>
+void log(const char* sev, const char* msgfmt, Args... args)
+{
+	static const char* logfmt = "{\"pid\": %d, \"level\": \"%s\", \"message\": \"%s\" }\n";
+	char msg[500];
+	sprintf(msg, msgfmt, args...);
+	fprintf(stderr, logfmt, getpid(), sev, msg);
+	fflush(stderr);
+}
