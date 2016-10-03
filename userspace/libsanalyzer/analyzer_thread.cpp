@@ -134,6 +134,7 @@ void thread_analyzer_info::destroy()
 	}
 
 	delete m_dynstate;
+	m_listening_ports.reset();
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
