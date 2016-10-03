@@ -803,7 +803,7 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 {
 	string path = "/api";
 	uri url(addr + path);
-	g_logger.log("Detecting K8S at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
+	g_logger.log("Preparing to detect K8S at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
 	std::unique_ptr<sinsp_curl> sc;
 	if(url.is_secure() && !m_k8s_ssl)
 	{
@@ -824,6 +824,7 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 	string json = sc->get_data(false);
 	if(!json.empty())
 	{
+		g_logger.log("Detecting K8S at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
 		Json::Value root;
 		Json::Reader reader;
 		if(reader.parse(json, root))
@@ -848,7 +849,7 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 {
 	uri url(addr);
 	url.set_path(mesos::default_state_api);
-	g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
+	g_logger.log("Preparing to detect Mesos at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
 	const mesos::credentials_t& creds = m_configuration->get_mesos_credentials();
 	if(!creds.first.empty())
 	{
@@ -859,6 +860,7 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 	sinsp_curl sc(url, 500);
 	if(reader.parse(sc.get_data(false), root))
 	{
+		g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
 		Json::Value ver = root["version"];
 		if(!ver.isNull() && ver.isString())
 		{
