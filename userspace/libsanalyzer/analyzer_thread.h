@@ -84,6 +84,8 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
+// WARNING: This class is allocated with `placement new`. So the destructor
+// is not called automatically. release any dynamic memory in `destroy()` method
 ///////////////////////////////////////////////////////////////////////////////
 class thread_analyzer_info
 {
