@@ -16,7 +16,6 @@ class Prometheus(AgentCheck):
 
     DEFAULT_TIMEOUT = 5
     SERVICE_CHECK_NAME = 'prometheus'
-    URL = 'http://localhost'
     
     def avg_metric_name(self, name):
         if name.endswith('_count'):
@@ -29,13 +28,12 @@ class Prometheus(AgentCheck):
         logging.debug('Starting app check-prometheus')
         if 'metric_pattern' not in instance:
             raise Exception('Prometheus instance missing "metric_pattern" value.')
-        if 'port' not in instance:
-            raise Exception('Prometheus instance missing "port" value.')
+        if 'url' not in instance:
+            raise Exception('Prometheus instance missing "url" value.')
 
         # Load values from the instance config
         metric_pattern = instance['metric_pattern']
-        port = instance['port']
-        query_url = '{0}:{1}'.format(self.URL, port)
+        query_url = instance['url']
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
