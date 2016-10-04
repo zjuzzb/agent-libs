@@ -21,6 +21,7 @@
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
+#include "proc_config.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation
@@ -91,8 +92,6 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-Json::Reader thread_analyzer_info::m_json_reader;
-
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
@@ -117,11 +116,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	auto conf = tinfo->get_env("SYSDIG_AGENT_CONF");
 	if(!conf.empty())
 	{
-		YAML::Node root = YAML::Load(conf);
-		for(const auto& check_node : root["app_checks"])
-		{
-			m_app_checks.emplace_back(check_node.as<app_check>());
-		}
+		m_dynstate->m_proc_config = make_unique<proc_config>(conf);
 	}
 }
 

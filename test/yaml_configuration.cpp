@@ -1,6 +1,7 @@
 #include <gtest.h>
 #include "sys_call_test.h"
 #include <configuration.h>
+#include "proc_config.h"
 
 using namespace std;
 
@@ -209,4 +210,18 @@ TEST(yaml_conf, get_deep_sequence)
 
 	evts2 = yaml_configuration::get_deep_sequence<set<string, ci_compare>>(conf, *conf.get_default_root(), "events2", "docker", "image");
 	ASSERT_EQ(evts2.size(), 0);
+}
+
+TEST(proc_config, test_correct)
+{
+	proc_config config("{app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	auto checks = config.app_checks();
+	EXPECT_EQ(1, checks.size());
+}
+
+TEST(proc_config, test_bad_syntax)
+{
+	proc_config config("app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	auto checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
 }

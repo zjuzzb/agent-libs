@@ -5,8 +5,6 @@
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
-#include "third-party/jsoncpp/json/json.h"
-#include "app_checks.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -70,6 +68,7 @@ public:
 	uint64_t m_start_count;
 };
 
+class proc_config;
 class thread_analyzer_dyn_state
 {
 public:
@@ -82,6 +81,7 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// The protocol state
 	sinsp_protostate m_protostate;
+	unique_ptr<proc_config> m_proc_config;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -140,9 +140,9 @@ public:
 		}
 	}
 
-	inline const vector<app_check>& app_checks()
+	inline proc_config* get_proc_config()
 	{
-		return m_app_checks;
+		return m_dynstate->m_proc_config.get();
 	}
 
 	inline bool app_check_found()
@@ -204,8 +204,6 @@ public:
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
-	vector<app_check> m_app_checks;
-	static Json::Reader m_json_reader;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

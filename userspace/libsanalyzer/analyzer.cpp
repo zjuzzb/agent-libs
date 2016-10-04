@@ -66,6 +66,7 @@ using namespace google::protobuf::io;
 #include <numeric>
 #include "falco_engine.h"
 #include "falco_events.h"
+#include "proc_config.h"
 
 bool sinsp_analyzer::m_mesos_bad_config = false;
 
@@ -1590,9 +1591,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 				else
 				{
-					if(!ainfo->app_checks().empty())
+					// First check if the process has custom config for checks
+					// and use it
+					if(ainfo->get_proc_config() != nullptr)
 					{
-						for(const auto& check : ainfo->app_checks())
+						const auto& custom_checks = ainfo->get_proc_config()->app_checks();
+						for(const auto& check : custom_checks)
 						{
 							if(check.match(tinfo))
 							{
@@ -1604,7 +1608,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 							}
 						}
 					}
-					else
+					// If still no matches found, go ahead with the global list
+					if(!mtinfo->m_ainfo->app_check_found())
 					{
 						for(const auto &check : m_app_checks)
 						{
