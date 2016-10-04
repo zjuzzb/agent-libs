@@ -4020,6 +4020,11 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 					}
 				}
 			}
+
+			if(m_k8s && m_k8s->get_machine_id().empty())
+			{
+				m_k8s->set_machine_id(m_configuration->get_machine_id());
+			}
 		}
 		catch(std::exception& ex)
 		{
@@ -4884,13 +4889,24 @@ void sinsp_analyzer::emit_user_events()
 				tags->set_value(p.second);
 			}
 		}
-		std::ostringstream ostr;
-		ostr << "User event Proto:" << std::endl;
-		for(const auto& e : m_metrics->events())
+		if(m_k8s)
 		{
-			ostr << e.DebugString() << std::endl;
+			m_k8s->clear_events();
 		}
-		g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
+		if(m_docker)
+		{
+			m_docker->reset_event_counter();
+		}
+		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+		{
+			std::ostringstream ostr;
+			ostr << "User event Proto:" << std::endl;
+			for(const auto& e : m_metrics->events())
+			{
+				ostr << e.DebugString() << std::endl;
+			}
+			g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
+		}
 	}
 }
 
