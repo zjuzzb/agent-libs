@@ -15,7 +15,6 @@ from checks import AgentCheck
 class Prometheus(AgentCheck):
 
     DEFAULT_TIMEOUT = 5
-    SERVICE_CHECK_NAME = 'prometheus'
     
     def avg_metric_name(self, name):
         if name.endswith('_count'):
@@ -23,22 +22,18 @@ class Prometheus(AgentCheck):
         else:
             return name[:-len('_sum')] + '_avg'
         
-
     def check(self, instance):
         logging.debug('Starting app check-prometheus')
-        if 'metric_pattern' not in instance:
-            raise Exception('Prometheus instance missing "metric_pattern" value.')
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
 
         # Load values from the instance config
-        metric_pattern = instance['metric_pattern']
         query_url = instance['url']
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
 
-        metrics = self.get_prometheus_metrics(query_url, timeout)
+        metrics = self.get_prometheus_metrics(query_url, timeout, instance.get("name", "prometheus"))
         for family in metrics:
             parse_sum = None
             parse_count = None
@@ -73,25 +68,25 @@ class Prometheus(AgentCheck):
                     logging.debug('prom: adding gauge with name %s' %(name))
                     self.gauge(name, value, tags)
 
-    def get_prometheus_metrics(self, url, timeout):
+    def get_prometheus_metrics(self, url, timeout, name):
         try:
             r = requests.get(url, timeout=timeout)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout
-            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
+            self.service_check(name, AgentCheck.CRITICAL,
                 message='%s timed out after %s seconds.' % (url, timeout),
                 tags = ["url:{0}".format(url)])
             raise Exception("Timeout when hitting %s" % url)
 
         except requests.exceptions.HTTPError:
-            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
+            self.service_check(name, AgentCheck.CRITICAL,
                 message='%s returned a status of %s' % (url, r.status_code),
                 tags = ["url:{0}".format(url)])
             raise Exception("Got %s when hitting %s" % (r.status_code, url))
 
         else:
-            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.OK,
+            self.service_check(name, AgentCheck.OK,
                 tags = ["url:{0}".format(url)])
 
         metrics = text_string_to_metric_families(r.text)
