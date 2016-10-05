@@ -193,7 +193,10 @@ public class BeanData {
             }
         }
 
-        private void setValue(double value) {
+        private void setValue(Double value) throws NumberFormatException {
+            if(value.isInfinite() || value.isNaN()) {
+                throw new NumberFormatException();
+            }
             this.value = value;
         }
 
