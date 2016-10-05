@@ -820,7 +820,7 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 {
 	string path = "/api";
 	uri url(addr + path);
-	g_logger.log("Detecting K8S at [" + url.to_string() + ']', sinsp_logger::SEV_DEBUG);
+	g_logger.log("Preparing to detect K8S at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
 	std::unique_ptr<sinsp_curl> sc;
 	if(url.is_secure() && !m_k8s_ssl)
 	{
@@ -841,6 +841,7 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 	string json = sc->get_data(false);
 	if(!json.empty())
 	{
+		g_logger.log("Detecting K8S at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
 		Json::Value root;
 		Json::Reader reader;
 		if(reader.parse(json, root))
@@ -865,7 +866,7 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 {
 	uri url(addr);
 	url.set_path(mesos::default_state_api);
-	g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
+	g_logger.log("Preparing to detect Mesos at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
 	const mesos::credentials_t& creds = m_configuration->get_mesos_credentials();
 	if(!creds.first.empty())
 	{
@@ -876,6 +877,7 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 	sinsp_curl sc(url, 500);
 	if(reader.parse(sc.get_data(false), root))
 	{
+		g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
 		Json::Value ver = root["version"];
 		if(!ver.isNull() && ver.isString())
 		{
@@ -4106,6 +4108,11 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 					}
 				}
 			}
+
+			if(m_k8s && m_k8s->get_machine_id().empty())
+			{
+				m_k8s->set_machine_id(m_configuration->get_machine_id());
+			}
 		}
 		catch(std::exception& ex)
 		{
@@ -4970,13 +4977,24 @@ void sinsp_analyzer::emit_user_events()
 				tags->set_value(p.second);
 			}
 		}
-		std::ostringstream ostr;
-		ostr << "User event Proto:" << std::endl;
-		for(const auto& e : m_metrics->events())
+		if(m_k8s)
 		{
-			ostr << e.DebugString() << std::endl;
+			m_k8s->clear_events();
 		}
-		g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
+		if(m_docker)
+		{
+			m_docker->reset_event_counter();
+		}
+		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+		{
+			std::ostringstream ostr;
+			ostr << "User event Proto:" << std::endl;
+			for(const auto& e : m_metrics->events())
+			{
+				ostr << e.DebugString() << std::endl;
+			}
+			g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
+		}
 	}
 }
 
