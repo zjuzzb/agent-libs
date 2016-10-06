@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=missing-docstring, line-too-long
 # std
 import os.path
 import traceback
@@ -51,26 +52,28 @@ class YamlConfig:
                 self._default_root = yaml.load(default_file.read())
         except Exception as ex:
             self._default_root = {}
-            logging.error("Cannot read config file dragent.default.yaml: %s" % ex)
+            logging.error("Cannot read config file dragent.default.yaml: %s", ex)
         try:
             with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
                 self._root = yaml.load(custom_file.read())
         except Exception as ex:
             self._root = {}
-            logging.error("Cannot read config file dragent.yaml: %s" % ex)
+            logging.error("Cannot read config file dragent.yaml: %s", ex)
 
-    def get_merged_sequence(self, key, default=[]):
+    def get_merged_sequence(self, key, default=None):
         ret = default
+        if ret is None:
+            ret = []
         if self._root.has_key(key):
             try:
                 ret += self._root[key]
             except TypeError as ex:
-                logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
+                logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s", key, str(ex))
         if self._default_root.has_key(key):
             try:
                 ret += self._default_root[key]
             except TypeError as ex:
-                logging.error("Cannot parse default config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
+                logging.error("Cannot parse default config correctly, \"%s\" is not a list, exception=%s", key, str(ex))
         return ret
 
     def get_single(self, key, subkey, default_value=None):
@@ -180,7 +183,7 @@ class AppCheckInstance:
             self.instance_conf["port"] = proc_data["ports"][0]
 
         for key, value in check["conf"].items():
-            if type(value) is str:
+            if isinstance(value, str):
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
@@ -200,7 +203,7 @@ class AppCheckInstance:
                 for nsfd in ns_fds:
                     ret = setns(nsfd)
                     if ret != 0:
-                        raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
+                        raise OSError("Cannot setns to pid: %d" % self.pid)
             self.check_instance.check(self.instance_conf)
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
@@ -269,10 +272,10 @@ class PosixQueue:
         limit = self.MAXQUEUES*(self.MAXMSGS+2)*self.MSGSIZE
         resource.setrlimit(RLIMIT_MSGQUEUE, (limit, limit))
         self.direction = direction
-        self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
-                                            max_messages = maxmsgs, max_message_size = self.MSGSIZE,
-                                            read = (self.direction == PosixQueueType.RECEIVE),
-                                            write = (self.direction == PosixQueueType.SEND))
+        self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode=0600,
+                                            max_messages=maxmsgs, max_message_size=self.MSGSIZE,
+                                            read=(self.direction == PosixQueueType.RECEIVE),
+                                            write=(self.direction == PosixQueueType.SEND))
 
     def close(self):
         self.queue.close()
@@ -285,7 +288,7 @@ class PosixQueue:
         except posix_ipc.BusyError:
             return False
         except ValueError as ex:
-            logging.error("Cannot send: %s, size=%dB" % (ex, len(msg)))
+            logging.error("Cannot send: %s, size=%dB", ex, len(msg))
             return False
 
     def receive(self, timeout=1):
@@ -372,13 +375,13 @@ class Application:
                 self.blacklisted_pids.add(pid)
 
             expiration_ts = datetime.now() + check_instance.interval
-            response_body.append({  "pid": pid,
-                                    "display_name": check_instance.name,
-                                    "metrics": metrics,
-                                    "service_checks": service_checks,
-                                    "expiration_ts": int(expiration_ts.strftime("%s"))})
+            response_body.append({"pid": pid,
+                                  "display_name": check_instance.name,
+                                  "metrics": metrics,
+                                  "service_checks": service_checks,
+                                  "expiration_ts": int(expiration_ts.strftime("%s"))})
         response_s = json.dumps(response_body)
-        logging.debug("Response size is %d" % len(response_s))
+        logging.debug("Response size is %d", len(response_s))
         self.outqueue.send(response_s)
 
     def main_loop(self):
@@ -412,7 +415,7 @@ class Application:
                     "check": sys.argv[2],
                     "pid": int(sys.argv[3]),
                     "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
-                    "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
+                    "ports": [int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
                 }
                 logging.info("Run AppCheck for %s", proc_data)
                 check_conf = self.config.check_conf_by_name(proc_data["check"])
