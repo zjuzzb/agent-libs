@@ -228,13 +228,16 @@ def test_mounts(env):
 
 @pytest.mark.parametrize("env", [
     "redis",
-    "redis-pwd" ])
+    "redis-pwd",
+    "rabbitmq",
+    "mongo" ])
 @for_each_sample
 def test_app_checks(m):
+  metricsFound = False
   for program in m.programs:
-    app = program.procinfo.protos.app
-    if program.procinfo.details.comm == 'redis-server':
-      assert len(app.metrics) > 0
+    if program.procinfo.protos.HasField('app'):
+      metricsFound = len(program.procinfo.protos.app.metrics) > 0
+  assert metricsFound
 
 @pytest.mark.parametrize("env", [
     "redis-traffic" ])

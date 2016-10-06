@@ -133,6 +133,7 @@ Json::Value app_process::to_json() const
 	stringstream ss;
 	YAML::Emitter emitter(ss);
 	emitter << YAML::Flow;
+	emitter << YAML::SingleQuoted;
 	emitter << YAML::Node(m_check);
 	ret["check"] = ss.str();
 	ret["ports"] = Json::Value(Json::arrayValue);
