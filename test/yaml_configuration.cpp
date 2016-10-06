@@ -248,7 +248,7 @@ TEST(proc_config, test_wrong_yaml_objects)
 	checks = config.app_checks();
 	EXPECT_EQ(0, checks.size());
 
-	// a wrong one and a right one
+	// empty yaml, legit
 	config = proc_config("");
 	checks = config.app_checks();
 	EXPECT_EQ(0, checks.size());

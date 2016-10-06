@@ -36,10 +36,10 @@ proc_config::proc_config(const string &conf)
 	}
 	catch (const YAML::BadConversion& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=%s", conf.c_str(), ex.what());
+		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=Wrong fields", conf.c_str());
 	}
 	catch ( const YAML::ParserException& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=%s", conf.c_str(), ex.what());
+		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=Wrong YAML syntax", conf.c_str());
 	}
 }
