@@ -235,3 +235,12 @@ def test_app_checks(m):
     app = program.procinfo.protos.app
     if program.procinfo.details.comm == 'redis-server':
       assert len(app.metrics) > 0
+
+@pytest.mark.parametrize("env", [
+    "redis-traffic" ])
+@for_each_sample
+def test_app_checks_disabled(m):
+  for program in m.programs:
+    app = program.procinfo.protos.app
+    if program.procinfo.details.comm == 'redis-server':
+      assert len(app.metrics) == 0
