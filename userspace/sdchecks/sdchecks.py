@@ -250,6 +250,13 @@ class Config:
         elif level == "debug":
             return logging.DEBUG
 
+    def check_conf_by_name(self, name):
+        checks = self._yaml_config.get_merged_sequence("app_checks")
+        for check in checks:
+            if check["name"] == name:
+                return check
+        return None
+
 class PosixQueueType:
     SEND = 0
     RECEIVE = 1
@@ -408,7 +415,10 @@ class Application:
                     "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
                 }
                 logging.info("Run AppCheck for %s", proc_data)
-                check_conf = self.config.checks[proc_data["check"]]
+                check_conf = self.config.check_conf_by_name(proc_data["check"])
+                if check_conf is None:
+                    print "Check conf not found"
+                    sys.exit(1)
                 check_instance = AppCheckInstance(check_conf, proc_data)
                 metrics, service_checks, ex = check_instance.run()
                 print "Conf: %s" % repr(check_instance.instance_conf)
