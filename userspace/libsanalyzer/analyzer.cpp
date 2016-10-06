@@ -1593,19 +1593,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					// First check if the process has custom config for checks
 					// and use it
-					if(ainfo->get_proc_config() != nullptr)
+					const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
+					for(const auto& check : custom_checks)
 					{
-						const auto& custom_checks = ainfo->get_proc_config()->app_checks();
-						for(const auto& check : custom_checks)
+						if(check.match(tinfo))
 						{
-							if(check.match(tinfo))
-							{
-								g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from env",
-												check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-								app_checks_processes.emplace_back(check, tinfo);
-								mtinfo->m_ainfo->set_app_check_found();
-								break;
-							}
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from env",
+											check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+							app_checks_processes.emplace_back(check, tinfo);
+							mtinfo->m_ainfo->set_app_check_found();
+							break;
 						}
 					}
 					// If still no matches found, go ahead with the global list

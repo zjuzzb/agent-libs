@@ -140,10 +140,7 @@ public:
 		}
 	}
 
-	inline proc_config* get_proc_config()
-	{
-		return m_dynstate->m_proc_config.get();
-	}
+	const proc_config& get_proc_config();
 
 	inline bool app_check_found()
 	{

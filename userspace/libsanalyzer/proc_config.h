@@ -12,7 +12,7 @@ class proc_config {
 public:
 	inline proc_config(const string& conf);
 
-	const vector<app_check>& app_checks()
+	const vector<app_check>& app_checks() const
 	{
 		return m_app_checks;
 	}
@@ -22,7 +22,8 @@ private:
 
 proc_config::proc_config(const string &conf)
 {
-	try {
+	try
+	{
 		auto root = YAML::Load(conf);
 		const auto& app_checks_node = root["app_checks"];
 		if(app_checks_node.IsSequence())
@@ -32,8 +33,13 @@ proc_config::proc_config(const string &conf)
 				m_app_checks.emplace_back(check_node.as<app_check>());
 			}
 		}
-	} catch ( const YAML::ParserException& ex)
+	}
+	catch (const YAML::BadConversion& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var: %s", conf.c_str());
+		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=%s", conf.c_str(), ex.what());
+	}
+	catch ( const YAML::ParserException& ex)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=%s", conf.c_str(), ex.what());
 	}
 }

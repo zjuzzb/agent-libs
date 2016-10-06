@@ -113,11 +113,6 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_dynstate->m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
-	auto conf = tinfo->get_env("SYSDIG_AGENT_CONF");
-	if(!conf.empty())
-	{
-		m_dynstate->m_proc_config = make_unique<proc_config>(conf);
-	}
 }
 
 void thread_analyzer_info::destroy()
@@ -465,6 +460,16 @@ void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transa
 
 	m_dynstate->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
+}
+
+const proc_config& thread_analyzer_info::get_proc_config()
+{
+	if(!m_dynstate->m_proc_config)
+	{
+		auto conf = m_tinfo->get_env("SYSDIG_AGENT_CONF");
+		m_dynstate->m_proc_config = make_unique<proc_config>(conf);
+	}
+	return *m_dynstate->m_proc_config;
 }
 
 //

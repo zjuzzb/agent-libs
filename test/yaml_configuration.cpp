@@ -219,9 +219,37 @@ TEST(proc_config, test_correct)
 	EXPECT_EQ(1, checks.size());
 }
 
-TEST(proc_config, test_bad_syntax)
+TEST(proc_config, test_wrong_yaml_syntax)
 {
 	proc_config config("app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
 	auto checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+}
+
+TEST(proc_config, test_wrong_yaml_objects)
+{
+	// app_checks is not a list
+	proc_config config("{ app_checks: { name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} } }");
+	auto checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+
+	// missing name
+	config = proc_config("{app_checks: [{ pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+
+	// conf not an object
+	config = proc_config("{app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: 127.0.0.1 }] }");
+	checks = config.app_checks();
+	EXPECT_EQ(1, checks.size()); // Parsed with an empty conf
+
+	// a wrong one and a right one
+	config = proc_config("{app_checks: [{ pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }, { name: redis, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+
+	// a wrong one and a right one
+	config = proc_config("");
+	checks = config.app_checks();
 	EXPECT_EQ(0, checks.size());
 }
