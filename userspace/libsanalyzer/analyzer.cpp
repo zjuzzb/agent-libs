@@ -4203,15 +4203,11 @@ void sinsp_analyzer::emit_mesos()
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
 	string mesos_uri = m_configuration->get_mesos_state_uri();
-	if((mesos_uri.empty() || (!mesos_uri.empty() && m_configuration->get_mesos_state_original_uri().empty())) && m_configuration->get_mesos_autodetect_enabled())
+	try
 	{
-		 detect_mesos(mesos_uri);
-	}
-	if(!mesos_uri.empty())
-	{
-		g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
-		try
+		if(!mesos_uri.empty())
 		{
+			g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
 			if(!m_mesos && !m_mesos_bad_config)
 			{
 				g_logger.log("Connecting to Mesos API server at [" + uri(mesos_uri).to_string(false) + "] ...", sinsp_logger::SEV_INFO);
@@ -4249,10 +4245,14 @@ void sinsp_analyzer::emit_mesos()
 				reset_mesos("Mesos connection not established.");
 			}
 		}
-		catch(std::exception& e)
+		else if(m_configuration->get_mesos_autodetect_enabled())
 		{
-			reset_mesos(std::string("Error fetching Mesos state: ").append(e.what()));
+			detect_mesos(mesos_uri);
 		}
+	}
+	catch(std::exception& e)
+	{
+		reset_mesos(std::string("Error fetching Mesos state: ").append(e.what()));
 	}
 }
 
