@@ -183,6 +183,12 @@ class AppCheckInstance:
             self.instance_conf["port"] = proc_data["ports"][0]
 
         for key, value in check["conf"].items():
+            # some checks rely on str, so let's convert
+            # everything to str
+            key = key.encode('ascii', 'ignore')
+            if isinstance(value, unicode):
+                value = value.encode('ascii', 'ignore')
+
             if isinstance(value, str):
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
@@ -357,7 +363,7 @@ class Application:
                 if pid in self.blacklisted_pids:
                     logging.debug("Process with pid=%d is blacklisted", pid)
                     continue
-                check = yaml.load(p["check"])
+                check = p["check"]
                 logging.debug("Requested check %s", repr(check))
                 
                 try:

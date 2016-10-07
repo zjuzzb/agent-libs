@@ -11,6 +11,8 @@
 #include "draios.pb.h"
 #include <yaml-cpp/yaml.h>
 
+Json::Value yaml_to_json(const YAML::Node& node);
+
 class app_check
 {
 public:
@@ -18,7 +20,7 @@ public:
 		m_port_pattern(0),
 		m_enabled(true),
 		m_interval(-1),
-		m_conf(YAML::NodeType::Map)
+		m_conf(Json::objectValue)
 	{}
 
 	bool match(sinsp_threadinfo* tinfo) const;
@@ -32,6 +34,7 @@ public:
 		return m_enabled;
 	}
 
+	Json::Value to_json() const;
 private:
 	friend class YAML::convert<app_check>;
 
@@ -43,7 +46,7 @@ private:
 	string m_check_module;
 	bool m_enabled;
 	int m_interval;
-	YAML::Node m_conf;
+	Json::Value m_conf;
 };
 
 namespace YAML {

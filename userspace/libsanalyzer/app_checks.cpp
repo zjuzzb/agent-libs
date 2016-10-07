@@ -8,6 +8,53 @@
 #include "analyzer_thread.h"
 #include <utils.h>
 
+Json::Value yaml_to_json(const YAML::Node& yaml)
+{
+	Json::Value ret;
+	switch(yaml.Type())
+	{
+	case YAML::NodeType::Scalar:
+	{
+		try
+		{
+			ret = yaml.as<int>();
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			try
+			{
+				ret = yaml.as<double>();
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				ret = yaml.as<string>();
+			}
+		}
+		break;
+	}
+	case YAML::NodeType::Sequence:
+	{
+		for(auto it = yaml.begin(); it != yaml.end(); ++it)
+		{
+			ret.append(yaml_to_json(*it));
+		}
+		break;
+	}
+	case YAML::NodeType::Map:
+	{
+		for(auto it = yaml.begin(); it != yaml.end(); ++it)
+		{
+			ret[it->first.as<string>()] = yaml_to_json(it->second);
+		}
+		break;
+	}
+	default:
+		// Other types are null and undefined
+		break;
+	}
+	return ret;
+}
+
 bool app_check::match(sinsp_threadinfo *tinfo) const
 {
 	// At least a pattern should be specified
@@ -35,6 +82,21 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 	return ret;
 }
 
+Json::Value app_check::to_json() const
+{
+	Json::Value ret;
+	ret["name"] = m_name;
+	if(!m_check_module.empty())
+	{
+		ret["check_module"] = m_check_module;
+	}
+	ret["conf"] = m_conf;
+	if(m_interval > 0)
+	{
+		ret["interval"] = m_interval;
+	}
+	return ret;
+}
 bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 {
 	/*
@@ -94,26 +156,9 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	auto conf_node = node["conf"];
 	if (conf_node.IsMap())
 	{
-		rhs.m_conf = conf_node;
+		rhs.m_conf = yaml_to_json(conf_node);
 	}
 	return true;
-}
-
-YAML::Node YAML::convert<app_check>::encode(const app_check &rhs)
-{
-
-	YAML::Node ret;
-	ret["name"] = rhs.m_name;
-	if(!rhs.m_check_module.empty())
-	{
-		ret["check_module"] = rhs.m_check_module;
-	}
-	ret["conf"] = rhs.m_conf;
-	if(rhs.m_interval > 0)
-	{
-		ret["interval"] = rhs.m_interval;
-	}
-	return ret;
 }
 
 app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
@@ -130,12 +175,7 @@ Json::Value app_process::to_json() const
 	Json::Value ret;
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
-	stringstream ss;
-	YAML::Emitter emitter(ss);
-	emitter << YAML::Flow;
-	emitter << YAML::SingleQuoted;
-	emitter << YAML::Node(m_check);
-	ret["check"] = ss.str();
+	ret["check"] = m_check.to_json();
 	ret["ports"] = Json::Value(Json::arrayValue);
 	for(auto port : m_ports)
 	{
