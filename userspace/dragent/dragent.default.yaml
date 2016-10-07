@@ -34,7 +34,7 @@ jmx:
           alias: jvm.thread.daemon
   per_process_beans:
     cassandra:
-      pattern: "cassandra"
+      pattern: "org.apache.cassandra.service.CassandraDaemon"
       beans:
         - query: "org.apache.cassandra.metrics:type=ClientRequest,scope=Read,name=Latency"
           attributes:

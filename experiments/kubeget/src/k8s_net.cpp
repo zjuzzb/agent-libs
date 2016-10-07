@@ -107,42 +107,42 @@ bool k8s_net::has_dependency(const k8s_component::type_map::value_type& componen
 		case k8s_component::K8S_NAMESPACES:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_NODES);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_PODS:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_NAMESPACES);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_REPLICATIONCONTROLLERS:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_PODS);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_SERVICES:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_REPLICATIONCONTROLLERS);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_REPLICASETS:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_SERVICES);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_DAEMONSETS:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_REPLICASETS);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_DEPLOYMENTS:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_DAEMONSETS);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_EVENTS:
 			{
 				auto it = m_handlers.find(k8s_component::K8S_SERVICES);
-				return it!= m_handlers.end() && it->second && it->second->is_state_built();
+				return it != m_handlers.end() && it->second && it->second->is_state_built();
 			}
 		case k8s_component::K8S_COMPONENT_COUNT:
 		default:

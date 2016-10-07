@@ -7,6 +7,7 @@
 #include "jmx_proxy.h"
 #include "posix_queue.h"
 #include <fstream>
+#include "third-party/jsoncpp/json/json.h"
 
 class jmx_proxy_f : public ::testing::Test {
 protected:
@@ -61,4 +62,13 @@ TEST_F(jmx_proxy_f, test_wrong_object)
 {
 	use_json("jmx_wrong_object.json");
 	EXPECT_NO_THROW(jmx->read_metrics(););
+}
+
+TEST(jmx_attribute, test_infinite_values)
+{
+	Json::Value value;
+	Json::Reader reader;
+	reader.parse("{\"name\":\"Value\",\"value\":\"-Infinity\",\"type\":2,\"scale\":0,\"unit\":0}", value, false);
+	java_bean_attribute attribute(value);
+	EXPECT_EQ(0, attribute.value());
 }

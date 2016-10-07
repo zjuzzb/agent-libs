@@ -10,6 +10,7 @@
 
 java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	m_name(json["name"].asString()),
+	m_value(0),
 	m_unit(0),
 	m_scale(0),
 	m_type(0)
@@ -32,7 +33,13 @@ java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	}
 	if (json.isMember("value"))
 	{
-		m_value = json["value"].asDouble();
+		const auto& value_node = json["value"];
+		if(value_node.isDouble())
+		{
+			m_value = value_node.asDouble();
+		}
+		// Otherwise leave 0 as default and go on
+		// this is a very rare situation
 	} else if (json.isMember("subattributes"))
 	{
 		for(const auto& subattribute : json["subattributes"])
