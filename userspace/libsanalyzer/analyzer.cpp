@@ -1189,28 +1189,31 @@ std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 
 std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
 {
-	mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
-	if(!mesos_api_server.empty())
+	if(!m_mesos)
 	{
-		m_configuration->set_mesos_state_uri(mesos_api_server);
-		g_logger.log("Mesos API server set to: " + uri(mesos_api_server).to_string(false), sinsp_logger::SEV_INFO);
-		m_configuration->set_mesos_follow_leader(true);
-		if(m_configuration->get_marathon_uris().empty())
+		mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
+		if(!mesos_api_server.empty())
 		{
-			m_configuration->set_marathon_follow_leader(true);
+			m_configuration->set_mesos_state_uri(mesos_api_server);
+			g_logger.log("Mesos API server set to: " + uri(mesos_api_server).to_string(false), sinsp_logger::SEV_INFO);
+			m_configuration->set_mesos_follow_leader(true);
+			if(m_configuration->get_marathon_uris().empty())
+			{
+				m_configuration->set_marathon_follow_leader(true);
+			}
+			g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server,
+						 sinsp_logger::SEV_INFO);
 		}
-		g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server,
-					 sinsp_logger::SEV_INFO);
-	}
-	else
-	{
-		// not to flood logs, log only once a minute
-		static time_t last_log;
-		time_t now; time(&now);
-		if(m_mesos_present && (difftime(now, last_log) > m_detect_retry_seconds))
+		else
 		{
-			last_log = now;
-			g_logger.log("Mesos API server not found.", sinsp_logger::SEV_WARNING);
+			// not to flood logs, log only once a minute
+			static time_t last_log;
+			time_t now; time(&now);
+			if(m_mesos_present && (difftime(now, last_log) > m_detect_retry_seconds))
+			{
+				last_log = now;
+				g_logger.log("Mesos API server not found.", sinsp_logger::SEV_WARNING);
+			}
 		}
 	}
 	return mesos_api_server;
@@ -1221,17 +1224,20 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 	string mesos_apiserver_process;
 
 	string mesos_api_server = m_configuration->get_mesos_state_uri();
-	if((mesos_api_server.empty() || m_configuration->get_mesos_state_original_uri().empty()) &&
-	   m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
+	if(!m_mesos)
 	{
-		if(main_tinfo && main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+		if((mesos_api_server.empty() || m_configuration->get_mesos_state_original_uri().empty()) &&
+		   m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
 		{
-			mesos_apiserver_process = "mesos-master";
-		}
-		if(!mesos_apiserver_process.empty())
-		{
-			g_logger.log("Mesos: Detected '"+ mesos_apiserver_process + "' process", sinsp_logger::SEV_INFO);
-			detect_mesos(mesos_api_server);
+			if(main_tinfo && main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+			{
+				mesos_apiserver_process = "mesos-master";
+			}
+			if(!mesos_apiserver_process.empty())
+			{
+				g_logger.log("Mesos: Detected '"+ mesos_apiserver_process + "' process", sinsp_logger::SEV_INFO);
+				detect_mesos(mesos_api_server);
+			}
 		}
 	}
 	return mesos_api_server;
@@ -4285,15 +4291,11 @@ void sinsp_analyzer::emit_mesos()
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
 	string mesos_uri = m_configuration->get_mesos_state_uri();
-	if((mesos_uri.empty() || (!mesos_uri.empty() && m_configuration->get_mesos_state_original_uri().empty())) && m_configuration->get_mesos_autodetect_enabled())
+	try
 	{
-		 detect_mesos(mesos_uri);
-	}
-	if(!mesos_uri.empty())
-	{
-		g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
-		try
+		if(!mesos_uri.empty())
 		{
+			g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
 			if(!m_mesos && !m_mesos_bad_config)
 			{
 				g_logger.log("Connecting to Mesos API server at [" + uri(mesos_uri).to_string(false) + "] ...", sinsp_logger::SEV_INFO);
@@ -4331,10 +4333,14 @@ void sinsp_analyzer::emit_mesos()
 				reset_mesos("Mesos connection not established.");
 			}
 		}
-		catch(std::exception& e)
+		else if(m_configuration->get_mesos_autodetect_enabled())
 		{
-			reset_mesos(std::string("Error fetching Mesos state: ").append(e.what()));
+			detect_mesos(mesos_uri);
 		}
+	}
+	catch(std::exception& e)
+	{
+		reset_mesos(std::string("Error fetching Mesos state: ").append(e.what()));
 	}
 }
 
