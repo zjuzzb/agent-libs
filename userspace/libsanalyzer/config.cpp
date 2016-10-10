@@ -475,23 +475,88 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
-const string & sinsp_configuration::get_mesos_state_uri() const
+string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
-	return m_mesos_state_uri;
+	if(sought_url.empty())
+	{
+		return sought_url;
+	}
+	uri url(sought_url);
+	if(!m_mesos_credentials.first.empty())
+	{
+		url.set_credentials(m_mesos_credentials);
+	}
+	return url.to_string(true);
 }
 
-void sinsp_configuration::set_mesos_state_uri(const string & uri)
+void sinsp_configuration::set_mesos_uri(string& url, const string & new_url)
 {
-	m_mesos_state_uri = uri;
+	if(!new_url.empty())
+	{
+		try
+		{
+			uri u(new_url);
+			u.set_path("");
+			url = u.to_string(true);
+		}
+		catch(sinsp_exception& ex)
+		{
+			g_logger.log(std::string("Error setting Mesos URI: ").append(ex.what()), sinsp_logger::SEV_ERROR);
+		}
+		return;
+	}
+	url.clear();
 }
 
-const vector<string> & sinsp_configuration::get_marathon_uris() const
+string sinsp_configuration::get_mesos_state_uri() const
 {
+	return get_mesos_uri(m_mesos_state_uri);
+}
+
+void sinsp_configuration::set_mesos_state_uri(const string & url)
+{
+	set_mesos_uri(m_mesos_state_uri, url);
+}
+
+string sinsp_configuration::get_mesos_state_original_uri() const
+{
+	return get_mesos_uri(m_mesos_state_original_uri);
+}
+
+void sinsp_configuration::set_mesos_state_original_uri(const string & url)
+{
+	set_mesos_uri(m_mesos_state_original_uri, url);
+}
+
+const vector<string>& sinsp_configuration::get_marathon_uris() const
+{
+	if(!m_marathon_uris.empty())
+	{
+		for(vector<string>::iterator it = m_marathon_uris.begin(); it != m_marathon_uris.end(); ++it)
+		{
+			if(!it->empty())
+			{
+				uri url(*it);
+				if(!m_marathon_credentials.first.empty())
+				{
+					url.set_credentials(m_marathon_credentials);
+				}
+				*it = url.to_string(true);
+			}
+		}
+	}
 	return m_marathon_uris;
 }
 
 void sinsp_configuration::set_marathon_uris(const vector<string> & uris)
 {
+	for(const auto& u : uris)
+	{
+		if(!u.empty())
+		{
+			uri::check(u);
+		}
+	}
 	m_marathon_uris = uris;
 }
 
@@ -533,6 +598,28 @@ bool sinsp_configuration::get_marathon_follow_leader() const
 void sinsp_configuration::set_marathon_follow_leader(bool enabled)
 {
 	m_marathon_follow_leader = enabled;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_mesos_credentials() const
+{
+	return m_mesos_credentials;
+}
+
+void sinsp_configuration::set_mesos_credentials(const mesos::credentials_t& creds)
+{
+	m_mesos_credentials.first = creds.first;
+	m_mesos_credentials.second = creds.second;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_marathon_credentials() const
+{
+	return m_marathon_credentials;
+}
+
+void sinsp_configuration::set_marathon_credentials(const mesos::credentials_t& creds)
+{
+	m_marathon_credentials.first = creds.first;
+	m_marathon_credentials.second = creds.second;
 }
 
 bool sinsp_configuration::get_curl_debug() const

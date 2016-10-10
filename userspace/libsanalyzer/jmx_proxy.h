@@ -15,6 +15,7 @@ class java_bean_attribute
 public:
 	void to_protobuf(draiosproto::jmx_attribute *attribute) const;
 	explicit java_bean_attribute(const Json::Value&);
+	double value() { return m_value; }
 private:
 	string m_name;
 	string m_alias;
