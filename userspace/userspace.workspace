@@ -9,6 +9,7 @@
   <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug" Selected="yes">
+      <Environment/>
       <Project Name="kubeget" ConfigName="Debug"/>
       <Project Name="mesos" ConfigName="Debug"/>
       <Project Name="docker" ConfigName="Debug"/>
@@ -19,6 +20,7 @@
       <Project Name="dragent" ConfigName="Debug"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="Release" Selected="yes">
+      <Environment/>
       <Project Name="kubeget" ConfigName="Release"/>
       <Project Name="mesos" ConfigName="Release"/>
       <Project Name="docker" ConfigName="Release"/>

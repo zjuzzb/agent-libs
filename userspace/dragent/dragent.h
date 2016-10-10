@@ -87,7 +87,7 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
-	shared_ptr<errpipe_manager> m_jmx_pipes;
+	unique_ptr<errpipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	unique_ptr<errpipe_manager> m_sdchecks_pipes;
 	unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;

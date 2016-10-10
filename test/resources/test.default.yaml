@@ -1,7 +1,7 @@
 mykey: myvaluedefault
 mynested:
   secondkey:
-    subkey: 40
+    subkey: 10
 mykeydefault: "value"
 myarray:
   - 78

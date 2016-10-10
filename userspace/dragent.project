@@ -114,6 +114,10 @@
     <File Name="libsanalyzer/k8s_api_handler.h"/>
     <File Name="libsanalyzer/k8s_ext_handler.h"/>
     <File Name="libsanalyzer/k8s_ext_handler.cpp"/>
+    <File Name="libsanalyzer/token_bucket.cpp"/>
+    <File Name="libsanalyzer/falco_events.cpp"/>
+    <File Name="libsanalyzer/token_bucket.h"/>
+    <File Name="libsanalyzer/falco_events.h"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

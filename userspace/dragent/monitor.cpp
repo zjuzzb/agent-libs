@@ -72,6 +72,7 @@ int monitor::run()
 		auto child_pid = fork();
 		if(child_pid < 0)
 		{
+			delete_pid_file(m_pidfile);
 			exit(EXIT_FAILURE);
 		}
 		else if(child_pid == 0)
@@ -102,13 +103,40 @@ int monitor::run()
 			}
 			else if(waited_pid > 0)
 			{
-				if(process.is_main() && WIFEXITED(status) && WEXITSTATUS(status) == 0)
+				if(process.is_main() && WIFEXITED(status))
 				{
-					//
-					// Process terminated cleanly
-					//
-					delete_pid_file(m_pidfile);
-					exit(EXIT_SUCCESS);
+					if(WEXITSTATUS(status) == 0)
+					{
+						//
+						// Process terminated cleanly
+						//
+						delete_pid_file(m_pidfile);
+						exit(EXIT_SUCCESS);
+					}
+					else if(WEXITSTATUS(status) == CONFIG_UPDATE_EXIT_CODE)
+					{
+						for(const auto& process : m_processes)
+						{
+							//
+							// Send TERM to all others
+							if(!process.is_main())
+							{
+								if(kill(process.pid(), SIGKILL) != 0)
+								{
+									delete_pid_file(m_pidfile);
+									exit(EXIT_FAILURE);
+								}
+								// locking wait here, but we are using SIGKILL
+								// so it should not be a problem
+								waitpid(process.pid(), NULL, 0);
+							}
+						}
+						m_cleanup_function();
+						execl("/opt/draios/bin/dragent", "dragent", (char*)NULL);
+
+						delete_pid_file(m_pidfile);
+						exit(EXIT_FAILURE);
+					}
 				}
 
 				if(!process.is_main())
@@ -139,6 +167,7 @@ int monitor::run()
 				auto child_pid = fork();
 				if(child_pid < 0)
 				{
+					delete_pid_file(m_pidfile);
 					exit(EXIT_FAILURE);
 				}
 				else if(child_pid == 0)
@@ -160,23 +189,21 @@ int monitor::run()
 		// Signal received, forward it to the child and
 		// wait for it to terminate
 		//
-		if(kill(process.pid(), g_signal_received) != 0)
+		if(process.pid() > 0)
 		{
-			delete_pid_file(m_pidfile);
-			exit(EXIT_FAILURE);
-		}
-		if(process.is_main())
-		{
-			waitpid(process.pid(), NULL, 0);
+			if(kill(process.pid(), g_signal_received) != 0)
+			{
+				delete_pid_file(m_pidfile);
+				exit(EXIT_FAILURE);
+			}
+			if(process.is_main())
+			{
+				waitpid(process.pid(), NULL, 0);
+			}
 		}
 	}
 
-	for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
-							 "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
-							 "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
-	{
-		posix_queue::remove(queue);
-	}
+	m_cleanup_function();
 	delete_pid_file(m_pidfile);
 	return(EXIT_SUCCESS);
 }

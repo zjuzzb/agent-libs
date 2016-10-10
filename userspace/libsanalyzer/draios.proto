@@ -510,6 +510,7 @@ enum message_type {
     SSH_DATA = 8;
     AUTO_UPDATE_REQUEST = 9;
     DIRTY_SHUTDOWN_REPORT = 10;
+    CONFIG_DATA = 11;
 }
 
 //
@@ -825,6 +826,15 @@ message agent_event {
     optional string description = 4;
     optional uint32 severity = 5;
     repeated key_value tags = 6;
+}
+
+message config_file {
+    optional string name = 1;
+    optional string content = 2;
+}
+
+message config_data {
+    repeated config_file config_files = 1;
 }
 
 //
