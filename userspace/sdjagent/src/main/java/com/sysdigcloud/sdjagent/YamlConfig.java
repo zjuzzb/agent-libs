@@ -3,12 +3,10 @@ package com.sysdigcloud.sdjagent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.yaml.snakeyaml.Yaml;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -18,79 +16,51 @@ public class YamlConfig {
     private static final Logger LOGGER = Logger.getLogger(YamlConfig.class.getName());
     private static final Yaml YAML = new Yaml();
     private static final ObjectMapper MAPPER = new ObjectMapper();
-    private Map<String, Object> conf;
-    private Map<String, Object> defaults_conf;
+    private List<Map<String, Object>> roots;
 
-    public YamlConfig(String conf_file, String defaults_file) throws FileNotFoundException {
-        if (conf_file != null) {
-            FileInputStream conf_file_stream = new FileInputStream(conf_file);
-            try {
-                conf = (Map<String, Object>) YAML.load(conf_file_stream);
-            } catch (Exception ex) {
-                LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", conf_file));
+    public YamlConfig(List<String> paths) throws FileNotFoundException {
+        roots = new ArrayList<Map<String, Object>>();
+        for(String path : paths) {
+            File configFile = new File(path);
+            if(configFile.exists()) {
+                FileInputStream conf_file_stream = new FileInputStream(path);
+                try {
+                    roots.add((Map<String, Object>) YAML.load(conf_file_stream));
+                } catch (Exception ex) {
+                    LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", path));
+                }
+            } else {
+                LOGGER.fine(String.format("Config file %s does not exist", path));
             }
-        }
-        if (conf == null) {
-            conf = new HashMap<String, Object>();
-        }
-        if (defaults_file != null) {
-            FileInputStream defaults_file_stream = new FileInputStream(defaults_file);
-            try {
-                defaults_conf = (Map<String, Object>) YAML.load(defaults_file_stream);
-            } catch (Exception ex) {
-                LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", defaults_file));
-            }
-        }
-        if (defaults_conf == null ) {
-            defaults_conf = new HashMap<String, Object>();
         }
     }
 
     public <T> T getSingle(String key, T default_value) {
-        T value = null;
-
-        try {
-            value = (T) MAPPER.convertValue(getNodeValue(conf, key), default_value.getClass());
-        } catch (IllegalArgumentException ex) {
-            LOGGER.severe(String.format("Config file error at %s", key));
-        }
-
-        if (value == null ) {
+        for(Map<String, Object> root : roots) {
             try {
-                value = (T) MAPPER.convertValue(getNodeValue(defaults_conf, key), default_value.getClass());
+                T value =  (T) MAPPER.convertValue(getNodeValue(root, key), default_value.getClass());
+                if(value != null) {
+                    return value;
+                }
             } catch (IllegalArgumentException ex) {
                 LOGGER.severe(String.format("Config file error at %s", key));
             }
         }
-
-        if (value == null) {
-            value = default_value;
-        }
-
-        return value;
+        return default_value;
     }
 
     public <T> List<T> getMergedSequence(String key, Class<T> classType) {
         List<T> ret = new ArrayList<T>();
-        Object value = getNodeValue(defaults_conf, key);
-        if (value != null && value instanceof List) {
-            List<Object> values = (List<Object>) value;
-            for (Object subvalue : values) {
-                try {
-                    ret.add(MAPPER.convertValue(subvalue, classType));
-                } catch (Exception ex) {
-                    LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
-                }
-            }
-        }
-        value = getNodeValue(conf, key);
-        if (value != null && value instanceof List) {
-            List<Object> values = (List<Object>) value;
-            for (Object subvalue : values) {
-                try {
-                    ret.add(MAPPER.convertValue(subvalue, classType));
-                } catch (Exception ex) {
-                    LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
+        for(Map<String, Object> root : roots) {
+            Object value = getNodeValue(root, key);
+            if (value != null && value instanceof List) {
+                List<Object> values = (List<Object>) value;
+                for (Object subvalue : values) {
+                    try {
+                        ret.add(MAPPER.convertValue(subvalue, classType));
+                    } catch (Exception ex) {
+                        LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
+                    }
                 }
             }
         }
@@ -99,25 +69,19 @@ public class YamlConfig {
 
     public <T> Map<String, T> getMergedMap(String key, Class<T> classType) {
         Map<String, T> ret = new HashMap<String, T>();
-        Object value = getNodeValue(defaults_conf, key);
-        if (value != null && value instanceof Map) {
-            Map<String, Object> values = (Map<String, Object>) value;
-            for (Map.Entry<String, Object> subvalue : values.entrySet()) {
-                try {
-                    ret.put(subvalue.getKey(), MAPPER.convertValue(subvalue.getValue(), classType));
-                } catch (Exception ex) {
-                    LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
-                }
-            }
-        }
-        value = getNodeValue(conf, key);
-        if (value != null && value instanceof Map) {
-            Map<String, Object> values = (Map<String, Object>) value;
-            for (Map.Entry<String, Object> subvalue : values.entrySet()) {
-                try {
-                    ret.put(subvalue.getKey(), MAPPER.convertValue(subvalue.getValue(), classType));
-                } catch (Exception ex) {
-                    LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
+        ListIterator<Map<String, Object>> iterator = roots.listIterator(roots.size());
+
+        while(iterator.hasPrevious()) {
+            Map<String, Object> root = iterator.previous();
+            Object value = getNodeValue(root, key);
+            if (value != null && value instanceof Map) {
+                Map<String, Object> values = (Map<String, Object>) value;
+                for (Map.Entry<String, Object> subvalue : values.entrySet()) {
+                    try {
+                        ret.put(subvalue.getKey(), MAPPER.convertValue(subvalue.getValue(), classType));
+                    } catch (Exception ex) {
+                        LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
+                    }
                 }
             }
         }

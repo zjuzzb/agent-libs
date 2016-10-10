@@ -63,8 +63,15 @@ public:
 		m_processes.emplace_back(forward<Ts>(args)...);
 	}
 
+	void set_cleanup_function(function<void(void)>&& f)
+	{
+		m_cleanup_function = f;
+	}
+
 	static const uint8_t DONT_RESTART_EXIT_CODE = 17;
+	static const uint8_t CONFIG_UPDATE_EXIT_CODE = 18;
 private:
+	function<void(void)> m_cleanup_function;
 	string m_pidfile;
 	vector<monitored_process> m_processes;
 };

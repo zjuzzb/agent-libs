@@ -46,44 +46,36 @@ def build_ns_path(pid, ns):
     return "%s/proc/%d/ns/%s" % (SYSDIG_HOST_ROOT, pid, ns)
 
 class YamlConfig:
-    def __init__(self):
-        try:
-            with open("/opt/draios/etc/dragent.default.yaml", "r") as default_file:
-                self._default_root = yaml.load(default_file.read())
-        except Exception as ex:
-            self._default_root = {}
-            logging.error("Cannot read config file dragent.default.yaml: %s", ex)
-        try:
-            with open("/opt/draios/etc/dragent.yaml", "r") as custom_file:
-                self._root = yaml.load(custom_file.read())
-        except Exception as ex:
-            self._root = {}
-            logging.error("Cannot read config file dragent.yaml: %s", ex)
+    def __init__(self, paths):
+        self._roots = []
+        for path in paths:
+            try:
+                with open(path, "r") as config_file:
+                    self._roots.append(yaml.load(config_file.read()))
+            except IOError as ex:
+                # Cannot use logging because it's not initialized yet
+                sys.stderr.write("%d:DEBUG:Cannot read config file %s: %s\n" % (os.getpid(), path, ex))
+            except Exception as ex:
+                sys.stderr.write("%d:ERROR:Cannot parse config file %s: %s\n" % (os.getpid(), path, ex))
 
     def get_merged_sequence(self, key, default=None):
         ret = default
         if ret is None:
             ret = []
-        if self._root.has_key(key):
-            try:
-                ret += self._root[key]
-            except TypeError as ex:
-                logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s", key, str(ex))
-        if self._default_root.has_key(key):
-            try:
-                ret += self._default_root[key]
-            except TypeError as ex:
-                logging.error("Cannot parse default config correctly, \"%s\" is not a list, exception=%s", key, str(ex))
+        for root in self._roots:
+            if root.has_key(key):
+                try:
+                    ret += root[key]
+                except TypeError as ex:
+                    logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         return ret
 
     def get_single(self, key, subkey, default_value=None):
         # TODO: now works only for key.subkey, more general implementation may be needed
-        if self._root.has_key(key) and self._root[key].has_key(subkey):
-            return self._root[key][subkey]
-        elif self._default_root.has_key(key) and self._default_root[key].has_key(subkey):
-            return self._default_root[key][subkey]
-        else:
-            return default_value
+        for root in self._roots:
+            if root.has_key(key) and root[key].has_key(subkey):
+                return root[key][subkey]
+        return default_value
 
 class AppCheckException(Exception):
     pass
@@ -246,7 +238,10 @@ class AppCheckInstance:
 
 class Config:
     def __init__(self):
-        self._yaml_config = YamlConfig()
+        etcdir = "/opt/draios/etc"
+        self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
+                                        os.path.join(etcdir, "dragent.auto.yaml"),
+                                        os.path.join(etcdir, "dragent.default.yaml")])
 
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
@@ -258,6 +253,8 @@ class Config:
             return logging.INFO
         elif level == "debug":
             return logging.DEBUG
+        else:
+            return logging.INFO
 
     def check_conf_by_name(self, name):
         checks = self._yaml_config.get_merged_sequence("app_checks")
@@ -314,7 +311,6 @@ class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
     def __init__(self):
-        # Configure only format first because may happen that config file parsing fails and print some logs
         self.config = Config()
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
         # logging.debug("Check config: %s", repr(self.config.checks))

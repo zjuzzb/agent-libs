@@ -8,7 +8,9 @@ add_dependencies(sdchecks sdchecks-deps2.7 sdchecks-deps2.6)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
 		DESTINATION ${DRAIOS_BIN_PREFIX}/lib/python
-		COMPONENT agent FILES_MATCHING PATTERN *.py)
+		COMPONENT agent FILES_MATCHING PATTERN *.py
+		PATTERN tests.py EXCLUDE
+		PATTERN resources EXCLUDE)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps/
 		DESTINATION ${DRAIOS_BIN_PREFIX}/lib/python-deps

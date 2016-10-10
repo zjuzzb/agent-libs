@@ -109,6 +109,8 @@ class auto_update_request;
 class dirty_shutdown_report;
 class key_value;
 class agent_event;
+class config_file;
+class config_data;
 
 enum sql_statement_type {
   SOP_NONE = 0,
@@ -340,11 +342,12 @@ enum message_type {
   SSH_CLOSE_CHANNEL = 7,
   SSH_DATA = 8,
   AUTO_UPDATE_REQUEST = 9,
-  DIRTY_SHUTDOWN_REPORT = 10
+  DIRTY_SHUTDOWN_REPORT = 10,
+  CONFIG_DATA = 11
 };
 bool message_type_IsValid(int value);
 const message_type message_type_MIN = METRICS;
-const message_type message_type_MAX = DIRTY_SHUTDOWN_REPORT;
+const message_type message_type_MAX = CONFIG_DATA;
 const int message_type_ARRAYSIZE = message_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* message_type_descriptor();
@@ -10437,6 +10440,193 @@ class agent_event : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static agent_event* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class config_file : public ::google::protobuf::Message {
+ public:
+  config_file();
+  virtual ~config_file();
+
+  config_file(const config_file& from);
+
+  inline config_file& operator=(const config_file& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const config_file& default_instance();
+
+  void Swap(config_file* other);
+
+  // implements Message ----------------------------------------------
+
+  config_file* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const config_file& from);
+  void MergeFrom(const config_file& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string content = 2;
+  inline bool has_content() const;
+  inline void clear_content();
+  static const int kContentFieldNumber = 2;
+  inline const ::std::string& content() const;
+  inline void set_content(const ::std::string& value);
+  inline void set_content(const char* value);
+  inline void set_content(const char* value, size_t size);
+  inline ::std::string* mutable_content();
+  inline ::std::string* release_content();
+  inline void set_allocated_content(::std::string* content);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.config_file)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_content();
+  inline void clear_has_content();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::std::string* content_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static config_file* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class config_data : public ::google::protobuf::Message {
+ public:
+  config_data();
+  virtual ~config_data();
+
+  config_data(const config_data& from);
+
+  inline config_data& operator=(const config_data& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const config_data& default_instance();
+
+  void Swap(config_data* other);
+
+  // implements Message ----------------------------------------------
+
+  config_data* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const config_data& from);
+  void MergeFrom(const config_data& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.config_file config_files = 1;
+  inline int config_files_size() const;
+  inline void clear_config_files();
+  static const int kConfigFilesFieldNumber = 1;
+  inline const ::draiosproto::config_file& config_files(int index) const;
+  inline ::draiosproto::config_file* mutable_config_files(int index);
+  inline ::draiosproto::config_file* add_config_files();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >&
+      config_files() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >*
+      mutable_config_files();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.config_data)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file > config_files_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static config_data* default_instance_;
 };
 // ===================================================================
 
@@ -25225,6 +25415,179 @@ agent_event::tags() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::key_value >*
 agent_event::mutable_tags() {
   return &tags_;
+}
+
+// -------------------------------------------------------------------
+
+// config_file
+
+// optional string name = 1;
+inline bool config_file::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void config_file::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void config_file::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void config_file::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& config_file::name() const {
+  return *name_;
+}
+inline void config_file::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void config_file::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void config_file::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* config_file::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* config_file::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void config_file::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string content = 2;
+inline bool config_file::has_content() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void config_file::set_has_content() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void config_file::clear_has_content() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void config_file::clear_content() {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    content_->clear();
+  }
+  clear_has_content();
+}
+inline const ::std::string& config_file::content() const {
+  return *content_;
+}
+inline void config_file::set_content(const ::std::string& value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void config_file::set_content(const char* value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void config_file::set_content(const char* value, size_t size) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* config_file::mutable_content() {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  return content_;
+}
+inline ::std::string* config_file::release_content() {
+  clear_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = content_;
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void config_file::set_allocated_content(::std::string* content) {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    delete content_;
+  }
+  if (content) {
+    set_has_content();
+    content_ = content;
+  } else {
+    clear_has_content();
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// config_data
+
+// repeated .draiosproto.config_file config_files = 1;
+inline int config_data::config_files_size() const {
+  return config_files_.size();
+}
+inline void config_data::clear_config_files() {
+  config_files_.Clear();
+}
+inline const ::draiosproto::config_file& config_data::config_files(int index) const {
+  return config_files_.Get(index);
+}
+inline ::draiosproto::config_file* config_data::mutable_config_files(int index) {
+  return config_files_.Mutable(index);
+}
+inline ::draiosproto::config_file* config_data::add_config_files() {
+  return config_files_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >&
+config_data::config_files() const {
+  return config_files_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >*
+config_data::mutable_config_files() {
+  return &config_files_;
 }
 
 

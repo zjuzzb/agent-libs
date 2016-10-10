@@ -41,6 +41,7 @@ private:
 	void handle_ssh_data(uint8_t* buf, uint32_t size);
 	void handle_ssh_close_channel(uint8_t* buf, uint32_t size);
 	void handle_auto_update();
+	void handle_config_data(uint8_t* buf, uint32_t size);
 
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;

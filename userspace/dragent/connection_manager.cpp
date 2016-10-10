@@ -380,38 +380,43 @@ void connection_manager::receive_message()
 
 		switch(header->messagetype)
 		{
-			case draiosproto::message_type::DUMP_REQUEST_START:
-				handle_dump_request_start(
-					m_buffer.begin() + sizeof(dragent_protocol_header), 
+		case draiosproto::message_type::DUMP_REQUEST_START:
+			handle_dump_request_start(
+				m_buffer.begin() + sizeof(dragent_protocol_header),
+				header->len - sizeof(dragent_protocol_header));
+			break;
+		case draiosproto::message_type::DUMP_REQUEST_STOP:
+			handle_dump_request_stop(
+				m_buffer.begin() + sizeof(dragent_protocol_header),
+				header->len - sizeof(dragent_protocol_header));
+			break;
+		case draiosproto::message_type::SSH_OPEN_CHANNEL:
+			handle_ssh_open_channel(
+				m_buffer.begin() + sizeof(dragent_protocol_header),
+				header->len - sizeof(dragent_protocol_header));
+			break;
+		case draiosproto::message_type::SSH_DATA:
+			handle_ssh_data(
+				m_buffer.begin() + sizeof(dragent_protocol_header),
+				header->len - sizeof(dragent_protocol_header));
+			break;
+		case draiosproto::message_type::SSH_CLOSE_CHANNEL:
+			handle_ssh_close_channel(
+				m_buffer.begin() + sizeof(dragent_protocol_header),
+				header->len - sizeof(dragent_protocol_header));
+			break;
+		case draiosproto::message_type::AUTO_UPDATE_REQUEST:
+			handle_auto_update();
+			break;
+		case draiosproto::message_type::CONFIG_DATA:
+			handle_config_data(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::DUMP_REQUEST_STOP:
-				handle_dump_request_stop(
-					m_buffer.begin() + sizeof(dragent_protocol_header), 
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::SSH_OPEN_CHANNEL:
-				handle_ssh_open_channel(
-					m_buffer.begin() + sizeof(dragent_protocol_header), 
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::SSH_DATA:
-				handle_ssh_data(
-					m_buffer.begin() + sizeof(dragent_protocol_header), 
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::SSH_CLOSE_CHANNEL:
-				handle_ssh_close_channel(
-					m_buffer.begin() + sizeof(dragent_protocol_header), 
-					header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::AUTO_UPDATE_REQUEST:
-				handle_auto_update();
-				break;
-			default:
-				g_log->error(m_name + ": Unknown message type: " 
-					+ NumberFormatter::format(header->messagetype));
-				ASSERT(false);
+			break;
+		default:
+			g_log->error(m_name + ": Unknown message type: "
+				+ NumberFormatter::format(header->messagetype));
+			ASSERT(false);
 		}
 	}
 	catch(Poco::IOException& e)
@@ -541,4 +546,28 @@ void connection_manager::handle_auto_update()
 {
 	update_worker* worker = new update_worker(m_configuration);
 	ThreadPool::defaultPool().start(*worker, "update_worker");
+}
+
+void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
+{
+	if(m_configuration->m_auto_config)
+	{
+		draiosproto::config_data request;
+		if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
+		{
+			return;
+		}
+		for(const auto& config_file_proto : request.config_files())
+		{
+			if(config_file_proto.name() == "dragent.auto.yaml")
+			{
+				m_configuration->save_auto_config(config_file_proto.content());
+				break;
+			}
+		}
+	}
+	else
+	{
+		g_log->debug("Auto config disabled, ignoring CONFIG_DATA message");
+	}
 }
