@@ -3963,15 +3963,22 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 
 void sinsp_analyzer::get_k8s_data()
 {
-	ASSERT(m_k8s);
-	ASSERT(m_k8s->is_alive());
-	m_k8s->watch();
-	ASSERT(m_metrics);
-	k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
-	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_kubernetes())
+	if(m_k8s)
 	{
-		g_logger.log("K8s proto data:", sinsp_logger::SEV_TRACE);
-		g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
+		m_k8s->watch();
+		if(m_metrics)
+		{
+			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
+			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_kubernetes())
+			{
+				g_logger.log("K8s proto data:", sinsp_logger::SEV_TRACE);
+				g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
+			}
+		}
+		else
+		{
+			g_logger.log("Proto metrics are NULL.", sinsp_logger::SEV_ERROR);
+		}
 	}
 }
 
