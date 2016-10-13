@@ -980,7 +980,7 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 	{
 		try
 		{
-			if(!m_k8s_ext_detect_done)
+			if(!m_k8s && !m_k8s_ext_detect_done)
 			{
 				g_logger.log("K8s API extensions handler: detecting extensions.", sinsp_logger::SEV_TRACE);
 				if(!m_k8s_ext_handler)
@@ -1076,7 +1076,6 @@ void sinsp_analyzer::init_k8s_ssl(const uri& url)
 
 k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 {
-	static time_t last_connect_attempt;
 	try
 	{
 		if(k8s_api.is_secure()) { init_k8s_ssl(k8s_api); }
@@ -1084,19 +1083,15 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 		if(m_k8s_ext_detect_done)
 		{
 			m_k8s_ext_detect_done = false;
-			time_t now; time(&now);
-			if(difftime(now, last_connect_attempt) > m_k8s_retry_seconds)
-			{
-				last_connect_attempt = now;
-				g_logger.log(msg, sinsp_logger::SEV_INFO);
-				return new k8s(k8s_api.to_string(), false /*not captured*/,
-							   m_k8s_ssl, m_k8s_bt,
-							   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
-			}
+			g_logger.log(msg, sinsp_logger::SEV_INFO);
+			return new k8s(k8s_api.to_string(), false /*not captured*/,
+						   m_k8s_ssl, m_k8s_bt,
+						   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
 		}
 	}
 	catch(std::exception& ex)
 	{
+		static time_t last_connect_attempt;
 		time_t now; time(&now);
 		if(difftime(now, last_connect_attempt) > m_k8s_retry_seconds)
 		{
@@ -4032,36 +4027,14 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 				log << "Connecting to K8S API server at: [" << k8s_uri.to_string(false) << ']';
 				m_k8s.reset(get_k8s(k8s_uri, log.str()));
 			}
-			else if(m_k8s && !m_k8s->is_alive())
-			{
-				log << "Existing K8S connection [" << k8s_uri.to_string(false) << "] error detected (not alive). "
-					<< "Trying to reconnect ...";
-				m_k8s.reset(get_k8s(k8s_uri, log.str()));
-			}
 
 			if(m_k8s)
 			{
-				if(m_k8s->is_alive())
+				get_k8s_data();
+				if(m_k8s->get_machine_id().empty() && !m_configuration->get_machine_id().empty())
 				{
-					get_k8s_data();
+					m_k8s->set_machine_id(m_configuration->get_machine_id());
 				}
-				if(!m_k8s->is_alive())
-				{
-					log.str("");
-					log << "Existing K8S connection [" << k8s_uri.to_string(false) << "] error detected (not alive). "
-						<< "Trying to reconnect ...";
-					m_k8s.reset(get_k8s(k8s_uri, log.str()));
-					if(m_k8s && m_k8s->is_alive())
-					{
-						g_logger.log("K8S connection re-established.", sinsp_logger::SEV_INFO);
-						get_k8s_data();
-					}
-				}
-			}
-
-			if(m_k8s && m_k8s->get_machine_id().empty() && !m_configuration->get_machine_id().empty())
-			{
-				m_k8s->set_machine_id(m_configuration->get_machine_id());
 			}
 		}
 		catch(std::exception& ex)
@@ -4356,6 +4329,10 @@ bool sinsp_analyzer::check_k8s_delegation()
 															m_k8s_bt));
 					if(m_k8s_delegator)
 					{
+						if(m_k8s_delegator->connection_error())
+						{
+							throw sinsp_exception("K8s delegator connection error.");
+						}
 						if(log)
 						{
 							g_logger.log("Created K8s delegator object, collecting data...", sinsp_logger::SEV_INFO);
