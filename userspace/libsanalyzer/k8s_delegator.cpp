@@ -267,9 +267,5 @@ void k8s_delegator::handle_json(Json::Value&& root)
 		g_logger.log(json_as_string(root), sinsp_logger::SEV_TRACE);
 	}
 
-	if(!handle_component(root))
-	{
-		g_logger.log("K8s delegator: error occurred while handling event.",
-					 sinsp_logger::SEV_ERROR);
-	}
+	handle_component(root);
 }

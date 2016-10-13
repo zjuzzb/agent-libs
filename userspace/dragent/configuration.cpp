@@ -530,15 +530,20 @@ void dragent_configuration::init(Application* app)
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	// non-production private setting, only used for testing - to simulate delegation when     //
 	// running [outside pod] AND [on the same host as K8s API server]                          //
-	// it will work if localhost K8s API server is manually configured OR auto-detected        //
-	// this setting will NOT work reliably when agent is running on another host and it should //
+	// it will work only if K8s API server is running on localhost                             //
+	// this setting will NOT work when agent is running on another host and it should          //
 	// *never* be set to true in production                                                    //
 	m_k8s_simulate_delegation = m_config->get_scalar<bool>("k8s_simulate_delegation", false);  //
 	if(m_k8s_simulate_delegation)                                                              //
 	{                                                                                          //
 		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);           //
+		m_k8s_api_server = "http://127.0.0.1:8080";                                            //
 	}                                                                                          //
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	if(m_k8s_delegated_nodes) // always force-disable autodiscovery if delegated
+	{
+		m_k8s_autodetect = false;
+	}
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 	// End K8s

@@ -8,7 +8,7 @@
   <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
   <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
-    <WorkspaceConfiguration Name="Debug" Selected="yes">
+    <WorkspaceConfiguration Name="Debug" Selected="no">
       <Environment/>
       <Project Name="kubeget" ConfigName="Debug"/>
       <Project Name="mesos" ConfigName="Debug"/>
