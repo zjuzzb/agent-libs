@@ -978,7 +978,6 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 	}
 	else
 	{
-		static time_t last_connect_attempt;
 		try
 		{
 			if(!m_k8s_ext_detect_done)
@@ -999,7 +998,11 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 				{
 					g_logger.log("K8s API extensions handler: collecting data.", sinsp_logger::SEV_TRACE);
 					m_k8s_ext_handler->collect_data();
-					if(m_k8s_ext_handler->ready())
+					if(m_k8s_ext_handler->connection_error())
+					{
+						throw sinsp_exception(" connection error.");
+					}
+					else if(m_k8s_ext_handler->ready())
 					{
 						g_logger.log("K8s API extensions handler: data received.", sinsp_logger::SEV_TRACE);
 						if(m_k8s_ext_handler->error())
@@ -1018,8 +1021,16 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 								ext_list.insert(ext);
 								ostr << std::endl << ext;
 							}
-							g_logger.log("K8s API extensions handler extensions found: " + ostr.str(),
-										 sinsp_logger::SEV_DEBUG);
+							if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+							{
+								g_logger.log("K8s API extensions handler: extensions found: " + ostr.str(),
+											 sinsp_logger::SEV_DEBUG);
+							}
+							else
+							{
+								g_logger.log("K8s API extensions detected: " + ostr.str(),
+											 sinsp_logger::SEV_INFO);
+							}
 							m_ext_list_ptr.reset(new k8s_ext_list_t(ext_list));
 						}
 						m_k8s_ext_detect_done = true;
@@ -1036,16 +1047,9 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 		}
 		catch(std::exception& ex)
 		{
-			time_t now; time(&now);
-			if(difftime(now, last_connect_attempt) > m_k8s_retry_seconds)
-			{
-				last_connect_attempt = now;
-				g_logger.log(std::string("K8s API extensions handler error: ").append(ex.what()),
-							 sinsp_logger::SEV_ERROR);
-			}
-			m_k8s_ext_detect_done = true;
-			m_k8s_collector.reset();
-			m_k8s_ext_handler.reset();
+			static time_t last_attempt;
+			reset_k8s(last_attempt, std::string("K8s API extensions handler error: ").append(ex.what()));
+			throw;
 		}
 	}
 	return m_ext_list_ptr;
@@ -1085,7 +1089,6 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			{
 				last_connect_attempt = now;
 				g_logger.log(msg, sinsp_logger::SEV_INFO);
-				m_k8s_present = true;
 				return new k8s(k8s_api.to_string(), false /*not captured*/,
 							   m_k8s_ssl, m_k8s_bt,
 							   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
@@ -1104,6 +1107,28 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 	return nullptr;
 }
 
+std::string sinsp_analyzer::get_k8s_api_server_proc(sinsp_threadinfo* main_tinfo)
+{
+	if(main_tinfo)
+	{
+		if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+		{
+			return "kube-apiserver";
+		}
+		else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
+		{
+			for(const auto& arg : main_tinfo->m_args)
+			{
+				if(arg == "apiserver")
+				{
+					return "hyperkube apiserver";
+				}
+			}
+		}
+	}
+	return "";
+}
+
 std::string sinsp_analyzer::detect_k8s(std::string& k8s_api_server)
 {
 	k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
@@ -1119,16 +1144,11 @@ std::string sinsp_analyzer::detect_k8s(std::string& k8s_api_server)
 	}
 	else
 	{
-		// not to flood logs, log only once a minute
-		static time_t last_log;
-		time_t now; time(&now);
-		if(m_k8s_present && (difftime(now, last_log) > m_detect_retry_seconds))
-		{
-			last_log = now;
-			g_logger.log("K8S API server not found.", sinsp_logger::SEV_WARNING);
-			k8s_api_server.clear();
-			m_configuration->set_k8s_api_server("");
-		}
+		g_logger.log("K8S API server not found.", sinsp_logger::SEV_WARNING);
+	}
+	if(m_configuration->get_k8s_autodetect_enabled())
+	{
+		m_configuration->set_k8s_api_server(k8s_api_server);
 	}
 	return k8s_api_server;
 }
@@ -1136,36 +1156,32 @@ std::string sinsp_analyzer::detect_k8s(std::string& k8s_api_server)
 std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 {
 	string k8s_api_server = m_configuration->get_k8s_api_server();
-	if(main_tinfo && k8s_api_server.empty() && m_configuration->get_k8s_autodetect_enabled())
+	if(m_configuration->get_k8s_autodetect_enabled())
 	{
-		string kube_apiserver_process;
-
-		if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
+		if(k8s_api_server.empty() || !m_k8s)
 		{
-			kube_apiserver_process = "kube-apiserver";
-		}
-		else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
-		{
-			for(const auto& arg : main_tinfo->m_args)
+			if(main_tinfo)
 			{
-				if(arg == "apiserver")
+				string kube_apiserver_process = get_k8s_api_server_proc(main_tinfo);
+
+				if(kube_apiserver_process.empty())
 				{
-					kube_apiserver_process = "hyperkube apiserver";
-					break;
+					k8s_api_server.clear();
+				}
+
+				if(!kube_apiserver_process.empty())
+				{
+					g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
+					detect_k8s(k8s_api_server);
 				}
 			}
+			else if(m_k8s_proc_detected)
+			{
+				g_logger.log("K8S: Detected API server process", sinsp_logger::SEV_INFO);
+				detect_k8s(k8s_api_server);
+			}
 		}
-		else
-		{
-			kube_apiserver_process.clear();
-			k8s_api_server.clear();
-		}
-
-		if(!kube_apiserver_process.empty())
-		{
-			g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
-			detect_k8s(k8s_api_server);
-		}
+		m_configuration->set_k8s_api_server(k8s_api_server);
 	}
 	return k8s_api_server;
 }
@@ -1344,7 +1360,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						   m_configuration->get_k8s_api_server().empty());
 	bool mesos_detected = false, k8s_detected = false;
 	static bool mesos_been_here = false, k8s_been_here = false;
-
+	m_k8s_proc_detected = false;
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
 	// 2. (only on programs) aggregate programs metrics to host and container ones
@@ -1397,7 +1413,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
-				if(try_detect_k8s)
+				if(!m_k8s_proc_detected)
+				{
+					m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
+				}
+				if(m_k8s_proc_detected && try_detect_k8s)
 				{
 					k8s_detected = !(detect_k8s(main_tinfo).empty());
 				}
@@ -3990,8 +4010,13 @@ void sinsp_analyzer::reset_k8s(time_t& last_attempt, const std::string& err)
 	m_k8s_delegator.reset();
 	m_k8s_collector.reset();
 	m_k8s_api_handler.reset();
+	m_k8s_ext_handler.reset();
 	m_ext_list_ptr.reset();
 	m_k8s.reset();
+	if(m_configuration->get_k8s_autodetect_enabled())
+	{
+		m_configuration->set_k8s_api_server("");
+	}
 }
 
 void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
@@ -4034,7 +4059,7 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 				}
 			}
 
-			if(m_k8s && m_k8s->get_machine_id().empty())
+			if(m_k8s && m_k8s->get_machine_id().empty() && !m_configuration->get_machine_id().empty())
 			{
 				m_k8s->set_machine_id(m_configuration->get_machine_id());
 			}
@@ -4113,7 +4138,11 @@ void sinsp_analyzer::emit_k8s()
 				else
 				{
 					m_k8s_api_handler->collect_data();
-					if(m_k8s_api_handler->ready())
+					if(m_k8s_api_handler->connection_error())
+					{
+						throw sinsp_exception("K8s API handler connection error.");
+					}
+					else if(m_k8s_api_handler->ready())
 					{
 						g_logger.log("K8s API handler data received.", sinsp_logger::SEV_TRACE);
 						if(m_k8s_api_handler->error())
@@ -4128,6 +4157,10 @@ void sinsp_analyzer::emit_k8s()
 						m_k8s_collector.reset();
 						m_k8s_api_handler.reset();
 					}
+					else
+					{
+						g_logger.log("K8s API extensions handler: not ready.", sinsp_logger::SEV_TRACE);
+					}
 				}
 			}
 			if(m_k8s_api_detected)
@@ -4140,6 +4173,7 @@ void sinsp_analyzer::emit_k8s()
 	{
 		static time_t last_attempt;
 		reset_k8s(last_attempt, std::string("Error emitting K8s data:").append(ex.what()));
+		throw;
 	}
 }
 
