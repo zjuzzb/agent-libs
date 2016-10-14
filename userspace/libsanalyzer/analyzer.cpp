@@ -4040,7 +4040,7 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 		catch(std::exception& ex)
 		{
 			static time_t last_attempt;
-			reset_k8s(last_attempt, std::string("Error colecting K8s data:").append(ex.what()));
+			reset_k8s(last_attempt, std::string("Error collecting K8s data:").append(ex.what()));
 		}
 	}
 }
