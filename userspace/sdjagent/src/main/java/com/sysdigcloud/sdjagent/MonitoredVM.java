@@ -318,7 +318,7 @@ public class MonitoredVM {
                     }
                 }
             } catch (IOException ex) {
-                LOGGER.warning(String.format("Process %d agent is not responding, declaring it down", pid));
+                LOGGER.warning(String.format("Process %d agent is not responding reason=%s, declaring it down", ex.getMessage(), pid));
                 disconnect();
             } catch (SecurityException e) {
                 LOGGER.warning(String.format("Not enough permission to get attributes on process %d, disabling connection", pid));
