@@ -150,7 +150,15 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// Last non empty arg is usually the main class
 	for(auto it = tinfo->m_args.rbegin(); it != tinfo->m_args.rend(); ++it)
 	{
-		if(!it->empty() && it->find('.') != string::npos && it->size() < MAX_ARG_SIZE) {
+		// Do a simple sanity check by ensuring:
+		// - the arg is not empty
+		// - the arg is not too big
+		// - the arg contains only . and alphanumeric chars
+		if(!it->empty() && it->size() < MAX_ARG_SIZE &&
+		   find_if_not(it->begin(), it->end(), [](char ch) {
+			return ch == '.' || ch == '/' || isalnum(ch);
+			}) == it->end())
+		{
 			args_json.append(*it);
 			break;
 		}
