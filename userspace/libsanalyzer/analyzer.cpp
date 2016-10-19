@@ -1355,7 +1355,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 						   m_configuration->get_k8s_api_server().empty());
 	bool mesos_detected = false, k8s_detected = false;
 	static bool mesos_been_here = false, k8s_been_here = false;
-	m_k8s_proc_detected = false;
+	if(m_k8s_proc_detected && !m_configuration->get_k8s_api_server().empty())
+	{
+		m_k8s_proc_detected = false;
+	}
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
 	// 2. (only on programs) aggregate programs metrics to host and container ones
