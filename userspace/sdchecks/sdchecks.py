@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# pylint: disable=missing-docstring, line-too-long
 # std
 import os.path
 import traceback
@@ -79,50 +80,47 @@ class YamlConfig:
 class AppCheckException(Exception):
     pass
 
-class AppCheck:
-    def __init__(self, node):
-        self.name = node["name"]
-        self.conf = node.get("conf", {})
-        self.interval = timedelta(seconds=node.get("interval", 1))
+def _load_check_module(name, module_name, directory):
+    try:
+        return imp.load_source('checksd_%s' % name, os.path.join(directory, module_name + ".py"))
+    except IOError:
+        raise
+    except Exception:
+        traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
+        raise AppCheckException('Unable to import check module %s.py from %s: %s' % (module_name, directory, traceback_message))
 
-        try:
-            check_module_name = node["check_module"]
-        except KeyError:
-            check_module_name = self.name
+def _load_check_class(check_module_name):
+    try:
+        check_module = _load_check_module(check_module_name, check_module_name, CUSTOM_CHECKS_DIRECTORY)
+    except IOError:
+        check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY)
 
-        try:
-            check_module = self._load_check_module(self.name, check_module_name, CUSTOM_CHECKS_DIRECTORY)
-        except IOError:
-            check_module = self._load_check_module(self.name, check_module_name, CHECKS_DIRECTORY)
-
-        # We make sure that there is an AgentCheck class defined
-        check_class = None
-        classes = inspect.getmembers(check_module, inspect.isclass)
-        for _, clsmember in classes:
-            if clsmember == AgentCheck:
+    # We make sure that there is an AgentCheck class defined
+    check_class = None
+    classes = inspect.getmembers(check_module, inspect.isclass)
+    for _, clsmember in classes:
+        if clsmember == AgentCheck:
+            continue
+        if issubclass(clsmember, AgentCheck):
+            check_class = clsmember
+            if AgentCheck in clsmember.__bases__:
                 continue
-            if issubclass(clsmember, AgentCheck):
-                check_class = clsmember
-                if AgentCheck in clsmember.__bases__:
-                    continue
-                else:
-                    break
-        if check_class is None:
-            raise AppCheckException('Unable to find AgentCheck class for %s' % check_module_name)
-        else:
-            self.check_class = check_class
+            else:
+                break
+    if check_class is None:
+        raise AppCheckException('Unable to find AgentCheck class for %s' % check_module_name)
+    else:
+        return check_class
 
-    def __repr__(self):
-        return "AppCheck(name=%s, conf=%s, check_class=%s" % (self.name, repr(self.conf), repr(self.check_class))
-
-    def _load_check_module(self, name, module_name, directory):
-        try:
-            return imp.load_source('checksd_%s' % name, os.path.join(directory, module_name + ".py"))
-        except IOError:
-            raise
-        except Exception:
-            traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
-            raise AppCheckException('Unable to import check module %s.py from %s: %s' % (module_name, directory, traceback_message))
+# LOADED_CHECKS acts as a static store for
+# check classes already loaded
+def get_check_class(check_name, LOADED_CHECKS={}):
+    try:
+        return LOADED_CHECKS[check_name]
+    except KeyError:
+        check_class = _load_check_class(check_name)
+        LOADED_CHECKS[check_name] = check_class
+        return check_class
 
 class AppCheckInstance:
     try:
@@ -146,11 +144,16 @@ class AppCheckInstance:
         "port.high": lambda p: p["ports"][-1],
     }
     def __init__(self, check, proc_data):
-        self.name = check.name
+        self.name = check["name"]
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
-        self.interval = check.interval
-        self.check_instance = check.check_class(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
+        self.interval = timedelta(seconds=check.get("interval", 1))
+
+        try:
+            check_module = check["check_module"]
+        except KeyError:
+            check_module = self.name
+        self.check_instance = get_check_class(check_module)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
         
         if self.CONTAINER_SUPPORT:
             mnt_ns_path = build_ns_path(self.pid, "mnt")
@@ -171,8 +174,14 @@ class AppCheckInstance:
         if len(proc_data["ports"]) > 0:
             self.instance_conf["port"] = proc_data["ports"][0]
 
-        for key, value in check.conf.items():
-            if type(value) is str:
+        for key, value in check["conf"].items():
+            # some checks rely on str, so let's convert
+            # everything to str
+            key = key.encode('ascii', 'ignore')
+            if isinstance(value, unicode):
+                value = value.encode('ascii', 'ignore')
+
+            if isinstance(value, str):
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
                 self.instance_conf[key] = value
@@ -192,7 +201,7 @@ class AppCheckInstance:
                 for nsfd in ns_fds:
                     ret = setns(nsfd)
                     if ret != 0:
-                        raise OSError("Cannot setns %s to pid: %d" % (ns, self.pid))
+                        raise OSError("Cannot setns to pid: %d" % self.pid)
             self.check_instance.check(self.instance_conf)
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
@@ -233,21 +242,6 @@ class Config:
         self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
                                         os.path.join(etcdir, "dragent.auto.yaml"),
                                         os.path.join(etcdir, "dragent.default.yaml")])
-        check_confs = self._yaml_config.get_merged_sequence("app_checks")
-
-        # reverse the list because we are mapping them by name and we want that
-        # dragent.yaml checks override dragent.default.yaml ones
-        # the get_merged_sequence() instead puts them in the opposite order
-        check_confs.reverse()
-        
-        self.checks = {}
-        for c in check_confs:
-            if c.get("enabled", True):
-                try:
-                    app_check = AppCheck(c)
-                    self.checks[app_check.name] = app_check
-                except (Exception, IOError) as ex:
-                    logging.error("Configuration error for check %s: %s", repr(c), ex)
 
     def log_level(self):
         level = self._yaml_config.get_single("log", "file_priority", "info")
@@ -262,6 +256,13 @@ class Config:
         else:
             return logging.INFO
 
+    def check_conf_by_name(self, name):
+        checks = self._yaml_config.get_merged_sequence("app_checks")
+        for check in checks:
+            if check["name"] == name:
+                return check
+        return None
+
 class PosixQueueType:
     SEND = 0
     RECEIVE = 1
@@ -274,10 +275,10 @@ class PosixQueue:
         limit = self.MAXQUEUES*(self.MAXMSGS+2)*self.MSGSIZE
         resource.setrlimit(RLIMIT_MSGQUEUE, (limit, limit))
         self.direction = direction
-        self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode = 0600,
-                                            max_messages = maxmsgs, max_message_size = self.MSGSIZE,
-                                            read = (self.direction == PosixQueueType.RECEIVE),
-                                            write = (self.direction == PosixQueueType.SEND))
+        self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode=0600,
+                                            max_messages=maxmsgs, max_message_size=self.MSGSIZE,
+                                            read=(self.direction == PosixQueueType.RECEIVE),
+                                            write=(self.direction == PosixQueueType.SEND))
 
     def close(self):
         self.queue.close()
@@ -290,7 +291,7 @@ class PosixQueue:
         except posix_ipc.BusyError:
             return False
         except ValueError as ex:
-            logging.error("Cannot send: %s, size=%dB" % (ex, len(msg)))
+            logging.error("Cannot send: %s, size=%dB", ex, len(msg))
             return False
 
     def receive(self, timeout=1):
@@ -358,15 +359,13 @@ class Application:
                 if pid in self.blacklisted_pids:
                     logging.debug("Process with pid=%d is blacklisted", pid)
                     continue
+                check = p["check"]
+                logging.debug("Requested check %s", repr(check))
+                
                 try:
-                    check_conf = self.config.checks[p["check"]]
-                except KeyError:
-                    logging.error("Cannot find check configuration for name: %s", p["check"])
-                    continue
-                try:
-                    check_instance = AppCheckInstance(check_conf, p)
+                    check_instance = AppCheckInstance(check, p)
                 except AppCheckException as ex:
-                    logging.error("Exception on creating check %s: %s", check_conf.name, ex)
+                    logging.error("Exception on creating check %s: %s", check["name"], ex)
                     self.blacklisted_pids.add(pid)
                     continue
                 self.known_instances[pid] = check_instance
@@ -378,13 +377,13 @@ class Application:
                 self.blacklisted_pids.add(pid)
 
             expiration_ts = datetime.now() + check_instance.interval
-            response_body.append({  "pid": pid,
-                                    "display_name": check_instance.name,
-                                    "metrics": metrics,
-                                    "service_checks": service_checks,
-                                    "expiration_ts": int(expiration_ts.strftime("%s"))})
+            response_body.append({"pid": pid,
+                                  "display_name": check_instance.name,
+                                  "metrics": metrics,
+                                  "service_checks": service_checks,
+                                  "expiration_ts": int(expiration_ts.strftime("%s"))})
         response_s = json.dumps(response_body)
-        logging.debug("Response size is %d" % len(response_s))
+        logging.debug("Response size is %d", len(response_s))
         self.outqueue.send(response_s)
 
     def main_loop(self):
@@ -418,10 +417,13 @@ class Application:
                     "check": sys.argv[2],
                     "pid": int(sys.argv[3]),
                     "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
-                    "ports": [ int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
+                    "ports": [int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
                 }
                 logging.info("Run AppCheck for %s", proc_data)
-                check_conf = self.config.checks[proc_data["check"]]
+                check_conf = self.config.check_conf_by_name(proc_data["check"])
+                if check_conf is None:
+                    print "Check conf not found"
+                    sys.exit(1)
                 check_instance = AppCheckInstance(check_conf, proc_data)
                 metrics, service_checks, ex = check_instance.run()
                 print "Conf: %s" % repr(check_instance.instance_conf)

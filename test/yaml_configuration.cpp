@@ -1,6 +1,8 @@
 #include <gtest.h>
 #include "sys_call_test.h"
 #include <configuration.h>
+#include "proc_config.h"
+#include "app_checks.h"
 
 using namespace std;
 
@@ -207,4 +209,76 @@ TEST(yaml_conf, get_deep_sequence)
 
 	evts2 = yaml_configuration::get_deep_sequence<set<string, ci_compare>>(conf, roots[1], "events2", "docker", "image");
 	ASSERT_EQ(evts2.size(), 0U);
+}
+
+TEST(proc_config, test_correct)
+{
+	proc_config config("{app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	auto checks = config.app_checks();
+	EXPECT_EQ(1, checks.size());
+}
+
+TEST(proc_config, test_wrong_yaml_syntax)
+{
+	proc_config config("app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	auto checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+}
+
+TEST(proc_config, test_wrong_yaml_objects)
+{
+	// app_checks is not a list
+	proc_config config("{ app_checks: { name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} } }");
+	auto checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+
+	// missing name
+	config = proc_config("{app_checks: [{ pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+
+	// conf not an object
+	config = proc_config("{app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: 127.0.0.1 }] }");
+	checks = config.app_checks();
+	EXPECT_EQ(1, checks.size()); // Parsed with an empty conf
+
+	// a wrong one and a right one
+	config = proc_config("{app_checks: [{ pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }, { name: redis, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
+	checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+
+	// empty yaml, legit
+	config = proc_config("");
+	checks = config.app_checks();
+	EXPECT_EQ(0, checks.size());
+}
+
+TEST(yaml_to_json, test_sequence)
+{
+	auto node = YAML::Load("[test, 3, test3]");
+	auto json = yaml_to_json(node);
+	EXPECT_TRUE(json.isArray());
+	EXPECT_EQ("test", json[0].asString());
+	EXPECT_EQ(3, json[1].asInt());
+	EXPECT_EQ("test3", json[2].asString());
+}
+
+TEST(yaml_to_json, test_map)
+{
+	auto node = YAML::Load("{ test: \"http://localhost:{port}\", int: 3, f: 1.56 }");
+	auto json = yaml_to_json(node);
+	EXPECT_TRUE(json.isObject());
+	EXPECT_EQ("http://localhost:{port}", json["test"].asString());
+	EXPECT_EQ(3, json["int"].asInt());
+	EXPECT_EQ(1.56, json["f"].asDouble());
+}
+
+TEST(yaml_to_json, test_nested)
+{
+	auto node = YAML::Load("{ test: \"http://localhost:{port}\", v: [{o: 9, p:\"test\"}, {\"l\":\"{}\" }] }");
+	auto json = yaml_to_json(node);
+	EXPECT_TRUE(json.isObject());
+	EXPECT_EQ("http://localhost:{port}", json["test"].asString());
+	EXPECT_EQ("{}", json["v"][1]["l"].asString());
+	EXPECT_EQ(9, json["v"][0]["o"].asInt());
 }

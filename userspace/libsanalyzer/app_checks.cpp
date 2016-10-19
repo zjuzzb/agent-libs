@@ -8,6 +8,53 @@
 #include "analyzer_thread.h"
 #include <utils.h>
 
+Json::Value yaml_to_json(const YAML::Node& yaml)
+{
+	Json::Value ret;
+	switch(yaml.Type())
+	{
+	case YAML::NodeType::Scalar:
+	{
+		try
+		{
+			ret = yaml.as<int>();
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			try
+			{
+				ret = yaml.as<double>();
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				ret = yaml.as<string>();
+			}
+		}
+		break;
+	}
+	case YAML::NodeType::Sequence:
+	{
+		for(auto it = yaml.begin(); it != yaml.end(); ++it)
+		{
+			ret.append(yaml_to_json(*it));
+		}
+		break;
+	}
+	case YAML::NodeType::Map:
+	{
+		for(auto it = yaml.begin(); it != yaml.end(); ++it)
+		{
+			ret[it->first.as<string>()] = yaml_to_json(it->second);
+		}
+		break;
+	}
+	default:
+		// Other types are null and undefined
+		break;
+	}
+	return ret;
+}
+
 bool app_check::match(sinsp_threadinfo *tinfo) const
 {
 	// At least a pattern should be specified
@@ -35,11 +82,90 @@ bool app_check::match(sinsp_threadinfo *tinfo) const
 	return ret;
 }
 
-app_process::app_process(string check_name, sinsp_threadinfo *tinfo):
+Json::Value app_check::to_json() const
+{
+	Json::Value ret;
+	ret["name"] = m_name;
+	if(!m_check_module.empty())
+	{
+		ret["check_module"] = m_check_module;
+	}
+	ret["conf"] = m_conf;
+	if(m_interval > 0)
+	{
+		ret["interval"] = m_interval;
+	}
+	return ret;
+}
+bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
+{
+	/*
+	 * Example:
+	 * name: redisdb
+	 *	pattern:
+	 *	  comm: redis-server
+	 *	conf:
+	 *	  host: 127.0.0.1
+	 *	  port: {port}
+	 *
+	 *	The conf part is not used by dragent
+	 */
+	rhs.m_name = node["name"].as<string>();
+	auto check_module_node = node["check_module"];
+	if(check_module_node.IsScalar())
+	{
+		rhs.m_check_module = check_module_node.as<string>();
+	}
+	auto enabled_node = node["enabled"];
+	if(enabled_node.IsScalar())
+	{
+		rhs.m_enabled = enabled_node.as<bool>();
+	}
+
+	auto pattern_node = node["pattern"];
+	if(pattern_node.IsMap())
+	{
+		auto comm_node = pattern_node["comm"];
+		if(comm_node.IsScalar())
+		{
+			rhs.m_comm_pattern = comm_node.as<string>();
+		}
+		auto exe_node = pattern_node["exe"];
+		if(exe_node.IsScalar())
+		{
+			rhs.m_exe_pattern = exe_node.as<string>();
+		}
+		auto port_node = pattern_node["port"];
+		if(port_node.IsScalar())
+		{
+			rhs.m_port_pattern = port_node.as<uint16_t>();
+		}
+		auto arg_node = pattern_node["arg"];
+		if(arg_node.IsScalar())
+		{
+			rhs.m_arg_pattern = arg_node.as<string>();
+		}
+	}
+
+	auto interval_node = node["interval"];
+	if(interval_node.IsScalar())
+	{
+		rhs.m_interval = interval_node.as<int>();
+	}
+
+	auto conf_node = node["conf"];
+	if (conf_node.IsMap())
+	{
+		rhs.m_conf = yaml_to_json(conf_node);
+	}
+	return true;
+}
+
+app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 	m_pid(tinfo->m_pid),
 	m_vpid(tinfo->m_vpid),
-	m_check_name(move(check_name)),
-	m_ports(tinfo->m_ainfo->listening_ports())
+	m_ports(tinfo->m_ainfo->listening_ports()),
+	m_check(check)
 {
 
 }
@@ -49,7 +175,7 @@ Json::Value app_process::to_json() const
 	Json::Value ret;
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
-	ret["check"] = m_check_name;
+	ret["check"] = m_check.to_json();
 	ret["ports"] = Json::Value(Json::arrayValue);
 	for(auto port : m_ports)
 	{

@@ -66,6 +66,7 @@ using namespace google::protobuf::io;
 #include <numeric>
 #include "falco_engine.h"
 #include "falco_events.h"
+#include "proc_config.h"
 
 bool sinsp_analyzer::m_mesos_bad_config = false;
 
@@ -1616,14 +1617,33 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 				else
 				{
-					for(const auto& check : m_app_checks)
+					// First check if the process has custom config for checks
+					// and use it
+					const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
+					for(const auto& check : custom_checks)
 					{
 						if(check.match(tinfo))
 						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-							app_checks_processes.emplace_back(check.name(), tinfo);
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from env",
+											check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+							app_checks_processes.emplace_back(check, tinfo);
 							mtinfo->m_ainfo->set_app_check_found();
 							break;
+						}
+					}
+					// If still no matches found, go ahead with the global list
+					if(!mtinfo->m_ainfo->app_check_found())
+					{
+						for(const auto &check : m_app_checks)
+						{
+							if(check.match(tinfo))
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d",
+												check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+								app_checks_processes.emplace_back(check, tinfo);
+								mtinfo->m_ainfo->set_app_check_found();
+								break;
+							}
 						}
 					}
 				}
