@@ -8,6 +8,7 @@ import random
 
 logfile = None
 markerfile = None
+g_cnt = 0
 
 def log( string ):
     global logfile
@@ -139,7 +140,8 @@ try:
             for j in range(0, NCHILDS):
                 # Create the child name and tag
                 chnames.append("srvc_next" + str(j))
-                dn = "%s.%s" % (NAME, CHILD_NAMES[j]['e'][CHILD_NAMES[j]['cur'] % len(CHILD_NAMES[j]['e'])])
+                cname = CHILD_NAMES[j]['e'][CHILD_NAMES[j]['cur'] % len(CHILD_NAMES[j]['e'])]
+                dn = "%s.%s" % (NAME, cname)
                 CHILD_NAMES[j]['cur'] += 1
                 depnames.append(dn)
                 tags.append("%s" % dn)
@@ -251,6 +253,11 @@ try:
                 depname = "%s" % (CHILD_NAMES[j]['e'][CHILD_NAMES[j]['cur'] % len(CHILD_NAMES[j]['e'])])
                 CHILD_NAMES[j]['cur'] += 1
                 subtag = tag + "." + depname
+
+                if depname == "dbquery" and g_cnt == 7:
+                    log("error **************************: %d %s %s" % (g_cnt, depname, tag.split(':')[1]))
+                    time.sleep(2)
+                g_cnt = g_cnt + 1
 
                 mark(">:%s::" % subtag)
 
