@@ -154,7 +154,6 @@ public:
 			return ts;
 		}
 
-		ASSERT(false);
 		return "/";
 	}
 
