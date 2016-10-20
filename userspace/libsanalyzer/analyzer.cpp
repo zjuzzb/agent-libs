@@ -56,6 +56,7 @@ using namespace google::protobuf::io;
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
+#include "baseliner.h"
 #define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
 #include "uri.h"
@@ -72,6 +73,7 @@ bool sinsp_analyzer::m_mesos_bad_config = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
+	m_initialized = false;
 	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
@@ -132,6 +134,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
+
+	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
+	m_falco_baseliner = new sisnp_baseliner();
 
 	//
 	// Listeners
@@ -201,11 +206,18 @@ sinsp_analyzer::~sinsp_analyzer()
 	}
 	m_chisels.clear();
 
+	if(m_falco_baseliner != NULL)
+	{
+		delete m_falco_baseliner;
+	}
+
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void sinsp_analyzer::on_capture_start()
 {
+	m_initialized = true;
+
 	if(m_procfs_parser != NULL)
 	{
 		throw sinsp_exception("analyzer can be opened only once");
@@ -276,6 +288,11 @@ void sinsp_analyzer::on_capture_start()
 	// Call the chisels on_capture_start callback
 	//
 	chisels_on_capture_start();
+
+	//
+	// Start the falco baseliner
+	//
+	m_falco_baseliner->init(m_inspector);
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -2179,7 +2196,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		++m_external_command_id;
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
 		{
-			m_jmx_metrics.clear();
+//			m_jmx_metrics.clear();
 			m_jmx_proxy->send_get_metrics(m_external_command_id, java_process_requests);
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
@@ -2642,6 +2659,13 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 					m_new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
+				if(m_new_sampling_ratio == 2)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baseliling");
+					m_do_baseline_calculation = false;
+					m_falco_baseliner->clear_tables();
+				}
+
 				start_dropping_mode(m_new_sampling_ratio);
 			}
 			else
@@ -2876,6 +2900,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	uint64_t nevts_in_last_sample;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
 
+	//
+	// Skip the events if the analyzer has not been initialized yet
+	//
+	if(!m_initialized)
+	{
+		return;
+	}
+	
 	if(evt != NULL)
 	{
 		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
@@ -3341,6 +3373,62 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						m_host_req_metrics.get_file_percentage() * 100,
 						m_host_req_metrics.get_net_percentage() * 100,
 						m_host_req_metrics.get_other_percentage() * 100);
+				}
+			}
+
+			//
+			// If it's time to emit the falco baseline, do the serialization and then restart it
+			//
+			if(m_do_baseline_calculation)
+			{
+				if(is_eof)
+				{
+					//
+					// Make sure to push a baseline when reading from file and we reached EOF
+					//
+					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
+				}
+//				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > 5000000000)
+				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+				{
+					if(m_last_falco_dump_ts != 0)
+					{
+						m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
+					}
+
+					m_last_falco_dump_ts = evt->get_ts();
+				}
+			}
+			else
+			{
+				if(m_configuration->get_falco_baselining_enabled())
+				{
+					//
+					// Once in a while, try to turn baseline calculation on again
+					//
+					if(m_sampling_ratio == 1)
+					{
+						if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DISABLE_TIME)
+						{
+							//
+							// It's safe to turn baselining on again.
+							// Reset the tables and restart the baseline time counter.
+							//
+							m_do_baseline_calculation = true;
+							m_falco_baseliner->clear_tables();
+							m_falco_baseliner->load_tables(evt->get_ts());
+							m_last_falco_dump_ts = evt->get_ts();
+							g_logger.format("enabling falco baselining creation after %lus pause",
+								FALCOBL_DISABLE_TIME / 1000000000);
+						}
+					}
+					else
+					{
+						//
+						// Sampling ratio is still high, reset the baseline counter
+						//
+						m_last_falco_dump_ts = evt->get_ts();					
+					}
 				}
 			}
 

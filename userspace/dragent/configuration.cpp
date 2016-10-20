@@ -46,6 +46,7 @@ dragent_configuration::dragent_configuration()
 	m_evtcnt = 0;
 	m_subsampling_ratio = 1;
 	m_autodrop_enabled = false;
+	m_falco_baselining_enabled = true;
 	m_drop_upper_threshold = 0;
 	m_drop_lower_threshold = 0;
 	m_autoupdate_enabled = true;
@@ -367,6 +368,7 @@ void dragent_configuration::init(Application* app)
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
 	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
 	m_autodrop_enabled =  m_config->get_scalar<bool>("autodrop", "enabled", true);
+	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", true);
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
@@ -650,6 +652,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("dumpdir: " + m_dump_dir);
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
+	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	g_log->information("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	g_log->information("ui.customname: " + m_host_custom_name);

@@ -49,6 +49,7 @@ class docker;
 class uri;
 class falco_engine;
 class falco_events;
+class sisnp_baseliner;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -420,6 +421,9 @@ VISIBILITY_PRIVATE
 	uint64_t m_serialize_prev_sample_time;
 
 	sinsp_analyzer_parsers* m_parser;
+	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go 
+						// through the analyzer before on_capture_start is called. We use this flag to skip 
+						// processing those events.
 
 	//
 	// Tables
@@ -542,6 +546,13 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_flush_wall_time;
 
 	//
+	// Falco stuff
+	//
+	sisnp_baseliner* m_falco_baseliner = NULL;
+	bool m_do_baseline_calculation;
+	uint64_t m_last_falco_dump_ts = 0;
+
+	//
 	// Chisel-generated metrics infrastructure
 	//
 	vector<sinsp_chisel*> m_chisels;
@@ -623,6 +634,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
+	friend class sisnp_baseliner;
 };
 
 #endif // HAS_ANALYZER

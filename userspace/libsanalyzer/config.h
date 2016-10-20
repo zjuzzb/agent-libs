@@ -126,6 +126,8 @@ public:
     void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
     user_event_filter_t::ptr_t get_docker_event_filter() const;
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
+	bool get_falco_baselining_enabled() const;
+	void set_falco_baselining_enabled(bool enabled);
 
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
@@ -186,6 +188,8 @@ private:
 	mesos::credentials_t m_marathon_credentials;
 
 	bool m_curl_debug;
+
+	bool m_falco_baselining_enabled;
 
 	uint32_t m_protocols_truncation_size;
 
