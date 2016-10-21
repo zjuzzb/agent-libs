@@ -2258,6 +2258,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 	m_reduced_ipv4_connections->clear();
 	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
+printf("WWW Flush\n");
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
@@ -2297,6 +2298,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 		string prog_scontainerid;
 		string prog_dcontainerid;
 
+if(cit->first.m_fields.m_dport == 8080 || cit->first.m_fields.m_dport == 8080)
+{
+	printf("  WWW * %d:%d %d:%d *** %ld %ld\n", (int)cit->first.m_fields.m_sip, (int)cit->first.m_fields.m_sport,
+		(int)cit->first.m_fields.m_dip, (int)cit->first.m_fields.m_dport, cit->second.m_spid, cit->second.m_dpid);
+}
 		if(cit->second.m_spid != 0)
 		{
 			auto tinfo = m_inspector->get_thread(cit->second.m_spid, false, true);
@@ -2499,6 +2505,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		connection_to_emit = &reduced_and_filtered_ipv4_connections;
 	}
 
+printf("\n");
 	//
 	// Emit the aggregated table into the sample
 	//
@@ -2513,6 +2520,13 @@ void sinsp_analyzer::emit_aggregated_connections()
 		{
 			continue;
 		}
+
+
+if(acit->first.m_fields.m_dport == 8080 || acit->first.m_fields.m_dport == 8080)
+{
+	printf("  WWW ! %d:%d %d:%d *** %ld %ld\n", (int)acit->first.m_fields.m_sip, (int)acit->first.m_fields.m_sport,
+		(int)acit->first.m_fields.m_dip, (int)acit->first.m_fields.m_dport, acit->second.m_spid, acit->second.m_dpid);
+}
 
 		//
 		// Add the connection to the protobuf

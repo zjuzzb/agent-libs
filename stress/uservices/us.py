@@ -129,7 +129,7 @@ try:
         #except:
         #    log("error: cannot open usapp.cfg for reading")
         #    sys.exit(0)
-        #while True:
+#        while True:
         for x in range(0, 10):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
@@ -255,8 +255,10 @@ try:
                 subtag = tag + "." + depname
 
                 if depname == "dbquery" and g_cnt == 7:
-                    log("error **************************: %d %s %s" % (g_cnt, depname, tag.split(':')[1]))
+                    log("error: database connection lost")
+                    log("reconnecting to DB")
                     time.sleep(2)
+                    log("connected to DB")
                 g_cnt = g_cnt + 1
 
                 mark(">:%s::" % subtag)
