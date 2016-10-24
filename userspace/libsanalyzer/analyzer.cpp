@@ -2258,7 +2258,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 	m_reduced_ipv4_connections->clear();
 	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
-printf("WWW Flush\n");
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
