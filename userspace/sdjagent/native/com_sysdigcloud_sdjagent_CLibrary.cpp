@@ -237,6 +237,13 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 
 		if(result == from_info.st_size)
 		{
+			// We need it readable by everyone, because
+			// inside containers we run our sdjagent with
+			// uid=uid_of_target_jvm
+			if(fchmod(fd_to.fd(), S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) != 0)
+			{
+				log("SEVERE", "Cannot change permissions of %s", destination_str.c_str());
+			}
 			exit(0);
 		}
 		else
@@ -392,13 +399,14 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			}
 			chdir("/");
 		}
-
-		seteuid(uid);
+		
 		setegid(gid);
+		seteuid(uid);
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
 		free(container_environ_ptr);
-		log("SEVERE", "Cannot load sdjagent inside container, errno=%s", strerror(errno));
+		log("SEVERE", "Cannot exec sdjagent inside container, errno=%s", strerror(errno));
 		exit(1);
 	}
 	else
