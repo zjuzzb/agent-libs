@@ -339,6 +339,8 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 				container_environ.push_back(move(read_buffer));
 			}
 		}
+		environ_file.close();
+
 		const char** container_environ_ptr = (const char**) malloc(sizeof(char*)*(container_environ.size()+1));
 		int j = 0;
 		for(const auto& env : container_environ)
@@ -346,7 +348,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			container_environ_ptr[j++] = env.c_str();
 		}
 		container_environ_ptr[j++] = NULL;
-		environ_file.close();
+
 
 		// Open namespaces of target process
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
@@ -399,9 +401,17 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			}
 			chdir("/");
 		}
-		
-		setegid(gid);
-		seteuid(uid);
+
+		if(setgid(gid) != 0)
+		{
+			log("SEVERE", "setgid failed errno=%s", strerror(errno));
+			exit(1);
+		}
+		if(setuid(uid) != 0)
+		{
+			log("SEVERE", "setuid failed errno=%s", strerror(errno));
+			exit(1);
+		}
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
