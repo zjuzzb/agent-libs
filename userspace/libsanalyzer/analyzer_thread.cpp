@@ -467,6 +467,10 @@ const proc_config& thread_analyzer_info::get_proc_config()
 	if(!m_dynstate->m_proc_config)
 	{
 		auto conf = m_tinfo->get_env("SYSDIG_AGENT_CONF");
+		if(!conf.empty())
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s", m_tinfo->m_pid, conf.c_str());
+		}
 		m_dynstate->m_proc_config = make_unique<proc_config>(conf);
 	}
 	return *m_dynstate->m_proc_config;
