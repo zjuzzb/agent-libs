@@ -1103,7 +1103,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			m_k8s_ext_detect_done = false;
 			g_logger.log(msg, sinsp_logger::SEV_INFO);
 			return new k8s(k8s_api.to_string(), false /*not captured*/,
-						   m_k8s_ssl, m_k8s_bt,
+						   m_k8s_ssl, m_k8s_bt, false /* block */,
 						   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
 		}
 	}
