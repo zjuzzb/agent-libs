@@ -1008,7 +1008,9 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
 					}
 					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
-					m_k8s_ext_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/apis/extensions/v1beta1", "[.resources[].name]", "1.0", m_k8s_ssl, m_k8s_bt));
+					m_k8s_ext_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api,
+																"/apis/extensions/v1beta1", "[.resources[].name]", "1.1",
+																m_k8s_ssl, m_k8s_bt, false));
 					g_logger.log("K8s API extensions handler: collector created.", sinsp_logger::SEV_TRACE);
 					return nullptr;
 				}
@@ -1103,8 +1105,9 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			m_k8s_ext_detect_done = false;
 			g_logger.log(msg, sinsp_logger::SEV_INFO);
 			return new k8s(k8s_api.to_string(), false /*not captured*/,
-						   m_k8s_ssl, m_k8s_bt, false /* block */,
-						   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
+						   m_k8s_ssl, m_k8s_bt, false,
+						   m_configuration->get_k8s_event_filter(),
+						   m_ext_list_ptr);
 		}
 	}
 	catch(std::exception& ex)
@@ -4217,7 +4220,7 @@ void sinsp_analyzer::emit_k8s()
 						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
 					}
 					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
-					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/api", ".versions", "1.0", m_k8s_ssl, m_k8s_bt));
+					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/api", ".versions", "1.1", m_k8s_ssl, m_k8s_bt, false));
 				}
 				else
 				{
