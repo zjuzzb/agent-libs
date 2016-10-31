@@ -147,9 +147,14 @@ final public class CLibrary {
         if (libraryLoaded) {
             String path = String.format("%s/proc/%d/ns/net", hostRoot, pid);
             int netnsfd = open_fd(path);
-            int nsret = setns(netnsfd, 0);
-            close_fd(netnsfd);
-            return nsret == 0;
+            if(netnsfd > 0)
+            {
+                int nsret = setns(netnsfd, 0);
+                close_fd(netnsfd);
+                return nsret == 0;
+            } else {
+                return false;
+            }
         } else {
             return false;
         }
