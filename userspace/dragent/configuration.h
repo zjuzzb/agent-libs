@@ -464,6 +464,7 @@ public:
 	bool m_marathon_follow_leader;
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
+	mesos::credentials_t m_dcos_enterprise_credentials;
 
 	bool m_falco_baselining_enabled;
 

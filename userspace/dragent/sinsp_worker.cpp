@@ -167,6 +167,7 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
 	}
 	m_analyzer->get_configuration()->set_marathon_follow_leader(m_configuration->m_marathon_follow_leader);
+	m_analyzer->get_configuration()->set_dcos_enterprise_credentials(m_configuration->m_dcos_enterprise_credentials);
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);

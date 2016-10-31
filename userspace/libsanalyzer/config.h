@@ -118,6 +118,8 @@ public:
 	void set_mesos_credentials(const mesos::credentials_t& creds);
 	const mesos::credentials_t& get_marathon_credentials() const;
 	void set_marathon_credentials(const mesos::credentials_t& creds);
+	const mesos::credentials_t& get_dcos_enterprise_credentials() const;
+	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
@@ -186,6 +188,7 @@ private:
 	bool m_marathon_follow_leader;
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
+	mesos::credentials_t m_dcos_enterprise_credentials;
 
 	bool m_curl_debug;
 

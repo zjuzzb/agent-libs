@@ -633,6 +633,16 @@ void sinsp_configuration::set_marathon_credentials(const mesos::credentials_t& c
 	m_marathon_credentials.second = creds.second;
 }
 
+const mesos::credentials_t& sinsp_configuration::get_dcos_enterprise_credentials() const
+{
+	return m_dcos_enterprise_credentials;
+}
+
+void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentials_t& creds)
+{
+	m_dcos_enterprise_credentials = creds;
+}
+
 bool sinsp_configuration::get_curl_debug() const
 {
 	return m_curl_debug;
