@@ -876,6 +876,8 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 	Json::Value root;
 	Json::Reader reader;
 	sinsp_curl sc(url, 500);
+	sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
+	sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 	if(reader.parse(sc.get_data(false), root))
 	{
 		g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
@@ -981,6 +983,8 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 	try
 	{
 		sinsp_curl sc(url, tout);
+		sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
+		sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 		std::string json = sc.get_data();
 		// redirection may have changed url, refresh it here
 		uri newurl(sc.get_url(true));
@@ -1215,7 +1219,8 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
 {
 	if(!m_mesos)
 	{
-		mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
+		auto protocol = m_configuration->get_dcos_enterprise_credentials().first.empty() ? "http" : "https";
+		mesos_api_server = detect_local_server(protocol, 5050, &sinsp_analyzer::check_mesos_server);
 		if(!mesos_api_server.empty())
 		{
 			m_configuration->set_mesos_state_uri(mesos_api_server);
