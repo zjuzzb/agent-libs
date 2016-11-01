@@ -1595,6 +1595,20 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 cpu_quota_used_pct() const;
   inline void set_cpu_quota_used_pct(::google::protobuf::uint32 value);
 
+  // optional uint32 swap_memory_total_kb = 29;
+  inline bool has_swap_memory_total_kb() const;
+  inline void clear_swap_memory_total_kb();
+  static const int kSwapMemoryTotalKbFieldNumber = 29;
+  inline ::google::protobuf::uint32 swap_memory_total_kb() const;
+  inline void set_swap_memory_total_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 swap_memory_available_kb = 30;
+  inline bool has_swap_memory_available_kb() const;
+  inline void clear_swap_memory_available_kb();
+  static const int kSwapMemoryAvailableKbFieldNumber = 30;
+  inline ::google::protobuf::uint32 swap_memory_available_kb() const;
+  inline void set_swap_memory_available_kb(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1629,6 +1643,10 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_swap_limit_kb();
   inline void set_has_cpu_quota_used_pct();
   inline void clear_has_cpu_quota_used_pct();
+  inline void set_has_swap_memory_total_kb();
+  inline void clear_has_swap_memory_total_kb();
+  inline void set_has_swap_memory_available_kb();
+  inline void clear_has_swap_memory_available_kb();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1648,9 +1666,11 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint32 memory_limit_kb_;
   ::google::protobuf::uint32 swap_limit_kb_;
   ::google::protobuf::uint32 cpu_quota_used_pct_;
+  ::google::protobuf::uint32 swap_memory_total_kb_;
+  ::google::protobuf::uint32 swap_memory_available_kb_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(18 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4810,6 +4830,87 @@ class host : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
       mutable_network_by_serverports();
 
+  // repeated uint32 cpu_idle = 25;
+  inline int cpu_idle_size() const;
+  inline void clear_cpu_idle();
+  static const int kCpuIdleFieldNumber = 25;
+  inline ::google::protobuf::uint32 cpu_idle(int index) const;
+  inline void set_cpu_idle(int index, ::google::protobuf::uint32 value);
+  inline void add_cpu_idle(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      cpu_idle() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_cpu_idle();
+
+  // optional double system_load = 32;
+  inline bool has_system_load() const;
+  inline void clear_system_load();
+  static const int kSystemLoadFieldNumber = 32;
+  inline double system_load() const;
+  inline void set_system_load(double value);
+
+  // optional uint64 uptime = 33;
+  inline bool has_uptime() const;
+  inline void clear_uptime();
+  static const int kUptimeFieldNumber = 33;
+  inline ::google::protobuf::uint64 uptime() const;
+  inline void set_uptime(::google::protobuf::uint64 value);
+
+  // repeated uint32 system_cpu = 34;
+  inline int system_cpu_size() const;
+  inline void clear_system_cpu();
+  static const int kSystemCpuFieldNumber = 34;
+  inline ::google::protobuf::uint32 system_cpu(int index) const;
+  inline void set_system_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_system_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      system_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_system_cpu();
+
+  // repeated uint32 user_cpu = 35;
+  inline int user_cpu_size() const;
+  inline void clear_user_cpu();
+  static const int kUserCpuFieldNumber = 35;
+  inline ::google::protobuf::uint32 user_cpu(int index) const;
+  inline void set_user_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_user_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      user_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_user_cpu();
+
+  // optional uint64 memory_bytes_available_kb = 36;
+  inline bool has_memory_bytes_available_kb() const;
+  inline void clear_memory_bytes_available_kb();
+  static const int kMemoryBytesAvailableKbFieldNumber = 36;
+  inline ::google::protobuf::uint64 memory_bytes_available_kb() const;
+  inline void set_memory_bytes_available_kb(::google::protobuf::uint64 value);
+
+  // repeated uint32 iowait_cpu = 37;
+  inline int iowait_cpu_size() const;
+  inline void clear_iowait_cpu();
+  static const int kIowaitCpuFieldNumber = 37;
+  inline ::google::protobuf::uint32 iowait_cpu(int index) const;
+  inline void set_iowait_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_iowait_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      iowait_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_iowait_cpu();
+
+  // repeated uint32 nice_cpu = 38;
+  inline int nice_cpu_size() const;
+  inline void clear_nice_cpu();
+  static const int kNiceCpuFieldNumber = 38;
+  inline ::google::protobuf::uint32 nice_cpu(int index) const;
+  inline void set_nice_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_nice_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      nice_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_nice_cpu();
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -4838,6 +4939,12 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_external_io_net();
   inline void clear_has_external_io_net();
+  inline void set_has_system_load();
+  inline void clear_has_system_load();
+  inline void set_has_uptime();
+  inline void clear_has_uptime();
+  inline void set_has_memory_bytes_available_kb();
+  inline void clear_has_memory_bytes_available_kb();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4856,10 +4963,18 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_idle_;
+  double system_load_;
+  ::google::protobuf::uint64 uptime_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > system_cpu_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > user_cpu_;
+  ::google::protobuf::uint64 memory_bytes_available_kb_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > iowait_cpu_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > nice_cpu_;
   ::google::protobuf::uint32 num_cpus_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(24 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5052,6 +5167,34 @@ class process : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 start_count() const;
   inline void set_start_count(::google::protobuf::uint64 value);
 
+  // optional uint64 running_processes = 23;
+  inline bool has_running_processes() const;
+  inline void clear_running_processes();
+  static const int kRunningProcessesFieldNumber = 23;
+  inline ::google::protobuf::uint64 running_processes() const;
+  inline void set_running_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 sleeping_processes = 25;
+  inline bool has_sleeping_processes() const;
+  inline void clear_sleeping_processes();
+  static const int kSleepingProcessesFieldNumber = 25;
+  inline ::google::protobuf::uint64 sleeping_processes() const;
+  inline void set_sleeping_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 zombie_processes = 27;
+  inline bool has_zombie_processes() const;
+  inline void clear_zombie_processes();
+  static const int kZombieProcessesFieldNumber = 27;
+  inline ::google::protobuf::uint64 zombie_processes() const;
+  inline void set_zombie_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 count_processes = 29;
+  inline bool has_count_processes() const;
+  inline void clear_count_processes();
+  static const int kCountProcessesFieldNumber = 29;
+  inline ::google::protobuf::uint64 count_processes() const;
+  inline void set_count_processes(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_details();
@@ -5086,6 +5229,14 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_protos();
   inline void set_has_start_count();
   inline void clear_has_start_count();
+  inline void set_has_running_processes();
+  inline void clear_has_running_processes();
+  inline void set_has_sleeping_processes();
+  inline void clear_has_sleeping_processes();
+  inline void set_has_zombie_processes();
+  inline void clear_has_zombie_processes();
+  inline void set_has_count_processes();
+  inline void clear_has_count_processes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -5105,9 +5256,13 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::uint64 start_count_;
+  ::google::protobuf::uint64 running_processes_;
+  ::google::protobuf::uint64 sleeping_processes_;
+  ::google::protobuf::uint64 zombie_processes_;
+  ::google::protobuf::uint64 count_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -13149,6 +13304,50 @@ inline void resource_categories::set_cpu_quota_used_pct(::google::protobuf::uint
   cpu_quota_used_pct_ = value;
 }
 
+// optional uint32 swap_memory_total_kb = 29;
+inline bool resource_categories::has_swap_memory_total_kb() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void resource_categories::set_has_swap_memory_total_kb() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void resource_categories::clear_has_swap_memory_total_kb() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void resource_categories::clear_swap_memory_total_kb() {
+  swap_memory_total_kb_ = 0u;
+  clear_has_swap_memory_total_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_memory_total_kb() const {
+  return swap_memory_total_kb_;
+}
+inline void resource_categories::set_swap_memory_total_kb(::google::protobuf::uint32 value) {
+  set_has_swap_memory_total_kb();
+  swap_memory_total_kb_ = value;
+}
+
+// optional uint32 swap_memory_available_kb = 30;
+inline bool resource_categories::has_swap_memory_available_kb() const {
+  return (_has_bits_[0] & 0x00020000u) != 0;
+}
+inline void resource_categories::set_has_swap_memory_available_kb() {
+  _has_bits_[0] |= 0x00020000u;
+}
+inline void resource_categories::clear_has_swap_memory_available_kb() {
+  _has_bits_[0] &= ~0x00020000u;
+}
+inline void resource_categories::clear_swap_memory_available_kb() {
+  swap_memory_available_kb_ = 0u;
+  clear_has_swap_memory_available_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_memory_available_kb() const {
+  return swap_memory_available_kb_;
+}
+inline void resource_categories::set_swap_memory_available_kb(::google::protobuf::uint32 value) {
+  set_has_swap_memory_available_kb();
+  swap_memory_available_kb_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // connection_categories
@@ -17231,6 +17430,197 @@ host::mutable_network_by_serverports() {
   return &network_by_serverports_;
 }
 
+// repeated uint32 cpu_idle = 25;
+inline int host::cpu_idle_size() const {
+  return cpu_idle_.size();
+}
+inline void host::clear_cpu_idle() {
+  cpu_idle_.Clear();
+}
+inline ::google::protobuf::uint32 host::cpu_idle(int index) const {
+  return cpu_idle_.Get(index);
+}
+inline void host::set_cpu_idle(int index, ::google::protobuf::uint32 value) {
+  cpu_idle_.Set(index, value);
+}
+inline void host::add_cpu_idle(::google::protobuf::uint32 value) {
+  cpu_idle_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::cpu_idle() const {
+  return cpu_idle_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_cpu_idle() {
+  return &cpu_idle_;
+}
+
+// optional double system_load = 32;
+inline bool host::has_system_load() const {
+  return (_has_bits_[0] & 0x00020000u) != 0;
+}
+inline void host::set_has_system_load() {
+  _has_bits_[0] |= 0x00020000u;
+}
+inline void host::clear_has_system_load() {
+  _has_bits_[0] &= ~0x00020000u;
+}
+inline void host::clear_system_load() {
+  system_load_ = 0;
+  clear_has_system_load();
+}
+inline double host::system_load() const {
+  return system_load_;
+}
+inline void host::set_system_load(double value) {
+  set_has_system_load();
+  system_load_ = value;
+}
+
+// optional uint64 uptime = 33;
+inline bool host::has_uptime() const {
+  return (_has_bits_[0] & 0x00040000u) != 0;
+}
+inline void host::set_has_uptime() {
+  _has_bits_[0] |= 0x00040000u;
+}
+inline void host::clear_has_uptime() {
+  _has_bits_[0] &= ~0x00040000u;
+}
+inline void host::clear_uptime() {
+  uptime_ = GOOGLE_ULONGLONG(0);
+  clear_has_uptime();
+}
+inline ::google::protobuf::uint64 host::uptime() const {
+  return uptime_;
+}
+inline void host::set_uptime(::google::protobuf::uint64 value) {
+  set_has_uptime();
+  uptime_ = value;
+}
+
+// repeated uint32 system_cpu = 34;
+inline int host::system_cpu_size() const {
+  return system_cpu_.size();
+}
+inline void host::clear_system_cpu() {
+  system_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::system_cpu(int index) const {
+  return system_cpu_.Get(index);
+}
+inline void host::set_system_cpu(int index, ::google::protobuf::uint32 value) {
+  system_cpu_.Set(index, value);
+}
+inline void host::add_system_cpu(::google::protobuf::uint32 value) {
+  system_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::system_cpu() const {
+  return system_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_system_cpu() {
+  return &system_cpu_;
+}
+
+// repeated uint32 user_cpu = 35;
+inline int host::user_cpu_size() const {
+  return user_cpu_.size();
+}
+inline void host::clear_user_cpu() {
+  user_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::user_cpu(int index) const {
+  return user_cpu_.Get(index);
+}
+inline void host::set_user_cpu(int index, ::google::protobuf::uint32 value) {
+  user_cpu_.Set(index, value);
+}
+inline void host::add_user_cpu(::google::protobuf::uint32 value) {
+  user_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::user_cpu() const {
+  return user_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_user_cpu() {
+  return &user_cpu_;
+}
+
+// optional uint64 memory_bytes_available_kb = 36;
+inline bool host::has_memory_bytes_available_kb() const {
+  return (_has_bits_[0] & 0x00200000u) != 0;
+}
+inline void host::set_has_memory_bytes_available_kb() {
+  _has_bits_[0] |= 0x00200000u;
+}
+inline void host::clear_has_memory_bytes_available_kb() {
+  _has_bits_[0] &= ~0x00200000u;
+}
+inline void host::clear_memory_bytes_available_kb() {
+  memory_bytes_available_kb_ = GOOGLE_ULONGLONG(0);
+  clear_has_memory_bytes_available_kb();
+}
+inline ::google::protobuf::uint64 host::memory_bytes_available_kb() const {
+  return memory_bytes_available_kb_;
+}
+inline void host::set_memory_bytes_available_kb(::google::protobuf::uint64 value) {
+  set_has_memory_bytes_available_kb();
+  memory_bytes_available_kb_ = value;
+}
+
+// repeated uint32 iowait_cpu = 37;
+inline int host::iowait_cpu_size() const {
+  return iowait_cpu_.size();
+}
+inline void host::clear_iowait_cpu() {
+  iowait_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::iowait_cpu(int index) const {
+  return iowait_cpu_.Get(index);
+}
+inline void host::set_iowait_cpu(int index, ::google::protobuf::uint32 value) {
+  iowait_cpu_.Set(index, value);
+}
+inline void host::add_iowait_cpu(::google::protobuf::uint32 value) {
+  iowait_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::iowait_cpu() const {
+  return iowait_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_iowait_cpu() {
+  return &iowait_cpu_;
+}
+
+// repeated uint32 nice_cpu = 38;
+inline int host::nice_cpu_size() const {
+  return nice_cpu_.size();
+}
+inline void host::clear_nice_cpu() {
+  nice_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::nice_cpu(int index) const {
+  return nice_cpu_.Get(index);
+}
+inline void host::set_nice_cpu(int index, ::google::protobuf::uint32 value) {
+  nice_cpu_.Set(index, value);
+}
+inline void host::add_nice_cpu(::google::protobuf::uint32 value) {
+  nice_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::nice_cpu() const {
+  return nice_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_nice_cpu() {
+  return &nice_cpu_;
+}
+
 // -------------------------------------------------------------------
 
 // process
@@ -17713,6 +18103,94 @@ inline ::google::protobuf::uint64 process::start_count() const {
 inline void process::set_start_count(::google::protobuf::uint64 value) {
   set_has_start_count();
   start_count_ = value;
+}
+
+// optional uint64 running_processes = 23;
+inline bool process::has_running_processes() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void process::set_has_running_processes() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void process::clear_has_running_processes() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void process::clear_running_processes() {
+  running_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_running_processes();
+}
+inline ::google::protobuf::uint64 process::running_processes() const {
+  return running_processes_;
+}
+inline void process::set_running_processes(::google::protobuf::uint64 value) {
+  set_has_running_processes();
+  running_processes_ = value;
+}
+
+// optional uint64 sleeping_processes = 25;
+inline bool process::has_sleeping_processes() const {
+  return (_has_bits_[0] & 0x00020000u) != 0;
+}
+inline void process::set_has_sleeping_processes() {
+  _has_bits_[0] |= 0x00020000u;
+}
+inline void process::clear_has_sleeping_processes() {
+  _has_bits_[0] &= ~0x00020000u;
+}
+inline void process::clear_sleeping_processes() {
+  sleeping_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_sleeping_processes();
+}
+inline ::google::protobuf::uint64 process::sleeping_processes() const {
+  return sleeping_processes_;
+}
+inline void process::set_sleeping_processes(::google::protobuf::uint64 value) {
+  set_has_sleeping_processes();
+  sleeping_processes_ = value;
+}
+
+// optional uint64 zombie_processes = 27;
+inline bool process::has_zombie_processes() const {
+  return (_has_bits_[0] & 0x00040000u) != 0;
+}
+inline void process::set_has_zombie_processes() {
+  _has_bits_[0] |= 0x00040000u;
+}
+inline void process::clear_has_zombie_processes() {
+  _has_bits_[0] &= ~0x00040000u;
+}
+inline void process::clear_zombie_processes() {
+  zombie_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_zombie_processes();
+}
+inline ::google::protobuf::uint64 process::zombie_processes() const {
+  return zombie_processes_;
+}
+inline void process::set_zombie_processes(::google::protobuf::uint64 value) {
+  set_has_zombie_processes();
+  zombie_processes_ = value;
+}
+
+// optional uint64 count_processes = 29;
+inline bool process::has_count_processes() const {
+  return (_has_bits_[0] & 0x00080000u) != 0;
+}
+inline void process::set_has_count_processes() {
+  _has_bits_[0] |= 0x00080000u;
+}
+inline void process::clear_has_count_processes() {
+  _has_bits_[0] &= ~0x00080000u;
+}
+inline void process::clear_count_processes() {
+  count_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_count_processes();
+}
+inline ::google::protobuf::uint64 process::count_processes() const {
+  return count_processes_;
+}
+inline void process::set_count_processes(::google::protobuf::uint64 value) {
+  set_has_count_processes();
+  count_processes_ = value;
 }
 
 // -------------------------------------------------------------------

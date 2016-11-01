@@ -85,7 +85,7 @@ message resource_categories {
     optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
     optional uint32 resident_memory_usage_kb = 5; // resident non-swapped memory (as kb).
     optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host and container.
-    optional uint32 swap_memory_usage_kb = 14; // swapped memory (as kb).
+    optional uint32 swap_memory_usage_kb = 14; // swapped memory usage (as kb).
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
     optional uint32 fd_count = 21; // Total number of FDs
@@ -94,6 +94,8 @@ message resource_categories {
     optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
     optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
     optional uint32 cpu_quota_used_pct = 28;
+    optional uint32 swap_memory_total_kb = 29; // swapped memory total (as kb).
+    optional uint32 swap_memory_available_kb = 30;  // swapped memory available (as kb).
 }
 
 message connection_categories {
@@ -419,6 +421,14 @@ message host {
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
     repeated network_by_port network_by_serverports = 24;
+    repeated uint32 cpu_idle = 25;  // cpu_idle
+    optional double system_load = 32; // system load
+    optional uint64 uptime = 33;  // uptime to calculate the reboot
+    repeated uint32 system_cpu = 34;  // system_cpu
+    repeated uint32 user_cpu = 35;  // user_cpu
+    optional uint64 memory_bytes_available_kb = 36;  // memory bytes available as kb
+    repeated uint32 iowait_cpu = 37;  // iowait_cpu
+    repeated uint32 nice_cpu = 38;  // nice_cpu
 }
 
 //
@@ -455,7 +465,11 @@ message process {
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded
-    optional uint64 start_count = 21;
+    optional uint64 start_count = 21; // start processes
+    optional uint64 running_processes = 23;  // running processes
+    optional uint64 sleeping_processes = 25;  // sleeping processes
+    optional uint64 zombie_processes = 27;   // zombie processes
+    optional uint64 count_processes = 29;  // total processes
 }
 
 //
