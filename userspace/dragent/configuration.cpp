@@ -565,7 +565,7 @@ void dragent_configuration::init(Application* app)
 	m_mesos_credentials.second = m_config->get_scalar<std::string>("mesos_password", "");
 	m_marathon_credentials.first = m_config->get_scalar<std::string>("marathon_user", "");
 	m_marathon_credentials.second = m_config->get_scalar<std::string>("marathon_password", "");
-	m_dcos_enterprise_credentials.first = m_config->get_scalar<std::string>("dcos_uid", "");
+	m_dcos_enterprise_credentials.first = m_config->get_scalar<std::string>("dcos_user", "");
 	m_dcos_enterprise_credentials.second = m_config->get_scalar<std::string>("dcos_password", "");
 
 	// End Mesos
