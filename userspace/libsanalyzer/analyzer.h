@@ -595,6 +595,7 @@ VISIBILITY_PRIVATE
 	// used to filter logs about Mesos API server unavailablity
 	bool m_mesos_present = false;
 	static bool m_mesos_bad_config;
+	time_t m_dcos_enterprise_last_token_refresh_s;
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;

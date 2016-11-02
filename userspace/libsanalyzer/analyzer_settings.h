@@ -230,3 +230,5 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
 
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
+static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
+static const uint64_t DCOS_ENTERPRISE_TOKEN_REFRESH_S = 60*60*24; // 1 day

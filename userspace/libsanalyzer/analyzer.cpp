@@ -167,6 +167,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	add_chisel_dirs();
 
 	m_external_command_id = 0;
+	m_dcos_enterprise_last_token_refresh_s = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -951,6 +952,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 				if(m_mesos) { m_mesos.reset(); }
 				if(!m_configuration->get_dcos_enterprise_credentials().first.empty())
 				{
+					time(&m_dcos_enterprise_last_token_refresh_s);
 					m_mesos.reset(new mesos(mesos_state,
 											marathon_uris,
 											m_configuration->get_mesos_follow_leader(),
@@ -4289,7 +4291,13 @@ void sinsp_analyzer::get_mesos_data()
 	{
 		m_mesos->collect_data();
 	}
-	if(m_mesos && difftime(now, last_mesos_refresh) > 10)
+	if(m_mesos && difftime(now, m_dcos_enterprise_last_token_refresh_s) > DCOS_ENTERPRISE_TOKEN_REFRESH_S)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Regenerating Mesos token");
+		m_mesos->refresh_token();
+		m_dcos_enterprise_last_token_refresh_s = now;
+	}
+	if(m_mesos && difftime(now, last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
 	{
 		m_mesos->send_data_request();
 		last_mesos_refresh = now;
