@@ -295,9 +295,9 @@ TEST_F(sys_call_test, forking_process_expired)
 
 	sinsp_configuration configuration;
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, 
-		callback, 
-		filter, 
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test,
+		callback,
+		filter,
 		configuration,
 		NULL,
 		0,
@@ -407,7 +407,7 @@ TEST_F(sys_call_test, forking_execve)
 				string tmps = getcwd(bcwd, 1024);
 				EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			}
-			
+
 			callnum++;
 		}
 	};
@@ -422,7 +422,7 @@ TEST_F(sys_call_test, forking_execve)
 ///////////////////////////////////////////////////////////////////////////////
 int ctid;	// child tid
 
-typedef struct 
+typedef struct
 {
     int    fd;
     int    signal;
@@ -526,15 +526,15 @@ TEST_F(sys_call_test, forking_clone_fs)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			string tmps = getcwd(bcwd, 1024);
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
@@ -674,15 +674,15 @@ TEST_F(sys_call_test, forking_clone_nofs)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			string tmps = getcwd(bcwd, 1024);
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
@@ -786,7 +786,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 		if (clone(clone_callback_2, stackTop, flags, &cp) == -1)
 		{
-		    FAIL();			
+		    FAIL();
 		}
 
 		sleep(1);
@@ -815,15 +815,15 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
@@ -905,7 +905,7 @@ TEST_F(sys_call_test, forking_clone_nocwd)
 		string tmps = getcwd(bcwd, 256);
 
 		sleep(1);
-		exit(0);		
+		exit(0);
 	};
 
 	//
@@ -926,15 +926,15 @@ TEST_F(sys_call_test, forking_clone_nocwd)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
