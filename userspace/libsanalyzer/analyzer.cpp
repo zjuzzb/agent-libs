@@ -4220,7 +4220,9 @@ void sinsp_analyzer::emit_k8s()
 						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
 					}
 					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
-					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/api", ".versions", "1.1", m_k8s_ssl, m_k8s_bt, false));
+					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api,
+																"/api", ".versions", "1.1",
+																m_k8s_ssl, m_k8s_bt, false));
 				}
 				else
 				{
@@ -4246,7 +4248,7 @@ void sinsp_analyzer::emit_k8s()
 					}
 					else
 					{
-						g_logger.log("K8s API extensions handler: not ready.", sinsp_logger::SEV_TRACE);
+						g_logger.log("K8s API handler: not ready.", sinsp_logger::SEV_TRACE);
 					}
 				}
 			}
