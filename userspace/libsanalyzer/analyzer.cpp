@@ -4440,7 +4440,7 @@ bool sinsp_analyzer::check_k8s_delegation()
 					m_k8s_delegator.reset(new k8s_delegator(m_inspector,
 															k8s_uri,
 															delegated_nodes,
-															"1.0", // http version
+															"1.1", // http version
 															m_k8s_ssl,
 															m_k8s_bt));
 					if(m_k8s_delegator)
