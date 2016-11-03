@@ -889,9 +889,8 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 			{
 				// redirection may change URL, since we have just confirmed
 				// that this is indeed the mesos API server, refresh it here
-				uri newurl(sc.get_url(true)); // indicate to the caller
-				newurl.set_path(mesos::default_state_api);
-				addr = newurl.to_string(true);
+				url.set_path(mesos::default_state_api);
+				addr = url.to_string(true);
 				m_configuration->set_mesos_state_uri(addr); // set globally in config
 				return true;
 			}
@@ -988,10 +987,8 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 		sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
 		sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 		std::string json = sc.get_data();
-		// redirection may have changed url, refresh it here
-		uri newurl(sc.get_url(true));
-		newurl.set_path(mesos::default_state_api);
-		m_configuration->set_mesos_state_uri(newurl.to_string(true));
+		url.set_path(mesos::default_state_api);
+		m_configuration->set_mesos_state_uri(url.to_string(true));
 		make_mesos(std::move(json));
 	}
 	catch(std::exception& ex)
