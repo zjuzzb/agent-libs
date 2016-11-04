@@ -1007,6 +1007,7 @@ void dragent_configuration::parse_services_file()
 
 void dragent_configuration::save_auto_config(const string& config_data)
 {
+	g_log->debug(string("Received dragent.auto.yaml with content: ") + config_data);
 	m_sha1_engine.reset();
 	if(!config_data.empty())
 	{

@@ -174,7 +174,7 @@ class AppCheckInstance:
         if len(proc_data["ports"]) > 0:
             self.instance_conf["port"] = proc_data["ports"][0]
 
-        for key, value in check["conf"].items():
+        for key, value in check.get("conf", {}).items():
             # some checks rely on str, so let's convert
             # everything to str
             key = key.encode('ascii', 'ignore')
@@ -424,12 +424,17 @@ class Application:
                 if check_conf is None:
                     print "Check conf not found"
                     sys.exit(1)
+                else:
+                    print("Using check conf: %s" % repr(check_conf))
                 check_instance = AppCheckInstance(check_conf, proc_data)
                 metrics, service_checks, ex = check_instance.run()
                 print "Conf: %s" % repr(check_instance.instance_conf)
                 print "Metrics: %s" % repr(metrics)
                 print "Checks: %s" % repr(service_checks)
                 print "Exception: %s" % ex
+            elif sys.argv[1] == "help":
+                print "Available commands:"
+                print "sdchecks runCheck <checkname> <pid> <vpid> <port>"
         else:
             # In this mode register our usr1 handler to print stack trace (useful for debugging)
             signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
