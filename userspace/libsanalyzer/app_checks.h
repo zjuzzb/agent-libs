@@ -9,7 +9,11 @@
 #include "third-party/jsoncpp/json/json.h"
 #include "posix_queue.h"
 #include "draios.pb.h"
+// suppress depreacated warnings for auto_ptr in boost
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
 
 Json::Value yaml_to_json(const YAML::Node& node);
 

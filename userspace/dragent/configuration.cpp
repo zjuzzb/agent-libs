@@ -226,10 +226,9 @@ void dragent_configuration::configure_k8s_from_env()
 					}
 					else
 					{
-						g_logger.log("Bearer token not found at default location (" + k8s_bearer_token_file_name +
+						m_k8s_logs.insert({sinsp_logger::SEV_WARNING, "Bearer token not found at default location (" + k8s_bearer_token_file_name +
 									 "), authentication may not work. "
-									 "If needed, please specify the location using k8s_bt_auth_token config entry.",
-									 sinsp_logger::SEV_WARNING);
+									 "If needed, please specify the location using k8s_bt_auth_token config entry."});
 					}
 				}
 				if(m_k8s_ssl_verify_certificate && m_k8s_ssl_ca_certificate.empty())
@@ -240,12 +239,11 @@ void dragent_configuration::configure_k8s_from_env()
 					}
 					else
 					{
-						g_logger.log("CA certificate verification configured, but CA certificate "
+						m_k8s_logs.insert({sinsp_logger::SEV_WARNING, "CA certificate verification configured, but CA certificate "
 									 "not specified nor found at default location (" + k8s_ca_crt +
 									 "), server authentication will not work. If server authentication "
 									 "is desired, please specify the CA certificate file location using "
-									 "k8s_ca_certificate config entry.",
-									 sinsp_logger::SEV_WARNING);
+									 "k8s_ca_certificate config entry."});
 					}
 				}
 			}
@@ -686,6 +684,10 @@ void dragent_configuration::print_configuration()
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
+	for(const auto& log_entry : m_k8s_logs)
+	{
+		g_log->log(log_entry.second, log_entry.first);
+	}
 	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
 	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
 
@@ -1000,6 +1002,7 @@ void dragent_configuration::parse_services_file()
 
 void dragent_configuration::save_auto_config(const string& config_data)
 {
+	g_log->debug(string("Received dragent.auto.yaml with content: ") + config_data);
 	m_sha1_engine.reset();
 	if(!config_data.empty())
 	{

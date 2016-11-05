@@ -3,10 +3,17 @@
 #include "main.h"
 #include "logger.h"
 #include "user_event.h"
+
+// suppress deprecated warnings for auto_ptr in boost
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
+
 #include <atomic>
 #include <memory>
 #include <set>
+#include <map>
 #include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -455,6 +462,7 @@ public:
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
+	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;

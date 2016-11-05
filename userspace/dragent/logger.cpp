@@ -18,6 +18,16 @@ void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_bur
 // regular logging
 //
 
+void dragent_logger::log(const string& str, uint32_t sev)
+{
+	Poco::Message m("dragent_logger", str, (Message::Priority) sev);
+	m_file_log->log(m);
+	if(m_console_log != NULL)
+	{
+		m_console_log->log(m);
+	}
+}
+
 void dragent_logger::trace(const string& str)
 {
 	m_file_log->trace(str);

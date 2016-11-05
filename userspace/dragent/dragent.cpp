@@ -302,7 +302,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_configuration.m_statsd_enabled)
 	{
 		m_statsite_pipes = make_shared<pipe_manager>();
-		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data)
 		{
 			if(data.find("Failed to bind") != string::npos)
@@ -469,6 +468,7 @@ int dragent_app::sdagent_main()
 	if(m_statsite_pipes)
 	{
 		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
+		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	}
 	if(m_configuration.m_customer_id.empty())
 	{
