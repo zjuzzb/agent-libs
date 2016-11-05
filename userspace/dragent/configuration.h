@@ -3,7 +3,13 @@
 #include "main.h"
 #include "logger.h"
 #include "user_event.h"
+
+// suppress deprecated warnings for auto_ptr in boost
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
+
 #include <atomic>
 #include <memory>
 #include <set>
