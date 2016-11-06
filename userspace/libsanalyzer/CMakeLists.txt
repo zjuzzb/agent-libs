@@ -52,6 +52,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/fdinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
