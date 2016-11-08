@@ -409,7 +409,8 @@ TEST_F(sys_call_test, forking_execve)
 				EXPECT_EQ("bb", ti->m_args[3]);
 
 				string tmps = getcwd(bcwd, 1024);
-				EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
+				EXPECT_EQ(tmps + "/", ti->get_cwd());
+				EXPECT_EQ("", e->get_param_value_str("cwd"));
 			}
 
 			callnum++;
@@ -540,7 +541,8 @@ TEST_F(sys_call_test, forking_clone_fs)
 			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
 			EXPECT_EQ("tests", ti->get_comm());
 			string tmps = getcwd(bcwd, 1024);
-			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
+			EXPECT_EQ(tmps + "/", ti->get_cwd());
+			EXPECT_EQ("", e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
@@ -688,7 +690,8 @@ TEST_F(sys_call_test, forking_clone_nofs)
 			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
 			EXPECT_EQ("tests", ti->get_comm());
 			string tmps = getcwd(bcwd, 1024);
-			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
+			EXPECT_EQ(tmps + "/", ti->get_cwd());
+			EXPECT_EQ("", e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
