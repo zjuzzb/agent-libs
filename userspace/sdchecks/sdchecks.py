@@ -93,8 +93,11 @@ def _load_check_class(check_module_name):
     try:
         check_module = _load_check_module(check_module_name, check_module_name, CUSTOM_CHECKS_DIRECTORY)
     except IOError:
-        check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY)
-
+        try:
+            check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY)
+        except IOError as ex:
+            raise AppCheckException('Unable to find AgentCheck class for %s reason=%s' % (check_module_name, str(ex)))
+    
     # We make sure that there is an AgentCheck class defined
     check_class = None
     classes = inspect.getmembers(check_module, inspect.isclass)

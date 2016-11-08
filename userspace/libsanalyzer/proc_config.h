@@ -24,14 +24,27 @@ proc_config::proc_config(const string &conf)
 {
 	try
 	{
-		auto root = YAML::Load(conf);
-		const auto& app_checks_node = root["app_checks"];
-		if(app_checks_node.IsSequence())
+		// An empty var is a valid conf
+		if(conf.empty())
 		{
-			for(const auto& check_node : app_checks_node)
+			return;
+		}
+
+		auto root = YAML::Load(conf);
+		if (root.IsMap())
+		{
+			const auto& app_checks_node = root["app_checks"];
+			if(app_checks_node.IsSequence())
 			{
-				m_app_checks.emplace_back(check_node.as<app_check>());
+				for(const auto& check_node : app_checks_node)
+				{
+					m_app_checks.emplace_back(check_node.as<app_check>());
+				}
 			}
+		}
+		else
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING, "Invalid SYSDIG_AGENT_CONF var=%s reason=Root YAML is not a Map", conf.c_str());
 		}
 	}
 	catch (const YAML::BadConversion& ex)
