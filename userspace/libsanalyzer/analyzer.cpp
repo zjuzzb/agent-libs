@@ -168,6 +168,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_external_command_id = 0;
 	m_dcos_enterprise_last_token_refresh_s = 0;
+	m_mesos_last_failure_ns = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -4324,6 +4325,7 @@ void sinsp_analyzer::reset_mesos(const std::string& errmsg)
 	{
 		g_logger.log(errmsg, sinsp_logger::SEV_ERROR);
 	}
+	m_mesos_last_failure_ns = m_prev_flush_time_ns;
 	m_mesos.reset();
 	m_configuration->set_mesos_state_uri(m_configuration->get_mesos_state_original_uri());
 }
@@ -4350,8 +4352,9 @@ void sinsp_analyzer::emit_mesos()
 	// will be collected and emitted; the connection to mesos api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
-
+	
 	string mesos_uri = m_configuration->get_mesos_state_uri();
+
 	try
 	{
 		if(!mesos_uri.empty())
@@ -4394,7 +4397,7 @@ void sinsp_analyzer::emit_mesos()
 				reset_mesos("Mesos connection not established.");
 			}
 		}
-		else if(m_configuration->get_mesos_autodetect_enabled())
+		else if(m_configuration->get_mesos_autodetect_enabled() && (m_prev_flush_time_ns - m_mesos_last_failure_ns) > MESOS_RETRY_ON_ERRORS_TIMEOUT_NS)
 		{
 			detect_mesos(mesos_uri);
 		}
