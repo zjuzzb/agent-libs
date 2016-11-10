@@ -1191,7 +1191,7 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		pid_t launcher_pid;
-		char *launcher_stack;
+		char *launcher_stack = NULL;
 
 		// Start a thread that simply waits until signaled,
 		// and then creates a second do-nothing thread. We'll
@@ -1224,7 +1224,6 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 		// process.
 
 		FILE *last_pid_file;
-		pid_t last_pid;
 
 		{
 			std::lock_guard<std::mutex> lk(ctx.m_perform_clone_mtx);
