@@ -1,10 +1,14 @@
 #define VISIBILITY_PRIVATE
 
 #include <sys/syscall.h>
+#include <unistd.h>
 #include "sys_call_test.h"
 #include <gtest.h>
 #include <algorithm>
+#include <mutex>
+#include <condition_variable>
 #include "event_capture.h"
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -295,9 +299,9 @@ TEST_F(sys_call_test, forking_process_expired)
 
 	sinsp_configuration configuration;
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, 
-		callback, 
-		filter, 
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test,
+		callback,
+		filter,
 		configuration,
 		NULL,
 		0,
@@ -407,7 +411,7 @@ TEST_F(sys_call_test, forking_execve)
 				string tmps = getcwd(bcwd, 1024);
 				EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			}
-			
+
 			callnum++;
 		}
 	};
@@ -422,7 +426,7 @@ TEST_F(sys_call_test, forking_execve)
 ///////////////////////////////////////////////////////////////////////////////
 int ctid;	// child tid
 
-typedef struct 
+typedef struct
 {
     int    fd;
     int    signal;
@@ -526,15 +530,15 @@ TEST_F(sys_call_test, forking_clone_fs)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			string tmps = getcwd(bcwd, 1024);
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
@@ -674,15 +678,15 @@ TEST_F(sys_call_test, forking_clone_nofs)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			string tmps = getcwd(bcwd, 1024);
 			EXPECT_EQ(tmps, e->get_param_value_str("cwd"));
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
@@ -786,7 +790,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 		if (clone(clone_callback_2, stackTop, flags, &cp) == -1)
 		{
-		    FAIL();			
+		    FAIL();
 		}
 
 		sleep(1);
@@ -815,15 +819,15 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
@@ -905,7 +909,7 @@ TEST_F(sys_call_test, forking_clone_nocwd)
 		string tmps = getcwd(bcwd, 256);
 
 		sleep(1);
-		exit(0);		
+		exit(0);
 	};
 
 	//
@@ -926,15 +930,15 @@ TEST_F(sys_call_test, forking_clone_nocwd)
 
 			if(res == 0)
 			{
-				EXPECT_EQ(ctid, ti->m_tid);				
+				EXPECT_EQ(ctid, ti->m_tid);
 			}
 			else
 			{
-				EXPECT_EQ(ptid, ti->m_tid);				
+				EXPECT_EQ(ptid, ti->m_tid);
 			}
 
-			EXPECT_EQ("./tests", e->get_param_value_str("exe"));				
-			EXPECT_EQ("tests", ti->get_comm());				
+			EXPECT_EQ("./tests", e->get_param_value_str("exe"));
+			EXPECT_EQ("tests", ti->get_comm());
 			EXPECT_EQ(drflags, NumberParser::parse(e->get_param_value_str("flags", false)));
 			callnum++;
 		}
@@ -1031,3 +1035,251 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(3, callnum);
 }
+
+// Verifies fix for https://github.com/draios/sysdig/issues/664.
+//
+// This test generally does the following:
+//  - Ensures that a stale process exists
+//  - Starts another process with the same pid as the stale process, in a pid
+//    namespace (which counts as "in a container").
+//  - Checks to see if the stale process information is used.
+//
+//  To distinguish between the stale process and up-to-date process, use the
+//  working directory of the process. The stale process sets its working
+//  directory to "/dev".
+//
+//  Prior to the fix for 664, the stale process would be used and the
+//  working directory of the second process would (mistakenly) be
+//  /dev. With the fix, the stale process information is detected and
+//  removed.
+//
+
+// Create the initial stale process. It chdir()s to "/dev", stops the
+// inspector, and returns.
+static int stop_sinsp_and_exit(void *arg)
+{
+	sinsp *inspector = (sinsp *) arg;
+
+	if(chdir("/dev") != 0)
+	{
+		return 1;
+	}
+
+	inspector->stop_capture();
+
+	return 0;
+}
+
+// Immediately return. Started by launcher.
+static int do_nothing(void *arg)
+{
+	return 0;
+}
+
+struct stale_clone_ctx
+{
+	mutex m_perform_clone_mtx;
+	condition_variable m_perform_clone;
+	bool m_clone_ready;
+	bool m_clone_complete;
+};
+
+static pid_t clone_helper(int (*func)(void *), void *arg,
+			  int addl_clone_args = 0, bool wait_for_complete = true,
+			  char **stackp = NULL);
+
+// Wait until signaled by the main test thread, start a single
+// do_nothing(), signal the main test thread, and exit.
+static int launcher(void *arg)
+{
+	stale_clone_ctx *ctx = (stale_clone_ctx *) arg;
+	std::unique_lock<std::mutex> lk(ctx->m_perform_clone_mtx);
+	ctx->m_perform_clone.wait(lk, [&]{return ctx->m_clone_ready;});
+
+	pid_t child = clone_helper(do_nothing, NULL);
+	EXPECT_NE(child, 0);
+
+	ctx->m_clone_complete = true;
+	lk.unlock();
+	ctx->m_perform_clone.notify_one();
+
+	if(child == 0)
+	{
+		return 1;
+	}
+
+	return 0;
+}
+
+// Start a new thread using clone(), passing the provided arg.  On
+// success, returns the process id of the thread that was created.
+// On failure, returns 0. Used to start all the other actions.
+
+static pid_t clone_helper(int (*func)(void *), void *arg,
+			  int addl_clone_args, bool wait_for_complete,
+			  char **stackp)
+{
+	const int STACK_SIZE = 65536;       /* Stack size for cloned child */
+	char *stack;                        /* Start of stack buffer area */
+	char *stackTop;                     /* End of stack buffer area */
+        int flags = CLONE_VM | CLONE_FILES | SIGCHLD | addl_clone_args;
+	pid_t pid = 0;
+
+	/* Allocate stack for child */
+	stack = (char*)malloc(STACK_SIZE);
+	if(stack == NULL)
+	{
+		return 0;
+	}
+
+	stackTop = stack + STACK_SIZE;  /* Assume stack grows downward */
+
+	if((pid = clone(func, stackTop, flags, arg)) == -1)
+	{
+		free(stack);
+		return 0;
+	}
+
+	if(wait_for_complete)
+	{
+		int status;
+
+		if(waitpid(pid, &status, 0) == -1 ||
+		   status != 0)
+		{
+			pid = 0;
+		}
+		free(stack);
+	}
+	else
+	{
+		*stackp = stack;
+	}
+
+	return pid;
+}
+
+TEST_F(sys_call_test, remove_stale_thread_clone_exit)
+{
+	uint32_t clones_seen = 0;
+	stale_clone_ctx ctx;
+	pid_t recycle_pid = 0;
+
+	ctx.m_clone_ready = false;
+	ctx.m_clone_complete = false;
+
+	// All events matching recycle_pid are selected.
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return (recycle_pid != 0 && evt->m_tinfo && evt->m_tinfo->m_tid == recycle_pid);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		pid_t launcher_pid;
+		char *launcher_stack;
+
+		// Start a thread that simply waits until signaled,
+		// and then creates a second do-nothing thread. We'll
+		// arrange that the host-facing pid is set to a known
+		// value before this thread creates the second thread.
+		launcher_pid = clone_helper(launcher, &ctx, CLONE_NEWPID, false, &launcher_stack);
+		ASSERT_GE(launcher_pid, 0);
+
+		// This is asynchronous so wait to make sure the thread has started.
+		sleep(1);
+
+		// Start a thread that runs and stops the inspector right
+		// before exiting. This gives us a pid we can use for the
+		// second thread.
+		recycle_pid = clone_helper(stop_sinsp_and_exit, inspector);
+		ASSERT_GE(recycle_pid, 0);
+
+		// The first thread has started, turned off the capturing, and
+		// exited, so start capturing again.
+		inspector->start_capture();
+
+		// Arrange that the next thread/process created has
+		// pid ctx.m_desired pid by writing to
+		// ns_last_pid. Unfortunately, this has a race
+		// condition--it's possible that after writing to
+		// ns_last_pid another different process is started,
+		// stealing the pid. However, as long as the process
+		// doesn't have a working directory of "/dev", that
+		// will be enough to distinguish it from the stale
+		// process.
+
+		FILE *last_pid_file;
+		pid_t last_pid;
+
+		{
+			std::lock_guard<std::mutex> lk(ctx.m_perform_clone_mtx);
+
+			last_pid_file = fopen("/proc/sys/kernel/ns_last_pid", "w");
+
+			ASSERT_NE(last_pid_file, (FILE *) NULL);
+
+			ASSERT_EQ(flock(fileno(last_pid_file), LOCK_EX), 0);
+
+			ASSERT_GT(fprintf(last_pid_file, "%d", recycle_pid-1), 0);
+
+			fclose(last_pid_file);
+
+			ctx.m_clone_ready = true;
+		}
+
+		// Signal the launcher thread telling it to start the do_nothing thread.
+		ctx.m_perform_clone.notify_one();
+
+		// Wait to be signaled back from the launcher thread that it's done.
+		{
+			std::unique_lock<std::mutex> lk(ctx.m_perform_clone_mtx);
+
+			ctx.m_perform_clone.wait(lk, [&]{return ctx.m_clone_complete;});
+		}
+
+                // The launcher thread should have exited, but just to
+                // make sure explicitly kill it.
+		ASSERT_EQ(kill(launcher_pid, SIGTERM), 0);
+
+		free(launcher_stack);
+
+		return;
+	};
+
+	// To verify the actions, the filter selects all events
+        // related to pid recycled_pid. It should see:
+        //     - a clone()
+        //     - several events with pid=recycled_pid and cwd=<where the test is run>
+        //     - after stop_sinp_and_exit chdir()s to /dev, several events with
+        //       pid=recycled_pid and cwd=/dev
+        //     - a second clone()
+        //     - events with pid=recycled_pid (the do_nothing started by
+        //       create_do_nothings) and cwd=<where the test is run>
+        //
+        //       If after the second clone any event with pid=recycled_pid has a cwd of
+        //       /dev/, the test fails.
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t etype = e->get_type();
+
+		if((etype == PPME_SYSCALL_CLONE_11_X ||
+		    etype == PPME_SYSCALL_CLONE_16_X ||
+		    etype == PPME_SYSCALL_CLONE_17_X ||
+		    etype == PPME_SYSCALL_CLONE_20_X) &&
+		   e->get_direction() == SCAP_ED_OUT)
+		{
+			clones_seen++;
+		}
+
+		if(clones_seen > 1)
+		{
+			EXPECT_STRNE(e->m_tinfo->get_cwd().c_str(), "/dev/");
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+}
+
