@@ -1164,9 +1164,23 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 	uint32_t clones_seen = 0;
 	stale_clone_ctx ctx;
 	pid_t recycle_pid = 0;
+	const char *last_pid_filename = "/proc/sys/kernel/ns_last_pid";
+	struct stat info;
 
 	ctx.m_clone_ready = false;
 	ctx.m_clone_complete = false;
+
+	// On some operating systems,
+	// /proc/sys/kernel/ns_last_pid does not exist. In
+	// those cases, we print a message and trivially pass
+	// the test.
+
+	if(stat(last_pid_filename, &info) == -1 &&
+	   errno == ENOENT)
+	{
+		fprintf(stderr, "Doing nothing as %s does not exist\n", last_pid_filename);
+		return;
+	}
 
 	// All events matching recycle_pid are selected.
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -1177,7 +1191,7 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		pid_t launcher_pid;
-		char *launcher_stack;
+		char *launcher_stack = NULL;
 
 		// Start a thread that simply waits until signaled,
 		// and then creates a second do-nothing thread. We'll
@@ -1210,12 +1224,11 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 		// process.
 
 		FILE *last_pid_file;
-		pid_t last_pid;
 
 		{
 			std::lock_guard<std::mutex> lk(ctx.m_perform_clone_mtx);
 
-			last_pid_file = fopen("/proc/sys/kernel/ns_last_pid", "w");
+			last_pid_file = fopen(last_pid_filename, "w");
 
 			ASSERT_NE(last_pid_file, (FILE *) NULL);
 
