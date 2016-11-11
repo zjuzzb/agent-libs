@@ -167,6 +167,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	add_chisel_dirs();
 
 	m_external_command_id = 0;
+	m_dcos_enterprise_last_token_refresh_s = 0;
+	m_mesos_last_failure_ns = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -866,7 +868,7 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 bool sinsp_analyzer::check_mesos_server(string& addr)
 {
 	uri url(addr);
-	url.set_path(mesos::default_state_api);
+	url.set_path(mesos::default_version_api);
 	g_logger.log("Preparing to detect Mesos at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
 	const mesos::credentials_t& creds = m_configuration->get_mesos_credentials();
 	if(!creds.first.empty())
@@ -876,6 +878,8 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 	Json::Value root;
 	Json::Reader reader;
 	sinsp_curl sc(url, 500);
+	sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
+	sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 	if(reader.parse(sc.get_data(false), root))
 	{
 		g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
@@ -884,9 +888,9 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 		{
 			if(!ver.asString().empty())
 			{
-				// redirection may change URL, since we have just confirmed
-				// that this is indeed the mesos API server, refresh it here
-				addr = sc.get_url(true); // indicate to the caller
+				// Change path, to state api instead of version
+				url.set_path(mesos::default_state_api);
+				addr = url.to_string(true);
 				m_configuration->set_mesos_state_uri(addr); // set globally in config
 				return true;
 			}
@@ -945,13 +949,26 @@ void sinsp_analyzer::make_mesos(string&& json)
 
 				m_mesos_present = true;
 				if(m_mesos) { m_mesos.reset(); }
-				m_mesos.reset(new mesos(mesos_state,
-					marathon_uris,
-					m_configuration->get_mesos_follow_leader(),
-					m_configuration->get_marathon_follow_leader(),
-					m_configuration->get_mesos_credentials(),
-					m_configuration->get_marathon_credentials(),
-					m_configuration->get_mesos_timeout_ms()));
+				if(!m_configuration->get_dcos_enterprise_credentials().first.empty())
+				{
+					time(&m_dcos_enterprise_last_token_refresh_s);
+					m_mesos.reset(new mesos(mesos_state,
+											marathon_uris,
+											m_configuration->get_mesos_follow_leader(),
+											m_configuration->get_marathon_follow_leader(),
+											m_configuration->get_dcos_enterprise_credentials(),
+											m_configuration->get_mesos_timeout_ms()));
+				}
+				else
+				{
+					m_mesos.reset(new mesos(mesos_state,
+											marathon_uris,
+											m_configuration->get_mesos_follow_leader(),
+											m_configuration->get_marathon_follow_leader(),
+											m_configuration->get_mesos_credentials(),
+											m_configuration->get_marathon_credentials(),
+											m_configuration->get_mesos_timeout_ms()));
+				}
 			}
 		}
 	}
@@ -961,22 +978,17 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 {
 	m_mesos.reset();
 	uri url(mesos_uri);
-	url.set_path(mesos::default_state_api);
+	url.set_path(mesos::default_version_api);
 	long tout = m_configuration->get_mesos_timeout_ms();
 
 	try
 	{
-		if(url.is_secure())
-		{
-			// TODO
-			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
-			m_mesos_bad_config = true;
-			return;
-		}
 		sinsp_curl sc(url, tout);
+		sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
+		sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 		std::string json = sc.get_data();
-		// redirection may have changed url, refresh it here
-		m_configuration->set_mesos_state_uri(sc.get_url(true));
+		url.set_path(mesos::default_state_api);
+		m_configuration->set_mesos_state_uri(url.to_string(true));
 		make_mesos(std::move(json));
 	}
 	catch(std::exception& ex)
@@ -1206,7 +1218,8 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
 {
 	if(!m_mesos)
 	{
-		mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
+		auto protocol = m_configuration->get_dcos_enterprise_credentials().first.empty() ? "http" : "https";
+		mesos_api_server = detect_local_server(protocol, 5050, &sinsp_analyzer::check_mesos_server);
 		if(!mesos_api_server.empty())
 		{
 			m_configuration->set_mesos_state_uri(mesos_api_server);
@@ -4276,7 +4289,14 @@ void sinsp_analyzer::get_mesos_data()
 	{
 		m_mesos->collect_data();
 	}
-	if(m_mesos && difftime(now, last_mesos_refresh) > 10)
+	if(m_mesos && m_dcos_enterprise_last_token_refresh_s > 0 &&
+		difftime(now, m_dcos_enterprise_last_token_refresh_s) > DCOS_ENTERPRISE_TOKEN_REFRESH_S)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Regenerating Mesos token");
+		m_mesos->refresh_token();
+		m_dcos_enterprise_last_token_refresh_s = now;
+	}
+	if(m_mesos && difftime(now, last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
 	{
 		m_mesos->send_data_request();
 		last_mesos_refresh = now;
@@ -4304,6 +4324,7 @@ void sinsp_analyzer::reset_mesos(const std::string& errmsg)
 	{
 		g_logger.log(errmsg, sinsp_logger::SEV_ERROR);
 	}
+	m_mesos_last_failure_ns = m_prev_flush_time_ns;
 	m_mesos.reset();
 	m_configuration->set_mesos_state_uri(m_configuration->get_mesos_state_original_uri());
 }
@@ -4330,8 +4351,9 @@ void sinsp_analyzer::emit_mesos()
 	// will be collected and emitted; the connection to mesos api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
-
+	
 	string mesos_uri = m_configuration->get_mesos_state_uri();
+
 	try
 	{
 		if(!mesos_uri.empty())
@@ -4374,7 +4396,7 @@ void sinsp_analyzer::emit_mesos()
 				reset_mesos("Mesos connection not established.");
 			}
 		}
-		else if(m_configuration->get_mesos_autodetect_enabled())
+		else if(m_configuration->get_mesos_autodetect_enabled() && (m_prev_flush_time_ns - m_mesos_last_failure_ns) > MESOS_RETRY_ON_ERRORS_TIMEOUT_NS)
 		{
 			detect_mesos(mesos_uri);
 		}

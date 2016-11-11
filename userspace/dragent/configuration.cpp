@@ -563,6 +563,9 @@ void dragent_configuration::init(Application* app)
 	m_mesos_credentials.second = m_config->get_scalar<std::string>("mesos_password", "");
 	m_marathon_credentials.first = m_config->get_scalar<std::string>("marathon_user", "");
 	m_marathon_credentials.second = m_config->get_scalar<std::string>("marathon_password", "");
+	m_dcos_enterprise_credentials.first = m_config->get_scalar<std::string>("dcos_user", "");
+	m_dcos_enterprise_credentials.second = m_config->get_scalar<std::string>("dcos_password", "");
+
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
@@ -787,6 +790,10 @@ void dragent_configuration::print_configuration()
 	if(!m_marathon_credentials.first.empty())
 	{
 		g_log->information("Marathon credentials provided.");
+	}
+	if(!m_dcos_enterprise_credentials.first.empty())
+	{
+		g_log->information("DC/OS Enterprise credentials provided.");
 	}
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
