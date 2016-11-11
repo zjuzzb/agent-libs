@@ -4291,7 +4291,8 @@ void sinsp_analyzer::get_mesos_data()
 	{
 		m_mesos->collect_data();
 	}
-	if(m_mesos && difftime(now, m_dcos_enterprise_last_token_refresh_s) > DCOS_ENTERPRISE_TOKEN_REFRESH_S)
+	if(m_mesos && m_dcos_enterprise_last_token_refresh_s > 0 &&
+		difftime(now, m_dcos_enterprise_last_token_refresh_s) > DCOS_ENTERPRISE_TOKEN_REFRESH_S)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Regenerating Mesos token");
 		m_mesos->refresh_token();
