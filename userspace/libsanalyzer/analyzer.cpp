@@ -888,8 +888,7 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 		{
 			if(!ver.asString().empty())
 			{
-				// redirection may change URL, since we have just confirmed
-				// that this is indeed the mesos API server, refresh it here
+				// Change path, to state api instead of version
 				url.set_path(mesos::default_state_api);
 				addr = url.to_string(true);
 				m_configuration->set_mesos_state_uri(addr); // set globally in config
