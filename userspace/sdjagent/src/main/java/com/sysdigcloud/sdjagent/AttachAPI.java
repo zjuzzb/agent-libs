@@ -40,6 +40,10 @@ public class AttachAPI {
             LOGGER.warning("Cannot patch LinuxVirtualMachine, IllegalAccessException: " + e.getMessage());
         } catch (SecurityException e) {
             LOGGER.warning("Cannot patch LinuxVirtualMachine, SecurityException: " + e.getMessage());
+        } catch (final UnsatisfiedLinkError e) {
+            LOGGER.warning("Cannot patch LinuxVirtualMachine, UnsatisfiedLinkError: " + e.getMessage());
+        } catch (final Exception e) {
+            LOGGER.warning("Cannot patch LinuxVirtualMachine, Exception: " + e.getMessage());
         }
     }
 
