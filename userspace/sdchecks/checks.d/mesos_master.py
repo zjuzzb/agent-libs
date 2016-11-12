@@ -129,7 +129,7 @@ class MesosMaster(AgentCheck):
         msg = None
         status = None
         try:
-            r = requests.get(url, timeout=timeout)
+            r = requests.get(url, timeout=timeout, allow_redirects=False)
             if r.status_code != 200:
                 status = AgentCheck.CRITICAL
                 msg = "Got %s when hitting %s" % (r.status_code, url)
