@@ -15,6 +15,7 @@
 #include "sinsp_curl.h"
 #include "user_event.h"
 #include "k8s_api_handler.h"
+#include "procfs_parser.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -466,9 +467,8 @@ VISIBILITY_PRIVATE
 	//
 	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
-	vector<double> m_cpu_loads;
-	vector<double> m_cpu_idles;
-	vector<double> m_cpu_steals;
+	sinsp_proc_stat m_proc_stat;
+	sinsp_proc_count m_proc_count;
 	// Sum of the cpu usage of all the processes
 	double m_total_process_cpu;
 

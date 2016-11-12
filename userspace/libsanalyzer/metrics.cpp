@@ -784,8 +784,10 @@ void sinsp_host_metrics::clear()
 	m_pfminor = 0;
 	m_protostate->clear();
 	m_fd_count = 0;
-	m_res_memory_kb = 0;
-	m_swap_memory_kb = 0;
+	m_res_memory_used_kb = 0;
+	m_res_memory_free_kb = 0;
+	m_swap_memory_used_kb = 0;
+	m_swap_memory_total_kb = 0;
 	m_cpuload = 0;
 }
 
@@ -805,8 +807,8 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 
 	m_pfmajor += pinfo->m_pfmajor;
 	m_pfminor += pinfo->m_pfminor;
-	m_res_memory_kb += pinfo->m_vmrss_kb;
-	m_swap_memory_kb += pinfo->m_vmswap_kb;
+	m_res_memory_used_kb += pinfo->m_vmrss_kb;
+	m_swap_memory_used_kb += pinfo->m_vmswap_kb;
 	
 	if(pinfo->m_cpuload >= 0)
 	{

@@ -1609,6 +1609,34 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 swap_memory_available_kb() const;
   inline void set_swap_memory_available_kb(::google::protobuf::uint32 value);
 
+  // optional uint64 running_processes = 31;
+  inline bool has_running_processes() const;
+  inline void clear_running_processes();
+  static const int kRunningProcessesFieldNumber = 31;
+  inline ::google::protobuf::uint64 running_processes() const;
+  inline void set_running_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 sleeping_processes = 32;
+  inline bool has_sleeping_processes() const;
+  inline void clear_sleeping_processes();
+  static const int kSleepingProcessesFieldNumber = 32;
+  inline ::google::protobuf::uint64 sleeping_processes() const;
+  inline void set_sleeping_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 zombie_processes = 33;
+  inline bool has_zombie_processes() const;
+  inline void clear_zombie_processes();
+  static const int kZombieProcessesFieldNumber = 33;
+  inline ::google::protobuf::uint64 zombie_processes() const;
+  inline void set_zombie_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 count_processes = 34;
+  inline bool has_count_processes() const;
+  inline void clear_count_processes();
+  static const int kCountProcessesFieldNumber = 34;
+  inline ::google::protobuf::uint64 count_processes() const;
+  inline void set_count_processes(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1647,6 +1675,14 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_swap_memory_total_kb();
   inline void set_has_swap_memory_available_kb();
   inline void clear_has_swap_memory_available_kb();
+  inline void set_has_running_processes();
+  inline void clear_has_running_processes();
+  inline void set_has_sleeping_processes();
+  inline void clear_has_sleeping_processes();
+  inline void set_has_zombie_processes();
+  inline void clear_has_zombie_processes();
+  inline void set_has_count_processes();
+  inline void clear_has_count_processes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1668,9 +1704,13 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint32 cpu_quota_used_pct_;
   ::google::protobuf::uint32 swap_memory_total_kb_;
   ::google::protobuf::uint32 swap_memory_available_kb_;
+  ::google::protobuf::uint64 running_processes_;
+  ::google::protobuf::uint64 sleeping_processes_;
+  ::google::protobuf::uint64 zombie_processes_;
+  ::google::protobuf::uint64 count_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(18 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(22 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5167,34 +5207,6 @@ class process : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 start_count() const;
   inline void set_start_count(::google::protobuf::uint64 value);
 
-  // optional uint64 running_processes = 23;
-  inline bool has_running_processes() const;
-  inline void clear_running_processes();
-  static const int kRunningProcessesFieldNumber = 23;
-  inline ::google::protobuf::uint64 running_processes() const;
-  inline void set_running_processes(::google::protobuf::uint64 value);
-
-  // optional uint64 sleeping_processes = 25;
-  inline bool has_sleeping_processes() const;
-  inline void clear_sleeping_processes();
-  static const int kSleepingProcessesFieldNumber = 25;
-  inline ::google::protobuf::uint64 sleeping_processes() const;
-  inline void set_sleeping_processes(::google::protobuf::uint64 value);
-
-  // optional uint64 zombie_processes = 27;
-  inline bool has_zombie_processes() const;
-  inline void clear_zombie_processes();
-  static const int kZombieProcessesFieldNumber = 27;
-  inline ::google::protobuf::uint64 zombie_processes() const;
-  inline void set_zombie_processes(::google::protobuf::uint64 value);
-
-  // optional uint64 count_processes = 29;
-  inline bool has_count_processes() const;
-  inline void clear_count_processes();
-  static const int kCountProcessesFieldNumber = 29;
-  inline ::google::protobuf::uint64 count_processes() const;
-  inline void set_count_processes(::google::protobuf::uint64 value);
-
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_details();
@@ -5229,14 +5241,6 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_protos();
   inline void set_has_start_count();
   inline void clear_has_start_count();
-  inline void set_has_running_processes();
-  inline void clear_has_running_processes();
-  inline void set_has_sleeping_processes();
-  inline void clear_has_sleeping_processes();
-  inline void set_has_zombie_processes();
-  inline void clear_has_zombie_processes();
-  inline void set_has_count_processes();
-  inline void clear_has_count_processes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -5256,13 +5260,9 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::uint64 start_count_;
-  ::google::protobuf::uint64 running_processes_;
-  ::google::protobuf::uint64 sleeping_processes_;
-  ::google::protobuf::uint64 zombie_processes_;
-  ::google::protobuf::uint64 count_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -13348,6 +13348,94 @@ inline void resource_categories::set_swap_memory_available_kb(::google::protobuf
   swap_memory_available_kb_ = value;
 }
 
+// optional uint64 running_processes = 31;
+inline bool resource_categories::has_running_processes() const {
+  return (_has_bits_[0] & 0x00040000u) != 0;
+}
+inline void resource_categories::set_has_running_processes() {
+  _has_bits_[0] |= 0x00040000u;
+}
+inline void resource_categories::clear_has_running_processes() {
+  _has_bits_[0] &= ~0x00040000u;
+}
+inline void resource_categories::clear_running_processes() {
+  running_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_running_processes();
+}
+inline ::google::protobuf::uint64 resource_categories::running_processes() const {
+  return running_processes_;
+}
+inline void resource_categories::set_running_processes(::google::protobuf::uint64 value) {
+  set_has_running_processes();
+  running_processes_ = value;
+}
+
+// optional uint64 sleeping_processes = 32;
+inline bool resource_categories::has_sleeping_processes() const {
+  return (_has_bits_[0] & 0x00080000u) != 0;
+}
+inline void resource_categories::set_has_sleeping_processes() {
+  _has_bits_[0] |= 0x00080000u;
+}
+inline void resource_categories::clear_has_sleeping_processes() {
+  _has_bits_[0] &= ~0x00080000u;
+}
+inline void resource_categories::clear_sleeping_processes() {
+  sleeping_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_sleeping_processes();
+}
+inline ::google::protobuf::uint64 resource_categories::sleeping_processes() const {
+  return sleeping_processes_;
+}
+inline void resource_categories::set_sleeping_processes(::google::protobuf::uint64 value) {
+  set_has_sleeping_processes();
+  sleeping_processes_ = value;
+}
+
+// optional uint64 zombie_processes = 33;
+inline bool resource_categories::has_zombie_processes() const {
+  return (_has_bits_[0] & 0x00100000u) != 0;
+}
+inline void resource_categories::set_has_zombie_processes() {
+  _has_bits_[0] |= 0x00100000u;
+}
+inline void resource_categories::clear_has_zombie_processes() {
+  _has_bits_[0] &= ~0x00100000u;
+}
+inline void resource_categories::clear_zombie_processes() {
+  zombie_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_zombie_processes();
+}
+inline ::google::protobuf::uint64 resource_categories::zombie_processes() const {
+  return zombie_processes_;
+}
+inline void resource_categories::set_zombie_processes(::google::protobuf::uint64 value) {
+  set_has_zombie_processes();
+  zombie_processes_ = value;
+}
+
+// optional uint64 count_processes = 34;
+inline bool resource_categories::has_count_processes() const {
+  return (_has_bits_[0] & 0x00200000u) != 0;
+}
+inline void resource_categories::set_has_count_processes() {
+  _has_bits_[0] |= 0x00200000u;
+}
+inline void resource_categories::clear_has_count_processes() {
+  _has_bits_[0] &= ~0x00200000u;
+}
+inline void resource_categories::clear_count_processes() {
+  count_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_count_processes();
+}
+inline ::google::protobuf::uint64 resource_categories::count_processes() const {
+  return count_processes_;
+}
+inline void resource_categories::set_count_processes(::google::protobuf::uint64 value) {
+  set_has_count_processes();
+  count_processes_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // connection_categories
@@ -18103,94 +18191,6 @@ inline ::google::protobuf::uint64 process::start_count() const {
 inline void process::set_start_count(::google::protobuf::uint64 value) {
   set_has_start_count();
   start_count_ = value;
-}
-
-// optional uint64 running_processes = 23;
-inline bool process::has_running_processes() const {
-  return (_has_bits_[0] & 0x00010000u) != 0;
-}
-inline void process::set_has_running_processes() {
-  _has_bits_[0] |= 0x00010000u;
-}
-inline void process::clear_has_running_processes() {
-  _has_bits_[0] &= ~0x00010000u;
-}
-inline void process::clear_running_processes() {
-  running_processes_ = GOOGLE_ULONGLONG(0);
-  clear_has_running_processes();
-}
-inline ::google::protobuf::uint64 process::running_processes() const {
-  return running_processes_;
-}
-inline void process::set_running_processes(::google::protobuf::uint64 value) {
-  set_has_running_processes();
-  running_processes_ = value;
-}
-
-// optional uint64 sleeping_processes = 25;
-inline bool process::has_sleeping_processes() const {
-  return (_has_bits_[0] & 0x00020000u) != 0;
-}
-inline void process::set_has_sleeping_processes() {
-  _has_bits_[0] |= 0x00020000u;
-}
-inline void process::clear_has_sleeping_processes() {
-  _has_bits_[0] &= ~0x00020000u;
-}
-inline void process::clear_sleeping_processes() {
-  sleeping_processes_ = GOOGLE_ULONGLONG(0);
-  clear_has_sleeping_processes();
-}
-inline ::google::protobuf::uint64 process::sleeping_processes() const {
-  return sleeping_processes_;
-}
-inline void process::set_sleeping_processes(::google::protobuf::uint64 value) {
-  set_has_sleeping_processes();
-  sleeping_processes_ = value;
-}
-
-// optional uint64 zombie_processes = 27;
-inline bool process::has_zombie_processes() const {
-  return (_has_bits_[0] & 0x00040000u) != 0;
-}
-inline void process::set_has_zombie_processes() {
-  _has_bits_[0] |= 0x00040000u;
-}
-inline void process::clear_has_zombie_processes() {
-  _has_bits_[0] &= ~0x00040000u;
-}
-inline void process::clear_zombie_processes() {
-  zombie_processes_ = GOOGLE_ULONGLONG(0);
-  clear_has_zombie_processes();
-}
-inline ::google::protobuf::uint64 process::zombie_processes() const {
-  return zombie_processes_;
-}
-inline void process::set_zombie_processes(::google::protobuf::uint64 value) {
-  set_has_zombie_processes();
-  zombie_processes_ = value;
-}
-
-// optional uint64 count_processes = 29;
-inline bool process::has_count_processes() const {
-  return (_has_bits_[0] & 0x00080000u) != 0;
-}
-inline void process::set_has_count_processes() {
-  _has_bits_[0] |= 0x00080000u;
-}
-inline void process::clear_has_count_processes() {
-  _has_bits_[0] &= ~0x00080000u;
-}
-inline void process::clear_count_processes() {
-  count_processes_ = GOOGLE_ULONGLONG(0);
-  clear_has_count_processes();
-}
-inline ::google::protobuf::uint64 process::count_processes() const {
-  return count_processes_;
-}
-inline void process::set_count_processes(::google::protobuf::uint64 value) {
-  set_has_count_processes();
-  count_processes_ = value;
 }
 
 // -------------------------------------------------------------------

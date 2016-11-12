@@ -530,9 +530,9 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 		//
 		// Extract the CPU spent not serving transactions
 		//
-		if(m_inspector->m_analyzer->m_cpu_idles.size() != 0)
+		if(m_inspector->m_analyzer->m_proc_stat.m_idle.size() != 0)
 		{
-			idle = (((float)m_inspector->m_analyzer->m_cpu_idles[cpuid]) * cpu_state->m_sample_effective_length_ns) / 100;
+			idle = (((float)m_inspector->m_analyzer->m_proc_stat.m_idle[cpuid]) * cpu_state->m_sample_effective_length_ns) / 100;
 		}
 		else
 		{
@@ -577,9 +577,9 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 			//
 			float score1;
 
-			if(m_inspector->m_analyzer->m_cpu_steals.size() != 0)
+			if(m_inspector->m_analyzer->m_proc_stat.m_steals.size() != 0)
 			{
-				float steal = (float)(m_inspector->m_analyzer->m_cpu_steals[cpuid]);
+				float steal = (float)(m_inspector->m_analyzer->m_proc_stat.m_steals[cpuid]);
 
 				float ntr1 = ntr * (100 - steal) / 100;
 				float nother1 = nother * (100 - steal) / 100;
