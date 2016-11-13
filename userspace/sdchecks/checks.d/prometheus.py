@@ -50,7 +50,7 @@ class Prometheus(AgentCheck):
                         if family.type == 'histogram':
                             continue
                         elif 'quantile' in tags:
-                            quantile = int(tags['quantile']) * 100
+                            quantile = int(float(tags['quantile']) * 100)
                             logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
                             self.gauge('%s.%dpercentile' % (name, quantile),
                                        value,
