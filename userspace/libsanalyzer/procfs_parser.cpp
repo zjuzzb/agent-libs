@@ -614,8 +614,9 @@ void sinsp_procfs_parser::get_proc_pid_stat()
 		fclose(f);
 		replace_in_place(path, "/stat", "/cgroup");
 		ifstream cgroup_file(path);
-		std::string cont = ":/docker/";
-		while(cgroup_file)
+		std::set<std::string> containers = { ":/lxc/", ":/docker/", ":/mesos/", ":/rkt/" };
+		bool done = false;
+		while(cgroup_file && !done)
 		{
 			string buf;
 			try
@@ -627,11 +628,15 @@ void sinsp_procfs_parser::get_proc_pid_stat()
 				g_logger.log("Error while reading " + path + ": " + ex.what(), sinsp_logger::SEV_DEBUG);
 				break;
 			}
-			std::string::size_type pos = buf.rfind(cont);
-			if(pos != std::string::npos)
+			for(auto cont : containers)
 			{
-				pps.m_container_id = buf.substr(pos + cont.length(), 12);
-				break;
+				std::string::size_type pos = buf.rfind(cont);
+				if(pos != std::string::npos)
+				{
+					pps.m_container_id = buf.substr(pos + cont.length());
+					done = true;
+					break;
+				}
 			}
 		}
 		m_proc_pid_stat.push_back(pps);

@@ -4899,7 +4899,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	sinsp_proc_count spc = {0};
 	for(const auto& stat : m_procfs_parser->proc_pid_stat())
 	{
-		if(it->second.m_id == stat.m_container_id)
+		if(std::string::npos != stat.m_container_id.find(it->second.m_id))
 		{
 			sinsp_procfs_parser::update_proc_count(&spc, stat.m_status, stat.m_pid);
 		}
