@@ -599,10 +599,13 @@ void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
 		}
 		for(const auto& config_file_proto : request.config_files())
 		{
-			if(config_file_proto.name() == "dragent.auto.yaml")
+			std::string errstr;
+
+			if(m_configuration->save_auto_config(config_file_proto.name(),
+							     config_file_proto.content(),
+							     errstr) < 0)
 			{
-				m_configuration->save_auto_config(config_file_proto.content());
-				break;
+				g_log->error(errstr);
 			}
 		}
 	}
