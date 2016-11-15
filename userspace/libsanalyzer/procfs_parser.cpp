@@ -514,6 +514,36 @@ return;
 #endif // _WIN32
 }
 
+void sinsp_procfs_parser::update_proc_count(OUT sinsp_proc_count* proc_count, char status, uint64_t pid)
+{
+	proc_count->m_count++;
+	switch(status)
+	{
+		case 'R':
+			proc_count->m_running++;
+			break;
+		case 'S':
+			proc_count->m_sleeping++;
+			break;
+		case 'D':
+			proc_count->m_waiting++;
+			break;
+		case 'Z':
+			proc_count->m_zombie++;
+			break;
+		case 'T':
+			proc_count->m_traced++;
+			break;
+		case 'W':
+			proc_count->m_paging++;
+			break;
+		default:
+			g_logger.log("Unknown process status: " + std::string(1, status) +
+						 " for process " + std::to_string(pid),
+						 sinsp_logger::SEV_WARNING);
+	}
+}
+
 void sinsp_procfs_parser::get_proc_counts(OUT sinsp_proc_count* proc_count)
 {
 	ASSERT(proc_count);
@@ -525,40 +555,14 @@ void sinsp_procfs_parser::get_proc_counts(OUT sinsp_proc_count* proc_count)
 	proc_count->m_paging = 0;
 	proc_count->m_count = 0;
 
-	vector<sinsp_proc_pid_stat> proc_pid_stat;
-	get_proc_pid_stat(&proc_pid_stat);
-	for(const auto& pps : proc_pid_stat)
+	get_proc_pid_stat();
+	for(const auto& pps : m_proc_pid_stat)
 	{
-		proc_count->m_count++;
-		switch(pps.m_status)
-		{
-			case 'R':
-				proc_count->m_running++;
-				break;
-			case 'S':
-				proc_count->m_sleeping++;
-				break;
-			case 'D':
-				proc_count->m_waiting++;
-				break;
-			case 'Z':
-				proc_count->m_zombie++;
-				break;
-			case 'T':
-				proc_count->m_traced++;
-				break;
-			case 'W':
-				proc_count->m_paging++;
-				break;
-			default:
-				g_logger.log("Unknown process status: " + std::string(1, pps.m_status) +
-							 " for process " + std::to_string(pps.m_pid),
-							 sinsp_logger::SEV_WARNING);
-		}
+		update_proc_count(proc_count, pps.m_status, pps.m_pid);
 	}
 }
 
-void sinsp_procfs_parser::get_proc_pid_stat(OUT vector<sinsp_proc_pid_stat>* proc_pid_stat)
+void sinsp_procfs_parser::get_proc_pid_stat()
 {
 #ifdef _WIN32
 	return;
@@ -573,8 +577,7 @@ void sinsp_procfs_parser::get_proc_pid_stat(OUT vector<sinsp_proc_pid_stat>* pro
 	char filename[SCAP_MAX_PATH_SIZE];
 	sprintf(filename, "%s/proc", scap_get_host_root());
 	dir_p = opendir(filename);
-	ASSERT(proc_pid_stat);
-	proc_pid_stat->clear();
+	m_proc_pid_stat.clear();
 
 	if(dir_p == NULL)
 	{
@@ -608,8 +611,30 @@ void sinsp_procfs_parser::get_proc_pid_stat(OUT vector<sinsp_proc_pid_stat>* pro
 		sinsp_proc_pid_stat pps;
 		pps.m_pid = pid;
 		pps.m_status = status;
-		proc_pid_stat->push_back(pps);
 		fclose(f);
+		replace_in_place(path, "/stat", "/cgroup");
+		ifstream cgroup_file(path);
+		std::string cont = ":/docker/";
+		while(cgroup_file)
+		{
+			string buf;
+			try
+			{
+				std::getline(cgroup_file, buf);
+			}
+			catch (const exception& ex)
+			{
+				g_logger.log("Error while reading " + path + ": " + ex.what(), sinsp_logger::SEV_DEBUG);
+				break;
+			}
+			std::string::size_type pos = buf.rfind(cont);
+			if(pos != std::string::npos)
+			{
+				pps.m_container_id = buf.substr(pos + cont.length(), 12);
+				break;
+			}
+		}
+		m_proc_pid_stat.push_back(pps);
 	}
 
 	closedir(dir_p);

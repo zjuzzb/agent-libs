@@ -45,7 +45,8 @@ struct sinsp_proc_stat
 struct sinsp_proc_pid_stat
 {
 	uint64_t m_pid;
-	char  m_status;
+	char m_status;
+	std::string m_container_id;
 };
 
 struct sinsp_proc_count
@@ -64,8 +65,10 @@ class sinsp_procfs_parser
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL, uint64_t* global_idle_jiffies = NULL, uint64_t* global_steal_jiffies = NULL);
+	static void update_proc_count(OUT sinsp_proc_count* proc_count, char status, uint64_t pid);
 	void get_proc_counts(OUT sinsp_proc_count* proc_count);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
+	const vector<sinsp_proc_pid_stat>& proc_pid_stat() const;
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* used_swap, int64_t* total_swap);
 
 	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled, const string& mtab="/etc/mtab");
@@ -89,7 +92,7 @@ private:
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
-	void get_proc_pid_stat(OUT vector<sinsp_proc_pid_stat>* proc_pid_stat);
+	void get_proc_pid_stat();
 
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
@@ -100,6 +103,7 @@ private:
 	// nullptr means that lookup have not yet take place
 	// "" means that it cannot find memory cgroup mount point
 	unique_ptr<string> m_memory_cgroup_dir;
+	vector<sinsp_proc_pid_stat> m_proc_pid_stat;
 
 	vector<uint64_t> m_old_total;
 	vector<uint64_t> m_old_work;
@@ -112,6 +116,11 @@ private:
 	uint64_t m_old_global_total;
 	uint64_t m_old_global_work;
 };
+
+inline const vector<sinsp_proc_pid_stat>& sinsp_procfs_parser::proc_pid_stat() const
+{
+	return m_proc_pid_stat;
+}
 
 inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
 {

@@ -4895,6 +4895,20 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 
+	m_procfs_parser->get_proc_counts(&m_proc_count);
+	sinsp_proc_count spc = {0};
+	for(const auto& stat : m_procfs_parser->proc_pid_stat())
+	{
+		if(it->second.m_id == stat.m_container_id)
+		{
+			sinsp_procfs_parser::update_proc_count(&spc, stat.m_status, stat.m_pid);
+		}
+	}
+	container->mutable_resource_counters()->set_running_processes(spc.m_running);
+	container->mutable_resource_counters()->set_sleeping_processes(spc.m_sleeping);
+	container->mutable_resource_counters()->set_zombie_processes(spc.m_zombie);
+	container->mutable_resource_counters()->set_count_processes(spc.m_count);
+
 	const auto cpu_shares = it->second.m_cpu_shares;
 	if(cpu_shares > 0)
 	{
