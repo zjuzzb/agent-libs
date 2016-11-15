@@ -21,6 +21,7 @@
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
+#include "proc_config.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation
@@ -90,6 +91,7 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 ///////////////////////////////////////////////////////////////////////////////
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
+
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
@@ -458,6 +460,42 @@ void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transa
 
 	m_dynstate->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
+}
+
+const proc_config& thread_analyzer_info::get_proc_config()
+{
+	static const auto SYSDIG_AGENT_CONF = "SYSDIG_AGENT_CONF";
+	if(!m_dynstate->m_proc_config)
+	{
+		// 1. some processes (eg. redis) wipe their env
+		// try to grab the env from it up to its parent (within the same container)
+		auto conf = m_tinfo->get_env(SYSDIG_AGENT_CONF);
+		auto ptinfo = m_tinfo->get_parent_thread();
+		while(conf.empty() && ptinfo != nullptr &&
+				ptinfo->m_container_id == m_tinfo->m_container_id)
+		{
+			conf = ptinfo->get_env(SYSDIG_AGENT_CONF);
+			ptinfo = ptinfo->get_parent_thread();
+		}
+
+		// 2. As last chance, use the Env coming from Docker
+		if(conf.empty() && !m_tinfo->m_container_id.empty())
+		{
+			sinsp_container_info container_info;
+			auto found = m_inspector->m_container_manager.get_container(m_tinfo->m_container_id, &container_info);
+			if(found)
+			{
+				conf = container_info.m_sysdig_agent_conf;
+			}
+		}
+
+		if(!conf.empty())
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s", m_tinfo->m_pid, conf.c_str());
+		}
+		m_dynstate->m_proc_config = make_unique<proc_config>(conf);
+	}
+	return *m_dynstate->m_proc_config;
 }
 
 //

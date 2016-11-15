@@ -253,7 +253,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
-		m_jmx_pipes = make_shared<errpipe_manager>();
+		m_jmx_pipes = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
@@ -302,7 +302,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_configuration.m_statsd_enabled)
 	{
 		m_statsite_pipes = make_shared<pipe_manager>();
-		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data)
 		{
 			if(data.find("Failed to bind") != string::npos)
@@ -415,6 +414,20 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return proc.run();
 		});
 	}
+	monitor_process.set_cleanup_function(
+			[this](void)
+			{
+				this->m_sdchecks_pipes.reset();
+				this->m_jmx_pipes.reset();
+				this->m_mounted_fs_reader_pipe.reset();
+				this->m_statsite_pipes.reset();
+				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
+									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
+									  "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
+				{
+					posix_queue::remove(queue);
+				}
+			});
 	return monitor_process.run();
 #else
 	return sdagent_main();
@@ -451,9 +464,11 @@ int dragent_app::sdagent_main()
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
+
 	if(m_statsite_pipes)
 	{
 		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
+		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	}
 	if(m_configuration.m_customer_id.empty())
 	{
@@ -495,6 +510,11 @@ int dragent_app::sdagent_main()
 	{
 		g_log->error("Application::EXIT_SOFTWARE");
 		exit_code = Application::EXIT_SOFTWARE;
+	}
+	else if(dragent_configuration::m_config_update)
+	{
+		g_log->information("Application::EXIT_CONFIG_UPDATE");
+		exit_code = ExitCode(monitor::CONFIG_UPDATE_EXIT_CODE);
 	}
 	else
 	{

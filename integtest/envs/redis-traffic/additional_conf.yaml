@@ -1,1 +1,3 @@
-app_checks_enabled: false
+app_checks:
+  - name: "redis"
+    enabled: false

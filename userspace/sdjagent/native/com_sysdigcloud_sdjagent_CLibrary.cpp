@@ -237,6 +237,13 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 
 		if(result == from_info.st_size)
 		{
+			// We need it readable by everyone, because
+			// inside containers we run our sdjagent with
+			// uid=uid_of_target_jvm
+			if(fchmod(fd_to.fd(), S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) != 0)
+			{
+				log("SEVERE", "Cannot change permissions of %s", destination_str.c_str());
+			}
 			exit(0);
 		}
 		else
@@ -332,6 +339,8 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 				container_environ.push_back(move(read_buffer));
 			}
 		}
+		environ_file.close();
+
 		const char** container_environ_ptr = (const char**) malloc(sizeof(char*)*(container_environ.size()+1));
 		int j = 0;
 		for(const auto& env : container_environ)
@@ -339,7 +348,7 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			container_environ_ptr[j++] = env.c_str();
 		}
 		container_environ_ptr[j++] = NULL;
-		environ_file.close();
+
 
 		// Open namespaces of target process
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
@@ -393,12 +402,21 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 			chdir("/");
 		}
 
-		seteuid(uid);
-		setegid(gid);
+		if(setgid(gid) != 0)
+		{
+			log("SEVERE", "setgid failed errno=%s", strerror(errno));
+			exit(1);
+		}
+		if(setuid(uid) != 0)
+		{
+			log("SEVERE", "setuid failed errno=%s", strerror(errno));
+			exit(1);
+		}
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
 		free(container_environ_ptr);
-		log("SEVERE", "Cannot load sdjagent inside container, errno=%s", strerror(errno));
+		log("SEVERE", "Cannot exec sdjagent inside container, errno=%s", strerror(errno));
 		exit(1);
 	}
 	else

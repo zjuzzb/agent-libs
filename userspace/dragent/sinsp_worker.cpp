@@ -167,6 +167,7 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_marathon_uris(m_configuration->m_marathon_uris);
 	}
 	m_analyzer->get_configuration()->set_marathon_follow_leader(m_configuration->m_marathon_follow_leader);
+	m_analyzer->get_configuration()->set_dcos_enterprise_credentials(m_configuration->m_dcos_enterprise_credentials);
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
@@ -232,6 +233,13 @@ void sinsp_worker::init()
 		g_log->information("Setting autodrop");
 		m_analyzer->get_configuration()->set_autodrop_enabled(true);
 	}
+
+	if(m_configuration->m_falco_baselining_enabled)
+	{
+		g_log->information("Setting falco baselining");
+	}
+	m_analyzer->get_configuration()->set_falco_baselining_enabled(
+		m_configuration->m_falco_baselining_enabled);
 
 	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);

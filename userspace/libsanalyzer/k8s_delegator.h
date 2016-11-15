@@ -21,7 +21,7 @@ public:
 	k8s_delegator(sinsp* inspector,
 		std::string url,
 		int delegate_count = 2,
-		const std::string& http_version = "1.0",
+		const std::string& http_version = "1.1",
 		ssl_ptr_t ssl = 0,
 		bt_ptr_t bt = 0);
 

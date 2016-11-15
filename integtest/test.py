@@ -72,6 +72,24 @@ CASSANDRA_HINTEDHANDOFF = set([
   u'cassandra.hintedhandoff.pending',
 ])
 
+# runs the test for each sample of an env run
+# throws the assertion only if it fires for more
+# than 30% of samples, useful to avoid noise
+def for_each_sample(f):
+  def wrap(env):
+    ex = None 
+    assertionThrown = 0
+    samples = 0
+    for m in lastMetricsFile(env):
+      samples += 1
+      try:
+        f(m)
+      except AssertionError as ex:
+        assertionThrown += 1
+    if assertionThrown > samples*0.3:
+      raise ex
+  return wrap
+
 @pytest.mark.parametrize("env", [
   "cassandra-2.1",
   "cassandra-2.2",
@@ -207,3 +225,25 @@ def test_mounts(env):
         mounts_found = True
   assert mounts_found
   assert mytestdirFound
+
+@pytest.mark.parametrize("env", [
+    "redis",
+    "redis-pwd",
+    "rabbitmq",
+    "mongo" ])
+@for_each_sample
+def test_app_checks(m):
+  metricsFound = False
+  for program in m.programs:
+    if program.procinfo.protos.HasField('app'):
+      metricsFound = len(program.procinfo.protos.app.metrics) > 0
+  assert metricsFound
+
+@pytest.mark.parametrize("env", [
+    "redis-traffic" ])
+@for_each_sample
+def test_app_checks_disabled(m):
+  for program in m.programs:
+    app = program.procinfo.protos.app
+    if program.procinfo.details.comm == 'redis-server':
+      assert len(app.metrics) == 0

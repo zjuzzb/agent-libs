@@ -9,19 +9,22 @@
 #include "third-party/jsoncpp/json/json.h"
 #include "posix_queue.h"
 #include "draios.pb.h"
+// suppress depreacated warnings for auto_ptr in boost
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
 
-namespace YAML
-{
-template<typename T>
-struct convert;
-}
+Json::Value yaml_to_json(const YAML::Node& node);
 
 class app_check
 {
 public:
 	explicit app_check():
 		m_port_pattern(0),
-		m_enabled(true)
+		m_enabled(true),
+		m_interval(-1),
+		m_conf(Json::objectValue)
 	{}
 
 	bool match(sinsp_threadinfo* tinfo) const;
@@ -35,6 +38,7 @@ public:
 		return m_enabled;
 	}
 
+	Json::Value to_json() const;
 private:
 	friend class YAML::convert<app_check>;
 
@@ -43,21 +47,33 @@ private:
 	uint16_t m_port_pattern;
 	string m_arg_pattern;
 	string m_name;
+	string m_check_module;
 	bool m_enabled;
+	int m_interval;
+	Json::Value m_conf;
 };
+
+namespace YAML {
+	template<>
+	struct convert<app_check> {
+		static Node encode(const app_check& rhs);
+
+		static bool decode(const Node& node, app_check& rhs);
+	};
+}
 
 class app_process
 {
 public:
-	explicit app_process(string check_name, sinsp_threadinfo* tinfo);
+	explicit app_process(const app_check& check, sinsp_threadinfo* tinfo);
 
 	Json::Value to_json() const;
 
 private:
 	int m_pid;
 	int m_vpid;
-	string m_check_name;
 	set<uint16_t> m_ports;
+	const app_check& m_check;
 };
 
 

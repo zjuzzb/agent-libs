@@ -857,6 +857,7 @@ bool mounted_fs_reader::change_ns(int destpid)
 	if(setns(fd, CLONE_NEWNS) != 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot setns to pid=%d", destpid);
+		close(fd);
 		return false;
 	}
 	close(fd);
@@ -945,13 +946,13 @@ int mounted_fs_reader::run()
 						{
 							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
 						}
+						// Back home
+						if(setns(home_fd, CLONE_NEWNS) != 0)
+						{
+							g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						};
 					}
-					// Back home
-					if(setns(home_fd, CLONE_NEWNS) != 0)
-					{
-						g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
-						return ERROR_EXIT;
-					};
 				}
 				auto response_s = response_proto.SerializeAsString();
 				m_output.send(response_s);

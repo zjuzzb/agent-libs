@@ -68,6 +68,7 @@ public:
 	uint64_t m_start_count;
 };
 
+class proc_config;
 class thread_analyzer_dyn_state
 {
 public:
@@ -80,6 +81,7 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// The protocol state
 	sinsp_protostate m_protostate;
+	unique_ptr<proc_config> m_proc_config;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -137,6 +139,8 @@ public:
 			m_th_analysis_flags &= ~AF_IS_MAIN_PROGRAM_THREAD;
 		}
 	}
+
+	const proc_config& get_proc_config();
 
 	inline bool app_check_found()
 	{

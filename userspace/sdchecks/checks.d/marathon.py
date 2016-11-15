@@ -58,7 +58,7 @@ class Marathon(AgentCheck):
 
     def get_json(self, url, timeout, auth):
         try:
-            r = requests.get(url, timeout=timeout, auth=auth)
+            r = requests.get(url, timeout=timeout, auth=auth, allow_redirects=False)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout

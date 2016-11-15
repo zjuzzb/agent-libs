@@ -26,6 +26,7 @@ sinsp_configuration::sinsp_configuration()
 	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
+	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -187,6 +188,16 @@ void sinsp_configuration::set_autodrop_enabled(bool enabled)
 		//m_inspector->stop_dropping_mode();
 		m_autodrop_enabled = false;	
 	}
+}
+
+bool sinsp_configuration::get_falco_baselining_enabled() const
+{
+	return m_falco_baselining_enabled;
+}
+
+void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
+{
+	m_falco_baselining_enabled = true;
 }
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
@@ -620,6 +631,16 @@ void sinsp_configuration::set_marathon_credentials(const mesos::credentials_t& c
 {
 	m_marathon_credentials.first = creds.first;
 	m_marathon_credentials.second = creds.second;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_dcos_enterprise_credentials() const
+{
+	return m_dcos_enterprise_credentials;
+}
+
+void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentials_t& creds)
+{
+	m_dcos_enterprise_credentials = creds;
 }
 
 bool sinsp_configuration::get_curl_debug() const

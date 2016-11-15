@@ -56,6 +56,7 @@ using namespace google::protobuf::io;
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
+#include "baseliner.h"
 #define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
 #include "uri.h"
@@ -66,11 +67,13 @@ using namespace google::protobuf::io;
 #include <numeric>
 #include "falco_engine.h"
 #include "falco_events.h"
+#include "proc_config.h"
 
 bool sinsp_analyzer::m_mesos_bad_config = false;
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
+	m_initialized = false;
 	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
@@ -132,6 +135,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
+	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
+	m_falco_baseliner = new sisnp_baseliner();
+
 	//
 	// Listeners
 	//
@@ -161,6 +167,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	add_chisel_dirs();
 
 	m_external_command_id = 0;
+	m_dcos_enterprise_last_token_refresh_s = 0;
+	m_mesos_last_failure_ns = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -200,11 +208,18 @@ sinsp_analyzer::~sinsp_analyzer()
 	}
 	m_chisels.clear();
 
+	if(m_falco_baseliner != NULL)
+	{
+		delete m_falco_baseliner;
+	}
+
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void sinsp_analyzer::on_capture_start()
 {
+	m_initialized = true;
+
 	if(m_procfs_parser != NULL)
 	{
 		throw sinsp_exception("analyzer can be opened only once");
@@ -275,6 +290,11 @@ void sinsp_analyzer::on_capture_start()
 	// Call the chisels on_capture_start callback
 	//
 	chisels_on_capture_start();
+
+	//
+	// Start the falco baseliner
+	//
+	m_falco_baseliner->init(m_inspector);
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -848,7 +868,7 @@ bool sinsp_analyzer::check_k8s_server(string& addr)
 bool sinsp_analyzer::check_mesos_server(string& addr)
 {
 	uri url(addr);
-	url.set_path(mesos::default_state_api);
+	url.set_path(mesos::default_version_api);
 	g_logger.log("Preparing to detect Mesos at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
 	const mesos::credentials_t& creds = m_configuration->get_mesos_credentials();
 	if(!creds.first.empty())
@@ -858,6 +878,8 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 	Json::Value root;
 	Json::Reader reader;
 	sinsp_curl sc(url, 500);
+	sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
+	sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 	if(reader.parse(sc.get_data(false), root))
 	{
 		g_logger.log("Detecting Mesos at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
@@ -866,9 +888,9 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 		{
 			if(!ver.asString().empty())
 			{
-				// redirection may change URL, since we have just confirmed
-				// that this is indeed the mesos API server, refresh it here
-				addr = sc.get_url(true); // indicate to the caller
+				// Change path, to state api instead of version
+				url.set_path(mesos::default_state_api);
+				addr = url.to_string(true);
 				m_configuration->set_mesos_state_uri(addr); // set globally in config
 				return true;
 			}
@@ -927,13 +949,26 @@ void sinsp_analyzer::make_mesos(string&& json)
 
 				m_mesos_present = true;
 				if(m_mesos) { m_mesos.reset(); }
-				m_mesos.reset(new mesos(mesos_state,
-					marathon_uris,
-					m_configuration->get_mesos_follow_leader(),
-					m_configuration->get_marathon_follow_leader(),
-					m_configuration->get_mesos_credentials(),
-					m_configuration->get_marathon_credentials(),
-					m_configuration->get_mesos_timeout_ms()));
+				if(!m_configuration->get_dcos_enterprise_credentials().first.empty())
+				{
+					time(&m_dcos_enterprise_last_token_refresh_s);
+					m_mesos.reset(new mesos(mesos_state,
+											marathon_uris,
+											m_configuration->get_mesos_follow_leader(),
+											m_configuration->get_marathon_follow_leader(),
+											m_configuration->get_dcos_enterprise_credentials(),
+											m_configuration->get_mesos_timeout_ms()));
+				}
+				else
+				{
+					m_mesos.reset(new mesos(mesos_state,
+											marathon_uris,
+											m_configuration->get_mesos_follow_leader(),
+											m_configuration->get_marathon_follow_leader(),
+											m_configuration->get_mesos_credentials(),
+											m_configuration->get_marathon_credentials(),
+											m_configuration->get_mesos_timeout_ms()));
+				}
 			}
 		}
 	}
@@ -943,22 +978,17 @@ void sinsp_analyzer::get_mesos(const string& mesos_uri)
 {
 	m_mesos.reset();
 	uri url(mesos_uri);
-	url.set_path(mesos::default_state_api);
+	url.set_path(mesos::default_version_api);
 	long tout = m_configuration->get_mesos_timeout_ms();
 
 	try
 	{
-		if(url.is_secure())
-		{
-			// TODO
-			g_logger.log("No support for mesos https.", sinsp_logger::SEV_WARNING);
-			m_mesos_bad_config = true;
-			return;
-		}
 		sinsp_curl sc(url, tout);
+		sc.setopt(CURLOPT_SSL_VERIFYPEER, 0);
+		sc.setopt(CURLOPT_SSL_VERIFYHOST, 0);
 		std::string json = sc.get_data();
-		// redirection may have changed url, refresh it here
-		m_configuration->set_mesos_state_uri(sc.get_url(true));
+		url.set_path(mesos::default_state_api);
+		m_configuration->set_mesos_state_uri(url.to_string(true));
 		make_mesos(std::move(json));
 	}
 	catch(std::exception& ex)
@@ -990,7 +1020,9 @@ sinsp_analyzer::k8s_ext_list_ptr_t sinsp_analyzer::k8s_discover_ext(const std::s
 						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
 					}
 					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
-					m_k8s_ext_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/apis/extensions/v1beta1", "[.resources[].name]", "1.0", m_k8s_ssl, m_k8s_bt));
+					m_k8s_ext_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api,
+																"/apis/extensions/v1beta1", "[.resources[].name]", "1.1",
+																m_k8s_ssl, m_k8s_bt, false));
 					g_logger.log("K8s API extensions handler: collector created.", sinsp_logger::SEV_TRACE);
 					return nullptr;
 				}
@@ -1085,8 +1117,9 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			m_k8s_ext_detect_done = false;
 			g_logger.log(msg, sinsp_logger::SEV_INFO);
 			return new k8s(k8s_api.to_string(), false /*not captured*/,
-						   m_k8s_ssl, m_k8s_bt,
-						   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);
+						   m_k8s_ssl, m_k8s_bt, false,
+						   m_configuration->get_k8s_event_filter(),
+						   m_ext_list_ptr);
 		}
 	}
 	catch(std::exception& ex)
@@ -1185,7 +1218,8 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
 {
 	if(!m_mesos)
 	{
-		mesos_api_server = detect_local_server("http", 5050, &sinsp_analyzer::check_mesos_server);
+		auto protocol = m_configuration->get_dcos_enterprise_credentials().first.empty() ? "http" : "https";
+		mesos_api_server = detect_local_server(protocol, 5050, &sinsp_analyzer::check_mesos_server);
 		if(!mesos_api_server.empty())
 		{
 			m_configuration->set_mesos_state_uri(mesos_api_server);
@@ -1616,14 +1650,33 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 				else
 				{
-					for(const auto& check : m_app_checks)
+					// First check if the process has custom config for checks
+					// and use it
+					const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
+					for(const auto& check : custom_checks)
 					{
 						if(check.match(tinfo))
 						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d", check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-							app_checks_processes.emplace_back(check.name(), tinfo);
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from env",
+											check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+							app_checks_processes.emplace_back(check, tinfo);
 							mtinfo->m_ainfo->set_app_check_found();
 							break;
+						}
+					}
+					// If still no matches found, go ahead with the global list
+					if(!mtinfo->m_ainfo->app_check_found())
+					{
+						for(const auto &check : m_app_checks)
+						{
+							if(check.match(tinfo))
+							{
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d",
+												check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
+								app_checks_processes.emplace_back(check, tinfo);
+								mtinfo->m_ainfo->set_app_check_found();
+								break;
+							}
 						}
 					}
 				}
@@ -2159,7 +2212,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		++m_external_command_id;
 		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
 		{
-			m_jmx_metrics.clear();
+//			m_jmx_metrics.clear();
 			m_jmx_proxy->send_get_metrics(m_external_command_id, java_process_requests);
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
@@ -2622,6 +2675,13 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 					m_new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
+				if(m_new_sampling_ratio == 2)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baseliling");
+					m_do_baseline_calculation = false;
+					m_falco_baseliner->clear_tables();
+				}
+
 				start_dropping_mode(m_new_sampling_ratio);
 			}
 			else
@@ -2856,6 +2916,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	uint64_t nevts_in_last_sample;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
 
+	//
+	// Skip the events if the analyzer has not been initialized yet
+	//
+	if(!m_initialized)
+	{
+		return;
+	}
+	
 	if(evt != NULL)
 	{
 		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
@@ -3321,6 +3389,62 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						m_host_req_metrics.get_file_percentage() * 100,
 						m_host_req_metrics.get_net_percentage() * 100,
 						m_host_req_metrics.get_other_percentage() * 100);
+				}
+			}
+
+			//
+			// If it's time to emit the falco baseline, do the serialization and then restart it
+			//
+			if(m_do_baseline_calculation)
+			{
+				if(is_eof)
+				{
+					//
+					// Make sure to push a baseline when reading from file and we reached EOF
+					//
+					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
+				}
+//				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > 5000000000)
+				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+				{
+					if(m_last_falco_dump_ts != 0)
+					{
+						m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
+					}
+
+					m_last_falco_dump_ts = evt->get_ts();
+				}
+			}
+			else
+			{
+				if(m_configuration->get_falco_baselining_enabled())
+				{
+					//
+					// Once in a while, try to turn baseline calculation on again
+					//
+					if(m_sampling_ratio == 1)
+					{
+						if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DISABLE_TIME)
+						{
+							//
+							// It's safe to turn baselining on again.
+							// Reset the tables and restart the baseline time counter.
+							//
+							m_do_baseline_calculation = true;
+							m_falco_baseliner->clear_tables();
+							m_falco_baseliner->load_tables(evt->get_ts());
+							m_last_falco_dump_ts = evt->get_ts();
+							g_logger.format("enabling falco baselining creation after %lus pause",
+								FALCOBL_DISABLE_TIME / 1000000000);
+						}
+					}
+					else
+					{
+						//
+						// Sampling ratio is still high, reset the baseline counter
+						//
+						m_last_falco_dump_ts = evt->get_ts();					
+					}
 				}
 			}
 
@@ -4109,7 +4233,9 @@ void sinsp_analyzer::emit_k8s()
 						m_k8s_collector = std::make_shared<k8s_handler::collector_t>();
 					}
 					if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
-					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api, "/api", ".versions", "1.0", m_k8s_ssl, m_k8s_bt));
+					m_k8s_api_handler.reset(new k8s_api_handler(m_k8s_collector, k8s_api,
+																"/api", ".versions", "1.1",
+																m_k8s_ssl, m_k8s_bt, false));
 				}
 				else
 				{
@@ -4135,7 +4261,7 @@ void sinsp_analyzer::emit_k8s()
 					}
 					else
 					{
-						g_logger.log("K8s API extensions handler: not ready.", sinsp_logger::SEV_TRACE);
+						g_logger.log("K8s API handler: not ready.", sinsp_logger::SEV_TRACE);
 					}
 				}
 			}
@@ -4164,7 +4290,14 @@ void sinsp_analyzer::get_mesos_data()
 	{
 		m_mesos->collect_data();
 	}
-	if(m_mesos && difftime(now, last_mesos_refresh) > 10)
+	if(m_mesos && m_dcos_enterprise_last_token_refresh_s > 0 &&
+		difftime(now, m_dcos_enterprise_last_token_refresh_s) > DCOS_ENTERPRISE_TOKEN_REFRESH_S)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Regenerating Mesos token");
+		m_mesos->refresh_token();
+		m_dcos_enterprise_last_token_refresh_s = now;
+	}
+	if(m_mesos && difftime(now, last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
 	{
 		m_mesos->send_data_request();
 		last_mesos_refresh = now;
@@ -4192,6 +4325,7 @@ void sinsp_analyzer::reset_mesos(const std::string& errmsg)
 	{
 		g_logger.log(errmsg, sinsp_logger::SEV_ERROR);
 	}
+	m_mesos_last_failure_ns = m_prev_flush_time_ns;
 	m_mesos.reset();
 	m_configuration->set_mesos_state_uri(m_configuration->get_mesos_state_original_uri());
 }
@@ -4218,8 +4352,9 @@ void sinsp_analyzer::emit_mesos()
 	// will be collected and emitted; the connection to mesos api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
-
+	
 	string mesos_uri = m_configuration->get_mesos_state_uri();
+
 	try
 	{
 		if(!mesos_uri.empty())
@@ -4262,7 +4397,7 @@ void sinsp_analyzer::emit_mesos()
 				reset_mesos("Mesos connection not established.");
 			}
 		}
-		else if(m_configuration->get_mesos_autodetect_enabled())
+		else if(m_configuration->get_mesos_autodetect_enabled() && (m_prev_flush_time_ns - m_mesos_last_failure_ns) > MESOS_RETRY_ON_ERRORS_TIMEOUT_NS)
 		{
 			detect_mesos(mesos_uri);
 		}
@@ -4327,7 +4462,7 @@ bool sinsp_analyzer::check_k8s_delegation()
 					m_k8s_delegator.reset(new k8s_delegator(m_inspector,
 															k8s_uri,
 															delegated_nodes,
-															"1.0", // http version
+															"1.1", // http version
 															m_k8s_ssl,
 															m_k8s_bt));
 					if(m_k8s_delegator)

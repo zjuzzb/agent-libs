@@ -291,40 +291,45 @@ public class MonitoredVM {
     public List<BeanData> getMetrics() {
         final List<BeanData> metrics = new ArrayList<BeanData>();
         if (connection != null || shouldRetry()) {
-            setNetworkNamespaceIfNeeded();
             try {
-                if (connection == null) {
-                    connection = new Connection(address);
-                    lastBeanRefresh = 0;
-                }
-                if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
-                    refreshMatchingBeans();
-                    lastBeanRefresh = System.currentTimeMillis();
-                }
-
-                for (BeanInstance bean : matchingBeans) {
-                    try {
-                        BeanData beanMetrics = bean.retrieveMetrics(connection.getMbs());
-                        if (!beanMetrics.getAttributes().isEmpty())
-                        {
-                            metrics.add(beanMetrics);
-                        }
-                    } catch (InstanceNotFoundException e) {
-                        LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
-                        lastBeanRefresh = 0;
-                    } catch (ReflectionException e) {
-                        LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
+                setNetworkNamespaceIfNeeded();
+                try {
+                    if (connection == null) {
+                        connection = new Connection(address);
                         lastBeanRefresh = 0;
                     }
+                    if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
+                        refreshMatchingBeans();
+                        lastBeanRefresh = System.currentTimeMillis();
+                    }
+
+                    for (BeanInstance bean : matchingBeans) {
+                        try {
+                            BeanData beanMetrics = bean.retrieveMetrics(connection.getMbs());
+                            if (!beanMetrics.getAttributes().isEmpty())
+                            {
+                                metrics.add(beanMetrics);
+                            }
+                        } catch (InstanceNotFoundException e) {
+                            LOGGER.warning(String.format("Bean %s not found on process %d, forcing refresh", bean.getName().getCanonicalName(), pid));
+                            lastBeanRefresh = 0;
+                        } catch (ReflectionException e) {
+                            LOGGER.warning(String.format("Cannot get attributes of Bean %s on process %d: %s", bean.getName().getCanonicalName(), pid, e.getMessage()));
+                            lastBeanRefresh = 0;
+                        }
+                    }
+                } catch (IOException ex) {
+                    LOGGER.warning(String.format("Process %d agent is not responding reason=%s, declaring it down", pid, ex.getMessage().replaceAll("\n","")));
+                    disconnect();
+                } catch (SecurityException e) {
+                    LOGGER.warning(String.format("Not enough permission to get attributes on process %d, disabling connection", pid));
+                    disconnect();
                 }
-            } catch (IOException ex) {
+                setInitialNamespaceIfNeeded();
+            } catch (final IOException ex) {
                 LOGGER.warning(String.format("Process %d agent is not responding reason=%s, declaring it down", pid, ex.getMessage().replaceAll("\n","")));
                 disconnect();
-            } catch (SecurityException e) {
-                LOGGER.warning(String.format("Not enough permission to get attributes on process %d, disabling connection", pid));
-                disconnect();
             }
-            setInitialNamespaceIfNeeded();
         }
         return metrics;
     }
@@ -338,12 +343,12 @@ public class MonitoredVM {
         }
     }
 
-    private void setNetworkNamespaceIfNeeded() {
+    private void setNetworkNamespaceIfNeeded() throws IOException {
         if (isOnAnotherContainer) {
             boolean namespaceChanged = CLibrary.setNamespace(pid);
 
             if(!namespaceChanged) {
-                LOGGER.warning(String.format("Cannot set namespace to pid: %d", pid));
+                throw new IOException(String.format("Cannot set namespace"));
             }
         }
     }

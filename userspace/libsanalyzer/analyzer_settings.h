@@ -176,6 +176,28 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define CHISEL_METRIC_LIMIT 300
 
 //
+// Determines if falco baselining is going to happen by default
+//
+#define FALCO_BASELINING_ENABLED true
+
+//
+// Falco baseline emit interval
+//
+#define FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
+
+//
+// Time after which we should try to reenable the falco baseliner after
+// we disable it for mperformance reasons.
+//
+#define FALCOBL_DISABLE_TIME (60LL * 30LL * 1000000000)
+
+//
+// Time after which we should try to reenable the falco baseliner after
+// we disable it for mperformance reasons.
+//
+#define FALCOBL_MAX_PROG_TABLE_SIZE 2000
+
+//
 // FD class customized with the storage we need
 //
 #include "tuples.h"
@@ -206,4 +228,8 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #endif
 
 static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
+
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
+static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
+#define MESOS_RETRY_ON_ERRORS_TIMEOUT_NS (10 * ONE_SECOND_IN_NS)
+static const uint64_t DCOS_ENTERPRISE_TOKEN_REFRESH_S = 60*60*24; // 1 day

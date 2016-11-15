@@ -11,6 +11,7 @@ public:
 	void init_user_events_throttling(uint64_t rate, uint64_t max_burst);
 
 	// regular logging
+	void log(const string& str, uint32_t sev);
 	void trace(const string& str);
 	void debug(const string& str);
 	void information(const string& str);

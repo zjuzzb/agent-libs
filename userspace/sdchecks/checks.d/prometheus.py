@@ -1,9 +1,8 @@
 # stdlib
-from enum import Enum
+import logging
 
 # 3rd party
 import requests
-import logging
 
 # Prometheus python lib
 from prometheus_client.parser import text_string_to_metric_families

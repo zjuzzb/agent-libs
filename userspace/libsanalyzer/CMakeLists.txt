@@ -23,6 +23,9 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
+
 add_definitions( -DHAS_ANALYZER )
 add_definitions(-DK8S_DISABLE_THREAD)
 
@@ -32,6 +35,7 @@ add_library(sanalyzer STATIC
 	analyzer_parsers.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
+	baseliner.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
@@ -48,6 +52,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/fdinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
@@ -115,7 +120,7 @@ add_library(sanalyzer STATIC
 	app_checks.cpp
 	posix_queue.cpp
 	sdc_internal.pb.cc
-	token_bucket.cpp)
+	token_bucket.cpp proc_config.h)
 
 target_link_libraries(sanalyzer
 	scap 
@@ -136,7 +141,8 @@ target_link_libraries(sanalyzer
 	dl
 	anl
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a)
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)
