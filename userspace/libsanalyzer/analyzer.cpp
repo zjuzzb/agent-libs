@@ -5409,8 +5409,9 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 	}
 }
 
-void sinsp_analyzer::enable_falco(const string &rules_filename,
-				  const string &user_rules_filename,
+void sinsp_analyzer::enable_falco(const string &default_rules_filename,
+				  const string &auto_rules_filename,
+				  const string &rules_filename,
 				  set<string> &disabled_rule_patterns,
 				  double sampling_multiplier)
 {
@@ -5420,15 +5421,26 @@ void sinsp_analyzer::enable_falco(const string &rules_filename,
 	m_falco_engine = make_unique<falco_engine>();
 	m_falco_engine->set_inspector(m_inspector);
 	m_falco_engine->set_sampling_multiplier(sampling_multiplier);
-	m_falco_engine->load_rules_file(rules_filename, verbose, all_events);
+
+	// If the auto rules file exists, it is loaded instead of the
+	// default rules file
+	Poco::File auto_rules_file(auto_rules_filename);
+	if(auto_rules_file.exists())
+	{
+		m_falco_engine->load_rules_file(auto_rules_filename, verbose, all_events);
+	}
+	else
+	{
+		m_falco_engine->load_rules_file(default_rules_filename, verbose, all_events);
+	}
 
 	//
 	// Only load the user rules file if it exists
 	//
-	Poco::File user_rules_file(user_rules_filename);
+	Poco::File user_rules_file(rules_filename);
 	if(user_rules_file.exists())
 	{
-		m_falco_engine->load_rules_file(user_rules_filename, verbose, all_events);
+		m_falco_engine->load_rules_file(rules_filename, verbose, all_events);
 	}
 
 	for (auto pattern : disabled_rule_patterns)
@@ -5438,6 +5450,12 @@ void sinsp_analyzer::enable_falco(const string &rules_filename,
 
 	m_falco_events = make_unique<falco_events>();
 	m_falco_events->init(m_inspector, m_configuration->get_machine_id());
+}
+
+void sinsp_analyzer::disable_falco()
+{
+	m_falco_engine = NULL;
+	m_falco_events = NULL;
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

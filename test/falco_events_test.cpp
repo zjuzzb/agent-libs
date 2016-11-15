@@ -48,8 +48,12 @@ protected:
 		if(m_enable_falco)
 		{
 			double sampling_multiplier = 0;
-			m_analyzer->enable_falco("./resources/falco/falco_rules.yaml",
-						 "./resources/falco/user_falco_rules.yaml",
+
+                        // Note--falco_rules.auto.yaml doesn't exist, so
+                        // falco_rules.default.yaml is used.
+			m_analyzer->enable_falco("./resources/falco/falco_rules.default.yaml",
+						 "./resources/falco/falco_rules.auto.yaml",
+						 "./resources/falco/falco_rules.yaml",
 						 m_disabled_patterns,
 						 sampling_multiplier);
 		}

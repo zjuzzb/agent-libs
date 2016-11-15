@@ -523,9 +523,15 @@ public:
 	bool m_enable_falco_engine;
 	string m_falco_default_rules_filename;
 	string m_falco_fallback_default_rules_filename;
+	string m_falco_auto_rules_filename;
 	string m_falco_rules_filename;
 	double m_falco_engine_sampling_multiplier;
 	std::set<std::string> m_falco_engine_disabled_rule_patterns;
+
+	// Set when a new auto rules file is downloaded. Monitored by
+	// sinsp_agent and when set will reload the falco engine and
+	// clear.
+	std::atomic_bool m_reset_falco_engine;
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;

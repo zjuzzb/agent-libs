@@ -7,6 +7,8 @@
 #include "Poco/File.h"
 #include <netdb.h>
 
+#include "falco_engine.h"
+
 #include "logger.h"
 #include "uri.h"
 
@@ -166,13 +168,60 @@ public:
 
 	void apply(dragent_configuration &config)
 	{
-		g_log->information("New auto config file applied");
+		g_log->information("New agent auto config file applied");
 		config.m_config_update = true;
 		config.m_terminate = true;
 	}
 
 private:
 	const vector<string> m_forbidden_keys;
+};
+
+class falco_rules_auto_configuration
+	: public dragent_auto_configuration
+{
+public:
+	falco_rules_auto_configuration(const std::string &config_directory)
+		: dragent_auto_configuration("falco_rules.auto.yaml",
+					     config_directory,
+					     "#\n"
+					     "# WARNING: Falco Engine auto configuration, don't edit. Please use \"falco_rules.yaml\" instead\n"
+					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
+					     "#\n")
+	{
+	};
+
+	~falco_rules_auto_configuration()
+	{
+	};
+
+	bool validate(const string &config_data, string &errstr)
+	{
+		falco_engine eng;
+		sinsp *inspector = new sinsp();
+		bool verbose = false;
+		bool all_events = false;
+
+		eng.set_inspector(inspector);
+
+		try {
+			eng.load_rules(config_data, verbose, all_events);
+		}
+		catch (falco_exception &e)
+		{
+			errstr = string(e.what());
+			delete(inspector);
+			return false;
+		}
+		delete(inspector);
+		return true;
+	}
+
+	void apply(dragent_configuration &config)
+	{
+		g_log->information("New auto falco rules file applied");
+		config.m_reset_falco_engine = true;
+	}
 };
 
 
@@ -220,6 +269,7 @@ dragent_configuration::dragent_configuration()
 	m_enable_falco_engine = false;
 	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
 	m_falco_engine_sampling_multiplier = 0;
+	m_reset_falco_engine = false;
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
 }
@@ -734,6 +784,12 @@ void dragent_configuration::init(Application* app)
 	m_enable_falco_engine = m_config->get_scalar<bool>("falco_engine", "enabled", false);
 	m_falco_default_rules_filename = m_config->get_scalar<string>("falco_engine", "default_rules_filename",
 								      m_root_dir + "/etc/falco_rules.default.yaml");
+
+	m_falco_auto_rules_filename = Path(m_root_dir).append("etc").append("falco_rules.auto.yaml").toString();
+
+	m_supported_auto_configs[string("falco_rules.auto.yaml")] =
+		unique_ptr<dragent_auto_configuration>(new falco_rules_auto_configuration(Path(m_root_dir).append("etc").toString()));
+
 	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
 							      m_root_dir + "/etc/falco_rules.yaml");
 
@@ -950,6 +1006,7 @@ void dragent_configuration::print_configuration()
 	if(m_enable_falco_engine)
 	{
 		g_log->information("Falco engine default rules file: " + m_falco_default_rules_filename);
+		g_log->information("Falco engine auto rules file: " + m_falco_auto_rules_filename);
 		g_log->information("Falco engine rules file: " + m_falco_rules_filename);
 		g_log->information("Falco disabled rule patterns: ");
 		for(auto pattern : m_falco_engine_disabled_rule_patterns)
