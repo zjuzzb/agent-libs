@@ -3206,6 +3206,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				totcpuload = m_total_process_cpu;
 			}
+			if(m_total_process_cpu > 100)
+			{
+				m_total_process_cpu = 100;
+			}
+			if(totcpuload > 100)
+			{
+				totcpuload = 100;
+			}
+			m_metrics->mutable_hostinfo()->set_system_load(totcpuload);
 
 			if(m_proc_stat.m_loads.size() != 0)
 			{

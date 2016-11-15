@@ -614,7 +614,7 @@ void sinsp_procfs_parser::get_proc_pid_stat()
 		fclose(f);
 		replace_in_place(path, "/stat", "/cgroup");
 		ifstream cgroup_file(path);
-		std::set<std::string> containers = { ":/lxc/", ":/docker/", ":/mesos/", ":/rkt/" };
+		std::set<std::string> containers = { ":/lxc/", ":/docker/", ":/mesos/",":/rkt/" };
 		bool done = false;
 		while(cgroup_file && !done)
 		{
