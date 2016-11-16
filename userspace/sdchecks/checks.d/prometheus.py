@@ -1,3 +1,4 @@
+
 # stdlib
 import logging
 
@@ -39,6 +40,7 @@ class Prometheus(AgentCheck):
 
             for sample in family.samples:
                 (name, tags, value) = sample
+                tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
 
                 # First handle summary
                 if family.type == 'histogram' or family.type == 'summary':
