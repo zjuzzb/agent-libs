@@ -21,7 +21,7 @@ sinsp_configuration::sinsp_configuration()
 	m_autodrop_enabled = AUTODROP_ENABLED;
 	m_drop_upper_threshold = DROP_UPPER_THRESHOLD;
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
-	m_drop_treshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
+	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
 	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
@@ -238,14 +238,14 @@ void sinsp_configuration::set_drop_lower_threshold(uint32_t drop_lower_threshold
 	m_drop_lower_threshold = drop_lower_threshold;
 }
 
-uint32_t sinsp_configuration::get_drop_treshold_consecutive_seconds() const
+uint32_t sinsp_configuration::get_drop_threshold_consecutive_seconds() const
 {
-	return m_drop_treshold_consecutive_seconds;
+	return m_drop_threshold_consecutive_seconds;
 }
 
-void sinsp_configuration::set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds)
+void sinsp_configuration::set_drop_threshold_consecutive_seconds(uint32_t drop_threshold_consecutive_seconds)
 {
-	m_drop_treshold_consecutive_seconds = drop_treshold_consecutive_seconds;
+	m_drop_threshold_consecutive_seconds = drop_threshold_consecutive_seconds;
 }
 
 const string& sinsp_configuration::get_host_custom_name() const

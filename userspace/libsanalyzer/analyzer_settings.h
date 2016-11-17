@@ -93,7 +93,7 @@
 
 //
 // Maximum numeber of external TCP/UDP client endpoints that are reported independently.
-// If the number goes beyond this treshold, the clients will be aggregated into a single
+// If the number goes beyond this threshold, the clients will be aggregated into a single
 // 0.0.0.0 endpoint.
 //
 #define MAX_N_EXTERNAL_CLIENTS 30

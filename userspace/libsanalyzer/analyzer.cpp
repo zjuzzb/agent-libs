@@ -2628,7 +2628,7 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
-void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metric)
+void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metric)
 {
 	//
 	// Drop mode logic:
@@ -2639,20 +2639,20 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(treshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
+		if(threshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
 		{
 			m_seconds_above_thresholds++;
 
-			g_logger.format(sinsp_logger::SEV_INFO, "sinsp above drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+			g_logger.format(sinsp_logger::SEV_INFO, "sinsp above drop threshold %d secs: %" PRIu32 ":%" PRIu32,
 				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds,
-				m_configuration->get_drop_treshold_consecutive_seconds());
+				m_configuration->get_drop_threshold_consecutive_seconds());
 		}
 		else
 		{
 			m_seconds_above_thresholds = 0;
 		}
 
-		if(m_seconds_above_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds())
+		if(m_seconds_above_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds())
 		{
 			m_last_system_cpuload = 0;
 
@@ -2690,15 +2690,15 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			}
 		}
 
-		if(treshold_metric <= (double)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus))
+		if(threshold_metric <= (double)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus))
 		{
 			m_seconds_below_thresholds++;
 
 			if(m_is_sampling && m_sampling_ratio > 1)
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop treshold %d secs: %" PRIu32 ":%" PRIu32,
+				g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop threshold %d secs: %" PRIu32 ":%" PRIu32,
 					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds,
-					m_configuration->get_drop_treshold_consecutive_seconds());
+					m_configuration->get_drop_threshold_consecutive_seconds());
 			}
 		}
 		else
@@ -2706,7 +2706,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			m_seconds_below_thresholds = 0;
 		}
 
-		if(m_seconds_below_thresholds >= m_configuration->get_drop_treshold_consecutive_seconds() &&
+		if(m_seconds_below_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds() &&
 			m_is_sampling)
 		{
 			double totcpuload = 0;
@@ -2721,7 +2721,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double treshold_metri
 			{
 				if(fabs(totcpuload - m_last_system_cpuload) / min(totcpuload, m_last_system_cpuload) < 0.15)
 				{
-					if(m_seconds_below_thresholds <= m_configuration->get_drop_treshold_consecutive_seconds() * 50)
+					if(m_seconds_below_thresholds <= m_configuration->get_drop_threshold_consecutive_seconds() * 50)
 					{
 						skip = true;
 					}
