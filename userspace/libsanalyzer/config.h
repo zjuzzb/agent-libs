@@ -122,6 +122,8 @@ public:
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
+	bool get_fake_alerts() const;
+	void set_fake_alerts(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
 	void set_protocols_truncation_size(uint32_t truncation_size);
     user_event_filter_t::ptr_t get_k8s_event_filter() const;
@@ -191,6 +193,7 @@ private:
 	mesos::credentials_t m_dcos_enterprise_credentials;
 
 	bool m_curl_debug;
+	bool m_fake_alerts = false;
 
 	bool m_falco_baselining_enabled;
 

@@ -3191,13 +3191,34 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->mutable_hostinfo()->add_user_cpu((uint32_t)(m_proc_stat.m_user[k] * 100));
 				m_metrics->mutable_hostinfo()->add_nice_cpu((uint32_t)(m_proc_stat.m_nice[k] * 100));
 				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k] * 100));
-				m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
+				if(m_configuration->get_fake_alerts())
+				{
+					uint32_t val = 21;
+					g_logger.log("Faking iowait_cpu :" + std::to_string(val) + " (" +
+								 std::to_string((uint32_t)(m_proc_stat.m_iowait[k] * 100)) + ')',
+								 sinsp_logger::SEV_WARNING);
+					m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(val));
+				}
+				else
+				{
+					m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
+				}
 
 				totcpuload += m_proc_stat.m_loads[k];
 				totcpusteal += m_proc_stat.m_steals[k];
 			}
 
-			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
+			if(m_configuration->get_fake_alerts())
+			{
+				uint64_t val = 299;
+				g_logger.log("Faking uptime :" + std::to_string(val) + " (" +
+							 std::to_string(m_proc_stat.m_uptime) + ')', sinsp_logger::SEV_WARNING);
+				m_metrics->mutable_hostinfo()->set_uptime(val);
+			}
+			else
+			{
+				m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
+			}
 
 			ASSERT(totcpuload <= 100 * m_proc_stat.m_loads.size());
 			ASSERT(totcpusteal <= 100 * m_proc_stat.m_loads.size());
@@ -3214,7 +3235,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				totcpuload = 100;
 			}
-			m_metrics->mutable_hostinfo()->set_system_load(totcpuload);
+			if(m_configuration->get_fake_alerts())
+			{
+				uint64_t val = 6;
+				g_logger.log("Faking system_load :" + std::to_string(val) + " (" +
+							 std::to_string(totcpuload) + ')', sinsp_logger::SEV_WARNING);
+				m_metrics->mutable_hostinfo()->set_system_load(val);
+			}
+			else
+			{
+				m_metrics->mutable_hostinfo()->set_system_load(totcpuload);
+			}
 
 			if(m_proc_stat.m_loads.size() != 0)
 			{
@@ -3255,11 +3286,32 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
-			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
+			if(m_configuration->get_fake_alerts())
+			{
+				uint64_t val = 20971519;
+				g_logger.log("Faking memory_bytes_available_kb :" + std::to_string(val) + " (" +
+							 std::to_string(m_host_metrics.m_res_memory_avail_kb) + ')',
+							 sinsp_logger::SEV_WARNING);
+				m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(val);
+			}
+			else
+			{
+				m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
+			}
 
 			// host process counts
 			m_procfs_parser->get_proc_counts(&m_proc_count);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_running_processes(m_proc_count.m_running);
+			if(m_configuration->get_fake_alerts())
+			{
+				uint64_t val = 31;
+				g_logger.log("Faking running_processes :" + std::to_string(val) + " (" +
+							 std::to_string(m_proc_count.m_running) + ')', sinsp_logger::SEV_WARNING);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_running_processes(val);
+			}
+			else
+			{
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_running_processes(m_proc_count.m_running);
+			}
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_sleeping_processes(m_proc_count.m_sleeping);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_zombie_processes(m_proc_count.m_zombie);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_proc_count.m_count);
@@ -4898,7 +4950,18 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		}
 	}
 	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
-	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_used_kb);
+	if(m_configuration->get_fake_alerts())
+	{
+		uint32_t val = 51;
+		g_logger.log("Faking swap_memory_usage_kb :" + std::to_string(val) + " (" +
+					 std::to_string(it_analyzer->second.m_metrics.m_swap_memory_used_kb) + ')',
+					 sinsp_logger::SEV_WARNING);
+		container->mutable_resource_counters()->set_swap_memory_usage_kb(val);
+	}
+	else
+	{
+		container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_used_kb);
+	}
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
@@ -4914,7 +4977,17 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 			sinsp_procfs_parser::update_proc_count(&spc, stat.m_status, stat.m_pid);
 		}
 	}
-	container->mutable_resource_counters()->set_running_processes(spc.m_running);
+	if(m_configuration->get_fake_alerts())
+	{
+		uint64_t val = 31;
+		g_logger.log("Faking running_processes :" + std::to_string(val) + " (" +
+					 std::to_string(spc.m_running) + ')', sinsp_logger::SEV_WARNING);
+		container->mutable_resource_counters()->set_running_processes(val);
+	}
+	else
+	{
+		container->mutable_resource_counters()->set_running_processes(spc.m_running);
+	}
 	container->mutable_resource_counters()->set_sleeping_processes(spc.m_sleeping);
 	container->mutable_resource_counters()->set_zombie_processes(spc.m_zombie);
 	container->mutable_resource_counters()->set_count_processes(spc.m_count);

@@ -653,6 +653,16 @@ void sinsp_configuration::set_curl_debug(bool enabled)
 	m_curl_debug = enabled;
 }
 
+bool sinsp_configuration::get_fake_alerts() const
+{
+	return m_fake_alerts;
+}
+
+void sinsp_configuration::set_fake_alerts(bool enabled)
+{
+	m_fake_alerts = enabled;
+}
+
 uint32_t sinsp_configuration::get_protocols_truncation_size() const
 {
 	return m_protocols_truncation_size;
