@@ -371,6 +371,10 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		*free_memory = 0;
 	}
 
+	if(!mem_avail && mem_free > 0 && cached > 0)
+	{
+		mem_avail = mem_free + cached;
+	}
 	*avail_memory = mem_avail;
 	if(*avail_memory < 0)
 	{
