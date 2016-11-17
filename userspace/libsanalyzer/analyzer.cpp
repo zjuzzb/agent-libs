@@ -3193,7 +3193,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k] * 100));
 				if(m_configuration->get_fake_alerts())
 				{
-					uint32_t val = 21;
+					uint32_t val = 2100;
 					g_logger.log("Faking iowait_cpu :" + std::to_string(val) + " (" +
 								 std::to_string((uint32_t)(m_proc_stat.m_iowait[k] * 100)) + ')',
 								 sinsp_logger::SEV_WARNING);
@@ -3201,6 +3201,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 				else
 				{
+					g_logger.log("iowait_cpu :" + std::to_string((uint32_t)(m_proc_stat.m_iowait[k] * 100)) + ')',
+								 sinsp_logger::SEV_WARNING);
 					m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
 				}
 
@@ -3227,24 +3229,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				totcpuload = m_total_process_cpu;
 			}
-			if(m_total_process_cpu > 100)
-			{
-				m_total_process_cpu = 100;
-			}
-			if(totcpuload > 100)
-			{
-				totcpuload = 100;
-			}
 			if(m_configuration->get_fake_alerts())
 			{
-				uint64_t val = 6;
+				double val = 6;
 				g_logger.log("Faking system_load :" + std::to_string(val) + " (" +
 							 std::to_string(totcpuload) + ')', sinsp_logger::SEV_WARNING);
 				m_metrics->mutable_hostinfo()->set_system_load(val);
 			}
 			else
 			{
-				m_metrics->mutable_hostinfo()->set_system_load(totcpuload);
+				m_metrics->mutable_hostinfo()->set_system_load(totcpuload / m_proc_stat.m_loads.size());
 			}
 
 			if(m_proc_stat.m_loads.size() != 0)
@@ -3278,7 +3272,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
+			if(m_configuration->get_fake_alerts())
+			{
+				uint32_t val = m_host_metrics.m_swap_memory_total_kb; // fake all swap memory used
+				g_logger.log("Faking swap_memory_usage_kb :" + std::to_string(val) + " (" +
+							 std::to_string((uint32_t)m_host_metrics.m_swap_memory_used_kb) + ')',
+							 sinsp_logger::SEV_WARNING);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb(val);
+			}
+			else
+			{
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
+			}
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_total_kb((uint32_t)m_host_metrics.m_swap_memory_total_kb);
 			uint32_t avail_mem = (uint32_t)(m_host_metrics.m_swap_memory_total_kb - m_host_metrics.m_swap_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_available_kb(avail_mem);
@@ -3323,6 +3328,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
 					{
+						if(m_configuration->get_fake_alerts())
+						{
+							uint64_t val = it->get_total_bytes();
+							g_logger.log("Faking used_bytes :" + std::to_string(val) + " (" +
+										 std::to_string(it->get_used_bytes()) + ')', sinsp_logger::SEV_WARNING);
+							it->set_used_bytes(val);
+							val = it->get_total_inodes();
+							g_logger.log("Faking used_inodes :" + std::to_string(val) + " (" +
+										 std::to_string(it->get_used_inodes()) + ')', sinsp_logger::SEV_WARNING);
+							it->set_used_inodes(val);
+						}
 						draiosproto::mounted_fs* fs = m_metrics->add_mounts();
 						it->to_protobuf(fs);
 					}
@@ -4950,18 +4966,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		}
 	}
 	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
-	if(m_configuration->get_fake_alerts())
-	{
-		uint32_t val = 51;
-		g_logger.log("Faking swap_memory_usage_kb :" + std::to_string(val) + " (" +
-					 std::to_string(it_analyzer->second.m_metrics.m_swap_memory_used_kb) + ')',
-					 sinsp_logger::SEV_WARNING);
-		container->mutable_resource_counters()->set_swap_memory_usage_kb(val);
-	}
-	else
-	{
-		container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_used_kb);
-	}
+	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_used_kb);
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);

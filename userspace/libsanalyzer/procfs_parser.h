@@ -16,6 +16,13 @@ public:
 
 	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
+	uint64_t get_total_bytes() const;
+	uint64_t get_total_inodes() const;
+	uint64_t get_used_bytes() const;
+	void set_used_bytes(uint64_t bytes);
+	uint64_t get_used_inodes() const;
+	void set_used_inodes(uint64_t inodes);
+
 private:
 	string device;
 	string mount_dir;
@@ -28,6 +35,36 @@ private:
 
 	friend class sinsp_procfs_parser;
 };
+
+inline uint64_t mounted_fs::get_total_bytes() const
+{
+	return size_bytes;
+}
+
+inline uint64_t mounted_fs::get_total_inodes() const
+{
+	return total_inodes;
+}
+
+inline uint64_t mounted_fs::get_used_bytes() const
+{
+	return used_bytes;
+}
+
+inline void mounted_fs::set_used_bytes(uint64_t bytes)
+{
+	used_bytes = bytes;
+}
+
+inline uint64_t mounted_fs::get_used_inodes() const
+{
+	return used_inodes;
+}
+
+inline void mounted_fs::set_used_inodes(uint64_t inodes)
+{
+	used_inodes = inodes;
+}
 
 struct sinsp_proc_stat
 {
