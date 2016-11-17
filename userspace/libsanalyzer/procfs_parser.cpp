@@ -298,10 +298,11 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	return true;
 }
 
-void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* used_swap, int64_t* total_swap)
+void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap)
 {
 	char line[512];
 	int64_t mem_free = 0;
+	int64_t mem_avail = 0;
 	int64_t buffers = 0;
 	int64_t cached = 0;
 	int64_t swap_total = 0;
@@ -338,6 +339,10 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		{
 			mem_free = tmp;
 		}
+		else if(sscanf(line, "MemAvailable: %" PRId64, &tmp) == 1)
+		{
+			mem_avail = tmp;
+		}
 		else if(sscanf(line, "Buffers: %" PRId64, &tmp) == 1)
 		{
 			buffers = tmp;
@@ -364,6 +369,13 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	{
 		ASSERT(false);
 		*free_memory = 0;
+	}
+
+	*avail_memory = mem_avail;
+	if(*avail_memory < 0)
+	{
+		ASSERT(false);
+		*avail_memory = 0;
 	}
 
 	*used_memory = m_physical_memory_kb - mem_free - buffers - cached;

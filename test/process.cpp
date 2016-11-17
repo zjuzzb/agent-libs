@@ -892,6 +892,7 @@ TEST_F(sys_call_test, procfs_globalmemory)
 {
 	int64_t memusage;
 	int64_t memfree;
+	int64_t memavail;
 	int64_t swapusage;
 	int64_t swaptotal;
 	uint32_t j;
@@ -902,13 +903,16 @@ TEST_F(sys_call_test, procfs_globalmemory)
 
 	for(j = 0; j < 5; j++)
 	{
-		pparser.get_global_mem_usage_kb(&memusage, &memfree, &swapusage, &swaptotal);
+		pparser.get_global_mem_usage_kb(&memusage, &memfree, &memavail, &swapusage, &swaptotal);
 		EXPECT_NE((int64_t)-1, memusage);
 		EXPECT_LE((int64_t)0, memusage);
 		EXPECT_GE((int64_t)memkb, memusage);
 		EXPECT_NE((int64_t)-1, memfree);
 		EXPECT_LE((int64_t)0, memfree);
 		EXPECT_GE((int64_t)memkb, memfree);
+		EXPECT_NE((int64_t)-1, memavail);
+		EXPECT_LE((int64_t)0, memavail);
+		EXPECT_GE((int64_t)memkb, memavail);
 		EXPECT_NE((int64_t)-1, swapusage);
 		EXPECT_LE((int64_t)0, swapusage);
 		EXPECT_NE((int64_t)-1, swaptotal);

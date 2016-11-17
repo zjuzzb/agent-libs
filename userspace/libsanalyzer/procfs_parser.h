@@ -69,7 +69,7 @@ public:
 	void get_proc_counts(OUT sinsp_proc_count* proc_count);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	const vector<sinsp_proc_pid_stat>& proc_pid_stat() const;
-	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* used_swap, int64_t* total_swap);
+	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap);
 
 	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled, const string& mtab="/etc/mtab");
 

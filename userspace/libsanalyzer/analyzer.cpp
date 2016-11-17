@@ -3226,6 +3226,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
 													 &m_host_metrics.m_res_memory_free_kb,
+													 &m_host_metrics.m_res_memory_avail_kb,
 													 &m_host_metrics.m_swap_memory_used_kb,
 													 &m_host_metrics.m_swap_memory_total_kb);
 
@@ -3254,7 +3255,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
-			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_free_kb);
+			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
 
 			// host process counts
 			m_procfs_parser->get_proc_counts(&m_proc_count);
