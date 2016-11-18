@@ -89,7 +89,24 @@ string posix_queue::receive(uint64_t timeout_s)
 		if(res > 0)
 		{
 			return string(m_readbuffer, res);
+		} else if (errno == ETIMEDOUT || errno == EINTR) {
+			return "";
 		} else {
+			g_logger.format(sinsp_logger::SEV_ERROR, "Unexpected error on posix queue receive: %s", strerror(errno));
+			if(timeout_s > 0)
+			{
+				// At this point the application may go to infinite loop if it relies
+				// on the timeout provided, eg:
+				// while(true)
+				// {
+				//   auto msg = receive(1)
+				//   do stuff...
+				// }
+				// in this case is better to crash
+				// otherwise if timeout=0 like our dragent. let's keep it running
+				// as posix queue healthness is not vital
+				throw sinsp_exception("Unexpected error on posix queue receive");
+			}
 			return "";
 		}
 	}
