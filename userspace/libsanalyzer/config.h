@@ -52,8 +52,8 @@ public:
 	void set_drop_upper_threshold(uint32_t drop_upper_threshold);
 	uint32_t get_drop_lower_threshold(uint32_t nprocs) const;
 	void set_drop_lower_threshold(uint32_t drop_lower_threshold);
-	uint32_t get_drop_treshold_consecutive_seconds() const;
-	void set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds);
+	uint32_t get_drop_threshold_consecutive_seconds() const;
+	void set_drop_threshold_consecutive_seconds(uint32_t drop_threshold_consecutive_seconds);
 	const string& get_host_custom_name() const;
 	void set_host_custom_name(string host_custom_name);
 	const string& get_host_tags() const;
@@ -152,7 +152,7 @@ private:
 	bool m_autodrop_enabled;
 	uint32_t m_drop_upper_threshold;
 	uint32_t m_drop_lower_threshold;
-	uint32_t m_drop_treshold_consecutive_seconds;
+	uint32_t m_drop_threshold_consecutive_seconds;
 	string m_host_custom_name;
 	string m_host_tags;
 	bool m_host_hidden;

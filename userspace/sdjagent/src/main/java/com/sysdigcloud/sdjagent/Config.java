@@ -29,7 +29,7 @@ public class Config {
 
     public Config() throws FileNotFoundException {
         List<String> configFiles = new ArrayList<String>();
-        configFiles.add(ETCDIR + "dragent.yaml");
+        configFiles.add(ETCDIR + "/dragent.yaml");
         configFiles.add(ETCDIR + "/dragent.auto.yaml");
         configFiles.add(ETCDIR + "/dragent.default.yaml");
 
