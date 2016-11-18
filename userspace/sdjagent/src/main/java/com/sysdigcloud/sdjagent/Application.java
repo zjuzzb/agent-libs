@@ -14,6 +14,8 @@ import org.yaml.snakeyaml.DumperOptions;
 import org.yaml.snakeyaml.Yaml;
 
 
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import java.io.*;
 import java.util.*;
 import java.util.logging.*;
@@ -32,7 +34,8 @@ public class Application {
     private static final String HELP_TEXT = "Available commands:\n" +
             "getMetrics <pid> <vpid> - Get metrics from specified JVM, metrics are configure on dragent.yaml\n" +
             "availableMetrics <pid> <vpid> - Print all available beans from specified JVM, " +
-                    "they are printed in a similar YAML to be easily copied to conf file\n";
+                    "they are printed in a similar YAML to be easily copied to conf file\n" +
+            "queryMatches <query> <beanName> - Checks if a query matches a specific bean, returns yes or no\n";
     static {
         MAPPER.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
         MAPPER.configure(JsonGenerator.Feature.AUTO_CLOSE_TARGET, false);
@@ -85,13 +88,15 @@ public class Application {
         lastVmsCleanup = 0;
         config = new Config();
 
+        LOGGER.fine(String.format("Found custom beans for: %s", config.getProcesses().keySet().toString()));
         Level level = config.getLogLevel();
         console.setLevel(level);
         appLogger.setLevel(level);
     }
 
     private void runWithArgs(String[] args) throws IOException {
-        if(args[0].equals("getVMHandle") && args.length > 1) {
+        final String command = args[0];
+        if(command.equals("getVMHandle") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
             request.setSkipUidAndGid(true);
             final MonitoredVM vm = new MonitoredVM(request);
@@ -102,9 +107,9 @@ public class Application {
                 vmInfo.put("address", vm.getAddress());
             }
             MAPPER.writeValue(System.out, vmInfo);
-        } else if (args[0].equals("availableMetrics") && args.length > 1) {
+        } else if (command.equals("availableMetrics") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
-            final MonitoredVM vm = new MonitoredVM(request);
+            final MonitoredVM vm = buildMonitoredVM(request);
 
             DumperOptions options = new DumperOptions();
             options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
@@ -118,20 +123,23 @@ public class Application {
 
             final String dump = yaml.dump(vmInfo);
             System.out.println(dump);
-        } else if (args[0].equals("getMetrics") && args.length > 1) {
+        } else if (command.equals("getMetrics") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
-            final MonitoredVM vm = new MonitoredVM(request);
-            vm.addQueries(config.getDefaultBeanQueries());
-            Map<String, Config.Process> processes = config.getProcesses();
-            for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
-                if (vm.getName().contains(config.getValue().getPattern())) {
-                    vm.setName(config.getKey());
-                    vm.addQueries(config.getValue().getQueries());
-                    break;
-                }
-            }
+            final MonitoredVM vm = buildMonitoredVM(request);
             MAPPER.enable(SerializationFeature.INDENT_OUTPUT);
             MAPPER.writeValue(System.out, vm.getMetrics());
+        } else if (command.equals("queryMatches") && args.length > 2) {
+            try {
+                final ObjectName query = new ObjectName(args[1]);
+                final ObjectName beanName = new ObjectName(args[2]);
+                if(query.apply(beanName)) {
+                    System.out.print("yes");
+                } else {
+                    System.out.print("no");
+                }
+            } catch (MalformedObjectNameException e) {
+                LOGGER.severe("Invalid bean query or name");
+            }
         } else {
             System.out.print(HELP_TEXT);
         }
@@ -197,28 +205,14 @@ public class Application {
 
     private List<Map<String, Object>> getMetricsCommand(List<VMRequest> requestedVMs) throws IOException {
         LOGGER.fine("Executing getMetrics");
-        List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
+        final List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
 
         for (VMRequest request : requestedVMs) {
-            Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
+            final Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
             MonitoredVM vm = vms.get(request.getPid());
 
             if (vm == null) {
-                vm = new MonitoredVM(request);
-                vm.addQueries(config.getDefaultBeanQueries());
-                // Configure VM name if it matches a pattern on configurations
-                if(vm.isAvailable()) {
-                    Map<String, Config.Process> processes = config.getProcesses();
-                    for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
-                        if (vm.getName().contains(config.getValue().getPattern())) {
-                            vm.setName(config.getKey());
-                            vm.addQueries(config.getValue().getQueries());
-                            break;
-                        }
-                    }
-                    LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
-                            request.getVpid(), vm.getName(), vm.getAddress()));
-                }
+                vm = buildMonitoredVM(request);
                 // Add it to known VMs
                 vms.put(request.getPid(), vm);
             }
@@ -233,5 +227,24 @@ public class Application {
             }
         }
         return vmList;
+    }
+
+    private MonitoredVM buildMonitoredVM(VMRequest request) {
+        final MonitoredVM vm = new MonitoredVM(request);
+        vm.addQueries(config.getDefaultBeanQueries());
+        // Configure VM name if it matches a pattern on configurations
+        if(vm.isAvailable()) {
+            Map<String, Config.Process> processes = config.getProcesses();
+            for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
+                if (vm.getName().contains(config.getValue().getPattern())) {
+                    vm.setName(config.getKey());
+                    vm.addQueries(config.getValue().getQueries());
+                    break;
+                }
+            }
+            LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
+                    request.getVpid(), vm.getName(), vm.getAddress()));
+        }
+        return vm;
     }
 }

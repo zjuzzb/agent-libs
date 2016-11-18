@@ -1,3 +1,4 @@
+
 # stdlib
 import logging
 
@@ -39,6 +40,7 @@ class Prometheus(AgentCheck):
 
             for sample in family.samples:
                 (name, tags, value) = sample
+                tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
 
                 # First handle summary
                 if family.type == 'histogram' or family.type == 'summary':
@@ -50,7 +52,7 @@ class Prometheus(AgentCheck):
                         if family.type == 'histogram':
                             continue
                         elif 'quantile' in tags:
-                            quantile = int(tags['quantile']) * 100
+                            quantile = int(float(tags['quantile']) * 100)
                             logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
                             self.gauge('%s.%dpercentile' % (name, quantile),
                                        value,

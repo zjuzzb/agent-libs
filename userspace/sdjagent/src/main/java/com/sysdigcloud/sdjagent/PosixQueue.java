@@ -63,12 +63,14 @@ public class PosixQueue {
         return res == 0;
     }
 
-    public String receive(long timeout_s) {
+    public String receive(long timeout_s) throws IOException {
         int res = queueReceive(fd, this.msgbuffer, timeout_s);
         if(res > 0) {
             return new String(this.msgbuffer, 0, res, Charset.defaultCharset());
-        } else {
+        } else if (res == -1) {
             return null;
+        } else {
+            throw new IOException(String.format("Unexpected errno=%d from posix queue receive", -res));
         }
     }
 

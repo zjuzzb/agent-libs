@@ -251,6 +251,13 @@ public class MonitoredVM {
         }
         final Set<ObjectName> allBeans = connection.getMbs().queryNames(null, null);
         final List<Map<String, Object>> availableMetrics = new ArrayList<Map<String, Object>>(allBeans.size());
+        final Set<String> acceptedTypes = new HashSet<String>();
+        acceptedTypes.add("int");
+        acceptedTypes.add("float");
+        acceptedTypes.add("double");
+        acceptedTypes.add("long");
+        acceptedTypes.add("java.lang.Double");
+        acceptedTypes.add("java.lang.Integer");
         for (final ObjectName bean : allBeans) {
             try {
                 final Map<String, Object> beanData = new HashMap<String, Object>();
@@ -259,11 +266,6 @@ public class MonitoredVM {
                 final MBeanAttributeInfo[] attributeInfos = beanInfo.getAttributes();
                 final List<String> attributes = new ArrayList<String>(attributeInfos.length);
                 for(int j = 0; j < attributeInfos.length; ++j) {
-                    final Set<String> acceptedTypes = new HashSet<String>();
-                    acceptedTypes.add("int");
-                    acceptedTypes.add("float");
-                    acceptedTypes.add("double");
-                    acceptedTypes.add("long");
                     if (acceptedTypes.contains(attributeInfos[j].getType())) {
                         attributes.add(attributeInfos[j].getName());
                     }
@@ -273,11 +275,11 @@ public class MonitoredVM {
                     availableMetrics.add(beanData);
                 }
             } catch (InstanceNotFoundException e) {
-                // TODO: log it
+                LOGGER.warning(String.format("Exception=%s while getting bean=%s info what=%s", e.getClass().getName(), bean.toString(), e.getMessage()));
             } catch (IntrospectionException e) {
-                // TODO: log it
+                LOGGER.warning(String.format("Exception=%s while getting bean=%s info what=%s", e.getClass().getName(), bean.toString(), e.getMessage()));
             } catch (ReflectionException e) {
-                // TODO: log it
+                LOGGER.warning(String.format("Exception=%s while getting bean=%s info what=%s", e.getClass().getName(), bean.toString(), e.getMessage()));
             }
         }
         setInitialNamespaceIfNeeded();
@@ -327,7 +329,7 @@ public class MonitoredVM {
                 }
                 setInitialNamespaceIfNeeded();
             } catch (final IOException ex) {
-                LOGGER.warning(String.format("Process %d agent is not responding reason=%s, declaring it down", pid, ex.getMessage().replaceAll("\n","")));
+                LOGGER.warning(String.format("Cannot join namespace of pid=%d reason=%s, declaring it down", pid, ex.getMessage().replaceAll("\n","")));
                 disconnect();
             }
         }
