@@ -3201,8 +3201,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 				else
 				{
-					g_logger.log("iowait_cpu :" + std::to_string((uint32_t)(m_proc_stat.m_iowait[k] * 100)) + ')',
-								 sinsp_logger::SEV_WARNING);
 					m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
 				}
 
