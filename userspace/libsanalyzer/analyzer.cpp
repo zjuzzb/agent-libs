@@ -3293,7 +3293,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 			if(m_configuration->get_fake_alerts())
 			{
-				uint64_t val = 20971519;
+				uint64_t val = 10000000;
 				g_logger.log("Faking memory_bytes_available_kb :" + std::to_string(val) + " (" +
 							 std::to_string(m_host_metrics.m_res_memory_avail_kb) + ')',
 							 sinsp_logger::SEV_WARNING);
