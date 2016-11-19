@@ -3317,7 +3317,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_sleeping_processes(m_proc_count.m_sleeping);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_zombie_processes(m_proc_count.m_zombie);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_proc_count.m_count);
+			if(m_configuration->get_fake_alerts())
+			{
+				uint64_t val = 350;
+				g_logger.log("Faking count_processes :" + std::to_string(val) + " (" +
+							 std::to_string(m_proc_count.m_count) + ')', sinsp_logger::SEV_WARNING);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(val);
+			}
+			else
+			{
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_proc_count.m_count);
+			}
 
 			if(m_mounted_fs_proxy)
 			{
