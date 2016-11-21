@@ -2104,7 +2104,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 					auto java_proto = proc->mutable_protos()->mutable_java();
-					jmx_metrics_it->second.to_protobuf(java_proto);
+					jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling);
 				}
 			}
 			if(m_app_proxy)

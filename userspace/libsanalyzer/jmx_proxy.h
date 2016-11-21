@@ -13,7 +13,7 @@ class java_bean;
 class java_bean_attribute
 {
 public:
-	void to_protobuf(draiosproto::jmx_attribute *attribute) const;
+	void to_protobuf(draiosproto::jmx_attribute *attribute, unsigned sampling) const;
 	explicit java_bean_attribute(const Json::Value&);
 	double value() { return m_value; }
 private:
@@ -34,7 +34,7 @@ public:
 		return m_name;
 	}
 
-	void to_protobuf(draiosproto::jmx_bean *proto_bean) const;
+	void to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling) const;
 private:
 	explicit java_bean(const Json::Value&);
 	string m_name;
@@ -59,7 +59,7 @@ public:
 		return m_beans;
 	}
 
-	void to_protobuf(draiosproto::java_info* protobuf) const;
+	void to_protobuf(draiosproto::java_info* protobuf, unsigned sampling) const;
 
 private:
 	explicit java_process(const Json::Value&);

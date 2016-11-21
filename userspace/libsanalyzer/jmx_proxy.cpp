@@ -49,7 +49,7 @@ java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	}
 }
 
-void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) const
+void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned sampling) const
 {
 	attribute->set_name(m_name);
 	if(!m_alias.empty())
@@ -70,14 +70,21 @@ void java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute) con
 	}
 	if (m_subattributes.empty())
 	{
-		attribute->set_value(m_value);
+		if(m_type == draiosproto::jmx_metric_type::JMX_METRIC_TYPE_COUNTER)
+		{
+			attribute->set_value(m_value/sampling);
+		}
+		else
+		{
+			attribute->set_value(m_value);
+		}
 	}
 	else
 	{
 		for(const auto& subattribute : m_subattributes)
 		{
 			draiosproto::jmx_attribute* subattribute_proto = attribute->add_subattributes();
-			subattribute.to_protobuf(subattribute_proto);
+			subattribute.to_protobuf(subattribute_proto, sampling);
 		}
 	}
 }
@@ -91,13 +98,13 @@ java_bean::java_bean(const Json::Value& json):
 	}
 }
 
-void java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean) const
+void java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling) const
 {
 	proto_bean->mutable_name()->assign(m_name);
 	for(const auto& attribute : m_attributes)
 	{
 		draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
-		attribute.to_protobuf(attribute_proto);
+		attribute.to_protobuf(attribute_proto, sampling);
 	}
 }
 
@@ -111,13 +118,13 @@ java_process::java_process(const Json::Value& json):
 	}
 }
 
-void java_process::to_protobuf(draiosproto::java_info *protobuf) const
+void java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling) const
 {
 	protobuf->set_process_name(m_name);
 	for(const auto& bean : m_beans)
 	{
 		draiosproto::jmx_bean* protobean = protobuf->add_beans();
-		bean.to_protobuf(protobean);
+		bean.to_protobuf(protobean, sampling);
 	}
 }
 
