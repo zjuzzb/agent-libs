@@ -3191,34 +3191,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->mutable_hostinfo()->add_user_cpu((uint32_t)(m_proc_stat.m_user[k] * 100));
 				m_metrics->mutable_hostinfo()->add_nice_cpu((uint32_t)(m_proc_stat.m_nice[k] * 100));
 				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k] * 100));
-				if(m_configuration->get_fake_alerts())
-				{
-					uint32_t val = 2100;
-					g_logger.log("Faking iowait_cpu :" + std::to_string(val) + " (" +
-								 std::to_string((uint32_t)(m_proc_stat.m_iowait[k] * 100)) + ')',
-								 sinsp_logger::SEV_WARNING);
-					m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(val));
-				}
-				else
-				{
-					m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
-				}
+				m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
 
 				totcpuload += m_proc_stat.m_loads[k];
 				totcpusteal += m_proc_stat.m_steals[k];
 			}
 
-			if(m_configuration->get_fake_alerts())
-			{
-				uint64_t val = 299;
-				g_logger.log("Faking uptime :" + std::to_string(val) + " (" +
-							 std::to_string(m_proc_stat.m_uptime) + ')', sinsp_logger::SEV_WARNING);
-				m_metrics->mutable_hostinfo()->set_uptime(val);
-			}
-			else
-			{
-				m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
-			}
+			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
 
 			ASSERT(totcpuload <= 100 * m_proc_stat.m_loads.size());
 			ASSERT(totcpusteal <= 100 * m_proc_stat.m_loads.size());
@@ -3227,17 +3206,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				totcpuload = m_total_process_cpu;
 			}
-			if(m_configuration->get_fake_alerts())
-			{
-				double val = 6;
-				g_logger.log("Faking system_load :" + std::to_string(val) + " (" +
-							 std::to_string(totcpuload) + ')', sinsp_logger::SEV_WARNING);
-				m_metrics->mutable_hostinfo()->set_system_load(val);
-			}
-			else
-			{
-				m_metrics->mutable_hostinfo()->set_system_load(totcpuload / m_proc_stat.m_loads.size());
-			}
+			m_metrics->mutable_hostinfo()->set_system_load(totcpuload / m_proc_stat.m_loads.size());
 
 			if(m_proc_stat.m_loads.size() != 0)
 			{
@@ -3270,18 +3239,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
-			if(m_configuration->get_fake_alerts())
-			{
-				uint32_t val = m_host_metrics.m_swap_memory_total_kb; // fake all swap memory used
-				g_logger.log("Faking swap_memory_usage_kb :" + std::to_string(val) + " (" +
-							 std::to_string((uint32_t)m_host_metrics.m_swap_memory_used_kb) + ')',
-							 sinsp_logger::SEV_WARNING);
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb(val);
-			}
-			else
-			{
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
-			}
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_total_kb((uint32_t)m_host_metrics.m_swap_memory_total_kb);
 			uint32_t avail_mem = (uint32_t)(m_host_metrics.m_swap_memory_total_kb - m_host_metrics.m_swap_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_available_kb(avail_mem);
@@ -3289,45 +3247,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
-			if(m_configuration->get_fake_alerts())
-			{
-				uint64_t val = 10000000;
-				g_logger.log("Faking memory_bytes_available_kb :" + std::to_string(val) + " (" +
-							 std::to_string(m_host_metrics.m_res_memory_avail_kb) + ')',
-							 sinsp_logger::SEV_WARNING);
-				m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(val);
-			}
-			else
-			{
-				m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
-			}
+			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
 
 			// host process counts
 			m_procfs_parser->get_proc_counts(&m_proc_count);
-			if(m_configuration->get_fake_alerts())
-			{
-				uint64_t val = 31;
-				g_logger.log("Faking running_processes :" + std::to_string(val) + " (" +
-							 std::to_string(m_proc_count.m_running) + ')', sinsp_logger::SEV_WARNING);
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_running_processes(val);
-			}
-			else
-			{
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_running_processes(m_proc_count.m_running);
-			}
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_running_processes(m_proc_count.m_running);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_sleeping_processes(m_proc_count.m_sleeping);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_zombie_processes(m_proc_count.m_zombie);
-			if(m_configuration->get_fake_alerts())
-			{
-				uint64_t val = 350;
-				g_logger.log("Faking count_processes :" + std::to_string(val) + " (" +
-							 std::to_string(m_proc_count.m_count) + ')', sinsp_logger::SEV_WARNING);
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(val);
-			}
-			else
-			{
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_proc_count.m_count);
-			}
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_proc_count.m_count);
 
 			if(m_mounted_fs_proxy)
 			{
@@ -3336,17 +3263,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					for(auto it = fs_list->second.begin(); it != fs_list->second.end(); ++it)
 					{
-						if(m_configuration->get_fake_alerts())
-						{
-							uint64_t val = it->get_total_bytes();
-							g_logger.log("Faking used_bytes :" + std::to_string(val) + " (" +
-										 std::to_string(it->get_used_bytes()) + ')', sinsp_logger::SEV_WARNING);
-							it->set_used_bytes(val);
-							val = it->get_total_inodes();
-							g_logger.log("Faking used_inodes :" + std::to_string(val) + " (" +
-										 std::to_string(it->get_used_inodes()) + ')', sinsp_logger::SEV_WARNING);
-							it->set_used_inodes(val);
-						}
 						draiosproto::mounted_fs* fs = m_metrics->add_mounts();
 						it->to_protobuf(fs);
 					}
@@ -4991,17 +4907,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 			sinsp_procfs_parser::update_proc_count(&spc, stat.m_status, stat.m_pid);
 		}
 	}
-	if(m_configuration->get_fake_alerts())
-	{
-		uint64_t val = 31;
-		g_logger.log("Faking running_processes :" + std::to_string(val) + " (" +
-					 std::to_string(spc.m_running) + ')', sinsp_logger::SEV_WARNING);
-		container->mutable_resource_counters()->set_running_processes(val);
-	}
-	else
-	{
-		container->mutable_resource_counters()->set_running_processes(spc.m_running);
-	}
+	container->mutable_resource_counters()->set_running_processes(spc.m_running);
 	container->mutable_resource_counters()->set_sleeping_processes(spc.m_sleeping);
 	container->mutable_resource_counters()->set_zombie_processes(spc.m_zombie);
 	container->mutable_resource_counters()->set_count_processes(spc.m_count);

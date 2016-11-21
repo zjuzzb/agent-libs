@@ -474,8 +474,6 @@ public:
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
 
-	bool m_fake_alerts = false; // for testing only, not documented, not to be used in production
-
 	bool m_falco_baselining_enabled;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
