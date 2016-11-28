@@ -366,7 +366,7 @@ void dragent_configuration::init(Application* app)
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
 	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
 	m_autodrop_enabled =  m_config->get_scalar<bool>("autodrop", "enabled", true);
-	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", true);
+	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
