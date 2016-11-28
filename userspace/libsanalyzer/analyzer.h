@@ -473,11 +473,11 @@ VISIBILITY_PRIVATE
 	double m_total_process_cpu;
 
 	//
-	// The table of aggreagted connections
+	// The table of aggregated connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
 	//
-	// The aggreagted host metrics
+	// The aggregated host metrics
 	//
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;

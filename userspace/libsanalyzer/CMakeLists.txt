@@ -110,6 +110,7 @@ add_library(sanalyzer STATIC
 	scores.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
