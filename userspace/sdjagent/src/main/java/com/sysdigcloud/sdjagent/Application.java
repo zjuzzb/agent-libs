@@ -170,7 +170,6 @@ public class Application {
                     }
                     List<Map<String, Object>> vmList = getMetricsCommand(requestedVMs);
                     Map<String, Object> response_obj = new LinkedHashMap<String, Object>();
-                    response_obj.put("id", cmd_obj.get("id"));
                     response_obj.put("body", vmList);
                     String response = MAPPER.writeValueAsString(response_obj);
                     outqueue.send(response);

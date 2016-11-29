@@ -74,9 +74,9 @@ class jmx_proxy
 public:
 	jmx_proxy();
 
-	void send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& processes);
+	void send_get_metrics(const vector<sinsp_threadinfo*>& processes);
 
-	pair<uint64_t, unordered_map<int, java_process>> read_metrics();
+	unordered_map<int, java_process> read_metrics();
 
 	// This attribute is public because is simply a switch to print
 	// JSON on stdout, does not change object behaviour

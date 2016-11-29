@@ -174,10 +174,9 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	return ret;
 }
 
-void jmx_proxy::send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& processes)
+void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
 {
 	Json::Value command_obj;
-	command_obj["id"] = Json::UInt64(id);
 	command_obj["command"] = "getMetrics";
 	Json::Value body(Json::arrayValue);
 	for(auto tinfo : processes)
@@ -190,9 +189,8 @@ void jmx_proxy::send_get_metrics(uint64_t id, const vector<sinsp_threadinfo*>& p
 	m_outqueue.send(command_data);
 }
 
-pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
+unordered_map<int, java_process> jmx_proxy::read_metrics()
 {
-	uint64_t response_id = 0;
 	unordered_map<int, java_process> processes;
 
 	auto json_data = m_inqueue.receive();
@@ -206,9 +204,8 @@ pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
 		Json::Value json_obj;
 
 		bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
-		if(parse_ok && json_obj.isObject() && json_obj.isMember("id") && json_obj.isMember("body"))
+		if(parse_ok && json_obj.isObject() && json_obj.isMember("body"))
 		{
-			response_id = json_obj["id"].asUInt64();
 			for(const auto& process_data : json_obj["body"])
 			{
 				java_process process(process_data);
@@ -224,7 +221,7 @@ pair<uint64_t, unordered_map<int, java_process>> jmx_proxy::read_metrics()
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics are not ready");
 	}
-	return make_pair(response_id, processes);
+	return processes;
 }
 
 #endif // _WIN32
