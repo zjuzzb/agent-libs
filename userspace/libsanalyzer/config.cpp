@@ -197,7 +197,7 @@ bool sinsp_configuration::get_falco_baselining_enabled() const
 
 void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
 {
-	m_falco_baselining_enabled = true;
+	m_falco_baselining_enabled = enabled;
 }
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
