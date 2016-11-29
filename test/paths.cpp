@@ -816,3 +816,47 @@ TEST_F(sys_call_test, dir_fchdir)
 
 	EXPECT_EQ(12, callnum);
 }
+
+#ifdef __x86_64__
+TEST_F(sys_call_test32, proc_mgmt)
+{
+	string filename = "test_tmpfile";
+	char bcwd[1024];
+
+	getcwd(bcwd, 1024);
+	path_validator vldt(filename, bcwd);
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(false);
+		return tinfo && tinfo->m_comm == "test_helper_32" && m_proc_started_filter(evt);
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		proc test_proc("./test_helper_32", {"proc_mgmt" , filename });
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		vldt.validate(param.m_evt);
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(4, vldt.m_callnum);
+}
+
+
+#endif

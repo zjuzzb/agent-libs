@@ -1079,8 +1079,8 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 					if(callnum != 0)
 					{
-						EXPECT_GT(delta, 90);
-						EXPECT_LT(delta, 110);
+						EXPECT_GT(delta, 90U);
+						EXPECT_LT(delta, 110U);
 					}
 
 					lastcpu = tcpu;
@@ -1166,8 +1166,8 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 					if(callnum > 2)
 					{
-						EXPECT_GT(delta, 0);
-						EXPECT_LT(delta, 110);
+						EXPECT_GT(delta, 0U);
+						EXPECT_LT(delta, 110U);
 					}
 
 					lastcpu = tcpu;
@@ -1187,8 +1187,8 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 					if(callnum > 2)
 					{
-						EXPECT_GT(delta, 0);
-						EXPECT_LT(delta, 110);
+						EXPECT_GT(delta, 0U);
+						EXPECT_LT(delta, 110U);
 					}
 
 					lastcpu1 = tcpu;

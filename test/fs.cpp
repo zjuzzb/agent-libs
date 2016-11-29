@@ -1503,3 +1503,272 @@ TEST_F(sys_call_test, fs_sendfile64)
 	EXPECT_EQ(2, callnum);
 }
 #endif
+
+#ifdef __x86_64__
+TEST_F(sys_call_test32, fs_pread)
+{
+	proc_started_filter test_started_filter;
+	int callnum = 0;
+	int fd = 3;
+	bool pwrite64_succeeded = false;
+	proc test_proc = proc("./test_helper_32", { "pread_pwrite"});
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(false);
+		if(tinfo && tinfo->m_comm == "test_helper_32")
+		{
+			return test_started_filter(evt);
+		}
+		return false;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		Poco::PipeInputStream istr(*get<1>(handle));
+		string buf;
+		int bool_n = 0;
+		istr >> bool_n;
+		pwrite64_succeeded = (bool_n == 1);
+		get<0>(handle).wait();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_WRITE_E)
+		{
+			if(NumberParser::parse(e->get_param_value_str("fd", false)) == fd)
+			{
+				EXPECT_EQ((int)sizeof("ficafica") - 1, NumberParser::parse(e->get_param_value_str("size", false)));
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_WRITE_X)
+		{
+			if(callnum == 1)
+			{
+				EXPECT_EQ((int)sizeof("ficafica") - 1, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ("ficafica", e->get_param_value_str("data"));
+				callnum++;
+			}
+		}
+		if(type == PPME_SYSCALL_PWRITE_E)
+		{
+			if(NumberParser::parse(e->get_param_value_str("fd", false)) == fd)
+			{
+				if(callnum == 2)
+				{
+					EXPECT_EQ((int)sizeof("cazo") - 1, NumberParser::parse(e->get_param_value_str("size", false)));
+					EXPECT_EQ("4", e->get_param_value_str("pos"));
+					callnum++;
+				}
+				else
+				{
+					EXPECT_EQ((int)sizeof("cazo") - 1, NumberParser::parse(e->get_param_value_str("size", false)));
+					EXPECT_EQ("987654321", e->get_param_value_str("pos"));
+					callnum++;
+				}
+			}
+		}
+		else if(type == PPME_SYSCALL_PWRITE_X)
+		{
+			if(callnum == 3)
+			{
+				EXPECT_EQ((int)sizeof("cazo") - 1, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ("cazo", e->get_param_value_str("data"));
+				callnum++;
+			}
+			else
+			{
+				if(pwrite64_succeeded)
+				{
+					EXPECT_EQ((int)sizeof("cazo") - 1, NumberParser::parse(e->get_param_value_str("res", false)));
+				}
+				else
+				{
+					EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
+				}
+				EXPECT_EQ("cazo", e->get_param_value_str("data"));
+				callnum++;
+			}
+		}
+		if(type == PPME_SYSCALL_PREAD_E)
+		{
+			if(callnum == 6)
+			{
+				EXPECT_EQ("32", e->get_param_value_str("size"));
+				EXPECT_EQ("987654321", e->get_param_value_str("pos"));
+				callnum++;
+			}
+			else if(callnum == 8)
+			{
+				EXPECT_EQ("4", e->get_param_value_str("size"));
+				EXPECT_EQ("4", e->get_param_value_str("pos"));
+				callnum++;
+			}
+			else
+			{
+				FAIL();
+			}
+		}
+		else if(type == PPME_SYSCALL_PREAD_X)
+		{
+			if(callnum == 7)
+			{
+				EXPECT_NE("0", e->get_param_value_str("res", false));
+				callnum++;
+			}
+			else if(callnum == 9)
+			{
+				EXPECT_EQ((int)sizeof("cazo") - 1, NumberParser::parse(e->get_param_value_str("res", false)));
+				callnum++;
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(10, callnum);
+}
+
+TEST_F(sys_call_test32, fs_preadv)
+{
+	int callnum = 0;
+	int fd = 3;
+	int fd1 = 3;
+	bool pwritev64_succeeded;
+	bool pwritev64_succeeded2;
+	proc test_proc = proc("./test_helper_32", { "preadv_pwritev"});
+	proc_started_filter test_started_filter;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(false);
+		if(tinfo && tinfo->m_comm == "test_helper_32")
+		{
+			return test_started_filter(evt);
+		}
+		return false;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		Poco::PipeInputStream istr(*get<1>(handle));
+		string buf;
+		int bool_n = 0;
+		istr >> bool_n;
+		pwritev64_succeeded = (bool_n == 1);
+		bool_n = 0;
+		istr >> bool_n;
+		pwritev64_succeeded2 = (bool_n == 1);
+		get<0>(handle).wait();
+	};
+
+	int pwrite1_res, pwrite2_res;
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_PWRITEV_E)
+		{
+			if(callnum == 0)
+			{
+				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
+				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("size")));
+				EXPECT_EQ(987654321, NumberParser::parse64(e->get_param_value_str("pos")));
+				callnum++;
+			}
+			else
+			{
+				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
+				EXPECT_EQ(10, NumberParser::parse(e->get_param_value_str("pos")));
+				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("size")));
+				callnum++;				
+			}
+		}
+		else if(type == PPME_SYSCALL_PWRITEV_X)
+		{
+			if(callnum == 1)
+			{
+				pwrite1_res = NumberParser::parse(e->get_param_value_str("res", false));
+				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
+				callnum++;
+			}
+			else
+			{
+				pwrite2_res = NumberParser::parse(e->get_param_value_str("res", false));
+				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
+				callnum++;			
+			}
+		}
+		else if(type == PPME_SYSCALL_PREADV_E)
+		{
+			if(callnum == 4)
+			{
+				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("fd", false)));
+				EXPECT_EQ(987654321, NumberParser::parse64(e->get_param_value_str("pos")));
+				callnum++;
+			}
+			else
+			{
+				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("fd", false)));
+				EXPECT_EQ(10, NumberParser::parse64(e->get_param_value_str("pos")));
+				callnum++;				
+			}
+		}
+		else if(type == PPME_SYSCALL_PREADV_X)
+		{
+			if(callnum == 3)
+			{
+				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ("aaaaabbbbb", e->get_param_value_str("data"));
+				EXPECT_EQ(30, NumberParser::parse(e->get_param_value_str("size")));
+				callnum++;
+			}
+		}
+
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	if(pwritev64_succeeded)
+	{
+		EXPECT_EQ(15, pwrite1_res);
+	}
+	else
+	{
+		EXPECT_GT(0, pwrite1_res);
+	}
+	if(pwritev64_succeeded2)
+	{
+		EXPECT_EQ(15, pwrite2_res);
+	}
+	else
+	{
+		EXPECT_EQ(-22, pwrite2_res);
+	}
+//	EXPECT_EQ(4, callnum);
+}
+#endif

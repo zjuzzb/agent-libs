@@ -1,3 +1,6 @@
+//
+// Created by Luca Marturana on 20/08/15.
+//
 #define VISIBILITY_PRIVATE
 
 #include "sys_call_test.h"
@@ -27,420 +30,69 @@ using Poco::NumberParser;
 
 #include "sinsp_int.h"
 #include "analyzer_thread.h"
+#include "tcp_client_server.h"
 
-#define SERVER_PORT     3555
-#define SERVER_PORT_STR "3555"
-#define PAYLOAD         "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
-#define BUFFER_LENGTH   sizeof(PAYLOAD)
-#define FALSE           0
-
-typedef enum iotype
+void runtest(iotype iot,
+			 bool use_shutdown = false,
+			 bool use_accept4 = false,
+			 uint32_t ntransactions = 1,
+			 bool exit_no_close = false,
+			 bool ia32_mode = false)
 {
-	READWRITE,
-	SENDRECEIVE,
-	READVWRITEV,
-}iotype;
-
-class tcp_server
-{
-public:
-	tcp_server(iotype iot, 
-		bool wait_for_signal_to_continue = false, 
-		bool use_shutdown = false, 
-		bool use_accept4 = false, 
-		uint32_t ntransactions = 1,
-		bool exit_no_close = false)
+	proc_started_filter client_started_filter;
+	proc_started_filter server_started_filter;
+	auto stringify_bool = [](bool v)
 	{
-		m_iot = iot;
-		m_wait_for_signal_to_continue = wait_for_signal_to_continue;
-		m_use_shutdown = use_shutdown;
-		m_use_accept4 = use_accept4;
-		m_ntransactions = ntransactions;
-		m_exit_no_close = exit_no_close;
-	}
-
-	void run()
-	{
-		int servSock;
-		int clntSock;
-		struct sockaddr_in server_address;
-		struct sockaddr_in client_address;
-		unsigned int client_len;
-		uint32_t j;
-		int port = (m_exit_no_close)? SERVER_PORT + 1 : SERVER_PORT;
-
-		m_tid = syscall(SYS_gettid);
-
-		/* Create socket for incoming connections */
-		if((servSock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-		{
-			perror("socket() failed");
-			return;
-		}
-
-		/* Construct local address structure */
-		memset(&server_address, 0, sizeof(server_address));   /* Zero out structure */
-		server_address.sin_family = AF_INET;                /* Internet address family */
-		server_address.sin_addr.s_addr = htonl(INADDR_ANY); /* Any incoming interface */
-		server_address.sin_port = htons(port);      /* Local port */
-
-		int yes = 1;
-		if(setsockopt(servSock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
-		{
-			FAIL() << "setsockopt() failed";
-		}
-
-		/* Bind to the local address */
-		if(::bind(servSock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-		{
-			FAIL() << "bind() failed";
-			return;
-		}
-		/* Mark the socket so it will listen for incoming connections */
-		if(listen(servSock, 1) < 0)
-		{
-
-			close(servSock);
-			FAIL() << "listen() failed";
-			return;
-		}
-		do
-		{
-			/* Set the size of the in-out parameter */
-			client_len = sizeof(client_address);
-			signal_ready();
-
-			/* Wait for a client to connect */
-			if(m_use_accept4)
-			{
-				if((clntSock = accept4(servSock, (struct sockaddr *) &client_address,
-				                      &client_len, 0)) < 0)
-				{
-					close(servSock);
-					FAIL() << "accept() failed";
-					break;
-				}				
-			}
-			else
-			{
-				if((clntSock = accept(servSock, (struct sockaddr *) &client_address,
-				                      &client_len)) < 0)
-				{
-					close(servSock);
-					FAIL() << "accept() failed";
-					break;
-				}				
-			}
-
-			/* clntSock is connected to a client! */
-			wait_for_continue();
-			char echoBuffer[BUFFER_LENGTH];        /* Buffer for echo string */
-			int recvMsgSize;                    /* Size of received message */
-			for(j = 0; j < m_ntransactions; j++)
-			{
-				if(m_iot == SENDRECEIVE)
-				{
-					if((recvMsgSize = recv(clntSock, echoBuffer, BUFFER_LENGTH, 0)) < 0)
-					{
-						FAIL() << "recv() failed";
-						break;
-					}
-
-					if(send(clntSock, echoBuffer, recvMsgSize, 0) != recvMsgSize)
-					{
-						FAIL() << "send() failed";
-						break;
-					}
-				}
-				else if(m_iot == READWRITE ||
-					m_iot == READVWRITEV)
-				{
-					if((recvMsgSize = read(clntSock, echoBuffer, BUFFER_LENGTH)) < 0)
-					{
-						FAIL() << "recv() failed";
-						break;
-					}
-
-					if(write(clntSock, echoBuffer, recvMsgSize) != recvMsgSize)
-					{
-						FAIL() << "send() failed";
-						break;
-					}
-				}
-			}
-
-			if(m_exit_no_close)
-			{
-				return;
-			}
-
-			if(m_use_shutdown)
-			{
-				ASSERT_EQ(0,shutdown(clntSock, SHUT_WR));
-			}
-			else
-			{
-				close(clntSock);    /* Close client socket */
-			}
-			break;
-		}
-		while(0);
-
-		if(m_use_shutdown)
-		{
-			ASSERT_EQ(0,shutdown(servSock, SHUT_RDWR));
-		}
+		if(v)
+			return "true";
 		else
-		{
-			close(servSock);
-		}
-	}
-
-	void wait_till_ready()
+			return "false";
+	};
+	unsigned callnum = 0;
+	string helper_exe = "./test_helper";
+	if(ia32_mode)
 	{
-		m_ready.wait();
+		helper_exe += "_32";
 	}
-
-	void signal_continue()
-	{
-		m_continue.set();
-	}
-
-	int64_t get_tid()
-	{
-		return m_tid;
-	}
-
-private:
-	void signal_ready()
-	{
-		m_ready.set();
-	}
-
-	void wait_for_continue()
-	{
-		if(m_wait_for_signal_to_continue)
-		{
-			m_continue.wait();
-		}
-	}
-
-	Poco::Event m_ready;
-	Poco::Event m_continue;
-	bool m_wait_for_signal_to_continue;
-	int64_t m_tid;
-	iotype m_iot;
-	bool m_use_shutdown;
-	bool m_use_accept4;
-	uint32_t m_ntransactions;
-	bool m_exit_no_close;
-};
-
-class tcp_client
-{
-public:
-	tcp_client(uint32_t server_ip_address, 
-		iotype iot, 
-		bool on_thread = false, 
-		uint32_t ntransactions = 1,
-		bool exit_no_close = false)
-	{
-		m_server_ip_address = server_ip_address;
-		m_iot = iot;
-		m_on_thread = on_thread;
-		m_ntransactions = ntransactions;
-		m_exit_no_close = exit_no_close;
-	}
-
-	void run()
-	{
-		int sock;
-		struct sockaddr_in server_address;
-		char buffer[BUFFER_LENGTH];
-		int payload_length;
-		int bytes_received;
-		uint32_t j;
-		int port = (m_exit_no_close)? SERVER_PORT + 1: SERVER_PORT;
-
-		m_tid = syscall(SYS_gettid);
-
-		/* Create a reliable, stream socket using TCP */
-		if((sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
-		{
-			FAIL() << "socket() failed";
-			return;
-		}
-
-		/* Construct the server address structure */
-		memset(&server_address, 0, sizeof(server_address));     /* Zero out structure */
-		server_address.sin_family      = AF_INET;             /* Internet address family */
-		server_address.sin_addr.s_addr = m_server_ip_address;   /* Server IP address */
-		server_address.sin_port        = htons(port); /* Server port */
-
-		/* Establish the connection to the server */
-		if(connect(sock, (struct sockaddr *) &server_address, sizeof(server_address)) < 0)
-		{
-			FAIL() << "connect() failed";
-			return;
-		}
-		signal_ready();
-		wait_for_continue();
-		payload_length = strlen(PAYLOAD);          /* Determine input length */
-
-		for(j = 0; j < m_ntransactions; j++)
-		{
-			/* Send the string to the server */
-			if(m_iot == SENDRECEIVE)
-			{
-				if(send(sock, PAYLOAD, payload_length, 0) != payload_length)
-				{
-					close(sock);
-					FAIL() << "send() sent a different number of bytes than expected";
-					return;
-				}
-
-				if((bytes_received = recv(sock, buffer, BUFFER_LENGTH - 1, 0)) <= 0)
-				{
-					close(sock);
-					FAIL() << "recv() failed or connection closed prematurely";
-					return;
-				}
-
-				buffer[bytes_received] = '\0';  /* Terminate the string! */
-				ASSERT_STREQ(PAYLOAD, buffer);
-			}
-			else if(m_iot == READWRITE)
-			{
-				if(write(sock, PAYLOAD, payload_length) != payload_length)
-				{
-					close(sock);
-					FAIL() << "send() sent a different number of bytes than expected";
-					return;
-				}
-
-				if((bytes_received = read(sock, buffer, BUFFER_LENGTH - 1)) <= 0)
-				{
-					close(sock);
-					FAIL() << "recv() failed or connection closed prematurely";
-					return;
-				}
-
-				buffer[bytes_received] = '\0';  /* Terminate the string! */
-				ASSERT_STREQ(PAYLOAD, buffer);
-			}
-			else if(m_iot == READVWRITEV)
-			{
-				string ps(PAYLOAD);
-				int wv_count;
-				char msg1[BUFFER_LENGTH / 3 + 1];
-				char msg2[BUFFER_LENGTH / 3 + 1];
-				char msg3[BUFFER_LENGTH / 3 + 1];
-				struct iovec wv[3];
-
-				memcpy(msg1, ps.substr(0, BUFFER_LENGTH / 3).c_str(), BUFFER_LENGTH / 3);
-				memcpy(msg2, ps.substr(BUFFER_LENGTH / 3, BUFFER_LENGTH * 2 / 3).c_str(), BUFFER_LENGTH / 3);
-				memcpy(msg3, ps.substr(BUFFER_LENGTH * 2 / 3, BUFFER_LENGTH).c_str(), BUFFER_LENGTH / 3);
-
-				wv[0].iov_base = msg1;
-				wv[1].iov_base = msg2;
-				wv[2].iov_base = msg3;
-				wv[0].iov_len  = BUFFER_LENGTH / 3;
-				wv[1].iov_len  = BUFFER_LENGTH / 3;
-				wv[2].iov_len  = BUFFER_LENGTH / 3;
-				wv_count = 3;
-
-				if(writev(sock, wv, wv_count) != payload_length)
-				{
-					close(sock);
-					FAIL() << "send() sent a different number of bytes than expected";
-					return;
-				}
-
-				if((bytes_received = readv(sock, wv, wv_count)) <= 0)
-				{
-					close(sock);
-					FAIL() << "recv() failed or connection closed prematurely";
-					return;
-				}
-			}
-		}
-
-		if(m_exit_no_close)
-		{
-			return;
-		}
-
-		close(sock);
-	}
-
-	void wait_till_ready()
-	{
-		m_ready.wait();
-	}
-
-	void signal_continue()
-	{
-		m_continue.set();
-	}
-
-	int64_t get_tid()
-	{
-		return m_tid;
-	}
-
-private:
-	void signal_ready()
-	{
-		m_ready.set();
-	}
-
-	void wait_for_continue()
-	{
-		if(m_on_thread)
-		{
-			m_continue.wait();
-		}
-	}
-
-	uint32_t m_server_ip_address;
-	iotype m_iot;
-	Poco::Event m_ready;
-	Poco::Event m_continue;
-	int64_t m_tid;
-	bool m_on_thread;
-	uint32_t m_ntransactions;
-	bool m_exit_no_close;
-};
-
-void runtest(iotype iot, 
-	bool use_shutdown = false, 
-	bool use_accept4 = false, 
-	uint32_t ntransactions = 1,
-	bool exit_no_close = false)
-{
-	int callnum = 0;
-	Poco::Thread server_thread;
-	tcp_server server(iot, 
-		false, 
-		use_shutdown, 
-		use_accept4, 
-		ntransactions,
-		exit_no_close);
-	uint32_t server_ip_address = get_server_address();
+	auto iot_s = to_string(iot);
+	auto ntransactions_s = to_string(ntransactions);
+	proc server_proc(helper_exe, {"tcp_server",
+							iot_s.c_str(),
+							"false",
+							stringify_bool(use_shutdown),
+							stringify_bool(use_accept4),
+							ntransactions_s.c_str(),
+							stringify_bool(exit_no_close)});
+	int64_t server_pid;
+	int64_t client_pid;
 	struct in_addr server_in_addr;
 	server_in_addr.s_addr = get_server_address();
 	char *server_address = inet_ntoa(server_in_addr);
 	string sport;
 	int state = 0;
 	int ctid;
-
+	proc test_proc(helper_exe, {"tcp_client", server_address,
+							iot_s.c_str(),
+							stringify_bool(false), ntransactions_s,
+							stringify_bool(exit_no_close)});
 	//
 	// FILTER
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		int tid = getpid();
-		return evt->get_tid() == server.get_tid() || evt->get_tid() == tid;
+		auto tinfo = evt->get_thread_info(false);
+		if(tinfo && tinfo->m_exe == helper_exe)
+		{
+			if(tinfo->m_pid == server_pid)
+			{
+				return server_started_filter(evt);
+			}
+			else if(tinfo->m_pid == client_pid)
+			{
+				return client_started_filter(evt);
+			}
+		}
+		return false;
 	};
 
 	//
@@ -448,26 +100,21 @@ void runtest(iotype iot,
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		Poco::RunnableAdapter<tcp_server> runnable(server, &tcp_server::run);
-		server_thread.start(runnable);
-		server.wait_till_ready();
+		auto server_handle = start_process(&server_proc);
+		server_pid = get<0>(server_handle).id();
 
-		tcp_client client(server_ip_address, 
-			iot, 
-			false, 
-			ntransactions,
-			exit_no_close);
-		client.run();
-		ctid = client.get_tid();
-		server_thread.join(100);
+		auto client_handle = start_process(&test_proc);
+		client_pid = get<0>(client_handle).id();
+		get<0>(client_handle).wait();
+		get<0>(server_handle).wait();
 
 		// We use a random call to tee to signal that we're done
-		tee(-1, -1, 0, 0);		
+		tee(-1, -1, 0, 0);
 	};
 
 	function<void (const callback_param&) > log_param = [](const callback_param& param)
 	{
-//		cerr << param.m_evt->get_name() << endl;
+		//cerr << param.m_evt->get_name() << endl;
 	};
 
 	//
@@ -589,13 +236,13 @@ void runtest(iotype iot,
 		// recvfrom() and sets the address to NULL
 		//
 		if(evt->get_type() == PPME_SOCKET_SEND_E ||
-		        evt->get_type() == PPME_SOCKET_RECV_E ||
-		        evt->get_type() == PPME_SOCKET_SENDTO_E ||
-		        evt->get_type() == PPME_SOCKET_RECVFROM_E || 
-		        evt->get_type() == PPME_SYSCALL_READ_E ||
-		        evt->get_type() == PPME_SYSCALL_WRITE_E ||
-		        evt->get_type() == PPME_SYSCALL_READV_E ||
-		        evt->get_type() == PPME_SYSCALL_WRITEV_E)
+		   evt->get_type() == PPME_SOCKET_RECV_E ||
+		   evt->get_type() == PPME_SOCKET_SENDTO_E ||
+		   evt->get_type() == PPME_SOCKET_RECVFROM_E ||
+		   evt->get_type() == PPME_SYSCALL_READ_E ||
+		   evt->get_type() == PPME_SYSCALL_WRITE_E ||
+		   evt->get_type() == PPME_SYSCALL_READV_E ||
+		   evt->get_type() == PPME_SYSCALL_WRITEV_E)
 		{
 			if(evt->get_type() == PPME_SOCKET_RECVFROM_E)
 			{
@@ -624,17 +271,23 @@ void runtest(iotype iot,
 			{
 				EXPECT_EQ(SERVER_PORT_STR, dst[1]);
 			}
-			
+
 			log_param(param);
 			callnum++;
 		}
-		else if(evt->get_type() == PPME_SOCKET_RECV_X ||
-			evt->get_type() == PPME_SOCKET_RECVFROM_X ||
-			evt->get_type() == PPME_SYSCALL_READ_X)
+		else if((evt->get_type() == PPME_SOCKET_RECV_X ||
+				evt->get_type() == PPME_SOCKET_RECVFROM_X ||
+				evt->get_type() == PPME_SYSCALL_READ_X ||
+				evt->get_type() == PPME_SYSCALL_READV_X ||
+				evt->get_type() == PPME_SYSCALL_WRITEV_X ||
+				evt->get_type() == PPME_SYSCALL_WRITE_X ||
+				evt->get_type() == PPME_SOCKET_SENDTO_X ||
+				evt->get_type() == PPME_SOCKET_SEND_X) &&
+				evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 		{
 			if(evt->get_type() == PPME_SOCKET_RECVFROM_X)
 			{
-				EXPECT_EQ("NULL", evt->get_param_value_str("tuple"));				
+				EXPECT_EQ("NULL", evt->get_param_value_str("tuple"));
 			}
 
 			EXPECT_EQ(PAYLOAD, evt->get_param_value_str("data"));
@@ -642,7 +295,7 @@ void runtest(iotype iot,
 			log_param(param);
 			callnum++;
 		}
-		else if(evt->get_type() == PPME_SYSCALL_READV_X)
+		/*else if(evt->get_type() == PPME_SYSCALL_READV_X)
 		{
 			string ds = evt->get_param_value_str("data");
 			//ds = ds.substr(0, BUFFER_LENGTH / 3);
@@ -652,8 +305,19 @@ void runtest(iotype iot,
 			log_param(param);
 			callnum++;
 		}
+		else if(evt->get_type() == PPME_SYSCALL_WRITEV_X ||
+				evt->get_type() == PPME_SYSCALL_WRITE_X)
+		{
+			string ds = evt->get_param_value_str("data");
+			//ds = ds.substr(0, BUFFER_LENGTH / 3);
 
-		if((PPME_SYSCALL_CLOSE_X == evt->get_type() || PPME_SOCKET_SHUTDOWN_X == evt->get_type()) && 0 == state && evt->get_tid() == server.get_tid())
+			EXPECT_EQ(ds, evt->get_param_value_str("data"));
+
+			log_param(param);
+			callnum++;
+		}*/
+
+		if((PPME_SYSCALL_CLOSE_X == evt->get_type() || PPME_SOCKET_SHUTDOWN_X == evt->get_type()) && 0 == state && evt->get_tid() == server_pid)
 		{
 			if(exit_no_close)
 			{
@@ -670,7 +334,7 @@ void runtest(iotype iot,
 			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
 			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 			ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
-				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+					  ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 		if(!(use_shutdown || exit_no_close))
@@ -679,7 +343,7 @@ void runtest(iotype iot,
 			{
 				if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
-					sinsp_threadinfo* ti = param.m_inspector->get_thread(server.get_tid(), false, true);
+					sinsp_threadinfo* ti = param.m_inspector->get_thread(server_pid, false, true);
 					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
 					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
 
@@ -690,7 +354,7 @@ void runtest(iotype iot,
 					//printf("****%d\n", (int)ti->m_ainfo->m_metrics.m_io_net.m_bytes);
 				}
 			}
-		}		
+		}
 	};
 
 
@@ -704,11 +368,11 @@ void runtest(iotype iot,
 	configuration.set_known_ports(known_ports);
 
 	ASSERT_NO_FATAL_FAILURE( { event_capture::run(test, callback, filter, configuration);});
-	
+
 // #ifdef __i386__
 // 	EXPECT_EQ(8, callnum);
 // #else
-	EXPECT_EQ(4 + ntransactions * 6, (uint32_t)callnum);
+	EXPECT_EQ(4 + ntransactions * 8, callnum);
 // #endif
 }
 
@@ -754,7 +418,7 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 	tcp_server server(SENDRECEIVE, true);
 	uint32_t server_ip_address = get_server_address();
 	tcp_client client(server_ip_address,SENDRECEIVE,true);
-	
+
 	Poco::RunnableAdapter<tcp_server> server_runnable(server, &tcp_server::run);
 	Poco::RunnableAdapter<tcp_client> client_runnable(client, &tcp_client::run);
 	int state = 0;
@@ -795,7 +459,7 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 			ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
 			ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 			ASSERT_EQ(ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_in,
-				ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
+					  ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 		}
 
 	};
@@ -814,3 +478,46 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 	ASSERT_EQ(1, state);
 
 }
+
+#ifdef __x86_64__
+/* void runtest(iotype iot,
+			 bool use_shutdown = false,
+			 bool use_accept4 = false,
+			 uint32_t ntransactions = 1,
+			 bool exit_no_close = false,
+			 bool ia32_mode = false) */
+TEST_F(sys_call_test32, tcp_client_server)
+{
+	runtest(SENDRECEIVE, false, false, 1, false, true);
+}
+
+TEST_F(sys_call_test32, tcp_client_server_read_write)
+{
+	runtest(READWRITE, false, false, 1, false, true);
+}
+
+TEST_F(sys_call_test32, tcp_client_server_readv_writev)
+{
+	runtest(READVWRITEV, false, false, 1, false, true);
+}
+
+TEST_F(sys_call_test32, tcp_client_server_shutdown)
+{
+	runtest(SENDRECEIVE,true, false, 1, false, true);
+}
+
+TEST_F(sys_call_test32, tcp_client_server_accept4)
+{
+	runtest(SENDRECEIVE, false, true, 1, false, true);
+}
+
+TEST_F(sys_call_test32, tcp_client_server_multiple)
+{
+	runtest(SENDRECEIVE, false, false, 10, false, true);
+}
+
+TEST_F(sys_call_test32, tcp_client_server_noclose)
+{
+	runtest(SENDRECEIVE, false, false, 1, true, true);
+}
+#endif

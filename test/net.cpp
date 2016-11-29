@@ -173,10 +173,11 @@ TEST_F(sys_call_test, net_web_requests)
 				{
 					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
 					{
+						SCOPED_TRACE(nconns);
 						nconns++;
 					}
 				}
-
+				SCOPED_TRACE("evaluating assertions");
 				sinsp_threadinfo* ti = evt->get_thread_info();
 				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_in);
 				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_in);
@@ -784,10 +785,10 @@ TEST(sinsp_procfs_parser, test_read_network_interfaces_stats)
 	sinsp_procfs_parser parser(1, 1024, true);
 
 	auto stats = parser.read_network_interfaces_stats();
-	EXPECT_EQ(stats.first, 0);
-	EXPECT_EQ(stats.second, 0);
+	EXPECT_EQ(stats.first, 0U);
+	EXPECT_EQ(stats.second, 0U);
 	system("curl https://google.com > /dev/null 2> /dev/null");
 	stats = parser.read_network_interfaces_stats();
-	EXPECT_GT(stats.first, 0);
-	EXPECT_GT(stats.second, 0);
+	EXPECT_GT(stats.first, 0U);
+	EXPECT_GT(stats.second, 0U);
 }

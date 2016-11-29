@@ -62,6 +62,7 @@ function configure_rpm_repo {
 	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
 
 	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
@@ -82,6 +83,7 @@ function configure_debian_repo {
 	DEB_BASEARCH=$(dpkg --print-architecture)
 
 	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+	
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
@@ -129,6 +131,7 @@ function configure_tgz_repo {
 	BASEARCH=$(uname -m)
 
 	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
+	
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
