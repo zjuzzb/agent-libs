@@ -39,8 +39,15 @@ void falco_events::generate_user_event(unique_ptr<falco_engine::rule_result> &re
 		shared_ptr<sinsp_evt_formatter> formatter;
 		if(match == m_formatter_cache.end())
 		{
-			formatter = make_shared<sinsp_evt_formatter>(m_inspector, res->format);
-			m_formatter_cache[res->rule] = formatter;
+			try {
+
+				formatter = make_shared<sinsp_evt_formatter>(m_inspector, res->format);
+				m_formatter_cache[res->rule] = formatter;
+			}
+			catch (sinsp_exception& e)
+			{
+				throw falco_exception("Invalid output format '" + res->format + "': '" + string(e.what()) + "'");
+			}
 		}
 		else
 		{
