@@ -96,10 +96,8 @@ message resource_categories {
     optional uint32 cpu_quota_used_pct = 28;
     optional uint32 swap_memory_total_kb = 29; // swapped memory total (as kb).
     optional uint32 swap_memory_available_kb = 30;  // swapped memory available (as kb).
-    optional uint64 running_processes = 31;  // running processes
-    optional uint64 sleeping_processes = 32;  // sleeping processes
-    optional uint64 zombie_processes = 33;   // zombie processes
-    optional uint64 count_processes = 34;  // total processes
+    optional uint64 count_processes = 31;  // total processes
+    optional uint64 proc_start_count = 32; // started processes
 }
 
 message connection_categories {
@@ -470,6 +468,7 @@ message process {
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded
     optional uint64 start_count = 21; // start processes
+    optional uint64 count_processes = 22; // number of instances with same command line
 }
 
 //

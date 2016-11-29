@@ -468,9 +468,18 @@ VISIBILITY_PRIVATE
 	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
 	sinsp_proc_stat m_proc_stat;
-	sinsp_proc_count m_proc_count;
+
 	// Sum of the cpu usage of all the processes
 	double m_total_process_cpu;
+
+	//
+	// Process counts
+	//
+	int m_proc_host_count = 0;
+	int m_proc_start_host_count = 0;
+	std::unordered_map<std::string, int> m_proc_container_count;
+	std::unordered_map<std::string, int> m_proc_start_container_count;
+	std::unordered_map<size_t, int> m_proc_program_count;
 
 	//
 	// The table of aggregated connections
