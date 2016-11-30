@@ -1406,7 +1406,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	m_proc_start_host_count = 0;
 	m_proc_container_count.clear();
 	m_proc_start_container_count.clear();
-	m_proc_program_count.clear();
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
@@ -1613,11 +1612,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 				m_proc_container_count[tinfo->m_container_id]++;
 			}
-			if(m_proc_program_count.find(tinfo->m_program_hash) == m_proc_program_count.end())
-			{
-				m_proc_program_count.insert({tinfo->m_program_hash, 0});
-			}
-			m_proc_program_count[tinfo->m_program_hash]++;
 			if(ainfo->m_called_execve)
 			{
 				m_proc_start_host_count++;
@@ -2219,7 +2213,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 //					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 //						m_sampling_ratio);
 				proc->set_start_count(procinfo->m_start_count);
-				if(m_proc_program_count.find(tinfo->m_program_hash) == m_proc_program_count.end() || m_proc_program_count[tinfo->m_program_hash] == 0)
+				if(procinfo->m_proc_program_count.find(tinfo->m_program_hash) == procinfo->m_proc_program_count.end() ||
+				   procinfo->m_proc_program_count[tinfo->m_program_hash] == 0)
 				{
 					std::string cmdline;
 					for(auto arg = tinfo->m_args.begin(); arg != tinfo->m_args.end(); ++arg) { cmdline += *arg; }
@@ -2227,7 +2222,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				}
 				else
 				{
-					proc->set_count_processes(m_proc_program_count[tinfo->m_program_hash]);
+					proc->set_count_processes(procinfo->m_proc_program_count[tinfo->m_program_hash]);
 				}
 			}
 #endif // ANALYZER_EMITS_PROCESSES

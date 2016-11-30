@@ -479,7 +479,6 @@ VISIBILITY_PRIVATE
 	int m_proc_start_host_count = 0;
 	std::unordered_map<std::string, int> m_proc_container_count;
 	std::unordered_map<std::string, int> m_proc_start_container_count;
-	std::unordered_map<size_t, int> m_proc_program_count;
 
 	//
 	// The table of aggregated connections
