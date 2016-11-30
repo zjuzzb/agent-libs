@@ -468,7 +468,7 @@ message process {
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded
     optional uint64 start_count = 21; // start processes
-    optional uint64 count_processes = 22; // number of instances with same command line
+    optional uint64 count_processes = 23; // number of instances with same command line
 }
 
 //

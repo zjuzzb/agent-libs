@@ -5187,10 +5187,10 @@ class process : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 start_count() const;
   inline void set_start_count(::google::protobuf::uint64 value);
 
-  // optional uint64 count_processes = 22;
+  // optional uint64 count_processes = 23;
   inline bool has_count_processes() const;
   inline void clear_count_processes();
-  static const int kCountProcessesFieldNumber = 22;
+  static const int kCountProcessesFieldNumber = 23;
   inline ::google::protobuf::uint64 count_processes() const;
   inline void set_count_processes(::google::protobuf::uint64 value);
 
@@ -18139,7 +18139,7 @@ inline void process::set_start_count(::google::protobuf::uint64 value) {
   start_count_ = value;
 }
 
-// optional uint64 count_processes = 22;
+// optional uint64 count_processes = 23;
 inline bool process::has_count_processes() const {
   return (_has_bits_[0] & 0x00010000u) != 0;
 }

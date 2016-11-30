@@ -2428,7 +2428,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "all_errors\030\t \001(\0132#.draiosproto.counter_s"
     "yscall_errors\022\'\n\006protos\030\024 \001(\0132\027.draiospr"
     "oto.proto_info\022\023\n\013start_count\030\025 \001(\004\022\027\n\017c"
-    "ount_processes\030\026 \001(\004\"\?\n\007program\022&\n\010proci"
+    "ount_processes\030\027 \001(\004\"\?\n\007program\022&\n\010proci"
     "nfo\030\001 \002(\0132\024.draiosproto.process\022\014\n\004pids\030"
     "\002 \003(\004\"T\n\tipv4tuple\022\013\n\003sip\030\001 \002(\r\022\013\n\003dip\030\002"
     " \002(\r\022\r\n\005sport\030\003 \002(\r\022\r\n\005dport\030\004 \002(\r\022\017\n\007l4"
@@ -17529,12 +17529,12 @@ bool process::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(176)) goto parse_count_processes;
+        if (input->ExpectTag(184)) goto parse_count_processes;
         break;
       }
 
-      // optional uint64 count_processes = 22;
-      case 22: {
+      // optional uint64 count_processes = 23;
+      case 23: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_count_processes:
@@ -17655,9 +17655,9 @@ void process::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(21, this->start_count(), output);
   }
 
-  // optional uint64 count_processes = 22;
+  // optional uint64 count_processes = 23;
   if (has_count_processes()) {
-    ::google::protobuf::internal::WireFormatLite::WriteUInt64(22, this->count_processes(), output);
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(23, this->count_processes(), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -17764,9 +17764,9 @@ void process::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(21, this->start_count(), target);
   }
 
-  // optional uint64 count_processes = 22;
+  // optional uint64 count_processes = 23;
   if (has_count_processes()) {
-    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(22, this->count_processes(), target);
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(23, this->count_processes(), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -17888,7 +17888,7 @@ int process::ByteSize() const {
 
   }
   if (_has_bits_[16 / 32] & (0xffu << (16 % 32))) {
-    // optional uint64 count_processes = 22;
+    // optional uint64 count_processes = 23;
     if (has_count_processes()) {
       total_size += 2 +
         ::google::protobuf::internal::WireFormatLite::UInt64Size(
