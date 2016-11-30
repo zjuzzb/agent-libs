@@ -1980,6 +1980,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
+	auto jmx_limit = m_configuration->get_jmx_limit();
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -2090,7 +2091,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 #ifndef _WIN32
 			// Add JMX metrics
-			if (m_jmx_proxy)
+			if (m_jmx_proxy && jmx_limit > 0)
 			{
 				auto jmx_metrics_it = m_jmx_metrics.end();
 				for(auto pid_it = procinfo->m_program_pids.begin();
@@ -2103,7 +2104,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 					auto java_proto = proc->mutable_protos()->mutable_java();
-					jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling);
+					jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, &jmx_limit);
+					if(jmx_limit == 0)
+					{
+						g_logger.format(sinsp_logger::SEV_WARNING, "JMX metrics reached limit, remaining ones will be dropped");
+					}
 				}
 			}
 			if(m_app_proxy)

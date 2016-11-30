@@ -270,15 +270,12 @@ public:
 	}
 
 #ifndef _WIN32
-	inline void enable_jmx(bool print_json)
+	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
 	{
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
-	}
-
-	inline void set_jmx_sampling(unsigned int value)
-	{
-		m_jmx_sampling = value;
+		m_jmx_sampling = sampling;
+		m_configuration->set_jmx_limit(limit);
 	}
 
 	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);

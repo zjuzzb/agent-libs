@@ -21,7 +21,7 @@ public class MonitoredVM {
     private static final Logger LOGGER = Logger.getLogger(MonitoredVM.class.getName());
     private static final long BEAN_REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes in ms
     private static final long RECONNECTION_TIMEOUT_MS = 1 * 60 * 1000; // 1 minute
-    private static final int BEANS_LIMIT = 100;
+    private static final int BEANS_LIMIT = 300;
     private static final ObjectMapper MAPPER = new ObjectMapper();
     /**
      * Default hostname used to connect to JMX, "localhost" does not play well with containers

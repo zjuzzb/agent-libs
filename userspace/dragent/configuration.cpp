@@ -68,6 +68,7 @@ dragent_configuration::dragent_configuration()
 	m_statsd_enabled = true;
 	m_statsd_limit = 100;
 	m_sdjagent_enabled = true;
+	m_jmx_limit = 300;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
 	m_auto_config = true;
@@ -412,6 +413,7 @@ void dragent_configuration::init(Application* app)
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
+	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 300);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
 	// Filter out disabled checks
 	unordered_set<string> disabled_checks;
@@ -678,6 +680,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
+	g_log->information("jmx.limit: " + NumberFormatter::format(m_jmx_limit));
 	g_log->information("java detected: " + bool_as_text(java_present()));
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);

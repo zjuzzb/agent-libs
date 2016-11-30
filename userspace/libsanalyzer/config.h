@@ -130,7 +130,8 @@ public:
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
-
+	unsigned get_jmx_limit() const;
+	void set_jmx_limit(unsigned limit);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -198,6 +199,8 @@ private:
 
     std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
+
+	unsigned m_jmx_limit;
 };
 
 #endif // HAS_ANALYZER

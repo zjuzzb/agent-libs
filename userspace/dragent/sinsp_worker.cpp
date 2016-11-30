@@ -41,8 +41,7 @@ void sinsp_worker::init()
 
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
-		m_analyzer->enable_jmx(m_configuration->m_print_protobuf);
-		m_analyzer->set_jmx_sampling(m_configuration->m_jmx_sampling);
+		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling, m_configuration->m_jmx_limit);
 	}
 
 	if(m_statsite_pipes)

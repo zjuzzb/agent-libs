@@ -683,4 +683,14 @@ void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t eve
 	m_docker_event_filter = event_filter;
 }
 
+unsigned sinsp_configuration::get_jmx_limit() const
+{
+	return m_jmx_limit;
+}
+
+void sinsp_configuration::set_jmx_limit(unsigned limit)
+{
+	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
+}
+
 #endif // HAS_ANALYZER
