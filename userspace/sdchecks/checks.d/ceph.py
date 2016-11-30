@@ -18,7 +18,7 @@ class Ceph(AgentCheck):
     """ Collect metrics and events from ceph """
 
     DEFAULT_CEPH_CMD = '/usr/bin/ceph'
-    NEEDED_NS = ( 'mnt', 'uts', )
+    NEEDED_NS = ( 'mnt', 'uts' )
     NAMESPACE = "ceph"
 
     def _collect_raw(self, ceph_cmd, instance):
