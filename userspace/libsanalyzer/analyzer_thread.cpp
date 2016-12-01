@@ -287,11 +287,12 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	if(other->m_tinfo->is_main_thread())
 	{
-		if(m_procinfo->m_proc_program_count.find(other->m_tinfo->m_program_hash) == m_procinfo->m_proc_program_count.end())
+		std::unordered_map<size_t, int>& ppc = m_procinfo->m_proc_program_count;
+		if(ppc.find(other->m_tinfo->m_program_hash) == ppc.end())
 		{
-			m_procinfo->m_proc_program_count.insert({other->m_tinfo->m_program_hash, 0});
+			ppc.insert({other->m_tinfo->m_program_hash, 0});
 		}
-		m_procinfo->m_proc_program_count[other->m_tinfo->m_program_hash]++;
+		ppc[other->m_tinfo->m_program_hash]++;
 	}
 }
 

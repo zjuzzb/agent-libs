@@ -473,14 +473,6 @@ VISIBILITY_PRIVATE
 	double m_total_process_cpu;
 
 	//
-	// Process counts
-	//
-	int m_proc_host_count = 0;
-	int m_proc_start_host_count = 0;
-	std::unordered_map<std::string, int> m_proc_container_count;
-	std::unordered_map<std::string, int> m_proc_start_container_count;
-
-	//
 	// The table of aggregated connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;

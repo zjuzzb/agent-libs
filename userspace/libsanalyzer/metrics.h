@@ -314,10 +314,44 @@ public:
 	int64_t m_swap_memory_total_kb;
 	double m_cpuload; // for containers
 
+	void reset_process_counts();
+	void increment_process_count();
+	void increment_process_start_count();
+	int get_process_count();
+	int get_process_start_count();
+
 private:
 	double m_tot_capacity_score;
 	double m_tot_stolen_capacity_score;
 	uint32_t m_tot_server_transactions;
+	int m_proc_host_count = 0;
+	int m_proc_start_host_count = 0;
 };
+
+inline void sinsp_host_metrics::reset_process_counts()
+{
+	m_proc_host_count = 0;
+	m_proc_start_host_count = 0;
+}
+
+inline void sinsp_host_metrics::increment_process_count()
+{
+	++m_proc_host_count;
+}
+
+inline void sinsp_host_metrics::increment_process_start_count()
+{
+	++m_proc_start_host_count;
+}
+
+inline int sinsp_host_metrics::get_process_count()
+{
+	return m_proc_host_count;
+}
+
+inline int sinsp_host_metrics::get_process_start_count()
+{
+	return m_proc_start_host_count;
+}
 
 #endif // HAS_ANALYZER

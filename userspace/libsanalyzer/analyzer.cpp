@@ -1402,10 +1402,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// First pass of the list of threads: emit the metrics (if defined)
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
-	m_proc_host_count = 0;
-	m_proc_start_host_count = 0;
-	m_proc_container_count.clear();
-	m_proc_start_container_count.clear();
+	m_host_metrics.reset_process_counts();
+	for(auto& c : m_containers)
+	{
+		c.second.m_proc_container_count.clear();
+		c.second.m_proc_start_container_count.clear();
+	}
+
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
@@ -1603,25 +1606,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Use first found thread of a program to collect all metrics
 		if(emplaced.second)
 		{
-			++m_proc_host_count;
+			m_host_metrics.increment_process_count();
 			if(container)
 			{
-				if(m_proc_container_count.find(tinfo->m_container_id) == m_proc_container_count.end())
+				analyzer_container_state::proc_count_map_t& pcc = container->m_proc_container_count;
+				if(pcc.find(tinfo->m_container_id) == pcc.end())
 				{
-					m_proc_container_count.insert({tinfo->m_container_id, 0});
+					pcc.insert({tinfo->m_container_id, 0});
 				}
-				m_proc_container_count[tinfo->m_container_id]++;
+				pcc[tinfo->m_container_id]++;
 			}
 			if(ainfo->m_called_execve)
 			{
-				m_proc_start_host_count++;
+				m_host_metrics.increment_process_start_count();
 				if(container)
 				{
-					if(m_proc_start_container_count.find(tinfo->m_container_id) == m_proc_start_container_count.end())
+					analyzer_container_state::proc_count_map_t& psc = container->m_proc_start_container_count;
+					if(psc.find(tinfo->m_container_id) == psc.end())
 					{
-						m_proc_start_container_count.insert({tinfo->m_container_id, 0});
+						psc.insert({tinfo->m_container_id, 0});
 					}
-					m_proc_start_container_count[tinfo->m_container_id]++;
+					psc[tinfo->m_container_id]++;
 				}
 			}
 
@@ -3285,8 +3290,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
 			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_proc_host_count);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_proc_start_count(m_proc_start_host_count);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_host_metrics.get_process_count());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_proc_start_count(m_host_metrics.get_process_start_count());
 
 			if(m_mounted_fs_proxy)
 			{
@@ -4930,22 +4935,26 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 
-	if(m_proc_container_count.find(container_id) == m_proc_container_count.end() || m_proc_container_count[container_id] == 0)
+	analyzer_container_state::proc_count_map_t& pcc = it_analyzer->second.m_proc_container_count;
+	if(pcc.find(container_id) == pcc.end() || pcc[container_id] == 0)
 	{
-		g_logger.log("Number of processes for container [" + container_id + "] not found or zero.", sinsp_logger::SEV_WARNING);
+		g_logger.log("Number of processes for container [" + container_id + "] not found or zero.",
+					 sinsp_logger::SEV_WARNING);
 	}
 	else
 	{
-		container->mutable_resource_counters()->set_count_processes(m_proc_container_count[container_id]);
+		container->mutable_resource_counters()->set_count_processes(pcc[container_id]);
 	}
 
-	if(m_proc_start_container_count.find(container_id) == m_proc_start_container_count.end())
+	analyzer_container_state::proc_count_map_t& psc = it_analyzer->second.m_proc_start_container_count;
+	if(psc.find(container_id) == psc.end())
 	{
-		g_logger.log("Number of processes for container [" + container_id + "] not found.", sinsp_logger::SEV_WARNING);
+		g_logger.log("Number of process starts for container [" + container_id + "] not found.",
+					 sinsp_logger::SEV_WARNING);
 	}
 	else
 	{
-		container->mutable_resource_counters()->set_proc_start_count(m_proc_start_container_count[container_id]);
+		container->mutable_resource_counters()->set_proc_start_count(psc[container_id]);
 	}
 
 	const auto cpu_shares = it->second.m_cpu_shares;
