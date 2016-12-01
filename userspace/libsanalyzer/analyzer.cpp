@@ -2093,6 +2093,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			// Add JMX metrics
 			if (m_jmx_proxy && jmx_limit > 0)
 			{
+				unsigned jmx_proc_limit = std::min(jmx_limit, JMX_METRICS_HARD_LIMIT_PER_PROC);
 				auto jmx_metrics_it = m_jmx_metrics.end();
 				for(auto pid_it = procinfo->m_program_pids.begin();
 						pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
@@ -2104,7 +2105,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 					auto java_proto = proc->mutable_protos()->mutable_java();
-					jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, &jmx_limit);
+					jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit);
 					if(jmx_limit == 0)
 					{
 						g_logger.format(sinsp_logger::SEV_WARNING, "JMX metrics reached limit, remaining ones will be dropped");

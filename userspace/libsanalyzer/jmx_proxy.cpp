@@ -99,16 +99,17 @@ java_bean::java_bean(const Json::Value& json):
 	}
 }
 
-void java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned *jmx_limit) const
+unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit) const
 {
 	proto_bean->mutable_name()->assign(m_name);
-
-	for(auto it = m_attributes.cbegin(); it != m_attributes.cend() && *jmx_limit > 0; ++it)
+	unsigned emitted_attributes = 0;
+	for(auto it = m_attributes.cbegin(); it != m_attributes.cend() && limit > emitted_attributes; ++it)
 	{
 		draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
 		it->to_protobuf(attribute_proto, sampling);
-		*jmx_limit -= 1;
+		emitted_attributes += 1;
 	}
+	return emitted_attributes;
 }
 
 java_process::java_process(const Json::Value& json):
@@ -121,16 +122,16 @@ java_process::java_process(const Json::Value& json):
 	}
 }
 
-void java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned *jmx_limit) const
+unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit) const
 {
-
 	protobuf->set_process_name(m_name);
-
-	for(auto bean_it = m_beans.cbegin(); bean_it != m_beans.cend() && *jmx_limit > 0; ++bean_it)
+	unsigned emitted_attributes = 0;
+	for(auto bean_it = m_beans.cbegin(); bean_it != m_beans.cend() && limit > emitted_attributes; ++bean_it)
 	{
 		draiosproto::jmx_bean* protobean = protobuf->add_beans();
-		bean_it->to_protobuf(protobean, sampling, jmx_limit);
+		emitted_attributes += bean_it->to_protobuf(protobean, sampling, limit-emitted_attributes);
 	}
+	return emitted_attributes;
 }
 
 jmx_proxy::jmx_proxy():

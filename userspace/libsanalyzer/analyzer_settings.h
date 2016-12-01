@@ -219,6 +219,7 @@ static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
 static const auto APP_METRICS_LIMIT = 300;
 static const unsigned JMX_METRICS_HARD_LIMIT = 3000;
+static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;
 
 static const uint32_t DROP_SCHED_ANALYZER_THRESHOLD = 1000;
 

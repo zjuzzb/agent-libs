@@ -34,7 +34,7 @@ public:
 		return m_name;
 	}
 
-	void to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned *jmx_limit) const;
+	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit) const;
 private:
 	explicit java_bean(const Json::Value&);
 	string m_name;
@@ -59,7 +59,7 @@ public:
 		return m_beans;
 	}
 
-	void to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned *jmx_limit) const;
+	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit) const;
 
 private:
 	explicit java_process(const Json::Value&);
