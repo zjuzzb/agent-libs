@@ -3848,12 +3848,17 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 	if(m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
 	{
-		falco_engine::rule_result *resp = m_falco_engine->process_event(evt);
-		if(resp && m_falco_events)
-		{
-			unique_ptr<falco_engine::rule_result> res(resp);
+		try {
 
-			m_falco_events->generate_user_event(res);
+			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt);
+			if(res && m_falco_events)
+			{
+				m_falco_events->generate_user_event(res);
+			}
+		}
+		catch (falco_exception& e)
+		{
+			g_logger.log("Error processing event against falco engine: " + string(e.what()));
 		}
 	}
 
