@@ -4836,6 +4836,11 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		container->set_image(it->second.m_image);
 	}
 
+	if(!it->second.m_imageid.empty())
+	{
+		container->set_image_id(it->second.m_imageid);
+	}
+
 	if(!it->second.m_mesos_task_id.empty())
 	{
 		container->set_mesos_task_id(it->second.m_mesos_task_id);
