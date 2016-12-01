@@ -540,6 +540,10 @@ jmx:
       pattern: "elasticsearch"
 
 app_checks:
+  - name: ceph
+    interval: 30
+    pattern:
+      comm: ceph-mon
   - name: redis
     check_module: redisdb
     pattern: 
