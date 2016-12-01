@@ -96,14 +96,13 @@ TEST_F(sys_call_test, container_cgroups)
 			{
 				cgroups2.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first, sinsp_tinfo.m_cgroups[j].second));
 			}
-
-			ASSERT_TRUE(cgroups1.size() >= cgroups2.size());
+			ASSERT_GE(cgroups1.size(), cgroups2.size());
 			for(map<string, string>::iterator it2 = cgroups2.begin(); it2 != cgroups2.end(); ++it2)
 			{
 				map<string, string>::iterator it1 = cgroups1.find(it2->first);
-				ASSERT_TRUE(it1 != cgroups1.end());
-				ASSERT_TRUE(it1->first == it2->first);
-				ASSERT_TRUE(it1->second == it2->second);
+				ASSERT_NE(it1, cgroups1.end()) << it2->first << " not found on cgroups1";
+				EXPECT_EQ(it1->first, it2->first);
+				EXPECT_EQ(it1->second, it2->second);
 			}
 
 			done = true;

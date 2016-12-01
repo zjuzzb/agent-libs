@@ -435,12 +435,16 @@ typedef struct
 
 static int clone_callback_1(void *arg)
 {
-    clone_params *cp;
+	clone_params *cp;
 
-    cp = (clone_params *) arg;   /* Cast arg to true form */
-	ctid = getpid();
-    close(cp->fd);
-    return 0;
+	cp = (clone_params *) arg;   /* Cast arg to true form */
+	// getpid() is cached by glibc, usually is invalidated
+	// correctly in case of fork() or clone() but since we are
+	// using a weird clone() here something goes wrong with
+	// recent version of glibc
+	ctid = syscall(SYS_getpid);
+	close(cp->fd);
+	return 0;
 }
 
 TEST_F(sys_call_test, forking_clone_fs)
@@ -588,7 +592,7 @@ TEST_F(sys_call_test, forking_clone_fs)
 
 	if(callnum != 6 && callnum != 7)
 	{
-		FAIL();
+		FAIL() << "callnum=" << callnum;
 	}
 }
 

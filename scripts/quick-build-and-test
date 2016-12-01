@@ -12,7 +12,7 @@ make -C agent/build/debug VERBOSE=1
 make -C sysdig/build/debug VERBOSE=1
 insmod sysdig/driver/sysdigcloud-probe.ko
 cd agent/build/debug/test
-./tests
+./tests ${GTEST_ARGS:=}
 cd -
 insmod sysdig/driver/sysdig-probe.ko
 cd sysdig/build/debug/userspace/sysdig
@@ -27,7 +27,7 @@ make -C agent/build/release VERBOSE=1
 make -C sysdig/build/release VERBOSE=1
 insmod sysdig/driver/sysdigcloud-probe.ko
 cd agent/build/release/test
-./tests
+./tests ${GTEST_ARGS:=}
 cd -
 insmod sysdig/driver/sysdig-probe.ko
 cd sysdig/build/release/userspace/sysdig

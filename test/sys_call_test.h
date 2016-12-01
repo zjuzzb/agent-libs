@@ -1,3 +1,6 @@
+#ifndef SYS_CALL_TEST_H
+#define	SYS_CALL_TEST_H
+
 
 #include "event_capture.h"
 #include <event.h>
@@ -7,9 +10,6 @@
 #include <gtest.h>
 #include <tuple>
 #include "ppm_events_public.h"
-
-#ifndef SYS_CALL_TEST_H
-#define	SYS_CALL_TEST_H
 
 #define UNIT_TEST_BINARY
 
@@ -28,6 +28,25 @@ uint32_t parse_ipv4_addr(const char *dotted_notation);
 uint32_t get_server_address();
 tuple<Poco::ProcessHandle,Poco::Pipe*> start_process(proc* process);
 
+class proc_started_filter
+{
+public:
+    bool operator()(sinsp_evt *evt)
+    {
+        if(!m_child_ready && evt->get_type() == PPME_SYSCALL_WRITE_X)
+        {
+            auto buffer = evt->get_param_value_str("data", false);
+            if(buffer.find("STARTED") != string::npos)
+            {
+                m_child_ready = true;
+            }
+        }
+        return m_child_ready;
+    }
+private:
+    bool m_child_ready{false};
+};
+
 class sys_call_test : public testing::Test
 {
 
@@ -42,7 +61,14 @@ protected:
     
     __pid_t m_tid;
     event_filter_t m_tid_filter;
+    proc_started_filter m_proc_started_filter;
 };
+
+#ifdef __x86_64__
+
+using sys_call_test32 = sys_call_test;
+
+#endif
 
 class args
 {

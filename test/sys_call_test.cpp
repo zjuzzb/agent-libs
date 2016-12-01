@@ -94,12 +94,18 @@ bool ends_with(std::string const &s, std::string const &ending)
 
 void wait_for_process_start(Poco::Pipe &pipe)
 {
-	Poco::PipeInputStream istr(pipe);
-	std::string s;
-	while(s != "STARTED")
+	auto start_s = "STARTED\n";
+	char buf[8];
+	// python writes the message on two write events
+	// the readBytes returns 7 bytes instead of 8
+	auto read = pipe.readBytes(buf, 8);
+	if (read == 7) {
+		pipe.readBytes(buf+read, 1);
+	} else if (read != 8)
 	{
-		s += (char) istr.get();
+		FAIL() << "Cannot read STARTED message, read=";
 	}
+	ASSERT_EQ(0, strncmp((const char*)buf, (const char*)start_s, 8)) << "Error starting process";
 }
 
 void wait_for_all(process_handles_t &handles)
@@ -693,7 +699,9 @@ TEST_F(sys_call_test, mmap)
 				EXPECT_EQ("PROT_READ|PROT_WRITE|PROT_EXEC", e->get_param_value_str("prot"));
 				EXPECT_EQ("MAP_SHARED|MAP_PRIVATE|MAP_ANONYMOUS|MAP_DENYWRITE", e->get_param_value_str("flags"));
 #ifdef __LP64__
-				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+				// It looks that starting from kernel 4.9, fd is -1 also on 64bit
+				EXPECT_TRUE(e->get_param_value_str("fd", false) == "4294967295" ||
+							e->get_param_value_str("fd", false) == "-1");
 #else
 				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
 #endif
@@ -712,7 +720,8 @@ TEST_F(sys_call_test, mmap)
 				EXPECT_EQ("PROT_READ|PROT_WRITE", e->get_param_value_str("prot"));
 				EXPECT_EQ("MAP_PRIVATE|MAP_ANONYMOUS", e->get_param_value_str("flags"));
 #ifdef __LP64__
-				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+				EXPECT_TRUE(e->get_param_value_str("fd", false) == "4294967295" ||
+							e->get_param_value_str("fd", false) == "-1");
 #else
 				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
 #endif
@@ -773,7 +782,8 @@ TEST_F(sys_call_test, quotactl_ko)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return m_tid_filter(evt);
+		return evt->get_type() == PPME_SYSCALL_QUOTACTL_X ||
+			evt->get_type() == PPME_SYSCALL_QUOTACTL_E;
 	};
 
 	//
@@ -832,15 +842,15 @@ TEST_F(sys_call_test, quotactl_ok)
 	int callnum = 0;
 
 	// Clean environment
-	system("umount /tmp/testquotamnt");
-	system("rm -r /tmp/testquotactl /tmp/testquotamnt");
+	auto ret = system("umount /tmp/testquotamnt");
+	ret = system("rm -r /tmp/testquotactl /tmp/testquotamnt");
 	// Setup a tmpdisk to test quotas
 	char command[] = "dd if=/dev/zero of=/tmp/testquotactl bs=1M count=200 &&\n"
 						"echo y | mkfs.ext4 -q /tmp/testquotactl &&\n"
 						"mkdir -p /tmp/testquotamnt &&\n"
 						"mount -o usrquota,grpquota,loop=/dev/loop0 /tmp/testquotactl /tmp/testquotamnt &&\n"
 						"quotacheck -cug /tmp/testquotamnt";
-	int ret = system(command);
+	ret = system(command);
 	if (ret != 0)
 	{
 		// If we don't have quota utilities, skip this test
@@ -851,7 +861,8 @@ TEST_F(sys_call_test, quotactl_ok)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return m_tid_filter(evt);
+		return evt->get_type() == PPME_SYSCALL_QUOTACTL_X ||
+			evt->get_type() == PPME_SYSCALL_QUOTACTL_E;
 	};
 
 	//
@@ -936,7 +947,7 @@ TEST_F(sys_call_test, quotactl_ok)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(8, callnum);
 }
-/*
+
 TEST_F(sys_call_test, getsetresuid_and_gid)
 {
 	static const uint32_t test_uid = 5454;
@@ -945,14 +956,14 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 	uint32_t uids[3];
 	uint32_t gids[3];
 	// Clean environment
-	system("userdel testsetresuid");
-	system("groupdel testsetresgid");
-	usleep(200);
+	//system("userdel testsetresuid");
+	//system("groupdel testsetresgid");
+	//usleep(200);
 	// Setup a tmpdisk to test quotas
-	char command[] = "useradd -u 5454 testsetresuid &&\n"
-						"groupadd -g 6565 testsetresgid";
-	int ret = system(command);
-	ASSERT_EQ(0, ret);
+	//char command[] = "useradd -u 5454 testsetresuid &&\n"
+	//					"groupadd -g 6565 testsetresgid";
+	//int ret = system(command);
+	//ASSERT_EQ(0, ret);
 	//
 	// FILTER
 	//
@@ -966,8 +977,10 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		setresuid(test_uid, -1, -1);
-		setresgid(test_gid, -1, -1);
+		auto res = setresuid(test_uid, -1, -1);
+		EXPECT_EQ(0, res);
+		res = setresgid(test_gid, -1, -1);
+		EXPECT_EQ(0, res);
 		getresuid(uids,uids+1,uids+2);
 		getresgid(gids,gids+1,gids+2);
 	};
@@ -983,7 +996,7 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 		{
 			++callnum;
 			EXPECT_EQ("5454", e->get_param_value_str("ruid", false));
-			EXPECT_EQ("testsetresuid", e->get_param_value_str("ruid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("ruid"));
 			EXPECT_EQ("-1", e->get_param_value_str("euid", false));
 			EXPECT_EQ("<NONE>", e->get_param_value_str("euid"));
 			EXPECT_EQ("-1", e->get_param_value_str("suid", false));
@@ -997,7 +1010,7 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 		{
 			++callnum;
 			EXPECT_EQ("6565", e->get_param_value_str("rgid", false));
-			EXPECT_EQ("testsetresgid", e->get_param_value_str("rgid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("rgid"));
 			EXPECT_EQ("-1", e->get_param_value_str("egid", false));
 			EXPECT_EQ("<NONE>", e->get_param_value_str("egid"));
 			EXPECT_EQ("-1", e->get_param_value_str("sgid", false));
@@ -1014,7 +1027,7 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 			++callnum;
 			EXPECT_EQ("0", e->get_param_value_str("res", false));
 			EXPECT_EQ("5454", e->get_param_value_str("ruid", false));
-			EXPECT_EQ("testsetresuid", e->get_param_value_str("ruid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("ruid"));
 			EXPECT_EQ("0", e->get_param_value_str("euid", false));
 			EXPECT_EQ("root", e->get_param_value_str("euid"));
 			EXPECT_EQ("0", e->get_param_value_str("suid", false));
@@ -1024,7 +1037,7 @@ TEST_F(sys_call_test, getsetresuid_and_gid)
 			++callnum;
 			EXPECT_EQ("0", e->get_param_value_str("res", false));
 			EXPECT_EQ("6565", e->get_param_value_str("rgid", false));
-			EXPECT_EQ("testsetresgid", e->get_param_value_str("rgid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("rgid"));
 			EXPECT_EQ("0", e->get_param_value_str("egid", false));
 			EXPECT_EQ("root", e->get_param_value_str("egid"));
 			EXPECT_EQ("0", e->get_param_value_str("sgid", false));
@@ -1040,12 +1053,12 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 	static const uint32_t test_gid = 6566;
 	int callnum = 0;
 	// Clean environment
-	system("groupdel getsetuid_and_gid");
-	usleep(200);
+	//system("groupdel getsetuid_and_gid");
+	//usleep(200);
 	// Setup a tmpdisk to test quotas
-	char command[] = "groupadd -g 6566 getsetuid_and_gid";
-	int ret = system(command);
-	ASSERT_EQ(0, ret);
+	//char command[] = "groupadd -g 6566 getsetuid_and_gid";
+	//int ret = system(command);
+	//ASSERT_EQ(0, ret);
 	//
 	// FILTER
 	//
@@ -1059,8 +1072,10 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		setuid(0);
-		setgid(test_gid);
+		auto res = setuid(0);
+		EXPECT_EQ(0, res);
+		res = setgid(test_gid);
+		EXPECT_EQ(0, res);
 		getuid();
 		geteuid();
 		getgid();
@@ -1088,7 +1103,7 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 		case PPME_SYSCALL_SETGID_E:
 			++callnum;
 			EXPECT_EQ("6566", e->get_param_value_str("gid", false));
-			EXPECT_EQ("getsetuid_and_gid", e->get_param_value_str("gid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("gid"));
 			break;
 		case PPME_SYSCALL_SETGID_X:
 			++callnum;
@@ -1107,12 +1122,12 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 		case PPME_SYSCALL_GETGID_X:
 			++callnum;
 			EXPECT_EQ("6566", e->get_param_value_str("gid", false));
-			EXPECT_EQ("getsetuid_and_gid", e->get_param_value_str("gid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("gid"));
 			break;
 		case PPME_SYSCALL_GETEGID_X:
 			++callnum;
 			EXPECT_EQ("6566", e->get_param_value_str("egid", false));
-			EXPECT_EQ("getsetuid_and_gid", e->get_param_value_str("egid"));
+			EXPECT_EQ("<NA>", e->get_param_value_str("egid"));
 			break;
 		case PPME_SYSCALL_GETUID_E:
 		case PPME_SYSCALL_GETEUID_E:
@@ -1124,4 +1139,681 @@ TEST_F(sys_call_test, getsetuid_and_gid)
 	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(12, callnum);
-}*/
+}
+
+TEST_F(sys_call_test, ppoll_timeout)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() == PPME_SYSCALL_PPOLL_E ||
+				evt->get_type() == PPME_SYSCALL_PPOLL_X;
+	};
+
+	run_callback_t test = [](sinsp* inspector)
+	{
+		proc helper_proc { "./test_helper", { "ppoll_timeout", }};
+		auto handle = start_process(&helper_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_PPOLL_E)
+		{
+			//
+			// stdin and stdout can be a file or a fifo depending
+			// on how the tests are invoked
+			//
+			string fds = e->get_param_value_str("fds");
+			EXPECT_EQ("3:p1 4:p4", fds);
+			EXPECT_EQ("1000000", e->get_param_value_str("timeout", false));
+			EXPECT_EQ("SIGHUP SIGCHLD", e->get_param_value_str("sigmask", false));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_PPOLL_X)
+		{
+			int64_t res = NumberParser::parse(e->get_param_value_str("res"));
+			
+			EXPECT_GT(res, 0);
+			EXPECT_LE(res, 2);
+
+			string fds = e->get_param_value_str("fds");
+
+			switch(res)
+			{
+				case 1:
+					EXPECT_EQ("4:p4", fds);
+					break;
+				case 2:
+					//
+					// On EC2 called from jenkins stdin returns POLLHUP
+					//
+					EXPECT_TRUE(fds == "0:f1 1:f4" || fds == "0:p21 1:p4" || fds == "0:p20 1:p4");
+					break;
+				default:
+					FAIL();
+			}
+
+			callnum++;
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
+
+#ifdef __x86_64__
+
+TEST_F(sys_call_test32, execve_ia32_emulation)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() == PPME_SYSCALL_EXECVE_16_E ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_16_X;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto ret = system("./resources/execve32 ./resources/execve ./resources/execve32");
+		EXPECT_EQ(0, ret);
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		auto tinfo = e->get_thread_info(true);
+		//printf("%s Type is %u\n", e->get_thread_info(true)->m_exe.c_str(), type);
+		if (type == PPME_SYSCALL_EXECVE_16_E)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ(tinfo->m_comm, "tests");
+				break;
+			case 3:
+				EXPECT_EQ(tinfo->m_comm, "sh");
+				break;
+			case 5:
+				EXPECT_EQ(tinfo->m_comm, "execve32");
+				break;
+			case 7:
+				EXPECT_EQ(tinfo->m_comm, "execve");
+				break;
+			}
+		}
+		else if ( type == PPME_SYSCALL_EXECVE_16_X)
+		{
+			++callnum;
+			EXPECT_EQ("0", e->get_param_value_str("res", false));
+			auto comm = e->get_param_value_str("comm", false);
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ(comm, "sh");
+				break;
+			case 4:
+				EXPECT_EQ(comm, "execve32");
+				break;
+			case 6:
+				EXPECT_EQ(comm, "execve");
+				break;
+			case 8:
+				EXPECT_EQ(comm, "execve32");
+				break;
+			}
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(8, callnum);
+}
+
+TEST_F(sys_call_test32, failing_execve)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() == PPME_SYSCALL_EXECVE_16_E ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_16_X;
+	};
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto ret = system("./resources/execve32_fail");
+		ASSERT_TRUE(ret > 0);
+		ret = system("./resources/execve32 ./fail");
+		ASSERT_TRUE(ret > 0);
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		auto tinfo = e->get_thread_info(true);
+		if (type == PPME_SYSCALL_EXECVE_16_E)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ(tinfo->m_comm, "tests");
+				break;
+			case 3:
+				EXPECT_EQ(tinfo->m_comm, "sh");
+				break;
+			case 5:
+				EXPECT_EQ(tinfo->m_comm, "tests");
+				break;
+			case 7:
+				EXPECT_EQ(tinfo->m_comm, "sh");
+				break;
+			case 9:
+				EXPECT_EQ(tinfo->m_comm, "execve32");
+				break;
+			}
+		}
+		else if ( type == PPME_SYSCALL_EXECVE_16_X)
+		{
+			++callnum;
+
+			auto res = e->get_param_value_str("res", false);
+			auto comm = e->get_param_value_str("comm", false);
+			auto exe = e->get_param_value_str("exe", false);
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("0", res);
+				EXPECT_EQ(comm, "sh");
+				break;
+			case 4:
+				EXPECT_EQ("-2", res);
+				EXPECT_EQ(comm, "sh");
+				EXPECT_EQ(exe, "./resources/execve32_fail");
+				break;
+			case 6:
+				EXPECT_EQ("0", res);
+				EXPECT_EQ(comm, "sh");
+				break;
+			case 8:
+				EXPECT_EQ("0", res);
+				EXPECT_EQ(comm, "execve32");
+				EXPECT_EQ(exe, "./resources/execve32");
+				break;
+			case 10:
+				EXPECT_EQ("-2", res);
+				EXPECT_EQ(comm, "execve32");
+				EXPECT_EQ(exe, "./fail");
+				break;
+			}
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(10, callnum);
+}
+
+TEST_F(sys_call_test32, mmap)
+{
+	int callnum = 0;
+	int errno2;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(false);
+		return tinfo && tinfo->m_comm == "test_helper_32" && m_proc_started_filter(evt);
+	};
+
+	void* p;
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		proc test_proc("./test_helper_32", {"mmap_test", });
+		auto handle = start_process(&test_proc);
+		Poco::PipeInputStream istr(*get<1>(handle));
+		istr >> errno2;
+		istr >> p;
+		get<0>(handle).wait();
+	};
+
+	uint32_t enter_vmsize;
+	uint32_t enter_vmrss;
+	uint32_t exit_vmsize;
+	uint32_t exit_vmrss;
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_MUNMAP_E)
+		{
+			callnum++;
+
+			enter_vmsize = e->get_thread_info(false)->m_vmsize_kb;
+			enter_vmrss = e->get_thread_info(false)->m_vmrss_kb;
+
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ("50", e->get_param_value_str("addr"));
+				EXPECT_EQ("300", e->get_param_value_str("length"));
+				break;
+			case 7:
+			{
+				uint64_t addr = *((uint64_t*) e->get_param_value_raw("addr")->m_val);
+	#ifdef __LP64__
+				EXPECT_EQ((uint64_t) p, addr);
+	#else
+				EXPECT_EQ(((uint32_t) p), addr);
+	#endif
+				EXPECT_EQ("1003520", e->get_param_value_str("length"));
+				break;
+			}
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+		else if(type == PPME_SYSCALL_MUNMAP_X)
+		{
+			callnum++;
+
+			exit_vmsize = *((uint32_t*) e->get_param_value_raw("vm_size")->m_val);
+			exit_vmrss = *((uint32_t*) e->get_param_value_raw("vm_rss")->m_val);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmsize_kb, exit_vmsize);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmrss_kb, exit_vmrss);
+
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("EINVAL", e->get_param_value_str("res"));
+				EXPECT_EQ("-22", e->get_param_value_str("res", false));
+				break;
+			case 8:
+				EXPECT_EQ("0", e->get_param_value_str("res"));
+				EXPECT_GT(enter_vmsize, exit_vmsize + 500);
+				EXPECT_GE(enter_vmrss, enter_vmrss);
+				break;
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+		else if(type == PPME_SYSCALL_MMAP_E || type == PPME_SYSCALL_MMAP2_E)
+		{
+			callnum++;
+
+			enter_vmsize = e->get_thread_info(false)->m_vmsize_kb;
+			enter_vmrss = e->get_thread_info(false)->m_vmrss_kb;
+
+			switch(callnum)
+			{
+			case 3:
+				EXPECT_EQ("0", e->get_param_value_str("addr"));
+				EXPECT_EQ("0", e->get_param_value_str("length"));
+				EXPECT_EQ("PROT_READ|PROT_WRITE|PROT_EXEC", e->get_param_value_str("prot"));
+				EXPECT_EQ("MAP_SHARED|MAP_PRIVATE|MAP_ANONYMOUS|MAP_DENYWRITE", e->get_param_value_str("flags"));
+	#ifdef __LP64__
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+	#else
+				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
+	#endif
+				if(type == PPME_SYSCALL_MMAP_E)
+				{
+					EXPECT_EQ("0", e->get_param_value_str("offset"));
+				}
+				else
+				{
+					EXPECT_EQ("0", e->get_param_value_str("pgoffset"));
+				}
+				break;
+			case 5:
+				EXPECT_EQ("0", e->get_param_value_str("addr"));
+				EXPECT_EQ("1003520", e->get_param_value_str("length"));
+				EXPECT_EQ("PROT_READ|PROT_WRITE", e->get_param_value_str("prot"));
+				EXPECT_EQ("MAP_PRIVATE|MAP_ANONYMOUS", e->get_param_value_str("flags"));
+	#ifdef __LP64__
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+	#else
+				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
+	#endif
+				if(type == PPME_SYSCALL_MMAP_E)
+				{
+					EXPECT_EQ("0", e->get_param_value_str("offset"));
+				}
+				else
+				{
+					EXPECT_EQ("0", e->get_param_value_str("pgoffset"));
+				}
+				break;
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+		else if(type == PPME_SYSCALL_MMAP_X || type == PPME_SYSCALL_MMAP2_X)
+		{
+			callnum++;
+
+			exit_vmsize = *((uint32_t*) e->get_param_value_raw("vm_size")->m_val);
+			exit_vmrss = *((uint32_t*) e->get_param_value_raw("vm_rss")->m_val);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmsize_kb, exit_vmsize);
+			EXPECT_EQ(e->get_thread_info(false)->m_vmrss_kb, exit_vmrss);
+
+			switch(callnum)
+			{
+			case 4:
+			{
+				uint64_t res = *((uint64_t*) e->get_param_value_raw("res")->m_val);
+				EXPECT_EQ(-errno2, (int64_t) res);
+				break;
+			}
+			case 6:
+			{
+				uint64_t res = *((uint64_t*) e->get_param_value_raw("res")->m_val);
+				EXPECT_EQ((uint64_t) p, res);
+				EXPECT_GT(exit_vmsize, enter_vmsize + 500);
+				EXPECT_GE(exit_vmrss, enter_vmrss);
+				break;
+			}
+			default:
+				EXPECT_TRUE(false);
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(8, callnum);
+}
+
+TEST_F(sys_call_test32, quotactl_ko)
+{
+	int callnum = 0;
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() == PPME_SYSCALL_QUOTACTL_X ||
+			evt->get_type() == PPME_SYSCALL_QUOTACTL_E;
+	};
+
+	//
+	// TEST CODE
+	//
+	proc helper { "./test_helper_32", { "quotactl_ko", }};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&helper);
+		get<0>(handle).wait();
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		if (type == PPME_SYSCALL_QUOTACTL_E)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ("Q_QUOTAON", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				EXPECT_EQ("QFMT_VFS_V0", e->get_param_value_str("quota_fmt"));
+				break;
+			case 3:
+				EXPECT_EQ("Q_QUOTAOFF", e->get_param_value_str("cmd"));
+				EXPECT_EQ("GRPQUOTA", e->get_param_value_str("type"));
+			}
+		}
+		else if ( type == PPME_SYSCALL_QUOTACTL_X)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("-2", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/xxx", e->get_param_value_str("special"));
+				EXPECT_EQ("/quota.user", e->get_param_value_str("quotafilepath"));
+				break;
+			case 4:
+				EXPECT_EQ("-2", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/xxx", e->get_param_value_str("special"));
+			}
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(4, callnum);
+}
+
+TEST_F(sys_call_test32, quotactl_ok)
+{
+	int callnum = 0;
+
+	// Clean environment
+	auto ret = system("umount /tmp/testquotamnt");
+	ret = system("rm -r /tmp/testquotactl /tmp/testquotamnt");
+	// Setup a tmpdisk to test quotas
+	char command[] = "dd if=/dev/zero of=/tmp/testquotactl bs=1M count=200 &&\n"
+						"echo y | mkfs.ext4 -q /tmp/testquotactl &&\n"
+						"mkdir -p /tmp/testquotamnt &&\n"
+						"mount -o usrquota,grpquota,loop=/dev/loop0 /tmp/testquotactl /tmp/testquotamnt &&\n"
+						"quotacheck -cug /tmp/testquotamnt";
+	ret = system(command);
+	if (ret != 0)
+	{
+		// If we don't have quota utilities, skip this test
+		return;
+	}
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() == PPME_SYSCALL_QUOTACTL_X ||
+			evt->get_type() == PPME_SYSCALL_QUOTACTL_E;
+	};
+
+	//
+	// TEST CODE
+	//
+	proc helper_proc { "./test_helper_32", { "quotactl_ok", }};
+	struct dqblk mydqblk, otherdqblk;
+	struct dqinfo mydqinfo, otherdqinfo;
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&helper_proc);
+		auto pipe = get<1>(handle);
+		
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_bhardlimit, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_bsoftlimit, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_curspace, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_ihardlimit, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_isoftlimit, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_btime, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_itime, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqinfo.dqi_bgrace, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		EXPECT_EQ(pipe->readBytes(&mydqinfo.dqi_igrace, sizeof(uint64_t)), (int)sizeof(uint64_t));
+		get<0>(handle).wait();
+	};
+
+	//
+	// OUTPUT VALIDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		if (type == PPME_SYSCALL_QUOTACTL_E)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 1:
+				EXPECT_EQ("Q_QUOTAON", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				EXPECT_EQ("QFMT_VFS_V0", e->get_param_value_str("quota_fmt"));
+				break;
+			case 3:
+				EXPECT_EQ("Q_GETQUOTA", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				EXPECT_EQ("0", e->get_param_value_str("id"));
+				break;
+			case 5:
+				EXPECT_EQ("Q_GETINFO", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				break;
+			case 7:
+				EXPECT_EQ("Q_QUOTAOFF", e->get_param_value_str("cmd"));
+				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
+				break;
+			}
+		}
+		else if ( type == PPME_SYSCALL_QUOTACTL_X)
+		{
+			++callnum;
+			switch(callnum)
+			{
+			case 2:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				EXPECT_EQ("/tmp/testquotamnt/aquota.user", e->get_param_value_str("quotafilepath"));
+				break;
+			case 4:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				otherdqblk.dqb_bhardlimit = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_bhardlimit")->m_val);
+				otherdqblk.dqb_bsoftlimit = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_bsoftlimit")->m_val);
+				otherdqblk.dqb_curspace = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_curspace")->m_val);
+				otherdqblk.dqb_ihardlimit = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_ihardlimit")->m_val);
+				otherdqblk.dqb_isoftlimit = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_isoftlimit")->m_val);
+				otherdqblk.dqb_btime = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_btime")->m_val);
+				otherdqblk.dqb_itime = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqb_itime")->m_val);
+				break;
+			case 6:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				otherdqinfo.dqi_bgrace = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqi_bgrace")->m_val);
+				otherdqinfo.dqi_igrace = *reinterpret_cast<uint64_t*>(e->get_param_value_raw("dqi_igrace")->m_val);
+				break;
+			case 8:
+				EXPECT_EQ("0", e->get_param_value_str("res", false));
+				EXPECT_EQ("/dev/loop0", e->get_param_value_str("special"));
+				break;
+			}
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(8, callnum);
+	EXPECT_EQ(otherdqblk.dqb_bhardlimit, mydqblk.dqb_bhardlimit);
+	EXPECT_EQ(otherdqblk.dqb_bsoftlimit, mydqblk.dqb_bsoftlimit);
+	EXPECT_EQ(otherdqblk.dqb_curspace, mydqblk.dqb_curspace);
+	EXPECT_EQ(otherdqblk.dqb_ihardlimit, mydqblk.dqb_ihardlimit);
+	EXPECT_EQ(otherdqblk.dqb_isoftlimit, mydqblk.dqb_isoftlimit);
+	EXPECT_EQ(otherdqblk.dqb_btime, mydqblk.dqb_btime);
+	EXPECT_EQ(otherdqblk.dqb_itime, mydqblk.dqb_itime);
+	EXPECT_EQ(otherdqinfo.dqi_bgrace, mydqinfo.dqi_bgrace);
+	EXPECT_EQ(otherdqinfo.dqi_igrace, mydqinfo.dqi_igrace);
+}
+
+TEST_F(sys_call_test32, ppoll_timeout)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(false);
+		return (evt->get_type() == PPME_SYSCALL_PPOLL_E ||
+				evt->get_type() == PPME_SYSCALL_PPOLL_X) &&
+			tinfo != nullptr && tinfo->m_comm == "test_helper_32";
+	};
+
+	run_callback_t test = [](sinsp* inspector)
+	{
+		proc helper_proc { "./test_helper_32", { "ppoll_timeout", }};
+		auto handle = start_process(&helper_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_PPOLL_E)
+		{
+			//
+			// stdin and stdout can be a file or a fifo depending
+			// on how the tests are invoked
+			//
+			string fds = e->get_param_value_str("fds");
+			EXPECT_EQ("3:p1 4:p4", fds);
+			EXPECT_EQ("1000000", e->get_param_value_str("timeout", false));
+			EXPECT_EQ("SIGHUP SIGCHLD", e->get_param_value_str("sigmask", false));
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_PPOLL_X)
+		{
+			int64_t res = NumberParser::parse(e->get_param_value_str("res"));
+			
+			EXPECT_GT(res, 0);
+			EXPECT_LE(res, 2);
+
+			string fds = e->get_param_value_str("fds");
+
+			switch(res)
+			{
+				case 1:
+					EXPECT_EQ("4:p4", fds);
+					break;
+				case 2:
+					//
+					// On EC2 called from jenkins stdin returns POLLHUP
+					//
+					EXPECT_TRUE(fds == "0:f1 1:f4" || fds == "0:p21 1:p4" || fds == "0:p20 1:p4");
+					break;
+				default:
+					FAIL();
+			}
+
+			callnum++;
+		}
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
+#endif

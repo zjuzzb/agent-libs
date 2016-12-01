@@ -43,7 +43,7 @@ TEST(statsd_metric, parse_counter)
 {
 	auto metric = statsd_metric();
 	metric.parse_line("counts.mycounter#xxx,yy|42.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("mycounter", metric.name());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric.type());
 	EXPECT_DOUBLE_EQ(42.0, metric.value());
@@ -52,14 +52,14 @@ TEST(statsd_metric, parse_counter)
 
 	metric = statsd_metric();
 	metric.parse_line("counts.mycounter|42.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("mycounter", metric.name());
 	EXPECT_DOUBLE_EQ(42.0, metric.value());
 	EXPECT_EQ(statsd_metric::type_t::COUNT, metric.type());
 
 	metric = statsd_metric();
 	metric.parse_line("counts.mycounter.amazing|42.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("mycounter.amazing", metric.name());
 }
 
@@ -68,7 +68,7 @@ TEST(statsd_metric, parser_histogram)
 	auto metric = statsd_metric();
 	metric.parse_line("timers.mytime.sum|6681.000000|1427796784\n");
 	metric.parse_line("timers.mytime.median|106.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("mytime", metric.name());
 	EXPECT_DOUBLE_EQ(6681.0, metric.sum());
 	EXPECT_DOUBLE_EQ(106.0, metric.median());
@@ -93,7 +93,7 @@ TEST(statsd_metric, parser_gauge)
 {
 	auto metric = statsd_metric();
 	metric.parse_line("gauges.mygauge|2.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("mygauge", metric.name());
 	EXPECT_DOUBLE_EQ(2.0, metric.value());
 	EXPECT_EQ("", metric.container_id());
@@ -103,13 +103,13 @@ TEST(statsd_metric, parser_edge_cases)
 {
 	auto metric = statsd_metric();
 	metric.parse_line("gauges.mygauge#|2.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("mygauge", metric.name());
 	EXPECT_DOUBLE_EQ(2.0, metric.value());
 
 	metric = statsd_metric();
 	metric.parse_line("gauges.#|2.000000|1427796784\n");
-	EXPECT_EQ(1427796784, metric.timestamp());
+	EXPECT_EQ(1427796784U, metric.timestamp());
 	EXPECT_EQ("", metric.name());
 	EXPECT_DOUBLE_EQ(2.0, metric.value());
 }
@@ -122,8 +122,8 @@ TEST(statsite_proxy, parser)
 	statsite_proxy proxy(make_pair(input_fd, output_file));
 
 	auto ret = proxy.read_metrics();
-	EXPECT_EQ(10, ret.at("").size());
-	EXPECT_EQ(10, ret.at("3ce9120d8307").size());
+	EXPECT_EQ(10U, ret.at("").size());
+	EXPECT_EQ(10U, ret.at("3ce9120d8307").size());
 
 	set<string> reference_set;
 	for(unsigned j = 1; j < 11; ++j)
