@@ -73,7 +73,7 @@ void sinsp_procinfo::clear()
 	m_protostate.clear();
 	m_fd_count = 0;
 	m_start_count = 0;
-	m_proc_program_count = 0;
+	m_proc_count = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -287,7 +287,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	if(other->m_tinfo->is_main_thread())
 	{
-		m_procinfo->m_proc_program_count++;
+		m_procinfo->m_proc_count++;
 	}
 }
 
