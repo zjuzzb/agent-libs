@@ -1606,7 +1606,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// Use first found thread of a program to collect all metrics
 		if(emplaced.second)
 		{
-			m_host_metrics.increment_process_count();
 			if(container)
 			{
 				analyzer_container_state::proc_count_map_t& pcc = container->m_proc_container_count;
@@ -2218,17 +2217,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 //					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 //						m_sampling_ratio);
 				proc->set_start_count(procinfo->m_start_count);
-				if(procinfo->m_proc_program_count.find(tinfo->m_program_hash) == procinfo->m_proc_program_count.end() ||
-				   procinfo->m_proc_program_count[tinfo->m_program_hash] == 0)
-				{
-					std::string cmdline;
-					for(auto arg = tinfo->m_args.begin(); arg != tinfo->m_args.end(); ++arg) { cmdline += *arg; }
-					g_logger.log("Number of processes for process not found or zero:\n" + cmdline, sinsp_logger::SEV_WARNING);
-				}
-				else
-				{
-					proc->set_count_processes(procinfo->m_proc_program_count[tinfo->m_program_hash]);
-				}
+				proc->set_count_processes(procinfo->m_proc_program_count);
 			}
 #endif // ANALYZER_EMITS_PROCESSES
 		}

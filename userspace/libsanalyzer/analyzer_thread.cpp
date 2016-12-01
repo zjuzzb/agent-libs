@@ -73,7 +73,7 @@ void sinsp_procinfo::clear()
 	m_protostate.clear();
 	m_fd_count = 0;
 	m_start_count = 0;
-	m_proc_program_count.clear();
+	m_proc_program_count = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -287,12 +287,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	if(other->m_tinfo->is_main_thread())
 	{
-		std::unordered_map<size_t, int>& ppc = m_procinfo->m_proc_program_count;
-		if(ppc.find(other->m_tinfo->m_program_hash) == ppc.end())
-		{
-			ppc.insert({other->m_tinfo->m_program_hash, 0});
-		}
-		ppc[other->m_tinfo->m_program_hash]++;
+		m_procinfo->m_proc_program_count++;
 	}
 }
 

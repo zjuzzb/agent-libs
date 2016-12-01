@@ -818,6 +818,7 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	m_protostate->add(&(pinfo->m_protostate));
 
 	m_fd_count += pinfo->m_fd_count;
+	++m_proc_host_count;
 }
 
 void sinsp_host_metrics::add_capacity_score(float capacity_score, 

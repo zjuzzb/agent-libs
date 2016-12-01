@@ -67,7 +67,7 @@ public:
 	uint32_t m_fd_count;
 	uint64_t m_start_count;
 	// number of process instances
-	std::unordered_map<size_t, int> m_proc_program_count;
+	int m_proc_program_count = 0;
 };
 
 class proc_config;
