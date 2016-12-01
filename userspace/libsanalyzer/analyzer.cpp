@@ -165,7 +165,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	//
 	add_chisel_dirs();
 
-	m_external_command_id = 0;
 	m_dcos_enterprise_last_token_refresh_s = 0;
 	m_mesos_last_failure_ns = 0;
 }
@@ -1299,15 +1298,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// id = timestamp-1 are what we need now
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(m_jmx_proxy && (m_prev_flush_time_ns / 1000000000) % m_jmx_sampling == 0)
+		if(m_jmx_proxy)
 		{
-			pair<uint64_t, unordered_map<int, java_process>> jmx_metrics;
-			do
+			auto jmx_metrics = m_jmx_proxy->read_metrics();
+			if(!jmx_metrics.empty())
 			{
-				jmx_metrics = m_jmx_proxy->read_metrics();
+				// m_jmx_metrics is cleared by flush() because they are used
+				// by falco baseliner, outside emit_processes
+				m_jmx_metrics = move(jmx_metrics);
 			}
-			while(jmx_metrics.first != 0 && jmx_metrics.first != m_external_command_id);
-			m_jmx_metrics = move(jmx_metrics.second);
 		}
 		if(m_app_proxy)
 		{
@@ -1625,7 +1624,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
 				tinfo->m_vpid > 0)
 		{
-			if(m_jmx_proxy && (m_next_flush_time_ns / ONE_SECOND_IN_NS ) % m_jmx_sampling == 0 && tinfo->get_comm() == "java")
+			if(m_jmx_proxy && tinfo->get_comm() == "java")
 			{
 				java_process_requests.emplace_back(tinfo);
 			}
@@ -1981,6 +1980,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
+	auto jmx_limit = m_configuration->get_jmx_limit();
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -2091,8 +2091,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 #ifndef _WIN32
 			// Add JMX metrics
-			if (m_jmx_proxy)
+			if (m_jmx_proxy && jmx_limit > 0)
 			{
+				unsigned jmx_proc_limit = std::min(jmx_limit, JMX_METRICS_HARD_LIMIT_PER_PROC);
 				auto jmx_metrics_it = m_jmx_metrics.end();
 				for(auto pid_it = procinfo->m_program_pids.begin();
 						pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
@@ -2104,7 +2105,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 					auto java_proto = proc->mutable_protos()->mutable_java();
-					jmx_metrics_it->second.to_protobuf(java_proto);
+					jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit);
+					if(jmx_limit == 0)
+					{
+						g_logger.format(sinsp_logger::SEV_WARNING, "JMX metrics reached limit, remaining ones will be dropped");
+					}
 				}
 			}
 			if(m_app_proxy)
@@ -2209,11 +2214,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		++m_external_command_id;
-		if(m_jmx_proxy && (m_next_flush_time_ns / 1000000000 ) % m_jmx_sampling == 0 && !java_process_requests.empty())
+		if(m_jmx_proxy && is_jmx_flushtime() && !java_process_requests.empty())
 		{
-//			m_jmx_metrics.clear();
-			m_jmx_proxy->send_get_metrics(m_external_command_id, java_process_requests);
+			m_jmx_proxy->send_get_metrics(java_process_requests);
 		}
 		if(m_app_proxy && !app_checks_processes.empty())
 		{
@@ -3516,6 +3519,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	//
 	m_executed_commands.clear();
 
+	if(is_jmx_flushtime())
+	{
+		m_jmx_metrics.clear();
+	}
 	//
 	// If there were tid collisions report them in the log and then clear the list
 	//
