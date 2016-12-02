@@ -530,54 +530,6 @@ return;
 #endif // _WIN32
 }
 
-void sinsp_procfs_parser::update_proc_count(OUT sinsp_proc_count* proc_count, char status, uint64_t pid)
-{
-	proc_count->m_count++;
-	switch(status)
-	{
-		case 'R':
-			proc_count->m_running++;
-			break;
-		case 'S':
-			proc_count->m_sleeping++;
-			break;
-		case 'D':
-			proc_count->m_waiting++;
-			break;
-		case 'Z':
-			proc_count->m_zombie++;
-			break;
-		case 'T':
-			proc_count->m_traced++;
-			break;
-		case 'W':
-			proc_count->m_paging++;
-			break;
-		default:
-			g_logger.log("Unknown process status: " + std::string(1, status) +
-						 " for process " + std::to_string(pid),
-						 sinsp_logger::SEV_WARNING);
-	}
-}
-
-void sinsp_procfs_parser::get_proc_counts(OUT sinsp_proc_count* proc_count)
-{
-	ASSERT(proc_count);
-	proc_count->m_running = 0;
-	proc_count->m_sleeping = 0;
-	proc_count->m_waiting = 0;
-	proc_count->m_zombie = 0;
-	proc_count->m_traced = 0;
-	proc_count->m_paging = 0;
-	proc_count->m_count = 0;
-
-	get_proc_pid_stat();
-	for(const auto& pps : m_proc_pid_stat)
-	{
-		update_proc_count(proc_count, pps.m_status, pps.m_pid);
-	}
-}
-
 void sinsp_procfs_parser::get_proc_pid_stat()
 {
 #ifdef _WIN32

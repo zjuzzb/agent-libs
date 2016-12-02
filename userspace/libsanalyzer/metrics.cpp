@@ -789,6 +789,8 @@ void sinsp_host_metrics::clear()
 	m_swap_memory_used_kb = 0;
 	m_swap_memory_total_kb = 0;
 	m_cpuload = 0;
+	m_proc_count = 0;
+	m_proc_start_count = 0;
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)

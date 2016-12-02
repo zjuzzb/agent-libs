@@ -86,24 +86,11 @@ struct sinsp_proc_pid_stat
 	std::string m_container_id;
 };
 
-struct sinsp_proc_count
-{
-	uint64_t m_running;  // R
-	uint64_t m_sleeping; // S
-	uint64_t m_waiting;  // D
-	uint64_t m_zombie;   // Z
-	uint64_t m_traced;   // T
-	uint64_t m_paging;   // W
-	uint64_t m_count;
-};
-
 class sinsp_procfs_parser
 {
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL, uint64_t* global_idle_jiffies = NULL, uint64_t* global_steal_jiffies = NULL);
-	static void update_proc_count(OUT sinsp_proc_count* proc_count, char status, uint64_t pid);
-	void get_proc_counts(OUT sinsp_proc_count* proc_count);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	const vector<sinsp_proc_pid_stat>& proc_pid_stat() const;
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap);
