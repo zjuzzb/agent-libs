@@ -132,6 +132,10 @@ public:
 	void set_falco_baselining_enabled(bool enabled);
 	unsigned get_jmx_limit() const;
 	void set_jmx_limit(unsigned limit);
+
+	const std::vector<int>& get_percentiles() const;
+	void set_percentiles(const std::vector<int>&);
+
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -177,6 +181,8 @@ private:
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
+
+	std::vector<int> m_percentiles;
 
 	unsigned m_statsd_limit;
 

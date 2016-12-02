@@ -146,6 +146,16 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 	}
 }
 
+void dragent_configuration::add_percentiles()
+{
+	const auto& roots = m_config->get_roots();
+	for(const auto& root : roots)
+	{
+		m_percentiles = yaml_configuration::get_deep_sequence<std::vector<int>>(*m_config, root, "percentiles");
+		if(!m_percentiles.empty()) { break; }
+	}
+}
+
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
 {
 	if(!m_config) { return; }
@@ -176,7 +186,7 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 		}
 	}
 
-	// find the first `user_events` across our files
+	// find the first user `events` across our files
 	for(const auto& root : roots)
 	{
 		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, root, "events", system, component);
@@ -356,6 +366,7 @@ void dragent_configuration::init(Application* app)
 		add_event_filter(m_docker_event_filter, "docker", "network");
 	}
 
+	add_percentiles();
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -675,6 +686,14 @@ void dragent_configuration::print_configuration()
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
+	if(m_percentiles.size())
+	{
+		std::ostringstream os;
+		os << '[';
+		for(const auto& p : m_percentiles) { os << p << ','; }
+		os << ']';
+		g_log->information("Percentiles: " + os.str());
+	}
 	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));

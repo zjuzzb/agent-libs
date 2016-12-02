@@ -493,6 +493,8 @@ public:
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
 
+	std::vector<int> m_percentiles;
+
 	bool java_present()
 	{
 		return !m_java_binary.empty();
@@ -514,6 +516,7 @@ private:
 	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
+	void add_percentiles();
 
 	static const string AUTO_CONFIG_HEADER;
 	static const vector<string> AUTOCONFIG_FORBIDDEN_KEYS;

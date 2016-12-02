@@ -693,4 +693,14 @@ void sinsp_configuration::set_jmx_limit(unsigned limit)
 	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
 }
 
+const std::vector<int>& sinsp_configuration::get_percentiles() const
+{
+	return m_percentiles;
+}
+
+void sinsp_configuration::set_percentiles(const std::vector<int>& percentiles)
+{
+	m_percentiles = percentiles;
+}
+
 #endif // HAS_ANALYZER
