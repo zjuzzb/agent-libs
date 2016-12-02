@@ -6466,6 +6466,18 @@ class container : public ::google::protobuf::Message {
   inline ::std::string* release_mesos_task_id();
   inline void set_allocated_mesos_task_id(::std::string* mesos_task_id);
 
+  // optional string image_id = 24;
+  inline bool has_image_id() const;
+  inline void clear_image_id();
+  static const int kImageIdFieldNumber = 24;
+  inline const ::std::string& image_id() const;
+  inline void set_image_id(const ::std::string& value);
+  inline void set_image_id(const char* value);
+  inline void set_image_id(const char* value, size_t size);
+  inline ::std::string* mutable_image_id();
+  inline ::std::string* release_image_id();
+  inline void set_allocated_image_id(::std::string* image_id);
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6498,6 +6510,8 @@ class container : public ::google::protobuf::Message {
   inline void clear_has_protos();
   inline void set_has_mesos_task_id();
   inline void clear_has_mesos_task_id();
+  inline void set_has_image_id();
+  inline void clear_has_image_id();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -6519,10 +6533,11 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::std::string* mesos_task_id_;
+  ::std::string* image_id_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -20080,6 +20095,76 @@ inline void container::set_allocated_mesos_task_id(::std::string* mesos_task_id)
   } else {
     clear_has_mesos_task_id();
     mesos_task_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string image_id = 24;
+inline bool container::has_image_id() const {
+  return (_has_bits_[0] & 0x00080000u) != 0;
+}
+inline void container::set_has_image_id() {
+  _has_bits_[0] |= 0x00080000u;
+}
+inline void container::clear_has_image_id() {
+  _has_bits_[0] &= ~0x00080000u;
+}
+inline void container::clear_image_id() {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    image_id_->clear();
+  }
+  clear_has_image_id();
+}
+inline const ::std::string& container::image_id() const {
+  return *image_id_;
+}
+inline void container::set_image_id(const ::std::string& value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void container::set_image_id(const char* value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void container::set_image_id(const char* value, size_t size) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container::mutable_image_id() {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  return image_id_;
+}
+inline ::std::string* container::release_image_id() {
+  clear_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_id_;
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container::set_allocated_image_id(::std::string* image_id) {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_id_;
+  }
+  if (image_id) {
+    set_has_image_id();
+    image_id_ = image_id;
+  } else {
+    clear_has_image_id();
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 

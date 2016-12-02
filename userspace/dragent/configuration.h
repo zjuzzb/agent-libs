@@ -431,6 +431,7 @@ public:
 	bool m_remotefs_enabled;
 	string m_java_binary;
 	string m_sdjagent_opts;
+	unsigned m_jmx_limit;
 	bool m_agent_installed;
 	bool m_ssh_enabled;
 	bool m_statsd_enabled;

@@ -271,15 +271,12 @@ public:
 	}
 
 #ifndef _WIN32
-	inline void enable_jmx(bool print_json)
+	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
 	{
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
-	}
-
-	inline void set_jmx_sampling(unsigned int value)
-	{
-		m_jmx_sampling = value;
+		m_jmx_sampling = sampling;
+		m_configuration->set_jmx_limit(limit);
 	}
 
 	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);
@@ -407,6 +404,9 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
 						   unsigned limit);
+	bool is_jmx_flushtime() {
+		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
+	}
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
@@ -560,7 +560,6 @@ VISIBILITY_PRIVATE
 	bool m_run_chisels;
 
 #ifndef _WIN32
-	uint64_t m_external_command_id;
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;

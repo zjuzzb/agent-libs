@@ -593,6 +593,7 @@ message container {
     repeated mounted_fs mounts = 21;
     repeated network_by_port network_by_serverports = 22;
     optional string mesos_task_id = 23;
+    optional string image_id = 24;
 }
 
 //

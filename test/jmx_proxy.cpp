@@ -40,16 +40,14 @@ TEST_F(jmx_proxy_f, test_read_ok)
 {
 	use_json("jmx_ok.json");
 	auto metrics = jmx->read_metrics();
-	EXPECT_EQ(2U, metrics.second.size());
-	EXPECT_EQ(1430840190367187500U, metrics.first);
+	EXPECT_EQ(2U, metrics.size());
 }
 
 TEST_F(jmx_proxy_f, test_read_fail)
 {
 	use_json("jmx_fail.json");
 	auto metrics = jmx->read_metrics();
-	EXPECT_EQ(0U, metrics.second.size());
-	EXPECT_EQ(0U, metrics.first);
+	EXPECT_EQ(0U, metrics.size());
 }
 
 TEST_F(jmx_proxy_f, test_read_segv)
