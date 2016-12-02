@@ -41,7 +41,7 @@ TEST(yaml_conf, get_deep_merged_sequence)
 {
 	yaml_configuration conf({"resources/test.yaml", "resources/test.default.yaml"});
 	set<string> evts = conf.get_deep_merged_sequence<set<string>>("events", "docker", "volume");
-	ASSERT_EQ(evts.size(), 5);
+	ASSERT_EQ(evts.size(), 5U);
 	ASSERT_TRUE(evts.find("all") != evts.end());
 	ASSERT_TRUE(evts.find("create") != evts.end());
 	ASSERT_TRUE(evts.find("destroy") != evts.end());
@@ -49,7 +49,7 @@ TEST(yaml_conf, get_deep_merged_sequence)
 	ASSERT_TRUE(evts.find("unmount") != evts.end());
 
 	evts = conf.get_deep_merged_sequence<set<string>>("events", "docker", "container");
-	ASSERT_EQ(evts.size(), 21);
+	ASSERT_EQ(evts.size(), 21U);
 	ASSERT_TRUE(evts.find("all") != evts.end());
 	ASSERT_TRUE(evts.find("attach") != evts.end());
 	ASSERT_TRUE(evts.find("commit") != evts.end());
@@ -73,22 +73,22 @@ TEST(yaml_conf, get_deep_merged_sequence)
 	ASSERT_TRUE(evts.find("update") != evts.end());
 
 	set<string, ci_compare> evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events", "kubernetes", "replicationController");
-	ASSERT_EQ(evts2.size(), 1);
+	ASSERT_EQ(evts2.size(), 1U);
 	ASSERT_TRUE(evts2.find("ALL") != evts2.end());
 
 	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events", "kubernetes", "node");
-	ASSERT_EQ(evts2.size(), 1);
+	ASSERT_EQ(evts2.size(), 1U);
 	ASSERT_TRUE(evts2.find("ALL") != evts2.end());
 
 	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events", "kubernetes", "pod");
-	ASSERT_EQ(evts2.size(), 4);
+	ASSERT_EQ(evts2.size(), 4U);
 	ASSERT_TRUE(evts2.find("added") != evts2.end());
 	ASSERT_TRUE(evts2.find("modified") != evts2.end());
 	ASSERT_TRUE(evts2.find("deleted") != evts2.end());
 	ASSERT_TRUE(evts2.find("error") != evts2.end());
 
 	vector<int> ints = conf.get_deep_merged_sequence<vector<int>>("deep", "level1", "level2", "level3", "level4", "level5");
-	ASSERT_EQ(ints.size(), 3);
+	ASSERT_EQ(ints.size(), 3U);
 	ASSERT_EQ(ints[0], 1);
 	ASSERT_EQ(ints[1], 2);
 	ASSERT_EQ(ints[2], 3);
