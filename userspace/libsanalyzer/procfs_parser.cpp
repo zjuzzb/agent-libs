@@ -298,7 +298,7 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	return true;
 }
 
-void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap)
+void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap)
 {
 	char line[512];
 	int64_t mem_free = 0;
@@ -307,6 +307,7 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	int64_t cached = 0;
 	int64_t swap_total = 0;
 	int64_t swap_free = 0;
+	int64_t swap_cached = 0;
 	int64_t tmp = 0;
 
 	ASSERT(used_memory);
@@ -315,6 +316,7 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	*used_memory = -1;
 	*used_swap = -1;
 	*total_swap = -1;
+	*avail_swap = -1;
 
 	if(!m_is_live_capture)
 	{
@@ -358,7 +360,10 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		else if(sscanf(line, "SwapFree: %" PRId64, &tmp) == 1)
 		{
 			swap_free = tmp;
-			break;
+		}
+		else if(sscanf(line, "SwapCached: %" PRId64, &tmp) == 1)
+		{
+			swap_cached = tmp;
 		}
 	}
 
@@ -389,15 +394,22 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		*used_memory = 0;
 	}
 
-	*used_swap = swap_total - swap_free;
-	if(*used_swap < 0)
-	{
-		ASSERT(false);
-		*used_swap = 0;
-	}
-
 	*total_swap = swap_total;
 	if(*total_swap < 0)
+	{
+		ASSERT(false);
+		*total_swap = 0;
+	}
+
+	*avail_swap = swap_free + swap_cached;
+	if(*avail_swap < 0)
+	{
+		ASSERT(false);
+		*avail_swap = 0;
+	}
+
+	*used_swap = swap_total - *avail_swap;
+	if(*used_swap < 0)
 	{
 		ASSERT(false);
 		*used_swap = 0;

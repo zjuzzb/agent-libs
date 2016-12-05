@@ -3224,7 +3224,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 													 &m_host_metrics.m_res_memory_free_kb,
 													 &m_host_metrics.m_res_memory_avail_kb,
 													 &m_host_metrics.m_swap_memory_used_kb,
-													 &m_host_metrics.m_swap_memory_total_kb);
+													 &m_host_metrics.m_swap_memory_total_kb,
+													 &m_host_metrics.m_swap_memory_avail_kb);
 
 			if(m_protocols_enabled)
 			{
@@ -3245,8 +3246,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_total_kb((uint32_t)m_host_metrics.m_swap_memory_total_kb);
-			uint32_t avail_mem = (uint32_t)(m_host_metrics.m_swap_memory_total_kb - m_host_metrics.m_swap_memory_used_kb);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_available_kb(avail_mem);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_available_kb(m_host_metrics.m_swap_memory_avail_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);

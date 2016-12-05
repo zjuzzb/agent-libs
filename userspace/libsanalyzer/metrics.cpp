@@ -788,6 +788,7 @@ void sinsp_host_metrics::clear()
 	m_res_memory_free_kb = 0;
 	m_swap_memory_used_kb = 0;
 	m_swap_memory_total_kb = 0;
+	m_swap_memory_avail_kb = 0;
 	m_cpuload = 0;
 	m_proc_count = 0;
 	m_proc_start_count = 0;

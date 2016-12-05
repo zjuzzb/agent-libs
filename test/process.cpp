@@ -934,6 +934,7 @@ TEST_F(sys_call_test, procfs_globalmemory)
 	int64_t memavail;
 	int64_t swapusage;
 	int64_t swaptotal;
+	int64_t swapavail;
 	uint32_t j;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -942,7 +943,7 @@ TEST_F(sys_call_test, procfs_globalmemory)
 
 	for(j = 0; j < 5; j++)
 	{
-		pparser.get_global_mem_usage_kb(&memusage, &memfree, &memavail, &swapusage, &swaptotal);
+		pparser.get_global_mem_usage_kb(&memusage, &memfree, &memavail, &swapusage, &swaptotal, &swapavail);
 		EXPECT_NE((int64_t)-1, memusage);
 		EXPECT_LE((int64_t)0, memusage);
 		EXPECT_GE((int64_t)memkb, memusage);
@@ -956,6 +957,8 @@ TEST_F(sys_call_test, procfs_globalmemory)
 		EXPECT_LE((int64_t)0, swapusage);
 		EXPECT_NE((int64_t)-1, swaptotal);
 		EXPECT_LE((int64_t)0, swaptotal);
+		EXPECT_NE((int64_t)-1, swapavail);
+		EXPECT_LE((int64_t)0, swapavail);
 		sleep(1);
 	}
 }
