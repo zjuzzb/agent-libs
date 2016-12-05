@@ -687,7 +687,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
-	g_log->information("sysdig.captue_enabled: " + bool_as_text(m_sysdig_capture_enabled));
+	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
