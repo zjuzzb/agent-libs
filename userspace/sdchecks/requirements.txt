@@ -3,6 +3,8 @@ ntplib==0.3.3
 pyyaml==3.11
 
 # note: simplejson is used in many checks to inteface APIs
+# This library bundles a .so dependency but does not depend
+3 on python version so we install it here
 simplejson==3.6.5
 
 ###########################################################
