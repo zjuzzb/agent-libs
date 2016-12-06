@@ -35,6 +35,57 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_last_out_bytes = 0;
 }
 
+double sinsp_procfs_parser::get_system_load(int mins)
+{
+	char line[512] = {0};
+	char tmps[32];
+	int i = 0;
+
+	if(!m_is_live_capture)
+	{
+		return -1;
+	}
+
+	char filename[SCAP_MAX_PATH_SIZE];
+	sprintf(filename, "%s/proc/loadavg", scap_get_host_root());
+	FILE* f = fopen(filename, "r");
+	if(f == NULL)
+	{
+		ASSERT(false);
+		return -1;
+	}
+
+	if(fgets(line, sizeof(line), f) == NULL)
+	{
+		ASSERT(false);
+		fclose(f);
+		return -1;
+	}
+
+	double val1, val5, val15;
+
+	if(sscanf(line, "%lf %lf %lf %s %d", &val1, &val5, &val15, tmps, &i) != 5)
+	{
+		ASSERT(false);
+		fclose(f);
+		return -1;
+	}
+
+	switch(mins)
+	{
+		case 1:
+			return val1;
+		case 2:
+		case 5:
+			return val5;
+		case 3:
+		case 15:
+			return val15;
+	}
+
+	return val1;
+}
+
 double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total, uint64_t* global_idle, uint64_t* global_steal)
 {
 	double res = -1;

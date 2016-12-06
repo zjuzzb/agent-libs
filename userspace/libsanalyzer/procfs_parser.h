@@ -91,6 +91,7 @@ class sinsp_procfs_parser
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL, uint64_t* global_idle_jiffies = NULL, uint64_t* global_steal_jiffies = NULL);
+	double get_system_load(int mins = 1);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	const vector<sinsp_proc_pid_stat>& proc_pid_stat() const;
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
