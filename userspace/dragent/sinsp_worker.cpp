@@ -693,6 +693,12 @@ void sinsp_worker::start_job(const dump_job_request& request, uint64_t ts)
 {
 	SharedPtr<dump_job_state> job_state(new dump_job_state());
 
+	if(m_configuration->m_sysdig_capture_enabled == false)
+	{
+		send_error(request.m_token, "Sysdig capture disabled from agent configuration file, not starting capture");
+		return;
+	}
+
 	if(!request.m_filter.empty())
 	{
 		try

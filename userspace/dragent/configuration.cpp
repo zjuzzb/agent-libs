@@ -65,6 +65,7 @@ dragent_configuration::dragent_configuration()
 	m_remotefs_enabled = false;
 	m_agent_installed = true;
 	m_ssh_enabled = true;
+	m_sysdig_capture_enabled = true;
 	m_statsd_enabled = true;
 	m_statsd_limit = 100;
 	m_sdjagent_enabled = true;
@@ -410,6 +411,7 @@ void dragent_configuration::init(Application* app)
 	}
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
+	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
@@ -685,6 +687,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
+	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
