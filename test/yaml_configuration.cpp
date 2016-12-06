@@ -34,7 +34,7 @@ TEST(yaml_conf, get_merged_sequence)
 {
 	yaml_configuration conf({"resources/test.yaml", "resources/test.default.yaml"});
 	auto merged = conf.get_merged_sequence<int>("myarray");
-	EXPECT_EQ(3, merged.size());
+	EXPECT_EQ(3U, merged.size());
 }
 
 TEST(yaml_conf, get_deep_merged_sequence)
@@ -94,7 +94,7 @@ TEST(yaml_conf, get_deep_merged_sequence)
 	ASSERT_EQ(ints[2], 3);
 
 	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events2", "docker", "container");
-	ASSERT_EQ(evts2.size(), 6);
+	ASSERT_EQ(evts2.size(), 6U);
 	ASSERT_TRUE(evts2.find("attach") != evts2.end());
 	ASSERT_TRUE(evts2.find("commit") != evts2.end());
 	ASSERT_TRUE(evts2.find("copy") != evts2.end());
@@ -103,7 +103,7 @@ TEST(yaml_conf, get_deep_merged_sequence)
 	ASSERT_TRUE(evts2.find("die") != evts2.end());
 
 	evts2 = conf.get_deep_merged_sequence<set<string, ci_compare>>("events2", "docker", "image");
-	ASSERT_EQ(evts2.size(), 3);
+	ASSERT_EQ(evts2.size(), 3U);
 	ASSERT_TRUE(evts2.find("delete") != evts2.end());
 	ASSERT_TRUE(evts2.find("import") != evts2.end());
 	ASSERT_TRUE(evts2.find("pull") != evts2.end());
@@ -215,14 +215,14 @@ TEST(proc_config, test_correct)
 {
 	proc_config config("{app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
 	auto checks = config.app_checks();
-	EXPECT_EQ(1, checks.size());
+	EXPECT_EQ(1U, checks.size());
 }
 
 TEST(proc_config, test_wrong_yaml_syntax)
 {
 	proc_config config("app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
 	auto checks = config.app_checks();
-	EXPECT_EQ(0, checks.size());
+	EXPECT_EQ(0U, checks.size());
 }
 
 TEST(proc_config, test_wrong_yaml_objects)
@@ -230,27 +230,27 @@ TEST(proc_config, test_wrong_yaml_objects)
 	// app_checks is not a list
 	proc_config config("{ app_checks: { name: redisdb, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} } }");
 	auto checks = config.app_checks();
-	EXPECT_EQ(0, checks.size());
+	EXPECT_EQ(0U, checks.size());
 
 	// missing name
 	config = proc_config("{app_checks: [{ pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
 	checks = config.app_checks();
-	EXPECT_EQ(0, checks.size());
+	EXPECT_EQ(0U, checks.size());
 
 	// conf not an object
 	config = proc_config("{app_checks: [{ name: redisdb, pattern: {comm: redis-server}, conf: 127.0.0.1 }] }");
 	checks = config.app_checks();
-	EXPECT_EQ(1, checks.size()); // Parsed with an empty conf
+	EXPECT_EQ(1U, checks.size()); // Parsed with an empty conf
 
 	// a wrong one and a right one
 	config = proc_config("{app_checks: [{ pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }, { name: redis, pattern: {comm: redis-server}, conf: { host: 127.0.0.1, port: 6379, password: protected} }] }");
 	checks = config.app_checks();
-	EXPECT_EQ(0, checks.size());
+	EXPECT_EQ(0U, checks.size());
 
 	// empty yaml, legit
 	config = proc_config("");
 	checks = config.app_checks();
-	EXPECT_EQ(0, checks.size());
+	EXPECT_EQ(0U, checks.size());
 }
 
 TEST(yaml_to_json, test_sequence)
