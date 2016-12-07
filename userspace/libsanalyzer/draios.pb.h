@@ -4862,13 +4862,6 @@ class host : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_cpu_idle();
 
-  // optional double system_load = 32;
-  inline bool has_system_load() const;
-  inline void clear_system_load();
-  static const int kSystemLoadFieldNumber = 32;
-  inline double system_load() const;
-  inline void set_system_load(double value);
-
   // optional uint64 uptime = 33;
   inline bool has_uptime() const;
   inline void clear_uptime();
@@ -4931,6 +4924,27 @@ class host : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
       mutable_nice_cpu();
 
+  // optional uint32 system_load_1 = 41;
+  inline bool has_system_load_1() const;
+  inline void clear_system_load_1();
+  static const int kSystemLoad1FieldNumber = 41;
+  inline ::google::protobuf::uint32 system_load_1() const;
+  inline void set_system_load_1(::google::protobuf::uint32 value);
+
+  // optional uint32 system_load_5 = 42;
+  inline bool has_system_load_5() const;
+  inline void clear_system_load_5();
+  static const int kSystemLoad5FieldNumber = 42;
+  inline ::google::protobuf::uint32 system_load_5() const;
+  inline void set_system_load_5(::google::protobuf::uint32 value);
+
+  // optional uint32 system_load_15 = 43;
+  inline bool has_system_load_15() const;
+  inline void clear_system_load_15();
+  static const int kSystemLoad15FieldNumber = 43;
+  inline ::google::protobuf::uint32 system_load_15() const;
+  inline void set_system_load_15(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -4959,12 +4973,16 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_external_io_net();
   inline void clear_has_external_io_net();
-  inline void set_has_system_load();
-  inline void clear_has_system_load();
   inline void set_has_uptime();
   inline void clear_has_uptime();
   inline void set_has_memory_bytes_available_kb();
   inline void clear_has_memory_bytes_available_kb();
+  inline void set_has_system_load_1();
+  inline void clear_has_system_load_1();
+  inline void set_has_system_load_5();
+  inline void clear_has_system_load_5();
+  inline void set_has_system_load_15();
+  inline void clear_has_system_load_15();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4980,21 +4998,23 @@ class host : public ::google::protobuf::Message {
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
+  ::google::protobuf::uint32 num_cpus_;
+  ::google::protobuf::uint32 system_load_1_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_idle_;
-  double system_load_;
   ::google::protobuf::uint64 uptime_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > system_cpu_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > user_cpu_;
   ::google::protobuf::uint64 memory_bytes_available_kb_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > iowait_cpu_;
   ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > nice_cpu_;
-  ::google::protobuf::uint32 num_cpus_;
+  ::google::protobuf::uint32 system_load_5_;
+  ::google::protobuf::uint32 system_load_15_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(24 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(26 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -17504,37 +17524,15 @@ host::mutable_cpu_idle() {
   return &cpu_idle_;
 }
 
-// optional double system_load = 32;
-inline bool host::has_system_load() const {
-  return (_has_bits_[0] & 0x00020000u) != 0;
-}
-inline void host::set_has_system_load() {
-  _has_bits_[0] |= 0x00020000u;
-}
-inline void host::clear_has_system_load() {
-  _has_bits_[0] &= ~0x00020000u;
-}
-inline void host::clear_system_load() {
-  system_load_ = 0;
-  clear_has_system_load();
-}
-inline double host::system_load() const {
-  return system_load_;
-}
-inline void host::set_system_load(double value) {
-  set_has_system_load();
-  system_load_ = value;
-}
-
 // optional uint64 uptime = 33;
 inline bool host::has_uptime() const {
-  return (_has_bits_[0] & 0x00040000u) != 0;
+  return (_has_bits_[0] & 0x00020000u) != 0;
 }
 inline void host::set_has_uptime() {
-  _has_bits_[0] |= 0x00040000u;
+  _has_bits_[0] |= 0x00020000u;
 }
 inline void host::clear_has_uptime() {
-  _has_bits_[0] &= ~0x00040000u;
+  _has_bits_[0] &= ~0x00020000u;
 }
 inline void host::clear_uptime() {
   uptime_ = GOOGLE_ULONGLONG(0);
@@ -17600,13 +17598,13 @@ host::mutable_user_cpu() {
 
 // optional uint64 memory_bytes_available_kb = 36;
 inline bool host::has_memory_bytes_available_kb() const {
-  return (_has_bits_[0] & 0x00200000u) != 0;
+  return (_has_bits_[0] & 0x00100000u) != 0;
 }
 inline void host::set_has_memory_bytes_available_kb() {
-  _has_bits_[0] |= 0x00200000u;
+  _has_bits_[0] |= 0x00100000u;
 }
 inline void host::clear_has_memory_bytes_available_kb() {
-  _has_bits_[0] &= ~0x00200000u;
+  _has_bits_[0] &= ~0x00100000u;
 }
 inline void host::clear_memory_bytes_available_kb() {
   memory_bytes_available_kb_ = GOOGLE_ULONGLONG(0);
@@ -17668,6 +17666,72 @@ host::nice_cpu() const {
 inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
 host::mutable_nice_cpu() {
   return &nice_cpu_;
+}
+
+// optional uint32 system_load_1 = 41;
+inline bool host::has_system_load_1() const {
+  return (_has_bits_[0] & 0x00800000u) != 0;
+}
+inline void host::set_has_system_load_1() {
+  _has_bits_[0] |= 0x00800000u;
+}
+inline void host::clear_has_system_load_1() {
+  _has_bits_[0] &= ~0x00800000u;
+}
+inline void host::clear_system_load_1() {
+  system_load_1_ = 0u;
+  clear_has_system_load_1();
+}
+inline ::google::protobuf::uint32 host::system_load_1() const {
+  return system_load_1_;
+}
+inline void host::set_system_load_1(::google::protobuf::uint32 value) {
+  set_has_system_load_1();
+  system_load_1_ = value;
+}
+
+// optional uint32 system_load_5 = 42;
+inline bool host::has_system_load_5() const {
+  return (_has_bits_[0] & 0x01000000u) != 0;
+}
+inline void host::set_has_system_load_5() {
+  _has_bits_[0] |= 0x01000000u;
+}
+inline void host::clear_has_system_load_5() {
+  _has_bits_[0] &= ~0x01000000u;
+}
+inline void host::clear_system_load_5() {
+  system_load_5_ = 0u;
+  clear_has_system_load_5();
+}
+inline ::google::protobuf::uint32 host::system_load_5() const {
+  return system_load_5_;
+}
+inline void host::set_system_load_5(::google::protobuf::uint32 value) {
+  set_has_system_load_5();
+  system_load_5_ = value;
+}
+
+// optional uint32 system_load_15 = 43;
+inline bool host::has_system_load_15() const {
+  return (_has_bits_[0] & 0x02000000u) != 0;
+}
+inline void host::set_has_system_load_15() {
+  _has_bits_[0] |= 0x02000000u;
+}
+inline void host::clear_has_system_load_15() {
+  _has_bits_[0] &= ~0x02000000u;
+}
+inline void host::clear_system_load_15() {
+  system_load_15_ = 0u;
+  clear_has_system_load_15();
+}
+inline ::google::protobuf::uint32 host::system_load_15() const {
+  return system_load_15_;
+}
+inline void host::set_system_load_15(::google::protobuf::uint32 value) {
+  set_has_system_load_15();
+  system_load_15_ = value;
 }
 
 // -------------------------------------------------------------------

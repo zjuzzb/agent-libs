@@ -315,9 +315,6 @@ public:
 	int64_t m_swap_memory_avail_kb;
 	double m_cpuload; // for containers
 
-	void reset_process_counts();
-	void increment_process_count();
-	void increment_process_host_start_count();
 	int get_process_count();
 	int get_process_start_count();
 

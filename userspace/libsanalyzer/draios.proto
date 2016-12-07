@@ -424,13 +424,15 @@ message host {
     optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
     repeated network_by_port network_by_serverports = 24;
     repeated uint32 cpu_idle = 25;  // cpu_idle
-    optional double system_load = 32; // system load
     optional uint64 uptime = 33;  // uptime to calculate the reboot
     repeated uint32 system_cpu = 34;  // system_cpu
     repeated uint32 user_cpu = 35;  // user_cpu
     optional uint64 memory_bytes_available_kb = 36;  // memory bytes available as kb
     repeated uint32 iowait_cpu = 37;  // iowait_cpu
     repeated uint32 nice_cpu = 38;  // nice_cpu
+    optional uint32 system_load_1 = 41; // avg system load 1 minute
+    optional uint32 system_load_5 = 42; // avg system load 5 minutes
+    optional uint32 system_load_15 = 43; // avg system load 15 minutes
 }
 
 //

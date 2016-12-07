@@ -3210,7 +3210,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				totcpuload = m_total_process_cpu;
 			}
-			m_metrics->mutable_hostinfo()->set_system_load(m_procfs_parser->get_system_load() * 100);
+			double loadavg[3] = {0};
+			if(getloadavg(loadavg, 3) != -1)
+			{
+				m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
+				m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
+				m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
+			}
+			else
+			{
+				g_logger.log("Could not obtain load averages", sinsp_logger::SEV_WARNING);
+			}
 
 			if(m_proc_stat.m_loads.size() != 0)
 			{
