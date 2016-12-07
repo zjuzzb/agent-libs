@@ -35,7 +35,6 @@
 #include "protodecoder.h"
 #include "procfs_parser.h"
 #include "analyzer_thread.h"
-#include "stopwatch.h"
 
 using namespace std;
 
@@ -766,45 +765,6 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		usleep(100000);
 	}
 }
-
-/*
-TEST_F(sys_call_test, procfs_procstatload)
-{
-	double load;
-	uint32_t j, k;
-	uint32_t t = 1;
-	int pid = getpid();
-	uint64_t old_global_total_jiffies;
-	uint64_t cur_global_total_jiffies;
-	uint64_t old_proc_jiffies = (uint64_t)-1LL;
-	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
-
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
-
-	load = pparser.get_global_cpu_load(&old_global_total_jiffies);
-	EXPECT_EQ((double)-1, load);
-	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
-	EXPECT_EQ((double)-1, load);
-
-	sleep(1);
-
-	for(j = 20; j > 10; j--)
-	{
-		sinsp_proc_count proc_count = {0};
-		pparser.get_global_cpu_load(&cur_global_total_jiffies);
-		sinsp_stopwatch sw;
-		pparser.get_proc_counts(&proc_count);
-		sw.stop();
-		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
-		std::cout << "Load=" << std::fixed << std::setprecision(2) << std::setw(5) << load << "% |"
-					" Time=" << std::setw(2) << std::setprecision(0) << sw.elapsed<std::chrono::milliseconds>() << " ms" << std::endl;
-		old_global_total_jiffies = cur_global_total_jiffies;
-
-		sleep(10);
-	}
-}
-*/
 
 class loadthread
 {

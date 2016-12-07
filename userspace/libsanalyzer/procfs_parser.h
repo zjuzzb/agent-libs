@@ -16,13 +16,6 @@ public:
 
 	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
-	uint64_t get_total_bytes() const;
-	uint64_t get_total_inodes() const;
-	uint64_t get_used_bytes() const;
-	void set_used_bytes(uint64_t bytes);
-	uint64_t get_used_inodes() const;
-	void set_used_inodes(uint64_t inodes);
-
 private:
 	string device;
 	string mount_dir;
@@ -35,36 +28,6 @@ private:
 
 	friend class sinsp_procfs_parser;
 };
-
-inline uint64_t mounted_fs::get_total_bytes() const
-{
-	return size_bytes;
-}
-
-inline uint64_t mounted_fs::get_total_inodes() const
-{
-	return total_inodes;
-}
-
-inline uint64_t mounted_fs::get_used_bytes() const
-{
-	return used_bytes;
-}
-
-inline void mounted_fs::set_used_bytes(uint64_t bytes)
-{
-	used_bytes = bytes;
-}
-
-inline uint64_t mounted_fs::get_used_inodes() const
-{
-	return used_inodes;
-}
-
-inline void mounted_fs::set_used_inodes(uint64_t inodes)
-{
-	used_inodes = inodes;
-}
 
 struct sinsp_proc_stat
 {
@@ -116,7 +79,6 @@ private:
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
-	void get_proc_pid_stat();
 
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
@@ -127,7 +89,6 @@ private:
 	// nullptr means that lookup have not yet take place
 	// "" means that it cannot find memory cgroup mount point
 	unique_ptr<string> m_memory_cgroup_dir;
-	vector<sinsp_proc_pid_stat> m_proc_pid_stat;
 
 	vector<uint64_t> m_old_total;
 	vector<uint64_t> m_old_work;
@@ -140,11 +101,6 @@ private:
 	uint64_t m_old_global_total;
 	uint64_t m_old_global_work;
 };
-
-inline const vector<sinsp_proc_pid_stat>& sinsp_procfs_parser::proc_pid_stat() const
-{
-	return m_proc_pid_stat;
-}
 
 inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
 {
