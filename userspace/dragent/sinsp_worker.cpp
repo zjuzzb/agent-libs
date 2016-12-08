@@ -269,7 +269,10 @@ void sinsp_worker::init()
 	}
 	else
 	{
-		m_inspector->open("");
+		//m_inspector->open("");
+		m_inspector->open_nodriver();
+		m_inspector->m_thread_timeout_ns = 0;
+		m_inspector->m_inactive_thread_scan_time_ns = 0;
 	}
 
 	if(m_configuration->m_subsampling_ratio != 1)
@@ -369,7 +372,7 @@ void sinsp_worker::run()
 
 		run_jobs(ev);
 
-		if(m_inspector->is_live() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
+		if(!m_inspector->is_offline() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
 		{
 			ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
 			m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
@@ -381,7 +384,8 @@ void sinsp_worker::run()
 			if(m_configuration->m_aws_metadata.m_public_ipv4)
 			{
 				sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
-												m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
+												m_configuration->m_aws_metadata.m_public_ipv4,
+												m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 				m_inspector->import_ipv4_interface(aws_interface);
 			}
 			m_aws_metadata_refresher.reset();

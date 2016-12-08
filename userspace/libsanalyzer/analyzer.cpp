@@ -257,7 +257,7 @@ void sinsp_analyzer::on_capture_start()
 		throw sinsp_exception("machine info missing, analyzer can't start");
 	}
 
-	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, m_inspector->m_islive);
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_offline());
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
@@ -1356,7 +1356,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	//
 	// Run the periodic /proc scan and use it to prune the process table
 	//
-	if(m_inspector->m_islive && m_n_flushes % PROC_BASED_THREAD_PRUNING_INTERVAL ==
+	if(m_inspector->is_live() && m_n_flushes % PROC_BASED_THREAD_PRUNING_INTERVAL ==
 		(PROC_BASED_THREAD_PRUNING_INTERVAL - 1))
 	{
 		m_procfs_parser->get_tid_list(&proctids);
@@ -1366,7 +1366,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Extract global CPU info
 	//
 	uint64_t cur_global_total_jiffies;
-	if(m_inspector->m_islive)
+	if(!m_inspector->is_offline())
 	{
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -1429,7 +1429,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
-		if(m_inspector->m_islive && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
 				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -1444,6 +1444,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
 
+				// TODO: move k8s and mesos stuff out of here
 				if(!m_k8s_proc_detected)
 				{
 					m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
@@ -1539,7 +1540,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			if(tinfo->is_main_thread())
 			{
-				if(m_inspector->m_islive)
+				if(!m_inspector->is_offline())
 				{
 					//
 					// It's pointless to try to get the CPU load if the process has been closed
@@ -1926,7 +1927,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Note: we only do this when we're live, because in offline captures we don't have
 	//       process CPU and memory.
 	//
-	if(m_inspector->m_islive)
+	if(!m_inspector->is_offline())
 	{
 		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
 		if(progtable_needs_filtering)
@@ -2986,6 +2987,21 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			ASSERT(m_next_flush_time_ns / sample_duration * sample_duration == m_next_flush_time_ns);
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
 
+
+			if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+			{
+				m_inspector->refresh_proc_list();
+			}
+
+			//
+			// Run the periodic connection and thread table cleanup
+			// This is run on every sample for NODRIVER mode
+			// by forcing interval to 0
+			//
+			remove_expired_connections(ts);
+			m_inspector->remove_inactive_threads();
+			m_inspector->m_container_manager.remove_inactive_containers();
+
 			//
 			// Calculate CPU load
 			//
@@ -2997,9 +3013,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				//
 				uint64_t wall_time = sinsp_utils::get_current_time_ns();
 
-				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || !m_inspector->is_live())
+				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || m_inspector->is_offline())
 				{
-					if(m_inspector->is_live())
+					if(!m_inspector->is_offline())
 					{
 						g_logger.format(sinsp_logger::SEV_ERROR,
 							"sample emission too fast (%" PRId64 "), skipping scanning proc",
@@ -3031,7 +3047,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && m_inspector->is_live())
+			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_offline())
 			{
 				get_statsd();
 				if(m_mounted_fs_proxy)
@@ -3277,7 +3293,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					}
 				}
 			}
-			else if(m_inspector->is_live()) // When not live, fs stats break regression tests causing false positives
+			else if(!m_inspector->is_offline()) // When not live, fs stats break regression tests causing false positives
 			{
 				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
 				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
@@ -3576,13 +3592,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 		m_inspector->m_tid_collisions.clear();
 	}
-
-	//
-	// Run the periodic connection and thread table cleanup
-	//
-	remove_expired_connections(ts);
-	m_inspector->remove_inactive_threads();
-	m_inspector->m_container_manager.remove_inactive_containers();
 
 	if(evt)
 	{
