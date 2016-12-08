@@ -22,6 +22,7 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 	m_socket(NULL),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
+	m_buffer_used(0),
 	m_configuration(configuration),
 	m_queue(queue),
 	m_sinsp_worker(sinsp_worker),
@@ -175,6 +176,7 @@ void connection_manager::disconnect()
 		m_socket->close();
 		m_socket = NULL;
 		m_connected = false;
+		m_buffer_used = 0;
 	}
 }
 
@@ -257,7 +259,8 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 		}
 
 		int32_t res = m_socket->sendBytes(buffer, buflen);
-		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+			res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
 			return false;
 		}
@@ -300,52 +303,69 @@ void connection_manager::receive_message()
 			return;
 		}
 
-		int32_t res = m_socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
-		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		if(m_buffer_used == 0)
 		{
-			return;
+			// We begin by reading and processing the protocol header
+			int32_t res = m_socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
+			if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+			   res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+			{
+				return;
+			}
+
+			if(res == 0)
+			{
+				g_log->error(m_name + ": Lost connection (1)");
+				disconnect();
+				return;
+			}
+
+			if(res != sizeof(dragent_protocol_header))
+			{
+				g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
+				ASSERT(false);
+				disconnect();
+				return;
+			}
+
+			dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
+			header->len = ntohl(header->len);
+
+			if(header->len > MAX_RECEIVER_BUFSIZE)
+			{
+				g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
+				ASSERT(false);
+				disconnect();
+				return;
+			}
+
+			if(header->len < sizeof(dragent_protocol_header))
+			{
+				g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
+				ASSERT(false);
+				disconnect();
+				return;
+			}
+
+			if(header->len > m_buffer.size())
+			{
+				m_buffer.resize(header->len);
+			}
+
+			m_buffer_used = sizeof(dragent_protocol_header);
 		}
 
-		if(res == 0)
-		{
-			g_log->error(m_name + ": Lost connection (1)");
-			disconnect();
-			return;
-		}
+		// Then we read the actual message, it may arrive in
+		// several chunks, in this case the function will be called
+		// at the next loop cycle and will continue reading
+		auto header = (dragent_protocol_header*) m_buffer.begin();
+		auto res = m_socket->receiveBytes(
+				m_buffer.begin() + m_buffer_used,
+				header->len - m_buffer_used,
+				MSG_WAITALL);
 
-		if(res != sizeof(dragent_protocol_header))
-		{
-			g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
-			ASSERT(false);
-			disconnect();
-			return;
-		}
-
-		dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
-		header->len = ntohl(header->len);
-
-		if(header->len > RECEIVER_BUFSIZE)
-		{
-			g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
-			ASSERT(false);
-			disconnect();
-			return;						
-		}
-
-		if(header->len < sizeof(dragent_protocol_header))
-		{
-			g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
-			ASSERT(false);
-			disconnect();
-			return;
-		}
-
-		res = m_socket->receiveBytes(
-			m_buffer.begin() + sizeof(dragent_protocol_header), 
-			header->len - sizeof(dragent_protocol_header), 
-			MSG_WAITALL);
-
-		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+			res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
 			return;
 		}
@@ -358,65 +378,82 @@ void connection_manager::receive_message()
 			return;
 		}
 
-		if(res != (int32_t) (header->len - sizeof(dragent_protocol_header)))
+		if(res < 0)
 		{
-			g_log->error(m_name + ": Protocol error (4): " + NumberFormatter::format(res));
+			g_log->error(m_name + ": Connection error: " + NumberFormatter::format(res));
 			disconnect();
 			ASSERT(false);
 			return;
 		}
 
-		if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+		m_buffer_used += res;
+
+		if(m_buffer_used == header->len)
 		{
-			g_log->error(m_name + ": Received command for incompatible version protocol " 
-				+ NumberFormatter::format(header->version));
-			ASSERT(false);
-			return;
+			m_buffer_used = 0;
+
+			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+			{
+				g_log->error(m_name + ": Received command for incompatible version protocol "
+							 + NumberFormatter::format(header->version));
+				ASSERT(false);
+				return;
+			}
+
+			// When the message is complete, process it
+			// and reset the buffer
+			g_log->information(m_name + ": Received command "
+							   + NumberFormatter::format(header->messagetype)
+							   + " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
+
+			switch(header->messagetype)
+			{
+			case draiosproto::message_type::DUMP_REQUEST_START:
+				handle_dump_request_start(
+						m_buffer.begin() + sizeof(dragent_protocol_header),
+						header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::DUMP_REQUEST_STOP:
+				handle_dump_request_stop(
+						m_buffer.begin() + sizeof(dragent_protocol_header),
+						header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::SSH_OPEN_CHANNEL:
+				handle_ssh_open_channel(
+						m_buffer.begin() + sizeof(dragent_protocol_header),
+						header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::SSH_DATA:
+				handle_ssh_data(
+						m_buffer.begin() + sizeof(dragent_protocol_header),
+						header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::SSH_CLOSE_CHANNEL:
+				handle_ssh_close_channel(
+						m_buffer.begin() + sizeof(dragent_protocol_header),
+						header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::AUTO_UPDATE_REQUEST:
+				handle_auto_update();
+				break;
+			case draiosproto::message_type::CONFIG_DATA:
+				handle_config_data(
+						m_buffer.begin() + sizeof(dragent_protocol_header),
+						header->len - sizeof(dragent_protocol_header));
+				break;
+			default:
+				g_log->error(m_name + ": Unknown message type: "
+							 + NumberFormatter::format(header->messagetype));
+				ASSERT(false);
+			}
 		}
 
-		g_log->information(m_name + ": Received command " 
-			+ NumberFormatter::format(header->messagetype)
-			+ " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
-
-		switch(header->messagetype)
+		if(m_buffer_used > header->len)
 		{
-		case draiosproto::message_type::DUMP_REQUEST_START:
-			handle_dump_request_start(
-				m_buffer.begin() + sizeof(dragent_protocol_header),
-				header->len - sizeof(dragent_protocol_header));
-			break;
-		case draiosproto::message_type::DUMP_REQUEST_STOP:
-			handle_dump_request_stop(
-				m_buffer.begin() + sizeof(dragent_protocol_header),
-				header->len - sizeof(dragent_protocol_header));
-			break;
-		case draiosproto::message_type::SSH_OPEN_CHANNEL:
-			handle_ssh_open_channel(
-				m_buffer.begin() + sizeof(dragent_protocol_header),
-				header->len - sizeof(dragent_protocol_header));
-			break;
-		case draiosproto::message_type::SSH_DATA:
-			handle_ssh_data(
-				m_buffer.begin() + sizeof(dragent_protocol_header),
-				header->len - sizeof(dragent_protocol_header));
-			break;
-		case draiosproto::message_type::SSH_CLOSE_CHANNEL:
-			handle_ssh_close_channel(
-				m_buffer.begin() + sizeof(dragent_protocol_header),
-				header->len - sizeof(dragent_protocol_header));
-			break;
-		case draiosproto::message_type::AUTO_UPDATE_REQUEST:
-			handle_auto_update();
-			break;
-		case draiosproto::message_type::CONFIG_DATA:
-			handle_config_data(
-					m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-			break;
-		default:
-			g_log->error(m_name + ": Unknown message type: "
-				+ NumberFormatter::format(header->messagetype));
+			g_log->error(m_name + ": Protocol out of sync, disconnecting");
+			disconnect();
 			ASSERT(false);
+			return;
 		}
 	}
 	catch(Poco::IOException& e)

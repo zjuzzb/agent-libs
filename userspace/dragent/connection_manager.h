@@ -42,7 +42,7 @@ private:
 	void handle_ssh_close_channel(uint8_t* buf, uint32_t size);
 	void handle_auto_update();
 	void handle_config_data(uint8_t* buf, uint32_t size);
-
+	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
@@ -55,6 +55,7 @@ private:
 	SharedPtr<StreamSocket> m_socket;
 	bool m_connected;
 	Buffer<uint8_t> m_buffer;
+	uint32_t m_buffer_used;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	sinsp_worker* m_sinsp_worker;
