@@ -259,7 +259,8 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 		}
 
 		int32_t res = m_socket->sendBytes(buffer, buflen);
-		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+			res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
 			return false;
 		}
@@ -306,7 +307,8 @@ void connection_manager::receive_message()
 		{
 			// We begin by reading and processing the protocol header
 			int32_t res = m_socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
-			if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+			if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+			   res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 			{
 				return;
 			}
@@ -362,7 +364,8 @@ void connection_manager::receive_message()
 				header->len - m_buffer_used,
 				MSG_WAITALL);
 
-		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
+			res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
 			return;
 		}
