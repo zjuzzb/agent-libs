@@ -331,14 +331,6 @@ void connection_manager::receive_message()
 			dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
 			header->len = ntohl(header->len);
 
-			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
-			{
-				g_log->error(m_name + ": Received command for incompatible version protocol "
-							 + NumberFormatter::format(header->version));
-				ASSERT(false);
-				return;
-			}
-
 			if(header->len < sizeof(dragent_protocol_header))
 			{
 				g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
@@ -390,6 +382,16 @@ void connection_manager::receive_message()
 
 		if(m_buffer_used == header->len)
 		{
+			m_buffer_used = 0;
+
+			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+			{
+				g_log->error(m_name + ": Received command for incompatible version protocol "
+							 + NumberFormatter::format(header->version));
+				ASSERT(false);
+				return;
+			}
+
 			// When the message is complete, process it
 			// and reset the buffer
 			g_log->information(m_name + ": Received command "
@@ -436,7 +438,6 @@ void connection_manager::receive_message()
 							 + NumberFormatter::format(header->messagetype));
 				ASSERT(false);
 			}
-			m_buffer_used = 0;
 		}
 	}
 	catch(Poco::IOException& e)
