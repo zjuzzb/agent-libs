@@ -447,6 +447,14 @@ void connection_manager::receive_message()
 				ASSERT(false);
 			}
 		}
+
+		if(m_buffer_used > header->len)
+		{
+			g_log->error(m_name + ": Protocol out of sync, disconnecting");
+			disconnect();
+			ASSERT(false);
+			return;
+		}
 	}
 	catch(Poco::IOException& e)
 	{
