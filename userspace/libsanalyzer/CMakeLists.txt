@@ -120,7 +120,7 @@ add_library(sanalyzer STATIC
 	app_checks.cpp
 	posix_queue.cpp
 	sdc_internal.pb.cc
-	token_bucket.cpp proc_config.h)
+	proc_config.h)
 
 target_link_libraries(sanalyzer
 	scap 
