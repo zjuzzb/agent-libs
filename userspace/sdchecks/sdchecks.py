@@ -178,12 +178,6 @@ class AppCheckInstance:
             self.instance_conf["port"] = proc_data["ports"][0]
 
         for key, value in check.get("conf", {}).items():
-            # some checks rely on str, so let's convert
-            # everything to str
-            key = key.encode('ascii', 'ignore')
-            if isinstance(value, unicode):
-                value = value.encode('ascii', 'ignore')
-
             if isinstance(value, str):
                 self.instance_conf[key] = self._expand_template(value, proc_data)
             else:
