@@ -2192,6 +2192,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 //					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
 //						m_sampling_ratio);
 				proc->set_start_count(procinfo->m_start_count);
+				proc->set_count_processes(procinfo->m_proc_count);
 			}
 #endif // ANALYZER_EMITS_PROCESSES
 		}
@@ -2659,9 +2660,9 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 		{
 			m_last_system_cpuload = 0;
 
-			for(j = 0; j < m_cpu_loads.size(); j++)
+			for(j = 0; j < m_proc_stat.m_loads.size(); j++)
 			{
-				m_last_system_cpuload += m_cpu_loads[j];
+				m_last_system_cpuload += m_proc_stat.m_loads[j];
 			}
 
 			m_seconds_above_thresholds = 0;
@@ -2715,9 +2716,9 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 			double totcpuload = 0;
 			bool skip = false;
 
-			for(j = 0; j < m_cpu_loads.size(); j++)
+			for(j = 0; j < m_proc_stat.m_loads.size(); j++)
 			{
-				totcpuload += m_cpu_loads[j];
+				totcpuload += m_proc_stat.m_loads[j];
 			}
 
 			if(m_last_system_cpuload != 0)
@@ -3011,7 +3012,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					m_prev_flush_wall_time = wall_time;
 					m_skip_proc_parsing = false;
-					m_procfs_parser->get_cpus_load(&m_cpu_loads, &m_cpu_idles, &m_cpu_steals);
+					m_procfs_parser->get_proc_stat(&m_proc_stat);
 				}
 			}
 
@@ -3178,32 +3179,50 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->set_instance_id(m_configuration->get_instance_id());
 			}
 
-			ASSERT(m_cpu_loads.size() == 0 || m_cpu_loads.size() == m_machine_info->num_cpus);
-			ASSERT(m_cpu_loads.size() == m_cpu_steals.size());
+			ASSERT(m_proc_stat.m_loads.size() == 0 || m_proc_stat.m_loads.size() == m_machine_info->num_cpus);
+			ASSERT(m_proc_stat.m_loads.size() == m_proc_stat.m_steals.size());
 			string cpustr;
 
 			double totcpuload = 0;
 			double totcpusteal = 0;
 
-			for(uint32_t k = 0; k < m_cpu_loads.size(); k++)
+			for(uint32_t k = 0; k < m_proc_stat.m_loads.size(); k++)
 			{
-				cpustr += to_string((long double) m_cpu_loads[k]) + "(" + to_string((long double) m_cpu_steals[k]) + ") ";
-				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_cpu_loads[k] * 100));
-				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_cpu_steals[k] * 100));
+				cpustr += to_string((long double) m_proc_stat.m_loads[k]) + "(" + to_string((long double) m_proc_stat.m_steals[k]) + ") ";
+				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_proc_stat.m_loads[k] * 100));
+				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_proc_stat.m_steals[k] * 100));
+				m_metrics->mutable_hostinfo()->add_cpu_idle((uint32_t)(m_proc_stat.m_idle[k] * 100));
+				m_metrics->mutable_hostinfo()->add_user_cpu((uint32_t)(m_proc_stat.m_user[k] * 100));
+				m_metrics->mutable_hostinfo()->add_nice_cpu((uint32_t)(m_proc_stat.m_nice[k] * 100));
+				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k] * 100));
+				m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
 
-				totcpuload += m_cpu_loads[k];
-				totcpusteal += m_cpu_steals[k];
+				totcpuload += m_proc_stat.m_loads[k];
+				totcpusteal += m_proc_stat.m_steals[k];
 			}
 
-			ASSERT(totcpuload <= 100 * m_cpu_loads.size());
-			ASSERT(totcpusteal <= 100 * m_cpu_loads.size());
+			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
+
+			ASSERT(totcpuload <= 100 * m_proc_stat.m_loads.size());
+			ASSERT(totcpusteal <= 100 * m_proc_stat.m_loads.size());
 
 			if(totcpuload < m_total_process_cpu)
 			{
 				totcpuload = m_total_process_cpu;
 			}
+			double loadavg[3] = {0};
+			if(getloadavg(loadavg, 3) != -1)
+			{
+				m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
+				m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
+				m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
+			}
+			else
+			{
+				g_logger.log("Could not obtain load averages", sinsp_logger::SEV_WARNING);
+			}
 
-			if(m_cpu_loads.size() != 0)
+			if(m_proc_stat.m_loads.size() != 0)
 			{
 				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
@@ -3211,7 +3230,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_kb, &m_host_metrics.m_swap_memory_kb);
+			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
+													 &m_host_metrics.m_res_memory_free_kb,
+													 &m_host_metrics.m_res_memory_avail_kb,
+													 &m_host_metrics.m_swap_memory_used_kb,
+													 &m_host_metrics.m_swap_memory_total_kb,
+													 &m_host_metrics.m_swap_memory_avail_kb);
 
 			if(m_protocols_enabled)
 			{
@@ -3229,12 +3253,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_kb);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_total_kb((uint32_t)m_host_metrics.m_swap_memory_total_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_available_kb(m_host_metrics.m_swap_memory_avail_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
+			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_host_metrics.get_process_count());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_proc_start_count(m_host_metrics.get_process_start_count());
 
 			if(m_mounted_fs_proxy)
 			{
@@ -4664,7 +4693,7 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 
 	auto mem_extractor = [](const analyzer_container_state& analyzer_state)
 	{
-		return analyzer_state.m_metrics.m_res_memory_kb;
+		return analyzer_state.m_metrics.m_res_memory_used_kb;
 	};
 
 	auto file_io_extractor = [](const analyzer_container_state& analyzer_state)
@@ -4875,7 +4904,7 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
 	container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
-	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_kb;
+	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_used_kb;
 	if(!it_analyzer->second.m_memory_cgroup.empty())
 	{
 		const auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
@@ -4885,12 +4914,14 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		}
 	}
 	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
-	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_kb);
+	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_used_kb);
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
+	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 
 	const auto cpu_shares = it->second.m_cpu_shares;
 	if(cpu_shares > 0)

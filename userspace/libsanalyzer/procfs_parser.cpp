@@ -29,13 +29,13 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_physical_memory_kb = physical_memory_kb;
 	m_is_live_capture = is_live_capture;
 
-	m_old_global_total_jiffies = 0;
-	m_old_global_work_jiffies = 0;
+	m_old_global_total = 0;
+	m_old_global_work = 0;
 	m_last_in_bytes = 0;
 	m_last_out_bytes = 0;
 }
 
-double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
+double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total, uint64_t* global_idle, uint64_t* global_steal)
 {
 	double res = -1;
 	char line[512];
@@ -66,10 +66,10 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	}
 
 	uint64_t val1, val2, val3, val4, val5, val6, val7, val8;
-	uint64_t total_jiffies;
-	uint64_t work_jiffies;
-	uint64_t delta_total_jiffies;
-	uint64_t delta_work_jiffies;
+	uint64_t total;
+	uint64_t work;
+	uint64_t delta_total;
+	uint64_t delta_work;
 
 	//
 	// Extract the line content
@@ -93,39 +93,39 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	//
 	// Calculate the value
 	//
-	total_jiffies = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
-	work_jiffies = val1 + val2 + val3 + val8;
+	total = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
+	work = val1 + val2 + val3 + val8;
 
-	if(m_old_global_total_jiffies != 0)
+	if(m_old_global_total != 0)
 	{
-		delta_work_jiffies = work_jiffies - m_old_global_work_jiffies;
-		delta_total_jiffies = total_jiffies - m_old_global_total_jiffies;
+		delta_work = work - m_old_global_work;
+		delta_total = total - m_old_global_total;
 
-		res = (double)delta_work_jiffies * 100 / delta_total_jiffies;
+		res = (double)delta_work * 100 / delta_total;
 
-		m_old_global_total_jiffies = total_jiffies;
-		m_old_global_work_jiffies = work_jiffies;
+		m_old_global_total = total;
+		m_old_global_work = work;
 	}
 
-	m_old_global_total_jiffies = total_jiffies;
-	m_old_global_work_jiffies = work_jiffies;
+	m_old_global_total = total;
+	m_old_global_work = work;
 
 	//
 	// Optionally return the total jiffies to the user
 	//
-	if(global_total_jiffies)
+	if(global_total)
 	{
-		*global_total_jiffies = total_jiffies;
+		*global_total = total;
 	}
 
-	if(global_idle_jiffies)
+	if(global_idle)
 	{
-		*global_idle_jiffies = val4;
+		*global_idle = val4;
 	}
 
-	if(global_steal_jiffies)
+	if(global_steal)
 	{
-		*global_steal_jiffies = val8;
+		*global_steal = val8;
 	}
 
 	fclose(f);
@@ -133,134 +133,190 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	return res;
 }
 
-//
-// See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
-//
-void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals)
+void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 {
+	ASSERT(proc_stat);
+
 	char line[512];
-	char tmps[32];
-	uint32_t j;
-	uint32_t old_array_size = (uint32_t)m_old_total_jiffies.size();
+	uint32_t old_array_size = (uint32_t)m_old_total.size();
+	proc_stat->m_loads.clear();
+	proc_stat->m_steals.clear();
+	proc_stat->m_user.clear();
+	proc_stat->m_nice.clear();
+	proc_stat->m_system.clear();
+	proc_stat->m_idle.clear();
+	proc_stat->m_iowait.clear();
 
-	//
-	// Nothing to do on windows
-	//
-	if(!m_is_live_capture)
-	{
-		return;
-	}
-
-	loads->clear();
-	idles->clear();
-	steals->clear();
+	if(!m_is_live_capture) { return; }
 
 	char filename[SCAP_MAX_PATH_SIZE];
 	sprintf(filename, "%s/proc/stat", scap_get_host_root());
 	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
-		ASSERT(false);
-		return;
+		ASSERT(false); return;
 	}
 
 	//
-	// Consume the first line which is the global system summary
+	// Consume the first line (aggregated cpu values)
 	//
 	if(fgets(line, sizeof(line), f) == NULL)
 	{
-		ASSERT(false);
-		fclose(f);
-		return;
+		ASSERT(false); fclose(f); return;
 	}
 
 	//
 	// Consume the cpu lines
 	//
-	for(j = 0; fgets(line, sizeof(line), f) != NULL; j++)
+	for(int j = 0; fgets(line, sizeof(line), f) != NULL; ++j)
 	{
-		uint64_t val1, val2, val3, val5, val6, val7;
-		uint64_t total_jiffies;
-		uint64_t work_jiffies;
-		uint64_t idle_jiffies;
-		uint64_t steal_jiffies;
-		uint64_t delta_total_jiffies;
-		uint64_t delta_work_jiffies;
-		uint64_t delta_idle_jiffies;
-		uint64_t delta_steal_jiffies;
-
-		if(strstr(line, "cpu") != line)
+		if(strstr(line, "cpu") == line)
 		{
-			break;
+			if(!get_cpus_load(proc_stat, line, j, old_array_size))
+			{
+				ASSERT(false); break;
+			}
 		}
-
-		if(sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
-			tmps, // cpu name
-			&val1, // user
-			&val2, // nice
-			&val3, // system
-			&idle_jiffies, // idle
-			&val5, // iowait
-			&val6, // irq
-			&val7, // softirq
-			&steal_jiffies) != 9) // steal
+		else if(strstr(line, "btime") == line) // boot time
 		{
-			ASSERT(false);
-			fclose(f);
-			break;
-		}
-
-		total_jiffies = val1 + val2 + val3 + idle_jiffies + val5 + val6 + val7 + steal_jiffies;
-		work_jiffies = val1 + val2 + val3 + val5 + val6 + val7 + steal_jiffies;
-
-		if(old_array_size == 0)
-		{
-			m_old_total_jiffies.push_back(total_jiffies);
-			m_old_work_jiffies.push_back(work_jiffies);
-			m_old_idle_jiffies.push_back(idle_jiffies);
-			m_old_steal_jiffies.push_back(steal_jiffies);
-		}
-		else
-		{
-			delta_work_jiffies = work_jiffies - m_old_work_jiffies[j];
-			delta_idle_jiffies = idle_jiffies - m_old_idle_jiffies[j];
-			delta_steal_jiffies = steal_jiffies - m_old_steal_jiffies[j];
-			delta_total_jiffies = total_jiffies - m_old_total_jiffies[j];
-
-			double load = (double)delta_work_jiffies * 100 / delta_total_jiffies;
-			load = MIN(load, 100);
-			loads->push_back(load);
-
-			double idle = (double)delta_idle_jiffies * 100 / delta_total_jiffies;
-			idle = MIN(idle, 100);
-			idles->push_back(idle);
-
-			double steal = (double)delta_steal_jiffies * 100 / delta_total_jiffies;
-			steal = MIN(steal, 100);
-			steals->push_back(steal);
-
-			m_old_total_jiffies[j] = total_jiffies;
-			m_old_work_jiffies[j] = work_jiffies;
-			m_old_idle_jiffies[j] = idle_jiffies;
-			m_old_steal_jiffies[j] = steal_jiffies;
+			if(!proc_stat->m_btime)
+			{
+				if(!get_boot_time(proc_stat, line))
+				{
+					ASSERT(false); break;
+				}
+			}
+			proc_stat->m_uptime = get_epoch_utc_seconds_now() - proc_stat->m_btime;
+			g_logger.log("sinsp_procfs_parser::get_proc_stat() m_btime=" + std::to_string(proc_stat->m_btime) +
+				 ", m_uptime=" + std::to_string(proc_stat->m_uptime) , sinsp_logger::SEV_TRACE);
 		}
 	}
-
 	fclose(f);
 }
 
-void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap)
+bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line)
+{
+	ASSERT(proc_stat);
+	char tmp[32] = {0};
+	proc_stat->m_btime = 0;
+	int scanned = sscanf(line, "%s %" PRIu64, tmp, &proc_stat->m_btime);
+	if(scanned != 2)
+	{
+		g_logger.log("get_boot_time() scanned " + std::to_string(scanned) +
+					 " values (expected 2), giving up", sinsp_logger::SEV_ERROR);
+		return false;
+	}
+	g_logger.log("sinsp_procfs_parser::get_boot_time() scanned " + std::to_string(scanned) +
+				 " values: " + tmp + '=' + std::to_string(proc_stat->m_btime) , sinsp_logger::SEV_TRACE);
+	return true;
+}
+
+//
+// See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
+//
+bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size)
+{
+	ASSERT(proc_stat);
+
+	char cpu[32] = {0};
+
+	if(!m_is_live_capture) { return true; }
+
+	uint64_t user = 0;
+	uint64_t nice = 0;
+	uint64_t system = 0;
+	uint64_t idle = 0;
+	uint64_t iowait = 0;
+	uint64_t irq = 0;
+	uint64_t softirq = 0;
+	uint64_t total = 0;
+	uint64_t work = 0;
+	uint64_t steal = 0;
+	uint64_t delta_total = 0;
+	uint64_t delta_work = 0;
+	uint64_t delta_steal = 0;
+	uint64_t delta_user = 0;
+	uint64_t delta_nice = 0;
+	uint64_t delta_system = 0;
+	uint64_t delta_idle = 0;
+	uint64_t delta_iowait = 0;
+
+	g_logger.log(std::string("sinsp_procfs_parser::get_cpus_load() scanning: ").append(line), sinsp_logger::SEV_TRACE);
+	int scanned = sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
+		cpu, &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal);
+	if(scanned != 9)
+	{
+		g_logger.log("get_cpus_load() scanned " + std::to_string(scanned) +
+					 " values (expected 9), giving up", sinsp_logger::SEV_ERROR);
+		return false;
+	}
+	g_logger.log("sinsp_procfs_parser::get_cpus_load() scanned " + std::to_string(scanned) + " values", sinsp_logger::SEV_TRACE);
+
+	total = user + nice + system + idle + iowait + irq + softirq + steal;
+	work = user + nice + system + iowait + irq + softirq + steal;
+
+	if(old_array_size == 0)
+	{
+		m_old_total.push_back(total);
+		m_old_work.push_back(work);
+		m_old_steal.push_back(steal);
+		m_old_user.push_back(user);
+		m_old_nice.push_back(nice);
+		m_old_system.push_back(system);
+		m_old_idle.push_back(idle);
+		m_old_iowait.push_back(iowait);
+	}
+	else
+	{
+		delta_work = work - m_old_work[j];
+		delta_steal = steal - m_old_steal[j];
+		delta_total = total - m_old_total[j];
+		delta_user = user - m_old_user[j];
+		delta_nice = nice - m_old_nice[j];
+		delta_system = system - m_old_system[j];
+		delta_idle = idle - m_old_idle[j];
+		delta_iowait = iowait - m_old_iowait[j];
+
+		assign_jiffies(proc_stat->m_loads, delta_work, delta_total);
+		assign_jiffies(proc_stat->m_steals, delta_steal, delta_total);
+		assign_jiffies(proc_stat->m_user, delta_user, delta_total);
+		assign_jiffies(proc_stat->m_nice, delta_nice, delta_total);
+		assign_jiffies(proc_stat->m_system, delta_system, delta_total);
+		assign_jiffies(proc_stat->m_idle, delta_idle, delta_total);
+		assign_jiffies(proc_stat->m_iowait, delta_iowait, delta_total);
+
+		m_old_total[j] = total;
+		m_old_work[j] = work;
+		m_old_steal[j] = steal;
+		m_old_user[j] = user;
+		m_old_nice[j] = nice;
+		m_old_system[j] = system;
+		m_old_idle[j] = idle;
+		m_old_iowait[j] = iowait;
+	}
+
+	return true;
+}
+
+void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap)
 {
 	char line[512];
 	int64_t mem_free = 0;
+	int64_t mem_avail = 0;
 	int64_t buffers = 0;
 	int64_t cached = 0;
 	int64_t swap_total = 0;
 	int64_t swap_free = 0;
+	int64_t swap_cached = 0;
 	int64_t tmp = 0;
 
+	ASSERT(used_memory);
+	ASSERT(used_swap);
+	ASSERT(total_swap);
 	*used_memory = -1;
 	*used_swap = -1;
+	*total_swap = -1;
+	*avail_swap = -1;
 
 	if(!m_is_live_capture)
 	{
@@ -285,6 +341,10 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		{
 			mem_free = tmp;
 		}
+		else if(sscanf(line, "MemAvailable: %" PRId64, &tmp) == 1)
+		{
+			mem_avail = tmp;
+		}
 		else if(sscanf(line, "Buffers: %" PRId64, &tmp) == 1)
 		{
 			buffers = tmp;
@@ -300,11 +360,32 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		else if(sscanf(line, "SwapFree: %" PRId64, &tmp) == 1)
 		{
 			swap_free = tmp;
-			break;
+		}
+		else if(sscanf(line, "SwapCached: %" PRId64, &tmp) == 1)
+		{
+			swap_cached = tmp;
 		}
 	}
 
 	fclose(f);
+
+	*free_memory = mem_free;
+	if(*free_memory < 0)
+	{
+		ASSERT(false);
+		*free_memory = 0;
+	}
+
+	if(!mem_avail && mem_free > 0 && cached > 0)
+	{
+		mem_avail = mem_free + cached;
+	}
+	*avail_memory = mem_avail;
+	if(*avail_memory < 0)
+	{
+		ASSERT(false);
+		*avail_memory = 0;
+	}
 
 	*used_memory = m_physical_memory_kb - mem_free - buffers - cached;
 	if(*used_memory < 0)
@@ -313,7 +394,21 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		*used_memory = 0;
 	}
 
-	*used_swap = swap_total - swap_free;
+	*total_swap = swap_total;
+	if(*total_swap < 0)
+	{
+		ASSERT(false);
+		*total_swap = 0;
+	}
+
+	*avail_swap = swap_free + swap_cached;
+	if(*avail_swap < 0)
+	{
+		ASSERT(false);
+		*avail_swap = 0;
+	}
+
+	*used_swap = swap_total - *avail_swap;
 	if(*used_swap < 0)
 	{
 		ASSERT(false);
@@ -321,7 +416,7 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	}
 }
 
-double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies)
+double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc, uint64_t delta_global_total)
 {
 	char line[512];
 	char tmps[32];
@@ -389,18 +484,18 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	//
 	// Calculate the value
 	//
-	uint64_t proc_jiffies = val1 + val2;
+	uint64_t proc = val1 + val2;
 
-	if(*old_proc_jiffies != (uint64_t)-1LL)
+	if(*old_proc != (uint64_t)-1LL)
 	{
-		uint64_t delta_proc_jiffies = proc_jiffies - *old_proc_jiffies;
+		uint64_t delta_proc = proc - *old_proc;
 
-		res = ((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus;
+		res = ((double)delta_proc * 100 / delta_global_total) * m_ncpus;
 
 		res = MIN(res, double(100 * m_ncpus));
 	}
 
-	*old_proc_jiffies = proc_jiffies;
+	*old_proc = proc;
 
 	fclose(f);
 

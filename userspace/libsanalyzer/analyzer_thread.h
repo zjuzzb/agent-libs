@@ -65,7 +65,9 @@ public:
 	sinsp_protostate m_protostate;
 	// Number of FDs
 	uint32_t m_fd_count;
-	uint64_t m_start_count;
+	uint64_t m_start_count = 0;
+	// number of process instances
+	int m_proc_count = 0;
 };
 
 class proc_config;
