@@ -110,6 +110,7 @@ add_library(sanalyzer STATIC
 	scores.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
@@ -120,7 +121,7 @@ add_library(sanalyzer STATIC
 	app_checks.cpp
 	posix_queue.cpp
 	sdc_internal.pb.cc
-	token_bucket.cpp proc_config.h)
+	proc_config.h)
 
 target_link_libraries(sanalyzer
 	scap 

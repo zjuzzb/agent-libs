@@ -29,13 +29,26 @@ private:
 	friend class sinsp_procfs_parser;
 };
 
+struct sinsp_proc_stat
+{
+	vector<double> m_loads;
+	vector<double> m_steals;
+	vector<double> m_user;
+	vector<double> m_nice;
+	vector<double> m_system;
+	vector<double> m_idle;
+	vector<double> m_iowait;
+	uint64_t m_btime = 0;
+	uint64_t m_uptime = 0;
+};
+
 class sinsp_procfs_parser
 {
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
 	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL, uint64_t* global_idle_jiffies = NULL, uint64_t* global_steal_jiffies = NULL);
-	void get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals);
-	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap);
+	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
+	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
 
 	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled, const string& mtab="/etc/mtab");
 
@@ -55,6 +68,9 @@ public:
 	pair<uint32_t, uint32_t> read_network_interfaces_stats();
 private:
 	void lookup_memory_cgroup_dir();
+	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
+	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size);
+	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
 
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
@@ -66,13 +82,24 @@ private:
 	// "" means that it cannot find memory cgroup mount point
 	unique_ptr<string> m_memory_cgroup_dir;
 
-	vector<uint64_t> m_old_total_jiffies;
-	vector<uint64_t> m_old_work_jiffies;
-	vector<uint64_t> m_old_idle_jiffies;
-	vector<uint64_t> m_old_steal_jiffies;
-	uint64_t m_old_global_total_jiffies;
-	uint64_t m_old_global_work_jiffies;
+	vector<uint64_t> m_old_total;
+	vector<uint64_t> m_old_work;
+	vector<uint64_t> m_old_steal;
+	vector<uint64_t> m_old_user;
+	vector<uint64_t> m_old_nice;
+	vector<uint64_t> m_old_system;
+	vector<uint64_t> m_old_idle;
+	vector<uint64_t> m_old_iowait;
+	uint64_t m_old_global_total;
+	uint64_t m_old_global_work;
 };
+
+inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
+{
+	double val = (double)delta_jiffies * 100 / delta_tot_jiffies;
+	val = MIN(val, 100);
+	vec.push_back(val);
+}
 
 
 class mounted_fs_proxy
