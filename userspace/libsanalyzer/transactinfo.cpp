@@ -265,11 +265,15 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		{
 			it->second.push_back(tfi);
 		}
-
-		
-		 Mark the transaction as done
-#endif		
-
+		for(auto entry : m_table)
+		{
+			for(auto trans : entry.second)
+			{
+				g_logger.log("transaction time=" + std::to_string(trans.m_trinfo.m_end_time - trans.m_trinfo.m_start_time), sinsp_logger::SEV_DEBUG);
+			}
+		}
+#endif
+		// Mark the transaction as done
 		tr->m_prev_prev_start_time = 0;
 	}
 }

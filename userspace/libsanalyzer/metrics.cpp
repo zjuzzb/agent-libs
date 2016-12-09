@@ -584,7 +584,7 @@ double sinsp_counters::get_other_percentage()
 void sinsp_transaction_counters::clear()
 {
 	m_counter.clear();
-	m_min_counter.clear();
+	//m_min_counter.clear();
 	m_max_counter.clear();
 }
 
@@ -594,13 +594,13 @@ void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirecti
 		uint32_t sampling_ratio) const
 {
 	m_counter.to_protobuf(protobuf_msg, sampling_ratio);
-	m_min_counter.to_protobuf(min_protobuf_msg, 1);
+	//m_min_counter.to_protobuf(min_protobuf_msg, 1);
 	m_max_counter.to_protobuf(max_protobuf_msg, 1);
 }
 
 void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 {
-	if(m_min_counter.m_count_in == 0 || 
+	/*if(m_min_counter.m_count_in == 0 || 
 		(other->m_min_counter.m_count_in != 0 &&
 		other->m_min_counter.m_time_ns_in < m_min_counter.m_time_ns_in))
 	{
@@ -614,11 +614,11 @@ void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 	{
 		m_min_counter.m_count_out = other->m_min_counter.m_count_out;
 		m_min_counter.m_time_ns_out = other->m_min_counter.m_time_ns_out;
-	}
+	}*/
 
 	if(m_max_counter.m_count_in == 0 || 
 		(other->m_max_counter.m_count_in != 0 &&
-		other->m_max_counter.m_count_in > m_max_counter.m_time_ns_in))
+		other->m_max_counter.m_time_ns_in > m_max_counter.m_time_ns_in))
 	{
 		m_max_counter.m_count_in = other->m_max_counter.m_count_in;
 		m_max_counter.m_time_ns_in = other->m_max_counter.m_time_ns_in;
@@ -626,7 +626,7 @@ void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 
 	if(m_max_counter.m_count_out == 0 || 
 		(other->m_max_counter.m_count_out != 0 &&
-		other->m_max_counter.m_count_out > m_max_counter.m_time_ns_out))
+		other->m_max_counter.m_time_ns_out > m_max_counter.m_time_ns_out))
 	{
 		m_max_counter.m_count_out = other->m_max_counter.m_count_out;
 		m_max_counter.m_time_ns_out = other->m_max_counter.m_time_ns_out;
@@ -640,12 +640,12 @@ void sinsp_transaction_counters::add_in(uint32_t cnt_delta, uint64_t time_delta)
 	ASSERT(cnt_delta == 1);
 	if(cnt_delta == 1)
 	{
-		if(m_min_counter.m_count_in == 0 || 
+		/*if(m_min_counter.m_count_in == 0 || 
 			time_delta < m_min_counter.m_time_ns_in)
 		{
 			m_min_counter.m_count_in = cnt_delta;
 			m_min_counter.m_time_ns_in = time_delta;
-		}
+		}*/
 
 		if(m_max_counter.m_count_in == 0 || 
 			time_delta > m_max_counter.m_time_ns_in)
@@ -663,12 +663,12 @@ void sinsp_transaction_counters::add_out(uint32_t cnt_delta, uint64_t time_delta
 	ASSERT(cnt_delta == 1);
 	if(cnt_delta == 1)
 	{
-		if(m_min_counter.m_count_out == 0 || 
+		/*if(m_min_counter.m_count_out == 0 || 
 			time_delta < m_min_counter.m_time_ns_out)
 		{
 			m_min_counter.m_count_out = cnt_delta;
 			m_min_counter.m_time_ns_out = time_delta;
-		}
+		}*/
 
 		if(m_max_counter.m_count_out == 0 || 
 			time_delta > m_max_counter.m_time_ns_out)
@@ -685,12 +685,12 @@ const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_counter(
 {
 	return &m_counter;
 }
-
+/*
 const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_min_counter()
 {
 	return &m_min_counter;
 }
-
+*/
 const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_max_counter()
 {
 	return &m_max_counter;

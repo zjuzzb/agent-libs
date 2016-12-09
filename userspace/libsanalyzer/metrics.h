@@ -215,12 +215,12 @@ public:
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
 	const sinsp_counter_time_bidirectional* get_counter();
-	const sinsp_counter_time_bidirectional* get_min_counter();
+	//const sinsp_counter_time_bidirectional* get_min_counter();
 	const sinsp_counter_time_bidirectional* get_max_counter();
 
 private:
 	sinsp_counter_time_bidirectional m_counter;
-	sinsp_counter_time_bidirectional m_min_counter;
+	//sinsp_counter_time_bidirectional m_min_counter;
 	sinsp_counter_time_bidirectional m_max_counter;
 };
 
