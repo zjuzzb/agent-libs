@@ -1209,6 +1209,9 @@ public:
 	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
 	void on_bind(sinsp_evt *evt);
 	void on_new_container(const sinsp_container_info& container_info);
+#if 0
+	void process_event(sinsp_evt *evt);
+#endif
 
 private:
 	void init_programs(uint64_t time);
