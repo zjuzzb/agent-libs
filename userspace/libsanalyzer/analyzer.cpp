@@ -69,8 +69,6 @@ using namespace google::protobuf::io;
 #include "falco_events.h"
 #include "proc_config.h"
 
-bool sinsp_analyzer::m_mesos_bad_config = false;
-
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_initialized = false;
@@ -1256,7 +1254,7 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 	if(!m_mesos)
 	{
 		if((mesos_api_server.empty() || m_configuration->get_mesos_state_original_uri().empty()) &&
-		   m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
+		   m_configuration->get_mesos_autodetect_enabled())
 		{
 			if(main_tinfo && main_tinfo->m_exe.find("mesos-master") != std::string::npos)
 			{
@@ -1385,7 +1383,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 	bool try_detect_mesos = (m_configuration->get_mesos_autodetect_enabled() &&
 							 m_configuration->get_mesos_state_original_uri().empty() &&
-							 !m_mesos && !m_mesos_bad_config);
+				 !m_mesos);
 	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
 						   m_configuration->get_k8s_api_server().empty());
 	bool mesos_detected = false, k8s_detected = false;
@@ -4402,12 +4400,12 @@ void sinsp_analyzer::emit_mesos()
 		if(!mesos_uri.empty())
 		{
 			g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
-			if(!m_mesos && !m_mesos_bad_config)
+			if(!m_mesos)
 			{
 				g_logger.log("Connecting to Mesos API server at [" + uri(mesos_uri).to_string(false) + "] ...", sinsp_logger::SEV_INFO);
 				get_mesos(mesos_uri);
 			}
-			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
+			else if(m_mesos && !m_mesos->is_alive())
 			{
 				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 				get_mesos(mesos_uri);
@@ -4419,7 +4417,7 @@ void sinsp_analyzer::emit_mesos()
 				{
 					get_mesos_data();
 				}
-				if(!m_mesos->is_alive() && !m_mesos_bad_config)
+				if(!m_mesos->is_alive())
 				{
 					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 					get_mesos(mesos_uri);
