@@ -1382,8 +1382,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 
 	bool try_detect_mesos = (m_configuration->get_mesos_autodetect_enabled() &&
-							 m_configuration->get_mesos_state_original_uri().empty() &&
+				 m_configuration->get_mesos_state_original_uri().empty() &&
 				 !m_mesos);
+
 	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
 						   m_configuration->get_k8s_api_server().empty());
 	bool mesos_detected = false, k8s_detected = false;
@@ -2927,7 +2928,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	{
 		return;
 	}
-	
+
 	if(evt != NULL)
 	{
 		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
@@ -3475,7 +3476,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						//
 						// Sampling ratio is still high, reset the baseline counter
 						//
-						m_last_falco_dump_ts = evt->get_ts();					
+						m_last_falco_dump_ts = evt->get_ts();
 					}
 				}
 			}
@@ -4392,7 +4393,7 @@ void sinsp_analyzer::emit_mesos()
 	// will be collected and emitted; the connection to mesos api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
-	
+
 	string mesos_uri = m_configuration->get_mesos_state_uri();
 
 	try

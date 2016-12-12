@@ -97,7 +97,7 @@ def _load_check_class(check_module_name):
             check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY)
         except IOError as ex:
             raise AppCheckException('Unable to find AgentCheck class for %s reason=%s' % (check_module_name, str(ex)))
-    
+
     # We make sure that there is an AgentCheck class defined
     check_class = None
     classes = inspect.getmembers(check_module, inspect.isclass)
@@ -157,7 +157,7 @@ class AppCheckInstance:
         except KeyError:
             check_module = self.name
         self.check_instance = get_check_class(check_module)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
-        
+
         if self.CONTAINER_SUPPORT:
             mnt_ns_path = build_ns_path(self.pid, "mnt")
             try:
@@ -245,7 +245,7 @@ class Config:
         if level == "error":
             return logging.ERROR
         elif level == "warning":
-            return logging.WARNING 
+            return logging.WARNING
         elif level == "info":
             return logging.INFO
         elif level == "debug":
@@ -328,7 +328,7 @@ class Application:
         # exceptions
         self.blacklisted_pids = set()
         self.last_blacklisted_pids_cleanup = datetime.now()
-        
+
         self.last_request_pids = set()
 
     def cleanup(self):
@@ -358,7 +358,7 @@ class Application:
                     continue
                 check = p["check"]
                 logging.debug("Requested check %s", repr(check))
-                
+
                 try:
                     check_instance = AppCheckInstance(check, p)
                 except AppCheckException as ex:
@@ -366,7 +366,7 @@ class Application:
                     self.blacklisted_pids.add(pid)
                     continue
                 self.known_instances[pid] = check_instance
-            
+
             metrics, service_checks, ex = check_instance.run()
 
             if ex and pid not in self.blacklisted_pids:
@@ -400,7 +400,7 @@ class Application:
                 self.blacklisted_pids.clear()
                 self.last_blacklisted_pids_cleanup = datetime.now()
 
-            # Send heartbeat 
+            # Send heartbeat
             ru = resource.getrusage(resource.RUSAGE_SELF)
             sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
             sys.stderr.flush()
