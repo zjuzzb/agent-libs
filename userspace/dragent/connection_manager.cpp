@@ -387,6 +387,9 @@ void connection_manager::receive_message()
 		}
 
 		m_buffer_used += res;
+		g_log->debug(m_name + ": Receiving message version=" + NumberFormatter::format(header->version) +
+					 " len=" + NumberFormatter::format(header->len) + " messagetype=" + NumberFormatter::format(header->messagetype) +
+					" received=" + NumberFormatter::format(m_buffer_used));
 
 		if(m_buffer_used == header->len)
 		{
