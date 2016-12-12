@@ -522,6 +522,8 @@ int dragent_app::sdagent_main()
 		exit_code = Application::EXIT_OK;
 	}
 
+	// XXX take this out, not needed since we don't check m_terminate any further
+	// make it an assert?
 	dragent_configuration::m_terminate = true;
 	ThreadPool::defaultPool().stopAll();
 

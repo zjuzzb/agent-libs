@@ -395,7 +395,9 @@ void connection_manager::receive_message()
 		{
 			m_buffer_used = 0;
 
-			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+			//if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER &&
+			   header->version != 2)
 			{
 				g_log->error(m_name + ": Received command for incompatible version protocol "
 							 + NumberFormatter::format(header->version));
@@ -443,6 +445,11 @@ void connection_manager::receive_message()
 				handle_config_data(
 						m_buffer.begin() + sizeof(dragent_protocol_header),
 						header->len - sizeof(dragent_protocol_header));
+				break;
+			case draiosproto::message_type::ERROR_MESSAGE:
+				handle_error_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
 				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: "
@@ -610,4 +617,53 @@ void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
 	{
 		g_log->debug("Auto config disabled, ignoring CONFIG_DATA message");
 	}
+}
+
+void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
+{
+	draiosproto::error_with_string err_msg;
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &err_msg))
+	{
+		return;
+	}
+
+	string err_str = "";
+	bool term = false;
+
+	// If a reason isn't provided, we ignore the description string
+	if(err_msg.has_reason() && !err_msg.reason().empty())
+	{
+		err_str = err_msg.reason();
+
+		if(err_str == "ERR_CONN_LIMIT" ||
+		   err_str == "ERR_INVALID_CUSTOMER_KEY")
+		{
+			term = true;
+		}
+
+		if(err_msg.has_description() && !err_msg.description().empty())
+		{
+			err_str += " (" + err_msg.description() + ")";
+			if(term == true)
+			{
+				err_str += ", terminating the agent";
+			}
+		}
+
+	}
+
+	if(!err_str.empty())
+	{
+		g_log->error(m_name + ": received " + err_str);
+
+		if(term)
+		{
+			dragent_configuration::m_terminate = true;
+		}
+	}
+	else
+	{
+		g_log->error(m_name + ": received unknown error"); 
+	}
+
 }

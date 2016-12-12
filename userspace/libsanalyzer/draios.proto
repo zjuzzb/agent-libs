@@ -526,6 +526,7 @@ enum message_type {
     AUTO_UPDATE_REQUEST = 9;
     DIRTY_SHUTDOWN_REPORT = 10;
     CONFIG_DATA = 11;
+    ERROR_MESSAGE = 12;
 }
 
 //
@@ -891,4 +892,9 @@ message falco_container {
 message falco_baseline {
     repeated falco_prog progs = 1;
     repeated falco_container containers = 2;
+}
+
+message error_with_string {
+    optional string reason = 1;
+    optional string description = 2;
 }
