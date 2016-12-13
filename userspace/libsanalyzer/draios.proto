@@ -854,6 +854,11 @@ message config_data {
     repeated config_file config_files = 1;
 }
 
+message error_message {
+    optional string reason = 1;
+    optional string description = 2;
+}
+
 //
 // FALCO BASELINE
 //
@@ -892,9 +897,4 @@ message falco_container {
 message falco_baseline {
     repeated falco_prog progs = 1;
     repeated falco_container containers = 2;
-}
-
-message error_with_string {
-    optional string reason = 1;
-    optional string description = 2;
 }

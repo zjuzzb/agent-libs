@@ -111,13 +111,13 @@ class key_value;
 class agent_event;
 class config_file;
 class config_data;
+class error_message;
 class falco_subcategory;
 class falco_subcategory_container;
 class falco_category;
 class falco_prog;
 class falco_container;
 class falco_baseline;
-class error_with_string;
 
 enum sql_statement_type {
   SOP_NONE = 0,
@@ -10830,6 +10830,108 @@ class config_data : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class error_message : public ::google::protobuf::Message {
+ public:
+  error_message();
+  virtual ~error_message();
+
+  error_message(const error_message& from);
+
+  inline error_message& operator=(const error_message& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const error_message& default_instance();
+
+  void Swap(error_message* other);
+
+  // implements Message ----------------------------------------------
+
+  error_message* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const error_message& from);
+  void MergeFrom(const error_message& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string reason = 1;
+  inline bool has_reason() const;
+  inline void clear_reason();
+  static const int kReasonFieldNumber = 1;
+  inline const ::std::string& reason() const;
+  inline void set_reason(const ::std::string& value);
+  inline void set_reason(const char* value);
+  inline void set_reason(const char* value, size_t size);
+  inline ::std::string* mutable_reason();
+  inline ::std::string* release_reason();
+  inline void set_allocated_reason(::std::string* reason);
+
+  // optional string description = 2;
+  inline bool has_description() const;
+  inline void clear_description();
+  static const int kDescriptionFieldNumber = 2;
+  inline const ::std::string& description() const;
+  inline void set_description(const ::std::string& value);
+  inline void set_description(const char* value);
+  inline void set_description(const char* value, size_t size);
+  inline ::std::string* mutable_description();
+  inline ::std::string* release_description();
+  inline void set_allocated_description(::std::string* description);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.error_message)
+ private:
+  inline void set_has_reason();
+  inline void clear_has_reason();
+  inline void set_has_description();
+  inline void clear_has_description();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* reason_;
+  ::std::string* description_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static error_message* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class falco_subcategory : public ::google::protobuf::Message {
  public:
   falco_subcategory();
@@ -11526,108 +11628,6 @@ class falco_baseline : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static falco_baseline* default_instance_;
-};
-// -------------------------------------------------------------------
-
-class error_with_string : public ::google::protobuf::Message {
- public:
-  error_with_string();
-  virtual ~error_with_string();
-
-  error_with_string(const error_with_string& from);
-
-  inline error_with_string& operator=(const error_with_string& from) {
-    CopyFrom(from);
-    return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const error_with_string& default_instance();
-
-  void Swap(error_with_string* other);
-
-  // implements Message ----------------------------------------------
-
-  error_with_string* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const error_with_string& from);
-  void MergeFrom(const error_with_string& from);
-  void Clear();
-  bool IsInitialized() const;
-
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-
-  ::google::protobuf::Metadata GetMetadata() const;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // optional string reason = 1;
-  inline bool has_reason() const;
-  inline void clear_reason();
-  static const int kReasonFieldNumber = 1;
-  inline const ::std::string& reason() const;
-  inline void set_reason(const ::std::string& value);
-  inline void set_reason(const char* value);
-  inline void set_reason(const char* value, size_t size);
-  inline ::std::string* mutable_reason();
-  inline ::std::string* release_reason();
-  inline void set_allocated_reason(::std::string* reason);
-
-  // optional string description = 2;
-  inline bool has_description() const;
-  inline void clear_description();
-  static const int kDescriptionFieldNumber = 2;
-  inline const ::std::string& description() const;
-  inline void set_description(const ::std::string& value);
-  inline void set_description(const char* value);
-  inline void set_description(const char* value, size_t size);
-  inline ::std::string* mutable_description();
-  inline ::std::string* release_description();
-  inline void set_allocated_description(::std::string* description);
-
-  // @@protoc_insertion_point(class_scope:draiosproto.error_with_string)
- private:
-  inline void set_has_reason();
-  inline void clear_has_reason();
-  inline void set_has_description();
-  inline void clear_has_description();
-
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-
-  ::std::string* reason_;
-  ::std::string* description_;
-
-  mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
-
-  friend void  protobuf_AddDesc_draios_2eproto();
-  friend void protobuf_AssignDesc_draios_2eproto();
-  friend void protobuf_ShutdownFile_draios_2eproto();
-
-  void InitAsDefaultInstance();
-  static error_with_string* default_instance_;
 };
 // ===================================================================
 
@@ -27046,6 +27046,150 @@ config_data::mutable_config_files() {
 
 // -------------------------------------------------------------------
 
+// error_message
+
+// optional string reason = 1;
+inline bool error_message::has_reason() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void error_message::set_has_reason() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void error_message::clear_has_reason() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void error_message::clear_reason() {
+  if (reason_ != &::google::protobuf::internal::kEmptyString) {
+    reason_->clear();
+  }
+  clear_has_reason();
+}
+inline const ::std::string& error_message::reason() const {
+  return *reason_;
+}
+inline void error_message::set_reason(const ::std::string& value) {
+  set_has_reason();
+  if (reason_ == &::google::protobuf::internal::kEmptyString) {
+    reason_ = new ::std::string;
+  }
+  reason_->assign(value);
+}
+inline void error_message::set_reason(const char* value) {
+  set_has_reason();
+  if (reason_ == &::google::protobuf::internal::kEmptyString) {
+    reason_ = new ::std::string;
+  }
+  reason_->assign(value);
+}
+inline void error_message::set_reason(const char* value, size_t size) {
+  set_has_reason();
+  if (reason_ == &::google::protobuf::internal::kEmptyString) {
+    reason_ = new ::std::string;
+  }
+  reason_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* error_message::mutable_reason() {
+  set_has_reason();
+  if (reason_ == &::google::protobuf::internal::kEmptyString) {
+    reason_ = new ::std::string;
+  }
+  return reason_;
+}
+inline ::std::string* error_message::release_reason() {
+  clear_has_reason();
+  if (reason_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = reason_;
+    reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void error_message::set_allocated_reason(::std::string* reason) {
+  if (reason_ != &::google::protobuf::internal::kEmptyString) {
+    delete reason_;
+  }
+  if (reason) {
+    set_has_reason();
+    reason_ = reason;
+  } else {
+    clear_has_reason();
+    reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string description = 2;
+inline bool error_message::has_description() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void error_message::set_has_description() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void error_message::clear_has_description() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void error_message::clear_description() {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    description_->clear();
+  }
+  clear_has_description();
+}
+inline const ::std::string& error_message::description() const {
+  return *description_;
+}
+inline void error_message::set_description(const ::std::string& value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void error_message::set_description(const char* value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void error_message::set_description(const char* value, size_t size) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* error_message::mutable_description() {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  return description_;
+}
+inline ::std::string* error_message::release_description() {
+  clear_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = description_;
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void error_message::set_allocated_description(::std::string* description) {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    delete description_;
+  }
+  if (description) {
+    set_has_description();
+    description_ = description;
+  } else {
+    clear_has_description();
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
 // falco_subcategory
 
 // required string name = 1;
@@ -27978,150 +28122,6 @@ falco_baseline::containers() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >*
 falco_baseline::mutable_containers() {
   return &containers_;
-}
-
-// -------------------------------------------------------------------
-
-// error_with_string
-
-// optional string reason = 1;
-inline bool error_with_string::has_reason() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
-}
-inline void error_with_string::set_has_reason() {
-  _has_bits_[0] |= 0x00000001u;
-}
-inline void error_with_string::clear_has_reason() {
-  _has_bits_[0] &= ~0x00000001u;
-}
-inline void error_with_string::clear_reason() {
-  if (reason_ != &::google::protobuf::internal::kEmptyString) {
-    reason_->clear();
-  }
-  clear_has_reason();
-}
-inline const ::std::string& error_with_string::reason() const {
-  return *reason_;
-}
-inline void error_with_string::set_reason(const ::std::string& value) {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  reason_->assign(value);
-}
-inline void error_with_string::set_reason(const char* value) {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  reason_->assign(value);
-}
-inline void error_with_string::set_reason(const char* value, size_t size) {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  reason_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* error_with_string::mutable_reason() {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  return reason_;
-}
-inline ::std::string* error_with_string::release_reason() {
-  clear_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = reason_;
-    reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void error_with_string::set_allocated_reason(::std::string* reason) {
-  if (reason_ != &::google::protobuf::internal::kEmptyString) {
-    delete reason_;
-  }
-  if (reason) {
-    set_has_reason();
-    reason_ = reason;
-  } else {
-    clear_has_reason();
-    reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
-}
-
-// optional string description = 2;
-inline bool error_with_string::has_description() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void error_with_string::set_has_description() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void error_with_string::clear_has_description() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void error_with_string::clear_description() {
-  if (description_ != &::google::protobuf::internal::kEmptyString) {
-    description_->clear();
-  }
-  clear_has_description();
-}
-inline const ::std::string& error_with_string::description() const {
-  return *description_;
-}
-inline void error_with_string::set_description(const ::std::string& value) {
-  set_has_description();
-  if (description_ == &::google::protobuf::internal::kEmptyString) {
-    description_ = new ::std::string;
-  }
-  description_->assign(value);
-}
-inline void error_with_string::set_description(const char* value) {
-  set_has_description();
-  if (description_ == &::google::protobuf::internal::kEmptyString) {
-    description_ = new ::std::string;
-  }
-  description_->assign(value);
-}
-inline void error_with_string::set_description(const char* value, size_t size) {
-  set_has_description();
-  if (description_ == &::google::protobuf::internal::kEmptyString) {
-    description_ = new ::std::string;
-  }
-  description_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* error_with_string::mutable_description() {
-  set_has_description();
-  if (description_ == &::google::protobuf::internal::kEmptyString) {
-    description_ = new ::std::string;
-  }
-  return description_;
-}
-inline ::std::string* error_with_string::release_description() {
-  clear_has_description();
-  if (description_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = description_;
-    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void error_with_string::set_allocated_description(::std::string* description) {
-  if (description_ != &::google::protobuf::internal::kEmptyString) {
-    delete description_;
-  }
-  if (description) {
-    set_has_description();
-    description_ = description;
-  } else {
-    clear_has_description();
-    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
 }
 
 

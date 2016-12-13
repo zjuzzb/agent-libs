@@ -396,8 +396,6 @@ void connection_manager::receive_message()
 			m_buffer_used = 0;
 
 			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
-			//if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER &&
-			//   header->version != 2)
 			{
 				g_log->error(m_name + ": Received command for incompatible version protocol "
 							 + NumberFormatter::format(header->version));
@@ -621,7 +619,7 @@ void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
 
 void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 {
-	draiosproto::error_with_string err_msg;
+	draiosproto::error_message err_msg;
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &err_msg))
 	{
 		return;
