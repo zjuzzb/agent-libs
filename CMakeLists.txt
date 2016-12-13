@@ -5,7 +5,7 @@ project(draios)
 set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
-set(CMAKE_C_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_C_FLAGS "-Wall -ggdb -std=c11 ${DRAIOS_FEATURE_FLAGS}")
 set(CMAKE_CXX_FLAGS "-Wall -ggdb --std=c++0x ${DRAIOS_FEATURE_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
@@ -15,6 +15,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 
 add_definitions(-DPLATFORM_NAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DHAS_CAPTURE)
+add_definitions(-D_GNU_SOURCE)
 
 set(DRAIOS_BIN_PREFIX "/opt/draios")
 

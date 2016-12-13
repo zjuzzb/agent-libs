@@ -1,116 +1,43 @@
 #pragma once
 
 #include "sinsp.h"
-#include <iomanip>
+extern "C"
+{
+	#include "cm_quantile.h"
+}
 
 //
-// based on http://onlinestatbook.com/2/introduction/percentiles.html
-//
-// Data is sorted so that x[1] is the smallest value and x[n] is the largest,
-// with N = total number of observations
-//
-// Rank R = (P / 100) * (N + 1)
-//
-// If R is an integer, the Pth percentile is the number with rank R.
-// When R is not an integer, the Pth percentile is calculated by interpolation:
-//
-// 1) I[R] - integer portion of R
-// 2) F[R] - fractional portion of R
-// 3) Find scores with rank I[R] and I[R+1]
-// 4) Interpolate by multiplying the difference between scores by F[R]
-//    and adding result to the lower score:
-//
-//    R = F[R] * (I[R+1] - I[R])) + I[R];
+// statsite wrapper http://statsite.github.io/statsite/
 //
 
-template <typename T, typename TP = float>
 class percentile
 {
 public:
-	typedef std::vector<int> p_type;
-	typedef std::multiset<T> v_type;
-	typedef std::map<int, TP> p_map_type;
+	typedef std::map<int, double> p_map_type;
 
-	percentile(const p_type& pctls, TP error = .005): m_percentiles(pctls), m_error(error)
-	{
-		for(const auto& p : m_percentiles)
-		{
-			if(p <= 0 || p > 100)
-			{
-				throw sinsp_exception("Invalid percentile specified: " + std::to_string(p));
-			}
-		}
-	}
+	percentile(const std::vector<int>& pctls, double eps = .01);
 
+	~percentile();
+
+	template <typename T>
 	void add(T val)
 	{
-		m_values.insert(val);
-	}
-
-	void copy(const std::vector<TP>& val)
-	{
-		m_values.clear();
-		std::copy(val.begin(), val.end(), std::inserter(m_values, m_values.end()));
-	}
-
-	p_map_type percentiles() const
-	{
-		p_map_type pctl_map;
-		int n = static_cast<int>(m_values.size());
-		for(const auto& P : m_percentiles)
+		if(0 != cm_add_sample(&m_cm, val))
 		{
-			TP R = static_cast<TP>(P / 100.0) * static_cast<TP>(n + 1.0);
-			int ir = static_cast<int>(floor(R));
-			TP fr = R - ir;
-			int r = static_cast<int>(R);
-			TP val(0.0);
-			if(m_values.size())
-			{
-				if(P == 100) // 100th percentile
-				{
-					val = *m_values.rbegin();
-					continue;
-				}
-				auto it = m_values.begin();
-				if(fr < m_error) // rank is integer
-				{
-					for(int i = 0; it != m_values.end(); ++i, ++it)
-					{
-						if((i + 1) == r)
-						{
-							val = *it;
-							break;
-						}
-					}
-				}
-				else // rank is decimal
-				{
-					TP ir1(0.0), ir2(0.0);
-					for(int i = 0; it != m_values.end(); ++i, ++it)
-					{
-						if((i + 1) == r) { ir1 = *it; }
-						else if(i == r) { ir2 = *it; }
-						if(ir1 && ir2) { break; }
-					}
-					if(it == m_values.end())
-					{
-						if(ir2 == 0 && ir1 != 0)
-						{
-							ir2 = ir1;
-						}
-					}
-					// calculate the value
-					val = (fr * (ir2 - ir1)) + ir1;
-				}
-			}
-			pctl_map.insert({P, val});
+			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(val));
 		}
-
-		return pctl_map;
 	}
+
+	template <typename T>
+	void copy(const std::vector<T>& val)
+	{
+		for(const auto& v : val) { add(v); }
+	}
+
+	const p_map_type& percentiles();
 
 	template <typename P, typename C>
-	void to_protobuf(P* proto) const
+	void to_protobuf(P* proto)
 	{
 		p_map_type pm = percentiles();
 		for(const auto& p : pm)
@@ -122,7 +49,6 @@ public:
 	}
 
 private:
-	p_type m_percentiles;
-	v_type m_values;
-	double m_error;
+	cm_quantile m_cm;
+	p_map_type  m_pctl_map;
 };
