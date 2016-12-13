@@ -7,6 +7,8 @@
 #include "Poco/File.h"
 #include <netdb.h>
 
+#include "falco_engine.h"
+
 #include "logger.h"
 #include "uri.h"
 
@@ -20,17 +22,208 @@ volatile bool dragent_configuration::m_signal_dump = false;
 volatile bool dragent_configuration::m_terminate = false;
 volatile bool dragent_configuration::m_send_log_report = false;
 volatile bool dragent_configuration::m_config_update = false;
-const string dragent_configuration::AUTO_CONFIG_HEADER = "#\n"
-		"# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
-		"#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
-		"#\n";
-const vector<string> dragent_configuration::AUTOCONFIG_FORBIDDEN_KEYS = { "auto_config", "customerid", "collector", "collector_port",
-											   "ssl", "ssl_verify_certificate", "ca_certificate", "compression" };
 
 static std::string bool_as_text(bool b)
 {
 	return b ? "true" : "false";
 }
+
+dragent_auto_configuration::dragent_auto_configuration(const string &config_filename,
+						       const string &config_directory,
+						       const string &config_header)
+	: m_config_filename(config_filename),
+	  m_config_directory(config_directory),
+	  m_config_header(config_header)
+{
+	init_digest();
+}
+
+int dragent_auto_configuration::save(dragent_configuration &config,
+				     const string& config_data,
+				     string &errstr)
+{
+	g_log->debug(string("Received ") + m_config_filename + string(" with content: ") + config_data);
+	m_sha1_engine.reset();
+	if(!config_data.empty())
+	{
+		m_sha1_engine.update(m_config_header);
+		m_sha1_engine.update(config_data);
+	}
+	auto new_digest = m_sha1_engine.digest();
+
+	g_log->debug(string("New digest=") + DigestEngine::digestToHex(new_digest) + " old digest= " + DigestEngine::digestToHex(m_digest));
+
+	if(new_digest != m_digest)
+	{
+		if(!validate(config_data, errstr))
+		{
+			return -1;
+		}
+
+		string path = config_path();
+
+		if(config_data.empty())
+		{
+			File auto_config_f(path);
+			auto_config_f.remove();
+		}
+		else
+		{
+			ofstream auto_config_f(path);
+			auto_config_f << m_config_header << config_data;
+			auto_config_f.close();
+		}
+
+		apply(config);
+	}
+	else
+	{
+		g_log->debug("Auto config file is already up-to-date");
+		return 0;
+	}
+
+	m_digest = new_digest;
+
+	return 1;
+}
+
+void dragent_auto_configuration::init_digest()
+{
+	string path = config_path();
+
+	m_sha1_engine.reset();
+
+	if(path.size() > 0)
+	{
+		// Save initial digest
+		File auto_config_file(path);
+		if(auto_config_file.exists())
+		{
+			ifstream auto_config_f(auto_config_file.path());
+			char readbuf[4096];
+			while(auto_config_f.good())
+			{
+				auto_config_f.read(readbuf, sizeof(readbuf));
+				m_sha1_engine.update(readbuf, auto_config_f.gcount());
+			}
+		}
+	}
+	m_digest = m_sha1_engine.digest();
+};
+
+std::string dragent_auto_configuration::digest()
+{
+	return DigestEngine::digestToHex(m_digest);
+}
+
+const std::string dragent_auto_configuration::config_path()
+{
+	return Path(m_config_directory).append(m_config_filename).toString();
+}
+
+void dragent_auto_configuration::set_config_directory(const std::string &config_directory)
+{
+	m_config_directory = config_directory;
+	init_digest();
+}
+
+class dragent_yaml_auto_configuration
+	: public dragent_auto_configuration
+{
+public:
+	dragent_yaml_auto_configuration(const std::string &config_directory)
+		: dragent_auto_configuration("dragent.auto.yaml",
+					     config_directory,
+					     "#\n"
+					     "# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
+					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
+					     "#\n"),
+		  m_forbidden_keys { "auto_config", "customerid", "collector", "collector_port",
+			"ssl", "ssl_verify_certificate", "ca_certificate", "compression" }
+	{
+	};
+
+	~dragent_yaml_auto_configuration()
+	{
+	};
+
+	bool validate(const string &config_data, string &errstr)
+	{
+		yaml_configuration new_conf(config_data);
+		if(!new_conf.errors().empty())
+		{
+			errstr = "New auto config is not valid, skipping it";
+			return false;
+		}
+		for(const auto& key : m_forbidden_keys)
+		{
+			if(new_conf.get_scalar<string>(key, "default") != "default" || !new_conf.errors().empty()) {
+				errstr = "Overriding key=" + key + " on autoconfig is forbidden";
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	void apply(dragent_configuration &config)
+	{
+		g_log->information("New agent auto config file applied");
+		config.m_config_update = true;
+		config.m_terminate = true;
+	}
+
+private:
+	const vector<string> m_forbidden_keys;
+};
+
+class falco_rules_auto_configuration
+	: public dragent_auto_configuration
+{
+public:
+	falco_rules_auto_configuration(const std::string &config_directory)
+		: dragent_auto_configuration("falco_rules.auto.yaml",
+					     config_directory,
+					     "#\n"
+					     "# WARNING: Falco Engine auto configuration, don't edit. Please use \"falco_rules.yaml\" instead\n"
+					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
+					     "#\n")
+	{
+	};
+
+	~falco_rules_auto_configuration()
+	{
+	};
+
+	bool validate(const string &config_data, string &errstr)
+	{
+		falco_engine eng;
+		sinsp *inspector = new sinsp();
+		bool verbose = false;
+		bool all_events = false;
+
+		eng.set_inspector(inspector);
+
+		try {
+			eng.load_rules(config_data, verbose, all_events);
+		}
+		catch (falco_exception &e)
+		{
+			errstr = string(e.what());
+			delete(inspector);
+			return false;
+		}
+		delete(inspector);
+		return true;
+	}
+
+	void apply(dragent_configuration &config)
+	{
+		g_log->information("New auto falco rules file applied");
+		config.m_reset_falco_engine = true;
+	}
+};
+
 
 dragent_configuration::dragent_configuration()
 {
@@ -76,6 +269,7 @@ dragent_configuration::dragent_configuration()
 	m_enable_falco_engine = false;
 	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
 	m_falco_engine_sampling_multiplier = 0;
+	m_reset_falco_engine = false;
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
 }
@@ -292,7 +486,19 @@ void dragent_configuration::init(Application* app)
 		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
 	}
 
-	m_config.reset(new yaml_configuration({ m_conf_file, string(DRAGENT_AUTO_YAML_PATH), m_defaults_conf_file }));
+	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_root_dir).append("etc").toString()));
+
+	if(m_auto_config)
+	{
+		m_config.reset(new yaml_configuration({ m_conf_file, autocfg->config_path(), m_defaults_conf_file }));
+	}
+	else
+	{
+		m_config.reset(new yaml_configuration({ m_conf_file, m_defaults_conf_file }));
+	}
+
+	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
+
 	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
 
 	if(!m_config->get_scalar<string>("metricsfile", "location", "").empty())
@@ -589,6 +795,12 @@ void dragent_configuration::init(Application* app)
 	m_enable_falco_engine = m_config->get_scalar<bool>("falco_engine", "enabled", false);
 	m_falco_default_rules_filename = m_config->get_scalar<string>("falco_engine", "default_rules_filename",
 								      m_root_dir + "/etc/falco_rules.default.yaml");
+
+	m_falco_auto_rules_filename = Path(m_root_dir).append("etc").append("falco_rules.auto.yaml").toString();
+
+	m_supported_auto_configs[string("falco_rules.auto.yaml")] =
+		unique_ptr<dragent_auto_configuration>(new falco_rules_auto_configuration(Path(m_root_dir).append("etc").toString()));
+
 	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
 							      m_root_dir + "/etc/falco_rules.yaml");
 
@@ -622,20 +834,6 @@ void dragent_configuration::init(Application* app)
 	parse_services_file();
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
-	// Caches digest of "dragent.auto.yaml" file
-	File auto_config_file(DRAGENT_AUTO_YAML_PATH);
-	m_sha1_engine.reset();
-	if(auto_config_file.exists())
-	{
-		ifstream auto_config_f(auto_config_file.path());
-		char readbuf[4096];
-		while(auto_config_f.good())
-		{
-			auto_config_f.read(readbuf, sizeof(readbuf));
-			m_sha1_engine.update(readbuf, auto_config_f.gcount());
-		}
-	}
-	m_dragent_auto_yaml_digest = m_sha1_engine.digest();
 }
 
 void dragent_configuration::print_configuration()
@@ -827,6 +1025,7 @@ void dragent_configuration::print_configuration()
 	if(m_enable_falco_engine)
 	{
 		g_log->information("Falco engine default rules file: " + m_falco_default_rules_filename);
+		g_log->information("Falco engine auto rules file: " + m_falco_auto_rules_filename);
 		g_log->information("Falco engine rules file: " + m_falco_rules_filename);
 		g_log->information("Falco disabled rule patterns: ");
 		for(auto pattern : m_falco_engine_disabled_rule_patterns)
@@ -854,7 +1053,11 @@ void dragent_configuration::print_configuration()
 	}
 	if(m_auto_config)
 	{
-		g_log->information("Auto config enabled, file digest: " + DigestEngine::digestToHex(m_dragent_auto_yaml_digest));
+		g_log->information("Auto config enabled. File types and digests:");
+		for (auto &pair : m_supported_auto_configs)
+		{
+			g_log->information("    " + pair.first + ": file digest: " + pair.second->digest());
+		}
 	}
 	else
 	{
@@ -1034,49 +1237,25 @@ void dragent_configuration::parse_services_file()
 	endservent();
 }
 
-void dragent_configuration::save_auto_config(const string& config_data)
+int dragent_configuration::save_auto_config(const string &config_filename,
+					    const string &config_data,
+					    string &errstr)
 {
-	g_log->debug(string("Received dragent.auto.yaml with content: ") + config_data);
-	m_sha1_engine.reset();
-	if(!config_data.empty())
+	auto it = m_supported_auto_configs.find(config_filename);
+	if (it == m_supported_auto_configs.end())
 	{
-		m_sha1_engine.update(AUTO_CONFIG_HEADER);
-		m_sha1_engine.update(config_data);
+		errstr = "Auto config filename " + config_filename +
+			" is not a supported auto configuration file type";
+		return -1;
 	}
-	auto new_digest = m_sha1_engine.digest();
-	if(new_digest != m_dragent_auto_yaml_digest)
-	{
-		if(config_data.empty())
-		{
-			File auto_config_f(DRAGENT_AUTO_YAML_PATH);
-			auto_config_f.remove();
-		}
-		else
-		{
-			yaml_configuration new_conf(config_data);
-			if(!new_conf.errors().empty())
-			{
-				g_log->warning("New auto config is not valid, skipping it");
-				return;
-			}
-			for(const auto& key : AUTOCONFIG_FORBIDDEN_KEYS)
-			{
-				if(new_conf.get_scalar<string>(key, "default") != "default" || !new_conf.errors().empty()) {
-					g_log->warning("Overriding key=" + key + "on autoconfig is forbidden");
-					return;
-				}
-			}
-			ofstream auto_config_f(DRAGENT_AUTO_YAML_PATH);
-			auto_config_f << AUTO_CONFIG_HEADER << config_data;
-			auto_config_f.close();
-		}
 
-		g_log->information("New auto config file applied");
-		m_config_update = true;
-		m_terminate = true;
-	}
-	else
+	return (it->second->save(*this, config_data, errstr));
+}
+
+void dragent_configuration::set_auto_config_directory(const string &config_directory)
+{
+	for (auto &it : m_supported_auto_configs)
 	{
-		g_log->debug("Auto config file is already up-to-date");
+		it.second->set_config_directory(config_directory);
 	}
 }

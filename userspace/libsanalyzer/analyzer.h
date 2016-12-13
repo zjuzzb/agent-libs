@@ -348,10 +348,13 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
-	void enable_falco(const string &rules_filename,
-			  const string &user_rules_filename,
+	void enable_falco(const string &default_rules_filename,
+			  const string &auto_rules_filename,
+			  const string &rules_filename,
 			  std::set<std::string> &disabled_rule_patterns,
 			  double sampling_multiplier);
+
+	void disable_falco();
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);

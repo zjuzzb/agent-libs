@@ -301,13 +301,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_user_event_queue(m_user_event_queue);
 
-	if(m_configuration->m_enable_falco_engine)
-	{
-		m_analyzer->enable_falco(m_configuration->m_falco_default_rules_filename,
-					 m_configuration->m_falco_rules_filename,
-					 m_configuration->m_falco_engine_disabled_rule_patterns,
-					 m_configuration->m_falco_engine_sampling_multiplier);
-	}
+	init_falco();
 }
 
 void sinsp_worker::run()
@@ -332,6 +326,11 @@ void sinsp_worker::run()
 		{
 			dragent_configuration::m_terminate = true;
 			break;
+		}
+
+		if(m_configuration->m_reset_falco_engine)
+		{
+			init_falco();
 		}
 
 		res = m_inspector->next(&ev);
@@ -635,6 +634,21 @@ void sinsp_worker::read_chunk(dump_job_state* job)
 		chunk_size -= res;
 		job->m_last_chunk.append(buffer.begin(), res);
 	}
+}
+
+void sinsp_worker::init_falco()
+{
+	if(m_configuration->m_enable_falco_engine)
+	{
+		m_analyzer->disable_falco();
+		m_analyzer->enable_falco(m_configuration->m_falco_default_rules_filename,
+					 m_configuration->m_falco_auto_rules_filename,
+					 m_configuration->m_falco_rules_filename,
+					 m_configuration->m_falco_engine_disabled_rule_patterns,
+					 m_configuration->m_falco_engine_sampling_multiplier);
+	}
+
+	m_configuration->m_reset_falco_engine = false;
 }
 
 void sinsp_worker::process_job_requests(uint64_t ts)

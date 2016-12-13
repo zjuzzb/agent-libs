@@ -32,8 +32,8 @@ file(COPY fake_backend.cert
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY falco/falco_rules.yaml
-  falco/user_falco_rules.yaml
+file(COPY falco/falco_rules.default.yaml
+  falco/falco_rules.yaml
   falco/match-system-rules.scap
   falco/match-user-rules.scap
   falco/match-nothing.scap
