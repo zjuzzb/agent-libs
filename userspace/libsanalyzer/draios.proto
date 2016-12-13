@@ -854,8 +854,13 @@ message config_data {
     repeated config_file config_files = 1;
 }
 
+enum error_type {
+     ERR_CONN_LIMIT = 1;
+     ERR_INVALID_CUSTOMER_KEY = 2;
+}
+
 message error_message {
-    optional string reason = 1;
+    optional error_type type = 1;
     optional string description = 2;
 }
 

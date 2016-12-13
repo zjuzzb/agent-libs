@@ -390,6 +390,25 @@ inline bool container_type_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<container_type>(
     container_type_descriptor(), name, value);
 }
+enum error_type {
+  ERR_CONN_LIMIT = 1,
+  ERR_INVALID_CUSTOMER_KEY = 2
+};
+bool error_type_IsValid(int value);
+const error_type error_type_MIN = ERR_CONN_LIMIT;
+const error_type error_type_MAX = ERR_INVALID_CUSTOMER_KEY;
+const int error_type_ARRAYSIZE = error_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* error_type_descriptor();
+inline const ::std::string& error_type_Name(error_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    error_type_descriptor(), value);
+}
+inline bool error_type_Parse(
+    const ::std::string& name, error_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<error_type>(
+    error_type_descriptor(), name, value);
+}
 // ===================================================================
 
 class counter_time : public ::google::protobuf::Message {
@@ -10884,17 +10903,12 @@ class error_message : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // optional string reason = 1;
-  inline bool has_reason() const;
-  inline void clear_reason();
-  static const int kReasonFieldNumber = 1;
-  inline const ::std::string& reason() const;
-  inline void set_reason(const ::std::string& value);
-  inline void set_reason(const char* value);
-  inline void set_reason(const char* value, size_t size);
-  inline ::std::string* mutable_reason();
-  inline ::std::string* release_reason();
-  inline void set_allocated_reason(::std::string* reason);
+  // optional .draiosproto.error_type type = 1;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 1;
+  inline ::draiosproto::error_type type() const;
+  inline void set_type(::draiosproto::error_type value);
 
   // optional string description = 2;
   inline bool has_description() const;
@@ -10910,15 +10924,15 @@ class error_message : public ::google::protobuf::Message {
 
   // @@protoc_insertion_point(class_scope:draiosproto.error_message)
  private:
-  inline void set_has_reason();
-  inline void clear_has_reason();
+  inline void set_has_type();
+  inline void clear_has_type();
   inline void set_has_description();
   inline void clear_has_description();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
-  ::std::string* reason_;
   ::std::string* description_;
+  int type_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
@@ -27048,74 +27062,27 @@ config_data::mutable_config_files() {
 
 // error_message
 
-// optional string reason = 1;
-inline bool error_message::has_reason() const {
+// optional .draiosproto.error_type type = 1;
+inline bool error_message::has_type() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void error_message::set_has_reason() {
+inline void error_message::set_has_type() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void error_message::clear_has_reason() {
+inline void error_message::clear_has_type() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void error_message::clear_reason() {
-  if (reason_ != &::google::protobuf::internal::kEmptyString) {
-    reason_->clear();
-  }
-  clear_has_reason();
+inline void error_message::clear_type() {
+  type_ = 1;
+  clear_has_type();
 }
-inline const ::std::string& error_message::reason() const {
-  return *reason_;
+inline ::draiosproto::error_type error_message::type() const {
+  return static_cast< ::draiosproto::error_type >(type_);
 }
-inline void error_message::set_reason(const ::std::string& value) {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  reason_->assign(value);
-}
-inline void error_message::set_reason(const char* value) {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  reason_->assign(value);
-}
-inline void error_message::set_reason(const char* value, size_t size) {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  reason_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* error_message::mutable_reason() {
-  set_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    reason_ = new ::std::string;
-  }
-  return reason_;
-}
-inline ::std::string* error_message::release_reason() {
-  clear_has_reason();
-  if (reason_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = reason_;
-    reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void error_message::set_allocated_reason(::std::string* reason) {
-  if (reason_ != &::google::protobuf::internal::kEmptyString) {
-    delete reason_;
-  }
-  if (reason) {
-    set_has_reason();
-    reason_ = reason;
-  } else {
-    clear_has_reason();
-    reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
+inline void error_message::set_type(::draiosproto::error_type value) {
+  assert(::draiosproto::error_type_IsValid(value));
+  set_has_type();
+  type_ = value;
 }
 
 // optional string description = 2;
@@ -28176,6 +28143,10 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::message_type>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::container_type>() {
   return ::draiosproto::container_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::error_type>() {
+  return ::draiosproto::error_type_descriptor();
 }
 
 }  // namespace google

@@ -625,43 +625,38 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 		return;
 	}
 
-	string err_str = "";
+	string err_str;
 	bool term = false;
 
-	// If a reason isn't provided, we ignore the description string
-	if(err_msg.has_reason() && !err_msg.reason().empty())
+	// If a type isn't provided, we ignore the description string
+	if(err_msg.has_type())
 	{
-		err_str = err_msg.reason();
-
-		if(err_str == "ERR_CONN_LIMIT" ||
-		   err_str == "ERR_INVALID_CUSTOMER_KEY")
-		{
-			term = true;
-		}
+		const draiosproto::error_type err_type = err_msg.type();
+		ASSERT(draiosproto::error_type_IsValid(err_type));
+		err_str = draiosproto::error_type_Name(err_type);
 
 		if(err_msg.has_description() && !err_msg.description().empty())
 		{
 			err_str += " (" + err_msg.description() + ")";
-			if(term == true)
-			{
-				err_str += ", terminating the agent";
-			}
 		}
 
-	}
-
-	if(!err_str.empty())
-	{
-		g_log->error(m_name + ": received " + err_str);
-
-		if(term)
+		if(err_type == draiosproto::error_type::ERR_CONN_LIMIT ||
+		   err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
 		{
-			dragent_configuration::m_terminate = true;
+			term = true;
+			err_str += ", terminating the agent";
 		}
 	}
 	else
 	{
-		g_log->error(m_name + ": received unknown error"); 
+		err_str = "unknown error";
 	}
 
+	ASSERT(!err_str.empty());
+	g_log->error(m_name + ": received " + err_str);
+
+	if(term)
+	{
+		dragent_configuration::m_terminate = true;
+	}
 }

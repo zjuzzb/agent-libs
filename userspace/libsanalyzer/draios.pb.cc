@@ -283,6 +283,7 @@ const ::google::protobuf::EnumDescriptor* app_check_value_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* networkrole_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* message_type_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* container_type_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* error_type_descriptor_ = NULL;
 
 }  // namespace
 
@@ -1775,7 +1776,7 @@ void protobuf_AssignDesc_draios_2eproto() {
       sizeof(config_data));
   error_message_descriptor_ = file->message_type(76);
   static const int error_message_offsets_[2] = {
-    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(error_message, reason_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(error_message, type_),
     GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(error_message, description_),
   };
   error_message_reflection_ =
@@ -1903,6 +1904,7 @@ void protobuf_AssignDesc_draios_2eproto() {
   networkrole_descriptor_ = file->enum_type(8);
   message_type_descriptor_ = file->enum_type(9);
   container_type_descriptor_ = file->enum_type(10);
+  error_type_descriptor_ = file->enum_type(11);
 }
 
 namespace {
@@ -2608,71 +2610,73 @@ void protobuf_AddDesc_draios_2eproto() {
     "gs\030\006 \003(\0132\026.draiosproto.key_value\",\n\013conf"
     "ig_file\022\014\n\004name\030\001 \001(\t\022\017\n\007content\030\002 \001(\t\"="
     "\n\013config_data\022.\n\014config_files\030\001 \003(\0132\030.dr"
-    "aiosproto.config_file\"4\n\rerror_message\022\016"
-    "\n\006reason\030\001 \001(\t\022\023\n\013description\030\002 \001(\t\":\n\021f"
-    "alco_subcategory\022\014\n\004name\030\001 \002(\t\022\t\n\001d\030\002 \003("
-    "\t\022\014\n\004full\030\003 \001(\010\"N\n\033falco_subcategory_con"
-    "tainer\022/\n\007subcats\030\001 \003(\0132\036.draiosproto.fa"
-    "lco_subcategory\"\244\001\n\016falco_category\022\014\n\004na"
-    "me\030\001 \002(\t\022A\n\017startup_subcats\030\002 \003(\0132(.drai"
-    "osproto.falco_subcategory_container\022A\n\017r"
-    "egular_subcats\030\003 \003(\0132(.draiosproto.falco"
-    "_subcategory_container\"\207\001\n\nfalco_prog\022\014\n"
-    "\004comm\030\001 \002(\t\022\013\n\003exe\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\022\017"
-    "\n\007user_id\030\004 \002(\004\022\024\n\014container_id\030\005 \001(\t\022)\n"
-    "\004cats\030\006 \003(\0132\033.draiosproto.falco_category"
-    "\"Q\n\017falco_container\022\n\n\002id\030\001 \002(\t\022\014\n\004name\030"
-    "\002 \002(\t\022\022\n\nimage_name\030\003 \001(\t\022\020\n\010image_id\030\004 "
-    "\001(\t\"j\n\016falco_baseline\022&\n\005progs\030\001 \003(\0132\027.d"
-    "raiosproto.falco_prog\0220\n\ncontainers\030\002 \003("
-    "\0132\034.draiosproto.falco_container*\346\001\n\022sql_"
-    "statement_type\022\014\n\010SOP_NONE\020\000\022\016\n\nSOP_SELE"
-    "CT\020\001\022\016\n\nSOP_INSERT\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP"
-    "_CREATE\020\004\022\016\n\nSOP_DELETE\020\005\022\014\n\010SOP_DROP\020\006\022"
-    "\017\n\013SOP_REPLACE\020\007\022\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_"
-    "USE\020\t\022\014\n\010SOP_SHOW\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP"
-    "_UNLOCK\020\014\022\r\n\tSOP_ALTER\020\r*\206\003\n\017mongodb_op_"
-    "type\022\023\n\017MONGODB_OP_NONE\020\000\022\025\n\021MONGODB_OP_"
-    "INSERT\020\001\022\025\n\021MONGODB_OP_UPDATE\020\002\022\025\n\021MONGO"
-    "DB_OP_DELETE\020\003\022\027\n\023MONGODB_OP_GET_MORE\020\004\022"
-    "\033\n\027MONGODB_OP_KILL_CURSORS\020\005\022\023\n\017MONGODB_"
-    "OP_FIND\020\006\022\030\n\024MONGODB_OP_AGGREGATE\020\007\022\026\n\022M"
-    "ONGODB_OP_COMMAND\020\010\022\024\n\020MONGODB_OP_COUNT\020"
-    "\t\022\027\n\023MONGODB_OP_DISTINCT\020\n\022\031\n\025MONGODB_OP"
-    "_MAP_REDUCE\020\013\022\027\n\023MONGODB_OP_GEO_NEAR\020\014\022\031"
-    "\n\025MONGODB_OP_GEO_SEARCH\020\r\022\036\n\032MONGODB_OP_"
-    "FIND_AND_MODIFY\020\016*G\n\004unit\022\r\n\tUNIT_NONE\020\000"
-    "\022\017\n\013UNIT_SECOND\020\001\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT"
-    "_PERCENT\020\003*\221\002\n\005scale\022\016\n\nSCALE_NONE\020\000\022\017\n\013"
-    "SCALE_MILLI\020\001\022\017\n\013SCALE_MICRO\020\002\022\016\n\nSCALE_"
-    "NANO\020\003\022\020\n\014SCALE_MINUTE\020\004\022\016\n\nSCALE_HOUR\020\005"
-    "\022\r\n\tSCALE_DAY\020\006\022\016\n\nSCALE_KILO\020\007\022\016\n\nSCALE"
-    "_MEGA\020\010\022\016\n\nSCALE_GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022"
-    "\016\n\nSCALE_KIBI\020\013\022\016\n\nSCALE_MEBI\020\014\022\016\n\nSCALE"
-    "_GIBI\020\r\022\016\n\nSCALE_TEBI\020\016\022\025\n\021SCALE_PERCENT"
-    "_0_1\020\017*I\n\017jmx_metric_type\022\033\n\027JMX_METRIC_"
-    "TYPE_COUNTER\020\001\022\031\n\025JMX_METRIC_TYPE_GAUGE\020"
-    "\002*^\n\022statsd_metric_type\022\020\n\014STATSD_COUNT\020"
-    "\001\022\024\n\020STATSD_HISTOGRAM\020\002\022\020\n\014STATSD_GAUGE\020"
-    "\003\022\016\n\nSTATSD_SET\020\004*F\n\017app_metric_type\022\031\n\025"
-    "APP_METRIC_TYPE_GAUGE\020\001\022\030\n\024APP_METRIC_TY"
-    "PE_RATE\020\002*\201\001\n\017app_check_value\022\026\n\022APP_CHE"
-    "CK_VALUE_OK\020\000\022\033\n\027APP_CHECK_VALUE_WARNING"
-    "\020\001\022\034\n\030APP_CHECK_VALUE_CRITICAL\020\002\022\033\n\027APP_"
-    "CHECK_VALUE_UNKNOWN\020\003*\251\001\n\013networkrole\022\010\n"
-    "\004NONE\020\000\022\030\n\024IS_LOCAL_IPV4_SERVER\020\001\022\031\n\025IS_"
-    "REMOTE_IPV4_SERVER\020\002\022\022\n\016IS_UNIX_SERVER\020\004"
-    "\022\030\n\024IS_LOCAL_IPV4_CLIENT\020\010\022\031\n\025IS_REMOTE_"
-    "IPV4_CLIENT\020\020\022\022\n\016IS_UNIX_CLIENT\020 *\360\001\n\014me"
-    "ssage_type\022\013\n\007METRICS\020\001\022\026\n\022DUMP_REQUEST_"
-    "START\020\002\022\025\n\021DUMP_REQUEST_STOP\020\004\022\021\n\rDUMP_R"
-    "ESPONSE\020\003\022\024\n\020SSH_OPEN_CHANNEL\020\006\022\025\n\021SSH_C"
-    "LOSE_CHANNEL\020\007\022\014\n\010SSH_DATA\020\010\022\027\n\023AUTO_UPD"
-    "ATE_REQUEST\020\t\022\031\n\025DIRTY_SHUTDOWN_REPORT\020\n"
-    "\022\017\n\013CONFIG_DATA\020\013\022\021\n\rERROR_MESSAGE\020\014*J\n\016"
-    "container_type\022\n\n\006DOCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013L"
-    "IBVIRT_LXC\020\003\022\t\n\005MESOS\020\004\022\007\n\003RKT\020\005B$\n\031com."
-    "draios.model.protobufB\005AgentH\001", 16310);
+    "aiosproto.config_file\"K\n\rerror_message\022%"
+    "\n\004type\030\001 \001(\0162\027.draiosproto.error_type\022\023\n"
+    "\013description\030\002 \001(\t\":\n\021falco_subcategory\022"
+    "\014\n\004name\030\001 \002(\t\022\t\n\001d\030\002 \003(\t\022\014\n\004full\030\003 \001(\010\"N"
+    "\n\033falco_subcategory_container\022/\n\007subcats"
+    "\030\001 \003(\0132\036.draiosproto.falco_subcategory\"\244"
+    "\001\n\016falco_category\022\014\n\004name\030\001 \002(\t\022A\n\017start"
+    "up_subcats\030\002 \003(\0132(.draiosproto.falco_sub"
+    "category_container\022A\n\017regular_subcats\030\003 "
+    "\003(\0132(.draiosproto.falco_subcategory_cont"
+    "ainer\"\207\001\n\nfalco_prog\022\014\n\004comm\030\001 \002(\t\022\013\n\003ex"
+    "e\030\002 \002(\t\022\014\n\004args\030\003 \003(\t\022\017\n\007user_id\030\004 \002(\004\022\024"
+    "\n\014container_id\030\005 \001(\t\022)\n\004cats\030\006 \003(\0132\033.dra"
+    "iosproto.falco_category\"Q\n\017falco_contain"
+    "er\022\n\n\002id\030\001 \002(\t\022\014\n\004name\030\002 \002(\t\022\022\n\nimage_na"
+    "me\030\003 \001(\t\022\020\n\010image_id\030\004 \001(\t\"j\n\016falco_base"
+    "line\022&\n\005progs\030\001 \003(\0132\027.draiosproto.falco_"
+    "prog\0220\n\ncontainers\030\002 \003(\0132\034.draiosproto.f"
+    "alco_container*\346\001\n\022sql_statement_type\022\014\n"
+    "\010SOP_NONE\020\000\022\016\n\nSOP_SELECT\020\001\022\016\n\nSOP_INSER"
+    "T\020\002\022\013\n\007SOP_SET\020\003\022\016\n\nSOP_CREATE\020\004\022\016\n\nSOP_"
+    "DELETE\020\005\022\014\n\010SOP_DROP\020\006\022\017\n\013SOP_REPLACE\020\007\022"
+    "\016\n\nSOP_UPDATE\020\010\022\013\n\007SOP_USE\020\t\022\014\n\010SOP_SHOW"
+    "\020\n\022\014\n\010SOP_LOCK\020\013\022\016\n\nSOP_UNLOCK\020\014\022\r\n\tSOP_"
+    "ALTER\020\r*\206\003\n\017mongodb_op_type\022\023\n\017MONGODB_O"
+    "P_NONE\020\000\022\025\n\021MONGODB_OP_INSERT\020\001\022\025\n\021MONGO"
+    "DB_OP_UPDATE\020\002\022\025\n\021MONGODB_OP_DELETE\020\003\022\027\n"
+    "\023MONGODB_OP_GET_MORE\020\004\022\033\n\027MONGODB_OP_KIL"
+    "L_CURSORS\020\005\022\023\n\017MONGODB_OP_FIND\020\006\022\030\n\024MONG"
+    "ODB_OP_AGGREGATE\020\007\022\026\n\022MONGODB_OP_COMMAND"
+    "\020\010\022\024\n\020MONGODB_OP_COUNT\020\t\022\027\n\023MONGODB_OP_D"
+    "ISTINCT\020\n\022\031\n\025MONGODB_OP_MAP_REDUCE\020\013\022\027\n\023"
+    "MONGODB_OP_GEO_NEAR\020\014\022\031\n\025MONGODB_OP_GEO_"
+    "SEARCH\020\r\022\036\n\032MONGODB_OP_FIND_AND_MODIFY\020\016"
+    "*G\n\004unit\022\r\n\tUNIT_NONE\020\000\022\017\n\013UNIT_SECOND\020\001"
+    "\022\r\n\tUNIT_BYTE\020\002\022\020\n\014UNIT_PERCENT\020\003*\221\002\n\005sc"
+    "ale\022\016\n\nSCALE_NONE\020\000\022\017\n\013SCALE_MILLI\020\001\022\017\n\013"
+    "SCALE_MICRO\020\002\022\016\n\nSCALE_NANO\020\003\022\020\n\014SCALE_M"
+    "INUTE\020\004\022\016\n\nSCALE_HOUR\020\005\022\r\n\tSCALE_DAY\020\006\022\016"
+    "\n\nSCALE_KILO\020\007\022\016\n\nSCALE_MEGA\020\010\022\016\n\nSCALE_"
+    "GIGA\020\t\022\016\n\nSCALE_TERA\020\n\022\016\n\nSCALE_KIBI\020\013\022\016"
+    "\n\nSCALE_MEBI\020\014\022\016\n\nSCALE_GIBI\020\r\022\016\n\nSCALE_"
+    "TEBI\020\016\022\025\n\021SCALE_PERCENT_0_1\020\017*I\n\017jmx_met"
+    "ric_type\022\033\n\027JMX_METRIC_TYPE_COUNTER\020\001\022\031\n"
+    "\025JMX_METRIC_TYPE_GAUGE\020\002*^\n\022statsd_metri"
+    "c_type\022\020\n\014STATSD_COUNT\020\001\022\024\n\020STATSD_HISTO"
+    "GRAM\020\002\022\020\n\014STATSD_GAUGE\020\003\022\016\n\nSTATSD_SET\020\004"
+    "*F\n\017app_metric_type\022\031\n\025APP_METRIC_TYPE_G"
+    "AUGE\020\001\022\030\n\024APP_METRIC_TYPE_RATE\020\002*\201\001\n\017app"
+    "_check_value\022\026\n\022APP_CHECK_VALUE_OK\020\000\022\033\n\027"
+    "APP_CHECK_VALUE_WARNING\020\001\022\034\n\030APP_CHECK_V"
+    "ALUE_CRITICAL\020\002\022\033\n\027APP_CHECK_VALUE_UNKNO"
+    "WN\020\003*\251\001\n\013networkrole\022\010\n\004NONE\020\000\022\030\n\024IS_LOC"
+    "AL_IPV4_SERVER\020\001\022\031\n\025IS_REMOTE_IPV4_SERVE"
+    "R\020\002\022\022\n\016IS_UNIX_SERVER\020\004\022\030\n\024IS_LOCAL_IPV4"
+    "_CLIENT\020\010\022\031\n\025IS_REMOTE_IPV4_CLIENT\020\020\022\022\n\016"
+    "IS_UNIX_CLIENT\020 *\360\001\n\014message_type\022\013\n\007MET"
+    "RICS\020\001\022\026\n\022DUMP_REQUEST_START\020\002\022\025\n\021DUMP_R"
+    "EQUEST_STOP\020\004\022\021\n\rDUMP_RESPONSE\020\003\022\024\n\020SSH_"
+    "OPEN_CHANNEL\020\006\022\025\n\021SSH_CLOSE_CHANNEL\020\007\022\014\n"
+    "\010SSH_DATA\020\010\022\027\n\023AUTO_UPDATE_REQUEST\020\t\022\031\n\025"
+    "DIRTY_SHUTDOWN_REPORT\020\n\022\017\n\013CONFIG_DATA\020\013"
+    "\022\021\n\rERROR_MESSAGE\020\014*J\n\016container_type\022\n\n"
+    "\006DOCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005M"
+    "ESOS\020\004\022\007\n\003RKT\020\005*>\n\nerror_type\022\022\n\016ERR_CON"
+    "N_LIMIT\020\001\022\034\n\030ERR_INVALID_CUSTOMER_KEY\020\002B"
+    "$\n\031com.draios.model.protobufB\005AgentH\001", 16397);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -3062,6 +3066,20 @@ bool container_type_IsValid(int value) {
     case 3:
     case 4:
     case 5:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::google::protobuf::EnumDescriptor* error_type_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return error_type_descriptor_;
+}
+bool error_type_IsValid(int value) {
+  switch(value) {
+    case 1:
+    case 2:
       return true;
     default:
       return false;
@@ -34761,7 +34779,7 @@ void config_data::Swap(config_data* other) {
 // ===================================================================
 
 #ifndef _MSC_VER
-const int error_message::kReasonFieldNumber;
+const int error_message::kTypeFieldNumber;
 const int error_message::kDescriptionFieldNumber;
 #endif  // !_MSC_VER
 
@@ -34781,7 +34799,7 @@ error_message::error_message(const error_message& from)
 
 void error_message::SharedCtor() {
   _cached_size_ = 0;
-  reason_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  type_ = 1;
   description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   ::memset(_has_bits_, 0, sizeof(_has_bits_));
 }
@@ -34791,9 +34809,6 @@ error_message::~error_message() {
 }
 
 void error_message::SharedDtor() {
-  if (reason_ != &::google::protobuf::internal::kEmptyString) {
-    delete reason_;
-  }
   if (description_ != &::google::protobuf::internal::kEmptyString) {
     delete description_;
   }
@@ -34824,11 +34839,7 @@ error_message* error_message::New() const {
 
 void error_message::Clear() {
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (has_reason()) {
-      if (reason_ != &::google::protobuf::internal::kEmptyString) {
-        reason_->clear();
-      }
-    }
+    type_ = 1;
     if (has_description()) {
       if (description_ != &::google::protobuf::internal::kEmptyString) {
         description_->clear();
@@ -34845,15 +34856,19 @@ bool error_message::MergePartialFromCodedStream(
   ::google::protobuf::uint32 tag;
   while ((tag = input->ReadTag()) != 0) {
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // optional string reason = 1;
+      // optional .draiosproto.error_type type = 1;
       case 1: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_reason()));
-          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-            this->reason().data(), this->reason().length(),
-            ::google::protobuf::internal::WireFormat::PARSE);
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::draiosproto::error_type_IsValid(value)) {
+            set_type(static_cast< ::draiosproto::error_type >(value));
+          } else {
+            mutable_unknown_fields()->AddVarint(1, value);
+          }
         } else {
           goto handle_uninterpreted;
         }
@@ -34896,13 +34911,10 @@ bool error_message::MergePartialFromCodedStream(
 
 void error_message::SerializeWithCachedSizes(
     ::google::protobuf::io::CodedOutputStream* output) const {
-  // optional string reason = 1;
-  if (has_reason()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->reason().data(), this->reason().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    ::google::protobuf::internal::WireFormatLite::WriteString(
-      1, this->reason(), output);
+  // optional .draiosproto.error_type type = 1;
+  if (has_type()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      1, this->type(), output);
   }
 
   // optional string description = 2;
@@ -34922,14 +34934,10 @@ void error_message::SerializeWithCachedSizes(
 
 ::google::protobuf::uint8* error_message::SerializeWithCachedSizesToArray(
     ::google::protobuf::uint8* target) const {
-  // optional string reason = 1;
-  if (has_reason()) {
-    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
-      this->reason().data(), this->reason().length(),
-      ::google::protobuf::internal::WireFormat::SERIALIZE);
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        1, this->reason(), target);
+  // optional .draiosproto.error_type type = 1;
+  if (has_type()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
+      1, this->type(), target);
   }
 
   // optional string description = 2;
@@ -34953,11 +34961,10 @@ int error_message::ByteSize() const {
   int total_size = 0;
 
   if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    // optional string reason = 1;
-    if (has_reason()) {
+    // optional .draiosproto.error_type type = 1;
+    if (has_type()) {
       total_size += 1 +
-        ::google::protobuf::internal::WireFormatLite::StringSize(
-          this->reason());
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->type());
     }
 
     // optional string description = 2;
@@ -34994,8 +35001,8 @@ void error_message::MergeFrom(const ::google::protobuf::Message& from) {
 void error_message::MergeFrom(const error_message& from) {
   GOOGLE_CHECK_NE(&from, this);
   if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
-    if (from.has_reason()) {
-      set_reason(from.reason());
+    if (from.has_type()) {
+      set_type(from.type());
     }
     if (from.has_description()) {
       set_description(from.description());
@@ -35023,7 +35030,7 @@ bool error_message::IsInitialized() const {
 
 void error_message::Swap(error_message* other) {
   if (other != this) {
-    std::swap(reason_, other->reason_);
+    std::swap(type_, other->type_);
     std::swap(description_, other->description_);
     std::swap(_has_bits_[0], other->_has_bits_[0]);
     _unknown_fields_.Swap(&other->_unknown_fields_);
