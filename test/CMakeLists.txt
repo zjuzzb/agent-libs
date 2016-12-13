@@ -47,6 +47,7 @@ add_executable(tests
 	pipe.cpp
 	prefix_search_test.cpp
 	process.cpp
+	percentile.cpp
 	socketpair.cpp
 	sql.cpp
 	sys_call_test.cpp
