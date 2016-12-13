@@ -395,9 +395,9 @@ void connection_manager::receive_message()
 		{
 			m_buffer_used = 0;
 
-			//if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
-			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER &&
-			   header->version != 2)
+			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
+			//if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER &&
+			//   header->version != 2)
 			{
 				g_log->error(m_name + ": Received command for incompatible version protocol "
 							 + NumberFormatter::format(header->version));
