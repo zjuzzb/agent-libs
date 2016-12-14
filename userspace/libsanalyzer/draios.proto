@@ -20,7 +20,8 @@ message counter_time_bidirectional {
     required uint32 count_out = 2;
     required uint64 time_ns_in = 3;
     required uint64 time_ns_out = 4;
-    repeated counter_percentile percentile = 5;
+    repeated counter_percentile percentile_in = 5;
+    repeated counter_percentile percentile_out = 6;
 }
 
 message counter_bytes {

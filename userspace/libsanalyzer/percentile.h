@@ -37,12 +37,12 @@ public:
 	const p_map_type& percentiles();
 
 	template <typename P, typename C>
-	void to_protobuf(P* proto)
+	void to_protobuf(P* proto, C* (P::*add_func)())
 	{
 		p_map_type pm = percentiles();
 		for(const auto& p : pm)
 		{
-			C* cp = proto->add_percentile();
+			C* cp = (proto->*add_func)();
 			cp->set_percentile(p.first);
 			cp->set_value(p.second);
 		}

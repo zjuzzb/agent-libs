@@ -65,12 +65,14 @@ public:
 class sinsp_counter_time_bidirectional
 {
 public:
-	sinsp_counter_time_bidirectional();
+	sinsp_counter_time_bidirectional(const std::vector<int>* percentiles = nullptr);
+	~sinsp_counter_time_bidirectional();
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
 	void add_other(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
+	void set_percentiles(const std::vector<int>* percentiles);
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const;
 	uint32_t get_tot_count() const;
 
@@ -80,6 +82,9 @@ public:
 	uint64_t m_time_ns_in;
 	uint64_t m_time_ns_out;
 	uint64_t m_time_ns_other;
+	std::vector<int>* m_percentiles = nullptr;
+	std::vector<uint64_t>* m_samples_in = nullptr;
+	std::vector<uint64_t>* m_samples_out = nullptr;
 };
 
 //
@@ -206,9 +211,11 @@ public:
 class sinsp_transaction_counters
 {
 public:
+	sinsp_transaction_counters(const std::vector<int>* percentiles = nullptr);
+	void set_percentiles(const std::vector<int>* percentiles);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
-		draiosproto::counter_time_bidirectional* min_protobuf_msg,
+		//draiosproto::counter_time_bidirectional* min_protobuf_msg,
 		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
 		uint32_t sampling_ratio) const;
 	void add(sinsp_transaction_counters* other);
@@ -218,11 +225,18 @@ public:
 	//const sinsp_counter_time_bidirectional* get_min_counter();
 	const sinsp_counter_time_bidirectional* get_max_counter();
 
+	bool has_percentiles() const;
 private:
 	sinsp_counter_time_bidirectional m_counter;
 	//sinsp_counter_time_bidirectional m_min_counter;
 	sinsp_counter_time_bidirectional m_max_counter;
+	bool m_has_percentiles = false;
 };
+
+inline bool sinsp_transaction_counters::has_percentiles() const
+{
+	return m_has_percentiles;
+}
 
 //
 // Error counters (for host, processes, etc)

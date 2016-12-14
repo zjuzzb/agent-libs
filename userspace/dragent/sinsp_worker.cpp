@@ -177,6 +177,7 @@ void sinsp_worker::init()
 
 	// percentiles
 	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles);
+	m_analyzer->set_percentiles();
 
 	//
 	// Configure compression in the protocol

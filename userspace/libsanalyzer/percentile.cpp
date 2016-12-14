@@ -1,11 +1,12 @@
 #include "percentile.h"
+#include "sinsp_int.h"
 
 
 percentile::percentile(const std::vector<int>& pctls, double eps)
 {
 	if(eps <= 0 or eps >= 0.5)
 	{
-		throw sinsp_exception("Invalid max error specified: " + std::to_string(eps));
+		throw sinsp_exception("Percentiles: Invalid max error specified: " + std::to_string(eps));
 	}
 	std::vector<double> percentiles;
 	std::transform(std::begin(pctls), std::end(pctls), std::back_inserter(percentiles),
@@ -16,7 +17,7 @@ percentile::percentile(const std::vector<int>& pctls, double eps)
 		os << '[';
 		for(const auto& p : percentiles) { os << p << ','; }
 		os << ']';
-		throw sinsp_exception("Invalid percentiles specified: " + os.str());
+		throw sinsp_exception("Percentiles: Invalid percentiles specified: " + os.str());
 	}
 	for(const auto& p : pctls)
 	{
@@ -28,7 +29,7 @@ percentile::~percentile()
 {
 	if(0 != destroy_cm_quantile(&m_cm))
 	{
-		//g_logger.log("Error destroying statsite quantile.", sinsp_logger::SEV_ERROR);
+		g_logger.log("Percentiles: Error destroying statsite quantile.", sinsp_logger::SEV_ERROR);
 	}
 }
 

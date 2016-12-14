@@ -114,7 +114,7 @@ void sinsp_connection_aggregator::to_protobuf(draiosproto::connection_categories
 {
 	m_metrics.to_protobuf(proto, sampling_ratio);
 	m_transaction_metrics.to_protobuf(proto->mutable_transaction_counters(),
-			proto->mutable_min_transaction_counters(),
+			//proto->mutable_min_transaction_counters(),
 			proto->mutable_max_transaction_counters(),
 			sampling_ratio);
 	proto->set_n_aggregated_connections(m_count);

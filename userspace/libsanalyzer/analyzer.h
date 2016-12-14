@@ -356,6 +356,8 @@ public:
 
 	void disable_falco();
 
+	void set_percentiles();
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 

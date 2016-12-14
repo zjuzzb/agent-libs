@@ -667,17 +667,29 @@ class counter_time_bidirectional : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 time_ns_out() const;
   inline void set_time_ns_out(::google::protobuf::uint64 value);
 
-  // repeated .draiosproto.counter_percentile percentile = 5;
-  inline int percentile_size() const;
-  inline void clear_percentile();
-  static const int kPercentileFieldNumber = 5;
-  inline const ::draiosproto::counter_percentile& percentile(int index) const;
-  inline ::draiosproto::counter_percentile* mutable_percentile(int index);
-  inline ::draiosproto::counter_percentile* add_percentile();
+  // repeated .draiosproto.counter_percentile percentile_in = 5;
+  inline int percentile_in_size() const;
+  inline void clear_percentile_in();
+  static const int kPercentileInFieldNumber = 5;
+  inline const ::draiosproto::counter_percentile& percentile_in(int index) const;
+  inline ::draiosproto::counter_percentile* mutable_percentile_in(int index);
+  inline ::draiosproto::counter_percentile* add_percentile_in();
   inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
-      percentile() const;
+      percentile_in() const;
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
-      mutable_percentile();
+      mutable_percentile_in();
+
+  // repeated .draiosproto.counter_percentile percentile_out = 6;
+  inline int percentile_out_size() const;
+  inline void clear_percentile_out();
+  static const int kPercentileOutFieldNumber = 6;
+  inline const ::draiosproto::counter_percentile& percentile_out(int index) const;
+  inline ::draiosproto::counter_percentile* mutable_percentile_out(int index);
+  inline ::draiosproto::counter_percentile* add_percentile_out();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+      percentile_out() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+      mutable_percentile_out();
 
   // @@protoc_insertion_point(class_scope:draiosproto.counter_time_bidirectional)
  private:
@@ -696,10 +708,11 @@ class counter_time_bidirectional : public ::google::protobuf::Message {
   ::google::protobuf::uint32 count_out_;
   ::google::protobuf::uint64 time_ns_in_;
   ::google::protobuf::uint64 time_ns_out_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_in_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_out_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11883,29 +11896,54 @@ inline void counter_time_bidirectional::set_time_ns_out(::google::protobuf::uint
   time_ns_out_ = value;
 }
 
-// repeated .draiosproto.counter_percentile percentile = 5;
-inline int counter_time_bidirectional::percentile_size() const {
-  return percentile_.size();
+// repeated .draiosproto.counter_percentile percentile_in = 5;
+inline int counter_time_bidirectional::percentile_in_size() const {
+  return percentile_in_.size();
 }
-inline void counter_time_bidirectional::clear_percentile() {
-  percentile_.Clear();
+inline void counter_time_bidirectional::clear_percentile_in() {
+  percentile_in_.Clear();
 }
-inline const ::draiosproto::counter_percentile& counter_time_bidirectional::percentile(int index) const {
-  return percentile_.Get(index);
+inline const ::draiosproto::counter_percentile& counter_time_bidirectional::percentile_in(int index) const {
+  return percentile_in_.Get(index);
 }
-inline ::draiosproto::counter_percentile* counter_time_bidirectional::mutable_percentile(int index) {
-  return percentile_.Mutable(index);
+inline ::draiosproto::counter_percentile* counter_time_bidirectional::mutable_percentile_in(int index) {
+  return percentile_in_.Mutable(index);
 }
-inline ::draiosproto::counter_percentile* counter_time_bidirectional::add_percentile() {
-  return percentile_.Add();
+inline ::draiosproto::counter_percentile* counter_time_bidirectional::add_percentile_in() {
+  return percentile_in_.Add();
 }
 inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
-counter_time_bidirectional::percentile() const {
-  return percentile_;
+counter_time_bidirectional::percentile_in() const {
+  return percentile_in_;
 }
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
-counter_time_bidirectional::mutable_percentile() {
-  return &percentile_;
+counter_time_bidirectional::mutable_percentile_in() {
+  return &percentile_in_;
+}
+
+// repeated .draiosproto.counter_percentile percentile_out = 6;
+inline int counter_time_bidirectional::percentile_out_size() const {
+  return percentile_out_.size();
+}
+inline void counter_time_bidirectional::clear_percentile_out() {
+  percentile_out_.Clear();
+}
+inline const ::draiosproto::counter_percentile& counter_time_bidirectional::percentile_out(int index) const {
+  return percentile_out_.Get(index);
+}
+inline ::draiosproto::counter_percentile* counter_time_bidirectional::mutable_percentile_out(int index) {
+  return percentile_out_.Mutable(index);
+}
+inline ::draiosproto::counter_percentile* counter_time_bidirectional::add_percentile_out() {
+  return percentile_out_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+counter_time_bidirectional::percentile_out() const {
+  return percentile_out_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+counter_time_bidirectional::mutable_percentile_out() {
+  return &percentile_out_;
 }
 
 // -------------------------------------------------------------------
