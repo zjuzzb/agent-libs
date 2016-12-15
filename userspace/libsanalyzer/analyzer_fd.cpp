@@ -1182,6 +1182,7 @@ void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint3
 
 void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data)
 {
+	cerr << __FUNCTION__ << ":" << __LINE__ << endl;
 	int64_t tid = evt->get_tid();
 
 	uint8_t family = *packed_data;

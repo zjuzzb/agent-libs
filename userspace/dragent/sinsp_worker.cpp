@@ -272,7 +272,7 @@ void sinsp_worker::init()
 		//m_inspector->open("");
 		m_inspector->open_nodriver();
 		m_inspector->m_thread_timeout_ns = 0;
-		m_inspector->m_inactive_thread_scan_time_ns = 0;
+		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
 
 	if(m_configuration->m_subsampling_ratio != 1)

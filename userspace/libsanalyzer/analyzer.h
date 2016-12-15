@@ -547,7 +547,8 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-
+	uint64_t m_last_proclist_refresh;
+	
 	//
 	// Falco stuff
 	//

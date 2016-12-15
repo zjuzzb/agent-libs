@@ -80,6 +80,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
+	m_last_proclist_refresh = 0;
 	m_metrics = new draiosproto::metrics;
 	m_serialization_buffer = (char*)malloc(MIN_SERIALIZATION_BUF_SIZE_BYTES);
 	if(!m_serialization_buffer)
@@ -1429,6 +1430,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 
+		// We need to reread cmdline only in live mode, with nodriver mode
+		// proc is reread every sample anyway
 		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
 				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
@@ -1566,6 +1569,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #else
 						m_my_cpuload = 0;
 #endif
+						if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+						{
+							// We need to patch a bunch of process metrics
+							// reading them from /proc as we don't have
+							// sysdig events
+							auto net_bytes = m_procfs_parser->read_proc_network_stats(tinfo->m_pid, &ainfo->m_last_last_in_bytes, &ainfo->m_last_last_out_bytes);
+							ainfo->m_metrics.m_io_net.m_bytes_in = net_bytes.first;
+							ainfo->m_metrics.m_io_net.m_bytes_out = net_bytes.second;
+						}
 					}
 				}
 			}
@@ -2988,9 +3000,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
 
 
-			if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+			if(m_inspector->m_mode == SCAP_MODE_NODRIVER &&
+				m_prev_flush_time_ns - m_last_proclist_refresh > NODRIVER_PROCLIST_REFRESH_INTERVAL_NS)
 			{
+				g_logger.log("Refreshing proclist", sinsp_logger::SEV_DEBUG);
 				m_inspector->refresh_proc_list();
+				m_last_proclist_refresh = m_prev_flush_time_ns;
 			}
 
 			//
@@ -3380,18 +3395,20 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
 
+			auto external_io_net = m_metrics->mutable_hostinfo()->mutable_external_io_net();
+			m_io_net.to_protobuf(external_io_net, 1, m_sampling_ratio);
+
+			// We decided to patch host network metrics using data from /proc, because using only
+			// sysdig metrics we miss kernel threads activity
+			// In this case, sampling_ratio is not evaluated
 			auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
 			if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG, "Patching host external networking, from (%u, %u) to (%u, %u)",
 								m_io_net.m_bytes_in, m_io_net.m_bytes_out,
 								interfaces_stats.first, interfaces_stats.second);
-				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio,
-								interfaces_stats.first, interfaces_stats.second);
-			}
-			else
-			{
-				m_io_net.to_protobuf(m_metrics->mutable_hostinfo()->mutable_external_io_net(), 1, m_sampling_ratio);
+				external_io_net->set_bytes_in(interfaces_stats.first);
+				external_io_net->set_bytes_out(interfaces_stats.second);
 			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 

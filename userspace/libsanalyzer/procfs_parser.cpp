@@ -763,7 +763,23 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
+
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
+{
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
+	static const vector<const char*> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	return read_net_dev(net_dev_path, &m_last_in_bytes, &m_last_out_bytes, BAD_INTERFACE_NAMES);
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_proc_network_stats(uint64_t pid, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes)
+{
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/%lu/net/dev", scap_get_host_root(), pid);
+	return read_net_dev(net_dev_path, old_last_in_bytes, old_last_out_bytes);
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names)
 {
 	pair<uint32_t, uint32_t> ret;
 
@@ -773,9 +789,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 		return ret;
 	}
 
-	char net_dev_path[100];
-	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
-	auto net_dev = fopen(net_dev_path, "r");
+	auto net_dev = fopen(path.c_str(), "r");
 	if(net_dev == NULL)
 	{
 		return ret;
@@ -795,21 +809,18 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	}
 
 	char interface_name[30];
-	unsigned ign;
 	uint64_t in_bytes, out_bytes;
 	uint64_t tot_in_bytes = 0;
 	uint64_t tot_out_bytes = 0;
 
-	static const array<const char*, 7> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
-	while(fscanf(net_dev, "%s %lu %u %u %u %u %u %u %u %lu %u %u %u %u %u %u %u",
-				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
-				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
+	while(fscanf(net_dev, "%s %lu %*u %*u %*u %*u %*u %*u %*u %lu %*u %*u %*u %*u %*u %*u %*u",
+				 interface_name, &in_bytes, &out_bytes) > 0)
 	{
-		if(find_if(BAD_INTERFACE_NAMES.begin(), BAD_INTERFACE_NAMES.end(), [&interface_name](const char* bad_interface) {
-				return strcasestr(interface_name, bad_interface) == interface_name;
-			}) == BAD_INTERFACE_NAMES.end())
+		if(find_if(bad_interface_names.begin(), bad_interface_names.end(), [&interface_name](const char* bad_interface) {
+			return strcasestr(interface_name, bad_interface) == interface_name;
+		}) == bad_interface_names.end())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
+			// g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
 			tot_in_bytes += in_bytes;
 			tot_out_bytes += out_bytes;
 		}
@@ -817,19 +828,18 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	fclose(net_dev);
 
 	// Calculate delta, no delta if it is the first time we read
-	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
+	if(*old_last_in_bytes > 0 || *old_last_out_bytes > 0)
 	{
 		// Network metrics use uint32_t on protobuf, so we use the same
 		// for deltas
-		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
-		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
+		ret.first = static_cast<uint32_t>(tot_in_bytes - *old_last_in_bytes);
+		ret.second = static_cast<uint32_t>(tot_out_bytes - *old_last_out_bytes);
 	}
-	m_last_in_bytes = tot_in_bytes;
-	m_last_out_bytes = tot_out_bytes;
+	*old_last_in_bytes = tot_in_bytes;
+	*old_last_out_bytes = tot_out_bytes;
 
 	return ret;
 }
-
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	device(proto.device()),
 	mount_dir(proto.mount_dir()),

@@ -200,6 +200,10 @@ public:
 	thread_analyzer_dyn_state* m_dynstate;
 	bool m_called_execve;
 	uint64_t m_last_cmdline_sync_ns;
+
+	// Used just on nodriver
+	uint64_t m_last_last_in_bytes;
+	uint64_t m_last_last_out_bytes;
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
