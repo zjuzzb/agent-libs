@@ -641,7 +641,8 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 		}
 
 		if(err_type == draiosproto::error_type::ERR_CONN_LIMIT ||
-		   err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
+		   err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY ||
+		   err_type == draiosproto::error_type::ERR_DUPLICATE_AGENT)
 		{
 			term = true;
 			err_str += ", terminating the agent";

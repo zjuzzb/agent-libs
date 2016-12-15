@@ -392,11 +392,12 @@ inline bool container_type_Parse(
 }
 enum error_type {
   ERR_CONN_LIMIT = 1,
-  ERR_INVALID_CUSTOMER_KEY = 2
+  ERR_INVALID_CUSTOMER_KEY = 2,
+  ERR_DUPLICATE_AGENT = 3
 };
 bool error_type_IsValid(int value);
 const error_type error_type_MIN = ERR_CONN_LIMIT;
-const error_type error_type_MAX = ERR_INVALID_CUSTOMER_KEY;
+const error_type error_type_MAX = ERR_DUPLICATE_AGENT;
 const int error_type_ARRAYSIZE = error_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* error_type_descriptor();

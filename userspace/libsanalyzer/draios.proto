@@ -857,6 +857,7 @@ message config_data {
 enum error_type {
      ERR_CONN_LIMIT = 1;
      ERR_INVALID_CUSTOMER_KEY = 2;
+     ERR_DUPLICATE_AGENT = 3;
 }
 
 message error_message {

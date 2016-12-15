@@ -2674,9 +2674,10 @@ void protobuf_AddDesc_draios_2eproto() {
     "DIRTY_SHUTDOWN_REPORT\020\n\022\017\n\013CONFIG_DATA\020\013"
     "\022\021\n\rERROR_MESSAGE\020\014*J\n\016container_type\022\n\n"
     "\006DOCKER\020\001\022\007\n\003LXC\020\002\022\017\n\013LIBVIRT_LXC\020\003\022\t\n\005M"
-    "ESOS\020\004\022\007\n\003RKT\020\005*>\n\nerror_type\022\022\n\016ERR_CON"
-    "N_LIMIT\020\001\022\034\n\030ERR_INVALID_CUSTOMER_KEY\020\002B"
-    "$\n\031com.draios.model.protobufB\005AgentH\001", 16397);
+    "ESOS\020\004\022\007\n\003RKT\020\005*W\n\nerror_type\022\022\n\016ERR_CON"
+    "N_LIMIT\020\001\022\034\n\030ERR_INVALID_CUSTOMER_KEY\020\002\022"
+    "\027\n\023ERR_DUPLICATE_AGENT\020\003B$\n\031com.draios.m"
+    "odel.protobufB\005AgentH\001", 16422);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "draios.proto", &protobuf_RegisterTypes);
   counter_time::default_instance_ = new counter_time();
@@ -3080,6 +3081,7 @@ bool error_type_IsValid(int value) {
   switch(value) {
     case 1:
     case 2:
+    case 3:
       return true;
     default:
       return false;
