@@ -114,6 +114,13 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_dynstate->m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
+	if(inspector->m_percentiles.size())
+	{
+		g_logger.log("Setting percentiles for thread " + std::to_string(tinfo->m_tid), sinsp_logger::SEV_TRACE);
+		m_transaction_metrics.set_percentiles(&inspector->m_percentiles);
+		m_external_transaction_metrics.set_percentiles(&inspector->m_percentiles);
+		m_dynstate->m_protostate.set_percentiles(inspector->m_percentiles);
+	}
 }
 
 void thread_analyzer_info::destroy()
@@ -143,6 +150,10 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 		m_procinfo->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 
 		m_procinfo->clear();
+		if(m_inspector && m_inspector->m_percentiles.size())
+		{
+			m_procinfo->m_protostate.set_percentiles(m_inspector->m_percentiles);
+		}
 	}
 }
 

@@ -82,9 +82,9 @@ public:
 	uint64_t m_time_ns_in;
 	uint64_t m_time_ns_out;
 	uint64_t m_time_ns_other;
-	std::vector<int>* m_percentiles = nullptr;
-	std::vector<uint64_t>* m_samples_in = nullptr;
-	std::vector<uint64_t>* m_samples_out = nullptr;
+	std::vector<int> m_percentiles;
+	std::vector<uint64_t> m_samples_in;
+	std::vector<uint64_t> m_samples_out;
 };
 
 //

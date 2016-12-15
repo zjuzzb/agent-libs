@@ -119,6 +119,8 @@ public:
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
 	uint32_t m_bytes_out;	// sent bytes for this request
+	std::vector<int> m_percentiles;
+	std::vector<uint64_t> m_samples;
 	sinsp_request_flags m_flags;
 };
 
@@ -160,6 +162,7 @@ public:
 			entry->m_time_max = time_delta;
 			entry->m_bytes_in = tr->m_prev_bytes_in;
 			entry->m_bytes_out = tr->m_prev_bytes_out;
+			entry->m_samples.clear();
 		}
 		else
 		{
@@ -177,6 +180,7 @@ public:
 				entry->m_time_max = time_delta;
 			}
 		}
+		entry->m_samples.push_back(time_delta);
 	}
 
 	//
@@ -217,6 +221,7 @@ public:
 				{
 					entry->m_time_max = uit->second.m_time_max;
 				}
+				entry->m_samples.push_back(uit->second.m_time_tot);
 			}
 		}
 	}
@@ -330,7 +335,19 @@ public:
 	}
 };
 
-class sql_state
+class protocol_state
+{
+public:
+	void set_percentiles(const std::vector<int>& pctls)
+	{
+		m_percentiles = pctls;
+	}
+
+protected:
+	std::vector<int> m_percentiles;
+};
+
+class sql_state : public protocol_state
 {
 public:
 	inline void clear()
@@ -375,7 +392,7 @@ private:
 	unordered_map<string, sinsp_query_details> m_client_tables;
 };
 
-class mongodb_state
+class mongodb_state : public protocol_state
 {
 public:
 	inline void clear()
@@ -411,7 +428,7 @@ private:
 	unordered_map<string, sinsp_query_details> m_client_collections;
 };
 
-class sinsp_http_state
+class sinsp_http_state : public protocol_state
 {
 public:
 	void clear()
@@ -468,6 +485,8 @@ public:
 	}
 
 	void add(sinsp_protostate* other);
+
+	void set_percentiles(const std::vector<int>& pctls);
 
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
@@ -608,6 +627,13 @@ class sinsp_protostate_marker
 public:
 	void add(sinsp_protostate* protostate)
 	{
+		if(!m_percentiles.empty())
+		{
+			protostate->m_http.set_percentiles(m_percentiles);
+			protostate->m_mysql.set_percentiles(m_percentiles);
+			protostate->m_postgres.set_percentiles(m_percentiles);
+			protostate->m_mongodb.set_percentiles(m_percentiles);
+		}
 		m_http.add(&protostate->m_http);
 		m_mysql.add(&protostate->m_mysql);
 		m_postgres.add(&protostate->m_postgres);
@@ -622,11 +648,17 @@ public:
 		m_mongodb.mark_top(limit);
 	}
 
+	void set_percentiles(const std::vector<int>& pctls)
+	{
+		m_percentiles = pctls;
+	}
+
 private:
 	sinsp_http_marker m_http;
 	sinsp_sql_marker m_mysql;
 	sinsp_sql_marker m_postgres;
 	sinsp_mongodb_marker m_mongodb;
+	std::vector<int> m_percentiles;
 };
 
 #endif // HAS_ANALYZER

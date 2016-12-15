@@ -34,7 +34,7 @@ public:
 		for(const auto& v : val) { add(v); }
 	}
 
-	const p_map_type& percentiles();
+	p_map_type percentiles();
 
 	template <typename P, typename C>
 	void to_protobuf(P* proto, C* (P::*add_func)())
@@ -50,5 +50,4 @@ public:
 
 private:
 	cm_quantile m_cm;
-	p_map_type  m_pctl_map;
 };

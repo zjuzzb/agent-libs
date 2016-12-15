@@ -4,6 +4,10 @@
 
 percentile::percentile(const std::vector<int>& pctls, double eps)
 {
+	if(pctls.empty())
+	{
+		throw sinsp_exception("Percentiles: no percentiles specified");
+	}
 	if(eps <= 0 or eps >= 0.5)
 	{
 		throw sinsp_exception("Percentiles: Invalid max error specified: " + std::to_string(eps));
@@ -19,10 +23,6 @@ percentile::percentile(const std::vector<int>& pctls, double eps)
 		os << ']';
 		throw sinsp_exception("Percentiles: Invalid percentiles specified: " + os.str());
 	}
-	for(const auto& p : pctls)
-	{
-		m_pctl_map.insert({p, 0});
-	}
 }
 
 percentile::~percentile()
@@ -33,15 +33,19 @@ percentile::~percentile()
 	}
 }
 
-const percentile::p_map_type& percentile::percentiles()
+percentile::p_map_type percentile::percentiles()
 {
-	if(0 != cm_flush(&m_cm))
+	p_map_type pm;
+	if(m_cm.num_samples)
 	{
-		throw sinsp_exception("Percentiles error while flushing.");
+		if(0 != cm_flush(&m_cm))
+		{
+			throw sinsp_exception("Percentiles error while flushing.");
+		}
+		for(uint32_t i = 0; i < m_cm.num_quantiles; ++i)
+		{
+			pm[m_cm.quantiles[i] * 100] = cm_query(&m_cm, m_cm.quantiles[i]);
+		}
 	}
-	for(auto& pm : m_pctl_map)
-	{
-		pm.second = cm_query(&m_cm, static_cast<double>(pm.first) / 100.0);
-	}
-	return m_pctl_map;
+	return pm;
 }
