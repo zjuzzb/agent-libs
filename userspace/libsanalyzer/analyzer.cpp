@@ -167,6 +167,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_dcos_enterprise_last_token_refresh_s = 0;
 	m_mesos_last_failure_ns = 0;
+	m_last_mesos_refresh = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -968,6 +969,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 											m_configuration->get_marathon_credentials(),
 											m_configuration->get_mesos_timeout_ms()));
 				}
+				time(&m_last_mesos_refresh);
 			}
 		}
 	}
@@ -4322,12 +4324,11 @@ void sinsp_analyzer::emit_k8s()
 
 void sinsp_analyzer::get_mesos_data()
 {
-	static time_t last_mesos_refresh = 0;
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
 	time_t now; time(&now);
-	if(m_mesos && last_mesos_refresh)
+	if(m_mesos && m_last_mesos_refresh)
 	{
 		m_mesos->collect_data();
 	}
@@ -4338,10 +4339,10 @@ void sinsp_analyzer::get_mesos_data()
 		m_mesos->refresh_token();
 		m_dcos_enterprise_last_token_refresh_s = now;
 	}
-	if(m_mesos && difftime(now, last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
+	if(m_mesos && difftime(now, m_last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
 	{
 		m_mesos->send_data_request();
-		last_mesos_refresh = now;
+		m_last_mesos_refresh = now;
 	}
 	if(m_mesos && m_mesos->get_state().has_data())
 	{

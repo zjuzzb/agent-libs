@@ -598,6 +598,7 @@ VISIBILITY_PRIVATE
 	bool m_mesos_present = false;
 	static bool m_mesos_bad_config;
 	time_t m_dcos_enterprise_last_token_refresh_s;
+	time_t m_last_mesos_refresh;
 	uint64_t m_mesos_last_failure_ns;
 
 	unique_ptr<docker> m_docker;
