@@ -690,6 +690,18 @@ app_checks:
       # tasks:
         # - mongo
         # - cassandra
+  - name: mesos-agent
+    check_module: mesos_slave
+    pattern:
+      comm: mesos-agent
+    interval: 30
+    conf:
+      url: "{mesos_url}:{port}"
+      auth_token: "{auth_token}"
+      # Name of individual tasks to monitor, if needed
+      # tasks:
+        # - mongo
+        # - cassandra
   - name: marathon
     check_module: marathon
     interval: 30
