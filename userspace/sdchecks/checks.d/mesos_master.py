@@ -129,7 +129,11 @@ class MesosMaster(AgentCheck):
         msg = None
         status = None
         try:
-            r = requests.get(url, timeout=timeout, allow_redirects=False)
+            headers = {}
+            if self.auth_token != '':
+                headers["Authorization"] = "token=%s" % (self.auth_token)
+
+            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers)
             if r.status_code != 200:
                 status = AgentCheck.CRITICAL
                 msg = "Got %s when hitting %s" % (r.status_code, url)
@@ -151,7 +155,7 @@ class MesosMaster(AgentCheck):
             if status is AgentCheck.CRITICAL:
                 self.service_check(self.SERVICE_CHECK_NAME, status, tags=tags,
                                    message=msg)
-                raise CheckException("Cannot connect to mesos, please check your configuration.")
+                raise CheckException("Cannot connect to mesos at url %s (%s), please check your configuration." % (url, msg))
 
         return r.json()
 
@@ -183,10 +187,14 @@ class MesosMaster(AgentCheck):
         if 'url' not in instance:
             raise Exception('Mesos instance missing "url" value.')
 
+        if 'auth_token' not in instance:
+            raise Exception('Mesos instance missing "auth_token" value.')
+
         url = instance['url']
         instance_tags = instance.get('tags', [])
         default_timeout = self.init_config.get('default_timeout', 5)
         timeout = float(instance.get('timeout', default_timeout))
+        self.auth_token = instance['auth_token']
 
         state_metrics = self._check_leadership(url, timeout)
         if state_metrics:

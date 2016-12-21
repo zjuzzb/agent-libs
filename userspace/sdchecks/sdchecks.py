@@ -13,6 +13,7 @@ import logging
 from datetime import datetime, timedelta
 import sys
 import signal
+import ast
 
 # project
 from checks import AgentCheck
@@ -134,7 +135,7 @@ class AppCheckInstance:
         CONTAINER_SUPPORT = True
     except OSError:
         CONTAINER_SUPPORT = False
-    TOKEN_PATTERN = re.compile("\{.+\}")
+    TOKEN_PATTERN = re.compile("\{.+?\}")
     AGENT_CONFIG = {
         "is_developer_mode": False,
         "version": 1.0,
@@ -150,6 +151,7 @@ class AppCheckInstance:
         self.name = check["name"]
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
+        self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
 
         try:
@@ -179,7 +181,7 @@ class AppCheckInstance:
 
         for key, value in check.get("conf", {}).items():
             if isinstance(value, str):
-                self.instance_conf[key] = self._expand_template(value, proc_data)
+                self.instance_conf[key] = self._expand_template(value, proc_data, self.conf_vals)
             else:
                 self.instance_conf[key] = value
 
@@ -217,7 +219,7 @@ class AppCheckInstance:
             # Return metrics and checks instead
             return self.check_instance.get_metrics(), self.check_instance.get_service_checks(), saved_ex
 
-    def _expand_template(self, value, proc_data):
+    def _expand_template(self, value, proc_data, conf_vals):
         try:
             ret = ""
             lastpos = 0
@@ -225,13 +227,18 @@ class AppCheckInstance:
                 ret += value[lastpos:token.start()]
                 lastpos = token.end()
                 token_key = value[token.start()+1:token.end()-1]
-                ret += str(self.PROC_DATA_FROM_TOKEN[token_key](proc_data))
+                # First try to replace templated values from conf_vals
+                if token_key in conf_vals:
+                    ret += str(conf_vals[token_key])
+                else:
+                    # Then try from the per-process data. It will throw an exception if not found.
+                    ret += str(self.PROC_DATA_FROM_TOKEN[token_key](proc_data))
             ret += value[lastpos:len(value)]
             if ret.isdigit():
                 ret = int(ret)
             return ret
         except Exception as ex:
-            raise AppCheckException("Cannot expand template for %s and proc_data %s: %s" % (value, repr(proc_data), ex))
+            raise AppCheckException("Cannot expand template for %s, proc_data %s, and conf_vals %s: %s" % (value, repr(proc_data), repr(conf_vals), ex))
 
 class Config:
     def __init__(self):
@@ -414,7 +421,8 @@ class Application:
                     "check": sys.argv[2],
                     "pid": int(sys.argv[3]),
                     "vpid": int(sys.argv[4]) if len(sys.argv) >= 5 else 1,
-                    "ports": [int(sys.argv[5]), ] if len(sys.argv) >= 6 else []
+                    "ports": [int(sys.argv[5]), ] if len(sys.argv) >= 6 else [],
+                    "conf_vals": ast.literal_eval(sys.argv[6]) if len(sys.argv) >= 7 else {}
                 }
                 logging.info("Run AppCheck for %s", proc_data)
                 check_conf = self.config.check_conf_by_name(proc_data["check"])
@@ -431,7 +439,7 @@ class Application:
                 print "Exception: %s" % ex
             elif sys.argv[1] == "help":
                 print "Available commands:"
-                print "sdchecks runCheck <checkname> <pid> <vpid> <port>"
+                print "sdchecks runCheck <checkname> <pid> <vpid> <port> <conf_vals>"
         else:
             # In this mode register our usr1 handler to print stack trace (useful for debugging)
             signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
