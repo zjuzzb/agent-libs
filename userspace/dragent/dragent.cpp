@@ -465,6 +465,13 @@ int dragent_app::sdagent_main()
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
 
+	if(m_configuration.load_error())
+	{
+		g_log->error("Unable to load configuration file");
+		// XXX Return EXIT_OK even on an error so we won't restart
+		return Application::EXIT_OK;
+	}
+
 	if(m_statsite_pipes)
 	{
 		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));

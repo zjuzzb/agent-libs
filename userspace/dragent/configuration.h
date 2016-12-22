@@ -52,19 +52,34 @@ public:
 class yaml_configuration
 {
 public:
+	// If the constructor hits an exception, set an error and let the caller handle it
 	yaml_configuration(const string& str)
 	{
-		if(!add_root(YAML::Load(str)))
+		try
 		{
-			add_error("Cannot read config file, reason: not valid format");
+			if(!add_root(YAML::Load(str)))
+			{
+				add_error("Cannot read config file, reason: not valid format");
+			}
+		}
+		catch (const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file, reason: ") + ex.what());
 		}
 	}
 
 	yaml_configuration(string&& str)
 	{
-		if(!add_root(YAML::Load(str)))
+		try
 		{
-			add_error("Cannot read config file, reason: not valid format");
+			if(!add_root(YAML::Load(str)))
+			{
+				add_error("Cannot read config file, reason: not valid format");
+			}
+		}
+		catch (const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file, reason: ") + ex.what());
 		}
 	}
 
@@ -82,10 +97,12 @@ public:
 					{
 						add_error(string("Cannot read config file: ") + path + " reason: not valid format");
 					}
-				} catch ( const YAML::BadFile& ex)
+				}
+				catch(const YAML::BadFile& ex)
 				{
 					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
-				} catch ( const YAML::ParserException& ex)
+				}
+				catch(const YAML::ParserException& ex)
 				{
 					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
 				}
@@ -405,6 +422,7 @@ public:
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static string get_distribution();
+	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
@@ -568,6 +586,7 @@ private:
 	void add_percentiles();
 
 	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
+	bool m_load_error;
 
 	friend class aws_metadata_refresher;
 };
