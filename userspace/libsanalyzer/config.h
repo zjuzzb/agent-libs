@@ -133,8 +133,8 @@ public:
 	unsigned get_jmx_limit() const;
 	void set_jmx_limit(unsigned limit);
 
-	const std::vector<int>& get_percentiles() const;
-	void set_percentiles(const std::vector<int>&);
+	const std::set<double>& get_percentiles() const;
+	void set_percentiles(const std::set<double>&);
 
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
@@ -182,7 +182,7 @@ private:
 	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
 
-	std::vector<int> m_percentiles;
+	std::set<double> m_percentiles;
 
 	unsigned m_statsd_limit;
 

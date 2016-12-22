@@ -119,7 +119,7 @@ public:
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
 	uint32_t m_bytes_out;	// sent bytes for this request
-	std::vector<int> m_percentiles;
+	std::set<double> m_percentiles;
 	std::vector<uint64_t> m_samples;
 	sinsp_request_flags m_flags;
 };
@@ -338,13 +338,13 @@ public:
 class protocol_state
 {
 public:
-	void set_percentiles(const std::vector<int>& pctls)
+	void set_percentiles(const std::set<double>& pctls)
 	{
 		m_percentiles = pctls;
 	}
 
 protected:
-	std::vector<int> m_percentiles;
+	std::set<double> m_percentiles;
 };
 
 class sql_state : public protocol_state
@@ -486,7 +486,7 @@ public:
 
 	void add(sinsp_protostate* other);
 
-	void set_percentiles(const std::vector<int>& pctls);
+	void set_percentiles(const std::set<double>& pctls);
 
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
@@ -648,7 +648,7 @@ public:
 		m_mongodb.mark_top(limit);
 	}
 
-	void set_percentiles(const std::vector<int>& pctls)
+	void set_percentiles(std::set<double>& pctls)
 	{
 		m_percentiles = pctls;
 	}
@@ -658,7 +658,7 @@ private:
 	sinsp_sql_marker m_mysql;
 	sinsp_sql_marker m_postgres;
 	sinsp_mongodb_marker m_mongodb;
-	std::vector<int> m_percentiles;
+	std::set<double> m_percentiles;
 };
 
 #endif // HAS_ANALYZER

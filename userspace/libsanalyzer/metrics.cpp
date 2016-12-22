@@ -93,28 +93,41 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time_bidirectional implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const std::vector<int>* percentiles)
+int sinsp_counter_time_bidirectional::m_ID = 0;
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const std::set<double>* percentiles):
+	m_percentile_in(percentiles ? new percentile(*percentiles) : nullptr),
+	m_percentile_out(percentiles ? new percentile(*percentiles) : nullptr), m_id(++m_ID)
 {
 	clear();
-	if(percentiles)
+	if(m_percentile_in)
 	{
-		m_percentiles.assign(percentiles->begin(), percentiles->end());
+		m_in = m_percentile_in->m_id;
+	}
+	if(m_percentile_out)
+	{
+		m_out = m_percentile_out->m_id;
 	}
 }
 
 sinsp_counter_time_bidirectional::~sinsp_counter_time_bidirectional()
 {
+	delete m_percentile_in;
+	delete m_percentile_out;
 }
 
-void sinsp_counter_time_bidirectional::set_percentiles(const std::vector<int>* percentiles)
+void sinsp_counter_time_bidirectional::set_percentiles(const std::set<double>* percentiles)
 {
 	if(percentiles)
 	{
-		m_percentiles.assign(percentiles->begin(), percentiles->end());
+		m_percentile_in = new percentile(*percentiles);
+		m_percentile_out = new percentile(*percentiles);
 	}
 	else
 	{
-		m_percentiles.clear();
+		delete m_percentile_in;
+		m_percentile_in = nullptr;
+		delete m_percentile_out;
+		m_percentile_out = nullptr;
 	}
 }
 
@@ -124,12 +137,10 @@ void sinsp_counter_time_bidirectional::add_in(uint32_t cnt_delta, uint64_t time_
 
 	m_count_in += cnt_delta;
 	m_time_ns_in += time_delta;
-	if(!m_percentiles.empty())
+	if(m_percentile_in)
 	{
-		m_samples_in.push_back(time_delta);
-		//g_logger.log("Sample IN vector size:" + std::to_string(m_samples_out->size()), sinsp_logger::SEV_TRACE);
+		m_percentile_in->add(time_delta);
 	}
-	//g_logger.log("Added IN sample: " + std::to_string(time_delta), sinsp_logger::SEV_TRACE);
 }
 
 void sinsp_counter_time_bidirectional::add_out(uint32_t cnt_delta, uint64_t time_delta)
@@ -138,12 +149,10 @@ void sinsp_counter_time_bidirectional::add_out(uint32_t cnt_delta, uint64_t time
 
 	m_count_out += cnt_delta;
 	m_time_ns_out += time_delta;
-	if(!m_percentiles.empty())
+	if(m_percentile_out)
 	{
-		m_samples_out.push_back(time_delta);
-		//g_logger.log("Sample OUT vector size:" + std::to_string(m_samples_out->size()), sinsp_logger::SEV_TRACE);
+		m_percentile_out->add(time_delta);
 	}
-	//g_logger.log("Added OUT sample: " + std::to_string(time_delta), sinsp_logger::SEV_TRACE);
 }
 
 void sinsp_counter_time_bidirectional::add_other(uint32_t cnt_delta, uint64_t time_delta)
@@ -163,9 +172,14 @@ void sinsp_counter_time_bidirectional::add(sinsp_counter_time_bidirectional* oth
 	m_time_ns_in += other->m_time_ns_in;
 	m_time_ns_out += other->m_time_ns_out;
 	m_time_ns_other += other->m_time_ns_other;
-	m_percentiles = other->m_percentiles;
-	m_samples_in.insert(m_samples_in.end(), other->m_samples_in.begin(), other->m_samples_in.end());
-	m_samples_out.insert(m_samples_out.end(), other->m_samples_out.begin(), other->m_samples_out.end());
+	if(m_percentile_in && other->m_percentile_in)
+	{
+		m_percentile_in->insert(other->m_percentile_in->get_samples());
+	}
+	if(m_percentile_out && other->m_percentile_out)
+	{
+		m_percentile_out->insert(other->m_percentile_out->get_samples());
+	}
 }
 
 void sinsp_counter_time_bidirectional::clear()
@@ -176,8 +190,14 @@ void sinsp_counter_time_bidirectional::clear()
 	m_time_ns_in = 0;
 	m_time_ns_out = 0;
 	m_time_ns_other = 0;
-	m_samples_in.clear();
-	m_samples_out.clear();
+	if(m_percentile_in)
+	{
+		m_percentile_in->reset();
+	}
+	if(m_percentile_out)
+	{
+		m_percentile_out->reset();
+	}
 }
 
 void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const
@@ -191,19 +211,13 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	// percentiles
 	typedef draiosproto::counter_time_bidirectional CTB;
 	typedef draiosproto::counter_percentile CP;
-	if(m_percentiles.size())
+	if(m_percentile_in)
 	{
-		percentile p(m_percentiles);
-		if(m_samples_in.size())
-		{
-			p.copy(m_samples_in);
-			p.to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
-		}
-		if(m_samples_out.size())
-		{
-			p.copy(m_samples_out);
-			p.to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
-		}
+		m_percentile_in->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
+	}
+	if(m_percentile_out)
+	{
+		m_percentile_out->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
 	}
 }
 
@@ -638,7 +652,7 @@ double sinsp_counters::get_other_percentage()
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transaction_counters implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_transaction_counters::sinsp_transaction_counters(const std::vector<int>* percentiles): m_counter(percentiles)
+sinsp_transaction_counters::sinsp_transaction_counters(const std::set<double>* percentiles): m_counter(percentiles)
 {
 }
 
@@ -649,7 +663,7 @@ void sinsp_transaction_counters::clear()
 	m_max_counter.clear();
 }
 
-void sinsp_transaction_counters::set_percentiles(const std::vector<int>* percentiles)
+void sinsp_transaction_counters::set_percentiles(const std::set<double>* percentiles)
 {
 	m_counter.set_percentiles(percentiles);
 	m_has_percentiles = (percentiles != nullptr);

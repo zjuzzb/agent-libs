@@ -189,7 +189,7 @@ inline void sql_state::add(sql_state* other)
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
 }
 
-void sinsp_protostate::set_percentiles(const std::vector<int>& pctls)
+void sinsp_protostate::set_percentiles(const std::set<double>& pctls)
 {
 	m_http.set_percentiles(pctls);
 	m_mysql.set_percentiles(pctls);

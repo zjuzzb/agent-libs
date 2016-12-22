@@ -343,12 +343,12 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 
 void dragent_configuration::add_percentiles()
 {
-	const auto& roots = m_config->get_roots();
-	for(const auto& root : roots)
-	{
-		m_percentiles = yaml_configuration::get_deep_sequence<std::vector<int>>(*m_config, root, "percentiles");
-		if(!m_percentiles.empty()) { break; }
-	}
+	// TODO?
+	// getting set directly compile fails in yaml-cpp:
+	// error: incomplete type ‘YAML::convert<std::set<double> >’ used in nested name specifier
+	// as a workaround, we get vector and copy it
+	std::vector<double> pctls = m_config->get_scalar<std::vector<double>>("percentiles", {50, 95, 99});
+	std::copy(pctls.begin(), pctls.end(), std::inserter(m_percentiles, m_percentiles.end()));
 }
 
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)

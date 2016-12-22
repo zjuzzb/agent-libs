@@ -5,7 +5,7 @@ using namespace std;
 
 TEST(percentile, integers)
 {
-	std::vector<int> pctls = {25};
+	std::set<double> pctls = {25};
 	percentile p(pctls);
 	p.add(5);
 	p.add(3);

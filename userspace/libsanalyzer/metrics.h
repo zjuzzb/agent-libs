@@ -62,17 +62,18 @@ public:
 //
 // A bidirectional time counter
 //
+class percentile;
 class sinsp_counter_time_bidirectional
 {
 public:
-	sinsp_counter_time_bidirectional(const std::vector<int>* percentiles = nullptr);
+	sinsp_counter_time_bidirectional(const std::set<double>* percentiles = nullptr);
 	~sinsp_counter_time_bidirectional();
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
 	void add_other(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
-	void set_percentiles(const std::vector<int>* percentiles);
+	void set_percentiles(const std::set<double>* percentiles);
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const;
 	uint32_t get_tot_count() const;
 
@@ -82,9 +83,15 @@ public:
 	uint64_t m_time_ns_in;
 	uint64_t m_time_ns_out;
 	uint64_t m_time_ns_other;
-	std::vector<int> m_percentiles;
-	std::vector<uint64_t> m_samples_in;
-	std::vector<uint64_t> m_samples_out;
+	//std::set<double> m_percentiles;
+	//std::vector<uint64_t> m_samples_in;
+	//std::vector<uint64_t> m_samples_out;
+	percentile* m_percentile_in = nullptr;
+	percentile* m_percentile_out = nullptr;
+	int m_in = 0;
+	int m_out = 0;
+	int m_id = 0;
+	static int m_ID;
 };
 
 //
@@ -211,8 +218,8 @@ public:
 class sinsp_transaction_counters
 {
 public:
-	sinsp_transaction_counters(const std::vector<int>* percentiles = nullptr);
-	void set_percentiles(const std::vector<int>* percentiles);
+	sinsp_transaction_counters(const std::set<double>* percentiles = nullptr);
+	void set_percentiles(const std::set<double>* percentiles);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
 		//draiosproto::counter_time_bidirectional* min_protobuf_msg,

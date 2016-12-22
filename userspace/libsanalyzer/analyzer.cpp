@@ -216,9 +216,10 @@ sinsp_analyzer::~sinsp_analyzer()
 
 void sinsp_analyzer::set_percentiles()
 {
-	const std::vector<int>& pctls = m_configuration->get_percentiles();
+	const std::set<double>& pctls = m_configuration->get_percentiles();
 	m_host_transaction_counters.set_percentiles(&pctls);
-	m_inspector->m_percentiles = pctls;
+	m_ipv4_connections->m_percentiles = pctls;
+	//TODO: unix and pipe connections?
 	g_logger.log("Added " + std::to_string(pctls.size()) + " percentiles to host transaction counters.", sinsp_logger::SEV_TRACE);
 }
 
