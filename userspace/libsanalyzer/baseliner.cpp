@@ -11,7 +11,6 @@
 
 extern sinsp_evttables g_infotables;
 
-
 ///////////////////////////////////////////////////////////////////////////////
 // sisnp_baseliner implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -601,7 +600,7 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 ///////////////////////////////////////////////////////////////////////////////
 // XXX Remove this
 ///////////////////////////////////////////////////////////////////////////////
-if(tinfo->m_comm == "du" || tinfo->m_comm == "nice")
+if(tinfo->m_container_id != "" && (tinfo->m_comm == "du" || tinfo->m_comm == "nice"))
 {
 	lo(sinsp_logger::SEV_ERROR, "*detected execution of %s", tinfo->m_comm.c_str());
 	lo(sinsp_logger::SEV_ERROR, "*exe=%s", tinfo->m_exe.c_str());
