@@ -3,6 +3,8 @@
 //
 #pragma once
 
+#include <memory>
+
 #include "sinsp.h"
 
 #ifndef _WIN32
@@ -39,6 +41,7 @@ public:
 	}
 
 	Json::Value to_json() const;
+
 private:
 	friend class YAML::convert<app_check>;
 
@@ -62,10 +65,25 @@ namespace YAML {
 	};
 }
 
+// In some cases, an app check may want to have a custom way to
+// generate config values to match against the check's config. This
+// class allows a way to do that.
+
+class app_process_conf_vals
+{
+public:
+	app_process_conf_vals() {}
+	virtual ~app_process_conf_vals() {};
+
+	virtual Json::Value vals() = 0;
+};
+
 class app_process
 {
 public:
 	explicit app_process(const app_check& check, sinsp_threadinfo* tinfo);
+
+	void set_conf_vals(shared_ptr<app_process_conf_vals> &conf_vals);
 
 	Json::Value to_json() const;
 
@@ -74,6 +92,7 @@ private:
 	int m_vpid;
 	set<uint16_t> m_ports;
 	const app_check& m_check;
+	shared_ptr<app_process_conf_vals> m_conf_vals;
 };
 
 

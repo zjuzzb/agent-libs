@@ -167,7 +167,11 @@ app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 	m_ports(tinfo->m_ainfo->listening_ports()),
 	m_check(check)
 {
+}
 
+void app_process::set_conf_vals(shared_ptr<app_process_conf_vals> &conf_vals)
+{
+	m_conf_vals = conf_vals;
 }
 
 Json::Value app_process::to_json() const
@@ -181,6 +185,18 @@ Json::Value app_process::to_json() const
 	{
 		ret["ports"].append(Json::UInt(port));
 	}
+	Json::Value conf_vals;
+	if(m_conf_vals)
+	{
+		conf_vals = m_conf_vals->vals();
+	}
+	else
+	{
+		conf_vals = Json::objectValue;
+	}
+
+	ret["conf_vals"] = conf_vals;
+
 	return ret;
 }
 

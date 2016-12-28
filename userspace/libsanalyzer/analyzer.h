@@ -386,7 +386,7 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
-	std::string& detect_mesos(std::string& mesos_api_server);
+	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(string& addr);
 	void make_mesos(string&& json);
@@ -413,6 +413,11 @@ VISIBILITY_PRIVATE
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
+	void match_checks_list(sinsp_threadinfo *tinfo,
+			       sinsp_threadinfo *mtinfo,
+			       const vector<app_check> &checks,
+			       vector<app_process> &app_checks_processes,
+			       const char *location);
 
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
@@ -593,10 +598,13 @@ VISIBILITY_PRIVATE
 	bool                                 m_k8s_proc_detected = false;
 
 	unique_ptr<mesos> m_mesos;
+
+	// Used to generate mesos-specific app check state
+	shared_ptr<app_process_conf_vals> m_mesos_conf_vals;
+
 	// flag indicating that mesos connection either exist or has existed once
 	// used to filter logs about Mesos API server unavailablity
 	bool m_mesos_present = false;
-	time_t m_dcos_enterprise_last_token_refresh_s;
 	time_t m_last_mesos_refresh;
 	uint64_t m_mesos_last_failure_ns;
 
