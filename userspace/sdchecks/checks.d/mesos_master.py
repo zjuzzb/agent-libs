@@ -187,14 +187,11 @@ class MesosMaster(AgentCheck):
         if 'url' not in instance:
             raise Exception('Mesos instance missing "url" value.')
 
-        if 'auth_token' not in instance:
-            raise Exception('Mesos instance missing "auth_token" value.')
-
         url = instance['url']
         instance_tags = instance.get('tags', [])
         default_timeout = self.init_config.get('default_timeout', 5)
         timeout = float(instance.get('timeout', default_timeout))
-        self.auth_token = instance['auth_token']
+        self.auth_token = instance.get('auth_token', '')
 
         state_metrics = self._check_leadership(url, timeout)
         if state_metrics:

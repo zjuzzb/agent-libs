@@ -36,6 +36,11 @@ public:
 		return m_name;
 	}
 
+	const string& module() const
+	{
+		return m_check_module;
+	}
+
 	bool enabled() const {
 		return m_enabled;
 	}

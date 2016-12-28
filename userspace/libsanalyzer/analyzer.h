@@ -602,6 +602,9 @@ VISIBILITY_PRIVATE
 	// Used to generate mesos-specific app check state
 	shared_ptr<app_process_conf_vals> m_mesos_conf_vals;
 
+	// Used to generate marathon-specific app check state
+	shared_ptr<app_process_conf_vals> m_marathon_conf_vals;
+
 	// flag indicating that mesos connection either exist or has existed once
 	// used to filter logs about Mesos API server unavailablity
 	bool m_mesos_present = false;

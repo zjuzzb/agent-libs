@@ -455,6 +455,44 @@ private:
 	mesos_auth m_auth;
 };
 
+class marathon_conf_vals : public app_process_conf_vals
+{
+public:
+	marathon_conf_vals(const uri::credentials_t &dcos_enterprise_credentials,
+			   const string &marathon_uri,
+			   const string &auth_hostname)
+		: m_auth(dcos_enterprise_credentials, auth_hostname),
+		  m_protocol(dcos_enterprise_credentials.first.empty() ? "http" : "https")
+		{
+			// Marathon listens on both http and https ports, so we embed
+			// the port in the url depending on whether we're using http
+			// or https.
+			m_marathon_url = m_protocol + string("://") +
+				uri(marathon_uri).get_host() +
+				":" + (m_protocol == "http" ? "8080" : "8443");
+		};
+
+	virtual ~marathon_conf_vals() {};
+
+	const string &protocol() {
+		return m_protocol;
+	}
+
+	Json::Value vals() {
+		Json::Value conf_vals = Json::objectValue;
+
+		conf_vals["auth_token"] = m_auth.get_token();
+		conf_vals["marathon_url"] = m_marathon_url;
+
+		return conf_vals;
+	}
+
+private:
+	mesos_auth m_auth;
+	string m_protocol;
+	string m_marathon_url;
+};
+
 sinsp_configuration* sinsp_analyzer::get_configuration()
 {
 	//
@@ -5166,25 +5204,26 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 	{
 		if(check.match(tinfo))
 		{
+			string mm = "master.mesos";
+			shared_ptr<app_process_conf_vals> conf_vals;
+			set<uint16_t> listening_ports = tinfo->m_ainfo->listening_ports();
+
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from %s",
 					check.name().c_str(), tinfo->m_pid, tinfo->m_vpid, location);
-
-			app_checks_processes.emplace_back(check, tinfo);
-			mtinfo->m_ainfo->set_app_check_found();
 
 			// For mesos-master and mesos-slave app
 			// checks, override the built-in conf vals
 			// with the mesos-specific ones.
-			if (check.name() == "mesos-master" || check.name() == "mesos-slave" || check.name() == "mesos-agent")
+			if(check.module() == "mesos_master" || check.module() == "mesos_slave")
 			{
 				string auth_hostname = "localhost";
 
 				// For dcos enterprise, the auth service only runs on the master. So for the slave,
 				// set the auth hostname to the special name master.mesos, which always
 				// resolves to the master
-				if(check.name() == "mesos-slave" || check.name() == "mesos-agent")
+				if(check.module() == "mesos_slave")
 				{
-					auth_hostname = "master.mesos";
+					auth_hostname = mm;
 				}
 
 				if(!m_mesos_conf_vals)
@@ -5196,8 +5235,50 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 										    auth_hostname));
 				}
 
-				g_logger.log("Adding mesos specific info to app check", sinsp_logger::SEV_DEBUG);
-				app_checks_processes.back().set_conf_vals(m_mesos_conf_vals);
+				conf_vals = m_mesos_conf_vals;
+			}
+			else if(check.module() == "marathon")
+			{
+				if(!m_marathon_conf_vals)
+				{
+					// We now have enough information to generate marathon-specific
+					// app check configuration, so create the object.
+
+					// The marathon uri can either be the first configured
+					// marathon uri or the first autodetected marathon uri. If both
+					// are empty, we don't perform the app check at all.
+					string marathon_uri;
+					if(!m_configuration->get_marathon_uris().empty())
+					{
+						marathon_uri = m_configuration->get_marathon_uris().front();
+					}
+					else if(m_mesos && !m_mesos->marathon_uris().empty())
+					{
+						marathon_uri = m_mesos->marathon_uris().front();
+					}
+
+					if(marathon_uri.empty())
+					{
+						g_logger.log("Not performing marathon app check as no marathon uri exists yet", sinsp_logger::SEV_DEBUG);
+						continue;
+					} else {
+
+						m_marathon_conf_vals.reset(new marathon_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
+												  marathon_uri,
+												  mm));
+					}
+				}
+
+				conf_vals = m_marathon_conf_vals;
+			}
+
+			app_checks_processes.emplace_back(check, tinfo);
+			mtinfo->m_ainfo->set_app_check_found();
+
+			if(conf_vals)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Adding mesos/marathon specific info to app check %s", check.name().c_str());
+				app_checks_processes.back().set_conf_vals(conf_vals);
 			}
 
 			break;
