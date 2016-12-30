@@ -1,7 +1,7 @@
 set(DRAIOS_OPENSSL_VERSION "1.0.2j")
 set(DRAIOS_PROTOBUF_VERSION "2.5.0")
 set(DRAIOS_ZLIB_VERSION "1.2.8")
-set(DRAIOS_POCO_VERSION "1.4.6p4-all")
+set(DRAIOS_POCO_VERSION "1.7.7-all")
 set(DRAIOS_LIBSSH_VERSION "0.7.3")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
@@ -55,7 +55,6 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/libssh-${DRAIOS_LIBSSH_VERSION}/target/lib/libssh.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a

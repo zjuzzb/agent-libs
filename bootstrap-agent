@@ -66,14 +66,17 @@ if [ ! -d "$OPENSSL_DIR" ]; then
 	cd ..
 fi
 
-POCO_DIR=$DEPENDENCIES/poco-1.4.6p4-all
+POCO_VER=1.7.7
+POCO_EXT=tar.gz
+POCO_DIR=poco-$POCO_VER-all
+POCO_ARCH=$POCO_DIR.$POCO_EXT
+POCO_DIR=$DEPENDENCIES/$POCO_DIR
 if [ ! -d "$POCO_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/poco-1.4.6p4-all.tar.gz
-	tar -xzf poco-1.4.6p4-all.tar.gz
+        cd $DEPENDENCIES
+        wget $DEPENDENCIES_URL/$POCO_ARCH
+ 	tar -xzf $POCO_ARCH
 	cd $POCO_DIR
-	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
-	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC,PageCompiler --include-path=$OPENSSL_DIR/target/include
+	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
 	make install
 	cd ..
 fi
