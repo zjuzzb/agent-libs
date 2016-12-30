@@ -104,11 +104,11 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.2
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.3
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libssh-0.7.2.tar.xz
-	tar -xf libssh-0.7.2.tar.xz
+	wget $DEPENDENCIES_URL/libssh-0.7.3.tar.xz
+	tar -xf libssh-0.7.3.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
 	cd build
