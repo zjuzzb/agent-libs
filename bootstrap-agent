@@ -126,7 +126,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	make
 fi
 
-CURL_NAME=curl-7.45.0
+CURL_NAME=curl-7.52.1
 CURL_EXT=tar.bz2
 CURL_DIR=$DEPENDENCIES/$CURL_NAME
 if [ ! -d "$CURL_DIR" ]; then
