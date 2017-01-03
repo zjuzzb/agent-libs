@@ -36,7 +36,9 @@ if [ ! -d "$JQ_DIR" ]; then
 	cd $DEPENDENCIES
 	wget $DEPENDENCIES_URL/jq-1.5.tar.gz
 	tar -xzf jq-1.5.tar.gz
+	wget -O jq-1.5-fix-tokenadd.patch https://github.com/stedolan/jq/commit/8eb1367ca44e772963e704a700ef72ae2e12babd.patch
 	cd $JQ_DIR
+	patch < ../jq-1.5-fix-tokenadd.patch
 	./configure --disable-maintainer-mode --enable-all-static --disable-dependency-tracking
 	make LDFLAGS=-all-static
 fi
