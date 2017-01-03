@@ -779,22 +779,26 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//
 	// Mark the top network I/O consumers
 	//
-	partial_sort(prog_sortable_list.begin(),
-		prog_sortable_list.begin() + howmany,
-		prog_sortable_list.end(),
-		(cs_only)?threadinfo_cmp_net_cs:threadinfo_cmp_net);
-
-	for(j = 0; j < howmany; j++)
+	// does not work on NODRIVER mode
+	if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
 	{
-		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+		partial_sort(prog_sortable_list.begin(),
+					 prog_sortable_list.begin() + howmany,
+					 prog_sortable_list.end(),
+					 (cs_only)?threadinfo_cmp_net_cs:threadinfo_cmp_net);
 
-		if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+		for(j = 0; j < howmany; j++)
 		{
-			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
-		}
-		else
-		{
-			break;
+			ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+
+			if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+			{
+				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			}
+			else
+			{
+				break;
+			}
 		}
 	}
 
@@ -4822,24 +4826,36 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	}
 	check_and_emit_containers(containers_limit_by_type);
 
-	if(containers_ids.size() > containers_limit_by_type)
+	// This will not work on nodriver, net stats are read just before emitting.
+	// We could read them earlier but containers using `--net host` will
+	// have net_stats==host_stats, which falses the algorithm
+	// so ignore it for now.
+	auto top_cpu_containers = containers_limit_by_type;
+	if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
 	{
-		// TODO: this will not work on nodriver, net stats should be read before emitting
-		partial_sort(containers_ids.begin(),
-					 containers_ids.begin() + containers_limit_by_type,
-					 containers_ids.end(),
-					 containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+		if(containers_ids.size() > containers_limit_by_type)
+		{
+			partial_sort(containers_ids.begin(),
+						 containers_ids.begin() + containers_limit_by_type,
+						 containers_ids.end(),
+						 containers_cmp<decltype(net_io_extractor)>(&m_containers, move(net_io_extractor)));
+		}
+		check_and_emit_containers(containers_limit_by_type);
 	}
-	check_and_emit_containers(containers_limit_by_type);
+	else
+	{
+		// assign top net slots to top cpu
+		top_cpu_containers += containers_limit_by_type;
+	}
 
-	if(containers_ids.size() > containers_limit_by_type)
+	if(containers_ids.size() > top_cpu_containers )
 	{
 		partial_sort(containers_ids.begin(),
-					 containers_ids.begin() + containers_limit_by_type,
+					 containers_ids.begin() + top_cpu_containers,
 					 containers_ids.end(),
 					 containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
-	check_and_emit_containers(containers_limit_by_type);
+	check_and_emit_containers(top_cpu_containers);
 /*
 	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);
 	for(const auto& c : m_metrics->containers())
