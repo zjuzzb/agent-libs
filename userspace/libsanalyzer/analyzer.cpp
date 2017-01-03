@@ -80,7 +80,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
-	m_last_proclist_refresh = 0;
 	m_metrics = new draiosproto::metrics;
 	m_serialization_buffer = (char*)malloc(MIN_SERIALIZATION_BUF_SIZE_BYTES);
 	if(!m_serialization_buffer)
@@ -2999,22 +2998,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
 
 
-			if(m_inspector->m_mode == SCAP_MODE_NODRIVER &&
-				m_prev_flush_time_ns - m_last_proclist_refresh > NODRIVER_PROCLIST_REFRESH_INTERVAL_NS)
+			if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
 			{
-				g_logger.log("Refreshing proclist", sinsp_logger::SEV_DEBUG);
-				m_inspector->refresh_proc_list();
-				m_last_proclist_refresh = m_prev_flush_time_ns;
+				static run_on_interval proclist_refresher(NODRIVER_PROCLIST_REFRESH_INTERVAL_NS, [this]()
+				{
+					g_logger.log("Refreshing proclist", sinsp_logger::SEV_DEBUG);
+					this->m_inspector->refresh_proc_list();
+				});
+				proclist_refresher.run(m_prev_flush_time_ns);
 			}
-
-			//
-			// Run the periodic connection and thread table cleanup
-			// This is run on every sample for NODRIVER mode
-			// by forcing interval to 0
-			//
-			remove_expired_connections(ts);
-			m_inspector->remove_inactive_threads();
-			m_inspector->m_container_manager.remove_inactive_containers();
 
 			//
 			// Calculate CPU load
@@ -3608,6 +3600,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 		m_inspector->m_tid_collisions.clear();
 	}
+
+	//
+	// Run the periodic connection and thread table cleanup
+	// This is run on every sample for NODRIVER mode
+	// by forcing interval to 0
+	//
+	remove_expired_connections(ts);
+	m_inspector->remove_inactive_threads();
+	m_inspector->m_container_manager.remove_inactive_containers();
 
 	if(evt)
 	{

@@ -166,13 +166,12 @@ private:
 class sinsp_curl;
 class uri;
 
-/*
+/**
  * Often we need to run something on an interval
  * usually we need to store last_run_ts compare to now
  * and run it
- * This micro-class makes this faster
+ * This micro-class makes this easier
  */
-
 class run_on_interval
 {
 public:
@@ -582,7 +581,6 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-	uint64_t m_last_proclist_refresh;
 	
 	//
 	// Falco stuff
