@@ -5,6 +5,7 @@
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
+#include "procfs_parser.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -84,6 +85,9 @@ public:
 	// The protocol state
 	sinsp_protostate m_protostate;
 	unique_ptr<proc_config> m_proc_config;
+
+	// Used just by nodriver mode
+	sinsp_proc_file_stats m_file_io_stats;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

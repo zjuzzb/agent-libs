@@ -1569,6 +1569,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #else
 						m_my_cpuload = 0;
 #endif
+						if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+						{
+							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo->m_pid, &ainfo->m_dynstate->m_file_io_stats);
+							ainfo->m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
+							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
+							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
+							ainfo->m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
+						}
 					}
 				}
 			}
@@ -4816,6 +4824,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 
 	if(containers_ids.size() > containers_limit_by_type)
 	{
+		// TODO: this will not work on nodriver, net stats should be read before emitting
 		partial_sort(containers_ids.begin(),
 					 containers_ids.begin() + containers_limit_by_type,
 					 containers_ids.end(),
@@ -4997,7 +5006,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		// since we don't have sysdig events in this case
 		auto io_net = tcounters->mutable_io_net();
 		auto net_bytes = m_procfs_parser->read_proc_network_stats(pid, &it_analyzer->second.m_last_bytes_in, &it_analyzer->second.m_last_bytes_out);
-		g_logger.format(sinsp_logger::SEV_INFO, "Patching container=%s pid=%ld networking from (%u, %u) to (%u, %u)",
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Patching container=%s pid=%ld networking from (%u, %u) to (%u, %u)",
 						container_id.c_str(), pid, io_net->bytes_in(), io_net->bytes_out(),
 						net_bytes.first, net_bytes.second);
 		io_net->set_bytes_in(net_bytes.first);

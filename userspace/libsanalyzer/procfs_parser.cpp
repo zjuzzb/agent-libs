@@ -841,6 +841,66 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, u
 
 	return ret;
 }
+
+sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid, sinsp_proc_file_stats *old)
+{
+	char filepath[SCAP_MAX_PATH_SIZE];
+	snprintf(filepath, SCAP_MAX_PATH_SIZE, "%s/proc/%ld/io", scap_get_host_root(), pid);
+
+	sinsp_proc_file_stats ret, last;
+
+	if(!m_is_live_capture)
+	{
+		// Reading this data does not makes sense if it's not a live capture
+		return ret;
+	}
+
+	auto io_file = fopen(filepath, "r");
+	if(io_file == NULL)
+	{
+		return ret;
+	}
+
+	char field[20];
+	uint32_t value;
+	while(fscanf(io_file, "%s %u", field, &value) > 0)
+	{
+		string field_s(field);
+		if (field_s == "rchar:")
+		{
+			last.m_read_bytes = value;
+		}
+		else if (field_s == "wchar:")
+		{
+			last.m_write_bytes = value;
+		}
+		else if(field_s == "syscr:")
+		{
+			last.m_syscr = value;
+		}
+		else if (field_s == "syscw:")
+		{
+			last.m_syscw = value;
+			// no need to read more
+			break;
+		}
+	}
+
+	fclose(io_file);
+
+	// Calculate delta, no delta if it is the first time we read
+	if(old->has_values())
+	{
+		ret.m_syscr = last.m_syscr - old->m_syscr;
+		ret.m_syscw = last.m_syscw - old->m_syscw;
+		ret.m_read_bytes = last.m_read_bytes - old->m_read_bytes;
+		ret.m_write_bytes = last.m_write_bytes - old->m_write_bytes;
+	}
+	*old = last;
+
+	return ret;
+}
+
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	device(proto.device()),
 	mount_dir(proto.mount_dir()),

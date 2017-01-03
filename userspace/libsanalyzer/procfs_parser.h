@@ -42,6 +42,21 @@ struct sinsp_proc_stat
 	uint64_t m_uptime = 0;
 };
 
+struct sinsp_proc_file_stats {
+	uint32_t m_syscr = 0;
+	uint32_t m_syscw = 0;
+	uint32_t m_read_bytes = 0;
+	uint32_t m_write_bytes = 0;
+
+	bool has_values() const
+	{
+		return m_syscr > 0 ||
+				m_syscw > 0 ||
+				m_read_bytes > 0 ||
+				m_write_bytes > 0;
+	}
+};
+
 class sinsp_procfs_parser
 {
 public:
@@ -68,7 +83,7 @@ public:
 	pair<uint32_t, uint32_t> read_network_interfaces_stats();
 	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
 													 uint64_t *old_last_out_bytes);
-
+	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
 private:
 	void lookup_memory_cgroup_dir();
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
