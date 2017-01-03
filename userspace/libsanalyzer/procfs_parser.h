@@ -66,7 +66,8 @@ public:
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
 	pair<uint32_t, uint32_t> read_network_interfaces_stats();
-	pair<uint32_t, uint32_t> read_proc_network_stats(uint64_t pid, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes);
+	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
+													 uint64_t *old_last_out_bytes);
 
 private:
 	void lookup_memory_cgroup_dir();

@@ -772,10 +772,11 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	return read_net_dev(net_dev_path, &m_last_in_bytes, &m_last_out_bytes, BAD_INTERFACE_NAMES);
 }
 
-pair<uint32_t, uint32_t> sinsp_procfs_parser::read_proc_network_stats(uint64_t pid, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes)
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
+																	  uint64_t *old_last_out_bytes)
 {
 	char net_dev_path[100];
-	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/%lu/net/dev", scap_get_host_root(), pid);
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/%ld/net/dev", scap_get_host_root(), pid);
 	return read_net_dev(net_dev_path, old_last_in_bytes, old_last_out_bytes);
 }
 
@@ -820,7 +821,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, u
 			return strcasestr(interface_name, bad_interface) == interface_name;
 		}) == bad_interface_names.end())
 		{
-			// g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
+			// g_logger.format(sinsp_logger::SEV_INFO, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
 			tot_in_bytes += in_bytes;
 			tot_out_bytes += out_bytes;
 		}

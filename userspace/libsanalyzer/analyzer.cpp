@@ -1288,7 +1288,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		return lhs->get_main_thread()->m_program_hash == rhs->get_main_thread()->m_program_hash;
 	};
 	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(TOP_PROCESSES_IN_SAMPLE, prog_hasher, prog_cmp);
-	unordered_map<string, vector<sinsp_threadinfo*>> progtable_by_container;
+	progtable_by_container_t progtable_by_container;
 #ifndef _WIN32
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
@@ -1432,7 +1432,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread every sample anyway
-		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+		if(m_inspector->m_mode == SCAP_MODE_LIVE && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
 				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -1569,15 +1569,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #else
 						m_my_cpuload = 0;
 #endif
-						if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
-						{
-							// We need to patch a bunch of process metrics
-							// reading them from /proc as we don't have
-							// sysdig events
-							auto net_bytes = m_procfs_parser->read_proc_network_stats(tinfo->m_pid, &ainfo->m_last_last_in_bytes, &ainfo->m_last_last_out_bytes);
-							ainfo->m_metrics.m_io_net.m_bytes_in = net_bytes.first;
-							ainfo->m_metrics.m_io_net.m_bytes_out = net_bytes.second;
-						}
 					}
 				}
 			}
@@ -1919,14 +1910,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		emit_full_connections();
 	}
 
+
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
-	vector<string> active_containers;
-	for(const auto& item : progtable_by_container)
-	{
-		active_containers.push_back(item.first);
-	}
-	auto emitted_containers = emit_containers(active_containers);
+	auto emitted_containers = emit_containers(progtable_by_container);
 	bool progtable_needs_filtering = false;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -4708,7 +4695,7 @@ private:
 	Extractor m_extractor;
 };
 
-vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_containers)
+vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& progtable_by_container)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -4738,10 +4725,11 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 	sinsp_protostate_marker containers_protostate_marker;
 
 	uint64_t total_cpu_shares = 0;
-	for(const auto& id : active_containers)
+	for(const auto& item : progtable_by_container)
 	{
+		const auto& container_id = item.first;
 		sinsp_container_info container_info;
-		if(m_inspector->m_container_manager.get_container(id, &container_info))
+		if(m_inspector->m_container_manager.get_container(container_id, &container_info))
 		{
 
 			if(container_info.m_name.find("k8s_POD") == std::string::npos)
@@ -4755,10 +4743,10 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 								 }) != m_container_patterns.end())
 						)
 				{
-					auto analyzer_it = m_containers.find(id);
+					auto analyzer_it = m_containers.find(container_id);
 					if(analyzer_it != m_containers.end())
 					{
-						containers_ids.push_back(id);
+						containers_ids.push_back(container_id);
 						containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
 					}
 				}
@@ -4791,12 +4779,19 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = m_configuration->get_statsd_limit();
-	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit, &emitted_containers, &total_cpu_shares](const uint32_t containers_limit)
+	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit,
+									&emitted_containers, &total_cpu_shares, &progtable_by_container]
+			(const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
 		{
-			this->emit_container(containers_ids.front(), &statsd_limit, total_cpu_shares);
-			emitted_containers.emplace_back(containers_ids.front());
+			const auto& containerid = containers_ids.front();
+			// We need any pid of a process running within this container
+			// to get net stats via /proc, using .at() because it will never fail
+			// since we are getting containerids from that table
+			auto pid = progtable_by_container.at(containerid).front()->m_pid;
+			this->emit_container(containerid, &statsd_limit, total_cpu_shares, pid);
+			emitted_containers.emplace_back(containerid);
 			containers_ids.erase(containers_ids.begin());
 		}
 	};
@@ -4843,11 +4838,29 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 		g_logger.log(c.DebugString(), sinsp_logger::SEV_TRACE);
 	}
 */
-	m_containers.clear();
+	static run_on_interval analyzer_containers_cleaner(30*ONE_SECOND_IN_NS, [this, &progtable_by_container]()
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Flushing analyzer container table");
+		auto it = this->m_containers.begin();
+		while(it != this->m_containers.end())
+		{
+			if(progtable_by_container.find(it->first) == progtable_by_container.end())
+			{
+				it = this->m_containers.erase(it);
+			}
+			else
+			{
+				++it;
+			}
+		}
+	});
+	analyzer_containers_cleaner.run(m_prev_flush_time_ns);
 	return emitted_containers;
 }
 
-void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares)
+void
+sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares,
+							   int64_t pid)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -4976,7 +4989,21 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 		container->mutable_resource_counters()->set_swap_limit_kb(it->second.m_swap_limit/1024);
 	}
 
-	it_analyzer->second.m_metrics.m_metrics.to_protobuf(container->mutable_tcounters(), m_sampling_ratio);
+	auto tcounters = container->mutable_tcounters();
+	it_analyzer->second.m_metrics.m_metrics.to_protobuf(tcounters, m_sampling_ratio);
+	if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+	{
+		// We need to patch network metrics reading from /proc
+		// since we don't have sysdig events in this case
+		auto io_net = tcounters->mutable_io_net();
+		auto net_bytes = m_procfs_parser->read_proc_network_stats(pid, &it_analyzer->second.m_last_bytes_in, &it_analyzer->second.m_last_bytes_out);
+		g_logger.format(sinsp_logger::SEV_INFO, "Patching container=%s pid=%ld networking from (%u, %u) to (%u, %u)",
+						container_id.c_str(), pid, io_net->bytes_in(), io_net->bytes_out(),
+						net_bytes.first, net_bytes.second);
+		io_net->set_bytes_in(net_bytes.first);
+		io_net->set_bytes_out(net_bytes.second);
+	}
+
 	if(m_protocols_enabled)
 	{
 		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio, CONTAINERS_PROTOS_TOP_LIMIT);
@@ -5017,6 +5044,8 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
 												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
+
+	it_analyzer->second.clear();
 }
 
 void sinsp_analyzer::get_statsd()
@@ -5520,6 +5549,19 @@ double self_cputime_analyzer::calc_flush_percent()
 analyzer_container_state::analyzer_container_state()
 {
 	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
+	m_last_bytes_in = 0;
+	m_last_bytes_out = 0;
+}
+
+void analyzer_container_state::clear()
+{
+	m_metrics.clear();
+	m_req_metrics.clear();
+	m_transaction_counters.clear();
+	m_transaction_delays.clear();
+	m_server_transactions.clear();
+	m_client_transactions.clear();
+	m_connections_by_serverport->clear();
 }
 
 #endif // HAS_ANALYZER

@@ -166,6 +166,41 @@ private:
 class sinsp_curl;
 class uri;
 
+/*
+ * Often we need to run something on an interval
+ * usually we need to store last_run_ts compare to now
+ * and run it
+ * This micro-class makes this faster
+ */
+
+class run_on_interval
+{
+public:
+	inline run_on_interval(uint64_t interval, function<void (void)>&& callable);
+
+	inline void run(uint64_t now = sinsp_utils::get_current_time_ns());
+private:
+	uint64_t m_last_run_ns;
+	uint64_t m_interval;
+	function<void (void)> m_callable;
+};
+
+run_on_interval::run_on_interval(uint64_t interval, function<void (void)>&& callable):
+	m_last_run_ns(0),
+	m_interval(interval),
+	m_callable(callable)
+{
+}
+
+void run_on_interval::run(uint64_t now)
+{
+	if(now - m_last_run_ns > m_interval)
+	{
+		m_callable();
+		m_last_run_ns = now;
+	}
+}
+
 //
 // The main analyzer class
 //
@@ -182,7 +217,7 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
-
+	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
@@ -396,8 +431,8 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
-	vector<string> emit_containers(const vector<string>& active_containers);
-	void emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares);
+	vector<string> emit_containers(const progtable_by_container_t& active_containers);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
