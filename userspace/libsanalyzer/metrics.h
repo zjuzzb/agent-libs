@@ -83,15 +83,8 @@ public:
 	uint64_t m_time_ns_in;
 	uint64_t m_time_ns_out;
 	uint64_t m_time_ns_other;
-	//std::set<double> m_percentiles;
-	//std::vector<uint64_t> m_samples_in;
-	//std::vector<uint64_t> m_samples_out;
 	percentile* m_percentile_in = nullptr;
 	percentile* m_percentile_out = nullptr;
-	int m_in = 0;
-	int m_out = 0;
-	int m_id = 0;
-	static int m_ID;
 };
 
 //

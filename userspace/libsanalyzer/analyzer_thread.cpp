@@ -116,7 +116,6 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_cmdline_sync_ns = 0;
 	if(m_percentiles.size())
 	{
-		g_logger.log("Setting percentiles for thread " + std::to_string(tinfo->m_tid), sinsp_logger::SEV_TRACE);
 		m_transaction_metrics.set_percentiles(&m_percentiles);
 		m_external_transaction_metrics.set_percentiles(&m_percentiles);
 		m_dynstate->m_protostate.set_percentiles(m_percentiles);

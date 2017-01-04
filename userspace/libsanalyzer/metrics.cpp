@@ -93,20 +93,12 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time_bidirectional implementation
 ///////////////////////////////////////////////////////////////////////////////
-int sinsp_counter_time_bidirectional::m_ID = 0;
+
 sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const std::set<double>* percentiles):
 	m_percentile_in(percentiles ? new percentile(*percentiles) : nullptr),
-	m_percentile_out(percentiles ? new percentile(*percentiles) : nullptr), m_id(++m_ID)
+	m_percentile_out(percentiles ? new percentile(*percentiles) : nullptr)
 {
 	clear();
-	if(m_percentile_in)
-	{
-		m_in = m_percentile_in->m_id;
-	}
-	if(m_percentile_out)
-	{
-		m_out = m_percentile_out->m_id;
-	}
 }
 
 sinsp_counter_time_bidirectional::~sinsp_counter_time_bidirectional()

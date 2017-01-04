@@ -23,7 +23,6 @@ public:
 	template <typename T>
 	void add(T val)
 	{
-		g_logger.log("***** " + std::to_string(m_id) + " ADD  val=" + std::to_string(val));
 		if(0 != cm_add_sample(&m_cm, val))
 		{
 			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(val));
@@ -40,7 +39,6 @@ public:
 	template <typename T>
 	void insert(const std::vector<T>& val)
 	{
-		g_logger.log("***** " + std::to_string(m_id) + " HAS " + std::to_string(sample_count()) + " vals, INSERT " + std::to_string(val.size()) + " vals");
 		for(const auto& v : val) { add(v); }
 	}
 
@@ -49,7 +47,6 @@ public:
 	template <typename P, typename C>
 	void to_protobuf(P* proto, C* (P::*add_func)())
 	{
-		g_logger.log("***** Percentile " + std::to_string(m_id) + " to_protobuf");
 		p_map_type pm = percentiles();
 		for(const auto& p : pm)
 		{

@@ -219,9 +219,6 @@ void sinsp_analyzer::set_percentiles()
 {
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	m_host_transaction_counters.set_percentiles(&pctls);
-	m_ipv4_connections->m_percentiles = pctls;
-	//TODO: unix and pipe connections?
-	g_logger.log("Added " + std::to_string(pctls.size()) + " percentiles to host transaction counters.", sinsp_logger::SEV_TRACE);
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -279,11 +276,24 @@ void sinsp_analyzer::on_capture_start()
 	//
 	ASSERT(m_ipv4_connections == NULL);
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+	const std::set<double>& pctls = m_configuration->get_percentiles();
+	if(pctls.size())
+	{
+		m_ipv4_connections->m_percentiles = pctls;
+	}
 #ifdef HAS_UNIX_CONNECTIONS
 	m_unix_connections = new sinsp_unix_connection_manager(m_inspector);
+	if(pctls.size())
+	{
+		m_unix_connections->m_percentiles = pctls;
+	}
 #endif
 #ifdef HAS_PIPE_CONNECTIONS
 	m_pipe_connections = new sinsp_pipe_connection_manager(m_inspector);
+	if(pctls.size())
+	{
+		m_pipe_connections->m_percentiles = pctls;
+	}
 #endif
 	m_trans_table = new sinsp_transaction_table(m_inspector);
 
@@ -2408,7 +2418,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 			// Note: we don't export connections whose sip or dip is zero.
 			//
 			sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
-
 			if(conn.m_timestamp == 0)
 			{
 				//
@@ -2417,6 +2426,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				conn = cit->second;
 				conn.m_timestamp = 1;
+				const std::set<double>& pctls = m_configuration->get_percentiles();
+				if(pctls.size())
+				{
+					conn.m_transaction_metrics.set_percentiles(&pctls);
+				}
 			}
 			else
 			{
@@ -2452,6 +2466,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				}
 			}
 		}
+
 		//
 		// Has this connection been closed druring this sample?
 		//

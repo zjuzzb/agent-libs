@@ -17,19 +17,16 @@ percentile::percentile(const std::set<double>& pctls, double eps): m_id(++m_ID)
 	std::vector<double> percentiles;
 	std::transform(std::begin(pctls), std::end(pctls), std::back_inserter(percentiles),
 					[](double d) { return d/100.0; });
-	g_logger.log("***** Percentile " + std::to_string(m_id) + " construct");
 	init(percentiles, eps);
 }
 
 percentile::~percentile()
 {
-	g_logger.log("***** Percentile " + std::to_string(m_id) + " destruct");
 	destroy();
 }
 
 void percentile::init(std::vector<double>& percentiles, double eps)
 {
-	g_logger.log("***** Percentile " + std::to_string(m_id) + " init");
 	if(-1 == init_cm_quantile(eps, &percentiles[0], percentiles.size(), &m_cm))
 	{
 		std::ostringstream os;
@@ -42,7 +39,6 @@ void percentile::init(std::vector<double>& percentiles, double eps)
 
 void percentile::destroy(std::vector<double>* percentiles)
 {
-	g_logger.log("***** Percentile " + std::to_string(m_id) + " destroy");
 	if(percentiles)
 	{
 		*percentiles = get_percentiles();
@@ -94,7 +90,6 @@ void percentile::reset()
 
 percentile::p_map_type percentile::percentiles()
 {
-	g_logger.log("***** Percentile " + std::to_string(m_id) + " percentiles");
 	p_map_type pm;
 	if(m_cm.num_samples)
 	{
