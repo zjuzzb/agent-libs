@@ -40,6 +40,7 @@ class Marathon(AgentCheck):
         instance_tags = instance.get('tags', [])
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
+        self.auth_token = instance.get('auth_token', '')
 
         response = self.get_json(urljoin(url, "/v2/apps"), timeout, auth)
         if response is not None:
@@ -58,7 +59,11 @@ class Marathon(AgentCheck):
 
     def get_json(self, url, timeout, auth):
         try:
-            r = requests.get(url, timeout=timeout, auth=auth, allow_redirects=False)
+            headers = {}
+            if self.auth_token != '':
+                headers["Authorization"] = "token=%s" % (self.auth_token)
+
+            r = requests.get(url, timeout=timeout, auth=auth, allow_redirects=False, headers=headers)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout
@@ -72,6 +77,12 @@ class Marathon(AgentCheck):
                 message='%s returned a status of %s' % (url, r.status_code),
                 tags = ["url:{0}".format(url)])
             raise Exception("Got %s when hitting %s" % (r.status_code, url))
+
+        except requests.exceptions.SSLError as e:
+            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
+                message='%s returned a ssl error: %s' % (url, str(e)),
+                tags = ["url:{0}".format(url)])
+            raise CheckException("Got ssl error %s when hitting %s" % (str(e), url))
 
         else:
             self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.OK,
