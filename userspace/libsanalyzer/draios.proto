@@ -537,6 +537,7 @@ enum message_type {
     AUTO_UPDATE_REQUEST = 9;
     DIRTY_SHUTDOWN_REPORT = 10;
     CONFIG_DATA = 11;
+    ERROR_MESSAGE = 12;
 }
 
 //
@@ -862,6 +863,17 @@ message config_file {
 
 message config_data {
     repeated config_file config_files = 1;
+}
+
+enum error_type {
+     ERR_CONN_LIMIT = 1;
+     ERR_INVALID_CUSTOMER_KEY = 2;
+     ERR_DUPLICATE_AGENT = 3;
+}
+
+message error_message {
+    optional error_type type = 1;
+    optional string description = 2;
 }
 
 //

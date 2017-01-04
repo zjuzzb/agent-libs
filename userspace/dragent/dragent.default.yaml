@@ -932,7 +932,7 @@ events:
 #      - exec_start  # Container Exec Started  (information)
 #      - export      # Container Exported      (information)
       - kill         # Container Killed        (warning)
-      - oom          # Container Out of Memory (warning)
+#      - oom          # Container Out of Memory (warning)
 #      - pause       # Container Paused        (information)
 #      - rename      # Container Renamed       (information)
 #      - resize      # Container Resized       (information)

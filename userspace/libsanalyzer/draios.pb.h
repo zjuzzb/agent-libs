@@ -112,6 +112,7 @@ class key_value;
 class agent_event;
 class config_file;
 class config_data;
+class error_message;
 class falco_subcategory;
 class falco_subcategory_container;
 class falco_category;
@@ -350,11 +351,12 @@ enum message_type {
   SSH_DATA = 8,
   AUTO_UPDATE_REQUEST = 9,
   DIRTY_SHUTDOWN_REPORT = 10,
-  CONFIG_DATA = 11
+  CONFIG_DATA = 11,
+  ERROR_MESSAGE = 12
 };
 bool message_type_IsValid(int value);
 const message_type message_type_MIN = METRICS;
-const message_type message_type_MAX = CONFIG_DATA;
+const message_type message_type_MAX = ERROR_MESSAGE;
 const int message_type_ARRAYSIZE = message_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* message_type_descriptor();
@@ -388,6 +390,26 @@ inline bool container_type_Parse(
     const ::std::string& name, container_type* value) {
   return ::google::protobuf::internal::ParseNamedEnum<container_type>(
     container_type_descriptor(), name, value);
+}
+enum error_type {
+  ERR_CONN_LIMIT = 1,
+  ERR_INVALID_CUSTOMER_KEY = 2,
+  ERR_DUPLICATE_AGENT = 3
+};
+bool error_type_IsValid(int value);
+const error_type error_type_MIN = ERR_CONN_LIMIT;
+const error_type error_type_MAX = ERR_DUPLICATE_AGENT;
+const int error_type_ARRAYSIZE = error_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* error_type_descriptor();
+inline const ::std::string& error_type_Name(error_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    error_type_descriptor(), value);
+}
+inline bool error_type_Parse(
+    const ::std::string& name, error_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<error_type>(
+    error_type_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -10983,6 +11005,103 @@ class config_data : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static config_data* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class error_message : public ::google::protobuf::Message {
+ public:
+  error_message();
+  virtual ~error_message();
+
+  error_message(const error_message& from);
+
+  inline error_message& operator=(const error_message& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const error_message& default_instance();
+
+  void Swap(error_message* other);
+
+  // implements Message ----------------------------------------------
+
+  error_message* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const error_message& from);
+  void MergeFrom(const error_message& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional .draiosproto.error_type type = 1;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 1;
+  inline ::draiosproto::error_type type() const;
+  inline void set_type(::draiosproto::error_type value);
+
+  // optional string description = 2;
+  inline bool has_description() const;
+  inline void clear_description();
+  static const int kDescriptionFieldNumber = 2;
+  inline const ::std::string& description() const;
+  inline void set_description(const ::std::string& value);
+  inline void set_description(const char* value);
+  inline void set_description(const char* value, size_t size);
+  inline ::std::string* mutable_description();
+  inline ::std::string* release_description();
+  inline void set_allocated_description(::std::string* description);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.error_message)
+ private:
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_description();
+  inline void clear_has_description();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* description_;
+  int type_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static error_message* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -27273,6 +27392,103 @@ config_data::mutable_config_files() {
 
 // -------------------------------------------------------------------
 
+// error_message
+
+// optional .draiosproto.error_type type = 1;
+inline bool error_message::has_type() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void error_message::set_has_type() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void error_message::clear_has_type() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void error_message::clear_type() {
+  type_ = 1;
+  clear_has_type();
+}
+inline ::draiosproto::error_type error_message::type() const {
+  return static_cast< ::draiosproto::error_type >(type_);
+}
+inline void error_message::set_type(::draiosproto::error_type value) {
+  assert(::draiosproto::error_type_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional string description = 2;
+inline bool error_message::has_description() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void error_message::set_has_description() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void error_message::clear_has_description() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void error_message::clear_description() {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    description_->clear();
+  }
+  clear_has_description();
+}
+inline const ::std::string& error_message::description() const {
+  return *description_;
+}
+inline void error_message::set_description(const ::std::string& value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void error_message::set_description(const char* value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void error_message::set_description(const char* value, size_t size) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* error_message::mutable_description() {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  return description_;
+}
+inline ::std::string* error_message::release_description() {
+  clear_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = description_;
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void error_message::set_allocated_description(::std::string* description) {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    delete description_;
+  }
+  if (description) {
+    set_has_description();
+    description_ = description;
+  } else {
+    clear_has_description();
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
 // falco_subcategory
 
 // required string name = 1;
@@ -28259,6 +28475,10 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::message_type>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::container_type>() {
   return ::draiosproto::container_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::error_type>() {
+  return ::draiosproto::error_type_descriptor();
 }
 
 }  // namespace google
