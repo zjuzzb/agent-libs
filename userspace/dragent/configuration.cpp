@@ -273,6 +273,7 @@ dragent_configuration::dragent_configuration()
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
+	m_mode = dragent_mode_t::STANDARD;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -807,8 +808,8 @@ void dragent_configuration::init(Application* app)
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
 	//
-        // If falco is enabled, check to see if the rules file exists and
-        // switch to a built-in default if it does not.
+	// If falco is enabled, check to see if the rules file exists and
+	// switch to a built-in default if it does not.
 	//
 	if(m_enable_falco_engine)
 	{
@@ -830,6 +831,12 @@ void dragent_configuration::init(Application* app)
 	parse_services_file();
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
+
+	auto mode_s = m_config->get_scalar<string>("run_mode", "standard");
+	if(mode_s == "nodriver")
+	{
+		m_mode = dragent_mode_t::NODRIVER;
+	}
 }
 
 void dragent_configuration::print_configuration()
@@ -1043,7 +1050,13 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Auto config disabled");
 	}
+	if(m_mode == dragent_mode_t::NODRIVER)
+	{
+		g_log->information("Running in nodriver mode");
+	}
+
 	// Dump warnings+errors after the main config so they're more visible
+	// Always keep these at the bottom
 	for(const auto& item : m_config->warnings())
 	{
 		g_log->debug(item);

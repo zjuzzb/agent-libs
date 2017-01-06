@@ -1516,7 +1516,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 
 		// We need to reread cmdline only in live mode, with nodriver mode
-		// proc is reread every sample anyway
+		// proc is reread anyway
 		if(m_inspector->m_mode == SCAP_MODE_LIVE && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
 				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
@@ -1531,23 +1531,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_exe = proc_args.at(0);
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
-
-				// TODO: move k8s and mesos stuff out of here
-				if(!m_k8s_proc_detected)
-				{
-					m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
-				}
-				if(m_k8s_proc_detected && try_detect_k8s)
-				{
-					k8s_detected = !(detect_k8s(main_tinfo).empty());
-				}
-				if(try_detect_mesos)
-				{
-					mesos_detected = !(detect_mesos(main_tinfo).empty());
-				}
 			}
 			main_tinfo->compute_program_hash();
 			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
+		}
+
+		if(!m_k8s_proc_detected)
+		{
+			m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
+		}
+		if(m_k8s_proc_detected && try_detect_k8s)
+		{
+			k8s_detected = !(detect_k8s(main_tinfo).empty());
+		}
+		if(try_detect_mesos)
+		{
+			mesos_detected = !(detect_mesos(main_tinfo).empty());
 		}
 
 		//
