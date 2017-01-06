@@ -95,7 +95,11 @@ class MesosSlave(AgentCheck):
         msg = None
         status = None
         try:
-            r = requests.get(url, timeout=timeout, allow_redirects=False)
+            headers = {}
+            if self.auth_token != '':
+                headers["Authorization"] = "token=%s" % (self.auth_token)
+
+            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers)
             if r.status_code != 200:
                 status = AgentCheck.CRITICAL
                 msg = "Got %s when hitting %s" % (r.status_code, url)
@@ -114,7 +118,7 @@ class MesosSlave(AgentCheck):
                 self.service_check(self.SERVICE_CHECK_NAME, status, tags=tags, message=msg)
                 self.service_check_needed = False
             if status is AgentCheck.CRITICAL:
-                raise CheckException("Cannot connect to mesos, please check your configuration.")
+                raise CheckException("Cannot connect to mesos at url %s (%s), please check your configuration." % (url, msg))
 
         return r.json()
 
@@ -149,6 +153,7 @@ class MesosSlave(AgentCheck):
         tasks = instance.get('tasks', [])
         default_timeout = self.init_config.get('default_timeout', 5)
         timeout = float(instance.get('timeout', default_timeout))
+        self.auth_token = instance.get('auth_token', '')
 
         state_metrics = self._get_constant_attributes(url, timeout)
         tags = None

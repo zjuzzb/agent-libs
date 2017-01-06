@@ -272,6 +272,7 @@ dragent_configuration::dragent_configuration()
 	m_reset_falco_engine = false;
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
+	m_load_error = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -486,7 +487,13 @@ void dragent_configuration::init(Application* app)
 	{
 		m_config.reset(new yaml_configuration({ m_conf_file, m_defaults_conf_file }));
 	}
-
+	// The yaml_configuration catches exceptions so m_config will always be
+	// a valid pointer, but set m_load_error so dragent will see the error
+	if(!m_config->errors().empty())
+	{
+		m_load_error = true;
+	}
+	
 	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
 
 	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
@@ -575,7 +582,7 @@ void dragent_configuration::init(Application* app)
 	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
 
 	m_autodrop_enabled = m_config->get_scalar<bool>("autodrop", "enabled", true);
-	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", true);
+	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
@@ -827,14 +834,6 @@ void dragent_configuration::init(Application* app)
 
 void dragent_configuration::print_configuration()
 {
-	for(const auto& item : m_config->errors())
-	{
-		g_log->critical(item);
-	}
-	for(const auto& item : m_config->warnings())
-	{
-		g_log->debug(item);
-	}
 	g_log->information("Distribution: " + get_distribution());
 	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
 	g_log->information("rootdir: " + m_root_dir);
@@ -1043,6 +1042,15 @@ void dragent_configuration::print_configuration()
 	else
 	{
 		g_log->information("Auto config disabled");
+	}
+	// Dump warnings+errors after the main config so they're more visible
+	for(const auto& item : m_config->warnings())
+	{
+		g_log->debug(item);
+	}
+	for(const auto& item : m_config->errors())
+	{
+		g_log->critical(item);
 	}
 }
 
