@@ -32,7 +32,6 @@
 #define MAX_SAMPLE_STORE_SIZE 300
 
 static const int PIPE_BUFFER_SIZE = 1048576;
-static const auto DRAGENT_AUTO_YAML_PATH = "/opt/draios/etc/dragent.auto.yaml";
 #define SDJAGENT_JMX_TIMEOUT "2000"
 
 class aws_metadata
@@ -53,19 +52,34 @@ public:
 class yaml_configuration
 {
 public:
+	// If the constructor hits an exception, set an error and let the caller handle it
 	yaml_configuration(const string& str)
 	{
-		if(!add_root(YAML::Load(str)))
+		try
 		{
-			add_error("Cannot read config file, reason: not valid format");
+			if(!add_root(YAML::Load(str)))
+			{
+				add_error("Cannot read config file, reason: not valid format");
+			}
+		}
+		catch (const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file, reason: ") + ex.what());
 		}
 	}
 
 	yaml_configuration(string&& str)
 	{
-		if(!add_root(YAML::Load(str)))
+		try
 		{
-			add_error("Cannot read config file, reason: not valid format");
+			if(!add_root(YAML::Load(str)))
+			{
+				add_error("Cannot read config file, reason: not valid format");
+			}
+		}
+		catch (const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file, reason: ") + ex.what());
 		}
 	}
 
@@ -83,10 +97,12 @@ public:
 					{
 						add_error(string("Cannot read config file: ") + path + " reason: not valid format");
 					}
-				} catch ( const YAML::BadFile& ex)
+				}
+				catch(const YAML::BadFile& ex)
 				{
 					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
-				} catch ( const YAML::ParserException& ex)
+				}
+				catch(const YAML::ParserException& ex)
 				{
 					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
 				}
@@ -359,6 +375,43 @@ private:
 	mutable vector<string> m_warnings;
 };
 
+class dragent_configuration;
+
+class dragent_auto_configuration
+{
+public:
+	dragent_auto_configuration(const std::string &config_filename,
+				   const std::string &config_directory,
+				   const std::string &config_header);
+
+	virtual ~dragent_auto_configuration()
+	{
+	};
+
+	int save(dragent_configuration &config, const std::string &config_data, std::string &errstr);
+
+	void init_digest();
+
+	std::string digest();
+
+	const std::string config_path();
+
+	void set_config_directory(const std::string &config_directory);
+
+	virtual bool validate(const std::string &new_config_data, std::string &errstr) = 0;
+
+	virtual void apply(dragent_configuration &config) = 0;
+
+protected:
+	std::string m_config_filename;
+	std::string m_config_directory;
+	std::string m_config_header;
+
+private:
+	SHA1Engine m_sha1_engine;
+	DigestEngine::Digest m_digest;
+};
+
 class dragent_configuration
 {
 public:
@@ -369,6 +422,7 @@ public:
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static string get_distribution();
+	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
@@ -487,9 +541,15 @@ public:
 	bool m_enable_falco_engine;
 	string m_falco_default_rules_filename;
 	string m_falco_fallback_default_rules_filename;
+	string m_falco_auto_rules_filename;
 	string m_falco_rules_filename;
 	double m_falco_engine_sampling_multiplier;
 	std::set<std::string> m_falco_engine_disabled_rule_patterns;
+
+	// Set when a new auto rules file is downloaded. Monitored by
+	// sinsp_agent and when set will reload the falco engine and
+	// clear.
+	std::atomic_bool m_reset_falco_engine;
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
@@ -507,7 +567,12 @@ public:
 	void refresh_aws_metadata();
 	void refresh_machine_id();
 
-	void save_auto_config(const string& config_data);
+	// Returns 0 if already up-to-date, 1 if updated, -1 if
+	// error. On error, &errstr is updated with the source of the
+	// error.
+	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
+
+        void set_auto_config_directory(const string &config_directory);
 private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
@@ -516,10 +581,9 @@ private:
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
 
-	static const string AUTO_CONFIG_HEADER;
-	static const vector<string> AUTOCONFIG_FORBIDDEN_KEYS;
-	SHA1Engine m_sha1_engine;
-	DigestEngine::Digest m_dragent_auto_yaml_digest;
+	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
+	bool m_load_error;
+
 	friend class aws_metadata_refresher;
 };
 
