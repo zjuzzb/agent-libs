@@ -174,6 +174,7 @@ private:
 	void stop_job(dump_job_state* job);
 	void start_job(const dump_job_request& request, uint64_t ts);
 	void read_chunk(dump_job_state* job);
+	void init_falco();
 
 	static const string m_name;
 	static const uint64_t m_max_chunk_size = 100 * 1024;

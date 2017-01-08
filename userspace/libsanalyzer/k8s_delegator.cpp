@@ -45,7 +45,7 @@ k8s_delegator::k8s_delegator(sinsp* inspector,
 					STATE_FILTER, EVENT_FILTER,
 					std::make_shared<k8s_handler::collector_t>(),
 					http_version, 1000L, ssl, bt, true, true,
-					std::make_shared<k8s_dummy_handler>(), false, nullptr),
+					std::make_shared<k8s_dummy_handler>(), false, ~0, nullptr),
 		m_inspector(inspector),
 		m_delegate_count(delegate_count)
 {
