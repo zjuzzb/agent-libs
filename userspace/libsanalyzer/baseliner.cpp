@@ -921,7 +921,6 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 			to_string(bsize));
 	}
 
-
 	char tbuf[32768];
 	struct timeval ts;
 	gettimeofday(&ts, NULL);
@@ -958,15 +957,67 @@ void sinsp_memory_dumper::close()
 	m_inspector->m_is_dumping = false;
 }
 
-void sinsp_memory_dumper::flush_state_to_disk(sinsp_memory_dumper_state* state)
+void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
+{
+	char tbuf[32768];
+
+	lo(sinsp_logger::SEV_INFO, "saving dump %s", name.c_str());
+
+//	struct timeval ts;
+//	gettimeofday(&ts, NULL);
+//	time_t rawtime = (time_t)ts.tv_sec;
+	time_t rawtime = (time_t)ts_ns / 1000000000;
+	struct tm* time_info = gmtime(&rawtime);
+	snprintf(tbuf, sizeof(tbuf), "%.2d-%.2d_%.2d_%.2d_%.2d_%.6d",
+		time_info->tm_mon + 1,
+		time_info->tm_mday,
+		time_info->tm_hour,
+		time_info->tm_min,
+		time_info->tm_sec,
+		(int)(ts_ns % 1000000000));
+
+	string fname = string("sd_dump_") + name + "_" + tbuf + ".scap";
+
+	FILE* fp = fopen(fname.c_str(), "wb");
+	if(fp == NULL)
+	{
+		lo(sinsp_logger::SEV_ERROR, 
+			"cannot open file %s, dump will not happen", fname.c_str());
+		return;
+	}
+
+	sinsp_memory_dumper_state* m_inactive_state =
+		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
+
+	flush_state_to_disk(fp, m_inactive_state, false);
+	flush_state_to_disk(fp, m_active_state, true);
+
+	fclose(fp);
+}
+
+void sinsp_memory_dumper::flush_state_to_disk(FILE* fp, 
+	sinsp_memory_dumper_state* state,
+	bool is_last_event_complete)
 {
 	if(state->m_has_data)
 	{
-		uint64_t datalen1 = state->m_dumper->written_bytes();
-		uint64_t datalen = state->m_last_valid_bufpos - state->m_buf;
+		uint64_t datalen;
+
+		if(is_last_event_complete)
+		{
+			datalen = state->m_dumper->written_bytes();
+		}
+		else
+		{
+			datalen = state->m_last_valid_bufpos - state->m_buf;
+		}
+
 		m_file_id++;
 
-		fwrite(state->m_buf, datalen, 1, m_f);
+		if(fp != NULL)
+		{
+			fwrite(state->m_buf, datalen, 1, fp);
+		}
 
 		/*
 		uint64_t dlen = 400 * 1024 * 1024;
@@ -1001,7 +1052,7 @@ void sinsp_memory_dumper::switch_states()
 	//
 	// Save the capture to disk
 	//
-	flush_state_to_disk(m_active_state);
+	//flush_state_to_disk(m_f, m_active_state, false);
 
 	//
 	// Close and reopen the new state

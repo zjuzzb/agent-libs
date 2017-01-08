@@ -1292,9 +1292,12 @@ public:
 	void init(uint64_t bufsize);
 	void process_event(sinsp_evt* evt);
 	void close();
+	void to_file(string name, uint64_t ts_ns);
 
 private:
-	void flush_state_to_disk(sinsp_memory_dumper_state* state);
+	void flush_state_to_disk(FILE* fp, 
+		sinsp_memory_dumper_state* state,
+		bool is_last_event_complete);
 	void switch_states();
 
 	scap_threadinfo* m_scap_proclist;
