@@ -2251,8 +2251,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
 				proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
 				proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
-				proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
-				proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
+				if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+				{
+					// These metrics are not correct in nodriver mode
+					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
+					proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
+				}
 
 				//
 				// Error-related metrics
@@ -3336,7 +3340,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.get_capacity_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_total_kb((uint32_t)m_host_metrics.m_swap_memory_total_kb);
@@ -3344,7 +3347,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
+			if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+			{
+				// These metrics are not correct in nodriver mode
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_usage_pct(m_host_metrics.m_fd_usage_pct);
+			}
 			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_host_metrics.get_process_count());
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_proc_start_count(m_host_metrics.get_process_start_count());
@@ -5040,7 +5048,6 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
-	container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
 	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_used_kb;
 	if(!it_analyzer->second.m_memory_cgroup.empty())
 	{
@@ -5055,7 +5062,12 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
-	container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
+	if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+	{
+		// These metrics are not correct in nodriver mode
+		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
+		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
+	}
 	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
