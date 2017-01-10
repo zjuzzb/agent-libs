@@ -17,6 +17,7 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 	m_active_state = &m_states[0];
 	m_file_id = 0;
 	m_f = NULL;
+	m_disabled = false;
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize)
@@ -35,9 +36,10 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 	}
 	catch(sinsp_exception e)
 	{
-		throw sinsp_exception(
-			"capture memory buffer too small to store process information. Current size: " + 
-			to_string(bsize));
+		lo(sinsp_logger::SEV_ERROR, "capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64, 
+			bsize);
+
+		m_disabled = true;
 	}
 
 	char tbuf[32768];
@@ -58,7 +60,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 	m_f = fopen(fname.c_str(), "wb");
 	if(m_f == NULL)
 	{
-		lo("cannot open file %s", fname.c_str());
+		lo(sinsp_logger::SEV_ERROR, "cannot open file %s", fname.c_str());
 	}
 }
 
@@ -185,14 +187,23 @@ void sinsp_memory_dumper::switch_states()
 	}
 	catch(sinsp_exception e)
 	{
-		throw sinsp_exception(
-			"capture memory buffer too small to store process information. Current size: " + 
+		lo(sinsp_logger::SEV_ERROR, "capture memory buffer too small to store process information. Memory dump disabled. Current size: " + 
 			m_active_state->m_bufsize);
+
+		m_disabled = true;
 	}
 }
 
 void sinsp_memory_dumper::process_event(sinsp_evt *evt)
 {
+	//
+	// Capture is disabled if there was not enough memory to dump the thread table.
+	//
+	if(m_disabled)
+	{
+		return;
+	}
+
 	try
 	{
 		m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();

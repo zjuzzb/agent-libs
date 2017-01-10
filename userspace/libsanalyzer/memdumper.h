@@ -75,4 +75,5 @@ private:
 	sinsp_memory_dumper_state* m_active_state;
 	uint32_t m_file_id;
 	FILE* m_f;
+	bool m_disabled;
 };

@@ -16,6 +16,7 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
+#include "memdumper.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -557,8 +558,13 @@ VISIBILITY_PRIVATE
 	// Falco stuff
 	//
 	sisnp_baseliner* m_falco_baseliner = NULL;
-	bool m_do_baseline_calculation;
+	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
+
+	//
+	// Memory dump stuff
+	//
+	bool m_do_memdump = false;
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -615,6 +621,8 @@ VISIBILITY_PRIVATE
 	bool m_has_docker;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
+
+	sinsp_memory_dumper* m_memdumper = NULL;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

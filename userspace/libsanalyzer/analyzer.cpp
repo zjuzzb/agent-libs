@@ -135,6 +135,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_falco_baseliner = new sisnp_baseliner();
 
+	m_memdumper = new sinsp_memory_dumper(m_inspector);
+
 	//
 	// Listeners
 	//
@@ -207,6 +209,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	if(m_falco_baseliner != NULL)
 	{
 		delete m_falco_baseliner;
+	}
+
+	if(m_memdumper != NULL)
+	{
+		delete m_memdumper;
 	}
 
 	google::protobuf::ShutdownProtobufLibrary();
@@ -292,6 +299,17 @@ void sinsp_analyzer::on_capture_start()
 	//
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	m_falco_baseliner->init(m_inspector);
+
+	//
+	// Enable memery dump
+	//
+	uint64_t memdump_size = m_configuration->get_memdump_size();
+	m_do_memdump = (memdump_size != 0);
+	if(m_do_memdump)
+	{
+		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
+		m_memdumper->init(memdump_size);		
+	}
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -3910,6 +3928,14 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	if(evt == NULL)
 	{
 		return;
+	}
+
+	//
+	// If required, dump the event in the memory circular buffer
+	//
+	if(m_do_memdump)
+	{
+
 	}
 
 	//

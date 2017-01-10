@@ -178,7 +178,7 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // Determines if falco baselining is going to happen by default
 //
-#define FALCO_BASELINING_ENABLED true
+#define FALCO_BASELINING_ENABLED false
 
 //
 // Falco baseline emit interval

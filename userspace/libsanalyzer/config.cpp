@@ -27,6 +27,7 @@ sinsp_configuration::sinsp_configuration()
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
+	m_memdump_size = 0;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -198,6 +199,16 @@ bool sinsp_configuration::get_falco_baselining_enabled() const
 void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
 {
 	m_falco_baselining_enabled = enabled;
+}
+
+uint64_t sinsp_configuration::get_memdump_size() const
+{
+	return m_memdump_size;
+}
+
+void sinsp_configuration::set_memdump_size(uint64_t size)
+{
+	m_memdump_size = size;
 }
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
