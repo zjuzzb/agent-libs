@@ -58,9 +58,29 @@ public:
 	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
 	void init(uint64_t bufsize);
-	void process_event(sinsp_evt* evt);
 	void close();
 	void to_file(string name, uint64_t ts_ns);
+	inline void process_event(sinsp_evt *evt)
+	{
+		//
+		// Capture is disabled if there was not enough memory to dump the thread table.
+		//
+		if(m_disabled)
+		{
+			return;
+		}
+
+		try
+		{
+			m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
+			m_active_state->m_dumper->dump(evt);
+		}
+		catch(sinsp_exception e)
+		{
+			switch_states();
+			m_active_state->m_dumper->dump(evt);
+		}
+	}
 
 private:
 	void flush_state_to_disk(FILE* fp, 

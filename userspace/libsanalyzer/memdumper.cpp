@@ -55,6 +55,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 		time_info->tm_sec,
 		(int)ts.tv_usec);
 
+/*
 	string fname = string("sd_dump_") + tbuf + ".scap";
 
 	m_f = fopen(fname.c_str(), "wb");
@@ -62,6 +63,8 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 	{
 		lo(sinsp_logger::SEV_ERROR, "cannot open file %s", fname.c_str());
 	}
+*/
+	m_f = NULL;	
 }
 
 sinsp_memory_dumper::~sinsp_memory_dumper()
@@ -84,9 +87,6 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 
 	lo(sinsp_logger::SEV_INFO, "saving dump %s", name.c_str());
 
-//	struct timeval ts;
-//	gettimeofday(&ts, NULL);
-//	time_t rawtime = (time_t)ts.tv_sec;
 	time_t rawtime = (time_t)ts_ns / 1000000000;
 	struct tm* time_info = gmtime(&rawtime);
 	snprintf(tbuf, sizeof(tbuf), "%.2d-%.2d_%.2d_%.2d_%.2d_%.6d",
@@ -191,27 +191,5 @@ void sinsp_memory_dumper::switch_states()
 			m_active_state->m_bufsize);
 
 		m_disabled = true;
-	}
-}
-
-void sinsp_memory_dumper::process_event(sinsp_evt *evt)
-{
-	//
-	// Capture is disabled if there was not enough memory to dump the thread table.
-	//
-	if(m_disabled)
-	{
-		return;
-	}
-
-	try
-	{
-		m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
-		m_active_state->m_dumper->dump(evt);
-	}
-	catch(sinsp_exception e)
-	{
-		switch_states();
-		m_active_state->m_dumper->dump(evt);
 	}
 }

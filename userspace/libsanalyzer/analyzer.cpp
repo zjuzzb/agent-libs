@@ -3935,7 +3935,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	//
 	if(m_do_memdump)
 	{
+		m_memdumper->process_event(evt);
 
+		if(m_inspector->m_flush_memory_dump)
+		{
+			m_memdumper->to_file("sinsp", evt->get_ts());
+			m_inspector->m_flush_memory_dump = false;
+		}
 	}
 
 	//
