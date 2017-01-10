@@ -2386,7 +2386,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	}
 
 	//
-	// Second pass to perform the aggegation
+	// Second pass to perform the aggregation
 	//
 	for(cit = m_ipv4_connections->m_connections.begin();
 		cit != m_ipv4_connections->m_connections.end();)
@@ -2641,7 +2641,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 			//conn->mutable_counters()->mutable_min_transaction_counters(),
 			conn->mutable_counters()->mutable_max_transaction_counters(),
 			m_sampling_ratio);
-
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//

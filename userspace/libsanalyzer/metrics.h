@@ -68,6 +68,10 @@ class sinsp_counter_time_bidirectional
 public:
 	sinsp_counter_time_bidirectional(const std::set<double>* percentiles = nullptr);
 	~sinsp_counter_time_bidirectional();
+
+	sinsp_counter_time_bidirectional(const sinsp_counter_time_bidirectional& other);
+	sinsp_counter_time_bidirectional& operator=(sinsp_counter_time_bidirectional other);
+
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
 	void add_other(uint32_t cnt_delta, uint64_t time_delta);

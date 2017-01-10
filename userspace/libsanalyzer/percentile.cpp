@@ -2,9 +2,7 @@
 #include "sinsp_int.h"
 #include <cstring>
 
-int percentile::m_ID = 0;
-
-percentile::percentile(const std::set<double>& pctls, double eps): m_id(++m_ID)
+percentile::percentile(const std::set<double>& pctls, double eps)
 {
 	if(pctls.empty())
 	{
@@ -17,7 +15,7 @@ percentile::percentile(const std::set<double>& pctls, double eps): m_id(++m_ID)
 	std::vector<double> percentiles;
 	std::transform(std::begin(pctls), std::end(pctls), std::back_inserter(percentiles),
 					[](double d) { return d/100.0; });
-	init(percentiles, eps);
+	init(&percentiles[0], percentiles.size(), eps);
 }
 
 percentile::~percentile()
@@ -25,13 +23,43 @@ percentile::~percentile()
 	destroy();
 }
 
-void percentile::init(std::vector<double>& percentiles, double eps)
+percentile::percentile(const percentile& other)
 {
-	if(-1 == init_cm_quantile(eps, &percentiles[0], percentiles.size(), &m_cm))
+	init(other.m_cm.quantiles, other.m_cm.num_quantiles, other.m_cm.eps);
+	copy(other);
+}
+
+void percentile::copy(const percentile& other)
+{
+	cm_sample* sample = other.m_cm.samples;
+	while(sample)
+	{
+		if(0 != cm_add_sample(&m_cm, sample->value))
+		{
+			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(sample->value));
+		}
+		sample = sample->next;
+	}
+}
+
+percentile& percentile::operator=(percentile other)
+{
+	if(this != &other)
+	{
+		destroy();
+		init(other.m_cm.quantiles, other.m_cm.num_quantiles, other.m_cm.eps);
+		copy(other);
+	}
+	return *this;
+}
+
+void percentile::init(double* percentiles, size_t size, double eps)
+{
+	if(-1 == init_cm_quantile(eps, percentiles, size, &m_cm))
 	{
 		std::ostringstream os;
 		os << '[';
-		for(const auto& p : percentiles) { os << p << ','; }
+		for(size_t i = 0; i < size; ++i) { os << percentiles[i] << ','; }
 		os << ']';
 		throw sinsp_exception("Percentiles: Invalid percentiles specified: " + os.str());
 	}
@@ -60,20 +88,18 @@ void percentile::destroy(std::vector<double>* percentiles)
 
 std::vector<double> percentile::get_percentiles() const
 {
-	std::vector<double> percentiles;
-	for(uint32_t i = 0; i < m_cm.num_quantiles; ++i)
-	{
-		percentiles.push_back(m_cm.quantiles[i]);
-	}
+	std::vector<double> percentiles(m_cm.quantiles, m_cm.quantiles + m_cm.num_quantiles);
 	return percentiles;
 }
 
 std::vector<double> percentile::get_samples() const
 {
 	std::vector<double> samples;
-	for(uint32_t i = 0; i < m_cm.num_samples; ++i)
+	cm_sample* sample = m_cm.samples;
+	while(sample)
 	{
-		samples.push_back(m_cm.samples[i].value);
+		samples.push_back(sample->value);
+		sample = sample->next;
 	}
 	return samples;
 }
@@ -82,9 +108,10 @@ void percentile::reset()
 {
 	if(sample_count())
 	{
+		double eps = m_cm.eps;
 		std::vector<double> percentiles;
 		destroy(&percentiles);
-		init(percentiles);
+		init(&percentiles[0], percentiles.size(), eps);
 	}
 }
 

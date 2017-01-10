@@ -107,6 +107,36 @@ sinsp_counter_time_bidirectional::~sinsp_counter_time_bidirectional()
 	delete m_percentile_out;
 }
 
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const sinsp_counter_time_bidirectional& other):
+	m_count_in(other.m_count_in),
+	m_count_out(other.m_count_out),
+	m_count_other(other.m_count_other),
+	m_time_ns_in(other.m_time_ns_in),
+	m_time_ns_out(other.m_time_ns_out),
+	m_time_ns_other(other.m_time_ns_other),
+	m_percentile_in(other.m_percentile_in ? new percentile(*other.m_percentile_in) : nullptr),
+	m_percentile_out(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr)
+{
+}
+
+sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(sinsp_counter_time_bidirectional other)
+{
+	if(this != &other)
+	{
+		m_count_in = other.m_count_in;
+		m_count_out = other.m_count_out;
+		m_count_other = other.m_count_other;
+		m_time_ns_in = other.m_time_ns_in;
+		m_time_ns_out = other.m_time_ns_out;
+		m_time_ns_other = other.m_time_ns_other;
+		m_percentile_in = other.m_percentile_in;
+		other.m_percentile_in = nullptr;
+		m_percentile_out = other.m_percentile_out;
+		other.m_percentile_out = nullptr;
+	}
+	return *this;
+}
+
 void sinsp_counter_time_bidirectional::set_percentiles(const std::set<double>* percentiles)
 {
 	if(percentiles)
@@ -203,11 +233,11 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	// percentiles
 	typedef draiosproto::counter_time_bidirectional CTB;
 	typedef draiosproto::counter_percentile CP;
-	if(m_percentile_in)
+	if(m_percentile_in && m_percentile_in->sample_count())
 	{
 		m_percentile_in->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
 	}
-	if(m_percentile_out)
+	if(m_percentile_out && m_percentile_out->sample_count())
 	{
 		m_percentile_out->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
 	}

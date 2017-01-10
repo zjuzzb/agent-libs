@@ -17,8 +17,10 @@ public:
 	typedef std::map<int, double> p_map_type;
 
 	percentile(const std::set<double>& pctls, double eps = .01);
-
 	~percentile();
+
+	percentile(const percentile& other);
+	percentile& operator=(percentile other);
 
 	template <typename T>
 	void add(T val)
@@ -61,13 +63,12 @@ public:
 	std::vector<double> get_samples() const;
 	uint32_t sample_count() const;
 
-	int m_id = 0;
 private:
-	void init(std::vector<double>& percentiles, double eps = 0.1);
+	void init(double* percentiles, size_t size, double eps = 0.1);
+	void copy(const percentile& other);
 	void destroy(std::vector<double>* percentiles = nullptr);
 
 	cm_quantile m_cm = {0};
-	static int m_ID;
 };
 
 inline uint32_t percentile::sample_count() const
