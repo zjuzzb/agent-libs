@@ -4379,7 +4379,6 @@ void sinsp_analyzer::emit_k8s()
 	{
 		static time_t last_attempt;
 		reset_k8s(last_attempt, std::string("Error emitting K8s data:").append(ex.what()));
-		throw;
 	}
 }
 
