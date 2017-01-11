@@ -836,6 +836,10 @@ void dragent_configuration::init(Application* app)
 	if(mode_s == "nodriver")
 	{
 		m_mode = dragent_mode_t::NODRIVER;
+		// disabling features that don't work in this mode
+		m_enable_falco_engine = false;
+		m_falco_baselining_enabled = false;
+		m_sysdig_capture_enabled = false;
 	}
 }
 
