@@ -139,17 +139,14 @@ sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(si
 
 void sinsp_counter_time_bidirectional::set_percentiles(const std::set<double>* percentiles)
 {
+	delete m_percentile_in;
+	m_percentile_in = nullptr;
+	delete m_percentile_out;
+	m_percentile_out = nullptr;
 	if(percentiles)
 	{
 		m_percentile_in = new percentile(*percentiles);
 		m_percentile_out = new percentile(*percentiles);
-	}
-	else
-	{
-		delete m_percentile_in;
-		m_percentile_in = nullptr;
-		delete m_percentile_out;
-		m_percentile_out = nullptr;
 	}
 }
 
