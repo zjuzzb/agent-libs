@@ -4775,7 +4775,7 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 
 	auto net_io_extractor = [](const analyzer_container_state& analyzer_state)
 	{
-		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
+		return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 	};
 
 	vector<string> emitted_containers;
