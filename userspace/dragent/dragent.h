@@ -75,6 +75,7 @@ protected:
 private:
 	int sdagent_main();
 	void watchdog_check(uint64_t uptime_s);
+	void dump_heap_profile(uint64_t uptime_s, bool throttle = true);
 	void initialize_logging();
 	void check_for_clean_shutdown();
 	void mark_clean_shutdown();
@@ -96,4 +97,5 @@ private:
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;
 	unordered_map<string, watchdog_state> m_subprocesses_state;
+	uint64_t m_last_dump_s;
 };
