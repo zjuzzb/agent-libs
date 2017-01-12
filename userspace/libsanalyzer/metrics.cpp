@@ -95,16 +95,14 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 ///////////////////////////////////////////////////////////////////////////////
 
 sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const std::set<double>* percentiles):
-	m_percentile_in(percentiles ? new percentile(*percentiles) : nullptr),
-	m_percentile_out(percentiles ? new percentile(*percentiles) : nullptr)
+	m_percentile_in((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr),
+	m_percentile_out((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
 {
 	clear();
 }
 
 sinsp_counter_time_bidirectional::~sinsp_counter_time_bidirectional()
 {
-	delete m_percentile_in;
-	delete m_percentile_out;
 }
 
 sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const sinsp_counter_time_bidirectional& other):
@@ -129,24 +127,35 @@ sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(si
 		m_time_ns_in = other.m_time_ns_in;
 		m_time_ns_out = other.m_time_ns_out;
 		m_time_ns_other = other.m_time_ns_other;
-		m_percentile_in = other.m_percentile_in;
-		other.m_percentile_in = nullptr;
-		m_percentile_out = other.m_percentile_out;
-		other.m_percentile_out = nullptr;
+		if(other.m_percentile_in)
+		{
+			m_percentile_in = std::move(other.m_percentile_in);
+		}
+		if(other.m_percentile_out)
+		{
+			m_percentile_out = std::move(other.m_percentile_out);
+		}
 	}
 	return *this;
 }
 
 void sinsp_counter_time_bidirectional::set_percentiles(const std::set<double>* percentiles)
 {
-	delete m_percentile_in;
-	m_percentile_in = nullptr;
-	delete m_percentile_out;
-	m_percentile_out = nullptr;
-	if(percentiles)
+	if(percentiles && percentiles->size())
 	{
-		m_percentile_in = new percentile(*percentiles);
-		m_percentile_out = new percentile(*percentiles);
+		if(!m_percentile_in)
+		{
+			m_percentile_in.reset(new percentile(*percentiles));
+		}
+		if(!m_percentile_out)
+		{
+			m_percentile_out.reset(new percentile(*percentiles));
+		}
+	}
+	else
+	{
+		m_percentile_in.reset();
+		m_percentile_out.reset();
 	}
 }
 

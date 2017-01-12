@@ -88,8 +88,8 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
-// WARNING: This class is allocated with `placement new`. So the destructor
-// is not called automatically. release any dynamic memory in `destroy()` method
+// WARNING: This class is allocated with `placement new`, so destructor must be
+//          called manually.
 ///////////////////////////////////////////////////////////////////////////////
 class thread_analyzer_info
 {
@@ -111,6 +111,13 @@ public:
 		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
 		AF_APP_CHECK_FOUND = (1 << 9),
 	};
+
+	thread_analyzer_info();
+	~thread_analyzer_info();
+
+	thread_analyzer_info(const thread_analyzer_info&) = delete;
+	thread_analyzer_info(thread_analyzer_info&&) = delete;
+	thread_analyzer_info& operator=(const thread_analyzer_info&) = delete;
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
 	void destroy();

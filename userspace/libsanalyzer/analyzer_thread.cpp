@@ -93,6 +93,15 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
 
+thread_analyzer_info::thread_analyzer_info()
+{
+}
+
+thread_analyzer_info::~thread_analyzer_info()
+{
+	destroy();
+}
+
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
@@ -552,7 +561,7 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 {
 	if(tinfo->m_ainfo)
 	{
-		tinfo->m_ainfo->destroy();
+		tinfo->m_ainfo->~thread_analyzer_info();
 	}
 }
 

@@ -16,6 +16,7 @@ class percentile
 public:
 	typedef std::map<int, double> p_map_type;
 
+	percentile() = delete;
 	percentile(const std::set<double>& pctls, double eps = .01);
 	~percentile();
 

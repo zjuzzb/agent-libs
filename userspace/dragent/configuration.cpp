@@ -348,7 +348,7 @@ void dragent_configuration::add_percentiles()
 	// getting set directly compile fails in yaml-cpp:
 	// error: incomplete type ‘YAML::convert<std::set<double> >’ used in nested name specifier
 	// as a workaround, we get vector and copy it
-	std::vector<double> pctls = m_config->get_scalar<std::vector<double>>("percentiles", {50, 95, 99});
+	std::vector<double> pctls = m_config->get_scalar<std::vector<double>>("percentiles", {});
 	std::copy(pctls.begin(), pctls.end(), std::inserter(m_percentiles, m_percentiles.end()));
 }
 

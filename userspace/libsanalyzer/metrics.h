@@ -87,8 +87,8 @@ public:
 	uint64_t m_time_ns_in;
 	uint64_t m_time_ns_out;
 	uint64_t m_time_ns_other;
-	percentile* m_percentile_in = nullptr;
-	percentile* m_percentile_out = nullptr;
+	std::unique_ptr<percentile> m_percentile_in;
+	std::unique_ptr<percentile> m_percentile_out;
 };
 
 //
