@@ -10,7 +10,7 @@
 #include "user_event.h"
 #include "mesos.h"
 
-using ports_set = bitset<numeric_limits<uint16_t>::max()>;
+using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 
 class SINSP_PUBLIC sinsp_configuration
 {

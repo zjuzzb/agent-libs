@@ -310,6 +310,11 @@ public:
 		return m_warnings;
 	}
 
+	void add_warning(const std::string& warning)
+	{
+		m_warnings.emplace_back(warning);
+	}
+
 	// WARN: when possible we should avoid using directly underlying YAML nodes
 	const vector<YAML::Node>& get_roots() const
 	{
@@ -474,6 +479,8 @@ public:
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
+	uint64_t m_watchdog_warn_memory_usage_mb;
+	uint64_t m_watchdog_heap_profiling_interval_s;
 	uint64_t m_dirty_shutdown_report_log_size_b;
 	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
 	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;

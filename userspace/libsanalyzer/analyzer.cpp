@@ -449,9 +449,11 @@ class mesos_conf_vals : public app_process_conf_vals
 {
 public:
 	mesos_conf_vals(const uri::credentials_t &dcos_enterprise_credentials,
+			const uri::credentials_t &mesos_credentials,
 			const string &mesos_state_uri,
 			const string &auth_hostname)
-		: m_auth(dcos_enterprise_credentials, auth_hostname)
+		: m_mesos_credentials(mesos_credentials),
+		  m_auth(dcos_enterprise_credentials, auth_hostname)
 		{
 			auto protocol = dcos_enterprise_credentials.first.empty() ? "http" : "https";
 
@@ -465,11 +467,13 @@ public:
 
 		conf_vals["auth_token"] = m_auth.get_token();
 		conf_vals["mesos_url"] = m_mesos_url;
+		conf_vals["mesos_creds"] = m_mesos_credentials.first + ":" + m_mesos_credentials.second;
 
 		return conf_vals;
 	}
 
 private:
+	const uri::credentials_t &m_mesos_credentials;
 	string m_mesos_url;
 	mesos_auth m_auth;
 };
@@ -478,9 +482,11 @@ class marathon_conf_vals : public app_process_conf_vals
 {
 public:
 	marathon_conf_vals(const uri::credentials_t &dcos_enterprise_credentials,
+			   const uri::credentials_t &marathon_credentials,
 			   const string &marathon_uri,
 			   const string &auth_hostname)
-		: m_auth(dcos_enterprise_credentials, auth_hostname),
+		: m_marathon_credentials(marathon_credentials),
+		  m_auth(dcos_enterprise_credentials, auth_hostname),
 		  m_protocol(dcos_enterprise_credentials.first.empty() ? "http" : "https")
 		{
 			// Marathon listens on both http and https ports, so we embed
@@ -502,11 +508,13 @@ public:
 
 		conf_vals["auth_token"] = m_auth.get_token();
 		conf_vals["marathon_url"] = m_marathon_url;
+		conf_vals["marathon_creds"] = m_marathon_credentials.first + ":" + m_marathon_credentials.second;
 
 		return conf_vals;
 	}
 
 private:
+	const uri::credentials_t &m_marathon_credentials;
 	mesos_auth m_auth;
 	string m_protocol;
 	string m_marathon_url;
@@ -4402,7 +4410,6 @@ void sinsp_analyzer::emit_k8s()
 	{
 		static time_t last_attempt;
 		reset_k8s(last_attempt, std::string("Error emitting K8s data:").append(ex.what()));
-		throw;
 	}
 }
 
@@ -4799,7 +4806,7 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 
 	auto net_io_extractor = [](const analyzer_container_state& analyzer_state)
 	{
-		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
+		return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 	};
 
 	vector<string> emitted_containers;
@@ -5254,6 +5261,7 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 					// We now have enough information to generate mesos-specific
 					// app check configuration, so create the object.
 					m_mesos_conf_vals.reset(new mesos_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
+										    m_configuration->get_mesos_credentials(),
 										    m_configuration->get_mesos_state_uri(),
 										    auth_hostname));
 				}
@@ -5287,6 +5295,7 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 					} else {
 
 						m_marathon_conf_vals.reset(new marathon_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
+												  m_configuration->get_marathon_credentials(),
 												  marathon_uri,
 												  mm));
 					}

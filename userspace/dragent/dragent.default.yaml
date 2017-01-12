@@ -682,6 +682,7 @@ app_checks:
     conf:
       url: "{mesos_url}:{port}"
       auth_token: "{auth_token}"
+      mesos_creds: "{mesos_creds}"
   - name: mesos-slave
     check_module: mesos_slave
     pattern: 
@@ -690,6 +691,7 @@ app_checks:
     conf:
       url: "{mesos_url}:{port}"
       auth_token: "{auth_token}"
+      mesos_creds: "{mesos_creds}"
       # Name of individual tasks to monitor, if needed
       # tasks:
         # - mongo
@@ -702,6 +704,7 @@ app_checks:
     conf:
       url: "{mesos_url}:{port}"
       auth_token: "{auth_token}"
+      mesos_creds: "{mesos_creds}"
       # Name of individual tasks to monitor, if needed
       # tasks:
         # - mongo
@@ -714,6 +717,7 @@ app_checks:
     conf:
       url: "{marathon_url}"
       auth_token: "{auth_token}"
+      marathon_creds: "{marathon_creds}"
   - name: marathon-dcos
     check_module: marathon
     interval: 30
@@ -722,6 +726,7 @@ app_checks:
     conf:
       url: "{marathon_url}"
       auth_token: "{auth_token}"
+      marathon_creds: "{marathon_creds}"
   - name: postgres
     pattern:
       comm: postgres
