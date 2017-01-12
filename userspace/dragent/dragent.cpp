@@ -10,6 +10,7 @@
 #include "logger.h"
 #include "monitor.h"
 #include "utils.h"
+#include <gperftools/malloc_extension.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <procfs_parser.h>
@@ -37,7 +38,8 @@ dragent_app::dragent_app():
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
 	m_log_reporter(&m_queue, &m_configuration),
-	m_subprocesses_logger(&m_configuration, &m_log_reporter)
+	m_subprocesses_logger(&m_configuration, &m_log_reporter),
+	m_last_dump_s(0)
 {
 }
 
@@ -492,6 +494,23 @@ int dragent_app::sdagent_main()
 	if(m_configuration.m_watchdog_enabled)
 	{
 		check_for_clean_shutdown();
+
+		if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
+		{
+			// Heap profiling needs TCMALLOC_SAMPLE_PARAMETER to be set to a non-zero value
+			// XXX hacky way to ensure that TCMALLOC_SAMPLE_PARAMETER was set correctly
+			int32_t sample_period = 0;
+			void **unused_ret = MallocExtension::instance()->ReadStackTraces(&sample_period);
+			delete[] unused_ret;
+
+			// If the env var isn't set, disable the dumping interval because it'll be garbage data
+			if(sample_period <= 0)
+			{
+				g_log->error("Disabling watchdog:heap_profiling_interval_s because TCMALLOC_SAMPLE_PARAMETER is not set");
+				m_configuration.m_watchdog_heap_profiling_interval_s = 0;
+				ASSERT(false);
+			}
+		}
 	}
 
 	ExitCode exit_code;
@@ -511,6 +530,12 @@ int dragent_app::sdagent_main()
 
 		Thread::sleep(1000);
 		++uptime_s;
+	}
+
+	if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
+	{
+		// Do a throttled dump in case we don't have anything recent
+		dump_heap_profile(uptime_s, true);
 	}
 
 	if(dragent_error_handler::m_exception)
@@ -644,10 +669,23 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
 #endif
 
+		const bool heap_profiling = (m_configuration.m_watchdog_heap_profiling_interval_s > 0);
+		bool dump_heap = false;
+		bool throttle = true;
+
+		// Once the worker is looping, we can dump the initial
+		// memory state for diffing against later dumps
+		if(heap_profiling && m_last_dump_s == 0 && m_sinsp_worker.get_last_loop_ns() != 0)
+		{
+			g_log->information("watchdog: heap profiling enabled, dumping initial memory state");
+			dump_heap = true;
+			throttle = false;
+		}
+
 		if(memory > m_configuration.m_watchdog_max_memory_usage_mb)
 		{
 			char line[128];
-			snprintf(line, sizeof(line), "watchdog: High memory usage, %" PRId64 " MB\n", memory);
+			snprintf(line, sizeof(line), "watchdog: Fatal memory usage, %" PRId64 " MB\n", memory);
 			crash_handler::log_crashdump_message(line);
 
 			if(m_sinsp_worker.get_last_loop_ns())
@@ -657,7 +695,26 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 				crash_handler::log_crashdump_message(buf);
 			}
 
+			if(heap_profiling)
+			{
+				dump_heap = true;
+				throttle = false;
+			}
 			to_kill = true;
+		}
+		else if(memory > m_configuration.m_watchdog_warn_memory_usage_mb)
+		{
+			g_log->notice("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
+			if(heap_profiling)
+			{
+				dump_heap = true;
+			}
+		}
+
+		if(dump_heap)
+		{
+			ASSERT(heap_profiling);
+			dump_heap_profile(uptime_s, throttle);
 		}
 	}
 	else
@@ -703,6 +760,36 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			}
 		}
 	}
+}
+
+void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
+{
+	ASSERT(m_configuration.m_watchdog_heap_profiling_interval_s > 0);
+
+	// Dump at most once every m_watchdog_heap_profiling_interval_s seconds
+	// unless the caller tells us not to throttle
+	if(throttle && (m_last_dump_s == 0 ||
+			(uptime_s - m_last_dump_s < m_configuration.m_watchdog_heap_profiling_interval_s)))
+	{
+		return;
+	}
+
+	m_last_dump_s = uptime_s;
+
+	// scripts/parse_heap_profiling.py depends on this format, so
+	// don't change or add logs without updating the script
+	auto malloc_extension = MallocExtension::instance();
+	char heap_stats[2048];
+	malloc_extension->GetStats(heap_stats, sizeof(heap_stats));
+	static const auto separator = "\n---------------------\n";
+
+	crash_handler::log_crashdump_message(heap_stats);
+
+	string heap_sample;
+	malloc_extension->GetHeapSample(&heap_sample);
+	crash_handler::log_crashdump_message(separator);
+	crash_handler::log_crashdump_message(heap_sample.c_str());
+	crash_handler::log_crashdump_message(separator);
 }
 
 void dragent_app::check_for_clean_shutdown()
