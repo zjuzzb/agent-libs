@@ -1056,7 +1056,7 @@ void dragent_configuration::print_configuration()
 	}
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
-		g_log->information("Running in nodriver mode");
+		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
 	}
 
 	// Dump warnings+errors after the main config so they're more visible
