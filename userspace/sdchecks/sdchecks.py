@@ -153,6 +153,7 @@ class AppCheckInstance:
         self.vpid = proc_data["vpid"]
         self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
+        self.proc_data = proc_data
 
         try:
             check_module = check["check_module"]
@@ -359,6 +360,17 @@ class Application:
 
             try:
                 check_instance = self.known_instances[pid]
+                if check_instance.proc_data != p:
+
+                    # The configuration for this check has changed. Remove it
+                    # and try to access it again, which triggers the KeyError
+                    # and lets the exception handler recreate the AppCheckInstance.
+                    logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
+                                  p["check"].get("name", "N/A"),
+                                  str(check_instance.proc_data), str(p))
+                    del self.known_instances[pid]
+                    check_instance = self.known_instances[pid]
+
             except KeyError:
                 if pid in self.blacklisted_pids:
                     logging.debug("Process with pid=%d is blacklisted", pid)
