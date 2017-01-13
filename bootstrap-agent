@@ -283,6 +283,17 @@ if [ ! -d "${POSTGRES_DIR}" ]; then
 	make -C src/interfaces install
 fi
 
+GPERFTOOLS_DIR=$DEPENDENCIES/gperftools-2.5
+if [ ! -d "${GPERFTOOLS_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/gperftools-2.5.tar.gz
+	tar xfz gperftools-2.5.tar.gz
+	cd $GPERFTOOLS_DIR
+	./configure --prefix=${GPERFTOOLS_DIR}/target --enable-emergency-malloc
+	make
+	make install
+fi
+
 # Falco Engine dependencies
 LPEG_DIR=$DEPENDENCIES/lpeg-1.0.0
 if [ ! -d "${LPEG_DIR}" ]; then
