@@ -255,7 +255,7 @@ void sinsp_analyzer::on_capture_start()
 		throw sinsp_exception("machine info missing, analyzer can't start");
 	}
 
-	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_offline());
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
 	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
@@ -844,7 +844,7 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	// Mark the top network I/O consumers
 	//
 	// does not work on NODRIVER mode
-	if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+	if(!m_inspector->is_nodriver())
 	{
 		partial_sort(prog_sortable_list.begin(),
 					 prog_sortable_list.begin() + howmany,
@@ -1450,7 +1450,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Extract global CPU info
 	//
 	uint64_t cur_global_total_jiffies;
-	if(!m_inspector->is_offline())
+	if(!m_inspector->is_capture())
 	{
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -1517,7 +1517,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread anyway
-		if(m_inspector->m_mode == SCAP_MODE_LIVE && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
 				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
@@ -1627,7 +1627,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		{
 			if(tinfo->is_main_thread())
 			{
-				if(!m_inspector->is_offline())
+				if(!m_inspector->is_capture())
 				{
 					//
 					// It's pointless to try to get the CPU load if the process has been closed
@@ -1653,7 +1653,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #else
 						m_my_cpuload = 0;
 #endif
-						if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+						if(m_inspector->is_nodriver())
 						{
 							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo->m_pid, &ainfo->m_dynstate->m_file_io_stats);
 							ainfo->m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
@@ -1999,7 +1999,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// Note: we only do this when we're live, because in offline captures we don't have
 	//       process CPU and memory.
 	//
-	if(!m_inspector->is_offline())
+	if(!m_inspector->is_capture())
 	{
 		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
 		if(progtable_needs_filtering)
@@ -2251,7 +2251,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
 				proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
 				proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
-				if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+				if(!m_inspector->is_nodriver())
 				{
 					// These metrics are not correct in nodriver mode
 					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
@@ -3064,7 +3064,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			ASSERT(m_prev_flush_time_ns / sample_duration * sample_duration == m_prev_flush_time_ns);
 
 
-			if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+			if(m_inspector->is_nodriver())
 			{
 				static run_on_interval proclist_refresher(NODRIVER_PROCLIST_REFRESH_INTERVAL_NS, [this]()
 				{
@@ -3085,9 +3085,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				//
 				uint64_t wall_time = sinsp_utils::get_current_time_ns();
 
-				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || m_inspector->is_offline())
+				if((int64_t)(wall_time - m_prev_flush_wall_time) < 500000000 || m_inspector->is_capture())
 				{
-					if(!m_inspector->is_offline())
+					if(!m_inspector->is_capture())
 					{
 						g_logger.format(sinsp_logger::SEV_ERROR,
 							"sample emission too fast (%" PRId64 "), skipping scanning proc",
@@ -3119,7 +3119,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_offline())
+			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
 				get_statsd();
 				if(m_mounted_fs_proxy)
@@ -3347,7 +3347,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_major_pagefaults(m_host_metrics.m_pfmajor);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_minor_pagefaults(m_host_metrics.m_pfminor);
 			m_host_metrics.m_syscall_errors.to_protobuf(m_metrics->mutable_hostinfo()->mutable_syscall_errors(), m_sampling_ratio);
-			if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+			if(!m_inspector->is_nodriver())
 			{
 				// These metrics are not correct in nodriver mode
 				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_fd_count(m_host_metrics.m_fd_count);
@@ -3369,7 +3369,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					}
 				}
 			}
-			else if(!m_inspector->is_offline()) // When not live, fs stats break regression tests causing false positives
+			else if(!m_inspector->is_capture()) // When not live, fs stats break regression tests causing false positives
 			{
 				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
 				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
@@ -4912,7 +4912,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	// have net_stats==host_stats, which falses the algorithm
 	// so ignore it for now.
 	auto top_cpu_containers = containers_limit_by_type;
-	if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+	if(!m_inspector->is_nodriver())
 	{
 		if(containers_ids.size() > containers_limit_by_type)
 		{
@@ -5062,7 +5062,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
-	if(m_inspector->m_mode != SCAP_MODE_NODRIVER)
+	if(!m_inspector->is_nodriver())
 	{
 		// These metrics are not correct in nodriver mode
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
@@ -5101,7 +5101,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 
 	auto tcounters = container->mutable_tcounters();
 	it_analyzer->second.m_metrics.m_metrics.to_protobuf(tcounters, m_sampling_ratio);
-	if(m_inspector->m_mode == SCAP_MODE_NODRIVER)
+	if(m_inspector->is_nodriver())
 	{
 		// We need to patch network metrics reading from /proc
 		// since we don't have sysdig events in this case

@@ -375,7 +375,7 @@ void sinsp_worker::run()
 
 		run_jobs(ev);
 
-		if(!m_inspector->is_offline() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
+		if(!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
 		{
 			ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
 			m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
