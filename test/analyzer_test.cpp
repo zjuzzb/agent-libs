@@ -106,7 +106,7 @@ TEST_F(sys_call_test, analyzer_errors)
 				EXPECT_LE((size_t)0, ec->m_count_net);
 
 				sinsp_threadinfo* tinfo = param.m_inspector->find_thread_test(getpid(), true);
-				ec = &tinfo->m_ainfo->m_dynstate->m_syscall_errors;
+				ec = &tinfo->m_ainfo->m_syscall_errors;
 
 				EXPECT_LE((size_t)10, ec->m_count);
 				EXPECT_LE((size_t)5, ec->m_count_file);

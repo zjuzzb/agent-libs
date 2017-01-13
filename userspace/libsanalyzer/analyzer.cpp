@@ -4087,7 +4087,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			ASSERT(evt->m_tinfo);
 			ASSERT(evt->m_tinfo->m_ainfo);
 
-			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.add(evt);
+			evt->m_tinfo->m_ainfo->m_syscall_errors.add(evt);
 
 			if(!evt->m_tinfo->m_container_id.empty())
 			{
@@ -5362,18 +5362,18 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	{
 		thread_analyzer_info* ainfo = it->second.m_ainfo;
 
-		for(uint32_t j = 0; j < ainfo->m_dynstate->m_server_transactions_per_cpu.size(); j++)
+		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{
-			nqueuedtransactions_server += ainfo->m_dynstate->m_server_transactions_per_cpu[j].size();
+			nqueuedtransactions_server += ainfo->m_server_transactions_per_cpu[j].size();
 			nqueuedtransactions_server_capacity +=
-				ainfo->m_dynstate->m_server_transactions_per_cpu[j].capacity();
+				ainfo->m_server_transactions_per_cpu[j].capacity();
 		}
 
-		for(uint32_t j = 0; j < ainfo->m_dynstate->m_client_transactions_per_cpu.size(); j++)
+		for(uint32_t j = 0; j < ainfo->m_client_transactions_per_cpu.size(); j++)
 		{
-			nqueuedtransactions_client += ainfo->m_dynstate->m_client_transactions_per_cpu[j].size();
+			nqueuedtransactions_client += ainfo->m_client_transactions_per_cpu[j].size();
 			nqueuedtransactions_client_capacity +=
-				ainfo->m_dynstate->m_client_transactions_per_cpu[j].capacity();
+				ainfo->m_client_transactions_per_cpu[j].capacity();
 		}
 
 		if(do_complete_report)
