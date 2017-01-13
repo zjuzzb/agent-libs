@@ -1536,17 +1536,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
-		if(!m_k8s_proc_detected)
+		if((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 &&
+			tinfo->is_main_thread() && !m_inspector->is_capture())
 		{
-			m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
-		}
-		if(m_k8s_proc_detected && try_detect_k8s)
-		{
-			k8s_detected = !(detect_k8s(main_tinfo).empty());
-		}
-		if(try_detect_mesos)
-		{
-			mesos_detected = !(detect_mesos(main_tinfo).empty());
+			if(!m_k8s_proc_detected)
+			{
+				m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
+			}
+			if(m_k8s_proc_detected && try_detect_k8s)
+			{
+				k8s_detected = !(detect_k8s(main_tinfo).empty());
+			}
+			if(try_detect_mesos)
+			{
+				mesos_detected = !(detect_mesos(main_tinfo).empty());
+			}
 		}
 
 		//
