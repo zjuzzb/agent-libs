@@ -133,7 +133,8 @@ class MesosMaster(AgentCheck):
             if self.auth_token != '':
                 headers["Authorization"] = "token=%s" % (self.auth_token)
 
-            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers)
+            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers, auth=self.auth)
+
             if r.status_code != 200:
                 status = AgentCheck.CRITICAL
                 msg = "Got %s when hitting %s" % (r.status_code, url)
@@ -192,6 +193,14 @@ class MesosMaster(AgentCheck):
         default_timeout = self.init_config.get('default_timeout', 5)
         timeout = float(instance.get('timeout', default_timeout))
         self.auth_token = instance.get('auth_token', '')
+        creds = instance.get('mesos_creds', '')
+
+        # We use mesos credentials only if provided and if no auth token was provided
+        if creds == ':' or self.auth_token != '':
+            self.auth = None
+        else:
+            parts = creds.split(":")
+            self.auth = (parts[0], parts[1])
 
         state_metrics = self._check_leadership(url, timeout)
         if state_metrics:
