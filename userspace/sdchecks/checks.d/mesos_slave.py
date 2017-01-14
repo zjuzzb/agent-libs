@@ -99,7 +99,7 @@ class MesosSlave(AgentCheck):
             if self.auth_token != '':
                 headers["Authorization"] = "token=%s" % (self.auth_token)
 
-            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers, auth=self.auth)
+            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers, auth=self.auth, verify=False)
             if r.status_code != 200:
                 status = AgentCheck.CRITICAL
                 msg = "Got %s when hitting %s" % (r.status_code, url)
