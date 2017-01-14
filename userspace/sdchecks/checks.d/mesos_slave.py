@@ -138,7 +138,10 @@ class MesosSlave(AgentCheck):
             state_metrics = self._get_state(url, timeout)
             if state_metrics is not None:
                 self.version = map(int, state_metrics['version'].split('.'))
-                master_state = self._get_state('http://' + state_metrics['master_hostname'] + ':5050', timeout)
+                proto = 'http://'
+                if self.auth_token != '':
+                    proto = 'https://'
+                master_state = self._get_state(proto + state_metrics['master_hostname'] + ':5050', timeout)
                 if master_state is not None:
                     self.cluster_name = master_state.get('cluster')
 
