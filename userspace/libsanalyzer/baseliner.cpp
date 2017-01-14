@@ -601,6 +601,7 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 ///////////////////////////////////////////////////////////////////////////////
 // XXX Remove this
 ///////////////////////////////////////////////////////////////////////////////
+/*
 if(tinfo->m_container_id != "" && (tinfo->m_comm == "du" || tinfo->m_comm == "nice"))
 {
 	lo(sinsp_logger::SEV_ERROR, "*detected execution of %s", tinfo->m_comm.c_str());
@@ -611,6 +612,7 @@ if(tinfo->m_container_id != "" && (tinfo->m_comm == "du" || tinfo->m_comm == "ni
 	}
 	lo(sinsp_logger::SEV_ERROR, "*container id=%s", tinfo->m_container_id.c_str());
 }
+*/
 ///////////////////////////////////////////////////////////////////////////////
 // XXX Remove this
 ///////////////////////////////////////////////////////////////////////////////
@@ -631,17 +633,6 @@ if(tinfo->m_container_id != "" && (tinfo->m_comm == "du" || tinfo->m_comm == "ni
 		np.m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 		np.m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 
-///////////////////////////////////////////////////////////////////////////////
-// XXX Remove this
-///////////////////////////////////////////////////////////////////////////////
-if(np.m_comm == "du" || np.m_comm == "nice")
-{
-	lo(sinsp_logger::SEV_ERROR, "!detected execution of %s", np.m_comm.c_str());
-	lo(sinsp_logger::SEV_ERROR, "*container id=%s", np.m_container_id.c_str());
-}
-///////////////////////////////////////////////////////////////////////////////
-// XXX Remove this
-///////////////////////////////////////////////////////////////////////////////
 		m_progtable[phash] = np;
 
 		sinsp_threadinfo* ptinfo = m_inspector->get_thread(tinfo->m_ptid);
