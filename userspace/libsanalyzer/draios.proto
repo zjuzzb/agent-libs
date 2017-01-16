@@ -114,7 +114,6 @@ message connection_categories {
     optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this connection
     optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this connection
     optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
-    repeated counter_percentile percentile = 5;
 }
 
 message process_details {

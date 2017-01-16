@@ -1948,18 +1948,6 @@ class connection_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 n_aggregated_connections() const;
   inline void set_n_aggregated_connections(::google::protobuf::uint32 value);
 
-  // repeated .draiosproto.counter_percentile percentile = 5;
-  inline int percentile_size() const;
-  inline void clear_percentile();
-  static const int kPercentileFieldNumber = 5;
-  inline const ::draiosproto::counter_percentile& percentile(int index) const;
-  inline ::draiosproto::counter_percentile* mutable_percentile(int index);
-  inline ::draiosproto::counter_percentile* add_percentile();
-  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
-      percentile() const;
-  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
-      mutable_percentile();
-
   // @@protoc_insertion_point(class_scope:draiosproto.connection_categories)
  private:
   inline void set_has_server();
@@ -1982,11 +1970,10 @@ class connection_categories : public ::google::protobuf::Message {
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
   ::draiosproto::counter_time_bidirectional* min_transaction_counters_;
   ::draiosproto::counter_time_bidirectional* max_transaction_counters_;
-  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_;
   ::google::protobuf::uint32 n_aggregated_connections_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -14006,31 +13993,6 @@ inline ::google::protobuf::uint32 connection_categories::n_aggregated_connection
 inline void connection_categories::set_n_aggregated_connections(::google::protobuf::uint32 value) {
   set_has_n_aggregated_connections();
   n_aggregated_connections_ = value;
-}
-
-// repeated .draiosproto.counter_percentile percentile = 5;
-inline int connection_categories::percentile_size() const {
-  return percentile_.size();
-}
-inline void connection_categories::clear_percentile() {
-  percentile_.Clear();
-}
-inline const ::draiosproto::counter_percentile& connection_categories::percentile(int index) const {
-  return percentile_.Get(index);
-}
-inline ::draiosproto::counter_percentile* connection_categories::mutable_percentile(int index) {
-  return percentile_.Mutable(index);
-}
-inline ::draiosproto::counter_percentile* connection_categories::add_percentile() {
-  return percentile_.Add();
-}
-inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
-connection_categories::percentile() const {
-  return percentile_;
-}
-inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
-connection_categories::mutable_percentile() {
-  return &percentile_;
 }
 
 // -------------------------------------------------------------------
