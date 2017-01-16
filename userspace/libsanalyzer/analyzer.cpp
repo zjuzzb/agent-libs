@@ -5258,12 +5258,20 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 
 				if(!m_mesos_conf_vals)
 				{
-					// We now have enough information to generate mesos-specific
-					// app check configuration, so create the object.
-					m_mesos_conf_vals.reset(new mesos_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
-										    m_configuration->get_mesos_credentials(),
-										    m_configuration->get_mesos_state_uri(),
-										    auth_hostname));
+					if(m_configuration->get_mesos_state_uri().empty())
+					{
+						g_logger.log("Not performing mesos master/slave app check as no mesos uri exists yet", sinsp_logger::SEV_DEBUG);
+						continue;
+					}
+					else
+					{
+						// We now have enough information to generate mesos-specific
+						// app check configuration, so create the object.
+						m_mesos_conf_vals.reset(new mesos_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
+											    m_configuration->get_mesos_credentials(),
+											    m_configuration->get_mesos_state_uri(),
+											    auth_hostname));
+					}
 				}
 
 				conf_vals = m_mesos_conf_vals;

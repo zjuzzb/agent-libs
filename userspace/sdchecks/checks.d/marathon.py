@@ -65,7 +65,7 @@ class Marathon(AgentCheck):
             if self.auth_token != '':
                 headers["Authorization"] = "token=%s" % (self.auth_token)
 
-            r = requests.get(url, timeout=timeout, auth=self.auth, allow_redirects=False, headers=headers)
+            r = requests.get(url, timeout=timeout, auth=self.auth, allow_redirects=False, headers=headers, verify=False)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout
