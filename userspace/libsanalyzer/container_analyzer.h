@@ -14,4 +14,11 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions;
 	string m_memory_cgroup;
 	unique_ptr<unordered_map<uint16_t, sinsp_connection_aggregator>> m_connections_by_serverport;
+
+	void set_percentiles(const std::set<double>* percentiles)
+	{
+		m_metrics.set_percentiles(percentiles);
+		m_req_metrics.set_percentiles(percentiles);
+		m_transaction_counters.set_percentiles(percentiles);
+	}
 };

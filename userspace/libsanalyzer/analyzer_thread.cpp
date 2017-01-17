@@ -124,6 +124,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_cmdline_sync_ns = 0;
 	if(m_percentiles.size())
 	{
+		m_metrics.set_percentiles(&m_percentiles);
 		m_transaction_metrics.set_percentiles(&m_percentiles);
 		m_external_transaction_metrics.set_percentiles(&m_percentiles);
 		m_protostate.set_percentiles(m_percentiles);
@@ -155,6 +156,9 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 		if(m_percentiles.size())
 		{
 			m_procinfo->m_protostate.set_percentiles(m_percentiles);
+			m_procinfo->m_proc_metrics.set_percentiles(&m_percentiles);
+			m_procinfo->m_proc_transaction_metrics.set_percentiles(&m_percentiles);
+			m_procinfo->m_external_transaction_metrics.set_percentiles(&m_percentiles);
 		}
 	}
 }
@@ -543,11 +547,7 @@ void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
 {
 	void *buffer = tinfo->get_private_state(m_analyzer->m_thread_memory_id);
 	std::memset(buffer, 0, sizeof(thread_analyzer_info));
-
-	//
-	// Placement new, see http://www.parashift.com/c++-faq-lite/placement-new.html
-	//
-	tinfo->m_ainfo = new (buffer) thread_analyzer_info();
+	tinfo->m_ainfo = new (buffer) thread_analyzer_info(); // placement new
 	tinfo->m_ainfo->m_percentiles = m_analyzer->m_configuration->get_percentiles();
 	tinfo->m_ainfo->init(m_inspector, tinfo);
 }

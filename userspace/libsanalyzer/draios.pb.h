@@ -34,8 +34,8 @@ void  protobuf_AddDesc_draios_2eproto();
 void protobuf_AssignDesc_draios_2eproto();
 void protobuf_ShutdownFile_draios_2eproto();
 
-class counter_time;
 class counter_percentile;
+class counter_time;
 class counter_time_bidirectional;
 class counter_bytes;
 class counter_time_bytes;
@@ -413,108 +413,6 @@ inline bool error_type_Parse(
 }
 // ===================================================================
 
-class counter_time : public ::google::protobuf::Message {
- public:
-  counter_time();
-  virtual ~counter_time();
-
-  counter_time(const counter_time& from);
-
-  inline counter_time& operator=(const counter_time& from) {
-    CopyFrom(from);
-    return *this;
-  }
-
-  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
-    return _unknown_fields_;
-  }
-
-  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
-    return &_unknown_fields_;
-  }
-
-  static const ::google::protobuf::Descriptor* descriptor();
-  static const counter_time& default_instance();
-
-  void Swap(counter_time* other);
-
-  // implements Message ----------------------------------------------
-
-  counter_time* New() const;
-  void CopyFrom(const ::google::protobuf::Message& from);
-  void MergeFrom(const ::google::protobuf::Message& from);
-  void CopyFrom(const counter_time& from);
-  void MergeFrom(const counter_time& from);
-  void Clear();
-  bool IsInitialized() const;
-
-  int ByteSize() const;
-  bool MergePartialFromCodedStream(
-      ::google::protobuf::io::CodedInputStream* input);
-  void SerializeWithCachedSizes(
-      ::google::protobuf::io::CodedOutputStream* output) const;
-  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
-  int GetCachedSize() const { return _cached_size_; }
-  private:
-  void SharedCtor();
-  void SharedDtor();
-  void SetCachedSize(int size) const;
-  public:
-
-  ::google::protobuf::Metadata GetMetadata() const;
-
-  // nested types ----------------------------------------------------
-
-  // accessors -------------------------------------------------------
-
-  // required uint32 count = 1;
-  inline bool has_count() const;
-  inline void clear_count();
-  static const int kCountFieldNumber = 1;
-  inline ::google::protobuf::uint32 count() const;
-  inline void set_count(::google::protobuf::uint32 value);
-
-  // required uint64 time_ns = 2;
-  inline bool has_time_ns() const;
-  inline void clear_time_ns();
-  static const int kTimeNsFieldNumber = 2;
-  inline ::google::protobuf::uint64 time_ns() const;
-  inline void set_time_ns(::google::protobuf::uint64 value);
-
-  // optional uint32 time_percentage = 3;
-  inline bool has_time_percentage() const;
-  inline void clear_time_percentage();
-  static const int kTimePercentageFieldNumber = 3;
-  inline ::google::protobuf::uint32 time_percentage() const;
-  inline void set_time_percentage(::google::protobuf::uint32 value);
-
-  // @@protoc_insertion_point(class_scope:draiosproto.counter_time)
- private:
-  inline void set_has_count();
-  inline void clear_has_count();
-  inline void set_has_time_ns();
-  inline void clear_has_time_ns();
-  inline void set_has_time_percentage();
-  inline void clear_has_time_percentage();
-
-  ::google::protobuf::UnknownFieldSet _unknown_fields_;
-
-  ::google::protobuf::uint64 time_ns_;
-  ::google::protobuf::uint32 count_;
-  ::google::protobuf::uint32 time_percentage_;
-
-  mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
-
-  friend void  protobuf_AddDesc_draios_2eproto();
-  friend void protobuf_AssignDesc_draios_2eproto();
-  friend void protobuf_ShutdownFile_draios_2eproto();
-
-  void InitAsDefaultInstance();
-  static counter_time* default_instance_;
-};
-// -------------------------------------------------------------------
-
 class counter_percentile : public ::google::protobuf::Message {
  public:
   counter_percentile();
@@ -604,6 +502,121 @@ class counter_percentile : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static counter_percentile* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class counter_time : public ::google::protobuf::Message {
+ public:
+  counter_time();
+  virtual ~counter_time();
+
+  counter_time(const counter_time& from);
+
+  inline counter_time& operator=(const counter_time& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const counter_time& default_instance();
+
+  void Swap(counter_time* other);
+
+  // implements Message ----------------------------------------------
+
+  counter_time* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const counter_time& from);
+  void MergeFrom(const counter_time& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required uint32 count = 1;
+  inline bool has_count() const;
+  inline void clear_count();
+  static const int kCountFieldNumber = 1;
+  inline ::google::protobuf::uint32 count() const;
+  inline void set_count(::google::protobuf::uint32 value);
+
+  // required uint64 time_ns = 2;
+  inline bool has_time_ns() const;
+  inline void clear_time_ns();
+  static const int kTimeNsFieldNumber = 2;
+  inline ::google::protobuf::uint64 time_ns() const;
+  inline void set_time_ns(::google::protobuf::uint64 value);
+
+  // optional uint32 time_percentage = 3;
+  inline bool has_time_percentage() const;
+  inline void clear_time_percentage();
+  static const int kTimePercentageFieldNumber = 3;
+  inline ::google::protobuf::uint32 time_percentage() const;
+  inline void set_time_percentage(::google::protobuf::uint32 value);
+
+  // repeated .draiosproto.counter_percentile percentile = 4;
+  inline int percentile_size() const;
+  inline void clear_percentile();
+  static const int kPercentileFieldNumber = 4;
+  inline const ::draiosproto::counter_percentile& percentile(int index) const;
+  inline ::draiosproto::counter_percentile* mutable_percentile(int index);
+  inline ::draiosproto::counter_percentile* add_percentile();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+      percentile() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+      mutable_percentile();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.counter_time)
+ private:
+  inline void set_has_count();
+  inline void clear_has_count();
+  inline void set_has_time_ns();
+  inline void clear_has_time_ns();
+  inline void set_has_time_percentage();
+  inline void clear_has_time_percentage();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::uint64 time_ns_;
+  ::google::protobuf::uint32 count_;
+  ::google::protobuf::uint32 time_percentage_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static counter_time* default_instance_;
 };
 // -------------------------------------------------------------------
 
@@ -995,6 +1008,30 @@ class counter_time_bytes : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 time_percentage_other() const;
   inline void set_time_percentage_other(::google::protobuf::uint32 value);
 
+  // repeated .draiosproto.counter_percentile percentile_in = 13;
+  inline int percentile_in_size() const;
+  inline void clear_percentile_in();
+  static const int kPercentileInFieldNumber = 13;
+  inline const ::draiosproto::counter_percentile& percentile_in(int index) const;
+  inline ::draiosproto::counter_percentile* mutable_percentile_in(int index);
+  inline ::draiosproto::counter_percentile* add_percentile_in();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+      percentile_in() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+      mutable_percentile_in();
+
+  // repeated .draiosproto.counter_percentile percentile_out = 14;
+  inline int percentile_out_size() const;
+  inline void clear_percentile_out();
+  static const int kPercentileOutFieldNumber = 14;
+  inline const ::draiosproto::counter_percentile& percentile_out(int index) const;
+  inline ::draiosproto::counter_percentile* mutable_percentile_out(int index);
+  inline ::draiosproto::counter_percentile* add_percentile_out();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+      percentile_out() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+      mutable_percentile_out();
+
   // @@protoc_insertion_point(class_scope:draiosproto.counter_time_bytes)
  private:
   inline void set_has_time_ns_in();
@@ -1035,10 +1072,12 @@ class counter_time_bytes : public ::google::protobuf::Message {
   ::google::protobuf::uint32 bytes_other_;
   ::google::protobuf::uint32 time_percentage_in_;
   ::google::protobuf::uint32 time_percentage_out_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_in_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_out_;
   ::google::protobuf::uint32 time_percentage_other_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(14 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11794,6 +11833,54 @@ class falco_baseline : public ::google::protobuf::Message {
 
 // ===================================================================
 
+// counter_percentile
+
+// required uint32 percentile = 1;
+inline bool counter_percentile::has_percentile() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void counter_percentile::set_has_percentile() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void counter_percentile::clear_has_percentile() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void counter_percentile::clear_percentile() {
+  percentile_ = 0u;
+  clear_has_percentile();
+}
+inline ::google::protobuf::uint32 counter_percentile::percentile() const {
+  return percentile_;
+}
+inline void counter_percentile::set_percentile(::google::protobuf::uint32 value) {
+  set_has_percentile();
+  percentile_ = value;
+}
+
+// required uint32 value = 2;
+inline bool counter_percentile::has_value() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void counter_percentile::set_has_value() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void counter_percentile::clear_has_value() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void counter_percentile::clear_value() {
+  value_ = 0u;
+  clear_has_value();
+}
+inline ::google::protobuf::uint32 counter_percentile::value() const {
+  return value_;
+}
+inline void counter_percentile::set_value(::google::protobuf::uint32 value) {
+  set_has_value();
+  value_ = value;
+}
+
+// -------------------------------------------------------------------
+
 // counter_time
 
 // required uint32 count = 1;
@@ -11862,52 +11949,29 @@ inline void counter_time::set_time_percentage(::google::protobuf::uint32 value) 
   time_percentage_ = value;
 }
 
-// -------------------------------------------------------------------
-
-// counter_percentile
-
-// required uint32 percentile = 1;
-inline bool counter_percentile::has_percentile() const {
-  return (_has_bits_[0] & 0x00000001u) != 0;
+// repeated .draiosproto.counter_percentile percentile = 4;
+inline int counter_time::percentile_size() const {
+  return percentile_.size();
 }
-inline void counter_percentile::set_has_percentile() {
-  _has_bits_[0] |= 0x00000001u;
+inline void counter_time::clear_percentile() {
+  percentile_.Clear();
 }
-inline void counter_percentile::clear_has_percentile() {
-  _has_bits_[0] &= ~0x00000001u;
+inline const ::draiosproto::counter_percentile& counter_time::percentile(int index) const {
+  return percentile_.Get(index);
 }
-inline void counter_percentile::clear_percentile() {
-  percentile_ = 0u;
-  clear_has_percentile();
+inline ::draiosproto::counter_percentile* counter_time::mutable_percentile(int index) {
+  return percentile_.Mutable(index);
 }
-inline ::google::protobuf::uint32 counter_percentile::percentile() const {
+inline ::draiosproto::counter_percentile* counter_time::add_percentile() {
+  return percentile_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+counter_time::percentile() const {
   return percentile_;
 }
-inline void counter_percentile::set_percentile(::google::protobuf::uint32 value) {
-  set_has_percentile();
-  percentile_ = value;
-}
-
-// required uint32 value = 2;
-inline bool counter_percentile::has_value() const {
-  return (_has_bits_[0] & 0x00000002u) != 0;
-}
-inline void counter_percentile::set_has_value() {
-  _has_bits_[0] |= 0x00000002u;
-}
-inline void counter_percentile::clear_has_value() {
-  _has_bits_[0] &= ~0x00000002u;
-}
-inline void counter_percentile::clear_value() {
-  value_ = 0u;
-  clear_has_value();
-}
-inline ::google::protobuf::uint32 counter_percentile::value() const {
-  return value_;
-}
-inline void counter_percentile::set_value(::google::protobuf::uint32 value) {
-  set_has_value();
-  value_ = value;
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+counter_time::mutable_percentile() {
+  return &percentile_;
 }
 
 // -------------------------------------------------------------------
@@ -12410,6 +12474,56 @@ inline ::google::protobuf::uint32 counter_time_bytes::time_percentage_other() co
 inline void counter_time_bytes::set_time_percentage_other(::google::protobuf::uint32 value) {
   set_has_time_percentage_other();
   time_percentage_other_ = value;
+}
+
+// repeated .draiosproto.counter_percentile percentile_in = 13;
+inline int counter_time_bytes::percentile_in_size() const {
+  return percentile_in_.size();
+}
+inline void counter_time_bytes::clear_percentile_in() {
+  percentile_in_.Clear();
+}
+inline const ::draiosproto::counter_percentile& counter_time_bytes::percentile_in(int index) const {
+  return percentile_in_.Get(index);
+}
+inline ::draiosproto::counter_percentile* counter_time_bytes::mutable_percentile_in(int index) {
+  return percentile_in_.Mutable(index);
+}
+inline ::draiosproto::counter_percentile* counter_time_bytes::add_percentile_in() {
+  return percentile_in_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+counter_time_bytes::percentile_in() const {
+  return percentile_in_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+counter_time_bytes::mutable_percentile_in() {
+  return &percentile_in_;
+}
+
+// repeated .draiosproto.counter_percentile percentile_out = 14;
+inline int counter_time_bytes::percentile_out_size() const {
+  return percentile_out_.size();
+}
+inline void counter_time_bytes::clear_percentile_out() {
+  percentile_out_.Clear();
+}
+inline const ::draiosproto::counter_percentile& counter_time_bytes::percentile_out(int index) const {
+  return percentile_out_.Get(index);
+}
+inline ::draiosproto::counter_percentile* counter_time_bytes::mutable_percentile_out(int index) {
+  return percentile_out_.Mutable(index);
+}
+inline ::draiosproto::counter_percentile* counter_time_bytes::add_percentile_out() {
+  return percentile_out_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >&
+counter_time_bytes::percentile_out() const {
+  return percentile_out_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile >*
+counter_time_bytes::mutable_percentile_out() {
+  return &percentile_out_;
 }
 
 // -------------------------------------------------------------------

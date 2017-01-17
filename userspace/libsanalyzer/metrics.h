@@ -43,26 +43,33 @@ public:
 //
 // A basic counter: total time + count
 //
+class percentile;
 class sinsp_counter_time
 {
 public:
-	sinsp_counter_time();
+	sinsp_counter_time(const std::set<double>* percentiles = nullptr);
+	~sinsp_counter_time();
+
+	sinsp_counter_time(const sinsp_counter_time& other);
+	sinsp_counter_time& operator=(sinsp_counter_time other);
+
 	void add(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time* other);
 	void add(sinsp_counter_time_bytes* other);
 	void add(sinsp_counter_time_bidirectional* other);
 	void subtract(uint32_t cnt_delta, uint64_t time_delta);
 	void clear();
+	void set_percentiles(const std::set<double>* percentiles);
 	void to_protobuf(draiosproto::counter_time* protobuf_msg, uint64_t tot_relevant_time_ns, uint32_t sampling_ratio);
 
 	uint32_t m_count;
 	uint64_t m_time_ns;
+	std::unique_ptr<percentile> m_percentile;
 };
 
 //
 // A bidirectional time counter
 //
-class percentile;
 class sinsp_counter_time_bidirectional
 {
 public:
@@ -116,7 +123,12 @@ public:
 class sinsp_counter_time_bytes
 {
 public:
-	sinsp_counter_time_bytes();
+	sinsp_counter_time_bytes(const std::set<double>* percentiles = nullptr);
+	~sinsp_counter_time_bytes();
+
+	sinsp_counter_time_bytes(const sinsp_counter_time_bytes& other);
+	sinsp_counter_time_bytes& operator=(sinsp_counter_time_bytes other);
+
 	void add_in(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta);
 	void add_other(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta);
@@ -124,6 +136,7 @@ public:
 	void add(sinsp_counter_time* other);
 	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
+	void set_percentiles(const std::set<double>* percentiles);
 	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
 					 uint64_t tot_relevant_time_ns, uint32_t sampling_ratio,
 					 uint64_t patched_bytes_in = 0, uint64_t patched_bytes_out = 0);
@@ -138,6 +151,8 @@ public:
 	uint32_t m_bytes_in;
 	uint32_t m_bytes_out;
 	uint32_t m_bytes_other;
+	std::unique_ptr<percentile> m_percentile_in;
+	std::unique_ptr<percentile> m_percentile_out;
 };
 
 //
@@ -170,6 +185,7 @@ public:
 	sinsp_counters();
 
 	void clear();
+	void set_percentiles(const std::set<double>* percentiles);
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
 	void calculate_totals();
@@ -193,6 +209,8 @@ public:
 	sinsp_counter_time_bytes m_tot_io_net;
 	sinsp_counter_time m_tot_ipc;
 	sinsp_counter_time m_tot_relevant;
+
+	std::set<double> m_percentiles;
 };
 
 //
@@ -316,6 +334,7 @@ public:
 		uint32_t n_server_transactions);
 	double get_capacity_score() const;
 	double get_stolen_score() const;
+	void set_percentiles(const std::set<double>* percentiles);
 
 	sinsp_counters m_metrics; 
 	uint32_t m_connection_queue_usage_pct;

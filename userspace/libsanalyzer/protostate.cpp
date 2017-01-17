@@ -59,7 +59,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 		}
 
 		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
-		request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error);
+		request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 
 		//
 		// Update the status code table
@@ -108,36 +108,36 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				entry = &(m_server_queries[truncate_str(pp->m_statement, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
 			if(tablename != NULL &&
 				m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				entry = &(m_server_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
 			type_entry = &(m_server_query_types[pp->m_query_parser.m_statement_type]);
-			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
+			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
 			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				entry = &(m_client_queries[truncate_str(pp->m_statement, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
 			if(tablename != NULL &&
 				m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error);
+				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
 			type_entry = &(m_client_query_types[pp->m_query_parser.m_statement_type]);
-			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error);
+			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error, m_percentiles);
 		}
 	}
 }
@@ -234,7 +234,7 @@ void sinsp_http_state::url_table_to_protobuf(draiosproto::http_info* protobuf_ms
 
 			ud->set_url(uit->first);
 			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+			ud->mutable_counters()->set_time_tot(uit->second.get_time_tot() * sampling_ratio);
 			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
 			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
 			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
@@ -317,7 +317,7 @@ void sql_state::query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 
 			ud->set_name(uit->first);
 			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+			ud->mutable_counters()->set_time_tot(uit->second.get_time_tot() * sampling_ratio);
 			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
 			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
 			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
@@ -354,7 +354,7 @@ void sql_state::query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg
 
 			ud->set_type((draiosproto::sql_statement_type) uit->first);
 			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->mutable_counters()->set_time_tot(uit->second.m_time_tot * sampling_ratio);
+			ud->mutable_counters()->set_time_tot(uit->second.get_time_tot() * sampling_ratio);
 			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
 			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
 			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
@@ -455,12 +455,12 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 			if(m_server_ops.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				op_entry = &(m_server_ops[pp->m_opcode]);
-				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error);
+				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
 			}
 			if(pp->m_collection != NULL && m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				collection_entry =&(m_server_collections[truncate_str(pp->m_collection, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
+				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
 			}
 		}
 		else
@@ -468,12 +468,12 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 			if(m_client_ops.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				op_entry = &(m_client_ops[pp->m_opcode]);
-				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error);
+				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
 			}
 			if(pp->m_collection != NULL && m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
 			{
 				collection_entry =&(m_client_collections[truncate_str(pp->m_collection, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error);
+				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
 			}
 		}
 	}

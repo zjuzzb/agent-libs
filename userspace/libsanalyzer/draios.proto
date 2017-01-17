@@ -4,15 +4,16 @@ option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
+message counter_percentile {
+    required uint32 percentile = 1;
+    required uint32 value = 2;
+}
+
 message counter_time {
     required uint32 count = 1;
     required uint64 time_ns = 2;
     optional uint32 time_percentage = 3;
-}
-
-message counter_percentile {
-    required uint32 percentile = 1;
-    required uint32 value = 2;
+    repeated counter_percentile percentile = 4;
 }
 
 message counter_time_bidirectional {
@@ -44,6 +45,8 @@ message counter_time_bytes {
     optional uint32 time_percentage_in = 10;
     optional uint32 time_percentage_out = 11;
     optional uint32 time_percentage_other = 12;
+    repeated counter_percentile percentile_in = 13;
+    repeated counter_percentile percentile_out = 14;
 }
 
 message time_categories {

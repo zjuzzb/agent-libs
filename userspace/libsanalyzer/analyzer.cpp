@@ -216,6 +216,9 @@ void sinsp_analyzer::set_percentiles()
 {
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	m_host_transaction_counters.set_percentiles(&pctls);
+	m_host_metrics.set_percentiles(&pctls);
+	m_host_req_metrics.set_percentiles(&pctls);
+	m_io_net.set_percentiles(&pctls);
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -1524,6 +1527,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			const std::set<double>& pctls = m_configuration->get_percentiles();
+			if(pctls.size())
+			{
+				container->set_percentiles(&pctls);
+			}
 			if(container->m_memory_cgroup.empty())
 			{
 				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
@@ -1797,6 +1805,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			const std::set<double>& pctls = m_configuration->get_percentiles();
+			if(pctls.size())
+			{
+				container->set_percentiles(&pctls);
+			}
 		}
 
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
