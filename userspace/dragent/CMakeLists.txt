@@ -1,13 +1,14 @@
-set(DRAIOS_OPENSSL_VERSION "1.0.2d")
+set(DRAIOS_OPENSSL_VERSION "1.0.2j")
 set(DRAIOS_PROTOBUF_VERSION "2.5.0")
 set(DRAIOS_ZLIB_VERSION "1.2.8")
-set(DRAIOS_POCO_VERSION "1.4.6p4-all")
-set(DRAIOS_LIBSSH_VERSION "0.7.2")
+set(DRAIOS_POCO_VERSION "1.7.7-all")
+set(DRAIOS_LIBSSH_VERSION "0.7.3")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
-set(DRAIOS_CURL_VERSION "7.45.0")
+set(DRAIOS_CURL_VERSION "7.52.1")
 set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_JQ_VERSION "1.5")
+set(DRAIOS_GPERFTOOLS_VERSION "2.5")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
@@ -24,6 +25,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/libssh-${DRAIOS_LIBSSH_VERSION}/t
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 
@@ -49,13 +51,13 @@ add_executable(dragent
 	user_event_channel.cpp)
 
 target_link_libraries(dragent
+	${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc.a
 	pthread
 	sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/libssh-${DRAIOS_LIBSSH_VERSION}/target/lib/libssh.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
