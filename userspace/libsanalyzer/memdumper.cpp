@@ -17,11 +17,15 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 	m_active_state = &m_states[0];
 	m_file_id = 0;
 	m_f = NULL;
+	m_cf = NULL;
 	m_disabled = false;
+	m_switches_to_go = 0;
 }
 
-void sinsp_memory_dumper::init(uint64_t bufsize)
+void sinsp_memory_dumper::init(uint64_t bufsize, uint64_t max_disk_size)
 {
+	m_max_disk_size = max_disk_size;
+
 	//
 	// Let the inspector know that we're dumping
 	//
@@ -30,10 +34,10 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 	//
 	// Initialize the buffers
 	//
-	uint64_t bsize = bufsize / 2;
+	m_bsize = bufsize / 2;
 
-	m_states[0].init(m_inspector, bsize);
-	m_states[1].init(m_inspector, bsize);
+	m_states[0].init(m_inspector, m_bsize);
+	m_states[1].init(m_inspector, m_bsize);
 
 	//
 	// Initialize the dumprt
@@ -46,7 +50,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 	catch(sinsp_exception e)
 	{
 		lo(sinsp_logger::SEV_ERROR, "capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64, 
-			bsize);
+			m_bsize);
 
 		m_disabled = true;
 	}
@@ -93,6 +97,11 @@ sinsp_memory_dumper::~sinsp_memory_dumper()
 	{
 		fclose(m_f);
 	}
+
+	if(m_cf != NULL)
+	{
+		fclose(m_cf);
+	}
 }
 
 void sinsp_memory_dumper::close()
@@ -103,7 +112,14 @@ void sinsp_memory_dumper::close()
 
 void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 {
-	char tbuf[32768];
+	char tbuf[512];
+
+	m_switches_to_go = 2;
+
+	if(m_cf != NULL)
+	{
+		return;
+	}
 
 	lo(sinsp_logger::SEV_INFO, "saving dump %s", name.c_str());
 
@@ -119,21 +135,24 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 
 	string fname = string("sd_dump_") + name + "_" + tbuf + ".scap";
 
-	FILE* fp = fopen(fname.c_str(), "wb");
-	if(fp == NULL)
+	m_cf = fopen(fname.c_str(), "wb");
+	if(m_cf == NULL)
 	{
 		lo(sinsp_logger::SEV_ERROR, 
 			"cannot open file %s, dump will not happen", fname.c_str());
 		return;
 	}
 
-	sinsp_memory_dumper_state* m_inactive_state =
+	sinsp_memory_dumper_state* inactive_state =
 		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
 
-	flush_state_to_disk(fp, m_inactive_state, false);
-	flush_state_to_disk(fp, m_active_state, true);
+	flush_state_to_disk(m_cf, inactive_state, false);
+//	flush_state_to_disk(m_cf, m_active_state, true);
 
-	fclose(fp);
+//	fclose(m_cf);
+//	m_cf = NULL;
+
+	m_cur_dump_size = m_bsize;
 }
 
 void sinsp_memory_dumper::flush_state_to_disk(FILE* fp, 
@@ -179,6 +198,23 @@ void sinsp_memory_dumper::flush_state_to_disk(FILE* fp,
 void sinsp_memory_dumper::switch_states()
 {
 	//
+	// Save the capture to disk
+	//
+	if(m_cf)
+	{
+		flush_state_to_disk(m_cf, m_active_state, false);
+		m_cur_dump_size += m_bsize;
+		m_switches_to_go--;
+
+		if(m_switches_to_go == 0 ||
+			m_cur_dump_size >= m_max_disk_size)
+		{
+			fclose(m_cf);
+			m_cf = NULL;
+		}
+	}
+
+	//
 	// The buffer is full, swap the states
 	//
 	if(m_active_state == &m_states[0])
@@ -189,11 +225,6 @@ void sinsp_memory_dumper::switch_states()
 	{
 		m_active_state = &m_states[0];
 	}
-
-	//
-	// Save the capture to disk
-	//
-	//flush_state_to_disk(m_f, m_active_state, false);
 
 	//
 	// Close and reopen the new state

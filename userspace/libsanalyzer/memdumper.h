@@ -57,7 +57,7 @@ class sinsp_memory_dumper
 public:
 	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
-	void init(uint64_t bufsize);
+	void init(uint64_t bufsize, uint64_t max_disk_size);
 	void close();
 	void to_file(string name, uint64_t ts_ns);
 	inline void process_event(sinsp_evt *evt)
@@ -96,8 +96,13 @@ private:
 	sinsp_memory_dumper_state* m_active_state;
 	uint32_t m_file_id;
 	FILE* m_f;
+	FILE* m_cf;
 	bool m_disabled;
 	sinsp_evt m_notification_evt;
 	uint8_t m_notification_scap_evt_storage[4096];
 	scap_evt* m_notification_scap_evt;
+	uint32_t m_switches_to_go;
+	uint32_t m_cur_dump_size;
+	uint32_t m_max_disk_size;
+	uint64_t m_bsize;
 };
