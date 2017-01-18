@@ -81,6 +81,7 @@ public:
 			m_active_state->m_dumper->dump(evt);
 		}
 	}
+	void push_notification(sinsp_evt *evt, string id, string description);
 
 private:
 	void flush_state_to_disk(FILE* fp, 
@@ -96,4 +97,7 @@ private:
 	uint32_t m_file_id;
 	FILE* m_f;
 	bool m_disabled;
+	sinsp_evt m_notification_evt;
+	uint8_t m_notification_scap_evt_storage[4096];
+	scap_evt* m_notification_scap_evt;
 };

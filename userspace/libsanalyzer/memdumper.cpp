@@ -22,13 +22,22 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 
 void sinsp_memory_dumper::init(uint64_t bufsize)
 {
+	//
+	// Let the inspector know that we're dumping
+	//
+	m_inspector->m_is_dumping = true;
+
+	//
+	// Initialize the buffers
+	//
 	uint64_t bsize = bufsize / 2;
 
 	m_states[0].init(m_inspector, bsize);
 	m_states[1].init(m_inspector, bsize);
 
-	m_inspector->m_is_dumping = true;
-
+	//
+	// Initialize the dumprt
+	//
 	try
 	{
 		m_active_state->m_dumper->open("", false, true);
@@ -42,6 +51,10 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 		m_disabled = true;
 	}
 
+/*
+	//
+	// Initialize the dump file
+	//
 	char tbuf[32768];
 	struct timeval ts;
 	gettimeofday(&ts, NULL);
@@ -55,7 +68,6 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 		time_info->tm_sec,
 		(int)ts.tv_usec);
 
-/*
 	string fname = string("sd_dump_") + tbuf + ".scap";
 
 	m_f = fopen(fname.c_str(), "wb");
@@ -65,6 +77,14 @@ void sinsp_memory_dumper::init(uint64_t bufsize)
 	}
 */
 	m_f = NULL;	
+
+	//
+	// Initialize the notification event
+	//
+	m_notification_scap_evt = (scap_evt*)m_notification_scap_evt_storage;
+	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
+	m_notification_evt.m_poriginal_evt = NULL;
+	m_notification_evt.m_pevt = m_notification_scap_evt;
 }
 
 sinsp_memory_dumper::~sinsp_memory_dumper()
@@ -192,4 +212,28 @@ void sinsp_memory_dumper::switch_states()
 
 		m_disabled = true;
 	}
+}
+
+void sinsp_memory_dumper::push_notification(sinsp_evt *evt, string id, string description)
+{
+	m_notification_scap_evt->ts = evt->m_pevt->ts;
+	m_notification_scap_evt->tid = evt->m_pevt->tid;
+
+	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
+	uint16_t idlen = id.length() + 1;
+	uint16_t desclen = description.length() + 1;
+	lens[0] = idlen;
+	lens[1] = desclen;
+
+	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4), 
+		id.c_str(), 
+		idlen);
+
+	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4 + idlen), 
+		description.c_str(), 
+		desclen);
+
+	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
+
+	process_event(&m_notification_evt);
 }
