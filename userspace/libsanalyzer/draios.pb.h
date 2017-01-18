@@ -1962,15 +1962,6 @@ class connection_categories : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
-  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
-  inline bool has_min_transaction_counters() const;
-  inline void clear_min_transaction_counters();
-  static const int kMinTransactionCountersFieldNumber = 18;
-  inline const ::draiosproto::counter_time_bidirectional& min_transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_min_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_min_transaction_counters();
-  inline void set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters);
-
   // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
   inline bool has_max_transaction_counters() const;
   inline void clear_max_transaction_counters();
@@ -1995,8 +1986,6 @@ class connection_categories : public ::google::protobuf::Message {
   inline void clear_has_client();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
-  inline void set_has_min_transaction_counters();
-  inline void clear_has_min_transaction_counters();
   inline void set_has_max_transaction_counters();
   inline void clear_has_max_transaction_counters();
   inline void set_has_n_aggregated_connections();
@@ -2007,12 +1996,11 @@ class connection_categories : public ::google::protobuf::Message {
   ::draiosproto::counter_bytes* server_;
   ::draiosproto::counter_bytes* client_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
-  ::draiosproto::counter_time_bidirectional* min_transaction_counters_;
   ::draiosproto::counter_time_bidirectional* max_transaction_counters_;
   ::google::protobuf::uint32 n_aggregated_connections_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4985,15 +4973,6 @@ class host : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
-  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 22;
-  inline bool has_min_transaction_counters() const;
-  inline void clear_min_transaction_counters();
-  static const int kMinTransactionCountersFieldNumber = 22;
-  inline const ::draiosproto::counter_time_bidirectional& min_transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_min_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_min_transaction_counters();
-  inline void set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters);
-
   // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 23;
   inline bool has_max_transaction_counters() const;
   inline void clear_max_transaction_counters();
@@ -5165,8 +5144,6 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_reqcounters();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
-  inline void set_has_min_transaction_counters();
-  inline void clear_has_min_transaction_counters();
   inline void set_has_max_transaction_counters();
   inline void clear_has_max_transaction_counters();
   inline void set_has_transaction_processing_delay();
@@ -5199,7 +5176,6 @@ class host : public ::google::protobuf::Message {
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::transaction_breakdown_categories* reqcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
-  ::draiosproto::counter_time_bidirectional* min_transaction_counters_;
   ::draiosproto::counter_time_bidirectional* max_transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
@@ -5220,7 +5196,7 @@ class host : public ::google::protobuf::Message {
   ::google::protobuf::uint32 system_load_15_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(26 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(25 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5347,15 +5323,6 @@ class process : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
-  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
-  inline bool has_min_transaction_counters() const;
-  inline void clear_min_transaction_counters();
-  static const int kMinTransactionCountersFieldNumber = 18;
-  inline const ::draiosproto::counter_time_bidirectional& min_transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_min_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_min_transaction_counters();
-  inline void set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters);
-
   // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
   inline bool has_max_transaction_counters() const;
   inline void clear_max_transaction_counters();
@@ -5438,8 +5405,6 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_tcounters();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
-  inline void set_has_min_transaction_counters();
-  inline void clear_has_min_transaction_counters();
   inline void set_has_max_transaction_counters();
   inline void clear_has_max_transaction_counters();
   inline void set_has_transaction_processing_delay();
@@ -5467,7 +5432,6 @@ class process : public ::google::protobuf::Message {
   ::google::protobuf::uint32 netrole_;
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
-  ::draiosproto::counter_time_bidirectional* min_transaction_counters_;
   ::draiosproto::counter_time_bidirectional* max_transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
@@ -5478,7 +5442,7 @@ class process : public ::google::protobuf::Message {
   ::google::protobuf::uint64 count_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6573,15 +6537,6 @@ class container : public ::google::protobuf::Message {
   inline ::draiosproto::counter_time_bidirectional* release_transaction_counters();
   inline void set_allocated_transaction_counters(::draiosproto::counter_time_bidirectional* transaction_counters);
 
-  // optional .draiosproto.counter_time_bidirectional min_transaction_counters = 8;
-  inline bool has_min_transaction_counters() const;
-  inline void clear_min_transaction_counters();
-  static const int kMinTransactionCountersFieldNumber = 8;
-  inline const ::draiosproto::counter_time_bidirectional& min_transaction_counters() const;
-  inline ::draiosproto::counter_time_bidirectional* mutable_min_transaction_counters();
-  inline ::draiosproto::counter_time_bidirectional* release_min_transaction_counters();
-  inline void set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters);
-
   // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 9;
   inline bool has_max_transaction_counters() const;
   inline void clear_max_transaction_counters();
@@ -6720,8 +6675,6 @@ class container : public ::google::protobuf::Message {
   inline void clear_has_reqcounters();
   inline void set_has_transaction_counters();
   inline void clear_has_transaction_counters();
-  inline void set_has_min_transaction_counters();
-  inline void clear_has_min_transaction_counters();
   inline void set_has_max_transaction_counters();
   inline void clear_has_max_transaction_counters();
   inline void set_has_transaction_processing_delay();
@@ -6747,7 +6700,6 @@ class container : public ::google::protobuf::Message {
   ::draiosproto::time_categories* tcounters_;
   ::draiosproto::transaction_breakdown_categories* reqcounters_;
   ::draiosproto::counter_time_bidirectional* transaction_counters_;
-  ::draiosproto::counter_time_bidirectional* min_transaction_counters_;
   ::draiosproto::counter_time_bidirectional* max_transaction_counters_;
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
@@ -6763,7 +6715,7 @@ class container : public ::google::protobuf::Message {
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -14011,53 +13963,15 @@ inline void connection_categories::set_allocated_transaction_counters(::draiospr
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
-inline bool connection_categories::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000008u) != 0;
-}
-inline void connection_categories::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000008u;
-}
-inline void connection_categories::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000008u;
-}
-inline void connection_categories::clear_min_transaction_counters() {
-  if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_min_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& connection_categories::min_transaction_counters() const {
-  return min_transaction_counters_ != NULL ? *min_transaction_counters_ : *default_instance_->min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* connection_categories::mutable_min_transaction_counters() {
-  set_has_min_transaction_counters();
-  if (min_transaction_counters_ == NULL) min_transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* connection_categories::release_min_transaction_counters() {
-  clear_has_min_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = min_transaction_counters_;
-  min_transaction_counters_ = NULL;
-  return temp;
-}
-inline void connection_categories::set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters) {
-  delete min_transaction_counters_;
-  min_transaction_counters_ = min_transaction_counters;
-  if (min_transaction_counters) {
-    set_has_min_transaction_counters();
-  } else {
-    clear_has_min_transaction_counters();
-  }
-}
-
 // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
 inline bool connection_categories::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000008u) != 0;
 }
 inline void connection_categories::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000008u;
 }
 inline void connection_categories::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000008u;
 }
 inline void connection_categories::clear_max_transaction_counters() {
   if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -14089,13 +14003,13 @@ inline void connection_categories::set_allocated_max_transaction_counters(::drai
 
 // optional uint32 n_aggregated_connections = 4;
 inline bool connection_categories::has_n_aggregated_connections() const {
-  return (_has_bits_[0] & 0x00000020u) != 0;
+  return (_has_bits_[0] & 0x00000010u) != 0;
 }
 inline void connection_categories::set_has_n_aggregated_connections() {
-  _has_bits_[0] |= 0x00000020u;
+  _has_bits_[0] |= 0x00000010u;
 }
 inline void connection_categories::clear_has_n_aggregated_connections() {
-  _has_bits_[0] &= ~0x00000020u;
+  _has_bits_[0] &= ~0x00000010u;
 }
 inline void connection_categories::clear_n_aggregated_connections() {
   n_aggregated_connections_ = 0u;
@@ -17766,53 +17680,15 @@ inline void host::set_allocated_transaction_counters(::draiosproto::counter_time
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 22;
-inline bool host::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
-}
-inline void host::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000100u;
-}
-inline void host::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000100u;
-}
-inline void host::clear_min_transaction_counters() {
-  if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_min_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& host::min_transaction_counters() const {
-  return min_transaction_counters_ != NULL ? *min_transaction_counters_ : *default_instance_->min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* host::mutable_min_transaction_counters() {
-  set_has_min_transaction_counters();
-  if (min_transaction_counters_ == NULL) min_transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* host::release_min_transaction_counters() {
-  clear_has_min_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = min_transaction_counters_;
-  min_transaction_counters_ = NULL;
-  return temp;
-}
-inline void host::set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters) {
-  delete min_transaction_counters_;
-  min_transaction_counters_ = min_transaction_counters;
-  if (min_transaction_counters) {
-    set_has_min_transaction_counters();
-  } else {
-    clear_has_min_transaction_counters();
-  }
-}
-
 // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 23;
 inline bool host::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void host::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void host::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void host::clear_max_transaction_counters() {
   if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -17844,13 +17720,13 @@ inline void host::set_allocated_max_transaction_counters(::draiosproto::counter_
 
 // optional uint64 transaction_processing_delay = 7;
 inline bool host::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void host::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void host::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void host::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -17866,13 +17742,13 @@ inline void host::set_transaction_processing_delay(::google::protobuf::uint64 va
 
 // optional uint64 next_tiers_delay = 13;
 inline bool host::has_next_tiers_delay() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void host::set_has_next_tiers_delay() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void host::clear_has_next_tiers_delay() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void host::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -17888,13 +17764,13 @@ inline void host::set_next_tiers_delay(::google::protobuf::uint64 value) {
 
 // optional .draiosproto.resource_categories resource_counters = 8;
 inline bool host::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void host::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void host::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void host::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -17926,13 +17802,13 @@ inline void host::set_allocated_resource_counters(::draiosproto::resource_catego
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool host::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void host::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void host::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void host::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -17964,13 +17840,13 @@ inline void host::set_allocated_syscall_errors(::draiosproto::counter_syscall_er
 
 // optional .draiosproto.counter_time_bytes external_io_net = 10;
 inline bool host::has_external_io_net() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void host::set_has_external_io_net() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void host::clear_has_external_io_net() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void host::clear_external_io_net() {
   if (external_io_net_ != NULL) external_io_net_->::draiosproto::counter_time_bytes::Clear();
@@ -18052,13 +17928,13 @@ host::mutable_cpu_idle() {
 
 // optional uint64 uptime = 33;
 inline bool host::has_uptime() const {
-  return (_has_bits_[0] & 0x00020000u) != 0;
+  return (_has_bits_[0] & 0x00010000u) != 0;
 }
 inline void host::set_has_uptime() {
-  _has_bits_[0] |= 0x00020000u;
+  _has_bits_[0] |= 0x00010000u;
 }
 inline void host::clear_has_uptime() {
-  _has_bits_[0] &= ~0x00020000u;
+  _has_bits_[0] &= ~0x00010000u;
 }
 inline void host::clear_uptime() {
   uptime_ = GOOGLE_ULONGLONG(0);
@@ -18124,13 +18000,13 @@ host::mutable_user_cpu() {
 
 // optional uint64 memory_bytes_available_kb = 36;
 inline bool host::has_memory_bytes_available_kb() const {
-  return (_has_bits_[0] & 0x00100000u) != 0;
+  return (_has_bits_[0] & 0x00080000u) != 0;
 }
 inline void host::set_has_memory_bytes_available_kb() {
-  _has_bits_[0] |= 0x00100000u;
+  _has_bits_[0] |= 0x00080000u;
 }
 inline void host::clear_has_memory_bytes_available_kb() {
-  _has_bits_[0] &= ~0x00100000u;
+  _has_bits_[0] &= ~0x00080000u;
 }
 inline void host::clear_memory_bytes_available_kb() {
   memory_bytes_available_kb_ = GOOGLE_ULONGLONG(0);
@@ -18196,13 +18072,13 @@ host::mutable_nice_cpu() {
 
 // optional uint32 system_load_1 = 41;
 inline bool host::has_system_load_1() const {
-  return (_has_bits_[0] & 0x00800000u) != 0;
+  return (_has_bits_[0] & 0x00400000u) != 0;
 }
 inline void host::set_has_system_load_1() {
-  _has_bits_[0] |= 0x00800000u;
+  _has_bits_[0] |= 0x00400000u;
 }
 inline void host::clear_has_system_load_1() {
-  _has_bits_[0] &= ~0x00800000u;
+  _has_bits_[0] &= ~0x00400000u;
 }
 inline void host::clear_system_load_1() {
   system_load_1_ = 0u;
@@ -18218,13 +18094,13 @@ inline void host::set_system_load_1(::google::protobuf::uint32 value) {
 
 // optional uint32 system_load_5 = 42;
 inline bool host::has_system_load_5() const {
-  return (_has_bits_[0] & 0x01000000u) != 0;
+  return (_has_bits_[0] & 0x00800000u) != 0;
 }
 inline void host::set_has_system_load_5() {
-  _has_bits_[0] |= 0x01000000u;
+  _has_bits_[0] |= 0x00800000u;
 }
 inline void host::clear_has_system_load_5() {
-  _has_bits_[0] &= ~0x01000000u;
+  _has_bits_[0] &= ~0x00800000u;
 }
 inline void host::clear_system_load_5() {
   system_load_5_ = 0u;
@@ -18240,13 +18116,13 @@ inline void host::set_system_load_5(::google::protobuf::uint32 value) {
 
 // optional uint32 system_load_15 = 43;
 inline bool host::has_system_load_15() const {
-  return (_has_bits_[0] & 0x02000000u) != 0;
+  return (_has_bits_[0] & 0x01000000u) != 0;
 }
 inline void host::set_has_system_load_15() {
-  _has_bits_[0] |= 0x02000000u;
+  _has_bits_[0] |= 0x01000000u;
 }
 inline void host::clear_has_system_load_15() {
-  _has_bits_[0] &= ~0x02000000u;
+  _has_bits_[0] &= ~0x01000000u;
 }
 inline void host::clear_system_load_15() {
   system_load_15_ = 0u;
@@ -18488,53 +18364,15 @@ inline void process::set_allocated_transaction_counters(::draiosproto::counter_t
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 18;
-inline bool process::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
-}
-inline void process::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000100u;
-}
-inline void process::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000100u;
-}
-inline void process::clear_min_transaction_counters() {
-  if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_min_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& process::min_transaction_counters() const {
-  return min_transaction_counters_ != NULL ? *min_transaction_counters_ : *default_instance_->min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* process::mutable_min_transaction_counters() {
-  set_has_min_transaction_counters();
-  if (min_transaction_counters_ == NULL) min_transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* process::release_min_transaction_counters() {
-  clear_has_min_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = min_transaction_counters_;
-  min_transaction_counters_ = NULL;
-  return temp;
-}
-inline void process::set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters) {
-  delete min_transaction_counters_;
-  min_transaction_counters_ = min_transaction_counters;
-  if (min_transaction_counters) {
-    set_has_min_transaction_counters();
-  } else {
-    clear_has_min_transaction_counters();
-  }
-}
-
 // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 19;
 inline bool process::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void process::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void process::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void process::clear_max_transaction_counters() {
   if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -18566,13 +18404,13 @@ inline void process::set_allocated_max_transaction_counters(::draiosproto::count
 
 // optional uint64 transaction_processing_delay = 7;
 inline bool process::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void process::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void process::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void process::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -18588,13 +18426,13 @@ inline void process::set_transaction_processing_delay(::google::protobuf::uint64
 
 // optional uint64 next_tiers_delay = 12;
 inline bool process::has_next_tiers_delay() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void process::set_has_next_tiers_delay() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void process::clear_has_next_tiers_delay() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void process::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -18610,13 +18448,13 @@ inline void process::set_next_tiers_delay(::google::protobuf::uint64 value) {
 
 // optional .draiosproto.resource_categories resource_counters = 8;
 inline bool process::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void process::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void process::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void process::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -18648,13 +18486,13 @@ inline void process::set_allocated_resource_counters(::draiosproto::resource_cat
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 9;
 inline bool process::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00002000u) != 0;
+  return (_has_bits_[0] & 0x00001000u) != 0;
 }
 inline void process::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00002000u;
+  _has_bits_[0] |= 0x00001000u;
 }
 inline void process::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00002000u;
+  _has_bits_[0] &= ~0x00001000u;
 }
 inline void process::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -18686,13 +18524,13 @@ inline void process::set_allocated_syscall_errors(::draiosproto::counter_syscall
 
 // optional .draiosproto.proto_info protos = 20;
 inline bool process::has_protos() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void process::set_has_protos() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void process::clear_has_protos() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void process::clear_protos() {
   if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
@@ -18724,13 +18562,13 @@ inline void process::set_allocated_protos(::draiosproto::proto_info* protos) {
 
 // optional uint64 start_count = 21;
 inline bool process::has_start_count() const {
-  return (_has_bits_[0] & 0x00008000u) != 0;
+  return (_has_bits_[0] & 0x00004000u) != 0;
 }
 inline void process::set_has_start_count() {
-  _has_bits_[0] |= 0x00008000u;
+  _has_bits_[0] |= 0x00004000u;
 }
 inline void process::clear_has_start_count() {
-  _has_bits_[0] &= ~0x00008000u;
+  _has_bits_[0] &= ~0x00004000u;
 }
 inline void process::clear_start_count() {
   start_count_ = GOOGLE_ULONGLONG(0);
@@ -18746,13 +18584,13 @@ inline void process::set_start_count(::google::protobuf::uint64 value) {
 
 // optional uint64 count_processes = 23;
 inline bool process::has_count_processes() const {
-  return (_has_bits_[0] & 0x00010000u) != 0;
+  return (_has_bits_[0] & 0x00008000u) != 0;
 }
 inline void process::set_has_count_processes() {
-  _has_bits_[0] |= 0x00010000u;
+  _has_bits_[0] |= 0x00008000u;
 }
 inline void process::clear_has_count_processes() {
-  _has_bits_[0] &= ~0x00010000u;
+  _has_bits_[0] &= ~0x00008000u;
 }
 inline void process::clear_count_processes() {
   count_processes_ = GOOGLE_ULONGLONG(0);
@@ -20284,53 +20122,15 @@ inline void container::set_allocated_transaction_counters(::draiosproto::counter
   }
 }
 
-// optional .draiosproto.counter_time_bidirectional min_transaction_counters = 8;
-inline bool container::has_min_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000080u) != 0;
-}
-inline void container::set_has_min_transaction_counters() {
-  _has_bits_[0] |= 0x00000080u;
-}
-inline void container::clear_has_min_transaction_counters() {
-  _has_bits_[0] &= ~0x00000080u;
-}
-inline void container::clear_min_transaction_counters() {
-  if (min_transaction_counters_ != NULL) min_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
-  clear_has_min_transaction_counters();
-}
-inline const ::draiosproto::counter_time_bidirectional& container::min_transaction_counters() const {
-  return min_transaction_counters_ != NULL ? *min_transaction_counters_ : *default_instance_->min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* container::mutable_min_transaction_counters() {
-  set_has_min_transaction_counters();
-  if (min_transaction_counters_ == NULL) min_transaction_counters_ = new ::draiosproto::counter_time_bidirectional;
-  return min_transaction_counters_;
-}
-inline ::draiosproto::counter_time_bidirectional* container::release_min_transaction_counters() {
-  clear_has_min_transaction_counters();
-  ::draiosproto::counter_time_bidirectional* temp = min_transaction_counters_;
-  min_transaction_counters_ = NULL;
-  return temp;
-}
-inline void container::set_allocated_min_transaction_counters(::draiosproto::counter_time_bidirectional* min_transaction_counters) {
-  delete min_transaction_counters_;
-  min_transaction_counters_ = min_transaction_counters;
-  if (min_transaction_counters) {
-    set_has_min_transaction_counters();
-  } else {
-    clear_has_min_transaction_counters();
-  }
-}
-
 // optional .draiosproto.counter_time_bidirectional max_transaction_counters = 9;
 inline bool container::has_max_transaction_counters() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
+  return (_has_bits_[0] & 0x00000080u) != 0;
 }
 inline void container::set_has_max_transaction_counters() {
-  _has_bits_[0] |= 0x00000100u;
+  _has_bits_[0] |= 0x00000080u;
 }
 inline void container::clear_has_max_transaction_counters() {
-  _has_bits_[0] &= ~0x00000100u;
+  _has_bits_[0] &= ~0x00000080u;
 }
 inline void container::clear_max_transaction_counters() {
   if (max_transaction_counters_ != NULL) max_transaction_counters_->::draiosproto::counter_time_bidirectional::Clear();
@@ -20362,13 +20162,13 @@ inline void container::set_allocated_max_transaction_counters(::draiosproto::cou
 
 // optional uint64 transaction_processing_delay = 10;
 inline bool container::has_transaction_processing_delay() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
+  return (_has_bits_[0] & 0x00000100u) != 0;
 }
 inline void container::set_has_transaction_processing_delay() {
-  _has_bits_[0] |= 0x00000200u;
+  _has_bits_[0] |= 0x00000100u;
 }
 inline void container::clear_has_transaction_processing_delay() {
-  _has_bits_[0] &= ~0x00000200u;
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void container::clear_transaction_processing_delay() {
   transaction_processing_delay_ = GOOGLE_ULONGLONG(0);
@@ -20384,13 +20184,13 @@ inline void container::set_transaction_processing_delay(::google::protobuf::uint
 
 // optional uint64 next_tiers_delay = 12;
 inline bool container::has_next_tiers_delay() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void container::set_has_next_tiers_delay() {
-  _has_bits_[0] |= 0x00000400u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void container::clear_has_next_tiers_delay() {
-  _has_bits_[0] &= ~0x00000400u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void container::clear_next_tiers_delay() {
   next_tiers_delay_ = GOOGLE_ULONGLONG(0);
@@ -20406,13 +20206,13 @@ inline void container::set_next_tiers_delay(::google::protobuf::uint64 value) {
 
 // optional .draiosproto.resource_categories resource_counters = 13;
 inline bool container::has_resource_counters() const {
-  return (_has_bits_[0] & 0x00000800u) != 0;
+  return (_has_bits_[0] & 0x00000400u) != 0;
 }
 inline void container::set_has_resource_counters() {
-  _has_bits_[0] |= 0x00000800u;
+  _has_bits_[0] |= 0x00000400u;
 }
 inline void container::clear_has_resource_counters() {
-  _has_bits_[0] &= ~0x00000800u;
+  _has_bits_[0] &= ~0x00000400u;
 }
 inline void container::clear_resource_counters() {
   if (resource_counters_ != NULL) resource_counters_->::draiosproto::resource_categories::Clear();
@@ -20444,13 +20244,13 @@ inline void container::set_allocated_resource_counters(::draiosproto::resource_c
 
 // optional .draiosproto.counter_syscall_errors syscall_errors = 14;
 inline bool container::has_syscall_errors() const {
-  return (_has_bits_[0] & 0x00001000u) != 0;
+  return (_has_bits_[0] & 0x00000800u) != 0;
 }
 inline void container::set_has_syscall_errors() {
-  _has_bits_[0] |= 0x00001000u;
+  _has_bits_[0] |= 0x00000800u;
 }
 inline void container::clear_has_syscall_errors() {
-  _has_bits_[0] &= ~0x00001000u;
+  _has_bits_[0] &= ~0x00000800u;
 }
 inline void container::clear_syscall_errors() {
   if (syscall_errors_ != NULL) syscall_errors_->::draiosproto::counter_syscall_errors::Clear();
@@ -20507,13 +20307,13 @@ container::mutable_port_mappings() {
 
 // optional .draiosproto.proto_info protos = 19;
 inline bool container::has_protos() const {
-  return (_has_bits_[0] & 0x00004000u) != 0;
+  return (_has_bits_[0] & 0x00002000u) != 0;
 }
 inline void container::set_has_protos() {
-  _has_bits_[0] |= 0x00004000u;
+  _has_bits_[0] |= 0x00002000u;
 }
 inline void container::clear_has_protos() {
-  _has_bits_[0] &= ~0x00004000u;
+  _has_bits_[0] &= ~0x00002000u;
 }
 inline void container::clear_protos() {
   if (protos_ != NULL) protos_->::draiosproto::proto_info::Clear();
@@ -20620,13 +20420,13 @@ container::mutable_network_by_serverports() {
 
 // optional string mesos_task_id = 23;
 inline bool container::has_mesos_task_id() const {
-  return (_has_bits_[0] & 0x00040000u) != 0;
+  return (_has_bits_[0] & 0x00020000u) != 0;
 }
 inline void container::set_has_mesos_task_id() {
-  _has_bits_[0] |= 0x00040000u;
+  _has_bits_[0] |= 0x00020000u;
 }
 inline void container::clear_has_mesos_task_id() {
-  _has_bits_[0] &= ~0x00040000u;
+  _has_bits_[0] &= ~0x00020000u;
 }
 inline void container::clear_mesos_task_id() {
   if (mesos_task_id_ != &::google::protobuf::internal::kEmptyString) {
@@ -20690,13 +20490,13 @@ inline void container::set_allocated_mesos_task_id(::std::string* mesos_task_id)
 
 // optional string image_id = 24;
 inline bool container::has_image_id() const {
-  return (_has_bits_[0] & 0x00080000u) != 0;
+  return (_has_bits_[0] & 0x00040000u) != 0;
 }
 inline void container::set_has_image_id() {
-  _has_bits_[0] |= 0x00080000u;
+  _has_bits_[0] |= 0x00040000u;
 }
 inline void container::clear_has_image_id() {
-  _has_bits_[0] &= ~0x00080000u;
+  _has_bits_[0] &= ~0x00040000u;
 }
 inline void container::clear_image_id() {
   if (image_id_ != &::google::protobuf::internal::kEmptyString) {

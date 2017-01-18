@@ -3357,7 +3357,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				host_marker.add(m_host_metrics.m_protostate);
 				host_marker.mark_top(HOST_PROTOS_LIMIT);
 				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(), m_sampling_ratio, HOST_PROTOS_LIMIT);
-				g_logger.log(m_metrics->protos().DebugString(), sinsp_logger::SEV_TRACE);
+				//g_logger.log(m_metrics->protos().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 
 			//
