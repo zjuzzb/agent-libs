@@ -74,6 +74,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 			status_code_entry = &(m_client_status_codes[pp->m_status_code]);
 		}
 		status_code_entry->m_ncalls += 1;
+		status_code_entry->set_percentiles(m_percentiles);
 	}
 }
 
@@ -219,7 +220,7 @@ void sinsp_http_state::url_table_to_protobuf(draiosproto::http_info* protobuf_ms
 	// The table is small enough that we don't need to sort it
 	//
 	uint32_t j = 0;
-	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit)
+	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit, ++j)
 	{
 		if(uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
@@ -239,8 +240,7 @@ void sinsp_http_state::url_table_to_protobuf(draiosproto::http_info* protobuf_ms
 			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
 			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
 			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
-
-			j += 1;
+			percentile_to_protobuf(ud->mutable_counters(), uit->second.get_percentiles());
 		}
 	}
 }
@@ -255,7 +255,7 @@ void sinsp_http_state::status_code_table_to_protobuf(draiosproto::http_info* pro
 	// The table is small enough that we don't need to sort it
 	//
 	uint32_t j = 0;
-	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit)
+	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit, ++j)
 	{
 		if(uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
@@ -270,8 +270,6 @@ void sinsp_http_state::status_code_table_to_protobuf(draiosproto::http_info* pro
 
 			ud->set_status_code(uit->first);
 			ud->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-
-			j += 1;
 		}
 	}
 }
@@ -288,7 +286,7 @@ void sql_state::query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 	// The table is small enough that we don't need to sort it
 	//
 	uint32_t j = 0;
-	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit)
+	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit, ++j)
 	{
 		if(uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
@@ -322,8 +320,7 @@ void sql_state::query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
 			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
 			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
-
-			j += 1;
+			percentile_to_protobuf(ud->mutable_counters(), uit->second.get_percentiles());
 		}
 	}
 }
@@ -339,7 +336,7 @@ void sql_state::query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg
 	// The table is small enough that we don't need to sort it
 	//
 	uint32_t j = 0;
-	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit)
+	for(auto uit = table->begin(); j < limit && uit != table->end(); ++uit, ++j)
 	{
 		if(uit->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
@@ -359,8 +356,7 @@ void sql_state::query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg
 			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
 			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
 			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
-
-			j += 1;
+			percentile_to_protobuf(ud->mutable_counters(), uit->second.get_percentiles());
 		}
 	}
 }
@@ -501,19 +497,18 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 	draiosproto::mongodb_op_type_details *ud;
 
 	uint32_t j = 0;
-	for (auto it = m_server_ops.begin(); j < limit && it != m_server_ops.end(); ++it)
+	for (auto it = m_server_ops.begin(); j < limit && it != m_server_ops.end(); ++it, ++j)
 	{
 		if(it->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{
 			ud = protobuf_msg->add_servers_ops();
 			ud->set_op((draiosproto::mongodb_op_type)it->first);
 			it->second.to_protobuf(ud->mutable_counters(), sampling_ratio);
-			j +=1;
 		}
 	}
 
 	j = 0;
-	for (auto it = m_client_ops.begin(); j < limit && it != m_client_ops.end(); ++it)
+	for (auto it = m_client_ops.begin(); j < limit && it != m_client_ops.end(); ++it, ++j)
 	{
 		if(it->second.m_flags & (uint32_t)SRF_INCLUDE_IN_SAMPLE)
 		{

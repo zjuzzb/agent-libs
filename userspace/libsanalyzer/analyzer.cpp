@@ -215,10 +215,17 @@ sinsp_analyzer::~sinsp_analyzer()
 void sinsp_analyzer::set_percentiles()
 {
 	const std::set<double>& pctls = m_configuration->get_percentiles();
-	m_host_transaction_counters.set_percentiles(&pctls);
-	m_host_metrics.set_percentiles(&pctls);
-	m_host_req_metrics.set_percentiles(&pctls);
-	m_io_net.set_percentiles(&pctls);
+	if(pctls.size())
+	{
+		m_host_transaction_counters.set_percentiles(&pctls);
+		m_host_metrics.set_percentiles(&pctls);
+		if(m_host_metrics.m_protostate)
+		{
+			m_host_metrics.m_protostate->set_percentiles(pctls);
+		}
+		m_host_req_metrics.set_percentiles(&pctls);
+		m_io_net.set_percentiles(&pctls);
+	}
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -3349,8 +3356,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				sinsp_protostate_marker host_marker;
 				host_marker.add(m_host_metrics.m_protostate);
 				host_marker.mark_top(HOST_PROTOS_LIMIT);
-				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
-						m_sampling_ratio, HOST_PROTOS_LIMIT);
+				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(), m_sampling_ratio, HOST_PROTOS_LIMIT);
+				g_logger.log(m_metrics->protos().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 
 			//

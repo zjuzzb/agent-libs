@@ -97,6 +97,8 @@ typedef enum sinsp_request_flags
 class sinsp_request_details
 {
 public:
+	typedef std::shared_ptr<percentile> percentile_ptr_t;
+
 	sinsp_request_details()
 	{
 		m_ncalls = 0;
@@ -113,6 +115,7 @@ public:
 		m_samples(other.m_samples),
 		m_flags(other.m_flags),
 		m_time_tot(other.m_time_tot),
+		// ensure each instance has its own percentiles
 		m_percentile(other.m_percentile ? new percentile(*other.m_percentile) : nullptr)
 	{
 	}
@@ -129,10 +132,8 @@ public:
 			m_samples = other.m_samples;
 			m_flags = other.m_flags;
 			m_time_tot = other.m_time_tot;
-			if(other.m_percentile)
-			{
-				m_percentile = std::move(other.m_percentile);
-			}
+			// since we already have a disposable copy here, it's ok to just move it
+			m_percentile = other.m_percentile;
 		}
 		return *this;
 	}
@@ -180,6 +181,11 @@ public:
 		}
 	}
 
+	percentile_ptr_t get_percentiles()
+	{
+		return m_percentile;
+	}
+
 	uint32_t m_ncalls;		// number of times this request has been served
 	uint32_t m_nerrors;		// number of times serving this request has generated an error
 	uint64_t m_time_max;	// slowest time spent serving this request
@@ -189,7 +195,7 @@ public:
 	sinsp_request_flags m_flags;
 private:
 	uint64_t m_time_tot;	// total time spent serving this request
-	std::unique_ptr<percentile> m_percentile;
+	percentile_ptr_t m_percentile;
 };
 
 class sinsp_url_details : public sinsp_request_details
@@ -412,6 +418,21 @@ public:
 		m_percentiles = pctls;
 	}
 
+	const std::set<double>& get_percentiles()
+	{
+		return m_percentiles;
+	}
+
+	void percentile_to_protobuf(draiosproto::counter_proto_entry* protoent, sinsp_request_details::percentile_ptr_t pct)
+	{
+		typedef draiosproto::counter_proto_entry CTB;
+		typedef draiosproto::counter_percentile CP;
+		if(pct && pct->sample_count())
+		{
+			pct->to_protobuf<CTB, CP>(protoent, &CTB::add_percentile);
+		}
+	}
+
 protected:
 	std::set<double> m_percentiles;
 };
@@ -546,17 +567,13 @@ public:
 	inline void clear()
 	{
 		m_http.clear();
-
 		m_mysql.clear();
 		m_postgres.clear();
-
 		m_mongodb.clear();
 	}
 
 	void add(sinsp_protostate* other);
-
 	void set_percentiles(const std::set<double>& pctls);
-
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
 	sinsp_http_state m_http;
@@ -696,13 +713,6 @@ class sinsp_protostate_marker
 public:
 	void add(sinsp_protostate* protostate)
 	{
-		if(!m_percentiles.empty())
-		{
-			protostate->m_http.set_percentiles(m_percentiles);
-			protostate->m_mysql.set_percentiles(m_percentiles);
-			protostate->m_postgres.set_percentiles(m_percentiles);
-			protostate->m_mongodb.set_percentiles(m_percentiles);
-		}
 		m_http.add(&protostate->m_http);
 		m_mysql.add(&protostate->m_mysql);
 		m_postgres.add(&protostate->m_postgres);
@@ -717,17 +727,11 @@ public:
 		m_mongodb.mark_top(limit);
 	}
 
-	void set_percentiles(std::set<double>& pctls)
-	{
-		m_percentiles = pctls;
-	}
-
 private:
 	sinsp_http_marker m_http;
 	sinsp_sql_marker m_mysql;
 	sinsp_sql_marker m_postgres;
 	sinsp_mongodb_marker m_mongodb;
-	std::set<double> m_percentiles;
 };
 
 #endif // HAS_ANALYZER
