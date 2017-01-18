@@ -65,7 +65,7 @@ add_executable(tests
 	token_bucket_test.cpp
 	user_event.cpp
 	uri.cpp
-	json_query.cpp)
+	json_query.cpp nodriver.cpp)
 
 target_link_libraries(tests
 	pthread

@@ -270,6 +270,8 @@ void sinsp_worker::init()
 	else if (m_configuration->m_mode == dragent_mode_t::NODRIVER)
 	{
 		m_inspector->open_nodriver();
+		// Change these values so the inactive thread pruning
+		// runs more often
 		m_inspector->m_thread_timeout_ns = 0;
 		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
