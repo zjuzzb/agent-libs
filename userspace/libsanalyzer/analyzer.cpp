@@ -27,13 +27,6 @@ using namespace google::protobuf::io;
 
 #include "Poco/File.h"
 
-// uncomment to generate dummy statsd traffic for testing
-//#define MAKE_SOME_STATSD_NOISE
-#ifdef MAKE_SOME_STATSD_NOISE
-	#include "Poco/Net/DatagramSocket.h"
-	#include "Poco/Net/SocketAddress.h"
-#endif // MAKE_SOME_STATSD_NOISE
-
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
@@ -3446,20 +3439,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Statsd metrics
 			//
 #ifndef _WIN32
-#ifdef MAKE_SOME_STATSD_NOISE
-			{
-				srandom(42);
-				Poco::Net::DatagramSocket ss;
-				ss.connect(Poco::Net::SocketAddress("127.0.0.1", 8125));
-				std::string buf;
-				for (int i=0; i < 100; i++)
-				{
-					buf.append("do.not.use.in.production:").append(std::to_string(random())).append("|h").append(1, '\n');
-					ss.sendBytes(buf.data(), buf.size());
-					buf.clear();
-				}
-			}
-#endif //MAKE_SOME_STATSD_NOISE
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
 				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), m_configuration->get_statsd_limit());
