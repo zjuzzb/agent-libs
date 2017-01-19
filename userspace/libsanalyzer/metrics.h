@@ -59,7 +59,7 @@ public:
 	void add(sinsp_counter_time_bidirectional* other);
 	void subtract(uint32_t cnt_delta, uint64_t time_delta);
 	void clear();
-	void set_percentiles(const std::set<double>* percentiles);
+	void set_percentiles(const std::set<double>& percentiles);
 	void to_protobuf(draiosproto::counter_time* protobuf_msg, uint64_t tot_relevant_time_ns, uint32_t sampling_ratio);
 
 	uint32_t m_count;
@@ -84,7 +84,7 @@ public:
 	void add_other(uint32_t cnt_delta, uint64_t time_delta);
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
-	void set_percentiles(const std::set<double>* percentiles);
+	void set_percentiles(const std::set<double>& percentiles);
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const;
 	uint32_t get_tot_count() const;
 
@@ -136,7 +136,7 @@ public:
 	void add(sinsp_counter_time* other);
 	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
-	void set_percentiles(const std::set<double>* percentiles);
+	void set_percentiles(const std::set<double>& percentiles);
 	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
 					 uint64_t tot_relevant_time_ns, uint32_t sampling_ratio,
 					 uint64_t patched_bytes_in = 0, uint64_t patched_bytes_out = 0);
@@ -185,7 +185,7 @@ public:
 	sinsp_counters();
 
 	void clear();
-	void set_percentiles(const std::set<double>* percentiles);
+	void set_percentiles(const std::set<double>& percentiles);
 	void add(sinsp_counters* other);
 	void get_total(sinsp_counter_time* tot);
 	void calculate_totals();
@@ -234,7 +234,7 @@ class sinsp_transaction_counters
 {
 public:
 	sinsp_transaction_counters(const std::set<double>* percentiles = nullptr);
-	void set_percentiles(const std::set<double>* percentiles);
+	void set_percentiles(const std::set<double>& percentiles);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
 		//draiosproto::counter_time_bidirectional* min_protobuf_msg,
@@ -334,7 +334,7 @@ public:
 		uint32_t n_server_transactions);
 	double get_capacity_score() const;
 	double get_stolen_score() const;
-	void set_percentiles(const std::set<double>* percentiles);
+	void set_percentiles(const std::set<double>& percentiles);
 
 	sinsp_counters m_metrics; 
 	uint32_t m_connection_queue_usage_pct;

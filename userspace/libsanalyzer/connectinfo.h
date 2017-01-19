@@ -195,7 +195,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 
 	if(m_percentiles.size() && !conn.m_transaction_metrics.has_percentiles())
 	{
-		conn.m_transaction_metrics.set_percentiles(&m_percentiles);
+		conn.m_transaction_metrics.set_percentiles(m_percentiles);
 	}
 
 	if(conn.m_timestamp == 0)

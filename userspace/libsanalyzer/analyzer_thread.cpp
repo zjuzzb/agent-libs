@@ -126,9 +126,9 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_cmdline_sync_ns = 0;
 	if(m_percentiles.size())
 	{
-		m_metrics.set_percentiles(&m_percentiles);
-		m_transaction_metrics.set_percentiles(&m_percentiles);
-		m_external_transaction_metrics.set_percentiles(&m_percentiles);
+		m_metrics.set_percentiles(m_percentiles);
+		m_transaction_metrics.set_percentiles(m_percentiles);
+		m_external_transaction_metrics.set_percentiles(m_percentiles);
 		m_protostate.set_percentiles(m_percentiles);
 	}
 }
@@ -151,9 +151,9 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 		if(m_percentiles.size())
 		{
 			m_procinfo->m_protostate.set_percentiles(m_percentiles);
-			m_procinfo->m_proc_metrics.set_percentiles(&m_percentiles);
-			m_procinfo->m_proc_transaction_metrics.set_percentiles(&m_percentiles);
-			m_procinfo->m_external_transaction_metrics.set_percentiles(&m_percentiles);
+			m_procinfo->m_proc_metrics.set_percentiles(m_percentiles);
+			m_procinfo->m_proc_transaction_metrics.set_percentiles(m_percentiles);
+			m_procinfo->m_external_transaction_metrics.set_percentiles(m_percentiles);
 		}
 	}
 }

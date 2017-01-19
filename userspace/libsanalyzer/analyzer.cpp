@@ -224,14 +224,14 @@ void sinsp_analyzer::set_percentiles()
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	if(pctls.size())
 	{
-		m_host_transaction_counters.set_percentiles(&pctls);
-		m_host_metrics.set_percentiles(&pctls);
+		m_host_transaction_counters.set_percentiles(pctls);
+		m_host_metrics.set_percentiles(pctls);
 		if(m_host_metrics.m_protostate)
 		{
 			m_host_metrics.m_protostate->set_percentiles(pctls);
 		}
-		m_host_req_metrics.set_percentiles(&pctls);
-		m_io_net.set_percentiles(&pctls);
+		m_host_req_metrics.set_percentiles(pctls);
+		m_io_net.set_percentiles(pctls);
 	}
 }
 
@@ -1544,7 +1544,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			const std::set<double>& pctls = m_configuration->get_percentiles();
 			if(pctls.size())
 			{
-				container->set_percentiles(&pctls);
+				container->set_percentiles(pctls);
 			}
 			if(container->m_memory_cgroup.empty())
 			{
@@ -1822,7 +1822,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			const std::set<double>& pctls = m_configuration->get_percentiles();
 			if(pctls.size())
 			{
-				container->set_percentiles(&pctls);
+				container->set_percentiles(pctls);
 			}
 		}
 
@@ -2525,7 +2525,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				const std::set<double>& pctls = m_configuration->get_percentiles();
 				if(pctls.size())
 				{
-					conn.m_transaction_metrics.set_percentiles(&pctls);
+					conn.m_transaction_metrics.set_percentiles(pctls);
 				}
 			}
 			else
