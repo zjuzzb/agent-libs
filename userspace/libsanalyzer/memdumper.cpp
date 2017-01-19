@@ -53,7 +53,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	}
 	catch(sinsp_exception e)
 	{
-		lo(sinsp_logger::SEV_ERROR, "capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64, 
+		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64, 
 			m_bsize);
 
 		m_disabled = true;
@@ -81,7 +81,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	m_f = fopen(fname.c_str(), "wb");
 	if(m_f == NULL)
 	{
-		lo(sinsp_logger::SEV_ERROR, "cannot open file %s", fname.c_str());
+		lo(sinsp_logger::SEV_ERROR, "memdump: cannot open file %s", fname.c_str());
 	}
 */
 	m_f = NULL;	
@@ -131,8 +131,6 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 		return;
 	}
 
-	lo(sinsp_logger::SEV_INFO, "saving dump %s", name.c_str());
-
 	time_t rawtime = (time_t)ts_ns / 1000000000;
 	struct tm* time_info = gmtime(&rawtime);
 	snprintf(tbuf, sizeof(tbuf), "%.2d-%.2d_%.2d_%.2d_%.2d_%.6d",
@@ -145,11 +143,13 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 
 	string fname = string("sd_dump_") + name + "_" + tbuf + ".scap";
 
+	lo(sinsp_logger::SEV_INFO, "memdump: saving dump %s", fname.c_str());
+
 	m_cf = fopen(fname.c_str(), "wb");
 	if(m_cf == NULL)
 	{
 		lo(sinsp_logger::SEV_ERROR, 
-			"cannot open file %s, dump will not happen", fname.c_str());
+			"memdump: cannot open file %s, dump will not happen", fname.c_str());
 		return;
 	}
 
@@ -227,6 +227,13 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 			if(toobig)
 			{
 				m_saturation_inactivity_start_time = ts;
+				lo(sinsp_logger::SEV_INFO, "memdump: dump closed bacause too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns", 
+					m_max_disk_size,
+					m_saturation_inactivity_pause_ns);
+			}
+			else
+			{
+				lo(sinsp_logger::SEV_INFO, "memdump: dump closed");
 			}
 		}
 	}
@@ -255,7 +262,7 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 	}
 	catch(sinsp_exception e)
 	{
-		lo(sinsp_logger::SEV_ERROR, "capture memory buffer too small to store process information. Memory dump disabled. Current size: " + 
+		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: " + 
 			m_active_state->m_bufsize);
 
 		m_disabled = true;

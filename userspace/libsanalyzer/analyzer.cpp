@@ -308,7 +308,7 @@ void sinsp_analyzer::on_capture_start()
 	if(m_do_memdump)
 	{
 		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
-		m_memdumper->init(memdump_size);		
+		m_memdumper->init(memdump_size, memdump_size, 10LL * 1000000000LL);
 	}
 }
 
@@ -3947,6 +3947,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 		if(m_inspector->m_flush_memory_dump)
 		{
+			m_memdumper->push_notification(evt, to_string(evt->get_num()), "dump triggered by agent engine");
 			m_memdumper->to_file("sinsp", evt->get_ts());
 			m_inspector->m_flush_memory_dump = false;
 		}
