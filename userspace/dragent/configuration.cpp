@@ -250,6 +250,8 @@ dragent_configuration::dragent_configuration()
 	m_watchdog_analyzer_tid_collision_check_interval_s = 0;
 	m_watchdog_sinsp_data_handler_timeout_s = 0;
 	m_watchdog_max_memory_usage_mb = 0;
+	m_watchdog_warn_memory_usage_mb = 0;
+	m_watchdog_heap_profiling_interval_s = 0;
 	m_dirty_shutdown_report_log_size_b = 0;
 	m_capture_dragent_events = false;
 	m_jmx_sampling = 1;
@@ -272,6 +274,7 @@ dragent_configuration::dragent_configuration()
 	m_reset_falco_engine = false;
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
+	m_load_error = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -486,7 +489,13 @@ void dragent_configuration::init(Application* app)
 	{
 		m_config.reset(new yaml_configuration({ m_conf_file, m_defaults_conf_file }));
 	}
-
+	// The yaml_configuration catches exceptions so m_config will always be
+	// a valid pointer, but set m_load_error so dragent will see the error
+	if(!m_config->errors().empty())
+	{
+		m_load_error = true;
+	}
+	
 	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
 
 	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
@@ -575,7 +584,7 @@ void dragent_configuration::init(Application* app)
 	m_subsampling_ratio = m_config->get_scalar<decltype(m_subsampling_ratio)>("subsampling", "ratio", 1);
 
 	m_autodrop_enabled = m_config->get_scalar<bool>("autodrop", "enabled", true);
-	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", true);
+	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
@@ -598,6 +607,14 @@ void dragent_configuration::init(Application* app)
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
 	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
 	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 512);
+	m_watchdog_warn_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_warn_memory_usage_mb)>("watchdog", "warn_memory_usage_mb",
+													  m_watchdog_max_memory_usage_mb / 2);
+	if(m_watchdog_warn_memory_usage_mb > m_watchdog_max_memory_usage_mb)
+	{
+		m_config->add_warning("watchdog:warn_memory_usage_mb cannot be higher than watchdog:max_memory_usage_mb");
+		m_watchdog_warn_memory_usage_mb = m_watchdog_max_memory_usage_mb;
+	}
+	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 	// Right now these two entries does not support merging between defaults and specified on config file
 	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}});
 	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}});
@@ -827,14 +844,6 @@ void dragent_configuration::init(Application* app)
 
 void dragent_configuration::print_configuration()
 {
-	for(const auto& item : m_config->errors())
-	{
-		g_log->critical(item);
-	}
-	for(const auto& item : m_config->warnings())
-	{
-		g_log->debug(item);
-	}
 	g_log->information("Distribution: " + get_distribution());
 	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
 	g_log->information("rootdir: " + m_root_dir);
@@ -873,7 +882,9 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.subprocesses_logger_timeout_s: " + NumberFormatter::format(m_watchdog_subprocesses_logger_timeout_s));
 	g_log->information("watchdog.analyzer_tid_collision_check_interval_s: " + NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
 	g_log->information("watchdog.sinsp_data_handler_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
-	g_log->information("watchdog.max.memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
+	g_log->information("watchdog.max_memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
+	g_log->information("watchdog.warn_memory_usage_mb: " + NumberFormatter::format(m_watchdog_warn_memory_usage_mb));
+	g_log->information("watchdog.heap_profiling_interval_s: " + NumberFormatter::format(m_watchdog_heap_profiling_interval_s));
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
@@ -1043,6 +1054,15 @@ void dragent_configuration::print_configuration()
 	else
 	{
 		g_log->information("Auto config disabled");
+	}
+	// Dump warnings+errors after the main config so they're more visible
+	for(const auto& item : m_config->warnings())
+	{
+		g_log->debug(item);
+	}
+	for(const auto& item : m_config->errors())
+	{
+		g_log->critical(item);
 	}
 }
 

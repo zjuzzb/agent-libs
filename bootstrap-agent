@@ -36,7 +36,9 @@ if [ ! -d "$JQ_DIR" ]; then
 	cd $DEPENDENCIES
 	wget $DEPENDENCIES_URL/jq-1.5.tar.gz
 	tar -xzf jq-1.5.tar.gz
+	wget -O jq-1.5-fix-tokenadd.patch https://github.com/stedolan/jq/commit/8eb1367ca44e772963e704a700ef72ae2e12babd.patch
 	cd $JQ_DIR
+	patch < ../jq-1.5-fix-tokenadd.patch
 	./configure --disable-maintainer-mode --enable-all-static --disable-dependency-tracking
 	make LDFLAGS=-all-static
 fi
@@ -51,7 +53,17 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_VER=1.0.2d
+PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.1.0
+if [ ! -d "$PROTOBUF_V3_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
+	tar -xzf protobuf-cpp-3.1.0.tar.gz
+	cd $PROTOBUF_V3_DIR
+	./configure
+	make
+fi
+
+OPENSSL_VER=1.0.2j
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
@@ -64,14 +76,17 @@ if [ ! -d "$OPENSSL_DIR" ]; then
 	cd ..
 fi
 
-POCO_DIR=$DEPENDENCIES/poco-1.4.6p4-all
+POCO_VER=1.7.7
+POCO_EXT=tar.gz
+POCO_DIR=poco-$POCO_VER-all
+POCO_ARCH=$POCO_DIR.$POCO_EXT
+POCO_DIR=$DEPENDENCIES/$POCO_DIR
 if [ ! -d "$POCO_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/poco-1.4.6p4-all.tar.gz
-	tar -xzf poco-1.4.6p4-all.tar.gz
+        cd $DEPENDENCIES
+        wget $DEPENDENCIES_URL/$POCO_ARCH
+ 	tar -xzf $POCO_ARCH
 	cd $POCO_DIR
-	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
-	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC,PageCompiler --include-path=$OPENSSL_DIR/target/include
+	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
 	make install
 	cd ..
 fi
@@ -104,11 +119,11 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.2
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.3
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libssh-0.7.2.tar.xz
-	tar -xf libssh-0.7.2.tar.xz
+	wget $DEPENDENCIES_URL/libssh-0.7.3.tar.xz
+	tar -xf libssh-0.7.3.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
 	cd build
@@ -126,7 +141,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	make
 fi
 
-CURL_NAME=curl-7.45.0
+CURL_NAME=curl-7.52.1
 CURL_EXT=tar.bz2
 CURL_DIR=$DEPENDENCIES/$CURL_NAME
 if [ ! -d "$CURL_DIR" ]; then
@@ -281,6 +296,17 @@ if [ ! -d "${POSTGRES_DIR}" ]; then
 	make -C src/bin install
 	make -C src/include install
 	make -C src/interfaces install
+fi
+
+GPERFTOOLS_DIR=$DEPENDENCIES/gperftools-2.5
+if [ ! -d "${GPERFTOOLS_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/gperftools-2.5.tar.gz
+	tar xfz gperftools-2.5.tar.gz
+	cd $GPERFTOOLS_DIR
+	./configure --prefix=${GPERFTOOLS_DIR}/target --enable-emergency-malloc
+	make
+	make install
 fi
 
 # Falco Engine dependencies

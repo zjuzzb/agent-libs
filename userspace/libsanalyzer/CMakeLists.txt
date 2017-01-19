@@ -1,9 +1,9 @@
-set(DRAIOS_OPENSSL_VERSION "1.0.2d")
+set(DRAIOS_OPENSSL_VERSION "1.0.2j")
 set(DRAIOS_PROTOBUF_VERSION "2.5.0")
 set(DRAIOS_ZLIB_VERSION "1.2.8")
 set(DRAIOS_LUAJIT_VERSION "2.0.3")
-set(DRAIOS_CURL_VERSION "7.45.0")
-set(DRAIOS_POCO_VERSION "1.4.6p4-all")
+set(DRAIOS_CURL_VERSION "7.52.1")
+set(DRAIOS_POCO_VERSION "1.7.7-all")
 set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
@@ -88,6 +88,7 @@ add_library(sanalyzer STATIC
 	k8s_delegator.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_auth.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
@@ -134,7 +135,6 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a

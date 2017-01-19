@@ -4,9 +4,9 @@ JSONDIR = $(realpath $(MAKEDIR)/../../../sysdig/userspace/libsinsp/third-party/j
 
 DRAIOS_POCO = poco-1.4.6p4-all
 DRAIOS_PROTOBUF = protobuf-2.5.0
-DRAIOS_CURL = curl-7.45.0
+DRAIOS_CURL = curl-7.52.1
 DRAIOS_B64 = libb64-1.2
-DRAIOS_OPENNSL = openssl-1.0.2d
+DRAIOS_OPENNSL = openssl-1.0.2j
 
 SDIR =$(MAKEDIR)/src
 IDIR =$(MAKEDIR)/src

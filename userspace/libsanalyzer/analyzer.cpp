@@ -69,8 +69,6 @@ using namespace google::protobuf::io;
 #include "falco_events.h"
 #include "proc_config.h"
 
-bool sinsp_analyzer::m_mesos_bad_config = false;
-
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_initialized = false;
@@ -165,8 +163,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	//
 	add_chisel_dirs();
 
-	m_dcos_enterprise_last_token_refresh_s = 0;
 	m_mesos_last_failure_ns = 0;
+	m_last_mesos_refresh = 0;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -428,6 +426,81 @@ void sinsp_analyzer::chisels_do_timeout(sinsp_evt* ev)
 	}
 }
 
+class mesos_conf_vals : public app_process_conf_vals
+{
+public:
+	mesos_conf_vals(const uri::credentials_t &dcos_enterprise_credentials,
+			const uri::credentials_t &mesos_credentials,
+			const string &mesos_state_uri,
+			const string &auth_hostname)
+		: m_mesos_credentials(mesos_credentials),
+		  m_auth(dcos_enterprise_credentials, auth_hostname)
+		{
+			auto protocol = dcos_enterprise_credentials.first.empty() ? "http" : "https";
+
+			m_mesos_url = protocol + string("://") + uri(mesos_state_uri).get_host();
+		};
+
+	virtual ~mesos_conf_vals() {};
+
+	Json::Value vals() {
+		Json::Value conf_vals = Json::objectValue;
+
+		conf_vals["auth_token"] = m_auth.get_token();
+		conf_vals["mesos_url"] = m_mesos_url;
+		conf_vals["mesos_creds"] = m_mesos_credentials.first + ":" + m_mesos_credentials.second;
+
+		return conf_vals;
+	}
+
+private:
+	const uri::credentials_t &m_mesos_credentials;
+	string m_mesos_url;
+	mesos_auth m_auth;
+};
+
+class marathon_conf_vals : public app_process_conf_vals
+{
+public:
+	marathon_conf_vals(const uri::credentials_t &dcos_enterprise_credentials,
+			   const uri::credentials_t &marathon_credentials,
+			   const string &marathon_uri,
+			   const string &auth_hostname)
+		: m_marathon_credentials(marathon_credentials),
+		  m_auth(dcos_enterprise_credentials, auth_hostname),
+		  m_protocol(dcos_enterprise_credentials.first.empty() ? "http" : "https")
+		{
+			// Marathon listens on both http and https ports, so we embed
+			// the port in the url depending on whether we're using http
+			// or https.
+			m_marathon_url = m_protocol + string("://") +
+				uri(marathon_uri).get_host() +
+				":" + (m_protocol == "http" ? "8080" : "8443");
+		};
+
+	virtual ~marathon_conf_vals() {};
+
+	const string &protocol() {
+		return m_protocol;
+	}
+
+	Json::Value vals() {
+		Json::Value conf_vals = Json::objectValue;
+
+		conf_vals["auth_token"] = m_auth.get_token();
+		conf_vals["marathon_url"] = m_marathon_url;
+		conf_vals["marathon_creds"] = m_marathon_credentials.first + ":" + m_marathon_credentials.second;
+
+		return conf_vals;
+	}
+
+private:
+	const uri::credentials_t &m_marathon_credentials;
+	mesos_auth m_auth;
+	string m_protocol;
+	string m_marathon_url;
+};
+
 sinsp_configuration* sinsp_analyzer::get_configuration()
 {
 	//
@@ -669,7 +742,17 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			}
 		}
 
-		if(fwrite(pbstr.c_str(), pbstr.length(), 1, m_protobuf_fp) != 1)
+		// The agent is writing individual metrics protobufs,
+		// but we want the contents of the file to be readable
+		// as a metrics_list protobuf. So add a "metrics {"
+		// header and "}" trailer to each protobuf so it
+		// appears to be a metrics_list item (i.e. message).
+
+		string header = "metrics {\n";
+		string footer = "}\n";
+		if(fwrite(header.c_str(), header.length(), 1, m_protobuf_fp) != 1 ||
+		   fwrite(pbstr.c_str(), pbstr.length(), 1, m_protobuf_fp) != 1 ||
+		   fwrite(footer.c_str(), footer.length(), 1, m_protobuf_fp) != 1)
 		{
 			ASSERT(false);
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
@@ -950,7 +1033,6 @@ void sinsp_analyzer::make_mesos(string&& json)
 				if(m_mesos) { m_mesos.reset(); }
 				if(!m_configuration->get_dcos_enterprise_credentials().first.empty())
 				{
-					time(&m_dcos_enterprise_last_token_refresh_s);
 					m_mesos.reset(new mesos(mesos_state,
 											marathon_uris,
 											m_configuration->get_mesos_follow_leader(),
@@ -968,6 +1050,7 @@ void sinsp_analyzer::make_mesos(string&& json)
 											m_configuration->get_marathon_credentials(),
 											m_configuration->get_mesos_timeout_ms()));
 				}
+				time(&m_last_mesos_refresh);
 			}
 		}
 	}
@@ -1213,23 +1296,31 @@ std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 	return k8s_api_server;
 }
 
-std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
+std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_t port)
 {
 	if(!m_mesos)
 	{
 		auto protocol = m_configuration->get_dcos_enterprise_credentials().first.empty() ? "http" : "https";
-		mesos_api_server = detect_local_server(protocol, 5050, &sinsp_analyzer::check_mesos_server);
+		mesos_api_server = detect_local_server(protocol, port, &sinsp_analyzer::check_mesos_server);
 		if(!mesos_api_server.empty())
 		{
 			m_configuration->set_mesos_state_uri(mesos_api_server);
-			g_logger.log("Mesos API server set to: " + uri(mesos_api_server).to_string(false), sinsp_logger::SEV_INFO);
-			m_configuration->set_mesos_follow_leader(true);
-			if(m_configuration->get_marathon_uris().empty())
+
+			// If the port is not 5050, this uri is for a
+			// slave/agent, in which case we only record
+			// the uri to pass along to the app check.
+			if(port == 5050)
 			{
-				m_configuration->set_marathon_follow_leader(true);
+
+				g_logger.log("Mesos API server set to: " + uri(mesos_api_server).to_string(false), sinsp_logger::SEV_INFO);
+				m_configuration->set_mesos_follow_leader(true);
+				if(m_configuration->get_marathon_uris().empty())
+				{
+					m_configuration->set_marathon_follow_leader(true);
+				}
+				g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server,
+					     sinsp_logger::SEV_INFO);
 			}
-			g_logger.log("Mesos API server failover discovery enabled for: " + mesos_api_server,
-						 sinsp_logger::SEV_INFO);
 		}
 		else
 		{
@@ -1248,25 +1339,32 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server)
 
 std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 {
-	string mesos_apiserver_process;
+	uint32_t port = 0;
 
 	string mesos_api_server = m_configuration->get_mesos_state_uri();
 	if(!m_mesos)
 	{
 		if((mesos_api_server.empty() || m_configuration->get_mesos_state_original_uri().empty()) &&
-		   m_configuration->get_mesos_autodetect_enabled() && !m_mesos_bad_config)
+		   m_configuration->get_mesos_autodetect_enabled())
 		{
 			if(main_tinfo && main_tinfo->m_exe.find("mesos-master") != std::string::npos)
 			{
-				mesos_apiserver_process = "mesos-master";
+				g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
+				port = 5050;
 			}
-			if(!mesos_apiserver_process.empty())
+			else if(main_tinfo && (main_tinfo->m_exe.find("mesos-slave") != std::string::npos ||
+					       main_tinfo->m_exe.find("mesos-agent") != std::string::npos))
 			{
-				g_logger.log("Mesos: Detected '"+ mesos_apiserver_process + "' process", sinsp_logger::SEV_INFO);
-				detect_mesos(mesos_api_server);
+				g_logger.log("Mesos: Detected 'mesos-slave'/'mesos-agent' process", sinsp_logger::SEV_INFO);
+				port = 5051;
+			}
+			if(port != 0)
+			{
+				detect_mesos(mesos_api_server, port);
 			}
 		}
 	}
+
 	return mesos_api_server;
 }
 
@@ -1382,8 +1480,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	}
 
 	bool try_detect_mesos = (m_configuration->get_mesos_autodetect_enabled() &&
-							 m_configuration->get_mesos_state_original_uri().empty() &&
-							 !m_mesos && !m_mesos_bad_config);
+				 m_configuration->get_mesos_state_original_uri().empty() &&
+				 m_configuration->get_mesos_state_uri().empty() &&
+				 !m_mesos);
+
 	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
 						   m_configuration->get_k8s_api_server().empty());
 	bool mesos_detected = false, k8s_detected = false;
@@ -1652,31 +1752,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					// First check if the process has custom config for checks
 					// and use it
 					const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
-					for(const auto& check : custom_checks)
-					{
-						if(check.match(tinfo))
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from env",
-											check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-							app_checks_processes.emplace_back(check, tinfo);
-							mtinfo->m_ainfo->set_app_check_found();
-							break;
-						}
-					}
+					match_checks_list(tinfo, mtinfo, custom_checks, app_checks_processes, "env");
+
 					// If still no matches found, go ahead with the global list
 					if(!mtinfo->m_ainfo->app_check_found())
 					{
-						for(const auto &check : m_app_checks)
-						{
-							if(check.match(tinfo))
-							{
-								g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d",
-												check.name().c_str(), tinfo->m_pid, tinfo->m_vpid);
-								app_checks_processes.emplace_back(check, tinfo);
-								mtinfo->m_ainfo->set_app_check_found();
-								break;
-							}
-						}
+						match_checks_list(tinfo, mtinfo, m_app_checks, app_checks_processes, "global list");
 					}
 				}
 			}
@@ -2927,7 +3008,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	{
 		return;
 	}
-	
+
 	if(evt != NULL)
 	{
 		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
@@ -3475,7 +3556,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						//
 						// Sampling ratio is still high, reset the baseline counter
 						//
-						m_last_falco_dump_ts = evt->get_ts();					
+						m_last_falco_dump_ts = evt->get_ts();
 					}
 				}
 			}
@@ -4316,32 +4397,27 @@ void sinsp_analyzer::emit_k8s()
 	{
 		static time_t last_attempt;
 		reset_k8s(last_attempt, std::string("Error emitting K8s data:").append(ex.what()));
-		throw;
 	}
 }
 
 void sinsp_analyzer::get_mesos_data()
 {
-	static time_t last_mesos_refresh = 0;
 	ASSERT(m_mesos);
 	ASSERT(m_mesos->is_alive());
 
 	time_t now; time(&now);
-	if(m_mesos && last_mesos_refresh)
+	if(m_mesos && m_last_mesos_refresh)
 	{
 		m_mesos->collect_data();
 	}
-	if(m_mesos && m_dcos_enterprise_last_token_refresh_s > 0 &&
-		difftime(now, m_dcos_enterprise_last_token_refresh_s) > DCOS_ENTERPRISE_TOKEN_REFRESH_S)
-	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Regenerating Mesos token");
-		m_mesos->refresh_token();
-		m_dcos_enterprise_last_token_refresh_s = now;
-	}
-	if(m_mesos && difftime(now, last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
+
+	// Possibly regenerate the auth token
+	m_mesos->refresh_token();
+
+	if(m_mesos && difftime(now, m_last_mesos_refresh) > MESOS_STATE_REFRESH_INTERVAL_S)
 	{
 		m_mesos->send_data_request();
-		last_mesos_refresh = now;
+		m_last_mesos_refresh = now;
 	}
 	if(m_mesos && m_mesos->get_state().has_data())
 	{
@@ -4393,20 +4469,29 @@ void sinsp_analyzer::emit_mesos()
 	// will be collected and emitted; the connection to mesos api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
-	
+
 	string mesos_uri = m_configuration->get_mesos_state_uri();
 
 	try
 	{
 		if(!mesos_uri.empty())
 		{
-			g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
-			if(!m_mesos && !m_mesos_bad_config)
+			// Note that if the mesos uri is for a slave/agent, we don't do anything.
+			uri m_uri(mesos_uri);
+
+			if(m_uri.get_port() != 5050)
 			{
-				g_logger.log("Connecting to Mesos API server at [" + uri(mesos_uri).to_string(false) + "] ...", sinsp_logger::SEV_INFO);
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Mesos uri %s is for slave, not performing further queries", mesos_uri.c_str());
+				return;
+			}
+
+			g_logger.log("Emitting Mesos ...", sinsp_logger::SEV_DEBUG);
+			if(!m_mesos)
+			{
+				g_logger.log("Connecting to Mesos API server at [" + m_uri.to_string(false) + "] ...", sinsp_logger::SEV_INFO);
 				get_mesos(mesos_uri);
 			}
-			else if(m_mesos && !m_mesos->is_alive() && !m_mesos_bad_config)
+			else if(m_mesos && !m_mesos->is_alive())
 			{
 				g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 				get_mesos(mesos_uri);
@@ -4418,7 +4503,7 @@ void sinsp_analyzer::emit_mesos()
 				{
 					get_mesos_data();
 				}
-				if(!m_mesos->is_alive() && !m_mesos_bad_config)
+				if(!m_mesos->is_alive())
 				{
 					g_logger.log("Existing Mesos connection error detected (not alive). Trying to reconnect ...", sinsp_logger::SEV_ERROR);
 					get_mesos(mesos_uri);
@@ -4440,7 +4525,12 @@ void sinsp_analyzer::emit_mesos()
 		}
 		else if(m_configuration->get_mesos_autodetect_enabled() && (m_prev_flush_time_ns - m_mesos_last_failure_ns) > MESOS_RETRY_ON_ERRORS_TIMEOUT_NS)
 		{
-			detect_mesos(mesos_uri);
+			// Try the master port first and the
+			// slave/agent port if no master was found.
+			if (!detect_mesos(mesos_uri, 5050).empty())
+			{
+				detect_mesos(mesos_uri, 5051);
+			}
 		}
 	}
 	catch(std::exception& e)
@@ -4703,7 +4793,7 @@ vector<string> sinsp_analyzer::emit_containers(const vector<string>& active_cont
 
 	auto net_io_extractor = [](const analyzer_container_state& analyzer_state)
 	{
-		return analyzer_state.m_req_metrics.m_io_file.get_tot_bytes();
+		return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 	};
 
 	vector<string> emitted_containers;
@@ -5116,6 +5206,109 @@ void sinsp_analyzer::emit_user_events()
 				ostr << e.DebugString() << std::endl;
 			}
 			g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
+		}
+	}
+}
+
+void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
+				       sinsp_threadinfo *mtinfo,
+				       const vector<app_check> &checks,
+				       vector<app_process> &app_checks_processes,
+				       const char *location)
+{
+
+	for(const auto &check : checks)
+	{
+		if(check.match(tinfo))
+		{
+			string mm = "master.mesos";
+			shared_ptr<app_process_conf_vals> conf_vals;
+			set<uint16_t> listening_ports = tinfo->m_ainfo->listening_ports();
+
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Found check %s for process %d:%d from %s",
+					check.name().c_str(), tinfo->m_pid, tinfo->m_vpid, location);
+
+			// For mesos-master and mesos-slave app
+			// checks, override the built-in conf vals
+			// with the mesos-specific ones.
+			if(check.module() == "mesos_master" || check.module() == "mesos_slave")
+			{
+				string auth_hostname = "localhost";
+
+				// For dcos enterprise, the auth service only runs on the master. So for the slave,
+				// set the auth hostname to the special name master.mesos, which always
+				// resolves to the master
+				if(check.module() == "mesos_slave")
+				{
+					auth_hostname = mm;
+				}
+
+				if(!m_mesos_conf_vals)
+				{
+					if(m_configuration->get_mesos_state_uri().empty())
+					{
+						g_logger.log("Not performing mesos master/slave app check as no mesos uri exists yet", sinsp_logger::SEV_DEBUG);
+						continue;
+					}
+					else
+					{
+						// We now have enough information to generate mesos-specific
+						// app check configuration, so create the object.
+						m_mesos_conf_vals.reset(new mesos_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
+											    m_configuration->get_mesos_credentials(),
+											    m_configuration->get_mesos_state_uri(),
+											    auth_hostname));
+					}
+				}
+
+				conf_vals = m_mesos_conf_vals;
+			}
+			else if(check.module() == "marathon")
+			{
+				if(!m_marathon_conf_vals)
+				{
+					// We now have enough information to generate marathon-specific
+					// app check configuration, so create the object.
+
+					// The marathon uri can either be the first configured
+					// marathon uri or the first autodetected marathon uri. If both
+					// are empty, we don't perform the app check at all.
+					string marathon_uri;
+					if(!m_configuration->get_marathon_uris().empty())
+					{
+						marathon_uri = m_configuration->get_marathon_uris().front();
+					}
+					else if(m_mesos && !m_mesos->marathon_uris().empty())
+					{
+						marathon_uri = m_mesos->marathon_uris().front();
+					}
+
+					if(marathon_uri.empty())
+					{
+						g_logger.log("Not performing marathon app check as no marathon uri exists yet", sinsp_logger::SEV_DEBUG);
+						continue;
+					} else {
+
+						m_marathon_conf_vals.reset(new marathon_conf_vals(m_configuration->get_dcos_enterprise_credentials(),
+												  m_configuration->get_marathon_credentials(),
+												  marathon_uri,
+												  mm));
+					}
+				}
+
+				conf_vals = m_marathon_conf_vals;
+			}
+
+			app_checks_processes.emplace_back(check, tinfo);
+			mtinfo->m_ainfo->set_app_check_found();
+
+			if(conf_vals)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Adding mesos/marathon specific info to app check %s", check.name().c_str());
+				app_checks_processes.back().set_conf_vals(conf_vals);
+			}
+
+			break;
 		}
 	}
 }
