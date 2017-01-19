@@ -10,6 +10,7 @@ set(DRAIOS_JQ_VERSION "1.5")
 set(DRAIOS_B64_VERSION "1.2")
 
 add_subdirectory(resources)
+add_subdirectory(diff_pb)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
