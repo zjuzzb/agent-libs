@@ -60,7 +60,6 @@ void percentile::copy(const percentile& other)
 		sample = sample->next;
 		++m_num_samples;
 	}
-	flush();
 }
 
 void percentile::init(double* percentiles, size_t size, double eps)
@@ -140,6 +139,7 @@ void percentile::flush()
 
 percentile::p_map_type percentile::percentiles()
 {
+	flush();
 	p_map_type pm;
 	for(uint32_t i = 0; i < m_cm.num_quantiles; ++i)
 	{

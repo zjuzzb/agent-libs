@@ -24,14 +24,13 @@ public:
 	percentile& operator=(percentile other);
 
 	template <typename T>
-	void add(T val, bool do_flush = true)
+	void add(T val)
 	{
 		if(0 != cm_add_sample(&m_cm, val))
 		{
 			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(val));
 		}
 		++m_num_samples;
-		if(do_flush) { flush(); }
 	}
 
 	template <typename T>
@@ -46,8 +45,7 @@ public:
 	{
 		if(val.size())
 		{
-			for(const auto& v : val) { add(v, false); }
-			flush();
+			for(const auto& v : val) { add(v); }
 		}
 	}
 
