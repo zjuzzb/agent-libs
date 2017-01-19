@@ -20,11 +20,15 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 	m_cf = NULL;
 	m_disabled = false;
 	m_switches_to_go = 0;
+	m_saturation_inactivity_start_time = 0;
 }
 
-void sinsp_memory_dumper::init(uint64_t bufsize, uint64_t max_disk_size)
+void sinsp_memory_dumper::init(uint64_t bufsize, 
+	uint64_t max_disk_size,
+	uint64_t saturation_inactivity_pause_ns)
 {
 	m_max_disk_size = max_disk_size;
+	m_saturation_inactivity_pause_ns = saturation_inactivity_pause_ns;
 
 	//
 	// Let the inspector know that we're dumping
@@ -106,7 +110,7 @@ sinsp_memory_dumper::~sinsp_memory_dumper()
 
 void sinsp_memory_dumper::close()
 {
-	switch_states();
+	switch_states(0);
 	m_inspector->m_is_dumping = false;
 }
 
@@ -117,6 +121,12 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 	m_switches_to_go = 2;
 
 	if(m_cf != NULL)
+	{
+		return;
+	}
+
+	if((m_saturation_inactivity_start_time != 0) && 
+		(ts_ns - m_saturation_inactivity_start_time) < m_saturation_inactivity_pause_ns)
 	{
 		return;
 	}
@@ -195,7 +205,7 @@ void sinsp_memory_dumper::flush_state_to_disk(FILE* fp,
 	}
 }
 
-void sinsp_memory_dumper::switch_states()
+void sinsp_memory_dumper::switch_states(uint64_t ts)
 {
 	//
 	// Save the capture to disk
@@ -206,11 +216,18 @@ void sinsp_memory_dumper::switch_states()
 		m_cur_dump_size += m_bsize;
 		m_switches_to_go--;
 
+		bool toobig = (m_cur_dump_size >= m_max_disk_size);
+
 		if(m_switches_to_go == 0 ||
-			m_cur_dump_size >= m_max_disk_size)
+			toobig)
 		{
 			fclose(m_cf);
 			m_cf = NULL;
+
+			if(toobig)
+			{
+				m_saturation_inactivity_start_time = ts;
+			}
 		}
 	}
 

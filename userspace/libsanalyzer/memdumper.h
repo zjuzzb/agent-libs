@@ -57,7 +57,7 @@ class sinsp_memory_dumper
 public:
 	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
-	void init(uint64_t bufsize, uint64_t max_disk_size);
+	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
 	void to_file(string name, uint64_t ts_ns);
 	inline void process_event(sinsp_evt *evt)
@@ -77,7 +77,8 @@ public:
 		}
 		catch(sinsp_exception e)
 		{
-			switch_states();
+			ASSERT(evt != NULL);
+			switch_states(evt->get_ts());
 			m_active_state->m_dumper->dump(evt);
 		}
 	}
@@ -87,7 +88,7 @@ private:
 	void flush_state_to_disk(FILE* fp, 
 		sinsp_memory_dumper_state* state,
 		bool is_last_event_complete);
-	void switch_states();
+	void switch_states(uint64_t ts);
 
 	scap_threadinfo* m_scap_proclist;
 	sinsp* m_inspector;
@@ -105,4 +106,6 @@ private:
 	uint32_t m_cur_dump_size;
 	uint32_t m_max_disk_size;
 	uint64_t m_bsize;
+	uint64_t m_saturation_inactivity_pause_ns;
+	uint64_t m_saturation_inactivity_start_time;
 };
