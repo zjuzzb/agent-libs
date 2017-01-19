@@ -106,7 +106,6 @@ public:
 	thread_analyzer_info& operator=(const thread_analyzer_info&) = delete;
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
-	void destroy();
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
 	void propagate_flag(flags flags, thread_analyzer_info* other);

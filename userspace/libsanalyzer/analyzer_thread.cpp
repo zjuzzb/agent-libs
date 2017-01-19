@@ -99,7 +99,9 @@ thread_analyzer_info::thread_analyzer_info()
 
 thread_analyzer_info::~thread_analyzer_info()
 {
-	destroy();
+	delete m_procinfo;
+	m_procinfo = NULL;
+	m_listening_ports.reset();
 }
 
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
@@ -129,13 +131,6 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 		m_external_transaction_metrics.set_percentiles(&m_percentiles);
 		m_protostate.set_percentiles(m_percentiles);
 	}
-}
-
-void thread_analyzer_info::destroy()
-{
-	delete m_procinfo;
-	m_procinfo = NULL;
-	m_listening_ports.reset();
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()

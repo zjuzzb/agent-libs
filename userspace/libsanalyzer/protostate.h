@@ -112,7 +112,6 @@ public:
 		m_time_max(other.m_time_max),
 		m_bytes_in(other.m_bytes_in),
 		m_bytes_out(other.m_bytes_out),
-		m_samples(other.m_samples),
 		m_flags(other.m_flags),
 		m_time_tot(other.m_time_tot),
 		// ensure each instance has its own percentiles
@@ -129,7 +128,6 @@ public:
 			m_time_max = other.m_time_max;
 			m_bytes_in = other.m_bytes_in;
 			m_bytes_out = other.m_bytes_out;
-			m_samples = other.m_samples;
 			m_flags = other.m_flags;
 			m_time_tot = other.m_time_tot;
 			// since we already have a disposable copy here, it's ok to just move it
@@ -191,7 +189,6 @@ public:
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
 	uint32_t m_bytes_out;	// sent bytes for this request
-	std::vector<uint64_t> m_samples;
 	sinsp_request_flags m_flags;
 private:
 	uint64_t m_time_tot;	// total time spent serving this request
@@ -237,7 +234,6 @@ public:
 			entry->m_time_max = time_delta;
 			entry->m_bytes_in = tr->m_prev_bytes_in;
 			entry->m_bytes_out = tr->m_prev_bytes_out;
-			entry->m_samples.clear();
 		}
 		else
 		{
@@ -255,7 +251,6 @@ public:
 				entry->m_time_max = time_delta;
 			}
 		}
-		entry->m_samples.push_back(time_delta);
 	}
 
 	//
@@ -296,7 +291,6 @@ public:
 				{
 					entry->m_time_max = uit->second.m_time_max;
 				}
-				entry->m_samples.push_back(uit->second.get_time_tot());
 			}
 		}
 	}
