@@ -983,7 +983,8 @@ TEST_F(sys_call_test, fs_dup)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return m_tid_filter(evt);
+		return m_tid_filter(evt) &&
+				(evt->get_type() == PPME_SYSCALL_DUP_E || evt->get_type() == PPME_SYSCALL_DUP_X);
 	};
 
 	//
@@ -1020,7 +1021,6 @@ TEST_F(sys_call_test, fs_dup)
 	{
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
-
 		if(type == PPME_SYSCALL_DUP_E)
 		{
 			if(callnum == 0)
@@ -1045,7 +1045,7 @@ TEST_F(sys_call_test, fs_dup)
 			}
 			else if(callnum == 8)
 			{
-				EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("fd", false)));
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
 				callnum++;				
 			}
 			else if(callnum == 10)
@@ -1348,16 +1348,21 @@ TEST_F(sys_call_test, fs_sendfile_failed)
 
 		if(type == PPME_SYSCALL_SENDFILE_E)
 		{
-			EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("out_fd", false)));
-			EXPECT_EQ(-2, NumberParser::parse(e->get_param_value_str("in_fd", false)));
-			EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
-			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			EXPECT_NO_THROW({
+				EXPECT_EQ("4294967295", e->get_param_value_str("out_fd", false));
+				EXPECT_EQ("4294967295", e->get_param_value_str("in_fd", false));
+				EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
+				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			});
+
 			callnum++;
 		}
 		else if(type == PPME_SYSCALL_SENDFILE_X)
 		{
-			EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
-			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			EXPECT_NO_THROW({
+				EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			});
 			callnum++;
 		}
 	};
