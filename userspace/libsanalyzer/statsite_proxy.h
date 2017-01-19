@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "percentile.h"
+
 class statsite_proxy;
 namespace draiosproto
 {
@@ -98,6 +100,7 @@ private:
 	double m_median;
 	double m_percentile_95;
 	double m_percentile_99;
+	percentile::p_map_type m_percentiles;
 
 	friend class lua_cbacks;
 };

@@ -66,6 +66,17 @@ public:
 		reset();
 	}
 
+	template <typename P, typename C>
+	static void to_protobuf(const p_map_type& pm, P* proto, C* (P::*add_func)())
+	{
+		for(const auto& p : pm)
+		{
+			C* cp = (proto->*add_func)();
+			cp->set_percentile(p.first);
+			cp->set_value(p.second);
+		}
+	}
+
 	void reset();
 	std::vector<double> get_percentiles() const;
 	std::vector<double> get_samples() const;

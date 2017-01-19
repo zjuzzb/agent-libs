@@ -176,13 +176,21 @@ bool statsd_metric::parse_line(const string& line)
 			{
 				m_median = value;
 			}
-			else if(subtype == "p95")
+			else if(subtype.size() > 1 && subtype[0] == 'p') // percentiles
 			{
-				m_percentile_95 = value;
-			}
-			else if(subtype == "p99")
-			{
-				m_percentile_99 = value;
+				long percentile = strtol(&subtype.c_str()[1], nullptr, 10);
+				if(0L != percentile)
+				{
+					if(subtype == "p95")
+					{
+						m_percentile_95 = value;
+					}
+					else if(subtype == "p99")
+					{
+						m_percentile_99 = value;
+					}
+					m_percentiles[percentile] = value;
+				}
 			}
 			// Skipping "rate" and "sample_rate" right now
 		}
@@ -225,6 +233,9 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 		proto->set_median(m_median);
 		proto->set_percentile_95(m_percentile_95);
 		proto->set_percentile_99(m_percentile_99);
+		typedef draiosproto::statsd_metric CTB;
+		typedef draiosproto::counter_percentile CP;
+		percentile::to_protobuf<CTB, CP>(m_percentiles, proto, &CTB::add_percentile);
 	}
 	else
 	{
@@ -259,7 +270,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 		bool continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
 		while (continue_read)
 		{
-			//g_logger.format(sinsp_logger::SEV_DEBUG, "Received from statsite: %s", buffer);
+			g_logger.format(sinsp_logger::SEV_TRACE, "Received from statsite: %s", buffer);
 			//printf(buffer);
 			try {
 				bool parsed = m_metric.parse_line(buffer);

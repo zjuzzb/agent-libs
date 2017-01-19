@@ -1190,26 +1190,21 @@ string dragent_configuration::get_distribution()
 
 void dragent_configuration::write_statsite_configuration()
 {
-	static const char STATSITE_INI_TEMPLATE[] =
-			"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
-					"[statsite]\n"
-					"bind_address = 127.0.0.1\n"
-					"port = %u\n"
-					"udp_port = %u\n"
-					"log_level = %s\n"
-					"flush_interval = %u\n"
-					"parse_stdin = 1\n";
+	std::string statsite_ini =
+		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
+				"[statsite]\nbind_address = 127.0.0.1\n";
 
 	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
 	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one
-	// our levels: debug, info, warning, error
+	// our levels: debug, info, notice, warning, error, critical, fatal
 	// statsite levels: DEBUG, INFO, WARN, ERROR, CRITICAL
 	auto loglevel = m_config->get_scalar<string>("log", "file_priority", "info");
 	static const unordered_map<string, string> conversion_map{ { "debug", "DEBUG" }, { "info", "INFO" },
-															   {"warning", "WARN"}, {"error", "ERROR"}};
+															   { "notice", "WARN" }, { "warning", "WARN"}, { "error", "ERROR"},
+															   { "critical", "CRITICAL"}, { "fatal", "CRITICAL"}};
 	if (conversion_map.find(loglevel) != conversion_map.end())
 	{
 		loglevel = conversion_map.at(loglevel);
@@ -1219,8 +1214,25 @@ void dragent_configuration::write_statsite_configuration()
 		loglevel = "INFO";
 	}
 
-	char formatted_config[sizeof(STATSITE_INI_TEMPLATE)+100];
-	snprintf(formatted_config, sizeof(formatted_config), STATSITE_INI_TEMPLATE, tcp_port, udp_port, loglevel.c_str(), flush_interval);
+	statsite_ini.append("port = ").append(std::to_string(tcp_port)).append(1, '\n');
+	statsite_ini.append("udp_port = ").append(std::to_string(udp_port)).append(1, '\n');
+	statsite_ini.append("log_level = ").append(loglevel).append(1, '\n');
+	statsite_ini.append("flush_interval = ").append(std::to_string(flush_interval)).append(1, '\n');
+	statsite_ini.append("parse_stdin = 1").append(1, '\n');
+	if(m_percentiles.size())
+	{
+		std::ostringstream os;
+		for(const auto& p : m_percentiles)
+		{
+			os << p/100.0 << ',';
+		}
+		if(os.str().size())
+		{
+			os.seekp(-1, os.cur);
+			os << '\n';
+		}
+		statsite_ini.append("quantiles = ").append(os.str());
+	}
 
 	string filename("/opt/draios/etc/statsite.ini");
 	if(!m_agent_installed)
@@ -1230,9 +1242,8 @@ void dragent_configuration::write_statsite_configuration()
 	std::ofstream ostr(filename);
 	if(ostr.good())
 	{
-		ostr << formatted_config;
+		ostr << statsite_ini;
 	}
-	ostr.close();
 }
 
 void dragent_configuration::refresh_machine_id()
