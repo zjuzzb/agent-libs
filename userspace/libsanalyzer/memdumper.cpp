@@ -141,7 +141,7 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 		time_info->tm_sec,
 		(int)(ts_ns % 1000000000));
 
-	string fname = string("sd_dump_") + name + "_" + tbuf + ".scap";
+	string fname = string("/tmp/sd_dump_") + name + "_" + tbuf + ".scap";
 
 	lo(sinsp_logger::SEV_INFO, "memdump: saving dump %s", fname.c_str());
 

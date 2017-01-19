@@ -308,7 +308,7 @@ void sinsp_analyzer::on_capture_start()
 	if(m_do_memdump)
 	{
 		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
-		m_memdumper->init(memdump_size, memdump_size, 10LL * 1000000000LL);
+		m_memdumper->init(memdump_size, memdump_size, 300LL * 1000000000LL);
 	}
 }
 
