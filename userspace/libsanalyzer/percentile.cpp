@@ -50,6 +50,7 @@ percentile& percentile::operator=(percentile other)
 
 void percentile::copy(const percentile& other)
 {
+	other.flush();
 	cm_sample* sample = other.m_cm.samples;
 	while(sample)
 	{
@@ -126,11 +127,11 @@ void percentile::reset()
 	}
 }
 
-void percentile::flush()
+void percentile::flush() const
 {
 	if(m_num_samples)
 	{
-		if(0 != cm_flush(&m_cm))
+		if(0 != cm_flush(const_cast<cm_quantile*>(&m_cm)))
 		{
 			throw sinsp_exception("Percentiles error while flushing.");
 		}

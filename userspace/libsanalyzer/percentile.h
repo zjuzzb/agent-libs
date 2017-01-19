@@ -81,7 +81,7 @@ public:
 	uint32_t sample_count() const;
 
 	void dump_samples();
-	void flush();
+	void flush() const;
 
 private:
 	void init(double* percentiles, size_t size, double eps = 0.1);
