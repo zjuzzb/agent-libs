@@ -1300,6 +1300,7 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 		}
 	};
 
+	EXPECT_GT(clones_seen, 1);
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 }
 

@@ -1350,7 +1350,7 @@ TEST_F(sys_call_test, fs_sendfile_failed)
 		{
 			EXPECT_NO_THROW({
 				EXPECT_EQ("4294967295", e->get_param_value_str("out_fd", false));
-				EXPECT_EQ("4294967295", e->get_param_value_str("in_fd", false));
+				EXPECT_EQ("4294967294", e->get_param_value_str("in_fd", false));
 				EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
 				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
 			});
