@@ -38,8 +38,6 @@ TEST(nodriver, smoke)
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		sinsp_evt* e = param.m_evt;
-
 		auto* thread_table = param.m_inspector->m_thread_manager->get_threads();
 		EXPECT_GT(thread_table->size(), 0);
 	};
