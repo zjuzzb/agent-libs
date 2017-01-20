@@ -303,8 +303,8 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Enable memery dump
 	//
-lo("***C %d", (int)memdump_size);
 	uint64_t memdump_size = m_configuration->get_memdump_size();
+lo("***C %d", (int)memdump_size);
 	m_do_memdump = (memdump_size != 0);
 	if(m_do_memdump)
 	{
