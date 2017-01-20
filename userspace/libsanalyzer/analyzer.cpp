@@ -760,7 +760,17 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			}
 		}
 
-		if(fwrite(pbstr.c_str(), pbstr.length(), 1, m_protobuf_fp) != 1)
+		// The agent is writing individual metrics protobufs,
+		// but we want the contents of the file to be readable
+		// as a metrics_list protobuf. So add a "metrics {"
+		// header and "}" trailer to each protobuf so it
+		// appears to be a metrics_list item (i.e. message).
+
+		string header = "metrics {\n";
+		string footer = "}\n";
+		if(fwrite(header.c_str(), header.length(), 1, m_protobuf_fp) != 1 ||
+		   fwrite(pbstr.c_str(), pbstr.length(), 1, m_protobuf_fp) != 1 ||
+		   fwrite(footer.c_str(), footer.length(), 1, m_protobuf_fp) != 1)
 		{
 			ASSERT(false);
 			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
