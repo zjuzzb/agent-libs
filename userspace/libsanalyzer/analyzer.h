@@ -175,27 +175,27 @@ class uri;
 class run_on_interval
 {
 public:
-	inline run_on_interval(uint64_t interval, function<void (void)>&& callable);
+	inline run_on_interval(uint64_t interval);
 
-	inline void run(uint64_t now = sinsp_utils::get_current_time_ns());
+	template<typename Callable>
+	inline void run(const Callable& c, uint64_t now = sinsp_utils::get_current_time_ns());
 private:
 	uint64_t m_last_run_ns;
 	uint64_t m_interval;
-	function<void (void)> m_callable;
 };
 
-run_on_interval::run_on_interval(uint64_t interval, function<void (void)>&& callable):
+run_on_interval::run_on_interval(uint64_t interval):
 	m_last_run_ns(0),
-	m_interval(interval),
-	m_callable(callable)
+	m_interval(interval)
 {
 }
 
-void run_on_interval::run(uint64_t now)
+template<typename Callable>
+void run_on_interval::run(const Callable& c, uint64_t now)
 {
 	if(now - m_last_run_ns > m_interval)
 	{
-		m_callable();
+		c();
 		m_last_run_ns = now;
 	}
 }
@@ -569,6 +569,7 @@ VISIBILITY_PRIVATE
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
+	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
 
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 
@@ -661,6 +662,7 @@ VISIBILITY_PRIVATE
 
 	user_event_queue::ptr_t m_user_event_queue;
 
+	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//

@@ -3078,12 +3078,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_inspector->is_nodriver())
 			{
-				static run_on_interval proclist_refresher(NODRIVER_PROCLIST_REFRESH_INTERVAL_NS, [this]()
-				{
-					g_logger.log("Refreshing proclist", sinsp_logger::SEV_DEBUG);
-					this->m_inspector->refresh_proc_list();
-				});
-				proclist_refresher.run(m_prev_flush_time_ns);
+				m_proclist_refresher_interval.run([this]()
+					{
+						g_logger.log("Refreshing proclist", sinsp_logger::SEV_DEBUG);
+						this->m_inspector->refresh_proc_list();
+					}, m_prev_flush_time_ns);
 			}
 
 			//
@@ -4955,7 +4954,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		g_logger.log(c.DebugString(), sinsp_logger::SEV_TRACE);
 	}
 */
-	static run_on_interval analyzer_containers_cleaner(30*ONE_SECOND_IN_NS, [this, &progtable_by_container]()
+	m_containers_cleaner_interval.run([this, &progtable_by_container]()
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "Flushing analyzer container table");
 		auto it = this->m_containers.begin();
@@ -4970,8 +4969,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 				++it;
 			}
 		}
-	});
-	analyzer_containers_cleaner.run(m_prev_flush_time_ns);
+	}, m_prev_flush_time_ns);
 	return emitted_containers;
 }
 
