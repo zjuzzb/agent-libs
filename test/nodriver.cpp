@@ -46,3 +46,29 @@ TEST(nodriver, smoke)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run_nodriver(test, callback);});
 }
+
+TEST(nodriver, proc_fileio)
+{
+	//
+	// TEST CODE
+	//
+	sinsp_procfs_parser procfs_parser(4, 500, true);
+	sinsp_proc_file_stats io_stats;
+	procfs_parser.read_proc_file_stats(getpid(), &io_stats);
+
+	auto bytes_written = 0;
+	auto f = fopen("/dev/null", "w");
+	ASSERT_TRUE(f);
+	char buffer[1024];
+	for(auto j = 0; j < 100; ++j)
+	{
+		bytes_written += fwrite(buffer, sizeof(char), 1024, f);
+	}
+	fflush(f);
+	fclose(f);
+
+	procfs_parser.read_proc_file_stats(getpid(), &io_stats);
+
+	EXPECT_TRUE(io_stats.has_values());
+	EXPECT_GE(io_stats.m_write_bytes, bytes_written);
+}
