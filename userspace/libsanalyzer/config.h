@@ -101,6 +101,8 @@ public:
 	const std::set<std::string>& get_k8s_extensions() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
+	const std::set<std::string>& get_statsd_priority() const;
+	void set_statsd_priority(const std::set<std::string>& value);
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	string get_mesos_state_original_uri() const;
@@ -185,6 +187,7 @@ private:
 	std::set<double> m_percentiles;
 
 	unsigned m_statsd_limit;
+	std::set<string> m_statsd_priority;
 
 	string m_mesos_state_uri;
 	string m_mesos_state_original_uri;

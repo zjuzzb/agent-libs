@@ -498,6 +498,7 @@ public:
 	bool m_sysdig_capture_enabled;
 	bool m_statsd_enabled;
 	unsigned m_statsd_limit;
+	std::set<string> m_statsd_priority;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
 	string m_python_binary;
@@ -562,6 +563,8 @@ public:
 	uint64_t m_user_max_burst_events;
 
 	std::set<double> m_percentiles;
+	static const unsigned MAX_PERCENTILES = 4;
+	std::vector<double> m_ignored_percentiles;
 
 	bool java_present()
 	{

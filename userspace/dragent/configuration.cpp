@@ -351,6 +351,12 @@ void dragent_configuration::add_percentiles()
 	// error: incomplete type ‘YAML::convert<std::set<double> >’ used in nested name specifier
 	// as a workaround, we get vector and copy it
 	std::vector<double> pctls = m_config->get_scalar<std::vector<double>>("percentiles", {});
+	if(pctls.size() > MAX_PERCENTILES)
+	{
+		m_ignored_percentiles.clear();
+		std::copy(pctls.begin() + MAX_PERCENTILES, pctls.end(), std::back_inserter(m_ignored_percentiles));
+		pctls.resize(MAX_PERCENTILES);
+	}
 	std::copy(pctls.begin(), pctls.end(), std::inserter(m_percentiles, m_percentiles.end()));
 }
 
@@ -650,6 +656,7 @@ void dragent_configuration::init(Application* app)
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
+	m_statsd_priority = m_config->get_deep_merged_sequence<std::set<string>>("statsd", "prioritylist");
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
@@ -899,15 +906,29 @@ void dragent_configuration::print_configuration()
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
+	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
 	if(m_percentiles.size())
 	{
 		std::ostringstream os;
 		os << '[';
 		for(const auto& p : m_percentiles) { os << p << ','; }
-		os << ']';
+		os.seekp(-1, os.cur); os << ']';
 		g_log->information("Percentiles: " + os.str());
 	}
-	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
+	if(m_ignored_percentiles.size())
+	{
+		std::ostringstream os;
+		os << "Percentiles ignored (max allowed " + std::to_string(MAX_PERCENTILES) + "): [";
+		for(const auto& p : m_ignored_percentiles) { os << p << ','; }
+		os.seekp(-1, os.cur); os << ']';
+		g_log->warning(os.str());
+		sinsp_user_event::tag_map_t tags;
+		tags["source"] = "dragent";
+		g_logger.log(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
+					std::string("PercentileLimitExceeded"), std::string(os.str()),
+					std::string(), std::move(tags)), sinsp_logger::SEV_EVT_WARNING);
+
+	}
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
@@ -919,6 +940,18 @@ void dragent_configuration::print_configuration()
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
+	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
+	if(m_statsd_priority.size())
+	{
+		std::ostringstream os;
+		os << "Statsd priority metrics:\n[";
+		for(const auto& p :m_statsd_priority)
+		{
+			os << p << ", ";
+		}
+		os.seekp(-2, os.cur); os << ']';
+		g_log->information(os.str());
+	}
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));

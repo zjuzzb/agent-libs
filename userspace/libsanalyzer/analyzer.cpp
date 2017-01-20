@@ -3441,7 +3441,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 #ifndef _WIN32
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), m_configuration->get_statsd_limit());
+				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(),
+							m_configuration->get_statsd_limit(), m_configuration->get_statsd_priority());
 			}
 #endif
 
@@ -5098,7 +5099,8 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 #ifndef _WIN32
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
-		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(), *statsd_limit);
+		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(),
+										  *statsd_limit, m_configuration->get_statsd_priority());
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
@@ -5137,9 +5139,48 @@ void sinsp_analyzer::get_statsd()
 }
 
 #ifndef _WIN32
-unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-					   unsigned limit)
+void sinsp_analyzer::filter_statsd(vector<statsd_metric>& statsd_metrics,
+													unsigned limit, const std::set<std::string>& priority)
 {
+	vector<statsd_metric> filtered;
+	for(vector<statsd_metric>::iterator it = statsd_metrics.begin(); it != statsd_metrics.end();)
+	{
+		bool found = false;
+		for(const auto& prio : priority)
+		{
+			if(it->name().find(prio) == 0)
+			{
+				filtered.push_back(*it);
+				it = statsd_metrics.erase(it);
+				found = true;
+				if(filtered.size() >= limit) { break; }
+			}
+		}
+		if(filtered.size() >= limit)
+		{
+			statsd_metrics.clear();
+			std::copy(filtered.begin(), filtered.end(), std::back_inserter(statsd_metrics));
+			return;
+		}
+		if(!found) { ++it; }
+	}
+	// priority did not go over limit, insert the leftover non-priority metrics
+	for(const auto& metric : statsd_metrics)
+	{
+		filtered.push_back(metric);
+		if(filtered.size() >= limit) { break; }
+	}
+	statsd_metrics.clear();
+	std::copy(filtered.begin(), filtered.end(), std::back_inserter(statsd_metrics));
+}
+
+unsigned sinsp_analyzer::emit_statsd(statsd_metric::list_t &statsd_metrics, draiosproto::statsd_info *statsd_info,
+					   unsigned limit, const std::set<std::string>& priority)
+{
+	if(statsd_metrics.size() > limit)
+	{
+		filter_statsd(statsd_metrics, limit, priority);
+	}
 	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{

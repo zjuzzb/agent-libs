@@ -16,6 +16,8 @@ class statsd_metric
 {
 public:
 #ifndef _WIN32
+	typedef vector<statsd_metric> list_t;
+
 	class parse_exception: public sinsp_exception
 	{
 	public:
@@ -109,7 +111,7 @@ class statsite_proxy
 {
 public:
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
-	unordered_map<string, vector<statsd_metric>> read_metrics();
+	unordered_map<string, statsd_metric::list_t> read_metrics();
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:

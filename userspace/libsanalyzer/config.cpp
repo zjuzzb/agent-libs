@@ -486,6 +486,16 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
+const std::set<std::string>& sinsp_configuration::get_statsd_priority() const
+{
+	return m_statsd_priority;
+}
+
+void sinsp_configuration::set_statsd_priority(const std::set<std::string>& value)
+{
+	m_statsd_priority = value;
+}
+
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
 	if(sought_url.empty())

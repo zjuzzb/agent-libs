@@ -407,8 +407,10 @@ VISIBILITY_PRIVATE
 	void get_statsd();
 
 #ifndef _WIN32
-	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-						   unsigned limit);
+	static void filter_statsd(vector<statsd_metric>& statsd_metrics, unsigned limit,
+							  const std::set<std::string>& priority);
+	static unsigned emit_statsd(vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
+								unsigned limit, const std::set<std::string>& priority);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}
@@ -574,7 +576,7 @@ VISIBILITY_PRIVATE
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
-	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
+	unordered_map<string, statsd_metric::list_t> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
 	vector<app_check> m_app_checks;
