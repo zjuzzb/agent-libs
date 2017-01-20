@@ -27,6 +27,11 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	uint64_t max_disk_size,
 	uint64_t saturation_inactivity_pause_ns)
 {
+	lo(sinsp_logger::SEV_INFO, "memdump: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64 ", saturation_inactivity_pause_ns=%" PRIu64,
+		bufsize, 
+		max_disk_size,
+		saturation_inactivity_pause_ns);
+
 	m_max_disk_size = max_disk_size;
 	m_saturation_inactivity_pause_ns = saturation_inactivity_pause_ns;
 
@@ -226,8 +231,8 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 
 			if(toobig)
 			{
-				m_saturation_inactivity_start_time = ts;
-				lo(sinsp_logger::SEV_INFO, "memdump: dump closed bacause too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns", 
+				m_saturation_inactivity_start_time = ts;	
+				lo(sinsp_logger::SEV_INFO, "memdump: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns", 
 					m_max_disk_size,
 					m_saturation_inactivity_pause_ns);
 			}
