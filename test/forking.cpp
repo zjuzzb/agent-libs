@@ -1074,6 +1074,11 @@ static int stop_sinsp_and_exit(void *arg)
 
 	inspector->stop_capture();
 
+	// Wait 5 seconds. This ensures that the state for this
+	// process will be considered stale when the second process
+	// with the same pid runs.
+	sleep(5);
+
 	return 0;
 }
 
