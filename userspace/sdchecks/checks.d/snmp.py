@@ -51,14 +51,13 @@ class SnmpCheck(AgentCheck):
     DEFAULT_TIMEOUT = 1
     SC_STATUS = 'snmp.can_check'
 
-    def __init__(self, name, init_config, agentConfig, instances=None):
-       # for instance in instances:
-       #     if 'name' not in instance:
-       #         instance['name'] = self._get_instance_key(instance)
-       #     instance['skip_event'] = True
+    def __init__(self, name, init_config, agentConfig, instances):
+        for instance in instances:
+            if 'name' not in instance:
+                instance['name'] = self._get_instance_key(instance)
+            instance['skip_event'] = True
 
         self.generators = {}
-        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
         # Set OID batch size
         self.oid_batch_size = int(init_config.get("oid_batch_size", DEFAULT_OID_BATCH_SIZE))
@@ -71,7 +70,7 @@ class SnmpCheck(AgentCheck):
             self.ignore_nonincreasing_oid = _is_affirmative(
                 init_config.get("ignore_nonincreasing_oid", False))
 
-        #AgentCheck.__init__(self, name, init_config, agentConfig, instances=None)
+        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
     def _load_conf(self, instance):
         tags = instance.get("tags", [])
@@ -304,6 +303,8 @@ class SnmpCheck(AgentCheck):
 
     def check(self, instance):
         statuses = self._check(instance)
+        for name, status, msg in statuses:
+            self.report_as_service_check(name, status, instance, msg)
 
     def _check(self, instance):
         '''
@@ -394,7 +395,6 @@ class SnmpCheck(AgentCheck):
                                          queried_oid)
                         continue
                 name = metric.get('name', 'unnamed_metric')
-                print('Submit metric called with %s and value %f' %(name, value))
                 self.submit_metric(name, value, forced_type, tags)
 
     def report_table_metrics(self, metrics, results, tags):
