@@ -22,7 +22,7 @@ requests==2.6.2
 httplib2==0.9
 
 # checks.d/kafka_consumer.py
-kafka-python==0.9.3
+kafka-python==0.9.5
 
 # checks.d/postgres.py
 pg8000==1.10.2
