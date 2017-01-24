@@ -51,11 +51,14 @@ class SnmpCheck(AgentCheck):
     DEFAULT_TIMEOUT = 1
     SC_STATUS = 'snmp.can_check'
 
-    def __init__(self, name, init_config, agentConfig, instances):
-        for instance in instances:
-            if 'name' not in instance:
-                instance['name'] = self._get_instance_key(instance)
-            instance['skip_event'] = True
+    def __init__(self, name, init_config, agentConfig, instances=None):
+        # XXX this is only used by removed NetworkCheck parallelism code,
+        # so it's safe that it's always a NOP for the default arg
+        if instances:
+            for instance in instances:
+                if 'name' not in instance:
+                    instance['name'] = self._get_instance_key(instance)
+                instance['skip_event'] = True
 
         self.generators = {}
 
