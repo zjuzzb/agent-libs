@@ -1045,7 +1045,11 @@ TEST_F(sys_call_test, fs_dup)
 			}
 			else if(callnum == 8)
 			{
+#ifdef __x86_64__
 				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+#else
+				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
+#endif
 				callnum++;				
 			}
 			else if(callnum == 10)
@@ -1349,8 +1353,13 @@ TEST_F(sys_call_test, fs_sendfile_failed)
 		if(type == PPME_SYSCALL_SENDFILE_E)
 		{
 			EXPECT_NO_THROW({
+#ifdef __x86_64__
 				EXPECT_EQ("4294967295", e->get_param_value_str("out_fd", false));
 				EXPECT_EQ("4294967294", e->get_param_value_str("in_fd", false));
+#else
+				EXPECT_EQ("-1", e->get_param_value_str("out_fd", false));
+				EXPECT_EQ("-2", e->get_param_value_str("in_fd", false));
+#endif
 				EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
 				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
 			});
