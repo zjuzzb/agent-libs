@@ -97,12 +97,20 @@ if [ ! -z "$ADDITIONAL_CONF" ]; then
 	fi
 fi
 
+if [ ! -z "$RUN_MODE" ]; then
+	if ! grep ^run_mode: $CONFIG_FILE > /dev/null 2>&1; then
+		echo "run_mode: $RUN_MODE" >> $CONFIG_FILE
+	else
+		sed -i "s/^run_mode:.*/run_mode: $RUN_MODE/g" $CONFIG_FILE
+	fi
+fi
+
 echo "* Mounting memory cgroup fs"
 mkdir -p $SYSDIG_HOST_ROOT/cgroup/memory
 mount -t cgroup -o memory,ro none $SYSDIG_HOST_ROOT/cgroup/memory
 
 if [ $# -eq 0 ]; then
-	if ! /opt/draios/bin/sysdigcloud-probe-loader; then
+	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader; then
 		exit 1
 	fi
 

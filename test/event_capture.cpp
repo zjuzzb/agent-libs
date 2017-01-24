@@ -39,7 +39,14 @@ void event_capture::capture()
 	m_param.m_inspector = m_inspector;
 	try
 	{
-		m_inspector->open(ONE_SECOND_MS);
+		if(m_mode == SCAP_MODE_NODRIVER)
+		{
+			m_inspector->open_nodriver();
+		}
+		else
+		{
+			m_inspector->open(ONE_SECOND_MS);
+		}
 	}
 	catch(...)
 	{
@@ -57,20 +64,24 @@ void event_capture::capture()
 	m_inspector->set_debug_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
 
-	m_dump_filename = string("./captures/") + test_info->test_case_name() + "_" + test_info->name() + ".scap";
-	try
+	if(m_mode != SCAP_MODE_NODRIVER)
 	{
-		m_inspector->autodump_start(m_dump_filename, false);
+		m_dump_filename = string("./captures/") + test_info->test_case_name() + "_" + test_info->name() + ".scap";
+		try
+		{
+			m_inspector->autodump_start(m_dump_filename, false);
+		}
+		catch(...)
+		{
+			m_start_failed = true;
+			m_start_failure_message = string("couldn't start dumping to ") + m_dump_filename;
+			m_capture_started.set();
+			delete m_inspector;
+			delete m_analyzer;
+			return;
+		}
 	}
-	catch(...)
-	{
-		m_start_failed = true;
-		m_start_failure_message = string("couldn't start dumping to ") + m_dump_filename;
-		m_capture_started.set();
-		delete m_inspector;
-		delete m_analyzer;
-		return;
-	}
+
 	bool signaled_start = false;
 	sinsp_evt *event;
 	bool result = true;
@@ -88,35 +99,40 @@ void event_capture::capture()
 		}
 	}
 	
-	m_inspector->stop_capture();
-	uint32_t n_timeouts = 0;
-	while(result && !::testing::Test::HasFatalFailure())
+	if(m_mode != SCAP_MODE_NODRIVER)
 	{
-		next_result = m_inspector->next(&event);
-		if(next_result == SCAP_TIMEOUT)
+		m_inspector->stop_capture();
+		
+		uint32_t n_timeouts = 0;
+		while(result && !::testing::Test::HasFatalFailure())
 		{
-			n_timeouts++;
-
-			if(n_timeouts < 3)
+			next_result = m_inspector->next(&event);
+			if(next_result == SCAP_TIMEOUT)
 			{
-				continue;
+				n_timeouts++;
+
+				if(n_timeouts < 3)
+				{
+					continue;
+				}
+				else
+				{
+					break;
+				}
 			}
-			else
+
+			if(next_result != SCAP_SUCCESS)
 			{
 				break;
 			}
+			result = handle_event(event);
 		}
-
-		if(next_result != SCAP_SUCCESS)
+		while(SCAP_SUCCESS == m_inspector->next(&event))
 		{
-			break;
+			// just consume the events
 		}
-		result = handle_event(event);
 	}
-	while(SCAP_SUCCESS == m_inspector->next(&event))
-	{
-		// just consume the events
-	}
+	
 	delete m_inspector;
 	delete m_analyzer;
 	m_capture_stopped.set();
