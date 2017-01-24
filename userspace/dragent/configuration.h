@@ -417,6 +417,11 @@ private:
 	DigestEngine::Digest m_digest;
 };
 
+enum class dragent_mode_t {
+	STANDARD,
+	NODRIVER
+};
+
 class dragent_configuration
 {
 public:
@@ -562,6 +567,7 @@ public:
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
+	dragent_mode_t m_mode;
 
 	bool java_present()
 	{
@@ -581,7 +587,7 @@ public:
 	// error.
 	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
 
-        void set_auto_config_directory(const string &config_directory);
+	void set_auto_config_directory(const string &config_directory);
 private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
