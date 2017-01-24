@@ -226,8 +226,8 @@ TEST_F(sys_call_test, container_clone_nspid_ioctl)
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		if(tinfo)
 		{
-			ASSERT_TRUE(tinfo->m_vtid == 1);
-			ASSERT_TRUE(tinfo->m_vpid == 1);
+			EXPECT_EQ(1, tinfo->m_vtid);
+			EXPECT_EQ(1, tinfo->m_vpid);
 
 			done = true;
 		}
