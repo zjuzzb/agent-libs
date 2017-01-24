@@ -129,8 +129,8 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	string m_comm;
-	string m_parent_comm;
+	uint32_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint32_t m_distance_from_root_shell; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
 };
@@ -402,7 +402,7 @@ VISIBILITY_PRIVATE
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-	void emit_executed_commands();
+	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();
 
 #ifndef _WIN32
@@ -530,7 +530,7 @@ VISIBILITY_PRIVATE
 	//
 	// Command list
 	//
-	vector<sinsp_executed_command> m_executed_commands;
+	unordered_map<string, vector<sinsp_executed_command> > m_executed_commands;
 
 	//
 	// Container metrics

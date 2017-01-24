@@ -241,9 +241,13 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
-	tinfo->m_ainfo->m_called_execve = true;
+	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
+	tainfo->m_called_execve = true;
 
-	/*sinsp_executed_command cmdinfo;
+	//
+	// Allocated an executed command storage info and initialize it
+	//
+	sinsp_executed_command cmdinfo;
 
 	if(tinfo->m_clone_ts != 0)
 	{
@@ -254,7 +258,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		cmdinfo.m_ts = evt->get_ts();
 	}
 
-	cmdinfo.m_comm = tinfo->m_comm;
 	cmdinfo.m_cmdline = tinfo->m_comm;
 	cmdinfo.m_exe = tinfo->m_exe;
 
@@ -263,43 +266,55 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	uint32_t nargs = tinfo->m_args.size();
 
-	for(j = 0; j < nargs; j++)
+	for(uint32_t j = 0; j < nargs; j++)
 	{
 		cmdinfo.m_cmdline += ' ';
 		cmdinfo.m_cmdline += tinfo->m_args[j];
-	}*/
+	}
 
-
+	//
+	// Navigate the parent processes to determine if this is the descendent of a shell
+	// and if yes what's the shell ID
+	//
 /*
-{
 	sinsp_threadinfo* parentinfo = tinfo;
-
-	while(1)
+	while(true)
 	{
 		parentinfo = parentinfo->get_parent_thread();
-		string pname;
-		if(parentinfo != NULL)
-		{
-			cmdinfo.m_parent_comm = parentinfo->m_comm;
-		}
-		else
+		if(parentinfo == NULL)
 		{
 			break;
 		}
+
+		thread_analyzer_info* ptainfo = parentinfo->m_ainfo;
+
+		if(ptainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_CHILD_OF_SHELL)
+		{
+			//
+			// This thread has an ancestor which is the descendent of a shell.
+			//
+			return;
+		}
+		else if(ptainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_NOT_CHILD_OF_SHELL)
+		{
+			//
+			// This thread has an ancestor which is NOT the descendent of a shell.
+			// This means that we don't add it and we stop here. 
+			//
+			return;
+		}
+
+		uint32_t cl = parentinfo->m_comm.size();
+		if(parentinfo->m_comm[cl - 2] == 's' && parentinfo->m_comm[cl - 1] == 'h')
+		{
+			ptainfo->m_th_analysis_flags |= AF_IS_NOT_CHILD_OF_SHELL;
+		}		
 	}
-}
 */
-
 	//
-	// Lookup the parent process
+	// Determine if this command was executed in a pipe and if yes
+	// where it belongs in the pipe
 	//
-	/*sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
-	string pname;
-	if(parentinfo != NULL)
-	{
-		cmdinfo.m_parent_comm = parentinfo->m_comm;
-	}
-
 	sinsp_fdinfo_t* fd0 = tinfo->get_fd(0);
 	sinsp_fdinfo_t* fd1 = tinfo->get_fd(1);
 
@@ -319,7 +334,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	m_analyzer->m_executed_commands.push_back(cmdinfo);*/
+	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);
 
 	return;
 }

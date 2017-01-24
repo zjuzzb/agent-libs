@@ -121,10 +121,10 @@ message process_details {
 //
 message command_details {
     required uint64 timestamp = 1;
-    required uint32 count = 2; // How many times this command has been repeated during the sample interval
+    optional uint32 count = 2; // How many times this command has been repeated during the sample interval
     required string cmdline = 3; // Program command line (e.g. "top -d1")
-    required string exe = 4; // Full executable name (e.g. "/bin/top")
-    optional string parentcomm = 5; // Name of the command that launched this one (e.g. "bash")
+    optional uint64 login_shell_id = 4; // ID of the login shell (same as in the spy_users chisel)
+    optional uint32 login_shell_distance = 5; // Distance from the login shell (same as in the spy_users chisel)
 }
 
 //
@@ -597,6 +597,7 @@ message container {
     repeated network_by_port network_by_serverports = 22;
     optional string mesos_task_id = 23;
     optional string image_id = 24;
+    repeated command_details commands = 25; // List of commands executed in this container during the sample.
 }
 
 //

@@ -2862,23 +2862,23 @@ bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_execute
 	return (src.m_ts < dst.m_ts);
 }
 
-void sinsp_analyzer::emit_executed_commands()
+void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands)
 {
 	uint32_t j;
 	int32_t last_pipe_head = -1;
 
-	if(m_executed_commands.size() != 0)
+	if(commands->size() != 0)
 	{
-		sort(m_executed_commands.begin(),
-			m_executed_commands.end(),
+		sort(commands->begin(),
+			commands->end(),
 			executed_command_cmp);
 
 		//
 		// Consolidate command with pipes
 		//
-		for(j = 0; j < m_executed_commands.size(); j++)
+		for(j = 0; j < commands->size(); j++)
 		{
-			uint32_t flags = m_executed_commands[j].m_flags;
+			uint32_t flags = commands->at(j).m_flags;
 
 			if(flags & sinsp_executed_command::FL_PIPE_HEAD)
 			{
@@ -2888,9 +2888,9 @@ void sinsp_analyzer::emit_executed_commands()
 			{
 				if(last_pipe_head != -1)
 				{
-					m_executed_commands[last_pipe_head].m_cmdline += " | ";
-					m_executed_commands[last_pipe_head].m_cmdline += m_executed_commands[j].m_cmdline;
-					m_executed_commands[j].m_flags |= sinsp_executed_command::FL_EXCLUDED;
+					commands->at(last_pipe_head).m_cmdline += " | ";
+					commands->at(last_pipe_head).m_cmdline += commands->at(j).m_cmdline;
+					commands->at(j).m_flags |= sinsp_executed_command::FL_EXCLUDED;
 				}
 				else
 				{
@@ -2911,7 +2911,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 		vector<sinsp_executed_command>::iterator it;
 
-		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		for(it = commands->begin(); it != commands->end(); ++it)
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
@@ -2923,7 +2923,7 @@ void sinsp_analyzer::emit_executed_commands()
 		{
 			map<string, sinsp_executed_command*> cmdlines;
 
-			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+			for(it = commands->begin(); it != commands->end(); ++it)
 			{
 				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 				{
@@ -2946,7 +2946,7 @@ void sinsp_analyzer::emit_executed_commands()
 		//
 		cmdcnt = 0;
 
-		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		for(it = commands->begin(); it != commands->end(); ++it)
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
@@ -2958,7 +2958,7 @@ void sinsp_analyzer::emit_executed_commands()
 		{
 			map<string, sinsp_executed_command*> exes;
 
-			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+			for(it = commands->begin(); it != commands->end(); ++it)
 			{
 				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 				{
@@ -2978,7 +2978,7 @@ void sinsp_analyzer::emit_executed_commands()
 		}
 
 		cmdcnt = 0;
-		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		for(it = commands->begin(); it != commands->end(); ++it)
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
@@ -2989,19 +2989,26 @@ void sinsp_analyzer::emit_executed_commands()
 					break;
 				}
 
-				draiosproto::command_details* cd = m_metrics->add_commands();
+				draiosproto::command_details* cd;
+
+				if(host_dest)
+				{
+					ASSERT(container_dest == NULL);
+					cd = host_dest->add_commands();
+				}
+				else
+				{
+					ASSERT(host_dest == NULL);
+					ASSERT(container_dest != NULL);
+					cd = container_dest->add_commands();
+				}					
 
 				cd->set_timestamp(it->m_ts);
-				cd->set_exe(it->m_exe);
-				if(it->m_parent_comm != "")
-				{
-					cd->set_parentcomm(it->m_parent_comm);
-				}
 				cd->set_count(it->m_count);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{
-					cd->set_cmdline(it->m_comm);
+					cd->set_cmdline(it->m_exe);
 				}
 				else
 				{
@@ -3313,9 +3320,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			double loadavg[3] = {0};
 			if(getloadavg(loadavg, 3) != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
-				m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
-				m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
+				if(m_inspector->is_live())
+				{
+					m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
+					m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
+					m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
+				}
 			}
 			else
 			{
@@ -3388,8 +3398,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			//
 			// Executed commands
+			// XXX Do this only if command lines capture is enabled
 			//
-			//emit_executed_commands();
+			emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
 
 			//
 			// Kubernetes
@@ -5111,6 +5122,16 @@ void sinsp_analyzer::emit_container(const string &container_id, unsigned* statsd
 			auto proto_fs = container->add_mounts();
 			it->to_protobuf(proto_fs);
 		}
+	}
+
+	//
+	// Emit the executed commands for this container
+	//
+	auto ecit = m_executed_commands.find(container_id);
+
+	if(ecit != m_executed_commands.end())
+	{
+		emit_executed_commands(NULL, container, &(ecit->second));
 	}
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,

@@ -2060,7 +2060,7 @@ class command_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 timestamp() const;
   inline void set_timestamp(::google::protobuf::uint64 value);
 
-  // required uint32 count = 2;
+  // optional uint32 count = 2;
   inline bool has_count() const;
   inline void clear_count();
   static const int kCountFieldNumber = 2;
@@ -2079,29 +2079,19 @@ class command_details : public ::google::protobuf::Message {
   inline ::std::string* release_cmdline();
   inline void set_allocated_cmdline(::std::string* cmdline);
 
-  // required string exe = 4;
-  inline bool has_exe() const;
-  inline void clear_exe();
-  static const int kExeFieldNumber = 4;
-  inline const ::std::string& exe() const;
-  inline void set_exe(const ::std::string& value);
-  inline void set_exe(const char* value);
-  inline void set_exe(const char* value, size_t size);
-  inline ::std::string* mutable_exe();
-  inline ::std::string* release_exe();
-  inline void set_allocated_exe(::std::string* exe);
+  // optional uint64 login_shell_id = 4;
+  inline bool has_login_shell_id() const;
+  inline void clear_login_shell_id();
+  static const int kLoginShellIdFieldNumber = 4;
+  inline ::google::protobuf::uint64 login_shell_id() const;
+  inline void set_login_shell_id(::google::protobuf::uint64 value);
 
-  // optional string parentcomm = 5;
-  inline bool has_parentcomm() const;
-  inline void clear_parentcomm();
-  static const int kParentcommFieldNumber = 5;
-  inline const ::std::string& parentcomm() const;
-  inline void set_parentcomm(const ::std::string& value);
-  inline void set_parentcomm(const char* value);
-  inline void set_parentcomm(const char* value, size_t size);
-  inline ::std::string* mutable_parentcomm();
-  inline ::std::string* release_parentcomm();
-  inline void set_allocated_parentcomm(::std::string* parentcomm);
+  // optional uint32 login_shell_distance = 5;
+  inline bool has_login_shell_distance() const;
+  inline void clear_login_shell_distance();
+  static const int kLoginShellDistanceFieldNumber = 5;
+  inline ::google::protobuf::uint32 login_shell_distance() const;
+  inline void set_login_shell_distance(::google::protobuf::uint32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.command_details)
  private:
@@ -2111,18 +2101,18 @@ class command_details : public ::google::protobuf::Message {
   inline void clear_has_count();
   inline void set_has_cmdline();
   inline void clear_has_cmdline();
-  inline void set_has_exe();
-  inline void clear_has_exe();
-  inline void set_has_parentcomm();
-  inline void clear_has_parentcomm();
+  inline void set_has_login_shell_id();
+  inline void clear_has_login_shell_id();
+  inline void set_has_login_shell_distance();
+  inline void clear_has_login_shell_distance();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint64 timestamp_;
   ::std::string* cmdline_;
-  ::std::string* exe_;
-  ::std::string* parentcomm_;
   ::google::protobuf::uint32 count_;
+  ::google::protobuf::uint32 login_shell_distance_;
+  ::google::protobuf::uint64 login_shell_id_;
 
   mutable int _cached_size_;
   ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
@@ -6520,6 +6510,18 @@ class container : public ::google::protobuf::Message {
   inline ::std::string* release_image_id();
   inline void set_allocated_image_id(::std::string* image_id);
 
+  // repeated .draiosproto.command_details commands = 25;
+  inline int commands_size() const;
+  inline void clear_commands();
+  static const int kCommandsFieldNumber = 25;
+  inline const ::draiosproto::command_details& commands(int index) const;
+  inline ::draiosproto::command_details* mutable_commands(int index);
+  inline ::draiosproto::command_details* add_commands();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >&
+      commands() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
+      mutable_commands();
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6576,10 +6578,11 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::std::string* mesos_task_id_;
   ::std::string* image_id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(21 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -14036,7 +14039,7 @@ inline void command_details::set_timestamp(::google::protobuf::uint64 value) {
   timestamp_ = value;
 }
 
-// required uint32 count = 2;
+// optional uint32 count = 2;
 inline bool command_details::has_count() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -14128,144 +14131,48 @@ inline void command_details::set_allocated_cmdline(::std::string* cmdline) {
   }
 }
 
-// required string exe = 4;
-inline bool command_details::has_exe() const {
+// optional uint64 login_shell_id = 4;
+inline bool command_details::has_login_shell_id() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void command_details::set_has_exe() {
+inline void command_details::set_has_login_shell_id() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void command_details::clear_has_exe() {
+inline void command_details::clear_has_login_shell_id() {
   _has_bits_[0] &= ~0x00000008u;
 }
-inline void command_details::clear_exe() {
-  if (exe_ != &::google::protobuf::internal::kEmptyString) {
-    exe_->clear();
-  }
-  clear_has_exe();
+inline void command_details::clear_login_shell_id() {
+  login_shell_id_ = GOOGLE_ULONGLONG(0);
+  clear_has_login_shell_id();
 }
-inline const ::std::string& command_details::exe() const {
-  return *exe_;
+inline ::google::protobuf::uint64 command_details::login_shell_id() const {
+  return login_shell_id_;
 }
-inline void command_details::set_exe(const ::std::string& value) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  exe_->assign(value);
-}
-inline void command_details::set_exe(const char* value) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  exe_->assign(value);
-}
-inline void command_details::set_exe(const char* value, size_t size) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  exe_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* command_details::mutable_exe() {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
-  }
-  return exe_;
-}
-inline ::std::string* command_details::release_exe() {
-  clear_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = exe_;
-    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void command_details::set_allocated_exe(::std::string* exe) {
-  if (exe_ != &::google::protobuf::internal::kEmptyString) {
-    delete exe_;
-  }
-  if (exe) {
-    set_has_exe();
-    exe_ = exe;
-  } else {
-    clear_has_exe();
-    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
+inline void command_details::set_login_shell_id(::google::protobuf::uint64 value) {
+  set_has_login_shell_id();
+  login_shell_id_ = value;
 }
 
-// optional string parentcomm = 5;
-inline bool command_details::has_parentcomm() const {
+// optional uint32 login_shell_distance = 5;
+inline bool command_details::has_login_shell_distance() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void command_details::set_has_parentcomm() {
+inline void command_details::set_has_login_shell_distance() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void command_details::clear_has_parentcomm() {
+inline void command_details::clear_has_login_shell_distance() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void command_details::clear_parentcomm() {
-  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
-    parentcomm_->clear();
-  }
-  clear_has_parentcomm();
+inline void command_details::clear_login_shell_distance() {
+  login_shell_distance_ = 0u;
+  clear_has_login_shell_distance();
 }
-inline const ::std::string& command_details::parentcomm() const {
-  return *parentcomm_;
+inline ::google::protobuf::uint32 command_details::login_shell_distance() const {
+  return login_shell_distance_;
 }
-inline void command_details::set_parentcomm(const ::std::string& value) {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
-  }
-  parentcomm_->assign(value);
-}
-inline void command_details::set_parentcomm(const char* value) {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
-  }
-  parentcomm_->assign(value);
-}
-inline void command_details::set_parentcomm(const char* value, size_t size) {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
-  }
-  parentcomm_->assign(reinterpret_cast<const char*>(value), size);
-}
-inline ::std::string* command_details::mutable_parentcomm() {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
-  }
-  return parentcomm_;
-}
-inline ::std::string* command_details::release_parentcomm() {
-  clear_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    return NULL;
-  } else {
-    ::std::string* temp = parentcomm_;
-    parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-    return temp;
-  }
-}
-inline void command_details::set_allocated_parentcomm(::std::string* parentcomm) {
-  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
-    delete parentcomm_;
-  }
-  if (parentcomm) {
-    set_has_parentcomm();
-    parentcomm_ = parentcomm;
-  } else {
-    clear_has_parentcomm();
-    parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
-  }
+inline void command_details::set_login_shell_distance(::google::protobuf::uint32 value) {
+  set_has_login_shell_distance();
+  login_shell_distance_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -20349,6 +20256,31 @@ inline void container::set_allocated_image_id(::std::string* image_id) {
     clear_has_image_id();
     image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// repeated .draiosproto.command_details commands = 25;
+inline int container::commands_size() const {
+  return commands_.size();
+}
+inline void container::clear_commands() {
+  commands_.Clear();
+}
+inline const ::draiosproto::command_details& container::commands(int index) const {
+  return commands_.Get(index);
+}
+inline ::draiosproto::command_details* container::mutable_commands(int index) {
+  return commands_.Mutable(index);
+}
+inline ::draiosproto::command_details* container::add_commands() {
+  return commands_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >&
+container::commands() const {
+  return commands_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
+container::mutable_commands() {
+  return &commands_;
 }
 
 // -------------------------------------------------------------------
