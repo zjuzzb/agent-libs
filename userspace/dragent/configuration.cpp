@@ -850,6 +850,8 @@ void dragent_configuration::init(Application* app)
 		m_enable_falco_engine = false;
 		m_falco_baselining_enabled = false;
 		m_sysdig_capture_enabled = false;
+		// our dropping mechanism can't help in this mode
+		m_autodrop_enabled = false;
 	}
 }
 
