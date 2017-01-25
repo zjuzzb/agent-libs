@@ -1578,41 +1578,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				main_tinfo->m_exe = proc_args.at(0);
 				main_tinfo->m_args.clear();
 				main_tinfo->m_args.insert(main_tinfo->m_args.begin(), ++proc_args.begin(), proc_args.end());
-/*<<<<<<< HEAD
-
-				if(!m_k8s_proc_detected)
-				{
-					m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
-				}
-				if(m_k8s_proc_detected && try_detect_k8s)
-				{
-					k8s_detected = !(detect_k8s(main_tinfo).empty());
-				}
-
-				// mesos autodetection flagging, happens only if mesos is not explicitly configured
-				// we only record the relevant mesos process thread ID here; later, this flag is detected by
-				// emit_mesos() and, if process is found to stil be alive, the appropriate action is taken
-				// (configuring appchecks and connecting to API server)
-				if(m_configuration->get_mesos_state_original_uri().empty() &&
-					m_configuration->get_mesos_autodetect_enabled())
-				{
-					uint32_t port = get_mesos_api_server_port(main_tinfo);
-					if(port)
-					{
-						// always prefer master to slave when they are both found on the same host
-						if(port == MESOS_MASTER_PORT)
-						{
-							m_mesos_master_tid = main_tinfo->m_tid;
-							m_mesos_slave_tid = -1;
-						}
-						else if((port == MESOS_SLAVE_PORT) && (m_mesos_master_tid == -1))
-						{
-							m_mesos_slave_tid = main_tinfo->m_tid;
-						}
-					}
-				}
-=======
->>>>>>> dev*/
 			}
 			main_tinfo->compute_program_hash();
 			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
