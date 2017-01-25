@@ -1300,6 +1300,26 @@ std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
 	return k8s_api_server;
 }
 
+uint32_t sinsp_analyzer::get_mesos_api_server_port(sinsp_threadinfo* main_tinfo)
+{
+	if(main_tinfo)
+	{
+			if(main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+			{
+					return MESOS_MASTER_PORT;
+			}
+			else if(main_tinfo->m_exe.find("mesos-slave") != std::string::npos)
+			{
+					return MESOS_SLAVE_PORT;
+			}
+			else if(main_tinfo->m_exe.find("mesos-agent") != std::string::npos)
+			{
+					return MESOS_SLAVE_PORT;
+			}
+	}
+	return 0;
+}
+
 std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_t port)
 {
 	if(!m_mesos)
@@ -1313,9 +1333,8 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_
 			// If the port is not 5050, this uri is for a
 			// slave/agent, in which case we only record
 			// the uri to pass along to the app check.
-			if(port == 5050)
+			if(port == MESOS_MASTER_PORT)
 			{
-
 				g_logger.log("Mesos API server set to: " + uri(mesos_api_server).to_string(false), sinsp_logger::SEV_INFO);
 				m_configuration->set_mesos_follow_leader(true);
 				if(m_configuration->get_marathon_uris().empty())
@@ -1341,34 +1360,49 @@ std::string& sinsp_analyzer::detect_mesos(std::string& mesos_api_server, uint32_
 	return mesos_api_server;
 }
 
+sinsp_threadinfo* sinsp_analyzer::get_main_thread_info(int64_t& tid)
+{
+	if(tid != -1)
+	{
+		auto it = m_inspector->m_thread_manager->m_threadtable.find(tid);
+		if(it != m_inspector->m_thread_manager->m_threadtable.end())
+		{
+			return it->second.get_main_thread();
+		}
+		else
+		{
+			tid = -1;
+		}
+	}
+	return nullptr;
+}
+
 std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 {
-	uint32_t port = 0;
-
 	string mesos_api_server = m_configuration->get_mesos_state_uri();
 	if(!m_mesos)
 	{
 		if((mesos_api_server.empty() || m_configuration->get_mesos_state_original_uri().empty()) &&
 		   m_configuration->get_mesos_autodetect_enabled())
 		{
-			if(main_tinfo && main_tinfo->m_exe.find("mesos-master") != std::string::npos)
+			if(!main_tinfo)
 			{
-				g_logger.log("Mesos: Detected 'mesos-master' process", sinsp_logger::SEV_INFO);
-				port = 5050;
+				main_tinfo = get_main_thread_info(m_mesos_master_tid);
+				if(!main_tinfo)
+				{
+					main_tinfo = get_main_thread_info(m_mesos_slave_tid);
+				}
 			}
-			else if(main_tinfo && (main_tinfo->m_exe.find("mesos-slave") != std::string::npos ||
-					       main_tinfo->m_exe.find("mesos-agent") != std::string::npos))
+			if(main_tinfo)
 			{
-				g_logger.log("Mesos: Detected 'mesos-slave'/'mesos-agent' process", sinsp_logger::SEV_INFO);
-				port = 5051;
-			}
-			if(port != 0)
-			{
-				detect_mesos(mesos_api_server, port);
+				uint32_t port = get_mesos_api_server_port(main_tinfo);
+				if(port != 0)
+				{
+					detect_mesos(mesos_api_server, port);
+				}
 			}
 		}
 	}
-
 	return mesos_api_server;
 }
 
@@ -1483,15 +1517,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		cur_global_total_jiffies = 0;
 	}
 
-	bool try_detect_mesos = (m_configuration->get_mesos_autodetect_enabled() &&
-				 m_configuration->get_mesos_state_original_uri().empty() &&
-				 m_configuration->get_mesos_state_uri().empty() &&
-				 !m_mesos);
-
 	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
 						   m_configuration->get_k8s_api_server().empty());
-	bool mesos_detected = false, k8s_detected = false;
-	static bool mesos_been_here = false, k8s_been_here = false;
+	bool k8s_detected = false;
+	static bool k8s_been_here = false;
 	if(m_k8s_proc_detected && !m_configuration->get_k8s_api_server().empty())
 	{
 		m_k8s_proc_detected = false;
@@ -1565,9 +1594,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			{
 				k8s_detected = !(detect_k8s(main_tinfo).empty());
 			}
-			if(try_detect_mesos)
+			// mesos autodetection flagging, happens only if mesos is not explicitly configured
+			// we only record the relevant mesos process thread ID here; later, this flag is detected by
+			// emit_mesos() and, if process is found to stil be alive, the appropriate action is taken
+			// (configuring appchecks and connecting to API server)
+			if(m_configuration->get_mesos_state_original_uri().empty() &&
+				m_configuration->get_mesos_autodetect_enabled())
 			{
-				mesos_detected = !(detect_mesos(main_tinfo).empty());
+				uint32_t port = get_mesos_api_server_port(main_tinfo);
+				if(port)
+				{
+					// always prefer master to slave when they are both found on the same host
+					if(port == MESOS_MASTER_PORT)
+					{
+						m_mesos_master_tid = main_tinfo->m_tid;
+						m_mesos_slave_tid = -1;
+					}
+					else if((port == MESOS_SLAVE_PORT) && (m_mesos_master_tid == -1))
+					{
+						m_mesos_slave_tid = main_tinfo->m_tid;
+					}
+				}
 			}
 		}
 
@@ -1781,14 +1828,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 		}
 #endif
-	}
-
-	if(!mesos_been_here && try_detect_mesos && !mesos_detected)
-	{
-		mesos_been_here = true;
-		g_logger.log("Mesos API server not configured or auto-detected at this time; "
-					 "Mesos information may not be available.",
-					 sinsp_logger::SEV_INFO);
 	}
 
 	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
@@ -4561,12 +4600,7 @@ void sinsp_analyzer::emit_mesos()
 		}
 		else if(m_configuration->get_mesos_autodetect_enabled() && (m_prev_flush_time_ns - m_mesos_last_failure_ns) > MESOS_RETRY_ON_ERRORS_TIMEOUT_NS)
 		{
-			// Try the master port first and the
-			// slave/agent port if no master was found.
-			if (!detect_mesos(mesos_uri, 5050).empty())
-			{
-				detect_mesos(mesos_uri, 5051);
-			}
+			detect_mesos();
 		}
 	}
 	catch(std::exception& e)
