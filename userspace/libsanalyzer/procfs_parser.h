@@ -42,6 +42,21 @@ struct sinsp_proc_stat
 	uint64_t m_uptime = 0;
 };
 
+struct sinsp_proc_file_stats {
+	uint32_t m_syscr = 0;
+	uint32_t m_syscw = 0;
+	uint32_t m_read_bytes = 0;
+	uint32_t m_write_bytes = 0;
+
+	bool has_values() const
+	{
+		return m_syscr > 0 ||
+				m_syscw > 0 ||
+				m_read_bytes > 0 ||
+				m_write_bytes > 0;
+	}
+};
+
 class sinsp_procfs_parser
 {
 public:
@@ -66,11 +81,16 @@ public:
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
 	pair<uint32_t, uint32_t> read_network_interfaces_stats();
+	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
+													 uint64_t *old_last_out_bytes);
+	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
 private:
 	void lookup_memory_cgroup_dir();
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
+
+	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
 
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
