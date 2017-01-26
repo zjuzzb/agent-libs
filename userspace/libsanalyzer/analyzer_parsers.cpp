@@ -220,6 +220,32 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	}
 }
 
+//
+// This code tries to optimize the bacward navigation by caching the login
+// shell ID and the indentation factor. It's incomplete and currently 
+// commented as we determine if it's really useful.
+//
+#if 0
+void sinsp_analyzer_parsers::patch_ancestor_chain(vector<thread_analyzer_info*>* ancestor_chain, bool is_interactive, uint64_t session_id)
+{
+	for(vector<thread_analyzer_info*>::iterator a = ancestor_chain->begin(); a != ancestor_chain->end(); ++a)
+	{
+		if(is_interactive)
+		{
+			(*a)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_DESCENDENT_OF_SHELL;
+			(*a)->m_th_analysis_flags &= ~thread_analyzer_info::AF_IS_NOT_DESCENDENT_OF_SHELL;
+		}
+		else
+		{
+			(*a)->m_th_analysis_flags |= thread_analyzer_info::AF_IS_NOT_DESCENDENT_OF_SHELL;
+			(*a)->m_th_analysis_flags &= ~thread_analyzer_info::AF_IS_DESCENDENT_OF_SHELL;
+		}
+
+		(*a)->m_login_shell_id = session_id;
+	}
+}
+#endif
+
 void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
@@ -276,41 +302,75 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// Navigate the parent processes to determine if this is the descendent of a shell
 	// and if yes what's the shell ID
 	//
-/*
-	sinsp_threadinfo* parentinfo = tinfo;
-	while(true)
+	vector<thread_analyzer_info*> ancestor_chain;
+
+	sinsp_threadinfo* ttinfo = tinfo;
+	//bool shell_found = false;
+	uint32_t shell_dist = 0;
+	uint64_t login_shell_id = 0;
+
+	for(uint32_t j = 0; ; j++)
 	{
-		parentinfo = parentinfo->get_parent_thread();
-		if(parentinfo == NULL)
-		{
-			break;
-		}
+		thread_analyzer_info* ttainfo = ttinfo->m_ainfo;
+		ancestor_chain.push_back(ttainfo);
 
-		thread_analyzer_info* ptainfo = parentinfo->m_ainfo;
-
-		if(ptainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_CHILD_OF_SHELL)
+		//
+		// This code tries to optimize the bacward navigation by caching the login
+		// shell ID and the indentation factor. It's incomplete and currently 
+		// commented as we determine if it's really useful.
+		//
+#if 0
+		if(ttainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_DESCENDENT_OF_SHELL)
 		{
 			//
 			// This thread has an ancestor which is the descendent of a shell.
 			//
-			return;
+			patch_ancestor_chain(&ancestor_chain, true, ttainfo->m_login_shell_id);
+			break;
 		}
-		else if(ptainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_NOT_CHILD_OF_SHELL)
+		else if(ttainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_NOT_DESCENDENT_OF_SHELL)
 		{
 			//
 			// This thread has an ancestor which is NOT the descendent of a shell.
 			// This means that we don't add it and we stop here. 
 			//
+			patch_ancestor_chain(&ancestor_chain, false, 0);
 			return;
 		}
+#endif
 
-		uint32_t cl = parentinfo->m_comm.size();
-		if(parentinfo->m_comm[cl - 2] == 's' && parentinfo->m_comm[cl - 1] == 'h')
+		uint32_t cl = ttinfo->m_comm.size();
+		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
 		{
-			ptainfo->m_th_analysis_flags |= AF_IS_NOT_CHILD_OF_SHELL;
-		}		
+			//
+			// We found a shell. Patch the descendat but don't stop here since there might
+			// be another parent shell
+			//
+#if 0			
+			patch_ancestor_chain(&ancestor_chain, true, ttinfo->m_tid);
+			shell_found = true;
+#endif			
+			login_shell_id = ttinfo->m_tid;
+			shell_dist = j;
+		}
+
+		ttinfo = ttinfo->get_parent_thread();
+		if(ttinfo == NULL)
+		{
+#if 0
+			if(shell_found == false)
+			{
+				patch_ancestor_chain(&ancestor_chain, false, 0);
+			}
+#endif
+			break;
+		}
 	}
-*/
+
+	//tainfo->m_login_shell_distance = shell_dist;
+	cmdinfo.m_shell_id = login_shell_id;
+	cmdinfo.m_login_shell_distance = shell_dist;
+
 	//
 	// Determine if this command was executed in a pipe and if yes
 	// where it belongs in the pipe

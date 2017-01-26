@@ -129,8 +129,8 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	uint32_t m_shell_id; // this is equivalent to the shell ID in spy_users 
-	uint32_t m_distance_from_root_shell; // This is equivalent to the indentation in spy_users
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
 };

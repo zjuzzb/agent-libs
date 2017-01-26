@@ -3005,6 +3005,8 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 
 				cd->set_timestamp(it->m_ts);
 				cd->set_count(it->m_count);
+				cd->set_login_shell_id(it->m_shell_id);
+				cd->set_login_shell_distance(it->m_login_shell_distance);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{

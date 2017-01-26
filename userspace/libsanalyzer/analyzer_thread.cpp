@@ -114,6 +114,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_dynstate->m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
+	//m_login_shell_id = 0;
 }
 
 void thread_analyzer_info::destroy()
