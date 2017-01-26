@@ -286,6 +286,11 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	cmdinfo.m_cmdline = tinfo->m_comm;
 	cmdinfo.m_exe = tinfo->m_exe;
+	cmdinfo.m_comm = tinfo->m_comm;
+	cmdinfo.m_pid = tinfo->m_pid;
+	cmdinfo.m_ppid = tinfo->m_ptid;
+	cmdinfo.m_uid = tinfo->m_uid;
+	cmdinfo.m_cwd = tinfo->m_cwd;
 
 	//
 	// Build the arguments string

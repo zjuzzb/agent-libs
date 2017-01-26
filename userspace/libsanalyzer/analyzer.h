@@ -133,6 +133,11 @@ public:
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
+    string m_comm; // program executable name
+    uint64_t m_pid; // process pid
+    uint64_t m_ppid; // parent process pid
+    uint64_t m_uid; // user ID
+    string m_cwd; // process' current working directory
 };
 
 #ifndef _WIN32

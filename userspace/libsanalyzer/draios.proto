@@ -123,8 +123,13 @@ message command_details {
     required uint64 timestamp = 1;
     optional uint32 count = 2; // How many times this command has been repeated during the sample interval
     required string cmdline = 3; // Program command line (e.g. "top -d1")
-    optional uint64 login_shell_id = 4; // ID of the login shell (same as in the spy_users chisel)
-    optional uint32 login_shell_distance = 5; // Distance from the login shell (same as in the spy_users chisel)
+    required string comm = 4; // Program executable name
+    required uint64 pid = 5; // Process pid
+    required uint64 ppid = 6; // Parent process pid
+    required uint64 uid = 7; // User ID
+    optional string cwd = 8; // Process' current working directory
+    optional uint64 login_shell_id = 9; // ID of the login shell (same as in the spy_users chisel)
+    optional uint32 login_shell_distance = 10; // Distance from the login shell (same as in the spy_users chisel)
 }
 
 //

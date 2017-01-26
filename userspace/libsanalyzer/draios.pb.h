@@ -2079,17 +2079,62 @@ class command_details : public ::google::protobuf::Message {
   inline ::std::string* release_cmdline();
   inline void set_allocated_cmdline(::std::string* cmdline);
 
-  // optional uint64 login_shell_id = 4;
+  // required string comm = 4;
+  inline bool has_comm() const;
+  inline void clear_comm();
+  static const int kCommFieldNumber = 4;
+  inline const ::std::string& comm() const;
+  inline void set_comm(const ::std::string& value);
+  inline void set_comm(const char* value);
+  inline void set_comm(const char* value, size_t size);
+  inline ::std::string* mutable_comm();
+  inline ::std::string* release_comm();
+  inline void set_allocated_comm(::std::string* comm);
+
+  // required uint64 pid = 5;
+  inline bool has_pid() const;
+  inline void clear_pid();
+  static const int kPidFieldNumber = 5;
+  inline ::google::protobuf::uint64 pid() const;
+  inline void set_pid(::google::protobuf::uint64 value);
+
+  // required uint64 ppid = 6;
+  inline bool has_ppid() const;
+  inline void clear_ppid();
+  static const int kPpidFieldNumber = 6;
+  inline ::google::protobuf::uint64 ppid() const;
+  inline void set_ppid(::google::protobuf::uint64 value);
+
+  // required uint64 uid = 7;
+  inline bool has_uid() const;
+  inline void clear_uid();
+  static const int kUidFieldNumber = 7;
+  inline ::google::protobuf::uint64 uid() const;
+  inline void set_uid(::google::protobuf::uint64 value);
+
+  // optional string cwd = 8;
+  inline bool has_cwd() const;
+  inline void clear_cwd();
+  static const int kCwdFieldNumber = 8;
+  inline const ::std::string& cwd() const;
+  inline void set_cwd(const ::std::string& value);
+  inline void set_cwd(const char* value);
+  inline void set_cwd(const char* value, size_t size);
+  inline ::std::string* mutable_cwd();
+  inline ::std::string* release_cwd();
+  inline void set_allocated_cwd(::std::string* cwd);
+
+  // optional uint64 login_shell_id = 9;
   inline bool has_login_shell_id() const;
   inline void clear_login_shell_id();
-  static const int kLoginShellIdFieldNumber = 4;
+  static const int kLoginShellIdFieldNumber = 9;
   inline ::google::protobuf::uint64 login_shell_id() const;
   inline void set_login_shell_id(::google::protobuf::uint64 value);
 
-  // optional uint32 login_shell_distance = 5;
+  // optional uint32 login_shell_distance = 10;
   inline bool has_login_shell_distance() const;
   inline void clear_login_shell_distance();
-  static const int kLoginShellDistanceFieldNumber = 5;
+  static const int kLoginShellDistanceFieldNumber = 10;
   inline ::google::protobuf::uint32 login_shell_distance() const;
   inline void set_login_shell_distance(::google::protobuf::uint32 value);
 
@@ -2101,6 +2146,16 @@ class command_details : public ::google::protobuf::Message {
   inline void clear_has_count();
   inline void set_has_cmdline();
   inline void clear_has_cmdline();
+  inline void set_has_comm();
+  inline void clear_has_comm();
+  inline void set_has_pid();
+  inline void clear_has_pid();
+  inline void set_has_ppid();
+  inline void clear_has_ppid();
+  inline void set_has_uid();
+  inline void clear_has_uid();
+  inline void set_has_cwd();
+  inline void clear_has_cwd();
   inline void set_has_login_shell_id();
   inline void clear_has_login_shell_id();
   inline void set_has_login_shell_distance();
@@ -2110,12 +2165,17 @@ class command_details : public ::google::protobuf::Message {
 
   ::google::protobuf::uint64 timestamp_;
   ::std::string* cmdline_;
+  ::std::string* comm_;
+  ::google::protobuf::uint64 pid_;
+  ::google::protobuf::uint64 ppid_;
   ::google::protobuf::uint32 count_;
   ::google::protobuf::uint32 login_shell_distance_;
+  ::google::protobuf::uint64 uid_;
+  ::std::string* cwd_;
   ::google::protobuf::uint64 login_shell_id_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -14131,15 +14191,221 @@ inline void command_details::set_allocated_cmdline(::std::string* cmdline) {
   }
 }
 
-// optional uint64 login_shell_id = 4;
-inline bool command_details::has_login_shell_id() const {
+// required string comm = 4;
+inline bool command_details::has_comm() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void command_details::set_has_login_shell_id() {
+inline void command_details::set_has_comm() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void command_details::clear_has_login_shell_id() {
+inline void command_details::clear_has_comm() {
   _has_bits_[0] &= ~0x00000008u;
+}
+inline void command_details::clear_comm() {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    comm_->clear();
+  }
+  clear_has_comm();
+}
+inline const ::std::string& command_details::comm() const {
+  return *comm_;
+}
+inline void command_details::set_comm(const ::std::string& value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(value);
+}
+inline void command_details::set_comm(const char* value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(value);
+}
+inline void command_details::set_comm(const char* value, size_t size) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* command_details::mutable_comm() {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  return comm_;
+}
+inline ::std::string* command_details::release_comm() {
+  clear_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = comm_;
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void command_details::set_allocated_comm(::std::string* comm) {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    delete comm_;
+  }
+  if (comm) {
+    set_has_comm();
+    comm_ = comm;
+  } else {
+    clear_has_comm();
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required uint64 pid = 5;
+inline bool command_details::has_pid() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void command_details::set_has_pid() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void command_details::clear_has_pid() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void command_details::clear_pid() {
+  pid_ = GOOGLE_ULONGLONG(0);
+  clear_has_pid();
+}
+inline ::google::protobuf::uint64 command_details::pid() const {
+  return pid_;
+}
+inline void command_details::set_pid(::google::protobuf::uint64 value) {
+  set_has_pid();
+  pid_ = value;
+}
+
+// required uint64 ppid = 6;
+inline bool command_details::has_ppid() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void command_details::set_has_ppid() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void command_details::clear_has_ppid() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void command_details::clear_ppid() {
+  ppid_ = GOOGLE_ULONGLONG(0);
+  clear_has_ppid();
+}
+inline ::google::protobuf::uint64 command_details::ppid() const {
+  return ppid_;
+}
+inline void command_details::set_ppid(::google::protobuf::uint64 value) {
+  set_has_ppid();
+  ppid_ = value;
+}
+
+// required uint64 uid = 7;
+inline bool command_details::has_uid() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void command_details::set_has_uid() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void command_details::clear_has_uid() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void command_details::clear_uid() {
+  uid_ = GOOGLE_ULONGLONG(0);
+  clear_has_uid();
+}
+inline ::google::protobuf::uint64 command_details::uid() const {
+  return uid_;
+}
+inline void command_details::set_uid(::google::protobuf::uint64 value) {
+  set_has_uid();
+  uid_ = value;
+}
+
+// optional string cwd = 8;
+inline bool command_details::has_cwd() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void command_details::set_has_cwd() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void command_details::clear_has_cwd() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void command_details::clear_cwd() {
+  if (cwd_ != &::google::protobuf::internal::kEmptyString) {
+    cwd_->clear();
+  }
+  clear_has_cwd();
+}
+inline const ::std::string& command_details::cwd() const {
+  return *cwd_;
+}
+inline void command_details::set_cwd(const ::std::string& value) {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
+  }
+  cwd_->assign(value);
+}
+inline void command_details::set_cwd(const char* value) {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
+  }
+  cwd_->assign(value);
+}
+inline void command_details::set_cwd(const char* value, size_t size) {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
+  }
+  cwd_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* command_details::mutable_cwd() {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
+  }
+  return cwd_;
+}
+inline ::std::string* command_details::release_cwd() {
+  clear_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = cwd_;
+    cwd_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void command_details::set_allocated_cwd(::std::string* cwd) {
+  if (cwd_ != &::google::protobuf::internal::kEmptyString) {
+    delete cwd_;
+  }
+  if (cwd) {
+    set_has_cwd();
+    cwd_ = cwd;
+  } else {
+    clear_has_cwd();
+    cwd_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional uint64 login_shell_id = 9;
+inline bool command_details::has_login_shell_id() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void command_details::set_has_login_shell_id() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void command_details::clear_has_login_shell_id() {
+  _has_bits_[0] &= ~0x00000100u;
 }
 inline void command_details::clear_login_shell_id() {
   login_shell_id_ = GOOGLE_ULONGLONG(0);
@@ -14153,15 +14419,15 @@ inline void command_details::set_login_shell_id(::google::protobuf::uint64 value
   login_shell_id_ = value;
 }
 
-// optional uint32 login_shell_distance = 5;
+// optional uint32 login_shell_distance = 10;
 inline bool command_details::has_login_shell_distance() const {
-  return (_has_bits_[0] & 0x00000010u) != 0;
+  return (_has_bits_[0] & 0x00000200u) != 0;
 }
 inline void command_details::set_has_login_shell_distance() {
-  _has_bits_[0] |= 0x00000010u;
+  _has_bits_[0] |= 0x00000200u;
 }
 inline void command_details::clear_has_login_shell_distance() {
-  _has_bits_[0] &= ~0x00000010u;
+  _has_bits_[0] &= ~0x00000200u;
 }
 inline void command_details::clear_login_shell_distance() {
   login_shell_distance_ = 0u;
