@@ -380,24 +380,19 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// Determine if this command was executed in a pipe and if yes
 	// where it belongs in the pipe
 	//
-	sinsp_fdinfo_t* fd0 = tinfo->get_fd(0);
-	sinsp_fdinfo_t* fd1 = tinfo->get_fd(1);
-
-	if(fd0 && fd1)
+	if((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
 	{
-		if(fd0->m_type == SCAP_FD_FIFO && fd1->m_type == SCAP_FD_FIFO)
-		{
-			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
-		}
-		else if(fd1->m_type == SCAP_FD_FIFO)
-		{
-			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;
-		}
-		else if(fd0->m_type == SCAP_FD_FIFO)
-		{
-			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
-		}
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;		
 	}
+	else if((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
+	{
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;		
+	}
+	else if((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
+	{
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;		
+	}
+
 
 	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);
 

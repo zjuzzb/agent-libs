@@ -3019,6 +3019,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				}
 				else
 				{
+//fprintf(stderr, "%ld) %s\n", it->m_pid, it->m_cmdline.c_str());
 					cd->set_cmdline(it->m_cmdline);
 				}
 			}
