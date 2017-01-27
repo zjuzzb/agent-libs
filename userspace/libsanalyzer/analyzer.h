@@ -565,6 +565,7 @@ VISIBILITY_PRIVATE
 	sisnp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
+	bool m_command_lines_capture_enabled = false;
 
 	//
 	// Memory dump stuff

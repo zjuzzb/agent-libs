@@ -271,6 +271,14 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	tainfo->m_called_execve = true;
 
 	//
+	// If command line capture is disabled, we stop here
+	//
+	if(!m_analyzer->m_command_lines_capture_enabled)
+	{
+		return;
+	}
+
+	//
 	// Allocated an executed command storage info and initialize it
 	//
 	sinsp_executed_command cmdinfo;

@@ -27,6 +27,7 @@ sinsp_configuration::sinsp_configuration()
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
+	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
 	m_memdump_size = 0;
 }
 
@@ -199,6 +200,16 @@ bool sinsp_configuration::get_falco_baselining_enabled() const
 void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
 {
 	m_falco_baselining_enabled = enabled;
+}
+
+bool sinsp_configuration::get_command_lines_capture_enabled() const
+{
+	return m_command_lines_capture_enabled;
+}
+
+void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
+{
+	m_command_lines_capture_enabled = enabled;
 }
 
 uint64_t sinsp_configuration::get_memdump_size() const

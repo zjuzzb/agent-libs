@@ -301,10 +301,14 @@ void sinsp_analyzer::on_capture_start()
 	m_falco_baseliner->init(m_inspector);
 
 	//
+	// If required, enable the command line captures
+	//
+	m_command_lines_capture_enabled	= m_configuration->get_command_lines_capture_enabled();
+
+	//
 	// Enable memery dump
 	//
 	uint64_t memdump_size = m_configuration->get_memdump_size();
-lo("***C %d", (int)memdump_size);
 	m_do_memdump = (memdump_size != 0);
 	if(m_do_memdump)
 	{
@@ -3406,9 +3410,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			//
 			// Executed commands
-			// XXX Do this only if command lines capture is enabled
 			//
-			emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
+			if(m_command_lines_capture_enabled)
+			{
+				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
+			}
 
 			//
 			// Kubernetes

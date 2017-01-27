@@ -240,6 +240,13 @@ void sinsp_worker::init()
 			m_configuration->m_falco_baselining_enabled);
 	}
 
+	if(m_configuration->m_command_lines_capture_enabled)
+	{
+		g_log->information("Setting command lines capture");
+		m_analyzer->get_configuration()->set_command_lines_capture_enabled(
+			m_configuration->m_command_lines_capture_enabled);
+	}
+
 	if(m_configuration->m_memdump_enabled)
 	{
 		g_log->information("Setting memdump, size=" + to_string(m_configuration->m_memdump_size));

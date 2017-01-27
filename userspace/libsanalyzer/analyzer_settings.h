@@ -181,6 +181,11 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define FALCO_BASELINING_ENABLED false
 
 //
+// Determines if command lines capture is going to happen by default
+//
+#define COMMAND_LINES_CAPTURE_ENABLED false
+
+//
 // Falco baseline emit interval
 //
 #define FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)

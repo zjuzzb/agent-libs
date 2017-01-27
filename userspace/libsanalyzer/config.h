@@ -130,6 +130,8 @@ public:
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
+	bool get_command_lines_capture_enabled() const;
+	void set_command_lines_capture_enabled(bool enabled);
 	uint64_t get_memdump_size() const;
 	void set_memdump_size(uint64_t size);
 	unsigned get_jmx_limit() const;
@@ -196,6 +198,7 @@ private:
 	bool m_curl_debug;
 
 	bool m_falco_baselining_enabled;
+	bool m_command_lines_capture_enabled;
 	uint64_t m_memdump_size;
 
 	uint32_t m_protocols_truncation_size;
