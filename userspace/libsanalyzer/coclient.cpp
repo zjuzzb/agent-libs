@@ -100,13 +100,14 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	}
 }
 
-void coclient::next()
+void coclient::next(uint32_t wait_ms)
 {
 	void *tag;
 	bool updates_ok;
 	grpc::CompletionQueue::NextStatus status;
+	gpr_timespec deadline = gpr_time_from_millis(wait_ms, GPR_TIMESPAN);
 
-	status = m_cq.AsyncNext(&tag, &updates_ok, std::chrono::system_clock::now() + std::chrono::milliseconds(10));
+	status = m_cq.AsyncNext(&tag, &updates_ok, deadline);
 
 	if(status == grpc::CompletionQueue::SHUTDOWN)
 	{

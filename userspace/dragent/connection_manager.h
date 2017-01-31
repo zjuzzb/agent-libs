@@ -9,8 +9,10 @@
 class connection_manager : public Runnable
 {
 public:
-	connection_manager(dragent_configuration* configuration, 
-		protocol_queue* queue, sinsp_worker* sinsp_worker);
+	connection_manager(dragent_configuration* configuration,
+			   protocol_queue* queue,
+			   synchronized_policy_events *policy_events,
+			   sinsp_worker* sinsp_worker);
 	~connection_manager();
 
 	void run();
@@ -33,7 +35,7 @@ private:
 	bool init();
 	bool connect();
 	void disconnect();
-	bool transmit_buffer(const char* buffer, uint32_t buflen);
+	bool transmit_buffer(uint64_t now, SharedPtr<protocol_queue_item> &item);
 	void receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
@@ -43,6 +45,8 @@ private:
 	void handle_auto_update();
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
+	void handle_policies_message(uint8_t* buf, uint32_t size);
+	void send_policy_events_messages(uint64_t ts_ns);
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
@@ -59,6 +63,7 @@ private:
 	uint32_t m_buffer_used;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
+	synchronized_policy_events *m_policy_events;
 	sinsp_worker* m_sinsp_worker;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;

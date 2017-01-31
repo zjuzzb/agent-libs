@@ -74,6 +74,9 @@ add_executable(tests
 	${PROJECT_SOURCE_DIR}/userspace/dragent/configuration.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/logger.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/protocol.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/security_messages.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/security_mgr.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/security_policy.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_worker.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_data_handler.cpp
 	configuration_test.cpp

@@ -311,7 +311,7 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 		catch(...)
 		{
 			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-			job->m_lasterr = "error compiling capture job filter";
+			job->m_lasterr = "error compiling capture job filter (" + filter + ")";
 			return job;
 		}
 	}

@@ -38,7 +38,7 @@ public:
 				const std::string &container_id, response_cb_t response_cb);
 
 	// Check for any responses and call their callback functions.
-	void next();
+	void next(uint32_t wait_ms = 0);
 
 	// Specify an alternate location for the domain socket. Useful
 	// for tests.

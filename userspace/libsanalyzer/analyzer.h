@@ -611,7 +611,7 @@ VISIBILITY_PRIVATE
 	double m_my_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-	
+
 	//
 	// Falco stuff
 	//

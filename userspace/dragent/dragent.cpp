@@ -40,8 +40,9 @@ dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_sinsp_worker(&m_configuration, &m_queue),
-	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
+	m_policy_events(MAX_QUEUED_POLICY_EVENTS),
+	m_sinsp_worker(&m_configuration, &m_queue, &m_policy_events),
+	m_connection_manager(&m_configuration, &m_queue, &m_policy_events, &m_sinsp_worker),
 	m_log_reporter(&m_queue, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),
 	m_last_dump_s(0)
@@ -748,7 +749,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		});
 
 		// Try to read any responses
-		m_coclient->next();
+		m_coclient->next(10);
 	}
 
 	uint64_t memory;
@@ -890,7 +891,7 @@ void dragent_app::check_for_clean_shutdown()
 	File f(p);
 	if(f.exists())
 	{
-		m_log_reporter.send_report();
+		m_log_reporter.send_report(sinsp_utils::get_current_time_ns());
 	}
 	else
 	{

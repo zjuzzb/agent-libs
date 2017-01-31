@@ -1,3 +1,6 @@
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+
 #include "sinsp_worker.h"
 
 #include "logger.h"
@@ -9,12 +12,14 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
-			   protocol_queue* queue):
+			   protocol_queue* queue,
+			   synchronized_policy_events *policy_events):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
 	m_analyzer(NULL),
-	m_sinsp_handler(configuration, queue),
+	m_security_mgr(NULL),
+	m_sinsp_handler(configuration, queue, policy_events),
 	m_dump_job_requests(10),
 	m_driver_stopped_dropping_ns(0),
 	m_last_loop_ns(0),
@@ -35,6 +40,7 @@ sinsp_worker::~sinsp_worker()
 	}
 
 	delete m_analyzer;
+	delete m_security_mgr;
 }
 
 void sinsp_worker::init()
@@ -268,6 +274,14 @@ void sinsp_worker::init()
 			m_configuration->m_capture_dragent_events);
 	}
 
+	if(m_configuration->m_sysdig_capture_enabled)
+	{
+		// Note we set the max burst to the rate, as this is
+		// really throttling to bytes/sec.
+		m_sysdig_captures_tb.init(m_configuration->m_sysdig_capture_transmit_rate,
+					  m_configuration->m_sysdig_capture_transmit_rate);
+	}
+
 	if(m_configuration->m_memdump_enabled)
 	{
 		g_log->information("Setting memdump, size=" + to_string(m_configuration->m_memdump_size));
@@ -297,6 +311,39 @@ void sinsp_worker::init()
 	}
 
 	m_analyzer->initialize_chisels();
+
+	if(m_configuration->m_security_enabled)
+	{
+		if(!m_configuration->m_cointerface_enabled)
+		{
+			throw sinsp_exception("Security capabilities depend on cointerface, but cointerface is disabled.");
+		}
+
+		m_security_mgr = new security_mgr();
+		m_security_mgr->init(m_inspector,
+				     &m_sinsp_handler,
+				     this,
+				     m_configuration);
+
+		if(m_configuration->m_security_policies_file != "")
+		{
+			string errstr;
+			draiosproto::policies policies;
+
+			int fd = open(m_configuration->m_security_policies_file.c_str(), O_RDONLY);
+			google::protobuf::io::FileInputStream fstream(fd);
+			if (!google::protobuf::TextFormat::Parse(&fstream, &policies)) {
+				throw sinsp_exception("Failed to parse policies file "
+						      + m_configuration->m_security_policies_file);
+			}
+			close(fd);
+
+			if(!m_security_mgr->load(policies, errstr))
+			{
+				throw sinsp_exception("Could not load policies: " + errstr);
+			}
+		}
+	}
 
 	//
 	// Start the capture with sinsp
@@ -402,7 +449,7 @@ void sinsp_worker::run()
 		ts = ev->get_ts();
 		m_last_loop_ns = ts;
 
-		if(ts - m_last_job_check_ns > 1000000000)
+		if(ts - m_last_job_check_ns > 100000000)
 		{
 			m_last_job_check_ns = ts;
 
@@ -438,6 +485,12 @@ void sinsp_worker::run()
 			}
 			m_aws_metadata_refresher.reset();
 		}
+
+		// Possibly pass the event to the security manager
+		if(m_security_mgr)
+		{
+			m_security_mgr->process_event(ev);
+		}
 		//
 		// Update the event count
 		//
@@ -457,6 +510,19 @@ void sinsp_worker::queue_job_request(SharedPtr<dump_job_request> job_request)
 	}
 }
 
+bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &errstr)
+{
+	if(m_security_mgr)
+	{
+		return m_security_mgr->load(policies, errstr);
+	}
+	else
+	{
+		errstr = "No Security Manager object created";
+		return false;
+	}
+}
+
 void sinsp_worker::prepare_response(const string& token, draiosproto::dump_response* response)
 {
 	response->set_timestamp_ns(sinsp_utils::get_current_time_ns());
@@ -465,26 +531,38 @@ void sinsp_worker::prepare_response(const string& token, draiosproto::dump_respo
 	response->set_token(token);
 }
 
-bool sinsp_worker::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
+SharedPtr<protocol_queue_item> sinsp_worker::dump_response_to_queue_item(const draiosproto::dump_response& response)
 {
-	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+	return dragent_protocol::message_to_buffer(
+		sinsp_utils::get_current_time_ns(),
 		draiosproto::message_type::DUMP_RESPONSE,
 		response,
-		m_configuration->m_compression_enabled);
+		m_configuration->m_compression_enabled,
+		m_configuration->m_sysdig_capture_compression_level);
+}
 
-	if(buffer.isNull())
+bool sinsp_worker::queue_item(SharedPtr<protocol_queue_item> &item, protocol_queue::item_priority priority)
+{
+	if(item.isNull())
 	{
-		g_log->error("NULL converting message to buffer");
+		g_log->error("NULL converting message to item");
 		return true;
 	}
 
-	while(!m_queue->put(buffer, priority))
+	while(!m_queue->put(item, priority))
 	{
 		g_log->information("Queue full");
 		return false;
 	}
 
 	return true;
+}
+
+bool sinsp_worker::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
+{
+	SharedPtr<protocol_queue_item> item = dump_response_to_queue_item(response);
+
+	return queue_item(item, priority);
 }
 
 void sinsp_worker::run_standard_jobs(sinsp_evt* ev)
@@ -641,7 +719,7 @@ void sinsp_worker::send_error(const string& token, const string& error)
 	queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
 }
 
-void sinsp_worker::send_dump_chunks(dump_job_state* job)
+bool sinsp_worker::send_dump_chunks(dump_job_state* job, uint64_t ts_ns)
 {
 	ASSERT(job->m_last_chunk_offset <= job->m_file_size);
 	while(job->m_last_chunk_offset < job->m_file_size &&
@@ -660,38 +738,56 @@ void sinsp_worker::send_dump_chunks(dump_job_state* job)
 			progress = (job->m_last_chunk_offset * 100) / job->m_file_size;
 		}
 
-		g_log->information(m_name + ": " + job->m_file + ": Sending chunk "
+		if(!job->m_last_dump_queue_item)
+		{
+			draiosproto::dump_response response;
+			prepare_response(job->m_token, &response);
+			response.set_content(job->m_last_chunk);
+			response.set_chunk_no(job->m_last_chunk_idx);
+
+			ASSERT(job->m_last_chunk_offset + job->m_last_chunk.size() <= job->m_file_size);
+			if(job->m_last_chunk_offset + job->m_last_chunk.size() >= job->m_file_size)
+			{
+				response.set_final_chunk(true);
+			}
+
+			if(job->m_terminated)
+			{
+				response.set_final_size_bytes(job->m_file_size);
+			}
+
+			job->m_last_dump_queue_item = dump_response_to_queue_item(response);
+		}
+
+		// In order to queue the response, there must be
+		// sufficient bandwith avaiable in the token bucket
+		// and the queue must not be full.
+		if(!m_sysdig_captures_tb.claim(job->m_last_dump_queue_item->buffer.size(), ts_ns))
+		{
+			g_log->information(m_name + ": " + job->m_file + ": Throttled while sending chunk "
+					   + NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 100 ms");
+			return false;
+		}
+
+		if(!queue_item(job->m_last_dump_queue_item, protocol_queue::BQ_PRIORITY_LOW))
+		{
+			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk "
+				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 100ms");
+			return false;
+		}
+
+		g_log->information(m_name + ": " + job->m_file + ": Sent chunk "
 			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size "
 			+ NumberFormatter::format(job->m_last_chunk.size())
 			+ ", progress " + NumberFormatter::format(progress) + "%%");
 
-		draiosproto::dump_response response;
-		prepare_response(job->m_token, &response);
-		response.set_content(job->m_last_chunk);
-		response.set_chunk_no(job->m_last_chunk_idx);
-
-		ASSERT(job->m_last_chunk_offset + job->m_last_chunk.size() <= job->m_file_size);
-		if(job->m_last_chunk_offset + job->m_last_chunk.size() >= job->m_file_size)
-		{
-			response.set_final_chunk(true);
-		}
-
-		if(job->m_terminated)
-		{
-			response.set_final_size_bytes(job->m_file_size);
-		}
-
-		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
-		{
-			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk "
-				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
-			return;
-		}
-
 		++job->m_last_chunk_idx;
 		job->m_last_chunk_offset += job->m_last_chunk.size();
 		job->m_last_chunk.clear();
+		job->m_last_dump_queue_item = NULL;
 	}
+
+	return true;
 }
 
 void sinsp_worker::read_chunk(dump_job_state* job)
@@ -948,6 +1044,7 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	if(job_state->m_memdumper_job->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 	{
 		send_error(request.m_token, job_state->m_memdumper_job->m_lasterr);
+		memdumper->remove_job(job_state->m_memdumper_job);
 		return;
 	}
 
@@ -958,6 +1055,7 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	if(job_state->m_fp == NULL)
 	{
 		send_error(request.m_token, "unable to open file " + job_state->m_file);
+		memdumper->remove_job(job_state->m_memdumper_job);
 		return;
 	}
 
@@ -980,6 +1078,7 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 
 void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs, bool restore_drop_mode)
 {
+	bool throttled = false;
 	vector<SharedPtr<dump_job_state>>::iterator it = jobs->begin();
 
 	while(it != jobs->end())
@@ -1008,9 +1107,16 @@ void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jo
 
 		job->m_file_size = st.st_size;
 
-		if(!job->m_error && job->m_send_file)
+		// Note that if any job is throttled while
+		// iterating over the vector of jobs, the
+		// remaining jobs are considered throttled
+		// until the next call to flush_jobs().
+		if(!job->m_error && job->m_send_file && !throttled)
 		{
-			send_dump_chunks(job);
+			if (!send_dump_chunks(job, ts))
+			{
+				throttled = true;
+			}
 		}
 
 		if(job->m_error)
@@ -1046,5 +1152,13 @@ void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jo
 				}
 			}
 		}
+	}
+
+	// If any job was throttled, rotate the jobs so the first job
+	// is moved to the end. This ensures that there won't be
+	// starvation where the first job continually uses the available bandwidth.
+	if(throttled)
+	{
+		rotate(jobs->begin(), jobs->begin()+1, jobs->end());
 	}
 }

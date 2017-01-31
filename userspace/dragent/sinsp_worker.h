@@ -1,9 +1,14 @@
 #pragma once
 
+#include <token_bucket.h>
+
 #include "main.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
 #include "subprocesses_logger.h"
+
+#include "security_mgr.h"
+#include "security_messages.h"
 
 class captureinfo
 {
@@ -51,7 +56,8 @@ public:
 	};
 
 	sinsp_worker(dragent_configuration* configuration,
-		     protocol_queue* queue);
+		     protocol_queue* queue,
+		     synchronized_policy_events *events);
 	~sinsp_worker();
 
 	void run();
@@ -116,6 +122,8 @@ public:
 		m_max_chunk_size = size;
 	}
 
+	bool load_policies(draiosproto::policies &policies, std::string &errstr);
+
 private:
 	class dump_job_state
 	{
@@ -179,6 +187,7 @@ private:
 		uint64_t m_last_chunk_offset;
 		uint64_t m_last_chunk_idx;
 		string m_last_chunk;
+		SharedPtr<protocol_queue_item> m_last_dump_queue_item;
 		uint64_t m_last_keepalive_ns;
 		bool m_terminated;
 		bool m_error;
@@ -187,9 +196,11 @@ private:
 
 	void init();
 	void prepare_response(const string& token, draiosproto::dump_response* response);
+	SharedPtr<protocol_queue_item> dump_response_to_queue_item(const draiosproto::dump_response& response);
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
+	bool queue_item(SharedPtr<protocol_queue_item> &item, protocol_queue::item_priority priority);
 	void send_error(const string& token, const string& error);
-	void send_dump_chunks(dump_job_state* job);
+	bool send_dump_chunks(dump_job_state* job, uint64_t ts_ns);
 	void run_standard_jobs(sinsp_evt* ev);
 	void check_memdump_jobs(sinsp_evt* ev);
 	void process_job_requests(uint64_t ts);
@@ -209,6 +220,7 @@ private:
 	protocol_queue* m_queue;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
+	security_mgr *m_security_mgr;
 	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
 	vector<SharedPtr<dump_job_state>> m_running_standard_dump_jobs;
@@ -221,6 +233,8 @@ private:
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
 	uint64_t m_max_chunk_size;
+
+	token_bucket m_sysdig_captures_tb;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;

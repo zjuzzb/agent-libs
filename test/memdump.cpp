@@ -14,6 +14,7 @@
 #include <sinsp_worker.h>
 #include <configuration.h>
 #include <protocol.h>
+#include <security_messages.h>
 
 using namespace std;
 
@@ -24,6 +25,7 @@ protected:
 	virtual void SetUp()
 	{
 		m_queue = new protocol_queue(10);
+		m_policy_events = new synchronized_policy_events(10);
 
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
@@ -33,7 +35,7 @@ protected:
 		m_configuration.m_capture_dragent_events  = true;
 		m_configuration.m_memdump_enabled = true;
 
-		m_sinsp_worker = new sinsp_worker(&m_configuration, m_queue);
+		m_sinsp_worker = new sinsp_worker(&m_configuration, m_queue, m_policy_events);
 
 		// The (global) logger only needs to be set up once
 		if(!g_log)
@@ -56,6 +58,7 @@ protected:
 	{
 		delete m_sinsp_worker;
 		delete m_queue;
+		delete m_policy_events;
 
 		// Remove any existing trace files
 		std::set<string> traces;
@@ -89,7 +92,7 @@ protected:
 		{
 			ASSERT_TRUE(m_queue->get(&item, 5000));
 
-			dragent_protocol_header *hdr = (dragent_protocol_header*) item->data();
+			dragent_protocol_header *hdr = (dragent_protocol_header*) item->buffer.data();
 
 			g_log->debug("Got message type=" + to_string(hdr->messagetype));
 
@@ -107,8 +110,8 @@ protected:
 	// Parse a generic queue item into a dump response object.
 	void parse_dump_response(SharedPtr<protocol_queue_item> item, draiosproto::dump_response &response)
 	{
-		ASSERT_TRUE(dragent_protocol::buffer_to_protobuf((uint8_t *) item->data() + sizeof(dragent_protocol_header),
-								 (uint32_t) item->size()-sizeof(dragent_protocol_header),
+		ASSERT_TRUE(dragent_protocol::buffer_to_protobuf((uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header),
+								 (uint32_t) item->buffer.size()-sizeof(dragent_protocol_header),
 								 &response));
 
 		g_log->debug("Dump response token=" + response.token()
@@ -430,6 +433,7 @@ protected:
 	sinsp_worker *m_sinsp_worker;
 	dragent_configuration m_configuration;
 	protocol_queue *m_queue;
+	synchronized_policy_events *m_policy_events;
 
 	std::thread m_dump_client;
 

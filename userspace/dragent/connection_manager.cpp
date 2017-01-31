@@ -17,19 +17,22 @@ const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
 const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 
-connection_manager::connection_manager(dragent_configuration* configuration, 
-		protocol_queue* queue, sinsp_worker* sinsp_worker):
+connection_manager::connection_manager(dragent_configuration* configuration,
+				       protocol_queue* queue,
+				       synchronized_policy_events *policy_events,
+				       sinsp_worker* sinsp_worker):
 	m_socket(NULL),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
 	m_buffer_used(0),
 	m_configuration(configuration),
 	m_queue(queue),
+	m_policy_events(policy_events),
 	m_sinsp_worker(sinsp_worker),
 	m_last_loop_ns(0),
 	m_reconnect_interval(0)
 {
-	Poco::Net::initializeSSL();	
+	Poco::Net::initializeSSL();
 }
 
 connection_manager::~connection_manager()
@@ -57,13 +60,13 @@ bool connection_manager::init()
 			}
 
 			Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
-				Poco::Net::Context::CLIENT_USE, 
-				"", 
-				"", 
-				m_configuration->m_ssl_ca_certificate, 
+				Poco::Net::Context::CLIENT_USE,
+				"",
+				"",
+				m_configuration->m_ssl_ca_certificate,
 				verification_mode,
-				9, 
-				false, 
+				9,
+				false,
 				"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
 			Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
@@ -210,7 +213,7 @@ void connection_manager::run()
 				{
 					break;
 				}
-				
+
 				m_last_connection_failure = chrono::system_clock::now();
 
 				if(!connect())
@@ -228,9 +231,9 @@ void connection_manager::run()
 			if(item.isNull())
 			{
 				//
-				// Wait 100ms to get a message from the queue
+				// Wait 300ms to get a message from the queue
 				//
-				m_queue->get(&item, 100);
+				m_queue->get(&item, 300);
 			}
 
 			if(!item.isNull())
@@ -238,19 +241,35 @@ void connection_manager::run()
 				//
 				// Got a message, transmit it
 				//
-				if(transmit_buffer(item->data(), item->size()))
+				if(transmit_buffer(m_last_loop_ns, item))
 				{
 					item = NULL;
 				}
 			}
+
+			// Also try to fetch policy events messages.
+			send_policy_events_messages(m_last_loop_ns);
 		}
 	}
 
 	g_log->information(m_name + ": Terminating");
 }
 
-bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
+bool connection_manager::transmit_buffer(uint64_t now, SharedPtr<protocol_queue_item> &item)
 {
+	// Sometimes now can be less than ts_ns. The timestamp in
+	// metrics messages is rounded up to the following metrics
+	// interval.
+
+	if (now > item->ts_ns &&
+	    (now - item->ts_ns) > 5000000000UL)
+	{
+		g_log->warning("Transmitting delayed message. type=" + to_string(item->message_type)
+			       + ", now=" + to_string(now)
+			       + ", ts=" + to_string(item->ts_ns)
+			       + ", delay_ms=" + to_string((now - item->ts_ns)/ 1000000.0));
+	}
+
 	try
 	{
 		if(m_socket.isNull())
@@ -258,18 +277,18 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 			return false;
 		}
 
-		int32_t res = m_socket->sendBytes(buffer, buflen);
+		int32_t res = m_socket->sendBytes(item->buffer.data(), item->buffer.size());
 		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
 			res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
 		{
 			return false;
 		}
 
-		if(res != (int32_t) buflen)
+		if(res != (int32_t) item->buffer.size())
 		{
-			g_log->error(m_name + ": sendBytes sent just " 
-				+ NumberFormatter::format(res) 
-				+ ", expected " + NumberFormatter::format(buflen));	
+			g_log->error(m_name + ": sendBytes sent just "
+				+ NumberFormatter::format(res)
+				+ ", expected " + NumberFormatter::format(item->buffer.size()));
 
 			disconnect();
 
@@ -277,24 +296,26 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 			return false;
 		}
 
-		g_log->information(m_name + ": Sent " 
-			+ Poco::NumberFormatter::format(buflen) + " to collector");
+		g_log->information(m_name + ": Sent msgtype="
+				   + to_string((int) item->message_type)
+				   + " len="
+				   + Poco::NumberFormatter::format(item->buffer.size()) + " to collector");
 
 		return true;
 	}
 	catch(Poco::IOException& e)
 	{
-		// When the output buffer gets full sendBytes() results in 
+		// When the output buffer gets full sendBytes() results in
 		// a TimeoutException for SSL connections and EWOULDBLOCK for non-SSL
 		// connections, so we'll treat them the same.
 		if ((e.code() == POCO_EWOULDBLOCK) || (e.code() == POCO_EAGAIN))
 		{
 			// We shouldn't risk hanging indefinitely if the EWOULDBLOCK is
 			// caused by an attempted send larger than the buffer size
-			if (buflen > m_configuration->m_transmitbuffer_size)
+			if (item->buffer.size() > m_configuration->m_transmitbuffer_size)
 			{
 				g_log->error(m_name + ":transmit larger than bufsize failed ("
-					+ NumberFormatter::format(buflen) + ">" +
+					+ NumberFormatter::format(item->buffer.size()) + ">" +
 					NumberFormatter::format(m_configuration->m_transmitbuffer_size)
 					 + "): " + e.displayText());
 				disconnect();
@@ -323,6 +344,15 @@ void connection_manager::receive_message()
 	try
 	{
 		if(m_socket.isNull())
+		{
+			return;
+		}
+
+		// If the socket has nothing readable, return
+		// immediately. This ensures that when the queue has
+		// multiple items queued we don't limit the rate at
+		// which we dequeue and send messages.
+		if (!m_socket->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ))
 		{
 			return;
 		}
@@ -357,7 +387,7 @@ void connection_manager::receive_message()
 			dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
 			header->len = ntohl(header->len);
 
-			if((header->len < sizeof(dragent_protocol_header)) || 
+			if((header->len < sizeof(dragent_protocol_header)) ||
 				(header->len > MAX_RECEIVER_BUFSIZE))
 			{
 				g_log->error(m_name + ": Protocol error: invalid header length " + NumberFormatter::format(header->len));
@@ -469,6 +499,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::POLICIES:
+				handle_policies_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
@@ -508,7 +543,7 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 
 	job_request->m_request_type = sinsp_worker::dump_job_request::JOB_START;
 	job_request->m_token = request.token();
-	
+
 	if(request.has_filters())
 	{
 		job_request->m_filter = request.filters();
@@ -523,7 +558,7 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 	{
 		job_request->m_max_size = request.max_size();
 	}
-	
+
 	if(request.has_past_duration_ns())
 	{
 		job_request->m_past_duration_ns = request.past_duration_ns();
@@ -693,3 +728,63 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 		dragent_configuration::m_terminate = true;
 	}
 }
+
+void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
+{
+	draiosproto::policies policies;
+	string errstr;
+
+	if(!m_configuration->m_security_enabled)
+	{
+		g_log->debug("Security disabled, ignoring POLICIES message");
+		return;
+	}
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies))
+	{
+		g_log->debug("Could not parse policies message");
+		return;
+	}
+
+	if (!m_sinsp_worker->load_policies(policies, errstr))
+	{
+		g_log->debug("Could not load policies message: " + errstr);
+		return;
+	}
+}
+
+void connection_manager::send_policy_events_messages(uint64_t ts_ns)
+{
+	draiosproto::policy_events events;
+
+	if(m_policy_events->get(events))
+	{
+		uint64_t first_event_ts = 0;
+
+		if(events.events_size() > 0)
+		{
+			first_event_ts = events.events(0).timestamp_ns();
+		}
+
+		SharedPtr<protocol_queue_item> item = dragent_protocol::message_to_buffer(
+			first_event_ts,
+			draiosproto::message_type::POLICY_EVENTS,
+			events,
+			m_configuration->m_compression_enabled);
+
+		if(item.isNull())
+		{
+			g_log->error("NULL converting message to item");
+			return;
+		}
+
+		g_log->information("sec_evts len=" + NumberFormatter::format(item->buffer.size())
+				   + ", ne=" + NumberFormatter::format(events.events_size()));
+
+		if(!transmit_buffer(ts_ns, item))
+		{
+			g_log->error("Could not send policy_events message");
+		}
+	}
+}
+
