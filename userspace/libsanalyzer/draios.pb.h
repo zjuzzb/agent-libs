@@ -9091,10 +9091,10 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface >*
       mutable_ipv4_network_interfaces();
 
-  // repeated .draiosproto.command_details commands = 17;
+  // repeated .draiosproto.command_details commands = 28;
   inline int commands_size() const;
   inline void clear_commands();
-  static const int kCommandsFieldNumber = 17;
+  static const int kCommandsFieldNumber = 28;
   inline const ::draiosproto::command_details& commands(int index) const;
   inline ::draiosproto::command_details* mutable_commands(int index);
   inline ::draiosproto::command_details* add_commands();
@@ -23756,7 +23756,7 @@ metrics::mutable_ipv4_network_interfaces() {
   return &ipv4_network_interfaces_;
 }
 
-// repeated .draiosproto.command_details commands = 17;
+// repeated .draiosproto.command_details commands = 28;
 inline int metrics::commands_size() const {
   return commands_.size();
 }

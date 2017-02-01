@@ -753,7 +753,7 @@ message metrics {
     // NEVER USED repeated process processes = 5; // The list of processes
     repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
     repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
-    repeated command_details commands = 17; // List of commands executed during the sample.
+    repeated command_details commands = 28; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded

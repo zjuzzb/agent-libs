@@ -2576,7 +2576,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "_connections\030\007 \003(\0132\034.draiosproto.ipv4_co"
     "nnection\022D\n\027ipv4_network_interfaces\030\010 \003("
     "\0132#.draiosproto.ipv4_network_interface\022."
-    "\n\010commands\030\021 \003(\0132\034.draiosproto.command_d"
+    "\n\010commands\030\034 \003(\0132\034.draiosproto.command_d"
     "etails\022\'\n\006mounts\030\022 \003(\0132\027.draiosproto.mou"
     "nted_fs\022)\n\ttop_files\030\023 \003(\0132\026.draiosproto"
     ".file_stat\022\'\n\006protos\030\024 \001(\0132\027.draiosproto"
@@ -29123,21 +29123,6 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(138)) goto parse_commands;
-        break;
-      }
-
-      // repeated .draiosproto.command_details commands = 17;
-      case 17: {
-        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
-            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
-         parse_commands:
-          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
-                input, add_commands()));
-        } else {
-          goto handle_uninterpreted;
-        }
-        if (input->ExpectTag(138)) goto parse_commands;
         if (input->ExpectTag(146)) goto parse_mounts;
         break;
       }
@@ -29271,6 +29256,21 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
+        if (input->ExpectTag(226)) goto parse_commands;
+        break;
+      }
+
+      // repeated .draiosproto.command_details commands = 28;
+      case 28: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_commands:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+                input, add_commands()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(226)) goto parse_commands;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -29386,12 +29386,6 @@ void metrics::SerializeWithCachedSizes(
       16, this->version(), output);
   }
 
-  // repeated .draiosproto.command_details commands = 17;
-  for (int i = 0; i < this->commands_size(); i++) {
-    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      17, this->commands(i), output);
-  }
-
   // repeated .draiosproto.mounted_fs mounts = 18;
   for (int i = 0; i < this->mounts_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
@@ -29447,6 +29441,12 @@ void metrics::SerializeWithCachedSizes(
   if (has_falcobl()) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
       27, this->falcobl(), output);
+  }
+
+  // repeated .draiosproto.command_details commands = 28;
+  for (int i = 0; i < this->commands_size(); i++) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      28, this->commands(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -29560,13 +29560,6 @@ void metrics::SerializeWithCachedSizes(
         16, this->version(), target);
   }
 
-  // repeated .draiosproto.command_details commands = 17;
-  for (int i = 0; i < this->commands_size(); i++) {
-    target = ::google::protobuf::internal::WireFormatLite::
-      WriteMessageNoVirtualToArray(
-        17, this->commands(i), target);
-  }
-
   // repeated .draiosproto.mounted_fs mounts = 18;
   for (int i = 0; i < this->mounts_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
@@ -29631,6 +29624,13 @@ void metrics::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
         27, this->falcobl(), target);
+  }
+
+  // repeated .draiosproto.command_details commands = 28;
+  for (int i = 0; i < this->commands_size(); i++) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        28, this->commands(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -29776,7 +29776,7 @@ int metrics::ByteSize() const {
         this->ipv4_network_interfaces(i));
   }
 
-  // repeated .draiosproto.command_details commands = 17;
+  // repeated .draiosproto.command_details commands = 28;
   total_size += 2 * this->commands_size();
   for (int i = 0; i < this->commands_size(); i++) {
     total_size +=
