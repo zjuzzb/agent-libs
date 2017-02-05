@@ -119,7 +119,7 @@ void sinsp_memory_dumper::close()
 	m_inspector->m_is_dumping = false;
 }
 
-void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
+void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 {
 	char tbuf[512];
 
@@ -168,6 +168,137 @@ void sinsp_memory_dumper::to_file(string name, uint64_t ts_ns)
 //	m_cf = NULL;
 
 	m_cur_dump_size = m_bsize;
+}
+
+void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename, 
+	string filter, uint64_t start_time, uint64_t end_time, uint64_t max_size)
+{
+	int32_t res;
+	sinsp_evt* ev;
+	sinsp inspector;
+	uint64_t size_to_skip = 0;
+	inspector.set_hostname_and_port_resolution_mode(false);
+	inspector.open(infilename);
+
+	if(filter != "")
+	{
+		inspector.set_filter(filter);
+	}
+
+	sinsp_dumper* dumper = NULL;
+
+	if(max_size != 0)
+	{
+		FILE* fp = fopen(infilename.c_str(), "rb");
+		if(fp == NULL)
+		{
+			lo(sinsp_logger::SEV_ERROR, "apply_job_filter error: can't open file %s", infilename.c_str());
+			ASSERT(false);
+			return;
+		}
+
+		fseek(fp, 0, SEEK_END);
+		uint64_t size = ftell(fp);
+
+		if(size > max_size)
+		{
+			size_to_skip = size - max_size;
+		}
+
+		fclose(fp);
+	}
+
+	while(1)
+	{
+		res = inspector.next(&ev);
+
+		if(res == SCAP_EOF)
+		{
+			break;
+		}
+		if(res == SCAP_TIMEOUT)
+		{
+			continue;
+		}
+		else if(res != SCAP_SUCCESS && res != SCAP_TIMEOUT)
+		{
+			//
+			// There was an error. Just stop here and log the error
+			//
+			lo(sinsp_logger::SEV_ERROR, "apply_job_filter error reading events from file %s", infilename.c_str());
+			ASSERT(false);
+			break;
+		}
+
+		if(start_time != 0 && ev->get_ts() < start_time)
+		{
+			continue;
+		}
+
+		if(size_to_skip != 0)
+		{
+			uint64_t evnum = ev->get_num();
+			if((evnum & 0xfff) == 0xfff)
+			{
+				uint64_t rbytes = inspector.get_bytes_read();
+				if(rbytes > size_to_skip)
+				{
+					size_to_skip = 0;
+					continue;
+				}
+			}
+
+			continue;
+		}
+
+		if(dumper == NULL)
+		{
+			dumper = new sinsp_dumper(&inspector);
+			dumper->open(outfilename, false, true);
+		}
+
+		dumper->dump(ev);
+	}
+
+	if(dumper)
+	{
+		dumper->close();
+	}
+
+	inspector.close();
+}
+
+void sinsp_memory_dumper::start_job(sinsp_evt *evt, string filename, string filter, 
+	uint64_t max_size, uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
+{
+	struct timeval tm;
+	gettimeofday(&tm, NULL);
+
+	sinsp_memory_dumper_job m_job;
+
+	string fname = "/tmp/dragent_i_" + to_string(tm.tv_sec) + to_string(tm.tv_usec);
+
+	FILE* tfp = fopen(fname.c_str(), "wb");
+	if(tfp == NULL)
+	{
+		throw sinsp_exception("can't open temporary file " + fname); 
+	}
+
+	sinsp_memory_dumper_state* inactive_state =
+		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
+
+	flush_state_to_disk(tfp, inactive_state, false);
+	flush_state_to_disk(tfp, m_active_state, false);
+
+	fclose(tfp);
+
+	uint64_t starttime = 
+		delta_time_past_ns != 0? evt->get_ts() - delta_time_past_ns : 0;
+
+	apply_job_filter(filename, fname, filter, 
+		starttime, 0, max_size);
+
+	unlink(fname.c_str());
 }
 
 void sinsp_memory_dumper::flush_state_to_disk(FILE* fp, 
@@ -296,4 +427,5 @@ void sinsp_memory_dumper::push_notification(sinsp_evt *evt, string id, string de
 	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
 
 	process_event(&m_notification_evt);
+	m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
 }
