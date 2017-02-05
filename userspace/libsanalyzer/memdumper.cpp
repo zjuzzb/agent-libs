@@ -171,12 +171,12 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 }
 
 void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename, 
-	string filter, uint64_t start_time, uint64_t end_time, uint64_t max_size)
+	string filter, uint64_t start_time, uint64_t end_time)
 {
 	int32_t res;
 	sinsp_evt* ev;
+
 	sinsp inspector;
-	uint64_t size_to_skip = 0;
 	inspector.set_hostname_and_port_resolution_mode(false);
 	inspector.open(infilename);
 
@@ -186,27 +186,6 @@ void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename
 	}
 
 	sinsp_dumper* dumper = NULL;
-
-	if(max_size != 0)
-	{
-		FILE* fp = fopen(infilename.c_str(), "rb");
-		if(fp == NULL)
-		{
-			lo(sinsp_logger::SEV_ERROR, "apply_job_filter error: can't open file %s", infilename.c_str());
-			ASSERT(false);
-			return;
-		}
-
-		fseek(fp, 0, SEEK_END);
-		uint64_t size = ftell(fp);
-
-		if(size > max_size)
-		{
-			size_to_skip = size - max_size;
-		}
-
-		fclose(fp);
-	}
 
 	while(1)
 	{
@@ -235,22 +214,6 @@ void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename
 			continue;
 		}
 
-		if(size_to_skip != 0)
-		{
-			uint64_t evnum = ev->get_num();
-			if((evnum & 0xfff) == 0xfff)
-			{
-				uint64_t rbytes = inspector.get_bytes_read();
-				if(rbytes > size_to_skip)
-				{
-					size_to_skip = 0;
-					continue;
-				}
-			}
-
-			continue;
-		}
-
 		if(dumper == NULL)
 		{
 			dumper = new sinsp_dumper(&inspector);
@@ -269,7 +232,7 @@ void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename
 }
 
 void sinsp_memory_dumper::start_job(sinsp_evt *evt, string filename, string filter, 
-	uint64_t max_size, uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
+	uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
@@ -296,7 +259,7 @@ void sinsp_memory_dumper::start_job(sinsp_evt *evt, string filename, string filt
 		delta_time_past_ns != 0? evt->get_ts() - delta_time_past_ns : 0;
 
 	apply_job_filter(filename, fname, filter, 
-		starttime, 0, max_size);
+		starttime, 0);
 
 	unlink(fname.c_str());
 }

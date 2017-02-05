@@ -81,7 +81,7 @@ public:
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
 	void to_file_multi(string name, uint64_t ts_ns);
-	void start_job(sinsp_evt *evt, string filename, string filter, uint64_t max_size, 
+	void start_job(sinsp_evt *evt, string filename, string filter, 
 		uint64_t delta_time_past_ns, uint64_t delta_time_future_ns);
 	inline void process_event(sinsp_evt *evt)
 	{
@@ -112,7 +112,7 @@ private:
 		sinsp_memory_dumper_state* state,
 		bool is_last_event_complete);
 	void switch_states(uint64_t ts);
-	void apply_job_filter(string outfilename, string infilename, string filter, uint64_t start_time, uint64_t end_time, uint64_t max_size);
+	void apply_job_filter(string outfilename, string infilename, string filter, uint64_t start_time, uint64_t end_time);
 
 	scap_threadinfo* m_scap_proclist;
 	sinsp* m_inspector;
