@@ -160,6 +160,10 @@ public:
 		}
 	}
 	void push_notification(sinsp_evt *evt, string id, string description);
+	inline vector<sinsp_memory_dumper_job*>* get_jobs()
+	{
+		return &m_jobs;
+	}
 
 private:
 	void flush_state_to_disk(FILE* fp, 
