@@ -7,6 +7,7 @@
 #include "statsite_proxy.h"
 
 #ifndef _WIN32
+
 /*
  * Parse a line and fill data structures
  * return false if line does not belong to this object
@@ -349,5 +350,118 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 	//g_logger.format(sinsp_logger::SEV_DEBUG, "Generated metric for container: %s", metric_data.c_str());
 	// send_metric does not need final \0
 	send_metric(metric_data.data(), metric_data.size());
+}
+
+statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes):
+	m_proxy(pipes),
+	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
+	m_receive_containers(ONE_SECOND_IN_NS)
+{
+	char nspath[SCAP_MAX_PATH_SIZE];
+	snprintf(nspath, sizeof(nspath), "%s/proc/self/ns/net", scap_get_host_root());
+	m_init_ns_fd = open(nspath, O_RDONLY);
+	cerr << __FUNCTION__ << ":" << __LINE__ << m_init_ns_fd << endl;
+}
+
+void statsite_forwarder::periodic_cleanup()
+{
+	auto msg = m_inqueue.receive();
+	cerr << __FUNCTION__ << ":" << __LINE__ << msg << endl;
+	Json::Reader json_reader;
+	Json::Value root;
+	if(!json_reader.parse(msg, root))
+	{
+		// TODO: log error
+		return;
+	}
+	unordered_set<string> containerids;
+	for(const auto& container : root["containers"])
+	{
+		auto containerid = container["id"].asString();
+		containerids.emplace(containerid);
+		if(m_sockets.find(containerid) == m_sockets.end())
+		{
+			char nspath[SCAP_MAX_PATH_SIZE];
+			snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/net", scap_get_host_root(), container["pid"].asInt());
+			auto fd = open(nspath, O_RDONLY);
+			fprintf(stderr, "%s:%d fd=%d\n", __FUNCTION__, __LINE__, fd);
+			setns(fd, 0);
+			close(fd);
+			auto server = make_unique<statsd_server>(containerid, m_proxy, *this);
+			setns(m_init_ns_fd, 0);
+			fprintf(stderr, "%s:%d\n", __FUNCTION__, __LINE__);
+			m_sockets[containerid] = move(server);
+		}
+	}
+
+	auto it = m_sockets.begin();
+	while(it != m_sockets.end())
+	{
+		if(containerids.find(it->first) == containerids.end())
+		{
+			// this container does not exists anymore, turning off statsd
+			// server so we can release resources
+			it = m_sockets.erase(it);
+		}
+		else
+		{
+			// container still exists, keep iterating
+			++it;
+		}
+	}
+	// TODO: send heartbeat
+	
+}
+
+void statsite_forwarder::onIdle()
+{
+	m_receive_containers.run(bind(&statsite_forwarder::periodic_cleanup, this));
+}
+
+void statsite_forwarder::onBusy()
+{
+	m_receive_containers.run(bind(&statsite_forwarder::periodic_cleanup, this));
+}
+
+void statsite_forwarder::onTimeout()
+{
+	m_receive_containers.run(bind(&statsite_forwarder::periodic_cleanup, this));
+}
+
+const Poco::Net::SocketAddress statsd_server::IPV4_ADDRESS("127.0.0.1", 8125);
+const Poco::Net::SocketAddress statsd_server::IPV6_ADDRESS("::1", 8125);
+
+statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, Poco::Net::SocketReactor& reactor):
+	m_containerid(containerid),
+	m_statsite(proxy),
+	m_ipv4_socket(IPV4_ADDRESS),
+	m_ipv6_socket(IPV6_ADDRESS),
+	m_reactor(reactor),
+	m_read_obs(*this, &statsd_server::on_read)
+{
+	fprintf(stderr, "%s:%d \n", __FUNCTION__, __LINE__);
+	m_ipv4_socket.setBlocking(false);
+	m_ipv6_socket.setBlocking(false);
+	m_reactor.addEventHandler(m_ipv4_socket, m_read_obs);
+	m_reactor.addEventHandler(m_ipv6_socket, m_read_obs);
+}
+
+statsd_server::~statsd_server()
+{
+	m_reactor.removeEventHandler(m_ipv4_socket, m_read_obs);
+	m_reactor.removeEventHandler(m_ipv6_socket, m_read_obs);
+}
+
+void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
+{
+	// Either ipv4 or ipv6 datagram socket will come here
+	Poco::Net::DatagramSocket datagram_socket(notification->socket());
+	char buffer[1024];
+	auto len = datagram_socket.receiveBytes(buffer, sizeof(buffer));
+	if( len > 0)
+	{
+		m_statsite.send_container_metric(m_containerid, buffer, len);
+		m_statsite.send_metric(buffer, len);
+	}
 }
 #endif // _WIN32

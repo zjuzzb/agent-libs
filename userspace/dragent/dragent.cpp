@@ -336,6 +336,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			return (EXIT_FAILURE);
 		});
+		if(m_configuration.m_mode == dragent_mode_t::NODRIVER)
+		{
+			monitor_process.emplace_process("statsite_forwader", [this](void) -> int
+			{
+				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds());
+				fprintf(stderr, "%s:%d staring with pid=%d\n", __FUNCTION__, __LINE__, getpid());
+				fwd.run();
+				return 0;
+			});
+		}
 	}
 
 	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
@@ -425,7 +435,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 				this->m_statsite_pipes.reset();
 				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
 									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
-									  "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
+									  "/sdc_sdjagent_out", "/sdc_sdjagent_in", "/sdc_statsite_forwarder_in"})
 				{
 					posix_queue::remove(queue);
 				}

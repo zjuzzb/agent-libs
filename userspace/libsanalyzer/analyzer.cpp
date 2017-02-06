@@ -4915,6 +4915,20 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		}
 	}
 
+	if(m_inspector->is_nodriver())
+	{
+		Json::Value root(Json::objectValue);
+		root["containers"] = Json::arrayValue;
+		for(const auto& id : containers_ids)
+		{
+			Json::Value c(Json::objectValue);
+			c["id"] = id;
+			c["pid"] = static_cast<Json::UInt64>(progtable_by_container.at(id).front()->m_pid);
+			root["containers"].append(c);
+		}
+		Json::FastWriter json_writer;
+		m_statsite_forwader_queue->send(json_writer.write(root));
+	}
 	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
 	// Emit containers on protobuf, our logic is:
@@ -5715,6 +5729,8 @@ bool sinsp_analyzer::driver_stopped_dropping()
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
 {
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
+	// TODO: open queue only in nodriver mode
+	m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);
 }
 #endif // _WIN32
 

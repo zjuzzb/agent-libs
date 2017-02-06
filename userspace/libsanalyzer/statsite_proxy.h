@@ -4,6 +4,11 @@
 
 #pragma once
 
+#include "posix_queue.h"
+#include <Poco/Net/SocketReactor.h>
+#include <Poco/Net/DatagramSocket.h>
+#include <Poco/Net/SocketNotification.h>
+
 class statsite_proxy;
 namespace draiosproto
 {
@@ -113,4 +118,42 @@ private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	statsd_metric m_metric;
+};
+
+class statsd_server
+{
+public:
+	statsd_server(const string& containerid, statsite_proxy& proxy, Poco::Net::SocketReactor& reactor);
+	virtual ~statsd_server();
+	void on_read(Poco::Net::ReadableNotification* notification);
+
+	statsd_server(const statsd_server&) = delete;
+	statsd_server& operator=(const statsd_server&) = delete;
+private:
+	string m_containerid;
+	statsite_proxy& m_statsite;
+	Poco::Net::DatagramSocket m_ipv4_socket;
+	Poco::Net::DatagramSocket m_ipv6_socket;
+	Poco::Net::SocketReactor& m_reactor;
+	Poco::Observer<statsd_server, Poco::Net::ReadableNotification> m_read_obs;
+	static const Poco::Net::SocketAddress IPV4_ADDRESS;
+	static const Poco::Net::SocketAddress IPV6_ADDRESS;
+};
+
+class statsite_forwarder: public Poco::Net::SocketReactor
+{
+public:
+	statsite_forwarder(const pair<FILE*, FILE*>& pipes);
+protected:
+	virtual void onIdle() override;
+	virtual void onBusy() override;
+	virtual void onTimeout() override;
+private:
+	void periodic_cleanup();
+
+	statsite_proxy m_proxy;
+	posix_queue m_inqueue;
+	run_on_interval m_receive_containers;
+	unordered_map<string, unique_ptr<statsd_server>> m_sockets;
+	int m_init_ns_fd;
 };
