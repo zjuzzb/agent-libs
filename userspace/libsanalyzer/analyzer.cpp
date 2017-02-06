@@ -1427,7 +1427,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 #ifndef _WIN32
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
-	uint16_t app_checks_limit = APP_METRICS_LIMIT;
+	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready

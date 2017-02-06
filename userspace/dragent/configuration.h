@@ -507,6 +507,7 @@ public:
 	vector<app_check> m_app_checks;
 	string m_python_binary;
 	bool m_app_checks_enabled;
+	unsigned m_app_checks_limit;
 	uint32_t m_containers_limit;
 	vector<string> m_container_patterns;
 	ports_set m_known_server_ports;
