@@ -182,7 +182,8 @@ void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename,
 
 	if(job->m_filterstr != "")
 	{
-		inspector.set_filter(job->m_filterstr);
+		string flt = "(" + job->m_filterstr + ") or evt.type=notification";
+		inspector.set_filter(flt);
 	}
 
 	while(1)
