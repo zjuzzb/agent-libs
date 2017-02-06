@@ -170,22 +170,20 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 	m_cur_dump_size = m_bsize;
 }
 
-void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename, 
-	string filter, uint64_t start_time, uint64_t end_time)
+void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename, 
+	sinsp_memory_dumper_job* job)
 {
 	int32_t res;
 	sinsp_evt* ev;
 
 	sinsp inspector;
 	inspector.set_hostname_and_port_resolution_mode(false);
-	inspector.open(infilename);
+	inspector.open(intemrdiate_filename);
 
-	if(filter != "")
+	if(job->m_filterstr != "")
 	{
-		inspector.set_filter(filter);
+		inspector.set_filter(job->m_filterstr);
 	}
-
-	sinsp_dumper* dumper = NULL;
 
 	while(1)
 	{
@@ -204,47 +202,46 @@ void sinsp_memory_dumper::apply_job_filter(string outfilename, string infilename
 			//
 			// There was an error. Just stop here and log the error
 			//
-			lo(sinsp_logger::SEV_ERROR, "apply_job_filter error reading events from file %s", infilename.c_str());
+			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+			job->m_lasterr = "apply_job_filter error reading events from file " + intemrdiate_filename;
 			ASSERT(false);
 			break;
 		}
 
-		if(start_time != 0 && ev->get_ts() < start_time)
+		if(job->m_start_time != 0 && ev->get_ts() < job->m_start_time)
 		{
 			continue;
 		}
 
-		if(dumper == NULL)
+		if(job->m_dumper == NULL)
 		{
-			dumper = new sinsp_dumper(&inspector);
-			dumper->open(outfilename, false, true);
+			job->m_dumper = new sinsp_dumper(&inspector);
+			job->m_dumper->open(job->m_filename, false, true);
 		}
 
-		dumper->dump(ev);
-	}
-
-	if(dumper)
-	{
-		dumper->close();
+		job->m_dumper->dump(ev);
 	}
 
 	inspector.close();
 }
 
-void sinsp_memory_dumper::start_job(sinsp_evt *evt, string filename, string filter, 
+sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(sinsp_evt *evt, string filename, string filter, 
 	uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
 
-	sinsp_memory_dumper_job m_job;
+	sinsp_memory_dumper_job* job = new sinsp_memory_dumper_job();
+	m_jobs.push_back(job);
 
 	string fname = "/tmp/dragent_i_" + to_string(tm.tv_sec) + to_string(tm.tv_usec);
 
 	FILE* tfp = fopen(fname.c_str(), "wb");
 	if(tfp == NULL)
 	{
-		throw sinsp_exception("can't open temporary file " + fname); 
+		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+		job->m_lasterr = "can't open temporary file " + fname;
+		return job;
 	}
 
 	sinsp_memory_dumper_state* inactive_state =
@@ -255,13 +252,38 @@ void sinsp_memory_dumper::start_job(sinsp_evt *evt, string filename, string filt
 
 	fclose(tfp);
 
-	uint64_t starttime = 
+	job->m_start_time = 
 		delta_time_past_ns != 0? evt->get_ts() - delta_time_past_ns : 0;
+	job->m_end_time = evt->get_ts() + delta_time_future_ns;
+	job->m_filename = filename;
 
-	apply_job_filter(filename, fname, filter, 
-		starttime, 0);
+	if(filter != "")
+	{
+		job->m_filterstr = filter;
+
+		sinsp_filter_compiler compiler(m_inspector, filter);
+		job->m_filter = compiler.compile();
+	}
+
+	apply_job_filter(fname, job);
 
 	unlink(fname.c_str());
+
+	//
+	// If no capture in the future is required, the job can stop here
+	//
+	if(delta_time_future_ns == 0)
+	{
+		job->m_state = sinsp_memory_dumper_job::ST_DONE_OK;
+	}
+
+	return job;
+}
+
+void sinsp_memory_dumper::remove_job(sinsp_memory_dumper_job* job)
+{
+	m_jobs.erase(std::remove(m_jobs.begin(), m_jobs.end(), job), m_jobs.end());
+	delete job;
 }
 
 void sinsp_memory_dumper::flush_state_to_disk(FILE* fp, 

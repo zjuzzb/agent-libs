@@ -55,22 +55,70 @@ public:
 class sinsp_memory_dumper_job
 {
 public:
+	enum state
+	{
+		ST_INPROGRESS = 0,
+		ST_DONE_OK = 1,
+		ST_DONE_ERROR = 2,
+	};
+
 	sinsp_memory_dumper_job()
 	{
-		m_fp = NULL;
 		m_start_time = 0;
-		m_size_past = 0;
-		m_size_future = 0;
-		m_time_past = 0;
-		m_time_future = 0;
+		m_end_time = 0;
+		m_state = ST_INPROGRESS;
+		m_dumper = NULL;
+		m_filter = NULL;
 	}
 
-	FILE* m_fp;
+	~sinsp_memory_dumper_job()
+	{
+		if(m_dumper)
+		{
+			delete m_dumper;
+		}
+
+		if(m_filter)
+		{
+			delete m_filter;
+		}
+	}
+
+	inline void dump(sinsp_evt* evt)
+	{
+		if(m_state == ST_INPROGRESS)
+		{
+			if(evt->m_pevt->ts > m_end_time)
+			{
+				m_state = ST_DONE_OK;
+				return;
+			}
+
+			if(m_filter != NULL && m_filter->run(evt) == false)
+			{
+				if(evt->get_type() != PPME_NOTIFICATION_E)
+				{
+					return;
+				}
+			}
+
+			m_dumper->dump(evt);
+		}
+	}
+
+	inline bool is_done()
+	{
+		return m_state != ST_INPROGRESS;
+	}
+
 	uint64_t m_start_time;
-	uint64_t m_size_past;
-	uint64_t m_size_future;
-	uint64_t m_time_past;
-	uint64_t m_time_future;
+	uint64_t m_end_time;
+	string m_filterstr;
+	string m_filename;
+	state m_state;
+	string m_lasterr;
+	sinsp_dumper* m_dumper;
+	sinsp_filter* m_filter;
 };
 
 class sinsp_memory_dumper
@@ -81,8 +129,9 @@ public:
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
 	void to_file_multi(string name, uint64_t ts_ns);
-	void start_job(sinsp_evt *evt, string filename, string filter, 
+	sinsp_memory_dumper_job* add_job(sinsp_evt *evt, string filename, string filter, 
 		uint64_t delta_time_past_ns, uint64_t delta_time_future_ns);
+	void remove_job(sinsp_memory_dumper_job* job);
 	inline void process_event(sinsp_evt *evt)
 	{
 		//
@@ -97,6 +146,11 @@ public:
 		{
 			m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
 			m_active_state->m_dumper->dump(evt);
+
+			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
+			{
+				(*it)->dump(evt);
+			}
 		}
 		catch(sinsp_exception e)
 		{
@@ -112,7 +166,7 @@ private:
 		sinsp_memory_dumper_state* state,
 		bool is_last_event_complete);
 	void switch_states(uint64_t ts);
-	void apply_job_filter(string outfilename, string infilename, string filter, uint64_t start_time, uint64_t end_time);
+	void apply_job_filter(string intemrdiate_filename, sinsp_memory_dumper_job* job);
 
 	scap_threadinfo* m_scap_proclist;
 	sinsp* m_inspector;
@@ -132,5 +186,5 @@ private:
 	uint64_t m_bsize;
 	uint64_t m_saturation_inactivity_pause_ns;
 	uint64_t m_saturation_inactivity_start_time;
-	vector<sinsp_memory_dumper_job> m_jobs;
+	vector<sinsp_memory_dumper_job*> m_jobs;
 };
