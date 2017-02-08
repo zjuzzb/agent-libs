@@ -9381,6 +9381,20 @@ class dump_request_start : public ::google::protobuf::Message {
   inline ::std::string* release_token();
   inline void set_allocated_token(::std::string* token);
 
+  // optional uint64 past_duration_ns = 8;
+  inline bool has_past_duration_ns() const;
+  inline void clear_past_duration_ns();
+  static const int kPastDurationNsFieldNumber = 8;
+  inline ::google::protobuf::uint64 past_duration_ns() const;
+  inline void set_past_duration_ns(::google::protobuf::uint64 value);
+
+  // optional uint64 past_size = 9;
+  inline bool has_past_size() const;
+  inline void clear_past_size();
+  static const int kPastSizeFieldNumber = 9;
+  inline ::google::protobuf::uint64 past_size() const;
+  inline void set_past_size(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.dump_request_start)
  private:
   inline void set_has_timestamp_ns();
@@ -9397,6 +9411,10 @@ class dump_request_start : public ::google::protobuf::Message {
   inline void clear_has_max_size();
   inline void set_has_token();
   inline void clear_has_token();
+  inline void set_has_past_duration_ns();
+  inline void clear_has_past_duration_ns();
+  inline void set_has_past_size();
+  inline void clear_has_past_size();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -9407,9 +9425,11 @@ class dump_request_start : public ::google::protobuf::Message {
   ::std::string* filters_;
   ::google::protobuf::uint64 max_size_;
   ::std::string* token_;
+  ::google::protobuf::uint64 past_duration_ns_;
+  ::google::protobuf::uint64 past_size_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -24381,6 +24401,50 @@ inline void dump_request_start::set_allocated_token(::std::string* token) {
     clear_has_token();
     token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// optional uint64 past_duration_ns = 8;
+inline bool dump_request_start::has_past_duration_ns() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void dump_request_start::set_has_past_duration_ns() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void dump_request_start::clear_has_past_duration_ns() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void dump_request_start::clear_past_duration_ns() {
+  past_duration_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_past_duration_ns();
+}
+inline ::google::protobuf::uint64 dump_request_start::past_duration_ns() const {
+  return past_duration_ns_;
+}
+inline void dump_request_start::set_past_duration_ns(::google::protobuf::uint64 value) {
+  set_has_past_duration_ns();
+  past_duration_ns_ = value;
+}
+
+// optional uint64 past_size = 9;
+inline bool dump_request_start::has_past_size() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void dump_request_start::set_has_past_size() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void dump_request_start::clear_has_past_size() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void dump_request_start::clear_past_size() {
+  past_size_ = GOOGLE_ULONGLONG(0);
+  clear_has_past_size();
+}
+inline ::google::protobuf::uint64 dump_request_start::past_size() const {
+  return past_size_;
+}
+inline void dump_request_start::set_past_size(::google::protobuf::uint64 value) {
+  set_has_past_size();
+  past_size_ = value;
 }
 
 // -------------------------------------------------------------------

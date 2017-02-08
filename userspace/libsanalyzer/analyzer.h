@@ -361,6 +361,10 @@ public:
 			  double sampling_multiplier);
 
 	void disable_falco();
+	bool is_memdump_active()
+	{
+		return m_do_memdump;
+	}
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);

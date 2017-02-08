@@ -28,7 +28,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	uint64_t saturation_inactivity_pause_ns)
 {
 	lo(sinsp_logger::SEV_INFO, "memdump: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64 ", saturation_inactivity_pause_ns=%" PRIu64,
-		bufsize, 
+		bufsize,
 		max_disk_size,
 		saturation_inactivity_pause_ns);
 

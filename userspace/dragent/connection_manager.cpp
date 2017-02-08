@@ -503,6 +503,16 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 		job_request->m_max_size = request.max_size();
 	}
 	
+	if(request.has_past_duration_ns())
+	{
+		job_request->m_past_duration_ns = request.past_duration_ns();
+	}
+
+	if(request.has_past_size())
+	{
+		job_request->m_past_size = request.past_size();
+	}
+
 	m_sinsp_worker->queue_job_request(job_request);
 }
 
