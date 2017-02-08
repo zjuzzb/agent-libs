@@ -58,27 +58,25 @@ void falco_events::generate_user_event(unique_ptr<falco_engine::rule_result> &re
 		// Log as a user event.
 		severity = falco_priority_to_severity(res->priority);
 
-		tags["source"] = "falco_engine";
+		tags["source"] = "falco";
 
-		std::string scope("host.mac=");
+		event_scope scope;
 		if(falco_events::m_machine_id.length())
 		{
-			scope.append(m_machine_id);
-		}
-		else
-		{
-			scope.clear();
+			scope.add("host.mac", m_machine_id);
 		}
 
 		// Try to extract the container id from the event.
-
 		string container_id;
 		m_container_id_formatter->tostring(res->evt, &container_id);
-
-		if(container_id != "container.id=")
+		trim(container_id);
+		if(container_id.size() > std::string("container.id=").size())
 		{
-			scope.append(" and ");
-			scope.append(container_id);
+			string::size_type pos = container_id.find('=');
+			if(pos != string::npos)
+			{
+				scope.add("container.id", container_id.substr(pos + 1));
+			}
 		}
 
 		event_str = sinsp_user_event::to_string(res->evt->get_ts() / ONE_SECOND_IN_NS,
