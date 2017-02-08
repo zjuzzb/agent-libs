@@ -190,11 +190,11 @@ void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename,
 	{
 		res = inspector.next(&ev);
 
-		if(res == SCAP_EOF)
+		if(res == SCAP_EOF || job->m_state == sinsp_memory_dumper_job::ST_STOPPPED)
 		{
 			break;
 		}
-		if(res == SCAP_TIMEOUT)
+		else if(res == SCAP_TIMEOUT)
 		{
 			continue;
 		}

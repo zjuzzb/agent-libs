@@ -60,6 +60,7 @@ public:
 		ST_INPROGRESS = 0,
 		ST_DONE_OK = 1,
 		ST_DONE_ERROR = 2,
+		ST_STOPPPED = 3,
 	};
 
 	sinsp_memory_dumper_job()
@@ -109,6 +110,11 @@ public:
 	inline bool is_done()
 	{
 		return m_state != ST_INPROGRESS;
+	}
+
+	void stop()
+	{
+		m_state = ST_STOPPPED;
 	}
 
 	uint64_t m_start_time;
