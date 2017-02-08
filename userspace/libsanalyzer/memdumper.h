@@ -130,7 +130,7 @@ public:
 class sinsp_memory_dumper
 {
 public:
-	sinsp_memory_dumper(sinsp* inspector);
+	sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events);
 	~sinsp_memory_dumper();
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
@@ -150,6 +150,15 @@ public:
 
 		try
 		{
+			if(!m_capture_dragent_events)
+			{
+				sinsp_threadinfo* tinfo = evt->get_thread_info();
+				if(tinfo &&	tinfo->m_pid == m_sysdig_pid)
+				{
+					return;
+				}
+			}
+
 			m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
 			m_active_state->m_dumper->dump(evt);
 
@@ -165,7 +174,7 @@ public:
 			m_active_state->m_dumper->dump(evt);
 		}
 	}
-	void push_notification(sinsp_evt *evt, string id, string description);
+	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
 	inline vector<sinsp_memory_dumper_job*>* get_jobs()
 	{
 		return &m_jobs;
@@ -197,4 +206,6 @@ private:
 	uint64_t m_saturation_inactivity_pause_ns;
 	uint64_t m_saturation_inactivity_start_time;
 	vector<sinsp_memory_dumper_job*> m_jobs;
+	bool m_capture_dragent_events;
+	int64_t m_sysdig_pid;
 };

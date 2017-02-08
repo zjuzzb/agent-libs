@@ -248,6 +248,13 @@ void sinsp_worker::init()
 			m_configuration->m_command_lines_capture_enabled);
 	}
 
+	if(m_configuration->m_capture_dragent_events)
+	{
+		g_log->information("Setting capture dragent events");
+		m_analyzer->get_configuration()->set_capture_dragent_events(
+			m_configuration->m_capture_dragent_events);
+	}
+
 	if(m_configuration->m_memdump_enabled)
 	{
 		g_log->information("Setting memdump, size=" + to_string(m_configuration->m_memdump_size));
@@ -562,12 +569,50 @@ void sinsp_worker::stop_standard_job(dump_job_state* job)
 
 void sinsp_worker::check_memdump_jobs(sinsp_evt* ev)
 {
-	//XXXX
+	if(m_running_memdump_jobs.empty())
+	{
+		return;
+	}
+
+	for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_memdump_jobs.begin();
+		it != m_running_memdump_jobs.end(); ++it)
+	{
+		SharedPtr<dump_job_state> job = *it;
+
+		if(job->m_terminated)
+		{
+			continue;
+		}
+
+		if(job->m_memdumper_job->is_done())
+		{
+			stop_memdump_job(job);
+			continue;
+		}
+	}
 }
 
 void sinsp_worker::stop_memdump_job(dump_job_state* job)
 {
-	//XXXX
+	ASSERT(!job->m_terminated);
+	job->m_terminated = true;
+
+	g_log->information("memdump Job " + job->m_token + " stopped");
+
+	//
+	// Stop the job, but don't delete it yet, there might be
+	// a bunch of pending chunks
+	//
+	sinsp_memory_dumper* memdumper = m_analyzer->get_memory_dumper();
+	if(memdumper == NULL)
+	{
+		send_error(job->m_token, "memory dump corrupted in the agent. Cannot perform back in time capture.");
+		ASSERT(false);
+		return;
+	}
+	
+	job->m_memdumper_job->stop();
+	memdumper->remove_job(job->m_memdumper_job);
 }
 
 void sinsp_worker::send_error(const string& token, const string& error)
@@ -804,7 +849,7 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
 	job_state->m_send_file = request.m_send_file;
 	job_state->m_start_ns = ts;
-	job_state->m_dumper_job = NULL;
+	job_state->m_memdumper_job = NULL;
 
 	if(m_running_standard_dump_jobs.empty())
 	{
@@ -847,12 +892,14 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 
 	g_log->information("starting memory dumper log for file " + job_state->m_file);
 
-	job_state->m_dumper_job = memdumper->add_job(ts, job_state->m_file, request.m_filter, request.m_past_duration_ns, request.m_duration_ns);
+	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, request.m_token, "starting capture job");
+
+	job_state->m_memdumper_job = memdumper->add_job(ts, job_state->m_file, request.m_filter, request.m_past_duration_ns, request.m_duration_ns);
 
 	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
 	if(job_state->m_fp == NULL)
 	{
-		send_error(request.m_token, job_state->m_dumper_job->m_lasterr);
+		send_error(request.m_token, job_state->m_memdumper_job->m_lasterr);
 		return;
 	}
 

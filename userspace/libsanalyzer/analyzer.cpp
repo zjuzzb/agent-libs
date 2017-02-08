@@ -135,7 +135,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_falco_baseliner = new sisnp_baseliner();
 
-	m_memdumper = new sinsp_memory_dumper(m_inspector);
+	m_memdumper = NULL;
 
 	//
 	// Listeners
@@ -227,6 +227,11 @@ void sinsp_analyzer::on_capture_start()
 	{
 		throw sinsp_exception("analyzer can be opened only once");
 	}
+
+	//
+	// Allocate the memory dumprt
+	//
+	m_memdumper = new sinsp_memory_dumper(m_inspector, m_configuration->get_capture_dragent_events());
 
 	//
 	// Start dropping of non-critical events
@@ -3983,7 +3988,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 
 		if(m_inspector->m_flush_memory_dump)
 		{
-			m_memdumper->push_notification(evt, to_string(evt->get_num()), "dump triggered by agent engine");
+			m_memdumper->push_notification(evt->get_ts(), evt->get_tid(), to_string(evt->get_num()), "dump triggered by agent engine");
 			m_memdumper->to_file_multi("sinsp", evt->get_ts());
 			m_inspector->m_flush_memory_dump = false;
 		}

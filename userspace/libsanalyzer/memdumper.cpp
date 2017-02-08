@@ -11,7 +11,7 @@
 
 extern sinsp_evttables g_infotables;
 
-sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
+sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events)
 {
 	m_inspector = inspector;
 	m_active_state = &m_states[0];
@@ -21,6 +21,12 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 	m_disabled = false;
 	m_switches_to_go = 0;
 	m_saturation_inactivity_start_time = 0;
+	m_capture_dragent_events = capture_dragent_events;
+
+	if(capture_dragent_events)
+	{
+		m_sysdig_pid = m_inspector->m_sysdig_pid;
+	}
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize, 
@@ -391,10 +397,10 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 	}
 }
 
-void sinsp_memory_dumper::push_notification(sinsp_evt *evt, string id, string description)
+void sinsp_memory_dumper::push_notification(uint64_t ts, uint64_t tid, string id, string description)
 {
-	m_notification_scap_evt->ts = evt->m_pevt->ts;
-	m_notification_scap_evt->tid = evt->m_pevt->tid;
+	m_notification_scap_evt->ts = ts;
+	m_notification_scap_evt->tid = tid;
 
 	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
 	uint16_t idlen = id.length() + 1;

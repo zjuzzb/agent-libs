@@ -126,7 +126,7 @@ private:
 			m_last_keepalive_ns(0),
 			m_terminated(false),
 			m_error(false),
-			m_dumper_job(NULL)
+			m_memdumper_job(NULL)
 		{
 		}
 
@@ -170,7 +170,7 @@ private:
 		uint64_t m_last_keepalive_ns;
 		bool m_terminated;
 		bool m_error;
-		sinsp_memory_dumper_job* m_dumper_job;
+		sinsp_memory_dumper_job* m_memdumper_job;
 	};
 
 	void init();

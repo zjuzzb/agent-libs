@@ -28,6 +28,7 @@ sinsp_configuration::sinsp_configuration()
 	m_mesos_autodetect = true;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
+	m_capture_dragent_events = false;
 	m_memdump_size = 0;
 }
 
@@ -210,6 +211,16 @@ bool sinsp_configuration::get_command_lines_capture_enabled() const
 void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
 {
 	m_command_lines_capture_enabled = enabled;
+}
+
+bool sinsp_configuration::get_capture_dragent_events() const
+{
+	return m_capture_dragent_events;
+}
+
+void sinsp_configuration::set_capture_dragent_events(bool enabled)
+{
+	m_capture_dragent_events = enabled;
 }
 
 uint64_t sinsp_configuration::get_memdump_size() const
