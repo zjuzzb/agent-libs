@@ -3,6 +3,7 @@
 #include "logger.h"
 #include "error_handler.h"
 #include "utils.h"
+#include "memdumper.h"
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -561,10 +562,12 @@ void sinsp_worker::stop_standard_job(dump_job_state* job)
 
 void sinsp_worker::check_memdump_jobs(sinsp_evt* ev)
 {
+	//XXXX
 }
 
 void sinsp_worker::stop_memdump_job(dump_job_state* job)
 {
+	//XXXX
 }
 
 void sinsp_worker::send_error(const string& token, const string& error)
@@ -782,7 +785,6 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 
 	job_state->m_token = request.m_token;
 
-	job_state->m_type = dump_job_state::TYPE_REGULAR;
 	job_state->m_dumper = new sinsp_dumper(m_inspector);
 	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
 	g_log->information("Starting dump job in " + job_state->m_file +
@@ -802,6 +804,7 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
 	job_state->m_send_file = request.m_send_file;
 	job_state->m_start_ns = ts;
+	job_state->m_dumper_job = NULL;
 
 	if(m_running_standard_dump_jobs.empty())
 	{
@@ -824,17 +827,32 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 		return;
 	}
 
+	if(!m_analyzer->is_memdump_active())
+	{
+		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
+		return;
+	}
+
 	job_state->m_token = request.m_token;
 
-	job_state->m_type = dump_job_state::TYPE_MEMDUMP;
 	job_state->m_dumper = NULL;
 
-//XXXX
+	sinsp_memory_dumper* memdumper = m_analyzer->get_memory_dumper();
+	if(memdumper == NULL)
+	{
+		send_error(request.m_token, "memory dump functionality not working in the target agent. Cannot perform back in time capture.");
+		ASSERT(false);
+		return;
+	}
+
+	g_log->information("starting memory dumper log for file " + job_state->m_file);
+
+	job_state->m_dumper_job = memdumper->add_job(ts, job_state->m_file, request.m_filter, request.m_past_duration_ns, request.m_duration_ns);
 
 	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
 	if(job_state->m_fp == NULL)
 	{
-		send_error(request.m_token, strerror(errno));
+		send_error(request.m_token, job_state->m_dumper_job->m_lasterr);
 		return;
 	}
 
@@ -844,11 +862,6 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
 	job_state->m_send_file = request.m_send_file;
 	job_state->m_start_ns = ts;
-
-	if(!m_analyzer->is_memdump_active())
-	{
-		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
-	}
 
 	m_running_memdump_jobs.push_back(job_state);
 }

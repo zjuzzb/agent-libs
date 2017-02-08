@@ -366,6 +366,11 @@ public:
 		return m_do_memdump;
 	}
 
+	sinsp_memory_dumper* get_memory_dumper()
+	{
+		return m_memdumper;
+	}
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 

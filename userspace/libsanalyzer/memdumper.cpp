@@ -226,7 +226,7 @@ void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename,
 	inspector.close();
 }
 
-sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(sinsp_evt *evt, string filename, string filter, 
+sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter, 
 	uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
 {
 	struct timeval tm;
@@ -254,8 +254,8 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(sinsp_evt *evt, string fil
 	fclose(tfp);
 
 	job->m_start_time = 
-		delta_time_past_ns != 0? evt->get_ts() - delta_time_past_ns : 0;
-	job->m_end_time = evt->get_ts() + delta_time_future_ns;
+		delta_time_past_ns != 0? ts - delta_time_past_ns : 0;
+	job->m_end_time = ts + delta_time_future_ns;
 	job->m_filename = filename;
 
 	if(filter != "")

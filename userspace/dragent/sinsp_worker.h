@@ -108,13 +108,7 @@ private:
 	class dump_job_state
 	{
 	public:
-		enum type {
-			TYPE_REGULAR,
-			TYPE_MEMDUMP
-		};
-
 		dump_job_state():
-			m_type(TYPE_REGULAR),
 			m_dumper(NULL),
 			m_filter(NULL),
 			m_start_ns(0),
@@ -131,7 +125,8 @@ private:
 			m_last_chunk_idx(0),
 			m_last_keepalive_ns(0),
 			m_terminated(false),
-			m_error(false)
+			m_error(false),
+			m_dumper_job(NULL)
 		{
 		}
 
@@ -155,7 +150,6 @@ private:
 			}
 		}
 
-		type m_type;
 		string m_token;
 		sinsp_dumper* m_dumper;
 		sinsp_filter* m_filter;
@@ -176,6 +170,7 @@ private:
 		uint64_t m_last_keepalive_ns;
 		bool m_terminated;
 		bool m_error;
+		sinsp_memory_dumper_job* m_dumper_job;
 	};
 
 	void init();

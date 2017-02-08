@@ -129,7 +129,7 @@ public:
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
 	void to_file_multi(string name, uint64_t ts_ns);
-	sinsp_memory_dumper_job* add_job(sinsp_evt *evt, string filename, string filter, 
+	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter, 
 		uint64_t delta_time_past_ns, uint64_t delta_time_future_ns);
 	void remove_job(sinsp_memory_dumper_job* job);
 	inline void process_event(sinsp_evt *evt)
