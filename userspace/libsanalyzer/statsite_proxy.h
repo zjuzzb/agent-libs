@@ -139,8 +139,10 @@ private:
 	Poco::Net::SocketReactor& m_reactor;
 	Poco::Observer<statsd_server, Poco::Net::ReadableNotification> m_read_obs;
 	Poco::Observer<statsd_server, Poco::Net::ErrorNotification> m_error_obs;
+	char* m_read_buffer;
 	static const Poco::Net::SocketAddress IPV4_ADDRESS;
 	static const Poco::Net::SocketAddress IPV6_ADDRESS;
+	static const unsigned MAX_READ_SIZE = 2048;
 };
 
 class statsite_forwarder: public Poco::Net::SocketReactor

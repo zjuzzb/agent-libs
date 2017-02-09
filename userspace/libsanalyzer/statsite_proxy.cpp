@@ -444,6 +444,7 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 	m_read_obs(*this, &statsd_server::on_read),
 	m_error_obs(*this, &statsd_server::on_error)
 {
+	m_read_buffer = new char[MAX_READ_SIZE];
 	try
 	{
 		m_ipv4_socket = make_socket(IPV4_ADDRESS);
@@ -466,6 +467,7 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 
 statsd_server::~statsd_server()
 {
+	delete[] m_read_buffer;
 	if(m_ipv4_socket)
 	{
 		m_reactor.removeEventHandler(*m_ipv4_socket, m_read_obs);
@@ -489,14 +491,14 @@ unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(const Poco::Net
 
 void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
 {
+	throw sinsp_exception("test");
 	// Either ipv4 or ipv6 datagram socket will come here
 	Poco::Net::DatagramSocket datagram_socket(notification->socket());
-	char buffer[1024];
-	auto len = datagram_socket.receiveBytes(buffer, sizeof(buffer));
+	auto len = datagram_socket.receiveBytes(m_read_buffer, MAX_READ_SIZE);
 	if( len > 0)
 	{
-		m_statsite.send_container_metric(m_containerid, buffer, len);
-		m_statsite.send_metric(buffer, len);
+		m_statsite.send_container_metric(m_containerid, m_read_buffer, len);
+		m_statsite.send_metric(m_read_buffer, len);
 	}
 }
 
