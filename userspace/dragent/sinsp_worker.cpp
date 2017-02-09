@@ -888,10 +888,16 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 		return;
 	}
 
+	//
+	// Populate the job state
+	//
 	job_state->m_token = request.m_token;
 	job_state->m_dumper = NULL;
 	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
 
+	//
+	// Create the dumper job
+	//
 	sinsp_memory_dumper* memdumper = m_analyzer->get_memory_dumper();
 	if(memdumper == NULL)
 	{
@@ -900,12 +906,16 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 		return;
 	}
 
-	g_log->information("starting memory dumper for file " + job_state->m_file);
+	g_log->information("starting memory dumper job, file: " + job_state->m_file);
 
-	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, request.m_token, "starting capture job");
+	// We inject a notification to make it easier to identify the starting point
+	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, job_state->m_file, "starting capture job " + job_state->m_file);
 
 	job_state->m_memdumper_job = memdumper->add_job(ts, job_state->m_file, request.m_filter, request.m_past_duration_ns, request.m_duration_ns);
 
+	//
+	// Open the job output file for reading so we are ready to send it to the backend
+	//
 	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
 	if(job_state->m_fp == NULL)
 	{
@@ -913,6 +923,9 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 		return;
 	}
 
+	//
+	// Finish populating the job state
+	//
 	job_state->m_duration_ns = request.m_duration_ns;
 	job_state->m_max_size = request.m_max_size;
 	job_state->m_past_duration_ns = request.m_past_duration_ns;
