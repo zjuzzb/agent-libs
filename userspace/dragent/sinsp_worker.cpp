@@ -252,6 +252,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
 	m_analyzer->get_configuration()->set_statsd_limit(m_configuration->m_statsd_limit);
+	m_analyzer->get_configuration()->set_app_checks_limit(m_configuration->m_app_checks_limit);
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 

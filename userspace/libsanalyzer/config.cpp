@@ -27,6 +27,8 @@ sinsp_configuration::sinsp_configuration()
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
+	m_jmx_limit = 500;
+	m_app_checks_limit = 300;
 	m_memdump_size = 0;
 }
 
@@ -704,4 +706,13 @@ void sinsp_configuration::set_jmx_limit(unsigned limit)
 	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
 }
 
+unsigned sinsp_configuration::get_app_checks_limit() const
+{
+	return m_app_checks_limit;
+}
+
+void sinsp_configuration::set_app_checks_limit(unsigned value)
+{
+	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
 #endif // HAS_ANALYZER

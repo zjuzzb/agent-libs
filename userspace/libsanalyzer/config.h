@@ -134,6 +134,8 @@ public:
 	void set_memdump_size(uint64_t size);
 	unsigned get_jmx_limit() const;
 	void set_jmx_limit(unsigned limit);
+	unsigned get_app_checks_limit() const;
+	void set_app_checks_limit(unsigned value);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -204,6 +206,7 @@ private:
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 
 	unsigned m_jmx_limit;
+	unsigned m_app_checks_limit;
 };
 
 #endif // HAS_ANALYZER

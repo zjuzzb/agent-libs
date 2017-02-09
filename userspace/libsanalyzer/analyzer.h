@@ -421,6 +421,8 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
+	uint32_t get_mesos_api_server_port(sinsp_threadinfo* main_tinfo);
+	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(string& addr);
@@ -651,6 +653,10 @@ VISIBILITY_PRIVATE
 	bool m_mesos_present = false;
 	time_t m_last_mesos_refresh;
 	uint64_t m_mesos_last_failure_ns;
+	int64_t m_mesos_master_tid = -1;
+	int64_t m_mesos_slave_tid = -1;
+	const uint32_t MESOS_MASTER_PORT = 5050;
+	const uint32_t MESOS_SLAVE_PORT = 5051;
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;

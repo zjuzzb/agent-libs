@@ -278,6 +278,7 @@ dragent_configuration::dragent_configuration()
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
+	m_app_checks_limit = 300;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -680,6 +681,8 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
+	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
+
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
@@ -854,6 +857,8 @@ void dragent_configuration::init(Application* app)
 		m_enable_falco_engine = false;
 		m_falco_baselining_enabled = false;
 		m_sysdig_capture_enabled = false;
+		// our dropping mechanism can't help in this mode
+		m_autodrop_enabled = false;
 	}
 }
 
