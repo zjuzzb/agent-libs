@@ -23,7 +23,7 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_
 	m_saturation_inactivity_start_time = 0;
 	m_capture_dragent_events = capture_dragent_events;
 
-	if(capture_dragent_events)
+	if(!capture_dragent_events)
 	{
 		m_sysdig_pid = m_inspector->m_sysdig_pid;
 	}
