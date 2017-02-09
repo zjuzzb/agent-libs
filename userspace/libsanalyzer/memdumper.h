@@ -152,10 +152,16 @@ public:
 		{
 			if(!m_capture_dragent_events)
 			{
-				sinsp_threadinfo* tinfo = evt->get_thread_info();
-				if(tinfo &&	tinfo->m_pid == m_sysdig_pid)
+				//
+				// The custom notification events emitted by the memdumper have inspector = NULL
+				//
+				if(evt->m_pevt->type != PPME_NOTIFICATION_E)
 				{
-					return;
+					sinsp_threadinfo* tinfo = evt->get_thread_info();
+					if(tinfo &&	tinfo->m_pid == m_sysdig_pid)
+					{
+						return;
+					}
 				}
 			}
 

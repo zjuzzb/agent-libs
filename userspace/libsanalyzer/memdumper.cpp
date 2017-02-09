@@ -104,6 +104,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
 	m_notification_evt.m_poriginal_evt = NULL;
 	m_notification_evt.m_pevt = m_notification_scap_evt;
+	m_notification_evt.m_inspector = m_inspector;
 }
 
 sinsp_memory_dumper::~sinsp_memory_dumper()
@@ -176,7 +177,7 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 	m_cur_dump_size = m_bsize;
 }
 
-void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename, 
+void sinsp_memory_dumper::apply_job_filter(string intermediate_filename, 
 	sinsp_memory_dumper_job* job)
 {
 	int32_t res;
@@ -184,7 +185,17 @@ void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename,
 
 	sinsp inspector;
 	inspector.set_hostname_and_port_resolution_mode(false);
-	inspector.open(intemrdiate_filename);
+
+	try
+	{
+		inspector.open(intermediate_filename);
+	}
+	catch(...)
+	{
+		job->m_lasterr = inspector.getlasterr();
+		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+		return;
+	}
 
 	if(job->m_filterstr != "")
 	{
@@ -210,7 +221,7 @@ void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename,
 			// There was an error. Just stop here and log the error
 			//
 			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-			job->m_lasterr = "apply_job_filter error reading events from file " + intemrdiate_filename;
+			job->m_lasterr = "apply_job_filter error reading events from file " + intermediate_filename;
 			ASSERT(false);
 			break;
 		}
@@ -223,7 +234,16 @@ void sinsp_memory_dumper::apply_job_filter(string intemrdiate_filename,
 		if(job->m_dumper == NULL)
 		{
 			job->m_dumper = new sinsp_dumper(&inspector);
-			job->m_dumper->open(job->m_filename, false, true);
+			try
+			{
+				job->m_dumper->open(job->m_filename, false, true);
+			}
+			catch(...)
+			{
+				job->m_lasterr = inspector.getlasterr();
+				job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+				return;
+			}
 		}
 
 		job->m_dumper->dump(ev);
