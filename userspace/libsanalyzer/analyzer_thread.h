@@ -5,6 +5,7 @@
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
+#include "procfs_parser.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -84,6 +85,9 @@ public:
 	// The protocol state
 	sinsp_protostate m_protostate;
 	unique_ptr<proc_config> m_proc_config;
+
+	// Used just by nodriver mode
+	sinsp_proc_file_stats m_file_io_stats;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -206,6 +210,7 @@ public:
 	// of the session shell, i.e. the session ID
 	//uint64_t m_login_shell_id; // this is equivalent to the shell ID in spy_users
 	//uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
+
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;

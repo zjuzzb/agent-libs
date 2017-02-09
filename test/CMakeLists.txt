@@ -66,12 +66,12 @@ add_executable(tests
 	token_bucket_test.cpp
 	user_event.cpp
 	uri.cpp
-	json_query.cpp)
+	json_query.cpp nodriver.cpp)
 
 target_link_libraries(tests
 	pthread
-	sanalyzer 
-		${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+	sanalyzer
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a

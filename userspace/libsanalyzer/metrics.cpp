@@ -279,8 +279,7 @@ void sinsp_counter_time_bytes::clear()
 }
 
 void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
-										   uint64_t tot_relevant_time_ns, uint32_t sampling_ratio,
-											uint64_t patched_bytes_in, uint64_t patched_bytes_out)
+										   uint64_t tot_relevant_time_ns, uint32_t sampling_ratio)
 {
 	protobuf_msg->set_time_ns_in(m_time_ns_in * sampling_ratio);
 	protobuf_msg->set_time_ns_out(m_time_ns_out * sampling_ratio);
@@ -306,26 +305,9 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	protobuf_msg->set_count_out(m_count_out * sampling_ratio);
 	protobuf_msg->set_count_other(m_count_other * sampling_ratio);
 
-	// Patched bytes in & out are needed because we decided to patch
-	// host network metrics using data from /proc, because using only
-	// sysdig metrics we miss kernel threads activity
-	// In this case, sampling_ratio is not evaluated
-	if(patched_bytes_in > 0)
-	{
-		protobuf_msg->set_bytes_in(patched_bytes_in);
-	}
-	else
-	{
-		protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
-	}
-	if(patched_bytes_out > 0)
-	{
-		protobuf_msg->set_bytes_out(patched_bytes_out);
-	}
-	else
-	{
-		protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
-	}
+
+	protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
+	protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
 	protobuf_msg->set_bytes_other(m_bytes_other * sampling_ratio);
 }
 

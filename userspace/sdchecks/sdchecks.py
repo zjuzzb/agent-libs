@@ -19,6 +19,8 @@ import ast
 from checks import AgentCheck
 from util import get_hostname
 
+from sysdig_tracers import Tracer
+
 # 3rd party
 import yaml
 import simplejson as json
@@ -353,8 +355,14 @@ class Application:
         #print "Received command: %s" % command_s
         processes = json.loads(command_s)
         self.last_request_pids.clear()
+        trc = Tracer()
+        trc.start("checks")
+        numchecks = 0
+        numrun = 0
+        nummetrics = 0
 
         for p in processes:
+            numchecks += 1
             pid = p["pid"]
             self.last_request_pids.add(pid)
 
@@ -386,7 +394,15 @@ class Application:
                     continue
                 self.known_instances[pid] = check_instance
 
+            trc2 = trc.span(check_instance.name)
+            trc2.start(trc2.tag, args={"check_name": check_instance.name,
+                "pid":str(check_instance.pid),
+                "other_container":str(check_instance.is_on_another_container)})
             metrics, service_checks, ex = check_instance.run()
+            numrun += 1
+            nm = len(metrics) if metrics else 0
+            trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
+            nummetrics += nm
 
             if ex and pid not in self.blacklisted_pids:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex)
@@ -398,6 +414,8 @@ class Application:
                                   "metrics": metrics,
                                   "service_checks": service_checks,
                                   "expiration_ts": int(expiration_ts.strftime("%s"))})
+        trc.stop(args={"total_metrics": nummetrics, "checks_run": numrun,
+            "checks_total": numchecks})
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
         self.outqueue.send(response_s)

@@ -267,6 +267,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
 	m_analyzer->get_configuration()->set_statsd_limit(m_configuration->m_statsd_limit);
+	m_analyzer->get_configuration()->set_app_checks_limit(m_configuration->m_app_checks_limit);
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
@@ -288,6 +289,14 @@ void sinsp_worker::init()
 	if(m_configuration->m_input_filename != "")
 	{
 		m_inspector->open(m_configuration->m_input_filename);
+	}
+	else if (m_configuration->m_mode == dragent_mode_t::NODRIVER)
+	{
+		m_inspector->open_nodriver();
+		// Change these values so the inactive thread pruning
+		// runs more often
+		m_inspector->m_thread_timeout_ns = 0;
+		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
 	else
 	{
@@ -404,7 +413,7 @@ void sinsp_worker::run()
 		run_standard_jobs(ev);
 		check_memdump_jobs(ev);
 
-		if(m_inspector->is_live() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
+		if(!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
 		{
 			ThreadPool::defaultPool().start(m_aws_metadata_refresher, "aws_metadata_refresher");
 			m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns() + IFLIST_REFRESH_TIMEOUT_NS;
@@ -416,7 +425,8 @@ void sinsp_worker::run()
 			if(m_configuration->m_aws_metadata.m_public_ipv4)
 			{
 				sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
-												m_configuration->m_aws_metadata.m_public_ipv4, m_configuration->m_aws_metadata.m_public_ipv4, "aws");
+												m_configuration->m_aws_metadata.m_public_ipv4,
+												m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 				m_inspector->import_ipv4_interface(aws_interface);
 			}
 			m_aws_metadata_refresher.reset();

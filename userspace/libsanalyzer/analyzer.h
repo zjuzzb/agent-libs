@@ -172,6 +172,40 @@ private:
 class sinsp_curl;
 class uri;
 
+/**
+ * Often we need to run something on an interval
+ * usually we need to store last_run_ts compare to now
+ * and run it
+ * This micro-class makes this easier
+ */
+class run_on_interval
+{
+public:
+	inline run_on_interval(uint64_t interval);
+
+	template<typename Callable>
+	inline void run(const Callable& c, uint64_t now = sinsp_utils::get_current_time_ns());
+private:
+	uint64_t m_last_run_ns;
+	uint64_t m_interval;
+};
+
+run_on_interval::run_on_interval(uint64_t interval):
+	m_last_run_ns(0),
+	m_interval(interval)
+{
+}
+
+template<typename Callable>
+void run_on_interval::run(const Callable& c, uint64_t now)
+{
+	if(now - m_last_run_ns > m_interval)
+	{
+		c();
+		m_last_run_ns = now;
+	}
+}
+
 //
 // The main analyzer class
 //
@@ -188,7 +222,7 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
-
+	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
@@ -401,6 +435,8 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
+	uint32_t get_mesos_api_server_port(sinsp_threadinfo* main_tinfo);
+	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(string& addr);
@@ -411,8 +447,8 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
-	vector<string> emit_containers(const vector<string>& active_containers);
-	void emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares);
+	vector<string> emit_containers(const progtable_by_container_t& active_containers);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -550,6 +586,7 @@ VISIBILITY_PRIVATE
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
+	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
 
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 
@@ -567,7 +604,7 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-
+	
 	//
 	// Falco stuff
 	//
@@ -631,6 +668,10 @@ VISIBILITY_PRIVATE
 	bool m_mesos_present = false;
 	time_t m_last_mesos_refresh;
 	uint64_t m_mesos_last_failure_ns;
+	int64_t m_mesos_master_tid = -1;
+	int64_t m_mesos_slave_tid = -1;
+	const uint32_t MESOS_MASTER_PORT = 5050;
+	const uint32_t MESOS_SLAVE_PORT = 5051;
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;
@@ -650,6 +691,7 @@ VISIBILITY_PRIVATE
 
 	user_event_queue::ptr_t m_user_event_queue;
 
+	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//

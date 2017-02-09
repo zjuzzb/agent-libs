@@ -222,7 +222,7 @@ static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
-static const auto APP_METRICS_LIMIT = 300;
+static const unsigned APP_METRICS_HARD_LIMIT = 1000;
 static const unsigned JMX_METRICS_HARD_LIMIT = 3000;
 static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;
 
@@ -240,3 +240,4 @@ static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
 static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 #define MESOS_RETRY_ON_ERRORS_TIMEOUT_NS (10 * ONE_SECOND_IN_NS)
+#define NODRIVER_PROCLIST_REFRESH_INTERVAL_NS (5 * ONE_SECOND_IN_NS)

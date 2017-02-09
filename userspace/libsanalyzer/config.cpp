@@ -26,10 +26,12 @@ sinsp_configuration::sinsp_configuration()
 	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
+	m_jmx_limit = 500;
+	m_app_checks_limit = 300;
+	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
 	m_capture_dragent_events = false;
-	m_memdump_size = 0;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -726,4 +728,13 @@ void sinsp_configuration::set_jmx_limit(unsigned limit)
 	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
 }
 
+unsigned sinsp_configuration::get_app_checks_limit() const
+{
+	return m_app_checks_limit;
+}
+
+void sinsp_configuration::set_app_checks_limit(unsigned value)
+{
+	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
 #endif // HAS_ANALYZER

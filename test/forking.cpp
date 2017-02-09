@@ -1074,6 +1074,11 @@ static int stop_sinsp_and_exit(void *arg)
 
 	inspector->stop_capture();
 
+	// Wait 5 seconds. This ensures that the state for this
+	// process will be considered stale when the second process
+	// with the same pid runs.
+	sleep(5);
+
 	return 0;
 }
 
@@ -1300,6 +1305,7 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 		}
 	};
 
+	EXPECT_GT(clones_seen, 1);
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 }
 
