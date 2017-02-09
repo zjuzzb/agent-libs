@@ -618,8 +618,8 @@ void dragent_configuration::init(Application* app)
 	}
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 	// Right now these two entries does not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}});
-	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}});
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}});
 
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);

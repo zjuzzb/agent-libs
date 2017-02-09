@@ -125,17 +125,20 @@ class statsd_server
 public:
 	statsd_server(const string& containerid, statsite_proxy& proxy, Poco::Net::SocketReactor& reactor);
 	virtual ~statsd_server();
-	void on_read(Poco::Net::ReadableNotification* notification);
 
 	statsd_server(const statsd_server&) = delete;
 	statsd_server& operator=(const statsd_server&) = delete;
 private:
+	void on_read(Poco::Net::ReadableNotification* notification);
+	void on_error(Poco::Net::ErrorNotification* notification);
+	unique_ptr<Poco::Net::DatagramSocket> make_socket(const Poco::Net::SocketAddress& address);
 	string m_containerid;
 	statsite_proxy& m_statsite;
-	Poco::Net::DatagramSocket m_ipv4_socket;
-	Poco::Net::DatagramSocket m_ipv6_socket;
+	unique_ptr<Poco::Net::DatagramSocket> m_ipv4_socket;
+	unique_ptr<Poco::Net::DatagramSocket> m_ipv6_socket;
 	Poco::Net::SocketReactor& m_reactor;
 	Poco::Observer<statsd_server, Poco::Net::ReadableNotification> m_read_obs;
+	Poco::Observer<statsd_server, Poco::Net::ErrorNotification> m_error_obs;
 	static const Poco::Net::SocketAddress IPV4_ADDRESS;
 	static const Poco::Net::SocketAddress IPV6_ADDRESS;
 };
@@ -155,5 +158,4 @@ private:
 	posix_queue m_inqueue;
 	run_on_interval m_receive_containers;
 	unordered_map<string, unique_ptr<statsd_server>> m_sockets;
-	int m_init_ns_fd;
 };

@@ -5,6 +5,7 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
+#include <Poco/Net/NetException.h>
 
 #ifndef _WIN32
 
@@ -355,42 +356,48 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes):
 	m_proxy(pipes),
 	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
-	m_receive_containers(ONE_SECOND_IN_NS)
+	m_receive_containers(ONE_SECOND_IN_NS/2)
 {
-	char nspath[SCAP_MAX_PATH_SIZE];
-	snprintf(nspath, sizeof(nspath), "%s/proc/self/ns/net", scap_get_host_root());
-	m_init_ns_fd = open(nspath, O_RDONLY);
-	cerr << __FUNCTION__ << ":" << __LINE__ << m_init_ns_fd << endl;
+	g_logger.add_stderr_log();
 }
 
 void statsite_forwarder::periodic_cleanup()
 {
+	send_subprocess_heartbeat();
+
 	auto msg = m_inqueue.receive();
-	cerr << __FUNCTION__ << ":" << __LINE__ << msg << endl;
+
+	if(msg.empty())
+	{
+		return;
+	}
+
 	Json::Reader json_reader;
 	Json::Value root;
 	if(!json_reader.parse(msg, root))
 	{
-		// TODO: log error
+		g_logger.format(sinsp_logger::SEV_ERROR, "statsite_forwarder, Error parsing msg=%s", msg.c_str());
 		return;
 	}
+	
 	unordered_set<string> containerids;
 	for(const auto& container : root["containers"])
 	{
 		auto containerid = container["id"].asString();
+		auto container_pid = container["pid"].asInt64();
 		containerids.emplace(containerid);
 		if(m_sockets.find(containerid) == m_sockets.end())
 		{
-			char nspath[SCAP_MAX_PATH_SIZE];
-			snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/net", scap_get_host_root(), container["pid"].asInt());
-			auto fd = open(nspath, O_RDONLY);
-			fprintf(stderr, "%s:%d fd=%d\n", __FUNCTION__, __LINE__, fd);
-			setns(fd, 0);
-			close(fd);
-			auto server = make_unique<statsd_server>(containerid, m_proxy, *this);
-			setns(m_init_ns_fd, 0);
-			fprintf(stderr, "%s:%d\n", __FUNCTION__, __LINE__);
-			m_sockets[containerid] = move(server);
+			try
+			{
+				nsenter enter(container_pid, "net");
+				g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_forwarder, Starting statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+				m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, *this);
+			}
+			catch (const sinsp_exception& ex)
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, cannot init statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+			}
 		}
 	}
 
@@ -401,6 +408,7 @@ void statsite_forwarder::periodic_cleanup()
 		{
 			// this container does not exists anymore, turning off statsd
 			// server so we can release resources
+			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_forwarder, Stopping statsd server on container=%s", it->first.c_str());
 			it = m_sockets.erase(it);
 		}
 		else
@@ -409,8 +417,6 @@ void statsite_forwarder::periodic_cleanup()
 			++it;
 		}
 	}
-	// TODO: send heartbeat
-	
 }
 
 void statsite_forwarder::onIdle()
@@ -434,22 +440,51 @@ const Poco::Net::SocketAddress statsd_server::IPV6_ADDRESS("::1", 8125);
 statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, Poco::Net::SocketReactor& reactor):
 	m_containerid(containerid),
 	m_statsite(proxy),
-	m_ipv4_socket(IPV4_ADDRESS),
-	m_ipv6_socket(IPV6_ADDRESS),
 	m_reactor(reactor),
-	m_read_obs(*this, &statsd_server::on_read)
+	m_read_obs(*this, &statsd_server::on_read),
+	m_error_obs(*this, &statsd_server::on_error)
 {
-	fprintf(stderr, "%s:%d \n", __FUNCTION__, __LINE__);
-	m_ipv4_socket.setBlocking(false);
-	m_ipv6_socket.setBlocking(false);
-	m_reactor.addEventHandler(m_ipv4_socket, m_read_obs);
-	m_reactor.addEventHandler(m_ipv6_socket, m_read_obs);
+	try
+	{
+		m_ipv4_socket = make_socket(IPV4_ADDRESS);
+	}
+	catch (const Poco::Net::NetException& ex)
+	{
+		auto reason = ex.displayText();
+		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv4 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
+	}
+	try
+	{
+		m_ipv6_socket = make_socket(IPV6_ADDRESS);
+	}
+	catch (const Poco::Net::NetException& ex)
+	{
+		auto reason = ex.displayText();
+		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv6 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
+	}
 }
 
 statsd_server::~statsd_server()
 {
-	m_reactor.removeEventHandler(m_ipv4_socket, m_read_obs);
-	m_reactor.removeEventHandler(m_ipv6_socket, m_read_obs);
+	if(m_ipv4_socket)
+	{
+		m_reactor.removeEventHandler(*m_ipv4_socket, m_read_obs);
+		m_reactor.removeEventHandler(*m_ipv4_socket, m_error_obs);
+	}
+	if(m_ipv6_socket)
+	{
+		m_reactor.removeEventHandler(*m_ipv6_socket, m_read_obs);
+		m_reactor.removeEventHandler(*m_ipv6_socket, m_error_obs);
+	}
+}
+
+unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(const Poco::Net::SocketAddress& address)
+{
+	unique_ptr<Poco::Net::DatagramSocket> socket = make_unique<Poco::Net::DatagramSocket>(address);
+	socket->setBlocking(false);
+	m_reactor.addEventHandler(*socket, m_read_obs);
+	m_reactor.addEventHandler(*socket, m_error_obs);
+	return socket;
 }
 
 void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
@@ -463,5 +498,10 @@ void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
 		m_statsite.send_container_metric(m_containerid, buffer, len);
 		m_statsite.send_metric(buffer, len);
 	}
+}
+
+void statsd_server::on_error(Poco::Net::ErrorNotification* notification)
+{
+	g_logger.format(sinsp_logger::SEV_ERROR, "statsite_forwarder, Unexpected error on statsd server");
 }
 #endif // _WIN32

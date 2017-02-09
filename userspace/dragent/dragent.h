@@ -88,10 +88,13 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
+
 	unique_ptr<errpipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	unique_ptr<errpipe_manager> m_sdchecks_pipes;
 	unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
+	unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
+
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 	log_reporter m_log_reporter;

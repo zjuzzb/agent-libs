@@ -4921,10 +4921,21 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		root["containers"] = Json::arrayValue;
 		for(const auto& id : containers_ids)
 		{
-			Json::Value c(Json::objectValue);
-			c["id"] = id;
-			c["pid"] = static_cast<Json::UInt64>(progtable_by_container.at(id).front()->m_pid);
-			root["containers"].append(c);
+			const auto& container_processes = progtable_by_container.at(id);
+			// Make sure the container is old enough so all the processes
+			// have already had a chance to bin don 8125 if they need it
+			auto old_proc_it = find_if(container_processes.begin(),
+										container_processes.end(), [this](sinsp_threadinfo* tinfo)
+										{
+											return (m_prev_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+										});
+			if(old_proc_it != container_processes.end())
+			{
+				Json::Value c(Json::objectValue);
+				c["id"] = id;
+				c["pid"] = static_cast<Json::Int64>((*old_proc_it)->m_pid);
+				root["containers"].append(c);
+			}
 		}
 		Json::FastWriter json_writer;
 		m_statsite_forwader_queue->send(json_writer.write(root));

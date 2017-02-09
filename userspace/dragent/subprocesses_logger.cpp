@@ -149,6 +149,28 @@ void sdjagent_parser::operator()(const string& data)
 	}
 }
 
+void sinsp_logger_parser(const string& s)
+{
+	// Right now we are using default sinsp stderror logger
+	// it does not send priority so we are using a simple heuristic
+	if(s.find("Error") != string::npos)
+	{
+		g_log->error(s);
+	}
+	else if(s.find("Warning") != string::npos)
+	{
+		g_log->warning(s);
+	}
+	else if(s.find("Info") != string::npos)
+	{
+		g_log->information(s);
+	}
+	else
+	{
+		g_log->debug(s);
+	}
+}
+
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
 		m_configuration(configuration),
 		m_log_reporter(reporter),

@@ -85,6 +85,8 @@ private:
 	Json::Reader m_json_reader;
 };
 
+void sinsp_logger_parser(const string&);
+
 class subprocesses_logger : public Runnable
 {
 public:

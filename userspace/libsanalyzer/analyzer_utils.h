@@ -274,3 +274,17 @@ void run_on_interval::run(const Callable& c, uint64_t now)
 		m_last_run_ns = now;
 	}
 }
+
+void send_subprocess_heartbeat();
+
+class nsenter
+{
+public:
+	nsenter(int pid, const string& type);
+	virtual ~nsenter();
+
+private:
+	int open_ns_fd(int pid, const string& type);
+	static unordered_map<string, int> m_home_ns;
+	string m_type;
+};
