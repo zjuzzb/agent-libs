@@ -288,8 +288,17 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	{
 		job->m_filterstr = filter;
 
-		sinsp_filter_compiler compiler(m_inspector, filter);
-		job->m_filter = compiler.compile();
+		try
+		{
+			sinsp_filter_compiler compiler(m_inspector, filter);
+			job->m_filter = compiler.compile();
+		}
+		catch(...)
+		{
+			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+			job->m_lasterr = "error compiling capture job filter";
+			return job;
+		}
 	}
 
 	apply_job_filter(fname, job);

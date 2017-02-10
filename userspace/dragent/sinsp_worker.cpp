@@ -766,6 +766,12 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 		switch(request->m_request_type)
 		{
 		case dump_job_request::JOB_START:
+			if(request->m_duration_ns == 0 && request->m_past_duration_ns == 0)
+			{
+				send_error(request->m_token, "either duration or past_duration must be nonzero");
+				return;
+			}
+
 			if(request->m_past_duration_ns == 0)
 			{
 				start_standard_job(*request, ts);
@@ -909,9 +915,14 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	g_log->information("starting memory dumper job, file: " + job_state->m_file);
 
 	// We inject a notification to make it easier to identify the starting point
-	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, job_state->m_file, "starting capture job " + job_state->m_file);
+	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
 
 	job_state->m_memdumper_job = memdumper->add_job(ts, job_state->m_file, request.m_filter, request.m_past_duration_ns, request.m_duration_ns);
+	if(job_state->m_memdumper_job->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
+	{
+		send_error(request.m_token, job_state->m_memdumper_job->m_lasterr);
+		return;
+	}
 
 	//
 	// Open the job output file for reading so we are ready to send it to the backend
