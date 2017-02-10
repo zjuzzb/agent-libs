@@ -6,6 +6,7 @@
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
 #include <Poco/Net/NetException.h>
+#include <Poco/Thread.h>
 
 #ifndef _WIN32
 
@@ -356,82 +357,108 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes):
 	m_proxy(pipes),
 	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
-	m_receive_containers(ONE_SECOND_IN_NS/2)
+	m_exitcode(0),
+	m_terminate(false)
 {
 	g_logger.add_stderr_log();
 }
 
-void statsite_forwarder::periodic_cleanup()
+int statsite_forwarder::run()
 {
-	send_subprocess_heartbeat();
+	ErrorHandler::set(this);
 
-	auto msg = m_inqueue.receive();
-
-	if(msg.empty())
-	{
-		return;
-	}
-
-	Json::Reader json_reader;
-	Json::Value root;
-	if(!json_reader.parse(msg, root))
-	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "statsite_forwarder, Error parsing msg=%s", msg.c_str());
-		return;
-	}
+	g_logger.format(sinsp_logger::SEV_INFO, "Info Starting with pid=%d\n", getpid());
 	
-	unordered_set<string> containerids;
-	for(const auto& container : root["containers"])
+	Poco::Thread reactor_thread;
+	reactor_thread.start(m_reactor);
+
+	while(!m_terminate)
 	{
-		auto containerid = container["id"].asString();
-		auto container_pid = container["pid"].asInt64();
-		containerids.emplace(containerid);
-		if(m_sockets.find(containerid) == m_sockets.end())
+		if(!reactor_thread.isRunning())
 		{
-			try
+			terminate(1, "unexpected reactor shutdown");
+		}
+		send_subprocess_heartbeat();
+		auto msg = m_inqueue.receive(1);
+
+		if(msg.empty())
+		{
+			continue;
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received msg=%s", msg.c_str());
+
+		Json::Reader json_reader;
+		Json::Value root;
+		if(!json_reader.parse(msg, root))
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Error parsing msg=%s", msg.c_str());
+			continue;
+		}
+		
+		unordered_set<string> containerids;
+		for(const auto& container : root["containers"])
+		{
+			auto containerid = container["id"].asString();
+			auto container_pid = container["pid"].asInt64();
+			containerids.emplace(containerid);
+			if(m_sockets.find(containerid) == m_sockets.end())
 			{
-				nsenter enter(container_pid, "net");
-				g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_forwarder, Starting statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
-				m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, *this);
+				try
+				{
+					nsenter enter(container_pid, "net");
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Starting statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+					m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, m_reactor);
+				}
+				catch (const sinsp_exception& ex)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "Warning, cannot init statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+				}
 			}
-			catch (const sinsp_exception& ex)
+		}
+
+		auto it = m_sockets.begin();
+		while(it != m_sockets.end())
+		{
+			if(containerids.find(it->first) == containerids.end())
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, cannot init statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+				// this container does not exists anymore, turning off statsd
+				// server so we can release resources
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Stopping statsd server on container=%s", it->first.c_str());
+				it = m_sockets.erase(it);
+			}
+			else
+			{
+				// container still exists, keep iterating
+				++it;
 			}
 		}
 	}
-
-	auto it = m_sockets.begin();
-	while(it != m_sockets.end())
-	{
-		if(containerids.find(it->first) == containerids.end())
-		{
-			// this container does not exists anymore, turning off statsd
-			// server so we can release resources
-			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_forwarder, Stopping statsd server on container=%s", it->first.c_str());
-			it = m_sockets.erase(it);
-		}
-		else
-		{
-			// container still exists, keep iterating
-			++it;
-		}
-	}
+	reactor_thread.join();
+	return m_exitcode;
 }
 
-void statsite_forwarder::onIdle()
+void statsite_forwarder::exception(const Poco::Exception& ex)
 {
-	m_receive_containers.run(bind(&statsite_forwarder::periodic_cleanup, this));
+	terminate(1, ex.displayText());
 }
 
-void statsite_forwarder::onBusy()
+void statsite_forwarder::exception(const std::exception& ex)
 {
-	m_receive_containers.run(bind(&statsite_forwarder::periodic_cleanup, this));
+	terminate(1, ex.what());
 }
 
-void statsite_forwarder::onTimeout()
+void statsite_forwarder::exception()
 {
-	m_receive_containers.run(bind(&statsite_forwarder::periodic_cleanup, this));
+	terminate(1, "Unknown exception");
+}
+
+void statsite_forwarder::terminate(int code, const string& reason)
+{
+	g_logger.format(sinsp_logger::SEV_ERROR, "Fatal error occurred: %s, terminating", reason.c_str());
+	m_reactor.stop();
+	m_terminate = true;
+	m_exitcode = code;
 }
 
 const Poco::Net::SocketAddress statsd_server::IPV4_ADDRESS("127.0.0.1", 8125);
@@ -463,6 +490,7 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 		auto reason = ex.displayText();
 		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv6 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
 	}
+
 }
 
 statsd_server::~statsd_server()
@@ -491,7 +519,7 @@ unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(const Poco::Net
 
 void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
 {
-	throw sinsp_exception("test");
+	//throw sinsp_exception("test");
 	// Either ipv4 or ipv6 datagram socket will come here
 	Poco::Net::DatagramSocket datagram_socket(notification->socket());
 	auto len = datagram_socket.receiveBytes(m_read_buffer, MAX_READ_SIZE);
@@ -506,4 +534,5 @@ void statsd_server::on_error(Poco::Net::ErrorNotification* notification)
 {
 	g_logger.format(sinsp_logger::SEV_ERROR, "statsite_forwarder, Unexpected error on statsd server");
 }
+
 #endif // _WIN32

@@ -4923,7 +4923,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		{
 			const auto& container_processes = progtable_by_container.at(id);
 			// Make sure the container is old enough so all the processes
-			// have already had a chance to bin don 8125 if they need it
+			// have already had a chance to bind on 8125 if they need it
 			auto old_proc_it = find_if(container_processes.begin(),
 										container_processes.end(), [this](sinsp_threadinfo* tinfo)
 										{

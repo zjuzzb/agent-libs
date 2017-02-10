@@ -8,6 +8,8 @@
 #include <Poco/Net/SocketReactor.h>
 #include <Poco/Net/DatagramSocket.h>
 #include <Poco/Net/SocketNotification.h>
+#include <Poco/ErrorHandler.h>
+#include <atomic>
 
 class statsite_proxy;
 namespace draiosproto
@@ -145,19 +147,21 @@ private:
 	static const unsigned MAX_READ_SIZE = 2048;
 };
 
-class statsite_forwarder: public Poco::Net::SocketReactor
+class statsite_forwarder: public Poco::ErrorHandler
 {
 public:
 	statsite_forwarder(const pair<FILE*, FILE*>& pipes);
-protected:
-	virtual void onIdle() override;
-	virtual void onBusy() override;
-	virtual void onTimeout() override;
+	virtual void exception(const Poco::Exception& ex) override;
+	virtual void exception(const std::exception& ex) override;
+	virtual void exception() override;
+	int run();
 private:
-	void periodic_cleanup();
+	void terminate(int code, const string& reason);
 
 	statsite_proxy m_proxy;
 	posix_queue m_inqueue;
-	run_on_interval m_receive_containers;
 	unordered_map<string, unique_ptr<statsd_server>> m_sockets;
+	Poco::Net::SocketReactor m_reactor;
+	int m_exitcode;
+	std::atomic<bool> m_terminate;
 };
