@@ -150,6 +150,7 @@ public:
 
 		try
 		{
+#if defined(HAS_CAPTURE)
 			if(!m_capture_dragent_events)
 			{
 				//
@@ -164,6 +165,7 @@ public:
 					}
 				}
 			}
+#endif
 
 			m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
 			m_active_state->m_dumper->dump(evt);
@@ -212,6 +214,8 @@ private:
 	uint64_t m_saturation_inactivity_pause_ns;
 	uint64_t m_saturation_inactivity_start_time;
 	vector<sinsp_memory_dumper_job*> m_jobs;
+#if defined(HAS_CAPTURE)
 	bool m_capture_dragent_events;
 	int64_t m_sysdig_pid;
+#endif
 };
