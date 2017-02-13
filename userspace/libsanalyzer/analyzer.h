@@ -279,7 +279,7 @@ public:
 		m_configuration->set_jmx_limit(limit);
 	}
 
-	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);
+	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds, bool forwarder);
 #endif
 
 	void set_protocols_enabled(bool value)

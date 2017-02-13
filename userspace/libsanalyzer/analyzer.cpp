@@ -4915,7 +4915,8 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		}
 	}
 
-	if(m_inspector->is_nodriver())
+	// This queue is initialized only if statsd is enabled and we are in nodriver mode
+	if(m_statsite_forwader_queue)
 	{
 		Json::Value root(Json::objectValue);
 		root["containers"] = Json::arrayValue;
@@ -5737,11 +5738,13 @@ bool sinsp_analyzer::driver_stopped_dropping()
 }
 
 #ifndef _WIN32
-void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
+void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
 {
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
-	// TODO: open queue only in nodriver mode
-	m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);
+	if(forwarder)
+	{
+		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);
+	}
 }
 #endif // _WIN32
 
