@@ -92,6 +92,11 @@ public:
 
 	Json::Value to_json() const;
 
+	inline const string& name() const
+	{
+		return m_check.name();
+	}
+
 private:
 	int m_pid;
 	int m_vpid;
@@ -161,6 +166,11 @@ public:
 
 	uint16_t to_protobuf(draiosproto::app_info *proto, uint16_t limit) const;
 
+	const string& name() const
+	{
+		return m_process_name;
+	}
+
 private:
 	int m_pid;
 	string m_process_name;
@@ -176,7 +186,7 @@ public:
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
-	unordered_map<int, app_check_data> read_metrics();
+	unordered_map<int, map<string, app_check_data>> read_metrics();
 
 private:
 	posix_queue m_outqueue;

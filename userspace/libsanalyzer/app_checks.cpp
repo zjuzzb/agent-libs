@@ -218,9 +218,9 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	m_outqueue.send(data);
 }
 
-unordered_map<int, app_check_data> app_checks_proxy::read_metrics()
+unordered_map<int, map<string, app_check_data>> app_checks_proxy::read_metrics()
 {
-	unordered_map<int, app_check_data> ret;
+	unordered_map<int, map<string, app_check_data>> ret;
 	auto msg = m_inqueue.receive();
 	if(!msg.empty())
 	{
@@ -232,7 +232,7 @@ unordered_map<int, app_check_data> app_checks_proxy::read_metrics()
 		for(const auto& process : response_obj)
 		{
 			app_check_data data(process);
-			ret.emplace(data.pid(), move(data));
+			ret[data.pid()][data.name()] = move(data);
 		}
 	}
 	return ret;

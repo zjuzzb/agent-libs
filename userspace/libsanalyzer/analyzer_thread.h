@@ -6,6 +6,7 @@
 #include "protostate.h"
 #include "delays.h"
 #include "procfs_parser.h"
+#include "app_checks.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -112,8 +113,7 @@ public:
 		AF_IS_LOCAL_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions toward localhost.
 		AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
 		AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
-		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
-		AF_APP_CHECK_FOUND = (1 << 9),
+		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8) // set for main program threads.
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -148,16 +148,6 @@ public:
 
 	const proc_config& get_proc_config();
 
-	inline bool app_check_found()
-	{
-		return (m_th_analysis_flags & AF_APP_CHECK_FOUND) != 0;
-	}
-
-	inline void set_app_check_found()
-	{
-		m_th_analysis_flags |= AF_APP_CHECK_FOUND;
-	}
-
 	inline const set<uint16_t>& listening_ports()
 	{
 		// Scan all fd for listening ports only if fdtable isn't too big
@@ -168,6 +158,16 @@ public:
 		}
 		return *m_listening_ports;
 	}
+
+	inline bool found_app_check(const app_check& check)
+	{
+		return (m_app_checks_found.find(check.name()) != m_app_checks_found.end());
+	}
+	inline void set_found_app_check(const app_check& check)
+	{
+		m_app_checks_found.emplace(check.name());
+	}
+
 
 	// Global state
 	sinsp *m_inspector;
@@ -208,6 +208,7 @@ public:
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
+	unordered_set<std::string> m_app_checks_found;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

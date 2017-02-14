@@ -452,7 +452,7 @@ VISIBILITY_PRIVATE
 	void match_checks_list(sinsp_threadinfo *tinfo,
 			       sinsp_threadinfo *mtinfo,
 			       const vector<app_check> &checks,
-			       vector<app_process> &app_checks_processes,
+				   vector<app_process> &app_checks_processes,
 			       const char *location);
 
 	uint32_t m_n_flushes;
