@@ -4920,9 +4920,16 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	{
 		Json::Value root(Json::objectValue);
 		root["containers"] = Json::arrayValue;
+		auto agent_tinfo = m_inspector->get_thread(m_inspector->m_sysdig_pid);
+		auto agent_container_id = agent_tinfo? agent_tinfo->m_container_id : "";
 		for(const auto& id : containers_ids)
 		{
 			const auto& container_processes = progtable_by_container.at(id);
+			// skip agent container itself
+			if(id == agent_container_id)
+			{
+				continue;
+			}
 			// Make sure the container is old enough so all the processes
 			// have already had a chance to bind on 8125 if they need it
 			auto old_proc_it = find_if(container_processes.begin(),
