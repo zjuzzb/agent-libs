@@ -85,6 +85,15 @@ private:
 	Json::Reader m_json_reader;
 };
 
+class sinsp_logger_parser
+{
+public:
+	sinsp_logger_parser(const string& procname);
+	void operator()(const string&);
+private:
+	string m_prefix;
+};
+
 class subprocesses_logger : public Runnable
 {
 public:

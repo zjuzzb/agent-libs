@@ -1,5 +1,6 @@
 #ifndef _WIN32
 #include <unistd.h>
+#include <sys/resource.h>
 #endif
 
 #include "sinsp.h"
@@ -8,6 +9,8 @@
 #include "sinsp_signal.h"
 #include "filter.h"
 #include "filterchecks.h"
+#include "analyzer_utils.h"
+
 
 #ifdef SIMULATE_DROP_MODE
 
@@ -279,4 +282,61 @@ bool should_drop2(sinsp_evt *evt, bool* switched)
 	return is_dropping;
 }
 
-#endif
+#endif /* SIMULATE_DROP_MODE */
+
+void send_subprocess_heartbeat()
+{
+	struct rusage mem_usage;
+	auto now = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
+	getrusage(RUSAGE_SELF, &mem_usage);
+	fprintf(stderr,"HB,%d,%ld,%llu\n", getpid(), mem_usage.ru_maxrss, now);
+	fflush(stderr);
+}
+
+unordered_map<string, int> nsenter::m_home_ns;
+
+nsenter::nsenter(int pid, const string& type):
+	m_type(type)
+{
+	auto home_ns_it = m_home_ns.find(m_type);
+	if(home_ns_it == m_home_ns.end())
+	{
+		auto fd = open_ns_fd(getpid(), m_type);
+		if(fd <= 0)
+		{
+			throw sinsp_exception("Cannot open home namespace fd");
+		}
+		auto emplaced = m_home_ns.emplace(m_type, fd);
+		home_ns_it = emplaced.first;
+	}
+
+	// Go to container ns
+	auto fd = open_ns_fd(pid, m_type);
+	if(fd <= 0)
+	{
+		throw sinsp_exception("Cannot open namespace fd for pid=" + to_string(pid));
+	}
+	auto ret = setns(fd, 0);
+	close(fd);
+	if(ret != 0)
+	{
+		throw sinsp_exception("Cannot setns to pid=" + to_string(pid));
+	}
+}
+
+nsenter::~nsenter()
+{
+	if(setns(m_home_ns.at(m_type), 0) != 0)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, "Cannot setns home");
+		// Very bad error, better to crash at this point
+		abort();
+	}
+}
+
+int nsenter::open_ns_fd(int pid, const string& type)
+{
+	char filename[SCAP_MAX_PATH_SIZE];
+	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/%s", scap_get_host_root(), pid, type.c_str());
+	return open(filename, O_RDONLY);
+}

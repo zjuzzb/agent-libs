@@ -46,7 +46,7 @@ void sinsp_worker::init()
 
 	if(m_statsite_pipes)
 	{
-		m_analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds());
+		m_analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds(), m_configuration->m_mode == dragent_mode_t::NODRIVER);
 	}
 
 	m_inspector->m_analyzer = m_analyzer;

@@ -336,6 +336,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			return (EXIT_FAILURE);
 		});
+		if(m_configuration.m_mode == dragent_mode_t::NODRIVER)
+		{
+			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
+			auto state = &m_subprocesses_state["statsite_forwarder"];
+			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(), sinsp_logger_parser("statsite_forwarder"), state);
+			monitor_process.emplace_process("statsite_forwader", [this](void) -> int
+			{
+				m_statsite_forwarder_pipe->attach_child();
+				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(), m_configuration.m_statsd_port);
+				return fwd.run();;
+			});
+		}
 	}
 
 	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
@@ -388,27 +400,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
-		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
-		{
-			// Right now we are using default sinsp stderror logger
-			// it does not send priority so we are using a simple heuristic
-			if(s.find("Error") != string::npos)
-			{
-				g_log->error(s);
-			}
-			else if(s.find("Warning") != string::npos)
-			{
-				g_log->warning(s);
-			}
-			else if(s.find("Info") != string::npos)
-			{
-				g_log->information(s);
-			}
-			else
-			{
-				g_log->debug(s);
-			}
-		}, state);
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
 		monitor_process.emplace_process("mountedfs_reader", [this](void)
 		{
 			m_mounted_fs_reader_pipe->attach_child();
@@ -423,9 +415,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 				this->m_jmx_pipes.reset();
 				this->m_mounted_fs_reader_pipe.reset();
 				this->m_statsite_pipes.reset();
+				m_statsite_forwarder_pipe.reset();
 				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
 									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
-									  "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
+									  "/sdc_sdjagent_out", "/sdc_sdjagent_in", "/sdc_statsite_forwarder_in"})
 				{
 					posix_queue::remove(queue);
 				}
