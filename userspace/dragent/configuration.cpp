@@ -265,6 +265,7 @@ dragent_configuration::dragent_configuration()
 	m_sysdig_capture_enabled = true;
 	m_statsd_enabled = true;
 	m_statsd_limit = 100;
+	m_statsd_port = 8125;
 	m_sdjagent_enabled = true;
 	m_jmx_limit = 500;
 	m_app_checks_enabled = true;
@@ -622,8 +623,8 @@ void dragent_configuration::init(Application* app)
 	}
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 	// Right now these two entries does not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}});
-	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}});
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}});
 
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
@@ -645,6 +646,7 @@ void dragent_configuration::init(Application* app)
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
+	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
@@ -1210,7 +1212,7 @@ void dragent_configuration::write_statsite_configuration()
 					"parse_stdin = 1\n";
 
 	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
-	auto udp_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
+	auto udp_port = m_statsd_port;
 	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one

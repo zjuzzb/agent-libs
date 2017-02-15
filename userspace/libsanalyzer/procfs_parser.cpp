@@ -1033,8 +1033,6 @@ bool mounted_fs_reader::change_ns(int destpid)
 int mounted_fs_reader::run()
 {
 	auto pid = getpid();
-	uint64_t m_last_loop_s = 0;
-	struct rusage mem_usage;
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
 	if(getppid() == 1)
@@ -1056,10 +1054,7 @@ int mounted_fs_reader::run()
 	while(true)
 	{
 		// Send heartbeat
-		m_last_loop_s = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
-		getrusage(RUSAGE_SELF, &mem_usage);
-		fprintf(stderr,"HB,%d,%ld,%ld\n", pid, mem_usage.ru_maxrss, m_last_loop_s);
-		fflush(stderr);
+		send_subprocess_heartbeat();
 		auto request_s = m_input.receive(1);
 		if(!request_s.empty())
 		{
