@@ -282,7 +282,7 @@ bool should_drop2(sinsp_evt *evt, bool* switched)
 	return is_dropping;
 }
 
-#endif
+#endif /* SIMULATE_DROP_MODE */
 
 void send_subprocess_heartbeat()
 {
