@@ -469,7 +469,6 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 	m_read_obs(*this, &statsd_server::on_read),
 	m_error_obs(*this, &statsd_server::on_error)
 {
-	m_read_buffer = new char[MAX_READ_SIZE];
 	try
 	{
 		m_ipv4_socket = make_socket(Poco::Net::SocketAddress("127.0.0.1", port));
@@ -488,6 +487,7 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 		auto reason = ex.displayText();
 		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv6 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
 	}
+	m_read_buffer = new char[MAX_READ_SIZE];
 }
 
 statsd_server::~statsd_server()
