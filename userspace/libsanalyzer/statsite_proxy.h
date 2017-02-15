@@ -125,7 +125,7 @@ private:
 class statsd_server
 {
 public:
-	statsd_server(const string& containerid, statsite_proxy& proxy, Poco::Net::SocketReactor& reactor);
+	statsd_server(const string& containerid, statsite_proxy& proxy, Poco::Net::SocketReactor& reactor, uint16_t port);
 	virtual ~statsd_server();
 
 	statsd_server(const statsd_server&) = delete;
@@ -142,15 +142,13 @@ private:
 	Poco::Observer<statsd_server, Poco::Net::ReadableNotification> m_read_obs;
 	Poco::Observer<statsd_server, Poco::Net::ErrorNotification> m_error_obs;
 	char* m_read_buffer;
-	static const Poco::Net::SocketAddress IPV4_ADDRESS;
-	static const Poco::Net::SocketAddress IPV6_ADDRESS;
 	static const unsigned MAX_READ_SIZE = 2048;
 };
 
 class statsite_forwarder: public Poco::ErrorHandler
 {
 public:
-	statsite_forwarder(const pair<FILE*, FILE*>& pipes);
+	statsite_forwarder(const pair<FILE*, FILE*>& pipes, uint16_t statsd_port);
 	virtual void exception(const Poco::Exception& ex) override;
 	virtual void exception(const std::exception& ex) override;
 	virtual void exception() override;
@@ -163,5 +161,6 @@ private:
 	unordered_map<string, unique_ptr<statsd_server>> m_sockets;
 	Poco::Net::SocketReactor m_reactor;
 	int m_exitcode;
+	uint16_t m_port;
 	std::atomic<bool> m_terminate;
 };

@@ -354,10 +354,11 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 	send_metric(metric_data.data(), metric_data.size());
 }
 
-statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes):
+statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes, uint16_t port):
 	m_proxy(pipes),
 	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
 	m_exitcode(0),
+	m_port(port),
 	m_terminate(false)
 {
 	g_logger.add_stderr_log();
@@ -408,7 +409,7 @@ int statsite_forwarder::run()
 				{
 					nsenter enter(container_pid, "net");
 					g_logger.format(sinsp_logger::SEV_DEBUG, "Starting statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
-					m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, m_reactor);
+					m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, m_reactor, m_port);
 				}
 				catch (const sinsp_exception& ex)
 				{
@@ -461,10 +462,7 @@ void statsite_forwarder::terminate(int code, const string& reason)
 	m_exitcode = code;
 }
 
-const Poco::Net::SocketAddress statsd_server::IPV4_ADDRESS("127.0.0.1", 8125);
-const Poco::Net::SocketAddress statsd_server::IPV6_ADDRESS("::1", 8125);
-
-statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, Poco::Net::SocketReactor& reactor):
+statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, Poco::Net::SocketReactor& reactor, uint16_t port):
 	m_containerid(containerid),
 	m_statsite(proxy),
 	m_reactor(reactor),
@@ -474,7 +472,7 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 	m_read_buffer = new char[MAX_READ_SIZE];
 	try
 	{
-		m_ipv4_socket = make_socket(IPV4_ADDRESS);
+		m_ipv4_socket = make_socket(Poco::Net::SocketAddress("127.0.0.1", port));
 	}
 	catch (const Poco::Net::NetException& ex)
 	{
@@ -483,14 +481,13 @@ statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, P
 	}
 	try
 	{
-		m_ipv6_socket = make_socket(IPV6_ADDRESS);
+		m_ipv6_socket = make_socket(Poco::Net::SocketAddress("::1", port));
 	}
 	catch (const Poco::Net::NetException& ex)
 	{
 		auto reason = ex.displayText();
 		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv6 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
 	}
-
 }
 
 statsd_server::~statsd_server()
