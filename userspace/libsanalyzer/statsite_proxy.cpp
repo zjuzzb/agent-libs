@@ -516,7 +516,6 @@ unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(const Poco::Net
 
 void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
 {
-	//throw sinsp_exception("test");
 	// Either ipv4 or ipv6 datagram socket will come here
 	Poco::Net::DatagramSocket datagram_socket(notification->socket());
 	auto len = datagram_socket.receiveBytes(m_read_buffer, MAX_READ_SIZE);
