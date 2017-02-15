@@ -642,7 +642,7 @@ void dragent_configuration::init(Application* app)
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
-	m_statsd_port = m_config->get_scalar<unsigned>("statsd", "udp_port", 8125);
+	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
