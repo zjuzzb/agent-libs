@@ -186,6 +186,7 @@ public:
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
+	// hash table keyed by PID, containing maps keyed by app_check name
 	unordered_map<int, map<string, app_check_data>> read_metrics();
 
 private:

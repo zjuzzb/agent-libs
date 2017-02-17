@@ -364,10 +364,12 @@ class Application:
         for p in processes:
             numchecks += 1
             pid = p["pid"]
-            self.last_request_pids.add(pid)
+            check = p["check"]
+            name = check["name"]
+            self.last_request_pids.add((pid,name))
 
             try:
-                check_instance = self.known_instances[pid]
+                check_instance = self.known_instances[(pid,name)]
                 if check_instance.proc_data != p:
 
                     # The configuration for this check has changed. Remove it
@@ -376,14 +378,13 @@ class Application:
                     logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
                                   p["check"].get("name", "N/A"),
                                   str(check_instance.proc_data), str(p))
-                    del self.known_instances[pid]
-                    check_instance = self.known_instances[pid]
+                    del self.known_instances[(pid,name)]
+                    check_instance = self.known_instances[(pid,name)]
 
             except KeyError:
                 if pid in self.blacklisted_pids:
                     logging.debug("Process with pid=%d is blacklisted", pid)
                     continue
-                check = p["check"]
                 logging.debug("Requested check %s", repr(check))
 
                 try:
@@ -392,7 +393,7 @@ class Application:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
                     self.blacklisted_pids.add(pid)
                     continue
-                self.known_instances[pid] = check_instance
+                self.known_instances[(pid,name)] = check_instance
 
             trc2 = trc.span(check_instance.name)
             trc2.start(trc2.tag, args={"check_name": check_instance.name,

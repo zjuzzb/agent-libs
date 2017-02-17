@@ -1819,9 +1819,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
 				match_checks_list(tinfo, mtinfo, custom_checks, app_checks, "env");
-				match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
+				// Ignore the global list if we found custom checks
+				if (app_checks.empty()) {
+					match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
+				}
 
-				if (app_checks.size()) {
+				if (!app_checks.empty()) {
 					auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
 
 					for (auto& appcheck : app_checks)
@@ -2273,9 +2276,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			if(m_app_proxy)
 			{
 				set<string> app_data_set;
-				// Send data from the first non-expired metrics found for each app-check
-				// for the processes in procinfo
-				// auto app_data_it = m_app_metrics.end();
+				// Send data for each app-check for the processes in procinfo
 				for(auto pid: procinfo->m_program_pids)
 				{
 					auto datamap_it = m_app_metrics.find(pid);
@@ -2283,14 +2284,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						for (auto app_data : datamap_it->second)
 						{
-							if ((app_data_set.find(app_data.first) == app_data_set.end()) &&
-								app_data.second.expiration_ts() >
-								(m_prev_flush_time_ns/ONE_SECOND_IN_NS))
+							if (app_data_set.find(app_data.first) == app_data_set.end())
 							{
 								g_logger.format(sinsp_logger::SEV_DEBUG,
 									"Found app metrics for %d,%s", tinfo->m_pid, app_data.first.c_str());
 								app_checks_limit -= app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
 								app_data_set.emplace(app_data.first);
+							}
+							else
+							{
+								// Unlikely to happen
+								g_logger.format(sinsp_logger::SEV_INFO,
+									"Skipping duplicate app metrics for %d(%d),%s",
+										tinfo->m_pid, pid, app_data.first.c_str());
 							}
 						}
 					}

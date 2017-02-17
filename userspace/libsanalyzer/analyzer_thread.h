@@ -161,11 +161,13 @@ public:
 
 	inline bool found_app_check(const app_check& check)
 	{
-		return (m_app_checks_found.find(check.name()) != m_app_checks_found.end());
+		const string& module = check.module().empty() ? check.name() : check.module();
+		return (m_app_checks_found.find(module) != m_app_checks_found.end());
 	}
 	inline void set_found_app_check(const app_check& check)
 	{
-		m_app_checks_found.emplace(check.name());
+		const string& module = check.module().empty() ? check.name() : check.module();
+		m_app_checks_found.emplace(module);
 	}
 
 
@@ -208,7 +210,7 @@ public:
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
-	unordered_set<std::string> m_app_checks_found;
+	set<std::string> m_app_checks_found;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
