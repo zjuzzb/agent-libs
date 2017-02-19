@@ -4979,6 +4979,39 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		}
 	}
 
+	// This queue is initialized only if statsd is enabled and we are in nodriver mode
+	if(m_statsite_forwader_queue)
+	{
+		Json::Value root(Json::objectValue);
+		root["containers"] = Json::arrayValue;
+		auto agent_tinfo = m_inspector->get_thread(m_inspector->m_sysdig_pid);
+		auto agent_container_id = agent_tinfo? agent_tinfo->m_container_id : "";
+		for(const auto& id : containers_ids)
+		{
+			const auto& container_processes = progtable_by_container.at(id);
+			// skip agent container itself
+			if(id == agent_container_id)
+			{
+				continue;
+			}
+			// Make sure the container is old enough so all the processes
+			// have already had a chance to bind on 8125 if they need it
+			auto old_proc_it = find_if(container_processes.begin(),
+										container_processes.end(), [this](sinsp_threadinfo* tinfo)
+										{
+											return (m_prev_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+										});
+			if(old_proc_it != container_processes.end())
+			{
+				Json::Value c(Json::objectValue);
+				c["id"] = id;
+				c["pid"] = static_cast<Json::Int64>((*old_proc_it)->m_pid);
+				root["containers"].append(c);
+			}
+		}
+		Json::FastWriter json_writer;
+		m_statsite_forwader_queue->send(json_writer.write(root));
+	}
 	g_logger.format(sinsp_logger::SEV_DEBUG, "total_cpu_shares=%lu", total_cpu_shares);
 	containers_protostate_marker.mark_top(CONTAINERS_PROTOS_TOP_LIMIT);
 	// Emit containers on protobuf, our logic is:
@@ -5786,9 +5819,13 @@ bool sinsp_analyzer::driver_stopped_dropping()
 }
 
 #ifndef _WIN32
-void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds)
+void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
 {
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
+	if(forwarder)
+	{
+		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);
+	}
 }
 #endif // _WIN32
 

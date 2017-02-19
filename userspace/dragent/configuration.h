@@ -503,6 +503,7 @@ public:
 	bool m_sysdig_capture_enabled;
 	bool m_statsd_enabled;
 	unsigned m_statsd_limit;
+	uint16_t m_statsd_port;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
 	string m_python_binary;
