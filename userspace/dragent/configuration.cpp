@@ -635,10 +635,10 @@ void dragent_configuration::init(Application* app)
 	auto java_home = m_config->get_scalar<string>("java_home", "");
 	for(const auto& bin_path : { string("/usr/bin/java"), java_home + "/jre/bin/java", java_home + "/bin/java"})
 	{
-		File java_bin(bin_path);
-		if(java_bin.exists() && java_bin.canExecute())
+		if(is_executable(bin_path))
 		{
 			m_java_binary = bin_path;
+			break;
 		}
 	}
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
