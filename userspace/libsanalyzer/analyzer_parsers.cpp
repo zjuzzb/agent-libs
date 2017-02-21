@@ -301,11 +301,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		thread_analyzer_info* ttainfo = ttinfo->m_ainfo;
 		ancestor_chain.push_back(ttainfo);
 
-		//
-		// This code tries to optimize the bacward navigation by caching the login
-		// shell ID and the indentation factor. It's incomplete and currently 
-		// commented as we determine if it's really useful.
-		//
 		uint32_t cl = ttinfo->m_comm.size();
 		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
 		{

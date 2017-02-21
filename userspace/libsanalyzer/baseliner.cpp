@@ -247,7 +247,6 @@ void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 	//
 	// Initialize the FD listener
 	//
-// xxxx
 	m_inspector->m_parser->m_fd_listener = listener;
 }
 
@@ -597,26 +596,6 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 	// Find the program entry
 	//
 	auto it = m_progtable.find(phash);
-
-///////////////////////////////////////////////////////////////////////////////
-// XXX Remove this
-///////////////////////////////////////////////////////////////////////////////
-/*
-if(tinfo->m_container_id != "" && (tinfo->m_comm == "du" || tinfo->m_comm == "nice"))
-{
-	lo(sinsp_logger::SEV_ERROR, "*detected execution of %s", tinfo->m_comm.c_str());
-	lo(sinsp_logger::SEV_ERROR, "*exe=%s", tinfo->m_exe.c_str());
-	for(auto a : tinfo->m_args)
-	{
-		lo(sinsp_logger::SEV_ERROR, "*a=%s", a.c_str());
-	}
-	lo(sinsp_logger::SEV_ERROR, "*container id=%s", tinfo->m_container_id.c_str());
-}
-*/
-///////////////////////////////////////////////////////////////////////////////
-// XXX Remove this
-///////////////////////////////////////////////////////////////////////////////
-
 	if(it == m_progtable.end())
 	{
 		if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)

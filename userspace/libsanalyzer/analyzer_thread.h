@@ -206,10 +206,6 @@ public:
 	thread_analyzer_dyn_state* m_dynstate;
 	bool m_called_execve;
 	uint64_t m_last_cmdline_sync_ns;
-	// For threads that have been executed from the command line, this is the tid
-	// of the session shell, i.e. the session ID
-	//uint64_t m_login_shell_id; // this is equivalent to the shell ID in spy_users
-	//uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 
 private:
 	void scan_listening_ports();
