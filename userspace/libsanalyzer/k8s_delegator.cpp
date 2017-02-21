@@ -42,7 +42,7 @@ k8s_delegator::k8s_delegator(sinsp* inspector,
 	ssl_ptr_t ssl,
 	bt_ptr_t bt):
 		k8s_handler("k8s_delegator", false, url, "/api/v1/nodes",
-					STATE_FILTER, EVENT_FILTER,
+					STATE_FILTER, EVENT_FILTER, "",
 					std::make_shared<k8s_handler::collector_t>(),
 					http_version, 1000L, ssl, bt, true, true,
 					std::make_shared<k8s_dummy_handler>(), false, ~0, nullptr),
