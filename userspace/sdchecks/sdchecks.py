@@ -382,8 +382,8 @@ class Application:
                     check_instance = self.known_instances[(pid,name)]
 
             except KeyError:
-                if pid in self.blacklisted_pids:
-                    logging.debug("Process with pid=%d is blacklisted", pid)
+                if (pid,name) in self.blacklisted_pids:
+                    logging.debug("Process with pid=%d,name=%s is blacklisted", pid, name)
                     continue
                 logging.debug("Requested check %s", repr(check))
 
@@ -391,7 +391,7 @@ class Application:
                     check_instance = AppCheckInstance(check, p)
                 except AppCheckException as ex:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
-                    self.blacklisted_pids.add(pid)
+                    self.blacklisted_pids.add((pid,name))
                     continue
                 self.known_instances[(pid,name)] = check_instance
 
@@ -405,9 +405,9 @@ class Application:
             trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
             nummetrics += nm
 
-            if ex and pid not in self.blacklisted_pids:
+            if ex and (pid,name) not in self.blacklisted_pids:
                 logging.error("Exception on running check %s: %s", check_instance.name, ex)
-                self.blacklisted_pids.add(pid)
+                self.blacklisted_pids.add((pid,name))
 
             expiration_ts = datetime.now() + check_instance.interval
             response_body.append({"pid": pid,
