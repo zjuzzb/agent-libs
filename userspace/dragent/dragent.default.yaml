@@ -582,6 +582,7 @@ app_checks:
       comm: lighttpd
     conf:
       lighttpd_status_url: "http://localhost:{port}/server-status?auto"
+    log_errors: false
   - name: haproxy
     pattern:
       comm: haproxy
@@ -595,6 +596,7 @@ app_checks:
       collect_status_metrics: True
       collect_status_metrics_by_host: True
       tag_service_check_by_host: True
+    log_errors: false
   - name: elasticsearch
     check_module: elastic
     pattern:
@@ -622,6 +624,7 @@ app_checks:
       comm: apache2
     conf:
       apache_status_url: "http://localhost:{port}/server-status?auto"
+    log_errors: false
   - name: consul
     pattern:
       comm: consul
