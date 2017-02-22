@@ -181,7 +181,7 @@ private:
 	void run_standard_jobs(sinsp_evt* ev);
 	void check_memdump_jobs(sinsp_evt* ev);
 	void process_job_requests(uint64_t ts);
-	void flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs);
+	void flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs, bool restore_drop_mode);
 	void stop_standard_job(dump_job_state* job);
 	void stop_memdump_job(dump_job_state* job);
 	void start_standard_job(const dump_job_request& request, uint64_t ts);

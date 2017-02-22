@@ -395,19 +395,8 @@ void sinsp_worker::run()
 			// Why every second? Because the sending queue might be
 			// full and we still send each one every second
 			//
-			flush_jobs(ts, &m_running_standard_dump_jobs);
-			flush_jobs(ts, &m_running_memdump_jobs);
-
-			if(m_running_standard_dump_jobs.empty())
-			{
-				g_log->information("Restoring dropping mode state");
-
-				if(m_configuration->m_autodrop_enabled)
-				{
-					m_analyzer->set_autodrop_enabled(true);
-					m_analyzer->start_dropping_mode(1);
-				}
-			}
+			flush_jobs(ts, &m_running_standard_dump_jobs, true);
+			flush_jobs(ts, &m_running_memdump_jobs, false);
 		}
 
 		run_standard_jobs(ev);
@@ -947,7 +936,7 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	m_running_memdump_jobs.push_back(job_state);
 }
 
-void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs)
+void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs, bool restore_drop_mode)
 {
 	vector<SharedPtr<dump_job_state>>::iterator it = jobs->begin();
 
@@ -1000,6 +989,20 @@ void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jo
 		else
 		{
 			++it;
+		}
+
+		if(restore_drop_mode)
+		{
+			if(jobs->empty())
+			{
+				g_log->information("Restoring dropping mode state");
+
+				if(m_configuration->m_autodrop_enabled)
+				{
+					m_analyzer->set_autodrop_enabled(true);
+					m_analyzer->start_dropping_mode(1);
+				}
+			}
 		}
 	}
 }
