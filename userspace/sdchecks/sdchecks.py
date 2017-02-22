@@ -18,6 +18,7 @@ import ast
 # project
 from checks import AgentCheck
 from util import get_hostname
+from config import _is_affirmative
 
 from sysdig_tracers import Tracer
 
@@ -366,6 +367,7 @@ class Application:
             check = p["check"]
             pidname = (p["pid"],check["name"])
             self.last_request_pidnames.add(pidname)
+            log_errors = _is_affirmative(check.get("log_errors", True))
 
             try:
                 check_instance = self.known_instances[pidname]
@@ -389,7 +391,8 @@ class Application:
                 try:
                     check_instance = AppCheckInstance(check, p)
                 except AppCheckException as ex:
-                    logging.error("Exception on creating check %s: %s", check["name"], ex)
+                    if log_errors:
+                        logging.error("Exception on creating check %s: %s", check["name"], ex)
                     self.blacklisted_pidnames.add(pidname)
                     continue
                 self.known_instances[pidname] = check_instance
@@ -405,7 +408,8 @@ class Application:
             nummetrics += nm
 
             if ex and pidname not in self.blacklisted_pidnames:
-                logging.error("Exception on running check %s: %s", check_instance.name, ex)
+                if log_errors:
+                    logging.error("Exception on running check %s: %s", check_instance.name, ex)
                 self.blacklisted_pidnames.add(pidname)
 
             expiration_ts = datetime.now() + check_instance.interval

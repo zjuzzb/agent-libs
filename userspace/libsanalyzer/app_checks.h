@@ -25,6 +25,7 @@ public:
 	explicit app_check():
 		m_port_pattern(0),
 		m_enabled(true),
+		m_log_errors(true),
 		m_interval(-1),
 		m_conf(Json::objectValue)
 	{}
@@ -57,6 +58,7 @@ private:
 	string m_name;
 	string m_check_module;
 	bool m_enabled;
+	bool m_log_errors;
 	int m_interval;
 	Json::Value m_conf;
 };

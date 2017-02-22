@@ -149,6 +149,34 @@ void sdjagent_parser::operator()(const string& data)
 	}
 }
 
+sinsp_logger_parser::sinsp_logger_parser(const string& procname):
+	m_prefix(procname + ": ")
+{
+
+}
+
+void sinsp_logger_parser::operator()(const string& s)
+{
+	// Right now we are using default sinsp stderror logger
+	// it does not send priority so we are using a simple heuristic
+	if(s.find("Error") != string::npos)
+	{
+		g_log->error(m_prefix + s);
+	}
+	else if(s.find("Warning") != string::npos)
+	{
+		g_log->warning(m_prefix +s);
+	}
+	else if(s.find("Info") != string::npos)
+	{
+		g_log->information(m_prefix +s);
+	}
+	else
+	{
+		g_log->debug(m_prefix + s);
+	}
+}
+
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
 		m_configuration(configuration),
 		m_log_reporter(reporter),

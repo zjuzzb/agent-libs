@@ -1,6 +1,7 @@
 #include <gtest.h>
 #include "sinsp.h"
 #include "uri.h"
+#include "http_reason.h"
 
 using namespace std;
 
@@ -137,4 +138,17 @@ TEST(uri, encode)
 	EXPECT_EQ(uri::decode("https://k8s_admin:!12%34ab%40cd$e%3Afg4@123.45.67.89:54321/my/path/to/@file.ext?query=xy%20z&me=123"),
 						  "https://k8s_admin:!124ab@cd$e:fg4@123.45.67.89:54321/my/path/to/@file.ext?query=xy z&me=123");
 	EXPECT_EQ(uri::encode("!124ab@cd$e:fg4"), "%21124ab%40cd%24e%3Afg4");
+}
+
+// doesn't really belong here, but too small for its own file
+TEST(uri, http_reason)
+{
+	EXPECT_EQ(http_reason::get(-1), "");
+	EXPECT_EQ(http_reason::get(99), "");
+	EXPECT_EQ(http_reason::get(100), "Continue");
+	EXPECT_EQ(http_reason::get(200), "OK");
+	EXPECT_EQ(http_reason::get(420), "Enhance Your Calm");
+	EXPECT_EQ(http_reason::get(511), "Network Authentication Required");
+	EXPECT_EQ(http_reason::get(512), "");
+	EXPECT_EQ(http_reason::get(1000), "");
 }
