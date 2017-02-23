@@ -61,7 +61,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	//
 	try
 	{
-		m_active_state->m_dumper->open("", false, true);
+		m_active_state->m_dumper->open("", true, true);
 		m_active_state->m_has_data = true;
 	}
 	catch(sinsp_exception e)
