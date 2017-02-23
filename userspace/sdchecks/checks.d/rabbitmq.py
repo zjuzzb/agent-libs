@@ -163,7 +163,9 @@ class RabbitMQ(AgentCheck):
 
     def _get_data(self, url, auth=None, ssl_verify=True):
         try:
-            r = requests.get(url, auth=auth, timeout=self.default_integration_http_timeout, verify=ssl_verify)
+            # We need to update __init__.py, so hardcode default_integration_http_timeout for now
+            r = requests.get(url, auth=auth, timeout=9, verify=ssl_verify)
+            #r = requests.get(url, auth=auth, timeout=self.default_integration_http_timeout, verify=ssl_verify)
             r.raise_for_status()
             return r.json()
         except RequestException as e:
