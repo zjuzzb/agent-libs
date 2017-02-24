@@ -1194,10 +1194,14 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 		return;
 	}
 
-	// All events matching recycle_pid are selected.
+	// All events matching recycle_pid are selected. Since
+	// recycle_pid is only set once the first thread exits, this
+	// effectively captures the actions of the second thread that
+	// uses the recycled pid.
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return (recycle_pid != 0 && evt->m_tinfo && evt->m_tinfo->m_tid == recycle_pid);
+		sinsp_threadinfo *tinfo = evt->get_thread_info();
+		return (recycle_pid != 0 && tinfo && tinfo->m_tid == recycle_pid);
 	};
 
 	run_callback_t test = [&](sinsp* inspector)
@@ -1274,21 +1278,19 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 
 	// To verify the actions, the filter selects all events
         // related to pid recycled_pid. It should see:
-        //     - a clone()
-        //     - several events with pid=recycled_pid and cwd=<where the test is run>
-        //     - after stop_sinp_and_exit chdir()s to /dev, several events with
-        //       pid=recycled_pid and cwd=/dev
-        //     - a second clone()
+        //     - a clone() representing the second thread using the recycled pid.
         //     - events with pid=recycled_pid (the do_nothing started by
         //       create_do_nothings) and cwd=<where the test is run>
         //
-        //       If after the second clone any event with pid=recycled_pid has a cwd of
+        //       If any event with pid=recycled_pid has a cwd of
         //       /dev/, the test fails.
 
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
 		uint16_t etype = e->get_type();
+		sinsp_threadinfo *tinfo = e->get_thread_info();
+		ASSERT_TRUE((tinfo !=NULL));
 
 		if((etype == PPME_SYSCALL_CLONE_11_X ||
 		    etype == PPME_SYSCALL_CLONE_16_X ||
@@ -1299,13 +1301,14 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 			clones_seen++;
 		}
 
-		if(clones_seen > 1)
-		{
-			EXPECT_STRNE(e->m_tinfo->get_cwd().c_str(), "/dev/");
-		}
+
+		EXPECT_STRNE(tinfo->get_cwd().c_str(), "/dev/");
 	};
 
-	EXPECT_GT(clones_seen, 1);
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	// We must have seen one clone related to the recycled
+	// pid. Otherwise it never actually checked the cwd at all.
+	EXPECT_EQ(clones_seen, 1);
 }
 
