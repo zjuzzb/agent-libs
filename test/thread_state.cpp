@@ -60,10 +60,10 @@ protected:
 				return true;
 			};
 
-		thread runner = thread([&finished, &tinfo, &visitor]() {
+		thread runner = thread([](promise<bool> finished, sinsp_threadinfo *tinfo, sinsp_threadinfo::visitor_func_t visitor) {
 				tinfo->traverse_parent_state(visitor);
 				finished.set_value(true);
-			});
+			}, std::move(finished), tinfo, visitor);
 
 		runner.detach();
 
