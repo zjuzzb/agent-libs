@@ -53,6 +53,7 @@ add_executable(tests
 	sys_call_test.cpp
 	tcp_client_server.cpp
 	tcp_client_server_ipv4_mapped.cpp
+	thread_state.cpp
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp

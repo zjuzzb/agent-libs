@@ -25,6 +25,7 @@ public:
 	explicit app_check():
 		m_port_pattern(0),
 		m_enabled(true),
+		m_log_errors(true),
 		m_interval(-1),
 		m_conf(Json::objectValue)
 	{}
@@ -57,6 +58,7 @@ private:
 	string m_name;
 	string m_check_module;
 	bool m_enabled;
+	bool m_log_errors;
 	int m_interval;
 	Json::Value m_conf;
 };
@@ -91,6 +93,11 @@ public:
 	void set_conf_vals(shared_ptr<app_process_conf_vals> &conf_vals);
 
 	Json::Value to_json() const;
+
+	inline const string& name() const
+	{
+		return m_check.name();
+	}
 
 private:
 	int m_pid;
@@ -161,6 +168,11 @@ public:
 
 	uint16_t to_protobuf(draiosproto::app_info *proto, uint16_t limit) const;
 
+	const string& name() const
+	{
+		return m_process_name;
+	}
+
 private:
 	int m_pid;
 	string m_process_name;
@@ -176,7 +188,8 @@ public:
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
-	unordered_map<int, app_check_data> read_metrics();
+	// hash table keyed by PID, containing maps keyed by app_check name
+	unordered_map<int, map<string, app_check_data>> read_metrics();
 
 private:
 	posix_queue m_outqueue;

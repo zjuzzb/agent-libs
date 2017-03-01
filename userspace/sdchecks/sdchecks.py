@@ -18,6 +18,7 @@ import ast
 # project
 from checks import AgentCheck
 from util import get_hostname
+from config import _is_affirmative
 
 from sysdig_tracers import Tracer
 
@@ -332,14 +333,14 @@ class Application:
         self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
 
         # Blacklist works in two ways
-        # 1. for pids where we cannot create an AppCheckInstance, skip them
-        # 2. for pids when AppCheckInstance.run raises exception, run them but don't print errors
+        # 1. for pid+name where we cannot create an AppCheckInstance, skip them
+        # 2. for pid+name when AppCheckInstance.run raises exception, run them but don't print errors
         # We need the latter because a check can create checks or metrics even if it raises
         # exceptions
-        self.blacklisted_pids = set()
-        self.last_blacklisted_pids_cleanup = datetime.now()
+        self.blacklisted_pidnames = set()
+        self.last_blacklisted_pidnames_cleanup = datetime.now()
 
-        self.last_request_pids = set()
+        self.last_request_pidnames = set()
 
     def cleanup(self):
         self.inqueue.close()
@@ -347,14 +348,14 @@ class Application:
 
     def clean_known_instances(self):
         for key in self.known_instances.keys():
-            if not key in self.last_request_pids:
+            if not key in self.last_request_pidnames:
                 del self.known_instances[key]
 
     def handle_command(self, command_s):
         response_body = []
         #print "Received command: %s" % command_s
         processes = json.loads(command_s)
-        self.last_request_pids.clear()
+        self.last_request_pidnames.clear()
         trc = Tracer()
         trc.start("checks")
         numchecks = 0
@@ -363,11 +364,13 @@ class Application:
 
         for p in processes:
             numchecks += 1
-            pid = p["pid"]
-            self.last_request_pids.add(pid)
+            check = p["check"]
+            pidname = (p["pid"],check["name"])
+            self.last_request_pidnames.add(pidname)
+            log_errors = _is_affirmative(check.get("log_errors", True))
 
             try:
-                check_instance = self.known_instances[pid]
+                check_instance = self.known_instances[pidname]
                 if check_instance.proc_data != p:
 
                     # The configuration for this check has changed. Remove it
@@ -376,23 +379,23 @@ class Application:
                     logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
                                   p["check"].get("name", "N/A"),
                                   str(check_instance.proc_data), str(p))
-                    del self.known_instances[pid]
-                    check_instance = self.known_instances[pid]
+                    del self.known_instances[pidname]
+                    check_instance = self.known_instances[pidname]
 
             except KeyError:
-                if pid in self.blacklisted_pids:
-                    logging.debug("Process with pid=%d is blacklisted", pid)
+                if pidname in self.blacklisted_pidnames:
+                    logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
                     continue
-                check = p["check"]
                 logging.debug("Requested check %s", repr(check))
 
                 try:
                     check_instance = AppCheckInstance(check, p)
                 except AppCheckException as ex:
-                    logging.error("Exception on creating check %s: %s", check["name"], ex)
-                    self.blacklisted_pids.add(pid)
+                    if log_errors:
+                        logging.error("Exception on creating check %s: %s", check["name"], ex)
+                    self.blacklisted_pidnames.add(pidname)
                     continue
-                self.known_instances[pid] = check_instance
+                self.known_instances[pidname] = check_instance
 
             trc2 = trc.span(check_instance.name)
             trc2.start(trc2.tag, args={"check_name": check_instance.name,
@@ -404,12 +407,13 @@ class Application:
             trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
             nummetrics += nm
 
-            if ex and pid not in self.blacklisted_pids:
-                logging.error("Exception on running check %s: %s", check_instance.name, ex)
-                self.blacklisted_pids.add(pid)
+            if ex and pidname not in self.blacklisted_pidnames:
+                if log_errors:
+                    logging.error("Exception on running check %s: %s", check_instance.name, ex)
+                self.blacklisted_pidnames.add(pidname)
 
             expiration_ts = datetime.now() + check_instance.interval
-            response_body.append({"pid": pid,
+            response_body.append({"pid": pidname[0],
                                   "display_name": check_instance.name,
                                   "metrics": metrics,
                                   "service_checks": service_checks,
@@ -433,9 +437,9 @@ class Application:
             if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
                 self.clean_known_instances()
                 self.last_known_instances_cleanup = datetime.now()
-            if now - self.last_blacklisted_pids_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
-                self.blacklisted_pids.clear()
-                self.last_blacklisted_pids_cleanup = datetime.now()
+            if now - self.last_blacklisted_pidnames_cleanup > self.APP_CHECK_EXCEPTION_RETRY_TIMEOUT:
+                self.blacklisted_pidnames.clear()
+                self.last_blacklisted_pidnames_cleanup = datetime.now()
 
             # Send heartbeat
             ru = resource.getrusage(resource.RUSAGE_SELF)

@@ -99,6 +99,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_analyzer = inspector->m_analyzer;
 	m_tinfo = tinfo;
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
+	m_app_checks_found.clear();
 	m_procinfo = NULL;
 	m_connection_queue_usage_pct = 0;
 	m_old_proc_jiffies = -1;
@@ -332,7 +333,7 @@ void thread_analyzer_info::clear_all_metrics()
 
 	m_dynstate->m_protostate.clear();
 	m_called_execve = false;
-	m_th_analysis_flags &= ~AF_APP_CHECK_FOUND;
+	m_app_checks_found.clear();
 }
 
 void thread_analyzer_info::clear_role_flags()
