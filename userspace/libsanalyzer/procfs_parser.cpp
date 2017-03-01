@@ -581,6 +581,13 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			continue;
 		}
 
+		// Skip stuff like /proc/kcore, /proc/timer_list, etc.
+		if (strcmp(entry->mnt_type, "tmpfs") == 0
+		    && strcmp(entry->mnt_dir, "/proc") == 0)
+		{
+			continue;
+		}
+
 		//
 		// From coreutils, if dev contains ':', then remote
 		//
