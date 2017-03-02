@@ -2980,6 +2980,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			commands->end(),
 			executed_command_cmp);
 
+#if 0
 		//
 		// Consolidate command with pipes
 		//
@@ -3010,6 +3011,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				}
 			}
 		}
+#endif
 
 		//
 		// If there are too many commands, try to aggregate by command line
