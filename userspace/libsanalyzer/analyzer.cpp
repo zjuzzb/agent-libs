@@ -68,6 +68,7 @@ using namespace google::protobuf::io;
 #include "falco_engine.h"
 #include "falco_events.h"
 #include "proc_config.h"
+#include "tracer_emitter.h"
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -3082,6 +3083,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	for(j = 0; ; j++)
 	{
+		tracer_emitter f_trc("sinsp_analyzer_flush");
+		f_trc.start();
 		if(flshflags == DF_FORCE_FLUSH ||
 			flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -3446,12 +3449,19 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Kubernetes
 			//
+			tracer_emitter my_tracer("emit_k8s", f_trc);
+			my_tracer.start();
 			emit_k8s();
+			my_tracer.stop();
 
 			//
 			// Mesos
 			//
-			emit_mesos();
+			{
+				tracer_emitter auto_tracer("emit_mesos", f_trc);
+				auto_tracer.start();
+				emit_mesos();
+			}
 
 			//
 			// Docker
