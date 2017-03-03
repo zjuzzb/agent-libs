@@ -1,6 +1,20 @@
 #pragma once
 #include <string>
 
+class tracer_writer
+{
+public:
+	tracer_writer() {}
+	~tracer_writer();
+
+	int write(const std::string &trc);
+
+private:
+	void close_fd();
+
+	int m_fd = -1;
+};
+
 class tracer_emitter
 {
 public:
@@ -20,5 +34,4 @@ private:
 
 	std::string m_tag;
 	bool m_exit_written = false;
-	int m_fd = -1;
 };
