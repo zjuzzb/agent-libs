@@ -16,12 +16,13 @@ public class Tracer
 	this.nullFile = new PrintWriter(new FileOutputStream(NULL_FILE_PATH), true);
     }
 
-    public void run(String id, String tag, List<NameValue> args, FunctionObject function, Object... functionArgs) throws Exception
+    
+    public void run(String id, String tag, List<NameValue> args, FunctionObject functionObj, Object... functionArgs) throws Exception
     {
 	try
 	{
 	    checkIdFormat(id);
-	    emit(id, tag, args, function, functionArgs);
+	    emit(id, tag, args, functionObj, functionArgs);
 	}
 	catch (Exception exc)
 	{
@@ -29,14 +30,15 @@ public class Tracer
 	}
     }
 
-    
 
-    private void emit(String id, String tag, List<NameValue> args, FunctionObject function, Object... functionArgs) throws Exception
+    private void emit(String id, String tag, List<NameValue> args, FunctionObject functionObj, Object... functionArgs) throws Exception
     {
-	String entryTrace = ENTRY_EVENT_SYMBOL + FIELD_SEPARATOR + id + FIELD_SEPARATOR + tag + FIELD_SEPARATOR + formatArguments(args);
+	StringBuilder entryTrace = new StringBuilder();
+	entryTrace.append(ENTRY_EVENT_SYMBOL).append(FIELD_SEPARATOR).append(id).append(FIELD_SEPARATOR).append(tag).append(FIELD_SEPARATOR).append(formatArguments(args));
 	this.nullFile.println(entryTrace);
-	function.call(functionArgs);
-	String exitTrace = EXIT_EVENT_SYMBOL + FIELD_SEPARATOR + id + FIELD_SEPARATOR + tag + FIELD_SEPARATOR + formatArguments(args);
+	functionObj.call(functionArgs);
+	StringBuilder exitTrace = new StringBuilder();
+	exitTrace.append(EXIT_EVENT_SYMBOL).append(FIELD_SEPARATOR).append(id).append(FIELD_SEPARATOR).append(tag).append(FIELD_SEPARATOR).append(formatArguments(args));
 	this.nullFile.println(exitTrace);
     }
 
@@ -58,18 +60,23 @@ public class Tracer
 
     private String formatArguments(List<NameValue> args)
     {
-	return args.stream().map(NameValue::toString).collect(Collectors.joining(this.ARGS_SEPARATOR)) + this.FIELD_SEPARATOR;
+	StringBuilder argsStr = new StringBuilder();
+	for (NameValue elem : args)
+	    argsStr.append(elem.toString() + ARGS_SEPARATOR);
+	int argsStrLen = argsStr.length();
+	argsStr.setCharAt(argsStrLen - 1, FIELD_SEPARATOR);
+	return argsStr.toString();
     }
     
     private static final String NULL_FILE_PATH = "/dev/null";
 
-    private static final String ENTRY_EVENT_SYMBOL = ">";
+    private static final Character ENTRY_EVENT_SYMBOL = '>';
 
-    private static final String EXIT_EVENT_SYMBOL = "<";
+    private static final Character EXIT_EVENT_SYMBOL = '<';
 
-    private static final String FIELD_SEPARATOR = ":";
+    private static final Character FIELD_SEPARATOR = ':';
     
-    private static final String ARGS_SEPARATOR = ",";
+    private static final Character ARGS_SEPARATOR = ',';
 
     private static final String THREAD_ID = "t";
 
@@ -77,7 +84,7 @@ public class Tracer
 
     private static final String PARENT_PID = "pp";
     
-    private PrintWriter nullFile;
+    private static PrintWriter nullFile;
     
     public static void main(String args[]) 
     {
@@ -85,22 +92,32 @@ public class Tracer
 	{
 	    Tracer trc = new Tracer();
 
-	    List<NameValue> argList1 = Arrays.asList(new NameValue("hello", "world"), new NameValue("yabadaba", "doo"));
-	    trc.run("t", "mytag", argList1,
-	        (Object... objs) ->
-		{
-		    out.println("objs0=" + objs[0]);
-		},
-		"hello");
-	    
+	    {
+		List<NameValue> argList1 = Arrays.asList(new NameValue("hello", "world"), new NameValue("yabadaba", "doo"));
+		trc.run("t", "mytag", argList1,
+		    new FunctionObject()
+		    {
+			@Override
+			public void call(Object... args)
+			{
+			    out.println("objs0=" + args[0]);
+			}
+		    },
+		    "hello");
+
 	    List<NameValue> argList2 = Arrays.asList(new NameValue("zdravo", "svete"), new NameValue("opa", "bato"), new NameValue("jabadaba", "du"));
 	    trc.run("p", "yourtag", argList2,
-	        (Object... objs) ->
+		new FunctionObject()
 		{
-		    out.println("Sleeping for " + (int)objs[0] + " seconds.");
-		    Thread.sleep((int)(objs[0]) * 1000);
+		    @Override
+		    public void call(Object... args) throws InterruptedException
+		    {
+			out.println("Sleeping for " + (Integer)args[0] + " seconds.");
+			Thread.sleep((Integer)(args[0]) * 1000);
+		    }
 		},
 		10);
+	    }
 	}
 	catch (Exception exc)
 	{
