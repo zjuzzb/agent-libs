@@ -284,8 +284,15 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 	}
 	catch(Poco::IOException& e)
 	{
-		g_log->error(m_name + ": " + e.displayText());
-		disconnect();
+		// EWOULDBLOCK (and EAGAIN) should be treated the same as timeouts.
+		// Poco::sendBytes() uses poll() before send() but send() can still
+		// fail with EWOULDBLOCK if there isn't enough space available in
+		// the socket buffer.
+		if ((e.code() != POCO_EWOULDBLOCK) && (e.code() != POCO_EAGAIN))
+		{
+			g_log->error(m_name + ": " + e.displayText());
+			disconnect();
+		}
 	}
 	catch(Poco::TimeoutException& e)
 	{
