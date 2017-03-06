@@ -727,6 +727,54 @@ message mesos_state {
     repeated mesos_slave slaves = 3;
 }
 
+// Docker Swarm
+
+message swarm_pair {
+    required string key = 1;
+    required string value = 2;
+}
+
+message swarm_port {
+    optional uint32 port = 1;
+    optional uint32 published_port = 2;
+    optional string protocol = 3;
+}
+
+message swarm_common {
+    optional string id = 1;
+    optional string name = 2;
+    repeated swarm_pair labels = 3;
+}
+
+message swarm_service {
+    optional swarm_common common = 1;
+    repeated string virtual_ips = 2;
+    repeated swarm_port ports = 3;
+}
+
+message swarm_task {
+    optional swarm_common common = 1;
+    optional string service_id = 2;
+    optional string node_id = 3;
+    optional string container_id = 4;
+}
+
+message swarm_node {
+    optional swarm_common common = 1;
+    optional string role = 2;
+}
+
+message swarm_state {
+    // Every node in the cluster will send
+    // its node id
+    optional string node_id = 1;
+    // This values will be filled only
+    // by swarm manager nodes
+    repeated swarm_service services = 2;
+    repeated swarm_node nodes = 3;
+    repeated swarm_task tasks = 4;
+}
+
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -757,6 +805,7 @@ message metrics {
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
     optional falco_baseline falcobl = 27; // baseline information for falco
+    optional swarm_state swarm = 28;
 }
 
 message dump_request_start {

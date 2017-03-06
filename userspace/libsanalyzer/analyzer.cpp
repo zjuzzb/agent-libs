@@ -3222,6 +3222,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
+				static posix_queue p("/test", posix_queue::RECEIVE, 1);
+				string message = p.receive();
+				if(!message.empty())
+				{
+					g_logger.format(sinsp_logger::SEV_INFO, "Received Swarm size=%d", message.size());
+					m_metrics->mutable_swarm()->ParseFromString(message);
+				}
 				get_statsd();
 				if(m_mounted_fs_proxy)
 				{
