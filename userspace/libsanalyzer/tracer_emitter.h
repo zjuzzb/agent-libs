@@ -1,20 +1,10 @@
 #pragma once
 #include <string>
 
-class tracer_writer
-{
-public:
-	tracer_writer() {}
-	~tracer_writer();
-
-	int write(const std::string &trc);
-
-private:
-	void close_fd();
-
-	int m_fd = -1;
-};
-
+// XXX LIMITED TO sinsp_analyzer::flush() CURRENTLY
+// BECAUSE IT'S NOT THREADSAFE!
+// This class allows the caller to output sysdig tracers
+// to /dev/null.
 class tracer_emitter
 {
 public:

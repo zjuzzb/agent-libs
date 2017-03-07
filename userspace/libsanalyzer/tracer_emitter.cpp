@@ -1,25 +1,42 @@
 #include "tracer_emitter.h"
-// XXX ugh include mess
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include <unistd.h>
 #include <fcntl.h>
 
-tracer_writer::~tracer_writer()
+// Helper class to allow multiple tracer_emitter instances
+// to share a single connection to /dev/null.
+//
+// XXX THIS CLASS IS CURRENTLY *NOT* THREADSAFE
+// Multiple threads can ::write() to /dev/null safely, but
+// the ::open() call and setting m_fd need locking to be used
+// anywhere besides just in the sinsp_analyzer::flush() loop.
+class tracer_writer
 {
-	close_fd();
-}
+public:
+	tracer_writer() {}
+	~tracer_writer() { close_fd(); }
+
+	int write(const std::string &trc);
+
+private:
+	void close_fd();
+
+	int m_fd = -1;
+};
 
 int tracer_writer::write(const std::string &trc)
 {
 	if (m_fd < 0)
 	{
-		// open /dev/null for writing
-		fprintf(stderr, "trying to open /dev/null\n");
+		g_logger.log("Opening /dev/null for writing tracers",
+			     sinsp_logger::SEV_DEBUG);
 		m_fd = ::open("/dev/null", O_WRONLY|O_NONBLOCK|O_CLOEXEC);
 		if (m_fd < 0)
 		{
-			fprintf(stderr, "opening /dev/null failed %d\n", errno);
+			g_logger.format(sinsp_logger::SEV_ERROR,
+					"Unable to open /dev/null for writing tracers: %s",
+					strerror(errno));
 			return m_fd;
 		}
 	}
@@ -35,16 +52,18 @@ int tracer_writer::write(const std::string &trc)
 
 	if (ret < 0 && errno != EINTR)
 	{
-		// XXX log an error
+		g_logger.format(sinsp_logger::SEV_ERROR,
+				"Unable to write tracer (%s) to /dev/null: %s",
+				trc.c_str(), strerror(errno));
 		close_fd();
 	}
 	// We know ret >= 0 so size_t cast is safe
 	else if ((size_t)ret != trc.length())
 	{
-		// XXX turn on after fixing includes
-		ASSERT((size_t)ret == trc.length());
-
-		// XXX log a different error? or one if block
+		ASSERT(false);
+		g_logger.format(sinsp_logger::SEV_ERROR,
+				"Incomplete write of tracer (%s) to /dev/null",
+				trc.c_str());
 		close_fd();
 	}
 	return ret;
@@ -63,7 +82,7 @@ tracer_emitter::tracer_emitter(std::string tag)
 	: m_tag(std::move(tag))
 {}
 
-// XXX write a constexpr-compatible string class
+// XXX find/write a constexpr-compatible string class
 // for compile time concatenation
 tracer_emitter::tracer_emitter(std::string tag, const tracer_emitter &parent)
 	: m_tag(parent.tag() + '.' + std::move(tag))
@@ -91,14 +110,13 @@ void tracer_emitter::write_tracer(const bool enter)
 {
 	static tracer_writer trc_writer;
 
-	// use stringstream instead?
+	// XXX can we constexpr this part too?
 	std::string trc_str(enter ? ">" : "<");
 	// 't' == use thread id
 	trc_str.append(":t:");
 	trc_str.append(m_tag);
 	trc_str.append("::");
 
-	fprintf(stderr, "%s\n", trc_str.c_str());
 	trc_writer.write(trc_str);
 
 	if (!enter)
