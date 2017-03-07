@@ -110,13 +110,17 @@ void tracer_writer::close_fd()
 
 tracer_emitter::tracer_emitter(std::string tag)
 	: m_tag(std::move(tag))
-{}
+{
+	start();
+}
 
 // XXX find/write a constexpr-compatible string class
 // for compile time concatenation
 tracer_emitter::tracer_emitter(std::string tag, const tracer_emitter &parent)
 	: m_tag(parent.tag() + '.' + std::move(tag))
-{}
+{
+	start();
+}
 
 tracer_emitter::~tracer_emitter()
 {

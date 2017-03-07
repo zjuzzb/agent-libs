@@ -1407,8 +1407,11 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 	return mesos_api_server;
 }
 
-void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
+void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
+				    bool is_eof, sinsp_analyzer::flush_flags flshflags,
+				    const tracer_emitter &f_trc)
 {
+	tracer_emitter proc_trc("emit_processes", f_trc);
 	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
@@ -2035,6 +2038,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Aggregate external connections and limit the number of entries in the connection table
 		//
+		tracer_emitter agg_conns_trc("emit_aggregated_connections", proc_trc);
 		emit_aggregated_connections();
 	}
 	else
@@ -2042,13 +2046,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Emit all the connections
 		//
+		tracer_emitter full_conns_trc("emit_full_connections", proc_trc);
 		emit_full_connections();
 	}
 
 
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
+	tracer_emitter container_trc("emit_container", proc_trc);
 	auto emitted_containers = emit_containers(progtable_by_container);
+	container_trc.stop();
 	bool progtable_needs_filtering = false;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -3053,6 +3060,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
+	tracer_emitter f_trc("analyzer_flush");
 	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
@@ -3083,8 +3091,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	for(j = 0; ; j++)
 	{
-		tracer_emitter f_trc("analyzer_flush");
-		f_trc.start();
 		if(flshflags == DF_FORCE_FLUSH ||
 			flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
@@ -3199,7 +3205,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
-			emit_processes(evt, sample_duration, is_eof, flshflags);
+			// XXX We're trying to avoid passing around tracer_emitter
+			// refs, but do it here since emit_processes() calls a lot
+			// of other important functions and we want to maintain
+			// the parent/child relationship of the span IDs
+			//
+			// The tracer_emitter for emit_processes is created
+			// inside the func to take advantage of scoping
+			emit_processes(evt, sample_duration, is_eof, flshflags, f_trc);
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
@@ -3449,19 +3462,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Kubernetes
 			//
-			tracer_emitter my_tracer("emit_k8s", f_trc);
-			my_tracer.start();
+			tracer_emitter k8s_trc("emit_k8s", f_trc);
 			emit_k8s();
-			my_tracer.stop();
+			k8s_trc.stop();
 
 			//
 			// Mesos
 			//
-			{
-				tracer_emitter auto_tracer("emit_mesos", f_trc);
-				auto_tracer.start();
-				emit_mesos();
-			}
+			tracer_emitter mesos_trc("emit_mesos", f_trc);
+			emit_mesos();
+			mesos_trc.stop();
 
 			//
 			// Docker
