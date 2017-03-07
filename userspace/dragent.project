@@ -47887,6 +47887,8 @@
     <File Name="libsanalyzer/falco_events.cpp"/>
     <File Name="libsanalyzer/token_bucket.h"/>
     <File Name="libsanalyzer/falco_events.h"/>
+    <File Name="libsanalyzer/metric_limits.h"/>
+    <File Name="libsanalyzer/metric_limits.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>
@@ -47922,6 +47924,8 @@
     <File Name="dragent/monitor.h"/>
     <File Name="dragent/user_event_channel.h"/>
     <File Name="dragent/user_event_channel.cpp"/>
+    <File Name="dragent/glob_set.cpp"/>
+    <File Name="dragent/glob_set.h"/>
   </VirtualDirectory>
   <Settings Type="Executable">
     <GlobalSettings>

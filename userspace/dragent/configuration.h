@@ -569,6 +569,9 @@ public:
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
 
+	std::vector<std::string> m_metrics_exclude;
+	std::vector<std::string> m_metrics_include;
+
 	bool java_present()
 	{
 		return !m_java_binary.empty();

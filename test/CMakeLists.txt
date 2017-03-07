@@ -43,6 +43,7 @@ add_executable(tests
 	forking.cpp
 	fs.cpp
 	tracers.cpp
+	metric_limits.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp
