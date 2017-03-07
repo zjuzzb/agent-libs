@@ -1,8 +1,6 @@
 #pragma once
 #include <string>
 
-// XXX LIMITED TO sinsp_analyzer::flush() CURRENTLY
-// BECAUSE IT'S NOT THREADSAFE!
 // This class allows the caller to output sysdig tracers
 // to /dev/null.
 class tracer_emitter
