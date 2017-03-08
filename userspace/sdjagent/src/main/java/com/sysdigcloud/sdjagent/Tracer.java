@@ -2,11 +2,9 @@ package com.sysdigcloud.sdjagent;
 
 import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.stream.Collectors;
 import java.io.PrintWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import static java.lang.System.out;
 import static java.lang.System.err;
 
