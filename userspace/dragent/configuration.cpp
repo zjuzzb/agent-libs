@@ -846,6 +846,7 @@ void dragent_configuration::init(Application* app)
 	parse_services_file();
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
+	m_emit_tracers = m_config->get_scalar("debug_emit_tracers", false);
 
 	auto mode_s = m_config->get_scalar<string>("run_mode", "standard");
 	if(mode_s == "nodriver")
@@ -1072,6 +1073,10 @@ void dragent_configuration::print_configuration()
 	else
 	{
 		g_log->information("Auto config disabled");
+	}
+	if (m_emit_tracers)
+	{
+		g_log->information("Emitting sysdig tracers enabled");
 	}
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{

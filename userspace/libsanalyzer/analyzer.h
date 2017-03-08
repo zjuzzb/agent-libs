@@ -357,6 +357,8 @@ public:
 
 	void disable_falco();
 
+	void set_emit_tracers(bool enabled);
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
