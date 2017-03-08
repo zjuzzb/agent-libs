@@ -1,6 +1,7 @@
 #include "tracer_emitter.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
+#include "analyzer_utils.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <mutex>
@@ -26,6 +27,7 @@ private:
 	void close_fd();
 
 	int m_fd = -1;
+	run_on_interval m_open_interval = 60 * ONE_SECOND_IN_NS;
 	mutable std::mutex m_fd_lock;
 	constexpr static const char *m_file = "/dev/null";
 };
@@ -83,15 +85,20 @@ int tracer_writer::get_fd()
 		return m_fd;
 	}
 
-	g_logger.format(sinsp_logger::SEV_DEBUG,
-			"Opening %s for writing tracers", m_file);
-	m_fd = ::open(m_file, O_WRONLY|O_NONBLOCK|O_CLOEXEC);
-	if (m_fd < 0)
-	{
-		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Unable to open %s for writing tracers: %s",
-				m_file, strerror(errno));
-	}
+	m_open_interval.run(
+		[this]()
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+					"Opening %s for writing tracers", m_file);
+			m_fd = ::open(m_file, O_WRONLY|O_NONBLOCK|O_CLOEXEC);
+			if (m_fd < 0)
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR,
+						"Unable to open %s for writing tracers: %s",
+						m_file, strerror(errno));
+			}
+		});
+
 	return m_fd;
 }
 
