@@ -27,6 +27,7 @@ private:
 
 	int m_fd = -1;
 	mutable std::mutex m_fd_lock;
+	constexpr static const char *m_file = "/dev/null";
 };
 
 void tracer_writer::write(const std::string &trc)
@@ -57,8 +58,8 @@ void tracer_writer::write(const std::string &trc)
 	if (ret < 0 && errno != EINTR)
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Unable to write tracer (%s) to /dev/null: %s",
-				trc.c_str(), strerror(errno));
+				"Unable to write tracer (%s) to %s: %s",
+				trc.c_str(), m_file, strerror(errno));
 		close_fd();
 	}
 	// We know ret >= 0 so size_t cast is safe
@@ -66,8 +67,8 @@ void tracer_writer::write(const std::string &trc)
 	{
 		ASSERT(false);
 		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Incomplete write of tracer (%s) to /dev/null",
-				trc.c_str());
+				"Incomplete write of tracer (%s) to %s",
+				trc.c_str(), m_file);
 		close_fd();
 	}
 	return;
@@ -82,14 +83,14 @@ int tracer_writer::get_fd()
 		return m_fd;
 	}
 
-	g_logger.log("Opening /dev/null for writing tracers",
-		     sinsp_logger::SEV_DEBUG);
-	m_fd = ::open("/dev/null", O_WRONLY|O_NONBLOCK|O_CLOEXEC);
+	g_logger.format(sinsp_logger::SEV_DEBUG,
+			"Opening %s for writing tracers", m_file);
+	m_fd = ::open(m_file, O_WRONLY|O_NONBLOCK|O_CLOEXEC);
 	if (m_fd < 0)
 	{
 		g_logger.format(sinsp_logger::SEV_ERROR,
-				"Unable to open /dev/null for writing tracers: %s",
-				strerror(errno));
+				"Unable to open %s for writing tracers: %s",
+				m_file, strerror(errno));
 	}
 	return m_fd;
 }
@@ -101,8 +102,8 @@ void tracer_writer::close_fd()
 	if (m_fd > -1)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
-				"Closing /dev/null (fd %d) for writing tracers",
-				m_fd);
+				"Closing %s (fd %d) for writing tracers",
+				m_file, m_fd);
 		::close(m_fd);
 		m_fd = -1;
 	}
