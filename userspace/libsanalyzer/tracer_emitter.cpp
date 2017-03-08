@@ -122,6 +122,8 @@ tracer_emitter::tracer_emitter(std::string tag)
 	start();
 }
 
+bool tracer_emitter::m_enabled = false;
+
 // XXX find/write a constexpr-compatible string class
 // for compile time concatenation
 tracer_emitter::tracer_emitter(std::string tag, const tracer_emitter &parent)
@@ -154,6 +156,11 @@ void tracer_emitter::stop()
 
 void tracer_emitter::write_tracer(const bool enter)
 {
+	if (!m_enabled)
+	{
+		return;
+	}
+
 	static tracer_writer trc_writer;
 
 	// XXX can we constexpr this part too?

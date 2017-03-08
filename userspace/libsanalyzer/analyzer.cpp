@@ -5905,6 +5905,11 @@ void sinsp_analyzer::disable_falco()
 	m_falco_events = NULL;
 }
 
+void sinsp_analyzer::set_emit_tracers(bool enabled)
+{
+	tracer_emitter::set_enabled(enabled);
+}
+
 uint64_t self_cputime_analyzer::read_cputime()
 {
 	struct rusage ru;

@@ -551,6 +551,7 @@ public:
 
 	bool m_enable_coredump;
 	bool m_auto_config;
+	bool m_emit_tracers = false;
 
 	bool m_enable_falco_engine;
 	string m_falco_default_rules_filename;

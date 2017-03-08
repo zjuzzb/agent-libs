@@ -18,6 +18,7 @@ public:
 	// event before the instance gets destructed,
 	// i.e. goes out of scope
 	void stop();
+	static void set_enabled(bool enabled) { m_enabled = enabled; }
 
 private:
 	void start();
@@ -26,4 +27,5 @@ private:
 
 	const std::string m_tag;
 	bool m_exit_written = false;
+	static bool m_enabled;
 };

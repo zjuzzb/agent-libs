@@ -307,6 +307,8 @@ void sinsp_worker::init()
 
 	m_analyzer->set_user_event_queue(m_user_event_queue);
 
+	m_analyzer->set_emit_tracers(m_configuration->m_emit_tracers);
+
 	init_falco();
 }
 
