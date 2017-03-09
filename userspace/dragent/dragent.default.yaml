@@ -636,6 +636,7 @@ app_checks:
       comm: etcd
     conf:
       url: "http://localhost:2379"
+    log_errors: false
   - name: couchdb
     check_module: couch
     pattern:
