@@ -7,8 +7,17 @@
 #include "statsite_proxy.h"
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
+#include "metric_limits.h"
 
 #ifndef _WIN32
+
+statsd_metric::statsd_metric(std::shared_ptr<metric_limits> ml):
+			m_timestamp(0),
+			m_type(type_t::NONE),
+			m_full_identifier_parsed(false),
+			m_metric_limits(ml)
+{
+}
 
 /*
  * Parse a line and fill data structures
@@ -204,9 +213,19 @@ bool statsd_metric::parse_line(const string& line)
 }
 #endif // _WIN32
 
-void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
+unsigned statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 {
 	ASSERT(m_type != type_t::NONE);
+
+	if(m_metric_limits && !m_metric_limits->allow(m_name))
+	{
+		SINSP_LOG("statsd metric not allowed: " + m_name, SEV_TRACE);
+		return 0;
+	}
+	else
+	{
+		SINSP_LOG("statsd metric allowed: " + m_name, SEV_TRACE);
+	}
 
 	proto->set_name(m_name);
 	for(const auto& tag : m_tags)
@@ -233,11 +252,14 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	{
 		proto->set_value(m_value);
 	}
+	return 1;
 }
 
-statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
+statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds, std::shared_ptr<metric_limits> ml):
 		m_input_fd(fds.first),
-		m_output_fd(fds.second)
+		m_output_fd(fds.second),
+		m_metric(ml),
+		m_metric_limits(ml)
 {
 }
 
@@ -275,7 +297,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 
 					ret[m_metric.container_id()].push_back(move(m_metric));
 					++metric_count;
-					m_metric = statsd_metric();
+					m_metric = statsd_metric(m_metric_limits);
 
 					parsed = m_metric.parse_line(buffer);
 					ASSERT(parsed == true);
@@ -297,7 +319,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
 			ret[m_metric.container_id()].push_back(move(m_metric));
 			++metric_count;
-			m_metric = statsd_metric();
+			m_metric = statsd_metric(m_metric_limits);
 		}
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
 		if(m_metric.timestamp() > 0)

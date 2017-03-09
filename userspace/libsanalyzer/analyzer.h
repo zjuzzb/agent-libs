@@ -51,6 +51,7 @@ class uri;
 class falco_engine;
 class falco_events;
 class sisnp_baseliner;
+class metric_limits;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -632,6 +633,8 @@ VISIBILITY_PRIVATE
 
 	unique_ptr<falco_engine> m_falco_engine;
 	unique_ptr<falco_events> m_falco_events;
+
+	std::shared_ptr<metric_limits> m_metric_limits;
 
 	user_event_queue::ptr_t m_user_event_queue;
 

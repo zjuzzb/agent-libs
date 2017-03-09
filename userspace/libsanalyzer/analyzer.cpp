@@ -68,8 +68,9 @@ using namespace google::protobuf::io;
 #include "falco_engine.h"
 #include "falco_events.h"
 #include "proc_config.h"
+#include "metric_limits.h"
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector): m_metric_limits(new metric_limits({"page.*", "accessapi"}, {"mycounter", "hello"}))
 {
 	m_initialized = false;
 	m_inspector = inspector;
@@ -5312,14 +5313,19 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
+		std::ostringstream os;
+		for(auto t: metric.tags())
+		{
+			os << t.first << ':' << t.second << std::endl;
+		}
+		g_logger.log("statsd metrics name:" + metric.name() + ", tags: " + os.str(), sinsp_logger::SEV_WARNING);
 		if(j >= limit)
 		{
 			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
 			break;
 		}
 		auto statsd_proto = statsd_info->add_statsd_metrics();
-		metric.to_protobuf(statsd_proto);
-		++j;
+		j += metric.to_protobuf(statsd_proto);
 	}
 	if (j > 0)
 	{
@@ -5789,7 +5795,7 @@ bool sinsp_analyzer::driver_stopped_dropping()
 #ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
 {
-	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
+	m_statsite_proxy = make_unique<statsite_proxy>(iofds, m_metric_limits);
 	if(forwarder)
 	{
 		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);

@@ -11,6 +11,7 @@
 #include <Poco/ErrorHandler.h>
 #include <atomic>
 
+class metric_limits;
 class statsite_proxy;
 namespace draiosproto
 {
@@ -35,7 +36,7 @@ public:
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
 	};
 
-	void to_protobuf(draiosproto::statsd_metric* proto) const;
+	unsigned to_protobuf(draiosproto::statsd_metric* proto) const;
 
 	bool parse_line(const string& line);
 
@@ -79,11 +80,7 @@ public:
 		return m_tags;
 	}
 
-	statsd_metric():
-			m_timestamp(0),
-			m_type(type_t::NONE),
-			m_full_identifier_parsed(false)
-	{}
+	statsd_metric(std::shared_ptr<metric_limits> ml = nullptr);
 
 	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
@@ -106,13 +103,15 @@ private:
 	double m_percentile_95;
 	double m_percentile_99;
 
+	std::shared_ptr<metric_limits> m_metric_limits;
+
 	friend class lua_cbacks;
 };
 
 class statsite_proxy
 {
 public:
-	statsite_proxy(const pair<FILE*, FILE*>& pipes);
+	statsite_proxy(const pair<FILE*, FILE*>& pipes, std::shared_ptr<metric_limits> ml = nullptr);
 	unordered_map<string, vector<statsd_metric>> read_metrics();
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
@@ -120,6 +119,7 @@ private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	statsd_metric m_metric;
+	std::shared_ptr<metric_limits> m_metric_limits;
 };
 
 class statsd_server
