@@ -68,7 +68,9 @@ using namespace google::protobuf::io;
 #include "falco_engine.h"
 #include "falco_events.h"
 #include "proc_config.h"
+#include "tracer_emitter.h"
 #include "metric_limits.h"
+
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector): m_metric_limits(new metric_limits({"page.*", "accessapi"}, {"mycounter", "hello"}))
 {
@@ -1407,8 +1409,11 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 	return mesos_api_server;
 }
 
-void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags)
+void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
+				    bool is_eof, sinsp_analyzer::flush_flags flshflags,
+				    const tracer_emitter &f_trc)
 {
+	tracer_emitter proc_trc("emit_processes", f_trc);
 	int64_t delta;
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
@@ -1437,6 +1442,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	{
 		if(m_jmx_proxy)
 		{
+			tracer_emitter jmx_trc("jmx_metrics", proc_trc);
 			auto jmx_metrics = m_jmx_proxy->read_metrics();
 			if(!jmx_metrics.empty())
 			{
@@ -1447,6 +1453,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 		if(m_app_proxy)
 		{
+			tracer_emitter app_trc("app_metrics", proc_trc);
 			for(auto it = m_app_metrics.begin(); it != m_app_metrics.end();)
 			{
 				for (auto it2 = it->second.begin(); it2 != it->second.end();)
@@ -1509,6 +1516,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	if(m_inspector->is_live() && m_n_flushes % PROC_BASED_THREAD_PRUNING_INTERVAL ==
 		(PROC_BASED_THREAD_PRUNING_INTERVAL - 1))
 	{
+		tracer_emitter pp_trc("proc_tids", proc_trc);
 		m_procfs_parser->get_tid_list(&proctids);
 	}
 
@@ -1548,6 +1556,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// First pass of the list of threads: emit the metrics (if defined)
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
+	tracer_emitter am_trc("aggregate_metrics", proc_trc);
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
@@ -1565,10 +1574,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			if(container->m_memory_cgroup.empty())
 			{
 				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
-												[](const pair<string, string>& cgroup)
-												{
-													return cgroup.first == "memory";
-												});
+								[](const pair<string, string>& cgroup)
+								{
+									return cgroup.first == "memory";
+								});
 				if(memory_cgroup_it != tinfo->m_cgroups.cend())
 				{
 					container->m_memory_cgroup = memory_cgroup_it->second;
@@ -1579,7 +1588,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread anyway
 		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
-				m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
+		   m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
@@ -1606,8 +1615,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			}
 			if(m_k8s_proc_detected && try_detect_k8s)
 			{
+				tracer_emitter k8s_trc("detect_k8s", am_trc);
 				k8s_detected = !(detect_k8s(main_tinfo).empty());
 			}
+
 			// mesos autodetection flagging, happens only if mesos is not explicitly configured
 			// we only record the relevant mesos process thread ID here; later, this flag is detected by
 			// emit_mesos() and, if process is found to stil be alive, the appropriate action is taken
@@ -1857,6 +1868,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		}
 #endif
 	}
+	am_trc.stop();
 
 	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
 	{
@@ -1866,6 +1878,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					 sinsp_logger::SEV_INFO);
 	}
 
+	tracer_emitter pt_trc("detect_k8s", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -2048,6 +2061,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 			container->m_metrics.add(procinfo);
 		}
 	}
+	pt_trc.stop();
 
 	////////////////////////////////////////////////////////////////////////////
 	// EMIT CONNECTIONS
@@ -2062,6 +2076,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Aggregate external connections and limit the number of entries in the connection table
 		//
+		tracer_emitter agg_conns_trc("emit_aggregated_connections", proc_trc);
 		emit_aggregated_connections();
 	}
 	else
@@ -2069,13 +2084,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		// Emit all the connections
 		//
+		tracer_emitter full_conns_trc("emit_full_connections", proc_trc);
 		emit_full_connections();
 	}
 
 
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
+	tracer_emitter container_trc("emit_container", proc_trc);
 	auto emitted_containers = emit_containers(progtable_by_container);
+	container_trc.stop();
 	bool progtable_needs_filtering = false;
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -2090,19 +2108,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	//
 	if(!m_inspector->is_capture())
 	{
+		tracer_emitter filter_trc("filter_progtable", proc_trc);
 		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
 		if(progtable_needs_filtering)
 		{
 			// Filter top active programs
 			filter_top_programs(progtable.begin(),
-								progtable.end(),
-								false,
-								TOP_PROCESSES_IN_SAMPLE);
+					    progtable.end(),
+					    false,
+					    TOP_PROCESSES_IN_SAMPLE);
 			// Filter top client/server programs
 			filter_top_programs(progtable.begin(),
-								progtable.end(),
-								true,
-								TOP_PROCESSES_IN_SAMPLE);
+					    progtable.end(),
+					    true,
+					    TOP_PROCESSES_IN_SAMPLE);
 			// Add at least one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
@@ -2143,6 +2162,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
 	auto jmx_limit = m_configuration->get_jmx_limit();
+	tracer_emitter at_trc("aggregate_threads", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -2381,6 +2401,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 		//
 		tinfo->m_ainfo->clear_all_metrics();
 	}
+	at_trc.stop();
 
 	if(app_checks_limit == 0)
 	{
@@ -3094,6 +3115,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
+	tracer_emitter f_trc("analyzer_flush");
 	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
@@ -3169,6 +3191,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_inspector->is_nodriver())
 			{
+				tracer_emitter pr_trc("refresh_proclist", f_trc);
 				m_proclist_refresher_interval.run([this]()
 					{
 						g_logger.log("Refreshing proclist", sinsp_logger::SEV_DEBUG);
@@ -3202,6 +3225,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					m_prev_flush_wall_time = wall_time;
 					m_skip_proc_parsing = false;
+					tracer_emitter ps_trc("get_proc_stat", f_trc);
 					m_procfs_parser->get_proc_stat(&m_proc_stat);
 				}
 			}
@@ -3223,6 +3247,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
+				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();
 				if(m_mounted_fs_proxy)
 				{
@@ -3238,7 +3263,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT PROCESSES
 			////////////////////////////////////////////////////////////////////////////
-			emit_processes(evt, sample_duration, is_eof, flshflags);
+			// XXX We're trying to avoid passing around tracer_emitter
+			// refs, but do it here since emit_processes() calls a lot
+			// of other important functions and we want to maintain
+			// the parent/child relationship of the span IDs
+			//
+			// The tracer_emitter for emit_processes is created
+			// inside the func to take advantage of scoping
+			emit_processes(evt, sample_duration, is_eof, flshflags, f_trc);
 
 			if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
@@ -3329,7 +3361,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 #endif // HAS_PIPE_CONNECTIONS
 
+			tracer_emitter fp_trc("flush_processes", f_trc);
 			flush_processes();
+			fp_trc.stop();
 
 			////////////////////////////////////////////////////////////////////////////
 			// EMIT THE LIST OF INTERFACES
@@ -3421,11 +3455,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
-													 &m_host_metrics.m_res_memory_free_kb,
-													 &m_host_metrics.m_res_memory_avail_kb,
-													 &m_host_metrics.m_swap_memory_used_kb,
-													 &m_host_metrics.m_swap_memory_total_kb,
-													 &m_host_metrics.m_swap_memory_avail_kb);
+								 &m_host_metrics.m_res_memory_free_kb,
+								 &m_host_metrics.m_res_memory_avail_kb,
+								 &m_host_metrics.m_swap_memory_used_kb,
+								 &m_host_metrics.m_swap_memory_total_kb,
+								 &m_host_metrics.m_swap_memory_avail_kb);
 
 			if(m_protocols_enabled)
 			{
@@ -3488,12 +3522,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Kubernetes
 			//
+			tracer_emitter k8s_trc("emit_k8s", f_trc);
 			emit_k8s();
+			k8s_trc.stop();
 
 			//
 			// Mesos
 			//
+			tracer_emitter mesos_trc("emit_mesos", f_trc);
 			emit_mesos();
+			mesos_trc.stop();
 
 			//
 			// Docker
@@ -3504,15 +3542,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				if(first_time)
 				{
-					g_logger.log("Docker service not running, events will not be available.", sinsp_logger::SEV_INFO);
+					g_logger.log("Docker service not running, events will not be available.",
+						     sinsp_logger::SEV_INFO);
 				}
 				first_time = false;
 			}
 			else if(m_configuration->get_docker_event_filter())
 			{
+				tracer_emitter docker_trc("emit_docker", f_trc);
 				emit_docker_events();
 			}
 
+			tracer_emitter misc_trc("misc_emit", f_trc);
 			emit_top_files();
 
 			//
@@ -3521,7 +3562,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 #ifndef _WIN32
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""), m_metrics->mutable_protos()->mutable_statsd(), m_configuration->get_statsd_limit());
+				emit_statsd(m_statsd_metrics.at(""),
+					    m_metrics->mutable_protos()->mutable_statsd(),
+					    m_configuration->get_statsd_limit());
 			}
 #endif
 
@@ -3534,6 +3577,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// User-configured events
 			//
 			emit_user_events();
+			misc_trc.stop();
 
 			//
 			// Transactions
@@ -3567,9 +3611,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
 			if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Patching host external networking, from (%u, %u) to (%u, %u)",
-								m_io_net.m_bytes_in, m_io_net.m_bytes_out,
-								interfaces_stats.first, interfaces_stats.second);
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+						"Patching host external networking, from (%u, %u) to (%u, %u)",
+						m_io_net.m_bytes_in, m_io_net.m_bytes_out,
+						interfaces_stats.first, interfaces_stats.second);
 				external_io_net->set_bytes_in(interfaces_stats.first);
 				external_io_net->set_bytes_out(interfaces_stats.second);
 			}
@@ -3623,6 +3668,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// If it's time to emit the falco baseline, do the serialization and then restart it
 			//
+			tracer_emitter falco_trc("falco_baseline", f_trc);
 			if(m_do_baseline_calculation)
 			{
 				if(is_eof)
@@ -3675,6 +3721,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					}
 				}
 			}
+			falco_trc.stop();
 
 			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
@@ -3684,6 +3731,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				uint64_t serialize_sample_time =
 				m_prev_flush_time_ns - m_prev_flush_time_ns % m_configuration->get_analyzer_original_sample_len_ns();
 
+				tracer_emitter ser_trc("serialize", f_trc);
 				serialize(evt, serialize_sample_time);
 			}
 
@@ -5862,6 +5910,11 @@ void sinsp_analyzer::disable_falco()
 {
 	m_falco_engine = NULL;
 	m_falco_events = NULL;
+}
+
+void sinsp_analyzer::set_emit_tracers(bool enabled)
+{
+	tracer_emitter::set_enabled(enabled);
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

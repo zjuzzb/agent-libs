@@ -51,6 +51,7 @@ class uri;
 class falco_engine;
 class falco_events;
 class sisnp_baseliner;
+class tracer_emitter;
 class metric_limits;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
@@ -357,6 +358,8 @@ public:
 
 	void disable_falco();
 
+	void set_emit_tracers(bool enabled);
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
@@ -367,7 +370,9 @@ VISIBILITY_PRIVATE
 	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
-	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
+	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
+			    bool is_eof, sinsp_analyzer::flush_flags flshflags,
+			    const tracer_emitter &f_trc);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
