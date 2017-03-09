@@ -2284,19 +2284,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration, bo
 					{
 						for (auto app_data : datamap_it->second)
 						{
-							if (app_data_set.find(app_data.first) == app_data_set.end())
+							if ((app_data_set.find(app_data.first) == app_data_set.end()) &&
+								(app_data.second.expiration_ts() >=
+								(m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
 							{
 								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"Found app metrics for %d,%s", tinfo->m_pid, app_data.first.c_str());
-								app_checks_limit -= app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+									"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
+									app_data.first.c_str(), app_data.second.expiration_ts() -
+									(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
+								app_checks_limit -= app_data.second.to_protobuf(
+									proc->mutable_protos()->mutable_app(), app_checks_limit);
 								app_data_set.emplace(app_data.first);
 							}
 							else
 							{
-								// Unlikely to happen
-								g_logger.format(sinsp_logger::SEV_INFO,
-									"Skipping duplicate app metrics for %d(%d),%s",
-										tinfo->m_pid, pid, app_data.first.c_str());
+								g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Skipping duplicate or expired app metrics for %d(%d),%s:exp in %d",
+										tinfo->m_pid, pid, app_data.first.c_str(),
+										app_data.second.expiration_ts() -
+										(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
 							}
 						}
 					}
