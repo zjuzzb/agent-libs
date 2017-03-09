@@ -18,101 +18,54 @@ public class Tracer
 {
     /**
     Sets tracer parameters.
+    Null or empty tag will be replaced by default one.
 
-    @param id   ID of a tracer.
-    @param tag  Tag of a tracer.
-    @param args Arguments of a tracer.
+    @param tag Tag of a tracer.
     **/
-    public Tracer(String id, String tag, ArrayList<NameValue> args)
+    public Tracer(String tag)
     {
-	this.id = new String(id);
-	this.tag = new StringBuilder(tag);
-	if (!checkIdFormat())
+	if (tag == null || tag.isEmpty())
 	{
-	    err.println("Invalid id format, setting to process id.");
-	    this.id = "p";
+	    err.println("Empty tag not allowed, setting it to default.");
+	    this.tag = new String("default");
 	}
-	this.args = new ArrayList(args);
-	this.tracer = null;
-    }
-
-    
-    /**
-    Copy constructor.
-
-    @param other Tracer to be copied.
-    **/
-    public Tracer(Tracer other)
-    {
-	this.id = new String(other.id);
-	this.tag = new StringBuilder(other.tag);
-	this.args = new ArrayList(other.args);
-	this.tracer = other.tracer;
-	this.functionObj = other.functionObj;
-    }
-
-    
-    /**
-    Sets a function to be traced.
-
-    @param functionObj Function to be traced.
-    **/
-    public void span(FunctionObject functionObj)
-    {
-	this.functionObj = functionObj;
+	else
+	    this.tag = new String(tag);
     }
 
 
     /**
-    Sets a function to be traced and a tracer to be nested.
+    Spans a child tag.
+    Null or empty tag will be replaced by default one.
 
-    @param tracer      Tracer to be nested.
-    @param functionObj Function to be traced.
+    @param tag Tag of a child.
+    @return    Child tracer.
     **/
-    public void span(Tracer tracer, FunctionObject functionObj)
+    public Tracer span(String tag)
     {
-	this.tracer = new Tracer(tracer);
-	this.functionObj = functionObj;
-    }
-
-
-    /**
-    Starts tracing of a previously set function. 
-    **/
-    public void run()
-    {
-	try
+	if (tag == null || tag.isEmpty())
 	{
-	    enter();
-	    if (this.tracer != null)
-	    {
-		this.tracer.tag.insert(0, TAG_SEPARATOR).insert(0, this.tag);
-		this.tracer.run();
-		this.functionObj.call();
-	    }
-	    else
-	    {
-		this.functionObj.call();
-	    }
-	    exit();
+	    err.println("Empty tag not allowed, setting it to default.");
+	    return new Tracer(this.tag + TAG_SEPARATOR + "default");
 	}
-	catch (Exception exc)
-	{
-	    err.println("Running tracing caused an exception: " + exc);
-	}
+	
+	String childTag = this.tag + TAG_SEPARATOR + tag;
+	return new Tracer(childTag);
     }
 
     
     /**
     Emits an entry tracer.
+
+    @param args Tracer arguments.
     **/
-    public void enter()
+    public void enter(ArrayList<NameValue> args)
     {
 	try
 	{
 	    StringBuilder entryTrace = new StringBuilder();
-	    entryTrace.append(ENTRY_EVENT_SYMBOL).append(FIELD_SEPARATOR).append(this.id).append(FIELD_SEPARATOR).append(this.tag).
-		append(FIELD_SEPARATOR).append(formatArguments());
+	    entryTrace.append(ENTRY_EVENT_SYMBOL).append(FIELD_SEPARATOR).append(THREAD_ID).append(FIELD_SEPARATOR).append(this.tag).
+		append(FIELD_SEPARATOR).append(formatArguments(args));
 	    this.nullFile.println(entryTrace);
 	}
 	catch (Exception exc)
@@ -124,14 +77,16 @@ public class Tracer
     
     /**
     Emits an exit tracer.
+
+    @param args Tracer arguments.
     **/
-    public void exit()
+    public void exit(ArrayList<NameValue> args)
     {
 	try
 	{
 	    StringBuilder exitTrace = new StringBuilder();
-	    exitTrace.append(EXIT_EVENT_SYMBOL).append(FIELD_SEPARATOR).append(this.id).append(FIELD_SEPARATOR).append(this.tag).append(FIELD_SEPARATOR).
-		append(formatArguments());
+	    exitTrace.append(EXIT_EVENT_SYMBOL).append(FIELD_SEPARATOR).append(THREAD_ID).append(FIELD_SEPARATOR).append(this.tag).append(FIELD_SEPARATOR).
+		append(formatArguments(args));
 	    this.nullFile.println(exitTrace);
 	}
 	catch (Exception exc)
@@ -140,39 +95,21 @@ public class Tracer
 	}
     }
 
-
-    /**
-    Verifies if trace id is in the valid format.
-
-    @return True if format is valid, false if not.
-    **/
-    private boolean checkIdFormat()
-    {
-	if (this.id.compareTo(THREAD_ID) == 0 || this.id.compareTo(PROCESS_ID) == 0 || this.id.compareTo(PARENT_PID) == 0)
-	    return true;
-	
-	try
-	{
-	    Long.parseLong(this.id);
-	    return true;
-	}
-	catch (NumberFormatException exc)
-	{
-	}
-	
-	return false;
-    }
-
     
     /**
-    Formats arguments in Sysdig format.
+    Formats arguments in sysdig format.
+    Empty argument list is allowed.
 
-    @return String representation of arguments.
+    @param args Arguments to format.
+    @return     String representation of arguments.
     **/
-    private String formatArguments()
+    private String formatArguments(ArrayList<NameValue> args)
     {
+	if (args == null || args.isEmpty())
+	    return new String(Character.toString(FIELD_SEPARATOR));
+	
 	StringBuilder argsStr = new StringBuilder();
-	for (NameValue elem : this.args)
+	for (NameValue elem : args)
 	    argsStr.append(elem.toString() + ARGS_SEPARATOR);
 	int argsStrLen = argsStr.length();
 	argsStr.setCharAt(argsStrLen - 1, FIELD_SEPARATOR);
@@ -181,7 +118,7 @@ public class Tracer
 
     
     /**
-    Null device used by Sysdig for tracing.
+    Null device used by sysdig for tracing.
     **/
     private static final String NULL_FILE_PATH = "/dev/null";
 
@@ -222,18 +159,6 @@ public class Tracer
     private static final String THREAD_ID = "t";
 
     
-    /**
-    Tracer id symbol when process id used.
-    **/
-    private static final String PROCESS_ID = "p";
-
-    
-    /**
-    Tracer id symbol when parent process id used.
-    **/
-    private static final String PARENT_PID = "pp";
-
-
     static
     {
 	try
@@ -247,7 +172,7 @@ public class Tracer
 
     
     /**
-    Null file used by Sysdig for tracing.
+    Null file used by sysdig for tracing.
     **/
     private static PrintWriter nullFile;
 
@@ -261,128 +186,46 @@ public class Tracer
     /**
     Tracer tag.
     **/
-    private StringBuilder tag;
-
-    
-    /**
-    Tracer arguments.
-    **/
-    ArrayList<NameValue> args;
-
-    
-    /**
-    Function object to be traced.
-    **/
-    FunctionObject functionObj;
-
-    
-    /**
-    Tracer to be nested as child tracer.
-    **/
-    Tracer tracer;
-
+    private String tag;
+   
     
     /**
     Test method of the class.
     **/
     public static void main(String args[]) throws IOException
-    {	
+    {
 	{
-            // running tracers
-	    
-	    ArrayList<NameValue> argList1 = new ArrayList<NameValue>(Arrays.asList(new NameValue("hello", "world"), new NameValue("yabadaba", "doo")));
-	    Tracer trc1 = new Tracer("t", "mytag", argList1);
-	    trc1.span(new FunctionObject("hello")
-		{
-		    @Override
-		    public void call()
-		    {
-			out.println("args[0]=" + (String)(this.args[0]));
-		    }
-		});
+	    Tracer t1 = new Tracer("mytag");
+	    t1.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("hello", "world"), new NameValue("zdravo", "svete"))));
+	    out.println("Hello, World!");
+	    t1.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("status", "successful"))));
 
-	    
-	    trc1.run();
-
-	    
-	    ArrayList<NameValue> argList2 = new ArrayList<NameValue>(Arrays.asList(new NameValue("zdravo", "svete"), new NameValue("opa", "bato"),
-	        new NameValue("jabadaba", "du")));
-	    Tracer trc2 = new Tracer("p", "yourtag", argList2);
-	    trc2.span(new FunctionObject(10)
-		{
-		    @Override
-		    public void call()
-		    {
-			try
-			{
-			    out.println("Sleeping for " + (Integer)args[0] + " seconds.");
-			    Thread.sleep((Integer)(args[0]) * 1000);
-			}
-			catch (InterruptedException exc)
-			{
-			    out.println("Function call caused an exception: " + exc);
-			}
-		    }
-		});
-	    trc2.run();  
+	    Tracer t2 = new Tracer("yourtag");
+	    t2.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("yabadaba", "doo"))));
+	    out.println("Flintstones!");
+	    t2.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("result", "-1"), new NameValue("status", "error"))));
 	}
-	
-
 	{
-	    // runnning nested tracers
+	    Tracer parent = new Tracer("parenttag");
+	    parent.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("hello", "world"), new NameValue("zdravo", "svete"))));
+	    out.println("Hello, World!");
 	    
-	    try
-	    {
+	    Tracer child1 = parent.span("child1tag");
+	    child1.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("yabadaba", "doo"))));
+	    out.println("Flintstones!");
+	    child1.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("result", "-1"), new NameValue("status", "error"))));
 
-		
-		ArrayList<NameValue> argList1 = new ArrayList<NameValue>(Arrays.asList(new NameValue("hello", "world"), new NameValue("yabadaba", "doo")));
-		Tracer trc1 = new Tracer("t", "parenttag", argList1);
-		ArrayList<NameValue> argList2 = new ArrayList<NameValue>(Arrays.asList(new NameValue("zdravo", "svete"), new NameValue("opa", "bato"),
-		    new NameValue("jabadaba", "du")));
-		Tracer trc2 = new Tracer("p", "childtag", argList2);
-		ArrayList<NameValue> argList3 = new ArrayList<NameValue>(Arrays.asList(new NameValue("salut", "le monde")));
-		Tracer trc3 = new Tracer("pp", "grandchildtag", argList3);
+	    Tracer child2 = parent.span("child2tag");
+	    child2.enter(null);
+	    out.println("Go go go!");
 
-		trc3.span(new FunctionObject("zdravo", "svete")
-		    {
-			@Override
-			public void call()
-			{
-			    out.println("args[0]=" + (String)this.args[0] + ", args[1]=" + (String)this.args[1]);
-			}
-		    });
-		
-		trc2.span(trc3, new FunctionObject(10)
-		    {
-			@Override
-			public void call()
-			{
-			    try
-			    {
-				out.println("Sleeping for " + (Integer)args[0] + " seconds.");
-				Thread.sleep((Integer)(args[0]) * 1000);
-			    }
-			    catch (InterruptedException exc)
-			    {
-				out.println("Function call caused an exception: " + exc);
-			    }
-			}
-		    });
-
-		trc1.span(trc2, new FunctionObject("hello")
-		{
-		    @Override
-		    public void call()
-		    {
-			out.println("args[0]=" + (String)(this.args[0]));
-		    }
-		});
-		trc1.run();
-	    }
-	    catch (Exception exc)
-	    {
-		out.println("Application reported an exception. Error message: " + exc.toString());
-	    }	     
+	    Tracer grandChild = child2.span("grandchildtag");
+	    grandChild.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("lol", "rofl"))));
+	    out.println("wtf!");
+	    grandChild.exit(new ArrayList<NameValue>());
+	    
+	    child2.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("wow", "yeah"))));
+	    parent.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("status", "successful"))));
 	}
     }
 }
@@ -458,42 +301,4 @@ class NameValue
     Stores value of the pair.
     **/
     public String value;
-}
-
-
-/**
-Functional interface to be used for defining functions to be traced.
-**/
-abstract class FunctionObject
-{
-    /**
-    Copy constructor.
-
-    @param other Function to be copied together with its arguments.
-    **/
-    public FunctionObject(FunctionObject other)
-    {
-	this(other.args);
-    }
-
-    /**
-    Constructor using function arguments.
-
-    @param args Function arguments to be used when the function object is called.
-    **/
-    public FunctionObject(Object... args)
-    {
-	this.args = new Object[args.length];
-	System.arraycopy(args, 0, this.args, 0, args.length);
-    }
-    
-    /**
-    Function to be implemented and traced, can use arguments set by the constructor.
-    **/
-    public abstract void call();
-
-    /**
-    Function arguments to be used when called.
-    **/
-    public Object[] args;
 }
