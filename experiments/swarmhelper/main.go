@@ -53,12 +53,22 @@ func virtualIPsToProtobuf(vIPs []swarm.EndpointVirtualIP) []string {
 	return ret
 }
 
+func portsToProtobuf(ports []swarm.PortConfig) (ret []*draiosproto.SwarmPort) {
+	for _, port := range ports {
+		ret = append(ret, &draiosproto.SwarmPort{Port: proto.Uint32(port.TargetPort),
+						PublishedPort: proto.Uint32(port.PublishedPort),
+			Protocol: proto.String(string(port.Protocol))})
+	}
+	return
+}
+
 func serviceToProtobuf(service swarm.Service) *draiosproto.SwarmService {
 	return &draiosproto.SwarmService{Common: &draiosproto.SwarmCommon{
 		Id:proto.String(service.ID),
 		Name:proto.String(service.Spec.Name),
 		Labels: labelsToProtobuf(service.Spec.Labels)},
 		VirtualIps: virtualIPsToProtobuf(service.Endpoint.VirtualIPs),
+		Ports: portsToProtobuf(service.Endpoint.Ports),
 	}
 }
 
@@ -129,7 +139,7 @@ func main() {
 			fmt.Printf("Error fetching tasks: %s\n", err)
 		}
 
-		//fmt.Printf("Protobuf %s\n", proto.MarshalTextString(m))
+		fmt.Printf("Protobuf %s\n", proto.MarshalTextString(m))
 		if data, err := proto.Marshal(m); err == nil {
 			q.Send(data)
 		}
