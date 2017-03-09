@@ -1876,7 +1876,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					 sinsp_logger::SEV_INFO);
 	}
 
-	tracer_emitter pt_trc("detect_k8s", proc_trc);
+	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
