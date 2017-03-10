@@ -846,7 +846,7 @@ void dragent_configuration::init(Application* app)
 	parse_services_file();
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
-	m_emit_tracers = m_config->get_scalar("debug_emit_tracers", false);
+	m_emit_tracers = m_config->get_scalar("emit_tracers", true);
 
 	auto mode_s = m_config->get_scalar<string>("run_mode", "standard");
 	if(mode_s == "nodriver")
