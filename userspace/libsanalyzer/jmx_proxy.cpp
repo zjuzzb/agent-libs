@@ -90,11 +90,31 @@ java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned
 	}
 }
 
-java_bean::java_bean(const Json::Value& json):
-	m_name(json["name"].asString())
+java_bean::java_bean(const Json::Value& json, metric_limits::ptr_t ml):
+	m_name(json["name"].asString()),
+	m_metric_limits(ml)
 {
 	for(const auto& attribute : json["attributes"])
 	{
+		std::string n;
+		if(!attribute["name"].isNull())
+		{
+			n = attribute["name"].asString();
+		}
+		std::string a;
+		if(!attribute["alias"].isNull())
+		{
+			a = attribute["alias"].asString();
+		}
+		if(m_metric_limits && ((!n.empty() && !m_metric_limits->allow(n)) || (!a.empty() && !m_metric_limits->allow(a))))
+		{
+			SINSP_LOG("jmx metric not allowed: " + n, SEV_TRACE);
+			continue;
+		}
+		else
+		{
+			SINSP_LOG("jmx metric allowed: " + n, SEV_TRACE);
+		}
 		m_attributes.emplace_back(attribute);
 	}
 }
@@ -112,13 +132,13 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 	return emitted_attributes;
 }
 
-java_process::java_process(const Json::Value& json):
+java_process::java_process(const Json::Value& json, metric_limits::ptr_t ml):
 	m_pid(json["pid"].asInt()),
 	m_name(json["name"].asString())
 {
 	for(const auto& bean : json["beans"])
 	{
-		m_beans.push_back(java_bean(bean));
+		m_beans.push_back(java_bean(bean, ml));
 	}
 }
 
@@ -134,10 +154,11 @@ unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigne
 	return emitted_attributes;
 }
 
-jmx_proxy::jmx_proxy():
+jmx_proxy::jmx_proxy(metric_limits::ptr_t ml):
 		m_print_json(false),
 		m_outqueue("/sdc_sdjagent_in", posix_queue::SEND, 1),
-		m_inqueue("/sdc_sdjagent_out", posix_queue::RECEIVE, 1)
+		m_inqueue("/sdc_sdjagent_out", posix_queue::RECEIVE, 1),
+		m_metric_limits(ml)
 {
 }
 
@@ -214,7 +235,7 @@ unordered_map<int, java_process> jmx_proxy::read_metrics()
 		{
 			for(const auto& process_data : json_obj["body"])
 			{
-				java_process process(process_data);
+				java_process process(process_data, m_metric_limits);
 				processes.emplace(process.pid(), move(process));
 			}
 		}

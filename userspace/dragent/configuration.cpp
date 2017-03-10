@@ -860,8 +860,7 @@ void dragent_configuration::init(Application* app)
 		m_autodrop_enabled = false;
 	}
 
-	m_metrics_exclude = m_config->get_deep_merged_sequence<std::vector<std::string>>("metrics_filter", "exclude");
-	m_metrics_include = m_config->get_deep_merged_sequence<std::vector<std::string>>("metrics_filter", "include");
+	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
 }
 
 void dragent_configuration::print_configuration()
@@ -1085,26 +1084,15 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
 	}
-
-	if(m_metrics_exclude.size())
+	std::ostringstream os;
+	if(m_metrics_filter.size())
 	{
-		std::ostringstream os;
-		for(const auto& e : m_metrics_exclude)
+		for(const auto& e : m_metrics_filter)
 		{
-			os << std::endl << e;
+			os << std::endl << (e.included() ? "include: " : "exclude: ") << e.filter();
 		}
-		g_log->information("Excluded metrics:" + os.str());
 	}
-
-	if(m_metrics_include.size())
-	{
-		std::ostringstream os;
-		for(const auto& i : m_metrics_include)
-		{
-			os << std::endl << i;
-		}
-		g_log->information("Included metrics:" + os.str());
-	}
+	g_log->information("Metrics filters:" + os.str());
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

@@ -10,12 +10,14 @@
 #ifndef _WIN32
 #include "third-party/jsoncpp/json/json.h"
 #include "posix_queue.h"
+#include "metric_limits.h"
 #include "draios.pb.h"
 // suppress depreacated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
+
 
 Json::Value yaml_to_json(const YAML::Node& node);
 
@@ -118,12 +120,18 @@ public:
 	};
 	explicit app_metric(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_metric* proto) const;
+	const std::string& name() const;
 private:
 	string m_name;
 	double m_value;
 	type_t m_type;
 	map<string, string> m_tags;
 };
+
+inline const std::string& app_metric::name() const
+{
+	return m_name;
+}
 
 class app_service_check
 {
@@ -138,6 +146,7 @@ public:
 	explicit app_service_check(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_check* proto) const;
 	void to_protobuf_as_metric(draiosproto::app_metric* proto) const;
+	const std::string& name() const;
 private:
 	status_t m_status;
 	map<string, string> m_tags;
@@ -145,16 +154,22 @@ private:
 	string m_message;
 };
 
+inline const std::string& app_service_check::name() const
+{
+	return m_name;
+}
+
 class app_check_data
 {
 public:
 	// Added for unordered_map::operator[]
-	explicit app_check_data():
+	explicit app_check_data(metric_limits::ptr_t ml = nullptr):
 			m_pid(0),
-			m_expiration_ts(0)
+			m_expiration_ts(0),
+			m_metric_limits(ml)
 	{};
 
-	explicit app_check_data(const Json::Value& obj);
+	explicit app_check_data(const Json::Value& obj, metric_limits::ptr_t ml = nullptr);
 
 	int pid() const
 	{
@@ -179,12 +194,13 @@ private:
 	vector<app_metric> m_metrics;
 	vector<app_service_check> m_service_checks;
 	uint64_t m_expiration_ts;
+	metric_limits::ptr_t m_metric_limits;
 };
 
 class app_checks_proxy
 {
 public:
-	app_checks_proxy();
+	app_checks_proxy(metric_limits::ptr_t ml = nullptr);
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
@@ -196,6 +212,7 @@ private:
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
+	metric_limits::ptr_t m_metric_limits;
 };
 
 #endif // _WIN32

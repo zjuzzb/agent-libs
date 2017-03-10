@@ -685,6 +685,16 @@ void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t eve
 	m_docker_event_filter = event_filter;
 }
 
+metrics_filter_vec sinsp_configuration::get_metrics_filter() const
+{
+	return m_metrics_filter;
+}
+
+void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_filter)
+{
+	m_metrics_filter = metrics_filter;
+}
+
 unsigned sinsp_configuration::get_jmx_limit() const
 {
 	return m_jmx_limit;

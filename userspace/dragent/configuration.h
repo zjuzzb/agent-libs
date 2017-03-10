@@ -3,6 +3,7 @@
 #include "main.h"
 #include "logger.h"
 #include "user_event.h"
+#include "metric_limits.h"
 
 // suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
@@ -549,6 +550,8 @@ public:
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
 
+	metrics_filter_vec m_metrics_filter;
+
 	bool m_enable_coredump;
 	bool m_auto_config;
 	bool m_emit_tracers = false;
@@ -569,9 +572,6 @@ public:
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
-
-	std::vector<std::string> m_metrics_exclude;
-	std::vector<std::string> m_metrics_include;
 
 	bool java_present()
 	{

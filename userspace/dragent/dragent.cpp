@@ -252,7 +252,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 		return this->sdagent_main();
 	}, true);
-
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
 		m_jmx_pipes = make_unique<errpipe_manager>();

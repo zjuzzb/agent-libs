@@ -1,8 +1,7 @@
-//#include "sparsepp/spp.h"
-//#define SPARSEPP_MAP
+// usage: metric_limits [size] [cache_size]
 
-//#include <sparsehash/dense_hash_map>
-//#define DENSE_HASH_MAP
+// size defaults to this, if no cache_size on cmd line, it defaults to size
+#define METRIC_SIZE 6000
 
 #include "metric_limits.cpp"
 
@@ -10,20 +9,34 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <cstdlib>
 
 int main(int argc, char *argv[])
 {
-	unsigned sz = 3000;
-	if(argc > 1) sz = atoi(argv[1]);
-	std::vector<std::string> excluded{{"haproxy.*", "redis.*", "test.*", "test2.*.somethin?","1haproxy.*", "2redis.*", "3test.*", "4test2.*.somethin?"}};
-	std::vector<std::string> included{{"haproxy.backend*", "test.*", "test2.*.?othin?","1haproxy.backend*", "2test.*", "3test2.*.?othin?"}};
-	metric_limits ml(excluded, included, sz);
+	unsigned long msz = METRIC_SIZE;
+	unsigned long csz = msz;
 
-	for(int j = 0; j < 20; ++j)
+	if(argc > 1) msz = strtoul(argv[1], 0, 10);
+	if(!msz)
 	{
-		sinsp_stopwatch sw;
+		std::cerr << "invalid metric size: " << msz << std::endl;
+		return -1;
+	}
+	if(argc > 2)
+	{
+		csz = strtoul(argv[2], 0, 10);
+	}
+	std::cout << msz << " metrics, " << csz << " cached" << std::endl;
+
+	metrics_filter_vec f({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true}, {"1haproxy.backend*", true}, {"2test.*", true}, {"3test2.*.?othin?", true},
+						  {"haproxy.backend*", false}, {"test.*", false}, {"test2.*.?othin?", false}, {"1haproxy.backend*", false}, {"2test.*", false}, {"3test2.*.?othin?", false}});
+	metric_limits ml(f, csz);
+
+	sinsp_stopwatch sw;
+	for(int j = 0; j < 10; ++j)
+	{
 		std::chrono::nanoseconds::rep sum = 0;
-		for(unsigned i = 0; i < ml.cache_max_entries(); ++i)
+		for(unsigned i = 0; i < msz; ++i)
 		{
 			std::string s(std::to_string(i) + "xyz123");
 			sw.start();
@@ -31,8 +44,7 @@ int main(int argc, char *argv[])
 			sw.stop();
 			sum += sw.elapsed<std::chrono::nanoseconds>();
 		}
-		sw.stop();
-		std::cout << "total=" << sum/1000 << " ms, avg=" << sum/ml.cache_max_entries() << " ns" << std::endl;
+		std::cout << "total=" << sum/1000 << " us, avg=" << sum/msz << " ns" << std::endl;
 	}
 	return 0;
 }

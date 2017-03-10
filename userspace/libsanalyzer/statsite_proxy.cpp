@@ -7,11 +7,10 @@
 #include "statsite_proxy.h"
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
-#include "metric_limits.h"
 
 #ifndef _WIN32
 
-statsd_metric::statsd_metric(std::shared_ptr<metric_limits> ml):
+statsd_metric::statsd_metric(metric_limits::ptr_t ml):
 			m_timestamp(0),
 			m_type(type_t::NONE),
 			m_full_identifier_parsed(false),
@@ -255,7 +254,7 @@ unsigned statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	return 1;
 }
 
-statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds, std::shared_ptr<metric_limits> ml):
+statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds, metric_limits::ptr_t ml):
 		m_input_fd(fds.first),
 		m_output_fd(fds.second),
 		m_metric(ml),

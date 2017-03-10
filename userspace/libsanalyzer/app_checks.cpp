@@ -206,9 +206,10 @@ Json::Value app_process::to_json() const
 	return ret;
 }
 
-app_checks_proxy::app_checks_proxy():
+app_checks_proxy::app_checks_proxy(metric_limits::ptr_t ml):
 	m_outqueue("/sdc_app_checks_in", posix_queue::SEND, 1),
-	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 1)
+	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 1),
+	m_metric_limits(ml)
 {
 }
 
@@ -237,16 +238,17 @@ unordered_map<int, map<string, app_check_data>> app_checks_proxy::read_metrics()
 		// Parse data
 		for(const auto& process : response_obj)
 		{
-			app_check_data data(process);
+			app_check_data data(process, m_metric_limits);
 			ret[data.pid()][data.name()] = move(data);
 		}
 	}
 	return ret;
 }
 
-app_check_data::app_check_data(const Json::Value &obj):
+app_check_data::app_check_data(const Json::Value &obj, metric_limits::ptr_t ml):
 	m_pid(obj["pid"].asInt()),
-	m_expiration_ts(obj["expiration_ts"].asUInt64())
+	m_expiration_ts(obj["expiration_ts"].asUInt64()),
+	m_metric_limits(ml)
 {
 	if(obj.isMember("display_name"))
 	{
@@ -275,8 +277,18 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	uint16_t limit_used = 0;
 	for(const auto& m : m_metrics)
 	{
+		if(m_metric_limits && !m_metric_limits->allow(m.name()))
+		{
+			SINSP_LOG("app_check metric not allowed: " + m.name(), SEV_TRACE);
+			continue;
+		}
+		else
+		{
+			SINSP_LOG("app_check metric allowed: " + m.name(), SEV_TRACE);
+		}
 		if(limit_used >= limit)
 		{
+			SINSP_LOG("app_checks metrics limit (" + std::to_string(limit) + ") reached.", SEV_DEBUG);
 			break;
 		}
 		m.to_protobuf(proto->add_metrics());
@@ -288,8 +300,18 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	 */
 	for(const auto& s : m_service_checks)
 	{
+		if(m_metric_limits && !m_metric_limits->allow(s.name()))
+		{
+			SINSP_LOG("service_check metric not allowed: " + s.name(), SEV_TRACE);
+			continue;
+		}
+		else
+		{
+			SINSP_LOG("service_check metric allowed: " + s.name(), SEV_TRACE);
+		}
 		if(limit_used >= limit)
 		{
+			SINSP_LOG("service_checks metrics limit (" + std::to_string(limit) + ") reached.", SEV_DEBUG);
 			break;
 		}
 		s.to_protobuf_as_metric(proto->add_metrics());

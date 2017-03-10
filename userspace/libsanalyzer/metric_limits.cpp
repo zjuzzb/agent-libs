@@ -5,24 +5,14 @@
 #endif // HAS_ANALYZER
 #include <fnmatch.h>
 
-metric_limits::metric_limits(const std::vector<std::string>& excluded, const std::vector<std::string>& included,
+metric_limits::metric_limits(const metrics_filter_vec/*list_t&*/ filters,
 							uint64_t max_entries, uint64_t expire_seconds):
+							m_filters(filters),
 							m_max_entries(max_entries),
 							m_purge_seconds(expire_seconds)
 {
 	time(&m_last_purge);
 	time(&m_last_log);
-#ifndef DENSE_HASH_MAP
-	m_cache.reserve(m_max_entries);
-#endif
-	for(const auto& i : included)
-	{
-		m_filters.emplace_back(std::make_pair(i, true));
-	}
-	for(const auto& e : excluded)
-	{
-		m_filters.emplace_back(std::make_pair(e, false));
-	}
 #ifdef HAS_ANALYZER
 	ASSERT(m_filters.size());
 #endif // HAS_ANALYZER
@@ -56,16 +46,16 @@ bool metric_limits::allow(const std::string& metric)
 
 	for(const auto& f : m_filters)
 	{
-		int m = fnmatch(f.first.c_str(), metric.c_str(), FNM_CASEFOLD);
+		int m = fnmatch(f.filter().c_str(), metric.c_str(), FNM_CASEFOLD);
 		if(0 == m)
 		{
-			insert(metric, f.second);
-			return f.second;
+			insert(metric, f.included());
+			return f.included();
 		}
 		else if(FNM_NOMATCH != m)
 		{
 			SINSP_LOG("Metric limits: error glob matching [" + metric + "] "
-					  "with pattern [" + f.first + ']', SEV_WARNING);
+					  "with pattern [" + f.filter() + ']', SEV_WARNING);
 		}
 	}
 

@@ -16,7 +16,6 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
-
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
@@ -273,9 +272,21 @@ public:
 	}
 
 #ifndef _WIN32
+	inline void check_metric_limits()
+	{
+		ASSERT(m_configuration);
+		ASSERT(!m_metric_limits || (m_metric_limits && m_configuration->get_metrics_filter().size()));
+		if(!m_metric_limits && m_configuration->get_metrics_filter().size())
+		{
+			m_metric_limits.reset(new metric_limits(m_configuration->get_metrics_filter()));
+		}
+		ASSERT(m_metric_limits || (!m_metric_limits && !m_configuration->get_metrics_filter().size()));
+	}
+
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
 	{
-		m_jmx_proxy = make_unique<jmx_proxy>();
+		check_metric_limits();
+		m_jmx_proxy = make_unique<jmx_proxy>(m_metric_limits);
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
 		m_configuration->set_jmx_limit(limit);
@@ -328,7 +339,8 @@ public:
 
 		if(!m_app_checks.empty())
 		{
-			m_app_proxy = make_unique<app_checks_proxy>();
+			check_metric_limits();
+			m_app_proxy = make_unique<app_checks_proxy>(m_metric_limits);
 		}
 	}
 #endif // _WIN32

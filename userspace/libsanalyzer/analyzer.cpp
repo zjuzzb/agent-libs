@@ -72,7 +72,7 @@ using namespace google::protobuf::io;
 #include "metric_limits.h"
 
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector): m_metric_limits(new metric_limits({"page.*", "accessapi"}, {"mycounter", "hello"}))
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
 	m_initialized = false;
 	m_inspector = inspector;
@@ -5366,7 +5366,6 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 		{
 			os << t.first << ':' << t.second << std::endl;
 		}
-		g_logger.log("statsd metrics name:" + metric.name() + ", tags: " + os.str(), sinsp_logger::SEV_WARNING);
 		if(j >= limit)
 		{
 			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
@@ -5843,6 +5842,7 @@ bool sinsp_analyzer::driver_stopped_dropping()
 #ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
 {
+	check_metric_limits();
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds, m_metric_limits);
 	if(forwarder)
 	{

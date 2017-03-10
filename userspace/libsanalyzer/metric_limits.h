@@ -5,31 +5,90 @@
 #include <string>
 #include <ctime>
 #include <cmath>
+#include <memory>
+
+#ifdef HAS_ANALYZER
+
+// suppress depreacated warnings for auto_ptr in boost
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
 
 // introduce a macro (or inline function) like this and put it in a well-known place?
 //
 // there's a lot of debug/trace logging that's unnecessarily eating up
 // production performance, mainly because string has to be constructed
 // (and is often concatenated), only to be discarded
-#ifdef HAS_ANALYZER
 #define SINSP_LOG(M, L) if(g_logger.get_severity() >= sinsp_logger::L) \
                            g_logger.log(M, sinsp_logger::L);
 #else
 #define SINSP_LOG(M, L)
+
+#endif // HAS_ANALYZER
+
+class metrics_filter
+{
+public:
+	metrics_filter()
+	{}
+	metrics_filter(std::string filter, bool included): m_filter(filter), m_included(included)
+	{}
+	const std::string& filter() const { return m_filter; }
+	bool included() const { return m_included; }
+	void set_filter(const std::string& filter)
+	{
+		m_filter = filter;
+	}
+	void set_included(bool included)
+	{
+		m_included = included;
+	}
+private:
+	std::string m_filter;
+	bool m_included = true;
+};
+
+typedef std::vector<metrics_filter> metrics_filter_vec;
+
+#ifdef HAS_ANALYZER
+
+namespace YAML
+{
+	template<>
+	struct convert<metrics_filter>
+	{
+		static bool decode(const Node& node, metrics_filter& rhs)
+		{
+			if(node["include"])
+			{
+				rhs.set_included(true);
+				rhs.set_filter(node["include"].as<std::string>());
+				return true;
+			}
+			else if(node["exclude"])
+			{
+				rhs.set_included(false);
+				rhs.set_filter(node["exclude"].as<std::string>());
+				return true;
+			}
+			return false;
+		}
+	};
+}
+
 #endif // HAS_ANALYZER
 
 class metric_limits
 {
 public:
+	typedef std::shared_ptr<metric_limits> ptr_t;
+
 	class entry
 	{
 	public:
-#ifndef DENSE_HASH_MAP
 		entry() = delete;
 		entry(bool allow);
-#else
-		entry(bool allow = true);
-#endif
 		void set_allow(bool a = true);
 		bool get_allow();
 		double last_access() const;
@@ -43,22 +102,15 @@ public:
 
 	typedef std::pair<std::string, bool> filter_pair_t;
 	typedef std::vector<filter_pair_t> list_t;
-#if defined (SPARSEPP_MAP)
-	typedef spp::sparse_hash_map<std::string, entry> map_t;
-#elif defined (DENSE_HASH_MAP)
-	typedef google::dense_hash_map<std::string, entry> map_t;
-#else
 	typedef std::unordered_map<std::string, entry> map_t;
-#endif
 
 	metric_limits() = delete;
-	metric_limits(const std::vector<std::string>& excluded,
-				  const std::vector<std::string>& included,
+	metric_limits(metrics_filter_vec /*const list_t&*/ filters,
 				  uint64_t max_entries = 3000,
 				  uint64_t expire_seconds = 86400);
 
 	bool allow(const std::string& metric);
-	bool has(const std::string& metric);
+	bool has(const std::string& metric) const;
 	uint64_t cached();
 	void purge_cache();
 	void clear_cache();
@@ -73,7 +125,7 @@ private:
 	double last_log() const;
 	void log();
 
-	list_t m_filters;
+	metrics_filter_vec m_filters;
 	map_t m_cache;
 	uint64_t m_max_entries = 3000;
 	time_t m_last_purge = 0;
@@ -82,7 +134,7 @@ private:
 	const unsigned m_log_seconds = 300; // 5min
 };
 
-inline bool metric_limits::has(const std::string& metric)
+inline bool metric_limits::has(const std::string& metric) const
 {
 	return (m_cache.find(metric) != m_cache.end());
 }

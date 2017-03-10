@@ -4,10 +4,9 @@
 
 TEST(metric_limits, filter)
 {
-	std::vector<std::string> excluded({"haproxy.*", "redis.*", "test.*", "test2.*.somethin?"});
-	std::vector<std::string> included({"haproxy.backend*", "test.*", "test2.*.?othin?"});
-
-	metric_limits ml(excluded, included);
+	metrics_filter_vec filter({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
+							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
+	metric_limits ml(filter);
 	std::string metric("haproxy.frontend.bytes");
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_FALSE(ml.allow(metric));
@@ -71,9 +70,8 @@ TEST(metric_limits, filter)
 	ASSERT_EQ(9u, ml.cached());
 	EXPECT_TRUE(ml.allow(metric));
 
-	std::vector<std::string> excluded2({"haproxy.*"});
-	std::vector<std::string> included2({"haproxy.*"});
-	metric_limits ml2(excluded2, included2);
+	metrics_filter_vec filter2({{"haproxy.*", true}, {"haproxy.*", false}});
+	metric_limits ml2(filter2);
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml2.has(metric));
 	EXPECT_TRUE(ml2.allow(metric));
@@ -95,9 +93,8 @@ TEST(metric_limits, filter)
 	ASSERT_EQ(3u, ml2.cached());
 	EXPECT_TRUE(ml2.allow(metric));
 
-	std::vector<std::string> excluded3({"*"});
-	std::vector<std::string> included3({"haproxy.*"});
-	metric_limits ml3(excluded3, included3);
+	metrics_filter_vec filter3({{"haproxy.*", true}, {"*", false}});
+	metric_limits ml3(filter3);
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml3.has(metric));
 	EXPECT_TRUE(ml3.allow(metric));
@@ -122,10 +119,10 @@ TEST(metric_limits, filter)
 
 TEST(metric_limits, cache)
 {
-	std::vector<std::string> excluded({"haproxy.*", "redis.*", "test.*", "test2.*.somethin?"});
-	std::vector<std::string> included({"haproxy.backend*", "test.*", "test2.*.?othin?"});
+	metrics_filter_vec filter({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
+							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
 
-	metric_limits ml(excluded, included, 3u, 2u);
+	metric_limits ml(filter, 3u, 2u);
 	ASSERT_EQ(3u, ml.cache_max_entries());
 	ASSERT_EQ(2u, ml.cache_expire_seconds());
 
@@ -191,7 +188,7 @@ TEST(metric_limits, cache)
 	ml.clear_cache();
 	ASSERT_EQ(0u, ml.cached());
 
-	metric_limits ml2(excluded, included, 3000u, 2u);
+	metric_limits ml2(filter, 3000u, 2u);
 	sinsp_stopwatch sw;
 	std::chrono::microseconds::rep sum = 0;
 	for(unsigned i = 0; i < ml2.cache_max_entries(); ++i)
@@ -238,13 +235,28 @@ TEST(metric_limits, cache)
 	EXPECT_TRUE(ml2.has("xyz"));
 }
 
-TEST(metric_limits, statsd)
-{
-	std::vector<std::string> excluded({"page.*", "accessapi"});
-	std::vector<std::string> included({"mycounter", "hello"});
 
-	metric_limits ml(excluded, included);
-	EXPECT_FALSE(ml.has("page.views"));
-	EXPECT_FALSE(ml.allow("page.views"));
-	EXPECT_TRUE(ml.has("page.views"));
+TEST(metric_limits, projspec)
+{
+	metrics_filter_vec filters({{"test.*", true}, {"test.*", false}, {"haproxy.backend.*", true}, {"haproxy.*", false}, {"redis.*", false}});
+	metric_limits ml(filters);
+	EXPECT_FALSE(ml.has("haproxy.frontend.bytes"));
+	EXPECT_FALSE(ml.allow("haproxy.frontend.bytes"));
+	EXPECT_TRUE(ml.has("haproxy.frontend.bytes"));
+
+	EXPECT_FALSE(ml.has("haproxy.backend.request"));
+	EXPECT_TRUE(ml.allow("haproxy.backend.request"));
+	EXPECT_TRUE(ml.has("haproxy.backend.request"));
+
+	EXPECT_FALSE(ml.has("redis.keys"));
+	EXPECT_FALSE(ml.allow("redis.keys"));
+	EXPECT_TRUE(ml.has("redis.keys"));
+
+	EXPECT_FALSE(ml.has("mysql.queries.count"));
+	EXPECT_TRUE(ml.allow("mysql.queries.count"));
+	EXPECT_TRUE(ml.has("mysql.queries.count"));
+
+	EXPECT_FALSE(ml.has("test.\\*"));
+	EXPECT_TRUE(ml.allow("test.\\*"));
+	EXPECT_TRUE(ml.has("test.\\*"));
 }

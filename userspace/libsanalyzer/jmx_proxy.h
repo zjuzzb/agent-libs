@@ -5,6 +5,7 @@
 #include <utility>
 #include "threadinfo.h"
 #include "posix_queue.h"
+#include "metric_limits.h"
 
 class jmx_proxy;
 class java_process;
@@ -34,11 +35,16 @@ public:
 		return m_name;
 	}
 
+	inline size_t attribute_count()
+	{
+		return m_attributes.size();
+	}
 	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit) const;
 private:
-	explicit java_bean(const Json::Value&);
+	explicit java_bean(const Json::Value&, metric_limits::ptr_t ml = nullptr);
 	string m_name;
 	vector<java_bean_attribute> m_attributes;
+	metric_limits::ptr_t m_metric_limits;
 	friend class java_process;
 };
 
@@ -62,7 +68,7 @@ public:
 	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit) const;
 
 private:
-	explicit java_process(const Json::Value&);
+	explicit java_process(const Json::Value&, metric_limits::ptr_t ml = nullptr);
 	int m_pid;
 	string m_name;
 	list<java_bean> m_beans;
@@ -72,7 +78,7 @@ private:
 class jmx_proxy
 {
 public:
-	jmx_proxy();
+	jmx_proxy(metric_limits::ptr_t ml = nullptr);
 
 	void send_get_metrics(const vector<sinsp_threadinfo*>& processes);
 
@@ -87,6 +93,7 @@ private:
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
+	metric_limits::ptr_t m_metric_limits;
 };
 
 #endif // _WIN32
