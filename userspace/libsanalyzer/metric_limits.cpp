@@ -5,7 +5,7 @@
 #endif // HAS_ANALYZER
 #include <fnmatch.h>
 
-metric_limits::metric_limits(const metrics_filter_vec/*list_t&*/ filters,
+metric_limits::metric_limits(const metrics_filter_vec filters,
 							uint64_t max_entries, uint64_t expire_seconds):
 							m_filters(filters),
 							m_max_entries(max_entries),

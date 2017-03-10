@@ -105,7 +105,7 @@ public:
 	typedef std::unordered_map<std::string, entry> map_t;
 
 	metric_limits() = delete;
-	metric_limits(metrics_filter_vec /*const list_t&*/ filters,
+	metric_limits(metrics_filter_vec filters,
 				  uint64_t max_entries = 3000,
 				  uint64_t expire_seconds = 86400);
 
