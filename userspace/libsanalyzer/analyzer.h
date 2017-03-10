@@ -275,8 +275,9 @@ public:
 	inline void check_metric_limits()
 	{
 		ASSERT(m_configuration);
-		ASSERT(!m_metric_limits || (m_metric_limits && m_configuration->get_metrics_filter().size()));
-		if(!m_metric_limits && m_configuration->get_metrics_filter().size())
+		const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
+		ASSERT(!m_metric_limits || (m_metric_limits && mf.size()));
+		if(!m_metric_limits && mf.size() && !mf[0].filter().empty() && mf[0].filter()[0] != '*')
 		{
 			m_metric_limits.reset(new metric_limits(m_configuration->get_metrics_filter()));
 		}

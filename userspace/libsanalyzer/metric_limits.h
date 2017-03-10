@@ -100,8 +100,6 @@ public:
 		time_t m_access = 0;
 	};
 
-	typedef std::pair<std::string, bool> filter_pair_t;
-	typedef std::vector<filter_pair_t> list_t;
 	typedef std::unordered_map<std::string, entry> map_t;
 
 	metric_limits() = delete;

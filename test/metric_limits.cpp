@@ -235,6 +235,53 @@ TEST(metric_limits, cache)
 	EXPECT_TRUE(ml2.has("xyz"));
 }
 
+TEST(metric_limits, empty)
+{
+	metrics_filter_vec filter({{"", true}});
+
+	try
+	{
+		metric_limits ml(filter);
+	}
+	catch(std::exception&)
+	{
+		return;
+	}
+
+	EXPECT_TRUE(false);
+}
+
+TEST(metric_limits, star1)
+{
+	metrics_filter_vec filter({{"*", true}});
+
+	try
+	{
+		metric_limits ml(filter);
+	}
+	catch(std::exception&)
+	{
+		return;
+	}
+
+	EXPECT_TRUE(false);
+}
+
+TEST(metric_limits, star2)
+{
+	metrics_filter_vec filter({{"*", true}, {"blah", true}});
+
+	try
+	{
+		metric_limits ml(filter);
+	}
+	catch(std::exception&)
+	{
+		return;
+	}
+
+	EXPECT_TRUE(false);
+}
 
 TEST(metric_limits, projspec)
 {

@@ -861,6 +861,11 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
+	// if first filter entry is empty or '*', everything will be allowed, so it's pointless to have the filter list
+	if(m_metrics_filter.size() && (m_metrics_filter[0].filter().empty() || m_metrics_filter[0].filter()[0] == '*'))
+	{
+		m_metrics_filter.clear();
+	}
 }
 
 void dragent_configuration::print_configuration()

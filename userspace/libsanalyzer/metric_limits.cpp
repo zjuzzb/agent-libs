@@ -11,11 +11,19 @@ metric_limits::metric_limits(const metrics_filter_vec filters,
 							m_max_entries(max_entries),
 							m_purge_seconds(expire_seconds)
 {
+#ifdef HAS_ANALYZER
+	// never create metric_limits object for no reason
+	if(!m_filters.size())
+	{
+		throw sinsp_exception("An attempt to create metric limits with no filters detected.");
+	}
+	else if(m_filters[0].filter().empty() || (m_filters[0].filter()[0] == '*'))
+	{
+		throw sinsp_exception("An attempt to create metric limits with 'allow all' (empty or '*') first pattern detected.");
+	}
+#endif // HAS_ANALYZER
 	time(&m_last_purge);
 	time(&m_last_log);
-#ifdef HAS_ANALYZER
-	ASSERT(m_filters.size());
-#endif // HAS_ANALYZER
 }
 
 void metric_limits::log()
