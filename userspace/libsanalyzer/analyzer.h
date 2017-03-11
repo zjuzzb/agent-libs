@@ -277,9 +277,9 @@ public:
 		ASSERT(m_configuration);
 		const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
 		ASSERT(!m_metric_limits || (m_metric_limits && mf.size()));
-		if(!m_metric_limits && mf.size() && !mf[0].filter().empty() && mf[0].filter()[0] != '*')
+		if(!metric_limits::first_includes_all(mf))
 		{
-			m_metric_limits.reset(new metric_limits(m_configuration->get_metrics_filter()));
+			m_metric_limits.reset(new metric_limits(mf));
 		}
 		ASSERT(m_metric_limits || (!m_metric_limits && !m_configuration->get_metrics_filter().size()));
 	}
@@ -287,7 +287,7 @@ public:
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
 	{
 		check_metric_limits();
-		m_jmx_proxy = make_unique<jmx_proxy>(m_metric_limits);
+		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
 		m_configuration->set_jmx_limit(limit);
@@ -341,7 +341,7 @@ public:
 		if(!m_app_checks.empty())
 		{
 			check_metric_limits();
-			m_app_proxy = make_unique<app_checks_proxy>(m_metric_limits);
+			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
 #endif // _WIN32
@@ -652,7 +652,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<falco_engine> m_falco_engine;
 	unique_ptr<falco_events> m_falco_events;
 
-	std::shared_ptr<metric_limits> m_metric_limits;
+	metric_limits::sptr_t m_metric_limits;
 
 	user_event_queue::ptr_t m_user_event_queue;
 

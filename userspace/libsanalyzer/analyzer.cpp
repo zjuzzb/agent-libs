@@ -1443,7 +1443,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if(m_jmx_proxy)
 		{
 			tracer_emitter jmx_trc("jmx_metrics", proc_trc);
-			auto jmx_metrics = m_jmx_proxy->read_metrics();
+			auto jmx_metrics = m_jmx_proxy->read_metrics(m_metric_limits);
 			if(!jmx_metrics.empty())
 			{
 				// m_jmx_metrics is cleared by flush() because they are used
@@ -1479,7 +1479,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					++it;
 				}
 			}
-			auto app_metrics = m_app_proxy->read_metrics();
+			auto app_metrics = m_app_proxy->read_metrics(m_metric_limits);
 			for(auto& item : app_metrics)
 			{
 				for(auto& met : item.second)
@@ -5344,11 +5344,11 @@ void sinsp_analyzer::get_statsd()
 		auto look_for_ts = ((m_prev_flush_time_ns - ONE_SECOND_IN_NS) / ONE_SECOND_IN_NS);
 		if(m_statsd_metrics.empty())
 		{
-			m_statsd_metrics = m_statsite_proxy->read_metrics();
+			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
 		while(!m_statsd_metrics.empty() && m_statsd_metrics.begin()->second.at(0).timestamp() < look_for_ts)
 		{
-			m_statsd_metrics = m_statsite_proxy->read_metrics();
+			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
 	}
 #endif
@@ -5843,7 +5843,7 @@ bool sinsp_analyzer::driver_stopped_dropping()
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
 {
 	check_metric_limits();
-	m_statsite_proxy = make_unique<statsite_proxy>(iofds, m_metric_limits);
+	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 	if(forwarder)
 	{
 		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);

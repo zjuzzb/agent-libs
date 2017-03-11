@@ -10,11 +10,10 @@
 
 #ifndef _WIN32
 
-statsd_metric::statsd_metric(metric_limits::ptr_t ml):
+statsd_metric::statsd_metric():
 			m_timestamp(0),
 			m_type(type_t::NONE),
-			m_full_identifier_parsed(false),
-			m_metric_limits(ml)
+			m_full_identifier_parsed(false)
 {
 }
 
@@ -216,16 +215,6 @@ unsigned statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 {
 	ASSERT(m_type != type_t::NONE);
 
-	if(m_metric_limits && !m_metric_limits->allow(m_name))
-	{
-		SINSP_LOG("statsd metric not allowed: " + m_name, SEV_TRACE);
-		return 0;
-	}
-	else
-	{
-		SINSP_LOG("statsd metric allowed: " + m_name, SEV_TRACE);
-	}
-
 	proto->set_name(m_name);
 	for(const auto& tag : m_tags)
 	{
@@ -254,16 +243,14 @@ unsigned statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	return 1;
 }
 
-statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds, metric_limits::ptr_t ml):
+statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 		m_input_fd(fds.first),
-		m_output_fd(fds.second),
-		m_metric(ml),
-		m_metric_limits(ml)
+		m_output_fd(fds.second)
 {
 }
 
 #ifndef _WIN32
-unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
+unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724
@@ -294,9 +281,17 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 						timestamp = m_metric.timestamp();
 					}
 
-					ret[m_metric.container_id()].push_back(move(m_metric));
-					++metric_count;
-					m_metric = statsd_metric(m_metric_limits);
+					if(!ml || ml->allow(m_metric.name()))
+					{
+						g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
+						ret[m_metric.container_id()].push_back(move(m_metric));
+						++metric_count;
+					}
+					else
+					{
+						g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric not allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
+					}
+					m_metric = statsd_metric();
 
 					parsed = m_metric.parse_line(buffer);
 					ASSERT(parsed == true);
@@ -316,9 +311,17 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
 			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-			ret[m_metric.container_id()].push_back(move(m_metric));
-			++metric_count;
-			m_metric = statsd_metric(m_metric_limits);
+			if(!ml || ml->allow(m_metric.name()))
+			{
+				g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
+				ret[m_metric.container_id()].push_back(move(m_metric));
+				++metric_count;
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric not allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
+			}
+			m_metric = statsd_metric();
 		}
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
 		if(m_metric.timestamp() > 0)

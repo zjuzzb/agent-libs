@@ -307,3 +307,42 @@ TEST(metric_limits, projspec)
 	EXPECT_TRUE(ml.allow("test.\\*"));
 	EXPECT_TRUE(ml.has("test.\\*"));
 }
+
+TEST(metric_limits, statsd)
+{
+	metrics_filter_vec f({{"*1?", true}, {"*", false}});
+	metric_limits ml(f);
+
+	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10"));
+	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam5"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam8"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam8"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam4"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam9"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam5"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam4"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam3"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam7"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam7"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam6"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam1"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam9"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam6"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam2"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam1"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam3"));
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam2"));
+
+	EXPECT_EQ(10u, ml.cached());
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam10"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam5"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam8"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam4"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam9"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam3"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam7"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam6"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam1"));
+	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam2"));
+}

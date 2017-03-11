@@ -18,6 +18,10 @@ public:
 	explicit java_bean_attribute(const Json::Value&);
 	double value() { return m_value; }
 private:
+	inline bool check_member(const Json::Value& json, const std::string& name, Json::ValueType type)
+	{
+		return json.isMember(name) && json[name].isConvertibleTo(type);
+	}
 	string m_name;
 	string m_alias;
 	double m_value;
@@ -29,6 +33,7 @@ private:
 
 class java_bean {
 public:
+	java_bean(const Json::Value&, metric_limits::cref_sptr_t ml);
 
 	inline const string& name() const
 	{
@@ -39,13 +44,17 @@ public:
 	{
 		return m_attributes.size();
 	}
+
+	inline const vector<java_bean_attribute>& attributes() const
+	{
+		return m_attributes;
+	}
+
 	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit) const;
+
 private:
-	explicit java_bean(const Json::Value&, metric_limits::ptr_t ml = nullptr);
 	string m_name;
 	vector<java_bean_attribute> m_attributes;
-	metric_limits::ptr_t m_metric_limits;
-	friend class java_process;
 };
 
 class java_process {
@@ -68,7 +77,7 @@ public:
 	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit) const;
 
 private:
-	explicit java_process(const Json::Value&, metric_limits::ptr_t ml = nullptr);
+	java_process(const Json::Value&, metric_limits::cref_sptr_t ml);
 	int m_pid;
 	string m_name;
 	list<java_bean> m_beans;
@@ -78,11 +87,11 @@ private:
 class jmx_proxy
 {
 public:
-	jmx_proxy(metric_limits::ptr_t ml = nullptr);
+	jmx_proxy();
 
 	void send_get_metrics(const vector<sinsp_threadinfo*>& processes);
 
-	unordered_map<int, java_process> read_metrics();
+	unordered_map<int, java_process> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 
 	// This attribute is public because is simply a switch to print
 	// JSON on stdout, does not change object behaviour
@@ -93,7 +102,6 @@ private:
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
-	metric_limits::ptr_t m_metric_limits;
 };
 
 #endif // _WIN32

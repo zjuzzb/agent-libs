@@ -163,13 +163,12 @@ class app_check_data
 {
 public:
 	// Added for unordered_map::operator[]
-	explicit app_check_data(metric_limits::ptr_t ml = nullptr):
+	app_check_data():
 			m_pid(0),
-			m_expiration_ts(0),
-			m_metric_limits(ml)
+			m_expiration_ts(0)
 	{};
 
-	explicit app_check_data(const Json::Value& obj, metric_limits::ptr_t ml = nullptr);
+	explicit app_check_data(const Json::Value& obj, metric_limits::cref_sptr_t ml = nullptr);
 
 	int pid() const
 	{
@@ -194,25 +193,23 @@ private:
 	vector<app_metric> m_metrics;
 	vector<app_service_check> m_service_checks;
 	uint64_t m_expiration_ts;
-	metric_limits::ptr_t m_metric_limits;
 };
 
 class app_checks_proxy
 {
 public:
-	app_checks_proxy(metric_limits::ptr_t ml = nullptr);
+	app_checks_proxy();
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
 	// hash table keyed by PID, containing maps keyed by app_check name
-	unordered_map<int, map<string, app_check_data>> read_metrics();
+	unordered_map<int, map<string, app_check_data>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 
 private:
 	posix_queue m_outqueue;
 	posix_queue m_inqueue;
 	Json::Reader m_json_reader;
 	Json::FastWriter m_json_writer;
-	metric_limits::ptr_t m_metric_limits;
 };
 
 #endif // _WIN32

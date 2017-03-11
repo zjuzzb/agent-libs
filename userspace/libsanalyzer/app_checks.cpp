@@ -206,10 +206,9 @@ Json::Value app_process::to_json() const
 	return ret;
 }
 
-app_checks_proxy::app_checks_proxy(metric_limits::ptr_t ml):
+app_checks_proxy::app_checks_proxy():
 	m_outqueue("/sdc_app_checks_in", posix_queue::SEND, 1),
-	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 1),
-	m_metric_limits(ml)
+	m_inqueue("/sdc_app_checks_out", posix_queue::RECEIVE, 1)
 {
 }
 
@@ -225,30 +224,42 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	m_outqueue.send(data);
 }
 
-unordered_map<int, map<string, app_check_data>> app_checks_proxy::read_metrics()
+unordered_map<int, map<string, app_check_data>> app_checks_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	unordered_map<int, map<string, app_check_data>> ret;
-	auto msg = m_inqueue.receive();
-	if(!msg.empty())
+	try
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
-		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
-		Json::Value response_obj;
-		m_json_reader.parse(msg, response_obj, false);
-		// Parse data
-		for(const auto& process : response_obj)
+		auto msg = m_inqueue.receive();
+		if(!msg.empty())
 		{
-			app_check_data data(process, m_metric_limits);
-			ret[data.pid()][data.name()] = move(data);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
+			//g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
+			Json::Value response_obj;
+			if(m_json_reader.parse(msg, response_obj, false))
+			{
+				for(const auto& process : response_obj)
+				{
+					app_check_data data(process, ml);
+					ret[data.pid()][data.name()] = move(data);
+				}
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics: JSON parsing error:");
+				g_logger.format(sinsp_logger::SEV_DEBUG, "%s", msg.c_str());
+			}
 		}
+	}
+	catch(std::exception& ex)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, "app_checks_proxy::read_metrics eror: %s", ex.what());
 	}
 	return ret;
 }
 
-app_check_data::app_check_data(const Json::Value &obj, metric_limits::ptr_t ml):
+app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_t ml):
 	m_pid(obj["pid"].asInt()),
-	m_expiration_ts(obj["expiration_ts"].asUInt64()),
-	m_metric_limits(ml)
+	m_expiration_ts(obj["expiration_ts"].asUInt64())
 {
 	if(obj.isMember("display_name"))
 	{
@@ -256,16 +267,41 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::ptr_t ml):
 	}
 	if(obj.isMember("metrics"))
 	{
-		for(const auto& m : obj["metrics"])
+		const Json::Value& metrics = obj["metrics"];
+		if(!metrics.isNull() && metrics.isArray() && metrics.size() >= 4u)
 		{
-			m_metrics.emplace_back(m);
+			for(const auto& m : metrics)
+			{
+				if(ml && ml->allow(m[0].asString()))
+				{
+					m_metrics.emplace_back(m);
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric allowed: %s", m[0].asCString());
+				}
+				else
+				{
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric not allowed: %s", m[0].asCString());
+				}
+			}
 		}
 	}
-	if(obj.isMember("service_checks"))
+	// "status" and "check" used in service_check constructor
+	if(obj.isMember("service_checks") && obj.isMember("status") && obj.isMember("check"))
 	{
-		for(const auto& s : obj["service_checks"])
+		const Json::Value& service_checks = obj["service_checks"];
+		if(!service_checks.isNull() && service_checks.isArray())
 		{
-			m_service_checks.emplace_back(s);
+			for(const auto& s : service_checks)
+			{
+				if(ml && ml->allow(obj["check"].asString()))
+				{
+					m_service_checks.emplace_back(s);
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", obj["check"].asString());
+				}
+				else
+				{
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", obj["check"].asString());
+				}
+			}
 		}
 	}
 }
@@ -277,20 +313,6 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	uint16_t limit_used = 0;
 	for(const auto& m : m_metrics)
 	{
-		if(m_metric_limits && !m_metric_limits->allow(m.name()))
-		{
-			SINSP_LOG("app_check metric not allowed: " + m.name(), SEV_TRACE);
-			continue;
-		}
-		else
-		{
-			SINSP_LOG("app_check metric allowed: " + m.name(), SEV_TRACE);
-		}
-		if(limit_used >= limit)
-		{
-			SINSP_LOG("app_checks metrics limit (" + std::to_string(limit) + ") reached.", SEV_DEBUG);
-			break;
-		}
 		m.to_protobuf(proto->add_metrics());
 		++limit_used;
 	}
@@ -300,18 +322,9 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	 */
 	for(const auto& s : m_service_checks)
 	{
-		if(m_metric_limits && !m_metric_limits->allow(s.name()))
-		{
-			SINSP_LOG("service_check metric not allowed: " + s.name(), SEV_TRACE);
-			continue;
-		}
-		else
-		{
-			SINSP_LOG("service_check metric allowed: " + s.name(), SEV_TRACE);
-		}
 		if(limit_used >= limit)
 		{
-			SINSP_LOG("service_checks metrics limit (" + std::to_string(limit) + ") reached.", SEV_DEBUG);
+			g_logger.format(sinsp_logger::SEV_TRACE, "service_checks metrics limit (%u) reached.", limit);
 			break;
 		}
 		s.to_protobuf_as_metric(proto->add_metrics());
@@ -382,7 +395,7 @@ app_service_check::app_service_check(const Json::Value &obj):
 	m_status(static_cast<status_t>(obj["status"].asUInt())),
 	m_name(obj["check"].asString())
 {
-	if(obj.isMember("tags"))
+	if(obj.isMember("tags") && obj.isArray())
 	{
 		for(const auto& tag_obj : obj["tags"])
 		{

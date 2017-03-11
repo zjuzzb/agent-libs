@@ -19,15 +19,16 @@ java_bean_attribute::java_bean_attribute(const Json::Value& json):
 	{
 		m_alias = json["alias"].asString();
 	}
-	if(json.isMember("unit"))
+	if(check_member(json, "unit", Json::uintValue))
 	{
 		m_unit = json["unit"].asUInt();
 	}
-	if(json.isMember("scale"))
+	if(check_member(json, "scale", Json::uintValue))
 	{
 		m_scale = json["scale"].asUInt();
 	}
-	if(json.isMember("type"))
+	//TODO: type can be a string
+	if(check_member(json, "type", Json::uintValue))
 	{
 		m_type = json["type"].asUInt();
 	}
@@ -90,9 +91,8 @@ java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned
 	}
 }
 
-java_bean::java_bean(const Json::Value& json, metric_limits::ptr_t ml):
-	m_name(json["name"].asString()),
-	m_metric_limits(ml)
+java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
+	m_name(json["name"].asString())
 {
 	for(const auto& attribute : json["attributes"])
 	{
@@ -106,7 +106,7 @@ java_bean::java_bean(const Json::Value& json, metric_limits::ptr_t ml):
 		{
 			a = attribute["alias"].asString();
 		}
-		if(m_metric_limits && ((!n.empty() && !m_metric_limits->allow(n)) || (!a.empty() && !m_metric_limits->allow(a))))
+		if(ml && ((!n.empty() && !ml->allow(n)) || (!a.empty() && !ml->allow(a))))
 		{
 			SINSP_LOG("jmx metric not allowed: " + n, SEV_TRACE);
 			continue;
@@ -132,13 +132,17 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 	return emitted_attributes;
 }
 
-java_process::java_process(const Json::Value& json, metric_limits::ptr_t ml):
+java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t ml):
 	m_pid(json["pid"].asInt()),
 	m_name(json["name"].asString())
 {
 	for(const auto& bean : json["beans"])
 	{
-		m_beans.push_back(java_bean(bean, ml));
+		java_bean jb = java_bean(bean, ml);
+		if(jb.attribute_count())
+		{
+			m_beans.push_back(move(jb));
+		}
 	}
 }
 
@@ -154,11 +158,9 @@ unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigne
 	return emitted_attributes;
 }
 
-jmx_proxy::jmx_proxy(metric_limits::ptr_t ml):
-		m_print_json(false),
+jmx_proxy::jmx_proxy(): m_print_json(false),
 		m_outqueue("/sdc_sdjagent_in", posix_queue::SEND, 1),
-		m_inqueue("/sdc_sdjagent_out", posix_queue::RECEIVE, 1),
-		m_metric_limits(ml)
+		m_inqueue("/sdc_sdjagent_out", posix_queue::RECEIVE, 1)
 {
 }
 
@@ -216,37 +218,44 @@ void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
 	m_outqueue.send(command_data);
 }
 
-unordered_map<int, java_process> jmx_proxy::read_metrics()
+unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	unordered_map<int, java_process> processes;
-
-	auto json_data = m_inqueue.receive();
-
-	if (json_data.size() > 0)
+	try
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json size is: %d", json_data.size());
-		if(m_print_json) {
-			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json: %s", json_data.c_str());
-		}
-		Json::Value json_obj;
+		auto json_data = m_inqueue.receive();
 
-		bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
-		if(parse_ok && json_obj.isObject() && json_obj.isMember("body"))
+		if (json_data.size() > 0)
 		{
-			for(const auto& process_data : json_obj["body"])
+			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json size is: %d", json_data.size());
+			if(m_print_json) {
+				g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics json: %s", json_data.c_str());
+			}
+			Json::Value json_obj;
+
+			bool parse_ok = m_json_reader.parse(json_data, json_obj, false);
+			if(parse_ok && json_obj.isObject() && json_obj.isMember("body"))
 			{
-				java_process process(process_data, m_metric_limits);
-				processes.emplace(process.pid(), move(process));
+				for(const auto& process_data : json_obj["body"])
+				{
+					java_process process(process_data, ml);
+					processes.emplace(process.pid(), move(process));
+				}
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "Cannot deserialize JMX metrics");
+				g_logger.format(sinsp_logger::SEV_DEBUG, "%s", json_data.c_str());
 			}
 		}
 		else
 		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Cannot deserialize JMX metrics");
+			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics are not ready");
 		}
 	}
-	else
+	catch(std::exception& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metrics are not ready");
+		g_logger.format(sinsp_logger::SEV_ERROR, "jmx_proxy::read_metrics eror: %s", ex.what());
 	}
 	return processes;
 }

@@ -12,12 +12,14 @@ metric_limits::metric_limits(const metrics_filter_vec filters,
 							m_purge_seconds(expire_seconds)
 {
 #ifdef HAS_ANALYZER
-	// never create metric_limits object for no reason
+	// Never create metric_limits object with first pattern being "allow all".
+	// Since "alow all" is default and the logic is "first matching rule applies",
+	// the first rule in the list being "allow all" renders this object creation pointless.
 	if(!m_filters.size())
 	{
 		throw sinsp_exception("An attempt to create metric limits with no filters detected.");
 	}
-	else if(m_filters[0].filter().empty() || (m_filters[0].filter()[0] == '*'))
+	else if(first_includes_all(m_filters))
 	{
 		throw sinsp_exception("An attempt to create metric limits with 'allow all' (empty or '*') first pattern detected.");
 	}

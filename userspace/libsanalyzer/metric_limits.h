@@ -82,7 +82,8 @@ namespace YAML
 class metric_limits
 {
 public:
-	typedef std::shared_ptr<metric_limits> ptr_t;
+	typedef std::shared_ptr<metric_limits> sptr_t;
+	typedef const std::shared_ptr<metric_limits>& cref_sptr_t;
 
 	class entry
 	{
@@ -115,6 +116,23 @@ public:
 	uint64_t cache_max_entries() const;
 	uint64_t cache_expire_seconds() const;
 
+	//
+	// Used to check whether filter is actually worth creating;
+	//
+	// Returns true on:
+	//
+	// metrics_filter:
+	//   - included: *
+	//  [- ...]
+	//
+	// and
+	//
+	// metrics_filter:
+	//   - included:
+	//  [- ...]
+	//
+	static bool first_includes_all(metrics_filter_vec v);
+
 private:
 	void insert(const std::string& metric, bool value);
 	double last_purge() const;
@@ -125,12 +143,19 @@ private:
 
 	metrics_filter_vec m_filters;
 	map_t m_cache;
-	uint64_t m_max_entries = 3000;
+	uint64_t m_max_entries = 6000;
 	time_t m_last_purge = 0;
 	uint64_t m_purge_seconds = 86400; // 24hr
 	time_t m_last_log = 0;
 	const unsigned m_log_seconds = 300; // 5min
 };
+
+inline bool metric_limits::first_includes_all(metrics_filter_vec v)
+{
+	return (v.size() && v[0].included() &&
+		   (v[0].filter().empty() ||
+		   ((v[0].filter().size() == 1) && (v[0].filter()[0] == '*'))));
+}
 
 inline bool metric_limits::has(const std::string& metric) const
 {

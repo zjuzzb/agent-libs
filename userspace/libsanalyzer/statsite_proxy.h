@@ -80,7 +80,7 @@ public:
 		return m_tags;
 	}
 
-	statsd_metric(metric_limits::ptr_t ml = nullptr);
+	statsd_metric();
 
 	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
@@ -103,23 +103,22 @@ private:
 	double m_percentile_95;
 	double m_percentile_99;
 
-	metric_limits::ptr_t m_metric_limits;
-
 	friend class lua_cbacks;
 };
 
 class statsite_proxy
 {
 public:
-	statsite_proxy(const pair<FILE*, FILE*>& pipes, metric_limits::ptr_t ml = nullptr);
-	unordered_map<string, vector<statsd_metric>> read_metrics();
+	typedef unordered_map<string, vector<statsd_metric>> metric_map_t;
+
+	statsite_proxy(const pair<FILE*, FILE*>& pipes);
+	unordered_map<string, vector<statsd_metric>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	statsd_metric m_metric;
-	metric_limits::ptr_t m_metric_limits;
 };
 
 class statsd_server
