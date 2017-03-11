@@ -295,11 +295,11 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 				if(ml && ml->allow(obj["check"].asString()))
 				{
 					m_service_checks.emplace_back(s);
-					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", obj["check"].asString());
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", obj["check"].asCString());
 				}
 				else
 				{
-					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", obj["check"].asString());
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", obj["check"].asCString());
 				}
 			}
 		}
