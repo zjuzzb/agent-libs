@@ -64,8 +64,8 @@ bool metric_limits::allow(const std::string& metric)
 		}
 		else if(FNM_NOMATCH != m)
 		{
-			SINSP_LOG("Metric limits: error glob matching [" + metric + "] "
-					  "with pattern [" + f.filter() + ']', SEV_WARNING);
+			g_logger.format(sinsp_logger::SEV_WARNING, "Metric limits: error glob matching [%s] "
+					  "with pattern [%s]", metric.c_str(), f.filter().c_str());
 		}
 	}
 
@@ -82,8 +82,8 @@ void metric_limits::insert(const std::string& metric, bool value)
 	}
 	else
 	{
-		SINSP_LOG("Metric limit cache full, metric [" + metric + "] "
-				  "will not be cached.", SEV_DEBUG);
+		g_logger.format(sinsp_logger::SEV_WARNING, "Metric limit cache full, metric [%s] "
+				  "will not be cached.", metric.c_str());
 	}
 }
 

@@ -15,16 +15,6 @@
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
 
-// introduce a macro (or inline function) like this and put it in a well-known place?
-//
-// there's a lot of debug/trace logging that's unnecessarily eating up
-// production performance, mainly because string has to be constructed
-// (and is often concatenated), only to be discarded
-#define SINSP_LOG(M, L) if(g_logger.get_severity() >= sinsp_logger::L) \
-                           g_logger.log(M, sinsp_logger::L);
-#else
-#define SINSP_LOG(M, L)
-
 #endif // HAS_ANALYZER
 
 class metrics_filter

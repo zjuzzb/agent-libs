@@ -5361,11 +5361,6 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
-		std::ostringstream os;
-		for(auto t: metric.tags())
-		{
-			os << t.first << ':' << t.second << std::endl;
-		}
 		if(j >= limit)
 		{
 			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);

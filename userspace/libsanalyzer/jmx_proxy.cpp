@@ -108,12 +108,12 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 		}
 		if(ml && ((!n.empty() && !ml->allow(n)) || (!a.empty() && !ml->allow(a))))
 		{
-			SINSP_LOG("jmx metric not allowed: " + n, SEV_TRACE);
+			g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric not allowed: %s", n.c_str());
 			continue;
 		}
 		else
 		{
-			SINSP_LOG("jmx metric allowed: " + n, SEV_TRACE);
+			g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric allowed: %s", n.c_str());
 		}
 		m_attributes.emplace_back(attribute);
 	}
