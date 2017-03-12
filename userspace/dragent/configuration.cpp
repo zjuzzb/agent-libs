@@ -866,6 +866,10 @@ void dragent_configuration::init(Application* app)
 	{
 		m_metrics_filter.clear();
 	}
+	else // if first rule is "exclude all", that's all we need
+	{
+		metric_limits::optimize_exclude_all(m_metrics_filter);
+	}
 }
 
 void dragent_configuration::print_configuration()

@@ -14,9 +14,17 @@ class java_bean;
 class java_bean_attribute
 {
 public:
+	typedef vector<java_bean_attribute> subattribute_list_t;
+
 	void to_protobuf(draiosproto::jmx_attribute *attribute, unsigned sampling) const;
 	explicit java_bean_attribute(const Json::Value&);
-	double value() { return m_value; }
+	const std::string& name() const { return m_name; }
+	const std::string& alias() const { return m_alias; }
+	double value() const { return m_value; }
+	const subattribute_list_t& subattributes() const
+	{
+		return m_subattributes;
+	}
 private:
 	inline bool check_member(const Json::Value& json, const std::string& name, Json::ValueType type)
 	{
@@ -28,11 +36,13 @@ private:
 	uint16_t m_unit;
 	uint16_t m_scale;
 	uint16_t m_type;
-	vector<java_bean_attribute> m_subattributes;
+	subattribute_list_t m_subattributes;
 };
 
 class java_bean {
 public:
+	typedef vector<java_bean_attribute> attribute_list_t;
+
 	java_bean(const Json::Value&, metric_limits::cref_sptr_t ml);
 
 	inline const string& name() const
@@ -45,7 +55,7 @@ public:
 		return m_attributes.size();
 	}
 
-	inline const vector<java_bean_attribute>& attributes() const
+	inline const attribute_list_t& attributes() const
 	{
 		return m_attributes;
 	}
@@ -54,7 +64,8 @@ public:
 
 private:
 	string m_name;
-	vector<java_bean_attribute> m_attributes;
+	attribute_list_t m_attributes;
+	friend class java_process;
 };
 
 class java_process {
@@ -87,11 +98,13 @@ private:
 class jmx_proxy
 {
 public:
+	typedef unordered_map<int, java_process> process_map_t;
+
 	jmx_proxy();
 
 	void send_get_metrics(const vector<sinsp_threadinfo*>& processes);
 
-	unordered_map<int, java_process> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	process_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 
 	// This attribute is public because is simply a switch to print
 	// JSON on stdout, does not change object behaviour

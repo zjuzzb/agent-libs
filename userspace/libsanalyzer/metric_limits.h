@@ -75,19 +75,23 @@ public:
 	typedef std::shared_ptr<metric_limits> sptr_t;
 	typedef const std::shared_ptr<metric_limits>& cref_sptr_t;
 
+	static const int ML_NO_FILTER_POSITION;
+
 	class entry
 	{
 	public:
 		entry() = delete;
-		entry(bool allow);
+		entry(bool allow, int pos);
 		void set_allow(bool a = true);
 		bool get_allow();
+		int position() const;
 		double last_access() const;
 
 	private:
 		void access();
 
 		bool m_allow = true;
+		int m_pos = metric_limits::ML_NO_FILTER_POSITION;
 		time_t m_access = 0;
 	};
 
@@ -98,7 +102,7 @@ public:
 				  uint64_t max_entries = 3000,
 				  uint64_t expire_seconds = 86400);
 
-	bool allow(const std::string& metric);
+	bool allow(const std::string& metric, int* pos = nullptr);
 	bool has(const std::string& metric) const;
 	uint64_t cached();
 	void purge_cache();
@@ -123,8 +127,12 @@ public:
 	//
 	static bool first_includes_all(metrics_filter_vec v);
 
+	// If it has more than one entry, reduce filter list with first rule
+	// "exclude all" to one entry
+	static void optimize_exclude_all(metrics_filter_vec& filter);
+
 private:
-	void insert(const std::string& metric, bool value);
+	void insert(const std::string& metric, bool value, int pos);
 	double last_purge() const;
 	uint64_t purge_limit();
 
@@ -145,6 +153,19 @@ inline bool metric_limits::first_includes_all(metrics_filter_vec v)
 	return (v.size() && v[0].included() &&
 		   (v[0].filter().empty() ||
 		   ((v[0].filter().size() == 1) && (v[0].filter()[0] == '*'))));
+}
+
+inline void metric_limits::optimize_exclude_all(metrics_filter_vec& filters)
+{
+	// if first filter prohibits all, it's pointless to have any other entries, so let's optimize it away
+	if(filters.size() > 1)
+	{
+		metrics_filter& f = filters[0];
+		if(!f.included() && f.filter().size() == 1 && f.filter()[0] == '*')
+		{
+			filters = {{"*", false}};
+		}
+	}
 }
 
 inline bool metric_limits::has(const std::string& metric) const
@@ -190,7 +211,7 @@ inline uint64_t metric_limits::cache_expire_seconds() const
 	return m_purge_seconds;
 }
 
-inline metric_limits::entry::entry(bool allow): m_allow(allow)
+inline metric_limits::entry::entry(bool allow, int pos): m_allow(allow), m_pos(pos)
 {
 	access();
 }
@@ -205,6 +226,11 @@ inline bool metric_limits::entry::get_allow()
 {
 	access();
 	return m_allow;
+}
+
+inline int metric_limits::entry::position() const
+{
+	return m_pos;
 }
 
 inline void metric_limits::entry::access()

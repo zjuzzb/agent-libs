@@ -4,6 +4,9 @@
 #include "sinsp_int.h"
 #endif // HAS_ANALYZER
 #include <fnmatch.h>
+#include <limits>
+
+const int metric_limits::ML_NO_FILTER_POSITION = std::numeric_limits<int>::max();
 
 metric_limits::metric_limits(const metrics_filter_vec filters,
 							uint64_t max_entries, uint64_t expire_seconds):
@@ -24,6 +27,7 @@ metric_limits::metric_limits(const metrics_filter_vec filters,
 		throw sinsp_exception("An attempt to create metric limits with 'allow all' (empty or '*') first pattern detected.");
 	}
 #endif // HAS_ANALYZER
+	optimize_exclude_all(m_filters);
 	time(&m_last_purge);
 	time(&m_last_log);
 }
@@ -45,21 +49,25 @@ void metric_limits::log()
 	time(&m_last_log);
 }
 
-bool metric_limits::allow(const std::string& metric)
+bool metric_limits::allow(const std::string& metric, int* pos)
 {
 	if(last_log() > m_log_seconds) { log(); }
 	auto found = m_cache.find(metric);
 	if(found != m_cache.end())
 	{
+		if(pos) { *pos = found->second.position(); }
 		return found->second.get_allow();
 	}
 
+	int p = 0;
 	for(const auto& f : m_filters)
 	{
+		++p;
 		int m = fnmatch(f.filter().c_str(), metric.c_str(), FNM_CASEFOLD);
 		if(0 == m)
 		{
-			insert(metric, f.included());
+			insert(metric, f.included(), p);
+			if(pos) { *pos = p; }
 			return f.included();
 		}
 		else if(FNM_NOMATCH != m)
@@ -69,16 +77,17 @@ bool metric_limits::allow(const std::string& metric)
 		}
 	}
 
-	insert(metric, true);
+	insert(metric, true, ML_NO_FILTER_POSITION);
+	if(pos) { *pos = ML_NO_FILTER_POSITION; }
 	return true;
 }
 
-void metric_limits::insert(const std::string& metric, bool value)
+void metric_limits::insert(const std::string& metric, bool value, int pos)
 {
 	purge_cache();
 	if(m_cache.size() < m_max_entries)
 	{
-		m_cache.insert({metric, entry(value)});
+		m_cache.insert({metric, entry(value, pos)});
 	}
 	else
 	{

@@ -283,6 +283,21 @@ TEST(metric_limits, star2)
 	EXPECT_TRUE(false);
 }
 
+TEST(metric_limits, filter_vec)
+{
+	metrics_filter_vec filter({{"*", false}, {"blah", true}});
+	EXPECT_EQ(2u, filter.size());
+	metric_limits::optimize_exclude_all(filter);
+	EXPECT_EQ(1u, filter.size());
+	EXPECT_EQ(filter[0].filter(), "*");
+	EXPECT_FALSE(filter[0].included());
+
+	filter = {{"*", true}, {"blah", true}};
+	EXPECT_TRUE(metric_limits::first_includes_all(filter));
+	EXPECT_EQ(filter[0].filter(), "*");
+	EXPECT_TRUE(filter[0].included());
+}
+
 TEST(metric_limits, projspec)
 {
 	metrics_filter_vec filters({{"test.*", true}, {"test.*", false}, {"haproxy.backend.*", true}, {"haproxy.*", false}, {"redis.*", false}});

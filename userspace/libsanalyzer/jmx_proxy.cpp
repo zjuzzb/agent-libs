@@ -106,14 +106,68 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 		{
 			a = attribute["alias"].asString();
 		}
-		if(ml && ((!n.empty() && !ml->allow(n)) || (!a.empty() && !ml->allow(a))))
+		if(ml)
 		{
-			g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric not allowed: %s", n.c_str());
-			continue;
-		}
-		else
-		{
-			g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric allowed: %s", n.c_str());
+			//
+			// for jmx , we support both names and aliases, which somewhat complicates things here
+			// eg. when alias is excluded on the list but name is not on the list at all (thus allowed by default),
+			// metric is still allowed by the name absence from the list; so, we have to find out whether the filter
+			// permission status is explicit (filter pattern) or implicit (not on the list) and apply folowing logic:
+			//
+			// 1. if name nor alias is found in the list, metric is included
+			// 2. if [alias OR name OR both] are found in the list, metric is included/excluded based on first found
+			//
+			int name_pos = 0;
+			bool allow_name = false;
+			if(!n.empty())
+			{
+				allow_name = ml->allow(n, &name_pos);
+			}
+			int alias_pos = 0;
+			bool allow_alias = false;
+			if(!a.empty())
+			{
+				allow_alias = ml->allow(a, &alias_pos);
+			}
+			int nopos = metric_limits::ML_NO_FILTER_POSITION;
+			bool metric_included = ((alias_pos == nopos) && (name_pos == nopos)); // 1. (neither in the list)
+			if(!metric_included && ((name_pos) || (alias_pos))) // 2. (one or both found)
+			{
+				// name and alias position must always be different, except for {*, false}
+				// filter, when they will both match first pattern
+				ASSERT((name_pos != alias_pos) || ((name_pos == 1) && (alias_pos == 1)));
+				if(name_pos && !alias_pos) // name in, alias not
+				{
+					metric_included = allow_name;
+				}
+				else if(alias_pos && !name_pos) // alias in, name not
+				{
+					metric_included = allow_alias;
+				}
+				else // both in, take first one
+				{
+					if(alias_pos < name_pos)
+					{
+						metric_included = allow_alias;
+					}
+					else
+					{
+						metric_included = allow_name;
+					}
+				}
+			}
+
+			if(metric_included)
+			{
+				g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric allowed: %s[%c] (%s[%c])",
+								n.c_str(), (allow_name ? 'x' : ' '), a.c_str(), (allow_alias ? 'x' : ' '));
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric not allowed: %s[%c] (%s[%c])",
+								n.c_str(), (!allow_name ? 'x' : ' '), a.c_str(), (!allow_alias ? 'x' : ' '));
+				continue;
+			}
 		}
 		m_attributes.emplace_back(attribute);
 	}
@@ -218,9 +272,10 @@ void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
 	m_outqueue.send(command_data);
 }
 
+
 unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
-	unordered_map<int, java_process> processes;
+	process_map_t processes;
 	try
 	{
 		auto json_data = m_inqueue.receive();
