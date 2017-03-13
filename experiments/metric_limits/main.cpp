@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 		sw.start();
 		bool b = ml.allow("xyz");
 		sw.stop();
-		std::cout << "Cache purged from " << csz << " to " << ml.cached() << " in " << sw.elapsed<std::chrono::nanoseconds>()/1000 << " ms" << std::endl;
+		std::cout << "Cache purged from " << csz << " to " << ml.cached() << " in " << sw.elapsed<std::chrono::nanoseconds>()/1000 << " us" << std::endl;
 	}
 	return 0;
 }
