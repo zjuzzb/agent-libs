@@ -122,67 +122,83 @@ TEST(metric_limits, cache)
 	metrics_filter_vec filter({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
 							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
 
-	metric_limits ml(filter, 3u, 2u);
+	metric_limits ml(filter, 3u, 2u, 2u);
 	ASSERT_EQ(3u, ml.cache_max_entries());
 	ASSERT_EQ(2u, ml.cache_expire_seconds());
+	ASSERT_EQ(2u, ml.cache_log_seconds());
 
 	std::string metric("haproxy.frontend.bytes");
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_FALSE(ml.allow(metric));
 	EXPECT_TRUE(ml.has(metric));
-	ASSERT_EQ(1u, ml.cached());
+	EXPECT_EQ(1u, ml.cached());
 	EXPECT_FALSE(ml.allow(metric));
 	
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_TRUE(ml.allow(metric));
 	EXPECT_TRUE(ml.has(metric));
-	ASSERT_EQ(2u, ml.cached());
+	EXPECT_EQ(2u, ml.cached());
 	EXPECT_TRUE(ml.allow(metric));
 
 	metric = "redis.keys";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_FALSE(ml.allow(metric));
 	EXPECT_TRUE(ml.has(metric));
-	ASSERT_EQ(3u, ml.cached());
+	EXPECT_EQ(3u, ml.cached());
 	EXPECT_FALSE(ml.allow(metric));
 
 	metric = "mysql.queries.count";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_TRUE(ml.allow(metric));
 	EXPECT_FALSE(ml.has(metric));
-	ASSERT_EQ(3u, ml.cached());
+	EXPECT_EQ(3u, ml.cached());
 	EXPECT_TRUE(ml.allow(metric));
 
-	sleep(3);
-	ASSERT_EQ(0u, ml.cached());
+	// check logging happens
+	std::cout << "Wait " << ml.cache_log_seconds() + 1 << "s for log to expire ..." << std::endl;
+	sleep(ml.cache_expire_seconds() + 1);
+	std::ostringstream os;
+	EXPECT_TRUE(os.str().empty());
+	ml.log(os);
+	ASSERT_FALSE(os.str().empty());
+	EXPECT_TRUE(os.str().find("Metrics permission list:\n") != std::string::npos);
+	EXPECT_TRUE(os.str().find("redis.keys: excluded\n") != std::string::npos);
+	EXPECT_TRUE(os.str().find("haproxy.backend.request: included\n") != std::string::npos);
+	EXPECT_TRUE(os.str().find("haproxy.frontend.bytes: excluded\n") != std::string::npos);
+	std::cout << os.str() << std::endl;
+
+	// check cache is purged
+	std::cout << "Wait " << ml.cache_expire_seconds() + 1 << "s for cache to expire ..." << std::endl;
+	sleep(ml.cache_expire_seconds() + 1);
+	EXPECT_EQ(0u, ml.cached());
 
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_FALSE(ml.allow(metric));
 	EXPECT_TRUE(ml.has(metric));
-	ASSERT_EQ(1u, ml.cached());
+	EXPECT_EQ(1u, ml.cached());
 	EXPECT_FALSE(ml.allow(metric));
 	
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_TRUE(ml.allow(metric));
 	EXPECT_TRUE(ml.has(metric));
-	ASSERT_EQ(2u, ml.cached());
+	EXPECT_EQ(2u, ml.cached());
 	EXPECT_TRUE(ml.allow(metric));
 
 	metric = "redis.keys";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_FALSE(ml.allow(metric));
 	EXPECT_TRUE(ml.has(metric));
-	ASSERT_EQ(3u, ml.cached());
+	EXPECT_EQ(3u, ml.cached());
 	EXPECT_FALSE(ml.allow(metric));
 
 	metric = "mysql.queries.count";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_TRUE(ml.allow(metric));
 	EXPECT_FALSE(ml.has(metric));
-	ASSERT_EQ(3u, ml.cached());
+	EXPECT_EQ(3u, ml.cached());
 	EXPECT_TRUE(ml.allow(metric));
 
 	ml.clear_cache();

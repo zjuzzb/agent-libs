@@ -281,11 +281,17 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 					if(!ml || ml->allow(m[0].asString()))
 					{
 						m_metrics.emplace_back(m);
-						g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric allowed: %s", m[0].asCString());
+						if(ml)
+						{
+							g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric allowed: %s", m[0].asCString());
+						}
 					}
 					else
 					{
-						g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric not allowed: %s", m[0].asCString());
+						if(ml)
+						{
+							g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric not allowed: %s", m[0].asCString());
+						}
 					}
 				}
 				else
@@ -311,11 +317,17 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 						if(!ml || ml->allow(s["check"].asString()))
 						{
 							m_service_checks.emplace_back(s);
-							g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
+							if(ml)
+							{
+								g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
+							}
 						}
 						else
 						{
-							g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
+							if(ml)
+							{
+								g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
+							}
 						}
 					}
 					else

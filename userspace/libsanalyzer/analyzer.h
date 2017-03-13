@@ -277,7 +277,7 @@ public:
 		ASSERT(m_configuration);
 		const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
 		ASSERT(!m_metric_limits || (m_metric_limits && mf.size()));
-		if(!metric_limits::first_includes_all(mf))
+		if(mf.size() && !metric_limits::first_includes_all(mf))
 		{
 			m_metric_limits.reset(new metric_limits(mf));
 		}

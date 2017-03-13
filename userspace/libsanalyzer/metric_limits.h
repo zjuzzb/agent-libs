@@ -101,7 +101,8 @@ public:
 	metric_limits() = delete;
 	metric_limits(metrics_filter_vec filters,
 				  uint64_t max_entries = 3000,
-				  uint64_t expire_seconds = 86400);
+				  uint64_t expire_seconds = 86400,
+				  unsigned log_seconds = 300);
 
 	bool allow(const std::string& metric, int* pos = nullptr);
 	bool has(const std::string& metric) const;
@@ -110,6 +111,7 @@ public:
 	void clear_cache();
 	uint64_t cache_max_entries() const;
 	uint64_t cache_expire_seconds() const;
+	unsigned cache_log_seconds() const;
 
 	//
 	// Used to check whether filter is actually worth creating;
@@ -133,12 +135,15 @@ public:
 	static void optimize_exclude_all(metrics_filter_vec& filter);
 
 	// for testing purposes only
-	void log(std::ostream& os)
+	void log(std::ostream& os, bool force = false)
 	{
-		os << "Metrics permission list:" << std::endl;
-		for(auto& c : m_cache)
+		if(force || (last_log() > m_log_seconds))
 		{
-			os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
+			os << "Metrics permission list:" << std::endl;
+			for(auto& c : m_cache)
+			{
+				os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
+			}
 		}
 	}
 
@@ -156,7 +161,7 @@ private:
 	time_t m_last_purge = 0;
 	uint64_t m_purge_seconds = 86400; // 24hr
 	time_t m_last_log = 0;
-	const unsigned m_log_seconds = 300; // 5min
+	unsigned m_log_seconds = 300; // 5min
 };
 
 inline bool metric_limits::first_includes_all(metrics_filter_vec v)
@@ -220,6 +225,11 @@ inline uint64_t metric_limits::cache_max_entries() const
 inline uint64_t metric_limits::cache_expire_seconds() const
 {
 	return m_purge_seconds;
+}
+
+inline unsigned metric_limits::cache_log_seconds() const
+{
+	return m_log_seconds;
 }
 
 inline metric_limits::entry::entry(bool allow, int pos): m_allow(allow), m_pos(pos)

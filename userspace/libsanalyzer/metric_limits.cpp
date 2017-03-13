@@ -8,11 +8,12 @@
 
 const int metric_limits::ML_NO_FILTER_POSITION = std::numeric_limits<int>::max();
 
-metric_limits::metric_limits(const metrics_filter_vec filters,
-							uint64_t max_entries, uint64_t expire_seconds):
+metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entries,
+							uint64_t expire_seconds, unsigned log_seconds):
 							m_filters(filters),
 							m_max_entries(max_entries),
-							m_purge_seconds(expire_seconds)
+							m_purge_seconds(expire_seconds),
+							m_log_seconds(log_seconds)
 {
 #ifdef HAS_ANALYZER
 	// Never create metric_limits object with first pattern being "allow all".
