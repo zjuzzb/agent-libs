@@ -60,12 +60,15 @@ int main(int argc, char *argv[])
 		}
 		std::cout << "lookup: total=" << sum/1000 << " us, avg=" << sum/msz << " ns" << std::endl;
 	}
-	std::chrono::nanoseconds::rep sum = 0;
-	std::ofstream of("/tmp/draios_metric_list", std::ofstream::out);
-	sw.start();
-	ml.log(of);
-	sw.stop();
-	sum = sw.elapsed<std::chrono::nanoseconds>();
-	std::cout << "log: total=" << sum/1000 << " us, avg=" << sum/ml.cached() << " ns" << std::endl;
+	if(ml.cached())
+	{
+		std::chrono::nanoseconds::rep sum = 0;
+		std::ofstream of("/tmp/draios_metric_list", std::ofstream::out);
+		sw.start();
+		ml.log(of);
+		sw.stop();
+		sum = sw.elapsed<std::chrono::nanoseconds>();
+		std::cout << "log: total=" << sum/1000 << " us, avg=" << sum/ml.cached() << " ns" << std::endl;
+	}
 	return 0;
 }
