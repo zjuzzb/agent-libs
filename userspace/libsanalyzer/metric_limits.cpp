@@ -16,9 +16,11 @@ metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entr
 							m_log_seconds(log_seconds)
 {
 #ifdef HAS_ANALYZER
-	// Never create metric_limits object with first pattern being "allow all".
-	// Since "alow all" is default and the logic is "first matching rule applies",
-	// the first rule in the list being "allow all" renders this object creation pointless.
+	// Cases when we refuse to create object:
+	// 1) empty filters
+	// 2) filter list with first pattern being "allow all"
+	// 3) number of filters exceeds max alowed limit
+	// These cases are prevented in agent code, checks are here as shield from potential defects introduced in future changes.
 	if(!m_filters.size())
 	{
 		throw sinsp_exception("An attempt to create metric limits with no filters detected.");
@@ -26,6 +28,13 @@ metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entr
 	else if(first_includes_all(m_filters))
 	{
 		throw sinsp_exception("An attempt to create metric limits with 'allow all' (empty or '*') first pattern detected.");
+	}
+	else if(m_filters.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	{
+		std::ostringstream os;
+		os << "An attempt to create metric limits with filter size (" << m_filters.size() << ") "
+			"exceeding max allowed (" << CUSTOM_METRICS_FILTERS_HARD_LIMIT << ").";
+		throw sinsp_exception(os.str());
 	}
 #endif // HAS_ANALYZER
 	optimize_exclude_all(m_filters);
