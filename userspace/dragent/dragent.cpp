@@ -408,6 +408,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return proc.run();
 		});
 	}
+	monitor_process.emplace_process("swarmhelper", [this](void)
+	{
+		execl("/opt/draios/bin/swarmhelper", "swarmhelper", NULL);
+		return EXIT_FAILURE;
+	});
 	monitor_process.set_cleanup_function(
 			[this](void)
 			{

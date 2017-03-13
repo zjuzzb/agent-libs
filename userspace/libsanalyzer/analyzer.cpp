@@ -165,6 +165,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_mesos_last_failure_ns = 0;
 	m_last_mesos_refresh = 0;
+
+	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -3227,8 +3229,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				if(!message.empty())
 				{
 					g_logger.format(sinsp_logger::SEV_INFO, "Received Swarm size=%d", message.size());
-					m_metrics->mutable_swarm()->ParseFromString(message);
+					m_docker_swarm_state->ParseFromString(message);
 				}
+				m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 				get_statsd();
 				if(m_mounted_fs_proxy)
 				{

@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"unsafe"
 	"github.com/docker/docker/api/types/filters"
+	"os"
 )
 
 type PosixQueue struct {
@@ -88,7 +89,10 @@ func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
 
 func main() {
 	q := NewPosixQueue("/test")
-	cli, err := client.NewClient(client.DefaultDockerHost, "v1.26", nil, nil)
+
+	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+	dockerSock := fmt.Sprintf("unix:///%s/var/run/docker.sock", sysdigRoot)
+	cli, err := client.NewClient(dockerSock, "v1.26", nil, nil)
 	if err != nil {
 		panic(err)
 	}

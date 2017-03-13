@@ -601,6 +601,7 @@ VISIBILITY_PRIVATE
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 	bool                                 m_k8s_proc_detected = false;
 
+	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
 	unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state
@@ -636,6 +637,7 @@ VISIBILITY_PRIVATE
 	user_event_queue::ptr_t m_user_event_queue;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
+
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
