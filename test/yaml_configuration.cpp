@@ -3,6 +3,7 @@
 #include <configuration.h>
 #include "proc_config.h"
 #include "app_checks.h"
+#include "metric_limits.h"
 
 using namespace std;
 
@@ -281,4 +282,23 @@ TEST(yaml_to_json, test_nested)
 	EXPECT_EQ("http://localhost:{port}", json["test"].asString());
 	EXPECT_EQ("{}", json["v"][1]["l"].asString());
 	EXPECT_EQ(9, json["v"][0]["o"].asInt());
+}
+
+TEST(yaml_conf, metric_filter)
+{
+	yaml_configuration conf({"resources/test_filters.yaml", "resources/test.default.yaml.yaml"});
+	metrics_filter_vec mf = conf.get_merged_sequence<metrics_filter>("metrics_filter");
+	EXPECT_EQ(11U, mf.size());
+	EXPECT_FALSE(metric_limits::first_includes_all(mf));
+	EXPECT_TRUE(mf[0].filter() == "redis.cpu.*");
+	EXPECT_TRUE(mf[1].filter() == "redis.mem.lua");
+	EXPECT_TRUE(mf[2].filter() == "redis.mem.*");
+	EXPECT_TRUE(mf[3].filter() == "ThreadCount");
+	EXPECT_TRUE(mf[4].filter() == "mesos.framework.cpu");
+	EXPECT_TRUE(mf[5].filter() == "mesos.fr*");
+	EXPECT_TRUE(mf[6].filter() == "test.*");
+	EXPECT_TRUE(mf[7].filter() == "test.*");
+	EXPECT_TRUE(mf[8].filter() == "haproxy.backend.*");
+	EXPECT_TRUE(mf[9].filter() == "haproxy.*");
+	EXPECT_TRUE(mf[10].filter() == "redis.*");
 }

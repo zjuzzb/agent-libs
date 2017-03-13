@@ -296,6 +296,19 @@ TEST(metric_limits, filter_vec)
 	EXPECT_TRUE(metric_limits::first_includes_all(filter));
 	EXPECT_EQ(filter[0].filter(), "*");
 	EXPECT_TRUE(filter[0].included());
+
+	const unsigned CUSTOM_METRICS_FILTERS_HARD_LIMIT = 10;
+	filter.clear();
+	for(unsigned i = 0; i <= CUSTOM_METRICS_FILTERS_HARD_LIMIT; ++i)
+	{
+		filter.push_back({std::to_string(i) + "xyz", i % 2});
+	}
+	ASSERT_EQ(CUSTOM_METRICS_FILTERS_HARD_LIMIT + 1, filter.size());
+	if(filter.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	{
+		filter.erase(filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, filter.end());
+	}
+	EXPECT_EQ(CUSTOM_METRICS_FILTERS_HARD_LIMIT, filter.size());
 }
 
 TEST(metric_limits, projspec)
