@@ -274,14 +274,19 @@ public:
 #ifndef _WIN32
 	inline void check_metric_limits()
 	{
-		ASSERT(m_configuration);
-		const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
-		ASSERT(!m_metric_limits || (m_metric_limits && mf.size()));
-		if(mf.size() && !metric_limits::first_includes_all(mf))
+		static bool checked = false;
+		if(!checked)
 		{
-			m_metric_limits.reset(new metric_limits(mf));
+			ASSERT(m_configuration);
+			const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
+			ASSERT(!m_metric_limits);
+			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
+			{
+				m_metric_limits.reset(new metric_limits(mf));
+			}
+			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
+			checked = true;
 		}
-		ASSERT(m_metric_limits || (!m_metric_limits && !m_configuration->get_metrics_filter().size()));
 	}
 
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
