@@ -162,6 +162,9 @@ inline const std::string& app_service_check::name() const
 class app_check_data
 {
 public:
+	typedef vector<app_metric> metrics_t;
+	typedef vector<app_service_check> services_t;
+
 	// Added for unordered_map::operator[]
 	app_check_data():
 			m_pid(0),
@@ -187,23 +190,35 @@ public:
 		return m_process_name;
 	}
 
+	const metrics_t& metrics() const
+	{
+		return m_metrics;
+	}
+
+	const services_t& services() const
+	{
+		return m_service_checks;
+	}
+
 private:
 	int m_pid;
 	string m_process_name;
-	vector<app_metric> m_metrics;
-	vector<app_service_check> m_service_checks;
+	metrics_t m_metrics;
+	services_t m_service_checks;
 	uint64_t m_expiration_ts;
 };
 
 class app_checks_proxy
 {
 public:
+	// hash table keyed by PID, containing maps keyed by app_check name
+	typedef unordered_map<int, map<string, app_check_data>> metric_map_t;
+
 	app_checks_proxy();
 
 	void send_get_metrics_cmd(const vector<app_process>& processes);
 
-	// hash table keyed by PID, containing maps keyed by app_check name
-	unordered_map<int, map<string, app_check_data>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	metric_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 
 private:
 	posix_queue m_outqueue;

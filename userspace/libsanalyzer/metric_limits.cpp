@@ -38,10 +38,10 @@ void metric_limits::log()
 	if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 	{
 		std::ostringstream os;
-		os << "Allowed metrics:" << std::endl;
+		os << "Metrics permission list:" << std::endl;
 		for(auto& c : m_cache)
 		{
-			os << c.first << ':' << (c.second.get_allow() ? "true" : "false") << std::endl;
+			os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
 		}
 		g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
 	}
@@ -72,8 +72,10 @@ bool metric_limits::allow(const std::string& metric, int* pos)
 		}
 		else if(FNM_NOMATCH != m)
 		{
+#ifdef HAS_ANALYZER
 			g_logger.format(sinsp_logger::SEV_WARNING, "Metric limits: error glob matching [%s] "
 					  "with pattern [%s]", metric.c_str(), f.filter().c_str());
+#endif // HAS_ANALYZER
 		}
 	}
 
@@ -91,8 +93,10 @@ void metric_limits::insert(const std::string& metric, bool value, int pos)
 	}
 	else
 	{
+#ifdef HAS_ANALYZER
 		g_logger.format(sinsp_logger::SEV_WARNING, "Metric limit cache full, metric [%s] "
 				  "will not be cached.", metric.c_str());
+#endif // HAS_ANALYZER
 	}
 }
 

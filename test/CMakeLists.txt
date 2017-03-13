@@ -36,6 +36,7 @@ add_definitions( -DHAS_ANALYZER )
 
 add_executable(tests
 	analyzer_test.cpp
+	app_checks.cpp
 	capture_to_file_test.cpp
 	container.cpp
 	event_capture.cpp

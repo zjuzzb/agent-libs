@@ -10,26 +10,40 @@
 #include <vector>
 #include <string>
 #include <cstdlib>
+#include <fstream>
 
 int main(int argc, char *argv[])
 {
 	unsigned long msz = METRIC_SIZE;
 	unsigned long csz = msz;
+	unsigned long fsz;
 
-	if(argc > 1) msz = strtoul(argv[1], 0, 10);
+	if(argc > 1)
+	{
+		msz = strtoul(argv[1], 0, 10);
+	}
 	if(!msz)
 	{
 		std::cerr << "invalid metric size: " << msz << std::endl;
 		return -1;
 	}
+	fsz = msz;
 	if(argc > 2)
 	{
 		csz = strtoul(argv[2], 0, 10);
 	}
-	std::cout << msz << " metrics, " << csz << " cached" << std::endl;
+	if(argc > 3)
+	{
+		fsz = strtoul(argv[3], 0, 10);
+	}
+	metrics_filter_vec f;
+	for(int i; i < fsz; ++i)
+	{
+		f.push_back({std::to_string(i).append("?xyz*123"), i % 2});
+	}
 
-	metrics_filter_vec f({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true}, {"1haproxy.backend*", true}, {"2test.*", true}, {"3test2.*.?othin?", true},
-						  {"haproxy.backend*", false}, {"test.*", false}, {"test2.*.?othin?", false}, {"1haproxy.backend*", false}, {"2test.*", false}, {"3test2.*.?othin?", false}});
+	std::cout << f.size() << " filters, " << msz << " metrics (" << csz << " cache)" << std::endl;
+
 	metric_limits ml(f, csz);
 
 	sinsp_stopwatch sw;
@@ -44,7 +58,14 @@ int main(int argc, char *argv[])
 			sw.stop();
 			sum += sw.elapsed<std::chrono::nanoseconds>();
 		}
-		std::cout << "total=" << sum/1000 << " us, avg=" << sum/msz << " ns" << std::endl;
+		std::cout << "lookup: total=" << sum/1000 << " us, avg=" << sum/msz << " ns" << std::endl;
 	}
+	std::chrono::nanoseconds::rep sum = 0;
+	std::ofstream of("/tmp/draios_metric_list", std::ofstream::out);
+	sw.start();
+	ml.log(of);
+	sw.stop();
+	sum = sw.elapsed<std::chrono::nanoseconds>();
+	std::cout << "log: total=" << sum/1000 << " us, avg=" << sum/ml.cached() << " ns" << std::endl;
 	return 0;
 }

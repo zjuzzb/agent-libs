@@ -6,6 +6,7 @@
 #include <ctime>
 #include <cmath>
 #include <memory>
+#include <iostream>
 
 #ifdef HAS_ANALYZER
 
@@ -130,6 +131,16 @@ public:
 	// If it has more than one entry, reduce filter list with first rule
 	// "exclude all" to one entry
 	static void optimize_exclude_all(metrics_filter_vec& filter);
+
+	// for testing purposes only
+	void log(std::ostream& os)
+	{
+		os << "Metrics permission list:" << std::endl;
+		for(auto& c : m_cache)
+		{
+			os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
+		}
+	}
 
 private:
 	void insert(const std::string& metric, bool value, int pos);

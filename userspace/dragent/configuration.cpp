@@ -870,6 +870,10 @@ void dragent_configuration::init(Application* app)
 	{
 		metric_limits::optimize_exclude_all(m_metrics_filter);
 	}
+	if(m_metrics_filter.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	{
+		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
+	}
 }
 
 void dragent_configuration::print_configuration()
