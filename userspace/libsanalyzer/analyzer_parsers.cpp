@@ -253,6 +253,38 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	}
 
 	//
+	// Navigate the parent processes to determine if this is the descendent of a shell
+	// and if yes what's the shell ID
+	//
+	sinsp_threadinfo* ttinfo = tinfo;
+	uint32_t shell_dist = 0;
+	uint64_t login_shell_id = 0;
+
+	for(uint32_t j = 0; ; j++)
+	{
+		uint32_t cl = ttinfo->m_comm.size();
+		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
+		{
+			//
+			// We found a shell. Patch the descendat but don't stop here since there might
+			// be another parent shell
+			//
+			login_shell_id = ttinfo->m_tid;
+			shell_dist = j;
+		}
+
+		ttinfo = ttinfo->get_parent_thread();
+		if(ttinfo == NULL)
+		{
+			break;
+		}
+	}
+
+	if(login_shell_id == 0) {
+		return;
+	}
+
+	//
 	// Allocated an executed command storage info and initialize it
 	//
 	sinsp_executed_command cmdinfo;
@@ -283,40 +315,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	{
 		cmdinfo.m_cmdline += ' ';
 		cmdinfo.m_cmdline += tinfo->m_args[j];
-	}
-
-	//
-	// Navigate the parent processes to determine if this is the descendent of a shell
-	// and if yes what's the shell ID
-	//
-	vector<thread_analyzer_info*> ancestor_chain;
-
-	sinsp_threadinfo* ttinfo = tinfo;
-	//bool shell_found = false;
-	uint32_t shell_dist = 0;
-	uint64_t login_shell_id = 0;
-
-	for(uint32_t j = 0; ; j++)
-	{
-		thread_analyzer_info* ttainfo = ttinfo->m_ainfo;
-		ancestor_chain.push_back(ttainfo);
-
-		uint32_t cl = ttinfo->m_comm.size();
-		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
-		{
-			//
-			// We found a shell. Patch the descendat but don't stop here since there might
-			// be another parent shell
-			//
-			login_shell_id = ttinfo->m_tid;
-			shell_dist = j;
-		}
-
-		ttinfo = ttinfo->get_parent_thread();
-		if(ttinfo == NULL)
-		{
-			break;
-		}
 	}
 
 	//tainfo->m_login_shell_distance = shell_dist;
