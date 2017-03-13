@@ -749,6 +749,9 @@ message swarm_common {
 message swarm_service {
     optional swarm_common common = 1;
     repeated string virtual_ips = 2;
+    // Ports will be available only for published services
+    // internal service don't need it, even if they load
+    // balance traffic as well
     repeated swarm_port ports = 3;
 }
 

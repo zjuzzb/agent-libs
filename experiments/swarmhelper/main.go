@@ -37,20 +37,18 @@ func (q *PosixQueue) Send(data []byte) {
 	C.mq_send(q.fd, (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data)), 0)
 }
 
-func labelsToProtobuf(labels map[string]string) []*draiosproto.SwarmPair {
-	ret := make([]*draiosproto.SwarmPair, 0)
+func labelsToProtobuf(labels map[string]string) ( ret []*draiosproto.SwarmPair) {
 	for k, v := range labels {
 		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(k), Value:proto.String(v)})
 	}
-	return ret
+	return
 }
 
-func virtualIPsToProtobuf(vIPs []swarm.EndpointVirtualIP) []string {
-	ret := make([]string, 0)
+func virtualIPsToProtobuf(vIPs []swarm.EndpointVirtualIP) (ret []string) {
 	for _, vip := range vIPs {
 		ret = append(ret, vip.Addr)
 	}
-	return ret
+	return
 }
 
 func portsToProtobuf(ports []swarm.PortConfig) (ret []*draiosproto.SwarmPort) {
@@ -94,49 +92,55 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	info, err := cli.Info(context.Background());
-	fmt.Printf("myid=%s\n", info.Swarm.NodeID)
-	nodeId := proto.String(info.Swarm.NodeID)
-
+	
 	timer := time.NewTicker(time.Second*10)
 	for {
 		ctx, _ := context.WithTimeout(context.Background(), time.Second)
+
+		info, err := cli.Info(context.Background())
+		if err != nil {
+			continue
+		}
+		nodeId := proto.String(info.Swarm.NodeID)
+		isManager := info.Swarm.ControlAvailable
+
 		m := &draiosproto.SwarmState{NodeId: nodeId}
 
-		if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
-			for _, service := range services {
-				m.Services = append(m.Services, serviceToProtobuf(service))
-				stack := service.Spec.Labels["com.docker.stack.namespace"]
-				if stack == "" {
-					stack = "none"
+		if isManager {
+			if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
+				for _, service := range services {
+					m.Services = append(m.Services, serviceToProtobuf(service))
+					stack := service.Spec.Labels["com.docker.stack.namespace"]
+					if stack == "" {
+						stack = "none"
+					}
+					fmt.Printf("service id=%s name=%s stack=%s ip=%s\n", service.ID[:10], service.Spec.Name, stack, virtualIPsToProtobuf(service.Endpoint.VirtualIPs))
 				}
-				fmt.Printf("service id=%s name=%s stack=%s ip=%s\n", service.ID[:10], service.Spec.Name, stack, virtualIPsToProtobuf(service.Endpoint.VirtualIPs))
+			} else {
+				fmt.Printf("Error fetching services: %s\n", err)
 			}
-		} else {
-			fmt.Printf("Error fetching services: %s\n", err)
-		}
 
-		if nodes, err := cli.NodeList(ctx, types.NodeListOptions{}); err == nil {
-			for _, node := range nodes {
-				m.Nodes = append(m.Nodes, nodeToProtobuf(node))
-				fmt.Printf("node id=%s name=%s role=%s availability=%s\n", node.ID, node.Description.Hostname, node.Spec.Role, node.Spec.Availability)
+			if nodes, err := cli.NodeList(ctx, types.NodeListOptions{}); err == nil {
+				for _, node := range nodes {
+					m.Nodes = append(m.Nodes, nodeToProtobuf(node))
+					fmt.Printf("node id=%s name=%s role=%s availability=%s\n", node.ID, node.Description.Hostname, node.Spec.Role, node.Spec.Availability)
+				}
+			} else {
+				fmt.Printf("Error fetching nodes: %s\n", err)
 			}
-		} else {
-			fmt.Printf("Error fetching nodes: %s\n", err)
-		}
 
 
-		args := filters.NewArgs()
-		args.Add("desired-state", "running")
-		args.Add("desired-state", "accepted")
-		if tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args}); err == nil {
-			for _, task := range tasks {
-				m.Tasks = append(m.Tasks, taskToProtobuf(task))
-				fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
+			args := filters.NewArgs()
+			args.Add("desired-state", "running")
+			args.Add("desired-state", "accepted")
+			if tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args}); err == nil {
+				for _, task := range tasks {
+					m.Tasks = append(m.Tasks, taskToProtobuf(task))
+					fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
+				}
+			} else {
+				fmt.Printf("Error fetching tasks: %s\n", err)
 			}
-		} else {
-			fmt.Printf("Error fetching tasks: %s\n", err)
 		}
 
 		fmt.Printf("Protobuf %s\n", proto.MarshalTextString(m))
