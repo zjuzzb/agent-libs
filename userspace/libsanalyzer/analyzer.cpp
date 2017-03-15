@@ -1457,10 +1457,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				for (auto it2 = it->second.begin(); it2 != it->second.end();)
 				{
 					auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
-					if(flush_time_s > it2->second.expiration_ts() &&
-						flush_time_s - it2->second.expiration_ts() > APP_METRICS_EXPIRATION_TIMEOUT_S)
+					if(flush_time_s >= it2->second.expiration_ts())
 					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "App metrics for pid %d,%s expired %u s ago, forcing wipe", it->first, it2->first.c_str(), flush_time_s - it2->second.expiration_ts());
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Wiping expired app metrics for pid %d,%s", it->first, it2->first.c_str());
 						it2 = it->second.erase(it2);
 					}
 					else
@@ -1834,29 +1833,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
 
-				if (!app_checks.empty()) {
+				if (!app_checks.empty())
+				{
 					auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
 
 					for (auto& appcheck : app_checks)
 					{
-						bool current = false;
-
-						if (app_metrics_pid != m_app_metrics.end())
+						if ((app_metrics_pid != m_app_metrics.end()) &&
+							(app_metrics_pid->second.find(appcheck.name()) !=
+							app_metrics_pid->second.end()))
 						{
-							auto app_met_it = app_metrics_pid->second.find(appcheck.name());
-							if ((app_met_it != app_metrics_pid->second.end()) &&
-								(app_met_it->second.expiration_ts() >
-								(m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
-							{
-								current = true;
-
-								// Found metrics for this pid and name that are not expired
-								// so we can use them instead of running the check again
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"App metrics for %d,%s are still good", tinfo->m_pid, appcheck.name().c_str());
-							}
+							// Found metrics for this pid and name that haven't
+							// been expired (or they would have been erased) so
+							// we use them instead of running the check again
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"App metrics for %d,%s are still good",
+								tinfo->m_pid, appcheck.name().c_str());
 						}
-						if (!current)
+						else
 						{
 							app_checks_processes.push_back(move(appcheck));
 						}
@@ -2306,16 +2300,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							if (app_data_set.find(app_data.first) == app_data_set.end())
 							{
 								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"Found app metrics for %d,%s", tinfo->m_pid, app_data.first.c_str());
-								app_checks_limit -= app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+									"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
+									app_data.first.c_str(), app_data.second.expiration_ts() -
+									(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
+								app_checks_limit -= app_data.second.to_protobuf(
+									proc->mutable_protos()->mutable_app(), app_checks_limit);
 								app_data_set.emplace(app_data.first);
 							}
 							else
 							{
-								// Unlikely to happen
-								g_logger.format(sinsp_logger::SEV_INFO,
-									"Skipping duplicate app metrics for %d(%d),%s",
-										tinfo->m_pid, pid, app_data.first.c_str());
+								g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
+										tinfo->m_pid, pid, app_data.first.c_str(),
+										app_data.second.expiration_ts() -
+										(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
 							}
 						}
 					}
