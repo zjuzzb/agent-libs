@@ -300,23 +300,24 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 
 		for(const auto& s : service_checks)
 		{
-
-			if(!ml || ml->allow(s["check"].asString()))
+			if(s.isMember("check") && s["check"].isConvertibleTo(Json::stringValue))
 			{
-				m_service_checks.emplace_back(s);
-				if(ml)
+				if(!ml || ml->allow(s["check"].asString()))
 				{
-					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
+					m_service_checks.emplace_back(s);
+					if(ml)
+					{
+						g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
+					}
+				}
+				else
+				{
+					if(ml)
+					{
+						g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
+					}
 				}
 			}
-			else
-			{
-				if(ml)
-				{
-					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
-				}
-			}
-
 		}
 	}
 }
