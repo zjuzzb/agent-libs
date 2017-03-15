@@ -179,4 +179,3 @@ TEST(statsite_proxy, filter)
 	fclose(output_file);
 	fclose(input_fd);
 }
-

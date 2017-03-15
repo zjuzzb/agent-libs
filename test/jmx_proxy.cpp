@@ -318,3 +318,56 @@ TEST_F(jmx_proxy_f, test_filters)
 	EXPECT_EQ(0, metrics.begin()->second.beans().size());
 
 }
+
+TEST_F(jmx_proxy_f, limits)
+{
+	use_json("jmx_ok.json");
+	auto metrics = jmx->read_metrics();
+	ASSERT_EQ(2U, metrics.size());
+
+	draiosproto::metrics proto;
+	draiosproto::program* prog = proto.add_programs();
+	draiosproto::process* proc = prog->mutable_procinfo();
+	auto app = proc->mutable_protos()->mutable_java();
+	EXPECT_EQ(31u, metrics.begin()->second.beans().size());
+	EXPECT_EQ(3u, metrics.begin()->second.beans().rbegin()->attributes().size());
+	auto pid = metrics.begin()->second;
+
+	unsigned limit = 3000;
+	limit -= pid.to_protobuf(app, 1, limit);
+	ASSERT_TRUE(limit);
+
+	EXPECT_EQ(31u, app->beans().size());
+	EXPECT_EQ(2, app->beans(0).attributes().size());
+	EXPECT_EQ(3, app->beans(14).attributes().size());
+	EXPECT_EQ(5, app->beans(22).attributes().size());
+	EXPECT_EQ(3, app->beans(30).attributes().size());
+	app->clear_beans();
+
+	limit = 1;
+	limit -= pid.to_protobuf(app, 1, limit);
+
+	ASSERT_EQ(0, limit);
+	EXPECT_EQ(1, app->beans().size());
+	EXPECT_EQ(1, app->beans(0).attributes().size());
+	app->clear_beans();
+
+	limit = 2;
+	limit -= pid.to_protobuf(app, 1, limit);
+
+	ASSERT_EQ(0, limit);
+	EXPECT_EQ(1, app->beans().size());
+	EXPECT_EQ(2, app->beans(0).attributes().size());
+	app->clear_beans();
+
+	limit = 3;
+	do
+	{
+		limit -= pid.to_protobuf(app, 1, limit);
+	} while (limit);
+
+	ASSERT_EQ(0, limit);
+	EXPECT_EQ(2, app->beans().size());
+	EXPECT_EQ(2, app->beans(0).attributes().size());
+	EXPECT_EQ(1, app->beans(1).attributes().size());
+}
