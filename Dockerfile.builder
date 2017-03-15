@@ -14,6 +14,7 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         gcc-c++ \
         git \
         glibc-static \
+        golang \
         make \
         rpm-build \
         unzip \
