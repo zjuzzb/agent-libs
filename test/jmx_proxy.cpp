@@ -140,6 +140,7 @@ bool find_attribute(const java_bean::attribute_list_t& attrs, const std::string&
 
 void print_metrics(const jmx_proxy::process_map_t& metrics)
 {
+	int bc = 0, tbc = 0, ac = 0, tac = 0, sac = 0, tsac = 0, total = 0;
 	std::cout << "+++processes+++" << std::endl;
 	for(auto met : metrics)
 	{
@@ -147,26 +148,37 @@ void print_metrics(const jmx_proxy::process_map_t& metrics)
 		std::cout << "\t+++beans+++" << std::endl;
 		for(auto b : met.second.beans())
 		{
-			std::cout << "\t" << b.name() << std::endl;
+			std::cout << "\t" << bc++ << ' ' << b.name() << std::endl;
 			std::cout << "\t\t+++attributes+++" << std::endl;
 			for(auto a : b.attributes())
 			{
-				std::cout << "\t\t" << a.name() << " (" << a.alias() << ')' << std::endl;
+				std::cout << "\t\t" << ac++ << ' ' << a.name() << " (" << a.alias() << ')' << std::endl;
 				if(a.subattributes().size())
 				{
 					std::cout << "\t\t\t+++subattributes+++" << std::endl;
 					for(auto s : a.subattributes())
 					{
-						std::cout << "\t\t\t" << s.name() << std::endl;
+						std::cout << "\t\t\t" << sac++ << ' ' << s.name() << std::endl;
 					}
 					std::cout << "\t\t\t---subattributes---" << std::endl;
+					tsac += sac;
+					total += sac;
+					sac = 0;
 				}
 			}
 			std::cout << "\t\t---attributes---" << std::endl;
+			tac += ac;
+			total += ac;
+			ac = 0;
 		}
 		std::cout << "\t---beans---" << std::endl;
-		std::cout << "---processes---" << std::endl;
+		tbc += bc;
+		total += bc;
+		bc = 0;
 	}
+	std::cout << "---processes---" << std::endl;
+	std::cout << "procs=" << metrics.size() << ", beans=" << tbc << ", attributes="
+			<< tac << ", subattributes=" << tsac << ", total=" << total << std::endl;
 }
 
 TEST_F(jmx_proxy_f, test_filters)

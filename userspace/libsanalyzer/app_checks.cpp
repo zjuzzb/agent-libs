@@ -271,32 +271,24 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 	}
 	if(obj.isMember("metrics"))
 	{
-		const Json::Value& metrics = obj["metrics"];
-		if(!metrics.isNull() && metrics.isArray() && metrics.size() >= 4u)
+		for(const auto& m : obj["metrics"])
 		{
-			for(const auto& m : metrics)
+			if(m.isArray() && m.size() && m[0].isConvertibleTo(Json::stringValue))
 			{
-				if(m[0].isConvertibleTo(Json::stringValue))
+				if(!ml || ml->allow(m[0].asString()))
 				{
-					if(!ml || ml->allow(m[0].asString()))
+					m_metrics.emplace_back(m);
+					if(ml)
 					{
-						m_metrics.emplace_back(m);
-						if(ml)
-						{
-							g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric allowed: %s", m[0].asCString());
-						}
-					}
-					else
-					{
-						if(ml)
-						{
-							g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric not allowed: %s", m[0].asCString());
-						}
+						g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric allowed: %s", m[0].asCString());
 					}
 				}
 				else
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "app_check %s service metric name not found", m_process_name.c_str());
+					if(ml)
+					{
+						g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric not allowed: %s", m[0].asCString());
+					}
 				}
 			}
 		}
@@ -305,42 +297,26 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 	if(obj.isMember("service_checks"))
 	{
 		const Json::Value& service_checks = obj["service_checks"];
-		if(!service_checks.isNull() && service_checks.isArray())
+
+		for(const auto& s : service_checks)
 		{
-			for(const auto& s : service_checks)
+
+			if(!ml || ml->allow(s["check"].asString()))
 			{
-				// "status" and "check" used in service_check constructor
-				if(s.isMember("check") && s.isMember("status"))
+				m_service_checks.emplace_back(s);
+				if(ml)
 				{
-					if(s["check"].isConvertibleTo(Json::stringValue))
-					{
-						if(!ml || ml->allow(s["check"].asString()))
-						{
-							m_service_checks.emplace_back(s);
-							if(ml)
-							{
-								g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
-							}
-						}
-						else
-						{
-							if(ml)
-							{
-								g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
-							}
-						}
-					}
-					else
-					{
-						g_logger.format(sinsp_logger::SEV_WARNING, "app_check %s service check name not found", m_process_name.c_str());
-					}
-				}
-				else
-				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "app_check %s service check JSON has no 'check' or status 'field': %s",
-									m_process_name.c_str(), s["check"].asCString());
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
 				}
 			}
+			else
+			{
+				if(ml)
+				{
+					g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
+				}
+			}
+
 		}
 	}
 }
@@ -352,6 +328,10 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	uint16_t limit_used = 0;
 	for(const auto& m : m_metrics)
 	{
+		if(limit_used >= limit)
+		{
+			break;
+		}
 		m.to_protobuf(proto->add_metrics());
 		++limit_used;
 	}
@@ -363,7 +343,6 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	{
 		if(limit_used >= limit)
 		{
-			g_logger.format(sinsp_logger::SEV_TRACE, "service_checks metrics limit (%u) reached.", limit);
 			break;
 		}
 		s.to_protobuf_as_metric(proto->add_metrics());

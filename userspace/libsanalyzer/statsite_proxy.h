@@ -36,7 +36,7 @@ public:
 	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
 	};
 
-	unsigned to_protobuf(draiosproto::statsd_metric* proto) const;
+	void to_protobuf(draiosproto::statsd_metric* proto) const;
 
 	bool parse_line(const string& line);
 

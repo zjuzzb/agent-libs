@@ -5367,7 +5367,8 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 			break;
 		}
 		auto statsd_proto = statsd_info->add_statsd_metrics();
-		j += metric.to_protobuf(statsd_proto);
+		metric.to_protobuf(statsd_proto);
+		++j;
 	}
 	if (j > 0)
 	{

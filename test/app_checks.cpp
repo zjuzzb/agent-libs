@@ -3,6 +3,7 @@
 #include "app_checks.h"
 #include "posix_queue.h"
 #include "metric_limits.h"
+#include "draios.pb.h"
 #include <fstream>
 #include "third-party/jsoncpp/json/json.h"
 
@@ -143,4 +144,86 @@ TEST_F(app_checks_proxy_f, filters)
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
 	EXPECT_EQ(0, metrics.size());
+}
+
+TEST_F(app_checks_proxy_f, limits)
+{
+	use_json("app_checks_ok.json");
+	auto metrics = app_checks->read_metrics(nullptr);
+	ASSERT_EQ(2U, metrics.size());
+
+	draiosproto::metrics proto;
+	draiosproto::program* prog = proto.add_programs();
+	draiosproto::process* proc = prog->mutable_procinfo();
+	auto app = proc->mutable_protos()->mutable_app();
+	auto app_checks_data = metrics[805].begin()->second;
+
+	uint16_t app_checks_limit = 0;
+	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(0, app->metrics().size());
+	do
+	{
+		app_checks_limit -= app_checks_data.to_protobuf(app, app_checks_limit);
+	} while(app_checks_limit);
+	ASSERT_EQ(0, app_checks_limit);
+	EXPECT_EQ(0, app->metrics().size());
+
+	app_checks_limit = 1;
+	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(0, app->metrics().size());
+	do
+	{
+		app_checks_limit -= app_checks_data.to_protobuf(app, app_checks_limit);
+	} while(app_checks_limit);
+	ASSERT_EQ(0, app_checks_limit);
+	EXPECT_EQ(1U, app->metrics().size());
+
+	app->clear_metrics();
+	ASSERT_EQ(0, app->metrics().size());
+	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	app_checks_limit = 15;
+	do
+	{
+		app_checks_limit -= app_checks_data.to_protobuf(app, app_checks_limit);
+	} while(app_checks_limit);
+	ASSERT_EQ(0, app_checks_limit);
+	EXPECT_EQ(15, app->metrics().size());
+
+	app->clear_metrics();
+	ASSERT_EQ(0, app->metrics().size());
+	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	app_checks_limit = 30;
+	do
+	{
+		app_checks_limit -= app_checks_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+	} while(app_checks_limit);
+	ASSERT_EQ(0, app_checks_limit);
+	EXPECT_EQ(30U, app->metrics().size());
+
+	// services are also populated into metrics
+	app->clear_metrics();
+	ASSERT_EQ(0, app->metrics().size());
+	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(1U, app_checks_data.services().size());
+	app_checks_limit = 32;
+	do
+	{
+		app_checks_limit -= app_checks_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+		std::cout << app_checks_limit << std::endl;
+	} while(app_checks_limit);
+	ASSERT_EQ(0, app_checks_limit);
+	EXPECT_EQ(32U, app->metrics().size());
+
+	app->clear_metrics();
+	ASSERT_EQ(0, app->metrics().size());
+	ASSERT_EQ(31U, app_checks_data.metrics().size());
+	ASSERT_EQ(1U, app_checks_data.services().size());
+	app_checks_limit = 33;
+	do
+	{
+		app_checks_limit -= app_checks_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+		std::cout << app_checks_limit << std::endl;
+	} while(app_checks_limit > 1);
+	ASSERT_EQ(1, app_checks_limit);
+	EXPECT_EQ(32U, app->metrics().size());
 }

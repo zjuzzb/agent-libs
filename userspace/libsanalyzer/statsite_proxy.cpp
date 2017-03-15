@@ -211,7 +211,7 @@ bool statsd_metric::parse_line(const string& line)
 }
 #endif // _WIN32
 
-unsigned statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
+void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 {
 	ASSERT(m_type != type_t::NONE);
 
@@ -240,7 +240,6 @@ unsigned statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	{
 		proto->set_value(m_value);
 	}
-	return 1;
 }
 
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
