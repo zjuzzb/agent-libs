@@ -52,10 +52,15 @@ public class MonitoredVM {
         this.name = "";
         this.lastDisconnectionTimestamp = 0;
 
+	Tracer tracerAgent = new Tracer("sdjagent");
+	tracerAgent.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("pid", Integer.toString(this.pid)), new NameValue("querylist", queryList.toString()))));
+
         if (request.getPid() == CLibrary.getPid()) {
             this.name = "sdjagent";
             available = true;
             isOnAnotherContainer = false;
+	    tracerAgent.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", this.name),
+		new NameValue("anothercontainer", Boolean.toString(this.isOnAnotherContainer)))));
             return;
         }
 
@@ -70,6 +75,9 @@ public class MonitoredVM {
             // so keep it as last chance
             retrieveVMInfoFromArgs(request);
         }
+
+	tracerAgent.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", this.name),
+	    new NameValue("anothercontainer", Boolean.toString(this.isOnAnotherContainer)))));
     }
 
     private void retrieveVmInfoFromContainer(VMRequest request) {
@@ -247,7 +255,10 @@ public class MonitoredVM {
     public List<Map<String, Object>> availableMetrics() throws IOException {
         setNetworkNamespaceIfNeeded();
         if (connection == null) {
+	    Tracer trc = new Tracer("connection");
+	    trc.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("address", this.address))));
             connection = new Connection(this.address);
+	    trc.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("isalive", Boolean.toString(connection.isAlive())))));
         }
         final Set<ObjectName> allBeans = connection.getMbs().queryNames(null, null);
         final List<Map<String, Object>> availableMetrics = new ArrayList<Map<String, Object>>(allBeans.size());
@@ -291,18 +302,26 @@ public class MonitoredVM {
     }
 
     public List<BeanData> getMetrics() {
+	Tracer trcMetrics = new Tracer("metrics");
+	trcMetrics.enter(null);
         final List<BeanData> metrics = new ArrayList<BeanData>();
         if (connection != null || shouldRetry()) {
             try {
                 setNetworkNamespaceIfNeeded();
                 try {
                     if (connection == null) {
+			Tracer trc = trcMetrics.span("connection");
+			trc.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("address", this.address))));
                         connection = new Connection(address);
+			trc.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("isalive", Boolean.toString(connection.isAlive())))));
                         lastBeanRefresh = 0;
                     }
                     if(System.currentTimeMillis() - lastBeanRefresh > BEAN_REFRESH_INTERVAL) {
+			Tracer trc = trcMetrics.span("beanrefresh");
+			trc.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("oldtimestamp", Long.toString(this.lastBeanRefresh)))));
                         refreshMatchingBeans();
                         lastBeanRefresh = System.currentTimeMillis();
+			trc.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("newtimestamp", Long.toString(this.lastBeanRefresh)))));
                     }
 
                     for (BeanInstance bean : matchingBeans) {
@@ -333,6 +352,7 @@ public class MonitoredVM {
                 disconnect();
             }
         }
+	trcMetrics.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("metricssize", Integer.toString(metrics.size())))));
         return metrics;
     }
 

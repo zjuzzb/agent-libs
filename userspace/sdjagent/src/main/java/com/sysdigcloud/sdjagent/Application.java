@@ -185,6 +185,8 @@ public class Application {
     }
 
     private void cleanup(List<VMRequest> requestedVMs) {
+	Tracer trcClean = new Tracer("cleanup");
+	trcClean.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("vmsize", Integer.toString(requestedVMs.size())))));
         Set<Integer> activePids = new HashSet<Integer>();
         for (VMRequest requestedVM : requestedVMs) {
             activePids.add(requestedVM.getPid());
@@ -193,20 +195,28 @@ public class Application {
         while (vmsIt.hasNext()) {
             Integer pid = vmsIt.next();
             if (!activePids.contains(pid)) {
+		Tracer trcVm = trcClean.span("vm");
+		trcVm.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("pid", Integer.toString(pid.intValue())))));
                 LOGGER.info(String.format("Removing cached entry for pid: %d", pid.intValue()));
                 // Cleanup resources on MonitoredVM before removing it
                 MonitoredVM vm = vms.get(pid);
+		trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", vm.getName()))));
                 vm.cleanUp();
                 vmsIt.remove();
             }
         }
+	trcClean.exit(null);
     }
 
     private List<Map<String, Object>> getMetricsCommand(List<VMRequest> requestedVMs) throws IOException {
+	Tracer trcMetrics = new Tracer("metricscommand");
+	trcMetrics.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("vmrequestsize", Integer.toString(requestedVMs.size())))));
         LOGGER.fine("Executing getMetrics");
         final List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
 
         for (VMRequest request : requestedVMs) {
+	    Tracer trcVm = trcMetrics.span("vm");
+	    trcVm.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("pid", Integer.toString(request.getPid())))));
             final Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
             MonitoredVM vm = vms.get(request.getPid());
 
@@ -220,11 +230,18 @@ public class Application {
                 vmObject.put("pid", request.getPid());
                 vmObject.put("name", vm.getName());
 
+		Tracer trcBeans = trcVm.span("beans");
+		trcBeans.enter(null);
                 List<BeanData> beanDataList = vm.getMetrics();
+		trcBeans.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("size", Integer.toString(beanDataList.size())))));
                 vmObject.put("beans", beanDataList);
                 vmList.add(vmObject);
+		trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", vm.getName()))));
             }
+	    else
+		trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", "n/a"))));
         }
+	trcMetrics.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("vmresultsize", Integer.toString(vmList.size())))));
         return vmList;
     }
 
