@@ -1,8 +1,12 @@
+#include <Poco/File.h>
+
 #include "logger.h"
 
 #include "coclient.h"
 
 using namespace std;
+
+std::string coclient::m_domain_sock = string("/opt/draios/run/cointerface.sock");
 
 coclient::coclient()
 {
@@ -15,7 +19,7 @@ coclient::~coclient()
 
 void coclient::connect()
 {
-	m_stub = sdc_internal::CoInterface::NewStub(grpc::CreateChannel("unix:/opt/draios/run/cointerface.sock",
+	m_stub = sdc_internal::CoInterface::NewStub(grpc::CreateChannel(string("unix:") + m_domain_sock,
 								grpc::InsecureChannelCredentials()));
 }
 
@@ -103,6 +107,15 @@ void coclient::next()
 	call->response_cb(call->status.ok(), call->response_msg.get());
 
 	delete call;
+}
+
+void coclient::cleanup()
+{
+	Poco::File f(m_domain_sock);
+	if(f.exists())
+	{
+		f.remove();
+	}
 }
 
 void coclient::ping(int64_t token, response_cb_t response_cb)

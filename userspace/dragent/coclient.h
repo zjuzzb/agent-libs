@@ -36,6 +36,10 @@ public:
 	// Check for any responses and call their callback functions.
 	void next();
 
+	// Clean up any state left around related to the connection to
+	// the cointerface process, such as the unix domain socket.
+	static void cleanup();
+
 protected:
 
 	// Set up state for this rpc and perform the rpc.
@@ -69,4 +73,6 @@ protected:
 	grpc::CompletionQueue m_cq;
 
 	google::protobuf::TextFormat::Printer m_print;
+
+	static std::string m_domain_sock;
 };

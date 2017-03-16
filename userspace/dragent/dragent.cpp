@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "main.h"
 #include "dragent.h"
 #include "crash_handler.h"
@@ -408,6 +410,20 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return proc.run();
 		});
 	}
+	if(m_configuration.m_cointerface_enabled)
+	{
+		m_cointerface_pipes = make_unique<pipe_manager>();
+		auto* state = &m_subprocesses_state["cointerface"];
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(), cointerface_parser(), state);
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(), cointerface_parser(), state);
+		monitor_process.emplace_process("cointerface", [this](void)
+		{
+			m_cointerface_pipes->attach_child_stdio();
+
+			execl("/opt/draios/bin/cointerface", "cointerface", (char *) NULL);
+			return (EXIT_FAILURE);
+		});
+	}
 	monitor_process.set_cleanup_function(
 			[this](void)
 			{
@@ -416,12 +432,15 @@ int dragent_app::main(const std::vector<std::string>& args)
 				this->m_mounted_fs_reader_pipe.reset();
 				this->m_statsite_pipes.reset();
 				m_statsite_forwarder_pipe.reset();
+				this->m_cointerface_pipes.reset();
 				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
 									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
 									  "/sdc_sdjagent_out", "/sdc_sdjagent_in", "/sdc_statsite_forwarder_in"})
 				{
 					posix_queue::remove(queue);
 				}
+
+				coclient::cleanup();
 			});
 	return monitor_process.run();
 #else
@@ -653,6 +672,36 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			pthread_kill(m_subprocesses_logger.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
+	}
+
+	if(m_configuration.m_cointerface_enabled)
+	{
+		// Ping every 5 seconds. If it's ever more than
+		// watchdog_cointerface_timeout_s seconds from a pong,
+		// declare it stuck and kill it.
+		//
+		// Note that we use the time from the ping as the
+		// liveness time. So if cointerface somehow falls
+		// behind by more than the timeout, it gets declared
+		// stuck.
+
+		m_cointerface_ping_interval.run([this]()
+		{
+			coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+				if(successful)
+				{
+					sdc_internal::pong *pong = (sdc_internal::pong *) response_msg;
+					m_subprocesses_state["cointerface"].reset(pong->pid(),
+										  pong->memory_used(),
+										  pong->token());
+				}
+			};
+
+			m_coclient.ping(time(NULL), callback);
+		});
+
+		// Try to read any responses
+		m_coclient.next();
 	}
 
 	uint64_t memory;
