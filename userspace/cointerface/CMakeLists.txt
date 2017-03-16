@@ -40,7 +40,7 @@ set(PROTOC_CMDLINE env PATH=${CMAKE_CURRENT_SOURCE_DIR}/bin:$$PATH
                    ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/protoc
                    -I ${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 
-add_custom_target(sdc_internal_proto
+add_custom_target(sdc_internal_pb_go
 	DEPENDS go_get_proto go_get_protoc-gen-gofast
 	COMMENT Building go sources from .proto files
 	COMMAND ${PROTOC_CMDLINE}
