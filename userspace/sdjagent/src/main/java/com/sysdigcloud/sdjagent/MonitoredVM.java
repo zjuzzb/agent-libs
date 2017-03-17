@@ -344,7 +344,7 @@ public class MonitoredVM {
                 disconnect();
             }
         }
-        trcMetrics.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("metricssize", Integer.toString(metrics.size())))));
+        trcMetrics.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("metricsSize", Integer.toString(metrics.size())))));
         return metrics;
     }
 
