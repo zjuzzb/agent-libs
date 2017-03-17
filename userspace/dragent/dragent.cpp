@@ -408,6 +408,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return proc.run();
 		});
 	}
+	// FIXME: Remove this
 	monitor_process.emplace_process("swarmhelper", [this](void)
 	{
 		execl("/opt/draios/bin/swarmhelper", "swarmhelper", NULL);

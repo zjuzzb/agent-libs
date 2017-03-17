@@ -14,13 +14,13 @@ import (
 	"fmt"
 
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
 	"github.com/golang/protobuf/proto"
-	"time"
-	"github.com/docker/docker/api/types/swarm"
-	"unsafe"
-	"github.com/docker/docker/api/types/filters"
 	"os"
+	"time"
+	"unsafe"
 )
 
 type PosixQueue struct {
@@ -30,7 +30,7 @@ type PosixQueue struct {
 func NewPosixQueue(name string) PosixQueue {
 	queue_name := C.CString(name)
 	defer C.free(unsafe.Pointer(queue_name))
-	var fd C.mqd_t = C.mqopen(queue_name, C.O_CREAT | C.O_WRONLY | C.O_NONBLOCK, C.S_IRWXU)
+	var fd C.mqd_t = C.mqopen(queue_name, C.O_CREAT|C.O_WRONLY|C.O_NONBLOCK, C.S_IRWXU)
 	return PosixQueue{fd}
 }
 
@@ -38,9 +38,9 @@ func (q *PosixQueue) Send(data []byte) {
 	C.mq_send(q.fd, (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data)), 0)
 }
 
-func labelsToProtobuf(labels map[string]string) ( ret []*draiosproto.SwarmPair) {
+func labelsToProtobuf(labels map[string]string) (ret []*draiosproto.SwarmPair) {
 	for k, v := range labels {
-		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(k), Value:proto.String(v)})
+		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(k), Value: proto.String(v)})
 	}
 	return
 }
@@ -55,36 +55,37 @@ func virtualIPsToProtobuf(vIPs []swarm.EndpointVirtualIP) (ret []string) {
 func portsToProtobuf(ports []swarm.PortConfig) (ret []*draiosproto.SwarmPort) {
 	for _, port := range ports {
 		ret = append(ret, &draiosproto.SwarmPort{Port: proto.Uint32(port.TargetPort),
-						PublishedPort: proto.Uint32(port.PublishedPort),
-			Protocol: proto.String(string(port.Protocol))})
+			PublishedPort: proto.Uint32(port.PublishedPort),
+			Protocol:      proto.String(string(port.Protocol))})
 	}
 	return
 }
 
 func serviceToProtobuf(service swarm.Service) *draiosproto.SwarmService {
 	return &draiosproto.SwarmService{Common: &draiosproto.SwarmCommon{
-		Id:proto.String(service.ID),
-		Name:proto.String(service.Spec.Name),
-		Labels: labelsToProtobuf(service.Spec.Labels)},
+			Id:     proto.String(service.ID),
+			Name:   proto.String(service.Spec.Name),
+			Labels: labelsToProtobuf(service.Spec.Labels)},
 		VirtualIps: virtualIPsToProtobuf(service.Endpoint.VirtualIPs),
-		Ports: portsToProtobuf(service.Endpoint.Ports),
+		Ports:      portsToProtobuf(service.Endpoint.Ports),
 	}
 }
 
 func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
 	return &draiosproto.SwarmTask{Common: &draiosproto.SwarmCommon{
-		Id: proto.String(task.ID),
-	},
-		ServiceId:proto.String(task.ServiceID),
-		NodeId: proto.String(task.NodeID),
-		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:12]), }
+			Id: proto.String(task.ID),
+		},
+		ServiceId:   proto.String(task.ServiceID),
+		NodeId:      proto.String(task.NodeID),
+		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:12])}
 }
 
 func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
 	return &draiosproto.SwarmNode{Common: &draiosproto.SwarmCommon{
-		Id: proto.String(node.ID),
+		Id:     proto.String(node.ID),
+		Name:   proto.String(node.Description.Hostname),
 		Labels: labelsToProtobuf(node.Spec.Labels),
-	}, Role: proto.String(string(node.Spec.Role)), }
+	}, Role: proto.String(string(node.Spec.Role)), IpAddress: proto.String(node.Status.Addr)}
 }
 
 func main() {
@@ -96,8 +97,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	
-	timer := time.NewTicker(time.Second*10)
+
+	timer := time.NewTicker(time.Second * 10)
 	for {
 		ctx, _ := context.WithTimeout(context.Background(), time.Second)
 
@@ -105,10 +106,10 @@ func main() {
 		if err != nil {
 			continue
 		}
-		nodeId := proto.String(info.Swarm.NodeID)
+		clusterId := proto.String(info.Swarm.Cluster.ID)
 		isManager := info.Swarm.ControlAvailable
 
-		m := &draiosproto.SwarmState{NodeId: nodeId}
+		m := &draiosproto.SwarmState{ClusterId: clusterId}
 
 		if isManager {
 			if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
@@ -132,7 +133,6 @@ func main() {
 			} else {
 				fmt.Printf("Error fetching nodes: %s\n", err)
 			}
-
 
 			args := filters.NewArgs()
 			args.Add("desired-state", "running")

@@ -763,14 +763,17 @@ message swarm_task {
 }
 
 message swarm_node {
+    // hostname of the node is inside common.name
     optional swarm_common common = 1;
     optional string role = 2;
+    optional string ip_address = 3;
 }
 
 message swarm_state {
-    // Every node in the cluster will send
-    // its node id
-    optional string node_id = 1;
+    // Every node in the cluster will send the cluster_id
+    // it can be used if we'll hit duplicate ip addresses
+    // in the cluster
+    optional string cluster_id = 1;
     // This values will be filled only
     // by swarm manager nodes
     repeated swarm_service services = 2;
