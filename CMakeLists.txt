@@ -47,6 +47,7 @@ set(FALCO_RULES_DEST_FILENAME "falco_rules.default.yaml")
 add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
+add_subdirectory(userspace/cointerface)
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(userspace/sdjagent)

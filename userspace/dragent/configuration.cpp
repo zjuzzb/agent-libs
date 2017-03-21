@@ -281,6 +281,7 @@ dragent_configuration::dragent_configuration()
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
+	m_cointerface_enabled = false;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -501,7 +502,7 @@ void dragent_configuration::init(Application* app)
 	{
 		m_load_error = true;
 	}
-	
+
 	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
 
 	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
@@ -625,8 +626,8 @@ void dragent_configuration::init(Application* app)
 	}
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 	// Right now these two entries does not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}});
-	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}});
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 128U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}, {"cointerface", 60U}});
 
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
@@ -865,6 +866,8 @@ void dragent_configuration::init(Application* app)
 		// our dropping mechanism can't help in this mode
 		m_autodrop_enabled = false;
 	}
+
+	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", false);
 }
 
 void dragent_configuration::print_configuration()

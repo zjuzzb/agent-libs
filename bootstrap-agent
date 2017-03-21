@@ -63,6 +63,38 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	make
 fi
 
+# The normal build process for grpc involves git clone + git submodule
+# update --init, which pulls in a lot of additional dependencies that
+# we don't need. Instead, we download our own repackaged tarball that
+# has only grpc and the necessary third party libraries (protobuf
+# 3.0.0, boringssl) to build the targets we need (grpc_cpp_plugin,
+# static_cxx, and static_c).
+#
+# We also symlink third_party/zlib to the zlib we built above.
+# The build process still recompiles zlib source files, but
+# at least it's one set of source files.
+#
+# Specificially, this tarball was created by:
+# git clone -b v1.1.4 https://github.com/grpc/grpc &&
+#     mv grpc grpc-1.1.4 &&
+#     cd grpc-1.1.4 &&
+#     git submodule update --init third_party/{boringssl,protobuf} &&
+#     rm -rf .git &&
+#     rm -rf third_party/{boringssl,protobuf}/.git
+# boringssl has no versions/releases, so this is whatever commit grpc
+# chose at the time. For protobuf, this is v3.2.0.
+
+GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
+if [ ! -d "$GRPC_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/grpc-1.1.4-with-third-party-libs.tar.gz
+	tar -xzf grpc-1.1.4-with-third-party-libs.tar.gz
+	rm -rf grpc-1.1.4/third_party/zlib
+	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	cd $GRPC_DIR
+	make grpc_cpp_plugin static_cxx static_c
+fi
+
 OPENSSL_VER=1.0.2j
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
