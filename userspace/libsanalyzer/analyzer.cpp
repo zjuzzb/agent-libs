@@ -2989,8 +2989,10 @@ bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_execute
 
 void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands)
 {
+#if 0
 	uint32_t j;
 	int32_t last_pipe_head = -1;
+#endif
 
 	if(commands->size() != 0)
 	{
