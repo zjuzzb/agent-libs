@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# Tool to collect log files for Sysdig Cloud Agent
+# www.sysdig.com
+#
+# (c) 2017 Sysdig Inc.
+#
+
+#set -exuo pipefail
+
+
+HOME_DIR="/opt/draios"
+LOG_DIR="$HOME_DIR/logs"
+ETC_DIR="$HOME_DIR/etc"
+MACHINE_ID=
+LOG_TITLE="Agent starting"
+
+DATE=`date +%Y%m%d%H%m`
+if [ $? -ne 0 ]; then
+    echo "Cannot execute \`date\` command."
+    exit 1
+fi
+
+
+function verify_files()
+{
+    for entry in $LOG_DIR/*.log*; do
+        if [ `grep -m 1 -E "[\d\.\,\:\-]+\ +Agent\ starting\ +\(version .+\)" $entry | wc -l` -ne 0 ]; then
+            return
+        fi
+    done
+    
+    echo "No prologue among the given log files."
+    exit 1
+}
+
+
+function tarball()
+{
+    tar -cvf agent-bundle-$MACHINE_ID-$DATE.tar $LOG_DIR/*.log*
+    if [ $? -ne 0 ]; then
+        echo "Cannot execute \`tar\`."
+        exit 1
+    fi
+
+    tar -uvf agent-bundle-$MACHINE_ID-$DATE.tar $ETC_DIR/*
+    if [ $? -ne 0 ]; then
+        echo "Cannot execute \`tar\`."
+        exit 1
+    fi
+
+    bzip2 agent-bundle-$MACHINE_ID-$DATE.tar
+    if [ $? -ne 0 ]; then
+        echo "Cannot execute \`bzip2\`."
+        exit 1
+    fi
+}
+
+
+
+if [[ `grep -i "machine id" -m 1 $LOG_DIR/*.log*` =~ .*machine\ id\:\ *(.*) ]]; then
+    MACHINE_ID=${BASH_REMATCH[1]//\:/}
+fi
+
+verify_files
+tarball
+

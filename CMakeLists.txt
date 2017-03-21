@@ -63,6 +63,10 @@ install(PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
 	RENAME sysdigcloud-probe-loader
 	COMPONENT agent)
 
+install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	COMPONENT agent)
+      
 set(CPACK_PACKAGE_NAME "draios")
 set(CPACK_PACKAGE_VENDOR "Sysdig Inc.")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sysdig Cloud Agent")
