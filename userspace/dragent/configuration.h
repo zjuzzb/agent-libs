@@ -545,6 +545,9 @@ public:
 	mesos::credentials_t m_dcos_enterprise_credentials;
 
 	bool m_falco_baselining_enabled;
+	bool m_command_lines_capture_enabled;
+	bool m_memdump_enabled;
+	uint64_t m_memdump_size;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;

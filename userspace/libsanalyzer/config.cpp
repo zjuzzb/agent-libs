@@ -26,9 +26,12 @@ sinsp_configuration::sinsp_configuration()
 	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
-	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_jmx_limit = 500;
 	m_app_checks_limit = 300;
+	m_memdump_size = 0;
+	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
+	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
+	m_capture_dragent_events = false;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -200,6 +203,36 @@ bool sinsp_configuration::get_falco_baselining_enabled() const
 void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
 {
 	m_falco_baselining_enabled = enabled;
+}
+
+bool sinsp_configuration::get_command_lines_capture_enabled() const
+{
+	return m_command_lines_capture_enabled;
+}
+
+void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
+{
+	m_command_lines_capture_enabled = enabled;
+}
+
+bool sinsp_configuration::get_capture_dragent_events() const
+{
+	return m_capture_dragent_events;
+}
+
+void sinsp_configuration::set_capture_dragent_events(bool enabled)
+{
+	m_capture_dragent_events = enabled;
+}
+
+uint64_t sinsp_configuration::get_memdump_size() const
+{
+	return m_memdump_size;
+}
+
+void sinsp_configuration::set_memdump_size(uint64_t size)
+{
+	m_memdump_size = size;
 }
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const

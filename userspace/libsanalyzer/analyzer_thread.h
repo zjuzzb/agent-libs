@@ -113,7 +113,10 @@ public:
 		AF_IS_LOCAL_IPV4_CLIENT = (1 << 5), // set if this thread creates IPv4 transactions toward localhost.
 		AF_IS_REMOTE_IPV4_CLIENT = (1 << 6), // set if this thread creates IPv4 transactions toward another host.
 		AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
-		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8) // set for main program threads.
+		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
+		AF_APP_CHECK_FOUND = (1 << 9),
+		AF_IS_DESCENDENT_OF_SHELL = (1 << 10), // Set if there is a shell (bash, tcsh...) among the ancestors of this thread
+		AF_IS_NOT_DESCENDENT_OF_SHELL = (1 << 11) // Set if there is NOT a shell (bash, tcsh...) among the ancestors of this thread. This means that the ancestors have been navigated with negative result.
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);

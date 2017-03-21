@@ -241,9 +241,53 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return;
 	}
 
-	tinfo->m_ainfo->m_called_execve = true;
+	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
+	tainfo->m_called_execve = true;
 
-	/*sinsp_executed_command cmdinfo;
+	//
+	// If command line capture is disabled, we stop here
+	//
+	if(!m_analyzer->m_command_lines_capture_enabled)
+	{
+		return;
+	}
+
+	//
+	// Navigate the parent processes to determine if this is the descendent of a shell
+	// and if yes what's the shell ID
+	//
+	sinsp_threadinfo* ttinfo = tinfo;
+	uint32_t shell_dist = 0;
+	uint64_t login_shell_id = 0;
+
+	for(uint32_t j = 0; ; j++)
+	{
+		uint32_t cl = ttinfo->m_comm.size();
+		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
+		{
+			//
+			// We found a shell. Patch the descendat but don't stop here since there might
+			// be another parent shell
+			//
+			login_shell_id = ttinfo->m_tid;
+			shell_dist = j;
+		}
+
+		ttinfo = ttinfo->get_parent_thread();
+		if(ttinfo == NULL)
+		{
+			break;
+		}
+	}
+
+	if(login_shell_id == 0) {
+		return;
+	}
+
+	//
+	// Allocated an executed command storage info and initialize it
+	//
+	sinsp_executed_command cmdinfo;
 
 	if(tinfo->m_clone_ts != 0)
 	{
@@ -254,72 +298,47 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		cmdinfo.m_ts = evt->get_ts();
 	}
 
-	cmdinfo.m_comm = tinfo->m_comm;
 	cmdinfo.m_cmdline = tinfo->m_comm;
 	cmdinfo.m_exe = tinfo->m_exe;
+	cmdinfo.m_comm = tinfo->m_comm;
+	cmdinfo.m_pid = tinfo->m_pid;
+	cmdinfo.m_ppid = tinfo->m_ptid;
+	cmdinfo.m_uid = tinfo->m_uid;
+	cmdinfo.m_cwd = tinfo->m_cwd;
 
 	//
 	// Build the arguments string
 	//
 	uint32_t nargs = tinfo->m_args.size();
 
-	for(j = 0; j < nargs; j++)
+	for(uint32_t j = 0; j < nargs; j++)
 	{
 		cmdinfo.m_cmdline += ' ';
 		cmdinfo.m_cmdline += tinfo->m_args[j];
-	}*/
-
-
-/*
-{
-	sinsp_threadinfo* parentinfo = tinfo;
-
-	while(1)
-	{
-		parentinfo = parentinfo->get_parent_thread();
-		string pname;
-		if(parentinfo != NULL)
-		{
-			cmdinfo.m_parent_comm = parentinfo->m_comm;
-		}
-		else
-		{
-			break;
-		}
 	}
-}
-*/
+
+	//tainfo->m_login_shell_distance = shell_dist;
+	cmdinfo.m_shell_id = login_shell_id;
+	cmdinfo.m_login_shell_distance = shell_dist;
 
 	//
-	// Lookup the parent process
+	// Determine if this command was executed in a pipe and if yes
+	// where it belongs in the pipe
 	//
-	/*sinsp_threadinfo* parentinfo = tinfo->get_parent_thread();
-	string pname;
-	if(parentinfo != NULL)
+	if((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_parent_comm = parentinfo->m_comm;
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;		
+	}
+	else if((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
+	{
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;		
+	}
+	else if((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
+	{
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;		
 	}
 
-	sinsp_fdinfo_t* fd0 = tinfo->get_fd(0);
-	sinsp_fdinfo_t* fd1 = tinfo->get_fd(1);
-
-	if(fd0 && fd1)
-	{
-		if(fd0->m_type == SCAP_FD_FIFO && fd1->m_type == SCAP_FD_FIFO)
-		{
-			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
-		}
-		else if(fd1->m_type == SCAP_FD_FIFO)
-		{
-			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;
-		}
-		else if(fd0->m_type == SCAP_FD_FIFO)
-		{
-			cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
-		}
-	}
-
-	m_analyzer->m_executed_commands.push_back(cmdinfo);*/
+	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);
 
 	return;
 }
