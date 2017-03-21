@@ -121,10 +121,15 @@ message process_details {
 //
 message command_details {
     required uint64 timestamp = 1;
-    required uint32 count = 2; // How many times this command has been repeated during the sample interval
+    optional uint32 count = 2; // How many times this command has been repeated during the sample interval
     required string cmdline = 3; // Program command line (e.g. "top -d1")
-    required string exe = 4; // Full executable name (e.g. "/bin/top")
-    optional string parentcomm = 5; // Name of the command that launched this one (e.g. "bash")
+    required string comm = 4; // Program executable name
+    required uint64 pid = 5; // Process pid
+    required uint64 ppid = 6; // Parent process pid
+    required uint64 uid = 7; // User ID
+    optional string cwd = 8; // Process' current working directory
+    optional uint64 login_shell_id = 9; // ID of the login shell (same as in the spy_users chisel)
+    optional uint32 login_shell_distance = 10; // Distance from the login shell (same as in the spy_users chisel)
 }
 
 //
@@ -597,6 +602,7 @@ message container {
     repeated network_by_port network_by_serverports = 22;
     optional string mesos_task_id = 23;
     optional string image_id = 24;
+    repeated command_details commands = 25; // List of commands executed in this container during the sample.
 }
 
 //
@@ -747,7 +753,7 @@ message metrics {
     // NEVER USED repeated process processes = 5; // The list of processes
     repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
     repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
-    repeated command_details commands = 17; // List of commands executed during the sample.
+    repeated command_details commands = 28; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
@@ -767,6 +773,10 @@ message dump_request_start {
     optional string filters = 5; // Dump filters
     optional uint64 max_size = 7; // Max size
     required string token = 6; // The token associated with the request
+    optional uint64 past_duration_ns = 8; // The duration before the current time to capture. 
+                                          // This works only if the agent has been configured with rotational capture 
+    optional uint64 past_size = 9; // The number of bytes already in the event circular buffer to capture.
+                                   // This works only if the agent has been configured with rotational capture 
 }
 
 message dump_request_stop {

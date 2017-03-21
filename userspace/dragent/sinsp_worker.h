@@ -32,6 +32,8 @@ public:
 		dump_job_request():
 			m_duration_ns(0),
 			m_max_size(0),
+			m_past_duration_ns(0),
+			m_past_size(0),
 			m_delete_file_when_done(true),
 			m_send_file(true)
 		{
@@ -41,6 +43,8 @@ public:
 		string m_token;
 		uint64_t m_duration_ns;
 		uint64_t m_max_size;
+		uint64_t m_past_duration_ns;
+		uint64_t m_past_size;
 		string m_filter;
 		bool m_delete_file_when_done;
 		bool m_send_file;
@@ -110,6 +114,8 @@ private:
 			m_start_ns(0),
 			m_duration_ns(0),
 			m_max_size(0),
+			m_past_duration_ns(0),
+			m_past_size(0),
 			m_fp(NULL),
 			m_file_size(0),
 			m_delete_file_when_done(true),
@@ -119,7 +125,8 @@ private:
 			m_last_chunk_idx(0),
 			m_last_keepalive_ns(0),
 			m_terminated(false),
-			m_error(false)
+			m_error(false),
+			m_memdumper_job(NULL)
 		{
 		}
 
@@ -149,6 +156,8 @@ private:
 		uint64_t m_start_ns;
 		uint64_t m_duration_ns;
 		uint64_t m_max_size;
+		uint64_t m_past_duration_ns;
+		uint64_t m_past_size;
 		string m_file;
 		FILE* m_fp;
 		uint64_t m_file_size;
@@ -161,6 +170,7 @@ private:
 		uint64_t m_last_keepalive_ns;
 		bool m_terminated;
 		bool m_error;
+		sinsp_memory_dumper_job* m_memdumper_job;
 	};
 
 	void init();
@@ -168,11 +178,14 @@ private:
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
 	void send_error(const string& token, const string& error);
 	void send_dump_chunks(dump_job_state* job);
-	void run_jobs(sinsp_evt* ev);
+	void run_standard_jobs(sinsp_evt* ev);
+	void check_memdump_jobs(sinsp_evt* ev);
 	void process_job_requests(uint64_t ts);
-	void flush_jobs(uint64_t ts);
-	void stop_job(dump_job_state* job);
-	void start_job(const dump_job_request& request, uint64_t ts);
+	void flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs, bool restore_drop_mode);
+	void stop_standard_job(dump_job_state* job);
+	void stop_memdump_job(dump_job_state* job);
+	void start_standard_job(const dump_job_request& request, uint64_t ts);
+	void start_memdump_job(const dump_job_request& request, uint64_t ts);
 	void read_chunk(dump_job_state* job);
 	void init_falco();
 
@@ -186,7 +199,8 @@ private:
 	sinsp_analyzer* m_analyzer;
 	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
-	vector<SharedPtr<dump_job_state>> m_running_dump_jobs;
+	vector<SharedPtr<dump_job_state>> m_running_standard_dump_jobs;
+	vector<SharedPtr<dump_job_state>> m_running_memdump_jobs;
 	uint64_t m_driver_stopped_dropping_ns;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
