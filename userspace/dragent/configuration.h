@@ -546,6 +546,7 @@ public:
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
+	bool m_command_lines_capture_all_commands;
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
 

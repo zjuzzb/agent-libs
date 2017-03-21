@@ -286,8 +286,14 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	if(!found_tty) {
-		return;
+	if(m_analyzer->m_command_lines_capture_all_commands) {
+		if(!login_shell_id) {
+			return;
+		}
+	} else {
+		if(!found_tty) {
+			return;
+		}
 	}
 
 	//

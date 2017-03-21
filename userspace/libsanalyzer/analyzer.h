@@ -583,6 +583,7 @@ VISIBILITY_PRIVATE
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 	bool m_command_lines_capture_enabled = false;
+	bool m_command_lines_capture_all_commands = false;
 
 	//
 	// Memory dump stuff

@@ -132,6 +132,8 @@ public:
 	void set_falco_baselining_enabled(bool enabled);
 	bool get_command_lines_capture_enabled() const;
 	void set_command_lines_capture_enabled(bool enabled);
+	bool get_command_lines_capture_all_commands() const;
+	void set_command_lines_capture_all_commands(bool all_commands);
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
@@ -203,6 +205,7 @@ private:
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
+	bool m_command_lines_capture_all_commands;
 	bool m_capture_dragent_events;
 	uint64_t m_memdump_size;
 

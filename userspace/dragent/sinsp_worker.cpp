@@ -246,6 +246,8 @@ void sinsp_worker::init()
 		g_log->information("Setting command lines capture");
 		m_analyzer->get_configuration()->set_command_lines_capture_enabled(
 			m_configuration->m_command_lines_capture_enabled);
+		m_analyzer->get_configuration()->set_command_lines_capture_all_commands(
+			m_configuration->m_command_lines_capture_all_commands);
 	}
 
 	if(m_configuration->m_capture_dragent_events)

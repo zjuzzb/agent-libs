@@ -31,6 +31,7 @@ sinsp_configuration::sinsp_configuration()
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
+	m_command_lines_capture_all_commands = false;
 	m_capture_dragent_events = false;
 }
 
@@ -213,6 +214,16 @@ bool sinsp_configuration::get_command_lines_capture_enabled() const
 void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
 {
 	m_command_lines_capture_enabled = enabled;
+}
+
+bool sinsp_configuration::get_command_lines_capture_all_commands() const
+{
+	return m_command_lines_capture_all_commands;
+}
+
+void sinsp_configuration::set_command_lines_capture_all_commands(bool all_commands)
+{
+	m_command_lines_capture_all_commands = all_commands;
 }
 
 bool sinsp_configuration::get_capture_dragent_events() const
