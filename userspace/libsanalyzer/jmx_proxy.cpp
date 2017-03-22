@@ -191,7 +191,7 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 		}
 		else if(log_excess)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metric limit exceeded: %s (%s).",
+			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metric over limit: %s (%s).",
 							it->name().c_str(), it->alias().c_str());
 		}
 		else { break; }

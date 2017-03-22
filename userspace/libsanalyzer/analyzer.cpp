@@ -2327,7 +2327,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						if(jmx_limit == 0)
 						{
 							g_logger.format(sinsp_logger::SEV_WARNING,
-								"JMX metrics reached limit (%u), remaining ones will be dropped", m_configuration->get_jmx_limit());
+								"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
 						}
 					}
 				}
@@ -2359,7 +2359,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 								{
 									if(m_log_excess)
 									{
-										g_logger.format(sinsp_logger::SEV_DEBUG, "app metric limit exceeded: %s",
+										g_logger.format(sinsp_logger::SEV_DEBUG, "app metric over limit: %s",
 														app_data.first.c_str());
 									}
 									else { break; }
@@ -5495,12 +5495,12 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 		{
 			if(!log_excess)
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "statsd metrics limit reached, skipping remaining ones");
+				g_logger.format(sinsp_logger::SEV_WARNING, "statsd metrics limit reached");
 				break;
 			}
 			else
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "statsd metric limit exceeded: %s", metric.name());
+				g_logger.format(sinsp_logger::SEV_DEBUG, "statsd metric over limit: %s", metric.name().c_str());
 				continue;
 			}
 		}

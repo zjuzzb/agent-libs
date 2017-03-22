@@ -47,7 +47,7 @@ void metric_limits::log()
 		os << "Metrics permission list:" << std::endl;
 		for(auto& c : m_cache)
 		{
-			os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
+			os << (c.second.get_allow() ? "+ included: " : "- excluded: ") << c.first << std::endl;
 		}
 		g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
 	}
