@@ -1,67 +1,154 @@
 #!/bin/bash
-#
 # Tool to collect log files for Sysdig Cloud Agent
 # www.sysdig.com
 #
 # (c) 2017 Sysdig Inc.
 #
 
-#set -exuo pipefail
+
+#   Slick Progress Bar
+#   Created by: Ian Brown (ijbrown@hotmail.com)
+
+# Functions
+PUT(){ echo -en "\033[${1};${2}H";}
+DRAW(){ echo -en "\033%";echo -en "\033(0";}
+WRITE(){ echo -en "\033(B";}
+HIDECURSOR(){ echo -en "\033[?25l";}
+NORM(){ echo -en "\033[?12l\033[?25h";}
+function showBar
+{
+    percDone=$(echo 'scale=2;'$1/$2*100 | bc)
+    halfDone=$(echo $percDone/2 | bc) #I prefer a half sized bar graph
+    barLen=$(echo ${percDone%'.00'})
+    halfDone=`expr $halfDone + 6`
+    tput bold
+    PUT 7 28; printf "%4.4s  " $barLen%     #Print the percentage
+    PUT 5 $halfDone;  echo -e "\033[7m \033[0m" #Draw the bar
+    tput sgr0
+}
+function showMessage
+{
+    PUT 8 10;
+    echo -e $1
+}
+# Start Script
+clear
+HIDECURSOR
+echo -e ""
+echo -e ""
+DRAW    #magic starts here - must use caps in draw mode
+echo -e "          PLEASE WAIT WHILE CREATING LOG BUNDLE"
+echo -e "    #####################################################"
+echo -e "    #                                                   #"
+echo -e "    #####################################################"
+WRITE
+#
+# Insert your script here
+
+currentProgress=0
+function progressBar()
+{
+    for (( i=1; i<=$1; i++ )) do
+        showBar $i 100
+    done
+    currentProgress=$1
+}
+
+
+function cleanExit()
+{
+    echo $1
+    NORM
+    exit 1
+}
 
 
 HOME_DIR="/opt/draios"
 LOG_DIR="$HOME_DIR/logs"
 ETC_DIR="$HOME_DIR/etc"
+CUSTOM_CHECKS_DIR="$HOME_DIR/lib/python/checks.custom.d"
 MACHINE_ID=
-LOG_TITLE="Agent starting"
 
+progressBar 1
 DATE=`date +%Y%m%d%H%m`
 if [ $? -ne 0 ]; then
-    echo "Cannot execute \`date\` command."
-    exit 1
+    cleanExit "Cannot execute \`date\` command."
 fi
+progressBar 2
+
+
+
 
 
 function verify_files()
 {
+    progressBar 5
+    showMessage "Parsing logs....."
     for entry in $LOG_DIR/*.log*; do
         if [ `grep -m 1 -E "[\d\.\,\:\-]+\ +Agent\ starting\ +\(version .+\)" $entry | wc -l` -ne 0 ]; then
+            progressBar 10
             return
         fi
     done
-    
-    echo "No prologue among the given log files."
-    exit 1
+
+    progressBar 10
+    cleanExit "No starting log message among the given log files."
 }
 
 
 function tarball()
 {
-    tar -cvf agent-bundle-$MACHINE_ID-$DATE.tar $LOG_DIR/*.log*
+    progressBar 11
+    showMessage "Archiving logs......"
+
+    tar -cvf agent-bundle-$MACHINE_ID-$DATE.tar $LOG_DIR/*.log* &>/dev/null
     if [ $? -ne 0 ]; then
-        echo "Cannot execute \`tar\`."
-        exit 1
+        progressBar 12
+        cleanExit "Cannot execute \`tar\`."
     fi
 
-    tar -uvf agent-bundle-$MACHINE_ID-$DATE.tar $ETC_DIR/*
+    progressBar 50
+    showMessage "Archiving configuration files..."
+    tar -uvf agent-bundle-$MACHINE_ID-$DATE.tar $ETC_DIR/* &>/dev/null
     if [ $? -ne 0 ]; then
-        echo "Cannot execute \`tar\`."
-        exit 1
+        cleanExit "Cannot execute \`tar\`."
     fi
+    progressBar 60
 
-    bzip2 agent-bundle-$MACHINE_ID-$DATE.tar
+    # tar -uvf agent-bundle-$MACHINE_ID-$DATE.tar $CUSTOM_CHECKS_DIR/*
+    # if [ $? -ne 0 ]; then
+    #     echo "Cannot execute \`tar\`."
+    #     exit 1
+    # fi
+    # for (( i=60; i<=70; i++ )) do
+    #     showBar $i 100
+    # done
+
+    showMessage "Compressing archive............."
+    bzip2 agent-bundle-$MACHINE_ID-$DATE.tar &>/dev/null
     if [ $? -ne 0 ]; then
-        echo "Cannot execute \`bzip2\`."
-        exit 1
+        progressBar 65
+        cleanExit "Cannot execute \`bzip2\`."
     fi
+    progressBar 100
 }
 
 
-
+progressBar 3
 if [[ `grep -i "machine id" -m 1 $LOG_DIR/*.log*` =~ .*machine\ id\:\ *(.*) ]]; then
     MACHINE_ID=${BASH_REMATCH[1]//\:/}
 fi
+progressBar 4
+
+showMessage "Script started..."
 
 verify_files
 tarball
 
+
+# End of your script
+# Clean up at end of script
+PUT 10 12
+echo -e ""
+NORM
+exit 0
