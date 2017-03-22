@@ -168,6 +168,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_mesos_last_failure_ns = 0;
 	m_last_mesos_refresh = 0;
+
+	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -3288,6 +3290,16 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
+				// TODO: TVO Replace with grpc
+				static posix_queue p("/test", posix_queue::RECEIVE, 1);
+				string message = p.receive();
+				if(!message.empty())
+				{
+					g_logger.format(sinsp_logger::SEV_INFO, "Received Swarm size=%d", message.size());
+					m_docker_swarm_state->ParseFromString(message);
+				}
+				m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
+
 				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();
 				if(m_mounted_fs_proxy)
