@@ -133,7 +133,13 @@ TEST(metric_limits, cache)
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(1u, ml.cached());
 	EXPECT_FALSE(ml.allow(metric));
-	
+
+	// must not log yet
+	std::ostringstream os;
+	ASSERT_TRUE(os.str().empty());
+	ml.log(os);
+	EXPECT_TRUE(os.str().empty());
+
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_TRUE(ml.allow(metric));
@@ -155,18 +161,32 @@ TEST(metric_limits, cache)
 	EXPECT_EQ(3u, ml.cached());
 	EXPECT_TRUE(ml.allow(metric));
 
-	// check logging happens
+	// make sure logging happens after sufficient sleep
 	std::cout << "Wait " << ml.cache_log_seconds() + 1 << "s for log to expire ..." << std::endl;
 	sleep(ml.cache_expire_seconds() + 1);
-	std::ostringstream os;
-	EXPECT_TRUE(os.str().empty());
+	os.str("");
+	ASSERT_TRUE(os.str().empty());
 	ml.log(os);
-	ASSERT_FALSE(os.str().empty());
+	EXPECT_FALSE(os.str().empty());
 	EXPECT_TRUE(os.str().find("Metrics permission list:\n") != std::string::npos);
 	EXPECT_TRUE(os.str().find("redis.keys: excluded\n") != std::string::npos);
 	EXPECT_TRUE(os.str().find("haproxy.backend.request: included\n") != std::string::npos);
 	EXPECT_TRUE(os.str().find("haproxy.frontend.bytes: excluded\n") != std::string::npos);
-	std::cout << os.str() << std::endl;
+	std::cout << "Logged:\n" << os.str() << std::endl;
+
+	// now make sure logging does not happen again
+	os.str("");
+	ASSERT_TRUE(os.str().empty());
+	ml.log(os);
+	EXPECT_TRUE(os.str().empty());
+
+	// and then it happens again after sufficient sleep
+	std::cout << "Wait again " << ml.cache_log_seconds() + 1 << "s for log to expire ..." << std::endl;
+	sleep(ml.cache_expire_seconds() + 1);
+	os.str("");
+	ASSERT_TRUE(os.str().empty());
+	ml.log(os);
+	EXPECT_FALSE(os.str().empty());
 
 	// check cache is purged
 	std::cout << "Wait " << ml.cache_expire_seconds() + 1 << "s for cache to expire ..." << std::endl;

@@ -9,14 +9,24 @@
 #include <iostream>
 
 #ifdef HAS_ANALYZER
+#include "sinsp.h"
+#include "sinsp_int.h"
+#include "analyzer_settings.h"
+#define ML_CACHE_SIZE STATSD_METRIC_HARD_LIMIT + APP_METRICS_HARD_LIMIT + 2*JMX_METRICS_HARD_LIMIT + 1000
 
-// suppress depreacated warnings for auto_ptr in boost
+// suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
 
+#else
+
+#define ML_CACHE_SIZE 9000
+
 #endif // HAS_ANALYZER
+
+
 
 class metrics_filter
 {
@@ -100,7 +110,7 @@ public:
 
 	metric_limits() = delete;
 	metric_limits(metrics_filter_vec filters,
-				  uint64_t max_entries = 3000,
+				  uint64_t max_entries = ML_CACHE_SIZE,
 				  uint64_t expire_seconds = 86400,
 				  unsigned log_seconds = 300);
 
@@ -135,33 +145,27 @@ public:
 	static void optimize_exclude_all(metrics_filter_vec& filter);
 
 	// for testing purposes only
-	void log(std::ostream& os, bool force = false)
-	{
-		if(force || (last_log() > m_log_seconds))
-		{
-			os << "Metrics permission list:" << std::endl;
-			for(auto& c : m_cache)
-			{
-				os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
-			}
-		}
-	}
+	void log(std::ostream& os);
+
+	void set_first_log();
 
 private:
 	void insert(const std::string& metric, bool value, int pos);
-	double last_purge() const;
+	double secs_since_last_purge() const;
 	uint64_t purge_limit();
 
-	double last_log() const;
+	bool log_time() const;
+	double secs_since_last_log() const;
 	void log();
 
 	metrics_filter_vec m_filters;
 	map_t m_cache;
-	uint64_t m_max_entries = 6000;
+	uint64_t m_max_entries = ML_CACHE_SIZE;
 	time_t m_last_purge = 0;
 	uint64_t m_purge_seconds = 86400; // 24hr
 	time_t m_last_log = 0;
 	unsigned m_log_seconds = 300; // 5min
+	bool m_first_log = false;
 };
 
 inline bool metric_limits::first_includes_all(metrics_filter_vec v)
@@ -205,16 +209,26 @@ inline uint64_t metric_limits::purge_limit()
 	return static_cast<uint64_t>(round((double)m_max_entries * 2 / 3));
 }
 
-inline double metric_limits::last_purge() const
+inline double metric_limits::secs_since_last_purge() const
 {
 	time_t now; time(&now);
 	return difftime(now, m_last_purge);
 }
 
-inline double metric_limits::last_log() const
+inline bool metric_limits::log_time() const
+{
+	return secs_since_last_log() > m_log_seconds || m_first_log;
+}
+
+inline double metric_limits::secs_since_last_log() const
 {
 	time_t now; time(&now);
 	return difftime(now, m_last_log);
+}
+
+inline void metric_limits::set_first_log()
+{
+	m_first_log = true;
 }
 
 inline uint64_t metric_limits::cache_max_entries() const

@@ -334,7 +334,7 @@ TEST_F(jmx_proxy_f, limits)
 	auto pid = metrics.begin()->second;
 
 	unsigned limit = 3000;
-	limit -= pid.to_protobuf(app, 1, limit);
+	limit -= pid.to_protobuf(app, 1, limit, false);
 	ASSERT_TRUE(limit);
 
 	EXPECT_EQ(31u, app->beans().size());
@@ -345,7 +345,7 @@ TEST_F(jmx_proxy_f, limits)
 	app->clear_beans();
 
 	limit = 1;
-	limit -= pid.to_protobuf(app, 1, limit);
+	limit -= pid.to_protobuf(app, 1, limit, false);
 
 	ASSERT_EQ(0, limit);
 	EXPECT_EQ(1, app->beans().size());
@@ -353,7 +353,7 @@ TEST_F(jmx_proxy_f, limits)
 	app->clear_beans();
 
 	limit = 2;
-	limit -= pid.to_protobuf(app, 1, limit);
+	limit -= pid.to_protobuf(app, 1, limit, false);
 
 	ASSERT_EQ(0, limit);
 	EXPECT_EQ(1, app->beans().size());
@@ -363,7 +363,7 @@ TEST_F(jmx_proxy_f, limits)
 	limit = 3;
 	do
 	{
-		limit -= pid.to_protobuf(app, 1, limit);
+		limit -= pid.to_protobuf(app, 1, limit, false);
 	} while (limit);
 
 	ASSERT_EQ(0, limit);

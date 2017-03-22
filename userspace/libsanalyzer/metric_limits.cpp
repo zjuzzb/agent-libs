@@ -1,8 +1,4 @@
 #include "metric_limits.h"
-#ifdef HAS_ANALYZER
-#include "sinsp.h"
-#include "sinsp_int.h"
-#endif // HAS_ANALYZER
 #include <fnmatch.h>
 #include <limits>
 
@@ -59,9 +55,23 @@ void metric_limits::log()
 	time(&m_last_log);
 }
 
+// for testing purposes only
+void metric_limits::log(std::ostream& os)
+{
+	if(log_time())
+	{
+		os << "Metrics permission list:" << std::endl;
+		for(auto& c : m_cache)
+		{
+			os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
+		}
+		time(&m_last_log);
+	}
+}
+
 bool metric_limits::allow(const std::string& metric, int* pos)
 {
-	if(last_log() > m_log_seconds) { log(); }
+	if(log_time()) { log(); }
 	auto found = m_cache.find(metric);
 	if(found != m_cache.end())
 	{
@@ -112,7 +122,7 @@ void metric_limits::insert(const std::string& metric, bool value, int pos)
 
 void metric_limits::purge_cache()
 {
-	if(m_cache.size() > purge_limit() && last_purge() > m_purge_seconds)
+	if(m_cache.size() > purge_limit() && secs_since_last_purge() > m_purge_seconds)
 	{
 	// Note: in theory, this is not guaranteed by standard to work before C++14
 	// In practice, however, all relevant C++11 implementations honor the preservation

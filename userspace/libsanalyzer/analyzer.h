@@ -282,6 +282,7 @@ public:
 			ASSERT(!m_metric_limits);
 			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
 			{
+				//g_logger.log("creating metric_limits");
 				m_metric_limits.reset(new metric_limits(mf));
 			}
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
@@ -377,6 +378,16 @@ public:
 	void disable_falco();
 
 	void set_emit_tracers(bool enabled);
+
+	// returns true when it's time to log skipped metrics
+	// (default 5 minutes)
+	// always returns false for log levels < debug
+	static bool log_excess_metrics(int interval = 300);
+	// we need this flag to allow first-time logs for multiple
+	// metrics; otherwise, the internal timestamp will get
+	// updated on the very first call, and subsequent
+	// calls won't happen until interval expires
+	static bool m_force_excess_metric_log;
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);

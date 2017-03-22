@@ -322,19 +322,15 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 	}
 }
 
-uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limit) const
+void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit) const
 {
+	if(limit == 0) { return; }
 	// Right now process name is not used by backend
 	//proto->set_process_name(m_process_name);
-	uint16_t limit_used = 0;
 	for(const auto& m : m_metrics)
 	{
-		if(limit_used >= limit)
-		{
-			break;
-		}
 		m.to_protobuf(proto->add_metrics());
-		++limit_used;
+		if(--limit == 0) { return; }
 	}
 	/*
 	 * Right now service checks are not supported by the backend
@@ -342,14 +338,9 @@ uint16_t app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t limi
 	 */
 	for(const auto& s : m_service_checks)
 	{
-		if(limit_used >= limit)
-		{
-			break;
-		}
 		s.to_protobuf_as_metric(proto->add_metrics());
-		++limit_used;
+		if(--limit == 0) { return; }
 	}
-	return limit_used;
 }
 
 app_metric::app_metric(const Json::Value &obj):
