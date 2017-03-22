@@ -178,7 +178,12 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // Determines if falco baselining is going to happen by default
 //
-#define FALCO_BASELINING_ENABLED true
+#define FALCO_BASELINING_ENABLED false
+
+//
+// Determines if command lines capture is going to happen by default
+//
+#define COMMAND_LINES_CAPTURE_ENABLED false
 
 //
 // Falco baseline emit interval
@@ -230,8 +235,6 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 #else
 5*60; // 5 minutes
 #endif
-
-static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
 
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
 static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;

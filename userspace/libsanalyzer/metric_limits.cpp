@@ -53,6 +53,11 @@ void metric_limits::log()
 	}
 #endif // HAS_ANALYZER
 	time(&m_last_log);
+	// this can be the reason for log only once
+	if(m_first_log)
+	{
+		m_first_log = false;
+	}
 }
 
 // for testing purposes only

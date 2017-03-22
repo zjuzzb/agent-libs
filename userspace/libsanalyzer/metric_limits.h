@@ -217,7 +217,7 @@ inline double metric_limits::secs_since_last_purge() const
 
 inline bool metric_limits::log_time() const
 {
-	return secs_since_last_log() > m_log_seconds || m_first_log;
+	return (secs_since_last_log() > m_log_seconds) || m_first_log;
 }
 
 inline double metric_limits::secs_since_last_log() const

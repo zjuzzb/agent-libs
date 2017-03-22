@@ -16,6 +16,8 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
+#include "memdumper.h"
+
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
@@ -129,10 +131,15 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	string m_comm;
-	string m_parent_comm;
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
+    string m_comm; // program executable name
+    uint64_t m_pid; // process pid
+    uint64_t m_ppid; // parent process pid
+    uint64_t m_uid; // user ID
+    string m_cwd; // process' current working directory
 };
 
 #ifndef _WIN32
@@ -376,6 +383,15 @@ public:
 			  double sampling_multiplier);
 
 	void disable_falco();
+	bool is_memdump_active()
+	{
+		return m_do_memdump;
+	}
+
+	sinsp_memory_dumper* get_memory_dumper()
+	{
+		return m_memdumper;
+	}
 
 	void set_emit_tracers(bool enabled);
 
@@ -438,7 +454,7 @@ VISIBILITY_PRIVATE
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-	void emit_executed_commands();
+	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();
 
 #ifndef _WIN32
@@ -566,7 +582,7 @@ VISIBILITY_PRIVATE
 	//
 	// Command list
 	//
-	vector<sinsp_executed_command> m_executed_commands;
+	unordered_map<string, vector<sinsp_executed_command> > m_executed_commands;
 
 	//
 	// Container metrics
@@ -595,8 +611,14 @@ VISIBILITY_PRIVATE
 	// Falco stuff
 	//
 	sisnp_baseliner* m_falco_baseliner = NULL;
-	bool m_do_baseline_calculation;
+	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
+	bool m_command_lines_capture_enabled = false;
+
+	//
+	// Memory dump stuff
+	//
+	bool m_do_memdump = false;
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -658,6 +680,8 @@ VISIBILITY_PRIVATE
 	bool m_has_docker;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
+
+	sinsp_memory_dumper* m_memdumper = NULL;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

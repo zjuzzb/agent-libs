@@ -139,6 +139,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_falco_baseliner = new sisnp_baseliner();
 
+	m_memdumper = NULL;
+
 	//
 	// Listeners
 	//
@@ -213,6 +215,11 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_falco_baseliner;
 	}
 
+	if(m_memdumper != NULL)
+	{
+		delete m_memdumper;
+	}
+
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -224,6 +231,11 @@ void sinsp_analyzer::on_capture_start()
 	{
 		throw sinsp_exception("analyzer can be opened only once");
 	}
+
+	//
+	// Allocate the memory dumprt
+	//
+	m_memdumper = new sinsp_memory_dumper(m_inspector, m_configuration->get_capture_dragent_events());
 
 	//
 	// Start dropping of non-critical events
@@ -296,6 +308,22 @@ void sinsp_analyzer::on_capture_start()
 	//
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	m_falco_baseliner->init(m_inspector);
+
+	//
+	// If required, enable the command line captures
+	//
+	m_command_lines_capture_enabled	= m_configuration->get_command_lines_capture_enabled();
+
+	//
+	// Enable memery dump
+	//
+	uint64_t memdump_size = m_configuration->get_memdump_size();
+	m_do_memdump = (memdump_size != 0);
+	if(m_do_memdump)
+	{
+		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
+		m_memdumper->init(memdump_size, memdump_size, 300LL * 1000000000LL);
+	}
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -1473,10 +1501,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				for (auto it2 = it->second.begin(); it2 != it->second.end();)
 				{
 					auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
-					if(flush_time_s > it2->second.expiration_ts() &&
-						flush_time_s - it2->second.expiration_ts() > APP_METRICS_EXPIRATION_TIMEOUT_S)
+					if(flush_time_s >= it2->second.expiration_ts())
 					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "App metrics for pid %d,%s expired %u s ago, forcing wipe", it->first, it2->first.c_str(), flush_time_s - it2->second.expiration_ts());
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Wiping expired app metrics for pid %d,%s", it->first, it2->first.c_str());
 						it2 = it->second.erase(it2);
 					}
 					else
@@ -1850,29 +1877,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
 
-				if (!app_checks.empty()) {
+				if (!app_checks.empty())
+				{
 					auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
 
 					for (auto& appcheck : app_checks)
 					{
-						bool current = false;
-
-						if (app_metrics_pid != m_app_metrics.end())
+						if ((app_metrics_pid != m_app_metrics.end()) &&
+							(app_metrics_pid->second.find(appcheck.name()) !=
+							app_metrics_pid->second.end()))
 						{
-							auto app_met_it = app_metrics_pid->second.find(appcheck.name());
-							if ((app_met_it != app_metrics_pid->second.end()) &&
-								(app_met_it->second.expiration_ts() >
-								(m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
-							{
-								current = true;
-
-								// Found metrics for this pid and name that are not expired
-								// so we can use them instead of running the check again
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"App metrics for %d,%s are still good", tinfo->m_pid, appcheck.name().c_str());
-							}
+							// Found metrics for this pid and name that haven't
+							// been expired (or they would have been erased) so
+							// we use them instead of running the check again
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"App metrics for %d,%s are still good",
+								tinfo->m_pid, appcheck.name().c_str());
 						}
-						if (!current)
+						else
 						{
 							app_checks_processes.push_back(move(appcheck));
 						}
@@ -2315,7 +2337,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				else if(log_excess_metrics())
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"All app metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
+						"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
 				}
 			}
 			if(m_app_proxy)
@@ -2332,7 +2354,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							if (app_data_set.find(app_data.first) == app_data_set.end())
 							{
 								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"Found app metrics for %d,%s", tinfo->m_pid, app_data.first.c_str());
+									"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
+									app_data.first.c_str(), app_data.second.expiration_ts() -
+									(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
 								app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
 								if(app_checks_limit == 0)
 								{
@@ -2348,10 +2372,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							}
 							else
 							{
-								// Unlikely to happen
-								g_logger.format(sinsp_logger::SEV_INFO,
-									"Skipping duplicate app metrics for %d(%d),%s",
-										tinfo->m_pid, pid, app_data.first.c_str());
+								g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
+										tinfo->m_pid, pid, app_data.first.c_str(),
+										app_data.second.expiration_ts() -
+										(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
 							}
 						}
 						if(app_checks_limit == 0 && !log_excess) { break; }
@@ -2999,23 +3024,24 @@ bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_execute
 	return (src.m_ts < dst.m_ts);
 }
 
-void sinsp_analyzer::emit_executed_commands()
+void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands)
 {
 	uint32_t j;
 	int32_t last_pipe_head = -1;
 
-	if(m_executed_commands.size() != 0)
+	if(commands->size() != 0)
 	{
-		sort(m_executed_commands.begin(),
-			m_executed_commands.end(),
+		sort(commands->begin(),
+			commands->end(),
 			executed_command_cmp);
 
+#if 0
 		//
 		// Consolidate command with pipes
 		//
-		for(j = 0; j < m_executed_commands.size(); j++)
+		for(j = 0; j < commands->size(); j++)
 		{
-			uint32_t flags = m_executed_commands[j].m_flags;
+			uint32_t flags = commands->at(j).m_flags;
 
 			if(flags & sinsp_executed_command::FL_PIPE_HEAD)
 			{
@@ -3025,9 +3051,9 @@ void sinsp_analyzer::emit_executed_commands()
 			{
 				if(last_pipe_head != -1)
 				{
-					m_executed_commands[last_pipe_head].m_cmdline += " | ";
-					m_executed_commands[last_pipe_head].m_cmdline += m_executed_commands[j].m_cmdline;
-					m_executed_commands[j].m_flags |= sinsp_executed_command::FL_EXCLUDED;
+					commands->at(last_pipe_head).m_cmdline += " | ";
+					commands->at(last_pipe_head).m_cmdline += commands->at(j).m_cmdline;
+					commands->at(j).m_flags |= sinsp_executed_command::FL_EXCLUDED;
 				}
 				else
 				{
@@ -3040,6 +3066,7 @@ void sinsp_analyzer::emit_executed_commands()
 				}
 			}
 		}
+#endif
 
 		//
 		// If there are too many commands, try to aggregate by command line
@@ -3048,7 +3075,7 @@ void sinsp_analyzer::emit_executed_commands()
 
 		vector<sinsp_executed_command>::iterator it;
 
-		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		for(it = commands->begin(); it != commands->end(); ++it)
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
@@ -3060,7 +3087,7 @@ void sinsp_analyzer::emit_executed_commands()
 		{
 			map<string, sinsp_executed_command*> cmdlines;
 
-			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+			for(it = commands->begin(); it != commands->end(); ++it)
 			{
 				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 				{
@@ -3083,7 +3110,7 @@ void sinsp_analyzer::emit_executed_commands()
 		//
 		cmdcnt = 0;
 
-		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		for(it = commands->begin(); it != commands->end(); ++it)
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
@@ -3095,7 +3122,7 @@ void sinsp_analyzer::emit_executed_commands()
 		{
 			map<string, sinsp_executed_command*> exes;
 
-			for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+			for(it = commands->begin(); it != commands->end(); ++it)
 			{
 				if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 				{
@@ -3115,7 +3142,7 @@ void sinsp_analyzer::emit_executed_commands()
 		}
 
 		cmdcnt = 0;
-		for(it = m_executed_commands.begin(); it != m_executed_commands.end(); ++it)
+		for(it = commands->begin(); it != commands->end(); ++it)
 		{
 			if(!(it->m_flags & sinsp_executed_command::FL_EXCLUDED))
 			{
@@ -3126,22 +3153,37 @@ void sinsp_analyzer::emit_executed_commands()
 					break;
 				}
 
-				draiosproto::command_details* cd = m_metrics->add_commands();
+				draiosproto::command_details* cd;
 
-				cd->set_timestamp(it->m_ts);
-				cd->set_exe(it->m_exe);
-				if(it->m_parent_comm != "")
+				if(host_dest)
 				{
-					cd->set_parentcomm(it->m_parent_comm);
-				}
-				cd->set_count(it->m_count);
-
-				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
-				{
-					cd->set_cmdline(it->m_comm);
+					ASSERT(container_dest == NULL);
+					cd = host_dest->add_commands();
 				}
 				else
 				{
+					ASSERT(host_dest == NULL);
+					ASSERT(container_dest != NULL);
+					cd = container_dest->add_commands();
+				}					
+
+				cd->set_timestamp(it->m_ts);
+				cd->set_count(it->m_count);
+				cd->set_login_shell_id(it->m_shell_id);
+				cd->set_login_shell_distance(it->m_login_shell_distance);
+				cd->set_comm(it->m_comm);
+				cd->set_pid(it->m_pid);
+				cd->set_ppid(it->m_ppid);
+				cd->set_uid(it->m_uid);
+				cd->set_cwd(it->m_cwd);
+
+				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
+				{
+					cd->set_cmdline(it->m_exe);
+				}
+				else
+				{
+//fprintf(stderr, "%ld) %s\n", it->m_pid, it->m_cmdline.c_str());
 					cd->set_cmdline(it->m_cmdline);
 				}
 			}
@@ -3473,9 +3515,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			double loadavg[3] = {0};
 			if(getloadavg(loadavg, 3) != -1)
 			{
-				m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
-				m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
-				m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
+				if(m_inspector->is_live())
+				{
+					m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
+					m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
+					m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
+				}
 			}
 			else
 			{
@@ -3553,7 +3598,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Executed commands
 			//
-			//emit_executed_commands();
+			if(m_command_lines_capture_enabled)
+			{
+				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
+			}
 
 			//
 			// Kubernetes
@@ -3780,13 +3828,17 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// notify metric limits that it's ok to do the first log dump
 			// in the next cycle and disable forced logging of excess metrics
-			// used in the first cycle
+			// used in the first cycles
 			//
+			static int cycle_counter = 0;
 			if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
 			{
-				ASSERT(m_metric_limits);
-				m_metric_limits->set_first_log();
-				m_force_excess_metric_log = false;
+				if(++cycle_counter == 10)
+				{
+					ASSERT(m_metric_limits);
+					m_metric_limits->set_first_log();
+					m_force_excess_metric_log = false;
+				}
 			}
 		}
 	}
@@ -4141,6 +4193,21 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	if(evt == NULL)
 	{
 		return;
+	}
+
+	//
+	// If required, dump the event in the memory circular buffer
+	//
+	if(m_do_memdump)
+	{
+		m_memdumper->process_event(evt);
+
+		if(m_inspector->m_flush_memory_dump)
+		{
+			m_memdumper->push_notification(evt->get_ts(), evt->get_tid(), to_string(evt->get_num()), "dump triggered by agent engine");
+			m_memdumper->to_file_multi("sinsp", evt->get_ts());
+			m_inspector->m_flush_memory_dump = false;
+		}
 	}
 
 	//
@@ -5374,6 +5441,16 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			auto proto_fs = container->add_mounts();
 			it->to_protobuf(proto_fs);
 		}
+	}
+
+	//
+	// Emit the executed commands for this container
+	//
+	auto ecit = m_executed_commands.find(container_id);
+
+	if(ecit != m_executed_commands.end())
+	{
+		emit_executed_commands(NULL, container, &(ecit->second));
 	}
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
