@@ -159,28 +159,28 @@ void cointerface_parser::operator()(const string& data)
 		unsigned pid = cointerface_log["pid"].asUInt();
 		string log_level = cointerface_log["level"].asString();
 		string log_message = "cointerface[" + to_string(pid) + "]: " + cointerface_log["message"].asString();
-		if(log_level == "Trace")
+		if(log_level == "trace")
 		{
 			g_log->trace(log_message);
-		} else if(log_level == "Debug")
+		} else if(log_level == "debug")
 		{
 			g_log->debug(log_message);
-		} else if(log_level == "Info")
+		} else if(log_level == "info")
 		{
 			g_log->information(log_message);
-		} else if(log_level == "Warn")
+		} else if(log_level == "warn")
 		{
 			g_log->warning(log_message);
-		} else if(log_level == "Error")
+		} else if(log_level == "error")
 		{
 			g_log->error(log_message);
-		} else if(log_level == "Critical")
+		} else if(log_level == "critical")
 		{
 			g_log->critical(log_message);
 		} else {
 			// Shouldn't happen, but just in case
 			assert(false);
-			g_log->critical("Unparsable log level: " + log_message);
+			g_log->critical("Unparsable log level: " + data);
 		}
 	}
 	else
