@@ -175,20 +175,24 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 
 unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, bool log_excess) const
 {
-	proto_bean->mutable_name()->assign(m_name);
+	if(proto_bean)
+	{
+		proto_bean->mutable_name()->assign(m_name);
+	}
 	unsigned emitted_attributes = 0;
 	for(auto it = m_attributes.cbegin(); it != m_attributes.cend(); ++it)
 	{
 		if(limit > emitted_attributes)
 		{
+			ASSERT(proto_bean);
 			draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
 			it->to_protobuf(attribute_proto, sampling);
 			emitted_attributes += 1;
 		}
 		else if(log_excess)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metric %s (%s) exceeds limit, will not be emitted.",
-														it->name().c_str(), it->alias().c_str());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metric limit exceeded: %s (%s).",
+							it->name().c_str(), it->alias().c_str());
 		}
 		else { break; }
 	}
@@ -222,12 +226,9 @@ unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigne
 		}
 		else if(log_excess)
 		{
-			draiosproto::java_info dummy_proto;
-			draiosproto::jmx_bean* dummy_protobean = dummy_proto.add_beans();
-			bean_it->to_protobuf(dummy_protobean, sampling, 0, log_excess);
-			dummy_proto.clear_beans();
-			dummy_proto.Clear();
+			bean_it->to_protobuf(nullptr, 0, 0, log_excess);
 		}
+		else { break; }
 	}
 	return emitted_attributes;
 }

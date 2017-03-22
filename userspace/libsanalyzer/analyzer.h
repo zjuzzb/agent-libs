@@ -396,14 +396,10 @@ public:
 	void set_emit_tracers(bool enabled);
 
 	// returns true when it's time to log skipped metrics
-	// (default 5 minutes)
+	// (default 30 seconds)
 	// always returns false for log levels < debug
-	static bool log_excess_metrics(int interval = 300);
-	// we need this flag to allow first-time logs for multiple
-	// metrics; otherwise, the internal timestamp will get
-	// updated on the very first call, and subsequent
-	// calls won't happen until interval expires
-	static bool m_force_excess_metric_log;
+	static bool log_excess_metrics(int interval = 30);
+	bool m_log_excess = false;
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
@@ -459,7 +455,7 @@ VISIBILITY_PRIVATE
 
 #ifndef _WIN32
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-						   unsigned limit);
+						   unsigned limit, bool log_excess);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}

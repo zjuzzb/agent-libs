@@ -147,6 +147,7 @@ public:
 	// for testing purposes only
 	void log(std::ostream& os);
 
+	double secs_since_creation() const;
 	void set_first_log();
 
 private:
@@ -224,6 +225,11 @@ inline double metric_limits::secs_since_last_log() const
 {
 	time_t now; time(&now);
 	return difftime(now, m_last_log);
+}
+
+inline double metric_limits::secs_since_creation() const
+{
+	return secs_since_last_log();
 }
 
 inline void metric_limits::set_first_log()
