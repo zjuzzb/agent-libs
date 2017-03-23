@@ -13,10 +13,13 @@
 #include "monitor.h"
 #include "utils.h"
 #include <gperftools/malloc_extension.h>
+#include <grpc/support/log.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <procfs_parser.h>
 #include <sys/resource.h>
+
+using namespace std;
 
 static void g_signal_callback(int sig)
 {
@@ -178,6 +181,37 @@ void dragent_app::displayHelp()
 	helpFormatter.format(std::cout);
 }
 
+static void dragent_gpr_log(gpr_log_func_args *args)
+{
+	// If logging hasn't been set up yet, skip the message. Add an
+	// ASSSERT so we'll notice for dev builds, though.
+	ostringstream os;
+
+	if (!g_log)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	os << "GRPC: [" << args->file << ":" << args->line << "] " << args->message;
+
+	switch (args->severity)
+	{
+	case GPR_LOG_SEVERITY_DEBUG:
+		g_log->debug(os.str());
+		break;
+	case GPR_LOG_SEVERITY_INFO:
+		g_log->information(os.str());
+		break;
+	case GPR_LOG_SEVERITY_ERROR:
+		g_log->error(os.str());
+		break;
+	default:
+		g_log->debug(os.str());
+		break;
+	}
+}
+
 int dragent_app::main(const std::vector<std::string>& args)
 {
 	if(m_help_requested)
@@ -191,6 +225,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		printf(AGENT_VERSION "\n");
 		return Application::EXIT_OK;
 	}
+
+	//
+	// Set up logging with grpc.
+	//
+	gpr_set_log_function(dragent_gpr_log);
 
 	//
 	// Make sure the agent never creates world-writable files
