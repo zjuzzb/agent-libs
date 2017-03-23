@@ -576,6 +576,8 @@ public:
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
 
+	bool m_cointerface_enabled;
+
 	bool java_present()
 	{
 		return !m_java_binary.empty();

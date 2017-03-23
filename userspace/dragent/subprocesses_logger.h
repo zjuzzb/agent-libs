@@ -22,6 +22,11 @@ public:
 		return m_error_fd;
 	}
 
+	FILE* get_out_fd()
+	{
+		return m_output_fd;
+	}
+
 	// Attach pipes to child STDIN, STDOUT and STDERR
 	void attach_child_stdio();
 	int inpipe_size() const
@@ -78,6 +83,14 @@ private:
 };
 
 class sdjagent_parser
+{
+public:
+	void operator()(const string&);
+private:
+	Json::Reader m_json_reader;
+};
+
+class cointerface_parser
 {
 public:
 	void operator()(const string&);
