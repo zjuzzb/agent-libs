@@ -225,40 +225,4 @@ TEST_F(app_checks_proxy_f, limits)
 	} while(app_checks_limit > 1);
 	ASSERT_EQ(1, app_checks_limit);
 	EXPECT_EQ(32U, app->metrics().size());
-/*
-	// test the function determining whether to
-	// log excess metrics
-	g_logger.set_severity(sinsp_logger::SEV_DEBUG);
-	// make sure we get the default forced true multiple times,
-	// until we reset the flag to switch to timed operation
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics());
-	g_logger.set_severity(sinsp_logger::SEV_INFO);
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	g_logger.set_severity(sinsp_logger::SEV_DEBUG);
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics());
-	sinsp_analyzer::m_force_excess_metric_log = false;
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	// now make sure timed operation works as expected
-	sleep(2);
-	// default is 300 seconds, so this must be false
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	// but 1 second interval must pass
-	EXPECT_TRUE(sinsp_analyzer::log_excess_metrics(1));
-
-	// make sure lower log level is no-op
-	g_logger.set_severity(sinsp_logger::SEV_INFO);
-	sinsp_analyzer::m_force_excess_metric_log = true;
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	sinsp_analyzer::m_force_excess_metric_log = false;
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	sleep(2);
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics());
-	EXPECT_FALSE(sinsp_analyzer::log_excess_metrics(1));*/
 }
