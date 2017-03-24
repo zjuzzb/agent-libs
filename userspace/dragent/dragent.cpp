@@ -715,6 +715,11 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_configuration.m_cointerface_enabled)
 	{
+		if(!m_coclient) {
+			// Actually allocate the coclient object
+			m_coclient = make_unique<coclient>();
+		}
+
 		// Ping every 5 seconds. If it's ever more than
 		// watchdog_cointerface_timeout_s seconds from a pong,
 		// declare it stuck and kill it.
@@ -736,11 +741,11 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 				}
 			};
 
-			m_coclient.ping(time(NULL), callback);
+			m_coclient->ping(time(NULL), callback);
 		});
 
 		// Try to read any responses
-		m_coclient.next();
+		m_coclient->next();
 	}
 
 	uint64_t memory;
