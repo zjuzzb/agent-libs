@@ -149,6 +149,47 @@ void sdjagent_parser::operator()(const string& data)
 	}
 }
 
+void cointerface_parser::operator()(const string& data)
+{
+	// Parse log level and use it
+	Json::Value cointerface_log;
+	bool parsing_ok = m_json_reader.parse(data, cointerface_log, false);
+	if(parsing_ok && cointerface_log.isObject())
+	{
+		unsigned pid = cointerface_log["pid"].asUInt();
+		string log_level = cointerface_log["level"].asString();
+		string log_message = "cointerface[" + to_string(pid) + "]: " + cointerface_log["message"].asString();
+		if(log_level == "trace")
+		{
+			g_log->trace(log_message);
+		} else if(log_level == "debug")
+		{
+			g_log->debug(log_message);
+		} else if(log_level == "info")
+		{
+			g_log->information(log_message);
+		} else if(log_level == "warn")
+		{
+			g_log->warning(log_message);
+		} else if(log_level == "error")
+		{
+			g_log->error(log_message);
+		} else if(log_level == "critical")
+		{
+			g_log->critical(log_message);
+		} else {
+			// Shouldn't happen, but just in case
+			assert(false);
+			g_log->critical("Unparsable log level: " + data);
+		}
+	}
+	else
+	{
+		assert(false);
+		g_log->critical("Cointerface, unparsable log message: " + data);
+	}
+}
+
 sinsp_logger_parser::sinsp_logger_parser(const string& procname):
 	m_prefix(procname + ": ")
 {

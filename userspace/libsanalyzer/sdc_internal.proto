@@ -1,4 +1,4 @@
-import weak "draios.proto"; 
+import "draios.proto";
 package sdc_internal;
 
 // Internal protobuf used by sysdig cloud agent components
@@ -27,4 +27,43 @@ message container_info {
 
 message mounted_fs_request {
     repeated container_info containers = 1;
+}
+
+enum cointerface_message_type {
+    PING = 1;
+    PONG = 2;
+    DOCKER_COMMAND = 3;
+    DOCKER_COMMAND_RESULT = 4;
+}
+
+enum docker_cmd_type {
+    STOP = 1;
+    PAUSE = 2;
+    UNPAUSE = 3;
+}
+
+message ping {
+    required int64 token = 1;
+}
+
+message pong {
+    required int64 token = 1;
+    required int32 pid = 2;
+    required uint64 memory_used = 3;
+}
+
+message docker_command {
+    required docker_cmd_type cmd = 1;
+    // Making optional in case other later commands want to work with images
+    optional string container_id = 2;
+}
+
+message docker_command_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
+service CoInterface {
+    rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
+    rpc PerformPing(ping) returns (pong) {}
 }

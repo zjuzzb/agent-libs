@@ -8,6 +8,7 @@ set(DRAIOS_BOOST_VERSION "1_57_0")
 set(DRAIOS_CURL_VERSION "7.52.1")
 set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_JQ_VERSION "1.5")
+set(DRAIOS_GRPC_VERSION "1.1.4")
 set(DRAIOS_GPERFTOOLS_VERSION "2.5")
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -28,6 +29,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -36,6 +38,7 @@ add_definitions(-DK8S_DISABLE_THREAD)
 add_executable(dragent
 	configuration.cpp 
 	connection_manager.cpp
+	coclient.cpp
 	crash_handler.cpp
 	dragent.cpp
 	error_handler.cpp
@@ -63,7 +66,9 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 	rt
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc++_unsecure.a
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a)
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)

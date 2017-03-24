@@ -2990,11 +2990,6 @@ bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_execute
 
 void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands)
 {
-#if 0
-	uint32_t j;
-	int32_t last_pipe_head = -1;
-#endif
-
 	if(commands->size() != 0)
 	{
 		sort(commands->begin(),
@@ -3005,7 +3000,8 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 		//
 		// Consolidate command with pipes
 		//
-		for(j = 0; j < commands->size(); j++)
+		int32_t last_pipe_head = -1;
+		for(uint32_t j = 0; j < commands->size(); j++)
 		{
 			uint32_t flags = commands->at(j).m_flags;
 

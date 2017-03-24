@@ -32,6 +32,20 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* mounted_fs_request_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   mounted_fs_request_reflection_ = NULL;
+const ::google::protobuf::Descriptor* ping_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  ping_reflection_ = NULL;
+const ::google::protobuf::Descriptor* pong_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  pong_reflection_ = NULL;
+const ::google::protobuf::Descriptor* docker_command_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  docker_command_reflection_ = NULL;
+const ::google::protobuf::Descriptor* docker_command_result_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  docker_command_result_reflection_ = NULL;
+const ::google::protobuf::EnumDescriptor* cointerface_message_type_descriptor_ = NULL;
+const ::google::protobuf::EnumDescriptor* docker_cmd_type_descriptor_ = NULL;
 
 }  // namespace
 
@@ -106,6 +120,72 @@ void protobuf_AssignDesc_sdc_5finternal_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(mounted_fs_request));
+  ping_descriptor_ = file->message_type(4);
+  static const int ping_offsets_[1] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ping, token_),
+  };
+  ping_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      ping_descriptor_,
+      ping::default_instance_,
+      ping_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ping, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(ping, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(ping));
+  pong_descriptor_ = file->message_type(5);
+  static const int pong_offsets_[3] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(pong, token_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(pong, pid_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(pong, memory_used_),
+  };
+  pong_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      pong_descriptor_,
+      pong::default_instance_,
+      pong_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(pong, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(pong, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(pong));
+  docker_command_descriptor_ = file->message_type(6);
+  static const int docker_command_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command, cmd_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command, container_id_),
+  };
+  docker_command_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      docker_command_descriptor_,
+      docker_command::default_instance_,
+      docker_command_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(docker_command));
+  docker_command_result_descriptor_ = file->message_type(7);
+  static const int docker_command_result_offsets_[2] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command_result, successful_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command_result, errstr_),
+  };
+  docker_command_result_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      docker_command_result_descriptor_,
+      docker_command_result::default_instance_,
+      docker_command_result_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command_result, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(docker_command_result, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(docker_command_result));
+  cointerface_message_type_descriptor_ = file->enum_type(0);
+  docker_cmd_type_descriptor_ = file->enum_type(1);
 }
 
 namespace {
@@ -126,6 +206,14 @@ void protobuf_RegisterTypes(const ::std::string&) {
     container_info_descriptor_, &container_info::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     mounted_fs_request_descriptor_, &mounted_fs_request::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    ping_descriptor_, &ping::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    pong_descriptor_, &pong::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    docker_command_descriptor_, &docker_command::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    docker_command_result_descriptor_, &docker_command_result::default_instance());
 }
 
 }  // namespace
@@ -139,6 +227,14 @@ void protobuf_ShutdownFile_sdc_5finternal_2eproto() {
   delete container_info_reflection_;
   delete mounted_fs_request::default_instance_;
   delete mounted_fs_request_reflection_;
+  delete ping::default_instance_;
+  delete ping_reflection_;
+  delete pong::default_instance_;
+  delete pong_reflection_;
+  delete docker_command::default_instance_;
+  delete docker_command_reflection_;
+  delete docker_command_result::default_instance_;
+  delete docker_command_result_reflection_;
 }
 
 void protobuf_AddDesc_sdc_5finternal_2eproto() {
@@ -157,17 +253,39 @@ void protobuf_AddDesc_sdc_5finternal_2eproto() {
     "mounts\"E\n\016container_info\022\n\n\002id\030\001 \002(\t\022\013\n\003"
     "pid\030\002 \002(\004\022\014\n\004vpid\030\003 \002(\004\022\014\n\004root\030\004 \002(\t\"F\n"
     "\022mounted_fs_request\0220\n\ncontainers\030\001 \003(\0132"
-    "\034.sdc_internal.container_infoB\002H\001X\000", 355);
+    "\034.sdc_internal.container_info\"\025\n\004ping\022\r\n"
+    "\005token\030\001 \002(\003\"7\n\004pong\022\r\n\005token\030\001 \002(\003\022\013\n\003p"
+    "id\030\002 \002(\005\022\023\n\013memory_used\030\003 \002(\004\"R\n\016docker_"
+    "command\022*\n\003cmd\030\001 \002(\0162\035.sdc_internal.dock"
+    "er_cmd_type\022\024\n\014container_id\030\002 \001(\t\";\n\025doc"
+    "ker_command_result\022\022\n\nsuccessful\030\001 \002(\010\022\016"
+    "\n\006errstr\030\002 \001(\t*]\n\030cointerface_message_ty"
+    "pe\022\010\n\004PING\020\001\022\010\n\004PONG\020\002\022\022\n\016DOCKER_COMMAND"
+    "\020\003\022\031\n\025DOCKER_COMMAND_RESULT\020\004*3\n\017docker_"
+    "cmd_type\022\010\n\004STOP\020\001\022\t\n\005PAUSE\020\002\022\013\n\007UNPAUSE"
+    "\020\0032\243\001\n\013CoInterface\022[\n\024PerformDockerComma"
+    "nd\022\034.sdc_internal.docker_command\032#.sdc_i"
+    "nternal.docker_command_result\"\000\0227\n\013Perfo"
+    "rmPing\022\022.sdc_internal.ping\032\022.sdc_interna"
+    "l.pong\"\000B\002H\001", 892);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "sdc_internal.proto", &protobuf_RegisterTypes);
   container_mounts::default_instance_ = new container_mounts();
   mounted_fs_response::default_instance_ = new mounted_fs_response();
   container_info::default_instance_ = new container_info();
   mounted_fs_request::default_instance_ = new mounted_fs_request();
+  ping::default_instance_ = new ping();
+  pong::default_instance_ = new pong();
+  docker_command::default_instance_ = new docker_command();
+  docker_command_result::default_instance_ = new docker_command_result();
   container_mounts::default_instance_->InitAsDefaultInstance();
   mounted_fs_response::default_instance_->InitAsDefaultInstance();
   container_info::default_instance_->InitAsDefaultInstance();
   mounted_fs_request::default_instance_->InitAsDefaultInstance();
+  ping::default_instance_->InitAsDefaultInstance();
+  pong::default_instance_->InitAsDefaultInstance();
+  docker_command::default_instance_->InitAsDefaultInstance();
+  docker_command_result::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_sdc_5finternal_2eproto);
 }
 
@@ -177,6 +295,37 @@ struct StaticDescriptorInitializer_sdc_5finternal_2eproto {
     protobuf_AddDesc_sdc_5finternal_2eproto();
   }
 } static_descriptor_initializer_sdc_5finternal_2eproto_;
+const ::google::protobuf::EnumDescriptor* cointerface_message_type_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return cointerface_message_type_descriptor_;
+}
+bool cointerface_message_type_IsValid(int value) {
+  switch(value) {
+    case 1:
+    case 2:
+    case 3:
+    case 4:
+      return true;
+    default:
+      return false;
+  }
+}
+
+const ::google::protobuf::EnumDescriptor* docker_cmd_type_descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return docker_cmd_type_descriptor_;
+}
+bool docker_cmd_type_IsValid(int value) {
+  switch(value) {
+    case 1:
+    case 2:
+    case 3:
+      return true;
+    default:
+      return false;
+  }
+}
+
 
 // ===================================================================
 
@@ -1218,6 +1367,1040 @@ void mounted_fs_request::Swap(mounted_fs_request* other) {
   ::google::protobuf::Metadata metadata;
   metadata.descriptor = mounted_fs_request_descriptor_;
   metadata.reflection = mounted_fs_request_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int ping::kTokenFieldNumber;
+#endif  // !_MSC_VER
+
+ping::ping()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void ping::InitAsDefaultInstance() {
+}
+
+ping::ping(const ping& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void ping::SharedCtor() {
+  _cached_size_ = 0;
+  token_ = GOOGLE_LONGLONG(0);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+ping::~ping() {
+  SharedDtor();
+}
+
+void ping::SharedDtor() {
+  if (this != default_instance_) {
+  }
+}
+
+void ping::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* ping::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return ping_descriptor_;
+}
+
+const ping& ping::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_sdc_5finternal_2eproto();
+  return *default_instance_;
+}
+
+ping* ping::default_instance_ = NULL;
+
+ping* ping::New() const {
+  return new ping;
+}
+
+void ping::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    token_ = GOOGLE_LONGLONG(0);
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool ping::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required int64 token = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &token_)));
+          set_has_token();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void ping::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required int64 token = 1;
+  if (has_token()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(1, this->token(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* ping::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required int64 token = 1;
+  if (has_token()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(1, this->token(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int ping::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required int64 token = 1;
+    if (has_token()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int64Size(
+          this->token());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void ping::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const ping* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const ping*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void ping::MergeFrom(const ping& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_token()) {
+      set_token(from.token());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void ping::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void ping::CopyFrom(const ping& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool ping::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
+  return true;
+}
+
+void ping::Swap(ping* other) {
+  if (other != this) {
+    std::swap(token_, other->token_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata ping::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = ping_descriptor_;
+  metadata.reflection = ping_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int pong::kTokenFieldNumber;
+const int pong::kPidFieldNumber;
+const int pong::kMemoryUsedFieldNumber;
+#endif  // !_MSC_VER
+
+pong::pong()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void pong::InitAsDefaultInstance() {
+}
+
+pong::pong(const pong& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void pong::SharedCtor() {
+  _cached_size_ = 0;
+  token_ = GOOGLE_LONGLONG(0);
+  pid_ = 0;
+  memory_used_ = GOOGLE_ULONGLONG(0);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+pong::~pong() {
+  SharedDtor();
+}
+
+void pong::SharedDtor() {
+  if (this != default_instance_) {
+  }
+}
+
+void pong::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* pong::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return pong_descriptor_;
+}
+
+const pong& pong::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_sdc_5finternal_2eproto();
+  return *default_instance_;
+}
+
+pong* pong::default_instance_ = NULL;
+
+pong* pong::New() const {
+  return new pong;
+}
+
+void pong::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    token_ = GOOGLE_LONGLONG(0);
+    pid_ = 0;
+    memory_used_ = GOOGLE_ULONGLONG(0);
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool pong::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required int64 token = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int64, ::google::protobuf::internal::WireFormatLite::TYPE_INT64>(
+                 input, &token_)));
+          set_has_token();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(16)) goto parse_pid;
+        break;
+      }
+
+      // required int32 pid = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_pid:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::int32, ::google::protobuf::internal::WireFormatLite::TYPE_INT32>(
+                 input, &pid_)));
+          set_has_pid();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(24)) goto parse_memory_used;
+        break;
+      }
+
+      // required uint64 memory_used = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+         parse_memory_used:
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &memory_used_)));
+          set_has_memory_used();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void pong::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required int64 token = 1;
+  if (has_token()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt64(1, this->token(), output);
+  }
+
+  // required int32 pid = 2;
+  if (has_pid()) {
+    ::google::protobuf::internal::WireFormatLite::WriteInt32(2, this->pid(), output);
+  }
+
+  // required uint64 memory_used = 3;
+  if (has_memory_used()) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(3, this->memory_used(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* pong::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required int64 token = 1;
+  if (has_token()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt64ToArray(1, this->token(), target);
+  }
+
+  // required int32 pid = 2;
+  if (has_pid()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteInt32ToArray(2, this->pid(), target);
+  }
+
+  // required uint64 memory_used = 3;
+  if (has_memory_used()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(3, this->memory_used(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int pong::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required int64 token = 1;
+    if (has_token()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int64Size(
+          this->token());
+    }
+
+    // required int32 pid = 2;
+    if (has_pid()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::Int32Size(
+          this->pid());
+    }
+
+    // required uint64 memory_used = 3;
+    if (has_memory_used()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::UInt64Size(
+          this->memory_used());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void pong::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const pong* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const pong*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void pong::MergeFrom(const pong& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_token()) {
+      set_token(from.token());
+    }
+    if (from.has_pid()) {
+      set_pid(from.pid());
+    }
+    if (from.has_memory_used()) {
+      set_memory_used(from.memory_used());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void pong::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void pong::CopyFrom(const pong& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool pong::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000007) != 0x00000007) return false;
+
+  return true;
+}
+
+void pong::Swap(pong* other) {
+  if (other != this) {
+    std::swap(token_, other->token_);
+    std::swap(pid_, other->pid_);
+    std::swap(memory_used_, other->memory_used_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata pong::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = pong_descriptor_;
+  metadata.reflection = pong_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int docker_command::kCmdFieldNumber;
+const int docker_command::kContainerIdFieldNumber;
+#endif  // !_MSC_VER
+
+docker_command::docker_command()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void docker_command::InitAsDefaultInstance() {
+}
+
+docker_command::docker_command(const docker_command& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void docker_command::SharedCtor() {
+  _cached_size_ = 0;
+  cmd_ = 1;
+  container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+docker_command::~docker_command() {
+  SharedDtor();
+}
+
+void docker_command::SharedDtor() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void docker_command::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* docker_command::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return docker_command_descriptor_;
+}
+
+const docker_command& docker_command::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_sdc_5finternal_2eproto();
+  return *default_instance_;
+}
+
+docker_command* docker_command::default_instance_ = NULL;
+
+docker_command* docker_command::New() const {
+  return new docker_command;
+}
+
+void docker_command::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    cmd_ = 1;
+    if (has_container_id()) {
+      if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+        container_id_->clear();
+      }
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool docker_command::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required .sdc_internal.docker_cmd_type cmd = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          int value;
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   int, ::google::protobuf::internal::WireFormatLite::TYPE_ENUM>(
+                 input, &value)));
+          if (::sdc_internal::docker_cmd_type_IsValid(value)) {
+            set_cmd(static_cast< ::sdc_internal::docker_cmd_type >(value));
+          } else {
+            mutable_unknown_fields()->AddVarint(1, value);
+          }
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_container_id;
+        break;
+      }
+
+      // optional string container_id = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_container_id:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_container_id()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->container_id().data(), this->container_id().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void docker_command::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required .sdc_internal.docker_cmd_type cmd = 1;
+  if (has_cmd()) {
+    ::google::protobuf::internal::WireFormatLite::WriteEnum(
+      1, this->cmd(), output);
+  }
+
+  // optional string container_id = 2;
+  if (has_container_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->container_id().data(), this->container_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->container_id(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* docker_command::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required .sdc_internal.docker_cmd_type cmd = 1;
+  if (has_cmd()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteEnumToArray(
+      1, this->cmd(), target);
+  }
+
+  // optional string container_id = 2;
+  if (has_container_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->container_id().data(), this->container_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->container_id(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int docker_command::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required .sdc_internal.docker_cmd_type cmd = 1;
+    if (has_cmd()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::EnumSize(this->cmd());
+    }
+
+    // optional string container_id = 2;
+    if (has_container_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->container_id());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void docker_command::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const docker_command* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const docker_command*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void docker_command::MergeFrom(const docker_command& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_cmd()) {
+      set_cmd(from.cmd());
+    }
+    if (from.has_container_id()) {
+      set_container_id(from.container_id());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void docker_command::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void docker_command::CopyFrom(const docker_command& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool docker_command::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
+  return true;
+}
+
+void docker_command::Swap(docker_command* other) {
+  if (other != this) {
+    std::swap(cmd_, other->cmd_);
+    std::swap(container_id_, other->container_id_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata docker_command::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = docker_command_descriptor_;
+  metadata.reflection = docker_command_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int docker_command_result::kSuccessfulFieldNumber;
+const int docker_command_result::kErrstrFieldNumber;
+#endif  // !_MSC_VER
+
+docker_command_result::docker_command_result()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void docker_command_result::InitAsDefaultInstance() {
+}
+
+docker_command_result::docker_command_result(const docker_command_result& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void docker_command_result::SharedCtor() {
+  _cached_size_ = 0;
+  successful_ = false;
+  errstr_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+docker_command_result::~docker_command_result() {
+  SharedDtor();
+}
+
+void docker_command_result::SharedDtor() {
+  if (errstr_ != &::google::protobuf::internal::kEmptyString) {
+    delete errstr_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void docker_command_result::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* docker_command_result::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return docker_command_result_descriptor_;
+}
+
+const docker_command_result& docker_command_result::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_sdc_5finternal_2eproto();
+  return *default_instance_;
+}
+
+docker_command_result* docker_command_result::default_instance_ = NULL;
+
+docker_command_result* docker_command_result::New() const {
+  return new docker_command_result;
+}
+
+void docker_command_result::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    successful_ = false;
+    if (has_errstr()) {
+      if (errstr_ != &::google::protobuf::internal::kEmptyString) {
+        errstr_->clear();
+      }
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool docker_command_result::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required bool successful = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &successful_)));
+          set_has_successful();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_errstr;
+        break;
+      }
+
+      // optional string errstr = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_errstr:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_errstr()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->errstr().data(), this->errstr().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void docker_command_result::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required bool successful = 1;
+  if (has_successful()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->successful(), output);
+  }
+
+  // optional string errstr = 2;
+  if (has_errstr()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->errstr().data(), this->errstr().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->errstr(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* docker_command_result::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required bool successful = 1;
+  if (has_successful()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->successful(), target);
+  }
+
+  // optional string errstr = 2;
+  if (has_errstr()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->errstr().data(), this->errstr().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->errstr(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int docker_command_result::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required bool successful = 1;
+    if (has_successful()) {
+      total_size += 1 + 1;
+    }
+
+    // optional string errstr = 2;
+    if (has_errstr()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->errstr());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void docker_command_result::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const docker_command_result* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const docker_command_result*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void docker_command_result::MergeFrom(const docker_command_result& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_successful()) {
+      set_successful(from.successful());
+    }
+    if (from.has_errstr()) {
+      set_errstr(from.errstr());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void docker_command_result::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void docker_command_result::CopyFrom(const docker_command_result& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool docker_command_result::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
+  return true;
+}
+
+void docker_command_result::Swap(docker_command_result* other) {
+  if (other != this) {
+    std::swap(successful_, other->successful_);
+    std::swap(errstr_, other->errstr_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata docker_command_result::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = docker_command_result_descriptor_;
+  metadata.reflection = docker_command_result_reflection_;
   return metadata;
 }
 
