@@ -289,7 +289,6 @@ public:
 			ASSERT(!m_metric_limits);
 			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
 			{
-				g_logger.log("creating metric_limits", sinsp_logger::SEV_ERROR);
 				m_metric_limits.reset(new metric_limits(mf));
 				if(m_configuration->get_excess_metrics_log())
 				{
