@@ -4,189 +4,195 @@
 
 TEST(metric_limits, filter)
 {
-	metrics_filter_vec filter({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
+	std::string filter;
+	metrics_filter_vec filters({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
 							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
-	metric_limits ml(filter);
+	metric_limits ml(filters);
 	std::string metric("haproxy.frontend.bytes");
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(1u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.backend*");
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(2u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.backend*");
 
 	metric = "redis.keys";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "redis.*");
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(3u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "redis.*");
 
 	metric = "mysql.queries.count";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(4u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 
 	metric = "test.something";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "test.*");
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(5u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "test.*");
 
 	metric = "test2.dummy.something";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "test2.*.somethin?");
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(6u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "test2.*.somethin?");
 
 	metric = "test2.dummy.something2";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(7u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 
 	metric = "test2.dummy.nothing";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "test2.*.?othin?");
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(8u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "test2.*.?othin?");
 
 	metric = "test2.dummy.nothing2";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml.has(metric));
 	ASSERT_EQ(9u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 
 	metrics_filter_vec filter2({{"haproxy.*", true}, {"haproxy.*", false}});
 	metric_limits ml2(filter2);
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml2.has(metric));
-	EXPECT_TRUE(ml2.allow(metric));
+	EXPECT_TRUE(ml2.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml2.has(metric));
 	ASSERT_EQ(1u, ml2.cached());
-	EXPECT_TRUE(ml2.allow(metric));
+	EXPECT_TRUE(ml2.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml2.has(metric));
-	EXPECT_TRUE(ml2.allow(metric));
+	EXPECT_TRUE(ml2.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml2.has(metric));
 	ASSERT_EQ(2u, ml2.cached());
-	EXPECT_TRUE(ml2.allow(metric));
+	EXPECT_TRUE(ml2.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 
 	metric = "something.backend.request";
 	EXPECT_FALSE(ml2.has(metric));
-	EXPECT_TRUE(ml2.allow(metric));
+	EXPECT_TRUE(ml2.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml2.has(metric));
 	ASSERT_EQ(3u, ml2.cached());
-	EXPECT_TRUE(ml2.allow(metric));
+	EXPECT_TRUE(ml2.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 
 	metrics_filter_vec filter3({{"haproxy.*", true}, {"*", false}});
 	metric_limits ml3(filter3);
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml3.has(metric));
-	EXPECT_TRUE(ml3.allow(metric));
+	EXPECT_TRUE(ml3.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml3.has(metric));
 	ASSERT_EQ(1u, ml3.cached());
-	EXPECT_TRUE(ml3.allow(metric));
+	EXPECT_TRUE(ml3.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml3.has(metric));
-	EXPECT_TRUE(ml3.allow(metric));
+	EXPECT_TRUE(ml3.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml3.has(metric));
 	ASSERT_EQ(2u, ml3.cached());
-	EXPECT_TRUE(ml3.allow(metric));
+	EXPECT_TRUE(ml3.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 
 	metric = "something.backend.request";
 	EXPECT_FALSE(ml3.has(metric));
-	EXPECT_FALSE(ml3.allow(metric));
+	EXPECT_FALSE(ml3.allow(metric, filter));
+	EXPECT_TRUE(filter == "*");
 	EXPECT_TRUE(ml3.has(metric));
 	ASSERT_EQ(3u, ml3.cached());
-	EXPECT_FALSE(ml3.allow(metric));
+	EXPECT_FALSE(ml3.allow(metric, filter));
+	EXPECT_TRUE(filter == "*");
 }
 
 TEST(metric_limits, cache)
 {
-	metrics_filter_vec filter({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
+	std::string filter;
+	metrics_filter_vec filters({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
 							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
 
-	metric_limits ml(filter, 3u, 2u, 2u);
+	metric_limits ml(filters, 3u, 2u);
 	ASSERT_EQ(3u, ml.cache_max_entries());
 	ASSERT_EQ(2u, ml.cache_expire_seconds());
-	ASSERT_EQ(2u, ml.cache_log_seconds());
 
 	std::string metric("haproxy.frontend.bytes");
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(1u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
-
-	// must not log yet
-	std::ostringstream os;
-	ASSERT_TRUE(os.str().empty());
-	ml.log(os);
-	EXPECT_TRUE(os.str().empty());
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.backend*");
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(2u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.backend*");
 
 	metric = "redis.keys";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "redis.*");
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(3u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "redis.*");
 
 	metric = "mysql.queries.count";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_EQ(3u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
-
-	// make sure logging happens after sufficient sleep
-	std::cout << "Wait " << ml.cache_log_seconds() + 1 << "s for log to expire ..." << std::endl;
-	sleep(ml.cache_expire_seconds() + 1);
-	os.str("");
-	ASSERT_TRUE(os.str().empty());
-	ml.log(os);
-	EXPECT_FALSE(os.str().empty());
-	EXPECT_TRUE(os.str().find("Metrics permission list:\n") != std::string::npos);
-	EXPECT_TRUE(os.str().find("redis.keys: excluded\n") != std::string::npos);
-	EXPECT_TRUE(os.str().find("haproxy.backend.request: included\n") != std::string::npos);
-	EXPECT_TRUE(os.str().find("haproxy.frontend.bytes: excluded\n") != std::string::npos);
-	std::cout << "Logged:\n" << os.str() << std::endl;
-
-	// now make sure logging does not happen again
-	os.str("");
-	ASSERT_TRUE(os.str().empty());
-	ml.log(os);
-	EXPECT_TRUE(os.str().empty());
-
-	// and then it happens again after sufficient sleep
-	std::cout << "Wait again " << ml.cache_log_seconds() + 1 << "s for log to expire ..." << std::endl;
-	sleep(ml.cache_expire_seconds() + 1);
-	os.str("");
-	ASSERT_TRUE(os.str().empty());
-	ml.log(os);
-	EXPECT_FALSE(os.str().empty());
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 
 	// check cache is purged
 	std::cout << "Wait " << ml.cache_expire_seconds() + 1 << "s for cache to expire ..." << std::endl;
@@ -195,46 +201,55 @@ TEST(metric_limits, cache)
 
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(1u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	
 	metric = "haproxy.backend.request";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.backend*");
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(2u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "haproxy.backend*");
 
 	metric = "redis.keys";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "redis.*");
 	EXPECT_TRUE(ml.has(metric));
 	EXPECT_EQ(3u, ml.cached());
-	EXPECT_FALSE(ml.allow(metric));
+	EXPECT_FALSE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter == "redis.*");
 
 	metric = "mysql.queries.count";
 	EXPECT_FALSE(ml.has(metric));
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_FALSE(ml.has(metric));
 	EXPECT_EQ(3u, ml.cached());
-	EXPECT_TRUE(ml.allow(metric));
+	EXPECT_TRUE(ml.allow(metric, filter));
+	EXPECT_TRUE(filter.empty());
 
 	ml.clear_cache();
 	ASSERT_EQ(0u, ml.cached());
 
-	metric_limits ml2(filter, 3000u, 2u);
+	metric_limits ml2(filters, 3000u, 2u);
 	sinsp_stopwatch sw;
 	std::chrono::microseconds::rep sum = 0;
 	for(unsigned i = 0; i < ml2.cache_max_entries(); ++i)
 	{
 		std::string s(std::to_string(i) + metric);
 		sw.start();
-		bool b = ml2.allow(s);
+		bool b = ml2.allow(s, filter);
 		sw.stop();
 		sum += sw.elapsed<std::chrono::microseconds>();
 		EXPECT_TRUE(b);
+		EXPECT_TRUE(filter.empty());
 		EXPECT_TRUE(ml2.has(s));
 		EXPECT_EQ(i + 1, ml2.cached());
 	}
@@ -244,18 +259,20 @@ TEST(metric_limits, cache)
 		sum << " us" << std::endl;
 	EXPECT_FALSE(ml2.has("xyz"));
 	sw.start();
-	bool a = ml2.allow("xyz");
+	bool a = ml2.allow("xyz", filter);
 	sw.stop();
 	EXPECT_TRUE(a);
+	EXPECT_TRUE(filter.empty());
 	EXPECT_FALSE(ml2.has("xyz"));
 	std::cout << c << " items, non-cached item lookup in " <<
 		sw.elapsed<std::chrono::nanoseconds>() << " ns" << std::endl;
 	std::string s(std::to_string(ml2.cache_max_entries() - 5) + metric);
 	EXPECT_TRUE(ml2.has(s));
 	sw.start();
-	a = ml2.allow(s);
+	a = ml2.allow(s, filter);
 	sw.stop();
 	EXPECT_TRUE(a);
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml2.has(s));
 	std::cout << c << " items, cached item lookup in " <<
 		sw.elapsed<std::chrono::nanoseconds>() << " ns" << std::endl;
@@ -267,17 +284,18 @@ TEST(metric_limits, cache)
 		sw.elapsed<std::chrono::microseconds>() << " us" << std::endl;
 	EXPECT_EQ(0u, ml2.cached());
 	EXPECT_FALSE(ml2.has("xyz"));
-	EXPECT_TRUE(ml2.allow("xyz"));
+	EXPECT_TRUE(ml2.allow("xyz", filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml2.has("xyz"));
 }
 
 TEST(metric_limits, empty)
 {
-	metrics_filter_vec filter({{"", true}});
+	metrics_filter_vec filters({{"", true}});
 
 	try
 	{
-		metric_limits ml(filter);
+		metric_limits ml(filters);
 	}
 	catch(std::exception&)
 	{
@@ -289,11 +307,11 @@ TEST(metric_limits, empty)
 
 TEST(metric_limits, star1)
 {
-	metrics_filter_vec filter({{"*", true}});
+	metrics_filter_vec filters({{"*", true}});
 
 	try
 	{
-		metric_limits ml(filter);
+		metric_limits ml(filters);
 	}
 	catch(std::exception&)
 	{
@@ -305,11 +323,11 @@ TEST(metric_limits, star1)
 
 TEST(metric_limits, star2)
 {
-	metrics_filter_vec filter({{"*", true}, {"blah", true}});
+	metrics_filter_vec filters({{"*", true}, {"blah", true}});
 
 	try
 	{
-		metric_limits ml(filter);
+		metric_limits ml(filters);
 	}
 	catch(std::exception&)
 	{
@@ -321,82 +339,109 @@ TEST(metric_limits, star2)
 
 TEST(metric_limits, filter_vec)
 {
-	metrics_filter_vec filter({{"*", false}, {"blah", true}});
-	EXPECT_EQ(2u, filter.size());
-	metric_limits::optimize_exclude_all(filter);
-	EXPECT_EQ(1u, filter.size());
-	EXPECT_EQ(filter[0].filter(), "*");
-	EXPECT_FALSE(filter[0].included());
+	metrics_filter_vec filters({{"*", false}, {"blah", true}});
+	EXPECT_EQ(2u, filters.size());
+	metric_limits::optimize_exclude_all(filters);
+	EXPECT_EQ(1u, filters.size());
+	EXPECT_EQ(filters[0].filter(), "*");
+	EXPECT_FALSE(filters[0].included());
 
-	filter = {{"*", true}, {"blah", true}};
-	EXPECT_TRUE(metric_limits::first_includes_all(filter));
-	EXPECT_EQ(filter[0].filter(), "*");
-	EXPECT_TRUE(filter[0].included());
+	filters = {{"*", true}, {"blah", true}};
+	EXPECT_TRUE(metric_limits::first_includes_all(filters));
+	EXPECT_EQ(filters[0].filter(), "*");
+	EXPECT_TRUE(filters[0].included());
 
 	const unsigned CUSTOM_METRICS_FILTERS_HARD_LIMIT = 10;
-	filter.clear();
+	filters.clear();
 	for(unsigned i = 0; i <= CUSTOM_METRICS_FILTERS_HARD_LIMIT; ++i)
 	{
-		filter.push_back({std::to_string(i) + "xyz", i % 2});
+		filters.push_back({std::to_string(i) + "xyz", i % 2});
 	}
-	ASSERT_EQ(CUSTOM_METRICS_FILTERS_HARD_LIMIT + 1, filter.size());
-	if(filter.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	ASSERT_EQ(CUSTOM_METRICS_FILTERS_HARD_LIMIT + 1, filters.size());
+	if(filters.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
 	{
-		filter.erase(filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, filter.end());
+		filters.erase(filters.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, filters.end());
 	}
-	EXPECT_EQ(CUSTOM_METRICS_FILTERS_HARD_LIMIT, filter.size());
+	EXPECT_EQ(CUSTOM_METRICS_FILTERS_HARD_LIMIT, filters.size());
 }
 
 TEST(metric_limits, projspec)
 {
+	std::string filter;
 	metrics_filter_vec filters({{"test.*", true}, {"test.*", false}, {"haproxy.backend.*", true}, {"haproxy.*", false}, {"redis.*", false}});
 	metric_limits ml(filters);
 	EXPECT_FALSE(ml.has("haproxy.frontend.bytes"));
-	EXPECT_FALSE(ml.allow("haproxy.frontend.bytes"));
+	EXPECT_FALSE(ml.allow("haproxy.frontend.bytes", filter));
+	EXPECT_TRUE(filter == "haproxy.*");
 	EXPECT_TRUE(ml.has("haproxy.frontend.bytes"));
 
 	EXPECT_FALSE(ml.has("haproxy.backend.request"));
-	EXPECT_TRUE(ml.allow("haproxy.backend.request"));
+	EXPECT_TRUE(ml.allow("haproxy.backend.request", filter));
+	EXPECT_TRUE(filter == "haproxy.backend.*");
 	EXPECT_TRUE(ml.has("haproxy.backend.request"));
 
 	EXPECT_FALSE(ml.has("redis.keys"));
-	EXPECT_FALSE(ml.allow("redis.keys"));
+	EXPECT_FALSE(ml.allow("redis.keys", filter));
+	EXPECT_TRUE(filter == "redis.*");
 	EXPECT_TRUE(ml.has("redis.keys"));
 
 	EXPECT_FALSE(ml.has("mysql.queries.count"));
-	EXPECT_TRUE(ml.allow("mysql.queries.count"));
+	EXPECT_TRUE(ml.allow("mysql.queries.count", filter));
+	EXPECT_TRUE(filter.empty());
 	EXPECT_TRUE(ml.has("mysql.queries.count"));
 
 	EXPECT_FALSE(ml.has("test.\\*"));
-	EXPECT_TRUE(ml.allow("test.\\*"));
+	EXPECT_TRUE(ml.allow("test.\\*", filter));
+	EXPECT_TRUE(filter == "test.*");
 	EXPECT_TRUE(ml.has("test.\\*"));
 }
 
 TEST(metric_limits, statsd)
 {
+	std::string filter;
 	metrics_filter_vec f({{"*1?", true}, {"*", false}});
 	metric_limits ml(f);
 
-	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10"));
-	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam5"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam8"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam8"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam4"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam9"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam5"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam4"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam3"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam7"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam7"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam6"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam1"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam9"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam6"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam2"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam1"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam3"));
-	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam2"));
+	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10", filter));
+	EXPECT_TRUE(filter == "*1?");
+	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10", filter));
+	EXPECT_TRUE(filter == "*1?");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam5", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam8", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam8", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam4", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam9", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam5", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam4", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam3", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam7", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam7", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam6", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam1", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam9", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam6", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam2", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam1", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam3", filter));
+	EXPECT_TRUE(filter == "*");
+	EXPECT_FALSE(ml.allow("totam.sunt.consequatur.numquam.aperiam2", filter));
+	EXPECT_TRUE(filter == "*");
 
 	EXPECT_EQ(10u, ml.cached());
 	EXPECT_TRUE(ml.has("totam.sunt.consequatur.numquam.aperiam10"));

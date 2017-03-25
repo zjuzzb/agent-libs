@@ -164,7 +164,7 @@ TEST_F(app_checks_proxy_f, limits)
 	ASSERT_EQ(0, app->metrics().size());
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit);
+		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(0, app->metrics().size());
@@ -174,7 +174,7 @@ TEST_F(app_checks_proxy_f, limits)
 	ASSERT_EQ(0, app->metrics().size());
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit);
+		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(1U, app->metrics().size());
@@ -185,7 +185,7 @@ TEST_F(app_checks_proxy_f, limits)
 	app_checks_limit = 15;
 	do
 	{
-		app_checks_data.to_protobuf(app, app_checks_limit);
+		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(15, app->metrics().size());
@@ -196,7 +196,7 @@ TEST_F(app_checks_proxy_f, limits)
 	app_checks_limit = 30;
 	do
 	{
-		app_checks_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(30U, app->metrics().size());
@@ -209,7 +209,7 @@ TEST_F(app_checks_proxy_f, limits)
 	app_checks_limit = 32;
 	do
 	{
-		app_checks_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
 	EXPECT_EQ(32U, app->metrics().size());
@@ -221,7 +221,7 @@ TEST_F(app_checks_proxy_f, limits)
 	app_checks_limit = 33;
 	do
 	{
-		app_checks_data.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit > 1);
 	ASSERT_EQ(1, app_checks_limit);
 	EXPECT_EQ(32U, app->metrics().size());

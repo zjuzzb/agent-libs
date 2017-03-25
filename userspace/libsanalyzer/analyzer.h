@@ -289,8 +289,12 @@ public:
 			ASSERT(!m_metric_limits);
 			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
 			{
-				//g_logger.log("creating metric_limits");
+				g_logger.log("creating metric_limits", sinsp_logger::SEV_ERROR);
 				m_metric_limits.reset(new metric_limits(mf));
+				if(m_configuration->get_excess_metrics_log())
+				{
+					m_metric_limits->enable_logging();
+				}
 			}
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
 			checked = true;
@@ -395,12 +399,6 @@ public:
 
 	void set_emit_tracers(bool enabled);
 
-	// returns true when it's time to log skipped metrics
-	// (default 30 seconds)
-	// always returns false for log levels < debug
-	static bool log_excess_metrics(int interval = 30);
-	bool m_log_excess = false;
-
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
@@ -454,8 +452,7 @@ VISIBILITY_PRIVATE
 	void get_statsd();
 
 #ifndef _WIN32
-	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-						   unsigned limit, bool log_excess);
+	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}

@@ -553,6 +553,7 @@ public:
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
 
+	bool m_excess_metric_log = false;
 	metrics_filter_vec m_metrics_filter;
 
 	bool m_enable_coredump;

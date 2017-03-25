@@ -1436,19 +1436,6 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 	return mesos_api_server;
 }
 
-bool sinsp_analyzer::log_excess_metrics(int interval)
-{
-	static time_t last;
-	if(g_logger.get_severity() < sinsp_logger::SEV_DEBUG) { return false; }
-	time_t now; time(&now);
-	if((difftime(now, last) >= interval))
-	{
-		time(&last);
-		return true;
-	}
-	return false;
-}
-
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				    bool is_eof, sinsp_analyzer::flush_flags flshflags,
 				    const tracer_emitter &f_trc)
@@ -2309,7 +2296,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			// Add JMX metrics
 			if (m_jmx_proxy)
 			{
-				if(jmx_limit > 0)
+				if((jmx_limit > 0) || metric_limits::log_enabled())
 				{
 					unsigned jmx_proc_limit = std::min(jmx_limit, JMX_METRICS_HARD_LIMIT_PER_PROC);
 					auto jmx_metrics_it = m_jmx_metrics.end();
@@ -2321,20 +2308,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					}
 					if(jmx_metrics_it != m_jmx_metrics.end())
 					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-						auto java_proto = proc->mutable_protos()->mutable_java();
-						jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit, m_log_excess);
-						if(jmx_limit == 0)
+						if(jmx_limit > 0)
 						{
-							g_logger.format(sinsp_logger::SEV_WARNING,
-								"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+							auto java_proto = proc->mutable_protos()->mutable_java();
+							jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit, "process");
+							if(jmx_limit == 0)
+							{
+								g_logger.format(sinsp_logger::SEV_WARNING,
+									"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
+							}
+						}
+						else if(metric_limits::log_enabled())
+						{
+							g_logger.format(sinsp_logger::SEV_INFO,
+								"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
+							// dummy call, only to print excessive metrics
+							jmx_metrics_it->second.to_protobuf(nullptr, 0, m_configuration->get_jmx_limit(), "total");
 						}
 					}
-				}
-				else if(m_log_excess)
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
 				}
 			}
 			if(m_app_proxy)
@@ -2354,13 +2346,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 									"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
 									app_data.first.c_str(), app_data.second.expiration_ts() -
 									(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
-								app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(), app_checks_limit);
+								app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+									app_checks_limit, m_configuration->get_app_checks_limit());
 								if(app_checks_limit == 0)
 								{
-									if(m_log_excess)
+									if(metric_limits::log_enabled())
 									{
-										g_logger.format(sinsp_logger::SEV_DEBUG, "app metric over limit: %s",
-														app_data.first.c_str());
+										for(const auto& m : app_data.second.metrics())
+										{
+											g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
+															m_configuration->get_app_checks_limit(), m.name().c_str());
+										}
+										for(const auto& s : app_data.second.services())
+										{
+											g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
+															m_configuration->get_app_checks_limit(), s.name().c_str());
+										}
 									}
 									else { break; }
 								}
@@ -2375,7 +2376,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 										(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
 							}
 						}
-						if(app_checks_limit == 0 && !m_log_excess) { break; }
+						if(app_checks_limit == 0 && !metric_limits::log_enabled()) { break; }
 					}
 				}
 			}
@@ -3216,7 +3217,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		return;
 	}
 
-	m_log_excess = log_excess_metrics();
+	metric_limits::enable_log();
 
 	for(j = 0; ; j++)
 	{
@@ -3644,8 +3645,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				emit_statsd(m_statsd_metrics.at(""),
 					    m_metrics->mutable_protos()->mutable_statsd(),
-					    m_configuration->get_statsd_limit(),
-						m_log_excess);
+					    m_configuration->get_statsd_limit(), m_configuration->get_statsd_limit());
 			}
 #endif
 
@@ -3823,27 +3823,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_host_req_metrics.clear();
 		}
 	}
-
-	//
-	// notify metric filter that it's ok to do the first cache log dump
-	// we do this only once, 30 seconds after the object creation, to provide
-	// the initial log. After that, the metric_limits object will automatically
-	// log every 5 minutes on its own.
-	//
-	if(m_metric_limits)
-	{
-		static bool been_here;
-		if(!been_here && g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
-		{
-			if(m_metric_limits->secs_since_creation() > 30)
-			{
-				m_metric_limits->set_first_log();
-				been_here = true;
-			}
-		}
-	}
-
-	m_log_excess = false;
 
 	///////////////////////////////////////////////////////////////////////////
 	// CLEANUPS
@@ -5432,7 +5411,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
 		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(),
-										*statsd_limit, m_log_excess);
+										*statsd_limit, m_configuration->get_statsd_limit());
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
@@ -5483,23 +5462,22 @@ void sinsp_analyzer::get_statsd()
 }
 
 #ifndef _WIN32
-unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-					   unsigned limit, bool log_excess)
+unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit)
 {
 	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
 		if(j >= limit)
 		{
-			if(!log_excess)
+			if(metric_limits::log_enabled())
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "statsd metrics limit reached");
-				break;
+				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit, metric.name().c_str());
+				continue;
 			}
 			else
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "statsd metric over limit: %s", metric.name().c_str());
-				continue;
+				g_logger.format(sinsp_logger::SEV_WARNING, "[statsd] metrics over limit, giving up");
+				break;
 			}
 		}
 		auto statsd_proto = statsd_info->add_statsd_metrics();

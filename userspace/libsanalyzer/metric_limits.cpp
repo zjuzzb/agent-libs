@@ -3,13 +3,14 @@
 #include <limits>
 
 const int metric_limits::ML_NO_FILTER_POSITION = std::numeric_limits<int>::max();
+bool metric_limits::m_log = false;
+bool metric_limits::m_enable_log = false;
 
 metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entries,
-							uint64_t expire_seconds, unsigned log_seconds):
+							uint64_t expire_seconds):
 							m_filters(filters),
 							m_max_entries(max_entries),
-							m_purge_seconds(expire_seconds),
-							m_log_seconds(log_seconds)
+							m_purge_seconds(expire_seconds)
 {
 #ifdef HAS_ANALYZER
 	// Cases when we refuse to create object:
@@ -35,53 +36,39 @@ metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entr
 #endif // HAS_ANALYZER
 	optimize_exclude_all(m_filters);
 	time(&m_last_purge);
-	time(&m_last_log);
 }
 
-void metric_limits::log()
+bool metric_limits::log_metrics(int interval, int duration)
 {
-#ifdef HAS_ANALYZER
-	if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+	if(!m_enable_log) { return false; }
+	static time_t last;
+	static time_t running;
+	time_t now; time(&now);
+	if((difftime(now, running) <= duration))
 	{
-		std::ostringstream os;
-		os << "Metrics permission list:" << std::endl;
-		for(auto& c : m_cache)
-		{
-			os << (c.second.get_allow() ? "+ included: " : "- excluded: ") << c.first << std::endl;
-		}
-		g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
+		return true;
 	}
-#endif // HAS_ANALYZER
-	time(&m_last_log);
-	// this can be the reason for log only once
-	if(m_first_log)
+	if((difftime(now, last) >= interval))
 	{
-		m_first_log = false;
+		bool ret = (last != 0);
+		time(&last);
+		time(&running);
+		return ret;
 	}
+	return false;
 }
 
-// for testing purposes only
-void metric_limits::log(std::ostream& os)
+bool metric_limits::allow(const std::string& metric, std::string& filter, int* pos, const std::string& type)
 {
-	if(log_time())
-	{
-		os << "Metrics permission list:" << std::endl;
-		for(auto& c : m_cache)
-		{
-			os << c.first << ':' << (c.second.get_allow() ? " included" : " excluded") << std::endl;
-		}
-		time(&m_last_log);
-	}
-}
-
-bool metric_limits::allow(const std::string& metric, int* pos)
-{
-	if(log_time()) { log(); }
+	filter.clear();
 	auto found = m_cache.find(metric);
 	if(found != m_cache.end())
 	{
 		if(pos) { *pos = found->second.position(); }
-		return found->second.get_allow();
+		filter = found->second.filter();
+		bool inc = found->second.get_allow();
+		if(!pos) { log(metric, type, inc, m_log, wrap_filter(filter, inc)); }
+		return inc;
 	}
 
 	int p = 0;
@@ -91,9 +78,12 @@ bool metric_limits::allow(const std::string& metric, int* pos)
 		int m = fnmatch(f.filter().c_str(), metric.c_str(), FNM_CASEFOLD);
 		if(0 == m)
 		{
-			insert(metric, f.included(), p);
+			bool inc = f.included();
+			insert(metric, f.filter(), inc, p);
 			if(pos) { *pos = p; }
-			return f.included();
+			if(!pos) { log(metric, type, f.included(), m_log, wrap_filter(filter, inc)); }
+			filter = f.filter();
+			return inc;
 		}
 		else if(FNM_NOMATCH != m)
 		{
@@ -104,17 +94,18 @@ bool metric_limits::allow(const std::string& metric, int* pos)
 		}
 	}
 
-	insert(metric, true, ML_NO_FILTER_POSITION);
+	insert(metric, filter, true, ML_NO_FILTER_POSITION);
 	if(pos) { *pos = ML_NO_FILTER_POSITION; }
+	if(!pos) { log(metric, type, true, m_log, wrap_filter(" ", true)); }
 	return true;
 }
 
-void metric_limits::insert(const std::string& metric, bool value, int pos)
+void metric_limits::insert(const std::string& metric, const std::string& filter, bool value, int pos)
 {
 	purge_cache();
 	if(m_cache.size() < m_max_entries)
 	{
-		m_cache.insert({metric, entry(value, pos)});
+		m_cache.insert({metric, entry(value, filter, pos)});
 	}
 	else
 	{

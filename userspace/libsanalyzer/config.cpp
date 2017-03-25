@@ -728,6 +728,16 @@ void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_f
 	m_metrics_filter = metrics_filter;
 }
 
+bool sinsp_configuration::get_excess_metrics_log() const
+{
+	return m_excess_metrics_log;
+}
+
+void sinsp_configuration::set_excess_metrics_log(bool log)
+{
+	m_excess_metrics_log = log;
+}
+
 unsigned sinsp_configuration::get_jmx_limit() const
 {
 	return m_jmx_limit;

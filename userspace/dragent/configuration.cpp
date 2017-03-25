@@ -867,6 +867,7 @@ void dragent_configuration::init(Application* app)
 		m_autodrop_enabled = false;
 	}
 
+	m_excess_metric_log = m_config->get_scalar("excess_metric_log", false);
 	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
 	// if first filter entry is empty or '*' and included, everything will be allowed, so it's pointless to have the filter list
 	if(metric_limits::first_includes_all(m_metrics_filter))
@@ -1109,6 +1110,8 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
 	}
+
+	g_log->information("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));
 	std::ostringstream os;
 	if(m_metrics_filter.size())
 	{

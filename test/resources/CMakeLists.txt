@@ -17,6 +17,7 @@ target_link_libraries(chname
 	pthread)
 
 file(COPY fake_backend.cert
+		app_checks_ok.json
 		fake_backend.key
 		fake_backend.py
 		jmx_fail.json

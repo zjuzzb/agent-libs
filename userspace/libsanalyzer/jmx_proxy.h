@@ -60,7 +60,7 @@ public:
 		return m_attributes;
 	}
 
-	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, bool log_excess) const;
+	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type = "") const;
 
 private:
 	string m_name;
@@ -85,7 +85,7 @@ public:
 		return m_beans;
 	}
 
-	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, bool log_excess) const;
+	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type = "") const;
 
 private:
 	java_process(const Json::Value&, metric_limits::cref_sptr_t ml);

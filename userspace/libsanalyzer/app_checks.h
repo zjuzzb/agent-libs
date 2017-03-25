@@ -183,7 +183,7 @@ public:
 		return m_expiration_ts;
 	}
 
-	void to_protobuf(draiosproto::app_info *proto, uint16_t& limit) const;
+	void to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
 
 	const string& name() const
 	{

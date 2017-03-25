@@ -280,21 +280,20 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 						timestamp = m_metric.timestamp();
 					}
 
-					if(!ml || ml->allow(m_metric.name()))
+					std::string filter;
+					if(ml)
 					{
-						if(ml)
+						if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
 						{
-							g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
+							ret[m_metric.container_id()].push_back(move(m_metric));
+							++metric_count;
 						}
+					}
+					else // no filtering, add every metric and log explicitly
+					{
+						metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
 						ret[m_metric.container_id()].push_back(move(m_metric));
 						++metric_count;
-					}
-					else
-					{
-						if(ml)
-						{
-							g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric not allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
-						}
 					}
 					m_metric = statsd_metric();
 
@@ -316,21 +315,20 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
 			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-			if(!ml || ml->allow(m_metric.name()))
+			std::string filter;
+			if(ml)
 			{
-				if(ml)
+				if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
 				{
-					g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
+					ret[m_metric.container_id()].push_back(move(m_metric));
+					++metric_count;
 				}
+			}
+			else // otherwise, add indiscriminately and log explicitly
+			{
+				metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
 				ret[m_metric.container_id()].push_back(move(m_metric));
 				++metric_count;
-			}
-			else
-			{
-				if(ml)
-				{
-					g_logger.format(sinsp_logger::SEV_TRACE, "statsd metric not allowed: %s:%s", m_metric.container_id().c_str(), m_metric.name().c_str());
-				}
 			}
 			m_metric = statsd_metric();
 		}

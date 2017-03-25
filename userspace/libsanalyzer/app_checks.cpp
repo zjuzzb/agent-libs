@@ -271,24 +271,23 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 	}
 	if(obj.isMember("metrics"))
 	{
-		for(const auto& m : obj["metrics"])
+		for(auto& m : obj["metrics"])
 		{
 			if(m.isArray() && m.size() && m[0].isConvertibleTo(Json::stringValue))
 			{
-				if(!ml || ml->allow(m[0].asString()))
+				std::string filter;
+				if(ml)
 				{
-					m_metrics.emplace_back(m);
-					if(ml)
+					std::string filter;
+					if(ml->allow(m[0].asString(), filter, nullptr, "app_check")) // allow() will log if logging is enabled
 					{
-						g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric allowed: %s", m[0].asCString());
+						m_metrics.emplace_back(m);
 					}
 				}
-				else
+				else // no filters, add all metrics and log explicitly
 				{
-					if(ml)
-					{
-						g_logger.format(sinsp_logger::SEV_TRACE, "app_check metric not allowed: %s", m[0].asCString());
-					}
+					metric_limits::log(m[0].asString(), "app_check", true, metric_limits::log_enabled(), " ");
+					m_metrics.emplace_back(m);
 				}
 			}
 		}
@@ -302,35 +301,41 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 		{
 			if(s.isMember("check") && s["check"].isConvertibleTo(Json::stringValue))
 			{
-				if(!ml || ml->allow(s["check"].asString()))
+				if(ml)
 				{
-					m_service_checks.emplace_back(s);
-					if(ml)
+					std::string filter;
+					if(ml->allow(s["check"].asString(), filter, nullptr, "service_check")) // allow() will log if logging is enabled
 					{
-						g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check allowed: %s", s["check"].asCString());
+						m_service_checks.emplace_back(s);
 					}
 				}
-				else
+				else // no filters, add all metrics and log explicitly
 				{
-					if(ml)
-					{
-						g_logger.format(sinsp_logger::SEV_TRACE, "app_check service check not allowed: %s", s["check"].asCString());
-					}
+					metric_limits::log(s["check"].asString(), "service_check", true, metric_limits::log_enabled(), " ");
+					m_service_checks.emplace_back(s);
 				}
 			}
 		}
 	}
 }
 
-void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit) const
+void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
 {
 	if(limit == 0) { return; }
 	// Right now process name is not used by backend
 	//proto->set_process_name(m_process_name);
+	bool ml_log = metric_limits::log_enabled();
 	for(const auto& m : m_metrics)
 	{
+		ASSERT(((limit == 0) && ml_log) || (limit != 0));
+		if((limit == 0) && ml_log)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s.",
+							max_limit, m.name().c_str());
+			continue;
+		}
 		m.to_protobuf(proto->add_metrics());
-		if(--limit == 0) { return; }
+		if((--limit == 0) && !ml_log) { return; }
 	}
 	/*
 	 * Right now service checks are not supported by the backend
@@ -338,8 +343,15 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit) 
 	 */
 	for(const auto& s : m_service_checks)
 	{
+		ASSERT(((limit == 0) && ml_log) || (limit != 0));
+		if((limit == 0) && ml_log)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "[service_check] metric over limit (total, %u max): %s.",
+							max_limit, s.name().c_str());
+			continue;
+		}
 		s.to_protobuf_as_metric(proto->add_metrics());
-		if(--limit == 0) { return; }
+		if((--limit == 0) && !ml_log) { return; }
 	}
 }
 

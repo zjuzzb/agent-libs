@@ -106,6 +106,12 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 		{
 			a = attribute["alias"].asString();
 		}
+		bool metric_included = true;
+		bool allow_name = true, allow_alias = true;
+		int name_pos = 0, alias_pos = 0;
+		int nopos = metric_limits::ML_NO_FILTER_POSITION;
+		std::string name_filter, alias_filter;
+
 		if(ml)
 		{
 			//
@@ -117,20 +123,20 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 			// 1. if name nor alias is found in the list, metric is included
 			// 2. if [alias OR name OR both] are found in the list, metric is included/excluded based on first found
 			//
-			int name_pos = 0;
-			bool allow_name = false;
+			name_pos = 0;
+			allow_name = false;
 			if(!n.empty())
 			{
-				allow_name = ml->allow(n, &name_pos);
+				allow_name = ml->allow(n, name_filter, &name_pos);
 			}
-			int alias_pos = 0;
-			bool allow_alias = false;
+			alias_pos = 0;
+			allow_alias = false;
 			if(!a.empty())
 			{
-				allow_alias = ml->allow(a, &alias_pos);
+				allow_alias = ml->allow(a, alias_filter, &alias_pos);
 			}
-			int nopos = metric_limits::ML_NO_FILTER_POSITION;
-			bool metric_included = ((alias_pos == nopos) && (name_pos == nopos)); // 1. (neither in the list)
+			nopos = metric_limits::ML_NO_FILTER_POSITION;
+			metric_included = ((alias_pos == nopos) && (name_pos == nopos)); // 1. (neither in the list)
 			if(!metric_included && ((name_pos) || (alias_pos))) // 2. (one or both found)
 			{
 				// name and alias position must always be different, except for {*, false}
@@ -156,24 +162,36 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 					}
 				}
 			}
-
-			if(metric_included)
-			{
-				g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric allowed: %s[%c] (%s[%c])",
-								n.c_str(), (allow_name ? 'x' : ' '), a.c_str(), (allow_alias ? 'x' : ' '));
-			}
-			else
-			{
-				g_logger.format(sinsp_logger::SEV_TRACE, "jmx metric not allowed: %s[%c] (%s[%c])",
-								n.c_str(), (!allow_name ? 'x' : ' '), a.c_str(), (!allow_alias ? 'x' : ' '));
-				continue;
-			}
 		}
-		m_attributes.emplace_back(attribute);
+
+		if(metric_limits::log_enabled())
+		{
+			// jmx is a special case because filter can specify either metric name or alias
+			// we indicate in the log which criteria was used to include/exclude metric:
+			// [+] - explicitly included by filter
+			// [-] - explicitly excluded by filter
+			// [ ] - no filter (metric included by default)
+			bool name_found = (name_pos != nopos);
+			bool alias_found = (alias_pos != nopos);
+			bool by_name = name_found || (name_pos < alias_pos);
+			bool by_alias = alias_found || (alias_pos < name_pos);
+			const std::string& filter = by_name ? name_filter : (by_alias ? alias_filter : " ");
+			char name_flag = (by_name ? (allow_name ? (name_found ? '+' : ' ') : '-') : ' ');
+			char alias_flag = (by_alias ? (allow_alias ? (alias_found ? '+' : ' ') : '-') : ' ');
+			char filter_flag = metric_included ? '+' : '-';
+			std::ostringstream os;
+			os << "filter: " << filter_flag << '[' << filter << "], "
+				"criteria: (" << n << '[' << name_flag << "], " << a << '[' << alias_flag << ']' << ')';
+			metric_limits::log(n.c_str(), "jmx", metric_included, true, os.str());
+		}
+		if(metric_included)
+		{
+			m_attributes.emplace_back(attribute);
+		}
 	}
 }
 
-unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, bool log_excess) const
+unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type) const
 {
 	if(proto_bean)
 	{
@@ -182,17 +200,16 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 	unsigned emitted_attributes = 0;
 	for(auto it = m_attributes.cbegin(); it != m_attributes.cend(); ++it)
 	{
-		if(limit > emitted_attributes)
+		if(proto_bean && (limit > emitted_attributes))
 		{
-			ASSERT(proto_bean);
 			draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
 			it->to_protobuf(attribute_proto, sampling);
 			emitted_attributes += 1;
 		}
-		else if(log_excess)
+		else if(metric_limits::log_enabled())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "JMX metric over limit: %s (%s).",
-							it->name().c_str(), it->alias().c_str());
+			g_logger.format(sinsp_logger::SEV_INFO, "[jmx] metric over limit (%s, %u max): %s (%s).",
+							limit_type.c_str(), limit, it->name().c_str(), it->alias().c_str());
 		}
 		else { break; }
 	}
@@ -213,20 +230,23 @@ java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t m
 	}
 }
 
-unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, bool log_excess) const
+unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type) const
 {
-	protobuf->set_process_name(m_name);
+	if(protobuf)
+	{
+		protobuf->set_process_name(m_name);
+	}
 	unsigned emitted_attributes = 0;
 	for(auto bean_it = m_beans.cbegin(); bean_it != m_beans.cend(); ++bean_it)
 	{
-		if((limit > emitted_attributes))
+		if(protobuf && (limit > emitted_attributes))
 		{
 			draiosproto::jmx_bean* protobean = protobuf->add_beans();
-			emitted_attributes += bean_it->to_protobuf(protobean, sampling, limit-emitted_attributes, log_excess);
+			emitted_attributes += bean_it->to_protobuf(protobean, sampling, limit-emitted_attributes, limit_type);
 		}
-		else if(log_excess)
+		else if(metric_limits::log_enabled())
 		{
-			bean_it->to_protobuf(nullptr, 0, 0, log_excess);
+			bean_it->to_protobuf(nullptr, 0, limit, limit_type);
 		}
 		else { break; }
 	}
