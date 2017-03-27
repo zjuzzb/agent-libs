@@ -321,10 +321,10 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 
 void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
 {
-	if(limit == 0) { return; }
+	bool ml_log = metric_limits::log_enabled();
+	if(limit == 0 && !ml_log) { return; }
 	// Right now process name is not used by backend
 	//proto->set_process_name(m_process_name);
-	bool ml_log = metric_limits::log_enabled();
 	for(const auto& m : m_metrics)
 	{
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
@@ -417,7 +417,7 @@ app_service_check::app_service_check(const Json::Value &obj):
 	m_status(static_cast<status_t>(obj["status"].asUInt())),
 	m_name(obj["check"].asString())
 {
-	if(obj.isMember("tags") && obj.isArray())
+	if(obj.isMember("tags"))
 	{
 		for(const auto& tag_obj : obj["tags"])
 		{

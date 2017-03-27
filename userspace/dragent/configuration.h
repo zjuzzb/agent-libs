@@ -555,6 +555,7 @@ public:
 
 	bool m_excess_metric_log = false;
 	metrics_filter_vec m_metrics_filter;
+	unsigned m_metrics_cache;
 
 	bool m_enable_coredump;
 	bool m_auto_config;

@@ -738,6 +738,16 @@ void sinsp_configuration::set_excess_metrics_log(bool log)
 	m_excess_metrics_log = log;
 }
 
+unsigned sinsp_configuration::get_metrics_cache() const
+{
+	return m_metrics_cache;
+}
+
+void sinsp_configuration::set_metrics_cache(unsigned sz)
+{
+	m_metrics_cache = sz;
+}
+
 unsigned sinsp_configuration::get_jmx_limit() const
 {
 	return m_jmx_limit;

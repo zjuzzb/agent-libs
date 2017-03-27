@@ -9,20 +9,16 @@
 #include <iostream>
 
 #ifdef HAS_ANALYZER
+
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "analyzer_settings.h"
-#define ML_CACHE_SIZE STATSD_METRIC_HARD_LIMIT + APP_METRICS_HARD_LIMIT + 2*JMX_METRICS_HARD_LIMIT + 1000
 
 // suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
 #pragma GCC diagnostic pop
-
-#else
-
-#define ML_CACHE_SIZE 9000
 
 #endif // HAS_ANALYZER
 
@@ -31,22 +27,24 @@
 class metrics_filter
 {
 public:
+	typedef std::shared_ptr<std::string> sptr_t;
+
 	metrics_filter()
 	{}
-	metrics_filter(std::string filter, bool included): m_filter(filter), m_included(included)
+	metrics_filter(const std::string& filter, bool included): m_filter(std::make_shared<std::string>(filter)), m_included(included)
 	{}
-	const std::string& filter() const { return m_filter; }
+	sptr_t filter() const { return m_filter; }
 	bool included() const { return m_included; }
 	void set_filter(const std::string& filter)
 	{
-		m_filter = filter;
+		m_filter = std::make_shared<std::string>(filter);
 	}
 	void set_included(bool included)
 	{
 		m_included = included;
 	}
 private:
-	std::string m_filter;
+	sptr_t m_filter;
 	bool m_included = true;
 };
 
@@ -85,6 +83,7 @@ class metric_limits
 public:
 	typedef std::shared_ptr<metric_limits> sptr_t;
 	typedef const std::shared_ptr<metric_limits>& cref_sptr_t;
+	typedef metrics_filter::sptr_t filter_sptr_t;
 
 	static const int ML_NO_FILTER_POSITION;
 
@@ -92,10 +91,10 @@ public:
 	{
 	public:
 		entry() = delete;
-		entry(bool allow, const std::string& filter, int pos);
+		entry(bool allow, filter_sptr_t filter, int pos);
 		void set_allow(bool a = true);
 		bool get_allow();
-		const std::string& filter() const;
+		std::string filter() const;
 		int position() const;
 		double last_access() const;
 
@@ -103,7 +102,7 @@ public:
 		void access();
 
 		bool m_allow = true;
-		std::string m_filter;
+		filter_sptr_t m_filter;
 		int m_pos = metric_limits::ML_NO_FILTER_POSITION;
 		time_t m_access = 0;
 	};
@@ -112,7 +111,7 @@ public:
 
 	metric_limits() = delete;
 	metric_limits(metrics_filter_vec filters,
-				  uint64_t max_entries = ML_CACHE_SIZE,
+				  unsigned max_entries = 0,
 				  uint64_t expire_seconds = 86400);
 
 	bool allow(const std::string& metric, std::string& filter, int* pos = nullptr, const std::string& type = "");
@@ -120,7 +119,7 @@ public:
 	uint64_t cached();
 	void purge_cache();
 	void clear_cache();
-	uint64_t cache_max_entries() const;
+	unsigned cache_max_entries() const;
 	uint64_t cache_expire_seconds() const;
 
 	//
@@ -155,7 +154,7 @@ public:
 	}
 
 private:
-	void insert(const std::string& metric, const std::string& filter, bool value, int pos);
+	void insert(const std::string& metric, filter_sptr_t filter, bool value, int pos);
 	double secs_since_last_purge() const;
 	uint64_t purge_limit();
 	std::string wrap_filter(const std::string& filter, bool inc);
@@ -164,7 +163,7 @@ private:
 
 	metrics_filter_vec m_filters;
 	map_t m_cache;
-	uint64_t m_max_entries = ML_CACHE_SIZE;
+	unsigned m_max_entries = 0;
 	time_t m_last_purge = 0;
 	uint64_t m_purge_seconds = 86400; // 24hr
 	static bool m_log; // used to enter/exit log periods
@@ -175,8 +174,10 @@ inline void metric_limits::log(const std::string& metric, const std::string& typ
 {
 	if(log_enabled)
 	{
+#ifdef HAS_ANALYZER
 		g_logger.format(sinsp_logger::SEV_INFO, "%c[%s] metric %s: %s (%s)",
 					(inc ? '+' : '-'), type.c_str(), (inc ? "included" : "excluded"), metric.c_str(), filter.c_str());
+#endif
 	}
 }
 
@@ -204,9 +205,10 @@ inline bool metric_limits::log_enabled()
 
 inline bool metric_limits::first_includes_all(metrics_filter_vec v)
 {
-	return (v.size() && v[0].included() &&
-		   (v[0].filter().empty() ||
-		   ((v[0].filter().size() == 1) && (v[0].filter()[0] == '*'))));
+	ASSERT(v[0].filter());
+	return (v.size() && v[0].included() && v[0].filter() &&
+		   (v[0].filter()->empty() ||
+		   ((v[0].filter()->size() == 1) && ((*v[0].filter())[0] == '*'))));
 }
 
 inline void metric_limits::optimize_exclude_all(metrics_filter_vec& filters)
@@ -215,9 +217,10 @@ inline void metric_limits::optimize_exclude_all(metrics_filter_vec& filters)
 	if(filters.size() > 1)
 	{
 		metrics_filter& f = filters[0];
-		if(!f.included() && f.filter().size() == 1 && f.filter()[0] == '*')
+		ASSERT(f.filter());
+		if(!f.included() && f.filter() && f.filter()->size() == 1 && (*f.filter())[0] == '*')
 		{
-			filters = {{"*", false}};
+			filters.erase(filters.begin() + 1, filters.end());
 		}
 	}
 }
@@ -249,7 +252,7 @@ inline double metric_limits::secs_since_last_purge() const
 	return difftime(now, m_last_purge);
 }
 
-inline uint64_t metric_limits::cache_max_entries() const
+inline unsigned metric_limits::cache_max_entries() const
 {
 	return m_max_entries;
 }
@@ -257,17 +260,6 @@ inline uint64_t metric_limits::cache_max_entries() const
 inline uint64_t metric_limits::cache_expire_seconds() const
 {
 	return m_purge_seconds;
-}
-/*
-inline unsigned metric_limits::cache_log_seconds() const
-{
-	return m_log_seconds;
-}
-*/
-inline metric_limits::entry::entry(bool allow, const std::string& filter, int pos):
-	m_allow(allow), m_filter(filter), m_pos(pos)
-{
-	access();
 }
 
 inline void metric_limits::entry::set_allow(bool a)
@@ -282,9 +274,9 @@ inline bool metric_limits::entry::get_allow()
 	return m_allow;
 }
 
-inline const std::string& metric_limits::entry::filter() const
+inline std::string metric_limits::entry::filter() const
 {
-	return m_filter;
+	return m_filter ? *m_filter : "";
 }
 
 inline int metric_limits::entry::position() const

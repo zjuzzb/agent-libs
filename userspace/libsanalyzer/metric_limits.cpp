@@ -6,7 +6,8 @@ const int metric_limits::ML_NO_FILTER_POSITION = std::numeric_limits<int>::max()
 bool metric_limits::m_log = false;
 bool metric_limits::m_enable_log = false;
 
-metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entries,
+metric_limits::metric_limits(const metrics_filter_vec filters,
+							unsigned max_entries,
 							uint64_t expire_seconds):
 							m_filters(filters),
 							m_max_entries(max_entries),
@@ -32,6 +33,14 @@ metric_limits::metric_limits(const metrics_filter_vec filters, uint64_t max_entr
 		os << "An attempt to create metric limits with filter size (" << m_filters.size() << ") "
 			"exceeding max allowed (" << CUSTOM_METRICS_FILTERS_HARD_LIMIT << ").";
 		throw sinsp_exception(os.str());
+	}
+	if(m_max_entries > CUSTOM_METRICS_CACHE_HARD_LIMIT)
+	{
+		m_max_entries = CUSTOM_METRICS_CACHE_HARD_LIMIT;
+		std::ostringstream os;
+		os << "Metric limits max cache size (" << m_max_entries
+			<< ") exceeded, reduced to " << CUSTOM_METRICS_CACHE_HARD_LIMIT;
+		g_logger.log(os.str(), sinsp_logger::SEV_WARNING);
 	}
 #endif // HAS_ANALYZER
 	optimize_exclude_all(m_filters);
@@ -61,58 +70,64 @@ bool metric_limits::log_metrics(int interval, int duration)
 bool metric_limits::allow(const std::string& metric, std::string& filter, int* pos, const std::string& type)
 {
 	filter.clear();
-	auto found = m_cache.find(metric);
-	if(found != m_cache.end())
+	if(m_max_entries)
 	{
-		if(pos) { *pos = found->second.position(); }
-		filter = found->second.filter();
-		bool inc = found->second.get_allow();
-		if(!pos) { log(metric, type, inc, m_log, wrap_filter(filter, inc)); }
-		return inc;
+		auto found = m_cache.find(metric);
+		if(found != m_cache.end())
+		{
+			if(pos) { *pos = found->second.position(); }
+			filter = found->second.filter();
+			bool inc = found->second.get_allow();
+			if(!pos) { log(metric, type, inc, m_log, wrap_filter(filter, inc)); }
+			return inc;
+		}
 	}
 
 	int p = 0;
 	for(const auto& f : m_filters)
 	{
 		++p;
-		int m = fnmatch(f.filter().c_str(), metric.c_str(), FNM_CASEFOLD);
+		int m = fnmatch(f.filter()->c_str(), metric.c_str(), FNM_CASEFOLD);
 		if(0 == m)
 		{
 			bool inc = f.included();
 			insert(metric, f.filter(), inc, p);
 			if(pos) { *pos = p; }
 			if(!pos) { log(metric, type, f.included(), m_log, wrap_filter(filter, inc)); }
-			filter = f.filter();
+			filter = (*f.filter());
 			return inc;
 		}
 		else if(FNM_NOMATCH != m)
 		{
 #ifdef HAS_ANALYZER
 			g_logger.format(sinsp_logger::SEV_WARNING, "Metric limits: error glob matching [%s] "
-					  "with pattern [%s]", metric.c_str(), f.filter().c_str());
+					  "with pattern [%s]", metric.c_str(), f.filter()->c_str());
 #endif // HAS_ANALYZER
 		}
 	}
 
-	insert(metric, filter, true, ML_NO_FILTER_POSITION);
+	insert(metric, nullptr, true, ML_NO_FILTER_POSITION);
 	if(pos) { *pos = ML_NO_FILTER_POSITION; }
 	if(!pos) { log(metric, type, true, m_log, wrap_filter(" ", true)); }
 	return true;
 }
 
-void metric_limits::insert(const std::string& metric, const std::string& filter, bool value, int pos)
+void metric_limits::insert(const std::string& metric, filter_sptr_t filter, bool value, int pos)
 {
-	purge_cache();
-	if(m_cache.size() < m_max_entries)
+	if(m_max_entries) // caching enabled
 	{
-		m_cache.insert({metric, entry(value, filter, pos)});
-	}
-	else
-	{
-#ifdef HAS_ANALYZER
-		g_logger.format(sinsp_logger::SEV_WARNING, "Metric limit cache full, metric [%s] "
-				  "will not be cached.", metric.c_str());
-#endif // HAS_ANALYZER
+		purge_cache();
+		if(m_cache.size() < m_max_entries)
+		{
+			m_cache.insert({metric, entry(value, filter, pos)});
+		}
+		else
+		{
+	#ifdef HAS_ANALYZER
+			g_logger.format(sinsp_logger::SEV_WARNING, "Metric limit cache full, metric [%s] "
+					  "will not be cached.", metric.c_str());
+	#endif // HAS_ANALYZER
+		}
 	}
 }
 
@@ -133,4 +148,10 @@ void metric_limits::purge_cache()
 		}
 		time(&m_last_purge);
 	}
+}
+
+metric_limits::entry::entry(bool allow, filter_sptr_t filter, int pos):
+	m_allow(allow), m_filter(filter), m_pos(pos)
+{
+	access();
 }

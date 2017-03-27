@@ -2321,7 +2321,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						}
 						else if(metric_limits::log_enabled())
 						{
-							g_logger.format(sinsp_logger::SEV_INFO,
+							g_logger.format(sinsp_logger::SEV_WARNING,
 								"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
 							// dummy call, only to print excessive metrics
 							jmx_metrics_it->second.to_protobuf(nullptr, 0, m_configuration->get_jmx_limit(), "total");
@@ -5476,7 +5476,7 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 			}
 			else
 			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "[statsd] metrics over limit, giving up");
+				g_logger.format(sinsp_logger::SEV_WARNING, "statsd metrics over limit, giving up");
 				break;
 			}
 		}

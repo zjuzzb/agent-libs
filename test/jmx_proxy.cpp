@@ -109,7 +109,7 @@ TEST(jmx_bean, test_filter)
 		"}", jv, true)
 	);
 	metrics_filter_vec f = {{"NumberOfRelationship*", true}, {"NumberOfProperty*", false}};
-	metric_limits::sptr_t ml(new metric_limits(f));
+	metric_limits::sptr_t ml(new metric_limits(f, 4u));
 	java_bean jb(jv, ml);
 	ASSERT_EQ(3u, jb.attributes().size());
 	ASSERT_EQ(4u, ml->cached());

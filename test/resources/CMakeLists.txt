@@ -29,6 +29,7 @@ file(COPY fake_backend.cert
 		tcp_server.py
 		test.default.yaml
 		test.yaml
+		test_filters.yaml
 		unix_client.py
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

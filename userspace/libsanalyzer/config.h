@@ -133,6 +133,8 @@ public:
 	void set_metrics_filter(const metrics_filter_vec& event_filter);
 	bool get_excess_metrics_log() const;
 	void set_excess_metrics_log(bool log);
+	unsigned get_metrics_cache() const;
+	void set_metrics_cache(unsigned sz);
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
 	bool get_command_lines_capture_enabled() const;
@@ -218,6 +220,7 @@ private:
 
 	metrics_filter_vec m_metrics_filter;
 	bool m_excess_metrics_log = false;
+	unsigned m_metrics_cache = 0;
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;

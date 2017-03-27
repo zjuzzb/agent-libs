@@ -867,7 +867,8 @@ void dragent_configuration::init(Application* app)
 		m_autodrop_enabled = false;
 	}
 
-	m_excess_metric_log = m_config->get_scalar("excess_metric_log", false);
+	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
+	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
 	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
 	// if first filter entry is empty or '*' and included, everything will be allowed, so it's pointless to have the filter list
 	if(metric_limits::first_includes_all(m_metrics_filter))
@@ -1117,10 +1118,26 @@ void dragent_configuration::print_configuration()
 	{
 		for(const auto& e : m_metrics_filter)
 		{
-			os << std::endl << (e.included() ? "include: " : "exclude: ") << e.filter();
+			os << std::endl << (e.included() ? "include: " : "exclude: ") << *(e.filter());
 		}
 	}
 	g_log->information("Metrics filters:" + os.str());
+	if(m_excess_metric_log)
+	{
+		g_log->information("Metrics filter log enabled");
+	}
+	else
+	{
+		g_log->information("Metrics filter log disabled");
+	}
+	if(m_metrics_cache > 0)
+	{
+		g_log->information("Metrics cache enabled, size: " + std::to_string(m_metrics_cache));
+	}
+	else
+	{
+		g_log->information("Metrics cache disabled");
+	}
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
