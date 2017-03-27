@@ -14,7 +14,7 @@ from google.protobuf import descriptor_pb2
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='draios.proto',
   package='draiosproto',
-  serialized_pb='\n\x0c\x64raios.proto\x12\x0b\x64raiosproto\"G\n\x0c\x63ounter_time\x12\r\n\x05\x63ount\x18\x01 \x02(\r\x12\x0f\n\x07time_ns\x18\x02 \x02(\x04\x12\x17\n\x0ftime_percentage\x18\x03 \x01(\r\"j\n\x1a\x63ounter_time_bidirectional\x12\x10\n\x08\x63ount_in\x18\x01 \x02(\r\x12\x11\n\tcount_out\x18\x02 \x02(\r\x12\x12\n\ntime_ns_in\x18\x03 \x02(\x04\x12\x13\n\x0btime_ns_out\x18\x04 \x02(\x04\"Y\n\rcounter_bytes\x12\x10\n\x08\x63ount_in\x18\x01 \x02(\r\x12\x11\n\tcount_out\x18\x02 \x02(\r\x12\x10\n\x08\x62ytes_in\x18\x03 \x02(\r\x12\x11\n\tbytes_out\x18\x04 \x02(\r\"\xa0\x02\n\x12\x63ounter_time_bytes\x12\x12\n\ntime_ns_in\x18\x01 \x02(\x04\x12\x13\n\x0btime_ns_out\x18\x02 \x02(\x04\x12\x15\n\rtime_ns_other\x18\x03 \x02(\x04\x12\x10\n\x08\x63ount_in\x18\x04 \x02(\r\x12\x11\n\tcount_out\x18\x05 \x02(\r\x12\x13\n\x0b\x63ount_other\x18\x06 \x02(\r\x12\x10\n\x08\x62ytes_in\x18\x07 \x02(\r\x12\x11\n\tbytes_out\x18\x08 \x02(\r\x12\x13\n\x0b\x62ytes_other\x18\t \x02(\r\x12\x1a\n\x12time_percentage_in\x18\n \x01(\r\x12\x1b\n\x13time_percentage_out\x18\x0b \x01(\r\x12\x1d\n\x15time_percentage_other\x18\x0c \x01(\r\"\xf7\x05\n\x0ftime_categories\x12*\n\x07unknown\x18\x01 \x01(\x0b\x32\x19.draiosproto.counter_time\x12(\n\x05other\x18\x02 \x01(\x0b\x32\x19.draiosproto.counter_time\x12\'\n\x04\x66ile\x18\x03 \x01(\x0b\x32\x19.draiosproto.counter_time\x12&\n\x03net\x18\x04 \x01(\x0b\x32\x19.draiosproto.counter_time\x12&\n\x03ipc\x18\x05 \x01(\x0b\x32\x19.draiosproto.counter_time\x12)\n\x06memory\x18\x06 \x01(\x0b\x32\x19.draiosproto.counter_time\x12*\n\x07process\x18\x07 \x01(\x0b\x32\x19.draiosproto.counter_time\x12(\n\x05sleep\x18\x08 \x01(\x0b\x32\x19.draiosproto.counter_time\x12)\n\x06system\x18\t \x01(\x0b\x32\x19.draiosproto.counter_time\x12)\n\x06signal\x18\n \x01(\x0b\x32\x19.draiosproto.counter_time\x12\'\n\x04user\x18\x0b \x01(\x0b\x32\x19.draiosproto.counter_time\x12\'\n\x04time\x18\x0c \x01(\x0b\x32\x19.draiosproto.counter_time\x12\x30\n\x07io_file\x18\r \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12/\n\x06io_net\x18\x0e \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12\x31\n\x08io_other\x18\x0f \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12\'\n\x04wait\x18\x10 \x01(\x0b\x32\x19.draiosproto.counter_time\x12-\n\nprocessing\x18\x11 \x01(\x0b\x32\x19.draiosproto.counter_time\"\xde\x01\n transaction_breakdown_categories\x12(\n\x05other\x18\x02 \x01(\x0b\x32\x19.draiosproto.counter_time\x12\x30\n\x07io_file\x18\r \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12/\n\x06io_net\x18\x0e \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12-\n\nprocessing\x18\x11 \x01(\x0b\x32\x19.draiosproto.counter_time\"\x80\x01\n\x16\x63ounter_syscall_errors\x12\r\n\x05\x63ount\x18\x01 \x02(\r\x12\x17\n\x0ftop_error_codes\x18\x02 \x03(\r\x12\x12\n\ncount_file\x18\x04 \x01(\r\x12\x17\n\x0f\x63ount_file_open\x18\x05 \x01(\r\x12\x11\n\tcount_net\x18\x06 \x01(\r\"\xaf\x04\n\x13resource_categories\x12\x16\n\x0e\x63\x61pacity_score\x18\x01 \x01(\r\x12\x1d\n\x15stolen_capacity_score\x18\x06 \x01(\r\x12\"\n\x1a\x63onnection_queue_usage_pct\x18\x02 \x01(\r\x12\x14\n\x0c\x66\x64_usage_pct\x18\x03 \x01(\r\x12\x0f\n\x07\x63pu_pct\x18\x04 \x01(\r\x12 \n\x18resident_memory_usage_kb\x18\x05 \x01(\r\x12\x1f\n\x17virtual_memory_usage_kb\x18\r \x01(\r\x12\x1c\n\x14swap_memory_usage_kb\x18\x0e \x01(\r\x12\x18\n\x10major_pagefaults\x18\x0f \x01(\x04\x12\x18\n\x10minor_pagefaults\x18\x10 \x01(\x04\x12\x10\n\x08\x66\x64_count\x18\x15 \x01(\r\x12\x12\n\ncpu_shares\x18\x18 \x01(\r\x12\x1c\n\x14\x63pu_shares_usage_pct\x18\x19 \x01(\r\x12\x17\n\x0fmemory_limit_kb\x18\x1a \x01(\r\x12\x15\n\rswap_limit_kb\x18\x1b \x01(\r\x12\x1a\n\x12\x63pu_quota_used_pct\x18\x1c \x01(\r\x12\x1c\n\x14swap_memory_total_kb\x18\x1d \x01(\r\x12 \n\x18swap_memory_available_kb\x18\x1e \x01(\r\x12\x17\n\x0f\x63ount_processes\x18\x1f \x01(\x04\x12\x18\n\x10proc_start_count\x18  \x01(\x04\"\xee\x02\n\x15\x63onnection_categories\x12*\n\x06server\x18\x01 \x01(\x0b\x32\x1a.draiosproto.counter_bytes\x12*\n\x06\x63lient\x18\x02 \x01(\x0b\x32\x1a.draiosproto.counter_bytes\x12\x45\n\x14transaction_counters\x18\x03 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x12 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\x13 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12 \n\x18n_aggregated_connections\x18\x04 \x01(\r\"P\n\x0fprocess_details\x12\x0c\n\x04\x63omm\x18\x01 \x02(\t\x12\x0b\n\x03\x65xe\x18\x02 \x02(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x14\n\x0c\x63ontainer_id\x18\x04 \x01(\t\"e\n\x0f\x63ommand_details\x12\x11\n\ttimestamp\x18\x01 \x02(\x04\x12\r\n\x05\x63ount\x18\x02 \x02(\r\x12\x0f\n\x07\x63mdline\x18\x03 \x02(\t\x12\x0b\n\x03\x65xe\x18\x04 \x02(\t\x12\x12\n\nparentcomm\x18\x05 \x01(\t\"\x7f\n\x13\x63ounter_proto_entry\x12\x0e\n\x06ncalls\x18\x01 \x02(\r\x12\x10\n\x08time_tot\x18\x02 \x02(\x04\x12\x10\n\x08time_max\x18\x03 \x02(\x04\x12\x10\n\x08\x62ytes_in\x18\x04 \x02(\x04\x12\x11\n\tbytes_out\x18\x05 \x02(\x04\x12\x0f\n\x07nerrors\x18\x06 \x02(\r\"N\n\x0burl_details\x12\x0b\n\x03url\x18\x01 \x02(\t\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\":\n\x13status_code_details\x12\x13\n\x0bstatus_code\x18\x01 \x02(\r\x12\x0e\n\x06ncalls\x18\x02 \x02(\r\"\xe7\x01\n\thttp_info\x12-\n\x0bserver_urls\x18\x01 \x03(\x0b\x32\x18.draiosproto.url_details\x12-\n\x0b\x63lient_urls\x18\x02 \x03(\x0b\x32\x18.draiosproto.url_details\x12=\n\x13\x63lient_status_codes\x18\x03 \x03(\x0b\x32 .draiosproto.status_code_details\x12=\n\x13server_status_codes\x18\x04 \x03(\x0b\x32 .draiosproto.status_code_details\"U\n\x11sql_entry_details\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"{\n\x16sql_query_type_details\x12-\n\x04type\x18\x01 \x02(\x0e\x32\x1f.draiosproto.sql_statement_type\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"\xea\x02\n\x08sql_info\x12\x36\n\x0eserver_queries\x18\x01 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\x12\x36\n\x0e\x63lient_queries\x18\x02 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\x12?\n\x12server_query_types\x18\x03 \x03(\x0b\x32#.draiosproto.sql_query_type_details\x12?\n\x12\x63lient_query_types\x18\x04 \x03(\x0b\x32#.draiosproto.sql_query_type_details\x12\x35\n\rserver_tables\x18\x05 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\x12\x35\n\rclient_tables\x18\x06 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\"^\n\x1amongodb_collection_details\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"w\n\x17mongodb_op_type_details\x12(\n\x02op\x18\x01 \x02(\x0e\x32\x1c.draiosproto.mongodb_op_type\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"\x8d\x02\n\x0cmongodb_info\x12\x39\n\x0bservers_ops\x18\x01 \x03(\x0b\x32$.draiosproto.mongodb_op_type_details\x12\x38\n\nclient_ops\x18\x02 \x03(\x0b\x32$.draiosproto.mongodb_op_type_details\x12\x43\n\x12server_collections\x18\x03 \x03(\x0b\x32\'.draiosproto.mongodb_collection_details\x12\x43\n\x12\x63lient_collections\x18\x04 \x03(\x0b\x32\'.draiosproto.mongodb_collection_details\"\xde\x01\n\rjmx_attribute\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x01\x12\r\n\x05\x61lias\x18\x05 \x01(\t\x12*\n\x04type\x18\x07 \x01(\x0e\x32\x1c.draiosproto.jmx_metric_type\x12\x1f\n\x04unit\x18\x08 \x01(\x0e\x32\x11.draiosproto.unit\x12!\n\x05scale\x18\t \x01(\x0e\x32\x12.draiosproto.scale\x12\x31\n\rsubattributes\x18\x03 \x03(\x0b\x32\x1a.draiosproto.jmx_attribute\"H\n\x08jmx_bean\x12\x0c\n\x04name\x18\x01 \x01(\t\x12.\n\nattributes\x18\x02 \x03(\x0b\x32\x1a.draiosproto.jmx_attribute\"G\n\tjava_info\x12\x14\n\x0cprocess_name\x18\x01 \x01(\t\x12$\n\x05\x62\x65\x61ns\x18\x02 \x03(\x0b\x32\x15.draiosproto.jmx_bean\"(\n\nstatsd_tag\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\xf6\x01\n\rstatsd_metric\x12\x0c\n\x04name\x18\x01 \x01(\t\x12%\n\x04tags\x18\x02 \x03(\x0b\x32\x17.draiosproto.statsd_tag\x12-\n\x04type\x18\x03 \x01(\x0e\x32\x1f.draiosproto.statsd_metric_type\x12\r\n\x05value\x18\x04 \x01(\x01\x12\x0b\n\x03sum\x18\x05 \x01(\x01\x12\x0b\n\x03min\x18\x06 \x01(\x01\x12\x0b\n\x03max\x18\x07 \x01(\x01\x12\r\n\x05\x63ount\x18\x08 \x01(\x01\x12\x0e\n\x06median\x18\t \x01(\x01\x12\x15\n\rpercentile_95\x18\n \x01(\x01\x12\x15\n\rpercentile_99\x18\x0b \x01(\x01\"A\n\x0bstatsd_info\x12\x32\n\x0estatsd_metrics\x18\x01 \x03(\x0b\x32\x1a.draiosproto.statsd_metric\"%\n\x07\x61pp_tag\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x01(\t\"y\n\napp_metric\x12\x0c\n\x04name\x18\x01 \x01(\t\x12*\n\x04type\x18\x02 \x01(\x0e\x32\x1c.draiosproto.app_metric_type\x12\r\n\x05value\x18\x03 \x01(\x01\x12\"\n\x04tags\x18\x04 \x03(\x0b\x32\x14.draiosproto.app_tag\"j\n\tapp_check\x12\x0c\n\x04name\x18\x01 \x01(\t\x12+\n\x05value\x18\x02 \x01(\x0e\x32\x1c.draiosproto.app_check_value\x12\"\n\x04tags\x18\x03 \x03(\x0b\x32\x14.draiosproto.app_tag\"r\n\x08\x61pp_info\x12\x14\n\x0cprocess_name\x18\x01 \x01(\t\x12(\n\x07metrics\x18\x02 \x03(\x0b\x32\x17.draiosproto.app_metric\x12&\n\x06\x63hecks\x18\x03 \x03(\x0b\x32\x16.draiosproto.app_check\"\xa1\x02\n\nproto_info\x12$\n\x04http\x18\x01 \x01(\x0b\x32\x16.draiosproto.http_info\x12$\n\x05mysql\x18\x02 \x01(\x0b\x32\x15.draiosproto.sql_info\x12\'\n\x08postgres\x18\x03 \x01(\x0b\x32\x15.draiosproto.sql_info\x12*\n\x07mongodb\x18\x04 \x01(\x0b\x32\x19.draiosproto.mongodb_info\x12$\n\x04java\x18\x05 \x01(\x0b\x32\x16.draiosproto.java_info\x12(\n\x06statsd\x18\x06 \x01(\x0b\x32\x18.draiosproto.statsd_info\x12\"\n\x03\x61pp\x18\x07 \x01(\x0b\x32\x15.draiosproto.app_info\"U\n\x0fnetwork_by_port\x12\x0c\n\x04port\x18\x01 \x02(\r\x12\x34\n\x08\x63ounters\x18\x02 \x02(\x0b\x32\".draiosproto.connection_categories\"\xcf\x07\n\x04host\x12\x10\n\x08hostname\x18\x01 \x01(\t\x12\x10\n\x08num_cpus\x18\x02 \x01(\r\x12\x11\n\tcpu_loads\x18\x03 \x03(\r\x12\x11\n\tcpu_steal\x18\x0b \x03(\r\x12\"\n\x1aphysical_memory_size_bytes\x18\x04 \x02(\x04\x12/\n\ttcounters\x18\x05 \x01(\x0b\x32\x1c.draiosproto.time_categories\x12\x42\n\x0breqcounters\x18\x0c \x01(\x0b\x32-.draiosproto.transaction_breakdown_categories\x12\x45\n\x14transaction_counters\x18\x06 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x16 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\x17 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12$\n\x1ctransaction_processing_delay\x18\x07 \x01(\x04\x12\x18\n\x10next_tiers_delay\x18\r \x01(\x04\x12;\n\x11resource_counters\x18\x08 \x01(\x0b\x32 .draiosproto.resource_categories\x12;\n\x0esyscall_errors\x18\t \x01(\x0b\x32#.draiosproto.counter_syscall_errors\x12\x38\n\x0f\x65xternal_io_net\x18\n \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12<\n\x16network_by_serverports\x18\x18 \x03(\x0b\x32\x1c.draiosproto.network_by_port\x12\x10\n\x08\x63pu_idle\x18\x19 \x03(\r\x12\x0e\n\x06uptime\x18! \x01(\x04\x12\x12\n\nsystem_cpu\x18\" \x03(\r\x12\x10\n\x08user_cpu\x18# \x03(\r\x12!\n\x19memory_bytes_available_kb\x18$ \x01(\x04\x12\x12\n\niowait_cpu\x18% \x03(\r\x12\x10\n\x08nice_cpu\x18& \x03(\r\x12\x15\n\rsystem_load_1\x18) \x01(\r\x12\x15\n\rsystem_load_5\x18* \x01(\r\x12\x16\n\x0esystem_load_15\x18+ \x01(\r\"\xf8\x05\n\x07process\x12-\n\x07\x64\x65tails\x18\x02 \x01(\x0b\x32\x1c.draiosproto.process_details\x12\"\n\x1ais_ipv4_transaction_server\x18\x03 \x01(\x08\x12\"\n\x1ais_unix_transaction_server\x18\x04 \x01(\x08\x12\"\n\x1ais_ipv4_transaction_client\x18\n \x01(\x08\x12\"\n\x1ais_unix_transaction_client\x18\x0b \x01(\x08\x12\x0f\n\x07netrole\x18\r \x01(\r\x12/\n\ttcounters\x18\x05 \x01(\x0b\x32\x1c.draiosproto.time_categories\x12\x45\n\x14transaction_counters\x18\x06 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x12 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\x13 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12$\n\x1ctransaction_processing_delay\x18\x07 \x01(\x04\x12\x18\n\x10next_tiers_delay\x18\x0c \x01(\x04\x12;\n\x11resource_counters\x18\x08 \x01(\x0b\x32 .draiosproto.resource_categories\x12;\n\x0esyscall_errors\x18\t \x01(\x0b\x32#.draiosproto.counter_syscall_errors\x12\'\n\x06protos\x18\x14 \x01(\x0b\x32\x17.draiosproto.proto_info\x12\x13\n\x0bstart_count\x18\x15 \x01(\x04\x12\x17\n\x0f\x63ount_processes\x18\x17 \x01(\x04\"?\n\x07program\x12&\n\x08procinfo\x18\x01 \x02(\x0b\x32\x14.draiosproto.process\x12\x0c\n\x04pids\x18\x02 \x03(\x04\"T\n\tipv4tuple\x12\x0b\n\x03sip\x18\x01 \x02(\r\x12\x0b\n\x03\x64ip\x18\x02 \x02(\r\x12\r\n\x05sport\x18\x03 \x02(\r\x12\r\n\x05\x64port\x18\x04 \x02(\r\x12\x0f\n\x07l4proto\x18\x05 \x02(\r\"\x8a\x01\n\x0fipv4_connection\x12%\n\x05tuple\x18\x01 \x02(\x0b\x32\x16.draiosproto.ipv4tuple\x12\x0c\n\x04spid\x18\x02 \x01(\x04\x12\x0c\n\x04\x64pid\x18\x05 \x01(\x04\x12\x34\n\x08\x63ounters\x18\x08 \x02(\x0b\x32\".draiosproto.connection_categories\"T\n\x16ipv4_network_interface\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0c\n\x04\x61\x64\x64r\x18\x02 \x02(\r\x12\x0f\n\x07netmask\x18\x03 \x02(\r\x12\r\n\x05\x62\x63\x61st\x18\x04 \x01(\r\"\xa9\x01\n\nmounted_fs\x12\x0e\n\x06\x64\x65vice\x18\x01 \x02(\t\x12\x11\n\tmount_dir\x18\x02 \x02(\t\x12\x0c\n\x04type\x18\x03 \x02(\t\x12\x12\n\nsize_bytes\x18\x04 \x02(\x04\x12\x12\n\nused_bytes\x18\x05 \x02(\x04\x12\x17\n\x0f\x61vailable_bytes\x18\x06 \x02(\x04\x12\x14\n\x0ctotal_inodes\x18\n \x01(\x04\x12\x13\n\x0bused_inodes\x18\x0b \x01(\x04\"]\n\tfile_stat\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05\x62ytes\x18\x02 \x02(\r\x12\x0f\n\x07time_ns\x18\x03 \x02(\x04\x12\x12\n\nopen_count\x18\x04 \x02(\r\x12\x0e\n\x06\x65rrors\x18\x05 \x02(\r\"j\n\x16\x63ontainer_port_mapping\x12\x0f\n\x07host_ip\x18\x01 \x01(\r\x12\x11\n\thost_port\x18\x02 \x01(\r\x12\x14\n\x0c\x63ontainer_ip\x18\x03 \x01(\r\x12\x16\n\x0e\x63ontainer_port\x18\x04 \x01(\r\"-\n\x0f\x63ontainer_label\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\x8e\x07\n\tcontainer\x12\n\n\x02id\x18\x01 \x02(\t\x12)\n\x04type\x18\x02 \x01(\x0e\x32\x1b.draiosproto.container_type\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\r\n\x05image\x18\x04 \x01(\t\x12/\n\ttcounters\x18\x05 \x01(\x0b\x32\x1c.draiosproto.time_categories\x12\x42\n\x0breqcounters\x18\x06 \x01(\x0b\x32-.draiosproto.transaction_breakdown_categories\x12\x45\n\x14transaction_counters\x18\x07 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x08 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\t \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12$\n\x1ctransaction_processing_delay\x18\n \x01(\x04\x12\x18\n\x10next_tiers_delay\x18\x0c \x01(\x04\x12;\n\x11resource_counters\x18\r \x01(\x0b\x32 .draiosproto.resource_categories\x12;\n\x0esyscall_errors\x18\x0e \x01(\x0b\x32#.draiosproto.counter_syscall_errors\x12:\n\rport_mappings\x18\x12 \x03(\x0b\x32#.draiosproto.container_port_mapping\x12\'\n\x06protos\x18\x13 \x01(\x0b\x32\x17.draiosproto.proto_info\x12,\n\x06labels\x18\x14 \x03(\x0b\x32\x1c.draiosproto.container_label\x12\'\n\x06mounts\x18\x15 \x03(\x0b\x32\x17.draiosproto.mounted_fs\x12<\n\x16network_by_serverports\x18\x16 \x03(\x0b\x32\x1c.draiosproto.network_by_port\x12\x15\n\rmesos_task_id\x18\x17 \x01(\t\x12\x10\n\x08image_id\x18\x18 \x01(\t\"&\n\x08k8s_pair\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"\x8b\x01\n\nk8s_common\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0b\n\x03uid\x18\x02 \x02(\t\x12\x11\n\tnamespace\x18\x03 \x01(\t\x12%\n\x06labels\x18\x04 \x03(\x0b\x32\x15.draiosproto.k8s_pair\x12(\n\tselectors\x18\x05 \x03(\x0b\x32\x15.draiosproto.k8s_pair\"8\n\rk8s_namespace\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\"E\n\x08k8s_node\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x10\n\x08host_ips\x18\x02 \x03(\t\"\x99\x01\n\x07k8s_pod\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x15\n\rcontainer_ids\x18\x02 \x03(\t\x12\x11\n\tnode_name\x18\x03 \x01(\t\x12\x0f\n\x07host_ip\x18\x04 \x01(\t\x12\x13\n\x0binternal_ip\x18\x05 \x01(\t\x12\x15\n\rrestart_count\x18\x06 \x01(\r\"y\n\x1ak8s_replication_controller\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x18\n\x10replicas_desired\x18\x02 \x01(\r\x12\x18\n\x10replicas_running\x18\x03 \x01(\r\"n\n\x0fk8s_replica_set\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x18\n\x10replicas_desired\x18\x02 \x01(\r\x12\x18\n\x10replicas_running\x18\x03 \x01(\r\"\xd0\x01\n\x0bk8s_service\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x12\n\ncluster_ip\x18\x02 \x01(\t\x12\x30\n\x05ports\x18\x03 \x03(\x0b\x32!.draiosproto.k8s_service.net_port\x1aR\n\x08net_port\x12\x0c\n\x04port\x18\x01 \x02(\r\x12\x13\n\x0btarget_port\x18\x02 \x02(\r\x12\x10\n\x08protocol\x18\x03 \x01(\t\x12\x11\n\tnode_port\x18\x04 \x01(\r\"m\n\x0ek8s_deployment\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x18\n\x10replicas_desired\x18\x02 \x01(\r\x12\x18\n\x10replicas_running\x18\x03 \x01(\r\"n\n\rk8s_daemonset\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x19\n\x11\x63urrent_scheduled\x18\x02 \x01(\r\x12\x19\n\x11\x64\x65sired_scheduled\x18\x03 \x01(\r\"\x85\x03\n\tk8s_state\x12.\n\nnamespaces\x18\x01 \x03(\x0b\x32\x1a.draiosproto.k8s_namespace\x12$\n\x05nodes\x18\x02 \x03(\x0b\x32\x15.draiosproto.k8s_node\x12\"\n\x04pods\x18\x03 \x03(\x0b\x32\x14.draiosproto.k8s_pod\x12<\n\x0b\x63ontrollers\x18\x04 \x03(\x0b\x32\'.draiosproto.k8s_replication_controller\x12*\n\x08services\x18\x05 \x03(\x0b\x32\x18.draiosproto.k8s_service\x12\x32\n\x0creplica_sets\x18\x06 \x03(\x0b\x32\x1c.draiosproto.k8s_replica_set\x12\x30\n\x0b\x64\x65ployments\x18\x07 \x03(\x0b\x32\x1b.draiosproto.k8s_deployment\x12.\n\ndaemonsets\x18\x08 \x03(\x0b\x32\x1a.draiosproto.k8s_daemonset\"(\n\nmesos_pair\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"R\n\x0cmesos_common\x12\x0b\n\x03uid\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\'\n\x06labels\x18\x03 \x03(\x0b\x32\x17.draiosproto.mesos_pair\"I\n\nmesos_task\x12)\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x19.draiosproto.mesos_common\x12\x10\n\x08slave_id\x18\x02 \x02(\t\",\n\x0cmarathon_app\x12\n\n\x02id\x18\x01 \x02(\t\x12\x10\n\x08task_ids\x18\x02 \x03(\t\"r\n\x0emarathon_group\x12\n\n\x02id\x18\x01 \x02(\t\x12\'\n\x04\x61pps\x18\x02 \x03(\x0b\x32\x19.draiosproto.marathon_app\x12+\n\x06groups\x18\x03 \x03(\x0b\x32\x1b.draiosproto.marathon_group\"d\n\x0fmesos_framework\x12)\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x19.draiosproto.mesos_common\x12&\n\x05tasks\x18\x02 \x03(\x0b\x32\x17.draiosproto.mesos_task\"8\n\x0bmesos_slave\x12)\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x19.draiosproto.mesos_common\"\x96\x01\n\x0bmesos_state\x12\x30\n\nframeworks\x18\x01 \x03(\x0b\x32\x1c.draiosproto.mesos_framework\x12+\n\x06groups\x18\x02 \x03(\x0b\x32\x1b.draiosproto.marathon_group\x12(\n\x06slaves\x18\x03 \x03(\x0b\x32\x18.draiosproto.mesos_slave\"(\n\nswarm_pair\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"D\n\nswarm_port\x12\x0c\n\x04port\x18\x01 \x01(\r\x12\x16\n\x0epublished_port\x18\x02 \x01(\r\x12\x10\n\x08protocol\x18\x03 \x01(\t\"Q\n\x0cswarm_common\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\'\n\x06labels\x18\x03 \x03(\x0b\x32\x17.draiosproto.swarm_pair\"w\n\rswarm_service\x12)\n\x06\x63ommon\x18\x01 \x01(\x0b\x32\x19.draiosproto.swarm_common\x12\x13\n\x0bvirtual_ips\x18\x02 \x03(\t\x12&\n\x05ports\x18\x03 \x03(\x0b\x32\x17.draiosproto.swarm_port\"r\n\nswarm_task\x12)\n\x06\x63ommon\x18\x01 \x01(\x0b\x32\x19.draiosproto.swarm_common\x12\x12\n\nservice_id\x18\x02 \x01(\t\x12\x0f\n\x07node_id\x18\x03 \x01(\t\x12\x14\n\x0c\x63ontainer_id\x18\x04 \x01(\t\"E\n\nswarm_node\x12)\n\x06\x63ommon\x18\x01 \x01(\x0b\x32\x19.draiosproto.swarm_common\x12\x0c\n\x04role\x18\x02 \x01(\t\"\x9c\x01\n\x0bswarm_state\x12\x0f\n\x07node_id\x18\x01 \x01(\t\x12,\n\x08services\x18\x02 \x03(\x0b\x32\x1a.draiosproto.swarm_service\x12&\n\x05nodes\x18\x03 \x03(\x0b\x32\x17.draiosproto.swarm_node\x12&\n\x05tasks\x18\x04 \x03(\x0b\x32\x17.draiosproto.swarm_task\"\xdf\x06\n\x07metrics\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x16\n\x0esampling_ratio\x18\n \x01(\r\x12\x18\n\x10host_custom_name\x18\x0b \x01(\t\x12\x11\n\thost_tags\x18\x0c \x01(\t\x12\x16\n\x0eis_host_hidden\x18\x0e \x01(\x08\x12\x18\n\x10hidden_processes\x18\x0f \x01(\t\x12\x0f\n\x07version\x18\x10 \x01(\t\x12\x13\n\x0binstance_id\x18\x15 \x01(\t\x12#\n\x08hostinfo\x18\x04 \x01(\x0b\x32\x11.draiosproto.host\x12&\n\x08programs\x18\t \x03(\x0b\x32\x14.draiosproto.program\x12\x36\n\x10ipv4_connections\x18\x07 \x03(\x0b\x32\x1c.draiosproto.ipv4_connection\x12\x44\n\x17ipv4_network_interfaces\x18\x08 \x03(\x0b\x32#.draiosproto.ipv4_network_interface\x12.\n\x08\x63ommands\x18\x11 \x03(\x0b\x32\x1c.draiosproto.command_details\x12\'\n\x06mounts\x18\x12 \x03(\x0b\x32\x17.draiosproto.mounted_fs\x12)\n\ttop_files\x18\x13 \x03(\x0b\x32\x16.draiosproto.file_stat\x12\'\n\x06protos\x18\x14 \x01(\x0b\x32\x17.draiosproto.proto_info\x12*\n\ncontainers\x18\x16 \x03(\x0b\x32\x16.draiosproto.container\x12*\n\nkubernetes\x18\x18 \x01(\x0b\x32\x16.draiosproto.k8s_state\x12\'\n\x05mesos\x18\x19 \x01(\x0b\x32\x18.draiosproto.mesos_state\x12(\n\x06\x65vents\x18\x1a \x03(\x0b\x32\x18.draiosproto.agent_event\x12,\n\x07\x66\x61lcobl\x18\x1b \x01(\x0b\x32\x1b.draiosproto.falco_baseline\x12\'\n\x05swarm\x18\x1c \x01(\x0b\x32\x18.draiosproto.swarm_state\"\x9a\x01\n\x12\x64ump_request_start\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x13\n\x0b\x64uration_ns\x18\x04 \x01(\x04\x12\x0f\n\x07\x66ilters\x18\x05 \x01(\t\x12\x10\n\x08max_size\x18\x07 \x01(\x04\x12\r\n\x05token\x18\x06 \x02(\t\"a\n\x11\x64ump_request_stop\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\"\xd2\x01\n\rdump_response\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x10\n\x08\x63hunk_no\x18\x07 \x01(\r\x12\x13\n\x0b\x66inal_chunk\x18\x08 \x01(\x08\x12\x12\n\nkeep_alive\x18\t \x01(\x08\x12\x0f\n\x07\x63ontent\x18\x04 \x01(\x0c\x12\x18\n\x10\x66inal_size_bytes\x18\n \x01(\x04\x12\r\n\x05\x65rror\x18\x05 \x01(\t\x12\r\n\x05token\x18\x06 \x02(\t\"\xaf\x01\n\x10ssh_open_channel\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\x12\x0c\n\x04user\x18\x05 \x02(\t\x12\x10\n\x08password\x18\x06 \x01(\t\x12\x0b\n\x03key\x18\x07 \x01(\t\x12\x12\n\npassphrase\x18\x08 \x01(\t\x12\x0c\n\x04port\x18\t \x01(\r\"\x8a\x01\n\x08ssh_data\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\x0c\x12\r\n\x05\x65rror\x18\x06 \x01(\t\x12\x13\n\x0b\x65xit_status\x18\x07 \x01(\x05\"a\n\x11ssh_close_channel\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\"T\n\x13\x61uto_update_request\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\"c\n\x15\x64irty_shutdown_report\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x0b\n\x03log\x18\x04 \x02(\t\"\'\n\tkey_value\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"\x8f\x01\n\x0b\x61gent_event\x12\x15\n\rtimestamp_sec\x18\x01 \x01(\x04\x12\r\n\x05scope\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x10\n\x08severity\x18\x05 \x01(\r\x12$\n\x04tags\x18\x06 \x03(\x0b\x32\x16.draiosproto.key_value\",\n\x0b\x63onfig_file\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"=\n\x0b\x63onfig_data\x12.\n\x0c\x63onfig_files\x18\x01 \x03(\x0b\x32\x18.draiosproto.config_file\"K\n\rerror_message\x12%\n\x04type\x18\x01 \x01(\x0e\x32\x17.draiosproto.error_type\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\":\n\x11\x66\x61lco_subcategory\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\t\n\x01\x64\x18\x02 \x03(\t\x12\x0c\n\x04\x66ull\x18\x03 \x01(\x08\"N\n\x1b\x66\x61lco_subcategory_container\x12/\n\x07subcats\x18\x01 \x03(\x0b\x32\x1e.draiosproto.falco_subcategory\"\xa4\x01\n\x0e\x66\x61lco_category\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x41\n\x0fstartup_subcats\x18\x02 \x03(\x0b\x32(.draiosproto.falco_subcategory_container\x12\x41\n\x0fregular_subcats\x18\x03 \x03(\x0b\x32(.draiosproto.falco_subcategory_container\"\x87\x01\n\nfalco_prog\x12\x0c\n\x04\x63omm\x18\x01 \x02(\t\x12\x0b\n\x03\x65xe\x18\x02 \x02(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x0f\n\x07user_id\x18\x04 \x02(\x04\x12\x14\n\x0c\x63ontainer_id\x18\x05 \x01(\t\x12)\n\x04\x63\x61ts\x18\x06 \x03(\x0b\x32\x1b.draiosproto.falco_category\"Q\n\x0f\x66\x61lco_container\x12\n\n\x02id\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x02(\t\x12\x12\n\nimage_name\x18\x03 \x01(\t\x12\x10\n\x08image_id\x18\x04 \x01(\t\"j\n\x0e\x66\x61lco_baseline\x12&\n\x05progs\x18\x01 \x03(\x0b\x32\x17.draiosproto.falco_prog\x12\x30\n\ncontainers\x18\x02 \x03(\x0b\x32\x1c.draiosproto.falco_container*\xe6\x01\n\x12sql_statement_type\x12\x0c\n\x08SOP_NONE\x10\x00\x12\x0e\n\nSOP_SELECT\x10\x01\x12\x0e\n\nSOP_INSERT\x10\x02\x12\x0b\n\x07SOP_SET\x10\x03\x12\x0e\n\nSOP_CREATE\x10\x04\x12\x0e\n\nSOP_DELETE\x10\x05\x12\x0c\n\x08SOP_DROP\x10\x06\x12\x0f\n\x0bSOP_REPLACE\x10\x07\x12\x0e\n\nSOP_UPDATE\x10\x08\x12\x0b\n\x07SOP_USE\x10\t\x12\x0c\n\x08SOP_SHOW\x10\n\x12\x0c\n\x08SOP_LOCK\x10\x0b\x12\x0e\n\nSOP_UNLOCK\x10\x0c\x12\r\n\tSOP_ALTER\x10\r*\x86\x03\n\x0fmongodb_op_type\x12\x13\n\x0fMONGODB_OP_NONE\x10\x00\x12\x15\n\x11MONGODB_OP_INSERT\x10\x01\x12\x15\n\x11MONGODB_OP_UPDATE\x10\x02\x12\x15\n\x11MONGODB_OP_DELETE\x10\x03\x12\x17\n\x13MONGODB_OP_GET_MORE\x10\x04\x12\x1b\n\x17MONGODB_OP_KILL_CURSORS\x10\x05\x12\x13\n\x0fMONGODB_OP_FIND\x10\x06\x12\x18\n\x14MONGODB_OP_AGGREGATE\x10\x07\x12\x16\n\x12MONGODB_OP_COMMAND\x10\x08\x12\x14\n\x10MONGODB_OP_COUNT\x10\t\x12\x17\n\x13MONGODB_OP_DISTINCT\x10\n\x12\x19\n\x15MONGODB_OP_MAP_REDUCE\x10\x0b\x12\x17\n\x13MONGODB_OP_GEO_NEAR\x10\x0c\x12\x19\n\x15MONGODB_OP_GEO_SEARCH\x10\r\x12\x1e\n\x1aMONGODB_OP_FIND_AND_MODIFY\x10\x0e*G\n\x04unit\x12\r\n\tUNIT_NONE\x10\x00\x12\x0f\n\x0bUNIT_SECOND\x10\x01\x12\r\n\tUNIT_BYTE\x10\x02\x12\x10\n\x0cUNIT_PERCENT\x10\x03*\x91\x02\n\x05scale\x12\x0e\n\nSCALE_NONE\x10\x00\x12\x0f\n\x0bSCALE_MILLI\x10\x01\x12\x0f\n\x0bSCALE_MICRO\x10\x02\x12\x0e\n\nSCALE_NANO\x10\x03\x12\x10\n\x0cSCALE_MINUTE\x10\x04\x12\x0e\n\nSCALE_HOUR\x10\x05\x12\r\n\tSCALE_DAY\x10\x06\x12\x0e\n\nSCALE_KILO\x10\x07\x12\x0e\n\nSCALE_MEGA\x10\x08\x12\x0e\n\nSCALE_GIGA\x10\t\x12\x0e\n\nSCALE_TERA\x10\n\x12\x0e\n\nSCALE_KIBI\x10\x0b\x12\x0e\n\nSCALE_MEBI\x10\x0c\x12\x0e\n\nSCALE_GIBI\x10\r\x12\x0e\n\nSCALE_TEBI\x10\x0e\x12\x15\n\x11SCALE_PERCENT_0_1\x10\x0f*I\n\x0fjmx_metric_type\x12\x1b\n\x17JMX_METRIC_TYPE_COUNTER\x10\x01\x12\x19\n\x15JMX_METRIC_TYPE_GAUGE\x10\x02*^\n\x12statsd_metric_type\x12\x10\n\x0cSTATSD_COUNT\x10\x01\x12\x14\n\x10STATSD_HISTOGRAM\x10\x02\x12\x10\n\x0cSTATSD_GAUGE\x10\x03\x12\x0e\n\nSTATSD_SET\x10\x04*F\n\x0f\x61pp_metric_type\x12\x19\n\x15\x41PP_METRIC_TYPE_GAUGE\x10\x01\x12\x18\n\x14\x41PP_METRIC_TYPE_RATE\x10\x02*\x81\x01\n\x0f\x61pp_check_value\x12\x16\n\x12\x41PP_CHECK_VALUE_OK\x10\x00\x12\x1b\n\x17\x41PP_CHECK_VALUE_WARNING\x10\x01\x12\x1c\n\x18\x41PP_CHECK_VALUE_CRITICAL\x10\x02\x12\x1b\n\x17\x41PP_CHECK_VALUE_UNKNOWN\x10\x03*\xa9\x01\n\x0bnetworkrole\x12\x08\n\x04NONE\x10\x00\x12\x18\n\x14IS_LOCAL_IPV4_SERVER\x10\x01\x12\x19\n\x15IS_REMOTE_IPV4_SERVER\x10\x02\x12\x12\n\x0eIS_UNIX_SERVER\x10\x04\x12\x18\n\x14IS_LOCAL_IPV4_CLIENT\x10\x08\x12\x19\n\x15IS_REMOTE_IPV4_CLIENT\x10\x10\x12\x12\n\x0eIS_UNIX_CLIENT\x10 *\xf0\x01\n\x0cmessage_type\x12\x0b\n\x07METRICS\x10\x01\x12\x16\n\x12\x44UMP_REQUEST_START\x10\x02\x12\x15\n\x11\x44UMP_REQUEST_STOP\x10\x04\x12\x11\n\rDUMP_RESPONSE\x10\x03\x12\x14\n\x10SSH_OPEN_CHANNEL\x10\x06\x12\x15\n\x11SSH_CLOSE_CHANNEL\x10\x07\x12\x0c\n\x08SSH_DATA\x10\x08\x12\x17\n\x13\x41UTO_UPDATE_REQUEST\x10\t\x12\x19\n\x15\x44IRTY_SHUTDOWN_REPORT\x10\n\x12\x0f\n\x0b\x43ONFIG_DATA\x10\x0b\x12\x11\n\rERROR_MESSAGE\x10\x0c*J\n\x0e\x63ontainer_type\x12\n\n\x06\x44OCKER\x10\x01\x12\x07\n\x03LXC\x10\x02\x12\x0f\n\x0bLIBVIRT_LXC\x10\x03\x12\t\n\x05MESOS\x10\x04\x12\x07\n\x03RKT\x10\x05*W\n\nerror_type\x12\x12\n\x0e\x45RR_CONN_LIMIT\x10\x01\x12\x1c\n\x18\x45RR_INVALID_CUSTOMER_KEY\x10\x02\x12\x17\n\x13\x45RR_DUPLICATE_AGENT\x10\x03\x42$\n\x19\x63om.draios.model.protobufB\x05\x41gentH\x01')
+  serialized_pb='\n\x0c\x64raios.proto\x12\x0b\x64raiosproto\"P\n\x17\x61ggregations64_repeated\x12\x0e\n\x06weight\x18\x01 \x02(\x04\x12\x0b\n\x03max\x18\x02 \x03(\x04\x12\x0b\n\x03min\x18\x03 \x03(\x04\x12\x0b\n\x03sum\x18\x04 \x03(\x04\"G\n\x0e\x61ggregations64\x12\x0e\n\x06weight\x18\x01 \x02(\x04\x12\x0b\n\x03max\x18\x02 \x02(\x04\x12\x0b\n\x03min\x18\x03 \x02(\x04\x12\x0b\n\x03sum\x18\x04 \x02(\x04\"L\n\x13\x61ggregations_double\x12\x0e\n\x06weight\x18\x01 \x02(\x04\x12\x0b\n\x03max\x18\x02 \x02(\x01\x12\x0b\n\x03min\x18\x03 \x02(\x01\x12\x0b\n\x03sum\x18\x04 \x02(\x01\"\xf7\x01\n\x0c\x63ounter_time\x12\r\n\x05\x63ount\x18\x01 \x01(\r\x12/\n\naggr_count\x18\x04 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07time_ns\x18\x02 \x01(\x04\x12\x31\n\x0c\x61ggr_time_ns\x18\x05 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0ftime_percentage\x18\x03 \x01(\r\x12\x39\n\x14\x61ggr_time_percentage\x18\x06 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\x07 \x01(\x08\"\xd1\x02\n\x1a\x63ounter_time_bidirectional\x12\x10\n\x08\x63ount_in\x18\x01 \x01(\r\x12\x32\n\raggr_count_in\x18\x05 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tcount_out\x18\x02 \x01(\r\x12\x33\n\x0e\x61ggr_count_out\x18\x06 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x12\n\ntime_ns_in\x18\x03 \x01(\x04\x12\x34\n\x0f\x61ggr_time_ns_in\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x13\n\x0btime_ns_out\x18\x04 \x01(\x04\x12\x35\n\x10\x61ggr_time_ns_out\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\t \x01(\x08\"\xbc\x02\n\rcounter_bytes\x12\x10\n\x08\x63ount_in\x18\x01 \x01(\r\x12\x32\n\raggr_count_in\x18\x05 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tcount_out\x18\x02 \x01(\r\x12\x33\n\x0e\x61ggr_count_out\x18\x06 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x10\n\x08\x62ytes_in\x18\x03 \x01(\r\x12\x32\n\raggr_bytes_in\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tbytes_out\x18\x04 \x01(\r\x12\x33\n\x0e\x61ggr_bytes_out\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\t \x01(\x08\"\xd5\x07\n\x12\x63ounter_time_bytes\x12\x12\n\ntime_ns_in\x18\x01 \x01(\x04\x12\x34\n\x0f\x61ggr_time_ns_in\x18\r \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x13\n\x0btime_ns_out\x18\x02 \x01(\x04\x12\x35\n\x10\x61ggr_time_ns_out\x18\x0e \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x15\n\rtime_ns_other\x18\x03 \x01(\x04\x12\x37\n\x12\x61ggr_time_ns_other\x18\x0f \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x10\n\x08\x63ount_in\x18\x04 \x01(\r\x12\x32\n\raggr_count_in\x18\x10 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tcount_out\x18\x05 \x01(\r\x12\x33\n\x0e\x61ggr_count_out\x18\x11 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x13\n\x0b\x63ount_other\x18\x06 \x01(\r\x12\x35\n\x10\x61ggr_count_other\x18\x12 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x10\n\x08\x62ytes_in\x18\x07 \x01(\r\x12\x32\n\raggr_bytes_in\x18\x13 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tbytes_out\x18\x08 \x01(\r\x12\x33\n\x0e\x61ggr_bytes_out\x18\x14 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x13\n\x0b\x62ytes_other\x18\t \x01(\r\x12\x35\n\x10\x61ggr_bytes_other\x18\x15 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1a\n\x12time_percentage_in\x18\n \x01(\r\x12<\n\x17\x61ggr_time_percentage_in\x18\x16 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1b\n\x13time_percentage_out\x18\x0b \x01(\r\x12=\n\x18\x61ggr_time_percentage_out\x18\x17 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1d\n\x15time_percentage_other\x18\x0c \x01(\r\x12?\n\x1a\x61ggr_time_percentage_other\x18\x18 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\x19 \x01(\x08\"\x88\x06\n\x0ftime_categories\x12*\n\x07unknown\x18\x01 \x01(\x0b\x32\x19.draiosproto.counter_time\x12(\n\x05other\x18\x02 \x01(\x0b\x32\x19.draiosproto.counter_time\x12\'\n\x04\x66ile\x18\x03 \x01(\x0b\x32\x19.draiosproto.counter_time\x12&\n\x03net\x18\x04 \x01(\x0b\x32\x19.draiosproto.counter_time\x12&\n\x03ipc\x18\x05 \x01(\x0b\x32\x19.draiosproto.counter_time\x12)\n\x06memory\x18\x06 \x01(\x0b\x32\x19.draiosproto.counter_time\x12*\n\x07process\x18\x07 \x01(\x0b\x32\x19.draiosproto.counter_time\x12(\n\x05sleep\x18\x08 \x01(\x0b\x32\x19.draiosproto.counter_time\x12)\n\x06system\x18\t \x01(\x0b\x32\x19.draiosproto.counter_time\x12)\n\x06signal\x18\n \x01(\x0b\x32\x19.draiosproto.counter_time\x12\'\n\x04user\x18\x0b \x01(\x0b\x32\x19.draiosproto.counter_time\x12\'\n\x04time\x18\x0c \x01(\x0b\x32\x19.draiosproto.counter_time\x12\x30\n\x07io_file\x18\r \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12/\n\x06io_net\x18\x0e \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12\x31\n\x08io_other\x18\x0f \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12\'\n\x04wait\x18\x10 \x01(\x0b\x32\x19.draiosproto.counter_time\x12-\n\nprocessing\x18\x11 \x01(\x0b\x32\x19.draiosproto.counter_time\x12\x0f\n\x07is_null\x18\x12 \x01(\x08\"\xef\x01\n transaction_breakdown_categories\x12(\n\x05other\x18\x02 \x01(\x0b\x32\x19.draiosproto.counter_time\x12\x30\n\x07io_file\x18\r \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12/\n\x06io_net\x18\x0e \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12-\n\nprocessing\x18\x11 \x01(\x0b\x32\x19.draiosproto.counter_time\x12\x0f\n\x07is_null\x18\x12 \x01(\x08\"\xe8\x02\n\x16\x63ounter_syscall_errors\x12\r\n\x05\x63ount\x18\x01 \x01(\r\x12/\n\naggr_count\x18\x03 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0ftop_error_codes\x18\x02 \x03(\r\x12\x12\n\ncount_file\x18\x04 \x01(\r\x12\x34\n\x0f\x61ggr_count_file\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0f\x63ount_file_open\x18\x05 \x01(\r\x12\x39\n\x14\x61ggr_count_file_open\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tcount_net\x18\x06 \x01(\r\x12\x33\n\x0e\x61ggr_count_net\x18\t \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\n \x01(\x08\"\x87\x0e\n\x13resource_categories\x12\x16\n\x0e\x63\x61pacity_score\x18\x01 \x01(\r\x12\x38\n\x13\x61ggr_capacity_score\x18\x0c \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1d\n\x15stolen_capacity_score\x18\x06 \x01(\r\x12?\n\x1a\x61ggr_stolen_capacity_score\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\"\n\x1a\x63onnection_queue_usage_pct\x18\x02 \x01(\r\x12\x44\n\x1f\x61ggr_connection_queue_usage_pct\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x14\n\x0c\x66\x64_usage_pct\x18\x03 \x01(\r\x12\x36\n\x11\x61ggr_fd_usage_pct\x18\t \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07\x63pu_pct\x18\x04 \x01(\r\x12\x31\n\x0c\x61ggr_cpu_pct\x18\n \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12 \n\x18resident_memory_usage_kb\x18\x05 \x01(\r\x12\x42\n\x1d\x61ggr_resident_memory_usage_kb\x18\x0b \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1f\n\x17virtual_memory_usage_kb\x18\r \x01(\r\x12\x41\n\x1c\x61ggr_virtual_memory_usage_kb\x18\x11 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1c\n\x14swap_memory_usage_kb\x18\x0e \x01(\r\x12>\n\x19\x61ggr_swap_memory_usage_kb\x18\x12 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1c\n\x14swap_memory_total_kb\x18\x1d \x01(\r\x12?\n\x19\x61ggr_swap_memory_total_kb\x18\x81\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12 \n\x18swap_memory_available_kb\x18\x1e \x01(\r\x12\x43\n\x1d\x61ggr_swap_memory_available_kb\x18\x82\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10major_pagefaults\x18\x0f \x01(\x04\x12:\n\x15\x61ggr_major_pagefaults\x18\x13 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10minor_pagefaults\x18\x10 \x01(\x04\x12:\n\x15\x61ggr_minor_pagefaults\x18\x14 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x10\n\x08\x66\x64_count\x18\x15 \x01(\r\x12\x32\n\raggr_fd_count\x18\x16 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\x17 \x01(\x08\x12\x12\n\ncpu_shares\x18\x18 \x01(\r\x12\x34\n\x0f\x61ggr_cpu_shares\x18| \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1c\n\x14\x63pu_shares_usage_pct\x18\x19 \x01(\r\x12>\n\x19\x61ggr_cpu_shares_usage_pct\x18} \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0fmemory_limit_kb\x18\x1a \x01(\r\x12\x39\n\x14\x61ggr_memory_limit_kb\x18~ \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x15\n\rswap_limit_kb\x18\x1b \x01(\r\x12\x37\n\x12\x61ggr_swap_limit_kb\x18\x7f \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x1a\n\x12\x63pu_quota_used_pct\x18\x1c \x01(\r\x12=\n\x17\x61ggr_cpu_quota_used_pct\x18\x80\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0f\x63ount_processes\x18\x1f \x01(\x04\x12:\n\x14\x61ggr_count_processes\x18\x83\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10proc_start_count\x18  \x01(\x04\x12;\n\x15\x61ggr_proc_start_count\x18\x84\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xc3\x03\n\x15\x63onnection_categories\x12*\n\x06server\x18\x01 \x01(\x0b\x32\x1a.draiosproto.counter_bytes\x12*\n\x06\x63lient\x18\x02 \x01(\x0b\x32\x1a.draiosproto.counter_bytes\x12\x45\n\x14transaction_counters\x18\x03 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x12 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\x13 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12 \n\x18n_aggregated_connections\x18\x04 \x01(\r\x12\x42\n\x1d\x61ggr_n_aggregated_connections\x18\x05 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07is_null\x18\x06 \x01(\x08\"P\n\x0fprocess_details\x12\x0c\n\x04\x63omm\x18\x01 \x02(\t\x12\x0b\n\x03\x65xe\x18\x02 \x02(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x14\n\x0c\x63ontainer_id\x18\x04 \x01(\t\"\xb5\x03\n\x13\x63ounter_proto_entry\x12\x0e\n\x06ncalls\x18\x01 \x02(\r\x12\x10\n\x08time_tot\x18\x02 \x02(\x04\x12\x10\n\x08time_max\x18\x03 \x02(\x04\x12\x10\n\x08\x62ytes_in\x18\x04 \x02(\x04\x12\x11\n\tbytes_out\x18\x05 \x02(\x04\x12\x0f\n\x07nerrors\x18\x06 \x02(\r\x12\x30\n\x0b\x61ggr_ncalls\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x32\n\raggr_time_tot\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x32\n\raggr_time_max\x18\t \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x32\n\raggr_bytes_in\x18\n \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x33\n\x0e\x61ggr_bytes_out\x18\x0b \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x31\n\x0c\x61ggr_nerrors\x18\x0c \x01(\x0b\x32\x1b.draiosproto.aggregations64\"N\n\x0burl_details\x12\x0b\n\x03url\x18\x01 \x02(\t\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"l\n\x13status_code_details\x12\x13\n\x0bstatus_code\x18\x01 \x02(\r\x12\x0e\n\x06ncalls\x18\x02 \x02(\r\x12\x30\n\x0b\x61ggr_ncalls\x18\x03 \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xe7\x01\n\thttp_info\x12-\n\x0bserver_urls\x18\x01 \x03(\x0b\x32\x18.draiosproto.url_details\x12-\n\x0b\x63lient_urls\x18\x02 \x03(\x0b\x32\x18.draiosproto.url_details\x12=\n\x13\x63lient_status_codes\x18\x03 \x03(\x0b\x32 .draiosproto.status_code_details\x12=\n\x13server_status_codes\x18\x04 \x03(\x0b\x32 .draiosproto.status_code_details\"U\n\x11sql_entry_details\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"{\n\x16sql_query_type_details\x12-\n\x04type\x18\x01 \x02(\x0e\x32\x1f.draiosproto.sql_statement_type\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"\xea\x02\n\x08sql_info\x12\x36\n\x0eserver_queries\x18\x01 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\x12\x36\n\x0e\x63lient_queries\x18\x02 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\x12?\n\x12server_query_types\x18\x03 \x03(\x0b\x32#.draiosproto.sql_query_type_details\x12?\n\x12\x63lient_query_types\x18\x04 \x03(\x0b\x32#.draiosproto.sql_query_type_details\x12\x35\n\rserver_tables\x18\x05 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\x12\x35\n\rclient_tables\x18\x06 \x03(\x0b\x32\x1e.draiosproto.sql_entry_details\"^\n\x1amongodb_collection_details\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"w\n\x17mongodb_op_type_details\x12(\n\x02op\x18\x01 \x02(\x0e\x32\x1c.draiosproto.mongodb_op_type\x12\x32\n\x08\x63ounters\x18\x02 \x02(\x0b\x32 .draiosproto.counter_proto_entry\"\x8d\x02\n\x0cmongodb_info\x12\x39\n\x0bservers_ops\x18\x01 \x03(\x0b\x32$.draiosproto.mongodb_op_type_details\x12\x38\n\nclient_ops\x18\x02 \x03(\x0b\x32$.draiosproto.mongodb_op_type_details\x12\x43\n\x12server_collections\x18\x03 \x03(\x0b\x32\'.draiosproto.mongodb_collection_details\x12\x43\n\x12\x63lient_collections\x18\x04 \x03(\x0b\x32\'.draiosproto.mongodb_collection_details\"\xcc\x02\n\rjmx_attribute\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x01\x12/\n\naggr_value\x18\x04 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12;\n\x11\x61ggr_value_double\x18\x06 \x01(\x0b\x32 .draiosproto.aggregations_double\x12\r\n\x05\x61lias\x18\x05 \x01(\t\x12*\n\x04type\x18\x07 \x01(\x0e\x32\x1c.draiosproto.jmx_metric_type\x12\x1f\n\x04unit\x18\x08 \x01(\x0e\x32\x11.draiosproto.unit\x12!\n\x05scale\x18\t \x01(\x0e\x32\x12.draiosproto.scale\x12\x31\n\rsubattributes\x18\x03 \x03(\x0b\x32\x1a.draiosproto.jmx_attribute\"H\n\x08jmx_bean\x12\x0c\n\x04name\x18\x01 \x01(\t\x12.\n\nattributes\x18\x02 \x03(\x0b\x32\x1a.draiosproto.jmx_attribute\"G\n\tjava_info\x12\x14\n\x0cprocess_name\x18\x01 \x01(\t\x12$\n\x05\x62\x65\x61ns\x18\x02 \x03(\x0b\x32\x15.draiosproto.jmx_bean\"(\n\nstatsd_tag\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\xb1\x05\n\rstatsd_metric\x12\x0c\n\x04name\x18\x01 \x01(\t\x12%\n\x04tags\x18\x02 \x03(\x0b\x32\x17.draiosproto.statsd_tag\x12-\n\x04type\x18\x03 \x01(\x0e\x32\x1f.draiosproto.statsd_metric_type\x12\r\n\x05value\x18\x04 \x01(\x01\x12\x34\n\naggr_value\x18h \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x0b\n\x03sum\x18\x05 \x01(\x01\x12\x32\n\x08\x61ggr_sum\x18i \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x0b\n\x03min\x18\x06 \x01(\x01\x12\x32\n\x08\x61ggr_min\x18j \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x0b\n\x03max\x18\x07 \x01(\x01\x12\x32\n\x08\x61ggr_max\x18k \x01(\x0b\x32 .draiosproto.aggregations_double\x12\r\n\x05\x63ount\x18\x08 \x01(\x01\x12\x34\n\naggr_count\x18l \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x0e\n\x06median\x18\t \x01(\x01\x12\x35\n\x0b\x61ggr_median\x18m \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x15\n\rpercentile_95\x18\n \x01(\x01\x12<\n\x12\x61ggr_percentile_95\x18n \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x15\n\rpercentile_99\x18\x0b \x01(\x01\x12<\n\x12\x61ggr_percentile_99\x18o \x01(\x0b\x32 .draiosproto.aggregations_double\"A\n\x0bstatsd_info\x12\x32\n\x0estatsd_metrics\x18\x01 \x03(\x0b\x32\x1a.draiosproto.statsd_metric\"l\n\x10proto_metric_map\x12\x16\n\x0e\x63ontainers_ids\x18\x01 \x03(\t\x12\x13\n\x0bprocess_ids\x18\x02 \x03(\r\x12+\n\nproto_info\x18\x03 \x03(\x0b\x32\x17.draiosproto.proto_info\"%\n\x07\x61pp_tag\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\xb6\x01\n\napp_metric\x12\x0c\n\x04name\x18\x01 \x01(\t\x12*\n\x04type\x18\x02 \x01(\x0e\x32\x1c.draiosproto.app_metric_type\x12\r\n\x05value\x18\x03 \x01(\x01\x12;\n\x11\x61ggr_value_double\x18g \x01(\x0b\x32 .draiosproto.aggregations_double\x12\"\n\x04tags\x18\x04 \x03(\x0b\x32\x14.draiosproto.app_tag\"j\n\tapp_check\x12\x0c\n\x04name\x18\x01 \x01(\t\x12+\n\x05value\x18\x02 \x01(\x0e\x32\x1c.draiosproto.app_check_value\x12\"\n\x04tags\x18\x03 \x03(\x0b\x32\x14.draiosproto.app_tag\"r\n\x08\x61pp_info\x12\x14\n\x0cprocess_name\x18\x01 \x01(\t\x12(\n\x07metrics\x18\x02 \x03(\x0b\x32\x17.draiosproto.app_metric\x12&\n\x06\x63hecks\x18\x03 \x03(\x0b\x32\x16.draiosproto.app_check\"\xb2\x02\n\nproto_info\x12$\n\x04http\x18\x01 \x01(\x0b\x32\x16.draiosproto.http_info\x12$\n\x05mysql\x18\x02 \x01(\x0b\x32\x15.draiosproto.sql_info\x12\'\n\x08postgres\x18\x03 \x01(\x0b\x32\x15.draiosproto.sql_info\x12*\n\x07mongodb\x18\x04 \x01(\x0b\x32\x19.draiosproto.mongodb_info\x12$\n\x04java\x18\x05 \x01(\x0b\x32\x16.draiosproto.java_info\x12(\n\x06statsd\x18\x06 \x01(\x0b\x32\x18.draiosproto.statsd_info\x12\"\n\x03\x61pp\x18\x07 \x01(\x0b\x32\x15.draiosproto.app_info\x12\x0f\n\x07is_null\x18\x08 \x01(\x08\"U\n\x0fnetwork_by_port\x12\x0c\n\x04port\x18\x01 \x02(\r\x12\x34\n\x08\x63ounters\x18\x02 \x02(\x0b\x32\".draiosproto.connection_categories\"\xfc\x0f\n\x04host\x12\x10\n\x08hostname\x18\x01 \x01(\t\x12\x10\n\x08num_cpus\x18\x02 \x01(\r\x12\x32\n\raggr_num_cpus\x18\x15 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x11\n\tcpu_loads\x18\x03 \x03(\r\x12<\n\x0e\x61ggr_cpu_loads\x18\x0f \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\x11\n\tcpu_steal\x18\x0b \x03(\r\x12<\n\x0e\x61ggr_cpu_steal\x18\x10 \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\"\n\x1aphysical_memory_size_bytes\x18\x04 \x02(\x04\x12\x44\n\x1f\x61ggr_physical_memory_size_bytes\x18\x11 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12/\n\ttcounters\x18\x05 \x01(\x0b\x32\x1c.draiosproto.time_categories\x12\x42\n\x0breqcounters\x18\x0c \x01(\x0b\x32-.draiosproto.transaction_breakdown_categories\x12\x45\n\x14transaction_counters\x18\x06 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x16 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\x17 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12$\n\x1ctransaction_processing_delay\x18\x07 \x01(\x04\x12\x46\n!aggr_transaction_processing_delay\x18\x12 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10next_tiers_delay\x18\r \x01(\x04\x12:\n\x15\x61ggr_next_tiers_delay\x18\x14 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12;\n\x11resource_counters\x18\x08 \x01(\x0b\x32 .draiosproto.resource_categories\x12;\n\x0esyscall_errors\x18\t \x01(\x0b\x32#.draiosproto.counter_syscall_errors\x12\x38\n\x0f\x65xternal_io_net\x18\n \x01(\x0b\x32\x1f.draiosproto.counter_time_bytes\x12<\n\x16network_by_serverports\x18\x18 \x03(\x0b\x32\x1c.draiosproto.network_by_port\x12!\n\x19memory_bytes_available_kb\x18$ \x01(\x04\x12\x44\n\x1e\x61ggr_memory_bytes_available_kb\x18\x88\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x13\n\x0bsystem_load\x18  \x01(\x01\x12;\n\x10\x61ggr_system_load\x18\x84\x01 \x01(\x0b\x32 .draiosproto.aggregations_double\x12\x0e\n\x06uptime\x18! \x01(\x04\x12\x31\n\x0b\x61ggr_uptime\x18\x85\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x12\n\nsystem_cpu\x18\" \x03(\r\x12>\n\x0f\x61ggr_system_cpu\x18\x86\x01 \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\x10\n\x08user_cpu\x18# \x03(\r\x12<\n\raggr_user_cpu\x18\x87\x01 \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\x10\n\x08\x63pu_idle\x18\x19 \x03(\r\x12;\n\raggr_cpu_idle\x18} \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\x12\n\niowait_cpu\x18% \x03(\r\x12>\n\x0f\x61ggr_iowait_cpu\x18\x89\x01 \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\x10\n\x08nice_cpu\x18& \x03(\r\x12<\n\raggr_nice_cpu\x18\x8a\x01 \x01(\x0b\x32$.draiosproto.aggregations64_repeated\x12\x15\n\rsystem_load_1\x18) \x01(\r\x12\x38\n\x12\x61ggr_system_load_1\x18\x8d\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x15\n\rsystem_load_5\x18* \x01(\r\x12\x38\n\x12\x61ggr_system_load_5\x18\x8e\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x16\n\x0esystem_load_15\x18+ \x01(\r\x12\x39\n\x13\x61ggr_system_load_15\x18\x8f\x01 \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xee\x07\n\x07process\x12-\n\x07\x64\x65tails\x18\x02 \x01(\x0b\x32\x1c.draiosproto.process_details\x12\"\n\x1ais_ipv4_transaction_server\x18\x03 \x01(\x08\x12\"\n\x1ais_unix_transaction_server\x18\x04 \x01(\x08\x12\"\n\x1ais_ipv4_transaction_client\x18\n \x01(\x08\x12\"\n\x1ais_unix_transaction_client\x18\x0b \x01(\x08\x12\x0f\n\x07netrole\x18\r \x01(\r\x12/\n\ttcounters\x18\x05 \x01(\x0b\x32\x1c.draiosproto.time_categories\x12\x45\n\x14transaction_counters\x18\x06 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x12 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\x13 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12$\n\x1ctransaction_processing_delay\x18\x07 \x01(\x04\x12\x46\n!aggr_transaction_processing_delay\x18\x0f \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10next_tiers_delay\x18\x0c \x01(\x04\x12:\n\x15\x61ggr_next_tiers_delay\x18\x11 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12;\n\x11resource_counters\x18\x08 \x01(\x0b\x32 .draiosproto.resource_categories\x12;\n\x0esyscall_errors\x18\t \x01(\x0b\x32#.draiosproto.counter_syscall_errors\x12\'\n\x06protos\x18\x14 \x01(\x0b\x32\x17.draiosproto.proto_info\x12\x13\n\x0bstart_count\x18\x15 \x01(\x04\x12\x35\n\x10\x61ggr_start_count\x18\x16 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0f\x63ount_processes\x18\x17 \x01(\x04\x12\x39\n\x14\x61ggr_count_processes\x18{ \x01(\x0b\x32\x1b.draiosproto.aggregations64\"?\n\x07program\x12&\n\x08procinfo\x18\x01 \x02(\x0b\x32\x14.draiosproto.process\x12\x0c\n\x04pids\x18\x02 \x03(\x04\"T\n\tipv4tuple\x12\x0b\n\x03sip\x18\x01 \x02(\r\x12\x0b\n\x03\x64ip\x18\x02 \x02(\r\x12\r\n\x05sport\x18\x03 \x02(\r\x12\r\n\x05\x64port\x18\x04 \x02(\r\x12\x0f\n\x07l4proto\x18\x05 \x02(\r\"\x8a\x01\n\x0fipv4_connection\x12%\n\x05tuple\x18\x01 \x02(\x0b\x32\x16.draiosproto.ipv4tuple\x12\x0c\n\x04spid\x18\x02 \x01(\x04\x12\x0c\n\x04\x64pid\x18\x05 \x01(\x04\x12\x34\n\x08\x63ounters\x18\x08 \x02(\x0b\x32\".draiosproto.connection_categories\"T\n\x16ipv4_network_interface\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0c\n\x04\x61\x64\x64r\x18\x02 \x02(\r\x12\x0f\n\x07netmask\x18\x03 \x02(\r\x12\r\n\x05\x62\x63\x61st\x18\x04 \x01(\r\"\xbf\x03\n\nmounted_fs\x12\x0e\n\x06\x64\x65vice\x18\x01 \x02(\t\x12\x11\n\tmount_dir\x18\x02 \x02(\t\x12\x0c\n\x04type\x18\x03 \x02(\t\x12\x12\n\nsize_bytes\x18\x04 \x02(\x04\x12\x34\n\x0f\x61ggr_size_bytes\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x12\n\nused_bytes\x18\x05 \x02(\x04\x12\x34\n\x0f\x61ggr_used_bytes\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x17\n\x0f\x61vailable_bytes\x18\x06 \x02(\x04\x12\x39\n\x14\x61ggr_available_bytes\x18\t \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x14\n\x0ctotal_inodes\x18\n \x01(\x04\x12\x36\n\x11\x61ggr_total_inodes\x18n \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x13\n\x0bused_inodes\x18\x0b \x01(\x04\x12\x35\n\x10\x61ggr_used_inodes\x18o \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xa9\x02\n\tfile_stat\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\r\n\x05\x62ytes\x18\x02 \x02(\r\x12/\n\naggr_bytes\x18\t \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0f\n\x07time_ns\x18\x03 \x02(\x04\x12\x31\n\x0c\x61ggr_time_ns\x18\x06 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x12\n\nopen_count\x18\x04 \x02(\r\x12\x34\n\x0f\x61ggr_open_count\x18\x07 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x0e\n\x06\x65rrors\x18\x05 \x02(\r\x12\x30\n\x0b\x61ggr_errors\x18\x08 \x01(\x0b\x32\x1b.draiosproto.aggregations64\"j\n\x16\x63ontainer_port_mapping\x12\x0f\n\x07host_ip\x18\x01 \x01(\r\x12\x11\n\thost_port\x18\x02 \x01(\r\x12\x14\n\x0c\x63ontainer_ip\x18\x03 \x01(\r\x12\x16\n\x0e\x63ontainer_port\x18\x04 \x01(\r\"-\n\x0f\x63ontainer_label\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x01(\t\"\x92\x08\n\tcontainer\x12\n\n\x02id\x18\x01 \x02(\t\x12)\n\x04type\x18\x02 \x01(\x0e\x32\x1b.draiosproto.container_type\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\r\n\x05image\x18\x04 \x01(\t\x12/\n\ttcounters\x18\x05 \x01(\x0b\x32\x1c.draiosproto.time_categories\x12\x42\n\x0breqcounters\x18\x06 \x01(\x0b\x32-.draiosproto.transaction_breakdown_categories\x12\x45\n\x14transaction_counters\x18\x07 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18min_transaction_counters\x18\x08 \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12I\n\x18max_transaction_counters\x18\t \x01(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12$\n\x1ctransaction_processing_delay\x18\n \x01(\x04\x12\x46\n!aggr_transaction_processing_delay\x18\x0f \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10next_tiers_delay\x18\x0c \x01(\x04\x12:\n\x15\x61ggr_next_tiers_delay\x18\x11 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12;\n\x11resource_counters\x18\r \x01(\x0b\x32 .draiosproto.resource_categories\x12;\n\x0esyscall_errors\x18\x0e \x01(\x0b\x32#.draiosproto.counter_syscall_errors\x12:\n\rport_mappings\x18\x12 \x03(\x0b\x32#.draiosproto.container_port_mapping\x12\'\n\x06protos\x18\x13 \x01(\x0b\x32\x17.draiosproto.proto_info\x12,\n\x06labels\x18\x14 \x03(\x0b\x32\x1c.draiosproto.container_label\x12\'\n\x06mounts\x18\x15 \x03(\x0b\x32\x17.draiosproto.mounted_fs\x12<\n\x16network_by_serverports\x18\x16 \x03(\x0b\x32\x1c.draiosproto.network_by_port\x12\x15\n\rmesos_task_id\x18\x17 \x01(\t\x12\x10\n\x08image_id\x18\x18 \x01(\t\"&\n\x08k8s_pair\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"\x8b\x01\n\nk8s_common\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x0b\n\x03uid\x18\x02 \x02(\t\x12\x11\n\tnamespace\x18\x03 \x01(\t\x12%\n\x06labels\x18\x04 \x03(\x0b\x32\x15.draiosproto.k8s_pair\x12(\n\tselectors\x18\x05 \x03(\x0b\x32\x15.draiosproto.k8s_pair\"8\n\rk8s_namespace\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\"E\n\x08k8s_node\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x10\n\x08host_ips\x18\x02 \x03(\t\"\xd2\x01\n\x07k8s_pod\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x15\n\rcontainer_ids\x18\x02 \x03(\t\x12\x11\n\tnode_name\x18\x03 \x01(\t\x12\x0f\n\x07host_ip\x18\x04 \x01(\t\x12\x13\n\x0binternal_ip\x18\x05 \x01(\t\x12\x15\n\rrestart_count\x18\x06 \x01(\r\x12\x37\n\x12\x61ggr_restart_count\x18j \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xf1\x01\n\x1ak8s_replication_controller\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x18\n\x10replicas_desired\x18\x02 \x01(\r\x12:\n\x15\x61ggr_replicas_desired\x18\x66 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10replicas_running\x18\x03 \x01(\r\x12:\n\x15\x61ggr_replicas_running\x18g \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xe6\x01\n\x0fk8s_replica_set\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x18\n\x10replicas_desired\x18\x02 \x01(\r\x12:\n\x15\x61ggr_replicas_desired\x18\x66 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10replicas_running\x18\x03 \x01(\r\x12:\n\x15\x61ggr_replicas_running\x18g \x01(\x0b\x32\x1b.draiosproto.aggregations64\"\xd0\x01\n\x0bk8s_service\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x12\n\ncluster_ip\x18\x02 \x01(\t\x12\x30\n\x05ports\x18\x03 \x03(\x0b\x32!.draiosproto.k8s_service.net_port\x1aR\n\x08net_port\x12\x0c\n\x04port\x18\x01 \x02(\r\x12\x13\n\x0btarget_port\x18\x02 \x02(\r\x12\x10\n\x08protocol\x18\x03 \x01(\t\x12\x11\n\tnode_port\x18\x04 \x01(\r\"m\n\x0ek8s_deployment\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x18\n\x10replicas_desired\x18\x02 \x01(\r\x12\x18\n\x10replicas_running\x18\x03 \x01(\r\"n\n\rk8s_daemonset\x12\'\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x17.draiosproto.k8s_common\x12\x19\n\x11\x63urrent_scheduled\x18\x02 \x01(\r\x12\x19\n\x11\x64\x65sired_scheduled\x18\x03 \x01(\r\"\x85\x03\n\tk8s_state\x12.\n\nnamespaces\x18\x01 \x03(\x0b\x32\x1a.draiosproto.k8s_namespace\x12$\n\x05nodes\x18\x02 \x03(\x0b\x32\x15.draiosproto.k8s_node\x12\"\n\x04pods\x18\x03 \x03(\x0b\x32\x14.draiosproto.k8s_pod\x12<\n\x0b\x63ontrollers\x18\x04 \x03(\x0b\x32\'.draiosproto.k8s_replication_controller\x12*\n\x08services\x18\x05 \x03(\x0b\x32\x18.draiosproto.k8s_service\x12\x32\n\x0creplica_sets\x18\x06 \x03(\x0b\x32\x1c.draiosproto.k8s_replica_set\x12\x30\n\x0b\x64\x65ployments\x18\x07 \x03(\x0b\x32\x1b.draiosproto.k8s_deployment\x12.\n\ndaemonsets\x18\x08 \x03(\x0b\x32\x1a.draiosproto.k8s_daemonset\"(\n\nmesos_pair\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"R\n\x0cmesos_common\x12\x0b\n\x03uid\x18\x01 \x02(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\'\n\x06labels\x18\x03 \x03(\x0b\x32\x17.draiosproto.mesos_pair\"I\n\nmesos_task\x12)\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x19.draiosproto.mesos_common\x12\x10\n\x08slave_id\x18\x02 \x02(\t\",\n\x0cmarathon_app\x12\n\n\x02id\x18\x01 \x02(\t\x12\x10\n\x08task_ids\x18\x02 \x03(\t\"r\n\x0emarathon_group\x12\n\n\x02id\x18\x01 \x02(\t\x12\'\n\x04\x61pps\x18\x02 \x03(\x0b\x32\x19.draiosproto.marathon_app\x12+\n\x06groups\x18\x03 \x03(\x0b\x32\x1b.draiosproto.marathon_group\"d\n\x0fmesos_framework\x12)\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x19.draiosproto.mesos_common\x12&\n\x05tasks\x18\x02 \x03(\x0b\x32\x17.draiosproto.mesos_task\"8\n\x0bmesos_slave\x12)\n\x06\x63ommon\x18\x01 \x02(\x0b\x32\x19.draiosproto.mesos_common\"\x96\x01\n\x0bmesos_state\x12\x30\n\nframeworks\x18\x01 \x03(\x0b\x32\x1c.draiosproto.mesos_framework\x12+\n\x06groups\x18\x02 \x03(\x0b\x32\x1b.draiosproto.marathon_group\x12(\n\x06slaves\x18\x03 \x03(\x0b\x32\x18.draiosproto.mesos_slave\"\xd5\x06\n\x07metrics\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0bmachine_ids\x18\x17 \x03(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x16\n\x0esampling_ratio\x18\n \x01(\r\x12\x38\n\x13\x61ggr_sampling_ratio\x18\x11 \x01(\x0b\x32\x1b.draiosproto.aggregations64\x12\x18\n\x10host_custom_name\x18\x0b \x01(\t\x12\x11\n\thost_tags\x18\x0c \x01(\t\x12\x16\n\x0eis_host_hidden\x18\x0e \x01(\x08\x12\x18\n\x10hidden_processes\x18\x0f \x01(\t\x12\x0f\n\x07version\x18\x10 \x01(\t\x12\x13\n\x0binstance_id\x18\x15 \x01(\t\x12#\n\x08hostinfo\x18\x04 \x01(\x0b\x32\x11.draiosproto.host\x12&\n\x08programs\x18\t \x03(\x0b\x32\x14.draiosproto.program\x12\x36\n\x10ipv4_connections\x18\x07 \x03(\x0b\x32\x1c.draiosproto.ipv4_connection\x12\x44\n\x17ipv4_network_interfaces\x18\x08 \x03(\x0b\x32#.draiosproto.ipv4_network_interface\x12\'\n\x06mounts\x18\x12 \x03(\x0b\x32\x17.draiosproto.mounted_fs\x12)\n\ttop_files\x18\x13 \x03(\x0b\x32\x16.draiosproto.file_stat\x12\'\n\x06protos\x18\x14 \x01(\x0b\x32\x17.draiosproto.proto_info\x12*\n\ncontainers\x18\x16 \x03(\x0b\x32\x16.draiosproto.container\x12*\n\nkubernetes\x18\x18 \x01(\x0b\x32\x16.draiosproto.k8s_state\x12\'\n\x05mesos\x18\x19 \x01(\x0b\x32\x18.draiosproto.mesos_state\x12(\n\x06\x65vents\x18\x1a \x03(\x0b\x32\x18.draiosproto.agent_event\x12,\n\x07\x66\x61lcobl\x18\x1b \x01(\x0b\x32\x1b.draiosproto.falco_baseline\"\xe4\r\n\x0clist_wrapper\x12\'\n\x06mounts\x18\x01 \x03(\x0b\x32\x17.draiosproto.mounted_fs\x12)\n\ttop_files\x18\x02 \x03(\x0b\x32\x16.draiosproto.file_stat\x12&\n\x08programs\x18\x03 \x03(\x0b\x32\x14.draiosproto.program\x12*\n\x0cjmx_programs\x18\x04 \x03(\x0b\x32\x14.draiosproto.program\x12\x36\n\x10ipv4_connections\x18\x05 \x03(\x0b\x32\x1c.draiosproto.ipv4_connection\x12\x44\n\x17ipv4_network_interfaces\x18\x06 \x03(\x0b\x32#.draiosproto.ipv4_network_interface\x12*\n\ncontainers\x18\x07 \x03(\x0b\x32\x16.draiosproto.container\x12\x30\n\x12\x63ontainer_programs\x18\x08 \x03(\x0b\x32\x14.draiosproto.program\x12:\n\x14\x63ontainers_tcounters\x18\t \x03(\x0b\x32\x1c.draiosproto.time_categories\x12M\n\x16\x63ontainers_reqcounters\x18\n \x03(\x0b\x32-.draiosproto.transaction_breakdown_categories\x12\x46\n\x1c\x63ontainers_resource_counters\x18\x0b \x03(\x0b\x32 .draiosproto.resource_categories\x12P\n\x1f\x63ontainers_transaction_counters\x18\x0c \x03(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12T\n#containers_min_transaction_counters\x18\r \x03(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12T\n#containers_max_transaction_counters\x18\x0e \x03(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12\x32\n\x11\x63ontainers_protos\x18\x0f \x03(\x0b\x32\x17.draiosproto.proto_info\x12>\n\x11\x63ontainers_mounts\x18\x10 \x03(\x0b\x32#.draiosproto.container_list_wrapper\x12N\n!containers_network_by_serverports\x18\x11 \x03(\x0b\x32#.draiosproto.container_list_wrapper\x12\x46\n\x19\x63ontainers_syscall_errors\x18\x12 \x03(\x0b\x32#.draiosproto.counter_syscall_errors\x12\x38\n\x12programs_tcounters\x18\x14 \x03(\x0b\x32\x1c.draiosproto.time_categories\x12K\n\x14programs_reqcounters\x18\x15 \x03(\x0b\x32-.draiosproto.transaction_breakdown_categories\x12\x44\n\x1aprograms_resource_counters\x18\x16 \x03(\x0b\x32 .draiosproto.resource_categories\x12N\n\x1dprograms_transaction_counters\x18\x17 \x03(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12R\n!programs_min_transaction_counters\x18\x18 \x03(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12R\n!programs_max_transaction_counters\x18\x19 \x03(\x0b\x32\'.draiosproto.counter_time_bidirectional\x12\x30\n\x0fprograms_protos\x18\x1a \x03(\x0b\x32\x17.draiosproto.proto_info\x12\x36\n\x10programs_details\x18\x1b \x03(\x0b\x32\x1c.draiosproto.process_details\x12\x44\n\x17programs_syscall_errors\x18\x1c \x03(\x0b\x32#.draiosproto.counter_syscall_errors\"\xbb\x01\n\x16\x63ontainer_list_wrapper\x12:\n\rport_mappings\x18\x01 \x03(\x0b\x32#.draiosproto.container_port_mapping\x12\'\n\x06mounts\x18\x02 \x03(\x0b\x32\x17.draiosproto.mounted_fs\x12<\n\x16network_by_serverports\x18\x03 \x03(\x0b\x32\x1c.draiosproto.network_by_port\"\xc7\x01\n\x12\x64ump_request_start\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x13\n\x0b\x64uration_ns\x18\x04 \x01(\x04\x12\x0f\n\x07\x66ilters\x18\x05 \x01(\t\x12\x10\n\x08max_size\x18\x07 \x01(\x04\x12\r\n\x05token\x18\x06 \x02(\t\x12\x18\n\x10past_duration_ns\x18\x08 \x01(\x04\x12\x11\n\tpast_size\x18\t \x01(\x04\"a\n\x11\x64ump_request_stop\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\"\xd2\x01\n\rdump_response\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x10\n\x08\x63hunk_no\x18\x07 \x01(\r\x12\x13\n\x0b\x66inal_chunk\x18\x08 \x01(\x08\x12\x12\n\nkeep_alive\x18\t \x01(\x08\x12\x0f\n\x07\x63ontent\x18\x04 \x01(\x0c\x12\x18\n\x10\x66inal_size_bytes\x18\n \x01(\x04\x12\r\n\x05\x65rror\x18\x05 \x01(\t\x12\r\n\x05token\x18\x06 \x02(\t\"\xaf\x01\n\x10ssh_open_channel\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\x12\x0c\n\x04user\x18\x05 \x02(\t\x12\x10\n\x08password\x18\x06 \x01(\t\x12\x0b\n\x03key\x18\x07 \x01(\t\x12\x12\n\npassphrase\x18\x08 \x01(\t\x12\x0c\n\x04port\x18\t \x01(\r\"\x8a\x01\n\x08ssh_data\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\x12\x0c\n\x04\x64\x61ta\x18\x05 \x01(\x0c\x12\r\n\x05\x65rror\x18\x06 \x01(\t\x12\x13\n\x0b\x65xit_status\x18\x07 \x01(\x05\"a\n\x11ssh_close_channel\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\r\n\x05token\x18\x04 \x02(\t\"T\n\x13\x61uto_update_request\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\"c\n\x15\x64irty_shutdown_report\x12\x14\n\x0ctimestamp_ns\x18\x01 \x02(\x04\x12\x12\n\nmachine_id\x18\x02 \x02(\t\x12\x13\n\x0b\x63ustomer_id\x18\x03 \x01(\t\x12\x0b\n\x03log\x18\x04 \x02(\t\"\'\n\tkey_value\x12\x0b\n\x03key\x18\x01 \x02(\t\x12\r\n\x05value\x18\x02 \x02(\t\"\x8f\x01\n\x0b\x61gent_event\x12\x15\n\rtimestamp_sec\x18\x01 \x01(\x04\x12\r\n\x05scope\x18\x02 \x01(\t\x12\r\n\x05title\x18\x03 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x04 \x01(\t\x12\x10\n\x08severity\x18\x05 \x01(\r\x12$\n\x04tags\x18\x06 \x03(\x0b\x32\x16.draiosproto.key_value\"K\n\rerror_message\x12%\n\x04type\x18\x01 \x01(\x0e\x32\x17.draiosproto.error_type\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\t\":\n\x11\x66\x61lco_subcategory\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\t\n\x01\x64\x18\x02 \x03(\t\x12\x0c\n\x04\x66ull\x18\x03 \x01(\x08\"N\n\x1b\x66\x61lco_subcategory_container\x12/\n\x07subcats\x18\x01 \x03(\x0b\x32\x1e.draiosproto.falco_subcategory\"\xa4\x01\n\x0e\x66\x61lco_category\x12\x0c\n\x04name\x18\x01 \x02(\t\x12\x41\n\x0fstartup_subcats\x18\x02 \x03(\x0b\x32(.draiosproto.falco_subcategory_container\x12\x41\n\x0fregular_subcats\x18\x03 \x03(\x0b\x32(.draiosproto.falco_subcategory_container\"\x87\x01\n\nfalco_prog\x12\x0c\n\x04\x63omm\x18\x01 \x02(\t\x12\x0b\n\x03\x65xe\x18\x02 \x02(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x0f\n\x07user_id\x18\x04 \x02(\x04\x12\x14\n\x0c\x63ontainer_id\x18\x05 \x01(\t\x12)\n\x04\x63\x61ts\x18\x06 \x03(\x0b\x32\x1b.draiosproto.falco_category\"8\n\x0e\x66\x61lco_baseline\x12&\n\x05progs\x18\x01 \x03(\x0b\x32\x17.draiosproto.falco_prog\",\n\x0b\x63onfig_file\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63ontent\x18\x02 \x01(\t\"=\n\x0b\x63onfig_data\x12.\n\x0c\x63onfig_files\x18\x01 \x03(\x0b\x32\x18.draiosproto.config_file*\xe6\x01\n\x12sql_statement_type\x12\x0c\n\x08SOP_NONE\x10\x00\x12\x0e\n\nSOP_SELECT\x10\x01\x12\x0e\n\nSOP_INSERT\x10\x02\x12\x0b\n\x07SOP_SET\x10\x03\x12\x0e\n\nSOP_CREATE\x10\x04\x12\x0e\n\nSOP_DELETE\x10\x05\x12\x0c\n\x08SOP_DROP\x10\x06\x12\x0f\n\x0bSOP_REPLACE\x10\x07\x12\x0e\n\nSOP_UPDATE\x10\x08\x12\x0b\n\x07SOP_USE\x10\t\x12\x0c\n\x08SOP_SHOW\x10\n\x12\x0c\n\x08SOP_LOCK\x10\x0b\x12\x0e\n\nSOP_UNLOCK\x10\x0c\x12\r\n\tSOP_ALTER\x10\r*\x86\x03\n\x0fmongodb_op_type\x12\x13\n\x0fMONGODB_OP_NONE\x10\x00\x12\x15\n\x11MONGODB_OP_INSERT\x10\x01\x12\x15\n\x11MONGODB_OP_UPDATE\x10\x02\x12\x15\n\x11MONGODB_OP_DELETE\x10\x03\x12\x17\n\x13MONGODB_OP_GET_MORE\x10\x04\x12\x1b\n\x17MONGODB_OP_KILL_CURSORS\x10\x05\x12\x13\n\x0fMONGODB_OP_FIND\x10\x06\x12\x18\n\x14MONGODB_OP_AGGREGATE\x10\x07\x12\x16\n\x12MONGODB_OP_COMMAND\x10\x08\x12\x14\n\x10MONGODB_OP_COUNT\x10\t\x12\x17\n\x13MONGODB_OP_DISTINCT\x10\n\x12\x19\n\x15MONGODB_OP_MAP_REDUCE\x10\x0b\x12\x17\n\x13MONGODB_OP_GEO_NEAR\x10\x0c\x12\x19\n\x15MONGODB_OP_GEO_SEARCH\x10\r\x12\x1e\n\x1aMONGODB_OP_FIND_AND_MODIFY\x10\x0e*G\n\x04unit\x12\r\n\tUNIT_NONE\x10\x00\x12\x0f\n\x0bUNIT_SECOND\x10\x01\x12\r\n\tUNIT_BYTE\x10\x02\x12\x10\n\x0cUNIT_PERCENT\x10\x03*\x91\x02\n\x05scale\x12\x0e\n\nSCALE_NONE\x10\x00\x12\x0f\n\x0bSCALE_MILLI\x10\x01\x12\x0f\n\x0bSCALE_MICRO\x10\x02\x12\x0e\n\nSCALE_NANO\x10\x03\x12\x10\n\x0cSCALE_MINUTE\x10\x04\x12\x0e\n\nSCALE_HOUR\x10\x05\x12\r\n\tSCALE_DAY\x10\x06\x12\x0e\n\nSCALE_KILO\x10\x07\x12\x0e\n\nSCALE_MEGA\x10\x08\x12\x0e\n\nSCALE_GIGA\x10\t\x12\x0e\n\nSCALE_TERA\x10\n\x12\x0e\n\nSCALE_KIBI\x10\x0b\x12\x0e\n\nSCALE_MEBI\x10\x0c\x12\x0e\n\nSCALE_GIBI\x10\r\x12\x0e\n\nSCALE_TEBI\x10\x0e\x12\x15\n\x11SCALE_PERCENT_0_1\x10\x0f*I\n\x0fjmx_metric_type\x12\x1b\n\x17JMX_METRIC_TYPE_COUNTER\x10\x01\x12\x19\n\x15JMX_METRIC_TYPE_GAUGE\x10\x02*^\n\x12statsd_metric_type\x12\x10\n\x0cSTATSD_COUNT\x10\x01\x12\x14\n\x10STATSD_HISTOGRAM\x10\x02\x12\x10\n\x0cSTATSD_GAUGE\x10\x03\x12\x0e\n\nSTATSD_SET\x10\x04*F\n\x0f\x61pp_metric_type\x12\x19\n\x15\x41PP_METRIC_TYPE_GAUGE\x10\x01\x12\x18\n\x14\x41PP_METRIC_TYPE_RATE\x10\x02*\x81\x01\n\x0f\x61pp_check_value\x12\x16\n\x12\x41PP_CHECK_VALUE_OK\x10\x00\x12\x1b\n\x17\x41PP_CHECK_VALUE_WARNING\x10\x01\x12\x1c\n\x18\x41PP_CHECK_VALUE_CRITICAL\x10\x02\x12\x1b\n\x17\x41PP_CHECK_VALUE_UNKNOWN\x10\x03*\xa9\x01\n\x0bnetworkrole\x12\x08\n\x04NONE\x10\x00\x12\x18\n\x14IS_LOCAL_IPV4_SERVER\x10\x01\x12\x19\n\x15IS_REMOTE_IPV4_SERVER\x10\x02\x12\x12\n\x0eIS_UNIX_SERVER\x10\x04\x12\x18\n\x14IS_LOCAL_IPV4_CLIENT\x10\x08\x12\x19\n\x15IS_REMOTE_IPV4_CLIENT\x10\x10\x12\x12\n\x0eIS_UNIX_CLIENT\x10 *\xf0\x01\n\x0cmessage_type\x12\x0b\n\x07METRICS\x10\x01\x12\x16\n\x12\x44UMP_REQUEST_START\x10\x02\x12\x15\n\x11\x44UMP_REQUEST_STOP\x10\x04\x12\x11\n\rDUMP_RESPONSE\x10\x03\x12\x14\n\x10SSH_OPEN_CHANNEL\x10\x06\x12\x15\n\x11SSH_CLOSE_CHANNEL\x10\x07\x12\x0c\n\x08SSH_DATA\x10\x08\x12\x17\n\x13\x41UTO_UPDATE_REQUEST\x10\t\x12\x19\n\x15\x44IRTY_SHUTDOWN_REPORT\x10\n\x12\x0f\n\x0b\x43ONFIG_DATA\x10\x0b\x12\x11\n\rERROR_MESSAGE\x10\x0c*J\n\x0e\x63ontainer_type\x12\n\n\x06\x44OCKER\x10\x01\x12\x07\n\x03LXC\x10\x02\x12\x0f\n\x0bLIBVIRT_LXC\x10\x03\x12\t\n\x05MESOS\x10\x04\x12\x07\n\x03RKT\x10\x05*l\n\nerror_type\x12\x12\n\x0e\x45RR_CONN_LIMIT\x10\x01\x12\x1c\n\x18\x45RR_INVALID_CUSTOMER_KEY\x10\x02\x12\x17\n\x13\x45RR_DUPLICATE_AGENT\x10\x03\x12\x13\n\x0f\x45RR_SERVER_BUSY\x10\x04\x42$\n\x19\x63om.draios.model.protobufB\x05\x41gentH\x01')
 
 _SQL_STATEMENT_TYPE = _descriptor.EnumDescriptor(
   name='sql_statement_type',
@@ -81,8 +81,8 @@ _SQL_STATEMENT_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=15160,
-  serialized_end=15390,
+  serialized_start=22740,
+  serialized_end=22970,
 )
 
 sql_statement_type = enum_type_wrapper.EnumTypeWrapper(_SQL_STATEMENT_TYPE)
@@ -155,8 +155,8 @@ _MONGODB_OP_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=15393,
-  serialized_end=15783,
+  serialized_start=22973,
+  serialized_end=23363,
 )
 
 mongodb_op_type = enum_type_wrapper.EnumTypeWrapper(_MONGODB_OP_TYPE)
@@ -185,8 +185,8 @@ _UNIT = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=15785,
-  serialized_end=15856,
+  serialized_start=23365,
+  serialized_end=23436,
 )
 
 unit = enum_type_wrapper.EnumTypeWrapper(_UNIT)
@@ -263,8 +263,8 @@ _SCALE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=15859,
-  serialized_end=16132,
+  serialized_start=23439,
+  serialized_end=23712,
 )
 
 scale = enum_type_wrapper.EnumTypeWrapper(_SCALE)
@@ -285,8 +285,8 @@ _JMX_METRIC_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16134,
-  serialized_end=16207,
+  serialized_start=23714,
+  serialized_end=23787,
 )
 
 jmx_metric_type = enum_type_wrapper.EnumTypeWrapper(_JMX_METRIC_TYPE)
@@ -315,8 +315,8 @@ _STATSD_METRIC_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16209,
-  serialized_end=16303,
+  serialized_start=23789,
+  serialized_end=23883,
 )
 
 statsd_metric_type = enum_type_wrapper.EnumTypeWrapper(_STATSD_METRIC_TYPE)
@@ -337,8 +337,8 @@ _APP_METRIC_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16305,
-  serialized_end=16375,
+  serialized_start=23885,
+  serialized_end=23955,
 )
 
 app_metric_type = enum_type_wrapper.EnumTypeWrapper(_APP_METRIC_TYPE)
@@ -367,8 +367,8 @@ _APP_CHECK_VALUE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16378,
-  serialized_end=16507,
+  serialized_start=23958,
+  serialized_end=24087,
 )
 
 app_check_value = enum_type_wrapper.EnumTypeWrapper(_APP_CHECK_VALUE)
@@ -409,8 +409,8 @@ _NETWORKROLE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16510,
-  serialized_end=16679,
+  serialized_start=24090,
+  serialized_end=24259,
 )
 
 networkrole = enum_type_wrapper.EnumTypeWrapper(_NETWORKROLE)
@@ -467,8 +467,8 @@ _MESSAGE_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16682,
-  serialized_end=16922,
+  serialized_start=24262,
+  serialized_end=24502,
 )
 
 message_type = enum_type_wrapper.EnumTypeWrapper(_MESSAGE_TYPE)
@@ -501,8 +501,8 @@ _CONTAINER_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=16924,
-  serialized_end=16998,
+  serialized_start=24504,
+  serialized_end=24578,
 )
 
 container_type = enum_type_wrapper.EnumTypeWrapper(_CONTAINER_TYPE)
@@ -524,11 +524,15 @@ _ERROR_TYPE = _descriptor.EnumDescriptor(
       name='ERR_DUPLICATE_AGENT', index=2, number=3,
       options=None,
       type=None),
+    _descriptor.EnumValueDescriptor(
+      name='ERR_SERVER_BUSY', index=3, number=4,
+      options=None,
+      type=None),
   ],
   containing_type=None,
   options=None,
-  serialized_start=17000,
-  serialized_end=17087,
+  serialized_start=24580,
+  serialized_end=24688,
 )
 
 error_type = enum_type_wrapper.EnumTypeWrapper(_ERROR_TYPE)
@@ -619,34 +623,42 @@ RKT = 5
 ERR_CONN_LIMIT = 1
 ERR_INVALID_CUSTOMER_KEY = 2
 ERR_DUPLICATE_AGENT = 3
+ERR_SERVER_BUSY = 4
 
 
 
-_COUNTER_TIME = _descriptor.Descriptor(
-  name='counter_time',
-  full_name='draiosproto.counter_time',
+_AGGREGATIONS64_REPEATED = _descriptor.Descriptor(
+  name='aggregations64_repeated',
+  full_name='draiosproto.aggregations64_repeated',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='count', full_name='draiosproto.counter_time.count', index=0,
-      number=1, type=13, cpp_type=3, label=2,
+      name='weight', full_name='draiosproto.aggregations64_repeated.weight', index=0,
+      number=1, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_ns', full_name='draiosproto.counter_time.time_ns', index=1,
-      number=2, type=4, cpp_type=4, label=2,
-      has_default_value=False, default_value=0,
+      name='max', full_name='draiosproto.aggregations64_repeated.max', index=1,
+      number=2, type=4, cpp_type=4, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_percentage', full_name='draiosproto.counter_time.time_percentage', index=2,
-      number=3, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      name='min', full_name='draiosproto.aggregations64_repeated.min', index=2,
+      number=3, type=4, cpp_type=4, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='sum', full_name='draiosproto.aggregations64_repeated.sum', index=3,
+      number=4, type=4, cpp_type=4, label=3,
+      has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -660,40 +672,40 @@ _COUNTER_TIME = _descriptor.Descriptor(
   is_extendable=False,
   extension_ranges=[],
   serialized_start=29,
-  serialized_end=100,
+  serialized_end=109,
 )
 
 
-_COUNTER_TIME_BIDIRECTIONAL = _descriptor.Descriptor(
-  name='counter_time_bidirectional',
-  full_name='draiosproto.counter_time_bidirectional',
+_AGGREGATIONS64 = _descriptor.Descriptor(
+  name='aggregations64',
+  full_name='draiosproto.aggregations64',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='count_in', full_name='draiosproto.counter_time_bidirectional.count_in', index=0,
-      number=1, type=13, cpp_type=3, label=2,
+      name='weight', full_name='draiosproto.aggregations64.weight', index=0,
+      number=1, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_out', full_name='draiosproto.counter_time_bidirectional.count_out', index=1,
-      number=2, type=13, cpp_type=3, label=2,
+      name='max', full_name='draiosproto.aggregations64.max', index=1,
+      number=2, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_ns_in', full_name='draiosproto.counter_time_bidirectional.time_ns_in', index=2,
+      name='min', full_name='draiosproto.aggregations64.min', index=2,
       number=3, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_ns_out', full_name='draiosproto.counter_time_bidirectional.time_ns_out', index=3,
+      name='sum', full_name='draiosproto.aggregations64.sum', index=3,
       number=4, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -708,8 +720,211 @@ _COUNTER_TIME_BIDIRECTIONAL = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=102,
-  serialized_end=208,
+  serialized_start=111,
+  serialized_end=182,
+)
+
+
+_AGGREGATIONS_DOUBLE = _descriptor.Descriptor(
+  name='aggregations_double',
+  full_name='draiosproto.aggregations_double',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='weight', full_name='draiosproto.aggregations_double.weight', index=0,
+      number=1, type=4, cpp_type=4, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='max', full_name='draiosproto.aggregations_double.max', index=1,
+      number=2, type=1, cpp_type=5, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='min', full_name='draiosproto.aggregations_double.min', index=2,
+      number=3, type=1, cpp_type=5, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='sum', full_name='draiosproto.aggregations_double.sum', index=3,
+      number=4, type=1, cpp_type=5, label=2,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=184,
+  serialized_end=260,
+)
+
+
+_COUNTER_TIME = _descriptor.Descriptor(
+  name='counter_time',
+  full_name='draiosproto.counter_time',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='count', full_name='draiosproto.counter_time.count', index=0,
+      number=1, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_count', full_name='draiosproto.counter_time.aggr_count', index=1,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_ns', full_name='draiosproto.counter_time.time_ns', index=2,
+      number=2, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_ns', full_name='draiosproto.counter_time.aggr_time_ns', index=3,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_percentage', full_name='draiosproto.counter_time.time_percentage', index=4,
+      number=3, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_percentage', full_name='draiosproto.counter_time.aggr_time_percentage', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.counter_time.is_null', index=6,
+      number=7, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=263,
+  serialized_end=510,
+)
+
+
+_COUNTER_TIME_BIDIRECTIONAL = _descriptor.Descriptor(
+  name='counter_time_bidirectional',
+  full_name='draiosproto.counter_time_bidirectional',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='count_in', full_name='draiosproto.counter_time_bidirectional.count_in', index=0,
+      number=1, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_count_in', full_name='draiosproto.counter_time_bidirectional.aggr_count_in', index=1,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_out', full_name='draiosproto.counter_time_bidirectional.count_out', index=2,
+      number=2, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_count_out', full_name='draiosproto.counter_time_bidirectional.aggr_count_out', index=3,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_ns_in', full_name='draiosproto.counter_time_bidirectional.time_ns_in', index=4,
+      number=3, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_ns_in', full_name='draiosproto.counter_time_bidirectional.aggr_time_ns_in', index=5,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_ns_out', full_name='draiosproto.counter_time_bidirectional.time_ns_out', index=6,
+      number=4, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_ns_out', full_name='draiosproto.counter_time_bidirectional.aggr_time_ns_out', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.counter_time_bidirectional.is_null', index=8,
+      number=9, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=513,
+  serialized_end=850,
 )
 
 
@@ -722,29 +937,64 @@ _COUNTER_BYTES = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='count_in', full_name='draiosproto.counter_bytes.count_in', index=0,
-      number=1, type=13, cpp_type=3, label=2,
+      number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_out', full_name='draiosproto.counter_bytes.count_out', index=1,
-      number=2, type=13, cpp_type=3, label=2,
+      name='aggr_count_in', full_name='draiosproto.counter_bytes.aggr_count_in', index=1,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_out', full_name='draiosproto.counter_bytes.count_out', index=2,
+      number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='bytes_in', full_name='draiosproto.counter_bytes.bytes_in', index=2,
-      number=3, type=13, cpp_type=3, label=2,
+      name='aggr_count_out', full_name='draiosproto.counter_bytes.aggr_count_out', index=3,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='bytes_in', full_name='draiosproto.counter_bytes.bytes_in', index=4,
+      number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='bytes_out', full_name='draiosproto.counter_bytes.bytes_out', index=3,
-      number=4, type=13, cpp_type=3, label=2,
+      name='aggr_bytes_in', full_name='draiosproto.counter_bytes.aggr_bytes_in', index=5,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='bytes_out', full_name='draiosproto.counter_bytes.bytes_out', index=6,
+      number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_bytes_out', full_name='draiosproto.counter_bytes.aggr_bytes_out', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.counter_bytes.is_null', index=8,
+      number=9, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -757,8 +1007,8 @@ _COUNTER_BYTES = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=210,
-  serialized_end=299,
+  serialized_start=853,
+  serialized_end=1169,
 )
 
 
@@ -771,85 +1021,176 @@ _COUNTER_TIME_BYTES = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='time_ns_in', full_name='draiosproto.counter_time_bytes.time_ns_in', index=0,
-      number=1, type=4, cpp_type=4, label=2,
+      number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_ns_out', full_name='draiosproto.counter_time_bytes.time_ns_out', index=1,
-      number=2, type=4, cpp_type=4, label=2,
+      name='aggr_time_ns_in', full_name='draiosproto.counter_time_bytes.aggr_time_ns_in', index=1,
+      number=13, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_ns_out', full_name='draiosproto.counter_time_bytes.time_ns_out', index=2,
+      number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_ns_other', full_name='draiosproto.counter_time_bytes.time_ns_other', index=2,
-      number=3, type=4, cpp_type=4, label=2,
+      name='aggr_time_ns_out', full_name='draiosproto.counter_time_bytes.aggr_time_ns_out', index=3,
+      number=14, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_ns_other', full_name='draiosproto.counter_time_bytes.time_ns_other', index=4,
+      number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_in', full_name='draiosproto.counter_time_bytes.count_in', index=3,
-      number=4, type=13, cpp_type=3, label=2,
+      name='aggr_time_ns_other', full_name='draiosproto.counter_time_bytes.aggr_time_ns_other', index=5,
+      number=15, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_in', full_name='draiosproto.counter_time_bytes.count_in', index=6,
+      number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_out', full_name='draiosproto.counter_time_bytes.count_out', index=4,
-      number=5, type=13, cpp_type=3, label=2,
+      name='aggr_count_in', full_name='draiosproto.counter_time_bytes.aggr_count_in', index=7,
+      number=16, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_out', full_name='draiosproto.counter_time_bytes.count_out', index=8,
+      number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_other', full_name='draiosproto.counter_time_bytes.count_other', index=5,
-      number=6, type=13, cpp_type=3, label=2,
+      name='aggr_count_out', full_name='draiosproto.counter_time_bytes.aggr_count_out', index=9,
+      number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_other', full_name='draiosproto.counter_time_bytes.count_other', index=10,
+      number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='bytes_in', full_name='draiosproto.counter_time_bytes.bytes_in', index=6,
-      number=7, type=13, cpp_type=3, label=2,
+      name='aggr_count_other', full_name='draiosproto.counter_time_bytes.aggr_count_other', index=11,
+      number=18, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='bytes_in', full_name='draiosproto.counter_time_bytes.bytes_in', index=12,
+      number=7, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='bytes_out', full_name='draiosproto.counter_time_bytes.bytes_out', index=7,
-      number=8, type=13, cpp_type=3, label=2,
+      name='aggr_bytes_in', full_name='draiosproto.counter_time_bytes.aggr_bytes_in', index=13,
+      number=19, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='bytes_out', full_name='draiosproto.counter_time_bytes.bytes_out', index=14,
+      number=8, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='bytes_other', full_name='draiosproto.counter_time_bytes.bytes_other', index=8,
-      number=9, type=13, cpp_type=3, label=2,
+      name='aggr_bytes_out', full_name='draiosproto.counter_time_bytes.aggr_bytes_out', index=15,
+      number=20, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='bytes_other', full_name='draiosproto.counter_time_bytes.bytes_other', index=16,
+      number=9, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_percentage_in', full_name='draiosproto.counter_time_bytes.time_percentage_in', index=9,
+      name='aggr_bytes_other', full_name='draiosproto.counter_time_bytes.aggr_bytes_other', index=17,
+      number=21, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_percentage_in', full_name='draiosproto.counter_time_bytes.time_percentage_in', index=18,
       number=10, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_percentage_out', full_name='draiosproto.counter_time_bytes.time_percentage_out', index=10,
+      name='aggr_time_percentage_in', full_name='draiosproto.counter_time_bytes.aggr_time_percentage_in', index=19,
+      number=22, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_percentage_out', full_name='draiosproto.counter_time_bytes.time_percentage_out', index=20,
       number=11, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_percentage_other', full_name='draiosproto.counter_time_bytes.time_percentage_other', index=11,
+      name='aggr_time_percentage_out', full_name='draiosproto.counter_time_bytes.aggr_time_percentage_out', index=21,
+      number=23, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_percentage_other', full_name='draiosproto.counter_time_bytes.time_percentage_other', index=22,
       number=12, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_percentage_other', full_name='draiosproto.counter_time_bytes.aggr_time_percentage_other', index=23,
+      number=24, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.counter_time_bytes.is_null', index=24,
+      number=25, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -862,8 +1203,8 @@ _COUNTER_TIME_BYTES = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=302,
-  serialized_end=590,
+  serialized_start=1172,
+  serialized_end=2153,
 )
 
 
@@ -993,6 +1334,13 @@ _TIME_CATEGORIES = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.time_categories.is_null', index=17,
+      number=18, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -1002,8 +1350,8 @@ _TIME_CATEGORIES = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=593,
-  serialized_end=1352,
+  serialized_start=2156,
+  serialized_end=2932,
 )
 
 
@@ -1042,6 +1390,13 @@ _TRANSACTION_BREAKDOWN_CATEGORIES = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.transaction_breakdown_categories.is_null', index=4,
+      number=18, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -1051,8 +1406,8 @@ _TRANSACTION_BREAKDOWN_CATEGORIES = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1355,
-  serialized_end=1577,
+  serialized_start=2935,
+  serialized_end=3174,
 )
 
 
@@ -1065,36 +1420,71 @@ _COUNTER_SYSCALL_ERRORS = _descriptor.Descriptor(
   fields=[
     _descriptor.FieldDescriptor(
       name='count', full_name='draiosproto.counter_syscall_errors.count', index=0,
-      number=1, type=13, cpp_type=3, label=2,
+      number=1, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='top_error_codes', full_name='draiosproto.counter_syscall_errors.top_error_codes', index=1,
+      name='aggr_count', full_name='draiosproto.counter_syscall_errors.aggr_count', index=1,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='top_error_codes', full_name='draiosproto.counter_syscall_errors.top_error_codes', index=2,
       number=2, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_file', full_name='draiosproto.counter_syscall_errors.count_file', index=2,
+      name='count_file', full_name='draiosproto.counter_syscall_errors.count_file', index=3,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_file_open', full_name='draiosproto.counter_syscall_errors.count_file_open', index=3,
+      name='aggr_count_file', full_name='draiosproto.counter_syscall_errors.aggr_count_file', index=4,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_file_open', full_name='draiosproto.counter_syscall_errors.count_file_open', index=5,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_net', full_name='draiosproto.counter_syscall_errors.count_net', index=4,
+      name='aggr_count_file_open', full_name='draiosproto.counter_syscall_errors.aggr_count_file_open', index=6,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_net', full_name='draiosproto.counter_syscall_errors.count_net', index=7,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_count_net', full_name='draiosproto.counter_syscall_errors.aggr_count_net', index=8,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.counter_syscall_errors.is_null', index=9,
+      number=10, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -1107,8 +1497,8 @@ _COUNTER_SYSCALL_ERRORS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1580,
-  serialized_end=1708,
+  serialized_start=3177,
+  serialized_end=3537,
 )
 
 
@@ -1127,107 +1517,107 @@ _RESOURCE_CATEGORIES = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='stolen_capacity_score', full_name='draiosproto.resource_categories.stolen_capacity_score', index=1,
+      name='aggr_capacity_score', full_name='draiosproto.resource_categories.aggr_capacity_score', index=1,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='stolen_capacity_score', full_name='draiosproto.resource_categories.stolen_capacity_score', index=2,
       number=6, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='connection_queue_usage_pct', full_name='draiosproto.resource_categories.connection_queue_usage_pct', index=2,
+      name='aggr_stolen_capacity_score', full_name='draiosproto.resource_categories.aggr_stolen_capacity_score', index=3,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='connection_queue_usage_pct', full_name='draiosproto.resource_categories.connection_queue_usage_pct', index=4,
       number=2, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='fd_usage_pct', full_name='draiosproto.resource_categories.fd_usage_pct', index=3,
+      name='aggr_connection_queue_usage_pct', full_name='draiosproto.resource_categories.aggr_connection_queue_usage_pct', index=5,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='fd_usage_pct', full_name='draiosproto.resource_categories.fd_usage_pct', index=6,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cpu_pct', full_name='draiosproto.resource_categories.cpu_pct', index=4,
+      name='aggr_fd_usage_pct', full_name='draiosproto.resource_categories.aggr_fd_usage_pct', index=7,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_pct', full_name='draiosproto.resource_categories.cpu_pct', index=8,
       number=4, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resident_memory_usage_kb', full_name='draiosproto.resource_categories.resident_memory_usage_kb', index=5,
+      name='aggr_cpu_pct', full_name='draiosproto.resource_categories.aggr_cpu_pct', index=9,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='resident_memory_usage_kb', full_name='draiosproto.resource_categories.resident_memory_usage_kb', index=10,
       number=5, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='virtual_memory_usage_kb', full_name='draiosproto.resource_categories.virtual_memory_usage_kb', index=6,
+      name='aggr_resident_memory_usage_kb', full_name='draiosproto.resource_categories.aggr_resident_memory_usage_kb', index=11,
+      number=11, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='virtual_memory_usage_kb', full_name='draiosproto.resource_categories.virtual_memory_usage_kb', index=12,
       number=13, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='swap_memory_usage_kb', full_name='draiosproto.resource_categories.swap_memory_usage_kb', index=7,
+      name='aggr_virtual_memory_usage_kb', full_name='draiosproto.resource_categories.aggr_virtual_memory_usage_kb', index=13,
+      number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='swap_memory_usage_kb', full_name='draiosproto.resource_categories.swap_memory_usage_kb', index=14,
       number=14, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='major_pagefaults', full_name='draiosproto.resource_categories.major_pagefaults', index=8,
-      number=15, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='minor_pagefaults', full_name='draiosproto.resource_categories.minor_pagefaults', index=9,
-      number=16, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='fd_count', full_name='draiosproto.resource_categories.fd_count', index=10,
-      number=21, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='cpu_shares', full_name='draiosproto.resource_categories.cpu_shares', index=11,
-      number=24, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='cpu_shares_usage_pct', full_name='draiosproto.resource_categories.cpu_shares_usage_pct', index=12,
-      number=25, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='memory_limit_kb', full_name='draiosproto.resource_categories.memory_limit_kb', index=13,
-      number=26, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='swap_limit_kb', full_name='draiosproto.resource_categories.swap_limit_kb', index=14,
-      number=27, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='cpu_quota_used_pct', full_name='draiosproto.resource_categories.cpu_quota_used_pct', index=15,
-      number=28, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
+      name='aggr_swap_memory_usage_kb', full_name='draiosproto.resource_categories.aggr_swap_memory_usage_kb', index=15,
+      number=18, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -1239,23 +1629,170 @@ _RESOURCE_CATEGORIES = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='swap_memory_available_kb', full_name='draiosproto.resource_categories.swap_memory_available_kb', index=17,
+      name='aggr_swap_memory_total_kb', full_name='draiosproto.resource_categories.aggr_swap_memory_total_kb', index=17,
+      number=129, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='swap_memory_available_kb', full_name='draiosproto.resource_categories.swap_memory_available_kb', index=18,
       number=30, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_processes', full_name='draiosproto.resource_categories.count_processes', index=18,
+      name='aggr_swap_memory_available_kb', full_name='draiosproto.resource_categories.aggr_swap_memory_available_kb', index=19,
+      number=130, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='major_pagefaults', full_name='draiosproto.resource_categories.major_pagefaults', index=20,
+      number=15, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_major_pagefaults', full_name='draiosproto.resource_categories.aggr_major_pagefaults', index=21,
+      number=19, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='minor_pagefaults', full_name='draiosproto.resource_categories.minor_pagefaults', index=22,
+      number=16, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_minor_pagefaults', full_name='draiosproto.resource_categories.aggr_minor_pagefaults', index=23,
+      number=20, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='fd_count', full_name='draiosproto.resource_categories.fd_count', index=24,
+      number=21, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_fd_count', full_name='draiosproto.resource_categories.aggr_fd_count', index=25,
+      number=22, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.resource_categories.is_null', index=26,
+      number=23, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_shares', full_name='draiosproto.resource_categories.cpu_shares', index=27,
+      number=24, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_cpu_shares', full_name='draiosproto.resource_categories.aggr_cpu_shares', index=28,
+      number=124, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_shares_usage_pct', full_name='draiosproto.resource_categories.cpu_shares_usage_pct', index=29,
+      number=25, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_cpu_shares_usage_pct', full_name='draiosproto.resource_categories.aggr_cpu_shares_usage_pct', index=30,
+      number=125, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='memory_limit_kb', full_name='draiosproto.resource_categories.memory_limit_kb', index=31,
+      number=26, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_memory_limit_kb', full_name='draiosproto.resource_categories.aggr_memory_limit_kb', index=32,
+      number=126, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='swap_limit_kb', full_name='draiosproto.resource_categories.swap_limit_kb', index=33,
+      number=27, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_swap_limit_kb', full_name='draiosproto.resource_categories.aggr_swap_limit_kb', index=34,
+      number=127, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_quota_used_pct', full_name='draiosproto.resource_categories.cpu_quota_used_pct', index=35,
+      number=28, type=13, cpp_type=3, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_cpu_quota_used_pct', full_name='draiosproto.resource_categories.aggr_cpu_quota_used_pct', index=36,
+      number=128, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_processes', full_name='draiosproto.resource_categories.count_processes', index=37,
       number=31, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='proc_start_count', full_name='draiosproto.resource_categories.proc_start_count', index=19,
+      name='aggr_count_processes', full_name='draiosproto.resource_categories.aggr_count_processes', index=38,
+      number=131, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='proc_start_count', full_name='draiosproto.resource_categories.proc_start_count', index=39,
       number=32, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_proc_start_count', full_name='draiosproto.resource_categories.aggr_proc_start_count', index=40,
+      number=132, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -1268,8 +1805,8 @@ _RESOURCE_CATEGORIES = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=1711,
-  serialized_end=2270,
+  serialized_start=3540,
+  serialized_end=5339,
 )
 
 
@@ -1322,6 +1859,20 @@ _CONNECTION_CATEGORIES = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_n_aggregated_connections', full_name='draiosproto.connection_categories.aggr_n_aggregated_connections', index=6,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.connection_categories.is_null', index=7,
+      number=6, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -1331,8 +1882,8 @@ _CONNECTION_CATEGORIES = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=2273,
-  serialized_end=2639,
+  serialized_start=5342,
+  serialized_end=5793,
 )
 
 
@@ -1380,64 +1931,8 @@ _PROCESS_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=2641,
-  serialized_end=2721,
-)
-
-
-_COMMAND_DETAILS = _descriptor.Descriptor(
-  name='command_details',
-  full_name='draiosproto.command_details',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='timestamp', full_name='draiosproto.command_details.timestamp', index=0,
-      number=1, type=4, cpp_type=4, label=2,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='count', full_name='draiosproto.command_details.count', index=1,
-      number=2, type=13, cpp_type=3, label=2,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='cmdline', full_name='draiosproto.command_details.cmdline', index=2,
-      number=3, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='exe', full_name='draiosproto.command_details.exe', index=3,
-      number=4, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='parentcomm', full_name='draiosproto.command_details.parentcomm', index=4,
-      number=5, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=2723,
-  serialized_end=2824,
+  serialized_start=5795,
+  serialized_end=5875,
 )
 
 
@@ -1490,6 +1985,48 @@ _COUNTER_PROTO_ENTRY = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_ncalls', full_name='draiosproto.counter_proto_entry.aggr_ncalls', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_tot', full_name='draiosproto.counter_proto_entry.aggr_time_tot', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_time_max', full_name='draiosproto.counter_proto_entry.aggr_time_max', index=8,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_bytes_in', full_name='draiosproto.counter_proto_entry.aggr_bytes_in', index=9,
+      number=10, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_bytes_out', full_name='draiosproto.counter_proto_entry.aggr_bytes_out', index=10,
+      number=11, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_nerrors', full_name='draiosproto.counter_proto_entry.aggr_nerrors', index=11,
+      number=12, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -1499,8 +2036,8 @@ _COUNTER_PROTO_ENTRY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=2826,
-  serialized_end=2953,
+  serialized_start=5878,
+  serialized_end=6315,
 )
 
 
@@ -1534,8 +2071,8 @@ _URL_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=2955,
-  serialized_end=3033,
+  serialized_start=6317,
+  serialized_end=6395,
 )
 
 
@@ -1560,6 +2097,13 @@ _STATUS_CODE_DETAILS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_ncalls', full_name='draiosproto.status_code_details.aggr_ncalls', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -1569,8 +2113,8 @@ _STATUS_CODE_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=3035,
-  serialized_end=3093,
+  serialized_start=6397,
+  serialized_end=6505,
 )
 
 
@@ -1618,8 +2162,8 @@ _HTTP_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=3096,
-  serialized_end=3327,
+  serialized_start=6508,
+  serialized_end=6739,
 )
 
 
@@ -1653,8 +2197,8 @@ _SQL_ENTRY_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=3329,
-  serialized_end=3414,
+  serialized_start=6741,
+  serialized_end=6826,
 )
 
 
@@ -1688,8 +2232,8 @@ _SQL_QUERY_TYPE_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=3416,
-  serialized_end=3539,
+  serialized_start=6828,
+  serialized_end=6951,
 )
 
 
@@ -1751,8 +2295,8 @@ _SQL_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=3542,
-  serialized_end=3904,
+  serialized_start=6954,
+  serialized_end=7316,
 )
 
 
@@ -1786,8 +2330,8 @@ _MONGODB_COLLECTION_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=3906,
-  serialized_end=4000,
+  serialized_start=7318,
+  serialized_end=7412,
 )
 
 
@@ -1821,8 +2365,8 @@ _MONGODB_OP_TYPE_DETAILS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4002,
-  serialized_end=4121,
+  serialized_start=7414,
+  serialized_end=7533,
 )
 
 
@@ -1870,8 +2414,8 @@ _MONGODB_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4124,
-  serialized_end=4393,
+  serialized_start=7536,
+  serialized_end=7805,
 )
 
 
@@ -1897,35 +2441,49 @@ _JMX_ATTRIBUTE = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='alias', full_name='draiosproto.jmx_attribute.alias', index=2,
+      name='aggr_value', full_name='draiosproto.jmx_attribute.aggr_value', index=2,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_value_double', full_name='draiosproto.jmx_attribute.aggr_value_double', index=3,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='alias', full_name='draiosproto.jmx_attribute.alias', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='type', full_name='draiosproto.jmx_attribute.type', index=3,
+      name='type', full_name='draiosproto.jmx_attribute.type', index=5,
       number=7, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=1,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='unit', full_name='draiosproto.jmx_attribute.unit', index=4,
+      name='unit', full_name='draiosproto.jmx_attribute.unit', index=6,
       number=8, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='scale', full_name='draiosproto.jmx_attribute.scale', index=5,
+      name='scale', full_name='draiosproto.jmx_attribute.scale', index=7,
       number=9, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='subattributes', full_name='draiosproto.jmx_attribute.subattributes', index=6,
+      name='subattributes', full_name='draiosproto.jmx_attribute.subattributes', index=8,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -1940,8 +2498,8 @@ _JMX_ATTRIBUTE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4396,
-  serialized_end=4618,
+  serialized_start=7808,
+  serialized_end=8140,
 )
 
 
@@ -1975,8 +2533,8 @@ _JMX_BEAN = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4620,
-  serialized_end=4692,
+  serialized_start=8142,
+  serialized_end=8214,
 )
 
 
@@ -2010,8 +2568,8 @@ _JAVA_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4694,
-  serialized_end=4765,
+  serialized_start=8216,
+  serialized_end=8287,
 )
 
 
@@ -2045,8 +2603,8 @@ _STATSD_TAG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4767,
-  serialized_end=4807,
+  serialized_start=8289,
+  serialized_end=8329,
 )
 
 
@@ -2086,51 +2644,107 @@ _STATSD_METRIC = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='sum', full_name='draiosproto.statsd_metric.sum', index=4,
+      name='aggr_value', full_name='draiosproto.statsd_metric.aggr_value', index=4,
+      number=104, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='sum', full_name='draiosproto.statsd_metric.sum', index=5,
       number=5, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='min', full_name='draiosproto.statsd_metric.min', index=5,
+      name='aggr_sum', full_name='draiosproto.statsd_metric.aggr_sum', index=6,
+      number=105, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='min', full_name='draiosproto.statsd_metric.min', index=7,
       number=6, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='max', full_name='draiosproto.statsd_metric.max', index=6,
+      name='aggr_min', full_name='draiosproto.statsd_metric.aggr_min', index=8,
+      number=106, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='max', full_name='draiosproto.statsd_metric.max', index=9,
       number=7, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count', full_name='draiosproto.statsd_metric.count', index=7,
+      name='aggr_max', full_name='draiosproto.statsd_metric.aggr_max', index=10,
+      number=107, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count', full_name='draiosproto.statsd_metric.count', index=11,
       number=8, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='median', full_name='draiosproto.statsd_metric.median', index=8,
+      name='aggr_count', full_name='draiosproto.statsd_metric.aggr_count', index=12,
+      number=108, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='median', full_name='draiosproto.statsd_metric.median', index=13,
       number=9, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='percentile_95', full_name='draiosproto.statsd_metric.percentile_95', index=9,
+      name='aggr_median', full_name='draiosproto.statsd_metric.aggr_median', index=14,
+      number=109, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='percentile_95', full_name='draiosproto.statsd_metric.percentile_95', index=15,
       number=10, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='percentile_99', full_name='draiosproto.statsd_metric.percentile_99', index=10,
+      name='aggr_percentile_95', full_name='draiosproto.statsd_metric.aggr_percentile_95', index=16,
+      number=110, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='percentile_99', full_name='draiosproto.statsd_metric.percentile_99', index=17,
       number=11, type=1, cpp_type=5, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_percentile_99', full_name='draiosproto.statsd_metric.aggr_percentile_99', index=18,
+      number=111, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -2143,8 +2757,8 @@ _STATSD_METRIC = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=4810,
-  serialized_end=5056,
+  serialized_start=8332,
+  serialized_end=9021,
 )
 
 
@@ -2171,8 +2785,50 @@ _STATSD_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5058,
-  serialized_end=5123,
+  serialized_start=9023,
+  serialized_end=9088,
+)
+
+
+_PROTO_METRIC_MAP = _descriptor.Descriptor(
+  name='proto_metric_map',
+  full_name='draiosproto.proto_metric_map',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='containers_ids', full_name='draiosproto.proto_metric_map.containers_ids', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='process_ids', full_name='draiosproto.proto_metric_map.process_ids', index=1,
+      number=2, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='proto_info', full_name='draiosproto.proto_metric_map.proto_info', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=9090,
+  serialized_end=9198,
 )
 
 
@@ -2206,8 +2862,8 @@ _APP_TAG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5125,
-  serialized_end=5162,
+  serialized_start=9200,
+  serialized_end=9237,
 )
 
 
@@ -2240,7 +2896,14 @@ _APP_METRIC = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='tags', full_name='draiosproto.app_metric.tags', index=3,
+      name='aggr_value_double', full_name='draiosproto.app_metric.aggr_value_double', index=3,
+      number=103, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='tags', full_name='draiosproto.app_metric.tags', index=4,
       number=4, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -2255,8 +2918,8 @@ _APP_METRIC = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5164,
-  serialized_end=5285,
+  serialized_start=9240,
+  serialized_end=9422,
 )
 
 
@@ -2297,8 +2960,8 @@ _APP_CHECK = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5287,
-  serialized_end=5393,
+  serialized_start=9424,
+  serialized_end=9530,
 )
 
 
@@ -2339,8 +3002,8 @@ _APP_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5395,
-  serialized_end=5509,
+  serialized_start=9532,
+  serialized_end=9646,
 )
 
 
@@ -2400,6 +3063,13 @@ _PROTO_INFO = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='is_null', full_name='draiosproto.proto_info.is_null', index=7,
+      number=8, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -2409,8 +3079,8 @@ _PROTO_INFO = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5512,
-  serialized_end=5801,
+  serialized_start=9649,
+  serialized_end=9955,
 )
 
 
@@ -2444,8 +3114,8 @@ _NETWORK_BY_PORT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5803,
-  serialized_end=5888,
+  serialized_start=9957,
+  serialized_end=10042,
 )
 
 
@@ -2471,170 +3141,296 @@ _HOST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cpu_loads', full_name='draiosproto.host.cpu_loads', index=2,
+      name='aggr_num_cpus', full_name='draiosproto.host.aggr_num_cpus', index=2,
+      number=21, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_loads', full_name='draiosproto.host.cpu_loads', index=3,
       number=3, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cpu_steal', full_name='draiosproto.host.cpu_steal', index=3,
+      name='aggr_cpu_loads', full_name='draiosproto.host.aggr_cpu_loads', index=4,
+      number=15, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_steal', full_name='draiosproto.host.cpu_steal', index=5,
       number=11, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='physical_memory_size_bytes', full_name='draiosproto.host.physical_memory_size_bytes', index=4,
+      name='aggr_cpu_steal', full_name='draiosproto.host.aggr_cpu_steal', index=6,
+      number=16, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='physical_memory_size_bytes', full_name='draiosproto.host.physical_memory_size_bytes', index=7,
       number=4, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='tcounters', full_name='draiosproto.host.tcounters', index=5,
+      name='aggr_physical_memory_size_bytes', full_name='draiosproto.host.aggr_physical_memory_size_bytes', index=8,
+      number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='tcounters', full_name='draiosproto.host.tcounters', index=9,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='reqcounters', full_name='draiosproto.host.reqcounters', index=6,
+      name='reqcounters', full_name='draiosproto.host.reqcounters', index=10,
       number=12, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='transaction_counters', full_name='draiosproto.host.transaction_counters', index=7,
+      name='transaction_counters', full_name='draiosproto.host.transaction_counters', index=11,
       number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='min_transaction_counters', full_name='draiosproto.host.min_transaction_counters', index=8,
+      name='min_transaction_counters', full_name='draiosproto.host.min_transaction_counters', index=12,
       number=22, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='max_transaction_counters', full_name='draiosproto.host.max_transaction_counters', index=9,
+      name='max_transaction_counters', full_name='draiosproto.host.max_transaction_counters', index=13,
       number=23, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='transaction_processing_delay', full_name='draiosproto.host.transaction_processing_delay', index=10,
+      name='transaction_processing_delay', full_name='draiosproto.host.transaction_processing_delay', index=14,
       number=7, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='next_tiers_delay', full_name='draiosproto.host.next_tiers_delay', index=11,
+      name='aggr_transaction_processing_delay', full_name='draiosproto.host.aggr_transaction_processing_delay', index=15,
+      number=18, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='next_tiers_delay', full_name='draiosproto.host.next_tiers_delay', index=16,
       number=13, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resource_counters', full_name='draiosproto.host.resource_counters', index=12,
+      name='aggr_next_tiers_delay', full_name='draiosproto.host.aggr_next_tiers_delay', index=17,
+      number=20, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='resource_counters', full_name='draiosproto.host.resource_counters', index=18,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='syscall_errors', full_name='draiosproto.host.syscall_errors', index=13,
+      name='syscall_errors', full_name='draiosproto.host.syscall_errors', index=19,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='external_io_net', full_name='draiosproto.host.external_io_net', index=14,
+      name='external_io_net', full_name='draiosproto.host.external_io_net', index=20,
       number=10, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='network_by_serverports', full_name='draiosproto.host.network_by_serverports', index=15,
+      name='network_by_serverports', full_name='draiosproto.host.network_by_serverports', index=21,
       number=24, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cpu_idle', full_name='draiosproto.host.cpu_idle', index=16,
-      number=25, type=13, cpp_type=3, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='uptime', full_name='draiosproto.host.uptime', index=17,
-      number=33, type=4, cpp_type=4, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='system_cpu', full_name='draiosproto.host.system_cpu', index=18,
-      number=34, type=13, cpp_type=3, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='user_cpu', full_name='draiosproto.host.user_cpu', index=19,
-      number=35, type=13, cpp_type=3, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='memory_bytes_available_kb', full_name='draiosproto.host.memory_bytes_available_kb', index=20,
+      name='memory_bytes_available_kb', full_name='draiosproto.host.memory_bytes_available_kb', index=22,
       number=36, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='iowait_cpu', full_name='draiosproto.host.iowait_cpu', index=21,
+      name='aggr_memory_bytes_available_kb', full_name='draiosproto.host.aggr_memory_bytes_available_kb', index=23,
+      number=136, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='system_load', full_name='draiosproto.host.system_load', index=24,
+      number=32, type=1, cpp_type=5, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_system_load', full_name='draiosproto.host.aggr_system_load', index=25,
+      number=132, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='uptime', full_name='draiosproto.host.uptime', index=26,
+      number=33, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_uptime', full_name='draiosproto.host.aggr_uptime', index=27,
+      number=133, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='system_cpu', full_name='draiosproto.host.system_cpu', index=28,
+      number=34, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_system_cpu', full_name='draiosproto.host.aggr_system_cpu', index=29,
+      number=134, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='user_cpu', full_name='draiosproto.host.user_cpu', index=30,
+      number=35, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_user_cpu', full_name='draiosproto.host.aggr_user_cpu', index=31,
+      number=135, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cpu_idle', full_name='draiosproto.host.cpu_idle', index=32,
+      number=25, type=13, cpp_type=3, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_cpu_idle', full_name='draiosproto.host.aggr_cpu_idle', index=33,
+      number=125, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='iowait_cpu', full_name='draiosproto.host.iowait_cpu', index=34,
       number=37, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='nice_cpu', full_name='draiosproto.host.nice_cpu', index=22,
+      name='aggr_iowait_cpu', full_name='draiosproto.host.aggr_iowait_cpu', index=35,
+      number=137, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='nice_cpu', full_name='draiosproto.host.nice_cpu', index=36,
       number=38, type=13, cpp_type=3, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='system_load_1', full_name='draiosproto.host.system_load_1', index=23,
+      name='aggr_nice_cpu', full_name='draiosproto.host.aggr_nice_cpu', index=37,
+      number=138, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='system_load_1', full_name='draiosproto.host.system_load_1', index=38,
       number=41, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='system_load_5', full_name='draiosproto.host.system_load_5', index=24,
+      name='aggr_system_load_1', full_name='draiosproto.host.aggr_system_load_1', index=39,
+      number=141, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='system_load_5', full_name='draiosproto.host.system_load_5', index=40,
       number=42, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='system_load_15', full_name='draiosproto.host.system_load_15', index=25,
+      name='aggr_system_load_5', full_name='draiosproto.host.aggr_system_load_5', index=41,
+      number=142, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='system_load_15', full_name='draiosproto.host.system_load_15', index=42,
       number=43, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_system_load_15', full_name='draiosproto.host.aggr_system_load_15', index=43,
+      number=143, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -2647,8 +3443,8 @@ _HOST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=5891,
-  serialized_end=6866,
+  serialized_start=10045,
+  serialized_end=12089,
 )
 
 
@@ -2737,44 +3533,72 @@ _PROCESS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='next_tiers_delay', full_name='draiosproto.process.next_tiers_delay', index=11,
+      name='aggr_transaction_processing_delay', full_name='draiosproto.process.aggr_transaction_processing_delay', index=11,
+      number=15, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='next_tiers_delay', full_name='draiosproto.process.next_tiers_delay', index=12,
       number=12, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resource_counters', full_name='draiosproto.process.resource_counters', index=12,
+      name='aggr_next_tiers_delay', full_name='draiosproto.process.aggr_next_tiers_delay', index=13,
+      number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='resource_counters', full_name='draiosproto.process.resource_counters', index=14,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='syscall_errors', full_name='draiosproto.process.syscall_errors', index=13,
+      name='syscall_errors', full_name='draiosproto.process.syscall_errors', index=15,
       number=9, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='protos', full_name='draiosproto.process.protos', index=14,
+      name='protos', full_name='draiosproto.process.protos', index=16,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='start_count', full_name='draiosproto.process.start_count', index=15,
+      name='start_count', full_name='draiosproto.process.start_count', index=17,
       number=21, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='count_processes', full_name='draiosproto.process.count_processes', index=16,
+      name='aggr_start_count', full_name='draiosproto.process.aggr_start_count', index=18,
+      number=22, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='count_processes', full_name='draiosproto.process.count_processes', index=19,
       number=23, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_count_processes', full_name='draiosproto.process.aggr_count_processes', index=20,
+      number=123, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -2787,8 +3611,8 @@ _PROCESS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=6869,
-  serialized_end=7629,
+  serialized_start=12092,
+  serialized_end=13098,
 )
 
 
@@ -2822,8 +3646,8 @@ _PROGRAM = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=7631,
-  serialized_end=7694,
+  serialized_start=13100,
+  serialized_end=13163,
 )
 
 
@@ -2878,8 +3702,8 @@ _IPV4TUPLE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=7696,
-  serialized_end=7780,
+  serialized_start=13165,
+  serialized_end=13249,
 )
 
 
@@ -2927,8 +3751,8 @@ _IPV4_CONNECTION = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=7783,
-  serialized_end=7921,
+  serialized_start=13252,
+  serialized_end=13390,
 )
 
 
@@ -2976,8 +3800,8 @@ _IPV4_NETWORK_INTERFACE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=7923,
-  serialized_end=8007,
+  serialized_start=13392,
+  serialized_end=13476,
 )
 
 
@@ -3017,30 +3841,65 @@ _MOUNTED_FS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='used_bytes', full_name='draiosproto.mounted_fs.used_bytes', index=4,
+      name='aggr_size_bytes', full_name='draiosproto.mounted_fs.aggr_size_bytes', index=4,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='used_bytes', full_name='draiosproto.mounted_fs.used_bytes', index=5,
       number=5, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='available_bytes', full_name='draiosproto.mounted_fs.available_bytes', index=5,
+      name='aggr_used_bytes', full_name='draiosproto.mounted_fs.aggr_used_bytes', index=6,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='available_bytes', full_name='draiosproto.mounted_fs.available_bytes', index=7,
       number=6, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='total_inodes', full_name='draiosproto.mounted_fs.total_inodes', index=6,
+      name='aggr_available_bytes', full_name='draiosproto.mounted_fs.aggr_available_bytes', index=8,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='total_inodes', full_name='draiosproto.mounted_fs.total_inodes', index=9,
       number=10, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='used_inodes', full_name='draiosproto.mounted_fs.used_inodes', index=7,
+      name='aggr_total_inodes', full_name='draiosproto.mounted_fs.aggr_total_inodes', index=10,
+      number=110, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='used_inodes', full_name='draiosproto.mounted_fs.used_inodes', index=11,
       number=11, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_used_inodes', full_name='draiosproto.mounted_fs.aggr_used_inodes', index=12,
+      number=111, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -3053,8 +3912,8 @@ _MOUNTED_FS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=8010,
-  serialized_end=8179,
+  serialized_start=13479,
+  serialized_end=13926,
 )
 
 
@@ -3080,23 +3939,51 @@ _FILE_STAT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='time_ns', full_name='draiosproto.file_stat.time_ns', index=2,
+      name='aggr_bytes', full_name='draiosproto.file_stat.aggr_bytes', index=2,
+      number=9, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='time_ns', full_name='draiosproto.file_stat.time_ns', index=3,
       number=3, type=4, cpp_type=4, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='open_count', full_name='draiosproto.file_stat.open_count', index=3,
+      name='aggr_time_ns', full_name='draiosproto.file_stat.aggr_time_ns', index=4,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='open_count', full_name='draiosproto.file_stat.open_count', index=5,
       number=4, type=13, cpp_type=3, label=2,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='errors', full_name='draiosproto.file_stat.errors', index=4,
+      name='aggr_open_count', full_name='draiosproto.file_stat.aggr_open_count', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='errors', full_name='draiosproto.file_stat.errors', index=7,
       number=5, type=13, cpp_type=3, label=2,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_errors', full_name='draiosproto.file_stat.aggr_errors', index=8,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -3109,8 +3996,8 @@ _FILE_STAT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=8181,
-  serialized_end=8274,
+  serialized_start=13929,
+  serialized_end=14226,
 )
 
 
@@ -3158,8 +4045,8 @@ _CONTAINER_PORT_MAPPING = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=8276,
-  serialized_end=8382,
+  serialized_start=14228,
+  serialized_end=14334,
 )
 
 
@@ -3193,8 +4080,8 @@ _CONTAINER_LABEL = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=8384,
-  serialized_end=8429,
+  serialized_start=14336,
+  serialized_end=14381,
 )
 
 
@@ -3276,70 +4163,84 @@ _CONTAINER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='next_tiers_delay', full_name='draiosproto.container.next_tiers_delay', index=10,
+      name='aggr_transaction_processing_delay', full_name='draiosproto.container.aggr_transaction_processing_delay', index=10,
+      number=15, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='next_tiers_delay', full_name='draiosproto.container.next_tiers_delay', index=11,
       number=12, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='resource_counters', full_name='draiosproto.container.resource_counters', index=11,
+      name='aggr_next_tiers_delay', full_name='draiosproto.container.aggr_next_tiers_delay', index=12,
+      number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='resource_counters', full_name='draiosproto.container.resource_counters', index=13,
       number=13, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='syscall_errors', full_name='draiosproto.container.syscall_errors', index=12,
+      name='syscall_errors', full_name='draiosproto.container.syscall_errors', index=14,
       number=14, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='port_mappings', full_name='draiosproto.container.port_mappings', index=13,
+      name='port_mappings', full_name='draiosproto.container.port_mappings', index=15,
       number=18, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='protos', full_name='draiosproto.container.protos', index=14,
+      name='protos', full_name='draiosproto.container.protos', index=16,
       number=19, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='labels', full_name='draiosproto.container.labels', index=15,
+      name='labels', full_name='draiosproto.container.labels', index=17,
       number=20, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='mounts', full_name='draiosproto.container.mounts', index=16,
+      name='mounts', full_name='draiosproto.container.mounts', index=18,
       number=21, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='network_by_serverports', full_name='draiosproto.container.network_by_serverports', index=17,
+      name='network_by_serverports', full_name='draiosproto.container.network_by_serverports', index=19,
       number=22, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='mesos_task_id', full_name='draiosproto.container.mesos_task_id', index=18,
+      name='mesos_task_id', full_name='draiosproto.container.mesos_task_id', index=20,
       number=23, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='image_id', full_name='draiosproto.container.image_id', index=19,
+      name='image_id', full_name='draiosproto.container.image_id', index=21,
       number=24, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
@@ -3354,8 +4255,8 @@ _CONTAINER = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=8432,
-  serialized_end=9342,
+  serialized_start=14384,
+  serialized_end=15426,
 )
 
 
@@ -3389,8 +4290,8 @@ _K8S_PAIR = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9344,
-  serialized_end=9382,
+  serialized_start=15428,
+  serialized_end=15466,
 )
 
 
@@ -3445,8 +4346,8 @@ _K8S_COMMON = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9385,
-  serialized_end=9524,
+  serialized_start=15469,
+  serialized_end=15608,
 )
 
 
@@ -3473,8 +4374,8 @@ _K8S_NAMESPACE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9526,
-  serialized_end=9582,
+  serialized_start=15610,
+  serialized_end=15666,
 )
 
 
@@ -3508,8 +4409,8 @@ _K8S_NODE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9584,
-  serialized_end=9653,
+  serialized_start=15668,
+  serialized_end=15737,
 )
 
 
@@ -3562,6 +4463,13 @@ _K8S_POD = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_restart_count', full_name='draiosproto.k8s_pod.aggr_restart_count', index=6,
+      number=106, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -3571,8 +4479,8 @@ _K8S_POD = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9656,
-  serialized_end=9809,
+  serialized_start=15740,
+  serialized_end=15950,
 )
 
 
@@ -3598,9 +4506,23 @@ _K8S_REPLICATION_CONTROLLER = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='replicas_running', full_name='draiosproto.k8s_replication_controller.replicas_running', index=2,
+      name='aggr_replicas_desired', full_name='draiosproto.k8s_replication_controller.aggr_replicas_desired', index=2,
+      number=102, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='replicas_running', full_name='draiosproto.k8s_replication_controller.replicas_running', index=3,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_replicas_running', full_name='draiosproto.k8s_replication_controller.aggr_replicas_running', index=4,
+      number=103, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -3613,8 +4535,8 @@ _K8S_REPLICATION_CONTROLLER = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9811,
-  serialized_end=9932,
+  serialized_start=15953,
+  serialized_end=16194,
 )
 
 
@@ -3640,9 +4562,23 @@ _K8S_REPLICA_SET = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='replicas_running', full_name='draiosproto.k8s_replica_set.replicas_running', index=2,
+      name='aggr_replicas_desired', full_name='draiosproto.k8s_replica_set.aggr_replicas_desired', index=2,
+      number=102, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='replicas_running', full_name='draiosproto.k8s_replica_set.replicas_running', index=3,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='aggr_replicas_running', full_name='draiosproto.k8s_replica_set.aggr_replicas_running', index=4,
+      number=103, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
@@ -3655,8 +4591,8 @@ _K8S_REPLICA_SET = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=9934,
-  serialized_end=10044,
+  serialized_start=16197,
+  serialized_end=16427,
 )
 
 
@@ -3704,8 +4640,8 @@ _K8S_SERVICE_NET_PORT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10173,
-  serialized_end=10255,
+  serialized_start=16556,
+  serialized_end=16638,
 )
 
 _K8S_SERVICE = _descriptor.Descriptor(
@@ -3745,8 +4681,8 @@ _K8S_SERVICE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10047,
-  serialized_end=10255,
+  serialized_start=16430,
+  serialized_end=16638,
 )
 
 
@@ -3787,8 +4723,8 @@ _K8S_DEPLOYMENT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10257,
-  serialized_end=10366,
+  serialized_start=16640,
+  serialized_end=16749,
 )
 
 
@@ -3829,8 +4765,8 @@ _K8S_DAEMONSET = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10368,
-  serialized_end=10478,
+  serialized_start=16751,
+  serialized_end=16861,
 )
 
 
@@ -3906,8 +4842,8 @@ _K8S_STATE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10481,
-  serialized_end=10870,
+  serialized_start=16864,
+  serialized_end=17253,
 )
 
 
@@ -3941,8 +4877,8 @@ _MESOS_PAIR = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10872,
-  serialized_end=10912,
+  serialized_start=17255,
+  serialized_end=17295,
 )
 
 
@@ -3983,8 +4919,8 @@ _MESOS_COMMON = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10914,
-  serialized_end=10996,
+  serialized_start=17297,
+  serialized_end=17379,
 )
 
 
@@ -4018,8 +4954,8 @@ _MESOS_TASK = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=10998,
-  serialized_end=11071,
+  serialized_start=17381,
+  serialized_end=17454,
 )
 
 
@@ -4053,8 +4989,8 @@ _MARATHON_APP = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=11073,
-  serialized_end=11117,
+  serialized_start=17456,
+  serialized_end=17500,
 )
 
 
@@ -4095,8 +5031,8 @@ _MARATHON_GROUP = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=11119,
-  serialized_end=11233,
+  serialized_start=17502,
+  serialized_end=17616,
 )
 
 
@@ -4130,8 +5066,8 @@ _MESOS_FRAMEWORK = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=11235,
-  serialized_end=11335,
+  serialized_start=17618,
+  serialized_end=17718,
 )
 
 
@@ -4158,8 +5094,8 @@ _MESOS_SLAVE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=11337,
-  serialized_end=11393,
+  serialized_start=17720,
+  serialized_end=17776,
 )
 
 
@@ -4200,302 +5136,8 @@ _MESOS_STATE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=11396,
-  serialized_end=11546,
-)
-
-
-_SWARM_PAIR = _descriptor.Descriptor(
-  name='swarm_pair',
-  full_name='draiosproto.swarm_pair',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='key', full_name='draiosproto.swarm_pair.key', index=0,
-      number=1, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='value', full_name='draiosproto.swarm_pair.value', index=1,
-      number=2, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=11548,
-  serialized_end=11588,
-)
-
-
-_SWARM_PORT = _descriptor.Descriptor(
-  name='swarm_port',
-  full_name='draiosproto.swarm_port',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='port', full_name='draiosproto.swarm_port.port', index=0,
-      number=1, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='published_port', full_name='draiosproto.swarm_port.published_port', index=1,
-      number=2, type=13, cpp_type=3, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='protocol', full_name='draiosproto.swarm_port.protocol', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=11590,
-  serialized_end=11658,
-)
-
-
-_SWARM_COMMON = _descriptor.Descriptor(
-  name='swarm_common',
-  full_name='draiosproto.swarm_common',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='id', full_name='draiosproto.swarm_common.id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='name', full_name='draiosproto.swarm_common.name', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='labels', full_name='draiosproto.swarm_common.labels', index=2,
-      number=3, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=11660,
-  serialized_end=11741,
-)
-
-
-_SWARM_SERVICE = _descriptor.Descriptor(
-  name='swarm_service',
-  full_name='draiosproto.swarm_service',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='common', full_name='draiosproto.swarm_service.common', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='virtual_ips', full_name='draiosproto.swarm_service.virtual_ips', index=1,
-      number=2, type=9, cpp_type=9, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='ports', full_name='draiosproto.swarm_service.ports', index=2,
-      number=3, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=11743,
-  serialized_end=11862,
-)
-
-
-_SWARM_TASK = _descriptor.Descriptor(
-  name='swarm_task',
-  full_name='draiosproto.swarm_task',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='common', full_name='draiosproto.swarm_task.common', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='service_id', full_name='draiosproto.swarm_task.service_id', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='node_id', full_name='draiosproto.swarm_task.node_id', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='container_id', full_name='draiosproto.swarm_task.container_id', index=3,
-      number=4, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=11864,
-  serialized_end=11978,
-)
-
-
-_SWARM_NODE = _descriptor.Descriptor(
-  name='swarm_node',
-  full_name='draiosproto.swarm_node',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='common', full_name='draiosproto.swarm_node.common', index=0,
-      number=1, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='role', full_name='draiosproto.swarm_node.role', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=11980,
-  serialized_end=12049,
-)
-
-
-_SWARM_STATE = _descriptor.Descriptor(
-  name='swarm_state',
-  full_name='draiosproto.swarm_state',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='node_id', full_name='draiosproto.swarm_state.node_id', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='services', full_name='draiosproto.swarm_state.services', index=1,
-      number=2, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='nodes', full_name='draiosproto.swarm_state.nodes', index=2,
-      number=3, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='tasks', full_name='draiosproto.swarm_state.tasks', index=3,
-      number=4, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=12052,
-  serialized_end=12208,
+  serialized_start=17779,
+  serialized_end=17929,
 )
 
 
@@ -4521,155 +5163,155 @@ _METRICS = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='customer_id', full_name='draiosproto.metrics.customer_id', index=2,
+      name='machine_ids', full_name='draiosproto.metrics.machine_ids', index=2,
+      number=23, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='customer_id', full_name='draiosproto.metrics.customer_id', index=3,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='sampling_ratio', full_name='draiosproto.metrics.sampling_ratio', index=3,
+      name='sampling_ratio', full_name='draiosproto.metrics.sampling_ratio', index=4,
       number=10, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='host_custom_name', full_name='draiosproto.metrics.host_custom_name', index=4,
+      name='aggr_sampling_ratio', full_name='draiosproto.metrics.aggr_sampling_ratio', index=5,
+      number=17, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='host_custom_name', full_name='draiosproto.metrics.host_custom_name', index=6,
       number=11, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='host_tags', full_name='draiosproto.metrics.host_tags', index=5,
+      name='host_tags', full_name='draiosproto.metrics.host_tags', index=7,
       number=12, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='is_host_hidden', full_name='draiosproto.metrics.is_host_hidden', index=6,
+      name='is_host_hidden', full_name='draiosproto.metrics.is_host_hidden', index=8,
       number=14, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='hidden_processes', full_name='draiosproto.metrics.hidden_processes', index=7,
+      name='hidden_processes', full_name='draiosproto.metrics.hidden_processes', index=9,
       number=15, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='version', full_name='draiosproto.metrics.version', index=8,
+      name='version', full_name='draiosproto.metrics.version', index=10,
       number=16, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='instance_id', full_name='draiosproto.metrics.instance_id', index=9,
+      name='instance_id', full_name='draiosproto.metrics.instance_id', index=11,
       number=21, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=unicode("", "utf-8"),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='hostinfo', full_name='draiosproto.metrics.hostinfo', index=10,
+      name='hostinfo', full_name='draiosproto.metrics.hostinfo', index=12,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='programs', full_name='draiosproto.metrics.programs', index=11,
+      name='programs', full_name='draiosproto.metrics.programs', index=13,
       number=9, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='ipv4_connections', full_name='draiosproto.metrics.ipv4_connections', index=12,
+      name='ipv4_connections', full_name='draiosproto.metrics.ipv4_connections', index=14,
       number=7, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='ipv4_network_interfaces', full_name='draiosproto.metrics.ipv4_network_interfaces', index=13,
+      name='ipv4_network_interfaces', full_name='draiosproto.metrics.ipv4_network_interfaces', index=15,
       number=8, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='commands', full_name='draiosproto.metrics.commands', index=14,
-      number=17, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='mounts', full_name='draiosproto.metrics.mounts', index=15,
+      name='mounts', full_name='draiosproto.metrics.mounts', index=16,
       number=18, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='top_files', full_name='draiosproto.metrics.top_files', index=16,
+      name='top_files', full_name='draiosproto.metrics.top_files', index=17,
       number=19, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='protos', full_name='draiosproto.metrics.protos', index=17,
+      name='protos', full_name='draiosproto.metrics.protos', index=18,
       number=20, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='containers', full_name='draiosproto.metrics.containers', index=18,
+      name='containers', full_name='draiosproto.metrics.containers', index=19,
       number=22, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='kubernetes', full_name='draiosproto.metrics.kubernetes', index=19,
+      name='kubernetes', full_name='draiosproto.metrics.kubernetes', index=20,
       number=24, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='mesos', full_name='draiosproto.metrics.mesos', index=20,
+      name='mesos', full_name='draiosproto.metrics.mesos', index=21,
       number=25, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='events', full_name='draiosproto.metrics.events', index=21,
+      name='events', full_name='draiosproto.metrics.events', index=22,
       number=26, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='falcobl', full_name='draiosproto.metrics.falcobl', index=22,
+      name='falcobl', full_name='draiosproto.metrics.falcobl', index=23,
       number=27, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='swarm', full_name='draiosproto.metrics.swarm', index=23,
-      number=28, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -4683,8 +5325,260 @@ _METRICS = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=12211,
-  serialized_end=13074,
+  serialized_start=17932,
+  serialized_end=18785,
+)
+
+
+_LIST_WRAPPER = _descriptor.Descriptor(
+  name='list_wrapper',
+  full_name='draiosproto.list_wrapper',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='mounts', full_name='draiosproto.list_wrapper.mounts', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='top_files', full_name='draiosproto.list_wrapper.top_files', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs', full_name='draiosproto.list_wrapper.programs', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='jmx_programs', full_name='draiosproto.list_wrapper.jmx_programs', index=3,
+      number=4, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ipv4_connections', full_name='draiosproto.list_wrapper.ipv4_connections', index=4,
+      number=5, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='ipv4_network_interfaces', full_name='draiosproto.list_wrapper.ipv4_network_interfaces', index=5,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers', full_name='draiosproto.list_wrapper.containers', index=6,
+      number=7, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='container_programs', full_name='draiosproto.list_wrapper.container_programs', index=7,
+      number=8, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_tcounters', full_name='draiosproto.list_wrapper.containers_tcounters', index=8,
+      number=9, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_reqcounters', full_name='draiosproto.list_wrapper.containers_reqcounters', index=9,
+      number=10, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_resource_counters', full_name='draiosproto.list_wrapper.containers_resource_counters', index=10,
+      number=11, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_transaction_counters', full_name='draiosproto.list_wrapper.containers_transaction_counters', index=11,
+      number=12, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_min_transaction_counters', full_name='draiosproto.list_wrapper.containers_min_transaction_counters', index=12,
+      number=13, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_max_transaction_counters', full_name='draiosproto.list_wrapper.containers_max_transaction_counters', index=13,
+      number=14, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_protos', full_name='draiosproto.list_wrapper.containers_protos', index=14,
+      number=15, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_mounts', full_name='draiosproto.list_wrapper.containers_mounts', index=15,
+      number=16, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_network_by_serverports', full_name='draiosproto.list_wrapper.containers_network_by_serverports', index=16,
+      number=17, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='containers_syscall_errors', full_name='draiosproto.list_wrapper.containers_syscall_errors', index=17,
+      number=18, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_tcounters', full_name='draiosproto.list_wrapper.programs_tcounters', index=18,
+      number=20, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_reqcounters', full_name='draiosproto.list_wrapper.programs_reqcounters', index=19,
+      number=21, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_resource_counters', full_name='draiosproto.list_wrapper.programs_resource_counters', index=20,
+      number=22, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_transaction_counters', full_name='draiosproto.list_wrapper.programs_transaction_counters', index=21,
+      number=23, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_min_transaction_counters', full_name='draiosproto.list_wrapper.programs_min_transaction_counters', index=22,
+      number=24, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_max_transaction_counters', full_name='draiosproto.list_wrapper.programs_max_transaction_counters', index=23,
+      number=25, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_protos', full_name='draiosproto.list_wrapper.programs_protos', index=24,
+      number=26, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_details', full_name='draiosproto.list_wrapper.programs_details', index=25,
+      number=27, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='programs_syscall_errors', full_name='draiosproto.list_wrapper.programs_syscall_errors', index=26,
+      number=28, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=18788,
+  serialized_end=20552,
+)
+
+
+_CONTAINER_LIST_WRAPPER = _descriptor.Descriptor(
+  name='container_list_wrapper',
+  full_name='draiosproto.container_list_wrapper',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='port_mappings', full_name='draiosproto.container_list_wrapper.port_mappings', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='mounts', full_name='draiosproto.container_list_wrapper.mounts', index=1,
+      number=2, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='network_by_serverports', full_name='draiosproto.container_list_wrapper.network_by_serverports', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=20555,
+  serialized_end=20742,
 )
 
 
@@ -4744,6 +5638,20 @@ _DUMP_REQUEST_START = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+    _descriptor.FieldDescriptor(
+      name='past_duration_ns', full_name='draiosproto.dump_request_start.past_duration_ns', index=7,
+      number=8, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='past_size', full_name='draiosproto.dump_request_start.past_size', index=8,
+      number=9, type=4, cpp_type=4, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
   ],
   extensions=[
   ],
@@ -4753,8 +5661,8 @@ _DUMP_REQUEST_START = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13077,
-  serialized_end=13231,
+  serialized_start=20745,
+  serialized_end=20944,
 )
 
 
@@ -4802,8 +5710,8 @@ _DUMP_REQUEST_STOP = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13233,
-  serialized_end=13330,
+  serialized_start=20946,
+  serialized_end=21043,
 )
 
 
@@ -4893,8 +5801,8 @@ _DUMP_RESPONSE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13333,
-  serialized_end=13543,
+  serialized_start=21046,
+  serialized_end=21256,
 )
 
 
@@ -4977,8 +5885,8 @@ _SSH_OPEN_CHANNEL = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13546,
-  serialized_end=13721,
+  serialized_start=21259,
+  serialized_end=21434,
 )
 
 
@@ -5047,8 +5955,8 @@ _SSH_DATA = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13724,
-  serialized_end=13862,
+  serialized_start=21437,
+  serialized_end=21575,
 )
 
 
@@ -5096,8 +6004,8 @@ _SSH_CLOSE_CHANNEL = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13864,
-  serialized_end=13961,
+  serialized_start=21577,
+  serialized_end=21674,
 )
 
 
@@ -5138,8 +6046,8 @@ _AUTO_UPDATE_REQUEST = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=13963,
-  serialized_end=14047,
+  serialized_start=21676,
+  serialized_end=21760,
 )
 
 
@@ -5187,8 +6095,8 @@ _DIRTY_SHUTDOWN_REPORT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14049,
-  serialized_end=14148,
+  serialized_start=21762,
+  serialized_end=21861,
 )
 
 
@@ -5222,8 +6130,8 @@ _KEY_VALUE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14150,
-  serialized_end=14189,
+  serialized_start=21863,
+  serialized_end=21902,
 )
 
 
@@ -5285,71 +6193,8 @@ _AGENT_EVENT = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14192,
-  serialized_end=14335,
-)
-
-
-_CONFIG_FILE = _descriptor.Descriptor(
-  name='config_file',
-  full_name='draiosproto.config_file',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='name', full_name='draiosproto.config_file.name', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='content', full_name='draiosproto.config_file.content', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=14337,
-  serialized_end=14381,
-)
-
-
-_CONFIG_DATA = _descriptor.Descriptor(
-  name='config_data',
-  full_name='draiosproto.config_data',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='config_files', full_name='draiosproto.config_data.config_files', index=0,
-      number=1, type=11, cpp_type=10, label=3,
-      has_default_value=False, default_value=[],
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=14383,
-  serialized_end=14444,
+  serialized_start=21905,
+  serialized_end=22048,
 )
 
 
@@ -5383,8 +6228,8 @@ _ERROR_MESSAGE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14446,
-  serialized_end=14521,
+  serialized_start=22050,
+  serialized_end=22125,
 )
 
 
@@ -5425,8 +6270,8 @@ _FALCO_SUBCATEGORY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14523,
-  serialized_end=14581,
+  serialized_start=22127,
+  serialized_end=22185,
 )
 
 
@@ -5453,8 +6298,8 @@ _FALCO_SUBCATEGORY_CONTAINER = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14583,
-  serialized_end=14661,
+  serialized_start=22187,
+  serialized_end=22265,
 )
 
 
@@ -5495,8 +6340,8 @@ _FALCO_CATEGORY = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14664,
-  serialized_end=14828,
+  serialized_start=22268,
+  serialized_end=22432,
 )
 
 
@@ -5558,57 +6403,8 @@ _FALCO_PROG = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=14831,
-  serialized_end=14966,
-)
-
-
-_FALCO_CONTAINER = _descriptor.Descriptor(
-  name='falco_container',
-  full_name='draiosproto.falco_container',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='id', full_name='draiosproto.falco_container.id', index=0,
-      number=1, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='name', full_name='draiosproto.falco_container.name', index=1,
-      number=2, type=9, cpp_type=9, label=2,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='image_name', full_name='draiosproto.falco_container.image_name', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='image_id', full_name='draiosproto.falco_container.image_id', index=3,
-      number=4, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=unicode("", "utf-8"),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  extension_ranges=[],
-  serialized_start=14968,
-  serialized_end=15049,
+  serialized_start=22435,
+  serialized_end=22570,
 )
 
 
@@ -5626,9 +6422,65 @@ _FALCO_BASELINE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=22572,
+  serialized_end=22628,
+)
+
+
+_CONFIG_FILE = _descriptor.Descriptor(
+  name='config_file',
+  full_name='draiosproto.config_file',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
     _descriptor.FieldDescriptor(
-      name='containers', full_name='draiosproto.falco_baseline.containers', index=1,
-      number=2, type=11, cpp_type=10, label=3,
+      name='name', full_name='draiosproto.config_file.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='content', full_name='draiosproto.config_file.content', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=unicode("", "utf-8"),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  extension_ranges=[],
+  serialized_start=22630,
+  serialized_end=22674,
+)
+
+
+_CONFIG_DATA = _descriptor.Descriptor(
+  name='config_data',
+  full_name='draiosproto.config_data',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='config_files', full_name='draiosproto.config_data.config_files', index=0,
+      number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -5642,10 +6494,33 @@ _FALCO_BASELINE = _descriptor.Descriptor(
   options=None,
   is_extendable=False,
   extension_ranges=[],
-  serialized_start=15051,
-  serialized_end=15157,
+  serialized_start=22676,
+  serialized_end=22737,
 )
 
+_COUNTER_TIME.fields_by_name['aggr_count'].message_type = _AGGREGATIONS64
+_COUNTER_TIME.fields_by_name['aggr_time_ns'].message_type = _AGGREGATIONS64
+_COUNTER_TIME.fields_by_name['aggr_time_percentage'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BIDIRECTIONAL.fields_by_name['aggr_count_in'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BIDIRECTIONAL.fields_by_name['aggr_count_out'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BIDIRECTIONAL.fields_by_name['aggr_time_ns_in'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BIDIRECTIONAL.fields_by_name['aggr_time_ns_out'].message_type = _AGGREGATIONS64
+_COUNTER_BYTES.fields_by_name['aggr_count_in'].message_type = _AGGREGATIONS64
+_COUNTER_BYTES.fields_by_name['aggr_count_out'].message_type = _AGGREGATIONS64
+_COUNTER_BYTES.fields_by_name['aggr_bytes_in'].message_type = _AGGREGATIONS64
+_COUNTER_BYTES.fields_by_name['aggr_bytes_out'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_time_ns_in'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_time_ns_out'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_time_ns_other'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_count_in'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_count_out'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_count_other'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_bytes_in'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_bytes_out'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_bytes_other'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_time_percentage_in'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_time_percentage_out'].message_type = _AGGREGATIONS64
+_COUNTER_TIME_BYTES.fields_by_name['aggr_time_percentage_other'].message_type = _AGGREGATIONS64
 _TIME_CATEGORIES.fields_by_name['unknown'].message_type = _COUNTER_TIME
 _TIME_CATEGORIES.fields_by_name['other'].message_type = _COUNTER_TIME
 _TIME_CATEGORIES.fields_by_name['file'].message_type = _COUNTER_TIME
@@ -5667,12 +6542,44 @@ _TRANSACTION_BREAKDOWN_CATEGORIES.fields_by_name['other'].message_type = _COUNTE
 _TRANSACTION_BREAKDOWN_CATEGORIES.fields_by_name['io_file'].message_type = _COUNTER_TIME_BYTES
 _TRANSACTION_BREAKDOWN_CATEGORIES.fields_by_name['io_net'].message_type = _COUNTER_TIME_BYTES
 _TRANSACTION_BREAKDOWN_CATEGORIES.fields_by_name['processing'].message_type = _COUNTER_TIME
+_COUNTER_SYSCALL_ERRORS.fields_by_name['aggr_count'].message_type = _AGGREGATIONS64
+_COUNTER_SYSCALL_ERRORS.fields_by_name['aggr_count_file'].message_type = _AGGREGATIONS64
+_COUNTER_SYSCALL_ERRORS.fields_by_name['aggr_count_file_open'].message_type = _AGGREGATIONS64
+_COUNTER_SYSCALL_ERRORS.fields_by_name['aggr_count_net'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_capacity_score'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_stolen_capacity_score'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_connection_queue_usage_pct'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_fd_usage_pct'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_cpu_pct'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_resident_memory_usage_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_virtual_memory_usage_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_swap_memory_usage_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_swap_memory_total_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_swap_memory_available_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_major_pagefaults'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_minor_pagefaults'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_fd_count'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_cpu_shares'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_cpu_shares_usage_pct'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_memory_limit_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_swap_limit_kb'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_cpu_quota_used_pct'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_count_processes'].message_type = _AGGREGATIONS64
+_RESOURCE_CATEGORIES.fields_by_name['aggr_proc_start_count'].message_type = _AGGREGATIONS64
 _CONNECTION_CATEGORIES.fields_by_name['server'].message_type = _COUNTER_BYTES
 _CONNECTION_CATEGORIES.fields_by_name['client'].message_type = _COUNTER_BYTES
 _CONNECTION_CATEGORIES.fields_by_name['transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _CONNECTION_CATEGORIES.fields_by_name['min_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _CONNECTION_CATEGORIES.fields_by_name['max_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_CONNECTION_CATEGORIES.fields_by_name['aggr_n_aggregated_connections'].message_type = _AGGREGATIONS64
+_COUNTER_PROTO_ENTRY.fields_by_name['aggr_ncalls'].message_type = _AGGREGATIONS64
+_COUNTER_PROTO_ENTRY.fields_by_name['aggr_time_tot'].message_type = _AGGREGATIONS64
+_COUNTER_PROTO_ENTRY.fields_by_name['aggr_time_max'].message_type = _AGGREGATIONS64
+_COUNTER_PROTO_ENTRY.fields_by_name['aggr_bytes_in'].message_type = _AGGREGATIONS64
+_COUNTER_PROTO_ENTRY.fields_by_name['aggr_bytes_out'].message_type = _AGGREGATIONS64
+_COUNTER_PROTO_ENTRY.fields_by_name['aggr_nerrors'].message_type = _AGGREGATIONS64
 _URL_DETAILS.fields_by_name['counters'].message_type = _COUNTER_PROTO_ENTRY
+_STATUS_CODE_DETAILS.fields_by_name['aggr_ncalls'].message_type = _AGGREGATIONS64
 _HTTP_INFO.fields_by_name['server_urls'].message_type = _URL_DETAILS
 _HTTP_INFO.fields_by_name['client_urls'].message_type = _URL_DETAILS
 _HTTP_INFO.fields_by_name['client_status_codes'].message_type = _STATUS_CODE_DETAILS
@@ -5693,6 +6600,8 @@ _MONGODB_INFO.fields_by_name['servers_ops'].message_type = _MONGODB_OP_TYPE_DETA
 _MONGODB_INFO.fields_by_name['client_ops'].message_type = _MONGODB_OP_TYPE_DETAILS
 _MONGODB_INFO.fields_by_name['server_collections'].message_type = _MONGODB_COLLECTION_DETAILS
 _MONGODB_INFO.fields_by_name['client_collections'].message_type = _MONGODB_COLLECTION_DETAILS
+_JMX_ATTRIBUTE.fields_by_name['aggr_value'].message_type = _AGGREGATIONS64
+_JMX_ATTRIBUTE.fields_by_name['aggr_value_double'].message_type = _AGGREGATIONS_DOUBLE
 _JMX_ATTRIBUTE.fields_by_name['type'].enum_type = _JMX_METRIC_TYPE
 _JMX_ATTRIBUTE.fields_by_name['unit'].enum_type = _UNIT
 _JMX_ATTRIBUTE.fields_by_name['scale'].enum_type = _SCALE
@@ -5701,8 +6610,18 @@ _JMX_BEAN.fields_by_name['attributes'].message_type = _JMX_ATTRIBUTE
 _JAVA_INFO.fields_by_name['beans'].message_type = _JMX_BEAN
 _STATSD_METRIC.fields_by_name['tags'].message_type = _STATSD_TAG
 _STATSD_METRIC.fields_by_name['type'].enum_type = _STATSD_METRIC_TYPE
+_STATSD_METRIC.fields_by_name['aggr_value'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_sum'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_min'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_max'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_count'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_median'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_percentile_95'].message_type = _AGGREGATIONS_DOUBLE
+_STATSD_METRIC.fields_by_name['aggr_percentile_99'].message_type = _AGGREGATIONS_DOUBLE
 _STATSD_INFO.fields_by_name['statsd_metrics'].message_type = _STATSD_METRIC
+_PROTO_METRIC_MAP.fields_by_name['proto_info'].message_type = _PROTO_INFO
 _APP_METRIC.fields_by_name['type'].enum_type = _APP_METRIC_TYPE
+_APP_METRIC.fields_by_name['aggr_value_double'].message_type = _AGGREGATIONS_DOUBLE
 _APP_METRIC.fields_by_name['tags'].message_type = _APP_TAG
 _APP_CHECK.fields_by_name['value'].enum_type = _APP_CHECK_VALUE
 _APP_CHECK.fields_by_name['tags'].message_type = _APP_TAG
@@ -5716,32 +6635,64 @@ _PROTO_INFO.fields_by_name['java'].message_type = _JAVA_INFO
 _PROTO_INFO.fields_by_name['statsd'].message_type = _STATSD_INFO
 _PROTO_INFO.fields_by_name['app'].message_type = _APP_INFO
 _NETWORK_BY_PORT.fields_by_name['counters'].message_type = _CONNECTION_CATEGORIES
+_HOST.fields_by_name['aggr_num_cpus'].message_type = _AGGREGATIONS64
+_HOST.fields_by_name['aggr_cpu_loads'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_cpu_steal'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_physical_memory_size_bytes'].message_type = _AGGREGATIONS64
 _HOST.fields_by_name['tcounters'].message_type = _TIME_CATEGORIES
 _HOST.fields_by_name['reqcounters'].message_type = _TRANSACTION_BREAKDOWN_CATEGORIES
 _HOST.fields_by_name['transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _HOST.fields_by_name['min_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _HOST.fields_by_name['max_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_HOST.fields_by_name['aggr_transaction_processing_delay'].message_type = _AGGREGATIONS64
+_HOST.fields_by_name['aggr_next_tiers_delay'].message_type = _AGGREGATIONS64
 _HOST.fields_by_name['resource_counters'].message_type = _RESOURCE_CATEGORIES
 _HOST.fields_by_name['syscall_errors'].message_type = _COUNTER_SYSCALL_ERRORS
 _HOST.fields_by_name['external_io_net'].message_type = _COUNTER_TIME_BYTES
 _HOST.fields_by_name['network_by_serverports'].message_type = _NETWORK_BY_PORT
+_HOST.fields_by_name['aggr_memory_bytes_available_kb'].message_type = _AGGREGATIONS64
+_HOST.fields_by_name['aggr_system_load'].message_type = _AGGREGATIONS_DOUBLE
+_HOST.fields_by_name['aggr_uptime'].message_type = _AGGREGATIONS64
+_HOST.fields_by_name['aggr_system_cpu'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_user_cpu'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_cpu_idle'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_iowait_cpu'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_nice_cpu'].message_type = _AGGREGATIONS64_REPEATED
+_HOST.fields_by_name['aggr_system_load_1'].message_type = _AGGREGATIONS64
+_HOST.fields_by_name['aggr_system_load_5'].message_type = _AGGREGATIONS64
+_HOST.fields_by_name['aggr_system_load_15'].message_type = _AGGREGATIONS64
 _PROCESS.fields_by_name['details'].message_type = _PROCESS_DETAILS
 _PROCESS.fields_by_name['tcounters'].message_type = _TIME_CATEGORIES
 _PROCESS.fields_by_name['transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _PROCESS.fields_by_name['min_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _PROCESS.fields_by_name['max_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_PROCESS.fields_by_name['aggr_transaction_processing_delay'].message_type = _AGGREGATIONS64
+_PROCESS.fields_by_name['aggr_next_tiers_delay'].message_type = _AGGREGATIONS64
 _PROCESS.fields_by_name['resource_counters'].message_type = _RESOURCE_CATEGORIES
 _PROCESS.fields_by_name['syscall_errors'].message_type = _COUNTER_SYSCALL_ERRORS
 _PROCESS.fields_by_name['protos'].message_type = _PROTO_INFO
+_PROCESS.fields_by_name['aggr_start_count'].message_type = _AGGREGATIONS64
+_PROCESS.fields_by_name['aggr_count_processes'].message_type = _AGGREGATIONS64
 _PROGRAM.fields_by_name['procinfo'].message_type = _PROCESS
 _IPV4_CONNECTION.fields_by_name['tuple'].message_type = _IPV4TUPLE
 _IPV4_CONNECTION.fields_by_name['counters'].message_type = _CONNECTION_CATEGORIES
+_MOUNTED_FS.fields_by_name['aggr_size_bytes'].message_type = _AGGREGATIONS64
+_MOUNTED_FS.fields_by_name['aggr_used_bytes'].message_type = _AGGREGATIONS64
+_MOUNTED_FS.fields_by_name['aggr_available_bytes'].message_type = _AGGREGATIONS64
+_MOUNTED_FS.fields_by_name['aggr_total_inodes'].message_type = _AGGREGATIONS64
+_MOUNTED_FS.fields_by_name['aggr_used_inodes'].message_type = _AGGREGATIONS64
+_FILE_STAT.fields_by_name['aggr_bytes'].message_type = _AGGREGATIONS64
+_FILE_STAT.fields_by_name['aggr_time_ns'].message_type = _AGGREGATIONS64
+_FILE_STAT.fields_by_name['aggr_open_count'].message_type = _AGGREGATIONS64
+_FILE_STAT.fields_by_name['aggr_errors'].message_type = _AGGREGATIONS64
 _CONTAINER.fields_by_name['type'].enum_type = _CONTAINER_TYPE
 _CONTAINER.fields_by_name['tcounters'].message_type = _TIME_CATEGORIES
 _CONTAINER.fields_by_name['reqcounters'].message_type = _TRANSACTION_BREAKDOWN_CATEGORIES
 _CONTAINER.fields_by_name['transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _CONTAINER.fields_by_name['min_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
 _CONTAINER.fields_by_name['max_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_CONTAINER.fields_by_name['aggr_transaction_processing_delay'].message_type = _AGGREGATIONS64
+_CONTAINER.fields_by_name['aggr_next_tiers_delay'].message_type = _AGGREGATIONS64
 _CONTAINER.fields_by_name['resource_counters'].message_type = _RESOURCE_CATEGORIES
 _CONTAINER.fields_by_name['syscall_errors'].message_type = _COUNTER_SYSCALL_ERRORS
 _CONTAINER.fields_by_name['port_mappings'].message_type = _CONTAINER_PORT_MAPPING
@@ -5754,8 +6705,13 @@ _K8S_COMMON.fields_by_name['selectors'].message_type = _K8S_PAIR
 _K8S_NAMESPACE.fields_by_name['common'].message_type = _K8S_COMMON
 _K8S_NODE.fields_by_name['common'].message_type = _K8S_COMMON
 _K8S_POD.fields_by_name['common'].message_type = _K8S_COMMON
+_K8S_POD.fields_by_name['aggr_restart_count'].message_type = _AGGREGATIONS64
 _K8S_REPLICATION_CONTROLLER.fields_by_name['common'].message_type = _K8S_COMMON
+_K8S_REPLICATION_CONTROLLER.fields_by_name['aggr_replicas_desired'].message_type = _AGGREGATIONS64
+_K8S_REPLICATION_CONTROLLER.fields_by_name['aggr_replicas_running'].message_type = _AGGREGATIONS64
 _K8S_REPLICA_SET.fields_by_name['common'].message_type = _K8S_COMMON
+_K8S_REPLICA_SET.fields_by_name['aggr_replicas_desired'].message_type = _AGGREGATIONS64
+_K8S_REPLICA_SET.fields_by_name['aggr_replicas_running'].message_type = _AGGREGATIONS64
 _K8S_SERVICE_NET_PORT.containing_type = _K8S_SERVICE;
 _K8S_SERVICE.fields_by_name['common'].message_type = _K8S_COMMON
 _K8S_SERVICE.fields_by_name['ports'].message_type = _K8S_SERVICE_NET_PORT
@@ -5779,19 +6735,11 @@ _MESOS_SLAVE.fields_by_name['common'].message_type = _MESOS_COMMON
 _MESOS_STATE.fields_by_name['frameworks'].message_type = _MESOS_FRAMEWORK
 _MESOS_STATE.fields_by_name['groups'].message_type = _MARATHON_GROUP
 _MESOS_STATE.fields_by_name['slaves'].message_type = _MESOS_SLAVE
-_SWARM_COMMON.fields_by_name['labels'].message_type = _SWARM_PAIR
-_SWARM_SERVICE.fields_by_name['common'].message_type = _SWARM_COMMON
-_SWARM_SERVICE.fields_by_name['ports'].message_type = _SWARM_PORT
-_SWARM_TASK.fields_by_name['common'].message_type = _SWARM_COMMON
-_SWARM_NODE.fields_by_name['common'].message_type = _SWARM_COMMON
-_SWARM_STATE.fields_by_name['services'].message_type = _SWARM_SERVICE
-_SWARM_STATE.fields_by_name['nodes'].message_type = _SWARM_NODE
-_SWARM_STATE.fields_by_name['tasks'].message_type = _SWARM_TASK
+_METRICS.fields_by_name['aggr_sampling_ratio'].message_type = _AGGREGATIONS64
 _METRICS.fields_by_name['hostinfo'].message_type = _HOST
 _METRICS.fields_by_name['programs'].message_type = _PROGRAM
 _METRICS.fields_by_name['ipv4_connections'].message_type = _IPV4_CONNECTION
 _METRICS.fields_by_name['ipv4_network_interfaces'].message_type = _IPV4_NETWORK_INTERFACE
-_METRICS.fields_by_name['commands'].message_type = _COMMAND_DETAILS
 _METRICS.fields_by_name['mounts'].message_type = _MOUNTED_FS
 _METRICS.fields_by_name['top_files'].message_type = _FILE_STAT
 _METRICS.fields_by_name['protos'].message_type = _PROTO_INFO
@@ -5800,16 +6748,47 @@ _METRICS.fields_by_name['kubernetes'].message_type = _K8S_STATE
 _METRICS.fields_by_name['mesos'].message_type = _MESOS_STATE
 _METRICS.fields_by_name['events'].message_type = _AGENT_EVENT
 _METRICS.fields_by_name['falcobl'].message_type = _FALCO_BASELINE
-_METRICS.fields_by_name['swarm'].message_type = _SWARM_STATE
+_LIST_WRAPPER.fields_by_name['mounts'].message_type = _MOUNTED_FS
+_LIST_WRAPPER.fields_by_name['top_files'].message_type = _FILE_STAT
+_LIST_WRAPPER.fields_by_name['programs'].message_type = _PROGRAM
+_LIST_WRAPPER.fields_by_name['jmx_programs'].message_type = _PROGRAM
+_LIST_WRAPPER.fields_by_name['ipv4_connections'].message_type = _IPV4_CONNECTION
+_LIST_WRAPPER.fields_by_name['ipv4_network_interfaces'].message_type = _IPV4_NETWORK_INTERFACE
+_LIST_WRAPPER.fields_by_name['containers'].message_type = _CONTAINER
+_LIST_WRAPPER.fields_by_name['container_programs'].message_type = _PROGRAM
+_LIST_WRAPPER.fields_by_name['containers_tcounters'].message_type = _TIME_CATEGORIES
+_LIST_WRAPPER.fields_by_name['containers_reqcounters'].message_type = _TRANSACTION_BREAKDOWN_CATEGORIES
+_LIST_WRAPPER.fields_by_name['containers_resource_counters'].message_type = _RESOURCE_CATEGORIES
+_LIST_WRAPPER.fields_by_name['containers_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_LIST_WRAPPER.fields_by_name['containers_min_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_LIST_WRAPPER.fields_by_name['containers_max_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_LIST_WRAPPER.fields_by_name['containers_protos'].message_type = _PROTO_INFO
+_LIST_WRAPPER.fields_by_name['containers_mounts'].message_type = _CONTAINER_LIST_WRAPPER
+_LIST_WRAPPER.fields_by_name['containers_network_by_serverports'].message_type = _CONTAINER_LIST_WRAPPER
+_LIST_WRAPPER.fields_by_name['containers_syscall_errors'].message_type = _COUNTER_SYSCALL_ERRORS
+_LIST_WRAPPER.fields_by_name['programs_tcounters'].message_type = _TIME_CATEGORIES
+_LIST_WRAPPER.fields_by_name['programs_reqcounters'].message_type = _TRANSACTION_BREAKDOWN_CATEGORIES
+_LIST_WRAPPER.fields_by_name['programs_resource_counters'].message_type = _RESOURCE_CATEGORIES
+_LIST_WRAPPER.fields_by_name['programs_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_LIST_WRAPPER.fields_by_name['programs_min_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_LIST_WRAPPER.fields_by_name['programs_max_transaction_counters'].message_type = _COUNTER_TIME_BIDIRECTIONAL
+_LIST_WRAPPER.fields_by_name['programs_protos'].message_type = _PROTO_INFO
+_LIST_WRAPPER.fields_by_name['programs_details'].message_type = _PROCESS_DETAILS
+_LIST_WRAPPER.fields_by_name['programs_syscall_errors'].message_type = _COUNTER_SYSCALL_ERRORS
+_CONTAINER_LIST_WRAPPER.fields_by_name['port_mappings'].message_type = _CONTAINER_PORT_MAPPING
+_CONTAINER_LIST_WRAPPER.fields_by_name['mounts'].message_type = _MOUNTED_FS
+_CONTAINER_LIST_WRAPPER.fields_by_name['network_by_serverports'].message_type = _NETWORK_BY_PORT
 _AGENT_EVENT.fields_by_name['tags'].message_type = _KEY_VALUE
-_CONFIG_DATA.fields_by_name['config_files'].message_type = _CONFIG_FILE
 _ERROR_MESSAGE.fields_by_name['type'].enum_type = _ERROR_TYPE
 _FALCO_SUBCATEGORY_CONTAINER.fields_by_name['subcats'].message_type = _FALCO_SUBCATEGORY
 _FALCO_CATEGORY.fields_by_name['startup_subcats'].message_type = _FALCO_SUBCATEGORY_CONTAINER
 _FALCO_CATEGORY.fields_by_name['regular_subcats'].message_type = _FALCO_SUBCATEGORY_CONTAINER
 _FALCO_PROG.fields_by_name['cats'].message_type = _FALCO_CATEGORY
 _FALCO_BASELINE.fields_by_name['progs'].message_type = _FALCO_PROG
-_FALCO_BASELINE.fields_by_name['containers'].message_type = _FALCO_CONTAINER
+_CONFIG_DATA.fields_by_name['config_files'].message_type = _CONFIG_FILE
+DESCRIPTOR.message_types_by_name['aggregations64_repeated'] = _AGGREGATIONS64_REPEATED
+DESCRIPTOR.message_types_by_name['aggregations64'] = _AGGREGATIONS64
+DESCRIPTOR.message_types_by_name['aggregations_double'] = _AGGREGATIONS_DOUBLE
 DESCRIPTOR.message_types_by_name['counter_time'] = _COUNTER_TIME
 DESCRIPTOR.message_types_by_name['counter_time_bidirectional'] = _COUNTER_TIME_BIDIRECTIONAL
 DESCRIPTOR.message_types_by_name['counter_bytes'] = _COUNTER_BYTES
@@ -5820,7 +6799,6 @@ DESCRIPTOR.message_types_by_name['counter_syscall_errors'] = _COUNTER_SYSCALL_ER
 DESCRIPTOR.message_types_by_name['resource_categories'] = _RESOURCE_CATEGORIES
 DESCRIPTOR.message_types_by_name['connection_categories'] = _CONNECTION_CATEGORIES
 DESCRIPTOR.message_types_by_name['process_details'] = _PROCESS_DETAILS
-DESCRIPTOR.message_types_by_name['command_details'] = _COMMAND_DETAILS
 DESCRIPTOR.message_types_by_name['counter_proto_entry'] = _COUNTER_PROTO_ENTRY
 DESCRIPTOR.message_types_by_name['url_details'] = _URL_DETAILS
 DESCRIPTOR.message_types_by_name['status_code_details'] = _STATUS_CODE_DETAILS
@@ -5837,6 +6815,7 @@ DESCRIPTOR.message_types_by_name['java_info'] = _JAVA_INFO
 DESCRIPTOR.message_types_by_name['statsd_tag'] = _STATSD_TAG
 DESCRIPTOR.message_types_by_name['statsd_metric'] = _STATSD_METRIC
 DESCRIPTOR.message_types_by_name['statsd_info'] = _STATSD_INFO
+DESCRIPTOR.message_types_by_name['proto_metric_map'] = _PROTO_METRIC_MAP
 DESCRIPTOR.message_types_by_name['app_tag'] = _APP_TAG
 DESCRIPTOR.message_types_by_name['app_metric'] = _APP_METRIC
 DESCRIPTOR.message_types_by_name['app_check'] = _APP_CHECK
@@ -5873,14 +6852,9 @@ DESCRIPTOR.message_types_by_name['marathon_group'] = _MARATHON_GROUP
 DESCRIPTOR.message_types_by_name['mesos_framework'] = _MESOS_FRAMEWORK
 DESCRIPTOR.message_types_by_name['mesos_slave'] = _MESOS_SLAVE
 DESCRIPTOR.message_types_by_name['mesos_state'] = _MESOS_STATE
-DESCRIPTOR.message_types_by_name['swarm_pair'] = _SWARM_PAIR
-DESCRIPTOR.message_types_by_name['swarm_port'] = _SWARM_PORT
-DESCRIPTOR.message_types_by_name['swarm_common'] = _SWARM_COMMON
-DESCRIPTOR.message_types_by_name['swarm_service'] = _SWARM_SERVICE
-DESCRIPTOR.message_types_by_name['swarm_task'] = _SWARM_TASK
-DESCRIPTOR.message_types_by_name['swarm_node'] = _SWARM_NODE
-DESCRIPTOR.message_types_by_name['swarm_state'] = _SWARM_STATE
 DESCRIPTOR.message_types_by_name['metrics'] = _METRICS
+DESCRIPTOR.message_types_by_name['list_wrapper'] = _LIST_WRAPPER
+DESCRIPTOR.message_types_by_name['container_list_wrapper'] = _CONTAINER_LIST_WRAPPER
 DESCRIPTOR.message_types_by_name['dump_request_start'] = _DUMP_REQUEST_START
 DESCRIPTOR.message_types_by_name['dump_request_stop'] = _DUMP_REQUEST_STOP
 DESCRIPTOR.message_types_by_name['dump_response'] = _DUMP_RESPONSE
@@ -5891,15 +6865,32 @@ DESCRIPTOR.message_types_by_name['auto_update_request'] = _AUTO_UPDATE_REQUEST
 DESCRIPTOR.message_types_by_name['dirty_shutdown_report'] = _DIRTY_SHUTDOWN_REPORT
 DESCRIPTOR.message_types_by_name['key_value'] = _KEY_VALUE
 DESCRIPTOR.message_types_by_name['agent_event'] = _AGENT_EVENT
-DESCRIPTOR.message_types_by_name['config_file'] = _CONFIG_FILE
-DESCRIPTOR.message_types_by_name['config_data'] = _CONFIG_DATA
 DESCRIPTOR.message_types_by_name['error_message'] = _ERROR_MESSAGE
 DESCRIPTOR.message_types_by_name['falco_subcategory'] = _FALCO_SUBCATEGORY
 DESCRIPTOR.message_types_by_name['falco_subcategory_container'] = _FALCO_SUBCATEGORY_CONTAINER
 DESCRIPTOR.message_types_by_name['falco_category'] = _FALCO_CATEGORY
 DESCRIPTOR.message_types_by_name['falco_prog'] = _FALCO_PROG
-DESCRIPTOR.message_types_by_name['falco_container'] = _FALCO_CONTAINER
 DESCRIPTOR.message_types_by_name['falco_baseline'] = _FALCO_BASELINE
+DESCRIPTOR.message_types_by_name['config_file'] = _CONFIG_FILE
+DESCRIPTOR.message_types_by_name['config_data'] = _CONFIG_DATA
+
+class aggregations64_repeated(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _AGGREGATIONS64_REPEATED
+
+  # @@protoc_insertion_point(class_scope:draiosproto.aggregations64_repeated)
+
+class aggregations64(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _AGGREGATIONS64
+
+  # @@protoc_insertion_point(class_scope:draiosproto.aggregations64)
+
+class aggregations_double(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _AGGREGATIONS_DOUBLE
+
+  # @@protoc_insertion_point(class_scope:draiosproto.aggregations_double)
 
 class counter_time(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
@@ -5960,12 +6951,6 @@ class process_details(_message.Message):
   DESCRIPTOR = _PROCESS_DETAILS
 
   # @@protoc_insertion_point(class_scope:draiosproto.process_details)
-
-class command_details(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _COMMAND_DETAILS
-
-  # @@protoc_insertion_point(class_scope:draiosproto.command_details)
 
 class counter_proto_entry(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
@@ -6062,6 +7047,12 @@ class statsd_info(_message.Message):
   DESCRIPTOR = _STATSD_INFO
 
   # @@protoc_insertion_point(class_scope:draiosproto.statsd_info)
+
+class proto_metric_map(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _PROTO_METRIC_MAP
+
+  # @@protoc_insertion_point(class_scope:draiosproto.proto_metric_map)
 
 class app_tag(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
@@ -6285,53 +7276,23 @@ class mesos_state(_message.Message):
 
   # @@protoc_insertion_point(class_scope:draiosproto.mesos_state)
 
-class swarm_pair(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_PAIR
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_pair)
-
-class swarm_port(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_PORT
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_port)
-
-class swarm_common(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_COMMON
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_common)
-
-class swarm_service(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_SERVICE
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_service)
-
-class swarm_task(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_TASK
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_task)
-
-class swarm_node(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_NODE
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_node)
-
-class swarm_state(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _SWARM_STATE
-
-  # @@protoc_insertion_point(class_scope:draiosproto.swarm_state)
-
 class metrics(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
   DESCRIPTOR = _METRICS
 
   # @@protoc_insertion_point(class_scope:draiosproto.metrics)
+
+class list_wrapper(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _LIST_WRAPPER
+
+  # @@protoc_insertion_point(class_scope:draiosproto.list_wrapper)
+
+class container_list_wrapper(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _CONTAINER_LIST_WRAPPER
+
+  # @@protoc_insertion_point(class_scope:draiosproto.container_list_wrapper)
 
 class dump_request_start(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
@@ -6393,18 +7354,6 @@ class agent_event(_message.Message):
 
   # @@protoc_insertion_point(class_scope:draiosproto.agent_event)
 
-class config_file(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _CONFIG_FILE
-
-  # @@protoc_insertion_point(class_scope:draiosproto.config_file)
-
-class config_data(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _CONFIG_DATA
-
-  # @@protoc_insertion_point(class_scope:draiosproto.config_data)
-
 class error_message(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
   DESCRIPTOR = _ERROR_MESSAGE
@@ -6435,17 +7384,23 @@ class falco_prog(_message.Message):
 
   # @@protoc_insertion_point(class_scope:draiosproto.falco_prog)
 
-class falco_container(_message.Message):
-  __metaclass__ = _reflection.GeneratedProtocolMessageType
-  DESCRIPTOR = _FALCO_CONTAINER
-
-  # @@protoc_insertion_point(class_scope:draiosproto.falco_container)
-
 class falco_baseline(_message.Message):
   __metaclass__ = _reflection.GeneratedProtocolMessageType
   DESCRIPTOR = _FALCO_BASELINE
 
   # @@protoc_insertion_point(class_scope:draiosproto.falco_baseline)
+
+class config_file(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _CONFIG_FILE
+
+  # @@protoc_insertion_point(class_scope:draiosproto.config_file)
+
+class config_data(_message.Message):
+  __metaclass__ = _reflection.GeneratedProtocolMessageType
+  DESCRIPTOR = _CONFIG_DATA
+
+  # @@protoc_insertion_point(class_scope:draiosproto.config_data)
 
 
 DESCRIPTOR.has_options = True

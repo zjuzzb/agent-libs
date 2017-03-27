@@ -16,6 +16,7 @@ import argparse
 import struct
 import socket
 import atexit
+from datetime import datetime
 
 # this class parses text dumped protobuf from the agent
 # they can be enabled with "metricsfile: { location: metrics }"
@@ -31,7 +32,7 @@ class MetricsFile(object):
       atexit.register(self.close_tail)
       self._file = self._tail.stdout
       self._last_line = self._file.readline()
-      while not self._last_line.startswith("metrics {"):
+      while not self._last_line.startswith("timestamp_ns"):
         self._last_line = self._file.readline()
     else:
       self._file = open(path)
@@ -42,13 +43,13 @@ class MetricsFile(object):
     self._last_line = self._file.readline()
     if len(self._last_line) == 0:
       raise StopIteration()
-    while not self._last_line.startswith("metrics {"):
+    while not self._last_line.startswith("timestamp_ns"):
       ascii_repr += self._last_line
       self._last_line = self._file.readline()
       if len(self._last_line) == 0:
         raise StopIteration()
     # Trim "metrics {"
-    ascii_repr = "\n".join(ascii_repr.split("\n")[1:-2])
+    #ascii_repr = "\n".join(ascii_repr.split("\n")[1:-2])
     metrics = draios_pb2.metrics()
     parse_text_protobuf(ascii_repr, metrics)
     return metrics
@@ -62,9 +63,43 @@ class MetricsFile(object):
 parser = argparse.ArgumentParser(description="Analyze protobufs using JQ filters")
 parser.add_argument("--follow", dest="follow", required=False, default=False, action='store_true', help="Follow the file as tail -f does")
 parser.add_argument("--binary", dest="binary", required=False, default=False, action='store_true', help="path is a binary file")
+parser.add_argument("--reorder", dest="reorder", required=False, default=False, action="store_true", help="reorder metrics by timestamp")
 parser.add_argument("path", type=str, help="File to parse")
 parser.add_argument("jq_filter", type=str, default=".", help="JQ filter to use")
 args = parser.parse_args()
+
+def walk_protos(path, ext="dam"):
+  for root, dirs, files in os.walk(path, topdown=False):
+    for name in files:
+      if name.endswith(ext):
+        fullpath = os.path.join(root, name)
+        analyze_proto(fullpath)
+
+def analyze_proto(path):
+  if path.endswith("dam") or args.binary:
+    with open(path, "rb") as f:
+      f.seek(2)
+      metrics = draios_pb2.metrics.FromString(f.read())
+      process_metrics(metrics)
+  else:
+      if args.reorder:
+        ml = [ metrics for metrics in MetricsFile(path)]
+        ml.sort(key=lambda m: m.timestamp_ns)
+        for m in ml:
+          process_metrics(m)
+      else:
+        for metrics in MetricsFile(path, tail=args.follow):
+          process_metrics(metrics)
+
+def process_metrics(metrics):
+  ts = datetime.fromtimestamp(metrics.timestamp_ns/1000000000)
+  print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
+  metrics_d = protobuf_to_dict(metrics)
+  metrics_j = metrics_filter.transform(metrics_d, multiple_output=True)
+  print(json.dumps(metrics_j, indent=2))
+  print("\n")
+
+ 
 print "Running with args: %s" % repr(args)
 
 if args.path == "last":
@@ -72,34 +107,16 @@ if args.path == "last":
   path = os.path.join("/opt/draios/metrics/", metricFiles[-1])
 else:
   path = args.path
+
 metrics_filter = jq(args.jq_filter)
 
 # text files
 #
-
-def process_metrics(metrics):
-  print("###### sample ts=%d ######" % metrics.timestamp_ns)
-  metrics_d = protobuf_to_dict(metrics)
-  print(metrics_filter.transform(metrics_d, text_output=True))
-  print("\n")
-
 def main():
-  if args.binary:
-    # binary files
-    #for root, dirs, files in os.walk(path, topdown=False):
-      #for name in files:
-        #if name.endswith("dam"):
-          #fullpath = os.path.join(root, name)
-          #print("Processing %s" % fullpath)
-          with open(path, "rb") as f:
-            f.seek(2)
-            metrics = draios_pb2.metrics.FromString(f.read())
-            process_metrics(metrics)
-            #with open(fullpath+"s", "w") as f2:
-            #  f2.write(serialize_text_protobuf(metrics))
+  if os.path.isdir(path):
+    walk_protos(path)
   else:
-    for metrics in MetricsFile(path, tail=args.follow):
-      process_metrics(metrics)
+    analyze_proto(path)
 
 if __name__ == "__main__":
   try:
