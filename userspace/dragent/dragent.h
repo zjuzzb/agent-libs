@@ -17,6 +17,7 @@
 #include "monitor.h"
 #include "subprocesses_logger.h"
 #include <atomic>
+#include <memory>
 
 #include "sdc_internal.pb.h"
 #include "analyzer_utils.h"
@@ -106,6 +107,6 @@ private:
 	subprocesses_logger m_subprocesses_logger;
 	unordered_map<string, watchdog_state> m_subprocesses_state;
 	uint64_t m_last_dump_s;
-	coclient m_coclient;
+	std::unique_ptr<coclient> m_coclient;
 	run_on_interval m_cointerface_ping_interval = {5*ONE_SECOND_IN_NS};
 };
