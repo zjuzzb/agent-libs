@@ -2312,7 +2312,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 							auto java_proto = proc->mutable_protos()->mutable_java();
-							jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit, "process");
+							jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
+										"process", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT_PER_PROC));
 							if(jmx_limit == 0)
 							{
 								g_logger.format(sinsp_logger::SEV_WARNING,
@@ -2324,7 +2325,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							g_logger.format(sinsp_logger::SEV_WARNING,
 								"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
 							// dummy call, only to print excessive metrics
-							jmx_metrics_it->second.to_protobuf(nullptr, 0, m_configuration->get_jmx_limit(), "total");
+							jmx_metrics_it->second.to_protobuf(nullptr, 0, m_configuration->get_jmx_limit(),
+										"total", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT));
 						}
 					}
 				}

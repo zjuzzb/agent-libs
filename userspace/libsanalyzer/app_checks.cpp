@@ -330,7 +330,7 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
 		if((limit == 0) && ml_log)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s.",
+			g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
 							max_limit, m.name().c_str());
 			continue;
 		}
@@ -346,7 +346,7 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
 		if((limit == 0) && ml_log)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[service_check] metric over limit (total, %u max): %s.",
+			g_logger.format(sinsp_logger::SEV_INFO, "[service_check] metric over limit (total, %u max): %s",
 							max_limit, s.name().c_str());
 			continue;
 		}

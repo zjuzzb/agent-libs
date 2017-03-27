@@ -191,7 +191,7 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 	}
 }
 
-unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type) const
+unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const
 {
 	if(proto_bean)
 	{
@@ -208,8 +208,8 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 		}
 		else if(metric_limits::log_enabled())
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[jmx] metric over limit (%s, %u max): %s (%s).",
-							limit_type.c_str(), limit, it->name().c_str(), it->alias().c_str());
+			g_logger.format(sinsp_logger::SEV_INFO, "[jmx] metric over limit (%s, %u max): %s (%s)",
+							limit_type.c_str(), max_limit, it->name().c_str(), it->alias().c_str());
 		}
 		else { break; }
 	}
@@ -230,7 +230,7 @@ java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t m
 	}
 }
 
-unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type) const
+unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const
 {
 	if(protobuf)
 	{
@@ -242,11 +242,11 @@ unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigne
 		if(protobuf && (limit > emitted_attributes))
 		{
 			draiosproto::jmx_bean* protobean = protobuf->add_beans();
-			emitted_attributes += bean_it->to_protobuf(protobean, sampling, limit-emitted_attributes, limit_type);
+			emitted_attributes += bean_it->to_protobuf(protobean, sampling, limit-emitted_attributes, limit_type, max_limit);
 		}
 		else if(metric_limits::log_enabled())
 		{
-			bean_it->to_protobuf(nullptr, 0, limit, limit_type);
+			bean_it->to_protobuf(nullptr, 0, max_limit, limit_type, max_limit);
 		}
 		else { break; }
 	}
