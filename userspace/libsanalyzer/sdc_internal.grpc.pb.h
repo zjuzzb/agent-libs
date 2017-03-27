@@ -39,9 +39,14 @@ class CoInterface final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::pong>> AsyncPerformPing(::grpc::ClientContext* context, const ::sdc_internal::ping& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::pong>>(AsyncPerformPingRaw(context, request, cq));
     }
+    virtual ::grpc::Status PerformSwarmState(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::sdc_internal::swarm_state_result* response) = 0;
+    std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::swarm_state_result>> AsyncPerformSwarmState(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::swarm_state_result>>(AsyncPerformSwarmStateRaw(context, request, cq));
+    }
   private:
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::docker_command_result>* AsyncPerformDockerCommandRaw(::grpc::ClientContext* context, const ::sdc_internal::docker_command& request, ::grpc::CompletionQueue* cq) = 0;
     virtual ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::pong>* AsyncPerformPingRaw(::grpc::ClientContext* context, const ::sdc_internal::ping& request, ::grpc::CompletionQueue* cq) = 0;
+    virtual ::grpc::ClientAsyncResponseReaderInterface< ::sdc_internal::swarm_state_result>* AsyncPerformSwarmStateRaw(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::grpc::CompletionQueue* cq) = 0;
   };
   class Stub final : public StubInterface {
    public:
@@ -54,13 +59,19 @@ class CoInterface final {
     std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::sdc_internal::pong>> AsyncPerformPing(::grpc::ClientContext* context, const ::sdc_internal::ping& request, ::grpc::CompletionQueue* cq) {
       return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::sdc_internal::pong>>(AsyncPerformPingRaw(context, request, cq));
     }
+    ::grpc::Status PerformSwarmState(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::sdc_internal::swarm_state_result* response) override;
+    std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::sdc_internal::swarm_state_result>> AsyncPerformSwarmState(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::grpc::CompletionQueue* cq) {
+      return std::unique_ptr< ::grpc::ClientAsyncResponseReader< ::sdc_internal::swarm_state_result>>(AsyncPerformSwarmStateRaw(context, request, cq));
+    }
 
    private:
     std::shared_ptr< ::grpc::ChannelInterface> channel_;
     ::grpc::ClientAsyncResponseReader< ::sdc_internal::docker_command_result>* AsyncPerformDockerCommandRaw(::grpc::ClientContext* context, const ::sdc_internal::docker_command& request, ::grpc::CompletionQueue* cq) override;
     ::grpc::ClientAsyncResponseReader< ::sdc_internal::pong>* AsyncPerformPingRaw(::grpc::ClientContext* context, const ::sdc_internal::ping& request, ::grpc::CompletionQueue* cq) override;
+    ::grpc::ClientAsyncResponseReader< ::sdc_internal::swarm_state_result>* AsyncPerformSwarmStateRaw(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::grpc::CompletionQueue* cq) override;
     const ::grpc::RpcMethod rpcmethod_PerformDockerCommand_;
     const ::grpc::RpcMethod rpcmethod_PerformPing_;
+    const ::grpc::RpcMethod rpcmethod_PerformSwarmState_;
   };
   static std::unique_ptr<Stub> NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options = ::grpc::StubOptions());
 
@@ -70,6 +81,7 @@ class CoInterface final {
     virtual ~Service();
     virtual ::grpc::Status PerformDockerCommand(::grpc::ServerContext* context, const ::sdc_internal::docker_command* request, ::sdc_internal::docker_command_result* response);
     virtual ::grpc::Status PerformPing(::grpc::ServerContext* context, const ::sdc_internal::ping* request, ::sdc_internal::pong* response);
+    virtual ::grpc::Status PerformSwarmState(::grpc::ServerContext* context, const ::sdc_internal::swarm_state_command* request, ::sdc_internal::swarm_state_result* response);
   };
   template <class BaseClass>
   class WithAsyncMethod_PerformDockerCommand : public BaseClass {
@@ -111,7 +123,27 @@ class CoInterface final {
       ::grpc::Service::RequestAsyncUnary(1, context, request, response, new_call_cq, notification_cq, tag);
     }
   };
-  typedef WithAsyncMethod_PerformDockerCommand<WithAsyncMethod_PerformPing<Service > > AsyncService;
+  template <class BaseClass>
+  class WithAsyncMethod_PerformSwarmState : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service *service) {}
+   public:
+    WithAsyncMethod_PerformSwarmState() {
+      ::grpc::Service::MarkMethodAsync(2);
+    }
+    ~WithAsyncMethod_PerformSwarmState() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status PerformSwarmState(::grpc::ServerContext* context, const ::sdc_internal::swarm_state_command* request, ::sdc_internal::swarm_state_result* response) final override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    void RequestPerformSwarmState(::grpc::ServerContext* context, ::sdc_internal::swarm_state_command* request, ::grpc::ServerAsyncResponseWriter< ::sdc_internal::swarm_state_result>* response, ::grpc::CompletionQueue* new_call_cq, ::grpc::ServerCompletionQueue* notification_cq, void *tag) {
+      ::grpc::Service::RequestAsyncUnary(2, context, request, response, new_call_cq, notification_cq, tag);
+    }
+  };
+  typedef WithAsyncMethod_PerformDockerCommand<WithAsyncMethod_PerformPing<WithAsyncMethod_PerformSwarmState<Service > > > AsyncService;
   template <class BaseClass>
   class WithGenericMethod_PerformDockerCommand : public BaseClass {
    private:
@@ -142,6 +174,23 @@ class CoInterface final {
     }
     // disable synchronous version of this method
     ::grpc::Status PerformPing(::grpc::ServerContext* context, const ::sdc_internal::ping* request, ::sdc_internal::pong* response) final override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+  };
+  template <class BaseClass>
+  class WithGenericMethod_PerformSwarmState : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service *service) {}
+   public:
+    WithGenericMethod_PerformSwarmState() {
+      ::grpc::Service::MarkMethodGeneric(2);
+    }
+    ~WithGenericMethod_PerformSwarmState() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable synchronous version of this method
+    ::grpc::Status PerformSwarmState(::grpc::ServerContext* context, const ::sdc_internal::swarm_state_command* request, ::sdc_internal::swarm_state_result* response) final override {
       abort();
       return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
     }
@@ -186,9 +235,29 @@ class CoInterface final {
     // replace default version of method with streamed unary
     virtual ::grpc::Status StreamedPerformPing(::grpc::ServerContext* context, ::grpc::ServerUnaryStreamer< ::sdc_internal::ping,::sdc_internal::pong>* server_unary_streamer) = 0;
   };
-  typedef WithStreamedUnaryMethod_PerformDockerCommand<WithStreamedUnaryMethod_PerformPing<Service > > StreamedUnaryService;
+  template <class BaseClass>
+  class WithStreamedUnaryMethod_PerformSwarmState : public BaseClass {
+   private:
+    void BaseClassMustBeDerivedFromService(const Service *service) {}
+   public:
+    WithStreamedUnaryMethod_PerformSwarmState() {
+      ::grpc::Service::MarkMethodStreamed(2,
+        new ::grpc::StreamedUnaryHandler< ::sdc_internal::swarm_state_command, ::sdc_internal::swarm_state_result>(std::bind(&WithStreamedUnaryMethod_PerformSwarmState<BaseClass>::StreamedPerformSwarmState, this, std::placeholders::_1, std::placeholders::_2)));
+    }
+    ~WithStreamedUnaryMethod_PerformSwarmState() override {
+      BaseClassMustBeDerivedFromService(this);
+    }
+    // disable regular version of this method
+    ::grpc::Status PerformSwarmState(::grpc::ServerContext* context, const ::sdc_internal::swarm_state_command* request, ::sdc_internal::swarm_state_result* response) final override {
+      abort();
+      return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+    }
+    // replace default version of method with streamed unary
+    virtual ::grpc::Status StreamedPerformSwarmState(::grpc::ServerContext* context, ::grpc::ServerUnaryStreamer< ::sdc_internal::swarm_state_command,::sdc_internal::swarm_state_result>* server_unary_streamer) = 0;
+  };
+  typedef WithStreamedUnaryMethod_PerformDockerCommand<WithStreamedUnaryMethod_PerformPing<WithStreamedUnaryMethod_PerformSwarmState<Service > > > StreamedUnaryService;
   typedef Service SplitStreamedService;
-  typedef WithStreamedUnaryMethod_PerformDockerCommand<WithStreamedUnaryMethod_PerformPing<Service > > StreamedService;
+  typedef WithStreamedUnaryMethod_PerformDockerCommand<WithStreamedUnaryMethod_PerformPing<WithStreamedUnaryMethod_PerformSwarmState<Service > > > StreamedService;
 };
 
 }  // namespace sdc_internal

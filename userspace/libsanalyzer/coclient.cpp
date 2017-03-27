@@ -1,7 +1,11 @@
 #include <Poco/File.h>
 
+// From sysdig
+#include "sinsp.h"
+#include "sinsp_int.h"
 #include "logger.h"
 
+#include "analyzer_utils.h"
 #include "coclient.h"
 
 using namespace std;
@@ -34,7 +38,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 
 	string tmp;
 	m_print.PrintToString(*request_msg, &tmp);
-	g_log->debug("Sending message to cointerface: " + tmp);
+	g_logger.log("Sending message to cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
 	call_context *call = new call_context();
 
@@ -45,10 +49,11 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	// for a given request message type.
 	switch(msg_type) {
 		sdc_internal::ping *ping;
+		sdc_internal::swarm_state_command *sscmd;
 
 	case sdc_internal::PING:
-                // Start the rpc call and have the pong reader read the response when
-                // it's ready.
+		// Start the rpc call and have the pong reader read the response when
+		// it's ready.
 		ping = static_cast<sdc_internal::ping *>(request_msg);
 		call->pong_reader = m_stub->AsyncPerformPing(&call->ctx, *ping, &m_cq);
 
@@ -58,11 +63,24 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		// that is the address of the call struct.
 		call->response_msg = make_unique<sdc_internal::pong>();
 		call->pong_reader->Finish(static_cast<sdc_internal::pong *>(call->response_msg.get()), &call->status, (void*)call);
+		break;
 
+	case sdc_internal::SWARM_STATE_COMMAND:
+		// Start the rpc call and have the reader read the response when
+		// it's ready.
+		sscmd = static_cast<sdc_internal::swarm_state_command *>(request_msg);
+		call->swarm_state_reader = m_stub->AsyncPerformSwarmState(&call->ctx, *sscmd, &m_cq);
+
+		// Tell the swarm_state reader to write the response into the
+		// response message, update status with whether or not the
+		// rpc could be performed, and tag the rpc with a tag
+		// that is the address of the call struct.
+		call->response_msg = make_unique<sdc_internal::swarm_state_result>();
+		call->swarm_state_reader->Finish(static_cast<sdc_internal::swarm_state_result *>(call->response_msg.get()), &call->status, (void*)call);
 		break;
 
 	default:
-		g_log->error("Unknown message type " + to_string(msg_type));
+		g_logger.log("Unknown message type " + to_string(msg_type), sinsp_logger::SEV_ERROR);
 		break;
 	}
 }
@@ -77,7 +95,7 @@ void coclient::next()
 
 	if(status == grpc::CompletionQueue::SHUTDOWN)
 	{
-		g_log->error("cointerface process shut down, disconnecting");
+		g_logger.log("cointerface process shut down, disconnecting", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
 		return;
 	}
@@ -89,7 +107,7 @@ void coclient::next()
 	call_context *call = static_cast<call_context *>(tag);
 
 	if(!updates_ok) {
-		g_log->error("cointerface RPC could not be scheduled successfully");
+		g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
 		return;
 	}
@@ -98,10 +116,10 @@ void coclient::next()
 		string tmp;
 		m_print.PrintToString(*(call->response_msg), &tmp);
 
-		g_log->debug("Got response from cointerface: " + tmp);
+		g_logger.log("Got response from cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
 	} else {
-		g_log->debug("cointerface rpc failed");
+		g_logger.log("cointerface rpc failed", sinsp_logger::SEV_DEBUG);
 	}
 
 	call->response_cb(call->status.ok(), call->response_msg.get());

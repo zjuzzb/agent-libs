@@ -38,7 +38,6 @@ add_definitions(-DK8S_DISABLE_THREAD)
 add_executable(dragent
 	configuration.cpp 
 	connection_manager.cpp
-	coclient.cpp
 	crash_handler.cpp
 	dragent.cpp
 	error_handler.cpp

@@ -271,6 +271,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
+	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
+
 	//
 	// Load the chisels
 	//

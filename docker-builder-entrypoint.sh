@@ -24,4 +24,6 @@ if [[ $1 == "package" ]]; then
   docker build -t $AGENT_IMAGE .
 elif [[ $1 == "install" ]]; then
   make -j$MAKE_JOBS install
+elif [[ $1 == "bash" ]] then
+  bash
 fi

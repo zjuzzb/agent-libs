@@ -32,6 +32,7 @@ sinsp_configuration::sinsp_configuration()
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
 	m_capture_dragent_events = false;
+	m_cointerface_enabled = false;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -736,5 +737,15 @@ unsigned sinsp_configuration::get_app_checks_limit() const
 void sinsp_configuration::set_app_checks_limit(unsigned value)
 {
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
+
+bool sinsp_configuration::get_cointerface_enabled() const
+{
+	return m_cointerface_enabled;
+}
+
+void sinsp_configuration::set_cointerface_enabled(bool val)
+{
+	m_cointerface_enabled = val;
 }
 #endif // HAS_ANALYZER

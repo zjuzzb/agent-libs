@@ -40,11 +40,10 @@ public:
 	// the cointerface process, such as the unix domain socket.
 	static void cleanup();
 
-protected:
-
 	// Set up state for this rpc and perform the rpc.
 	void prepare(google::protobuf::Message *request_msg, sdc_internal::cointerface_message_type msgtype,
 		     response_cb_t response_cb);
+protected:
 
 	// Connect to the cointerface process
 	void connect();
@@ -65,6 +64,7 @@ protected:
 
 		// Depending on msg_type, the context will use one of these readers
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
 	};
 
 	// Created by CreateChannel

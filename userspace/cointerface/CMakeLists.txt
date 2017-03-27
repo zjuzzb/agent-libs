@@ -1,4 +1,4 @@
-set(GOPATH "${CMAKE_CURRENT_SOURCE_DIR}")
+set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
@@ -8,6 +8,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/sdc_internal/sdc_internal.pb.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/draiosproto/draios.pb.go)
 

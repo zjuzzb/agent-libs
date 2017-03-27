@@ -17,6 +17,7 @@
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "memdumper.h"
+#include "coclient.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -486,6 +487,12 @@ VISIBILITY_PRIVATE
 	char* m_serialization_buffer;
 	uint32_t m_serialization_buffer_size;
 	FILE* m_protobuf_fp;
+
+	//
+	// Checking Docker swarm state every 10 seconds
+	//
+	run_on_interval m_swarmstate_interval = {10*ONE_SECOND_IN_NS};
+	coclient m_coclient;
 
 	//
 	// The callback we invoke when a sample is ready

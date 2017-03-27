@@ -140,6 +140,8 @@ public:
 	void set_jmx_limit(unsigned limit);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
+	bool get_cointerface_enabled() const;
+	void set_cointerface_enabled(bool enabled);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -213,6 +215,8 @@ private:
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
+
+	bool m_cointerface_enabled;
 };
 
 #endif // HAS_ANALYZER

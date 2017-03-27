@@ -2991,9 +2991,6 @@ bool executed_command_cmp(const sinsp_executed_command& src, const sinsp_execute
 
 void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands)
 {
-	uint32_t j;
-	int32_t last_pipe_head = -1;
-
 	if(commands->size() != 0)
 	{
 		sort(commands->begin(),
@@ -3001,6 +2998,8 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			executed_command_cmp);
 
 #if 0
+		uint32_t j;
+		int32_t last_pipe_head = -1;
 		//
 		// Consolidate command with pipes
 		//
@@ -3290,15 +3289,30 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
-				// TODO: TVO Replace with grpc
-				static posix_queue p("/test", posix_queue::RECEIVE, 1);
-				string message = p.receive();
-				if(!message.empty())
+				// Only run every 10 seconds (see analyzer.h)
+				if (m_configuration->get_cointerface_enabled())
 				{
-					g_logger.format(sinsp_logger::SEV_INFO, "Received Swarm size=%d", message.size());
-					m_docker_swarm_state->ParseFromString(message);
+					m_swarmstate_interval.run([this]()
+					{
+						g_logger.format(sinsp_logger::SEV_INFO, "Sending Swarm State Command");
+						//  callback to be executed by coclient::next()
+						coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+							m_metrics->mutable_swarm()->Clear();
+							if(successful)
+							{
+								sdc_internal::swarm_state_result *res = (sdc_internal::swarm_state_result *) response_msg;
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
+								m_docker_swarm_state->CopyFrom(res->state());
+							}
+						};
+						sdc_internal::swarm_state_command cmd;
+						m_coclient.prepare(&cmd, sdc_internal::SWARM_STATE_COMMAND, callback);
+					});
+					// Read available responses
+					m_coclient.next();
+					// Copy from cached swarm state
+					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 				}
-				m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 
 				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();

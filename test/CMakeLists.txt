@@ -8,6 +8,7 @@ set(DRAIOS_BOOST_VERSION "1_57_0")
 set(DRAIOS_CURL_VERSION "7.52.1")
 set(DRAIOS_JQ_VERSION "1.5")
 set(DRAIOS_B64_VERSION "1.2")
+set(DRAIOS_GRPC_VERSION "1.1.4")
 
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
@@ -31,6 +32,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 

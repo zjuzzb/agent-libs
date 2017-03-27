@@ -95,6 +95,10 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 	return res, nil
 }
 
+func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
+	return getSwarmState(ctx, cmd)
+}
+
 func startServer(sock string) int {
 
 	// Try to remove any existing socket
