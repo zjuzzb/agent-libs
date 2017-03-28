@@ -68,6 +68,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EXECVE_14_X:
 	case PPME_SYSCALL_EXECVE_15_X:
 	case PPME_SYSCALL_EXECVE_16_X:
+	case PPME_SYSCALL_EXECVE_17_X:
 		parse_execve_exit(evt);
 		return true;
 	case PPME_DROP_E:
@@ -259,6 +260,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	sinsp_threadinfo* ttinfo = tinfo;
 	uint32_t shell_dist = 0;
 	uint64_t login_shell_id = 0;
+	bool found_tty = false;
 
 	for(uint32_t j = 0; ; j++)
 	{
@@ -273,6 +275,10 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 			shell_dist = j;
 		}
 
+		if(!found_tty && ttinfo->m_tty) {
+			found_tty = true;
+		}
+
 		ttinfo = ttinfo->get_parent_thread();
 		if(ttinfo == NULL)
 		{
@@ -280,8 +286,14 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	if(login_shell_id == 0) {
-		return;
+	if(m_analyzer->m_command_lines_capture_all_commands) {
+		if(!login_shell_id) {
+			return;
+		}
+	} else {
+		if(!found_tty) {
+			return;
+		}
 	}
 
 	//
@@ -317,7 +329,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		cmdinfo.m_cmdline += tinfo->m_args[j];
 	}
 
-	//tainfo->m_login_shell_distance = shell_dist;
 	cmdinfo.m_shell_id = login_shell_id;
 	cmdinfo.m_login_shell_distance = shell_dist;
 

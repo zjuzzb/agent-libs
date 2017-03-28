@@ -1216,8 +1216,8 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_16_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_16_X;
+		return evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
 	};
 
 	//
@@ -1238,7 +1238,7 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 		uint16_t type = e->get_type();
 		auto tinfo = e->get_thread_info(true);
 		//printf("%s Type is %u\n", e->get_thread_info(true)->m_exe.c_str(), type);
-		if (type == PPME_SYSCALL_EXECVE_16_E)
+		if (type == PPME_SYSCALL_EXECVE_17_E)
 		{
 			++callnum;
 			switch(callnum)
@@ -1257,7 +1257,7 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 				break;
 			}
 		}
-		else if ( type == PPME_SYSCALL_EXECVE_16_X)
+		else if ( type == PPME_SYSCALL_EXECVE_17_X)
 		{
 			++callnum;
 			EXPECT_EQ("0", e->get_param_value_str("res", false));
@@ -1292,8 +1292,8 @@ TEST_F(sys_call_test32, failing_execve)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_16_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_16_X;
+		return evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
 	};
 
 	//
@@ -1315,7 +1315,7 @@ TEST_F(sys_call_test32, failing_execve)
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 		auto tinfo = e->get_thread_info(true);
-		if (type == PPME_SYSCALL_EXECVE_16_E)
+		if (type == PPME_SYSCALL_EXECVE_17_E)
 		{
 			++callnum;
 			switch(callnum)
@@ -1337,7 +1337,7 @@ TEST_F(sys_call_test32, failing_execve)
 				break;
 			}
 		}
-		else if ( type == PPME_SYSCALL_EXECVE_16_X)
+		else if ( type == PPME_SYSCALL_EXECVE_17_X)
 		{
 			++callnum;
 

@@ -310,6 +310,7 @@ void sinsp_analyzer::on_capture_start()
 	// If required, enable the command line captures
 	//
 	m_command_lines_capture_enabled	= m_configuration->get_command_lines_capture_enabled();
+	m_command_lines_capture_all_commands = m_configuration->get_command_lines_capture_all_commands();
 
 	//
 	// Enable memery dump
