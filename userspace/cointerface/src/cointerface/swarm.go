@@ -79,6 +79,7 @@ func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
 	var addr string
 	// It looks that sometimes node.Status.Addr is 127.0.0.1
 	// on managers, so for them report the ManagerStatus.Addr
+	// docker issue: https://github.com/docker/docker/issues/30119
 	if node.ManagerStatus != nil {
 		addr = strings.Split(node.ManagerStatus.Addr, ":")[0]
 	} else {
