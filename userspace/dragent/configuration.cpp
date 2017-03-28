@@ -867,7 +867,7 @@ void dragent_configuration::init(Application* app)
 		m_autodrop_enabled = false;
 	}
 
-	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", false);
+	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 }
 
 void dragent_configuration::print_configuration()
