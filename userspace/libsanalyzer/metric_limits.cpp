@@ -93,8 +93,8 @@ bool metric_limits::allow(const std::string& metric, std::string& filter, int* p
 			bool inc = f.included();
 			insert(metric, f.filter(), inc, p);
 			if(pos) { *pos = p; }
-			if(!pos) { log(metric, type, f.included(), m_log, wrap_filter(filter, inc)); }
 			filter = (*f.filter());
+			if(!pos) { log(metric, type, f.included(), m_log, wrap_filter(filter, inc)); }
 			return inc;
 		}
 		else if(FNM_NOMATCH != m)
