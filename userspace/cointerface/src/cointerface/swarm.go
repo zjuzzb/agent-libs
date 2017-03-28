@@ -75,11 +75,19 @@ func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
 }
 
 func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
+	var addr string
+	// It looks that sometimes node.Status.Addr is 127.0.0.1
+	// on managers, so for them report the ManagerStatus.Addr
+	if node.ManagerStatus != nil {
+		addr = strings.Split(node.ManagerStatus.Addr, ":")[0]
+	} else {
+		addr = node.Status.Addr
+	}
 	return &draiosproto.SwarmNode{Common: &draiosproto.SwarmCommon{
 		Id:     proto.String(node.ID),
 		Name:   proto.String(node.Description.Hostname),
 		Labels: labelsToProtobuf(node.Spec.Labels),
-	}, Role: proto.String(string(node.Spec.Role)), IpAddress: proto.String(node.Status.Addr)}
+	}, Role: proto.String(string(node.Spec.Role)), IpAddress: proto.String(addr)}
 }
 
 func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
