@@ -13,6 +13,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/golang/protobuf/proto"
 	"os"
+	"strings"
 )
 
 /*
