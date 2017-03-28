@@ -304,14 +304,14 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 				if(ml)
 				{
 					std::string filter;
-					if(ml->allow(s["check"].asString(), filter, nullptr, "service_check")) // allow() will log if logging is enabled
+					if(ml->allow(s["check"].asString(), filter, nullptr, "app_check")) // allow() will log if logging is enabled
 					{
 						m_service_checks.emplace_back(s);
 					}
 				}
 				else // no filters, add all metrics and log explicitly
 				{
-					metric_limits::log(s["check"].asString(), "service_check", true, metric_limits::log_enabled(), " ");
+					metric_limits::log(s["check"].asString(), "app_check", true, metric_limits::log_enabled(), " ");
 					m_service_checks.emplace_back(s);
 				}
 			}
@@ -346,7 +346,7 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
 		if((limit == 0) && ml_log)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[service_check] metric over limit (total, %u max): %s",
+			g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
 							max_limit, s.name().c_str());
 			continue;
 		}
