@@ -6,149 +6,122 @@
 #
 
 
-#   Slick Progress Bar
-#   Created by: Ian Brown (ijbrown@hotmail.com)
-
-# Functions
-PUT(){ echo -en "\033[${1};${2}H";}
-DRAW(){ echo -en "\033%";echo -en "\033(0";}
-WRITE(){ echo -en "\033(B";}
-HIDECURSOR(){ echo -en "\033[?25l";}
-NORM(){ echo -en "\033[?12l\033[?25h";}
-function showBar
-{
-    percDone=$(echo 'scale=2;'$1/$2*100 | bc)
-    halfDone=$(echo $percDone/2 | bc) #I prefer a half sized bar graph
-    barLen=$(echo ${percDone%'.00'})
-    halfDone=`expr $halfDone + 6`
-    tput bold
-    PUT 7 28; printf "%4.4s  " $barLen%     #Print the percentage
-    PUT 5 $halfDone;  echo -e "\033[7m \033[0m" #Draw the bar
-    tput sgr0
-}
-function showMessage
-{
-    PUT 8 10;
-    echo -e $1
-}
-# Start Script
-clear
-HIDECURSOR
-echo -e ""
-echo -e ""
-DRAW    #magic starts here - must use caps in draw mode
-echo -e "          PLEASE WAIT WHILE CREATING LOG BUNDLE"
-echo -e "    #####################################################"
-echo -e "    #                                                   #"
-echo -e "    #####################################################"
-WRITE
-#
-# Insert your script here
-
-currentProgress=0
-function progressBar()
-{
-    for (( i=1; i<=$1; i++ )) do
-        showBar $i 100
-    done
-    currentProgress=$1
-}
-
-
-function cleanExit()
-{
-    echo $1
-    NORM
-    exit 1
-}
-
-
 HOME_DIR="/opt/draios"
+HOME_DIR_S=${HOME_DIR:1}
 LOG_DIR="$HOME_DIR/logs"
 ETC_DIR="$HOME_DIR/etc"
 CUSTOM_CHECKS_DIR="$HOME_DIR/lib/python/checks.custom.d"
 MACHINE_ID=
-
-progressBar 1
-DATE=`date +%Y%m%d%H%m`
-if [ $? -ne 0 ]; then
-    cleanExit "Cannot execute \`date\` command."
-fi
-progressBar 2
+TAR_ARCHIVE=
+BZIP_ARCHIVE=
 
 
+progress_flag=0
+function progress()
+{
+    pad=$(printf '%0.1s' "."{1..60})
+    line='.......................................................'
 
+    if [ $progress_flag -eq 1 ]; then
+        printf " [%s]\n" "$1"
+        progress_flag=0
+    else
+        printf "%s %s" "$1" "${line:${#1}}"
+        progress_flag=1
+    fi
+
+}
+
+
+function leave()
+{
+    if [ $2 -eq 0 ]; then
+        echo "$1"
+    else
+        echo "ERROR: $1"
+    fi
+    exit $2
+}
 
 
 function verify_files()
 {
-    progressBar 5
-    showMessage "Parsing logs....."
+    progress "Verifying log files title"
     for entry in $LOG_DIR/*.log*; do
         if [ `grep -m 1 -E "[\d\.\,\:\-]+\ +Agent\ starting\ +\(version .+\)" $entry | wc -l` -ne 0 ]; then
-            progressBar 10
+            progress "done"
             return
         fi
     done
 
-    progressBar 10
-    cleanExit "No starting log message among the given log files."
+    leave "No starting log message among the given log files." 1
 }
 
 
 function tarball()
 {
-    progressBar 11
-    showMessage "Archiving logs......"
-
-    tar -cvf agent-bundle-$MACHINE_ID-$DATE.tar $LOG_DIR/*.log* &>/dev/null
+    progress "Archiving logs"
+    tar -cvf $TAR_ARCHIVE $LOG_DIR/*.log* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
     if [ $? -ne 0 ]; then
-        progressBar 12
-        cleanExit "Cannot execute \`tar\`."
+        progress "failed"
+        leave "Cannot execute \`tar\`." 1
     fi
+    progress "done"
 
-    progressBar 50
-    showMessage "Archiving configuration files..."
-    tar -uvf agent-bundle-$MACHINE_ID-$DATE.tar $ETC_DIR/* &>/dev/null
+    progress "Archiving configurations"
+    tar -uvf $TAR_ARCHIVE $ETC_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
     if [ $? -ne 0 ]; then
-        cleanExit "Cannot execute \`tar\`."
+        progress "failed"
+        leave "Cannot execute \`tar\`." 1
     fi
-    progressBar 60
+    progress "done"
 
-    # tar -uvf agent-bundle-$MACHINE_ID-$DATE.tar $CUSTOM_CHECKS_DIR/*
-    # if [ $? -ne 0 ]; then
-    #     echo "Cannot execute \`tar\`."
-    #     exit 1
-    # fi
-    # for (( i=60; i<=70; i++ )) do
-    #     showBar $i 100
-    # done
-
-    showMessage "Compressing archive............."
-    bzip2 agent-bundle-$MACHINE_ID-$DATE.tar &>/dev/null
+    progress "Archiving custom checks"
+    tar -uvf $TAR_ARCHIVE $CUSTOM_CHECKS_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
     if [ $? -ne 0 ]; then
-        progressBar 65
-        cleanExit "Cannot execute \`bzip2\`."
+        progress "failed"
+        leave "Cannot execute \`tar\`." 1
     fi
-    progressBar 100
+    progress "done"
+
+    BZIP_ARCHIVE="$TAR_ARCHIVE.bz2"
+    progress "Compressing tar archive"
+    bzip2 $TAR_ARCHIVE &>/dev/null
+    if [ $? -ne 0 ]; then
+        progress "failed"
+        leave "Cannot execute \`bzip2\`." 1
+    fi
+    progress "done"
 }
 
 
-progressBar 3
+progress "Reading current date"
+DATE=`date +%Y%m%d%H%m`
+if [ $? -ne 0 ]; then
+    progress "failed"
+    leave "Cannot execute \`date\` command." 1
+fi
+progress "done"
+
+progress "Checking \`$HOME_DIR\` directory"
+if [ ! -d "$HOME_DIR" ]; then
+    progress "failed"
+    leave "Directory \`$HOME_DIR\` does not exist." 1
+fi
+progress "done"
+
+
+progress "Searching for machine ID"
 if [[ `grep -i "machine id" -m 1 $LOG_DIR/*.log*` =~ .*machine\ id\:\ *(.*) ]]; then
     MACHINE_ID=${BASH_REMATCH[1]//\:/}
+else
+    progress "failed"
+    leave "Cannot find machine ID in log files" 1
 fi
-progressBar 4
+progress "done"
 
-showMessage "Script started..."
-
+TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
 verify_files
 tarball
+leave "Log bundle \`$BZIP_ARCHIVE\` created." 0
 
-
-# End of your script
-# Clean up at end of script
-PUT 10 12
-echo -e ""
-NORM
-exit 0
