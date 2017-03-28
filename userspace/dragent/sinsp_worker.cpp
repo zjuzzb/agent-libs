@@ -8,12 +8,12 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
-	connection_manager* connection_manager, protocol_queue* queue):
+			   protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
 	m_analyzer(NULL),
-	m_sinsp_handler(configuration, connection_manager, queue),
+	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
 	m_driver_stopped_dropping_ns(0),
 	m_last_loop_ns(0),

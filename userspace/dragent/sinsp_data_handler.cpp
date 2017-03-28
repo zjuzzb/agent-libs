@@ -1,13 +1,11 @@
 #include "sinsp_data_handler.h"
 #include "configuration.h"
-#include "connection_manager.h"
 #include "utils.h"
 #include "logger.h"
 
-sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration, 
-		connection_manager* connection_manager, protocol_queue* queue):
+sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
+				       protocol_queue* queue):
 	m_configuration(configuration),
-	m_connection_manager(connection_manager),
 	m_queue(queue),
 	m_last_loop_ns(0)
 {
