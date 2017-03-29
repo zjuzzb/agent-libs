@@ -11,6 +11,8 @@ HOME_DIR_S=${HOME_DIR:1}
 LOG_DIR="$HOME_DIR/logs"
 ETC_DIR="$HOME_DIR/etc"
 CUSTOM_CHECKS_DIR="$HOME_DIR/lib/python/checks.custom.d"
+TMP_DIR="/tmp"
+TMP_DIR_S=${TMP_DIR:1}
 MACHINE_ID=
 TAR_ARCHIVE=
 BZIP_ARCHIVE=
@@ -44,6 +46,7 @@ function leave()
         fi
     fi
 
+    rm -f $TMP_DIR/docker*.log
     exit $2
 }
 
@@ -84,6 +87,40 @@ function verify_files()
 }
 
 
+function docker_info()
+{
+    progress "Inspecting docker"
+    info=$(docker info &>/dev/null)
+    if [ $? -ne 0 ]; then
+        progress "skipped"
+        return
+    fi
+
+    msg=${info:0:14}
+    if [ "$msg" == "Cannot connect" ]; then
+        progress "skipped"
+        return
+    fi
+
+    regex="^([0-9a-zA-Z]+)\s+([0-9a-zA-Z\/\-]+)"
+    containers=$(docker ps)
+    first_line=1
+    while read -r line; do
+        if [ $first_line -eq 1 ]; then
+            first_line=0
+            continue
+        fi
+        if [[ $line =~ $regex ]]; then
+            if [ ${BASH_REMATCH[2]} == "sysdig/agent" ]; then
+                docker inspect ${BASH_REMATCH[1]} > $TMP_DIR/docker_${BASH_REMATCH[1]}.log
+            fi
+        fi
+    done <<< "$containers"
+
+    progress "done"
+}
+
+
 function tarball()
 {
     progress "Archiving logs"
@@ -112,6 +149,19 @@ function tarball()
             leave "Failed executing \`tar\`." 1
         fi
         progress "done"
+    fi
+
+    progress "Archiving docker info"
+    docker_files=$(ls $TMP_DIR/docker*.log 2> /dev/null | wc -l)
+    if [[ "$docker_files" != "0" ]]; then
+        tar -uvf $TAR_ARCHIVE $TMP_DIR/docker*.log --transform s,$TMP_DIR_S,$MACHINE_ID, &>/dev/null
+        if [ $? -ne 0 ]; then
+            progress "failed"
+            leave "Failed executing \`tar\`." 1
+        fi
+        progress "done"
+    else
+        progress "skipped"
     fi
 
     BZIP_ARCHIVE="$TAR_ARCHIVE.bz2"
@@ -146,5 +196,6 @@ progress "done"
 
 TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
 verify_files
+docker_info
 tarball
 leave "Log bundle \`$BZIP_ARCHIVE\` created." 0
