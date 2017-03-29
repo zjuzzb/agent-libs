@@ -583,10 +583,13 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		}
 
 		// Skip stuff like /proc/kcore, /sys/fs/cgroup, etc.
+		// Docker and other container/orch systems each use a slightly
+		// different path for their secrets directory so skip all
+		// "*/secrets*" mounts
 		if (strcmp(entry->mnt_type, "tmpfs") == 0 &&
 		    (strncmp(entry->mnt_dir, "/proc/", strlen("/proc/")) == 0
 		     || strcmp(entry->mnt_dir, "/sys/fs/cgroup") == 0
-		     || strstr(entry->mnt_dir, "/run/secrets/") != nullptr))
+		     || strstr(entry->mnt_dir, "/secrets") != nullptr))
 		{
 			continue;
 		}
