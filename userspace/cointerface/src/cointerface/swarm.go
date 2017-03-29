@@ -11,27 +11,10 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/client"
-	"github.com/golang/protobuf/proto"
+	"github.com/gogo/protobuf/proto"
 	"os"
 	"strings"
 )
-
-/*
-type PosixQueue struct {
-	fd C.mqd_t
-}
-
-func NewPosixQueue(name string) PosixQueue {
-	queue_name := C.CString(name)
-	defer C.free(unsafe.Pointer(queue_name))
-	var fd C.mqd_t = C.mqopen(queue_name, C.O_CREAT|C.O_WRONLY|C.O_NONBLOCK, C.S_IRWXU)
-	return PosixQueue{fd}
-}
-
-func (q *PosixQueue) Send(data []byte) {
-	C.mq_send(q.fd, (*C.char)(unsafe.Pointer(&data[0])), C.size_t(len(data)), 0)
-}
-*/
 
 func labelsToProtobuf(labels map[string]string) (ret []*draiosproto.SwarmPair) {
 	for k, v := range labels {
@@ -67,12 +50,16 @@ func serviceToProtobuf(service swarm.Service) *draiosproto.SwarmService {
 }
 
 func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
+	cidlen := len(task.Status.ContainerStatus.ContainerID);
+	if cidlen > 12 {
+		cidlen = 12
+	}
 	return &draiosproto.SwarmTask{Common: &draiosproto.SwarmCommon{
 			Id: proto.String(task.ID),
 		},
 		ServiceId:   proto.String(task.ServiceID),
 		NodeId:      proto.String(task.NodeID),
-		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:12])}
+		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:cidlen])}
 }
 
 func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
@@ -105,14 +92,14 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
 	cli, err := client.NewClient(dockerSock, "v1.26", nil, nil)
 	if err != nil {
-		ferr := fmt.Errorf("Could not create docker client: %s", err)
+		ferr := log.Errorf("Could not create docker client: %s", err)
 		log.Errorf(ferr.Error())
 		return nil, ferr
 	}
 
 	info, err := cli.Info(context.Background())
 	if err != nil {
-		ferr := fmt.Errorf("Could not get docker client info: %s", err)
+		ferr := log.Errorf("Could not get docker client info: %s", err)
 		return nil, ferr
 	}
 	clusterId := proto.String(info.Swarm.Cluster.ID)
@@ -131,7 +118,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 				// fmt.Printf("service id=%s name=%s stack=%s ip=%s\n", service.ID[:10], service.Spec.Name, stack, virtualIPsToProtobuf(service.Endpoint.VirtualIPs))
 			}
 		} else {
-			fmt.Printf("Error fetching services: %s\n", err)
+			log.Errorf("Error fetching services: %s\n", err)
 		}
 
 		if nodes, err := cli.NodeList(ctx, types.NodeListOptions{}); err == nil {
@@ -140,7 +127,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 				// fmt.Printf("node id=%s name=%s role=%s availability=%s\n", node.ID, node.Description.Hostname, node.Spec.Role, node.Spec.Availability)
 			}
 		} else {
-			fmt.Printf("Error fetching nodes: %s\n", err)
+			log.Errorf("Error fetching nodes: %s\n", err)
 		}
 
 		args := filters.NewArgs()
@@ -152,7 +139,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 				// fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
 			}
 		} else {
-			fmt.Printf("Error fetching tasks: %s\n", err)
+			log.Errorf("Error fetching tasks: %s\n", err)
 		}
 	}
 

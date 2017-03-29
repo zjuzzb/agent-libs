@@ -1,6 +1,6 @@
 #include <Poco/File.h>
 
-// From sysdig
+// From sysdig, for g_logger
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "logger.h"

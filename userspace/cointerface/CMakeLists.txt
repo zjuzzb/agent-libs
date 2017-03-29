@@ -1,4 +1,4 @@
-set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_CURRENT_SOURCE_DIR}")
+set(GOPATH "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
