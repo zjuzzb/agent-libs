@@ -39,8 +39,35 @@ function leave()
         echo "$1"
     else
         echo "ERROR: $1"
+        if [[ ! -z $TAR_ARCHIVE ]]; then
+            rm -f $TAR_ARCHIVE
+        fi
     fi
+
     exit $2
+}
+
+
+function verify_dirs()
+{
+    progress "Verifying directory structure"
+
+    if [ ! -d "$HOME_DIR" ]; then
+        progress "failed"
+        leave "Directory \`$HOME_DIR\` does not exist." 1
+    fi
+
+    if [ ! -d "$LOG_DIR" ]; then
+        progress "failed"
+        leave "Directory \`$LOG_DIR\` does not exist." 1
+    fi
+
+    if [ ! -d "$ETC_DIR" ]; then
+        progress "failed"
+        leave "Directory \`$ETC_DIR\` does not exist." 1
+    fi
+
+    progress "done"
 }
 
 
@@ -53,7 +80,6 @@ function verify_files()
             return
         fi
     done
-
     leave "No starting log message among the given log files." 1
 }
 
@@ -64,7 +90,7 @@ function tarball()
     tar -cvf $TAR_ARCHIVE $LOG_DIR/*.log* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
     if [ $? -ne 0 ]; then
         progress "failed"
-        leave "Cannot execute \`tar\`." 1
+        leave "Failed executing \`tar\`." 1
     fi
     progress "done"
 
@@ -72,26 +98,30 @@ function tarball()
     tar -uvf $TAR_ARCHIVE $ETC_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
     if [ $? -ne 0 ]; then
         progress "failed"
-        leave "Cannot execute \`tar\`." 1
+        leave "Failed executing \`tar\`." 1
     fi
     progress "done"
 
     progress "Archiving custom checks"
-    tar -uvf $TAR_ARCHIVE $CUSTOM_CHECKS_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
-    if [ $? -ne 0 ]; then
-        progress "failed"
-        leave "Cannot execute \`tar\`." 1
+    if [ ! -d "$CUSTOM_CHECKS_DIR" ]; then
+        progress "skipped"
+    else
+        tar -uvf $TAR_ARCHIVE $CUSTOM_CHECKS_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
+        if [ $? -ne 0 ]; then
+            progress "failed"
+            leave "Failed executing \`tar\`." 1
+        fi
+        progress "done"
     fi
-    progress "done"
 
     BZIP_ARCHIVE="$TAR_ARCHIVE.bz2"
     progress "Compressing tar archive"
     bzip2 $TAR_ARCHIVE &>/dev/null
     if [ $? -ne 0 ]; then
-        progress "failed"
-        leave "Cannot execute \`bzip2\`." 1
+        progress "skipped"
+    else
+        progress "done"
     fi
-    progress "done"
 }
 
 
@@ -103,13 +133,7 @@ if [ $? -ne 0 ]; then
 fi
 progress "done"
 
-progress "Checking \`$HOME_DIR\` directory"
-if [ ! -d "$HOME_DIR" ]; then
-    progress "failed"
-    leave "Directory \`$HOME_DIR\` does not exist." 1
-fi
-progress "done"
-
+verify_dirs
 
 progress "Searching for machine ID"
 if [[ `grep -i "machine id" -m 1 $LOG_DIR/*.log*` =~ .*machine\ id\:\ *(.*) ]]; then
@@ -124,4 +148,3 @@ TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
 verify_files
 tarball
 leave "Log bundle \`$BZIP_ARCHIVE\` created." 0
-
