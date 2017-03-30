@@ -674,9 +674,7 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 			err_str += " (" + err_msg.description() + ")";
 		}
 
-		if(err_type == draiosproto::error_type::ERR_CONN_LIMIT ||
-		   err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY ||
-		   err_type == draiosproto::error_type::ERR_DUPLICATE_AGENT)
+		if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
 		{
 			term = true;
 			err_str += ", terminating the agent";
