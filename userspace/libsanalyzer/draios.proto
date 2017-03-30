@@ -766,6 +766,7 @@ message swarm_task {
     optional string service_id = 2;
     optional string node_id = 3;
     optional string container_id = 4;
+    optional string state = 5;
 }
 
 message swarm_manager {

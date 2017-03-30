@@ -59,7 +59,8 @@ func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
 		},
 		ServiceId:   proto.String(task.ServiceID),
 		NodeId:      proto.String(task.NodeID),
-		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:cidlen])}
+		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:cidlen]),
+		State:       proto.String(string(task.Status.State))}
 }
 
 func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {

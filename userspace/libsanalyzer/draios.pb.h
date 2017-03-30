@@ -9432,6 +9432,18 @@ class swarm_task : public ::google::protobuf::Message {
   inline ::std::string* release_container_id();
   inline void set_allocated_container_id(::std::string* container_id);
 
+  // optional string state = 5;
+  inline bool has_state() const;
+  inline void clear_state();
+  static const int kStateFieldNumber = 5;
+  inline const ::std::string& state() const;
+  inline void set_state(const ::std::string& value);
+  inline void set_state(const char* value);
+  inline void set_state(const char* value, size_t size);
+  inline ::std::string* mutable_state();
+  inline ::std::string* release_state();
+  inline void set_allocated_state(::std::string* state);
+
   // @@protoc_insertion_point(class_scope:draiosproto.swarm_task)
  private:
   inline void set_has_common();
@@ -9442,6 +9454,8 @@ class swarm_task : public ::google::protobuf::Message {
   inline void clear_has_node_id();
   inline void set_has_container_id();
   inline void clear_has_container_id();
+  inline void set_has_state();
+  inline void clear_has_state();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -9449,9 +9463,10 @@ class swarm_task : public ::google::protobuf::Message {
   ::std::string* service_id_;
   ::std::string* node_id_;
   ::std::string* container_id_;
+  ::std::string* state_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -24885,6 +24900,76 @@ inline void swarm_task::set_allocated_container_id(::std::string* container_id) 
   } else {
     clear_has_container_id();
     container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string state = 5;
+inline bool swarm_task::has_state() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void swarm_task::set_has_state() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void swarm_task::clear_has_state() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void swarm_task::clear_state() {
+  if (state_ != &::google::protobuf::internal::kEmptyString) {
+    state_->clear();
+  }
+  clear_has_state();
+}
+inline const ::std::string& swarm_task::state() const {
+  return *state_;
+}
+inline void swarm_task::set_state(const ::std::string& value) {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  state_->assign(value);
+}
+inline void swarm_task::set_state(const char* value) {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  state_->assign(value);
+}
+inline void swarm_task::set_state(const char* value, size_t size) {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  state_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* swarm_task::mutable_state() {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  return state_;
+}
+inline ::std::string* swarm_task::release_state() {
+  clear_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = state_;
+    state_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void swarm_task::set_allocated_state(::std::string* state) {
+  if (state_ != &::google::protobuf::internal::kEmptyString) {
+    delete state_;
+  }
+  if (state) {
+    set_has_state();
+    state_ = state;
+  } else {
+    clear_has_state();
+    state_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 
