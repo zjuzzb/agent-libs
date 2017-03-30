@@ -205,7 +205,7 @@ inline bool metric_limits::log_enabled()
 
 inline bool metric_limits::first_includes_all(metrics_filter_vec v)
 {
-	ASSERT(v[0].filter());
+	ASSERT(!v.size() || v[0].filter());
 	return (v.size() && v[0].included() && v[0].filter() &&
 		   (v[0].filter()->empty() ||
 		   ((v[0].filter()->size() == 1) && ((*v[0].filter())[0] == '*'))));
