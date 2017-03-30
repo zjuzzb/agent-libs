@@ -122,6 +122,7 @@ TEST(statsite_proxy, parser)
 	statsite_proxy proxy(make_pair(input_fd, output_file));
 
 	auto ret = proxy.read_metrics();
+	EXPECT_EQ(2U, ret.size());
 	EXPECT_EQ(10U, ret.at("").size());
 	EXPECT_EQ(10U, ret.at("3ce9120d8307").size());
 
@@ -142,6 +143,39 @@ TEST(statsite_proxy, parser)
 			EXPECT_TRUE(found_set.find(ref) != found_set.end()) << ref << " not found for " << item.first;
 		}
 	}
+	fclose(output_file);
+	fclose(input_fd);
+}
+
+TEST(statsite_proxy, filter)
+{
+	auto output_file = fopen("resources/statsite_output.txt", "r");
+	auto input_fd = fopen("/dev/null", "w");
+	ASSERT_TRUE(output_file != NULL);
+	statsite_proxy proxy(make_pair(input_fd, output_file));
+
+	metrics_filter_vec f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
+	metric_limits::sptr_t ml(new metric_limits(f));
+	auto ret = proxy.read_metrics(ml);
+	EXPECT_EQ(2U, ret.size());
+	EXPECT_EQ(1U, ret.at("").size());
+	EXPECT_EQ(1U, ret.at("3ce9120d8307").size());
+
+	fclose(output_file);
+	fclose(input_fd);
+
+	output_file = fopen("resources/statsite_output.txt", "r");
+	input_fd = fopen("/dev/null", "w");
+	ASSERT_TRUE(output_file != NULL);
+	statsite_proxy proxy2(make_pair(input_fd, output_file));
+
+	f = {{"*1?", true}, {"totam.sunt.consequatur.numquam.aperiam7", true}, {"*", false}};
+	ml.reset(new metric_limits(f));
+	ret = proxy2.read_metrics(ml);
+	EXPECT_EQ(2U, ret.size());
+	EXPECT_EQ(2U, ret.at("").size());
+	EXPECT_EQ(2U, ret.at("3ce9120d8307").size());
+
 	fclose(output_file);
 	fclose(input_fd);
 }

@@ -40,6 +40,11 @@ void sinsp_worker::init()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 
+	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
+	// set before checks are created!!!)
+	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
+	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
+	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
 		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling, m_configuration->m_jmx_limit);

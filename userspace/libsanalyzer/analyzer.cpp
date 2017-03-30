@@ -69,6 +69,7 @@ using namespace google::protobuf::io;
 #include "falco_events.h"
 #include "proc_config.h"
 #include "tracer_emitter.h"
+#include "metric_limits.h"
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 {
@@ -1470,7 +1471,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if(m_jmx_proxy)
 		{
 			tracer_emitter jmx_trc("jmx_metrics", proc_trc);
-			auto jmx_metrics = m_jmx_proxy->read_metrics();
+			auto jmx_metrics = m_jmx_proxy->read_metrics(m_metric_limits);
 			if(!jmx_metrics.empty())
 			{
 				// m_jmx_metrics is cleared by flush() because they are used
@@ -1505,7 +1506,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					++it;
 				}
 			}
-			auto app_metrics = m_app_proxy->read_metrics();
+			auto app_metrics = m_app_proxy->read_metrics(m_metric_limits);
 			for(auto& item : app_metrics)
 			{
 				for(auto& met : item.second)
@@ -2297,24 +2298,40 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 #ifndef _WIN32
 			// Add JMX metrics
-			if (m_jmx_proxy && jmx_limit > 0)
+			if (m_jmx_proxy)
 			{
-				unsigned jmx_proc_limit = std::min(jmx_limit, JMX_METRICS_HARD_LIMIT_PER_PROC);
-				auto jmx_metrics_it = m_jmx_metrics.end();
-				for(auto pid_it = procinfo->m_program_pids.begin();
-						pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
-						++pid_it)
+				if((jmx_limit > 0) || metric_limits::log_enabled())
 				{
-					jmx_metrics_it = m_jmx_metrics.find(*pid_it);
-				}
-				if(jmx_metrics_it != m_jmx_metrics.end())
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-					auto java_proto = proc->mutable_protos()->mutable_java();
-					jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit);
-					if(jmx_limit == 0)
+					unsigned jmx_proc_limit = std::min(jmx_limit, JMX_METRICS_HARD_LIMIT_PER_PROC);
+					auto jmx_metrics_it = m_jmx_metrics.end();
+					for(auto pid_it = procinfo->m_program_pids.begin();
+							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
+							++pid_it)
 					{
-						g_logger.format(sinsp_logger::SEV_WARNING, "JMX metrics reached limit, remaining ones will be dropped");
+						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
+					}
+					if(jmx_metrics_it != m_jmx_metrics.end())
+					{
+						if(jmx_limit > 0)
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
+							auto java_proto = proc->mutable_protos()->mutable_java();
+							jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
+										"process", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT_PER_PROC));
+							if(jmx_limit == 0)
+							{
+								g_logger.format(sinsp_logger::SEV_WARNING,
+									"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
+							}
+						}
+						else if(metric_limits::log_enabled())
+						{
+							g_logger.format(sinsp_logger::SEV_WARNING,
+								"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
+							// dummy call, only to print excessive metrics
+							jmx_metrics_it->second.to_protobuf(nullptr, 0, m_configuration->get_jmx_limit(),
+										"total", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT));
+						}
 					}
 				}
 			}
@@ -2335,8 +2352,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 									"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
 									app_data.first.c_str(), app_data.second.expiration_ts() -
 									(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
-								app_checks_limit -= app_data.second.to_protobuf(
-									proc->mutable_protos()->mutable_app(), app_checks_limit);
+								app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+									app_checks_limit, m_configuration->get_app_checks_limit());
+								if(app_checks_limit == 0)
+								{
+									if(metric_limits::log_enabled())
+									{
+										for(const auto& m : app_data.second.metrics())
+										{
+											g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
+															m_configuration->get_app_checks_limit(), m.name().c_str());
+										}
+										for(const auto& s : app_data.second.services())
+										{
+											g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
+															m_configuration->get_app_checks_limit(), s.name().c_str());
+										}
+									}
+									else { break; }
+								}
 								app_data_set.emplace(app_data.first);
 							}
 							else
@@ -2348,6 +2382,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 										(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
 							}
 						}
+						if(app_checks_limit == 0 && !metric_limits::log_enabled()) { break; }
 					}
 				}
 			}
@@ -2433,7 +2468,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 	if(app_checks_limit == 0)
 	{
-		g_logger.log("App checks metrics limit reached", sinsp_logger::SEV_WARNING);
+		g_logger.format(sinsp_logger::SEV_WARNING, "App checks metrics limit (%u) reached",
+						m_configuration->get_app_checks_limit());
 	}
 
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -3187,6 +3223,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		return;
 	}
 
+	metric_limits::enable_log();
+
 	for(j = 0; ; j++)
 	{
 		if(flshflags == DF_FORCE_FLUSH ||
@@ -3613,7 +3651,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			{
 				emit_statsd(m_statsd_metrics.at(""),
 					    m_metrics->mutable_protos()->mutable_statsd(),
-					    m_configuration->get_statsd_limit());
+					    m_configuration->get_statsd_limit(), m_configuration->get_statsd_limit());
 			}
 #endif
 
@@ -5378,7 +5416,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 #ifndef _WIN32
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
-		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(), *statsd_limit);
+		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(),
+										*statsd_limit, m_configuration->get_statsd_limit());
 		*statsd_limit -= statsd_emitted;
 	}
 #endif
@@ -5418,27 +5457,34 @@ void sinsp_analyzer::get_statsd()
 		auto look_for_ts = ((m_prev_flush_time_ns - ONE_SECOND_IN_NS) / ONE_SECOND_IN_NS);
 		if(m_statsd_metrics.empty())
 		{
-			m_statsd_metrics = m_statsite_proxy->read_metrics();
+			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
 		while(!m_statsd_metrics.empty() && m_statsd_metrics.begin()->second.at(0).timestamp() < look_for_ts)
 		{
-			m_statsd_metrics = m_statsite_proxy->read_metrics();
+			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
 	}
 #endif
 }
 
 #ifndef _WIN32
-unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-					   unsigned limit)
+unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit)
 {
 	unsigned j = 0;
 	for(const auto& metric : statsd_metrics)
 	{
 		if(j >= limit)
 		{
-			g_logger.log("statsd metrics limit reached, skipping remaining ones", sinsp_logger::SEV_WARNING);
-			break;
+			if(metric_limits::log_enabled())
+			{
+				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit, metric.name().c_str());
+				continue;
+			}
+			else
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING, "statsd metrics over limit, giving up");
+				break;
+			}
 		}
 		auto statsd_proto = statsd_info->add_statsd_metrics();
 		metric.to_protobuf(statsd_proto);
@@ -5912,6 +5958,7 @@ bool sinsp_analyzer::driver_stopped_dropping()
 #ifndef _WIN32
 void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
 {
+	check_metric_limits();
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds);
 	if(forwarder)
 	{

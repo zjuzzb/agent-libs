@@ -5,6 +5,7 @@
 #pragma once
 
 #include "posix_queue.h"
+#include "metric_limits.h"
 #include <Poco/Net/SocketReactor.h>
 #include <Poco/Net/DatagramSocket.h>
 #include <Poco/Net/SocketNotification.h>
@@ -79,11 +80,7 @@ public:
 		return m_tags;
 	}
 
-	statsd_metric():
-			m_timestamp(0),
-			m_type(type_t::NONE),
-			m_full_identifier_parsed(false)
-	{}
+	statsd_metric();
 
 	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
@@ -112,8 +109,10 @@ private:
 class statsite_proxy
 {
 public:
+	typedef unordered_map<string, vector<statsd_metric>> metric_map_t;
+
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
-	unordered_map<string, vector<statsd_metric>> read_metrics();
+	unordered_map<string, vector<statsd_metric>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:

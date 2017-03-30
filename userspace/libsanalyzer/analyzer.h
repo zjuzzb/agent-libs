@@ -53,6 +53,7 @@ class falco_engine;
 class falco_events;
 class sisnp_baseliner;
 class tracer_emitter;
+class metric_limits;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -278,8 +279,30 @@ public:
 	}
 
 #ifndef _WIN32
+	inline void check_metric_limits()
+	{
+		static bool checked = false;
+		if(!checked)
+		{
+			ASSERT(m_configuration);
+			const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
+			ASSERT(!m_metric_limits);
+			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
+			{
+				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
+				if(m_configuration->get_excess_metrics_log())
+				{
+					m_metric_limits->enable_logging();
+				}
+			}
+			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
+			checked = true;
+		}
+	}
+
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
 	{
+		check_metric_limits();
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
@@ -333,6 +356,7 @@ public:
 
 		if(!m_app_checks.empty())
 		{
+			check_metric_limits();
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
@@ -427,8 +451,7 @@ VISIBILITY_PRIVATE
 	void get_statsd();
 
 #ifndef _WIN32
-	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-						   unsigned limit);
+	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}
@@ -662,6 +685,8 @@ VISIBILITY_PRIVATE
 	unique_ptr<falco_engine> m_falco_engine;
 	unique_ptr<falco_events> m_falco_events;
 
+	metric_limits::sptr_t m_metric_limits;
+
 	user_event_queue::ptr_t m_user_event_queue;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
@@ -691,4 +716,3 @@ VISIBILITY_PRIVATE
 };
 
 #endif // HAS_ANALYZER
-

@@ -225,6 +225,8 @@ static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
 static const unsigned APP_METRICS_HARD_LIMIT = 1000;
 static const unsigned JMX_METRICS_HARD_LIMIT = 3000;
 static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;
+static const unsigned CUSTOM_METRICS_FILTERS_HARD_LIMIT = 100;
+static const unsigned CUSTOM_METRICS_CACHE_HARD_LIMIT = 100000;
 
 static const uint32_t DROP_SCHED_ANALYZER_THRESHOLD = 1000;
 

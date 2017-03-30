@@ -99,6 +99,7 @@ add_library(sanalyzer STATIC
 	memdumper.cpp
 	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
+	metric_limits.cpp
 	metrics.cpp
 	parser_http.cpp
 	parser_mysql.cpp

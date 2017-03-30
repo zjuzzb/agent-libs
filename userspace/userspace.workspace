@@ -3,26 +3,26 @@
   <Environment>
     <![CDATA[]]>
   </Environment>
-  <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
+  <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug" Selected="no">
       <Environment/>
       <Project Name="docker" ConfigName="Debug"/>
       <Project Name="jq" ConfigName="Debug"/>
       <Project Name="sysdig" ConfigName="Debug"/>
+      <Project Name="sysdig" ConfigName="Debug"/>
+      <Project Name="sysdig" ConfigName="Debug"/>
       <Project Name="dragent" ConfigName="Debug"/>
-      <Project Name="sysdig" ConfigName="Debug"/>
-      <Project Name="sysdig" ConfigName="Debug"/>
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="Release" Selected="yes">
       <Environment/>
       <Project Name="docker" ConfigName="Release"/>
       <Project Name="jq" ConfigName="Release"/>
       <Project Name="sysdig" ConfigName="Release"/>
+      <Project Name="sysdig" ConfigName="Release"/>
+      <Project Name="sysdig" ConfigName="Release"/>
       <Project Name="dragent" ConfigName="Release"/>
-      <Project Name="sysdig" ConfigName="Release"/>
-      <Project Name="sysdig" ConfigName="Release"/>
     </WorkspaceConfiguration>
   </BuildMatrix>
 </CodeLite_Workspace>

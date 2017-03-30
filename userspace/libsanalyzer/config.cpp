@@ -729,6 +729,36 @@ void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t eve
 	m_docker_event_filter = event_filter;
 }
 
+metrics_filter_vec sinsp_configuration::get_metrics_filter() const
+{
+	return m_metrics_filter;
+}
+
+void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_filter)
+{
+	m_metrics_filter = metrics_filter;
+}
+
+bool sinsp_configuration::get_excess_metrics_log() const
+{
+	return m_excess_metrics_log;
+}
+
+void sinsp_configuration::set_excess_metrics_log(bool log)
+{
+	m_excess_metrics_log = log;
+}
+
+unsigned sinsp_configuration::get_metrics_cache() const
+{
+	return m_metrics_cache;
+}
+
+void sinsp_configuration::set_metrics_cache(unsigned sz)
+{
+	m_metrics_cache = sz;
+}
+
 unsigned sinsp_configuration::get_jmx_limit() const
 {
 	return m_jmx_limit;

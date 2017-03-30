@@ -10,6 +10,13 @@
 
 #ifndef _WIN32
 
+statsd_metric::statsd_metric():
+			m_timestamp(0),
+			m_type(type_t::NONE),
+			m_full_identifier_parsed(false)
+{
+}
+
 /*
  * Parse a line and fill data structures
  * return false if line does not belong to this object
@@ -242,7 +249,7 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 }
 
 #ifndef _WIN32
-unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
+unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724
@@ -273,8 +280,21 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 						timestamp = m_metric.timestamp();
 					}
 
-					ret[m_metric.container_id()].push_back(move(m_metric));
-					++metric_count;
+					std::string filter;
+					if(ml)
+					{
+						if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
+						{
+							ret[m_metric.container_id()].push_back(move(m_metric));
+							++metric_count;
+						}
+					}
+					else // no filtering, add every metric and log explicitly
+					{
+						metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
+						ret[m_metric.container_id()].push_back(move(m_metric));
+						++metric_count;
+					}
 					m_metric = statsd_metric();
 
 					parsed = m_metric.parse_line(buffer);
@@ -295,8 +315,21 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
 			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-			ret[m_metric.container_id()].push_back(move(m_metric));
-			++metric_count;
+			std::string filter;
+			if(ml)
+			{
+				if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
+				{
+					ret[m_metric.container_id()].push_back(move(m_metric));
+					++metric_count;
+				}
+			}
+			else // otherwise, add indiscriminately and log explicitly
+			{
+				metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
+				ret[m_metric.container_id()].push_back(move(m_metric));
+				++metric_count;
+			}
 			m_metric = statsd_metric();
 		}
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);

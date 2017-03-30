@@ -869,6 +869,23 @@ void dragent_configuration::init(Application* app)
 		m_autodrop_enabled = false;
 	}
 
+	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
+	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
+	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
+	// if first filter entry is empty or '*' and included, everything will be allowed, so it's pointless to have the filter list
+	if(metric_limits::first_includes_all(m_metrics_filter))
+	{
+		m_metrics_filter.clear();
+	}
+	else // if first rule is "exclude all", that's all we need
+	{
+		metric_limits::optimize_exclude_all(m_metrics_filter);
+	}
+	if(m_metrics_filter.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	{
+		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
+	}
+
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", false);
 }
 
@@ -1096,6 +1113,33 @@ void dragent_configuration::print_configuration()
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
 		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
+	}
+
+	g_log->information("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));
+	std::ostringstream os;
+	if(m_metrics_filter.size())
+	{
+		for(const auto& e : m_metrics_filter)
+		{
+			os << std::endl << (e.included() ? "include: " : "exclude: ") << *(e.filter());
+		}
+	}
+	g_log->information("Metrics filters:" + os.str());
+	if(m_excess_metric_log)
+	{
+		g_log->information("Metrics filter log enabled");
+	}
+	else
+	{
+		g_log->information("Metrics filter log disabled");
+	}
+	if(m_metrics_cache > 0)
+	{
+		g_log->information("Metrics cache enabled, size: " + std::to_string(m_metrics_cache));
+	}
+	else
+	{
+		g_log->information("Metrics cache disabled");
 	}
 
 	// Dump warnings+errors after the main config so they're more visible

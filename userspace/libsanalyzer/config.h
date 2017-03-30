@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "user_event.h"
+#include "metric_limits.h"
 #include "mesos.h"
 
 using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
@@ -128,6 +129,12 @@ public:
     void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
     user_event_filter_t::ptr_t get_docker_event_filter() const;
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
+	metrics_filter_vec get_metrics_filter() const;
+	void set_metrics_filter(const metrics_filter_vec& event_filter);
+	bool get_excess_metrics_log() const;
+	void set_excess_metrics_log(bool log);
+	unsigned get_metrics_cache() const;
+	void set_metrics_cache(unsigned sz);
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
 	bool get_command_lines_capture_enabled() const;
@@ -213,6 +220,10 @@ private:
 
     std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
+
+	metrics_filter_vec m_metrics_filter;
+	bool m_excess_metrics_log = false;
+	unsigned m_metrics_cache = 0;
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
