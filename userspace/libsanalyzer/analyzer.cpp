@@ -1868,13 +1868,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 					for (auto& appcheck : app_checks)
 					{
+						decltype(app_metrics_pid->second.end()) app_met_it;
 						if ((app_metrics_pid != m_app_metrics.end()) &&
-							(app_metrics_pid->second.find(appcheck.name()) !=
-							app_metrics_pid->second.end()))
+							((app_met_it = app_metrics_pid->second.find(appcheck.name())) !=
+							app_metrics_pid->second.end()) &&
+							(app_met_it->second.expiration_ts() >
+							(m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
 						{
-							// Found metrics for this pid and name that haven't
-							// been expired (or they would have been erased) so
-							// we use them instead of running the check again
+							// Found metrics for this pid and name that won't
+							// expire this cycle so we use them instead of
+							// running the check again
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								"App metrics for %d,%s are still good",
 								tinfo->m_pid, appcheck.name().c_str());
