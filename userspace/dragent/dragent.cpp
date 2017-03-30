@@ -398,7 +398,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 		{
 			auto parsed_log = sinsp_split(line, ':');
-			if(parsed_log.size() >= 3 && isdigit(parsed_log.at(0).at(0)))
+			// TODO: switch to json logging to avoid parsing issues
+			// using this project for example: https://github.com/madzak/python-json-logger
+			if(parsed_log.size() >= 3 &&
+				!parsed_log.at(0).empty() &&
+				isdigit(parsed_log.at(0).at(0)))
 			{
 				auto level = parsed_log.at(1);
 				auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
