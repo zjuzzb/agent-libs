@@ -768,11 +768,20 @@ message swarm_task {
     optional string container_id = 4;
 }
 
+message swarm_manager {
+    optional bool leader = 1;
+    optional string reachability = 2;
+}
+
 message swarm_node {
     // hostname of the node is inside common.name
     optional swarm_common common = 1;
     optional string role = 2;
     optional string ip_address = 3;
+    optional string version = 4;
+    optional string availability = 5;
+    optional string state = 6;
+    optional swarm_manager manager = 7;
 }
 
 message swarm_state {
@@ -785,6 +794,7 @@ message swarm_state {
     repeated swarm_service services = 2;
     repeated swarm_node nodes = 3;
     repeated swarm_task tasks = 4;
+    optional bool quorum = 5;
 }
 
 // ENTRY POINT MESSAGE

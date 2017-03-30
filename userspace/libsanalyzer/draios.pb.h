@@ -103,6 +103,7 @@ class swarm_port;
 class swarm_common;
 class swarm_service;
 class swarm_task;
+class swarm_manager;
 class swarm_node;
 class swarm_state;
 class metrics;
@@ -9461,6 +9462,103 @@ class swarm_task : public ::google::protobuf::Message {
 };
 // -------------------------------------------------------------------
 
+class swarm_manager : public ::google::protobuf::Message {
+ public:
+  swarm_manager();
+  virtual ~swarm_manager();
+
+  swarm_manager(const swarm_manager& from);
+
+  inline swarm_manager& operator=(const swarm_manager& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const swarm_manager& default_instance();
+
+  void Swap(swarm_manager* other);
+
+  // implements Message ----------------------------------------------
+
+  swarm_manager* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const swarm_manager& from);
+  void MergeFrom(const swarm_manager& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional bool leader = 1;
+  inline bool has_leader() const;
+  inline void clear_leader();
+  static const int kLeaderFieldNumber = 1;
+  inline bool leader() const;
+  inline void set_leader(bool value);
+
+  // optional string reachability = 2;
+  inline bool has_reachability() const;
+  inline void clear_reachability();
+  static const int kReachabilityFieldNumber = 2;
+  inline const ::std::string& reachability() const;
+  inline void set_reachability(const ::std::string& value);
+  inline void set_reachability(const char* value);
+  inline void set_reachability(const char* value, size_t size);
+  inline ::std::string* mutable_reachability();
+  inline ::std::string* release_reachability();
+  inline void set_allocated_reachability(::std::string* reachability);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.swarm_manager)
+ private:
+  inline void set_has_leader();
+  inline void clear_has_leader();
+  inline void set_has_reachability();
+  inline void clear_has_reachability();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* reachability_;
+  bool leader_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static swarm_manager* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class swarm_node : public ::google::protobuf::Message {
  public:
   swarm_node();
@@ -9548,6 +9646,51 @@ class swarm_node : public ::google::protobuf::Message {
   inline ::std::string* release_ip_address();
   inline void set_allocated_ip_address(::std::string* ip_address);
 
+  // optional string version = 4;
+  inline bool has_version() const;
+  inline void clear_version();
+  static const int kVersionFieldNumber = 4;
+  inline const ::std::string& version() const;
+  inline void set_version(const ::std::string& value);
+  inline void set_version(const char* value);
+  inline void set_version(const char* value, size_t size);
+  inline ::std::string* mutable_version();
+  inline ::std::string* release_version();
+  inline void set_allocated_version(::std::string* version);
+
+  // optional string availability = 5;
+  inline bool has_availability() const;
+  inline void clear_availability();
+  static const int kAvailabilityFieldNumber = 5;
+  inline const ::std::string& availability() const;
+  inline void set_availability(const ::std::string& value);
+  inline void set_availability(const char* value);
+  inline void set_availability(const char* value, size_t size);
+  inline ::std::string* mutable_availability();
+  inline ::std::string* release_availability();
+  inline void set_allocated_availability(::std::string* availability);
+
+  // optional string state = 6;
+  inline bool has_state() const;
+  inline void clear_state();
+  static const int kStateFieldNumber = 6;
+  inline const ::std::string& state() const;
+  inline void set_state(const ::std::string& value);
+  inline void set_state(const char* value);
+  inline void set_state(const char* value, size_t size);
+  inline ::std::string* mutable_state();
+  inline ::std::string* release_state();
+  inline void set_allocated_state(::std::string* state);
+
+  // optional .draiosproto.swarm_manager manager = 7;
+  inline bool has_manager() const;
+  inline void clear_manager();
+  static const int kManagerFieldNumber = 7;
+  inline const ::draiosproto::swarm_manager& manager() const;
+  inline ::draiosproto::swarm_manager* mutable_manager();
+  inline ::draiosproto::swarm_manager* release_manager();
+  inline void set_allocated_manager(::draiosproto::swarm_manager* manager);
+
   // @@protoc_insertion_point(class_scope:draiosproto.swarm_node)
  private:
   inline void set_has_common();
@@ -9556,15 +9699,27 @@ class swarm_node : public ::google::protobuf::Message {
   inline void clear_has_role();
   inline void set_has_ip_address();
   inline void clear_has_ip_address();
+  inline void set_has_version();
+  inline void clear_has_version();
+  inline void set_has_availability();
+  inline void clear_has_availability();
+  inline void set_has_state();
+  inline void clear_has_state();
+  inline void set_has_manager();
+  inline void clear_has_manager();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::swarm_common* common_;
   ::std::string* role_;
   ::std::string* ip_address_;
+  ::std::string* version_;
+  ::std::string* availability_;
+  ::std::string* state_;
+  ::draiosproto::swarm_manager* manager_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -9677,10 +9832,19 @@ class swarm_state : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_task >*
       mutable_tasks();
 
+  // optional bool quorum = 5;
+  inline bool has_quorum() const;
+  inline void clear_quorum();
+  static const int kQuorumFieldNumber = 5;
+  inline bool quorum() const;
+  inline void set_quorum(bool value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.swarm_state)
  private:
   inline void set_has_cluster_id();
   inline void clear_has_cluster_id();
+  inline void set_has_quorum();
+  inline void clear_has_quorum();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -9688,9 +9852,10 @@ class swarm_state : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_service > services_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_node > nodes_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_task > tasks_;
+  bool quorum_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -24725,6 +24890,102 @@ inline void swarm_task::set_allocated_container_id(::std::string* container_id) 
 
 // -------------------------------------------------------------------
 
+// swarm_manager
+
+// optional bool leader = 1;
+inline bool swarm_manager::has_leader() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void swarm_manager::set_has_leader() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void swarm_manager::clear_has_leader() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void swarm_manager::clear_leader() {
+  leader_ = false;
+  clear_has_leader();
+}
+inline bool swarm_manager::leader() const {
+  return leader_;
+}
+inline void swarm_manager::set_leader(bool value) {
+  set_has_leader();
+  leader_ = value;
+}
+
+// optional string reachability = 2;
+inline bool swarm_manager::has_reachability() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void swarm_manager::set_has_reachability() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void swarm_manager::clear_has_reachability() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void swarm_manager::clear_reachability() {
+  if (reachability_ != &::google::protobuf::internal::kEmptyString) {
+    reachability_->clear();
+  }
+  clear_has_reachability();
+}
+inline const ::std::string& swarm_manager::reachability() const {
+  return *reachability_;
+}
+inline void swarm_manager::set_reachability(const ::std::string& value) {
+  set_has_reachability();
+  if (reachability_ == &::google::protobuf::internal::kEmptyString) {
+    reachability_ = new ::std::string;
+  }
+  reachability_->assign(value);
+}
+inline void swarm_manager::set_reachability(const char* value) {
+  set_has_reachability();
+  if (reachability_ == &::google::protobuf::internal::kEmptyString) {
+    reachability_ = new ::std::string;
+  }
+  reachability_->assign(value);
+}
+inline void swarm_manager::set_reachability(const char* value, size_t size) {
+  set_has_reachability();
+  if (reachability_ == &::google::protobuf::internal::kEmptyString) {
+    reachability_ = new ::std::string;
+  }
+  reachability_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* swarm_manager::mutable_reachability() {
+  set_has_reachability();
+  if (reachability_ == &::google::protobuf::internal::kEmptyString) {
+    reachability_ = new ::std::string;
+  }
+  return reachability_;
+}
+inline ::std::string* swarm_manager::release_reachability() {
+  clear_has_reachability();
+  if (reachability_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = reachability_;
+    reachability_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void swarm_manager::set_allocated_reachability(::std::string* reachability) {
+  if (reachability_ != &::google::protobuf::internal::kEmptyString) {
+    delete reachability_;
+  }
+  if (reachability) {
+    set_has_reachability();
+    reachability_ = reachability;
+  } else {
+    clear_has_reachability();
+    reachability_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
 // swarm_node
 
 // optional .draiosproto.swarm_common common = 1;
@@ -24905,6 +25166,254 @@ inline void swarm_node::set_allocated_ip_address(::std::string* ip_address) {
   }
 }
 
+// optional string version = 4;
+inline bool swarm_node::has_version() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void swarm_node::set_has_version() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void swarm_node::clear_has_version() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void swarm_node::clear_version() {
+  if (version_ != &::google::protobuf::internal::kEmptyString) {
+    version_->clear();
+  }
+  clear_has_version();
+}
+inline const ::std::string& swarm_node::version() const {
+  return *version_;
+}
+inline void swarm_node::set_version(const ::std::string& value) {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  version_->assign(value);
+}
+inline void swarm_node::set_version(const char* value) {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  version_->assign(value);
+}
+inline void swarm_node::set_version(const char* value, size_t size) {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  version_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* swarm_node::mutable_version() {
+  set_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    version_ = new ::std::string;
+  }
+  return version_;
+}
+inline ::std::string* swarm_node::release_version() {
+  clear_has_version();
+  if (version_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = version_;
+    version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void swarm_node::set_allocated_version(::std::string* version) {
+  if (version_ != &::google::protobuf::internal::kEmptyString) {
+    delete version_;
+  }
+  if (version) {
+    set_has_version();
+    version_ = version;
+  } else {
+    clear_has_version();
+    version_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string availability = 5;
+inline bool swarm_node::has_availability() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void swarm_node::set_has_availability() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void swarm_node::clear_has_availability() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void swarm_node::clear_availability() {
+  if (availability_ != &::google::protobuf::internal::kEmptyString) {
+    availability_->clear();
+  }
+  clear_has_availability();
+}
+inline const ::std::string& swarm_node::availability() const {
+  return *availability_;
+}
+inline void swarm_node::set_availability(const ::std::string& value) {
+  set_has_availability();
+  if (availability_ == &::google::protobuf::internal::kEmptyString) {
+    availability_ = new ::std::string;
+  }
+  availability_->assign(value);
+}
+inline void swarm_node::set_availability(const char* value) {
+  set_has_availability();
+  if (availability_ == &::google::protobuf::internal::kEmptyString) {
+    availability_ = new ::std::string;
+  }
+  availability_->assign(value);
+}
+inline void swarm_node::set_availability(const char* value, size_t size) {
+  set_has_availability();
+  if (availability_ == &::google::protobuf::internal::kEmptyString) {
+    availability_ = new ::std::string;
+  }
+  availability_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* swarm_node::mutable_availability() {
+  set_has_availability();
+  if (availability_ == &::google::protobuf::internal::kEmptyString) {
+    availability_ = new ::std::string;
+  }
+  return availability_;
+}
+inline ::std::string* swarm_node::release_availability() {
+  clear_has_availability();
+  if (availability_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = availability_;
+    availability_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void swarm_node::set_allocated_availability(::std::string* availability) {
+  if (availability_ != &::google::protobuf::internal::kEmptyString) {
+    delete availability_;
+  }
+  if (availability) {
+    set_has_availability();
+    availability_ = availability;
+  } else {
+    clear_has_availability();
+    availability_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string state = 6;
+inline bool swarm_node::has_state() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void swarm_node::set_has_state() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void swarm_node::clear_has_state() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void swarm_node::clear_state() {
+  if (state_ != &::google::protobuf::internal::kEmptyString) {
+    state_->clear();
+  }
+  clear_has_state();
+}
+inline const ::std::string& swarm_node::state() const {
+  return *state_;
+}
+inline void swarm_node::set_state(const ::std::string& value) {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  state_->assign(value);
+}
+inline void swarm_node::set_state(const char* value) {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  state_->assign(value);
+}
+inline void swarm_node::set_state(const char* value, size_t size) {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  state_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* swarm_node::mutable_state() {
+  set_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    state_ = new ::std::string;
+  }
+  return state_;
+}
+inline ::std::string* swarm_node::release_state() {
+  clear_has_state();
+  if (state_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = state_;
+    state_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void swarm_node::set_allocated_state(::std::string* state) {
+  if (state_ != &::google::protobuf::internal::kEmptyString) {
+    delete state_;
+  }
+  if (state) {
+    set_has_state();
+    state_ = state;
+  } else {
+    clear_has_state();
+    state_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional .draiosproto.swarm_manager manager = 7;
+inline bool swarm_node::has_manager() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void swarm_node::set_has_manager() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void swarm_node::clear_has_manager() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void swarm_node::clear_manager() {
+  if (manager_ != NULL) manager_->::draiosproto::swarm_manager::Clear();
+  clear_has_manager();
+}
+inline const ::draiosproto::swarm_manager& swarm_node::manager() const {
+  return manager_ != NULL ? *manager_ : *default_instance_->manager_;
+}
+inline ::draiosproto::swarm_manager* swarm_node::mutable_manager() {
+  set_has_manager();
+  if (manager_ == NULL) manager_ = new ::draiosproto::swarm_manager;
+  return manager_;
+}
+inline ::draiosproto::swarm_manager* swarm_node::release_manager() {
+  clear_has_manager();
+  ::draiosproto::swarm_manager* temp = manager_;
+  manager_ = NULL;
+  return temp;
+}
+inline void swarm_node::set_allocated_manager(::draiosproto::swarm_manager* manager) {
+  delete manager_;
+  manager_ = manager;
+  if (manager) {
+    set_has_manager();
+  } else {
+    clear_has_manager();
+  }
+}
+
 // -------------------------------------------------------------------
 
 // swarm_state
@@ -25052,6 +25561,28 @@ swarm_state::tasks() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_task >*
 swarm_state::mutable_tasks() {
   return &tasks_;
+}
+
+// optional bool quorum = 5;
+inline bool swarm_state::has_quorum() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void swarm_state::set_has_quorum() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void swarm_state::clear_has_quorum() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void swarm_state::clear_quorum() {
+  quorum_ = false;
+  clear_has_quorum();
+}
+inline bool swarm_state::quorum() const {
+  return quorum_;
+}
+inline void swarm_state::set_quorum(bool value) {
+  set_has_quorum();
+  quorum_ = value;
 }
 
 // -------------------------------------------------------------------

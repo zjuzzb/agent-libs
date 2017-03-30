@@ -50,7 +50,7 @@ func serviceToProtobuf(service swarm.Service) *draiosproto.SwarmService {
 }
 
 func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
-	cidlen := len(task.Status.ContainerStatus.ContainerID);
+	cidlen := len(task.Status.ContainerStatus.ContainerID)
 	if cidlen > 12 {
 		cidlen = 12
 	}
@@ -72,11 +72,37 @@ func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
 	} else {
 		addr = node.Status.Addr
 	}
-	return &draiosproto.SwarmNode{Common: &draiosproto.SwarmCommon{
-		Id:     proto.String(node.ID),
-		Name:   proto.String(node.Description.Hostname),
-		Labels: labelsToProtobuf(node.Spec.Labels),
-	}, Role: proto.String(string(node.Spec.Role)), IpAddress: proto.String(addr)}
+	sn := draiosproto.SwarmNode{
+		Common: &draiosproto.SwarmCommon{
+			Id:     proto.String(node.ID),
+			Name:   proto.String(node.Description.Hostname),
+			Labels: labelsToProtobuf(node.Spec.Labels),
+		},
+		Role: proto.String(string(node.Spec.Role)),
+		IpAddress: proto.String(addr),
+		Version: proto.String(node.Description.Engine.EngineVersion),
+		Availability: proto.String(string(node.Spec.Availability)),
+		State: proto.String(string(node.Status.State))}
+	if node.ManagerStatus != nil {
+		sn.Manager = &draiosproto.SwarmManager{
+			Leader: proto.Bool(node.ManagerStatus.Leader),
+			Reachability: proto.String(string(node.ManagerStatus.Reachability))}
+	}
+	return &sn
+}
+
+func quorum(nodes []swarm.Node) (*bool) {
+	var on, total uint32 = 0, 0
+	for _, node := range nodes {
+		if node.ManagerStatus != nil {
+			if node.ManagerStatus.Reachability == swarm.ReachabilityReachable {
+				on++
+			}
+			total++
+		}
+	}
+	var q bool = on >= (total / 2) + 1
+	return &q
 }
 
 func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
@@ -126,6 +152,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 				m.Nodes = append(m.Nodes, nodeToProtobuf(node))
 				// fmt.Printf("node id=%s name=%s role=%s availability=%s\n", node.ID, node.Description.Hostname, node.Spec.Role, node.Spec.Availability)
 			}
+			m.Quorum = quorum(nodes)
 		} else {
 			log.Errorf("Error fetching nodes: %s\n", err)
 		}
@@ -148,7 +175,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
     if err != nil {
         res.Errstr = proto.String(err.Error())
     }
-	res.State = m;
+	res.State = m
 
     log.Debugf("SwarmState Sending response: %s", res.String())
 
