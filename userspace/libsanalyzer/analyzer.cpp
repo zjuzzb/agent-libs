@@ -3292,9 +3292,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				// Only run every 10 seconds (see analyzer.h)
 				if (m_configuration->get_cointerface_enabled())
 				{
+					tracer_emitter ss_trc("get_swarm_state", f_trc);
 					m_swarmstate_interval.run([this]()
 					{
-						g_logger.format(sinsp_logger::SEV_INFO, "Sending Swarm State Command");
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Sending Swarm State Command");
 						//  callback to be executed by coclient::next()
 						coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 							m_metrics->mutable_swarm()->Clear();
@@ -3305,11 +3306,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 								m_docker_swarm_state->CopyFrom(res->state());
 							}
 						};
-						sdc_internal::swarm_state_command cmd;
-						m_coclient.prepare(&cmd, sdc_internal::SWARM_STATE_COMMAND, callback);
+						m_coclient.get_swarm_state(callback);
 					});
 					// Read available responses
 					m_coclient.next();
+					ss_trc.stop();
+					tracer_emitter copy_trc("copy_swarm_state", f_trc);
 					// Copy from cached swarm state
 					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 				}

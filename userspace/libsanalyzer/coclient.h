@@ -32,6 +32,7 @@ public:
 	virtual ~coclient();
 
 	void ping(int64_t token, response_cb_t response_cb);
+	void get_swarm_state(response_cb_t response_cb);
 
 	// Check for any responses and call their callback functions.
 	void next();
@@ -40,10 +41,10 @@ public:
 	// the cointerface process, such as the unix domain socket.
 	static void cleanup();
 
+protected:
 	// Set up state for this rpc and perform the rpc.
 	void prepare(google::protobuf::Message *request_msg, sdc_internal::cointerface_message_type msgtype,
 		     response_cb_t response_cb);
-protected:
 
 	// Connect to the cointerface process
 	void connect();
@@ -75,4 +76,5 @@ protected:
 	google::protobuf::TextFormat::Printer m_print;
 
 	static std::string m_domain_sock;
+	bool m_outstanding_swarm_state;
 };
