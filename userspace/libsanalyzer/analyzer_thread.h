@@ -73,28 +73,7 @@ public:
 };
 
 class proc_config;
-/*
-<<<<<<< HEAD
-=======
-class thread_analyzer_dyn_state
-{
-public:
-	// Time spent by this process on each of the CPUs
-	vector<uint64_t> m_cpu_time_ns;
-	// Syscall error table
-	sinsp_error_counters m_syscall_errors;
-	// Completed transactions lists
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
-	// The protocol state
-	sinsp_protostate m_protostate;
-	unique_ptr<proc_config> m_proc_config;
 
-	// Used just by nodriver mode
-	sinsp_proc_file_stats m_file_io_stats;
-};
->>>>>>> dev
-*/
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
 // WARNING: This class is allocated with `placement new`, so destructor must be
