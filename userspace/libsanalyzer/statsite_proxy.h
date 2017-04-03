@@ -103,8 +103,6 @@ private:
 	double m_count;
 	double m_stdev;
 	double m_median;
-	double m_percentile_95;
-	double m_percentile_99;
 	percentile::p_map_type m_percentiles;
 
 	friend class lua_cbacks;

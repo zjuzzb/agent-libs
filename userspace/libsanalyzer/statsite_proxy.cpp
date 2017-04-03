@@ -191,14 +191,6 @@ bool statsd_metric::parse_line(const string& line)
 				long percentile = strtol(&subtype.c_str()[1], nullptr, 10);
 				if(0L != percentile)
 				{
-					if(subtype == "p95")
-					{
-						m_percentile_95 = value;
-					}
-					else if(subtype == "p99")
-					{
-						m_percentile_99 = value;
-					}
 					m_percentiles[percentile] = value;
 				}
 			}
