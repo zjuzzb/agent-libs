@@ -4,6 +4,7 @@
 #include "error_handler.h"
 #include "utils.h"
 #include "memdumper.h"
+#include "Poco/DateTimeFormatter.h"
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -762,6 +763,7 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 	SharedPtr<dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
+		g_log->debug("Dequeued dump request token=" + request->m_token);
 		switch(request->m_request_type)
 		{
 		case dump_job_request::JOB_START:
@@ -911,8 +913,6 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 		return;
 	}
 
-	g_log->information("starting memory dumper job, file: " + job_state->m_file);
-
 	// We inject a notification to make it easier to identify the starting point
 	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
 
@@ -942,6 +942,10 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
 	job_state->m_send_file = request.m_send_file;
 	job_state->m_start_ns = ts;
+
+	g_log->debug("starting memory dumper job, file: " + job_state->m_file
+		     + " start time " + Poco::DateTimeFormatter::format(Poco::Timestamp((job_state->m_start_ns - job_state->m_past_duration_ns) / 1000), "%Y-%m-%d %H:%M:%S.%i")
+		     + " end time " + Poco::DateTimeFormatter::format(Poco::Timestamp((job_state->m_start_ns + job_state->m_duration_ns) /1000), "%Y-%m-%d %H:%M:%S.%i"));
 
 	m_running_memdump_jobs.push_back(job_state);
 }
