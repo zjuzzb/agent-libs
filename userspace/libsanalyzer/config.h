@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "user_event.h"
+#include "metric_limits.h"
 #include "mesos.h"
 
 using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
@@ -130,13 +131,28 @@ public:
     void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
     user_event_filter_t::ptr_t get_docker_event_filter() const;
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
+	metrics_filter_vec get_metrics_filter() const;
+	void set_metrics_filter(const metrics_filter_vec& event_filter);
+	bool get_excess_metrics_log() const;
+	void set_excess_metrics_log(bool log);
+	unsigned get_metrics_cache() const;
+	void set_metrics_cache(unsigned sz);
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
+	bool get_command_lines_capture_enabled() const;
+	void set_command_lines_capture_enabled(bool enabled);
+	bool get_command_lines_capture_all_commands() const;
+	void set_command_lines_capture_all_commands(bool all_commands);
+	bool get_capture_dragent_events() const;
+	void set_capture_dragent_events(bool enabled);
+	uint64_t get_memdump_size() const;
+	void set_memdump_size(uint64_t size);
 	unsigned get_jmx_limit() const;
 	void set_jmx_limit(unsigned limit);
-
 	const std::set<double>& get_percentiles() const;
 	void set_percentiles(const std::set<double>&);
+	unsigned get_app_checks_limit() const;
+	void set_app_checks_limit(unsigned value);
 
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
@@ -203,13 +219,22 @@ private:
 	bool m_curl_debug;
 
 	bool m_falco_baselining_enabled;
+	bool m_command_lines_capture_enabled;
+	bool m_command_lines_capture_all_commands;
+	bool m_capture_dragent_events;
+	uint64_t m_memdump_size;
 
 	uint32_t m_protocols_truncation_size;
 
     std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 
+	metrics_filter_vec m_metrics_filter;
+	bool m_excess_metrics_log = false;
+	unsigned m_metrics_cache = 0;
+
 	unsigned m_jmx_limit;
+	unsigned m_app_checks_limit;
 };
 
 #endif // HAS_ANALYZER

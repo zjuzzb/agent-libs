@@ -65,6 +65,17 @@ public:
 		run(run_function, captured_event_callback, no_filter, configuration);
 	}
 
+	static void run_nodriver(run_callback_t run_function,
+					captured_event_callback_t captured_event_callback)
+	{
+		event_filter_t no_filter = [](sinsp_evt *)
+		{
+			return true;
+		};
+		sinsp_configuration configuration;
+		run(run_function, captured_event_callback, no_filter, configuration, NULL, 0, 0, 0, SCAP_MODE_NODRIVER);
+	}
+
 	static void run(
 	    run_callback_t run_function,
 	    captured_event_callback_t captured_event_callback,
@@ -73,9 +84,11 @@ public:
 	    analyzer_callback_interface* analyzer_callback = NULL,
     	uint32_t max_thread_table_size = 0,
 		uint64_t thread_timeout_ns = 0,
-		uint64_t inactive_thread_scan_time_ns = 0)
+		uint64_t inactive_thread_scan_time_ns = 0,
+		scap_mode_t mode = SCAP_MODE_LIVE)
 	{
 		event_capture capturing;
+		capturing.m_mode = mode;
 		capturing.m_captured_event_callback = captured_event_callback;
 		capturing.m_filter = filter;
 		capturing.m_configuration = configuration;
@@ -171,6 +184,7 @@ private:
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
 	analyzer_callback_interface* m_analyzer_callback;
+	scap_mode_t m_mode;
 };
 
 

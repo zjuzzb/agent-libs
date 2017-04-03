@@ -573,10 +573,23 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			|| strcmp(entry->mnt_type, "rpc_pipefs") == 0
 			|| strcmp(entry->mnt_type, "sysfs") == 0
 			|| strcmp(entry->mnt_type, "devfs") == 0
+			|| strcmp(entry->mnt_type, "devtmpfs") == 0
 			|| strcmp(entry->mnt_type, "kernfs") == 0
 			|| strcmp(entry->mnt_type, "ignore") == 0
 			|| strcmp(entry->mnt_type, "rootfs") == 0
 			|| strcmp(entry->mnt_type, "none") == 0)
+		{
+			continue;
+		}
+
+		// Skip stuff like /proc/kcore, /sys/fs/cgroup, etc.
+		// Docker and other container/orch systems each use a slightly
+		// different path for their secrets directory so skip all
+		// "*/secrets*" mounts
+		if (strcmp(entry->mnt_type, "tmpfs") == 0 &&
+		    (strncmp(entry->mnt_dir, "/proc/", strlen("/proc/")) == 0
+		     || strcmp(entry->mnt_dir, "/sys/fs/cgroup") == 0
+		     || strstr(entry->mnt_dir, "/secrets") != nullptr))
 		{
 			continue;
 		}
@@ -763,7 +776,24 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
+
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
+{
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
+	static const vector<const char*> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	return read_net_dev(net_dev_path, &m_last_in_bytes, &m_last_out_bytes, BAD_INTERFACE_NAMES);
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
+																	  uint64_t *old_last_out_bytes)
+{
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/%ld/net/dev", scap_get_host_root(), pid);
+	return read_net_dev(net_dev_path, old_last_in_bytes, old_last_out_bytes);
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names)
 {
 	pair<uint32_t, uint32_t> ret;
 
@@ -773,9 +803,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 		return ret;
 	}
 
-	char net_dev_path[100];
-	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
-	auto net_dev = fopen(net_dev_path, "r");
+	auto net_dev = fopen(path.c_str(), "r");
 	if(net_dev == NULL)
 	{
 		return ret;
@@ -795,21 +823,18 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	}
 
 	char interface_name[30];
-	unsigned ign;
 	uint64_t in_bytes, out_bytes;
 	uint64_t tot_in_bytes = 0;
 	uint64_t tot_out_bytes = 0;
 
-	static const array<const char*, 7> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
-	while(fscanf(net_dev, "%s %lu %u %u %u %u %u %u %u %lu %u %u %u %u %u %u %u",
-				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
-				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
+	while(fscanf(net_dev, "%s %lu %*u %*u %*u %*u %*u %*u %*u %lu %*u %*u %*u %*u %*u %*u %*u",
+				 interface_name, &in_bytes, &out_bytes) > 0)
 	{
-		if(find_if(BAD_INTERFACE_NAMES.begin(), BAD_INTERFACE_NAMES.end(), [&interface_name](const char* bad_interface) {
-				return strcasestr(interface_name, bad_interface) == interface_name;
-			}) == BAD_INTERFACE_NAMES.end())
+		if(find_if(bad_interface_names.begin(), bad_interface_names.end(), [&interface_name](const char* bad_interface) {
+			return strcasestr(interface_name, bad_interface) == interface_name;
+		}) == bad_interface_names.end())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
+			// g_logger.format(sinsp_logger::SEV_INFO, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
 			tot_in_bytes += in_bytes;
 			tot_out_bytes += out_bytes;
 		}
@@ -817,15 +842,74 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	fclose(net_dev);
 
 	// Calculate delta, no delta if it is the first time we read
-	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
+	if(*old_last_in_bytes > 0 || *old_last_out_bytes > 0)
 	{
 		// Network metrics use uint32_t on protobuf, so we use the same
 		// for deltas
-		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
-		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
+		ret.first = static_cast<uint32_t>(tot_in_bytes - *old_last_in_bytes);
+		ret.second = static_cast<uint32_t>(tot_out_bytes - *old_last_out_bytes);
 	}
-	m_last_in_bytes = tot_in_bytes;
-	m_last_out_bytes = tot_out_bytes;
+	*old_last_in_bytes = tot_in_bytes;
+	*old_last_out_bytes = tot_out_bytes;
+
+	return ret;
+}
+
+sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid, sinsp_proc_file_stats *old)
+{
+	char filepath[SCAP_MAX_PATH_SIZE];
+	snprintf(filepath, SCAP_MAX_PATH_SIZE, "%s/proc/%ld/io", scap_get_host_root(), pid);
+
+	sinsp_proc_file_stats ret, last;
+
+	if(!m_is_live_capture)
+	{
+		// Reading this data does not makes sense if it's not a live capture
+		return ret;
+	}
+
+	auto io_file = fopen(filepath, "r");
+	if(io_file == NULL)
+	{
+		return ret;
+	}
+
+	char field[20];
+	uint32_t value;
+	while(fscanf(io_file, "%s %u", field, &value) > 0)
+	{
+		string field_s(field);
+		if (field_s == "rchar:")
+		{
+			last.m_read_bytes = value;
+		}
+		else if (field_s == "wchar:")
+		{
+			last.m_write_bytes = value;
+		}
+		else if(field_s == "syscr:")
+		{
+			last.m_syscr = value;
+		}
+		else if (field_s == "syscw:")
+		{
+			last.m_syscw = value;
+			// no need to read more
+			break;
+		}
+	}
+
+	fclose(io_file);
+
+	// Calculate delta, no delta if it is the first time we read
+	if(old->has_values())
+	{
+		ret.m_syscr = last.m_syscr - old->m_syscr;
+		ret.m_syscw = last.m_syscw - old->m_syscw;
+		ret.m_read_bytes = last.m_read_bytes - old->m_read_bytes;
+		ret.m_write_bytes = last.m_write_bytes - old->m_write_bytes;
+	}
+	*old = last;
 
 	return ret;
 }
@@ -962,8 +1046,6 @@ bool mounted_fs_reader::change_ns(int destpid)
 int mounted_fs_reader::run()
 {
 	auto pid = getpid();
-	uint64_t m_last_loop_s = 0;
-	struct rusage mem_usage;
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
 	if(getppid() == 1)
@@ -985,10 +1067,7 @@ int mounted_fs_reader::run()
 	while(true)
 	{
 		// Send heartbeat
-		m_last_loop_s = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
-		getrusage(RUSAGE_SELF, &mem_usage);
-		fprintf(stderr,"HB,%d,%ld,%ld\n", pid, mem_usage.ru_maxrss, m_last_loop_s);
-		fflush(stderr);
+		send_subprocess_heartbeat();
 		auto request_s = m_input.receive(1);
 		if(!request_s.empty())
 		{

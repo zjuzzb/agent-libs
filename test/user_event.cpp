@@ -137,3 +137,59 @@ TEST(user_event, filter_t)
 	EXPECT_FALSE(flt.allows_all("node"));
 	EXPECT_FALSE(flt.allows_all());
 }
+
+TEST(user_event, scope)
+{
+	EXPECT_TRUE(event_scope::check_key_format("hostmac"));
+	EXPECT_TRUE(event_scope::check_key_format("hostmac123"));
+	EXPECT_TRUE(event_scope::check_key_format("host.mac"));
+	EXPECT_TRUE(event_scope::check_key_format("host-mac"));
+	EXPECT_TRUE(event_scope::check_key_format("host_mac"));
+	EXPECT_TRUE(event_scope::check_key_format("host/mac"));
+	EXPECT_FALSE(event_scope::check_key_format("host=mac"));
+	EXPECT_FALSE(event_scope::check_key_format("host mac"));
+	EXPECT_TRUE(event_scope::check_key_format("h_o.s/t-n_a--m/e.1_2-3/4"));
+
+	event_scope es("host.mac", "00:1c:42:9a:bc:53");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:9a:bc:53'");
+	es.add("container.id", "93015e6ddff4");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:9a:bc:53' and container.id='93015e6ddff4'");
+	es.add("dummy", "some'thing", "or");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:9a:bc:53' and container.id='93015e6ddff4' or dummy='some\\'thing'");
+
+	es.clear();
+	es.add("host.mac", "00:1c:42:9a:bc:53");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:9a:bc:53'");
+	es.add("container.id", "93015e6ddff4");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:9a:bc:53' and container.id='93015e6ddff4'");
+	es.add("dummy", "some'thing", "or");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:9a:bc:53' and container.id='93015e6ddff4' or dummy='some\\'thing'");
+
+	es.clear();
+	es.add("host=mac", "00:1c:42:9a:bc:53");
+	EXPECT_EQ(es.get(), "");
+
+	es.clear();
+	es.add("host mac", "00:1c:42:9a:bc:53");
+	EXPECT_EQ(es.get(), "");
+
+	es.clear();
+	es.add("host.mac", "00:1c:42:'9a:bc:'53");
+	EXPECT_EQ(es.get(), "host.mac='00:1c:42:\\'9a:bc:\\'53'");
+}
+
+TEST(user_event, event)
+{
+	event_scope scope;
+	scope.add("host.mac", "00:1c:42:9a:bc:53");
+	scope.add("container.image", "gcr.io/google_containers/kubernetes-dashboard-amd64:v1.5.1");
+	std::string id("4280494e6a4b080246199030dcb7cb716f6c6492d8699d58e316ce22e758b573");
+	scope.add("container.id", id.substr(0, 12));
+	sinsp_user_event::tag_map_t tags{{"source", "docker"}};
+	EXPECT_EQ(sinsp_user_event::to_string(static_cast<uint64_t>(~0), "Event Name", "Event Status", std::move(scope), std::move(tags)),
+			  "timestamp: 18446744073709551615\n"
+			  "name: \"Event Name\"\n"
+			  "description: \"Event Status\"\n"
+			  "scope: \"host.mac='00:1c:42:9a:bc:53' and container.image='gcr.io/google_containers/kubernetes-dashboard-amd64:v1.5.1' and container.id='4280494e6a4b'\"\n"
+			  "tags:\n  \"source\": \"docker\"");
+}

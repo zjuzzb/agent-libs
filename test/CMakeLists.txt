@@ -10,6 +10,7 @@ set(DRAIOS_JQ_VERSION "1.5")
 set(DRAIOS_B64_VERSION "1.2")
 
 add_subdirectory(resources)
+add_subdirectory(diff_pb)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
@@ -35,6 +36,7 @@ add_definitions( -DHAS_ANALYZER )
 
 add_executable(tests
 	analyzer_test.cpp
+	app_checks.cpp
 	capture_to_file_test.cpp
 	container.cpp
 	event_capture.cpp
@@ -42,6 +44,7 @@ add_executable(tests
 	forking.cpp
 	fs.cpp
 	tracers.cpp
+	metric_limits.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp
@@ -53,6 +56,7 @@ add_executable(tests
 	sys_call_test.cpp
 	tcp_client_server.cpp
 	tcp_client_server_ipv4_mapped.cpp
+	thread_state.cpp
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
@@ -66,12 +70,12 @@ add_executable(tests
 	token_bucket_test.cpp
 	user_event.cpp
 	uri.cpp
-	json_query.cpp)
+	json_query.cpp nodriver.cpp)
 
 target_link_libraries(tests
 	pthread
-	sanalyzer 
-		${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+	sanalyzer
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a

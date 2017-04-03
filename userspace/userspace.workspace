@@ -3,15 +3,11 @@
   <Environment>
     <![CDATA[]]>
   </Environment>
-  <Project Name="kubeget" Path="../experiments/kubeget/kubeget.project" Active="No"/>
-  <Project Name="mesos" Path="../experiments/mesos/mesos.project" Active="No"/>
   <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
   <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
     <WorkspaceConfiguration Name="Debug" Selected="no">
       <Environment/>
-      <Project Name="kubeget" ConfigName="Debug"/>
-      <Project Name="mesos" ConfigName="Debug"/>
       <Project Name="docker" ConfigName="Debug"/>
       <Project Name="jq" ConfigName="Debug"/>
       <Project Name="sysdig" ConfigName="Debug"/>
@@ -21,8 +17,6 @@
     </WorkspaceConfiguration>
     <WorkspaceConfiguration Name="Release" Selected="yes">
       <Environment/>
-      <Project Name="kubeget" ConfigName="Release"/>
-      <Project Name="mesos" ConfigName="Release"/>
       <Project Name="docker" ConfigName="Release"/>
       <Project Name="jq" ConfigName="Release"/>
       <Project Name="sysdig" ConfigName="Release"/>

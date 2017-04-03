@@ -1,5 +1,7 @@
 #define VISIBILITY_PRIVATE
 
+#include <iostream>
+
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -342,7 +344,7 @@ TEST_F(sys_call_test, fs_mkdir_rmdir)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		mkdir(UNEXISTENT_DIRNAME, 0);
-
+		
 		if(mkdir(DIRNAME, 0) != 0)
 		{
 			FAIL();
@@ -367,13 +369,10 @@ TEST_F(sys_call_test, fs_mkdir_rmdir)
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 
-		if(type == PPME_SYSCALL_MKDIR_E)
+		if(type == PPME_SYSCALL_MKDIR_2_E)
 		{
-			string fname = e->get_param_value_str("path", false);
-			if(fname == UNEXISTENT_DIRNAME)
+			if(callnum == 0)
 			{
-				EXPECT_EQ(UNEXISTENT_DIRNAME, e->get_param_value_str("path"));
-				EXPECT_EQ(UNEXISTENT_DIRNAME, e->get_param_value_str("path", false));
 				EXPECT_EQ("0", e->get_param_value_str("mode"));
 				callnum++;
 			}
@@ -381,45 +380,49 @@ TEST_F(sys_call_test, fs_mkdir_rmdir)
 			{
 				if(callnum == 2)
 				{
-					EXPECT_EQ(cwd + DIRNAME, e->get_param_value_str("path"));
-					EXPECT_EQ(DIRNAME, e->get_param_value_str("path", false));
 					EXPECT_EQ("0", e->get_param_value_str("mode"));
 					callnum++;
 				}
 			}
 		}
-		else if(type == PPME_SYSCALL_MKDIR_X)
+		else if(type == PPME_SYSCALL_MKDIR_2_X)
 		{
 			if(callnum == 1)
 			{
-				EXPECT_NE("0", e->get_param_value_str("res"));
+			        EXPECT_NE("0", e->get_param_value_str("res"));
+				EXPECT_EQ(UNEXISTENT_DIRNAME, e->get_param_value_str("path"));
+				EXPECT_EQ(UNEXISTENT_DIRNAME, e->get_param_value_str("path", false));
 				callnum++;
 			}
 			else if(callnum == 3)
 			{
-				EXPECT_EQ("0", e->get_param_value_str("res"));
+			        EXPECT_EQ("0", e->get_param_value_str("res"));
+			        EXPECT_EQ(cwd + DIRNAME, e->get_param_value_str("path"));
+				EXPECT_EQ(DIRNAME, e->get_param_value_str("path", false));
 				callnum++;
 			}
 		}
-		else if(type == PPME_SYSCALL_RMDIR_E)
+		else if(type == PPME_SYSCALL_RMDIR_2_E)
 		{
 			if(callnum == 4 || callnum == 6)
 			{
-				EXPECT_EQ(DIRNAME, e->get_param_value_str("path", false));
-				EXPECT_EQ(cwd + DIRNAME, e->get_param_value_str("path"));
 				callnum++;
 			}
 		}
-		else if(type == PPME_SYSCALL_RMDIR_X)
+		else if(type == PPME_SYSCALL_RMDIR_2_X)
 		{
 			if(callnum == 5)
 			{
 				EXPECT_LE(0, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ(DIRNAME, e->get_param_value_str("path", false));
+				EXPECT_EQ(cwd + DIRNAME, e->get_param_value_str("path"));
 				callnum++;
 			}
 			else if(callnum == 7)
 			{
 				EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ(DIRNAME, e->get_param_value_str("path", false));
+				EXPECT_EQ(cwd + DIRNAME, e->get_param_value_str("path"));
 				callnum++;
 			}
 		}
@@ -983,7 +986,8 @@ TEST_F(sys_call_test, fs_dup)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return m_tid_filter(evt);
+		return m_tid_filter(evt) &&
+				(evt->get_type() == PPME_SYSCALL_DUP_E || evt->get_type() == PPME_SYSCALL_DUP_X);
 	};
 
 	//
@@ -1020,7 +1024,6 @@ TEST_F(sys_call_test, fs_dup)
 	{
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
-
 		if(type == PPME_SYSCALL_DUP_E)
 		{
 			if(callnum == 0)
@@ -1045,7 +1048,11 @@ TEST_F(sys_call_test, fs_dup)
 			}
 			else if(callnum == 8)
 			{
-				EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("fd", false)));
+#ifdef __x86_64__
+				EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+#else
+				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
+#endif
 				callnum++;				
 			}
 			else if(callnum == 10)
@@ -1348,16 +1355,26 @@ TEST_F(sys_call_test, fs_sendfile_failed)
 
 		if(type == PPME_SYSCALL_SENDFILE_E)
 		{
-			EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("out_fd", false)));
-			EXPECT_EQ(-2, NumberParser::parse(e->get_param_value_str("in_fd", false)));
-			EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
-			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			EXPECT_NO_THROW({
+#ifdef __x86_64__
+				EXPECT_EQ("4294967295", e->get_param_value_str("out_fd", false));
+				EXPECT_EQ("4294967294", e->get_param_value_str("in_fd", false));
+#else
+				EXPECT_EQ("-1", e->get_param_value_str("out_fd", false));
+				EXPECT_EQ("-2", e->get_param_value_str("in_fd", false));
+#endif
+				EXPECT_EQ(444, NumberParser::parse(e->get_param_value_str("size", false)));
+				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			});
+
 			callnum++;
 		}
 		else if(type == PPME_SYSCALL_SENDFILE_X)
 		{
-			EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
-			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			EXPECT_NO_THROW({
+				EXPECT_GT(0, NumberParser::parse(e->get_param_value_str("res", false)));
+				EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("offset", false)));
+			});
 			callnum++;
 		}
 	};

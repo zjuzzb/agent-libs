@@ -9,6 +9,8 @@
 #endif
 #include <baseliner.h>
 
+extern sinsp_evttables g_infotables;
+
 ///////////////////////////////////////////////////////////////////////////////
 // sisnp_baseliner implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -584,13 +586,16 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 {
 	ASSERT(tinfo != NULL);
+
+	//
+	// Note: the hash is exe+container
+	//
 	size_t phash = tinfo->m_program_hash_falco;
 
 	//
 	// Find the program entry
 	//
 	auto it = m_progtable.find(phash);
-
 	if(it == m_progtable.end())
 	{
 		if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
@@ -598,18 +603,16 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 			return;
 		}
 
-		pair<unordered_map<size_t, blprogram>::iterator, bool> insert_res = 
-			m_progtable.emplace(phash, tinfo->m_comm);
+		blprogram np;
 
-		insert_res.first->second.m_comm = tinfo->m_comm;
-		insert_res.first->second.m_exe = tinfo->m_exe;
-		//insert_res.first->second.m_args = tinfo->m_args;
-		//insert_res.first->second.m_parent_comm = tinfo->m_comm;
-		//insert_res.first->second.m_env = tinfo->m_env;
-		insert_res.first->second.m_container_id = tinfo->m_container_id;
-		insert_res.first->second.m_user_id = tinfo->m_uid;
-		insert_res.first->second.m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
-		insert_res.first->second.m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+		np.m_comm = tinfo->m_comm;
+		np.m_exe = tinfo->m_exe;
+		np.m_container_id = tinfo->m_container_id;
+		np.m_user_id = tinfo->m_uid;
+		np.m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+		np.m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+
+		m_progtable[phash] = np;
 
 		sinsp_threadinfo* ptinfo = m_inspector->get_thread(tinfo->m_ptid);
 
@@ -809,3 +812,47 @@ void sisnp_baseliner::on_new_container(const sinsp_container_info& container_inf
 		container_info.m_image, 
 		container_info.m_imageid);
 }
+
+#if 0
+void sisnp_baseliner::process_event(sinsp_evt *evt)
+{
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	//
+	// Find the program entry
+	//
+	auto it = m_progtable.find(tinfo->m_program_hash_falco);
+
+	if(it == m_progtable.end())
+	{
+		return;
+	}
+
+	//
+	//
+	//
+	uint16_t etype = evt->m_pevt->type;
+	enum ppm_event_flags flags = g_infotables.m_event_info[etype].flags;
+
+	if(etype == PPME_SCHEDSWITCH_6_E ||
+		(flags & EC_INTERNAL) || (flags & EF_SKIPPARSERESET))
+	{
+		return NULL;
+	}
+
+	if(etype == PPME_GENERIC_E || etype == PPME_GENERIC_X)
+	{
+		sinsp_evt_param *parinfo = evt->get_param(0);
+		ASSERT(parinfo->m_len == sizeof(uint16_t));
+		uint16_t evid = *(uint16_t *)parinfo->m_val;
+
+		evname = (uint8_t*)g_infotables.m_syscall_info_table[evid].name;
+	}
+	else
+	{
+		evname = (uint8_t*)evt->get_name();
+	}
+
+	return evname;
+}
+#endif

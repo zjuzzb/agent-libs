@@ -92,10 +92,7 @@ TEST_F(sys_call_test, net_web_requests)
 
 		// get the server's DNS entry
 		server = gethostbyname(hostname);
-		if (server == NULL) {
-		    fprintf(stderr,(char*)"ERROR, no such host as %s\n", hostname);
-		    exit(0);
-		}
+		ASSERT_TRUE(server) << "ERROR, no such host as " << hostname;
 
 		for(j = 0; j < N_CONNECTIONS; j++)
 		{
@@ -152,8 +149,6 @@ TEST_F(sys_call_test, net_web_requests)
 
 		// We use a random call to tee to signal that we're done
 		tee(-1, -1, 0, 0);
-
-		return 0;
 	};
 
 	//
@@ -186,7 +181,8 @@ TEST_F(sys_call_test, net_web_requests)
 				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_count_in);
 				ASSERT_EQ((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_max_counter()->m_time_ns_in);
 				// Note: +1 is because of the DNS lookup
-				ASSERT_EQ((uint64_t) N_CONNECTIONS + 1, ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out);
+				ASSERT_GE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out, (uint64_t) N_CONNECTIONS);
+				ASSERT_LE(ti->m_ainfo->m_transaction_metrics.get_counter()->m_count_out, (uint64_t) N_CONNECTIONS + 1);
 				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_counter()->m_time_ns_out);
 //				ASSERT_EQ((uint64_t) 1, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_count_out);
 //				ASSERT_NE((uint64_t) 0, ti->m_ainfo->m_transaction_metrics.get_min_counter()->m_time_ns_out);

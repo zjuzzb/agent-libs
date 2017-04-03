@@ -6,6 +6,7 @@
 #include <sys/prctl.h>
 #endif
 
+#include "coclient.h"
 #include "crash_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
@@ -16,6 +17,10 @@
 #include "monitor.h"
 #include "subprocesses_logger.h"
 #include <atomic>
+#include <memory>
+
+#include "sdc_internal.pb.h"
+#include "analyzer_utils.h"
 
 class watchdog_state
 {
@@ -46,7 +51,7 @@ public:
 	{
 		return m_pid.load() > 0;
 	}
-	
+
 private:
 	atomic<pid_t> m_pid;
 	atomic<uint64_t> m_memory_used;
@@ -88,14 +93,20 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
+
 	unique_ptr<errpipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	unique_ptr<errpipe_manager> m_sdchecks_pipes;
 	unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
+	unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
+	unique_ptr<pipe_manager> m_cointerface_pipes;
+
 	sinsp_worker m_sinsp_worker;
 	connection_manager m_connection_manager;
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;
 	unordered_map<string, watchdog_state> m_subprocesses_state;
 	uint64_t m_last_dump_s;
+	std::unique_ptr<coclient> m_coclient;
+	run_on_interval m_cointerface_ping_interval = {5*ONE_SECOND_IN_NS};
 };

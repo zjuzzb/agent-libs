@@ -35,7 +35,7 @@ class Marathon(AgentCheck):
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
         self.auth_token = instance.get('auth_token', '')
-        creds = instance.get('marathon_creds', '')
+        creds = instance.get('marathon_creds', ':')
 
         # We use mesos credentials only if provided and if no auth token was provided
         if creds == ':' or self.auth_token != '':

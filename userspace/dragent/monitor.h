@@ -43,6 +43,10 @@ public:
 		m_pid = 0;
 	}
 
+	const std::string& name() const
+	{
+		return m_name;
+	}
 private:
 	string m_name;
 	bool m_main;

@@ -147,13 +147,13 @@ bool connection_manager::connect()
 	}
 	catch(Poco::IOException& e)
 	{
-		g_log->error(m_name + ": " + e.displayText());
+		g_log->error(m_name + ":connect():IOException: " + e.displayText());
 		disconnect();
 		return false;
 	}
 	catch(Poco::TimeoutException& e)
 	{
-		g_log->error(m_name + ": " + e.displayText());
+		g_log->error(m_name + ":connect():Timeout: " + e.displayText());
 		disconnect();
 		return false;
 	}
@@ -284,11 +284,35 @@ bool connection_manager::transmit_buffer(const char* buffer, uint32_t buflen)
 	}
 	catch(Poco::IOException& e)
 	{
-		g_log->error(m_name + ": " + e.displayText());
-		disconnect();
+		// When the output buffer gets full sendBytes() results in 
+		// a TimeoutException for SSL connections and EWOULDBLOCK for non-SSL
+		// connections, so we'll treat them the same.
+		if ((e.code() == POCO_EWOULDBLOCK) || (e.code() == POCO_EAGAIN))
+		{
+			// We shouldn't risk hanging indefinitely if the EWOULDBLOCK is
+			// caused by an attempted send larger than the buffer size
+			if (buflen > m_configuration->m_transmitbuffer_size)
+			{
+				g_log->error(m_name + ":transmit larger than bufsize failed ("
+					+ NumberFormatter::format(buflen) + ">" +
+					NumberFormatter::format(m_configuration->m_transmitbuffer_size)
+					 + "): " + e.displayText());
+				disconnect();
+			}
+			else
+			{
+				g_log->debug(m_name + ":transmit: Ignoring: " + e.displayText());
+			}
+		}
+		else
+		{
+			g_log->error(m_name + ":transmit:IOException: " + e.displayText());
+			disconnect();
+		}
 	}
 	catch(Poco::TimeoutException& e)
 	{
+		g_log->debug(m_name + ":transmit:Timeout: " + e.displayText());
 	}
 
 	return false;
@@ -315,14 +339,16 @@ void connection_manager::receive_message()
 
 			if(res == 0)
 			{
-				g_log->error(m_name + ": Lost connection (1)");
+				g_log->error(m_name + ": Lost connection (reading header)");
 				disconnect();
 				return;
 			}
 
+			// TODO: clean up buffering of received data. Remains of protocol
+			// header might come in the next recv().
 			if(res != sizeof(dragent_protocol_header))
 			{
-				g_log->error(m_name + ": Protocol error (1): " + NumberFormatter::format(res));
+				g_log->error(m_name + ": Protocol error: couldn't read full header: " + NumberFormatter::format(res));
 				ASSERT(false);
 				disconnect();
 				return;
@@ -331,17 +357,10 @@ void connection_manager::receive_message()
 			dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
 			header->len = ntohl(header->len);
 
-			if(header->len > MAX_RECEIVER_BUFSIZE)
+			if((header->len < sizeof(dragent_protocol_header)) || 
+				(header->len > MAX_RECEIVER_BUFSIZE))
 			{
-				g_log->error(m_name + ": Protocol error (2): " + NumberFormatter::format(header->len));
-				ASSERT(false);
-				disconnect();
-				return;
-			}
-
-			if(header->len < sizeof(dragent_protocol_header))
-			{
-				g_log->error(m_name + ": Protocol error (3): " + NumberFormatter::format(header->len));
+				g_log->error(m_name + ": Protocol error: invalid header length " + NumberFormatter::format(header->len));
 				ASSERT(false);
 				disconnect();
 				return;
@@ -372,7 +391,7 @@ void connection_manager::receive_message()
 
 		if(res == 0)
 		{
-			g_log->error(m_name + ": Lost connection (2)");
+			g_log->error(m_name + ": Lost connection (reading message)");
 			disconnect();
 			ASSERT(false);
 			return;
@@ -380,7 +399,8 @@ void connection_manager::receive_message()
 
 		if(res < 0)
 		{
-			g_log->error(m_name + ": Connection error: " + NumberFormatter::format(res));
+			g_log->error(m_name + ": Connection error while reading: " +
+				NumberFormatter::format(res));
 			disconnect();
 			ASSERT(false);
 			return;
@@ -466,11 +486,12 @@ void connection_manager::receive_message()
 	}
 	catch(Poco::IOException& e)
 	{
-		g_log->error(m_name + ": " + e.displayText());
+		g_log->error(m_name + ":receive:IOException: " + e.displayText());
 		disconnect();
 	}
 	catch(Poco::TimeoutException& e)
 	{
+		g_log->debug(m_name + ":receive:Timeout: " + e.displayText());
 	}
 }
 
@@ -503,6 +524,16 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 		job_request->m_max_size = request.max_size();
 	}
 	
+	if(request.has_past_duration_ns())
+	{
+		job_request->m_past_duration_ns = request.past_duration_ns();
+	}
+
+	if(request.has_past_size())
+	{
+		job_request->m_past_size = request.past_size();
+	}
+
 	m_sinsp_worker->queue_job_request(job_request);
 }
 
@@ -643,9 +674,7 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 			err_str += " (" + err_msg.description() + ")";
 		}
 
-		if(err_type == draiosproto::error_type::ERR_CONN_LIMIT ||
-		   err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY ||
-		   err_type == draiosproto::error_type::ERR_DUPLICATE_AGENT)
+		if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
 		{
 			term = true;
 			err_str += ", terminating the agent";

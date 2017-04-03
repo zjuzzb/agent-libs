@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "main.h"
 #include "dragent.h"
 #include "crash_handler.h"
@@ -11,10 +13,13 @@
 #include "monitor.h"
 #include "utils.h"
 #include <gperftools/malloc_extension.h>
+#include <grpc/support/log.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <procfs_parser.h>
 #include <sys/resource.h>
+
+using namespace std;
 
 static void g_signal_callback(int sig)
 {
@@ -176,6 +181,37 @@ void dragent_app::displayHelp()
 	helpFormatter.format(std::cout);
 }
 
+static void dragent_gpr_log(gpr_log_func_args *args)
+{
+	// If logging hasn't been set up yet, skip the message. Add an
+	// ASSSERT so we'll notice for dev builds, though.
+	ostringstream os;
+
+	if (!g_log)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	os << "GRPC: [" << args->file << ":" << args->line << "] " << args->message;
+
+	switch (args->severity)
+	{
+	case GPR_LOG_SEVERITY_DEBUG:
+		g_log->debug(os.str());
+		break;
+	case GPR_LOG_SEVERITY_INFO:
+		g_log->information(os.str());
+		break;
+	case GPR_LOG_SEVERITY_ERROR:
+		g_log->error(os.str());
+		break;
+	default:
+		g_log->debug(os.str());
+		break;
+	}
+}
+
 int dragent_app::main(const std::vector<std::string>& args)
 {
 	if(m_help_requested)
@@ -189,6 +225,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		printf(AGENT_VERSION "\n");
 		return Application::EXIT_OK;
 	}
+
+	//
+	// Set up logging with grpc.
+	//
+	gpr_set_log_function(dragent_gpr_log);
 
 	//
 	// Make sure the agent never creates world-writable files
@@ -252,7 +293,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 		return this->sdagent_main();
 	}, true);
-
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
 		m_jmx_pipes = make_unique<errpipe_manager>();
@@ -336,6 +376,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			return (EXIT_FAILURE);
 		});
+		if(m_configuration.m_mode == dragent_mode_t::NODRIVER)
+		{
+			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
+			auto state = &m_subprocesses_state["statsite_forwarder"];
+			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(), sinsp_logger_parser("statsite_forwarder"), state);
+			monitor_process.emplace_process("statsite_forwader", [this](void) -> int
+			{
+				m_statsite_forwarder_pipe->attach_child();
+				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(), m_configuration.m_statsd_port);
+				return fwd.run();;
+			});
+		}
 	}
 
 	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
@@ -345,7 +397,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 		{
 			auto parsed_log = sinsp_split(line, ':');
-			if(parsed_log.size() >= 3 && isdigit(parsed_log.at(0).at(0)))
+			// TODO: switch to json logging to avoid parsing issues
+			// using this project for example: https://github.com/madzak/python-json-logger
+			if(parsed_log.size() >= 3 &&
+				!parsed_log.at(0).empty() &&
+				isdigit(parsed_log.at(0).at(0)))
 			{
 				auto level = parsed_log.at(1);
 				auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
@@ -388,32 +444,26 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
-		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
-		{
-			// Right now we are using default sinsp stderror logger
-			// it does not send priority so we are using a simple heuristic
-			if(s.find("Error") != string::npos)
-			{
-				g_log->error(s);
-			}
-			else if(s.find("Warning") != string::npos)
-			{
-				g_log->warning(s);
-			}
-			else if(s.find("Info") != string::npos)
-			{
-				g_log->information(s);
-			}
-			else
-			{
-				g_log->debug(s);
-			}
-		}, state);
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
 		monitor_process.emplace_process("mountedfs_reader", [this](void)
 		{
 			m_mounted_fs_reader_pipe->attach_child();
 			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled);
 			return proc.run();
+		});
+	}
+	if(m_configuration.m_cointerface_enabled)
+	{
+		m_cointerface_pipes = make_unique<pipe_manager>();
+		auto* state = &m_subprocesses_state["cointerface"];
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(), cointerface_parser(), state);
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(), cointerface_parser(), state);
+		monitor_process.emplace_process("cointerface", [this](void)
+		{
+			m_cointerface_pipes->attach_child_stdio();
+
+			execl("/opt/draios/bin/cointerface", "cointerface", (char *) NULL);
+			return (EXIT_FAILURE);
 		});
 	}
 	monitor_process.set_cleanup_function(
@@ -423,12 +473,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 				this->m_jmx_pipes.reset();
 				this->m_mounted_fs_reader_pipe.reset();
 				this->m_statsite_pipes.reset();
+				m_statsite_forwarder_pipe.reset();
+				this->m_cointerface_pipes.reset();
 				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
 									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
-									  "/sdc_sdjagent_out", "/sdc_sdjagent_in"})
+									  "/sdc_sdjagent_out", "/sdc_sdjagent_in", "/sdc_statsite_forwarder_in"})
 				{
 					posix_queue::remove(queue);
 				}
+
+				coclient::cleanup();
 			});
 	return monitor_process.run();
 #else
@@ -660,6 +714,41 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			pthread_kill(m_subprocesses_logger.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
+	}
+
+	if(m_configuration.m_cointerface_enabled)
+	{
+		if(!m_coclient) {
+			// Actually allocate the coclient object
+			m_coclient = make_unique<coclient>();
+		}
+
+		// Ping every 5 seconds. If it's ever more than
+		// watchdog_cointerface_timeout_s seconds from a pong,
+		// declare it stuck and kill it.
+		//
+		// Note that we use the time from the ping as the
+		// liveness time. So if cointerface somehow falls
+		// behind by more than the timeout, it gets declared
+		// stuck.
+
+		m_cointerface_ping_interval.run([this]()
+		{
+			coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+				if(successful)
+				{
+					sdc_internal::pong *pong = (sdc_internal::pong *) response_msg;
+					m_subprocesses_state["cointerface"].reset(pong->pid(),
+										  pong->memory_used(),
+										  pong->token());
+				}
+			};
+
+			m_coclient->ping(time(NULL), callback);
+		});
+
+		// Try to read any responses
+		m_coclient->next();
 	}
 
 	uint64_t memory;

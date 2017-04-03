@@ -3,6 +3,7 @@
 #include "main.h"
 #include "logger.h"
 #include "user_event.h"
+#include "metric_limits.h"
 
 // suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
@@ -417,6 +418,11 @@ private:
 	DigestEngine::Digest m_digest;
 };
 
+enum class dragent_mode_t {
+	STANDARD,
+	NODRIVER
+};
+
 class dragent_configuration
 {
 public:
@@ -498,11 +504,12 @@ public:
 	bool m_sysdig_capture_enabled;
 	bool m_statsd_enabled;
 	unsigned m_statsd_limit;
-	std::set<string> m_statsd_priority;
+	uint16_t m_statsd_port;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
 	string m_python_binary;
 	bool m_app_checks_enabled;
+	unsigned m_app_checks_limit;
 	uint32_t m_containers_limit;
 	vector<string> m_container_patterns;
 	ports_set m_known_server_ports;
@@ -539,12 +546,21 @@ public:
 	mesos::credentials_t m_dcos_enterprise_credentials;
 
 	bool m_falco_baselining_enabled;
+	bool m_command_lines_capture_enabled;
+	bool m_command_lines_capture_all_commands;
+	bool m_memdump_enabled;
+	uint64_t m_memdump_size;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
 
+	bool m_excess_metric_log = false;
+	metrics_filter_vec m_metrics_filter;
+	unsigned m_metrics_cache;
+
 	bool m_enable_coredump;
 	bool m_auto_config;
+	bool m_emit_tracers = false;
 
 	bool m_enable_falco_engine;
 	string m_falco_default_rules_filename;
@@ -561,6 +577,9 @@ public:
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
+	dragent_mode_t m_mode;
+
+	bool m_cointerface_enabled;
 
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;

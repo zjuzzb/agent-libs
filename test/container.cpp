@@ -226,8 +226,8 @@ TEST_F(sys_call_test, container_clone_nspid_ioctl)
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		if(tinfo)
 		{
-			ASSERT_TRUE(tinfo->m_vtid == 1);
-			ASSERT_TRUE(tinfo->m_vpid == 1);
+			EXPECT_EQ(1, tinfo->m_vtid);
+			EXPECT_EQ(1, tinfo->m_vpid);
 
 			done = true;
 		}
@@ -519,4 +519,97 @@ TEST_F(sys_call_test, container_libvirt)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, nsenterok)
+{
+	unsigned evtcount = 0;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) && (evt->get_type() == PPME_SYSCALL_SETNS_E || evt->get_type() == PPME_SYSCALL_SETNS_X);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		nsenter enter(1, "net");
+		try
+		{
+			nsenter enter(1, "uts");
+			throw exception();
+		} catch (const exception& ex)
+		{
+		}
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		auto evt = param.m_evt;
+		auto type = evt->get_type();
+		switch(type)
+		{
+		case PPME_SYSCALL_SETNS_E:
+			switch(evtcount)
+			{
+				case 0:
+					EXPECT_EQ("<f>/proc/1/ns/net", evt->get_param_value_str("fd"));
+					break;
+				case 2:
+					EXPECT_EQ("<f>/proc/1/ns/uts", evt->get_param_value_str("fd"));
+					break;
+				case 4:
+					EXPECT_EQ(string("<f>/proc/") + to_string(getpid()) +"/ns/uts", evt->get_param_value_str("fd"));
+					break;
+				case 6:
+					EXPECT_EQ(string("<f>/proc/") + to_string(getpid()) + "/ns/net", evt->get_param_value_str("fd"));
+					break;
+			}
+			break;
+		case PPME_SYSCALL_SETNS_X:
+			switch(evtcount)
+			{
+				case 1:
+					EXPECT_EQ("0", evt->get_param_value_str("res"));
+					break;
+				case 3:
+					EXPECT_EQ("0", evt->get_param_value_str("res"));
+					break;
+				case 5:
+					EXPECT_EQ("0", evt->get_param_value_str("res"));
+					break;
+				case 7:
+					EXPECT_EQ("0", evt->get_param_value_str("res"));
+					break;
+			}
+			break;
+		}
+		evtcount += 1;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_EQ(8, evtcount);
+}
+
+TEST_F(sys_call_test, nsenter_fail)
+{
+	unsigned evtcount = 0;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) && (evt->get_type() == PPME_SYSCALL_SETNS_E || evt->get_type() == PPME_SYSCALL_SETNS_X);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		EXPECT_THROW(nsenter enter(-1, "net"), sinsp_exception);
+		EXPECT_THROW(nsenter enter(-1, "zzz"), sinsp_exception);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		evtcount += 1;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_EQ(0, evtcount);
 }

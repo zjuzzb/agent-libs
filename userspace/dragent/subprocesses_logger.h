@@ -22,6 +22,11 @@ public:
 		return m_error_fd;
 	}
 
+	FILE* get_out_fd()
+	{
+		return m_output_fd;
+	}
+
 	// Attach pipes to child STDIN, STDOUT and STDERR
 	void attach_child_stdio();
 	int inpipe_size() const
@@ -83,6 +88,23 @@ public:
 	void operator()(const string&);
 private:
 	Json::Reader m_json_reader;
+};
+
+class cointerface_parser
+{
+public:
+	void operator()(const string&);
+private:
+	Json::Reader m_json_reader;
+};
+
+class sinsp_logger_parser
+{
+public:
+	sinsp_logger_parser(const string& procname);
+	void operator()(const string&);
+private:
+	string m_prefix;
 };
 
 class subprocesses_logger : public Runnable

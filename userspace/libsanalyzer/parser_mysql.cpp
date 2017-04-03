@@ -195,6 +195,7 @@ bool sinsp_mysql_parser::parse_response(char* buf, uint32_t buflen)
 
 		//
 		// Do the parsing
+		// See https://dev.mysql.com/doc/internals/en/packet-ERR_Packet.html
 		//
 		if(((uint8_t*)rbuf)[MYSQL_OFFSET_STATUS] == 0xff)
 		{

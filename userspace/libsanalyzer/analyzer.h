@@ -16,6 +16,7 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
+#include "memdumper.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -51,6 +52,8 @@ class uri;
 class falco_engine;
 class falco_events;
 class sisnp_baseliner;
+class tracer_emitter;
+class metric_limits;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -128,10 +131,15 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	string m_comm;
-	string m_parent_comm;
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
+    string m_comm; // program executable name
+    uint64_t m_pid; // process pid
+    uint64_t m_ppid; // parent process pid
+    uint64_t m_uid; // user ID
+    string m_cwd; // process' current working directory
 };
 
 #ifndef _WIN32
@@ -182,7 +190,7 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
-
+	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
@@ -271,15 +279,37 @@ public:
 	}
 
 #ifndef _WIN32
+	inline void check_metric_limits()
+	{
+		static bool checked = false;
+		if(!checked)
+		{
+			ASSERT(m_configuration);
+			const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
+			ASSERT(!m_metric_limits);
+			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
+			{
+				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
+				if(m_configuration->get_excess_metrics_log())
+				{
+					m_metric_limits->enable_logging();
+				}
+			}
+			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
+			checked = true;
+		}
+	}
+
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
 	{
+		check_metric_limits();
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
 		m_configuration->set_jmx_limit(limit);
 	}
 
-	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);
+	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds, bool forwarder);
 #endif
 
 	void set_protocols_enabled(bool value)
@@ -326,6 +356,7 @@ public:
 
 		if(!m_app_checks.empty())
 		{
+			check_metric_limits();
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
@@ -355,6 +386,17 @@ public:
 			  double sampling_multiplier);
 
 	void disable_falco();
+	bool is_memdump_active()
+	{
+		return m_do_memdump;
+	}
+
+	sinsp_memory_dumper* get_memory_dumper()
+	{
+		return m_memdumper;
+	}
+
+	void set_emit_tracers(bool enabled);
 
 	void set_percentiles();
 
@@ -368,7 +410,9 @@ VISIBILITY_PRIVATE
 	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
-	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
+	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
+			    bool is_eof, sinsp_analyzer::flush_flags flshflags,
+			    const tracer_emitter &f_trc);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
@@ -388,6 +432,8 @@ VISIBILITY_PRIVATE
 	void get_k8s_data();
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
+	uint32_t get_mesos_api_server_port(sinsp_threadinfo* main_tinfo);
+	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
 	bool check_mesos_server(string& addr);
@@ -398,19 +444,16 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
-	vector<string> emit_containers(const vector<string>& active_containers);
-	void emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares);
+	vector<string> emit_containers(const progtable_by_container_t& active_containers);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-	void emit_executed_commands();
+	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();
 
 #ifndef _WIN32
-	static void filter_statsd(vector<statsd_metric>& statsd_metrics, unsigned limit,
-							  const std::set<std::string>& priority);
-	static unsigned emit_statsd(vector<statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-								unsigned limit, const std::set<std::string>& priority);
+	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit);
 	bool is_jmx_flushtime() {
 		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
 	}
@@ -420,7 +463,7 @@ VISIBILITY_PRIVATE
 	void match_checks_list(sinsp_threadinfo *tinfo,
 			       sinsp_threadinfo *mtinfo,
 			       const vector<app_check> &checks,
-			       vector<app_process> &app_checks_processes,
+				   vector<app_process> &app_checks_processes,
 			       const char *location);
 
 	uint32_t m_n_flushes;
@@ -533,12 +576,13 @@ VISIBILITY_PRIVATE
 	//
 	// Command list
 	//
-	vector<sinsp_executed_command> m_executed_commands;
+	unordered_map<string, vector<sinsp_executed_command> > m_executed_commands;
 
 	//
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
+	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
 
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 
@@ -556,13 +600,20 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-
+	
 	//
 	// Falco stuff
 	//
 	sisnp_baseliner* m_falco_baseliner = NULL;
-	bool m_do_baseline_calculation;
+	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
+	bool m_command_lines_capture_enabled = false;
+	bool m_command_lines_capture_all_commands = false;
+
+	//
+	// Memory dump stuff
+	//
+	bool m_do_memdump = false;
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -576,7 +627,8 @@ VISIBILITY_PRIVATE
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
-	unordered_map<string, statsd_metric::list_t> m_statsd_metrics;
+	unique_ptr<posix_queue> m_statsite_forwader_queue;
+	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
 	vector<app_check> m_app_checks;
@@ -614,11 +666,17 @@ VISIBILITY_PRIVATE
 	bool m_mesos_present = false;
 	time_t m_last_mesos_refresh;
 	uint64_t m_mesos_last_failure_ns;
+	int64_t m_mesos_master_tid = -1;
+	int64_t m_mesos_slave_tid = -1;
+	const uint32_t MESOS_MASTER_PORT = 5050;
+	const uint32_t MESOS_SLAVE_PORT = 5051;
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
+
+	sinsp_memory_dumper* m_memdumper = NULL;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
@@ -629,8 +687,11 @@ VISIBILITY_PRIVATE
 	unique_ptr<falco_engine> m_falco_engine;
 	unique_ptr<falco_events> m_falco_events;
 
+	metric_limits::sptr_t m_metric_limits;
+
 	user_event_queue::ptr_t m_user_event_queue;
 
+	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
@@ -657,4 +718,3 @@ VISIBILITY_PRIVATE
 };
 
 #endif // HAS_ANALYZER
-

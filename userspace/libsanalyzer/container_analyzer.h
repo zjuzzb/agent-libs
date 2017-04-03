@@ -21,4 +21,10 @@ public:
 		m_req_metrics.set_percentiles(percentiles);
 		m_transaction_counters.set_percentiles(percentiles);
 	}
+
+	// Used to get network stats from /proc/<pid>/net/dev
+	uint64_t m_last_bytes_in;
+	uint64_t m_last_bytes_out;
+
+	void clear();
 };

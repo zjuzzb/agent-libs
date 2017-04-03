@@ -8,6 +8,7 @@ set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
 set(DRAIOS_JQ_VERSION "1.5")
+set(DRAIOS_GRPC_VERSION "1.1.4")
 
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
@@ -25,6 +26,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 add_definitions(-DK8S_DISABLE_THREAD)
@@ -55,6 +57,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
 	heap.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
@@ -95,8 +98,10 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
+	memdumper.cpp
 	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
+	metric_limits.cpp
 	metrics.cpp
 	parser_http.cpp
 	parser_mysql.cpp
@@ -115,6 +120,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
+	tracer_emitter.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
@@ -125,6 +131,7 @@ add_library(sanalyzer STATIC
 	app_checks.cpp
 	posix_queue.cpp
 	sdc_internal.pb.cc
+	sdc_internal.grpc.pb.cc
 	proc_config.h)
 
 target_link_libraries(sanalyzer
@@ -147,6 +154,23 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+
+set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs
+                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/protoc
+                   -I ${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+
+add_custom_target(sdc_internal_pb_cpp
+	COMMENT Building cpp sources from .proto files
+	COMMAND ${PROTOC_CMDLINE}
+	        --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/bins/opt/grpc_cpp_plugin
+		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)
