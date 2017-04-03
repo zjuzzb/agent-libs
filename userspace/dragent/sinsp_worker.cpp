@@ -19,6 +19,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
+	m_max_chunk_size(default_max_chunk_size),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration)
 {

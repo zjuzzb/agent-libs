@@ -104,6 +104,13 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+	// Change the chunk size used for event captures. This is only
+	// used for testing.
+	void set_dump_chunk_size(uint64_t size)
+	{
+		m_max_chunk_size = size;
+	}
+
 private:
 	class dump_job_state
 	{
@@ -190,7 +197,7 @@ private:
 	void init_falco();
 
 	static const string m_name;
-	static const uint64_t m_max_chunk_size = 100 * 1024;
+	static const uint64_t default_max_chunk_size = 100 * 1024;
 	static const uint64_t m_keepalive_interval_ns = 30 * 1000000000LL;
 
 	dragent_configuration* m_configuration;
@@ -207,6 +214,7 @@ private:
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
+	uint64_t m_max_chunk_size;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
