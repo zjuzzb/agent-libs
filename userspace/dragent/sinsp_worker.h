@@ -61,6 +61,11 @@ public:
 		return m_last_loop_ns;
 	}
 
+	uint64_t get_last_job_check_ns() const
+	{
+		return m_last_job_check_ns;
+	}
+
 	pthread_t get_pthread_id()
 	{
 		return m_pthread_id;
@@ -210,6 +215,7 @@ private:
 	vector<SharedPtr<dump_job_state>> m_running_memdump_jobs;
 	uint64_t m_driver_stopped_dropping_ns;
 	volatile uint64_t m_last_loop_ns;
+	volatile uint64_t m_last_job_check_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
