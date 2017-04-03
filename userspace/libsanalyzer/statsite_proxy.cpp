@@ -241,8 +241,6 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 		proto->set_max(m_max);
 		proto->set_count(m_count);
 		proto->set_median(m_median);
-		proto->set_percentile_95(m_percentile_95);
-		proto->set_percentile_99(m_percentile_99);
 		typedef draiosproto::statsd_metric CTB;
 		typedef draiosproto::counter_percentile CP;
 		percentile::to_protobuf<CTB, CP>(m_percentiles, proto, &CTB::add_percentile);

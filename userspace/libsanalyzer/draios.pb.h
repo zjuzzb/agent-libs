@@ -467,14 +467,14 @@ class counter_percentile : public ::google::protobuf::Message {
 
   // accessors -------------------------------------------------------
 
-  // required uint32 percentile = 1;
+  // optional uint32 percentile = 1;
   inline bool has_percentile() const;
   inline void clear_percentile();
   static const int kPercentileFieldNumber = 1;
   inline ::google::protobuf::uint32 percentile() const;
   inline void set_percentile(::google::protobuf::uint32 value);
 
-  // required uint32 value = 2;
+  // optional uint32 value = 2;
   inline bool has_value() const;
   inline void clear_value();
   static const int kValueFieldNumber = 2;
@@ -4048,20 +4048,6 @@ class statsd_metric : public ::google::protobuf::Message {
   inline double median() const;
   inline void set_median(double value);
 
-  // optional double percentile_95 = 10;
-  inline bool has_percentile_95() const;
-  inline void clear_percentile_95();
-  static const int kPercentile95FieldNumber = 10;
-  inline double percentile_95() const;
-  inline void set_percentile_95(double value);
-
-  // optional double percentile_99 = 11;
-  inline bool has_percentile_99() const;
-  inline void clear_percentile_99();
-  static const int kPercentile99FieldNumber = 11;
-  inline double percentile_99() const;
-  inline void set_percentile_99(double value);
-
   // repeated .draiosproto.counter_percentile percentile = 12;
   inline int percentile_size() const;
   inline void clear_percentile();
@@ -4092,10 +4078,6 @@ class statsd_metric : public ::google::protobuf::Message {
   inline void clear_has_count();
   inline void set_has_median();
   inline void clear_has_median();
-  inline void set_has_percentile_95();
-  inline void clear_has_percentile_95();
-  inline void set_has_percentile_99();
-  inline void clear_has_percentile_99();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4107,13 +4089,11 @@ class statsd_metric : public ::google::protobuf::Message {
   double max_;
   double count_;
   double median_;
-  double percentile_95_;
-  double percentile_99_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(12 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -11918,7 +11898,7 @@ class falco_baseline : public ::google::protobuf::Message {
 
 // counter_percentile
 
-// required uint32 percentile = 1;
+// optional uint32 percentile = 1;
 inline bool counter_percentile::has_percentile() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
@@ -11940,7 +11920,7 @@ inline void counter_percentile::set_percentile(::google::protobuf::uint32 value)
   percentile_ = value;
 }
 
-// required uint32 value = 2;
+// optional uint32 value = 2;
 inline bool counter_percentile::has_value() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -16709,50 +16689,6 @@ inline double statsd_metric::median() const {
 inline void statsd_metric::set_median(double value) {
   set_has_median();
   median_ = value;
-}
-
-// optional double percentile_95 = 10;
-inline bool statsd_metric::has_percentile_95() const {
-  return (_has_bits_[0] & 0x00000200u) != 0;
-}
-inline void statsd_metric::set_has_percentile_95() {
-  _has_bits_[0] |= 0x00000200u;
-}
-inline void statsd_metric::clear_has_percentile_95() {
-  _has_bits_[0] &= ~0x00000200u;
-}
-inline void statsd_metric::clear_percentile_95() {
-  percentile_95_ = 0;
-  clear_has_percentile_95();
-}
-inline double statsd_metric::percentile_95() const {
-  return percentile_95_;
-}
-inline void statsd_metric::set_percentile_95(double value) {
-  set_has_percentile_95();
-  percentile_95_ = value;
-}
-
-// optional double percentile_99 = 11;
-inline bool statsd_metric::has_percentile_99() const {
-  return (_has_bits_[0] & 0x00000400u) != 0;
-}
-inline void statsd_metric::set_has_percentile_99() {
-  _has_bits_[0] |= 0x00000400u;
-}
-inline void statsd_metric::clear_has_percentile_99() {
-  _has_bits_[0] &= ~0x00000400u;
-}
-inline void statsd_metric::clear_percentile_99() {
-  percentile_99_ = 0;
-  clear_has_percentile_99();
-}
-inline double statsd_metric::percentile_99() const {
-  return percentile_99_;
-}
-inline void statsd_metric::set_percentile_99(double value) {
-  set_has_percentile_99();
-  percentile_99_ = value;
 }
 
 // repeated .draiosproto.counter_percentile percentile = 12;

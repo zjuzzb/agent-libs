@@ -1308,10 +1308,10 @@ void dragent_configuration::write_statsite_configuration()
 	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one
-	// our levels: debug, info, notice, warning, error, critical, fatal
+	// our levels: trace, debug, info, notice, warning, error, critical, fatal
 	// statsite levels: DEBUG, INFO, WARN, ERROR, CRITICAL
 	auto loglevel = m_config->get_scalar<string>("log", "file_priority", "info");
-	static const unordered_map<string, string> conversion_map{ { "debug", "DEBUG" }, { "info", "INFO" },
+	static const unordered_map<string, string> conversion_map{ { "trace", "DEBUG" }, { "debug", "DEBUG" }, { "info", "INFO" },
 															   { "notice", "WARN" }, { "warning", "WARN"}, { "error", "ERROR"},
 															   { "critical", "CRITICAL"}, { "fatal", "CRITICAL"}};
 	if (conversion_map.find(loglevel) != conversion_map.end())
