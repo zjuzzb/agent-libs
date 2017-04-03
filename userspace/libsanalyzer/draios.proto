@@ -13,7 +13,7 @@ message counter_time {
     required uint32 count = 1;
     required uint64 time_ns = 2;
     optional uint32 time_percentage = 3;
-    repeated counter_percentile percentile = 4;
+    repeated counter_percentile percentile = 8;
 }
 
 message counter_time_bidirectional {
@@ -21,8 +21,8 @@ message counter_time_bidirectional {
     required uint32 count_out = 2;
     required uint64 time_ns_in = 3;
     required uint64 time_ns_out = 4;
-    repeated counter_percentile percentile_in = 5;
-    repeated counter_percentile percentile_out = 6;
+    repeated counter_percentile percentile_in = 10;
+    repeated counter_percentile percentile_out = 11;
 }
 
 message counter_bytes {
@@ -45,8 +45,8 @@ message counter_time_bytes {
     optional uint32 time_percentage_in = 10;
     optional uint32 time_percentage_out = 11;
     optional uint32 time_percentage_other = 12;
-    repeated counter_percentile percentile_in = 13;
-    repeated counter_percentile percentile_out = 14;
+    repeated counter_percentile percentile_in = 26;
+    repeated counter_percentile percentile_out = 27;
 }
 
 message time_categories {
@@ -152,7 +152,7 @@ message counter_proto_entry {
     required uint64 bytes_in = 4;
     required uint64 bytes_out = 5;
     required uint32 nerrors = 6;
-    repeated counter_percentile percentile = 7;
+    repeated counter_percentile percentile = 13;
 }
 
 //

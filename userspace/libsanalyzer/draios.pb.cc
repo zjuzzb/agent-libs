@@ -2309,12 +2309,12 @@ void protobuf_AddDesc_draios_2eproto() {
     "ercentile\022\022\n\npercentile\030\001 \002(\r\022\r\n\005value\030\002"
     " \002(\r\"|\n\014counter_time\022\r\n\005count\030\001 \002(\r\022\017\n\007t"
     "ime_ns\030\002 \002(\004\022\027\n\017time_percentage\030\003 \001(\r\0223\n"
-    "\npercentile\030\004 \003(\0132\037.draiosproto.counter_"
+    "\npercentile\030\010 \003(\0132\037.draiosproto.counter_"
     "percentile\"\333\001\n\032counter_time_bidirectiona"
     "l\022\020\n\010count_in\030\001 \002(\r\022\021\n\tcount_out\030\002 \002(\r\022\022"
     "\n\ntime_ns_in\030\003 \002(\004\022\023\n\013time_ns_out\030\004 \002(\004\022"
-    "6\n\rpercentile_in\030\005 \003(\0132\037.draiosproto.cou"
-    "nter_percentile\0227\n\016percentile_out\030\006 \003(\0132"
+    "6\n\rpercentile_in\030\n \003(\0132\037.draiosproto.cou"
+    "nter_percentile\0227\n\016percentile_out\030\013 \003(\0132"
     "\037.draiosproto.counter_percentile\"Y\n\rcoun"
     "ter_bytes\022\020\n\010count_in\030\001 \002(\r\022\021\n\tcount_out"
     "\030\002 \002(\r\022\020\n\010bytes_in\030\003 \002(\r\022\021\n\tbytes_out\030\004 "
@@ -2325,9 +2325,9 @@ void protobuf_AddDesc_draios_2eproto() {
     "\030\007 \002(\r\022\021\n\tbytes_out\030\010 \002(\r\022\023\n\013bytes_other"
     "\030\t \002(\r\022\032\n\022time_percentage_in\030\n \001(\r\022\033\n\023ti"
     "me_percentage_out\030\013 \001(\r\022\035\n\025time_percenta"
-    "ge_other\030\014 \001(\r\0226\n\rpercentile_in\030\r \003(\0132\037."
+    "ge_other\030\014 \001(\r\0226\n\rpercentile_in\030\032 \003(\0132\037."
     "draiosproto.counter_percentile\0227\n\016percen"
-    "tile_out\030\016 \003(\0132\037.draiosproto.counter_per"
+    "tile_out\030\033 \003(\0132\037.draiosproto.counter_per"
     "centile\"\367\005\n\017time_categories\022*\n\007unknown\030\001"
     " \001(\0132\031.draiosproto.counter_time\022(\n\005other"
     "\030\002 \001(\0132\031.draiosproto.counter_time\022\'\n\004fil"
@@ -2389,7 +2389,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "ance\030\n \001(\r\"\264\001\n\023counter_proto_entry\022\016\n\006nc"
     "alls\030\001 \002(\r\022\020\n\010time_tot\030\002 \002(\004\022\020\n\010time_max"
     "\030\003 \002(\004\022\020\n\010bytes_in\030\004 \002(\004\022\021\n\tbytes_out\030\005 "
-    "\002(\004\022\017\n\007nerrors\030\006 \002(\r\0223\n\npercentile\030\007 \003(\013"
+    "\002(\004\022\017\n\007nerrors\030\006 \002(\r\0223\n\npercentile\030\r \003(\013"
     "2\037.draiosproto.counter_percentile\"N\n\013url"
     "_details\022\013\n\003url\030\001 \002(\t\0222\n\010counters\030\002 \002(\0132"
     " .draiosproto.counter_proto_entry\":\n\023sta"
@@ -3515,12 +3515,12 @@ bool counter_time::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(34)) goto parse_percentile;
+        if (input->ExpectTag(66)) goto parse_percentile;
         break;
       }
 
-      // repeated .draiosproto.counter_percentile percentile = 4;
-      case 4: {
+      // repeated .draiosproto.counter_percentile percentile = 8;
+      case 8: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_percentile:
@@ -3529,7 +3529,7 @@ bool counter_time::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(34)) goto parse_percentile;
+        if (input->ExpectTag(66)) goto parse_percentile;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3567,10 +3567,10 @@ void counter_time::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(3, this->time_percentage(), output);
   }
 
-  // repeated .draiosproto.counter_percentile percentile = 4;
+  // repeated .draiosproto.counter_percentile percentile = 8;
   for (int i = 0; i < this->percentile_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      4, this->percentile(i), output);
+      8, this->percentile(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -3596,11 +3596,11 @@ void counter_time::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(3, this->time_percentage(), target);
   }
 
-  // repeated .draiosproto.counter_percentile percentile = 4;
+  // repeated .draiosproto.counter_percentile percentile = 8;
   for (int i = 0; i < this->percentile_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        4, this->percentile(i), target);
+        8, this->percentile(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -3636,7 +3636,7 @@ int counter_time::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.counter_percentile percentile = 4;
+  // repeated .draiosproto.counter_percentile percentile = 8;
   total_size += 1 * this->percentile_size();
   for (int i = 0; i < this->percentile_size(); i++) {
     total_size +=
@@ -3868,12 +3868,12 @@ bool counter_time_bidirectional::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_percentile_in;
+        if (input->ExpectTag(82)) goto parse_percentile_in;
         break;
       }
 
-      // repeated .draiosproto.counter_percentile percentile_in = 5;
-      case 5: {
+      // repeated .draiosproto.counter_percentile percentile_in = 10;
+      case 10: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_percentile_in:
@@ -3882,13 +3882,13 @@ bool counter_time_bidirectional::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(42)) goto parse_percentile_in;
-        if (input->ExpectTag(50)) goto parse_percentile_out;
+        if (input->ExpectTag(82)) goto parse_percentile_in;
+        if (input->ExpectTag(90)) goto parse_percentile_out;
         break;
       }
 
-      // repeated .draiosproto.counter_percentile percentile_out = 6;
-      case 6: {
+      // repeated .draiosproto.counter_percentile percentile_out = 11;
+      case 11: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_percentile_out:
@@ -3897,7 +3897,7 @@ bool counter_time_bidirectional::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(50)) goto parse_percentile_out;
+        if (input->ExpectTag(90)) goto parse_percentile_out;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -3940,16 +3940,16 @@ void counter_time_bidirectional::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(4, this->time_ns_out(), output);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_in = 5;
+  // repeated .draiosproto.counter_percentile percentile_in = 10;
   for (int i = 0; i < this->percentile_in_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      5, this->percentile_in(i), output);
+      10, this->percentile_in(i), output);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_out = 6;
+  // repeated .draiosproto.counter_percentile percentile_out = 11;
   for (int i = 0; i < this->percentile_out_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      6, this->percentile_out(i), output);
+      11, this->percentile_out(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -3980,18 +3980,18 @@ void counter_time_bidirectional::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(4, this->time_ns_out(), target);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_in = 5;
+  // repeated .draiosproto.counter_percentile percentile_in = 10;
   for (int i = 0; i < this->percentile_in_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        5, this->percentile_in(i), target);
+        10, this->percentile_in(i), target);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_out = 6;
+  // repeated .draiosproto.counter_percentile percentile_out = 11;
   for (int i = 0; i < this->percentile_out_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        6, this->percentile_out(i), target);
+        11, this->percentile_out(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -4034,7 +4034,7 @@ int counter_time_bidirectional::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.counter_percentile percentile_in = 5;
+  // repeated .draiosproto.counter_percentile percentile_in = 10;
   total_size += 1 * this->percentile_in_size();
   for (int i = 0; i < this->percentile_in_size(); i++) {
     total_size +=
@@ -4042,7 +4042,7 @@ int counter_time_bidirectional::ByteSize() const {
         this->percentile_in(i));
   }
 
-  // repeated .draiosproto.counter_percentile percentile_out = 6;
+  // repeated .draiosproto.counter_percentile percentile_out = 11;
   total_size += 1 * this->percentile_out_size();
   for (int i = 0; i < this->percentile_out_size(); i++) {
     total_size +=
@@ -4766,12 +4766,12 @@ bool counter_time_bytes::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(106)) goto parse_percentile_in;
+        if (input->ExpectTag(210)) goto parse_percentile_in;
         break;
       }
 
-      // repeated .draiosproto.counter_percentile percentile_in = 13;
-      case 13: {
+      // repeated .draiosproto.counter_percentile percentile_in = 26;
+      case 26: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_percentile_in:
@@ -4780,13 +4780,13 @@ bool counter_time_bytes::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(106)) goto parse_percentile_in;
-        if (input->ExpectTag(114)) goto parse_percentile_out;
+        if (input->ExpectTag(210)) goto parse_percentile_in;
+        if (input->ExpectTag(218)) goto parse_percentile_out;
         break;
       }
 
-      // repeated .draiosproto.counter_percentile percentile_out = 14;
-      case 14: {
+      // repeated .draiosproto.counter_percentile percentile_out = 27;
+      case 27: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_percentile_out:
@@ -4795,7 +4795,7 @@ bool counter_time_bytes::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(114)) goto parse_percentile_out;
+        if (input->ExpectTag(218)) goto parse_percentile_out;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -4878,16 +4878,16 @@ void counter_time_bytes::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(12, this->time_percentage_other(), output);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_in = 13;
+  // repeated .draiosproto.counter_percentile percentile_in = 26;
   for (int i = 0; i < this->percentile_in_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      13, this->percentile_in(i), output);
+      26, this->percentile_in(i), output);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_out = 14;
+  // repeated .draiosproto.counter_percentile percentile_out = 27;
   for (int i = 0; i < this->percentile_out_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      14, this->percentile_out(i), output);
+      27, this->percentile_out(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -4958,18 +4958,18 @@ void counter_time_bytes::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(12, this->time_percentage_other(), target);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_in = 13;
+  // repeated .draiosproto.counter_percentile percentile_in = 26;
   for (int i = 0; i < this->percentile_in_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        13, this->percentile_in(i), target);
+        26, this->percentile_in(i), target);
   }
 
-  // repeated .draiosproto.counter_percentile percentile_out = 14;
+  // repeated .draiosproto.counter_percentile percentile_out = 27;
   for (int i = 0; i < this->percentile_out_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        14, this->percentile_out(i), target);
+        27, this->percentile_out(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -5070,16 +5070,16 @@ int counter_time_bytes::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.counter_percentile percentile_in = 13;
-  total_size += 1 * this->percentile_in_size();
+  // repeated .draiosproto.counter_percentile percentile_in = 26;
+  total_size += 2 * this->percentile_in_size();
   for (int i = 0; i < this->percentile_in_size(); i++) {
     total_size +=
       ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
         this->percentile_in(i));
   }
 
-  // repeated .draiosproto.counter_percentile percentile_out = 14;
-  total_size += 1 * this->percentile_out_size();
+  // repeated .draiosproto.counter_percentile percentile_out = 27;
+  total_size += 2 * this->percentile_out_size();
   for (int i = 0; i < this->percentile_out_size(); i++) {
     total_size +=
       ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
@@ -9564,12 +9564,12 @@ bool counter_proto_entry::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(58)) goto parse_percentile;
+        if (input->ExpectTag(106)) goto parse_percentile;
         break;
       }
 
-      // repeated .draiosproto.counter_percentile percentile = 7;
-      case 7: {
+      // repeated .draiosproto.counter_percentile percentile = 13;
+      case 13: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
          parse_percentile:
@@ -9578,7 +9578,7 @@ bool counter_proto_entry::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(58)) goto parse_percentile;
+        if (input->ExpectTag(106)) goto parse_percentile;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -9631,10 +9631,10 @@ void counter_proto_entry::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(6, this->nerrors(), output);
   }
 
-  // repeated .draiosproto.counter_percentile percentile = 7;
+  // repeated .draiosproto.counter_percentile percentile = 13;
   for (int i = 0; i < this->percentile_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
-      7, this->percentile(i), output);
+      13, this->percentile(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -9675,11 +9675,11 @@ void counter_proto_entry::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt32ToArray(6, this->nerrors(), target);
   }
 
-  // repeated .draiosproto.counter_percentile percentile = 7;
+  // repeated .draiosproto.counter_percentile percentile = 13;
   for (int i = 0; i < this->percentile_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
       WriteMessageNoVirtualToArray(
-        7, this->percentile(i), target);
+        13, this->percentile(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -9736,7 +9736,7 @@ int counter_proto_entry::ByteSize() const {
     }
 
   }
-  // repeated .draiosproto.counter_percentile percentile = 7;
+  // repeated .draiosproto.counter_percentile percentile = 13;
   total_size += 1 * this->percentile_size();
   for (int i = 0; i < this->percentile_size(); i++) {
     total_size +=
