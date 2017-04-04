@@ -281,7 +281,7 @@ dragent_configuration::dragent_configuration()
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
-	m_cointerface_enabled = false;
+	m_cointerface_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -867,7 +867,7 @@ void dragent_configuration::init(Application* app)
 		m_autodrop_enabled = false;
 	}
 
-	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", false);
+	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 }
 
 void dragent_configuration::print_configuration()
