@@ -649,6 +649,7 @@ void dragent_configuration::init(Application* app)
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
+	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("max sysdig captures", 10);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);

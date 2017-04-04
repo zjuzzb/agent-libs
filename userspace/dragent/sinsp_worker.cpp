@@ -773,6 +773,17 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 				return;
 			}
 
+			// As a resource exaustion prevention
+			// mechanism, only allow "max sysdig captures"
+			// to be outstanding at one time.
+			if((m_running_standard_dump_jobs.size() + m_running_memdump_jobs.size()) >= m_configuration->m_max_sysdig_captures)
+			{
+				send_error(request->m_token, "maximum number of outstanding captures (" +
+					   to_string(m_configuration->m_max_sysdig_captures) +
+					   ") reached");
+				return;
+			}
+
 			if(request->m_past_duration_ns == 0)
 			{
 				start_standard_job(*request, ts);
