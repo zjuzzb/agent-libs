@@ -36,8 +36,16 @@ public:
 	// Check for any responses and call their callback functions.
 	void next();
 
+	// Specify an alternate location for the domain socket. Useful
+	// for tests.
+	void set_domain_sock(std::string &domain_sock);
+
 	// Clean up any state left around related to the connection to
-	// the cointerface process, such as the unix domain socket.
+	// the cointerface process, such as the default unix domain
+	// socket.
+	//
+	// Note: this *only* cleans up the default domain socket, and not
+	// any domain socket specified by set_domain_sock().
 	static void cleanup();
 
 protected:
@@ -52,7 +60,7 @@ protected:
 	struct call_context {
 		sdc_internal::cointerface_message_type msg_type;
 
-		unique_ptr<google::protobuf::Message> response_msg;
+		std::unique_ptr<google::protobuf::Message> response_msg;
 
 		response_cb_t response_cb;
 
@@ -74,5 +82,6 @@ protected:
 
 	google::protobuf::TextFormat::Printer m_print;
 
-	static std::string m_domain_sock;
+	std::string m_domain_sock;
+	static std::string default_domain_sock;
 };

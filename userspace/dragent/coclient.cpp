@@ -6,9 +6,10 @@
 
 using namespace std;
 
-std::string coclient::m_domain_sock = string("/opt/draios/run/cointerface.sock");
+std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
 
 coclient::coclient()
+	: m_domain_sock(default_domain_sock)
 {
 	m_print.SetSingleLineMode(true);
 }
@@ -109,9 +110,14 @@ void coclient::next()
 	delete call;
 }
 
+void coclient::set_domain_sock(std::string &domain_sock)
+{
+	m_domain_sock = domain_sock;
+}
+
 void coclient::cleanup()
 {
-	Poco::File f(m_domain_sock);
+	Poco::File f(default_domain_sock);
 	if(f.exists())
 	{
 		f.remove();
