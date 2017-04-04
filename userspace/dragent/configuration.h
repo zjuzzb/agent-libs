@@ -328,7 +328,7 @@ private:
 	{
 		m_errors.emplace_back(err);
 	}
-	
+
 	// no-op needed to compile and terminate recursion
 	template <typename T>
 	static void get_sequence(T&, const YAML::Node&)

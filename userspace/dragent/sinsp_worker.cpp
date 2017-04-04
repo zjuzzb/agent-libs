@@ -618,7 +618,7 @@ void sinsp_worker::stop_memdump_job(dump_job_state* job)
 		ASSERT(false);
 		return;
 	}
-	
+
 	job->m_memdumper_job->stop();
 	memdumper->remove_job(job->m_memdumper_job);
 }

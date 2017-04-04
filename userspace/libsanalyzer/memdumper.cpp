@@ -31,7 +31,7 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_
 #endif
 }
 
-void sinsp_memory_dumper::init(uint64_t bufsize, 
+void sinsp_memory_dumper::init(uint64_t bufsize,
 	uint64_t max_disk_size,
 	uint64_t saturation_inactivity_pause_ns)
 {
@@ -66,7 +66,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	}
 	catch(sinsp_exception e)
 	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64, 
+		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64,
 			m_bsize);
 
 		m_disabled = true;
@@ -97,7 +97,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 		lo(sinsp_logger::SEV_ERROR, "memdump: cannot open file %s", fname.c_str());
 	}
 */
-	m_f = NULL;	
+	m_f = NULL;
 
 	//
 	// Initialize the notification event
@@ -139,7 +139,7 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 		return;
 	}
 
-	if((m_saturation_inactivity_start_time != 0) && 
+	if((m_saturation_inactivity_start_time != 0) &&
 		(ts_ns - m_saturation_inactivity_start_time) < m_saturation_inactivity_pause_ns)
 	{
 		return;
@@ -162,7 +162,7 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 	m_cf = fopen(fname.c_str(), "wb");
 	if(m_cf == NULL)
 	{
-		lo(sinsp_logger::SEV_ERROR, 
+		lo(sinsp_logger::SEV_ERROR,
 			"memdump: cannot open file %s, dump will not happen", fname.c_str());
 		return;
 	}
@@ -179,7 +179,7 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 	m_cur_dump_size = m_bsize;
 }
 
-void sinsp_memory_dumper::apply_job_filter(string intermediate_filename, 
+void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 	sinsp_memory_dumper_job* job)
 {
 	int32_t res;
@@ -254,7 +254,7 @@ void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 	inspector.close();
 }
 
-sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter, 
+sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter,
 	uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
 {
 	struct timeval tm;
@@ -281,7 +281,7 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 
 	fclose(tfp);
 
-	job->m_start_time = 
+	job->m_start_time =
 		delta_time_past_ns != 0? ts - delta_time_past_ns : 0;
 	job->m_end_time = ts + delta_time_future_ns;
 	job->m_filename = filename;
@@ -324,7 +324,7 @@ void sinsp_memory_dumper::remove_job(sinsp_memory_dumper_job* job)
 	delete job;
 }
 
-void sinsp_memory_dumper::flush_state_to_disk(FILE* fp, 
+void sinsp_memory_dumper::flush_state_to_disk(FILE* fp,
 	sinsp_memory_dumper_state* state,
 	bool is_last_event_complete)
 {
@@ -385,8 +385,8 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 
 			if(toobig)
 			{
-				m_saturation_inactivity_start_time = ts;	
-				lo(sinsp_logger::SEV_INFO, "memdump: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns", 
+				m_saturation_inactivity_start_time = ts;
+				lo(sinsp_logger::SEV_INFO, "memdump: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns",
 					m_max_disk_size,
 					m_saturation_inactivity_pause_ns);
 			}
@@ -421,7 +421,7 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 	}
 	catch(sinsp_exception e)
 	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: " + 
+		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: " +
 			m_active_state->m_bufsize);
 
 		m_disabled = true;
@@ -439,12 +439,12 @@ void sinsp_memory_dumper::push_notification(uint64_t ts, uint64_t tid, string id
 	lens[0] = idlen;
 	lens[1] = desclen;
 
-	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4), 
-		id.c_str(), 
+	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4),
+		id.c_str(),
 		idlen);
 
-	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4 + idlen), 
-		description.c_str(), 
+	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4 + idlen),
+		description.c_str(),
 		desclen);
 
 	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
