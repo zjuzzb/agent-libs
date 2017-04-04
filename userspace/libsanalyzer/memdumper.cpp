@@ -1,3 +1,6 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <iostream>
 #include <sinsp.h>
 #include <sinsp_int.h>
@@ -264,6 +267,14 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	m_jobs.push_back(job);
 
 	string fname = "/tmp/dragent_i_" + to_string(tm.tv_sec) + to_string(tm.tv_usec);
+	struct stat st;
+
+	if (stat(fname.c_str(), &st) != -1)
+	{
+		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+		job->m_lasterr = "temporary file " + fname + " already exists";
+		return job;
+	}
 
 	FILE* tfp = fopen(fname.c_str(), "wb");
 	if(tfp == NULL)
