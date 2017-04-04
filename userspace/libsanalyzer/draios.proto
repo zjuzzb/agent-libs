@@ -752,6 +752,11 @@ message swarm_common {
     repeated swarm_pair labels = 3;
 }
 
+enum swarm_service_mode {
+    REPLICATED = 1;
+    GLOBAL = 2;
+}
+
 message swarm_service {
     optional swarm_common common = 1;
     repeated string virtual_ips = 2;
@@ -759,6 +764,9 @@ message swarm_service {
     // internal service don't need it, even if they load
     // balance traffic as well
     repeated swarm_port ports = 3;
+    optional swarm_service_mode mode = 4;
+    optional uint64 spec_replicas = 5;	// Only defined for replicated mode
+    optional uint64 tasks = 6;	// running tasks associated with the service
 }
 
 message swarm_task {

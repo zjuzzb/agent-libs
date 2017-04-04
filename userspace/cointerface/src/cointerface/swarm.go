@@ -39,14 +39,28 @@ func portsToProtobuf(ports []swarm.PortConfig) (ret []*draiosproto.SwarmPort) {
 	return
 }
 
-func serviceToProtobuf(service swarm.Service) *draiosproto.SwarmService {
-	return &draiosproto.SwarmService{Common: &draiosproto.SwarmCommon{
+func serviceToProtobuf(service swarm.Service, taskmap map[string]uint64) *draiosproto.SwarmService {
+	srv := draiosproto.SwarmService{Common: &draiosproto.SwarmCommon{
 			Id:     proto.String(service.ID),
 			Name:   proto.String(service.Spec.Name),
 			Labels: labelsToProtobuf(service.Spec.Labels)},
 		VirtualIps: virtualIPsToProtobuf(service.Endpoint.VirtualIPs),
 		Ports:      portsToProtobuf(service.Endpoint.Ports),
 	}
+	if service.Spec.Mode.Replicated != nil {
+		mode := draiosproto.SwarmServiceMode_REPLICATED
+		srv.Mode = &mode
+		srv.SpecReplicas = service.Spec.Mode.Replicated.Replicas
+	} else if service.Spec.Mode.Global != nil {
+		mode := draiosproto.SwarmServiceMode_GLOBAL
+		srv.Mode = &mode
+	}
+	num, exist := taskmap[service.ID]
+	if !exist {
+		num = 0
+	}
+	srv.Tasks = &num
+	return &srv
 }
 
 func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
@@ -107,7 +121,8 @@ func quorum(nodes []swarm.Node) (*bool) {
 }
 
 func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
-	log.Debugf("Received swarmstate command message: %s", cmd.String())
+	// logparser can't handle large logs
+	// log.Debugf("Received swarmstate command message: %s", cmd.String())
 
 	// If SYSDIG_HOST_ROOT is set, use that as a part of the
 	// socket path.
@@ -135,9 +150,27 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 	m := &draiosproto.SwarmState{ClusterId: clusterId}
 
 	if isManager {
+		taskmap := make(map[string]uint64)
+		args := filters.NewArgs()
+		args.Add("desired-state", "running")
+		args.Add("desired-state", "accepted")
+
+		tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args})
+		if err == nil {
+			for _, task := range tasks {
+				m.Tasks = append(m.Tasks, taskToProtobuf(task))
+				// fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
+				if task.Status.State == swarm.TaskStateRunning && len(task.ServiceID) > 0 {
+					taskmap[task.ServiceID]++
+				}
+			}
+		} else {
+			log.Errorf("Error fetching tasks: %s\n", err)
+		}
+
 		if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
 			for _, service := range services {
-				m.Services = append(m.Services, serviceToProtobuf(service))
+				m.Services = append(m.Services, serviceToProtobuf(service, taskmap))
 				stack := service.Spec.Labels["com.docker.stack.namespace"]
 				if stack == "" {
 					stack = "none"
@@ -157,18 +190,6 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 		} else {
 			log.Errorf("Error fetching nodes: %s\n", err)
 		}
-
-		args := filters.NewArgs()
-		args.Add("desired-state", "running")
-		args.Add("desired-state", "accepted")
-		if tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args}); err == nil {
-			for _, task := range tasks {
-				m.Tasks = append(m.Tasks, taskToProtobuf(task))
-				// fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
-			}
-		} else {
-			log.Errorf("Error fetching tasks: %s\n", err)
-		}
 	}
 
     res := &sdc_internal.SwarmStateResult{}
@@ -178,7 +199,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
     }
 	res.State = m
 
-    log.Debugf("SwarmState Sending response: %s", res.String())
+    // log.Debugf("SwarmState Sending response: %s", res.String())
 
     return res, nil
 }

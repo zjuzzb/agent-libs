@@ -398,6 +398,25 @@ inline bool container_type_Parse(
   return ::google::protobuf::internal::ParseNamedEnum<container_type>(
     container_type_descriptor(), name, value);
 }
+enum swarm_service_mode {
+  REPLICATED = 1,
+  GLOBAL = 2
+};
+bool swarm_service_mode_IsValid(int value);
+const swarm_service_mode swarm_service_mode_MIN = REPLICATED;
+const swarm_service_mode swarm_service_mode_MAX = GLOBAL;
+const int swarm_service_mode_ARRAYSIZE = swarm_service_mode_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* swarm_service_mode_descriptor();
+inline const ::std::string& swarm_service_mode_Name(swarm_service_mode value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    swarm_service_mode_descriptor(), value);
+}
+inline bool swarm_service_mode_Parse(
+    const ::std::string& name, swarm_service_mode* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<swarm_service_mode>(
+    swarm_service_mode_descriptor(), name, value);
+}
 enum error_type {
   ERR_CONN_LIMIT = 1,
   ERR_INVALID_CUSTOMER_KEY = 2,
@@ -9310,19 +9329,49 @@ class swarm_service : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_port >*
       mutable_ports();
 
+  // optional .draiosproto.swarm_service_mode mode = 4;
+  inline bool has_mode() const;
+  inline void clear_mode();
+  static const int kModeFieldNumber = 4;
+  inline ::draiosproto::swarm_service_mode mode() const;
+  inline void set_mode(::draiosproto::swarm_service_mode value);
+
+  // optional uint64 spec_replicas = 5;
+  inline bool has_spec_replicas() const;
+  inline void clear_spec_replicas();
+  static const int kSpecReplicasFieldNumber = 5;
+  inline ::google::protobuf::uint64 spec_replicas() const;
+  inline void set_spec_replicas(::google::protobuf::uint64 value);
+
+  // optional uint64 tasks = 6;
+  inline bool has_tasks() const;
+  inline void clear_tasks();
+  static const int kTasksFieldNumber = 6;
+  inline ::google::protobuf::uint64 tasks() const;
+  inline void set_tasks(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.swarm_service)
  private:
   inline void set_has_common();
   inline void clear_has_common();
+  inline void set_has_mode();
+  inline void clear_has_mode();
+  inline void set_has_spec_replicas();
+  inline void clear_has_spec_replicas();
+  inline void set_has_tasks();
+  inline void clear_has_tasks();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::draiosproto::swarm_common* common_;
   ::google::protobuf::RepeatedPtrField< ::std::string> virtual_ips_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::swarm_port > ports_;
+  ::google::protobuf::uint64 spec_replicas_;
+  ::google::protobuf::uint64 tasks_;
+  int mode_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -24651,6 +24700,73 @@ swarm_service::mutable_ports() {
   return &ports_;
 }
 
+// optional .draiosproto.swarm_service_mode mode = 4;
+inline bool swarm_service::has_mode() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void swarm_service::set_has_mode() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void swarm_service::clear_has_mode() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void swarm_service::clear_mode() {
+  mode_ = 1;
+  clear_has_mode();
+}
+inline ::draiosproto::swarm_service_mode swarm_service::mode() const {
+  return static_cast< ::draiosproto::swarm_service_mode >(mode_);
+}
+inline void swarm_service::set_mode(::draiosproto::swarm_service_mode value) {
+  assert(::draiosproto::swarm_service_mode_IsValid(value));
+  set_has_mode();
+  mode_ = value;
+}
+
+// optional uint64 spec_replicas = 5;
+inline bool swarm_service::has_spec_replicas() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void swarm_service::set_has_spec_replicas() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void swarm_service::clear_has_spec_replicas() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void swarm_service::clear_spec_replicas() {
+  spec_replicas_ = GOOGLE_ULONGLONG(0);
+  clear_has_spec_replicas();
+}
+inline ::google::protobuf::uint64 swarm_service::spec_replicas() const {
+  return spec_replicas_;
+}
+inline void swarm_service::set_spec_replicas(::google::protobuf::uint64 value) {
+  set_has_spec_replicas();
+  spec_replicas_ = value;
+}
+
+// optional uint64 tasks = 6;
+inline bool swarm_service::has_tasks() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void swarm_service::set_has_tasks() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void swarm_service::clear_has_tasks() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void swarm_service::clear_tasks() {
+  tasks_ = GOOGLE_ULONGLONG(0);
+  clear_has_tasks();
+}
+inline ::google::protobuf::uint64 swarm_service::tasks() const {
+  return tasks_;
+}
+inline void swarm_service::set_tasks(::google::protobuf::uint64 value) {
+  set_has_tasks();
+  tasks_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // swarm_task
@@ -31011,6 +31127,10 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::message_type>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::container_type>() {
   return ::draiosproto::container_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::swarm_service_mode>() {
+  return ::draiosproto::swarm_service_mode_descriptor();
 }
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::error_type>() {
