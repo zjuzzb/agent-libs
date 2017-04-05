@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import sys
 import signal
 import ast
+import config
 
 # project
 from checks import AgentCheck
@@ -30,6 +31,7 @@ import posix_ipc
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
 CUSTOM_CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.custom.d"
+GLOBAL_PERCENTILES = []
 
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
@@ -70,6 +72,19 @@ class YamlConfig:
             if root.has_key(key):
                 try:
                     ret += root[key]
+                except TypeError as ex:
+                    logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
+        return ret
+
+    def get_overriden_sequence(self, key, default=None):
+        ret = default
+        if ret is None:
+            ret = []
+        for root in self._roots:
+            if root.has_key(key):
+                try:
+                    ret = root[key]
+                    break
                 except TypeError as ex:
                     logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         return ret
@@ -271,6 +286,18 @@ class Config:
                 return check
         return None
 
+    def set_percentiles(self):
+        global GLOBAL_PERCENTILES
+        percentiles = self._yaml_config.get_overriden_sequence("percentiles")
+        configstr = ''
+        first = True
+        for pct in percentiles:
+            if not first:
+                configstr += ','
+            configstr += str(float(pct) / 100.0)
+            first = False
+        GLOBAL_PERCENTILES = config.get_histogram_percentiles(configstr)
+
 class PosixQueueType:
     SEND = 0
     RECEIVE = 1
@@ -449,6 +476,8 @@ class Application:
     def main(self):
         logging.info("Starting")
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+        self.config.set_percentiles()
+        logging.debug("sdchecks percentiles: %s", str(GLOBAL_PERCENTILES))
         if len(sys.argv) > 1:
             if sys.argv[1] == "runCheck":
                 proc_data = {
