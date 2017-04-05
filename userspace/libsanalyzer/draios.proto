@@ -350,7 +350,6 @@ message statsd_metric {
     optional double min = 6;
     optional double max = 7;
     optional double count = 8;
-    optional double median = 9;
     repeated counter_percentile percentile = 12;
 }
 

@@ -182,10 +182,6 @@ bool statsd_metric::parse_line(const string& line)
 			{
 				m_stdev = value;
 			}
-			else if(subtype == "median")
-			{
-				m_median = value;
-			}
 			else if(subtype.size() > 1 && subtype[0] == 'p') // percentiles
 			{
 				long percentile = strtol(&subtype.c_str()[1], nullptr, 10);
@@ -232,7 +228,6 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 		proto->set_min(m_min);
 		proto->set_max(m_max);
 		proto->set_count(m_count);
-		proto->set_median(m_median);
 		typedef draiosproto::statsd_metric CTB;
 		typedef draiosproto::counter_percentile CP;
 		percentile::to_protobuf<CTB, CP>(m_percentiles, proto, &CTB::add_percentile);

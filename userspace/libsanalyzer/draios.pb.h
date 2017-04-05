@@ -4041,13 +4041,6 @@ class statsd_metric : public ::google::protobuf::Message {
   inline double count() const;
   inline void set_count(double value);
 
-  // optional double median = 9;
-  inline bool has_median() const;
-  inline void clear_median();
-  static const int kMedianFieldNumber = 9;
-  inline double median() const;
-  inline void set_median(double value);
-
   // repeated .draiosproto.counter_percentile percentile = 12;
   inline int percentile_size() const;
   inline void clear_percentile();
@@ -4076,8 +4069,6 @@ class statsd_metric : public ::google::protobuf::Message {
   inline void clear_has_max();
   inline void set_has_count();
   inline void clear_has_count();
-  inline void set_has_median();
-  inline void clear_has_median();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4088,12 +4079,11 @@ class statsd_metric : public ::google::protobuf::Message {
   double min_;
   double max_;
   double count_;
-  double median_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::counter_percentile > percentile_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -16667,28 +16657,6 @@ inline double statsd_metric::count() const {
 inline void statsd_metric::set_count(double value) {
   set_has_count();
   count_ = value;
-}
-
-// optional double median = 9;
-inline bool statsd_metric::has_median() const {
-  return (_has_bits_[0] & 0x00000100u) != 0;
-}
-inline void statsd_metric::set_has_median() {
-  _has_bits_[0] |= 0x00000100u;
-}
-inline void statsd_metric::clear_has_median() {
-  _has_bits_[0] &= ~0x00000100u;
-}
-inline void statsd_metric::clear_median() {
-  median_ = 0;
-  clear_has_median();
-}
-inline double statsd_metric::median() const {
-  return median_;
-}
-inline void statsd_metric::set_median(double value) {
-  set_has_median();
-  median_ = value;
 }
 
 // repeated .draiosproto.counter_percentile percentile = 12;

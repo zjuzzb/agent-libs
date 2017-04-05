@@ -73,11 +73,16 @@ public:
 		return m_sum;
 	}
 
-	inline double median() const
+	bool percentile(int pct, double& val)
 	{
-		return m_median;
+		auto it = m_percentiles.find(pct);
+		if(it != m_percentiles.end())
+		{
+			val = it->second;
+			return true;
+		}
+		return false;
 	}
-
 	inline const map<string, string>& tags() const
 	{
 		return m_tags;
@@ -102,7 +107,6 @@ private:
 	double m_max;
 	double m_count;
 	double m_stdev;
-	double m_median;
 	percentile::p_map_type m_percentiles;
 
 	friend class lua_cbacks;
