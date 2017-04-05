@@ -76,24 +76,14 @@ class YamlConfig:
                     logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         return ret
 
-    def get_overriden_sequence(self, key, default=None):
-        ret = default
-        if ret is None:
-            ret = []
+    def get_single(self, key, subkey=None, default_value=None):
         for root in self._roots:
-            if root.has_key(key):
-                try:
-                    ret = root[key]
-                    break
-                except TypeError as ex:
-                    logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
-        return ret
-
-    def get_single(self, key, subkey, default_value=None):
-        # TODO: now works only for key.subkey, more general implementation may be needed
-        for root in self._roots:
-            if root.has_key(key) and root[key].has_key(subkey):
-                return root[key][subkey]
+            if not subkey is None:
+                if root.has_key(key) and root[key].has_key(subkey):
+                    return root[key][subkey]
+            else:
+                if root.has_key(key):
+                    return root[key]
         return default_value
 
 class AppCheckException(Exception):
@@ -158,7 +148,8 @@ class AppCheckInstance:
         "is_developer_mode": False,
         "version": 1.0,
         "hostname": get_hostname(),
-        "api_key": ""
+        "api_key": "",
+        "histogram_percentiles": []
     }
     INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
@@ -177,6 +168,7 @@ class AppCheckInstance:
             check_module = check["check_module"]
         except KeyError:
             check_module = self.name
+        self.AGENT_CONFIG["histogram_percentiles"] = GLOBAL_PERCENTILES
         self.check_instance = get_check_class(check_module)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
 
         if self.CONTAINER_SUPPORT:
@@ -288,7 +280,7 @@ class Config:
 
     def set_percentiles(self):
         global GLOBAL_PERCENTILES
-        percentiles = self._yaml_config.get_overriden_sequence("percentiles")
+        percentiles = self._yaml_config.get_single("percentiles")
         configstr = ''
         first = True
         for pct in percentiles:

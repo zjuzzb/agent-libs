@@ -1,7 +1,6 @@
 # stdlib
 import logging
 from time import time
-import sdchecks
 
 # project
 from checks.metric_types import MetricTypes
@@ -234,7 +233,6 @@ class Histogram(Metric):
             else DEFAULT_HISTOGRAM_AGGREGATES
         self.percentiles = extra_config['percentiles'] if\
             extra_config is not None and extra_config.get('percentiles') is not None\
-            else sdchecks.GLOBAL_PERCENTILES if sdchecks.GLOBAL_PERCENTILES is not None\
             else DEFAULT_HISTOGRAM_PERCENTILES
         self.tags = tags
         self.hostname = hostname
