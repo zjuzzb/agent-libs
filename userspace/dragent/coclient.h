@@ -33,6 +33,9 @@ public:
 
 	void ping(int64_t token, response_cb_t response_cb);
 
+	void perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
+				const std::string &container_id, response_cb_t response_cb);
+
 	// Check for any responses and call their callback functions.
 	void next();
 
@@ -73,6 +76,7 @@ protected:
 
 		// Depending on msg_type, the context will use one of these readers
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 	};
 
 	// Created by CreateChannel
