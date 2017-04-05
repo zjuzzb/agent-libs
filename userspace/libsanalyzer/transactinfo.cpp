@@ -265,11 +265,14 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		{
 			it->second.push_back(tfi);
 		}
-		for(auto entry : m_table)
+		if(g_logger.get_severity() > sinsp_logger::SEV_TRACE)
 		{
-			for(auto trans : entry.second)
+			for(auto entry : m_table)
 			{
-				g_logger.log("transaction time=" + std::to_string(trans.m_trinfo.m_end_time - trans.m_trinfo.m_start_time), sinsp_logger::SEV_DEBUG);
+				for(auto trans : entry.second)
+				{
+					g_logger.log("transaction time=" + std::to_string(trans.m_trinfo.m_end_time - trans.m_trinfo.m_start_time), sinsp_logger::SEV_TRACE);
+				}
 			}
 		}
 #endif

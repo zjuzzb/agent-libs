@@ -2860,7 +2860,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
-			//conn->mutable_counters()->mutable_min_transaction_counters(),
 			conn->mutable_counters()->mutable_max_transaction_counters(),
 			m_sampling_ratio);
 		//
@@ -2896,7 +2895,6 @@ void sinsp_analyzer::emit_full_connections()
 
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
-				//conn->mutable_counters()->mutable_min_transaction_counters(),
 				conn->mutable_counters()->mutable_max_transaction_counters(),
 				m_sampling_ratio);
 		}
@@ -3715,7 +3713,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_delay_calculator->compute_host_container_delays(&m_host_transaction_counters, &m_host_client_transactions, &m_host_server_transactions, &m_host_transaction_delays);
 
 			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(),
-				//m_metrics->mutable_hostinfo()->mutable_min_transaction_counters(),
 				m_metrics->mutable_hostinfo()->mutable_max_transaction_counters(),
 				m_sampling_ratio);
 
@@ -5443,7 +5440,6 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
 
 	it_analyzer->second.m_transaction_counters.to_protobuf(container->mutable_transaction_counters(),
-														   //container->mutable_min_transaction_counters(),
 														   container->mutable_max_transaction_counters(),
 														   m_sampling_ratio);
 
