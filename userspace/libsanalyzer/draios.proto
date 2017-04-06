@@ -768,6 +768,7 @@ message metrics {
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
     optional falco_baseline falcobl = 27; // baseline information for falco
+    repeated uint32 config_percentiles = 29;  // configured percentiles
 }
 
 message dump_request_start {

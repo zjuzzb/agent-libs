@@ -221,6 +221,15 @@ sinsp_analyzer::~sinsp_analyzer()
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
+void sinsp_analyzer::emit_percentiles_config()
+{
+	const std::set<double>& pctls = m_configuration->get_percentiles();
+	for (double p : pctls)
+	{
+		m_metrics->add_config_percentiles((uint32_t) round(p));
+	}
+}
+
 void sinsp_analyzer::set_percentiles()
 {
 	const std::set<double>& pctls = m_configuration->get_percentiles();
@@ -3705,6 +3714,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// User-configured events
 			//
 			emit_user_events();
+
+			//
+			// Percentile configuration
+			//
+			emit_percentiles_config();
 			misc_trc.stop();
 
 			//

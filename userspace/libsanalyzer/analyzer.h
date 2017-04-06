@@ -399,6 +399,7 @@ public:
 	void set_emit_tracers(bool enabled);
 
 	void set_percentiles();
+	void emit_percentiles_config();
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);

@@ -9293,6 +9293,18 @@ class metrics : public ::google::protobuf::Message {
   inline ::draiosproto::falco_baseline* release_falcobl();
   inline void set_allocated_falcobl(::draiosproto::falco_baseline* falcobl);
 
+  // repeated uint32 config_percentiles = 29;
+  inline int config_percentiles_size() const;
+  inline void clear_config_percentiles();
+  static const int kConfigPercentilesFieldNumber = 29;
+  inline ::google::protobuf::uint32 config_percentiles(int index) const;
+  inline void set_config_percentiles(int index, ::google::protobuf::uint32 value);
+  inline void add_config_percentiles(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      config_percentiles() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_config_percentiles();
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -9351,9 +9363,10 @@ class metrics : public ::google::protobuf::Message {
   ::draiosproto::mesos_state* mesos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event > events_;
   ::draiosproto::falco_baseline* falcobl_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > config_percentiles_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(23 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(24 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -24162,6 +24175,31 @@ inline void metrics::set_allocated_falcobl(::draiosproto::falco_baseline* falcob
   } else {
     clear_has_falcobl();
   }
+}
+
+// repeated uint32 config_percentiles = 29;
+inline int metrics::config_percentiles_size() const {
+  return config_percentiles_.size();
+}
+inline void metrics::clear_config_percentiles() {
+  config_percentiles_.Clear();
+}
+inline ::google::protobuf::uint32 metrics::config_percentiles(int index) const {
+  return config_percentiles_.Get(index);
+}
+inline void metrics::set_config_percentiles(int index, ::google::protobuf::uint32 value) {
+  config_percentiles_.Set(index, value);
+}
+inline void metrics::add_config_percentiles(::google::protobuf::uint32 value) {
+  config_percentiles_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+metrics::config_percentiles() const {
+  return config_percentiles_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+metrics::mutable_config_percentiles() {
+  return &config_percentiles_;
 }
 
 // -------------------------------------------------------------------
