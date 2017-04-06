@@ -4,9 +4,9 @@ JSONDIR = $(realpath $(MAKEDIR)/../../../sysdig/userspace/libsinsp/third-party/j
 
 DRAIOS_POCO = poco-1.4.6p4-all
 DRAIOS_PROTOBUF = protobuf-2.5.0
-DRAIOS_CURL = curl-7.45.0
+DRAIOS_CURL = curl-7.52.1
 DRAIOS_B64 = libb64-1.2
-DRAIOS_OPENNSL = openssl-1.0.2d
+DRAIOS_OPENNSL = openssl-1.0.2j
 
 SDIR =$(MAKEDIR)/src
 IDIR =$(MAKEDIR)/src
@@ -34,10 +34,10 @@ LIBS=-Wl,-Bstatic -lprotobuf -lcurl -lssl -lcrypto -lPocoFoundation -Wl,-Bdynami
 
 ODIR=$(MAKEDIR)/obj
 
-_DEPS = mesos.h mesos_state.h mesos_component.h mesos_http.h mesos_collector.h mesos_proto.h mesos_event_data.h marathon_dispatcher.h marathon_component.h marathon_http.h uri.h
+_DEPS = mesos.h mesos_state.h mesos_component.h mesos_http.h mesos_collector.h mesos_proto.h mesos_event_data.h marathon_component.h marathon_http.h uri.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = mesos.o mesos_state.o mesos_component.o mesos_http.o mesos_collector.o mesos_proto.o mesos_event_data.o marathon_dispatcher.o marathon_component.o marathon_http.o jsoncpp.o uri.o
+_OBJ = mesos.o mesos_state.o mesos_component.o mesos_http.o mesos_collector.o mesos_proto.o mesos_event_data.o marathon_component.o marathon_http.o jsoncpp.o uri.o
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 all: directory mesosget

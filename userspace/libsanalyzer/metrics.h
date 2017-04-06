@@ -116,8 +116,7 @@ public:
 	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
-					 uint64_t tot_relevant_time_ns, uint32_t sampling_ratio,
-					 uint64_t patched_bytes_in = 0, uint64_t patched_bytes_out = 0);
+					 uint64_t tot_relevant_time_ns, uint32_t sampling_ratio);
 	uint64_t get_tot_bytes() const;
 
 	uint32_t m_count_in;
@@ -307,14 +306,33 @@ public:
 	uint64_t m_pfminor;
 	sinsp_protostate* m_protostate;
 	uint32_t m_fd_count; // Number of FDs
-	int64_t m_res_memory_kb;
-	int64_t m_swap_memory_kb;
+	int64_t m_res_memory_used_kb;
+	int64_t m_res_memory_free_kb;
+	int64_t m_res_memory_avail_kb;
+	int64_t m_swap_memory_used_kb;
+	int64_t m_swap_memory_total_kb;
+	int64_t m_swap_memory_avail_kb;
 	double m_cpuload; // for containers
+
+	int get_process_count();
+	int get_process_start_count();
 
 private:
 	double m_tot_capacity_score;
 	double m_tot_stolen_capacity_score;
 	uint32_t m_tot_server_transactions;
+	int m_proc_count = 0;
+	int m_proc_start_count = 0;
 };
+
+inline int sinsp_host_metrics::get_process_count()
+{
+	return m_proc_count;
+}
+
+inline int sinsp_host_metrics::get_process_start_count()
+{
+	return m_proc_start_count;
+}
 
 #endif // HAS_ANALYZER

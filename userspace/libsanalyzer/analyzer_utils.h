@@ -240,3 +240,51 @@ private:
 	chrono::system_clock::time_point m_endtime;
 	bool m_started;
 };
+
+/**
+ * Often we need to run something on an interval
+ * usually we need to store last_run_ts compare to now
+ * and run it
+ * This micro-class makes this easier
+ */
+class run_on_interval
+{
+public:
+	inline run_on_interval(uint64_t interval);
+
+	template<typename Callable>
+	inline void run(const Callable& c, uint64_t now = sinsp_utils::get_current_time_ns());
+private:
+	uint64_t m_last_run_ns;
+	uint64_t m_interval;
+};
+
+run_on_interval::run_on_interval(uint64_t interval):
+		m_last_run_ns(0),
+		m_interval(interval)
+{
+}
+
+template<typename Callable>
+void run_on_interval::run(const Callable& c, uint64_t now)
+{
+	if(now - m_last_run_ns > m_interval)
+	{
+		c();
+		m_last_run_ns = now;
+	}
+}
+
+void send_subprocess_heartbeat();
+
+class nsenter
+{
+public:
+	nsenter(int pid, const string& type);
+	virtual ~nsenter();
+
+private:
+	int open_ns_fd(int pid, const string& type);
+	static unordered_map<string, int> m_home_ns;
+	string m_type;
+};

@@ -5,6 +5,8 @@
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
+#include "procfs_parser.h"
+#include "app_checks.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -65,9 +67,12 @@ public:
 	sinsp_protostate m_protostate;
 	// Number of FDs
 	uint32_t m_fd_count;
-	uint64_t m_start_count;
+	uint64_t m_start_count = 0;
+	// number of process instances
+	int m_proc_count = 0;
 };
 
+class proc_config;
 class thread_analyzer_dyn_state
 {
 public:
@@ -80,10 +85,16 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// The protocol state
 	sinsp_protostate m_protostate;
+	unique_ptr<proc_config> m_proc_config;
+
+	// Used just by nodriver mode
+	sinsp_proc_file_stats m_file_io_stats;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
+// WARNING: This class is allocated with `placement new`. So the destructor
+// is not called automatically. release any dynamic memory in `destroy()` method
 ///////////////////////////////////////////////////////////////////////////////
 class thread_analyzer_info
 {
@@ -104,6 +115,8 @@ public:
 		AF_IS_UNIX_CLIENT = (1 << 7), // set if this thread creates unix transactions.
 		AF_IS_MAIN_PROGRAM_THREAD = (1 << 8), // set for main program threads.
 		AF_APP_CHECK_FOUND = (1 << 9),
+		AF_IS_DESCENDENT_OF_SHELL = (1 << 10), // Set if there is a shell (bash, tcsh...) among the ancestors of this thread
+		AF_IS_NOT_DESCENDENT_OF_SHELL = (1 << 11) // Set if there is NOT a shell (bash, tcsh...) among the ancestors of this thread. This means that the ancestors have been navigated with negative result.
 	};
 
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
@@ -136,15 +149,7 @@ public:
 		}
 	}
 
-	inline bool app_check_found()
-	{
-		return (m_th_analysis_flags & AF_APP_CHECK_FOUND) != 0;
-	}
-
-	inline void set_app_check_found()
-	{
-		m_th_analysis_flags |= AF_APP_CHECK_FOUND;
-	}
+	const proc_config& get_proc_config();
 
 	inline const set<uint16_t>& listening_ports()
 	{
@@ -156,6 +161,18 @@ public:
 		}
 		return *m_listening_ports;
 	}
+
+	inline bool found_app_check(const app_check& check)
+	{
+		const string& module = check.module().empty() ? check.name() : check.module();
+		return (m_app_checks_found.find(module) != m_app_checks_found.end());
+	}
+	inline void set_found_app_check(const app_check& check)
+	{
+		const string& module = check.module().empty() ? check.name() : check.module();
+		m_app_checks_found.emplace(module);
+	}
+
 
 	// Global state
 	sinsp *m_inspector;
@@ -192,9 +209,11 @@ public:
 	thread_analyzer_dyn_state* m_dynstate;
 	bool m_called_execve;
 	uint64_t m_last_cmdline_sync_ns;
+
 private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
+	set<std::string> m_app_checks_found;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -21,6 +21,8 @@ public:
 	bool process_event(sinsp_evt* evt);
 
 private:
+	inline void patch_ancestor_chain(vector<thread_analyzer_info*>* ancestor_chain, 
+		bool is_interactive, uint64_t session_id);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 
 	sinsp_analyzer* m_analyzer;

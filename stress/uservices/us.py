@@ -3,9 +3,12 @@ import sys
 import time
 import os
 import socket
+import json
+import random
 
 logfile = None
 markerfile = None
+g_cnt = 0
 
 def log( string ):
     global logfile
@@ -55,21 +58,26 @@ def cpu_ops( tag, num ):
     return
 
 def io_ops( tag, num ):
-    mark(">:%s.data_write::" % tag)
+    mark(">:%s.write::" % tag)
     
     tfile = open("tfile.out", "w")
     for j in range(0, num):
         tfile.write("132467890123456790132467890123456790132467890123456790132467890123456790132467890123456790");
     tfile.close()
+    time.sleep(random.uniform(0, .1))
 
-    mark("<:%s.data_write::" % tag)
+    mark("<:%s.write::" % tag)
     
+    mark(">:%s.read::" % tag)
+    time.sleep(random.uniform(0, .2))
+    mark("<:%s.read::" % tag)
+
     return
 
 try:
     #
     # Extract the operational constants
-    #
+    #    
     NCHILDS = int(os.environ['NC'])
     NAME = os.environ['NAME']
     try:
@@ -84,6 +92,15 @@ try:
         SYNC = os.environ['SYNC']
     except Exception as e:
         SYNC = 'true'
+    try:
+        CHILD_NAMES = json.loads(os.environ['CHILD_NAMES'])
+#        log("error *******: %s -- %d" % (str(CHILD_NAMES), len(CHILD_NAMES)))
+    except Exception as e:
+        CHILD_NAMES = []
+
+    if len(CHILD_NAMES) != NCHILDS:
+        log("CHILD_NAMES and NC environment variables don't match")
+        sys.exit(0)
 
     #
     # Initial logging
@@ -98,6 +115,10 @@ try:
     log("CPU_OPS: %d\n" % CPU_OPS)
     log("IO_OPS: %d\n" % IO_OPS)
     log("SYNC: %s\n" % SYNC)
+    log("CHILD_NAMES: %s" % str(CHILD_NAMES))
+
+    for cn in CHILD_NAMES:
+        cn['cur'] = 0
 
     if os.environ['ROLE'] == 'root':
         reqid = 0
@@ -108,9 +129,8 @@ try:
         #except:
         #    log("error: cannot open usapp.cfg for reading")
         #    sys.exit(0)
-
-        while True:
-        #for x in range(0, 10):
+#        while True:
+        for x in range(0, 10):
             reqid = reqid + 1
             mark(">:%d:%s::" % (reqid, NAME))
 
@@ -120,7 +140,9 @@ try:
             for j in range(0, NCHILDS):
                 # Create the child name and tag
                 chnames.append("srvc_next" + str(j))
-                dn = NAME + ".req" + str(j)
+                cname = CHILD_NAMES[j]['e'][CHILD_NAMES[j]['cur'] % len(CHILD_NAMES[j]['e'])]
+                dn = "%s.%s" % (NAME, cname)
+                CHILD_NAMES[j]['cur'] += 1
                 depnames.append(dn)
                 tags.append("%s" % dn)
 
@@ -184,7 +206,7 @@ try:
 
             time.sleep(0.1)
 
-        sys.exit(0)
+        time.sleep(1000000)
 
     log("Starting request server\n")
 
@@ -214,7 +236,7 @@ try:
             log("received connection\n")
             
             ##################################################################################################################3
-            #time.sleep(0.2)
+            time.sleep(random.uniform(0, .1))
 
             if CPU_OPS != 0:
                 cpu_ops(tag, CPU_OPS)
@@ -228,8 +250,16 @@ try:
             for j in range(0, NCHILDS):
                 # Create the child name
                 chname = "srvc_next" + str(j)
-                depname = "req" + str(j)
+                depname = "%s" % (CHILD_NAMES[j]['e'][CHILD_NAMES[j]['cur'] % len(CHILD_NAMES[j]['e'])])
+                CHILD_NAMES[j]['cur'] += 1
                 subtag = tag + "." + depname
+
+                if depname == "dbquery" and g_cnt == 7:
+                    log("error: database connection lost")
+                    log("reconnecting to DB")
+                    time.sleep(2)
+                    log("connected to DB")
+                g_cnt = g_cnt + 1
 
                 mark(">:%s::" % subtag)
 

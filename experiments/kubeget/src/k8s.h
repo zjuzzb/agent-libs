@@ -12,33 +12,27 @@
 #include "k8s_state.h"
 #include "k8s_event_data.h"
 #include "k8s_net.h"
-#include "sinsp_curl.h"
+#include "sinsp_auth.h"
 #include <sstream>
 #include <utility>
-
-class k8s_dispatcher;
 
 class k8s
 {
 public:
 #ifdef HAS_CAPTURE
-	typedef sinsp_curl::ssl::ptr_t          ssl_ptr_t;
-	typedef sinsp_curl::bearer_token::ptr_t bt_ptr_t;
+	typedef sinsp_ssl::ptr_t          ssl_ptr_t;
+	typedef sinsp_bearer_token::ptr_t bt_ptr_t;
 #endif // HAS_CAPTURE
 
 	typedef k8s_component::ext_list_ptr_t ext_list_ptr_t;
 	typedef user_event_filter_t::ptr_t    filter_ptr_t;
 
 	k8s(const std::string& uri = "http://localhost:80",
-		bool start_watch = false,
-		bool watch_in_thread = false,
 		bool is_captured = false,
-		//const std::string& api = "/api/v1/",
 #ifdef HAS_CAPTURE
 		ssl_ptr_t ssl = 0,
 		bt_ptr_t bt = 0,
 #endif // HAS_CAPTURE
-		bool curl_debug = false,
 		filter_ptr_t event_filter = nullptr,
 		ext_list_ptr_t extensions = nullptr);
 
@@ -46,12 +40,11 @@ public:
 
 	std::size_t count(k8s_component::type component) const;
 
-	void on_watch_data(k8s_event_data&& msg);
+	void check_components();
 
-	const k8s_state_t& get_state(bool rebuild = false);
+	const k8s_state_t& get_state();
 
 	void watch();
-	bool watch_in_thread() const;
 	void stop_watching();
 
 	bool is_alive() const;
@@ -65,26 +58,12 @@ public:
 	void simulate_watch_event(const std::string& json);
 
 private:
-	void extract_data(Json::Value& items, k8s_component::type component, const std::string& api_version);
-
-	void build_state();
-
-	void parse_json(const std::string& json, const k8s_component::type_map::value_type& component);
-
 	void stop_watch();
 
 	void cleanup();
 
-	// due to deleted default dispatcher constructor, g++ has trouble instantiating map with values,
-	// so we have to go with the forward declaration above and pointers here ...
-	typedef std::map<k8s_component::type, k8s_dispatcher*> dispatch_map;
-	dispatch_map make_dispatch_map(k8s_state_t& state, ext_list_ptr_t extensions);
-
-	bool         m_watch;
 	k8s_state_t  m_state;
 	filter_ptr_t m_event_filter;
-	dispatch_map m_dispatch;
-	bool         m_watch_in_thread;
 #ifdef HAS_CAPTURE
 	k8s_net*     m_net;
 #endif
@@ -102,7 +81,3 @@ inline bool k8s::is_alive() const
 	return true;
 }
 
-inline bool k8s::watch_in_thread() const
-{
-	return m_watch_in_thread;
-}

@@ -3,6 +3,43 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#define NCHILDS 50
+
+main()
+{
+	pthread_t childs[NCHILDS];
+	void *f1();
+	int ids[NCHILDS];
+	int j;
+
+	for(j = 0; j < NCHILDS; j++)
+	{
+		ids[j] = j + 1;
+		pthread_create(&(childs[j]), NULL, f1, ids + j);
+	}
+
+	for(j = 0; j < NCHILDS; j++)
+	{
+		pthread_join(childs[j],NULL);
+	}
+}
+
+void *f1(int *x)
+{
+	int i;
+	i = *x;
+
+	printf("child%d\n", i);
+
+	while(*x != 0)
+	{
+		sleep(1);
+	}
+
+	pthread_exit(0);
+}
+
+/*
 main()
 {
 	pthread_t f2_thread, f1_thread;
@@ -49,4 +86,4 @@ void *f3(int *x)
 	printf("child3: %d\n", getpid());
 	pthread_exit(0);
 }
-
+*/

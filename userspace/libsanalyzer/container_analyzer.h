@@ -14,4 +14,10 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_client_transactions;
 	string m_memory_cgroup;
 	unique_ptr<unordered_map<uint16_t, sinsp_connection_aggregator>> m_connections_by_serverport;
+
+	// Used to get network stats from /proc/<pid>/net/dev
+	uint64_t m_last_bytes_in;
+	uint64_t m_last_bytes_out;
+
+	void clear();
 };

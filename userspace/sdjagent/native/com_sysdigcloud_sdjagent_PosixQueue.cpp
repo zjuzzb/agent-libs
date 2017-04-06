@@ -99,7 +99,18 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_queueReceive
 	auto msgbufferlen = env->GetArrayLength(buffer);
 	auto res = mq_timedreceive(queue_d, (char*)msgbuffer, msgbufferlen, NULL, &ts);
 	env->ReleaseByteArrayElements(buffer, msgbuffer, 0);
-	return res;
+	if(res > 0)
+	{
+		return res;
+	}
+	else if (errno == ETIMEDOUT || errno == EINTR)
+	{
+		return -1;
+	}
+	else
+	{
+		return -errno;
+	}
 }
 
 /*

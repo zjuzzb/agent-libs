@@ -8,6 +8,7 @@ else
 fi
 
 AGENT_SOURCEDIR=$(dirname $SCRIPT)
+ROOT_SOURCEDIR=$AGENT_SOURCEDIR/..
 
 if [ -z "$WORKDIR" ]; then
 	WORKDIR=$AGENT_SOURCEDIR/..
@@ -35,7 +36,9 @@ if [ ! -d "$JQ_DIR" ]; then
 	cd $DEPENDENCIES
 	wget $DEPENDENCIES_URL/jq-1.5.tar.gz
 	tar -xzf jq-1.5.tar.gz
+	wget -O jq-1.5-fix-tokenadd.patch https://github.com/stedolan/jq/commit/8eb1367ca44e772963e704a700ef72ae2e12babd.patch
 	cd $JQ_DIR
+	patch < ../jq-1.5-fix-tokenadd.patch
 	./configure --disable-maintainer-mode --enable-all-static --disable-dependency-tracking
 	make LDFLAGS=-all-static
 fi
@@ -50,7 +53,49 @@ if [ ! -d "$PROTBUF_DIR" ]; then
 	make
 fi
 
-OPENSSL_VER=1.0.2d
+PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.1.0
+if [ ! -d "$PROTOBUF_V3_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
+	tar -xzf protobuf-cpp-3.1.0.tar.gz
+	cd $PROTOBUF_V3_DIR
+	./configure
+	make
+fi
+
+# The normal build process for grpc involves git clone + git submodule
+# update --init, which pulls in a lot of additional dependencies that
+# we don't need. Instead, we download our own repackaged tarball that
+# has only grpc and the necessary third party libraries (protobuf
+# 3.0.0, boringssl) to build the targets we need (grpc_cpp_plugin,
+# static_cxx, and static_c).
+#
+# We also symlink third_party/zlib to the zlib we built above.
+# The build process still recompiles zlib source files, but
+# at least it's one set of source files.
+#
+# Specificially, this tarball was created by:
+# git clone -b v1.1.4 https://github.com/grpc/grpc &&
+#     mv grpc grpc-1.1.4 &&
+#     cd grpc-1.1.4 &&
+#     git submodule update --init third_party/{boringssl,protobuf} &&
+#     rm -rf .git &&
+#     rm -rf third_party/{boringssl,protobuf}/.git
+# boringssl has no versions/releases, so this is whatever commit grpc
+# chose at the time. For protobuf, this is v3.2.0.
+
+GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
+if [ ! -d "$GRPC_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/grpc-1.1.4-with-third-party-libs.tar.gz
+	tar -xzf grpc-1.1.4-with-third-party-libs.tar.gz
+	rm -rf grpc-1.1.4/third_party/zlib
+	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	cd $GRPC_DIR
+	make grpc_cpp_plugin static_cxx static_c
+fi
+
+OPENSSL_VER=1.0.2j
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
@@ -63,14 +108,17 @@ if [ ! -d "$OPENSSL_DIR" ]; then
 	cd ..
 fi
 
-POCO_DIR=$DEPENDENCIES/poco-1.4.6p4-all
+POCO_VER=1.7.7
+POCO_EXT=tar.gz
+POCO_DIR=poco-$POCO_VER-all
+POCO_ARCH=$POCO_DIR.$POCO_EXT
+POCO_DIR=$DEPENDENCIES/$POCO_DIR
 if [ ! -d "$POCO_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/poco-1.4.6p4-all.tar.gz
-	tar -xzf poco-1.4.6p4-all.tar.gz
+        cd $DEPENDENCIES
+        wget $DEPENDENCIES_URL/$POCO_ARCH
+ 	tar -xzf $POCO_ARCH
 	cd $POCO_DIR
-	patch -p1 < $AGENT_SOURCEDIR/patches/poco_libc_canonname_bug.patch
-	./configure --prefix=./target --static --no-samples --no-tests --omit=Data/MySQL,Data/ODBC,PageCompiler --include-path=$OPENSSL_DIR/target/include
+	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
 	make install
 	cd ..
 fi
@@ -103,11 +151,11 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.2
+LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.3
 if [ ! -d "$LIBSSH_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libssh-0.7.2.tar.xz
-	tar -xf libssh-0.7.2.tar.xz
+	wget $DEPENDENCIES_URL/libssh-0.7.3.tar.xz
+	tar -xf libssh-0.7.3.tar.xz
 	cd $LIBSSH_DIR
 	mkdir build
 	cd build
@@ -125,7 +173,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	make
 fi
 
-CURL_NAME=curl-7.45.0
+CURL_NAME=curl-7.52.1
 CURL_EXT=tar.bz2
 CURL_DIR=$DEPENDENCIES/$CURL_NAME
 if [ ! -d "$CURL_DIR" ]; then
@@ -280,6 +328,50 @@ if [ ! -d "${POSTGRES_DIR}" ]; then
 	make -C src/bin install
 	make -C src/include install
 	make -C src/interfaces install
+fi
+
+GPERFTOOLS_DIR=$DEPENDENCIES/gperftools-2.5
+if [ ! -d "${GPERFTOOLS_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/gperftools-2.5.tar.gz
+	tar xfz gperftools-2.5.tar.gz
+	cd $GPERFTOOLS_DIR
+	./configure --prefix=${GPERFTOOLS_DIR}/target --enable-emergency-malloc --disable-libunwind
+	make
+	make install
+fi
+
+# Falco Engine dependencies
+LPEG_DIR=$DEPENDENCIES/lpeg-1.0.0
+if [ ! -d "${LPEG_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/lpeg-1.0.0.tar.gz
+	tar -xzf lpeg-1.0.0.tar.gz
+	cd $LPEG_DIR
+	LUA_INCLUDE=${LUAJIT_DIR}/src "${ROOT_SOURCEDIR}/falco/scripts/build-lpeg.sh" "${LPEG_DIR}/target"
+fi
+
+LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.4
+if [ ! -d "${LIBYAML_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/libyaml-0.1.4.tar.gz
+	tar -xzf libyaml-0.1.4.tar.gz
+	cd $LIBYAML_DIR
+	./bootstrap && ./configure --prefix=$LIBYAML_DIR/target
+	make
+	make install
+fi
+
+LYAML_DIR=$DEPENDENCIES/lyaml-release-v6.0
+if [ ! -d "${LYAML_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/lyaml-release-v6.0.tar.gz
+	tar -xzf lyaml-release-v6.0.tar.gz
+	cd $LYAML_DIR
+	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/luajit
+	make
+	make install
+	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/falco/userspace/engine/lua"
 fi
 
 if [ -z "$AGENT_VERSION" ]; then

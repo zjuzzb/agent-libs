@@ -21,11 +21,18 @@ sinsp_configuration::sinsp_configuration()
 	m_autodrop_enabled = AUTODROP_ENABLED;
 	m_drop_upper_threshold = DROP_UPPER_THRESHOLD;
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
-	m_drop_treshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
+	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
 	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
 	m_mesos_autodetect = true;
+	m_jmx_limit = 500;
+	m_app_checks_limit = 300;
+	m_memdump_size = 0;
+	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
+	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
+	m_command_lines_capture_all_commands = false;
+	m_capture_dragent_events = false;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -189,6 +196,56 @@ void sinsp_configuration::set_autodrop_enabled(bool enabled)
 	}
 }
 
+bool sinsp_configuration::get_falco_baselining_enabled() const
+{
+	return m_falco_baselining_enabled;
+}
+
+void sinsp_configuration::set_falco_baselining_enabled(bool enabled)
+{
+	m_falco_baselining_enabled = enabled;
+}
+
+bool sinsp_configuration::get_command_lines_capture_enabled() const
+{
+	return m_command_lines_capture_enabled;
+}
+
+void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
+{
+	m_command_lines_capture_enabled = enabled;
+}
+
+bool sinsp_configuration::get_command_lines_capture_all_commands() const
+{
+	return m_command_lines_capture_all_commands;
+}
+
+void sinsp_configuration::set_command_lines_capture_all_commands(bool all_commands)
+{
+	m_command_lines_capture_all_commands = all_commands;
+}
+
+bool sinsp_configuration::get_capture_dragent_events() const
+{
+	return m_capture_dragent_events;
+}
+
+void sinsp_configuration::set_capture_dragent_events(bool enabled)
+{
+	m_capture_dragent_events = enabled;
+}
+
+uint64_t sinsp_configuration::get_memdump_size() const
+{
+	return m_memdump_size;
+}
+
+void sinsp_configuration::set_memdump_size(uint64_t size)
+{
+	m_memdump_size = size;
+}
+
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
 {
 	//return 5;
@@ -227,14 +284,14 @@ void sinsp_configuration::set_drop_lower_threshold(uint32_t drop_lower_threshold
 	m_drop_lower_threshold = drop_lower_threshold;
 }
 
-uint32_t sinsp_configuration::get_drop_treshold_consecutive_seconds() const
+uint32_t sinsp_configuration::get_drop_threshold_consecutive_seconds() const
 {
-	return m_drop_treshold_consecutive_seconds;
+	return m_drop_threshold_consecutive_seconds;
 }
 
-void sinsp_configuration::set_drop_treshold_consecutive_seconds(uint32_t drop_treshold_consecutive_seconds)
+void sinsp_configuration::set_drop_threshold_consecutive_seconds(uint32_t drop_threshold_consecutive_seconds)
 {
-	m_drop_treshold_consecutive_seconds = drop_treshold_consecutive_seconds;
+	m_drop_threshold_consecutive_seconds = drop_threshold_consecutive_seconds;
 }
 
 const string& sinsp_configuration::get_host_custom_name() const
@@ -435,6 +492,16 @@ int sinsp_configuration::get_k8s_delegated_nodes() const
 	return m_k8s_delegated_nodes;
 }
 
+void sinsp_configuration::set_k8s_simulate_delegation(bool k8s_simulate_delegation)
+{
+	m_k8s_simulate_delegation = k8s_simulate_delegation;
+}
+
+bool sinsp_configuration::get_k8s_simulate_delegation() const
+{
+	return m_k8s_simulate_delegation;
+}
+
 void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
 {
 	m_k8s_bt_auth_token = k8s_bt_auth_token;
@@ -465,23 +532,88 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
-const string & sinsp_configuration::get_mesos_state_uri() const
+string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
-	return m_mesos_state_uri;
+	if(sought_url.empty())
+	{
+		return sought_url;
+	}
+	uri url(sought_url);
+	if(!m_mesos_credentials.first.empty())
+	{
+		url.set_credentials(m_mesos_credentials);
+	}
+	return url.to_string(true);
 }
 
-void sinsp_configuration::set_mesos_state_uri(const string & uri)
+void sinsp_configuration::set_mesos_uri(string& url, const string & new_url)
 {
-	m_mesos_state_uri = uri;
+	if(!new_url.empty())
+	{
+		try
+		{
+			uri u(new_url);
+			u.set_path("");
+			url = u.to_string(true);
+		}
+		catch(sinsp_exception& ex)
+		{
+			g_logger.log(std::string("Error setting Mesos URI: ").append(ex.what()), sinsp_logger::SEV_ERROR);
+		}
+		return;
+	}
+	url.clear();
 }
 
-const vector<string> & sinsp_configuration::get_marathon_uris() const
+string sinsp_configuration::get_mesos_state_uri() const
 {
+	return get_mesos_uri(m_mesos_state_uri);
+}
+
+void sinsp_configuration::set_mesos_state_uri(const string & url)
+{
+	set_mesos_uri(m_mesos_state_uri, url);
+}
+
+string sinsp_configuration::get_mesos_state_original_uri() const
+{
+	return get_mesos_uri(m_mesos_state_original_uri);
+}
+
+void sinsp_configuration::set_mesos_state_original_uri(const string & url)
+{
+	set_mesos_uri(m_mesos_state_original_uri, url);
+}
+
+const vector<string>& sinsp_configuration::get_marathon_uris() const
+{
+	if(!m_marathon_uris.empty())
+	{
+		for(vector<string>::iterator it = m_marathon_uris.begin(); it != m_marathon_uris.end(); ++it)
+		{
+			if(!it->empty())
+			{
+				uri url(*it);
+				if(!m_marathon_credentials.first.empty())
+				{
+					url.set_credentials(m_marathon_credentials);
+				}
+				*it = url.to_string(true);
+			}
+		}
+	}
 	return m_marathon_uris;
 }
 
 void sinsp_configuration::set_marathon_uris(const vector<string> & uris)
 {
+	for(const auto& u : uris)
+	{
+		if(!u.empty())
+		{
+			uri::check(u);
+		}
+	}
 	m_marathon_uris = uris;
 }
 
@@ -513,6 +645,48 @@ bool sinsp_configuration::get_mesos_follow_leader() const
 void sinsp_configuration::set_mesos_follow_leader(bool enabled)
 {
 	m_mesos_follow_leader = enabled;
+}
+
+bool sinsp_configuration::get_marathon_follow_leader() const
+{
+	return m_marathon_follow_leader;
+}
+
+void sinsp_configuration::set_marathon_follow_leader(bool enabled)
+{
+	m_marathon_follow_leader = enabled;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_mesos_credentials() const
+{
+	return m_mesos_credentials;
+}
+
+void sinsp_configuration::set_mesos_credentials(const mesos::credentials_t& creds)
+{
+	m_mesos_credentials.first = creds.first;
+	m_mesos_credentials.second = creds.second;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_marathon_credentials() const
+{
+	return m_marathon_credentials;
+}
+
+void sinsp_configuration::set_marathon_credentials(const mesos::credentials_t& creds)
+{
+	m_marathon_credentials.first = creds.first;
+	m_marathon_credentials.second = creds.second;
+}
+
+const mesos::credentials_t& sinsp_configuration::get_dcos_enterprise_credentials() const
+{
+	return m_dcos_enterprise_credentials;
+}
+
+void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentials_t& creds)
+{
+	m_dcos_enterprise_credentials = creds;
 }
 
 bool sinsp_configuration::get_curl_debug() const
@@ -555,4 +729,53 @@ void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t eve
 	m_docker_event_filter = event_filter;
 }
 
+metrics_filter_vec sinsp_configuration::get_metrics_filter() const
+{
+	return m_metrics_filter;
+}
+
+void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_filter)
+{
+	m_metrics_filter = metrics_filter;
+}
+
+bool sinsp_configuration::get_excess_metrics_log() const
+{
+	return m_excess_metrics_log;
+}
+
+void sinsp_configuration::set_excess_metrics_log(bool log)
+{
+	m_excess_metrics_log = log;
+}
+
+unsigned sinsp_configuration::get_metrics_cache() const
+{
+	return m_metrics_cache;
+}
+
+void sinsp_configuration::set_metrics_cache(unsigned sz)
+{
+	m_metrics_cache = sz;
+}
+
+unsigned sinsp_configuration::get_jmx_limit() const
+{
+	return m_jmx_limit;
+}
+
+void sinsp_configuration::set_jmx_limit(unsigned limit)
+{
+	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
+}
+
+unsigned sinsp_configuration::get_app_checks_limit() const
+{
+	return m_app_checks_limit;
+}
+
+void sinsp_configuration::set_app_checks_limit(unsigned value)
+{
+	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
 #endif // HAS_ANALYZER

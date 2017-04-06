@@ -29,13 +29,13 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_physical_memory_kb = physical_memory_kb;
 	m_is_live_capture = is_live_capture;
 
-	m_old_global_total_jiffies = 0;
-	m_old_global_work_jiffies = 0;
+	m_old_global_total = 0;
+	m_old_global_work = 0;
 	m_last_in_bytes = 0;
 	m_last_out_bytes = 0;
 }
 
-double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffies, uint64_t* global_idle_jiffies, uint64_t* global_steal_jiffies)
+double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total, uint64_t* global_idle, uint64_t* global_steal)
 {
 	double res = -1;
 	char line[512];
@@ -66,10 +66,10 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	}
 
 	uint64_t val1, val2, val3, val4, val5, val6, val7, val8;
-	uint64_t total_jiffies;
-	uint64_t work_jiffies;
-	uint64_t delta_total_jiffies;
-	uint64_t delta_work_jiffies;
+	uint64_t total;
+	uint64_t work;
+	uint64_t delta_total;
+	uint64_t delta_work;
 
 	//
 	// Extract the line content
@@ -93,39 +93,39 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	//
 	// Calculate the value
 	//
-	total_jiffies = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
-	work_jiffies = val1 + val2 + val3 + val8;
+	total = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
+	work = val1 + val2 + val3 + val8;
 
-	if(m_old_global_total_jiffies != 0)
+	if(m_old_global_total != 0)
 	{
-		delta_work_jiffies = work_jiffies - m_old_global_work_jiffies;
-		delta_total_jiffies = total_jiffies - m_old_global_total_jiffies;
+		delta_work = work - m_old_global_work;
+		delta_total = total - m_old_global_total;
 
-		res = (double)delta_work_jiffies * 100 / delta_total_jiffies;
+		res = (double)delta_work * 100 / delta_total;
 
-		m_old_global_total_jiffies = total_jiffies;
-		m_old_global_work_jiffies = work_jiffies;
+		m_old_global_total = total;
+		m_old_global_work = work;
 	}
 
-	m_old_global_total_jiffies = total_jiffies;
-	m_old_global_work_jiffies = work_jiffies;
+	m_old_global_total = total;
+	m_old_global_work = work;
 
 	//
 	// Optionally return the total jiffies to the user
 	//
-	if(global_total_jiffies)
+	if(global_total)
 	{
-		*global_total_jiffies = total_jiffies;
+		*global_total = total;
 	}
 
-	if(global_idle_jiffies)
+	if(global_idle)
 	{
-		*global_idle_jiffies = val4;
+		*global_idle = val4;
 	}
 
-	if(global_steal_jiffies)
+	if(global_steal)
 	{
-		*global_steal_jiffies = val8;
+		*global_steal = val8;
 	}
 
 	fclose(f);
@@ -133,134 +133,190 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total_jiffi
 	return res;
 }
 
-//
-// See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
-//
-void sinsp_procfs_parser::get_cpus_load(OUT vector<double>* loads, OUT vector<double>* idles, OUT vector<double>* steals)
+void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 {
+	ASSERT(proc_stat);
+
 	char line[512];
-	char tmps[32];
-	uint32_t j;
-	uint32_t old_array_size = (uint32_t)m_old_total_jiffies.size();
+	uint32_t old_array_size = (uint32_t)m_old_total.size();
+	proc_stat->m_loads.clear();
+	proc_stat->m_steals.clear();
+	proc_stat->m_user.clear();
+	proc_stat->m_nice.clear();
+	proc_stat->m_system.clear();
+	proc_stat->m_idle.clear();
+	proc_stat->m_iowait.clear();
 
-	//
-	// Nothing to do on windows
-	//
-	if(!m_is_live_capture)
-	{
-		return;
-	}
-
-	loads->clear();
-	idles->clear();
-	steals->clear();
+	if(!m_is_live_capture) { return; }
 
 	char filename[SCAP_MAX_PATH_SIZE];
 	sprintf(filename, "%s/proc/stat", scap_get_host_root());
 	FILE* f = fopen(filename, "r");
 	if(f == NULL)
 	{
-		ASSERT(false);
-		return;
+		ASSERT(false); return;
 	}
 
 	//
-	// Consume the first line which is the global system summary
+	// Consume the first line (aggregated cpu values)
 	//
 	if(fgets(line, sizeof(line), f) == NULL)
 	{
-		ASSERT(false);
-		fclose(f);
-		return;
+		ASSERT(false); fclose(f); return;
 	}
 
 	//
 	// Consume the cpu lines
 	//
-	for(j = 0; fgets(line, sizeof(line), f) != NULL; j++)
+	for(int j = 0; fgets(line, sizeof(line), f) != NULL; ++j)
 	{
-		uint64_t val1, val2, val3, val5, val6, val7;
-		uint64_t total_jiffies;
-		uint64_t work_jiffies;
-		uint64_t idle_jiffies;
-		uint64_t steal_jiffies;
-		uint64_t delta_total_jiffies;
-		uint64_t delta_work_jiffies;
-		uint64_t delta_idle_jiffies;
-		uint64_t delta_steal_jiffies;
-
-		if(strstr(line, "cpu") != line)
+		if(strstr(line, "cpu") == line)
 		{
-			break;
+			if(!get_cpus_load(proc_stat, line, j, old_array_size))
+			{
+				ASSERT(false); break;
+			}
 		}
-
-		if(sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
-			tmps, // cpu name
-			&val1, // user
-			&val2, // nice
-			&val3, // system
-			&idle_jiffies, // idle
-			&val5, // iowait
-			&val6, // irq
-			&val7, // softirq
-			&steal_jiffies) != 9) // steal
+		else if(strstr(line, "btime") == line) // boot time
 		{
-			ASSERT(false);
-			fclose(f);
-			break;
-		}
-
-		total_jiffies = val1 + val2 + val3 + idle_jiffies + val5 + val6 + val7 + steal_jiffies;
-		work_jiffies = val1 + val2 + val3 + val5 + val6 + val7 + steal_jiffies;
-
-		if(old_array_size == 0)
-		{
-			m_old_total_jiffies.push_back(total_jiffies);
-			m_old_work_jiffies.push_back(work_jiffies);
-			m_old_idle_jiffies.push_back(idle_jiffies);
-			m_old_steal_jiffies.push_back(steal_jiffies);
-		}
-		else
-		{
-			delta_work_jiffies = work_jiffies - m_old_work_jiffies[j];
-			delta_idle_jiffies = idle_jiffies - m_old_idle_jiffies[j];
-			delta_steal_jiffies = steal_jiffies - m_old_steal_jiffies[j];
-			delta_total_jiffies = total_jiffies - m_old_total_jiffies[j];
-
-			double load = (double)delta_work_jiffies * 100 / delta_total_jiffies;
-			load = MIN(load, 100);
-			loads->push_back(load);
-
-			double idle = (double)delta_idle_jiffies * 100 / delta_total_jiffies;
-			idle = MIN(idle, 100);
-			idles->push_back(idle);
-
-			double steal = (double)delta_steal_jiffies * 100 / delta_total_jiffies;
-			steal = MIN(steal, 100);
-			steals->push_back(steal);
-
-			m_old_total_jiffies[j] = total_jiffies;
-			m_old_work_jiffies[j] = work_jiffies;
-			m_old_idle_jiffies[j] = idle_jiffies;
-			m_old_steal_jiffies[j] = steal_jiffies;
+			if(!proc_stat->m_btime)
+			{
+				if(!get_boot_time(proc_stat, line))
+				{
+					ASSERT(false); break;
+				}
+			}
+			proc_stat->m_uptime = get_epoch_utc_seconds_now() - proc_stat->m_btime;
+			g_logger.log("sinsp_procfs_parser::get_proc_stat() m_btime=" + std::to_string(proc_stat->m_btime) +
+				 ", m_uptime=" + std::to_string(proc_stat->m_uptime) , sinsp_logger::SEV_TRACE);
 		}
 	}
-
 	fclose(f);
 }
 
-void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* used_swap)
+bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line)
+{
+	ASSERT(proc_stat);
+	char tmp[32] = {0};
+	proc_stat->m_btime = 0;
+	int scanned = sscanf(line, "%s %" PRIu64, tmp, &proc_stat->m_btime);
+	if(scanned != 2)
+	{
+		g_logger.log("get_boot_time() scanned " + std::to_string(scanned) +
+					 " values (expected 2), giving up", sinsp_logger::SEV_ERROR);
+		return false;
+	}
+	g_logger.log("sinsp_procfs_parser::get_boot_time() scanned " + std::to_string(scanned) +
+				 " values: " + tmp + '=' + std::to_string(proc_stat->m_btime) , sinsp_logger::SEV_TRACE);
+	return true;
+}
+
+//
+// See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
+//
+bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size)
+{
+	ASSERT(proc_stat);
+
+	char cpu[32] = {0};
+
+	if(!m_is_live_capture) { return true; }
+
+	uint64_t user = 0;
+	uint64_t nice = 0;
+	uint64_t system = 0;
+	uint64_t idle = 0;
+	uint64_t iowait = 0;
+	uint64_t irq = 0;
+	uint64_t softirq = 0;
+	uint64_t total = 0;
+	uint64_t work = 0;
+	uint64_t steal = 0;
+	uint64_t delta_total = 0;
+	uint64_t delta_work = 0;
+	uint64_t delta_steal = 0;
+	uint64_t delta_user = 0;
+	uint64_t delta_nice = 0;
+	uint64_t delta_system = 0;
+	uint64_t delta_idle = 0;
+	uint64_t delta_iowait = 0;
+
+	g_logger.log(std::string("sinsp_procfs_parser::get_cpus_load() scanning: ").append(line), sinsp_logger::SEV_TRACE);
+	int scanned = sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
+		cpu, &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal);
+	if(scanned != 9)
+	{
+		g_logger.log("get_cpus_load() scanned " + std::to_string(scanned) +
+					 " values (expected 9), giving up", sinsp_logger::SEV_ERROR);
+		return false;
+	}
+	g_logger.log("sinsp_procfs_parser::get_cpus_load() scanned " + std::to_string(scanned) + " values", sinsp_logger::SEV_TRACE);
+
+	total = user + nice + system + idle + iowait + irq + softirq + steal;
+	work = user + nice + system + iowait + irq + softirq + steal;
+
+	if(old_array_size == 0)
+	{
+		m_old_total.push_back(total);
+		m_old_work.push_back(work);
+		m_old_steal.push_back(steal);
+		m_old_user.push_back(user);
+		m_old_nice.push_back(nice);
+		m_old_system.push_back(system);
+		m_old_idle.push_back(idle);
+		m_old_iowait.push_back(iowait);
+	}
+	else
+	{
+		delta_work = work - m_old_work[j];
+		delta_steal = steal - m_old_steal[j];
+		delta_total = total - m_old_total[j];
+		delta_user = user - m_old_user[j];
+		delta_nice = nice - m_old_nice[j];
+		delta_system = system - m_old_system[j];
+		delta_idle = idle - m_old_idle[j];
+		delta_iowait = iowait - m_old_iowait[j];
+
+		assign_jiffies(proc_stat->m_loads, delta_work, delta_total);
+		assign_jiffies(proc_stat->m_steals, delta_steal, delta_total);
+		assign_jiffies(proc_stat->m_user, delta_user, delta_total);
+		assign_jiffies(proc_stat->m_nice, delta_nice, delta_total);
+		assign_jiffies(proc_stat->m_system, delta_system, delta_total);
+		assign_jiffies(proc_stat->m_idle, delta_idle, delta_total);
+		assign_jiffies(proc_stat->m_iowait, delta_iowait, delta_total);
+
+		m_old_total[j] = total;
+		m_old_work[j] = work;
+		m_old_steal[j] = steal;
+		m_old_user[j] = user;
+		m_old_nice[j] = nice;
+		m_old_system[j] = system;
+		m_old_idle[j] = idle;
+		m_old_iowait[j] = iowait;
+	}
+
+	return true;
+}
+
+void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap)
 {
 	char line[512];
 	int64_t mem_free = 0;
+	int64_t mem_avail = 0;
 	int64_t buffers = 0;
 	int64_t cached = 0;
 	int64_t swap_total = 0;
 	int64_t swap_free = 0;
+	int64_t swap_cached = 0;
 	int64_t tmp = 0;
 
+	ASSERT(used_memory);
+	ASSERT(used_swap);
+	ASSERT(total_swap);
 	*used_memory = -1;
 	*used_swap = -1;
+	*total_swap = -1;
+	*avail_swap = -1;
 
 	if(!m_is_live_capture)
 	{
@@ -285,6 +341,10 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		{
 			mem_free = tmp;
 		}
+		else if(sscanf(line, "MemAvailable: %" PRId64, &tmp) == 1)
+		{
+			mem_avail = tmp;
+		}
 		else if(sscanf(line, "Buffers: %" PRId64, &tmp) == 1)
 		{
 			buffers = tmp;
@@ -300,11 +360,32 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		else if(sscanf(line, "SwapFree: %" PRId64, &tmp) == 1)
 		{
 			swap_free = tmp;
-			break;
+		}
+		else if(sscanf(line, "SwapCached: %" PRId64, &tmp) == 1)
+		{
+			swap_cached = tmp;
 		}
 	}
 
 	fclose(f);
+
+	*free_memory = mem_free;
+	if(*free_memory < 0)
+	{
+		ASSERT(false);
+		*free_memory = 0;
+	}
+
+	if(!mem_avail && mem_free > 0 && cached > 0)
+	{
+		mem_avail = mem_free + cached;
+	}
+	*avail_memory = mem_avail;
+	if(*avail_memory < 0)
+	{
+		ASSERT(false);
+		*avail_memory = 0;
+	}
 
 	*used_memory = m_physical_memory_kb - mem_free - buffers - cached;
 	if(*used_memory < 0)
@@ -313,7 +394,21 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		*used_memory = 0;
 	}
 
-	*used_swap = swap_total - swap_free;
+	*total_swap = swap_total;
+	if(*total_swap < 0)
+	{
+		ASSERT(false);
+		*total_swap = 0;
+	}
+
+	*avail_swap = swap_free + swap_cached;
+	if(*avail_swap < 0)
+	{
+		ASSERT(false);
+		*avail_swap = 0;
+	}
+
+	*used_swap = swap_total - *avail_swap;
 	if(*used_swap < 0)
 	{
 		ASSERT(false);
@@ -321,7 +416,7 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	}
 }
 
-double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies)
+double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc, uint64_t delta_global_total)
 {
 	char line[512];
 	char tmps[32];
@@ -389,18 +484,18 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	//
 	// Calculate the value
 	//
-	uint64_t proc_jiffies = val1 + val2;
+	uint64_t proc = val1 + val2;
 
-	if(*old_proc_jiffies != (uint64_t)-1LL)
+	if(*old_proc != (uint64_t)-1LL)
 	{
-		uint64_t delta_proc_jiffies = proc_jiffies - *old_proc_jiffies;
+		uint64_t delta_proc = proc - *old_proc;
 
-		res = ((double)delta_proc_jiffies * 100 / delta_global_total_jiffies) * m_ncpus;
+		res = ((double)delta_proc * 100 / delta_global_total) * m_ncpus;
 
 		res = MIN(res, double(100 * m_ncpus));
 	}
 
-	*old_proc_jiffies = proc_jiffies;
+	*old_proc = proc;
 
 	fclose(f);
 
@@ -478,10 +573,23 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			|| strcmp(entry->mnt_type, "rpc_pipefs") == 0
 			|| strcmp(entry->mnt_type, "sysfs") == 0
 			|| strcmp(entry->mnt_type, "devfs") == 0
+			|| strcmp(entry->mnt_type, "devtmpfs") == 0
 			|| strcmp(entry->mnt_type, "kernfs") == 0
 			|| strcmp(entry->mnt_type, "ignore") == 0
 			|| strcmp(entry->mnt_type, "rootfs") == 0
 			|| strcmp(entry->mnt_type, "none") == 0)
+		{
+			continue;
+		}
+
+		// Skip stuff like /proc/kcore, /sys/fs/cgroup, etc.
+		// Docker and other container/orch systems each use a slightly
+		// different path for their secrets directory so skip all
+		// "*/secrets*" mounts
+		if (strcmp(entry->mnt_type, "tmpfs") == 0 &&
+		    (strncmp(entry->mnt_dir, "/proc/", strlen("/proc/")) == 0
+		     || strcmp(entry->mnt_dir, "/sys/fs/cgroup") == 0
+		     || strstr(entry->mnt_dir, "/secrets") != nullptr))
 		{
 			continue;
 		}
@@ -668,7 +776,24 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	}
 }
 
+
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
+{
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
+	static const vector<const char*> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
+	return read_net_dev(net_dev_path, &m_last_in_bytes, &m_last_out_bytes, BAD_INTERFACE_NAMES);
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
+																	  uint64_t *old_last_out_bytes)
+{
+	char net_dev_path[100];
+	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/%ld/net/dev", scap_get_host_root(), pid);
+	return read_net_dev(net_dev_path, old_last_in_bytes, old_last_out_bytes);
+}
+
+pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names)
 {
 	pair<uint32_t, uint32_t> ret;
 
@@ -678,9 +803,7 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 		return ret;
 	}
 
-	char net_dev_path[100];
-	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
-	auto net_dev = fopen(net_dev_path, "r");
+	auto net_dev = fopen(path.c_str(), "r");
 	if(net_dev == NULL)
 	{
 		return ret;
@@ -700,21 +823,18 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	}
 
 	char interface_name[30];
-	unsigned ign;
 	uint64_t in_bytes, out_bytes;
 	uint64_t tot_in_bytes = 0;
 	uint64_t tot_out_bytes = 0;
 
-	static const array<const char*, 7> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
-	while(fscanf(net_dev, "%s %lu %u %u %u %u %u %u %u %lu %u %u %u %u %u %u %u",
-				 interface_name, &in_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign,
-				 &out_bytes, &ign, &ign, &ign, &ign, &ign, &ign, &ign) > 0)
+	while(fscanf(net_dev, "%s %lu %*u %*u %*u %*u %*u %*u %*u %lu %*u %*u %*u %*u %*u %*u %*u",
+				 interface_name, &in_bytes, &out_bytes) > 0)
 	{
-		if(find_if(BAD_INTERFACE_NAMES.begin(), BAD_INTERFACE_NAMES.end(), [&interface_name](const char* bad_interface) {
-				return strcasestr(interface_name, bad_interface) == interface_name;
-			}) == BAD_INTERFACE_NAMES.end())
+		if(find_if(bad_interface_names.begin(), bad_interface_names.end(), [&interface_name](const char* bad_interface) {
+			return strcasestr(interface_name, bad_interface) == interface_name;
+		}) == bad_interface_names.end())
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
+			// g_logger.format(sinsp_logger::SEV_INFO, "Selected interface %s %u, %u", interface_name, in_bytes, out_bytes);
 			tot_in_bytes += in_bytes;
 			tot_out_bytes += out_bytes;
 		}
@@ -722,15 +842,74 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 	fclose(net_dev);
 
 	// Calculate delta, no delta if it is the first time we read
-	if(m_last_in_bytes > 0 || m_last_out_bytes > 0)
+	if(*old_last_in_bytes > 0 || *old_last_out_bytes > 0)
 	{
 		// Network metrics use uint32_t on protobuf, so we use the same
 		// for deltas
-		ret.first = static_cast<uint32_t>(tot_in_bytes - m_last_in_bytes);
-		ret.second = static_cast<uint32_t>(tot_out_bytes - m_last_out_bytes);
+		ret.first = static_cast<uint32_t>(tot_in_bytes - *old_last_in_bytes);
+		ret.second = static_cast<uint32_t>(tot_out_bytes - *old_last_out_bytes);
 	}
-	m_last_in_bytes = tot_in_bytes;
-	m_last_out_bytes = tot_out_bytes;
+	*old_last_in_bytes = tot_in_bytes;
+	*old_last_out_bytes = tot_out_bytes;
+
+	return ret;
+}
+
+sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid, sinsp_proc_file_stats *old)
+{
+	char filepath[SCAP_MAX_PATH_SIZE];
+	snprintf(filepath, SCAP_MAX_PATH_SIZE, "%s/proc/%ld/io", scap_get_host_root(), pid);
+
+	sinsp_proc_file_stats ret, last;
+
+	if(!m_is_live_capture)
+	{
+		// Reading this data does not makes sense if it's not a live capture
+		return ret;
+	}
+
+	auto io_file = fopen(filepath, "r");
+	if(io_file == NULL)
+	{
+		return ret;
+	}
+
+	char field[20];
+	uint32_t value;
+	while(fscanf(io_file, "%s %u", field, &value) > 0)
+	{
+		string field_s(field);
+		if (field_s == "rchar:")
+		{
+			last.m_read_bytes = value;
+		}
+		else if (field_s == "wchar:")
+		{
+			last.m_write_bytes = value;
+		}
+		else if(field_s == "syscr:")
+		{
+			last.m_syscr = value;
+		}
+		else if (field_s == "syscw:")
+		{
+			last.m_syscw = value;
+			// no need to read more
+			break;
+		}
+	}
+
+	fclose(io_file);
+
+	// Calculate delta, no delta if it is the first time we read
+	if(old->has_values())
+	{
+		ret.m_syscr = last.m_syscr - old->m_syscr;
+		ret.m_syscw = last.m_syscw - old->m_syscw;
+		ret.m_read_bytes = last.m_read_bytes - old->m_read_bytes;
+		ret.m_write_bytes = last.m_write_bytes - old->m_write_bytes;
+	}
+	*old = last;
 
 	return ret;
 }
@@ -857,6 +1036,7 @@ bool mounted_fs_reader::change_ns(int destpid)
 	if(setns(fd, CLONE_NEWNS) != 0)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Cannot setns to pid=%d", destpid);
+		close(fd);
 		return false;
 	}
 	close(fd);
@@ -866,8 +1046,6 @@ bool mounted_fs_reader::change_ns(int destpid)
 int mounted_fs_reader::run()
 {
 	auto pid = getpid();
-	uint64_t m_last_loop_s = 0;
-	struct rusage mem_usage;
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
 	if(getppid() == 1)
@@ -889,10 +1067,7 @@ int mounted_fs_reader::run()
 	while(true)
 	{
 		// Send heartbeat
-		m_last_loop_s = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
-		getrusage(RUSAGE_SELF, &mem_usage);
-		fprintf(stderr,"HB,%d,%ld,%ld\n", pid, mem_usage.ru_maxrss, m_last_loop_s);
-		fflush(stderr);
+		send_subprocess_heartbeat();
 		auto request_s = m_input.receive(1);
 		if(!request_s.empty())
 		{
@@ -945,13 +1120,13 @@ int mounted_fs_reader::run()
 						{
 							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
 						}
+						// Back home
+						if(setns(home_fd, CLONE_NEWNS) != 0)
+						{
+							g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						};
 					}
-					// Back home
-					if(setns(home_fd, CLONE_NEWNS) != 0)
-					{
-						g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
-						return ERROR_EXIT;
-					};
 				}
 				auto response_s = response_proto.SerializeAsString();
 				m_output.send(response_s);

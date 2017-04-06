@@ -9,6 +9,11 @@ import java.util.Arrays;
  * Created by luca on 17/06/15.
  */
 public class VMRequest {
+    private final int pid;
+    private final int vpid;
+    private final String root;
+    private final String[] args;
+    private boolean skipUidAndGid;
 
     @SuppressWarnings("unused")
     @JsonCreator
@@ -16,6 +21,7 @@ public class VMRequest {
               @JsonProperty("vpid") int vpid,
               @JsonProperty("root") String root,
               @JsonProperty("args") String[] args) {
+        this.skipUidAndGid = false;
         this.pid = pid;
         this.vpid = vpid;
         this.root = root;
@@ -23,6 +29,7 @@ public class VMRequest {
     }
 
     public VMRequest(String[] args) {
+        this.skipUidAndGid = false;
         this.pid = Integer.parseInt(args[1]);
         if (args.length > 2) {
             this.vpid = Integer.parseInt(args[2]);
@@ -60,8 +67,11 @@ public class VMRequest {
         return args;
     }
 
-    private final int pid;
-    private final int vpid;
-    private final String root;
-    private final String[] args;
+    public boolean skipUidAndGid() {
+        return skipUidAndGid;
+    }
+
+    public void setSkipUidAndGid(boolean skipUidAndGid) {
+        this.skipUidAndGid = skipUidAndGid;
+    }
 }

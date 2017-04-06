@@ -5,6 +5,8 @@
 #include <delays.h>
 #include <container_analyzer.h>
 #include <memory>
+#include <set>
+#include <string>
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
@@ -12,6 +14,9 @@
 #include <unordered_set>
 #include "sinsp_curl.h"
 #include "user_event.h"
+#include "k8s_api_handler.h"
+#include "procfs_parser.h"
+#include "memdumper.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -44,6 +49,11 @@ class k8s_delegator;
 class mesos;
 class docker;
 class uri;
+class falco_engine;
+class falco_events;
+class sisnp_baseliner;
+class tracer_emitter;
+class metric_limits;
 
 typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
 typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
@@ -55,7 +65,7 @@ class sinsp_connection_aggregator;
 //
 typedef union _process_tuple
 {
-	struct 
+	struct
 	{
 		uint64_t m_spid;
 		uint64_t m_dpid;
@@ -121,10 +131,15 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	string m_comm;
-	string m_parent_comm;
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
+    string m_comm; // program executable name
+    uint64_t m_pid; // process pid
+    uint64_t m_ppid; // parent process pid
+    uint64_t m_uid; // user ID
+    string m_cwd; // process' current working directory
 };
 
 #ifndef _WIN32
@@ -135,7 +150,7 @@ public:
 		m_index(0),
 		m_previouscputime(0)
 	{}
-	
+
 	void begin_flush();
 	void end_flush();
 	double calc_flush_percent();
@@ -175,14 +190,14 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
-
+	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);
 
 	//
-	// Called by the engine after opening the event source and before 
+	// Called by the engine after opening the event source and before
 	// receiving the first event. Can be used to make adjustments based on
 	// the user's changes to the configuration.
 	//
@@ -212,9 +227,9 @@ public:
 	void process_event(sinsp_evt* evt, flush_flags flshflags);
 
 	void add_syscall_time(sinsp_counters* metrics,
-		sinsp_evt::category* cat, 
-		uint64_t delta, 
-		uint32_t bytes, 
+		sinsp_evt::category* cat,
+		uint64_t delta,
+		uint32_t bytes,
 		bool inc_count);
 
 	uint64_t get_last_sample_time_ns()
@@ -262,20 +277,39 @@ public:
 	{
 		m_is_sampling = is_sampling;
 	}
-	
+
 #ifndef _WIN32
-	inline void enable_jmx(bool print_json)
+	inline void check_metric_limits()
 	{
+		static bool checked = false;
+		if(!checked)
+		{
+			ASSERT(m_configuration);
+			const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
+			ASSERT(!m_metric_limits);
+			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
+			{
+				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
+				if(m_configuration->get_excess_metrics_log())
+				{
+					m_metric_limits->enable_logging();
+				}
+			}
+			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
+			checked = true;
+		}
+	}
+
+	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
+	{
+		check_metric_limits();
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
+		m_jmx_sampling = sampling;
+		m_configuration->set_jmx_limit(limit);
 	}
 
-	inline void set_jmx_sampling(unsigned int value)
-	{
-		m_jmx_sampling = value;
-	}
-
-	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds);
+	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds, bool forwarder);
 #endif
 
 	void set_protocols_enabled(bool value)
@@ -322,6 +356,7 @@ public:
 
 		if(!m_app_checks.empty())
 		{
+			check_metric_limits();
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
@@ -344,8 +379,27 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+	void enable_falco(const string &default_rules_filename,
+			  const string &auto_rules_filename,
+			  const string &rules_filename,
+			  std::set<std::string> &disabled_rule_patterns,
+			  double sampling_multiplier);
+
+	void disable_falco();
+	bool is_memdump_active()
+	{
+		return m_do_memdump;
+	}
+
+	sinsp_memory_dumper* get_memory_dumper()
+	{
+		return m_memdumper;
+	}
+
+	void set_emit_tracers(bool enabled);
+
 VISIBILITY_PRIVATE
-	typedef bool (sinsp_analyzer::*server_check_func_t)(const string&);
+	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -354,46 +408,61 @@ VISIBILITY_PRIVATE
 	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
-	void emit_processes(sinsp_evt* evt, uint64_t sample_duration, bool is_eof, sinsp_analyzer::flush_flags flshflags);
+	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
+			    bool is_eof, sinsp_analyzer::flush_flags flshflags,
+			    const tracer_emitter &f_trc);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
-
+	void log_timed_error(time_t& last_attempt, const std::string& err);
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
+	std::string get_k8s_api_server_proc(sinsp_threadinfo* main_tinfo);
+	std::string detect_k8s(std::string& k8s_api_server);
 	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_delegation();
-	bool check_k8s_server(const string& addr);
+	bool check_k8s_server(string& addr);
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
-	k8s* make_k8s(sinsp_curl& curl, const string& k8s_api, user_event_filter_t::ptr_t event_filter);
-	k8s* get_k8s(const uri& k8s_api);
-	void connect_k8s(const std::string& k8s_api);
+	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
+	void collect_k8s(const std::string& k8s_api);
 	void get_k8s_data();
 	void emit_k8s();
+	void reset_k8s(time_t& last_attempt, const std::string& err);
+	uint32_t get_mesos_api_server_port(sinsp_threadinfo* main_tinfo);
+	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
+	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
-	bool check_mesos_server(const string& addr);
+	bool check_mesos_server(string& addr);
 	void make_mesos(string&& json);
 	void get_mesos(const string& mesos_uri);
 	void get_mesos_data();
 	void emit_mesos();
+	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
-	vector<string> emit_containers(const vector<string>& active_containers);
-	void emit_container(const string &container_id, unsigned* statsd_limit, uint64_t total_cpu_shares);
-	void tune_drop_mode(flush_flags flshflags, double treshold_metric);
+	vector<string> emit_containers(const progtable_by_container_t& active_containers);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
+	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
-	void emit_executed_commands();
+	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();
-	
+
 #ifndef _WIN32
-	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
-						   unsigned limit);
+	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit);
+	bool is_jmx_flushtime() {
+		return (m_prev_flush_time_ns / ONE_SECOND_IN_NS) % m_jmx_sampling == 0;
+	}
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
+	void match_checks_list(sinsp_threadinfo *tinfo,
+			       sinsp_threadinfo *mtinfo,
+			       const vector<app_check> &checks,
+				   vector<app_process> &app_checks_processes,
+			       const char *location);
 
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
@@ -406,6 +475,9 @@ VISIBILITY_PRIVATE
 	uint64_t m_serialize_prev_sample_time;
 
 	sinsp_analyzer_parsers* m_parser;
+	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go
+						// through the analyzer before on_capture_start is called. We use this flag to skip
+						// processing those events.
 
 	//
 	// Tables
@@ -448,18 +520,17 @@ VISIBILITY_PRIVATE
 	//
 	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
-	vector<double> m_cpu_loads;
-	vector<double> m_cpu_idles;
-	vector<double> m_cpu_steals;
+	sinsp_proc_stat m_proc_stat;
+
 	// Sum of the cpu usage of all the processes
 	double m_total_process_cpu;
 
 	//
-	// The table of aggreagted connections
+	// The table of aggregated connections
 	//
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
 	//
-	// The aggreagted host metrics
+	// The aggregated host metrics
 	//
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
@@ -486,7 +557,7 @@ VISIBILITY_PRIVATE
 	// Transaction-related state
 	//
 	set<uint64_t> m_server_programs;
-	sinsp_transaction_counters m_host_transaction_counters; 
+	sinsp_transaction_counters m_host_transaction_counters;
 	uint64_t m_client_tr_time_by_servers;
 	vector<vector<sinsp_trlist_entry>> m_host_server_transactions;
 	vector<vector<sinsp_trlist_entry>> m_host_client_transactions;
@@ -503,12 +574,13 @@ VISIBILITY_PRIVATE
 	//
 	// Command list
 	//
-	vector<sinsp_executed_command> m_executed_commands;
+	unordered_map<string, vector<sinsp_executed_command> > m_executed_commands;
 
 	//
 	// Container metrics
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
+	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
 
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 
@@ -526,6 +598,20 @@ VISIBILITY_PRIVATE
 	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
+	
+	//
+	// Falco stuff
+	//
+	sisnp_baseliner* m_falco_baseliner = NULL;
+	bool m_do_baseline_calculation = false;
+	uint64_t m_last_falco_dump_ts = 0;
+	bool m_command_lines_capture_enabled = false;
+	bool m_command_lines_capture_all_commands = false;
+
+	//
+	// Memory dump stuff
+	//
+	bool m_do_memdump = false;
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -535,11 +621,11 @@ VISIBILITY_PRIVATE
 	bool m_run_chisels;
 
 #ifndef _WIN32
-	uint64_t m_external_command_id;
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
 	unordered_map<int, java_process> m_jmx_metrics;
 	unique_ptr<statsite_proxy> m_statsite_proxy;
+	unique_ptr<posix_queue> m_statsite_forwader_queue;
 	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
 
 	atomic<bool> m_statsd_capture_localhost;
@@ -553,15 +639,42 @@ VISIBILITY_PRIVATE
 	unique_ptr<k8s> m_k8s;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
-	sinsp_curl::ssl::ptr_t          m_k8s_ssl;
-	sinsp_curl::bearer_token::ptr_t m_k8s_bt;
+	sinsp_ssl::ptr_t          m_k8s_ssl;
+	sinsp_bearer_token::ptr_t m_k8s_bt;
 #endif
+	shared_ptr<k8s_handler::collector_t> m_k8s_collector;
+	unique_ptr<k8s_api_handler>          m_k8s_api_handler;
+	bool                                 m_k8s_api_detected = false;
+	unique_ptr<k8s_api_handler>          m_k8s_ext_handler;
+	k8s_ext_list_ptr_t                   m_ext_list_ptr;
+	bool                                 m_k8s_ext_detect_done = false;
+	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
+	bool                                 m_k8s_proc_detected = false;
 
 	unique_ptr<mesos> m_mesos;
-	static bool m_mesos_bad_config;
+
+	// Used to generate mesos-specific app check state
+	shared_ptr<app_process_conf_vals> m_mesos_conf_vals;
+
+	// Used to generate marathon-specific app check state
+	shared_ptr<app_process_conf_vals> m_marathon_conf_vals;
+
+	// flag indicating that mesos connection either exist or has existed once
+	// used to filter logs about Mesos API server unavailablity
+	bool m_mesos_present = false;
+	time_t m_last_mesos_refresh;
+	uint64_t m_mesos_last_failure_ns;
+	int64_t m_mesos_master_tid = -1;
+	int64_t m_mesos_slave_tid = -1;
+	const uint32_t MESOS_MASTER_PORT = 5050;
+	const uint32_t MESOS_SLAVE_PORT = 5051;
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;
+
+	int m_detect_retry_seconds = 60; // TODO move to config?
+
+	sinsp_memory_dumper* m_memdumper = NULL;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
@@ -569,8 +682,14 @@ VISIBILITY_PRIVATE
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
 
+	unique_ptr<falco_engine> m_falco_engine;
+	unique_ptr<falco_events> m_falco_events;
+
+	metric_limits::sptr_t m_metric_limits;
+
 	user_event_queue::ptr_t m_user_event_queue;
 
+	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
@@ -593,7 +712,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
+	friend class sisnp_baseliner;
 };
 
 #endif // HAS_ANALYZER
-

@@ -3,9 +3,19 @@
 #include "main.h"
 #include "logger.h"
 #include "user_event.h"
+#include "metric_limits.h"
+
+// suppress deprecated warnings for auto_ptr in boost
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #include <yaml-cpp/yaml.h>
+#pragma GCC diagnostic pop
+
 #include <atomic>
 #include <memory>
+#include <set>
+#include <map>
+#include <string>
 
 ///////////////////////////////////////////////////////////////////////////////
 // Configuration defaults
@@ -31,7 +41,7 @@ public:
 	aws_metadata():
 		m_public_ipv4(0)
 	{}
-	
+
 	uint32_t m_public_ipv4; // http://169.254.169.254/latest/meta-data/public-ipv4
 	string m_instance_id; // http://169.254.169.254/latest/meta-data/public-ipv4
 };
@@ -43,55 +53,64 @@ public:
 class yaml_configuration
 {
 public:
-	yaml_configuration(const string& str) : m_root(YAML::Load(str))
+	// If the constructor hits an exception, set an error and let the caller handle it
+	yaml_configuration(const string& str)
 	{
-	}
-
-	yaml_configuration(string&& str) : m_root(YAML::Load(std::move(str)))
-	{
-	}
-
-	yaml_configuration(const string& path, const string& defaults_path)
-	{
-		// We cant use logging because it's not initialized yet
-		File conf_file(path);
-		if(conf_file.exists())
+		try
 		{
-			try
+			if(!add_root(YAML::Load(str)))
 			{
-				m_root = YAML::LoadFile(path);
-			} catch ( const YAML::BadFile& ex)
-			{
-				m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
-			} catch ( const YAML::ParserException& ex)
-			{
-				m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+				add_error("Cannot read config file, reason: not valid format");
 			}
 		}
-		else
+		catch (const YAML::ParserException& ex)
 		{
-			m_errors.emplace_back(string("Config file: ") + path + " does not exists");
+			m_errors.emplace_back(string("Cannot read config file, reason: ") + ex.what());
 		}
+	}
 
-		if(defaults_path.size())
+	yaml_configuration(string&& str)
+	{
+		try
 		{
-			File default_conf_file(defaults_path);
-			if(default_conf_file.exists())
+			if(!add_root(YAML::Load(str)))
+			{
+				add_error("Cannot read config file, reason: not valid format");
+			}
+		}
+		catch (const YAML::ParserException& ex)
+		{
+			m_errors.emplace_back(string("Cannot read config file, reason: ") + ex.what());
+		}
+	}
+
+	yaml_configuration(const initializer_list<string>& file_paths)
+	{
+		// We cant use logging because it's not initialized yet
+		for (const auto& path : file_paths)
+		{
+			File conf_file(path);
+			if(conf_file.exists())
 			{
 				try
 				{
-					m_default_root.reset(new YAML::Node(YAML::LoadFile(defaults_path)));
-				} catch ( const YAML::BadFile& ex)
+					if(!add_root(YAML::LoadFile(path)))
+					{
+						add_error(string("Cannot read config file: ") + path + " reason: not valid format");
+					}
+				}
+				catch(const YAML::BadFile& ex)
 				{
-					m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
-				} catch (const YAML::ParserException& ex)
+					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+				}
+				catch(const YAML::ParserException& ex)
 				{
-					m_errors.emplace_back(string("Cannot read config file: ") + defaults_path + " reason: " + ex.what());
+					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
 				}
 			}
 			else
 			{
-				m_errors.emplace_back(string("Config file: ") + defaults_path + " does not exists");
+				m_warnings.emplace_back(string("Config file: ") + path + " does not exists");
 			}
 		}
 	}
@@ -108,10 +127,9 @@ public:
 		T ret;
 		try
 		{
-			get_sequence(ret, m_root, args...);
-			if(m_default_root)
+			for(const auto& root : m_roots)
 			{
-				get_sequence(ret, *m_default_root, args...);
+				get_sequence(ret, root, args...);
 			}
 		}
 		catch (const YAML::BadConversion& ex)
@@ -150,10 +168,13 @@ public:
 	template<typename T>
 	T get_scalar(const string& key)
 	{
-		auto node = m_root[key];
-		if (node.IsDefined())
+		for(const auto& root : m_roots)
 		{
-			return node.as<T>();
+			auto node = root[key];
+			if (node.IsDefined())
+			{
+				return node.as<T>();
+			}
 		}
 		throw sinsp_exception("Entry not found: " + key);
 	}
@@ -165,31 +186,18 @@ public:
 	template<typename T>
 	T get_scalar(const string& key, const T& default_value)
 	{
-		try
-		{
-			auto node = m_root[key];
-			if (node.IsDefined())
-			{
-				return node.as<T>();
-			}
-		} catch (const YAML::BadConversion& ex)
-		{
-			m_errors.emplace_back(string("Config file error at key: ") + key);
-		}
-
-		if(m_default_root)
+		for(const auto& root : m_roots)
 		{
 			try
 			{
-				// Redefine `node` because assignments on YAML::Node variable modifies underlying tree
-				auto node = (*m_default_root)[key];
+				auto node = root[key];
 				if (node.IsDefined())
 				{
 					return node.as<T>();
 				}
 			} catch (const YAML::BadConversion& ex)
 			{
-				m_errors.emplace_back(string("Default config file error at key: ") + key);
+				m_errors.emplace_back(string("Config file error at key: ") + key);
 			}
 		}
 
@@ -207,25 +215,11 @@ public:
 	template<typename T>
 	T get_scalar(const string& key, const string& subkey, const T& default_value)
 	{
-		try
-		{
-			auto node = m_root[key][subkey];
-			if (node.IsDefined())
-			{
-				return node.as<T>();
-			}
-		}
-		catch (const YAML::BadConversion& ex)
-		{
-			m_errors.emplace_back(string("Config file error at key: ") + key + "." + subkey);
-		}
-
-		if(m_default_root)
+		for(const auto& root : m_roots)
 		{
 			try
 			{
-				// Redefine `node` because assignments on YAML::Node variable modifies underlying tree
-				auto node = (*m_default_root)[key][subkey];
+				auto node = root[key][subkey];
 				if (node.IsDefined())
 				{
 					return node.as<T>();
@@ -233,7 +227,7 @@ public:
 			}
 			catch (const YAML::BadConversion& ex)
 			{
-				m_errors.emplace_back(string("Default config file error at key: ") + key + "." + subkey);
+				m_errors.emplace_back(string("Config file error at key: ") + key + "." + subkey);
 			}
 		}
 
@@ -255,21 +249,9 @@ public:
 	vector<T> get_merged_sequence(const string& key)
 	{
 		vector<T> ret;
-		for(auto item : m_root[key])
+		for(const auto& root : m_roots)
 		{
-			try
-			{
-				ret.push_back(item.as<T>());
-			}
-			catch (const YAML::BadConversion& ex)
-			{
-				m_errors.emplace_back(string("Config file error at key ") + key);
-			}
-		}
-
-		if(m_default_root)
-		{
-			for(auto item : (*m_default_root)[key])
+			for(const auto& item : root[key])
 			{
 				try
 				{
@@ -277,7 +259,7 @@ public:
 				}
 				catch (const YAML::BadConversion& ex)
 				{
-					m_errors.emplace_back(string("Default config file error at key: ") + key);
+					m_errors.emplace_back(string("Config file error at key ") + key);
 				}
 			}
 		}
@@ -302,21 +284,9 @@ public:
 	unordered_map<string, T> get_merged_map(const string& key)
 	{
 		unordered_map<string, T> ret;
-		for(auto item : m_root[key])
+		for(auto it = m_roots.rbegin(); it != m_roots.rend(); ++it)
 		{
-			try
-			{
-				ret[item.first.as<string>()] = item.second.as<T>();
-			}
-			catch (const YAML::BadConversion& ex)
-			{
-				m_errors.emplace_back(string("Config file error at key ") + key);
-			}
-		}
-
-		if(m_default_root)
-		{
-			for(auto item : (*m_default_root)[key])
+			for(const auto& item : (*it)[key])
 			{
 				try
 				{
@@ -324,7 +294,7 @@ public:
 				}
 				catch (const YAML::BadConversion& ex)
 				{
-					m_errors.emplace_back(string("Default config file error at key: ") + key);
+					m_errors.emplace_back(string("Config file error at key ") + key);
 				}
 			}
 		}
@@ -336,27 +306,29 @@ public:
 		return m_errors;
 	}
 
-	const YAML::Node& get_root() const
+	inline const vector<string>& warnings() const
 	{
-		return m_root;
+		return m_warnings;
 	}
 
-	const std::shared_ptr<YAML::Node> get_default_root() const
+	void add_warning(const std::string& warning)
 	{
-		if(m_default_root)
-		{
-			return m_default_root;
-		}
-		m_errors.emplace_back("Non-existing default root requested.");
-		return nullptr;
+		m_warnings.emplace_back(warning);
 	}
+
+	// WARN: when possible we should avoid using directly underlying YAML nodes
+	const vector<YAML::Node>& get_roots() const
+	{
+		return m_roots;
+	}
+
+private:
 
 	void add_error(const std::string& err)
 	{
 		m_errors.emplace_back(err);
 	}
-
-private:
+	
 	// no-op needed to compile and terminate recursion
 	template <typename T>
 	static void get_sequence(T&, const YAML::Node&)
@@ -391,19 +363,65 @@ private:
 		get_sequence(ret, child_node, args...);
 	}
 
-	YAML::Node m_root;
-	std::shared_ptr<YAML::Node> m_default_root;
+	bool add_root(YAML::Node&& root)
+	{
+		if (root.IsMap())
+		{
+			m_roots.emplace_back(root);
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	vector<YAML::Node> m_roots;
 	mutable vector<string> m_errors;
+	mutable vector<string> m_warnings;
 };
 
-namespace YAML {
-	template<>
-	struct convert<app_check> {
-		static Node encode(const app_check& rhs);
+class dragent_configuration;
 
-		static bool decode(const Node& node, app_check& rhs);
+class dragent_auto_configuration
+{
+public:
+	dragent_auto_configuration(const std::string &config_filename,
+				   const std::string &config_directory,
+				   const std::string &config_header);
+
+	virtual ~dragent_auto_configuration()
+	{
 	};
-}
+
+	int save(dragent_configuration &config, const std::string &config_data, std::string &errstr);
+
+	void init_digest();
+
+	std::string digest();
+
+	const std::string config_path();
+
+	void set_config_directory(const std::string &config_directory);
+
+	virtual bool validate(const std::string &new_config_data, std::string &errstr) = 0;
+
+	virtual void apply(dragent_configuration &config) = 0;
+
+protected:
+	std::string m_config_filename;
+	std::string m_config_directory;
+	std::string m_config_header;
+
+private:
+	SHA1Engine m_sha1_engine;
+	DigestEngine::Digest m_digest;
+};
+
+enum class dragent_mode_t {
+	STANDARD,
+	NODRIVER
+};
 
 class dragent_configuration
 {
@@ -415,11 +433,13 @@ public:
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static string get_distribution();
+	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
 	static volatile bool m_signal_dump;
 	static volatile bool m_terminate;
 	static volatile bool m_send_log_report;
+	static volatile bool m_config_update;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
@@ -428,7 +448,7 @@ public:
 
 	string m_root_dir;
 	string m_conf_file;
-	shared_ptr<yaml_configuration> m_config;
+	unique_ptr<yaml_configuration> m_config;
 
 	string m_defaults_conf_file;
 	string m_metrics_dir;
@@ -465,6 +485,8 @@ public:
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
+	uint64_t m_watchdog_warn_memory_usage_mb;
+	uint64_t m_watchdog_heap_profiling_interval_s;
 	uint64_t m_dirty_shutdown_report_log_size_b;
 	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
 	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
@@ -476,14 +498,18 @@ public:
 	bool m_remotefs_enabled;
 	string m_java_binary;
 	string m_sdjagent_opts;
+	unsigned m_jmx_limit;
 	bool m_agent_installed;
 	bool m_ssh_enabled;
+	bool m_sysdig_capture_enabled;
 	bool m_statsd_enabled;
 	unsigned m_statsd_limit;
+	uint16_t m_statsd_port;
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
 	string m_python_binary;
 	bool m_app_checks_enabled;
+	unsigned m_app_checks_limit;
 	uint32_t m_containers_limit;
 	vector<string> m_container_patterns;
 	ports_set m_known_server_ports;
@@ -505,18 +531,55 @@ public:
 	int m_k8s_timeout_ms;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
+	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
+	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
 	bool m_mesos_autodetect;
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
+	bool m_marathon_follow_leader;
+	mesos::credentials_t m_mesos_credentials;
+	mesos::credentials_t m_marathon_credentials;
+	mesos::credentials_t m_dcos_enterprise_credentials;
+
+	bool m_falco_baselining_enabled;
+	bool m_command_lines_capture_enabled;
+	bool m_command_lines_capture_all_commands;
+	bool m_memdump_enabled;
+	uint64_t m_memdump_size;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
 
+	bool m_excess_metric_log = false;
+	metrics_filter_vec m_metrics_filter;
+	unsigned m_metrics_cache;
+
 	bool m_enable_coredump;
+	bool m_auto_config;
+	bool m_emit_tracers = false;
+
+	bool m_enable_falco_engine;
+	string m_falco_default_rules_filename;
+	string m_falco_fallback_default_rules_filename;
+	string m_falco_auto_rules_filename;
+	string m_falco_rules_filename;
+	double m_falco_engine_sampling_multiplier;
+	std::set<std::string> m_falco_engine_disabled_rule_patterns;
+
+	// Set when a new auto rules file is downloaded. Monitored by
+	// sinsp_agent and when set will reload the falco engine and
+	// clear.
+	std::atomic_bool m_reset_falco_engine;
+
+	uint64_t m_user_events_rate;
+	uint64_t m_user_max_burst_events;
+	dragent_mode_t m_mode;
+
+	bool m_cointerface_enabled;
 
 	bool java_present()
 	{
@@ -531,6 +594,12 @@ public:
 	void refresh_aws_metadata();
 	void refresh_machine_id();
 
+	// Returns 0 if already up-to-date, 1 if updated, -1 if
+	// error. On error, &errstr is updated with the source of the
+	// error.
+	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
+
+	void set_auto_config_directory(const string &config_directory);
 private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
@@ -538,6 +607,10 @@ private:
 	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
+
+	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
+	bool m_load_error;
+
 	friend class aws_metadata_refresher;
 };
 

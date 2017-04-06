@@ -25,7 +25,7 @@ function smoke_tests {
 
 	# Restart so that protobuf.print is in place
 	service dragent restart
-	sleep 5
+	sleep 10
 
 	MONITOR_PID=$(cat /var/run/dragent.pid)
 	AGENT_PID=$(pidof -o $MONITOR_PID dragent)
@@ -125,7 +125,7 @@ function uninstall {
 	if [ -f /etc/debian_version ]; then
 		apt-get -y purge draios-agent sysdig < /dev/null || true
 	elif [ -f /etc/system-release-cpe ]; then
-		yum -y erase draios-agent sysdig
+		yum -y erase draios-agent sysdig || true
 		yum clean all
 		rm -rf /etc/yum.repos.d/draios.repo
 		yum clean all
@@ -145,10 +145,11 @@ function install_memcached {
 	elif [ -f /etc/system-release-cpe ]; then
 		yum -y install memcached
 	else
-	    echo "Unable to detect operating system."
-	    exit 1
+		echo "Unable to detect operating system."
+		exit 1
 	fi
 	service memcached start || true
+	sleep 1
 	pgrep memcached
 }
 
@@ -158,6 +159,7 @@ function run_java_test_app {
 		wget https://s3.amazonaws.com/download.draios.com/TestJMX.jar
 	fi
 	java -jar TestJMX.jar &
+	sleep 0.5
 	pgrep java
 }
 
@@ -188,4 +190,8 @@ REPOSITORY=$BASE_REPOSITORY
 curl -s http://download.draios.com/$REPOSITORY/install-sysdig | bash
 sysdig -n 50
 sysdig -cstdout -n 50
+
+# Cleanup all background process
+set +e
+jobs -p | xargs kill -9
 rmmod sysdig-probe

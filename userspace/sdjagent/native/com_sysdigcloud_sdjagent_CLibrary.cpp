@@ -237,6 +237,13 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 
 		if(result == from_info.st_size)
 		{
+			// We need it readable by everyone, because
+			// inside containers we run our sdjagent with
+			// uid=uid_of_target_jvm
+			if(fchmod(fd_to.fd(), S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH) != 0)
+			{
+				log("SEVERE", "Cannot change permissions of %s", destination_str.c_str());
+			}
 			exit(0);
 		}
 		else
@@ -262,7 +269,7 @@ JNIEXPORT jint JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realCopyToContaine
 }
 
 JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContainer
-		(JNIEnv* env, jclass, jint pid, jstring command, jobjectArray commandArgs, jstring root)
+		(JNIEnv* env, jclass, jint pid, jint vpid, jstring command, jobjectArray commandArgs, jstring root)
 {
 	timed_waitpid wait_pid;
 
@@ -319,7 +326,6 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		close(child_pipe[0]);
 
 		// Copy environment of the target process
-		const char* container_environ_ptr[100];
 		vector<string> container_environ;
 		char environ_path[200];
 		snprintf(environ_path, sizeof(environ_path), "%s/proc/%d/environ", scap_get_host_root(), pid);
@@ -333,13 +339,16 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 				container_environ.push_back(move(read_buffer));
 			}
 		}
+		environ_file.close();
+
+		const char** container_environ_ptr = (const char**) malloc(sizeof(char*)*(container_environ.size()+1));
 		int j = 0;
 		for(const auto& env : container_environ)
 		{
 			container_environ_ptr[j++] = env.c_str();
 		}
 		container_environ_ptr[j++] = NULL;
-		environ_file.close();
+
 
 		// Open namespaces of target process
 		snprintf(nspath, sizeof(nspath), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
@@ -359,18 +368,55 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(mntnsfd.fd(), CLONE_NEWNS);
 		setns(usernsfd.fd(), CLONE_NEWUSER);
 
+		// read uid and gid of target process
+		char proc_status_path[200];
+		snprintf(proc_status_path, sizeof(proc_status_path), "/proc/%d/status", vpid);
+		ifstream proc_status(proc_status_path);
+		uid_t uid = 0;
+		gid_t gid = 0;
+
+		while(proc_status.good())
+		{
+			string read_buffer;
+			std::getline(proc_status, read_buffer);
+			if(read_buffer.find("Uid:") == 0)
+			{
+				sscanf(read_buffer.c_str(), "%*s %u", &uid);
+				std::getline(proc_status, read_buffer);
+				sscanf(read_buffer.c_str(), "%*s %u", &gid);
+				break;
+			}
+		}
+		proc_status.close();
+		log("FINE", "Read uid=%d and gid=%d of target process", uid, gid);
+
+		// set process root
 		if(strncmp(root_s.c_str(), "/", 2) != 0)
 		{
 			auto ret = chroot(root_s.c_str());
 			if(ret != 0)
 			{
-				cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot chroot inside container, errno: " << strerror(errno) <<"\" }" << endl;
+				log("SEVERE", "Cannot chroot inside container, errno=%s", strerror(errno));
 				exit(1);
 			}
 			chdir("/");
 		}
+
+		if(setgid(gid) != 0)
+		{
+			log("SEVERE", "setgid failed errno=%s", strerror(errno));
+			exit(1);
+		}
+		if(setuid(uid) != 0)
+		{
+			log("SEVERE", "setuid failed errno=%s", strerror(errno));
+			exit(1);
+		}
+		prctl(PR_SET_PDEATHSIG, SIGKILL);
+
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
-		cerr << "{\"pid\":" << getpid() << ", \"level\": \"SEVERE\", \"message\": \"Cannot load sdjagent inside container, errno: " << strerror(errno) <<"\" }" << endl;
+		free(container_environ_ptr);
+		log("SEVERE", "Cannot exec sdjagent inside container, errno=%s", strerror(errno));
 		exit(1);
 	}
 	else
@@ -379,8 +425,9 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(mypidnsfd.fd(), CLONE_NEWPID);
 
 		auto wait_res = wait_pid.wait(child);
-		if(wait_res >= 0)
+		if(wait_res == 0)
 		{
+			// The process ended correctly, read the result
 			FILE* output = fdopen(child_pipe[0], "r");
 			char output_buffer[1024];
 			if(fgets(output_buffer, sizeof(output_buffer), output) == output_buffer)
@@ -391,9 +438,16 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		}
 		else
 		{
+			// The process didn't end correctly,
+			// just cleanup resources
 			close(child_pipe[0]);
-			kill(child, SIGKILL);
-			waitpid(child, NULL, 0);
+			if (wait_res < 0)
+			{
+				// The process didn't end within the wait timeout
+				// kill and reap it
+				kill(child, SIGKILL);
+				waitpid(child, NULL, 0);
+			}
 		}
 	}
 	return ret;

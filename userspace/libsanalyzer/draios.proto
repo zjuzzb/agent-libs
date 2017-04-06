@@ -85,7 +85,7 @@ message resource_categories {
     optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
     optional uint32 resident_memory_usage_kb = 5; // resident non-swapped memory (as kb).
     optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host and container.
-    optional uint32 swap_memory_usage_kb = 14; // swapped memory (as kb).
+    optional uint32 swap_memory_usage_kb = 14; // swapped memory usage (as kb).
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
     optional uint32 fd_count = 21; // Total number of FDs
@@ -94,6 +94,10 @@ message resource_categories {
     optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
     optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
     optional uint32 cpu_quota_used_pct = 28;
+    optional uint32 swap_memory_total_kb = 29; // swapped memory total (as kb).
+    optional uint32 swap_memory_available_kb = 30;  // swapped memory available (as kb).
+    optional uint64 count_processes = 31;  // total processes
+    optional uint64 proc_start_count = 32; // started processes
 }
 
 message connection_categories {
@@ -117,10 +121,15 @@ message process_details {
 //
 message command_details {
     required uint64 timestamp = 1;
-    required uint32 count = 2; // How many times this command has been repeated during the sample interval
+    optional uint32 count = 2; // How many times this command has been repeated during the sample interval
     required string cmdline = 3; // Program command line (e.g. "top -d1")
-    required string exe = 4; // Full executable name (e.g. "/bin/top")
-    optional string parentcomm = 5; // Name of the command that launched this one (e.g. "bash")
+    required string comm = 4; // Program executable name
+    required uint64 pid = 5; // Process pid
+    required uint64 ppid = 6; // Parent process pid
+    required uint64 uid = 7; // User ID
+    optional string cwd = 8; // Process' current working directory
+    optional uint64 login_shell_id = 9; // ID of the login shell (same as in the spy_users chisel)
+    optional uint32 login_shell_distance = 10; // Distance from the login shell (same as in the spy_users chisel)
 }
 
 //
@@ -403,8 +412,8 @@ message network_by_port {
 message host {
     optional string hostname = 1; // The name of the host sending the data
     optional uint32 num_cpus = 2; // Number of CPUs in the system
-    repeated uint32 cpu_loads = 3; // Array of CPU loads (0 to 100), with an entry for each CPU, with the
-    repeated uint32 cpu_steal = 11; // Array of CPU loads (0 to 100), with an entry for each CPU, with the
+    repeated uint32 cpu_loads = 3; // Array of CPU loads (0 to 100), with an entry for each CPU
+    repeated uint32 cpu_steal = 11; // Array of CPU loads (0 to 100), with an entry for each CPU
     required uint64 physical_memory_size_bytes = 4; // Physical RAM size
     optional time_categories tcounters = 5; // The time counters for this thread
     optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
@@ -419,6 +428,16 @@ message host {
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
     repeated network_by_port network_by_serverports = 24;
+    repeated uint32 cpu_idle = 25;  // cpu_idle
+    optional uint64 uptime = 33;  // uptime to calculate the reboot
+    repeated uint32 system_cpu = 34;  // system_cpu
+    repeated uint32 user_cpu = 35;  // user_cpu
+    optional uint64 memory_bytes_available_kb = 36;  // memory bytes available as kb
+    repeated uint32 iowait_cpu = 37;  // iowait_cpu
+    repeated uint32 nice_cpu = 38;  // nice_cpu
+    optional uint32 system_load_1 = 41; // avg system load 1 minute
+    optional uint32 system_load_5 = 42; // avg system load 5 minutes
+    optional uint32 system_load_15 = 43; // avg system load 15 minutes
 }
 
 //
@@ -455,7 +474,8 @@ message process {
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional proto_info protos = 20; // Information about protocols that have been decoded
-    optional uint64 start_count = 21;
+    optional uint64 start_count = 21; // start processes
+    optional uint64 count_processes = 23; // number of instances with same command line
 }
 
 //
@@ -510,6 +530,8 @@ enum message_type {
     SSH_DATA = 8;
     AUTO_UPDATE_REQUEST = 9;
     DIRTY_SHUTDOWN_REPORT = 10;
+    CONFIG_DATA = 11;
+    ERROR_MESSAGE = 12;
 }
 
 //
@@ -579,6 +601,8 @@ message container {
     repeated mounted_fs mounts = 21;
     repeated network_by_port network_by_serverports = 22;
     optional string mesos_task_id = 23;
+    optional string image_id = 24;
+    repeated command_details commands = 25; // List of commands executed in this container during the sample.
 }
 
 //
@@ -729,7 +753,7 @@ message metrics {
     // NEVER USED repeated process processes = 5; // The list of processes
     repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
     repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
-    repeated command_details commands = 17; // List of commands executed during the sample.
+    repeated command_details commands = 28; // List of commands executed during the sample.
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
@@ -738,6 +762,7 @@ message metrics {
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
+    optional falco_baseline falcobl = 27; // baseline information for falco
 }
 
 message dump_request_start {
@@ -748,6 +773,10 @@ message dump_request_start {
     optional string filters = 5; // Dump filters
     optional uint64 max_size = 7; // Max size
     required string token = 6; // The token associated with the request
+    optional uint64 past_duration_ns = 8; // The duration before the current time to capture. 
+                                          // This works only if the agent has been configured with rotational capture 
+    optional uint64 past_size = 9; // The number of bytes already in the event circular buffer to capture.
+                                   // This works only if the agent has been configured with rotational capture 
 }
 
 message dump_request_stop {
@@ -824,4 +853,64 @@ message agent_event {
     optional string description = 4;
     optional uint32 severity = 5;
     repeated key_value tags = 6;
+}
+
+message config_file {
+    optional string name = 1;
+    optional string content = 2;
+}
+
+message config_data {
+    repeated config_file config_files = 1;
+}
+
+enum error_type {
+     ERR_CONN_LIMIT = 1;
+     ERR_INVALID_CUSTOMER_KEY = 2;
+     ERR_DUPLICATE_AGENT = 3;
+}
+
+message error_message {
+    optional error_type type = 1;
+    optional string description = 2;
+}
+
+//
+// FALCO BASELINE
+//
+message falco_subcategory {
+    required string name = 1;
+    repeated string d = 2;
+    optional bool full = 3;
+}
+
+message falco_subcategory_container {
+    repeated falco_subcategory subcats = 1;
+}
+
+message falco_category {
+    required string name = 1;
+    repeated falco_subcategory_container startup_subcats = 2;
+    repeated falco_subcategory_container regular_subcats = 3;
+}
+
+message falco_prog {
+    required string comm = 1;
+    required string exe = 2;
+    repeated string args = 3;
+    required uint64 user_id = 4;
+    optional string container_id = 5;
+    repeated falco_category cats = 6;
+}
+
+message falco_container {
+    required string id = 1;
+    required string name = 2;
+    optional string image_name = 3;
+    optional string image_id = 4;
+}
+
+message falco_baseline {
+    repeated falco_prog progs = 1;
+    repeated falco_container containers = 2;
 }

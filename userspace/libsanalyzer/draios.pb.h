@@ -109,6 +109,15 @@ class auto_update_request;
 class dirty_shutdown_report;
 class key_value;
 class agent_event;
+class config_file;
+class config_data;
+class error_message;
+class falco_subcategory;
+class falco_subcategory_container;
+class falco_category;
+class falco_prog;
+class falco_container;
+class falco_baseline;
 
 enum sql_statement_type {
   SOP_NONE = 0,
@@ -340,11 +349,13 @@ enum message_type {
   SSH_CLOSE_CHANNEL = 7,
   SSH_DATA = 8,
   AUTO_UPDATE_REQUEST = 9,
-  DIRTY_SHUTDOWN_REPORT = 10
+  DIRTY_SHUTDOWN_REPORT = 10,
+  CONFIG_DATA = 11,
+  ERROR_MESSAGE = 12
 };
 bool message_type_IsValid(int value);
 const message_type message_type_MIN = METRICS;
-const message_type message_type_MAX = DIRTY_SHUTDOWN_REPORT;
+const message_type message_type_MAX = ERROR_MESSAGE;
 const int message_type_ARRAYSIZE = message_type_MAX + 1;
 
 const ::google::protobuf::EnumDescriptor* message_type_descriptor();
@@ -378,6 +389,26 @@ inline bool container_type_Parse(
     const ::std::string& name, container_type* value) {
   return ::google::protobuf::internal::ParseNamedEnum<container_type>(
     container_type_descriptor(), name, value);
+}
+enum error_type {
+  ERR_CONN_LIMIT = 1,
+  ERR_INVALID_CUSTOMER_KEY = 2,
+  ERR_DUPLICATE_AGENT = 3
+};
+bool error_type_IsValid(int value);
+const error_type error_type_MIN = ERR_CONN_LIMIT;
+const error_type error_type_MAX = ERR_DUPLICATE_AGENT;
+const int error_type_ARRAYSIZE = error_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* error_type_descriptor();
+inline const ::std::string& error_type_Name(error_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    error_type_descriptor(), value);
+}
+inline bool error_type_Parse(
+    const ::std::string& name, error_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<error_type>(
+    error_type_descriptor(), name, value);
 }
 // ===================================================================
 
@@ -1586,6 +1617,34 @@ class resource_categories : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 cpu_quota_used_pct() const;
   inline void set_cpu_quota_used_pct(::google::protobuf::uint32 value);
 
+  // optional uint32 swap_memory_total_kb = 29;
+  inline bool has_swap_memory_total_kb() const;
+  inline void clear_swap_memory_total_kb();
+  static const int kSwapMemoryTotalKbFieldNumber = 29;
+  inline ::google::protobuf::uint32 swap_memory_total_kb() const;
+  inline void set_swap_memory_total_kb(::google::protobuf::uint32 value);
+
+  // optional uint32 swap_memory_available_kb = 30;
+  inline bool has_swap_memory_available_kb() const;
+  inline void clear_swap_memory_available_kb();
+  static const int kSwapMemoryAvailableKbFieldNumber = 30;
+  inline ::google::protobuf::uint32 swap_memory_available_kb() const;
+  inline void set_swap_memory_available_kb(::google::protobuf::uint32 value);
+
+  // optional uint64 count_processes = 31;
+  inline bool has_count_processes() const;
+  inline void clear_count_processes();
+  static const int kCountProcessesFieldNumber = 31;
+  inline ::google::protobuf::uint64 count_processes() const;
+  inline void set_count_processes(::google::protobuf::uint64 value);
+
+  // optional uint64 proc_start_count = 32;
+  inline bool has_proc_start_count() const;
+  inline void clear_proc_start_count();
+  static const int kProcStartCountFieldNumber = 32;
+  inline ::google::protobuf::uint64 proc_start_count() const;
+  inline void set_proc_start_count(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.resource_categories)
  private:
   inline void set_has_capacity_score();
@@ -1620,6 +1679,14 @@ class resource_categories : public ::google::protobuf::Message {
   inline void clear_has_swap_limit_kb();
   inline void set_has_cpu_quota_used_pct();
   inline void clear_has_cpu_quota_used_pct();
+  inline void set_has_swap_memory_total_kb();
+  inline void clear_has_swap_memory_total_kb();
+  inline void set_has_swap_memory_available_kb();
+  inline void clear_has_swap_memory_available_kb();
+  inline void set_has_count_processes();
+  inline void clear_has_count_processes();
+  inline void set_has_proc_start_count();
+  inline void clear_has_proc_start_count();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -1639,9 +1706,13 @@ class resource_categories : public ::google::protobuf::Message {
   ::google::protobuf::uint32 memory_limit_kb_;
   ::google::protobuf::uint32 swap_limit_kb_;
   ::google::protobuf::uint32 cpu_quota_used_pct_;
+  ::google::protobuf::uint32 swap_memory_total_kb_;
+  ::google::protobuf::uint32 swap_memory_available_kb_;
+  ::google::protobuf::uint64 count_processes_;
+  ::google::protobuf::uint64 proc_start_count_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(20 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -1989,7 +2060,7 @@ class command_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 timestamp() const;
   inline void set_timestamp(::google::protobuf::uint64 value);
 
-  // required uint32 count = 2;
+  // optional uint32 count = 2;
   inline bool has_count() const;
   inline void clear_count();
   static const int kCountFieldNumber = 2;
@@ -2008,29 +2079,64 @@ class command_details : public ::google::protobuf::Message {
   inline ::std::string* release_cmdline();
   inline void set_allocated_cmdline(::std::string* cmdline);
 
-  // required string exe = 4;
-  inline bool has_exe() const;
-  inline void clear_exe();
-  static const int kExeFieldNumber = 4;
-  inline const ::std::string& exe() const;
-  inline void set_exe(const ::std::string& value);
-  inline void set_exe(const char* value);
-  inline void set_exe(const char* value, size_t size);
-  inline ::std::string* mutable_exe();
-  inline ::std::string* release_exe();
-  inline void set_allocated_exe(::std::string* exe);
+  // required string comm = 4;
+  inline bool has_comm() const;
+  inline void clear_comm();
+  static const int kCommFieldNumber = 4;
+  inline const ::std::string& comm() const;
+  inline void set_comm(const ::std::string& value);
+  inline void set_comm(const char* value);
+  inline void set_comm(const char* value, size_t size);
+  inline ::std::string* mutable_comm();
+  inline ::std::string* release_comm();
+  inline void set_allocated_comm(::std::string* comm);
 
-  // optional string parentcomm = 5;
-  inline bool has_parentcomm() const;
-  inline void clear_parentcomm();
-  static const int kParentcommFieldNumber = 5;
-  inline const ::std::string& parentcomm() const;
-  inline void set_parentcomm(const ::std::string& value);
-  inline void set_parentcomm(const char* value);
-  inline void set_parentcomm(const char* value, size_t size);
-  inline ::std::string* mutable_parentcomm();
-  inline ::std::string* release_parentcomm();
-  inline void set_allocated_parentcomm(::std::string* parentcomm);
+  // required uint64 pid = 5;
+  inline bool has_pid() const;
+  inline void clear_pid();
+  static const int kPidFieldNumber = 5;
+  inline ::google::protobuf::uint64 pid() const;
+  inline void set_pid(::google::protobuf::uint64 value);
+
+  // required uint64 ppid = 6;
+  inline bool has_ppid() const;
+  inline void clear_ppid();
+  static const int kPpidFieldNumber = 6;
+  inline ::google::protobuf::uint64 ppid() const;
+  inline void set_ppid(::google::protobuf::uint64 value);
+
+  // required uint64 uid = 7;
+  inline bool has_uid() const;
+  inline void clear_uid();
+  static const int kUidFieldNumber = 7;
+  inline ::google::protobuf::uint64 uid() const;
+  inline void set_uid(::google::protobuf::uint64 value);
+
+  // optional string cwd = 8;
+  inline bool has_cwd() const;
+  inline void clear_cwd();
+  static const int kCwdFieldNumber = 8;
+  inline const ::std::string& cwd() const;
+  inline void set_cwd(const ::std::string& value);
+  inline void set_cwd(const char* value);
+  inline void set_cwd(const char* value, size_t size);
+  inline ::std::string* mutable_cwd();
+  inline ::std::string* release_cwd();
+  inline void set_allocated_cwd(::std::string* cwd);
+
+  // optional uint64 login_shell_id = 9;
+  inline bool has_login_shell_id() const;
+  inline void clear_login_shell_id();
+  static const int kLoginShellIdFieldNumber = 9;
+  inline ::google::protobuf::uint64 login_shell_id() const;
+  inline void set_login_shell_id(::google::protobuf::uint64 value);
+
+  // optional uint32 login_shell_distance = 10;
+  inline bool has_login_shell_distance() const;
+  inline void clear_login_shell_distance();
+  static const int kLoginShellDistanceFieldNumber = 10;
+  inline ::google::protobuf::uint32 login_shell_distance() const;
+  inline void set_login_shell_distance(::google::protobuf::uint32 value);
 
   // @@protoc_insertion_point(class_scope:draiosproto.command_details)
  private:
@@ -2040,21 +2146,36 @@ class command_details : public ::google::protobuf::Message {
   inline void clear_has_count();
   inline void set_has_cmdline();
   inline void clear_has_cmdline();
-  inline void set_has_exe();
-  inline void clear_has_exe();
-  inline void set_has_parentcomm();
-  inline void clear_has_parentcomm();
+  inline void set_has_comm();
+  inline void clear_has_comm();
+  inline void set_has_pid();
+  inline void clear_has_pid();
+  inline void set_has_ppid();
+  inline void clear_has_ppid();
+  inline void set_has_uid();
+  inline void clear_has_uid();
+  inline void set_has_cwd();
+  inline void clear_has_cwd();
+  inline void set_has_login_shell_id();
+  inline void clear_has_login_shell_id();
+  inline void set_has_login_shell_distance();
+  inline void clear_has_login_shell_distance();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
   ::google::protobuf::uint64 timestamp_;
   ::std::string* cmdline_;
-  ::std::string* exe_;
-  ::std::string* parentcomm_;
+  ::std::string* comm_;
+  ::google::protobuf::uint64 pid_;
+  ::google::protobuf::uint64 ppid_;
   ::google::protobuf::uint32 count_;
+  ::google::protobuf::uint32 login_shell_distance_;
+  ::google::protobuf::uint64 uid_;
+  ::std::string* cwd_;
+  ::google::protobuf::uint64 login_shell_id_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -4801,6 +4922,101 @@ class host : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port >*
       mutable_network_by_serverports();
 
+  // repeated uint32 cpu_idle = 25;
+  inline int cpu_idle_size() const;
+  inline void clear_cpu_idle();
+  static const int kCpuIdleFieldNumber = 25;
+  inline ::google::protobuf::uint32 cpu_idle(int index) const;
+  inline void set_cpu_idle(int index, ::google::protobuf::uint32 value);
+  inline void add_cpu_idle(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      cpu_idle() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_cpu_idle();
+
+  // optional uint64 uptime = 33;
+  inline bool has_uptime() const;
+  inline void clear_uptime();
+  static const int kUptimeFieldNumber = 33;
+  inline ::google::protobuf::uint64 uptime() const;
+  inline void set_uptime(::google::protobuf::uint64 value);
+
+  // repeated uint32 system_cpu = 34;
+  inline int system_cpu_size() const;
+  inline void clear_system_cpu();
+  static const int kSystemCpuFieldNumber = 34;
+  inline ::google::protobuf::uint32 system_cpu(int index) const;
+  inline void set_system_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_system_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      system_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_system_cpu();
+
+  // repeated uint32 user_cpu = 35;
+  inline int user_cpu_size() const;
+  inline void clear_user_cpu();
+  static const int kUserCpuFieldNumber = 35;
+  inline ::google::protobuf::uint32 user_cpu(int index) const;
+  inline void set_user_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_user_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      user_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_user_cpu();
+
+  // optional uint64 memory_bytes_available_kb = 36;
+  inline bool has_memory_bytes_available_kb() const;
+  inline void clear_memory_bytes_available_kb();
+  static const int kMemoryBytesAvailableKbFieldNumber = 36;
+  inline ::google::protobuf::uint64 memory_bytes_available_kb() const;
+  inline void set_memory_bytes_available_kb(::google::protobuf::uint64 value);
+
+  // repeated uint32 iowait_cpu = 37;
+  inline int iowait_cpu_size() const;
+  inline void clear_iowait_cpu();
+  static const int kIowaitCpuFieldNumber = 37;
+  inline ::google::protobuf::uint32 iowait_cpu(int index) const;
+  inline void set_iowait_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_iowait_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      iowait_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_iowait_cpu();
+
+  // repeated uint32 nice_cpu = 38;
+  inline int nice_cpu_size() const;
+  inline void clear_nice_cpu();
+  static const int kNiceCpuFieldNumber = 38;
+  inline ::google::protobuf::uint32 nice_cpu(int index) const;
+  inline void set_nice_cpu(int index, ::google::protobuf::uint32 value);
+  inline void add_nice_cpu(::google::protobuf::uint32 value);
+  inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+      nice_cpu() const;
+  inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+      mutable_nice_cpu();
+
+  // optional uint32 system_load_1 = 41;
+  inline bool has_system_load_1() const;
+  inline void clear_system_load_1();
+  static const int kSystemLoad1FieldNumber = 41;
+  inline ::google::protobuf::uint32 system_load_1() const;
+  inline void set_system_load_1(::google::protobuf::uint32 value);
+
+  // optional uint32 system_load_5 = 42;
+  inline bool has_system_load_5() const;
+  inline void clear_system_load_5();
+  static const int kSystemLoad5FieldNumber = 42;
+  inline ::google::protobuf::uint32 system_load_5() const;
+  inline void set_system_load_5(::google::protobuf::uint32 value);
+
+  // optional uint32 system_load_15 = 43;
+  inline bool has_system_load_15() const;
+  inline void clear_system_load_15();
+  static const int kSystemLoad15FieldNumber = 43;
+  inline ::google::protobuf::uint32 system_load_15() const;
+  inline void set_system_load_15(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.host)
  private:
   inline void set_has_hostname();
@@ -4829,6 +5045,16 @@ class host : public ::google::protobuf::Message {
   inline void clear_has_syscall_errors();
   inline void set_has_external_io_net();
   inline void clear_has_external_io_net();
+  inline void set_has_uptime();
+  inline void clear_has_uptime();
+  inline void set_has_memory_bytes_available_kb();
+  inline void clear_has_memory_bytes_available_kb();
+  inline void set_has_system_load_1();
+  inline void clear_has_system_load_1();
+  inline void set_has_system_load_5();
+  inline void clear_has_system_load_5();
+  inline void set_has_system_load_15();
+  inline void clear_has_system_load_15();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -4844,13 +5070,23 @@ class host : public ::google::protobuf::Message {
   ::google::protobuf::uint64 transaction_processing_delay_;
   ::google::protobuf::uint64 next_tiers_delay_;
   ::draiosproto::resource_categories* resource_counters_;
+  ::google::protobuf::uint32 num_cpus_;
+  ::google::protobuf::uint32 system_load_1_;
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::counter_time_bytes* external_io_net_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
-  ::google::protobuf::uint32 num_cpus_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > cpu_idle_;
+  ::google::protobuf::uint64 uptime_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > system_cpu_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > user_cpu_;
+  ::google::protobuf::uint64 memory_bytes_available_kb_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > iowait_cpu_;
+  ::google::protobuf::RepeatedField< ::google::protobuf::uint32 > nice_cpu_;
+  ::google::protobuf::uint32 system_load_5_;
+  ::google::protobuf::uint32 system_load_15_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(26 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -5043,6 +5279,13 @@ class process : public ::google::protobuf::Message {
   inline ::google::protobuf::uint64 start_count() const;
   inline void set_start_count(::google::protobuf::uint64 value);
 
+  // optional uint64 count_processes = 23;
+  inline bool has_count_processes() const;
+  inline void clear_count_processes();
+  static const int kCountProcessesFieldNumber = 23;
+  inline ::google::protobuf::uint64 count_processes() const;
+  inline void set_count_processes(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.process)
  private:
   inline void set_has_details();
@@ -5077,6 +5320,8 @@ class process : public ::google::protobuf::Message {
   inline void clear_has_protos();
   inline void set_has_start_count();
   inline void clear_has_start_count();
+  inline void set_has_count_processes();
+  inline void clear_has_count_processes();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -5096,9 +5341,10 @@ class process : public ::google::protobuf::Message {
   ::draiosproto::counter_syscall_errors* syscall_errors_;
   ::draiosproto::proto_info* protos_;
   ::google::protobuf::uint64 start_count_;
+  ::google::protobuf::uint64 count_processes_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(16 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -6312,6 +6558,30 @@ class container : public ::google::protobuf::Message {
   inline ::std::string* release_mesos_task_id();
   inline void set_allocated_mesos_task_id(::std::string* mesos_task_id);
 
+  // optional string image_id = 24;
+  inline bool has_image_id() const;
+  inline void clear_image_id();
+  static const int kImageIdFieldNumber = 24;
+  inline const ::std::string& image_id() const;
+  inline void set_image_id(const ::std::string& value);
+  inline void set_image_id(const char* value);
+  inline void set_image_id(const char* value, size_t size);
+  inline ::std::string* mutable_image_id();
+  inline ::std::string* release_image_id();
+  inline void set_allocated_image_id(::std::string* image_id);
+
+  // repeated .draiosproto.command_details commands = 25;
+  inline int commands_size() const;
+  inline void clear_commands();
+  static const int kCommandsFieldNumber = 25;
+  inline const ::draiosproto::command_details& commands(int index) const;
+  inline ::draiosproto::command_details* mutable_commands(int index);
+  inline ::draiosproto::command_details* add_commands();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >&
+      commands() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
+      mutable_commands();
+
   // @@protoc_insertion_point(class_scope:draiosproto.container)
  private:
   inline void set_has_id();
@@ -6344,6 +6614,8 @@ class container : public ::google::protobuf::Message {
   inline void clear_has_protos();
   inline void set_has_mesos_task_id();
   inline void clear_has_mesos_task_id();
+  inline void set_has_image_id();
+  inline void clear_has_image_id();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -6365,10 +6637,12 @@ class container : public ::google::protobuf::Message {
   ::google::protobuf::RepeatedPtrField< ::draiosproto::mounted_fs > mounts_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::network_by_port > network_by_serverports_;
   ::std::string* mesos_task_id_;
+  ::std::string* image_id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details > commands_;
   int type_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(19 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(21 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -8817,10 +9091,10 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::ipv4_network_interface >*
       mutable_ipv4_network_interfaces();
 
-  // repeated .draiosproto.command_details commands = 17;
+  // repeated .draiosproto.command_details commands = 28;
   inline int commands_size() const;
   inline void clear_commands();
-  static const int kCommandsFieldNumber = 17;
+  static const int kCommandsFieldNumber = 28;
   inline const ::draiosproto::command_details& commands(int index) const;
   inline ::draiosproto::command_details* mutable_commands(int index);
   inline ::draiosproto::command_details* add_commands();
@@ -8904,6 +9178,15 @@ class metrics : public ::google::protobuf::Message {
   inline ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >*
       mutable_events();
 
+  // optional .draiosproto.falco_baseline falcobl = 27;
+  inline bool has_falcobl() const;
+  inline void clear_falcobl();
+  static const int kFalcoblFieldNumber = 27;
+  inline const ::draiosproto::falco_baseline& falcobl() const;
+  inline ::draiosproto::falco_baseline* mutable_falcobl();
+  inline ::draiosproto::falco_baseline* release_falcobl();
+  inline void set_allocated_falcobl(::draiosproto::falco_baseline* falcobl);
+
   // @@protoc_insertion_point(class_scope:draiosproto.metrics)
  private:
   inline void set_has_timestamp_ns();
@@ -8934,6 +9217,8 @@ class metrics : public ::google::protobuf::Message {
   inline void clear_has_kubernetes();
   inline void set_has_mesos();
   inline void clear_has_mesos();
+  inline void set_has_falcobl();
+  inline void clear_has_falcobl();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -8959,9 +9244,10 @@ class metrics : public ::google::protobuf::Message {
   ::draiosproto::k8s_state* kubernetes_;
   ::draiosproto::mesos_state* mesos_;
   ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event > events_;
+  ::draiosproto::falco_baseline* falcobl_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(22 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(23 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -9095,6 +9381,20 @@ class dump_request_start : public ::google::protobuf::Message {
   inline ::std::string* release_token();
   inline void set_allocated_token(::std::string* token);
 
+  // optional uint64 past_duration_ns = 8;
+  inline bool has_past_duration_ns() const;
+  inline void clear_past_duration_ns();
+  static const int kPastDurationNsFieldNumber = 8;
+  inline ::google::protobuf::uint64 past_duration_ns() const;
+  inline void set_past_duration_ns(::google::protobuf::uint64 value);
+
+  // optional uint64 past_size = 9;
+  inline bool has_past_size() const;
+  inline void clear_past_size();
+  static const int kPastSizeFieldNumber = 9;
+  inline ::google::protobuf::uint64 past_size() const;
+  inline void set_past_size(::google::protobuf::uint64 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.dump_request_start)
  private:
   inline void set_has_timestamp_ns();
@@ -9111,6 +9411,10 @@ class dump_request_start : public ::google::protobuf::Message {
   inline void clear_has_max_size();
   inline void set_has_token();
   inline void clear_has_token();
+  inline void set_has_past_duration_ns();
+  inline void clear_has_past_duration_ns();
+  inline void set_has_past_size();
+  inline void clear_has_past_size();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -9121,9 +9425,11 @@ class dump_request_start : public ::google::protobuf::Message {
   ::std::string* filters_;
   ::google::protobuf::uint64 max_size_;
   ::std::string* token_;
+  ::google::protobuf::uint64 past_duration_ns_;
+  ::google::protobuf::uint64 past_size_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(9 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -10437,6 +10743,989 @@ class agent_event : public ::google::protobuf::Message {
 
   void InitAsDefaultInstance();
   static agent_event* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class config_file : public ::google::protobuf::Message {
+ public:
+  config_file();
+  virtual ~config_file();
+
+  config_file(const config_file& from);
+
+  inline config_file& operator=(const config_file& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const config_file& default_instance();
+
+  void Swap(config_file* other);
+
+  // implements Message ----------------------------------------------
+
+  config_file* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const config_file& from);
+  void MergeFrom(const config_file& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string content = 2;
+  inline bool has_content() const;
+  inline void clear_content();
+  static const int kContentFieldNumber = 2;
+  inline const ::std::string& content() const;
+  inline void set_content(const ::std::string& value);
+  inline void set_content(const char* value);
+  inline void set_content(const char* value, size_t size);
+  inline ::std::string* mutable_content();
+  inline ::std::string* release_content();
+  inline void set_allocated_content(::std::string* content);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.config_file)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_content();
+  inline void clear_has_content();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::std::string* content_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static config_file* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class config_data : public ::google::protobuf::Message {
+ public:
+  config_data();
+  virtual ~config_data();
+
+  config_data(const config_data& from);
+
+  inline config_data& operator=(const config_data& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const config_data& default_instance();
+
+  void Swap(config_data* other);
+
+  // implements Message ----------------------------------------------
+
+  config_data* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const config_data& from);
+  void MergeFrom(const config_data& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.config_file config_files = 1;
+  inline int config_files_size() const;
+  inline void clear_config_files();
+  static const int kConfigFilesFieldNumber = 1;
+  inline const ::draiosproto::config_file& config_files(int index) const;
+  inline ::draiosproto::config_file* mutable_config_files(int index);
+  inline ::draiosproto::config_file* add_config_files();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >&
+      config_files() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >*
+      mutable_config_files();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.config_data)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file > config_files_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static config_data* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class error_message : public ::google::protobuf::Message {
+ public:
+  error_message();
+  virtual ~error_message();
+
+  error_message(const error_message& from);
+
+  inline error_message& operator=(const error_message& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const error_message& default_instance();
+
+  void Swap(error_message* other);
+
+  // implements Message ----------------------------------------------
+
+  error_message* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const error_message& from);
+  void MergeFrom(const error_message& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // optional .draiosproto.error_type type = 1;
+  inline bool has_type() const;
+  inline void clear_type();
+  static const int kTypeFieldNumber = 1;
+  inline ::draiosproto::error_type type() const;
+  inline void set_type(::draiosproto::error_type value);
+
+  // optional string description = 2;
+  inline bool has_description() const;
+  inline void clear_description();
+  static const int kDescriptionFieldNumber = 2;
+  inline const ::std::string& description() const;
+  inline void set_description(const ::std::string& value);
+  inline void set_description(const char* value);
+  inline void set_description(const char* value, size_t size);
+  inline ::std::string* mutable_description();
+  inline ::std::string* release_description();
+  inline void set_allocated_description(::std::string* description);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.error_message)
+ private:
+  inline void set_has_type();
+  inline void clear_has_type();
+  inline void set_has_description();
+  inline void clear_has_description();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* description_;
+  int type_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static error_message* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class falco_subcategory : public ::google::protobuf::Message {
+ public:
+  falco_subcategory();
+  virtual ~falco_subcategory();
+
+  falco_subcategory(const falco_subcategory& from);
+
+  inline falco_subcategory& operator=(const falco_subcategory& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_subcategory& default_instance();
+
+  void Swap(falco_subcategory* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_subcategory* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_subcategory& from);
+  void MergeFrom(const falco_subcategory& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // repeated string d = 2;
+  inline int d_size() const;
+  inline void clear_d();
+  static const int kDFieldNumber = 2;
+  inline const ::std::string& d(int index) const;
+  inline ::std::string* mutable_d(int index);
+  inline void set_d(int index, const ::std::string& value);
+  inline void set_d(int index, const char* value);
+  inline void set_d(int index, const char* value, size_t size);
+  inline ::std::string* add_d();
+  inline void add_d(const ::std::string& value);
+  inline void add_d(const char* value);
+  inline void add_d(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& d() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_d();
+
+  // optional bool full = 3;
+  inline bool has_full() const;
+  inline void clear_full();
+  static const int kFullFieldNumber = 3;
+  inline bool full() const;
+  inline void set_full(bool value);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_subcategory)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_full();
+  inline void clear_has_full();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> d_;
+  bool full_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_subcategory* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class falco_subcategory_container : public ::google::protobuf::Message {
+ public:
+  falco_subcategory_container();
+  virtual ~falco_subcategory_container();
+
+  falco_subcategory_container(const falco_subcategory_container& from);
+
+  inline falco_subcategory_container& operator=(const falco_subcategory_container& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_subcategory_container& default_instance();
+
+  void Swap(falco_subcategory_container* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_subcategory_container* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_subcategory_container& from);
+  void MergeFrom(const falco_subcategory_container& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.falco_subcategory subcats = 1;
+  inline int subcats_size() const;
+  inline void clear_subcats();
+  static const int kSubcatsFieldNumber = 1;
+  inline const ::draiosproto::falco_subcategory& subcats(int index) const;
+  inline ::draiosproto::falco_subcategory* mutable_subcats(int index);
+  inline ::draiosproto::falco_subcategory* add_subcats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >&
+      subcats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >*
+      mutable_subcats();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_subcategory_container)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory > subcats_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_subcategory_container* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class falco_category : public ::google::protobuf::Message {
+ public:
+  falco_category();
+  virtual ~falco_category();
+
+  falco_category(const falco_category& from);
+
+  inline falco_category& operator=(const falco_category& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_category& default_instance();
+
+  void Swap(falco_category* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_category* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_category& from);
+  void MergeFrom(const falco_category& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string name = 1;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 1;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+  inline int startup_subcats_size() const;
+  inline void clear_startup_subcats();
+  static const int kStartupSubcatsFieldNumber = 2;
+  inline const ::draiosproto::falco_subcategory_container& startup_subcats(int index) const;
+  inline ::draiosproto::falco_subcategory_container* mutable_startup_subcats(int index);
+  inline ::draiosproto::falco_subcategory_container* add_startup_subcats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+      startup_subcats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+      mutable_startup_subcats();
+
+  // repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+  inline int regular_subcats_size() const;
+  inline void clear_regular_subcats();
+  static const int kRegularSubcatsFieldNumber = 3;
+  inline const ::draiosproto::falco_subcategory_container& regular_subcats(int index) const;
+  inline ::draiosproto::falco_subcategory_container* mutable_regular_subcats(int index);
+  inline ::draiosproto::falco_subcategory_container* add_regular_subcats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+      regular_subcats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+      mutable_regular_subcats();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_category)
+ private:
+  inline void set_has_name();
+  inline void clear_has_name();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* name_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container > startup_subcats_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container > regular_subcats_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_category* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class falco_prog : public ::google::protobuf::Message {
+ public:
+  falco_prog();
+  virtual ~falco_prog();
+
+  falco_prog(const falco_prog& from);
+
+  inline falco_prog& operator=(const falco_prog& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_prog& default_instance();
+
+  void Swap(falco_prog* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_prog* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_prog& from);
+  void MergeFrom(const falco_prog& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string comm = 1;
+  inline bool has_comm() const;
+  inline void clear_comm();
+  static const int kCommFieldNumber = 1;
+  inline const ::std::string& comm() const;
+  inline void set_comm(const ::std::string& value);
+  inline void set_comm(const char* value);
+  inline void set_comm(const char* value, size_t size);
+  inline ::std::string* mutable_comm();
+  inline ::std::string* release_comm();
+  inline void set_allocated_comm(::std::string* comm);
+
+  // required string exe = 2;
+  inline bool has_exe() const;
+  inline void clear_exe();
+  static const int kExeFieldNumber = 2;
+  inline const ::std::string& exe() const;
+  inline void set_exe(const ::std::string& value);
+  inline void set_exe(const char* value);
+  inline void set_exe(const char* value, size_t size);
+  inline ::std::string* mutable_exe();
+  inline ::std::string* release_exe();
+  inline void set_allocated_exe(::std::string* exe);
+
+  // repeated string args = 3;
+  inline int args_size() const;
+  inline void clear_args();
+  static const int kArgsFieldNumber = 3;
+  inline const ::std::string& args(int index) const;
+  inline ::std::string* mutable_args(int index);
+  inline void set_args(int index, const ::std::string& value);
+  inline void set_args(int index, const char* value);
+  inline void set_args(int index, const char* value, size_t size);
+  inline ::std::string* add_args();
+  inline void add_args(const ::std::string& value);
+  inline void add_args(const char* value);
+  inline void add_args(const char* value, size_t size);
+  inline const ::google::protobuf::RepeatedPtrField< ::std::string>& args() const;
+  inline ::google::protobuf::RepeatedPtrField< ::std::string>* mutable_args();
+
+  // required uint64 user_id = 4;
+  inline bool has_user_id() const;
+  inline void clear_user_id();
+  static const int kUserIdFieldNumber = 4;
+  inline ::google::protobuf::uint64 user_id() const;
+  inline void set_user_id(::google::protobuf::uint64 value);
+
+  // optional string container_id = 5;
+  inline bool has_container_id() const;
+  inline void clear_container_id();
+  static const int kContainerIdFieldNumber = 5;
+  inline const ::std::string& container_id() const;
+  inline void set_container_id(const ::std::string& value);
+  inline void set_container_id(const char* value);
+  inline void set_container_id(const char* value, size_t size);
+  inline ::std::string* mutable_container_id();
+  inline ::std::string* release_container_id();
+  inline void set_allocated_container_id(::std::string* container_id);
+
+  // repeated .draiosproto.falco_category cats = 6;
+  inline int cats_size() const;
+  inline void clear_cats();
+  static const int kCatsFieldNumber = 6;
+  inline const ::draiosproto::falco_category& cats(int index) const;
+  inline ::draiosproto::falco_category* mutable_cats(int index);
+  inline ::draiosproto::falco_category* add_cats();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_category >&
+      cats() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_category >*
+      mutable_cats();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_prog)
+ private:
+  inline void set_has_comm();
+  inline void clear_has_comm();
+  inline void set_has_exe();
+  inline void clear_has_exe();
+  inline void set_has_user_id();
+  inline void clear_has_user_id();
+  inline void set_has_container_id();
+  inline void clear_has_container_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* comm_;
+  ::std::string* exe_;
+  ::google::protobuf::RepeatedPtrField< ::std::string> args_;
+  ::google::protobuf::uint64 user_id_;
+  ::std::string* container_id_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_category > cats_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_prog* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class falco_container : public ::google::protobuf::Message {
+ public:
+  falco_container();
+  virtual ~falco_container();
+
+  falco_container(const falco_container& from);
+
+  inline falco_container& operator=(const falco_container& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_container& default_instance();
+
+  void Swap(falco_container* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_container* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_container& from);
+  void MergeFrom(const falco_container& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required string id = 1;
+  inline bool has_id() const;
+  inline void clear_id();
+  static const int kIdFieldNumber = 1;
+  inline const ::std::string& id() const;
+  inline void set_id(const ::std::string& value);
+  inline void set_id(const char* value);
+  inline void set_id(const char* value, size_t size);
+  inline ::std::string* mutable_id();
+  inline ::std::string* release_id();
+  inline void set_allocated_id(::std::string* id);
+
+  // required string name = 2;
+  inline bool has_name() const;
+  inline void clear_name();
+  static const int kNameFieldNumber = 2;
+  inline const ::std::string& name() const;
+  inline void set_name(const ::std::string& value);
+  inline void set_name(const char* value);
+  inline void set_name(const char* value, size_t size);
+  inline ::std::string* mutable_name();
+  inline ::std::string* release_name();
+  inline void set_allocated_name(::std::string* name);
+
+  // optional string image_name = 3;
+  inline bool has_image_name() const;
+  inline void clear_image_name();
+  static const int kImageNameFieldNumber = 3;
+  inline const ::std::string& image_name() const;
+  inline void set_image_name(const ::std::string& value);
+  inline void set_image_name(const char* value);
+  inline void set_image_name(const char* value, size_t size);
+  inline ::std::string* mutable_image_name();
+  inline ::std::string* release_image_name();
+  inline void set_allocated_image_name(::std::string* image_name);
+
+  // optional string image_id = 4;
+  inline bool has_image_id() const;
+  inline void clear_image_id();
+  static const int kImageIdFieldNumber = 4;
+  inline const ::std::string& image_id() const;
+  inline void set_image_id(const ::std::string& value);
+  inline void set_image_id(const char* value);
+  inline void set_image_id(const char* value, size_t size);
+  inline ::std::string* mutable_image_id();
+  inline ::std::string* release_image_id();
+  inline void set_allocated_image_id(::std::string* image_id);
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_container)
+ private:
+  inline void set_has_id();
+  inline void clear_has_id();
+  inline void set_has_name();
+  inline void clear_has_name();
+  inline void set_has_image_name();
+  inline void clear_has_image_name();
+  inline void set_has_image_id();
+  inline void clear_has_image_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* id_;
+  ::std::string* name_;
+  ::std::string* image_name_;
+  ::std::string* image_id_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_container* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class falco_baseline : public ::google::protobuf::Message {
+ public:
+  falco_baseline();
+  virtual ~falco_baseline();
+
+  falco_baseline(const falco_baseline& from);
+
+  inline falco_baseline& operator=(const falco_baseline& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const falco_baseline& default_instance();
+
+  void Swap(falco_baseline* other);
+
+  // implements Message ----------------------------------------------
+
+  falco_baseline* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const falco_baseline& from);
+  void MergeFrom(const falco_baseline& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // repeated .draiosproto.falco_prog progs = 1;
+  inline int progs_size() const;
+  inline void clear_progs();
+  static const int kProgsFieldNumber = 1;
+  inline const ::draiosproto::falco_prog& progs(int index) const;
+  inline ::draiosproto::falco_prog* mutable_progs(int index);
+  inline ::draiosproto::falco_prog* add_progs();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog >&
+      progs() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog >*
+      mutable_progs();
+
+  // repeated .draiosproto.falco_container containers = 2;
+  inline int containers_size() const;
+  inline void clear_containers();
+  static const int kContainersFieldNumber = 2;
+  inline const ::draiosproto::falco_container& containers(int index) const;
+  inline ::draiosproto::falco_container* mutable_containers(int index);
+  inline ::draiosproto::falco_container* add_containers();
+  inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >&
+      containers() const;
+  inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >*
+      mutable_containers();
+
+  // @@protoc_insertion_point(class_scope:draiosproto.falco_baseline)
+ private:
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog > progs_;
+  ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container > containers_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_draios_2eproto();
+  friend void protobuf_AssignDesc_draios_2eproto();
+  friend void protobuf_ShutdownFile_draios_2eproto();
+
+  void InitAsDefaultInstance();
+  static falco_baseline* default_instance_;
 };
 // ===================================================================
 
@@ -12242,6 +13531,94 @@ inline void resource_categories::set_cpu_quota_used_pct(::google::protobuf::uint
   cpu_quota_used_pct_ = value;
 }
 
+// optional uint32 swap_memory_total_kb = 29;
+inline bool resource_categories::has_swap_memory_total_kb() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void resource_categories::set_has_swap_memory_total_kb() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void resource_categories::clear_has_swap_memory_total_kb() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void resource_categories::clear_swap_memory_total_kb() {
+  swap_memory_total_kb_ = 0u;
+  clear_has_swap_memory_total_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_memory_total_kb() const {
+  return swap_memory_total_kb_;
+}
+inline void resource_categories::set_swap_memory_total_kb(::google::protobuf::uint32 value) {
+  set_has_swap_memory_total_kb();
+  swap_memory_total_kb_ = value;
+}
+
+// optional uint32 swap_memory_available_kb = 30;
+inline bool resource_categories::has_swap_memory_available_kb() const {
+  return (_has_bits_[0] & 0x00020000u) != 0;
+}
+inline void resource_categories::set_has_swap_memory_available_kb() {
+  _has_bits_[0] |= 0x00020000u;
+}
+inline void resource_categories::clear_has_swap_memory_available_kb() {
+  _has_bits_[0] &= ~0x00020000u;
+}
+inline void resource_categories::clear_swap_memory_available_kb() {
+  swap_memory_available_kb_ = 0u;
+  clear_has_swap_memory_available_kb();
+}
+inline ::google::protobuf::uint32 resource_categories::swap_memory_available_kb() const {
+  return swap_memory_available_kb_;
+}
+inline void resource_categories::set_swap_memory_available_kb(::google::protobuf::uint32 value) {
+  set_has_swap_memory_available_kb();
+  swap_memory_available_kb_ = value;
+}
+
+// optional uint64 count_processes = 31;
+inline bool resource_categories::has_count_processes() const {
+  return (_has_bits_[0] & 0x00040000u) != 0;
+}
+inline void resource_categories::set_has_count_processes() {
+  _has_bits_[0] |= 0x00040000u;
+}
+inline void resource_categories::clear_has_count_processes() {
+  _has_bits_[0] &= ~0x00040000u;
+}
+inline void resource_categories::clear_count_processes() {
+  count_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_count_processes();
+}
+inline ::google::protobuf::uint64 resource_categories::count_processes() const {
+  return count_processes_;
+}
+inline void resource_categories::set_count_processes(::google::protobuf::uint64 value) {
+  set_has_count_processes();
+  count_processes_ = value;
+}
+
+// optional uint64 proc_start_count = 32;
+inline bool resource_categories::has_proc_start_count() const {
+  return (_has_bits_[0] & 0x00080000u) != 0;
+}
+inline void resource_categories::set_has_proc_start_count() {
+  _has_bits_[0] |= 0x00080000u;
+}
+inline void resource_categories::clear_has_proc_start_count() {
+  _has_bits_[0] &= ~0x00080000u;
+}
+inline void resource_categories::clear_proc_start_count() {
+  proc_start_count_ = GOOGLE_ULONGLONG(0);
+  clear_has_proc_start_count();
+}
+inline ::google::protobuf::uint64 resource_categories::proc_start_count() const {
+  return proc_start_count_;
+}
+inline void resource_categories::set_proc_start_count(::google::protobuf::uint64 value) {
+  set_has_proc_start_count();
+  proc_start_count_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // connection_categories
@@ -12742,7 +14119,7 @@ inline void command_details::set_timestamp(::google::protobuf::uint64 value) {
   timestamp_ = value;
 }
 
-// required uint32 count = 2;
+// optional uint32 count = 2;
 inline bool command_details::has_count() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
@@ -12834,144 +14211,254 @@ inline void command_details::set_allocated_cmdline(::std::string* cmdline) {
   }
 }
 
-// required string exe = 4;
-inline bool command_details::has_exe() const {
+// required string comm = 4;
+inline bool command_details::has_comm() const {
   return (_has_bits_[0] & 0x00000008u) != 0;
 }
-inline void command_details::set_has_exe() {
+inline void command_details::set_has_comm() {
   _has_bits_[0] |= 0x00000008u;
 }
-inline void command_details::clear_has_exe() {
+inline void command_details::clear_has_comm() {
   _has_bits_[0] &= ~0x00000008u;
 }
-inline void command_details::clear_exe() {
-  if (exe_ != &::google::protobuf::internal::kEmptyString) {
-    exe_->clear();
+inline void command_details::clear_comm() {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    comm_->clear();
   }
-  clear_has_exe();
+  clear_has_comm();
 }
-inline const ::std::string& command_details::exe() const {
-  return *exe_;
+inline const ::std::string& command_details::comm() const {
+  return *comm_;
 }
-inline void command_details::set_exe(const ::std::string& value) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
+inline void command_details::set_comm(const ::std::string& value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
   }
-  exe_->assign(value);
+  comm_->assign(value);
 }
-inline void command_details::set_exe(const char* value) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
+inline void command_details::set_comm(const char* value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
   }
-  exe_->assign(value);
+  comm_->assign(value);
 }
-inline void command_details::set_exe(const char* value, size_t size) {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
+inline void command_details::set_comm(const char* value, size_t size) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
   }
-  exe_->assign(reinterpret_cast<const char*>(value), size);
+  comm_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* command_details::mutable_exe() {
-  set_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
-    exe_ = new ::std::string;
+inline ::std::string* command_details::mutable_comm() {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
   }
-  return exe_;
+  return comm_;
 }
-inline ::std::string* command_details::release_exe() {
-  clear_has_exe();
-  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* command_details::release_comm() {
+  clear_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = exe_;
-    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = comm_;
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void command_details::set_allocated_exe(::std::string* exe) {
-  if (exe_ != &::google::protobuf::internal::kEmptyString) {
-    delete exe_;
+inline void command_details::set_allocated_comm(::std::string* comm) {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    delete comm_;
   }
-  if (exe) {
-    set_has_exe();
-    exe_ = exe;
+  if (comm) {
+    set_has_comm();
+    comm_ = comm;
   } else {
-    clear_has_exe();
-    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_comm();
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
 }
 
-// optional string parentcomm = 5;
-inline bool command_details::has_parentcomm() const {
+// required uint64 pid = 5;
+inline bool command_details::has_pid() const {
   return (_has_bits_[0] & 0x00000010u) != 0;
 }
-inline void command_details::set_has_parentcomm() {
+inline void command_details::set_has_pid() {
   _has_bits_[0] |= 0x00000010u;
 }
-inline void command_details::clear_has_parentcomm() {
+inline void command_details::clear_has_pid() {
   _has_bits_[0] &= ~0x00000010u;
 }
-inline void command_details::clear_parentcomm() {
-  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
-    parentcomm_->clear();
+inline void command_details::clear_pid() {
+  pid_ = GOOGLE_ULONGLONG(0);
+  clear_has_pid();
+}
+inline ::google::protobuf::uint64 command_details::pid() const {
+  return pid_;
+}
+inline void command_details::set_pid(::google::protobuf::uint64 value) {
+  set_has_pid();
+  pid_ = value;
+}
+
+// required uint64 ppid = 6;
+inline bool command_details::has_ppid() const {
+  return (_has_bits_[0] & 0x00000020u) != 0;
+}
+inline void command_details::set_has_ppid() {
+  _has_bits_[0] |= 0x00000020u;
+}
+inline void command_details::clear_has_ppid() {
+  _has_bits_[0] &= ~0x00000020u;
+}
+inline void command_details::clear_ppid() {
+  ppid_ = GOOGLE_ULONGLONG(0);
+  clear_has_ppid();
+}
+inline ::google::protobuf::uint64 command_details::ppid() const {
+  return ppid_;
+}
+inline void command_details::set_ppid(::google::protobuf::uint64 value) {
+  set_has_ppid();
+  ppid_ = value;
+}
+
+// required uint64 uid = 7;
+inline bool command_details::has_uid() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void command_details::set_has_uid() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void command_details::clear_has_uid() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void command_details::clear_uid() {
+  uid_ = GOOGLE_ULONGLONG(0);
+  clear_has_uid();
+}
+inline ::google::protobuf::uint64 command_details::uid() const {
+  return uid_;
+}
+inline void command_details::set_uid(::google::protobuf::uint64 value) {
+  set_has_uid();
+  uid_ = value;
+}
+
+// optional string cwd = 8;
+inline bool command_details::has_cwd() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void command_details::set_has_cwd() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void command_details::clear_has_cwd() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void command_details::clear_cwd() {
+  if (cwd_ != &::google::protobuf::internal::kEmptyString) {
+    cwd_->clear();
   }
-  clear_has_parentcomm();
+  clear_has_cwd();
 }
-inline const ::std::string& command_details::parentcomm() const {
-  return *parentcomm_;
+inline const ::std::string& command_details::cwd() const {
+  return *cwd_;
 }
-inline void command_details::set_parentcomm(const ::std::string& value) {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
+inline void command_details::set_cwd(const ::std::string& value) {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
   }
-  parentcomm_->assign(value);
+  cwd_->assign(value);
 }
-inline void command_details::set_parentcomm(const char* value) {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
+inline void command_details::set_cwd(const char* value) {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
   }
-  parentcomm_->assign(value);
+  cwd_->assign(value);
 }
-inline void command_details::set_parentcomm(const char* value, size_t size) {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
+inline void command_details::set_cwd(const char* value, size_t size) {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
   }
-  parentcomm_->assign(reinterpret_cast<const char*>(value), size);
+  cwd_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* command_details::mutable_parentcomm() {
-  set_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
-    parentcomm_ = new ::std::string;
+inline ::std::string* command_details::mutable_cwd() {
+  set_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
+    cwd_ = new ::std::string;
   }
-  return parentcomm_;
+  return cwd_;
 }
-inline ::std::string* command_details::release_parentcomm() {
-  clear_has_parentcomm();
-  if (parentcomm_ == &::google::protobuf::internal::kEmptyString) {
+inline ::std::string* command_details::release_cwd() {
+  clear_has_cwd();
+  if (cwd_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
   } else {
-    ::std::string* temp = parentcomm_;
-    parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    ::std::string* temp = cwd_;
+    cwd_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
     return temp;
   }
 }
-inline void command_details::set_allocated_parentcomm(::std::string* parentcomm) {
-  if (parentcomm_ != &::google::protobuf::internal::kEmptyString) {
-    delete parentcomm_;
+inline void command_details::set_allocated_cwd(::std::string* cwd) {
+  if (cwd_ != &::google::protobuf::internal::kEmptyString) {
+    delete cwd_;
   }
-  if (parentcomm) {
-    set_has_parentcomm();
-    parentcomm_ = parentcomm;
+  if (cwd) {
+    set_has_cwd();
+    cwd_ = cwd;
   } else {
-    clear_has_parentcomm();
-    parentcomm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    clear_has_cwd();
+    cwd_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// optional uint64 login_shell_id = 9;
+inline bool command_details::has_login_shell_id() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void command_details::set_has_login_shell_id() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void command_details::clear_has_login_shell_id() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void command_details::clear_login_shell_id() {
+  login_shell_id_ = GOOGLE_ULONGLONG(0);
+  clear_has_login_shell_id();
+}
+inline ::google::protobuf::uint64 command_details::login_shell_id() const {
+  return login_shell_id_;
+}
+inline void command_details::set_login_shell_id(::google::protobuf::uint64 value) {
+  set_has_login_shell_id();
+  login_shell_id_ = value;
+}
+
+// optional uint32 login_shell_distance = 10;
+inline bool command_details::has_login_shell_distance() const {
+  return (_has_bits_[0] & 0x00000200u) != 0;
+}
+inline void command_details::set_has_login_shell_distance() {
+  _has_bits_[0] |= 0x00000200u;
+}
+inline void command_details::clear_has_login_shell_distance() {
+  _has_bits_[0] &= ~0x00000200u;
+}
+inline void command_details::clear_login_shell_distance() {
+  login_shell_distance_ = 0u;
+  clear_has_login_shell_distance();
+}
+inline ::google::protobuf::uint32 command_details::login_shell_distance() const {
+  return login_shell_distance_;
+}
+inline void command_details::set_login_shell_distance(::google::protobuf::uint32 value) {
+  set_has_login_shell_distance();
+  login_shell_distance_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -16324,6 +17811,241 @@ host::mutable_network_by_serverports() {
   return &network_by_serverports_;
 }
 
+// repeated uint32 cpu_idle = 25;
+inline int host::cpu_idle_size() const {
+  return cpu_idle_.size();
+}
+inline void host::clear_cpu_idle() {
+  cpu_idle_.Clear();
+}
+inline ::google::protobuf::uint32 host::cpu_idle(int index) const {
+  return cpu_idle_.Get(index);
+}
+inline void host::set_cpu_idle(int index, ::google::protobuf::uint32 value) {
+  cpu_idle_.Set(index, value);
+}
+inline void host::add_cpu_idle(::google::protobuf::uint32 value) {
+  cpu_idle_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::cpu_idle() const {
+  return cpu_idle_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_cpu_idle() {
+  return &cpu_idle_;
+}
+
+// optional uint64 uptime = 33;
+inline bool host::has_uptime() const {
+  return (_has_bits_[0] & 0x00020000u) != 0;
+}
+inline void host::set_has_uptime() {
+  _has_bits_[0] |= 0x00020000u;
+}
+inline void host::clear_has_uptime() {
+  _has_bits_[0] &= ~0x00020000u;
+}
+inline void host::clear_uptime() {
+  uptime_ = GOOGLE_ULONGLONG(0);
+  clear_has_uptime();
+}
+inline ::google::protobuf::uint64 host::uptime() const {
+  return uptime_;
+}
+inline void host::set_uptime(::google::protobuf::uint64 value) {
+  set_has_uptime();
+  uptime_ = value;
+}
+
+// repeated uint32 system_cpu = 34;
+inline int host::system_cpu_size() const {
+  return system_cpu_.size();
+}
+inline void host::clear_system_cpu() {
+  system_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::system_cpu(int index) const {
+  return system_cpu_.Get(index);
+}
+inline void host::set_system_cpu(int index, ::google::protobuf::uint32 value) {
+  system_cpu_.Set(index, value);
+}
+inline void host::add_system_cpu(::google::protobuf::uint32 value) {
+  system_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::system_cpu() const {
+  return system_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_system_cpu() {
+  return &system_cpu_;
+}
+
+// repeated uint32 user_cpu = 35;
+inline int host::user_cpu_size() const {
+  return user_cpu_.size();
+}
+inline void host::clear_user_cpu() {
+  user_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::user_cpu(int index) const {
+  return user_cpu_.Get(index);
+}
+inline void host::set_user_cpu(int index, ::google::protobuf::uint32 value) {
+  user_cpu_.Set(index, value);
+}
+inline void host::add_user_cpu(::google::protobuf::uint32 value) {
+  user_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::user_cpu() const {
+  return user_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_user_cpu() {
+  return &user_cpu_;
+}
+
+// optional uint64 memory_bytes_available_kb = 36;
+inline bool host::has_memory_bytes_available_kb() const {
+  return (_has_bits_[0] & 0x00100000u) != 0;
+}
+inline void host::set_has_memory_bytes_available_kb() {
+  _has_bits_[0] |= 0x00100000u;
+}
+inline void host::clear_has_memory_bytes_available_kb() {
+  _has_bits_[0] &= ~0x00100000u;
+}
+inline void host::clear_memory_bytes_available_kb() {
+  memory_bytes_available_kb_ = GOOGLE_ULONGLONG(0);
+  clear_has_memory_bytes_available_kb();
+}
+inline ::google::protobuf::uint64 host::memory_bytes_available_kb() const {
+  return memory_bytes_available_kb_;
+}
+inline void host::set_memory_bytes_available_kb(::google::protobuf::uint64 value) {
+  set_has_memory_bytes_available_kb();
+  memory_bytes_available_kb_ = value;
+}
+
+// repeated uint32 iowait_cpu = 37;
+inline int host::iowait_cpu_size() const {
+  return iowait_cpu_.size();
+}
+inline void host::clear_iowait_cpu() {
+  iowait_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::iowait_cpu(int index) const {
+  return iowait_cpu_.Get(index);
+}
+inline void host::set_iowait_cpu(int index, ::google::protobuf::uint32 value) {
+  iowait_cpu_.Set(index, value);
+}
+inline void host::add_iowait_cpu(::google::protobuf::uint32 value) {
+  iowait_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::iowait_cpu() const {
+  return iowait_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_iowait_cpu() {
+  return &iowait_cpu_;
+}
+
+// repeated uint32 nice_cpu = 38;
+inline int host::nice_cpu_size() const {
+  return nice_cpu_.size();
+}
+inline void host::clear_nice_cpu() {
+  nice_cpu_.Clear();
+}
+inline ::google::protobuf::uint32 host::nice_cpu(int index) const {
+  return nice_cpu_.Get(index);
+}
+inline void host::set_nice_cpu(int index, ::google::protobuf::uint32 value) {
+  nice_cpu_.Set(index, value);
+}
+inline void host::add_nice_cpu(::google::protobuf::uint32 value) {
+  nice_cpu_.Add(value);
+}
+inline const ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >&
+host::nice_cpu() const {
+  return nice_cpu_;
+}
+inline ::google::protobuf::RepeatedField< ::google::protobuf::uint32 >*
+host::mutable_nice_cpu() {
+  return &nice_cpu_;
+}
+
+// optional uint32 system_load_1 = 41;
+inline bool host::has_system_load_1() const {
+  return (_has_bits_[0] & 0x00800000u) != 0;
+}
+inline void host::set_has_system_load_1() {
+  _has_bits_[0] |= 0x00800000u;
+}
+inline void host::clear_has_system_load_1() {
+  _has_bits_[0] &= ~0x00800000u;
+}
+inline void host::clear_system_load_1() {
+  system_load_1_ = 0u;
+  clear_has_system_load_1();
+}
+inline ::google::protobuf::uint32 host::system_load_1() const {
+  return system_load_1_;
+}
+inline void host::set_system_load_1(::google::protobuf::uint32 value) {
+  set_has_system_load_1();
+  system_load_1_ = value;
+}
+
+// optional uint32 system_load_5 = 42;
+inline bool host::has_system_load_5() const {
+  return (_has_bits_[0] & 0x01000000u) != 0;
+}
+inline void host::set_has_system_load_5() {
+  _has_bits_[0] |= 0x01000000u;
+}
+inline void host::clear_has_system_load_5() {
+  _has_bits_[0] &= ~0x01000000u;
+}
+inline void host::clear_system_load_5() {
+  system_load_5_ = 0u;
+  clear_has_system_load_5();
+}
+inline ::google::protobuf::uint32 host::system_load_5() const {
+  return system_load_5_;
+}
+inline void host::set_system_load_5(::google::protobuf::uint32 value) {
+  set_has_system_load_5();
+  system_load_5_ = value;
+}
+
+// optional uint32 system_load_15 = 43;
+inline bool host::has_system_load_15() const {
+  return (_has_bits_[0] & 0x02000000u) != 0;
+}
+inline void host::set_has_system_load_15() {
+  _has_bits_[0] |= 0x02000000u;
+}
+inline void host::clear_has_system_load_15() {
+  _has_bits_[0] &= ~0x02000000u;
+}
+inline void host::clear_system_load_15() {
+  system_load_15_ = 0u;
+  clear_has_system_load_15();
+}
+inline ::google::protobuf::uint32 host::system_load_15() const {
+  return system_load_15_;
+}
+inline void host::set_system_load_15(::google::protobuf::uint32 value) {
+  set_has_system_load_15();
+  system_load_15_ = value;
+}
+
 // -------------------------------------------------------------------
 
 // process
@@ -16806,6 +18528,28 @@ inline ::google::protobuf::uint64 process::start_count() const {
 inline void process::set_start_count(::google::protobuf::uint64 value) {
   set_has_start_count();
   start_count_ = value;
+}
+
+// optional uint64 count_processes = 23;
+inline bool process::has_count_processes() const {
+  return (_has_bits_[0] & 0x00010000u) != 0;
+}
+inline void process::set_has_count_processes() {
+  _has_bits_[0] |= 0x00010000u;
+}
+inline void process::clear_has_count_processes() {
+  _has_bits_[0] &= ~0x00010000u;
+}
+inline void process::clear_count_processes() {
+  count_processes_ = GOOGLE_ULONGLONG(0);
+  clear_has_count_processes();
+}
+inline ::google::protobuf::uint64 process::count_processes() const {
+  return count_processes_;
+}
+inline void process::set_count_processes(::google::protobuf::uint64 value) {
+  set_has_count_processes();
+  count_processes_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -18728,6 +20472,101 @@ inline void container::set_allocated_mesos_task_id(::std::string* mesos_task_id)
     clear_has_mesos_task_id();
     mesos_task_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// optional string image_id = 24;
+inline bool container::has_image_id() const {
+  return (_has_bits_[0] & 0x00080000u) != 0;
+}
+inline void container::set_has_image_id() {
+  _has_bits_[0] |= 0x00080000u;
+}
+inline void container::clear_has_image_id() {
+  _has_bits_[0] &= ~0x00080000u;
+}
+inline void container::clear_image_id() {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    image_id_->clear();
+  }
+  clear_has_image_id();
+}
+inline const ::std::string& container::image_id() const {
+  return *image_id_;
+}
+inline void container::set_image_id(const ::std::string& value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void container::set_image_id(const char* value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void container::set_image_id(const char* value, size_t size) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* container::mutable_image_id() {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  return image_id_;
+}
+inline ::std::string* container::release_image_id() {
+  clear_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_id_;
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void container::set_allocated_image_id(::std::string* image_id) {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_id_;
+  }
+  if (image_id) {
+    set_has_image_id();
+    image_id_ = image_id;
+  } else {
+    clear_has_image_id();
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.command_details commands = 25;
+inline int container::commands_size() const {
+  return commands_.size();
+}
+inline void container::clear_commands() {
+  commands_.Clear();
+}
+inline const ::draiosproto::command_details& container::commands(int index) const {
+  return commands_.Get(index);
+}
+inline ::draiosproto::command_details* container::mutable_commands(int index) {
+  return commands_.Mutable(index);
+}
+inline ::draiosproto::command_details* container::add_commands() {
+  return commands_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >&
+container::commands() const {
+  return commands_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::command_details >*
+container::mutable_commands() {
+  return &commands_;
 }
 
 // -------------------------------------------------------------------
@@ -21937,7 +23776,7 @@ metrics::mutable_ipv4_network_interfaces() {
   return &ipv4_network_interfaces_;
 }
 
-// repeated .draiosproto.command_details commands = 17;
+// repeated .draiosproto.command_details commands = 28;
 inline int metrics::commands_size() const {
   return commands_.size();
 }
@@ -22174,6 +24013,44 @@ metrics::events() const {
 inline ::google::protobuf::RepeatedPtrField< ::draiosproto::agent_event >*
 metrics::mutable_events() {
   return &events_;
+}
+
+// optional .draiosproto.falco_baseline falcobl = 27;
+inline bool metrics::has_falcobl() const {
+  return (_has_bits_[0] & 0x00400000u) != 0;
+}
+inline void metrics::set_has_falcobl() {
+  _has_bits_[0] |= 0x00400000u;
+}
+inline void metrics::clear_has_falcobl() {
+  _has_bits_[0] &= ~0x00400000u;
+}
+inline void metrics::clear_falcobl() {
+  if (falcobl_ != NULL) falcobl_->::draiosproto::falco_baseline::Clear();
+  clear_has_falcobl();
+}
+inline const ::draiosproto::falco_baseline& metrics::falcobl() const {
+  return falcobl_ != NULL ? *falcobl_ : *default_instance_->falcobl_;
+}
+inline ::draiosproto::falco_baseline* metrics::mutable_falcobl() {
+  set_has_falcobl();
+  if (falcobl_ == NULL) falcobl_ = new ::draiosproto::falco_baseline;
+  return falcobl_;
+}
+inline ::draiosproto::falco_baseline* metrics::release_falcobl() {
+  clear_has_falcobl();
+  ::draiosproto::falco_baseline* temp = falcobl_;
+  falcobl_ = NULL;
+  return temp;
+}
+inline void metrics::set_allocated_falcobl(::draiosproto::falco_baseline* falcobl) {
+  delete falcobl_;
+  falcobl_ = falcobl;
+  if (falcobl) {
+    set_has_falcobl();
+  } else {
+    clear_has_falcobl();
+  }
 }
 
 // -------------------------------------------------------------------
@@ -22524,6 +24401,50 @@ inline void dump_request_start::set_allocated_token(::std::string* token) {
     clear_has_token();
     token_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
   }
+}
+
+// optional uint64 past_duration_ns = 8;
+inline bool dump_request_start::has_past_duration_ns() const {
+  return (_has_bits_[0] & 0x00000080u) != 0;
+}
+inline void dump_request_start::set_has_past_duration_ns() {
+  _has_bits_[0] |= 0x00000080u;
+}
+inline void dump_request_start::clear_has_past_duration_ns() {
+  _has_bits_[0] &= ~0x00000080u;
+}
+inline void dump_request_start::clear_past_duration_ns() {
+  past_duration_ns_ = GOOGLE_ULONGLONG(0);
+  clear_has_past_duration_ns();
+}
+inline ::google::protobuf::uint64 dump_request_start::past_duration_ns() const {
+  return past_duration_ns_;
+}
+inline void dump_request_start::set_past_duration_ns(::google::protobuf::uint64 value) {
+  set_has_past_duration_ns();
+  past_duration_ns_ = value;
+}
+
+// optional uint64 past_size = 9;
+inline bool dump_request_start::has_past_size() const {
+  return (_has_bits_[0] & 0x00000100u) != 0;
+}
+inline void dump_request_start::set_has_past_size() {
+  _has_bits_[0] |= 0x00000100u;
+}
+inline void dump_request_start::clear_has_past_size() {
+  _has_bits_[0] &= ~0x00000100u;
+}
+inline void dump_request_start::clear_past_size() {
+  past_size_ = GOOGLE_ULONGLONG(0);
+  clear_has_past_size();
+}
+inline ::google::protobuf::uint64 dump_request_start::past_size() const {
+  return past_size_;
+}
+inline void dump_request_start::set_past_size(::google::protobuf::uint64 value) {
+  set_has_past_size();
+  past_size_ = value;
 }
 
 // -------------------------------------------------------------------
@@ -25227,6 +27148,1212 @@ agent_event::mutable_tags() {
   return &tags_;
 }
 
+// -------------------------------------------------------------------
+
+// config_file
+
+// optional string name = 1;
+inline bool config_file::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void config_file::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void config_file::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void config_file::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& config_file::name() const {
+  return *name_;
+}
+inline void config_file::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void config_file::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void config_file::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* config_file::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* config_file::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void config_file::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string content = 2;
+inline bool config_file::has_content() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void config_file::set_has_content() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void config_file::clear_has_content() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void config_file::clear_content() {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    content_->clear();
+  }
+  clear_has_content();
+}
+inline const ::std::string& config_file::content() const {
+  return *content_;
+}
+inline void config_file::set_content(const ::std::string& value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void config_file::set_content(const char* value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void config_file::set_content(const char* value, size_t size) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* config_file::mutable_content() {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  return content_;
+}
+inline ::std::string* config_file::release_content() {
+  clear_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = content_;
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void config_file::set_allocated_content(::std::string* content) {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    delete content_;
+  }
+  if (content) {
+    set_has_content();
+    content_ = content;
+  } else {
+    clear_has_content();
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// config_data
+
+// repeated .draiosproto.config_file config_files = 1;
+inline int config_data::config_files_size() const {
+  return config_files_.size();
+}
+inline void config_data::clear_config_files() {
+  config_files_.Clear();
+}
+inline const ::draiosproto::config_file& config_data::config_files(int index) const {
+  return config_files_.Get(index);
+}
+inline ::draiosproto::config_file* config_data::mutable_config_files(int index) {
+  return config_files_.Mutable(index);
+}
+inline ::draiosproto::config_file* config_data::add_config_files() {
+  return config_files_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >&
+config_data::config_files() const {
+  return config_files_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::config_file >*
+config_data::mutable_config_files() {
+  return &config_files_;
+}
+
+// -------------------------------------------------------------------
+
+// error_message
+
+// optional .draiosproto.error_type type = 1;
+inline bool error_message::has_type() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void error_message::set_has_type() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void error_message::clear_has_type() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void error_message::clear_type() {
+  type_ = 1;
+  clear_has_type();
+}
+inline ::draiosproto::error_type error_message::type() const {
+  return static_cast< ::draiosproto::error_type >(type_);
+}
+inline void error_message::set_type(::draiosproto::error_type value) {
+  assert(::draiosproto::error_type_IsValid(value));
+  set_has_type();
+  type_ = value;
+}
+
+// optional string description = 2;
+inline bool error_message::has_description() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void error_message::set_has_description() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void error_message::clear_has_description() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void error_message::clear_description() {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    description_->clear();
+  }
+  clear_has_description();
+}
+inline const ::std::string& error_message::description() const {
+  return *description_;
+}
+inline void error_message::set_description(const ::std::string& value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void error_message::set_description(const char* value) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(value);
+}
+inline void error_message::set_description(const char* value, size_t size) {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  description_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* error_message::mutable_description() {
+  set_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    description_ = new ::std::string;
+  }
+  return description_;
+}
+inline ::std::string* error_message::release_description() {
+  clear_has_description();
+  if (description_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = description_;
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void error_message::set_allocated_description(::std::string* description) {
+  if (description_ != &::google::protobuf::internal::kEmptyString) {
+    delete description_;
+  }
+  if (description) {
+    set_has_description();
+    description_ = description;
+  } else {
+    clear_has_description();
+    description_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// falco_subcategory
+
+// required string name = 1;
+inline bool falco_subcategory::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void falco_subcategory::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void falco_subcategory::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void falco_subcategory::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& falco_subcategory::name() const {
+  return *name_;
+}
+inline void falco_subcategory::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_subcategory::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_subcategory::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_subcategory::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* falco_subcategory::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_subcategory::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated string d = 2;
+inline int falco_subcategory::d_size() const {
+  return d_.size();
+}
+inline void falco_subcategory::clear_d() {
+  d_.Clear();
+}
+inline const ::std::string& falco_subcategory::d(int index) const {
+  return d_.Get(index);
+}
+inline ::std::string* falco_subcategory::mutable_d(int index) {
+  return d_.Mutable(index);
+}
+inline void falco_subcategory::set_d(int index, const ::std::string& value) {
+  d_.Mutable(index)->assign(value);
+}
+inline void falco_subcategory::set_d(int index, const char* value) {
+  d_.Mutable(index)->assign(value);
+}
+inline void falco_subcategory::set_d(int index, const char* value, size_t size) {
+  d_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_subcategory::add_d() {
+  return d_.Add();
+}
+inline void falco_subcategory::add_d(const ::std::string& value) {
+  d_.Add()->assign(value);
+}
+inline void falco_subcategory::add_d(const char* value) {
+  d_.Add()->assign(value);
+}
+inline void falco_subcategory::add_d(const char* value, size_t size) {
+  d_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+falco_subcategory::d() const {
+  return d_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+falco_subcategory::mutable_d() {
+  return &d_;
+}
+
+// optional bool full = 3;
+inline bool falco_subcategory::has_full() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void falco_subcategory::set_has_full() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void falco_subcategory::clear_has_full() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void falco_subcategory::clear_full() {
+  full_ = false;
+  clear_has_full();
+}
+inline bool falco_subcategory::full() const {
+  return full_;
+}
+inline void falco_subcategory::set_full(bool value) {
+  set_has_full();
+  full_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// falco_subcategory_container
+
+// repeated .draiosproto.falco_subcategory subcats = 1;
+inline int falco_subcategory_container::subcats_size() const {
+  return subcats_.size();
+}
+inline void falco_subcategory_container::clear_subcats() {
+  subcats_.Clear();
+}
+inline const ::draiosproto::falco_subcategory& falco_subcategory_container::subcats(int index) const {
+  return subcats_.Get(index);
+}
+inline ::draiosproto::falco_subcategory* falco_subcategory_container::mutable_subcats(int index) {
+  return subcats_.Mutable(index);
+}
+inline ::draiosproto::falco_subcategory* falco_subcategory_container::add_subcats() {
+  return subcats_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >&
+falco_subcategory_container::subcats() const {
+  return subcats_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory >*
+falco_subcategory_container::mutable_subcats() {
+  return &subcats_;
+}
+
+// -------------------------------------------------------------------
+
+// falco_category
+
+// required string name = 1;
+inline bool falco_category::has_name() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void falco_category::set_has_name() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void falco_category::clear_has_name() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void falco_category::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& falco_category::name() const {
+  return *name_;
+}
+inline void falco_category::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_category::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_category::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_category::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* falco_category::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_category::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.falco_subcategory_container startup_subcats = 2;
+inline int falco_category::startup_subcats_size() const {
+  return startup_subcats_.size();
+}
+inline void falco_category::clear_startup_subcats() {
+  startup_subcats_.Clear();
+}
+inline const ::draiosproto::falco_subcategory_container& falco_category::startup_subcats(int index) const {
+  return startup_subcats_.Get(index);
+}
+inline ::draiosproto::falco_subcategory_container* falco_category::mutable_startup_subcats(int index) {
+  return startup_subcats_.Mutable(index);
+}
+inline ::draiosproto::falco_subcategory_container* falco_category::add_startup_subcats() {
+  return startup_subcats_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+falco_category::startup_subcats() const {
+  return startup_subcats_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+falco_category::mutable_startup_subcats() {
+  return &startup_subcats_;
+}
+
+// repeated .draiosproto.falco_subcategory_container regular_subcats = 3;
+inline int falco_category::regular_subcats_size() const {
+  return regular_subcats_.size();
+}
+inline void falco_category::clear_regular_subcats() {
+  regular_subcats_.Clear();
+}
+inline const ::draiosproto::falco_subcategory_container& falco_category::regular_subcats(int index) const {
+  return regular_subcats_.Get(index);
+}
+inline ::draiosproto::falco_subcategory_container* falco_category::mutable_regular_subcats(int index) {
+  return regular_subcats_.Mutable(index);
+}
+inline ::draiosproto::falco_subcategory_container* falco_category::add_regular_subcats() {
+  return regular_subcats_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >&
+falco_category::regular_subcats() const {
+  return regular_subcats_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_subcategory_container >*
+falco_category::mutable_regular_subcats() {
+  return &regular_subcats_;
+}
+
+// -------------------------------------------------------------------
+
+// falco_prog
+
+// required string comm = 1;
+inline bool falco_prog::has_comm() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void falco_prog::set_has_comm() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void falco_prog::clear_has_comm() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void falco_prog::clear_comm() {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    comm_->clear();
+  }
+  clear_has_comm();
+}
+inline const ::std::string& falco_prog::comm() const {
+  return *comm_;
+}
+inline void falco_prog::set_comm(const ::std::string& value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(value);
+}
+inline void falco_prog::set_comm(const char* value) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(value);
+}
+inline void falco_prog::set_comm(const char* value, size_t size) {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  comm_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_prog::mutable_comm() {
+  set_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    comm_ = new ::std::string;
+  }
+  return comm_;
+}
+inline ::std::string* falco_prog::release_comm() {
+  clear_has_comm();
+  if (comm_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = comm_;
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_prog::set_allocated_comm(::std::string* comm) {
+  if (comm_ != &::google::protobuf::internal::kEmptyString) {
+    delete comm_;
+  }
+  if (comm) {
+    set_has_comm();
+    comm_ = comm;
+  } else {
+    clear_has_comm();
+    comm_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string exe = 2;
+inline bool falco_prog::has_exe() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void falco_prog::set_has_exe() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void falco_prog::clear_has_exe() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void falco_prog::clear_exe() {
+  if (exe_ != &::google::protobuf::internal::kEmptyString) {
+    exe_->clear();
+  }
+  clear_has_exe();
+}
+inline const ::std::string& falco_prog::exe() const {
+  return *exe_;
+}
+inline void falco_prog::set_exe(const ::std::string& value) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(value);
+}
+inline void falco_prog::set_exe(const char* value) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(value);
+}
+inline void falco_prog::set_exe(const char* value, size_t size) {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  exe_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_prog::mutable_exe() {
+  set_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    exe_ = new ::std::string;
+  }
+  return exe_;
+}
+inline ::std::string* falco_prog::release_exe() {
+  clear_has_exe();
+  if (exe_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = exe_;
+    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_prog::set_allocated_exe(::std::string* exe) {
+  if (exe_ != &::google::protobuf::internal::kEmptyString) {
+    delete exe_;
+  }
+  if (exe) {
+    set_has_exe();
+    exe_ = exe;
+  } else {
+    clear_has_exe();
+    exe_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated string args = 3;
+inline int falco_prog::args_size() const {
+  return args_.size();
+}
+inline void falco_prog::clear_args() {
+  args_.Clear();
+}
+inline const ::std::string& falco_prog::args(int index) const {
+  return args_.Get(index);
+}
+inline ::std::string* falco_prog::mutable_args(int index) {
+  return args_.Mutable(index);
+}
+inline void falco_prog::set_args(int index, const ::std::string& value) {
+  args_.Mutable(index)->assign(value);
+}
+inline void falco_prog::set_args(int index, const char* value) {
+  args_.Mutable(index)->assign(value);
+}
+inline void falco_prog::set_args(int index, const char* value, size_t size) {
+  args_.Mutable(index)->assign(
+    reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_prog::add_args() {
+  return args_.Add();
+}
+inline void falco_prog::add_args(const ::std::string& value) {
+  args_.Add()->assign(value);
+}
+inline void falco_prog::add_args(const char* value) {
+  args_.Add()->assign(value);
+}
+inline void falco_prog::add_args(const char* value, size_t size) {
+  args_.Add()->assign(reinterpret_cast<const char*>(value), size);
+}
+inline const ::google::protobuf::RepeatedPtrField< ::std::string>&
+falco_prog::args() const {
+  return args_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::std::string>*
+falco_prog::mutable_args() {
+  return &args_;
+}
+
+// required uint64 user_id = 4;
+inline bool falco_prog::has_user_id() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void falco_prog::set_has_user_id() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void falco_prog::clear_has_user_id() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void falco_prog::clear_user_id() {
+  user_id_ = GOOGLE_ULONGLONG(0);
+  clear_has_user_id();
+}
+inline ::google::protobuf::uint64 falco_prog::user_id() const {
+  return user_id_;
+}
+inline void falco_prog::set_user_id(::google::protobuf::uint64 value) {
+  set_has_user_id();
+  user_id_ = value;
+}
+
+// optional string container_id = 5;
+inline bool falco_prog::has_container_id() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void falco_prog::set_has_container_id() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void falco_prog::clear_has_container_id() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void falco_prog::clear_container_id() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    container_id_->clear();
+  }
+  clear_has_container_id();
+}
+inline const ::std::string& falco_prog::container_id() const {
+  return *container_id_;
+}
+inline void falco_prog::set_container_id(const ::std::string& value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void falco_prog::set_container_id(const char* value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void falco_prog::set_container_id(const char* value, size_t size) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_prog::mutable_container_id() {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  return container_id_;
+}
+inline ::std::string* falco_prog::release_container_id() {
+  clear_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = container_id_;
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_prog::set_allocated_container_id(::std::string* container_id) {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (container_id) {
+    set_has_container_id();
+    container_id_ = container_id;
+  } else {
+    clear_has_container_id();
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// repeated .draiosproto.falco_category cats = 6;
+inline int falco_prog::cats_size() const {
+  return cats_.size();
+}
+inline void falco_prog::clear_cats() {
+  cats_.Clear();
+}
+inline const ::draiosproto::falco_category& falco_prog::cats(int index) const {
+  return cats_.Get(index);
+}
+inline ::draiosproto::falco_category* falco_prog::mutable_cats(int index) {
+  return cats_.Mutable(index);
+}
+inline ::draiosproto::falco_category* falco_prog::add_cats() {
+  return cats_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_category >&
+falco_prog::cats() const {
+  return cats_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_category >*
+falco_prog::mutable_cats() {
+  return &cats_;
+}
+
+// -------------------------------------------------------------------
+
+// falco_container
+
+// required string id = 1;
+inline bool falco_container::has_id() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void falco_container::set_has_id() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void falco_container::clear_has_id() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void falco_container::clear_id() {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    id_->clear();
+  }
+  clear_has_id();
+}
+inline const ::std::string& falco_container::id() const {
+  return *id_;
+}
+inline void falco_container::set_id(const ::std::string& value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void falco_container::set_id(const char* value) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(value);
+}
+inline void falco_container::set_id(const char* value, size_t size) {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_id() {
+  set_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    id_ = new ::std::string;
+  }
+  return id_;
+}
+inline ::std::string* falco_container::release_id() {
+  clear_has_id();
+  if (id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = id_;
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_id(::std::string* id) {
+  if (id_ != &::google::protobuf::internal::kEmptyString) {
+    delete id_;
+  }
+  if (id) {
+    set_has_id();
+    id_ = id;
+  } else {
+    clear_has_id();
+    id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// required string name = 2;
+inline bool falco_container::has_name() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void falco_container::set_has_name() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void falco_container::clear_has_name() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void falco_container::clear_name() {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    name_->clear();
+  }
+  clear_has_name();
+}
+inline const ::std::string& falco_container::name() const {
+  return *name_;
+}
+inline void falco_container::set_name(const ::std::string& value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_container::set_name(const char* value) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(value);
+}
+inline void falco_container::set_name(const char* value, size_t size) {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_name() {
+  set_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    name_ = new ::std::string;
+  }
+  return name_;
+}
+inline ::std::string* falco_container::release_name() {
+  clear_has_name();
+  if (name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = name_;
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_name(::std::string* name) {
+  if (name_ != &::google::protobuf::internal::kEmptyString) {
+    delete name_;
+  }
+  if (name) {
+    set_has_name();
+    name_ = name;
+  } else {
+    clear_has_name();
+    name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string image_name = 3;
+inline bool falco_container::has_image_name() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void falco_container::set_has_image_name() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void falco_container::clear_has_image_name() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void falco_container::clear_image_name() {
+  if (image_name_ != &::google::protobuf::internal::kEmptyString) {
+    image_name_->clear();
+  }
+  clear_has_image_name();
+}
+inline const ::std::string& falco_container::image_name() const {
+  return *image_name_;
+}
+inline void falco_container::set_image_name(const ::std::string& value) {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  image_name_->assign(value);
+}
+inline void falco_container::set_image_name(const char* value) {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  image_name_->assign(value);
+}
+inline void falco_container::set_image_name(const char* value, size_t size) {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  image_name_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_image_name() {
+  set_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    image_name_ = new ::std::string;
+  }
+  return image_name_;
+}
+inline ::std::string* falco_container::release_image_name() {
+  clear_has_image_name();
+  if (image_name_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_name_;
+    image_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_image_name(::std::string* image_name) {
+  if (image_name_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_name_;
+  }
+  if (image_name) {
+    set_has_image_name();
+    image_name_ = image_name;
+  } else {
+    clear_has_image_name();
+    image_name_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// optional string image_id = 4;
+inline bool falco_container::has_image_id() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void falco_container::set_has_image_id() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void falco_container::clear_has_image_id() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void falco_container::clear_image_id() {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    image_id_->clear();
+  }
+  clear_has_image_id();
+}
+inline const ::std::string& falco_container::image_id() const {
+  return *image_id_;
+}
+inline void falco_container::set_image_id(const ::std::string& value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void falco_container::set_image_id(const char* value) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(value);
+}
+inline void falco_container::set_image_id(const char* value, size_t size) {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  image_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* falco_container::mutable_image_id() {
+  set_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    image_id_ = new ::std::string;
+  }
+  return image_id_;
+}
+inline ::std::string* falco_container::release_image_id() {
+  clear_has_image_id();
+  if (image_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = image_id_;
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void falco_container::set_allocated_image_id(::std::string* image_id) {
+  if (image_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete image_id_;
+  }
+  if (image_id) {
+    set_has_image_id();
+    image_id_ = image_id;
+  } else {
+    clear_has_image_id();
+    image_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// falco_baseline
+
+// repeated .draiosproto.falco_prog progs = 1;
+inline int falco_baseline::progs_size() const {
+  return progs_.size();
+}
+inline void falco_baseline::clear_progs() {
+  progs_.Clear();
+}
+inline const ::draiosproto::falco_prog& falco_baseline::progs(int index) const {
+  return progs_.Get(index);
+}
+inline ::draiosproto::falco_prog* falco_baseline::mutable_progs(int index) {
+  return progs_.Mutable(index);
+}
+inline ::draiosproto::falco_prog* falco_baseline::add_progs() {
+  return progs_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog >&
+falco_baseline::progs() const {
+  return progs_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_prog >*
+falco_baseline::mutable_progs() {
+  return &progs_;
+}
+
+// repeated .draiosproto.falco_container containers = 2;
+inline int falco_baseline::containers_size() const {
+  return containers_.size();
+}
+inline void falco_baseline::clear_containers() {
+  containers_.Clear();
+}
+inline const ::draiosproto::falco_container& falco_baseline::containers(int index) const {
+  return containers_.Get(index);
+}
+inline ::draiosproto::falco_container* falco_baseline::mutable_containers(int index) {
+  return containers_.Mutable(index);
+}
+inline ::draiosproto::falco_container* falco_baseline::add_containers() {
+  return containers_.Add();
+}
+inline const ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >&
+falco_baseline::containers() const {
+  return containers_;
+}
+inline ::google::protobuf::RepeatedPtrField< ::draiosproto::falco_container >*
+falco_baseline::mutable_containers() {
+  return &containers_;
+}
+
 
 // @@protoc_insertion_point(namespace_scope)
 
@@ -25279,6 +28406,10 @@ inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::message_type>() {
 template <>
 inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::container_type>() {
   return ::draiosproto::container_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::draiosproto::error_type>() {
+  return ::draiosproto::error_type_descriptor();
 }
 
 }  // namespace google

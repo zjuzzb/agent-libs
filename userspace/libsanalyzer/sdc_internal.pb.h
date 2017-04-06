@@ -23,6 +23,7 @@
 #include <google/protobuf/message.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
+#include <google/protobuf/generated_enum_reflection.h>
 #include <google/protobuf/unknown_field_set.h>
 #include "draios.pb.h"
 // @@protoc_insertion_point(includes)
@@ -38,7 +39,52 @@ class container_mounts;
 class mounted_fs_response;
 class container_info;
 class mounted_fs_request;
+class ping;
+class pong;
+class docker_command;
+class docker_command_result;
 
+enum cointerface_message_type {
+  PING = 1,
+  PONG = 2,
+  DOCKER_COMMAND = 3,
+  DOCKER_COMMAND_RESULT = 4
+};
+bool cointerface_message_type_IsValid(int value);
+const cointerface_message_type cointerface_message_type_MIN = PING;
+const cointerface_message_type cointerface_message_type_MAX = DOCKER_COMMAND_RESULT;
+const int cointerface_message_type_ARRAYSIZE = cointerface_message_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* cointerface_message_type_descriptor();
+inline const ::std::string& cointerface_message_type_Name(cointerface_message_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    cointerface_message_type_descriptor(), value);
+}
+inline bool cointerface_message_type_Parse(
+    const ::std::string& name, cointerface_message_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<cointerface_message_type>(
+    cointerface_message_type_descriptor(), name, value);
+}
+enum docker_cmd_type {
+  STOP = 1,
+  PAUSE = 2,
+  UNPAUSE = 3
+};
+bool docker_cmd_type_IsValid(int value);
+const docker_cmd_type docker_cmd_type_MIN = STOP;
+const docker_cmd_type docker_cmd_type_MAX = UNPAUSE;
+const int docker_cmd_type_ARRAYSIZE = docker_cmd_type_MAX + 1;
+
+const ::google::protobuf::EnumDescriptor* docker_cmd_type_descriptor();
+inline const ::std::string& docker_cmd_type_Name(docker_cmd_type value) {
+  return ::google::protobuf::internal::NameOfEnum(
+    docker_cmd_type_descriptor(), value);
+}
+inline bool docker_cmd_type_Parse(
+    const ::std::string& name, docker_cmd_type* value) {
+  return ::google::protobuf::internal::ParseNamedEnum<docker_cmd_type>(
+    docker_cmd_type_descriptor(), name, value);
+}
 // ===================================================================
 
 class container_mounts : public ::google::protobuf::Message {
@@ -431,6 +477,384 @@ class mounted_fs_request : public ::google::protobuf::Message {
   void InitAsDefaultInstance();
   static mounted_fs_request* default_instance_;
 };
+// -------------------------------------------------------------------
+
+class ping : public ::google::protobuf::Message {
+ public:
+  ping();
+  virtual ~ping();
+
+  ping(const ping& from);
+
+  inline ping& operator=(const ping& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const ping& default_instance();
+
+  void Swap(ping* other);
+
+  // implements Message ----------------------------------------------
+
+  ping* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const ping& from);
+  void MergeFrom(const ping& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required int64 token = 1;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 1;
+  inline ::google::protobuf::int64 token() const;
+  inline void set_token(::google::protobuf::int64 value);
+
+  // @@protoc_insertion_point(class_scope:sdc_internal.ping)
+ private:
+  inline void set_has_token();
+  inline void clear_has_token();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::int64 token_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+
+  friend void  protobuf_AddDesc_sdc_5finternal_2eproto();
+  friend void protobuf_AssignDesc_sdc_5finternal_2eproto();
+  friend void protobuf_ShutdownFile_sdc_5finternal_2eproto();
+
+  void InitAsDefaultInstance();
+  static ping* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class pong : public ::google::protobuf::Message {
+ public:
+  pong();
+  virtual ~pong();
+
+  pong(const pong& from);
+
+  inline pong& operator=(const pong& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const pong& default_instance();
+
+  void Swap(pong* other);
+
+  // implements Message ----------------------------------------------
+
+  pong* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const pong& from);
+  void MergeFrom(const pong& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required int64 token = 1;
+  inline bool has_token() const;
+  inline void clear_token();
+  static const int kTokenFieldNumber = 1;
+  inline ::google::protobuf::int64 token() const;
+  inline void set_token(::google::protobuf::int64 value);
+
+  // required int32 pid = 2;
+  inline bool has_pid() const;
+  inline void clear_pid();
+  static const int kPidFieldNumber = 2;
+  inline ::google::protobuf::int32 pid() const;
+  inline void set_pid(::google::protobuf::int32 value);
+
+  // required uint64 memory_used = 3;
+  inline bool has_memory_used() const;
+  inline void clear_memory_used();
+  static const int kMemoryUsedFieldNumber = 3;
+  inline ::google::protobuf::uint64 memory_used() const;
+  inline void set_memory_used(::google::protobuf::uint64 value);
+
+  // @@protoc_insertion_point(class_scope:sdc_internal.pong)
+ private:
+  inline void set_has_token();
+  inline void clear_has_token();
+  inline void set_has_pid();
+  inline void clear_has_pid();
+  inline void set_has_memory_used();
+  inline void clear_has_memory_used();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::google::protobuf::int64 token_;
+  ::google::protobuf::uint64 memory_used_;
+  ::google::protobuf::int32 pid_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
+
+  friend void  protobuf_AddDesc_sdc_5finternal_2eproto();
+  friend void protobuf_AssignDesc_sdc_5finternal_2eproto();
+  friend void protobuf_ShutdownFile_sdc_5finternal_2eproto();
+
+  void InitAsDefaultInstance();
+  static pong* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class docker_command : public ::google::protobuf::Message {
+ public:
+  docker_command();
+  virtual ~docker_command();
+
+  docker_command(const docker_command& from);
+
+  inline docker_command& operator=(const docker_command& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const docker_command& default_instance();
+
+  void Swap(docker_command* other);
+
+  // implements Message ----------------------------------------------
+
+  docker_command* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const docker_command& from);
+  void MergeFrom(const docker_command& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required .sdc_internal.docker_cmd_type cmd = 1;
+  inline bool has_cmd() const;
+  inline void clear_cmd();
+  static const int kCmdFieldNumber = 1;
+  inline ::sdc_internal::docker_cmd_type cmd() const;
+  inline void set_cmd(::sdc_internal::docker_cmd_type value);
+
+  // optional string container_id = 2;
+  inline bool has_container_id() const;
+  inline void clear_container_id();
+  static const int kContainerIdFieldNumber = 2;
+  inline const ::std::string& container_id() const;
+  inline void set_container_id(const ::std::string& value);
+  inline void set_container_id(const char* value);
+  inline void set_container_id(const char* value, size_t size);
+  inline ::std::string* mutable_container_id();
+  inline ::std::string* release_container_id();
+  inline void set_allocated_container_id(::std::string* container_id);
+
+  // @@protoc_insertion_point(class_scope:sdc_internal.docker_command)
+ private:
+  inline void set_has_cmd();
+  inline void clear_has_cmd();
+  inline void set_has_container_id();
+  inline void clear_has_container_id();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* container_id_;
+  int cmd_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_sdc_5finternal_2eproto();
+  friend void protobuf_AssignDesc_sdc_5finternal_2eproto();
+  friend void protobuf_ShutdownFile_sdc_5finternal_2eproto();
+
+  void InitAsDefaultInstance();
+  static docker_command* default_instance_;
+};
+// -------------------------------------------------------------------
+
+class docker_command_result : public ::google::protobuf::Message {
+ public:
+  docker_command_result();
+  virtual ~docker_command_result();
+
+  docker_command_result(const docker_command_result& from);
+
+  inline docker_command_result& operator=(const docker_command_result& from) {
+    CopyFrom(from);
+    return *this;
+  }
+
+  inline const ::google::protobuf::UnknownFieldSet& unknown_fields() const {
+    return _unknown_fields_;
+  }
+
+  inline ::google::protobuf::UnknownFieldSet* mutable_unknown_fields() {
+    return &_unknown_fields_;
+  }
+
+  static const ::google::protobuf::Descriptor* descriptor();
+  static const docker_command_result& default_instance();
+
+  void Swap(docker_command_result* other);
+
+  // implements Message ----------------------------------------------
+
+  docker_command_result* New() const;
+  void CopyFrom(const ::google::protobuf::Message& from);
+  void MergeFrom(const ::google::protobuf::Message& from);
+  void CopyFrom(const docker_command_result& from);
+  void MergeFrom(const docker_command_result& from);
+  void Clear();
+  bool IsInitialized() const;
+
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  ::google::protobuf::uint8* SerializeWithCachedSizesToArray(::google::protobuf::uint8* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+
+  ::google::protobuf::Metadata GetMetadata() const;
+
+  // nested types ----------------------------------------------------
+
+  // accessors -------------------------------------------------------
+
+  // required bool successful = 1;
+  inline bool has_successful() const;
+  inline void clear_successful();
+  static const int kSuccessfulFieldNumber = 1;
+  inline bool successful() const;
+  inline void set_successful(bool value);
+
+  // optional string errstr = 2;
+  inline bool has_errstr() const;
+  inline void clear_errstr();
+  static const int kErrstrFieldNumber = 2;
+  inline const ::std::string& errstr() const;
+  inline void set_errstr(const ::std::string& value);
+  inline void set_errstr(const char* value);
+  inline void set_errstr(const char* value, size_t size);
+  inline ::std::string* mutable_errstr();
+  inline ::std::string* release_errstr();
+  inline void set_allocated_errstr(::std::string* errstr);
+
+  // @@protoc_insertion_point(class_scope:sdc_internal.docker_command_result)
+ private:
+  inline void set_has_successful();
+  inline void clear_has_successful();
+  inline void set_has_errstr();
+  inline void clear_has_errstr();
+
+  ::google::protobuf::UnknownFieldSet _unknown_fields_;
+
+  ::std::string* errstr_;
+  bool successful_;
+
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+
+  friend void  protobuf_AddDesc_sdc_5finternal_2eproto();
+  friend void protobuf_AssignDesc_sdc_5finternal_2eproto();
+  friend void protobuf_ShutdownFile_sdc_5finternal_2eproto();
+
+  void InitAsDefaultInstance();
+  static docker_command_result* default_instance_;
+};
 // ===================================================================
 
 
@@ -779,6 +1203,295 @@ mounted_fs_request::mutable_containers() {
   return &containers_;
 }
 
+// -------------------------------------------------------------------
+
+// ping
+
+// required int64 token = 1;
+inline bool ping::has_token() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void ping::set_has_token() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void ping::clear_has_token() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void ping::clear_token() {
+  token_ = GOOGLE_LONGLONG(0);
+  clear_has_token();
+}
+inline ::google::protobuf::int64 ping::token() const {
+  return token_;
+}
+inline void ping::set_token(::google::protobuf::int64 value) {
+  set_has_token();
+  token_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// pong
+
+// required int64 token = 1;
+inline bool pong::has_token() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void pong::set_has_token() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void pong::clear_has_token() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void pong::clear_token() {
+  token_ = GOOGLE_LONGLONG(0);
+  clear_has_token();
+}
+inline ::google::protobuf::int64 pong::token() const {
+  return token_;
+}
+inline void pong::set_token(::google::protobuf::int64 value) {
+  set_has_token();
+  token_ = value;
+}
+
+// required int32 pid = 2;
+inline bool pong::has_pid() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void pong::set_has_pid() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void pong::clear_has_pid() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void pong::clear_pid() {
+  pid_ = 0;
+  clear_has_pid();
+}
+inline ::google::protobuf::int32 pong::pid() const {
+  return pid_;
+}
+inline void pong::set_pid(::google::protobuf::int32 value) {
+  set_has_pid();
+  pid_ = value;
+}
+
+// required uint64 memory_used = 3;
+inline bool pong::has_memory_used() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void pong::set_has_memory_used() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void pong::clear_has_memory_used() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void pong::clear_memory_used() {
+  memory_used_ = GOOGLE_ULONGLONG(0);
+  clear_has_memory_used();
+}
+inline ::google::protobuf::uint64 pong::memory_used() const {
+  return memory_used_;
+}
+inline void pong::set_memory_used(::google::protobuf::uint64 value) {
+  set_has_memory_used();
+  memory_used_ = value;
+}
+
+// -------------------------------------------------------------------
+
+// docker_command
+
+// required .sdc_internal.docker_cmd_type cmd = 1;
+inline bool docker_command::has_cmd() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void docker_command::set_has_cmd() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void docker_command::clear_has_cmd() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void docker_command::clear_cmd() {
+  cmd_ = 1;
+  clear_has_cmd();
+}
+inline ::sdc_internal::docker_cmd_type docker_command::cmd() const {
+  return static_cast< ::sdc_internal::docker_cmd_type >(cmd_);
+}
+inline void docker_command::set_cmd(::sdc_internal::docker_cmd_type value) {
+  assert(::sdc_internal::docker_cmd_type_IsValid(value));
+  set_has_cmd();
+  cmd_ = value;
+}
+
+// optional string container_id = 2;
+inline bool docker_command::has_container_id() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void docker_command::set_has_container_id() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void docker_command::clear_has_container_id() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void docker_command::clear_container_id() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    container_id_->clear();
+  }
+  clear_has_container_id();
+}
+inline const ::std::string& docker_command::container_id() const {
+  return *container_id_;
+}
+inline void docker_command::set_container_id(const ::std::string& value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void docker_command::set_container_id(const char* value) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(value);
+}
+inline void docker_command::set_container_id(const char* value, size_t size) {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  container_id_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* docker_command::mutable_container_id() {
+  set_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    container_id_ = new ::std::string;
+  }
+  return container_id_;
+}
+inline ::std::string* docker_command::release_container_id() {
+  clear_has_container_id();
+  if (container_id_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = container_id_;
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void docker_command::set_allocated_container_id(::std::string* container_id) {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (container_id) {
+    set_has_container_id();
+    container_id_ = container_id;
+  } else {
+    clear_has_container_id();
+    container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
+// -------------------------------------------------------------------
+
+// docker_command_result
+
+// required bool successful = 1;
+inline bool docker_command_result::has_successful() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void docker_command_result::set_has_successful() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void docker_command_result::clear_has_successful() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void docker_command_result::clear_successful() {
+  successful_ = false;
+  clear_has_successful();
+}
+inline bool docker_command_result::successful() const {
+  return successful_;
+}
+inline void docker_command_result::set_successful(bool value) {
+  set_has_successful();
+  successful_ = value;
+}
+
+// optional string errstr = 2;
+inline bool docker_command_result::has_errstr() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void docker_command_result::set_has_errstr() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void docker_command_result::clear_has_errstr() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void docker_command_result::clear_errstr() {
+  if (errstr_ != &::google::protobuf::internal::kEmptyString) {
+    errstr_->clear();
+  }
+  clear_has_errstr();
+}
+inline const ::std::string& docker_command_result::errstr() const {
+  return *errstr_;
+}
+inline void docker_command_result::set_errstr(const ::std::string& value) {
+  set_has_errstr();
+  if (errstr_ == &::google::protobuf::internal::kEmptyString) {
+    errstr_ = new ::std::string;
+  }
+  errstr_->assign(value);
+}
+inline void docker_command_result::set_errstr(const char* value) {
+  set_has_errstr();
+  if (errstr_ == &::google::protobuf::internal::kEmptyString) {
+    errstr_ = new ::std::string;
+  }
+  errstr_->assign(value);
+}
+inline void docker_command_result::set_errstr(const char* value, size_t size) {
+  set_has_errstr();
+  if (errstr_ == &::google::protobuf::internal::kEmptyString) {
+    errstr_ = new ::std::string;
+  }
+  errstr_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* docker_command_result::mutable_errstr() {
+  set_has_errstr();
+  if (errstr_ == &::google::protobuf::internal::kEmptyString) {
+    errstr_ = new ::std::string;
+  }
+  return errstr_;
+}
+inline ::std::string* docker_command_result::release_errstr() {
+  clear_has_errstr();
+  if (errstr_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = errstr_;
+    errstr_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+inline void docker_command_result::set_allocated_errstr(::std::string* errstr) {
+  if (errstr_ != &::google::protobuf::internal::kEmptyString) {
+    delete errstr_;
+  }
+  if (errstr) {
+    set_has_errstr();
+    errstr_ = errstr;
+  } else {
+    clear_has_errstr();
+    errstr_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  }
+}
+
 
 // @@protoc_insertion_point(namespace_scope)
 
@@ -788,6 +1501,14 @@ mounted_fs_request::mutable_containers() {
 namespace google {
 namespace protobuf {
 
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::sdc_internal::cointerface_message_type>() {
+  return ::sdc_internal::cointerface_message_type_descriptor();
+}
+template <>
+inline const EnumDescriptor* GetEnumDescriptor< ::sdc_internal::docker_cmd_type>() {
+  return ::sdc_internal::docker_cmd_type_descriptor();
+}
 
 }  // namespace google
 }  // namespace protobuf

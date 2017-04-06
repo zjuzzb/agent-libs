@@ -11,10 +11,10 @@
 #include "k8s_common.h"
 #include "k8s.h"
 #include "k8s_proto.h"
+#include "k8s_api_handler.h"
 #include "Poco/Stopwatch.h"
 #include "Poco/Exception.h"
 #include "Poco/Format.h"
-#include "k8s_http.h"
 #include "Poco/FileStream.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/DateTime.h"
@@ -26,6 +26,7 @@
 #include <thread>
 #include <unistd.h>
 #include <signal.h>
+#include <memory>
 
 using namespace Poco;
 
@@ -55,7 +56,7 @@ public:
 		std::ostringstream json;
 		get_json(component, json);
 		//std::cout << json.str() << std::endl;
-		m_k8s.parse_json(json.str(), k8s_component::type_map::value_type(k8s_component::get_type(component), component));
+		//m_k8s.parse_json(json.str(), k8s_component::type_map::value_type(k8s_component::get_type(component), component));
 	}
 
 	k8s& get_k8s()
@@ -139,7 +140,10 @@ k8s* get_k8s(const std::string& host, bool run_watch_thread = false)
 	{
 		try
 		{
-			kube = new k8s(host, true, run_watch_thread);
+			kube = new k8s(host, false);
+			/*new k8s(k8s_api.to_string(), false,
+					   m_k8s_ssl, m_k8s_bt,
+					   m_configuration->get_k8s_event_filter(), m_ext_list_ptr);*/
 			if(!kube)
 			{
 				g_logger.log("Error getting kube...", sinsp_logger::SEV_ERROR);
@@ -307,9 +311,71 @@ void run_watch()
 	}
 }
 
+unique_ptr<k8s_handler::collector_t> m_k8s_collector;
+//unique_ptr<k8s_api_handler>          m_k8s_api_handler;
+//bool                                 m_k8s_api_detected = false;
+unique_ptr<k8s_api_handler>          m_k8s_ext_handler;
+//k8s_ext_list_ptr_t                   m_ext_list_ptr;
+bool                                 m_k8s_ext_detect_done = false;
+
+void discover_extensions(const std::string& k8s_api)
+{
+	if(!m_k8s_ext_detect_done)
+	{
+		g_logger.log("K8s API extensions handler: detecting extensions.", sinsp_logger::SEV_TRACE);
+		if(!m_k8s_ext_handler)
+		{
+			if(!m_k8s_collector)
+			{
+				m_k8s_collector.reset(new k8s_handler::collector_t());
+			}
+			//if(uri(k8s_api).is_secure()) { init_k8s_ssl(k8s_api); }
+			m_k8s_ext_handler.reset(new k8s_api_handler(*m_k8s_collector,
+														k8s_api, "/apis/extensions/v1beta1", "[.resources[].name]", "1.0"/*,
+														m_k8s_ssl, m_k8s_bt*/));
+			g_logger.log("K8s API extensions handler: collector created.", sinsp_logger::SEV_TRACE);
+		}
+		else
+		{
+			g_logger.log("K8s API extensions handler: collecting data.", sinsp_logger::SEV_TRACE);
+			m_k8s_ext_handler->collect_data();
+			if(m_k8s_ext_handler->ready())
+			{
+				g_logger.log("K8s API extensions handler: data received.", sinsp_logger::SEV_TRACE);
+				if(m_k8s_ext_handler->error())
+				{
+					g_logger.log("K8s API extensions handler: data error occurred while detecting API versions.",
+								 sinsp_logger::SEV_WARNING);
+				}
+				else
+				{
+					const k8s_api_handler::api_list_t& exts = m_k8s_ext_handler->extensions();
+					std::ostringstream ostr;
+					for(const auto& ext : exts)
+					{
+						ostr << std::endl << ext;
+					}
+					g_logger.log("K8s API extensions handler extensions found: " + ostr.str(),
+								 sinsp_logger::SEV_DEBUG);
+				}
+				m_k8s_ext_detect_done = true;
+				m_k8s_collector.reset();
+				m_k8s_ext_handler.reset();
+			}
+			else
+			{
+				g_logger.log("K8s API extensions handler: not ready.", sinsp_logger::SEV_TRACE);
+			}
+		}
+	}
+}
 
 int main(int argc, char** argv)
 {
+	while(!m_k8s_ext_detect_done)
+	{
+		discover_extensions("http://localhost:8080");
+	}
 #if 0
 	try
 	{
@@ -322,8 +388,7 @@ int main(int argc, char** argv)
 	DateTime dt;
 	std::cout << DateTimeFormatter::format(dt, DateTimeFormat::RFC822_FORMAT) << std::endl;
 	return 0;
-#endif
-//#if 0
+
 	k8s_test k8stest;
 	Stopwatch sw;
 	sw.start();
@@ -426,7 +491,7 @@ int main(int argc, char** argv)
 						delete kube;
 						try
 						{
-							kube = new k8s(host, true, run_watch_thread);
+							kube = new k8s(host, true);
 						}
 						catch(std::exception& ex)
 						{
@@ -439,7 +504,7 @@ int main(int argc, char** argv)
 				{
 					try
 					{
-						kube = new k8s(host, true, run_watch_thread);
+						kube = new k8s(host, true);
 						//kube->watch();
 					}
 					catch(std::exception& ex)
@@ -475,7 +540,7 @@ int main(int argc, char** argv)
 
 	google::protobuf::ShutdownProtobufLibrary();
 	//wait_for_termination_request();
-
+#endif
 	return 0;
 }
 

@@ -140,6 +140,11 @@ public:
 		return false;
 	}
 
+	bool has(const std::string& uid) const
+	{
+		return get_component(uid) != nullptr;
+	}
+
 	// Returns a pointer to existing component, if it exists.
 	// If component does not exist, it returns null pointer.
 	template <typename C, typename T>

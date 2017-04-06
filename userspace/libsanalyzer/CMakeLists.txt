@@ -1,13 +1,14 @@
-set(DRAIOS_OPENSSL_VERSION "1.0.2d")
+set(DRAIOS_OPENSSL_VERSION "1.0.2j")
 set(DRAIOS_PROTOBUF_VERSION "2.5.0")
 set(DRAIOS_ZLIB_VERSION "1.2.8")
 set(DRAIOS_LUAJIT_VERSION "2.0.3")
-set(DRAIOS_CURL_VERSION "7.45.0")
-set(DRAIOS_POCO_VERSION "1.4.6p4-all")
+set(DRAIOS_CURL_VERSION "7.52.1")
+set(DRAIOS_POCO_VERSION "1.7.7-all")
 set(DRAIOS_B64_VERSION "1.2")
 set(DRAIOS_YAML_VERSION "cpp-0.5.1")
 set(DRAIOS_BOOST_VERSION "1_57_0")
 set(DRAIOS_JQ_VERSION "1.5")
+set(DRAIOS_GRPC_VERSION "1.1.4")
 
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
@@ -21,7 +22,12 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+
 add_definitions( -DHAS_ANALYZER )
 add_definitions(-DK8S_DISABLE_THREAD)
 
@@ -31,6 +37,7 @@ add_library(sanalyzer STATIC
 	analyzer_parsers.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
+	baseliner.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
@@ -38,6 +45,7 @@ add_library(sanalyzer STATIC
 	config.cpp
 	delays.cpp
 	draios.pb.cc
+	falco_events.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
@@ -46,33 +54,52 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/fdinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser_api.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/prefix_search.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_auth.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp_curl.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_api_error.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_api_handler.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_component.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_daemonset_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_deployment_handler.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_dispatcher.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_data.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_event_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_namespace_handler.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_net.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_http.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_collector.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_node_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_pod_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_replicationcontroller_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_replicaset_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_service_handler.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_query.cpp
 	k8s_proto.cpp
 	k8s_delegator.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_http.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_auth.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_collector.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
+	memdumper.cpp
 	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
+	metric_limits.cpp
 	metrics.cpp
 	parser_http.cpp
 	parser_mysql.cpp
@@ -89,6 +116,8 @@ add_library(sanalyzer STATIC
 	scores.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
+	tracer_emitter.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
@@ -98,10 +127,13 @@ add_library(sanalyzer STATIC
 	statsite_proxy.cpp
 	app_checks.cpp
 	posix_queue.cpp
-	sdc_internal.pb.cc)
+	sdc_internal.pb.cc
+	sdc_internal.grpc.pb.cc
+	proc_config.h)
 
 target_link_libraries(sanalyzer
 	scap 
+	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src/.libs/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src/libluajit.a
@@ -110,14 +142,32 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoXML.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
 	rt
 	dl
+	anl
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a)
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+
+set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs
+                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/protoc
+                   -I ${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+
+add_custom_target(sdc_internal_pb_cpp
+	COMMENT Building cpp sources from .proto files
+	COMMAND ${PROTOC_CMDLINE}
+	        --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/bins/opt/grpc_cpp_plugin
+		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

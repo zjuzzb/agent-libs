@@ -36,7 +36,6 @@
 #include "procfs_parser.h"
 #include "analyzer_thread.h"
 
-
 using namespace std;
 
 using Poco::StringTokenizer;
@@ -650,28 +649,26 @@ TEST_F(sys_call_test, process_prlimit)
 
 TEST_F(sys_call_test, procfs_cpuload)
 {
-	vector<double> loads;
-	vector<double> idles;
-	vector<double> steals;
+	sinsp_proc_stat proc_stat;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_cpus_load(&loads, &idles, &steals);
+	pparser.get_proc_stat(&proc_stat);
 	sleep(1);
-	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
+	EXPECT_EQ((int32_t)0, (int32_t)proc_stat.m_loads.size());
 
 	for(j = 0; j < 5; j++)
 	{
-		pparser.get_cpus_load(&loads, &idles, &steals);
-		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
+		pparser.get_proc_stat(&proc_stat);
+		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)proc_stat.m_loads.size());
 
-		for(k = 0; k < loads.size(); k++)
+		for(k = 0; k < proc_stat.m_loads.size(); k++)
 		{
-			EXPECT_LE((double)0, loads[k]);
-			EXPECT_GT((double)105, loads[k]);
+			EXPECT_LE((double)0, proc_stat.m_loads[k]);
+			EXPECT_GT((double)105, proc_stat.m_loads[k]);
 		}
 
 		sleep(1);
@@ -680,28 +677,26 @@ TEST_F(sys_call_test, procfs_cpuload)
 
 TEST_F(sys_call_test, procfs_cpuload_longinterval)
 {
-	vector<double> loads;
-	vector<double> idles;
-	vector<double> steals;
+	sinsp_proc_stat proc_stat;
 	uint32_t j, k;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_cpus_load(&loads, &idles, &steals);
+	pparser.get_proc_stat(&proc_stat);
 	sleep(1);
-	EXPECT_EQ((int32_t)0, (int32_t)loads.size());
+	EXPECT_EQ((int32_t)0, (int32_t)proc_stat.m_loads.size());
 
 	for(j = 0; j < 3; j++)
 	{
-		pparser.get_cpus_load(&loads, &idles, &steals);
-		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)loads.size());
+		pparser.get_proc_stat(&proc_stat);
+		EXPECT_EQ((int32_t)sysconf(_SC_NPROCESSORS_ONLN), (int32_t)proc_stat.m_loads.size());
 
-		for(k = 0; k < loads.size(); k++)
+		for(k = 0; k < proc_stat.m_loads.size(); k++)
 		{
-			EXPECT_LE((double)0, loads[k]);
-			EXPECT_GE((double)100, loads[k]);
+			EXPECT_LE((double)0, proc_stat.m_loads[k]);
+			EXPECT_GE((double)100, proc_stat.m_loads[k]);
 		}
 
 		sleep(3);
@@ -895,7 +890,11 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 TEST_F(sys_call_test, procfs_globalmemory)
 {
 	int64_t memusage;
+	int64_t memfree;
+	int64_t memavail;
 	int64_t swapusage;
+	int64_t swaptotal;
+	int64_t swapavail;
 	uint32_t j;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
@@ -904,12 +903,22 @@ TEST_F(sys_call_test, procfs_globalmemory)
 
 	for(j = 0; j < 5; j++)
 	{
-		pparser.get_global_mem_usage_kb(&memusage, &swapusage);
+		pparser.get_global_mem_usage_kb(&memusage, &memfree, &memavail, &swapusage, &swaptotal, &swapavail);
 		EXPECT_NE((int64_t)-1, memusage);
 		EXPECT_LE((int64_t)0, memusage);
-		EXPECT_GE((int64_t)memkb, memusage);	
+		EXPECT_GE((int64_t)memkb, memusage);
+		EXPECT_NE((int64_t)-1, memfree);
+		EXPECT_LE((int64_t)0, memfree);
+		EXPECT_GE((int64_t)memkb, memfree);
+		EXPECT_NE((int64_t)-1, memavail);
+		EXPECT_LE((int64_t)0, memavail);
+		EXPECT_GE((int64_t)memkb, memavail);
 		EXPECT_NE((int64_t)-1, swapusage);
 		EXPECT_LE((int64_t)0, swapusage);
+		EXPECT_NE((int64_t)-1, swaptotal);
+		EXPECT_LE((int64_t)0, swaptotal);
+		EXPECT_NE((int64_t)-1, swapavail);
+		EXPECT_LE((int64_t)0, swapavail);
 		sleep(1);
 	}
 }
@@ -1079,8 +1088,8 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 					if(callnum != 0)
 					{
-						EXPECT_GT(delta, 90);
-						EXPECT_LT(delta, 110);
+						EXPECT_GT(delta, 90U);
+						EXPECT_LT(delta, 110U);
 					}
 
 					lastcpu = tcpu;
@@ -1166,8 +1175,8 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 					if(callnum > 2)
 					{
-						EXPECT_GT(delta, 0);
-						EXPECT_LT(delta, 110);
+						EXPECT_GT(delta, 0U);
+						EXPECT_LT(delta, 110U);
 					}
 
 					lastcpu = tcpu;
@@ -1187,8 +1196,8 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 					if(callnum > 2)
 					{
-						EXPECT_GT(delta, 0);
-						EXPECT_LT(delta, 110);
+						EXPECT_GT(delta, 0U);
+						EXPECT_LT(delta, 110U);
 					}
 
 					lastcpu1 = tcpu;

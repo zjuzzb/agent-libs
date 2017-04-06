@@ -4,6 +4,14 @@
 
 #pragma once
 
+#include "posix_queue.h"
+#include "metric_limits.h"
+#include <Poco/Net/SocketReactor.h>
+#include <Poco/Net/DatagramSocket.h>
+#include <Poco/Net/SocketNotification.h>
+#include <Poco/ErrorHandler.h>
+#include <atomic>
+
 class statsite_proxy;
 namespace draiosproto
 {
@@ -72,11 +80,7 @@ public:
 		return m_tags;
 	}
 
-	statsd_metric():
-			m_timestamp(0),
-			m_type(type_t::NONE),
-			m_full_identifier_parsed(false)
-	{}
+	statsd_metric();
 
 	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
@@ -105,12 +109,57 @@ private:
 class statsite_proxy
 {
 public:
+	typedef unordered_map<string, vector<statsd_metric>> metric_map_t;
+
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
-	unordered_map<string, vector<statsd_metric>> read_metrics();
+	unordered_map<string, vector<statsd_metric>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	statsd_metric m_metric;
+};
+
+class statsd_server
+{
+public:
+	statsd_server(const string& containerid, statsite_proxy& proxy, Poco::Net::SocketReactor& reactor, uint16_t port);
+	virtual ~statsd_server();
+
+	statsd_server(const statsd_server&) = delete;
+	statsd_server& operator=(const statsd_server&) = delete;
+private:
+	void on_read(Poco::Net::ReadableNotification* notification);
+	void on_error(Poco::Net::ErrorNotification* notification);
+	unique_ptr<Poco::Net::DatagramSocket> make_socket(const Poco::Net::SocketAddress& address);
+	string m_containerid;
+	statsite_proxy& m_statsite;
+	unique_ptr<Poco::Net::DatagramSocket> m_ipv4_socket;
+	unique_ptr<Poco::Net::DatagramSocket> m_ipv6_socket;
+	Poco::Net::SocketReactor& m_reactor;
+	Poco::Observer<statsd_server, Poco::Net::ReadableNotification> m_read_obs;
+	Poco::Observer<statsd_server, Poco::Net::ErrorNotification> m_error_obs;
+	char* m_read_buffer;
+	static const unsigned MAX_READ_SIZE = 2048;
+};
+
+class statsite_forwarder: public Poco::ErrorHandler
+{
+public:
+	statsite_forwarder(const pair<FILE*, FILE*>& pipes, uint16_t statsd_port);
+	virtual void exception(const Poco::Exception& ex) override;
+	virtual void exception(const std::exception& ex) override;
+	virtual void exception() override;
+	int run();
+private:
+	void terminate(int code, const string& reason);
+
+	statsite_proxy m_proxy;
+	posix_queue m_inqueue;
+	unordered_map<string, unique_ptr<statsd_server>> m_sockets;
+	Poco::Net::SocketReactor m_reactor;
+	int m_exitcode;
+	uint16_t m_port;
+	std::atomic<bool> m_terminate;
 };

@@ -1,0 +1,12 @@
+metrics_filter:
+  - include: redis.cpu.*
+  - include: redis.mem.lua
+  - exclude: redis.mem.*
+  - include: ThreadCount
+  - include: mesos.framework.cpu
+  - exclude: mesos.fr*
+  - include: test.*
+  - exclude: test.*
+  - include: haproxy.backend.*
+  - exclude: haproxy.*
+  - exclude: redis.*

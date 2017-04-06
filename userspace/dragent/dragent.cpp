@@ -1,3 +1,5 @@
+#include <time.h>
+
 #include "main.h"
 #include "dragent.h"
 #include "crash_handler.h"
@@ -10,10 +12,14 @@
 #include "logger.h"
 #include "monitor.h"
 #include "utils.h"
+#include <gperftools/malloc_extension.h>
+#include <grpc/support/log.h>
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <procfs_parser.h>
 #include <sys/resource.h>
+
+using namespace std;
 
 static void g_signal_callback(int sig)
 {
@@ -30,14 +36,15 @@ static void g_usr2_signal_callback(int sig)
 	dragent_configuration::m_send_log_report = true;
 }
 
-dragent_app::dragent_app(): 
+dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
 	m_log_reporter(&m_queue, &m_configuration),
-	m_subprocesses_logger(&m_configuration, &m_log_reporter)
+	m_subprocesses_logger(&m_configuration, &m_log_reporter),
+	m_last_dump_s(0)
 {
 }
 
@@ -50,7 +57,7 @@ void dragent_app::initialize(Application& self)
 {
 	ServerApplication::initialize(self);
 }
-		
+
 void dragent_app::uninitialize()
 {
 	ServerApplication::uninitialize();
@@ -59,7 +66,7 @@ void dragent_app::uninitialize()
 void dragent_app::defineOptions(OptionSet& options)
 {
 	ServerApplication::defineOptions(options);
-	
+
 	options.addOption(
 		Option("help", "h", "display help information on command line arguments")
 			.required(false)
@@ -174,6 +181,37 @@ void dragent_app::displayHelp()
 	helpFormatter.format(std::cout);
 }
 
+static void dragent_gpr_log(gpr_log_func_args *args)
+{
+	// If logging hasn't been set up yet, skip the message. Add an
+	// ASSSERT so we'll notice for dev builds, though.
+	ostringstream os;
+
+	if (!g_log)
+	{
+		ASSERT(false);
+		return;
+	}
+
+	os << "GRPC: [" << args->file << ":" << args->line << "] " << args->message;
+
+	switch (args->severity)
+	{
+	case GPR_LOG_SEVERITY_DEBUG:
+		g_log->debug(os.str());
+		break;
+	case GPR_LOG_SEVERITY_INFO:
+		g_log->information(os.str());
+		break;
+	case GPR_LOG_SEVERITY_ERROR:
+		g_log->error(os.str());
+		break;
+	default:
+		g_log->debug(os.str());
+		break;
+	}
+}
+
 int dragent_app::main(const std::vector<std::string>& args)
 {
 	if(m_help_requested)
@@ -187,6 +225,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		printf(AGENT_VERSION "\n");
 		return Application::EXIT_OK;
 	}
+
+	//
+	// Set up logging with grpc.
+	//
+	gpr_set_log_function(dragent_gpr_log);
 
 	//
 	// Make sure the agent never creates world-writable files
@@ -212,7 +255,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigemptyset(&sigs);
 	sigaddset(&sigs, SIGQUIT);
 	sigaddset(&sigs, SIGTERM);
-	sigaddset(&sigs, SIGPIPE); 
+	sigaddset(&sigs, SIGPIPE);
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
 	// Add our main process
@@ -250,10 +293,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 		return this->sdagent_main();
 	}, true);
-
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
 	{
-		m_jmx_pipes = make_shared<errpipe_manager>();
+		m_jmx_pipes = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
@@ -302,7 +344,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 	if(m_configuration.m_statsd_enabled)
 	{
 		m_statsite_pipes = make_shared<pipe_manager>();
-		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data)
 		{
 			if(data.find("Failed to bind") != string::npos)
@@ -335,6 +376,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			return (EXIT_FAILURE);
 		});
+		if(m_configuration.m_mode == dragent_mode_t::NODRIVER)
+		{
+			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
+			auto state = &m_subprocesses_state["statsite_forwarder"];
+			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(), sinsp_logger_parser("statsite_forwarder"), state);
+			monitor_process.emplace_process("statsite_forwader", [this](void) -> int
+			{
+				m_statsite_forwarder_pipe->attach_child();
+				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(), m_configuration.m_statsd_port);
+				return fwd.run();;
+			});
+		}
 	}
 
 	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
@@ -344,7 +397,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 		{
 			auto parsed_log = sinsp_split(line, ':');
-			if(parsed_log.size() >= 3 && isdigit(parsed_log.at(0).at(0)))
+			// TODO: switch to json logging to avoid parsing issues
+			// using this project for example: https://github.com/madzak/python-json-logger
+			if(parsed_log.size() >= 3 &&
+				!parsed_log.at(0).empty() &&
+				isdigit(parsed_log.at(0).at(0)))
 			{
 				auto level = parsed_log.at(1);
 				auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
@@ -375,11 +432,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("sdchecks", [this](void)
 		{
 			this->m_sdchecks_pipes->attach_child();
-			const char* env[] = {
-					"LD_LIBRARY_PATH=/opt/draios/lib",
-					NULL
-			};
-			execle(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL, env);
+
+			setenv("LD_LIBRARY_PATH", "/opt/draios/lib", 1);
+
+			execl(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL);
 			return (EXIT_FAILURE);
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
@@ -388,27 +444,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
-		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), [](const string& s)
-		{
-			// Right now we are using default sinsp stderror logger
-			// it does not send priority so we are using a simple heuristic
-			if(s.find("Error") != string::npos)
-			{
-				g_log->error(s);
-			}
-			else if(s.find("Warning") != string::npos)
-			{
-				g_log->warning(s);
-			}
-			else if(s.find("Info") != string::npos)
-			{
-				g_log->information(s);
-			}
-			else
-			{
-				g_log->debug(s);
-			}
-		}, state);
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
 		monitor_process.emplace_process("mountedfs_reader", [this](void)
 		{
 			m_mounted_fs_reader_pipe->attach_child();
@@ -416,6 +452,38 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return proc.run();
 		});
 	}
+	if(m_configuration.m_cointerface_enabled)
+	{
+		m_cointerface_pipes = make_unique<pipe_manager>();
+		auto* state = &m_subprocesses_state["cointerface"];
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(), cointerface_parser(), state);
+		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(), cointerface_parser(), state);
+		monitor_process.emplace_process("cointerface", [this](void)
+		{
+			m_cointerface_pipes->attach_child_stdio();
+
+			execl("/opt/draios/bin/cointerface", "cointerface", (char *) NULL);
+			return (EXIT_FAILURE);
+		});
+	}
+	monitor_process.set_cleanup_function(
+			[this](void)
+			{
+				this->m_sdchecks_pipes.reset();
+				this->m_jmx_pipes.reset();
+				this->m_mounted_fs_reader_pipe.reset();
+				this->m_statsite_pipes.reset();
+				m_statsite_forwarder_pipe.reset();
+				this->m_cointerface_pipes.reset();
+				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
+									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
+									  "/sdc_sdjagent_out", "/sdc_sdjagent_in", "/sdc_statsite_forwarder_in"})
+				{
+					posix_queue::remove(queue);
+				}
+
+				coclient::cleanup();
+			});
 	return monitor_process.run();
 #else
 	return sdagent_main();
@@ -452,9 +520,18 @@ int dragent_app::sdagent_main()
 	m_configuration.refresh_machine_id();
 	m_configuration.refresh_aws_metadata();
 	m_configuration.print_configuration();
+
+	if(m_configuration.load_error())
+	{
+		g_log->error("Unable to load configuration file");
+		// XXX Return EXIT_OK even on an error so we won't restart
+		return Application::EXIT_OK;
+	}
+
 	if(m_statsite_pipes)
 	{
 		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
+		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	}
 	if(m_configuration.m_customer_id.empty())
 	{
@@ -471,6 +548,23 @@ int dragent_app::sdagent_main()
 	if(m_configuration.m_watchdog_enabled)
 	{
 		check_for_clean_shutdown();
+
+		if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
+		{
+			// Heap profiling needs TCMALLOC_SAMPLE_PARAMETER to be set to a non-zero value
+			// XXX hacky way to ensure that TCMALLOC_SAMPLE_PARAMETER was set correctly
+			int32_t sample_period = 0;
+			void **unused_ret = MallocExtension::instance()->ReadStackTraces(&sample_period);
+			delete[] unused_ret;
+
+			// If the env var isn't set, disable the dumping interval because it'll be garbage data
+			if(sample_period <= 0)
+			{
+				g_log->error("Disabling watchdog:heap_profiling_interval_s because TCMALLOC_SAMPLE_PARAMETER is not set");
+				m_configuration.m_watchdog_heap_profiling_interval_s = 0;
+				ASSERT(false);
+			}
+		}
 	}
 
 	ExitCode exit_code;
@@ -492,10 +586,21 @@ int dragent_app::sdagent_main()
 		++uptime_s;
 	}
 
+	if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
+	{
+		// Do a throttled dump in case we don't have anything recent
+		dump_heap_profile(uptime_s, true);
+	}
+
 	if(dragent_error_handler::m_exception)
 	{
 		g_log->error("Application::EXIT_SOFTWARE");
 		exit_code = Application::EXIT_SOFTWARE;
+	}
+	else if(dragent_configuration::m_config_update)
+	{
+		g_log->information("Application::EXIT_CONFIG_UPDATE");
+		exit_code = ExitCode(monitor::CONFIG_UPDATE_EXIT_CODE);
 	}
 	else
 	{
@@ -521,7 +626,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns() 
+		int64_t diff = sinsp_utils::get_current_time_ns()
 			- m_sinsp_worker.get_last_loop_ns();
 
 #if _DEBUG
@@ -557,7 +662,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns() 
+		int64_t diff = sinsp_utils::get_current_time_ns()
 			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
 #if _DEBUG
@@ -575,7 +680,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_connection_manager.get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns() 
+		int64_t diff = sinsp_utils::get_current_time_ns()
 			- m_connection_manager.get_last_loop_ns();
 
 #if _DEBUG
@@ -611,6 +716,41 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
+	if(m_configuration.m_cointerface_enabled)
+	{
+		if(!m_coclient) {
+			// Actually allocate the coclient object
+			m_coclient = make_unique<coclient>();
+		}
+
+		// Ping every 5 seconds. If it's ever more than
+		// watchdog_cointerface_timeout_s seconds from a pong,
+		// declare it stuck and kill it.
+		//
+		// Note that we use the time from the ping as the
+		// liveness time. So if cointerface somehow falls
+		// behind by more than the timeout, it gets declared
+		// stuck.
+
+		m_cointerface_ping_interval.run([this]()
+		{
+			coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+				if(successful)
+				{
+					sdc_internal::pong *pong = (sdc_internal::pong *) response_msg;
+					m_subprocesses_state["cointerface"].reset(pong->pid(),
+										  pong->memory_used(),
+										  pong->token());
+				}
+			};
+
+			m_coclient->ping(time(NULL), callback);
+		});
+
+		// Try to read any responses
+		m_coclient->next();
+	}
+
 	uint64_t memory;
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
@@ -618,10 +758,23 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
 #endif
 
+		const bool heap_profiling = (m_configuration.m_watchdog_heap_profiling_interval_s > 0);
+		bool dump_heap = false;
+		bool throttle = true;
+
+		// Once the worker is looping, we can dump the initial
+		// memory state for diffing against later dumps
+		if(heap_profiling && m_last_dump_s == 0 && m_sinsp_worker.get_last_loop_ns() != 0)
+		{
+			g_log->information("watchdog: heap profiling enabled, dumping initial memory state");
+			dump_heap = true;
+			throttle = false;
+		}
+
 		if(memory > m_configuration.m_watchdog_max_memory_usage_mb)
 		{
 			char line[128];
-			snprintf(line, sizeof(line), "watchdog: High memory usage, %" PRId64 " MB\n", memory);
+			snprintf(line, sizeof(line), "watchdog: Fatal memory usage, %" PRId64 " MB\n", memory);
 			crash_handler::log_crashdump_message(line);
 
 			if(m_sinsp_worker.get_last_loop_ns())
@@ -631,7 +784,26 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 				crash_handler::log_crashdump_message(buf);
 			}
 
+			if(heap_profiling)
+			{
+				dump_heap = true;
+				throttle = false;
+			}
 			to_kill = true;
+		}
+		else if(memory > m_configuration.m_watchdog_warn_memory_usage_mb)
+		{
+			g_log->notice("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
+			if(heap_profiling)
+			{
+				dump_heap = true;
+			}
+		}
+
+		if(dump_heap)
+		{
+			ASSERT(heap_profiling);
+			dump_heap_profile(uptime_s, throttle);
 		}
 	}
 	else
@@ -677,6 +849,36 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			}
 		}
 	}
+}
+
+void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
+{
+	ASSERT(m_configuration.m_watchdog_heap_profiling_interval_s > 0);
+
+	// Dump at most once every m_watchdog_heap_profiling_interval_s seconds
+	// unless the caller tells us not to throttle
+	if(throttle && (m_last_dump_s == 0 ||
+			(uptime_s - m_last_dump_s < m_configuration.m_watchdog_heap_profiling_interval_s)))
+	{
+		return;
+	}
+
+	m_last_dump_s = uptime_s;
+
+	// scripts/parse_heap_profiling.py depends on this format, so
+	// don't change or add logs without updating the script
+	auto malloc_extension = MallocExtension::instance();
+	char heap_stats[2048];
+	malloc_extension->GetStats(heap_stats, sizeof(heap_stats));
+	static const auto separator = "\n---------------------\n";
+
+	crash_handler::log_crashdump_message(heap_stats);
+
+	string heap_sample;
+	malloc_extension->GetHeapSample(&heap_sample);
+	crash_handler::log_crashdump_message(separator);
+	crash_handler::log_crashdump_message(heap_sample.c_str());
+	crash_handler::log_crashdump_message(separator);
 }
 
 void dragent_app::check_for_clean_shutdown()
@@ -747,7 +949,7 @@ void dragent_app::initialize_logging()
 
 	crash_handler::set_crashdump_file(p.toString());
 	crash_handler::set_sinsp_worker(&m_sinsp_worker);
-	
+
 	//
 	// Setup the logging
 	//
@@ -765,4 +967,7 @@ void dragent_app::initialize_logging()
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
 
 	g_log = new dragent_logger(&loggerf, make_console_channel(formatter), make_event_channel());
+
+	g_log->init_user_events_throttling(m_configuration.m_user_events_rate,
+					   m_configuration.m_user_max_burst_events);
 }

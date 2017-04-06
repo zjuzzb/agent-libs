@@ -7,6 +7,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -19,9 +20,10 @@ public class YamlConfigTest {
 
     @Before
     public void setUp() throws FileNotFoundException {
-        String confPath = "src/test/resources/test.yaml";
-        String defaultsConfPath = "src/test/resources/test.default.yaml";
-        this.yamlConfig = new YamlConfig(confPath, defaultsConfPath);
+        List<String> confPaths = new ArrayList<String>();
+        confPaths.add("src/test/resources/test.yaml");
+        confPaths.add("src/test/resources/test.default.yaml");
+        this.yamlConfig = new YamlConfig(confPaths);
     }
 
     @After

@@ -13,6 +13,7 @@
 #include "mesos_http.h"
 #include "mesos.h"
 #include "Poco/FileStream.h"
+#include "Poco/StreamCopier.h"
 #include <unistd.h>
 
 using namespace Poco;
@@ -39,7 +40,7 @@ void print_groups(const ::google::protobuf::RepeatedPtrField< ::draiosproto::mar
 	}
 }
 
-void print_proto(mesos& m, const std::string& fname)
+void print_proto(mesos& m, const std::string& fname = "")
 {
 	draiosproto::metrics met;
 	mesos_proto(met).get_proto(m.get_state());
@@ -80,8 +81,36 @@ mesos* init_mesos_client(string* api_server, bool verbose)
 	}
 }
 */
+
+std::string get_json(const std::string& component)
+{
+	std::ostringstream json;
+	std::string fname = "./test/";
+	try
+	{
+		FileInputStream fis(fname.append(component).append((".json")));
+		StreamCopier::copyStream(fis, json);
+	}
+	catch(FileNotFoundException& ex)
+	{
+		std::cout << "File not found: " << fname << std::endl;
+		return "";
+	}
+	return json.str();
+}
+
 int main(int argc, char** argv)
 {
+	try
+	{
+		mesos m(get_json("state"), get_json("groups"), get_json("apps"));
+		print_proto(m);
+	}
+	catch(std::exception& ex)
+	{
+		std::cout << ex.what() << std::endl;
+	}
+#if 0
 	std::string ip_addr = "52.90.231.127";
 	std::vector<std::string> marathon_uris;
 	marathon_uris.push_back("http://" + ip_addr + ":8080");
@@ -135,5 +164,6 @@ int main(int argc, char** argv)
 		sleep(3);
 	}
 */
+#endif
 	return 0;
 }

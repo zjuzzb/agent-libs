@@ -5,8 +5,18 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
+#include <Poco/Net/NetException.h>
+#include <Poco/Thread.h>
 
 #ifndef _WIN32
+
+statsd_metric::statsd_metric():
+			m_timestamp(0),
+			m_type(type_t::NONE),
+			m_full_identifier_parsed(false)
+{
+}
+
 /*
  * Parse a line and fill data structures
  * return false if line does not belong to this object
@@ -239,7 +249,7 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 }
 
 #ifndef _WIN32
-unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
+unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724
@@ -270,8 +280,21 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 						timestamp = m_metric.timestamp();
 					}
 
-					ret[m_metric.container_id()].push_back(move(m_metric));
-					++metric_count;
+					std::string filter;
+					if(ml)
+					{
+						if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
+						{
+							ret[m_metric.container_id()].push_back(move(m_metric));
+							++metric_count;
+						}
+					}
+					else // no filtering, add every metric and log explicitly
+					{
+						metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
+						ret[m_metric.container_id()].push_back(move(m_metric));
+						++metric_count;
+					}
 					m_metric = statsd_metric();
 
 					parsed = m_metric.parse_line(buffer);
@@ -292,8 +315,21 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics()
 		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
 			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
-			ret[m_metric.container_id()].push_back(move(m_metric));
-			++metric_count;
+			std::string filter;
+			if(ml)
+			{
+				if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
+				{
+					ret[m_metric.container_id()].push_back(move(m_metric));
+					++metric_count;
+				}
+			}
+			else // otherwise, add indiscriminately and log explicitly
+			{
+				metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
+				ret[m_metric.container_id()].push_back(move(m_metric));
+				++metric_count;
+			}
 			m_metric = statsd_metric();
 		}
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
@@ -350,4 +386,182 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 	// send_metric does not need final \0
 	send_metric(metric_data.data(), metric_data.size());
 }
+
+statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes, uint16_t port):
+	m_proxy(pipes),
+	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
+	m_exitcode(0),
+	m_port(port),
+	m_terminate(false)
+{
+	g_logger.add_stderr_log();
+}
+
+int statsite_forwarder::run()
+{
+	ErrorHandler::set(this);
+
+	g_logger.format(sinsp_logger::SEV_INFO, "Info Starting with pid=%d\n", getpid());
+	
+	Poco::Thread reactor_thread;
+	reactor_thread.start(m_reactor);
+
+	while(!m_terminate)
+	{
+		if(!reactor_thread.isRunning())
+		{
+			terminate(1, "unexpected reactor shutdown");
+		}
+		send_subprocess_heartbeat();
+		auto msg = m_inqueue.receive(1);
+
+		if(msg.empty())
+		{
+			continue;
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Received msg=%s", msg.c_str());
+
+		Json::Reader json_reader;
+		Json::Value root;
+		if(!json_reader.parse(msg, root))
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, "Error parsing msg=%s", msg.c_str());
+			continue;
+		}
+		
+		unordered_set<string> containerids;
+		for(const auto& container : root["containers"])
+		{
+			auto containerid = container["id"].asString();
+			auto container_pid = container["pid"].asInt64();
+			containerids.emplace(containerid);
+			if(m_sockets.find(containerid) == m_sockets.end())
+			{
+				try
+				{
+					nsenter enter(container_pid, "net");
+					g_logger.format(sinsp_logger::SEV_DEBUG, "Starting statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+					m_sockets[containerid] = make_unique<statsd_server>(containerid, m_proxy, m_reactor, m_port);
+				}
+				catch (const sinsp_exception& ex)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "Warning, cannot init statsd server on container=%s pid=%d", containerid.c_str(), container_pid);
+				}
+			}
+		}
+
+		auto it = m_sockets.begin();
+		while(it != m_sockets.end())
+		{
+			if(containerids.find(it->first) == containerids.end())
+			{
+				// this container does not exists anymore, turning off statsd
+				// server so we can release resources
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Stopping statsd server on container=%s", it->first.c_str());
+				it = m_sockets.erase(it);
+			}
+			else
+			{
+				// container still exists, keep iterating
+				++it;
+			}
+		}
+	}
+	reactor_thread.join();
+	return m_exitcode;
+}
+
+void statsite_forwarder::exception(const Poco::Exception& ex)
+{
+	terminate(1, ex.displayText());
+}
+
+void statsite_forwarder::exception(const std::exception& ex)
+{
+	terminate(1, ex.what());
+}
+
+void statsite_forwarder::exception()
+{
+	terminate(1, "Unknown exception");
+}
+
+void statsite_forwarder::terminate(int code, const string& reason)
+{
+	g_logger.format(sinsp_logger::SEV_ERROR, "Fatal error occurred: %s, terminating", reason.c_str());
+	m_reactor.stop();
+	m_terminate = true;
+	m_exitcode = code;
+}
+
+statsd_server::statsd_server(const string &containerid, statsite_proxy &proxy, Poco::Net::SocketReactor& reactor, uint16_t port):
+	m_containerid(containerid),
+	m_statsite(proxy),
+	m_reactor(reactor),
+	m_read_obs(*this, &statsd_server::on_read),
+	m_error_obs(*this, &statsd_server::on_error)
+{
+	try
+	{
+		m_ipv4_socket = make_socket(Poco::Net::SocketAddress("127.0.0.1", port));
+	}
+	catch (const Poco::Net::NetException& ex)
+	{
+		auto reason = ex.displayText();
+		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv4 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
+	}
+	try
+	{
+		m_ipv6_socket = make_socket(Poco::Net::SocketAddress("::1", port));
+	}
+	catch (const Poco::Net::NetException& ex)
+	{
+		auto reason = ex.displayText();
+		g_logger.format(sinsp_logger::SEV_WARNING, "statsite_forwarder, Warning, Unable to bind ipv6 on containerid=%s reason=%s", containerid.c_str(), reason.c_str());
+	}
+	m_read_buffer = new char[MAX_READ_SIZE];
+}
+
+statsd_server::~statsd_server()
+{
+	delete[] m_read_buffer;
+	if(m_ipv4_socket)
+	{
+		m_reactor.removeEventHandler(*m_ipv4_socket, m_read_obs);
+		m_reactor.removeEventHandler(*m_ipv4_socket, m_error_obs);
+	}
+	if(m_ipv6_socket)
+	{
+		m_reactor.removeEventHandler(*m_ipv6_socket, m_read_obs);
+		m_reactor.removeEventHandler(*m_ipv6_socket, m_error_obs);
+	}
+}
+
+unique_ptr<Poco::Net::DatagramSocket> statsd_server::make_socket(const Poco::Net::SocketAddress& address)
+{
+	unique_ptr<Poco::Net::DatagramSocket> socket = make_unique<Poco::Net::DatagramSocket>(address);
+	socket->setBlocking(false);
+	m_reactor.addEventHandler(*socket, m_read_obs);
+	m_reactor.addEventHandler(*socket, m_error_obs);
+	return socket;
+}
+
+void statsd_server::on_read(Poco::Net::ReadableNotification* notification)
+{
+	// Either ipv4 or ipv6 datagram socket will come here
+	Poco::Net::DatagramSocket datagram_socket(notification->socket());
+	auto len = datagram_socket.receiveBytes(m_read_buffer, MAX_READ_SIZE);
+	if( len > 0)
+	{
+		m_statsite.send_container_metric(m_containerid, m_read_buffer, len);
+		m_statsite.send_metric(m_read_buffer, len);
+	}
+}
+
+void statsd_server::on_error(Poco::Net::ErrorNotification* notification)
+{
+	g_logger.format(sinsp_logger::SEV_ERROR, "statsite_forwarder, Unexpected error on statsd server");
+}
+
 #endif // _WIN32
