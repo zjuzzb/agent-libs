@@ -9293,10 +9293,10 @@ class metrics : public ::google::protobuf::Message {
   inline ::draiosproto::falco_baseline* release_falcobl();
   inline void set_allocated_falcobl(::draiosproto::falco_baseline* falcobl);
 
-  // repeated uint32 config_percentiles = 29;
+  // repeated uint32 config_percentiles = 30;
   inline int config_percentiles_size() const;
   inline void clear_config_percentiles();
-  static const int kConfigPercentilesFieldNumber = 29;
+  static const int kConfigPercentilesFieldNumber = 30;
   inline ::google::protobuf::uint32 config_percentiles(int index) const;
   inline void set_config_percentiles(int index, ::google::protobuf::uint32 value);
   inline void add_config_percentiles(::google::protobuf::uint32 value);
@@ -24177,7 +24177,7 @@ inline void metrics::set_allocated_falcobl(::draiosproto::falco_baseline* falcob
   }
 }
 
-// repeated uint32 config_percentiles = 29;
+// repeated uint32 config_percentiles = 30;
 inline int metrics::config_percentiles_size() const {
   return config_percentiles_.size();
 }

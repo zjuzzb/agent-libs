@@ -2614,7 +2614,7 @@ void protobuf_AddDesc_draios_2eproto() {
     "raiosproto.mesos_state\022(\n\006events\030\032 \003(\0132\030"
     ".draiosproto.agent_event\022,\n\007falcobl\030\033 \001("
     "\0132\033.draiosproto.falco_baseline\022\032\n\022config"
-    "_percentiles\030\035 \003(\r\"\307\001\n\022dump_request_star"
+    "_percentiles\030\036 \003(\r\"\307\001\n\022dump_request_star"
     "t\022\024\n\014timestamp_ns\030\001 \002(\004\022\022\n\nmachine_id\030\002 "
     "\002(\t\022\023\n\013customer_id\030\003 \001(\t\022\023\n\013duration_ns\030"
     "\004 \001(\004\022\017\n\007filters\030\005 \001(\t\022\020\n\010max_size\030\007 \001(\004"
@@ -29515,18 +29515,18 @@ bool metrics::MergePartialFromCodedStream(
           goto handle_uninterpreted;
         }
         if (input->ExpectTag(226)) goto parse_commands;
-        if (input->ExpectTag(232)) goto parse_config_percentiles;
+        if (input->ExpectTag(240)) goto parse_config_percentiles;
         break;
       }
 
-      // repeated uint32 config_percentiles = 29;
-      case 29: {
+      // repeated uint32 config_percentiles = 30;
+      case 30: {
         if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
             ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
          parse_config_percentiles:
           DO_((::google::protobuf::internal::WireFormatLite::ReadRepeatedPrimitive<
                    ::google::protobuf::uint32, ::google::protobuf::internal::WireFormatLite::TYPE_UINT32>(
-                 2, 232, input, this->mutable_config_percentiles())));
+                 2, 240, input, this->mutable_config_percentiles())));
         } else if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag)
                    == ::google::protobuf::internal::WireFormatLite::
                       WIRETYPE_LENGTH_DELIMITED) {
@@ -29536,7 +29536,7 @@ bool metrics::MergePartialFromCodedStream(
         } else {
           goto handle_uninterpreted;
         }
-        if (input->ExpectTag(232)) goto parse_config_percentiles;
+        if (input->ExpectTag(240)) goto parse_config_percentiles;
         if (input->ExpectAtEnd()) return true;
         break;
       }
@@ -29715,10 +29715,10 @@ void metrics::SerializeWithCachedSizes(
       28, this->commands(i), output);
   }
 
-  // repeated uint32 config_percentiles = 29;
+  // repeated uint32 config_percentiles = 30;
   for (int i = 0; i < this->config_percentiles_size(); i++) {
     ::google::protobuf::internal::WireFormatLite::WriteUInt32(
-      29, this->config_percentiles(i), output);
+      30, this->config_percentiles(i), output);
   }
 
   if (!unknown_fields().empty()) {
@@ -29905,10 +29905,10 @@ void metrics::SerializeWithCachedSizes(
         28, this->commands(i), target);
   }
 
-  // repeated uint32 config_percentiles = 29;
+  // repeated uint32 config_percentiles = 30;
   for (int i = 0; i < this->config_percentiles_size(); i++) {
     target = ::google::protobuf::internal::WireFormatLite::
-      WriteUInt32ToArray(29, this->config_percentiles(i), target);
+      WriteUInt32ToArray(30, this->config_percentiles(i), target);
   }
 
   if (!unknown_fields().empty()) {
@@ -30094,7 +30094,7 @@ int metrics::ByteSize() const {
         this->events(i));
   }
 
-  // repeated uint32 config_percentiles = 29;
+  // repeated uint32 config_percentiles = 30;
   {
     int data_size = 0;
     for (int i = 0; i < this->config_percentiles_size(); i++) {
