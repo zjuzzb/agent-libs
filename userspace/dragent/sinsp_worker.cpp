@@ -4,21 +4,23 @@
 #include "error_handler.h"
 #include "utils.h"
 #include "memdumper.h"
+#include "Poco/DateTimeFormatter.h"
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
-	connection_manager* connection_manager, protocol_queue* queue):
+			   protocol_queue* queue):
 	m_configuration(configuration),
 	m_queue(queue),
 	m_inspector(NULL),
 	m_analyzer(NULL),
-	m_sinsp_handler(configuration, connection_manager, queue),
+	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
 	m_driver_stopped_dropping_ns(0),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
+	m_max_chunk_size(default_max_chunk_size),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration)
 {
@@ -347,8 +349,8 @@ void sinsp_worker::run()
 	int32_t res;
 	sinsp_evt* ev;
 	uint64_t ts;
-	uint64_t last_job_check_ns = 0;
 
+	m_last_job_check_ns = 0;
 	m_pthread_id = pthread_self();
 
 	g_log->information("sinsp_worker: Starting");
@@ -393,9 +395,9 @@ void sinsp_worker::run()
 		ts = ev->get_ts();
 		m_last_loop_ns = ts;
 
-		if(ts - last_job_check_ns > 1000000000)
+		if(ts - m_last_job_check_ns > 1000000000)
 		{
-			last_job_check_ns = ts;
+			m_last_job_check_ns = ts;
 
 			process_job_requests(ts);
 
@@ -618,7 +620,7 @@ void sinsp_worker::stop_memdump_job(dump_job_state* job)
 		ASSERT(false);
 		return;
 	}
-	
+
 	job->m_memdumper_job->stop();
 	memdumper->remove_job(job->m_memdumper_job);
 }
@@ -761,12 +763,24 @@ void sinsp_worker::process_job_requests(uint64_t ts)
 	SharedPtr<dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
+		g_log->debug("Dequeued dump request token=" + request->m_token);
 		switch(request->m_request_type)
 		{
 		case dump_job_request::JOB_START:
 			if(request->m_duration_ns == 0 && request->m_past_duration_ns == 0)
 			{
 				send_error(request->m_token, "either duration or past_duration must be nonzero");
+				return;
+			}
+
+			// As a resource exaustion prevention
+			// mechanism, only allow "max sysdig captures"
+			// to be outstanding at one time.
+			if((m_running_standard_dump_jobs.size() + m_running_memdump_jobs.size()) >= m_configuration->m_max_sysdig_captures)
+			{
+				send_error(request->m_token, "maximum number of outstanding captures (" +
+					   to_string(m_configuration->m_max_sysdig_captures) +
+					   ") reached");
 				return;
 			}
 
@@ -910,8 +924,6 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 		return;
 	}
 
-	g_log->information("starting memory dumper job, file: " + job_state->m_file);
-
 	// We inject a notification to make it easier to identify the starting point
 	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
 
@@ -941,6 +953,10 @@ void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t t
 	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
 	job_state->m_send_file = request.m_send_file;
 	job_state->m_start_ns = ts;
+
+	g_log->debug("starting memory dumper job, file: " + job_state->m_file
+		     + " start time " + Poco::DateTimeFormatter::format(Poco::Timestamp((job_state->m_start_ns - job_state->m_past_duration_ns) / 1000), "%Y-%m-%d %H:%M:%S.%i")
+		     + " end time " + Poco::DateTimeFormatter::format(Poco::Timestamp((job_state->m_start_ns + job_state->m_duration_ns) /1000), "%Y-%m-%d %H:%M:%S.%i"));
 
 	m_running_memdump_jobs.push_back(job_state);
 }

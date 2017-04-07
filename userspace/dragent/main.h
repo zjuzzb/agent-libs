@@ -77,7 +77,7 @@
 #include "Poco/SHA1Engine.h"
 
 #include <sinsp.h>
-#include "config.h"
+#include "agent-config.h"
 
 using Poco::Net::SocketReactor;
 using Poco::Net::SocketAcceptor;
