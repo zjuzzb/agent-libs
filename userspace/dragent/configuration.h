@@ -328,7 +328,7 @@ private:
 	{
 		m_errors.emplace_back(err);
 	}
-	
+
 	// no-op needed to compile and terminate recursion
 	template <typename T>
 	static void get_sequence(T&, const YAML::Node&)
@@ -502,6 +502,7 @@ public:
 	bool m_agent_installed;
 	bool m_ssh_enabled;
 	bool m_sysdig_capture_enabled;
+	uint32_t m_max_sysdig_captures;
 	bool m_statsd_enabled;
 	unsigned m_statsd_limit;
 	uint16_t m_statsd_port;

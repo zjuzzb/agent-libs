@@ -6,9 +6,10 @@
 
 using namespace std;
 
-std::string coclient::m_domain_sock = string("/opt/draios/run/cointerface.sock");
+std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
 
 coclient::coclient()
+	: m_domain_sock(default_domain_sock)
 {
 	m_print.SetSingleLineMode(true);
 }
@@ -45,6 +46,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	// for a given request message type.
 	switch(msg_type) {
 		sdc_internal::ping *ping;
+		sdc_internal::docker_command *docker_command;
 
 	case sdc_internal::PING:
                 // Start the rpc call and have the pong reader read the response when
@@ -58,6 +60,22 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		// that is the address of the call struct.
 		call->response_msg = make_unique<sdc_internal::pong>();
 		call->pong_reader->Finish(static_cast<sdc_internal::pong *>(call->response_msg.get()), &call->status, (void*)call);
+
+		break;
+
+	case sdc_internal::DOCKER_COMMAND:
+                // Start the rpc call and have the docker_cmd_result reader read the response when
+                // it's ready.
+		docker_command = static_cast<sdc_internal::docker_command *>(request_msg);
+		call->docker_cmd_result_reader = m_stub->AsyncPerformDockerCommand(&call->ctx, *docker_command, &m_cq);
+
+		// Tell the reader to write the response into the
+		// response message, update status with whether or not
+		// the rpc could be performed, and tag the rpc with a
+		// tag that is the address of the call struct.
+		call->response_msg = make_unique<sdc_internal::docker_command_result>();
+		call->docker_cmd_result_reader->Finish(static_cast<sdc_internal::docker_command_result *>(call->response_msg.get()),
+						       &call->status, (void*)call);
 
 		break;
 
@@ -109,9 +127,14 @@ void coclient::next()
 	delete call;
 }
 
+void coclient::set_domain_sock(std::string &domain_sock)
+{
+	m_domain_sock = domain_sock;
+}
+
 void coclient::cleanup()
 {
-	Poco::File f(m_domain_sock);
+	Poco::File f(default_domain_sock);
 	if(f.exists())
 	{
 		f.remove();
@@ -125,4 +148,15 @@ void coclient::ping(int64_t token, response_cb_t response_cb)
 	ping.set_token(token);
 
 	prepare(&ping, sdc_internal::PING, response_cb);
+}
+
+void coclient::perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
+				  const string &container_id, response_cb_t response_cb)
+{
+	sdc_internal::docker_command docker_cmd;
+
+	docker_cmd.set_cmd(cmd);
+	docker_cmd.set_container_id(container_id);
+
+	prepare(&docker_cmd, sdc_internal::DOCKER_COMMAND, response_cb);
 }
