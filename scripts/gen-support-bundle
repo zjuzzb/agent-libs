@@ -175,6 +175,34 @@ function tarball()
 }
 
 
+function uploadS3()
+{
+    progress "Uploading archive to Amazon S3"
+    response=$(curl -s -S --request PUT --upload-file $BZIP_ARCHIVE $S3_URL)
+    if [[ -z $response ]]; then
+        progress "done"
+    else
+        progress "failed"
+    fi
+}
+
+
+
+function helpMessage()
+{
+    echo "Usage: gen-support-bundle <presigned url>"
+    exit 0
+}
+
+
+# script start #
+
+if [[ "$#" -ne 1 ]]; then
+    helpMessage
+fi
+S3_URL=$1
+
+
 progress "Reading current date"
 DATE=`date +%Y%m%d%H%m`
 if [ $? -ne 0 ]; then
@@ -198,4 +226,5 @@ TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
 verify_files
 docker_info
 tarball
-leave "Log bundle \`$BZIP_ARCHIVE\` created." 0
+uploadS3
+leave "" 0
