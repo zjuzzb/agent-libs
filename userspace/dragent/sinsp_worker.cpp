@@ -866,32 +866,38 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
 	g_log->information("Starting dump job in " + job_state->m_file +
 		", filter '" + request.m_filter + "'");
-	job_state->m_dumper->open(job_state->m_file, true);
-
-	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
-	if(job_state->m_fp == NULL)
+	try
 	{
-		send_error(request.m_token, strerror(errno));
-		return;
+		job_state->m_dumper->open(job_state->m_file, true);
+		job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
+		if(job_state->m_fp == NULL)
+		{
+			send_error(request.m_token, strerror(errno));
+			return;
+		}
+
+		job_state->m_duration_ns = request.m_duration_ns;
+		job_state->m_max_size = request.m_max_size;
+		job_state->m_past_duration_ns = 0;
+		job_state->m_delete_file_when_done = request.m_delete_file_when_done;
+		job_state->m_send_file = request.m_send_file;
+		job_state->m_start_ns = ts;
+		job_state->m_memdumper_job = NULL;
+
+		if(m_running_standard_dump_jobs.empty())
+		{
+			g_log->information("Disabling dropping mode");
+			m_analyzer->set_autodrop_enabled(false);
+			m_analyzer->stop_dropping_mode();
+			m_driver_stopped_dropping_ns = ts;
+		}
+
+		m_running_standard_dump_jobs.push_back(job_state);
 	}
-
-	job_state->m_duration_ns = request.m_duration_ns;
-	job_state->m_max_size = request.m_max_size;
-	job_state->m_past_duration_ns = 0;
-	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
-	job_state->m_send_file = request.m_send_file;
-	job_state->m_start_ns = ts;
-	job_state->m_memdumper_job = NULL;
-
-	if(m_running_standard_dump_jobs.empty())
+	catch(std::exception& ex)
 	{
-		g_log->information("Disabling dropping mode");
-		m_analyzer->set_autodrop_enabled(false);
-		m_analyzer->stop_dropping_mode();
-		m_driver_stopped_dropping_ns = ts;
+		send_error(request.m_token, ex.what());
 	}
-
-	m_running_standard_dump_jobs.push_back(job_state);
 }
 
 void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t ts)
