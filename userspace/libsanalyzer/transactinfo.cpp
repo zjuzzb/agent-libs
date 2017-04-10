@@ -151,7 +151,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->m_dynstate->m_protostate.update(tr, delta, true,
+				ptinfo->m_ainfo->m_protostate.update(tr, delta, true,
 					m_inspector->m_analyzer->m_configuration->get_protocols_truncation_size());
 			}
 		}
@@ -192,7 +192,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 
 			if(tr->m_protoparser != NULL)
 			{
-				ptinfo->m_ainfo->m_dynstate->m_protostate.update(tr, delta, false,
+				ptinfo->m_ainfo->m_protostate.update(tr, delta, false,
 					m_inspector->m_analyzer->m_configuration->get_protocols_truncation_size());
 			}
 		}
@@ -265,11 +265,18 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 		{
 			it->second.push_back(tfi);
 		}
-
-		
-		 Mark the transaction as done
-#endif		
-
+		if(g_logger.get_severity() > sinsp_logger::SEV_TRACE)
+		{
+			for(auto entry : m_table)
+			{
+				for(auto trans : entry.second)
+				{
+					g_logger.log("transaction time=" + std::to_string(trans.m_trinfo.m_end_time - trans.m_trinfo.m_start_time), sinsp_logger::SEV_TRACE);
+				}
+			}
+		}
+#endif
+		// Mark the transaction as done
 		tr->m_prev_prev_start_time = 0;
 	}
 }

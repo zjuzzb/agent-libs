@@ -13,13 +13,55 @@ using namespace google::protobuf::io;
 #undef max
 #include "draios.pb.h"
 #include "analyzer_thread.h"
+#include "percentile.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_time::sinsp_counter_time()
+sinsp_counter_time::sinsp_counter_time(const std::set<double>* percentiles):
+	m_percentile((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
 {
 	clear();
+}
+
+sinsp_counter_time::~sinsp_counter_time()
+{
+}
+
+sinsp_counter_time::sinsp_counter_time(const sinsp_counter_time& other):
+	m_count(other.m_count),
+	m_time_ns(other.m_time_ns),
+	m_percentile(other.m_percentile ? new percentile(*other.m_percentile) : nullptr)
+{
+}
+
+sinsp_counter_time& sinsp_counter_time::operator=(sinsp_counter_time other)
+{
+	if(this != &other)
+	{
+		m_count = other.m_count;
+		m_time_ns = other.m_time_ns;
+		if(other.m_percentile)
+		{
+			m_percentile = std::move(other.m_percentile);
+		}
+	}
+	return *this;
+}
+
+void sinsp_counter_time::set_percentiles(const std::set<double>& percentiles)
+{
+	if(percentiles.size())
+	{
+		if(!m_percentile)
+		{
+			m_percentile.reset(new percentile(percentiles));
+		}
+	}
+	else
+	{
+		m_percentile.reset();
+	}
 }
 
 void sinsp_counter_time::add(uint32_t cnt_delta, uint64_t time_delta)
@@ -28,30 +70,57 @@ void sinsp_counter_time::add(uint32_t cnt_delta, uint64_t time_delta)
 
 	m_count += cnt_delta;
 	m_time_ns += time_delta;
+	if(m_percentile)
+	{
+		m_percentile->add(time_delta);
+	}
 }
 
 void sinsp_counter_time::add(sinsp_counter_time* other)
 {
 	m_count += other->m_count;
 	m_time_ns += other->m_time_ns;
+	if(m_percentile && other->m_percentile)
+	{
+		m_percentile->insert(other->m_percentile->get_samples());
+	}
 }
 
 void sinsp_counter_time::add(sinsp_counter_time_bytes* other)
 {
 	m_count += (other->m_count_in + other->m_count_out + other->m_count_other);
 	m_time_ns += (other->m_time_ns_in + other->m_time_ns_out + other->m_time_ns_other);
+	/*if(m_percentile && other->m_percentile)
+	{
+		m_percentile->insert(other->m_percentile->get_samples());
+	}*/
 }
 
 void sinsp_counter_time::add(sinsp_counter_time_bidirectional* other)
 {
 	m_count += (other->m_count_in + other->m_count_out + other->m_count_other);
 	m_time_ns += (other->m_time_ns_in + other->m_time_ns_out + other->m_time_ns_other);
+	if(m_percentile)
+	{
+		if(other->m_percentile_in)
+		{
+			m_percentile->insert(other->m_percentile_in->get_samples());
+		}
+		if(other->m_percentile_out)
+		{
+			m_percentile->insert(other->m_percentile_out->get_samples());
+		}
+	}
 }
 
 void sinsp_counter_time::clear()
 {
 	m_count = 0;
 	m_time_ns = 0;
+	if(m_percentile)
+	{
+		m_percentile->reset();
+	}
 }
 
 void sinsp_counter_time::subtract(uint32_t cnt_delta, uint64_t time_delta)
@@ -87,14 +156,83 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 	}
 
 	protobuf_msg->set_count(m_count * sampling_ratio);
+
+	// percentiles
+	typedef draiosproto::counter_time CTB;
+	typedef draiosproto::counter_percentile CP;
+	if(m_percentile && m_percentile->sample_count())
+	{
+		m_percentile->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile);
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time_bidirectional implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional()
+
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const std::set<double>* percentiles):
+	m_percentile_in((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr),
+	m_percentile_out((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
 {
 	clear();
+}
+
+sinsp_counter_time_bidirectional::~sinsp_counter_time_bidirectional()
+{
+}
+
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const sinsp_counter_time_bidirectional& other):
+	m_count_in(other.m_count_in),
+	m_count_out(other.m_count_out),
+	m_count_other(other.m_count_other),
+	m_time_ns_in(other.m_time_ns_in),
+	m_time_ns_out(other.m_time_ns_out),
+	m_time_ns_other(other.m_time_ns_other),
+	m_percentile_in(other.m_percentile_in ? new percentile(*other.m_percentile_in) : nullptr),
+	m_percentile_out(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr)
+{
+}
+
+sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(sinsp_counter_time_bidirectional other)
+{
+	if(this != &other)
+	{
+		m_count_in = other.m_count_in;
+		m_count_out = other.m_count_out;
+		m_count_other = other.m_count_other;
+		m_time_ns_in = other.m_time_ns_in;
+		m_time_ns_out = other.m_time_ns_out;
+		m_time_ns_other = other.m_time_ns_other;
+		if(other.m_percentile_in)
+		{
+			m_percentile_in = std::move(other.m_percentile_in);
+		}
+		if(other.m_percentile_out)
+		{
+			m_percentile_out = std::move(other.m_percentile_out);
+		}
+	}
+	return *this;
+}
+
+void sinsp_counter_time_bidirectional::set_percentiles(const std::set<double>& percentiles)
+{
+	if(percentiles.size())
+	{
+		if(!m_percentile_in)
+		{
+			m_percentile_in.reset(new percentile(percentiles));
+		}
+		if(!m_percentile_out)
+		{
+			m_percentile_out.reset(new percentile(percentiles));
+		}
+	}
+	else
+	{
+		m_percentile_in.reset();
+		m_percentile_out.reset();
+	}
 }
 
 void sinsp_counter_time_bidirectional::add_in(uint32_t cnt_delta, uint64_t time_delta)
@@ -103,6 +241,10 @@ void sinsp_counter_time_bidirectional::add_in(uint32_t cnt_delta, uint64_t time_
 
 	m_count_in += cnt_delta;
 	m_time_ns_in += time_delta;
+	if(m_percentile_in)
+	{
+		m_percentile_in->add(time_delta);
+	}
 }
 
 void sinsp_counter_time_bidirectional::add_out(uint32_t cnt_delta, uint64_t time_delta)
@@ -111,6 +253,10 @@ void sinsp_counter_time_bidirectional::add_out(uint32_t cnt_delta, uint64_t time
 
 	m_count_out += cnt_delta;
 	m_time_ns_out += time_delta;
+	if(m_percentile_out)
+	{
+		m_percentile_out->add(time_delta);
+	}
 }
 
 void sinsp_counter_time_bidirectional::add_other(uint32_t cnt_delta, uint64_t time_delta)
@@ -123,12 +269,21 @@ void sinsp_counter_time_bidirectional::add_other(uint32_t cnt_delta, uint64_t ti
 
 void sinsp_counter_time_bidirectional::add(sinsp_counter_time_bidirectional* other)
 {
+	ASSERT(other);
 	m_count_in += other->m_count_in;
 	m_count_out += other->m_count_out;
 	m_count_other += other->m_count_other;
 	m_time_ns_in += other->m_time_ns_in;
 	m_time_ns_out += other->m_time_ns_out;
 	m_time_ns_other += other->m_time_ns_other;
+	if(m_percentile_in && other->m_percentile_in)
+	{
+		m_percentile_in->insert(other->m_percentile_in->get_samples());
+	}
+	if(m_percentile_out && other->m_percentile_out)
+	{
+		m_percentile_out->insert(other->m_percentile_out->get_samples());
+	}
 }
 
 void sinsp_counter_time_bidirectional::clear()
@@ -139,6 +294,14 @@ void sinsp_counter_time_bidirectional::clear()
 	m_time_ns_in = 0;
 	m_time_ns_out = 0;
 	m_time_ns_other = 0;
+	if(m_percentile_in)
+	{
+		m_percentile_in->reset();
+	}
+	if(m_percentile_out)
+	{
+		m_percentile_out->reset();
+	}
 }
 
 void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const
@@ -148,6 +311,18 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	protobuf_msg->set_count_in(m_count_in * sampling_ratio);
 	protobuf_msg->set_count_out(m_count_out * sampling_ratio);
 	// NOTE: other is not included because we don't need it in the sample, just for internal use
+
+	// percentiles
+	typedef draiosproto::counter_time_bidirectional CTB;
+	typedef draiosproto::counter_percentile CP;
+	if(m_percentile_in && m_percentile_in->sample_count())
+	{
+		m_percentile_in->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
+	}
+	if(m_percentile_out && m_percentile_out->sample_count())
+	{
+		m_percentile_out->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
+	}
 }
 
 uint32_t sinsp_counter_time_bidirectional::get_tot_count() const
@@ -206,9 +381,55 @@ void sinsp_counter_bytes::to_protobuf(draiosproto::counter_bytes* protobuf_msg, 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time_bytes implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_time_bytes::sinsp_counter_time_bytes()
+sinsp_counter_time_bytes::sinsp_counter_time_bytes(const std::set<double>* percentiles):
+	m_percentile_in((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr),
+	m_percentile_out((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
 {
 	clear();
+}
+
+sinsp_counter_time_bytes::~sinsp_counter_time_bytes()
+{
+}
+
+sinsp_counter_time_bytes::sinsp_counter_time_bytes(const sinsp_counter_time_bytes& other):
+	m_count_in(other.m_count_in),
+	m_count_out(other.m_count_out),
+	m_count_other(other.m_count_other),
+	m_time_ns_in(other.m_time_ns_in),
+	m_time_ns_out(other.m_time_ns_out),
+	m_time_ns_other(other.m_time_ns_other),
+	m_bytes_in(other.m_bytes_in),
+	m_bytes_out(other.m_bytes_out),
+	m_bytes_other(other.m_bytes_other),
+	m_percentile_in(other.m_percentile_in ? new percentile(*other.m_percentile_in) : nullptr),
+	m_percentile_out(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr)
+{
+}
+
+sinsp_counter_time_bytes& sinsp_counter_time_bytes::operator=(sinsp_counter_time_bytes other)
+{
+	if(this != &other)
+	{
+		m_count_in = other.m_count_in;
+		m_count_out = other.m_count_out;
+		m_count_other = other.m_count_other;
+		m_time_ns_in = other.m_time_ns_in;
+		m_time_ns_out = other.m_time_ns_out;
+		m_time_ns_other = other.m_time_ns_other;
+		m_bytes_in = other.m_bytes_in;
+		m_bytes_out = other.m_bytes_out;
+		m_bytes_other = other.m_count_other;
+		if(other.m_percentile_in)
+		{
+			m_percentile_in = std::move(other.m_percentile_in);
+		}
+		if(other.m_percentile_out)
+		{
+			m_percentile_out = std::move(other.m_percentile_out);
+		}
+	}
+	return *this;
 }
 
 void sinsp_counter_time_bytes::add_in(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
@@ -216,6 +437,10 @@ void sinsp_counter_time_bytes::add_in(uint32_t cnt_delta, uint64_t time_delta, u
 	m_count_in += cnt_delta;
 	m_time_ns_in += time_delta;
 	m_bytes_in += bytes_delta;
+	if(m_percentile_in)
+	{
+		m_percentile_in->add(time_delta);
+	}
 }
 
 void sinsp_counter_time_bytes::add_out(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
@@ -223,6 +448,10 @@ void sinsp_counter_time_bytes::add_out(uint32_t cnt_delta, uint64_t time_delta, 
 	m_count_out += cnt_delta;
 	m_time_ns_out += time_delta;
 	m_bytes_out += bytes_delta;
+	if(m_percentile_out)
+	{
+		m_percentile_out->add(time_delta);
+	}
 }
 
 void sinsp_counter_time_bytes::add_other(uint32_t cnt_delta, uint64_t time_delta, uint32_t bytes_delta)
@@ -243,6 +472,14 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 	m_bytes_in += other->m_bytes_in;
 	m_bytes_out += other->m_bytes_out;
 	m_bytes_other += other->m_bytes_other;
+	if(m_percentile_in && other->m_percentile_in)
+	{
+		m_percentile_in->insert(other->m_percentile_in->get_samples());
+	}
+	if(m_percentile_out && other->m_percentile_out)
+	{
+		m_percentile_out->insert(other->m_percentile_out->get_samples());
+	}
 }
 
 void sinsp_counter_time_bytes::add(sinsp_counter_time_bidirectional* other, bool time_only)
@@ -257,6 +494,14 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bidirectional* other, bool
 	m_time_ns_in += other->m_time_ns_in;
 	m_time_ns_out += other->m_time_ns_out;
 	m_time_ns_other += other->m_time_ns_other;
+	if(m_percentile_in && other->m_percentile_in)
+	{
+		m_percentile_in->insert(other->m_percentile_in->get_samples());
+	}
+	if(m_percentile_out && other->m_percentile_out)
+	{
+		m_percentile_out->insert(other->m_percentile_out->get_samples());
+	}
 }
 
 void sinsp_counter_time_bytes::add(sinsp_counter_time* other)
@@ -276,6 +521,34 @@ void sinsp_counter_time_bytes::clear()
 	m_bytes_in = 0;
 	m_bytes_out = 0;
 	m_bytes_other = 0;
+	if(m_percentile_in)
+	{
+		m_percentile_in->reset();
+	}
+	if(m_percentile_out)
+	{
+		m_percentile_out->reset();
+	}
+}
+
+void sinsp_counter_time_bytes::set_percentiles(const std::set<double>& percentiles)
+{
+	if(percentiles.size())
+	{
+		if(!m_percentile_in)
+		{
+			m_percentile_in.reset(new percentile(percentiles));
+		}
+		if(!m_percentile_out)
+		{
+			m_percentile_out.reset(new percentile(percentiles));
+		}
+	}
+	else
+	{
+		m_percentile_in.reset();
+		m_percentile_out.reset();
+	}
 }
 
 void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
@@ -309,6 +582,18 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	protobuf_msg->set_bytes_in(m_bytes_in * sampling_ratio);
 	protobuf_msg->set_bytes_out(m_bytes_out * sampling_ratio);
 	protobuf_msg->set_bytes_other(m_bytes_other * sampling_ratio);
+
+	// percentiles
+	typedef draiosproto::counter_time_bytes CTB;
+	typedef draiosproto::counter_percentile CP;
+	if(m_percentile_in && m_percentile_in->sample_count())
+	{
+		m_percentile_in->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
+	}
+	if(m_percentile_out && m_percentile_out->sample_count())
+	{
+		m_percentile_out->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
+	}
 }
 
 uint64_t sinsp_counter_time_bytes::get_tot_bytes() const
@@ -422,6 +707,10 @@ void sinsp_counters::calculate_totals()
 	m_tot_io_net.clear();
 	m_tot_io_net.add(&m_net);
 	sinsp_counter_time_bytes t_io_net;
+	if(m_percentiles.size())
+	{
+		t_io_net.set_percentiles(m_percentiles);
+	}
 	t_io_net.add(&m_io_net);
 	t_io_net.m_time_ns_in = 0;
 	m_tot_io_net.add(&t_io_net);
@@ -436,6 +725,15 @@ void sinsp_counters::calculate_totals()
 	m_tot_relevant.add(&m_tot_io_file);
 	m_tot_relevant.add(&m_tot_io_net);
 	m_tot_relevant.add(&m_processing);
+}
+
+void sinsp_counters::set_percentiles(const std::set<double>& percentiles)
+{
+	m_io_file.set_percentiles(percentiles);
+	m_io_net.set_percentiles(percentiles);
+	m_tot_io_file.set_percentiles(percentiles);
+	m_tot_io_net.set_percentiles(percentiles);
+	m_percentiles = percentiles;
 }
 
 void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uint32_t sampling_ratio)
@@ -563,26 +861,36 @@ double sinsp_counters::get_other_percentage()
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transaction_counters implementation
 ///////////////////////////////////////////////////////////////////////////////
+sinsp_transaction_counters::sinsp_transaction_counters(const std::set<double>* percentiles): m_counter(percentiles)
+{
+}
+
 void sinsp_transaction_counters::clear()
 {
 	m_counter.clear();
-	m_min_counter.clear();
+	//m_min_counter.clear();
 	m_max_counter.clear();
 }
 
+void sinsp_transaction_counters::set_percentiles(const std::set<double>& percentiles)
+{
+	m_counter.set_percentiles(percentiles);
+	m_has_percentiles = (percentiles.size() != 0);
+}
+
 void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, 
-		draiosproto::counter_time_bidirectional* min_protobuf_msg,
+		//draiosproto::counter_time_bidirectional* min_protobuf_msg,
 		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
 		uint32_t sampling_ratio) const
 {
 	m_counter.to_protobuf(protobuf_msg, sampling_ratio);
-	m_min_counter.to_protobuf(min_protobuf_msg, 1);
+	//m_min_counter.to_protobuf(min_protobuf_msg, 1);
 	m_max_counter.to_protobuf(max_protobuf_msg, 1);
 }
 
 void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 {
-	if(m_min_counter.m_count_in == 0 || 
+	/*if(m_min_counter.m_count_in == 0 || 
 		(other->m_min_counter.m_count_in != 0 &&
 		other->m_min_counter.m_time_ns_in < m_min_counter.m_time_ns_in))
 	{
@@ -596,11 +904,11 @@ void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 	{
 		m_min_counter.m_count_out = other->m_min_counter.m_count_out;
 		m_min_counter.m_time_ns_out = other->m_min_counter.m_time_ns_out;
-	}
+	}*/
 
 	if(m_max_counter.m_count_in == 0 || 
 		(other->m_max_counter.m_count_in != 0 &&
-		other->m_max_counter.m_count_in > m_max_counter.m_time_ns_in))
+		other->m_max_counter.m_time_ns_in > m_max_counter.m_time_ns_in))
 	{
 		m_max_counter.m_count_in = other->m_max_counter.m_count_in;
 		m_max_counter.m_time_ns_in = other->m_max_counter.m_time_ns_in;
@@ -608,7 +916,7 @@ void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 
 	if(m_max_counter.m_count_out == 0 || 
 		(other->m_max_counter.m_count_out != 0 &&
-		other->m_max_counter.m_count_out > m_max_counter.m_time_ns_out))
+		other->m_max_counter.m_time_ns_out > m_max_counter.m_time_ns_out))
 	{
 		m_max_counter.m_count_out = other->m_max_counter.m_count_out;
 		m_max_counter.m_time_ns_out = other->m_max_counter.m_time_ns_out;
@@ -622,12 +930,12 @@ void sinsp_transaction_counters::add_in(uint32_t cnt_delta, uint64_t time_delta)
 	ASSERT(cnt_delta == 1);
 	if(cnt_delta == 1)
 	{
-		if(m_min_counter.m_count_in == 0 || 
+		/*if(m_min_counter.m_count_in == 0 || 
 			time_delta < m_min_counter.m_time_ns_in)
 		{
 			m_min_counter.m_count_in = cnt_delta;
 			m_min_counter.m_time_ns_in = time_delta;
-		}
+		}*/
 
 		if(m_max_counter.m_count_in == 0 || 
 			time_delta > m_max_counter.m_time_ns_in)
@@ -645,12 +953,12 @@ void sinsp_transaction_counters::add_out(uint32_t cnt_delta, uint64_t time_delta
 	ASSERT(cnt_delta == 1);
 	if(cnt_delta == 1)
 	{
-		if(m_min_counter.m_count_out == 0 || 
+		/*if(m_min_counter.m_count_out == 0 || 
 			time_delta < m_min_counter.m_time_ns_out)
 		{
 			m_min_counter.m_count_out = cnt_delta;
 			m_min_counter.m_time_ns_out = time_delta;
-		}
+		}*/
 
 		if(m_max_counter.m_count_out == 0 || 
 			time_delta > m_max_counter.m_time_ns_out)
@@ -667,12 +975,12 @@ const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_counter(
 {
 	return &m_counter;
 }
-
+/*
 const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_min_counter()
 {
 	return &m_min_counter;
 }
-
+*/
 const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_max_counter()
 {
 	return &m_max_counter;
@@ -860,6 +1168,11 @@ double sinsp_host_metrics::get_stolen_score() const
 		return -1;
 	}
 */
+}
+
+void sinsp_host_metrics::set_percentiles(const std::set<double>& percentiles)
+{
+	m_metrics.set_percentiles(percentiles);
 }
 
 #endif // HAS_ANALYZER

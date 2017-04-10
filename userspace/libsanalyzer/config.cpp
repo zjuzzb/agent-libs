@@ -769,6 +769,16 @@ void sinsp_configuration::set_jmx_limit(unsigned limit)
 	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
 }
 
+const std::set<double>& sinsp_configuration::get_percentiles() const
+{
+	return m_percentiles;
+}
+
+void sinsp_configuration::set_percentiles(const std::set<double>& percentiles)
+{
+	m_percentiles = percentiles;
+}
+
 unsigned sinsp_configuration::get_app_checks_limit() const
 {
 	return m_app_checks_limit;
@@ -778,4 +788,5 @@ void sinsp_configuration::set_app_checks_limit(unsigned value)
 {
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
 }
+
 #endif // HAS_ANALYZER

@@ -147,8 +147,11 @@ public:
 	void set_memdump_size(uint64_t size);
 	unsigned get_jmx_limit() const;
 	void set_jmx_limit(unsigned limit);
+	const std::set<double>& get_percentiles() const;
+	void set_percentiles(const std::set<double>&);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
+
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -194,6 +197,8 @@ private:
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
+
+	std::set<double> m_percentiles;
 
 	unsigned m_statsd_limit;
 

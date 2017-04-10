@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import sys
 import signal
 import ast
+import config
 
 # project
 from checks import AgentCheck
@@ -30,6 +31,7 @@ import posix_ipc
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
 CUSTOM_CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.custom.d"
+GLOBAL_PERCENTILES = []
 
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
@@ -74,11 +76,14 @@ class YamlConfig:
                     logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         return ret
 
-    def get_single(self, key, subkey, default_value=None):
-        # TODO: now works only for key.subkey, more general implementation may be needed
+    def get_single(self, key, subkey=None, default_value=None):
         for root in self._roots:
-            if root.has_key(key) and root[key].has_key(subkey):
-                return root[key][subkey]
+            if not subkey is None:
+                if root.has_key(key) and root[key].has_key(subkey):
+                    return root[key][subkey]
+            else:
+                if root.has_key(key):
+                    return root[key]
         return default_value
 
 class AppCheckException(Exception):
@@ -143,7 +148,8 @@ class AppCheckInstance:
         "is_developer_mode": False,
         "version": 1.0,
         "hostname": get_hostname(),
-        "api_key": ""
+        "api_key": "",
+        "histogram_percentiles": []
     }
     INIT_CONFIG = {}
     PROC_DATA_FROM_TOKEN = {
@@ -162,6 +168,7 @@ class AppCheckInstance:
             check_module = check["check_module"]
         except KeyError:
             check_module = self.name
+        self.AGENT_CONFIG["histogram_percentiles"] = GLOBAL_PERCENTILES
         self.check_instance = get_check_class(check_module)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
 
         if self.CONTAINER_SUPPORT:
@@ -270,6 +277,18 @@ class Config:
             if check["name"] == name:
                 return check
         return None
+
+    def set_percentiles(self):
+        global GLOBAL_PERCENTILES
+        percentiles = self._yaml_config.get_single("percentiles")
+        configstr = ''
+        first = True
+        for pct in percentiles:
+            if not first:
+                configstr += ','
+            configstr += str(float(pct) / 100.0)
+            first = False
+        GLOBAL_PERCENTILES = config.get_histogram_percentiles(configstr)
 
 class PosixQueueType:
     SEND = 0
@@ -449,6 +468,8 @@ class Application:
     def main(self):
         logging.info("Starting")
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
+        self.config.set_percentiles()
+        logging.debug("sdchecks percentiles: %s", str(GLOBAL_PERCENTILES))
         if len(sys.argv) > 1:
             if sys.argv[1] == "runCheck":
                 proc_data = {

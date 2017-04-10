@@ -4,10 +4,16 @@ option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
+message counter_percentile {
+    optional uint32 percentile = 1;
+    optional uint32 value = 2;
+}
+
 message counter_time {
     required uint32 count = 1;
     required uint64 time_ns = 2;
     optional uint32 time_percentage = 3;
+    repeated counter_percentile percentile = 8;
 }
 
 message counter_time_bidirectional {
@@ -15,6 +21,8 @@ message counter_time_bidirectional {
     required uint32 count_out = 2;
     required uint64 time_ns_in = 3;
     required uint64 time_ns_out = 4;
+    repeated counter_percentile percentile_in = 10;
+    repeated counter_percentile percentile_out = 11;
 }
 
 message counter_bytes {
@@ -37,6 +45,8 @@ message counter_time_bytes {
     optional uint32 time_percentage_in = 10;
     optional uint32 time_percentage_out = 11;
     optional uint32 time_percentage_other = 12;
+    repeated counter_percentile percentile_in = 26;
+    repeated counter_percentile percentile_out = 27;
 }
 
 message time_categories {
@@ -104,7 +114,6 @@ message connection_categories {
     optional counter_bytes server = 1; // client-side metrics
     optional counter_bytes client = 2; // server-side metrics
     optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
-    optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this connection
     optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this connection
     optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
 }
@@ -142,6 +151,7 @@ message counter_proto_entry {
     required uint64 bytes_in = 4;
     required uint64 bytes_out = 5;
     required uint32 nerrors = 6;
+    repeated counter_percentile percentile = 13;
 }
 
 //
@@ -339,9 +349,7 @@ message statsd_metric {
     optional double min = 6;
     optional double max = 7;
     optional double count = 8;
-    optional double median = 9;
-    optional double percentile_95 = 10;
-    optional double percentile_99 = 11;
+    repeated counter_percentile percentile = 12;
 }
 
 message statsd_info {
@@ -418,7 +426,6 @@ message host {
     optional time_categories tcounters = 5; // The time counters for this thread
     optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
-    optional counter_time_bidirectional min_transaction_counters = 22; // The fastest transaction counters for the whole host
     optional counter_time_bidirectional max_transaction_counters = 23; // The slowest transaction counters for the whole host
     optional uint64 transaction_processing_delay = 7; // the delay introduced by this host when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
@@ -465,7 +472,6 @@ message process {
     optional uint32 netrole = 13;
     optional time_categories tcounters = 5; // The time counters for this thread.
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
-    optional counter_time_bidirectional min_transaction_counters = 18; // The fastest transaction counters for this process.
     optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this process.
     optional uint64 transaction_processing_delay = 7; // the delay introduced by this process when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
@@ -587,7 +593,6 @@ message container {
     optional time_categories tcounters = 5; // The time counters for this thread
     optional transaction_breakdown_categories reqcounters = 6; // how time is spent when serving requests
     optional counter_time_bidirectional transaction_counters = 7; // The transaction counters for the whole host
-    optional counter_time_bidirectional min_transaction_counters = 8; // The fastest transaction counters for the whole host
     optional counter_time_bidirectional max_transaction_counters = 9; // The slowest transaction counters for the whole host
     optional uint64 transaction_processing_delay = 10; // the delay introduced by this host when processing transactions.
     // It's calculated by subtracting outgoing connection time from incoming connection time.
@@ -763,6 +768,7 @@ message metrics {
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
     optional falco_baseline falcobl = 27; // baseline information for falco
+    repeated uint32 config_percentiles = 30;  // configured percentiles
 }
 
 message dump_request_start {

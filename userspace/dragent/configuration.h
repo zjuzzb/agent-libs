@@ -582,6 +582,10 @@ public:
 
 	bool m_cointerface_enabled;
 
+	std::set<double> m_percentiles;
+	static const unsigned MAX_PERCENTILES = 4;
+	std::vector<double> m_ignored_percentiles;
+
 	bool java_present()
 	{
 		return !m_java_binary.empty();
@@ -601,6 +605,7 @@ public:
 	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
 
 	void set_auto_config_directory(const string &config_directory);
+
 private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
@@ -608,6 +613,7 @@ private:
 	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
+	void add_percentiles();
 
 	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
 	bool m_load_error;

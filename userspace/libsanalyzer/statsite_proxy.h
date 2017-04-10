@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "percentile.h"
 #include "posix_queue.h"
 #include "metric_limits.h"
 #include <Poco/Net/SocketReactor.h>
@@ -22,6 +23,8 @@ class statsd_metric
 {
 public:
 #ifndef _WIN32
+	typedef vector<statsd_metric> list_t;
+
 	class parse_exception: public sinsp_exception
 	{
 	public:
@@ -70,11 +73,16 @@ public:
 		return m_sum;
 	}
 
-	inline double median() const
+	bool percentile(int pct, double& val)
 	{
-		return m_median;
+		auto it = m_percentiles.find(pct);
+		if(it != m_percentiles.end())
+		{
+			val = it->second;
+			return true;
+		}
+		return false;
 	}
-
 	inline const map<string, string>& tags() const
 	{
 		return m_tags;
@@ -99,9 +107,7 @@ private:
 	double m_max;
 	double m_count;
 	double m_stdev;
-	double m_median;
-	double m_percentile_95;
-	double m_percentile_99;
+	percentile::p_map_type m_percentiles;
 
 	friend class lua_cbacks;
 };
