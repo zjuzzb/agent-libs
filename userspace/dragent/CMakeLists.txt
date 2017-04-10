@@ -108,4 +108,4 @@ install(FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lu
 		DESTINATION ${DRAIOS_BIN_PREFIX}/share/chisels
 		COMPONENT agent)
 
-configure_file(config.h.in config.h)
+configure_file(agent-config.h.in agent-config.h)

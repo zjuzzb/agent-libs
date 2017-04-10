@@ -51,7 +51,7 @@ public:
 	};
 
 	sinsp_worker(dragent_configuration* configuration,
-		connection_manager* connection_manager, protocol_queue* queue);
+		     protocol_queue* queue);
 	~sinsp_worker();
 
 	void run();
@@ -59,6 +59,11 @@ public:
 	uint64_t get_last_loop_ns() const
 	{
 		return m_last_loop_ns;
+	}
+
+	uint64_t get_last_job_check_ns() const
+	{
+		return m_last_job_check_ns;
 	}
 
 	pthread_t get_pthread_id()
@@ -102,6 +107,13 @@ public:
 	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
 	{
 		m_user_event_queue = user_event_queue;
+	}
+
+	// Change the chunk size used for event captures. This is only
+	// used for testing.
+	void set_dump_chunk_size(uint64_t size)
+	{
+		m_max_chunk_size = size;
 	}
 
 private:
@@ -190,7 +202,7 @@ private:
 	void init_falco();
 
 	static const string m_name;
-	static const uint64_t m_max_chunk_size = 100 * 1024;
+	static const uint64_t default_max_chunk_size = 100 * 1024;
 	static const uint64_t m_keepalive_interval_ns = 30 * 1000000000LL;
 
 	dragent_configuration* m_configuration;
@@ -203,10 +215,12 @@ private:
 	vector<SharedPtr<dump_job_state>> m_running_memdump_jobs;
 	uint64_t m_driver_stopped_dropping_ns;
 	volatile uint64_t m_last_loop_ns;
+	volatile uint64_t m_last_job_check_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
+	uint64_t m_max_chunk_size;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;

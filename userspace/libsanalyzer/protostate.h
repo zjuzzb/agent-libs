@@ -3,6 +3,7 @@
 #pragma once
 
 #include <functional> 
+#include "percentile.h"
 
 #define SRV_PORT_MYSQL 3306
 #define SRV_PORT_POSTGRES 5432
@@ -96,11 +97,47 @@ typedef enum sinsp_request_flags
 class sinsp_request_details
 {
 public:
+	typedef std::shared_ptr<percentile> percentile_ptr_t;
+
 	sinsp_request_details()
 	{
 		m_ncalls = 0;
 		m_flags = SRF_NONE;
 		m_time_max = 0;
+	}
+
+	sinsp_request_details(const sinsp_request_details& other):
+		m_ncalls(other.m_ncalls),
+		m_nerrors(other.m_nerrors),
+		m_time_max(other.m_time_max),
+		m_bytes_in(other.m_bytes_in),
+		m_bytes_out(other.m_bytes_out),
+		m_flags(other.m_flags),
+		m_time_tot(other.m_time_tot),
+		// ensure each instance has its own percentiles
+		m_percentile(other.m_percentile ? new percentile(*other.m_percentile) : nullptr)
+	{
+	}
+
+	sinsp_request_details& operator=(sinsp_request_details other)
+	{
+		if(this != &other)
+		{
+			m_ncalls = other.m_ncalls;
+			m_nerrors = other.m_nerrors;
+			m_time_max = other.m_time_max;
+			m_bytes_in = other.m_bytes_in;
+			m_bytes_out = other.m_bytes_out;
+			m_flags = other.m_flags;
+			m_time_tot = other.m_time_tot;
+			// since we already have a disposable copy here, it's ok to just move it
+			m_percentile = other.m_percentile;
+		}
+		return *this;
+	}
+
+	~sinsp_request_details()
+	{
 	}
 
 	inline void to_protobuf(draiosproto::counter_proto_entry* counters, uint32_t sampling_ratio) const
@@ -111,15 +148,51 @@ public:
 		counters->set_bytes_in(m_bytes_in * sampling_ratio);
 		counters->set_bytes_out(m_bytes_out * sampling_ratio);
 		counters->set_nerrors(m_nerrors * sampling_ratio);
+		// percentiles
+		typedef draiosproto::counter_proto_entry CTB;
+		typedef draiosproto::counter_percentile CP;
+		if(m_percentile && m_percentile->sample_count())
+		{
+			m_percentile->to_protobuf<CTB, CP>(counters, &CTB::add_percentile);
+		}
+	}
+
+	void add_time(uint64_t time_delta)
+	{
+		m_time_tot += time_delta;
+		if(m_percentile)
+		{
+			m_percentile->add(time_delta);
+		}
+	}
+
+	uint64_t get_time_tot() const
+	{
+		return m_time_tot;
+	}
+
+	void set_percentiles(const std::set<double>& percentiles)
+	{
+		if(percentiles.size())
+		{
+			m_percentile.reset(new percentile(percentiles));
+		}
+	}
+
+	percentile_ptr_t get_percentiles()
+	{
+		return m_percentile;
 	}
 
 	uint32_t m_ncalls;		// number of times this request has been served
 	uint32_t m_nerrors;		// number of times serving this request has generated an error
-	uint64_t m_time_tot;	// total time spent serving this request
 	uint64_t m_time_max;	// slowest time spent serving this request
 	uint32_t m_bytes_in;	// received bytes for this request
 	uint32_t m_bytes_out;	// sent bytes for this request
 	sinsp_request_flags m_flags;
+private:
+	uint64_t m_time_tot;	// total time spent serving this request
+	percentile_ptr_t m_percentile;
 };
 
 class sinsp_url_details : public sinsp_request_details
@@ -143,8 +216,9 @@ public:
 	//
 	// Merge two maps by adding the elements of the source to the destination
 	//
-	inline static void update(T* entry, sinsp_partial_transaction* tr, int64_t time_delta, bool is_failure)
+	inline static void update(T* entry, sinsp_partial_transaction* tr, int64_t time_delta, bool is_failure, const std::set<double>& percentiles)
 	{
+		entry->set_percentiles(percentiles);
 		if(entry->m_ncalls == 0)
 		{
 			entry->m_ncalls = 1;
@@ -156,7 +230,7 @@ public:
 			{
 				entry->m_nerrors = 0;
 			}
-			entry->m_time_tot = time_delta;
+			entry->add_time(time_delta);
 			entry->m_time_max = time_delta;
 			entry->m_bytes_in = tr->m_prev_bytes_in;
 			entry->m_bytes_out = tr->m_prev_bytes_out;
@@ -168,7 +242,7 @@ public:
 			{
 				entry->m_nerrors++;
 			}
-			entry->m_time_tot += time_delta;
+			entry->add_time(time_delta);
 			entry->m_bytes_in += tr->m_prev_bytes_in;
 			entry->m_bytes_out += tr->m_prev_bytes_out;
 
@@ -209,7 +283,7 @@ public:
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
 				entry->m_nerrors += uit->second.m_nerrors;
-				entry->m_time_tot += uit->second.m_time_tot;
+				entry->add_time(uit->second.get_time_tot());
 				entry->m_bytes_in += uit->second.m_bytes_in;
 				entry->m_bytes_out += uit->second.m_bytes_out;
 				
@@ -236,7 +310,7 @@ public:
 
 	static bool cmp_time_avg(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
 	{
-		return (src->second.m_time_tot / src->second.m_ncalls) > (dst->second.m_time_tot / dst->second.m_ncalls);
+		return (src->second.get_time_tot() / src->second.m_ncalls) > (dst->second.get_time_tot() / dst->second.m_ncalls);
 	}
 
 	static bool cmp_time_max(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
@@ -330,7 +404,34 @@ public:
 	}
 };
 
-class sql_state
+class protocol_state
+{
+public:
+	void set_percentiles(const std::set<double>& pctls)
+	{
+		m_percentiles = pctls;
+	}
+
+	const std::set<double>& get_percentiles()
+	{
+		return m_percentiles;
+	}
+
+	void percentile_to_protobuf(draiosproto::counter_proto_entry* protoent, sinsp_request_details::percentile_ptr_t pct)
+	{
+		typedef draiosproto::counter_proto_entry CTB;
+		typedef draiosproto::counter_percentile CP;
+		if(pct && pct->sample_count())
+		{
+			pct->to_protobuf<CTB, CP>(protoent, &CTB::add_percentile);
+		}
+	}
+
+protected:
+	std::set<double> m_percentiles;
+};
+
+class sql_state : public protocol_state
 {
 public:
 	inline void clear()
@@ -375,7 +476,7 @@ private:
 	unordered_map<string, sinsp_query_details> m_client_tables;
 };
 
-class mongodb_state
+class mongodb_state : public protocol_state
 {
 public:
 	inline void clear()
@@ -411,7 +512,7 @@ private:
 	unordered_map<string, sinsp_query_details> m_client_collections;
 };
 
-class sinsp_http_state
+class sinsp_http_state : public protocol_state
 {
 public:
 	void clear()
@@ -460,15 +561,13 @@ public:
 	inline void clear()
 	{
 		m_http.clear();
-
 		m_mysql.clear();
 		m_postgres.clear();
-
 		m_mongodb.clear();
 	}
 
 	void add(sinsp_protostate* other);
-
+	void set_percentiles(const std::set<double>& pctls);
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
 	sinsp_http_state m_http;

@@ -93,6 +93,17 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
 
+thread_analyzer_info::thread_analyzer_info()
+{
+}
+
+thread_analyzer_info::~thread_analyzer_info()
+{
+	delete m_procinfo;
+	m_procinfo = NULL;
+	m_listening_ports.reset();
+}
+
 void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 {
 	m_inspector = inspector;
@@ -108,25 +119,19 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_old_pfminor = 0;
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
-	m_dynstate = new thread_analyzer_dyn_state();
 	ASSERT(m_inspector->get_machine_info() != NULL);
-	m_dynstate->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
-	m_dynstate->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
-	m_dynstate->m_syscall_errors.clear();
+	m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+	m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+	m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
-}
-
-void thread_analyzer_info::destroy()
-{
-	if(m_procinfo)
+	if(m_percentiles.size())
 	{
-		delete m_procinfo;
-		m_procinfo = NULL;
+		m_metrics.set_percentiles(m_percentiles);
+		m_transaction_metrics.set_percentiles(m_percentiles);
+		m_external_transaction_metrics.set_percentiles(m_percentiles);
+		m_protostate.set_percentiles(m_percentiles);
 	}
-
-	delete m_dynstate;
-	m_listening_ports.reset();
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -144,6 +149,13 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 		m_procinfo->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 
 		m_procinfo->clear();
+		if(m_percentiles.size())
+		{
+			m_procinfo->m_protostate.set_percentiles(m_percentiles);
+			m_procinfo->m_proc_metrics.set_percentiles(m_percentiles);
+			m_procinfo->m_proc_transaction_metrics.set_percentiles(m_percentiles);
+			m_procinfo->m_external_transaction_metrics.set_percentiles(m_percentiles);
+		}
 	}
 }
 
@@ -227,7 +239,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	//
 	// Propagate the CPU times vector
 	//
-	uint32_t oc = other->m_dynstate->m_cpu_time_ns.size();
+	uint32_t oc = other->m_cpu_time_ns.size();
 	if(oc != 0)
 	{
 		if(m_procinfo->m_cpu_time_ns.size() != oc)
@@ -238,7 +250,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 		for(uint32_t j = 0; j < oc; j++)
 		{
-			m_procinfo->m_cpu_time_ns[j] += other->m_dynstate->m_cpu_time_ns[j];
+			m_procinfo->m_cpu_time_ns[j] += other->m_cpu_time_ns[j];
 		}
 	}
 
@@ -259,25 +271,25 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	m_procinfo->m_external_transaction_metrics.add(&other->m_external_transaction_metrics);
 
-	m_procinfo->m_syscall_errors.add(&other->m_dynstate->m_syscall_errors);
+	m_procinfo->m_syscall_errors.add(&other->m_syscall_errors);
 
-	ASSERT(other->m_dynstate->m_server_transactions_per_cpu.size() == m_procinfo->m_server_transactions_per_cpu.size());
+	ASSERT(other->m_server_transactions_per_cpu.size() == m_procinfo->m_server_transactions_per_cpu.size());
 	for(j = 0; j < m_procinfo->m_server_transactions_per_cpu.size(); j++) 
 	{
 		m_procinfo->m_server_transactions_per_cpu[j].insert(m_procinfo->m_server_transactions_per_cpu[j].end(),
-			other->m_dynstate->m_server_transactions_per_cpu[j].begin(),
-			other->m_dynstate->m_server_transactions_per_cpu[j].end());
+			other->m_server_transactions_per_cpu[j].begin(),
+			other->m_server_transactions_per_cpu[j].end());
 	}
 
-	ASSERT(other->m_dynstate->m_client_transactions_per_cpu.size() == m_procinfo->m_client_transactions_per_cpu.size());
+	ASSERT(other->m_client_transactions_per_cpu.size() == m_procinfo->m_client_transactions_per_cpu.size());
 	for(j = 0; j < m_procinfo->m_client_transactions_per_cpu.size(); j++) 
 	{
 		m_procinfo->m_client_transactions_per_cpu[j].insert(m_procinfo->m_client_transactions_per_cpu[j].end(),
-			other->m_dynstate->m_client_transactions_per_cpu[j].begin(),
-			other->m_dynstate->m_client_transactions_per_cpu[j].end());
+			other->m_client_transactions_per_cpu[j].begin(),
+			other->m_client_transactions_per_cpu[j].end());
 	}
 
-	m_procinfo->m_protostate.add(&other->m_dynstate->m_protostate);
+	m_procinfo->m_protostate.add(&other->m_protostate);
 
 	m_procinfo->m_fd_count += other->m_tinfo->m_fdtable.size();
 
@@ -310,28 +322,28 @@ void thread_analyzer_info::clear_all_metrics()
 	m_old_pfminor = m_tinfo->m_pfminor;
 
 	vector<uint64_t>::iterator it;
-	for(it = m_dynstate->m_cpu_time_ns.begin(); it != m_dynstate->m_cpu_time_ns.end(); ++it)
+	for(it = m_cpu_time_ns.begin(); it != m_cpu_time_ns.end(); ++it)
 	{
 		*it = 0;
 	}
 
-	m_dynstate->m_syscall_errors.clear();
+	m_syscall_errors.clear();
 
 	vector<vector<sinsp_trlist_entry>>::iterator sts;
-	for(sts = m_dynstate->m_server_transactions_per_cpu.begin(); 
-		sts != m_dynstate->m_server_transactions_per_cpu.end(); sts++)
+	for(sts = m_server_transactions_per_cpu.begin();
+		sts != m_server_transactions_per_cpu.end(); sts++)
 	{
 		sts->clear();
 	}
 
 	vector<vector<sinsp_trlist_entry>>::iterator cts;
-	for(cts = m_dynstate->m_client_transactions_per_cpu.begin(); 
-		cts != m_dynstate->m_client_transactions_per_cpu.end(); cts++)
+	for(cts = m_client_transactions_per_cpu.begin();
+		cts != m_client_transactions_per_cpu.end(); cts++)
 	{
 		cts->clear();
 	}
 
-	m_dynstate->m_protostate.clear();
+	m_protostate.clear();
 	m_called_execve = false;
 	m_app_checks_found.clear();
 }
@@ -465,14 +477,14 @@ void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transa
 {
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_dynstate->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+	m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
 }
 
 const proc_config& thread_analyzer_info::get_proc_config()
 {
 	static const auto SYSDIG_AGENT_CONF = "SYSDIG_AGENT_CONF";
-	if(!m_dynstate->m_proc_config)
+	if(!m_proc_config)
 	{
 		// 1. some processes (eg. redis) wipe their env
 		// try to grab the env from it up to its parent (within the same container)
@@ -500,9 +512,9 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Found process %ld with custom conf, SYSDIG_AGENT_CONF=%s", m_tinfo->m_pid, conf.c_str());
 		}
-		m_dynstate->m_proc_config = make_unique<proc_config>(conf);
+		m_proc_config = make_unique<proc_config>(conf);
 	}
-	return *m_dynstate->m_proc_config;
+	return *m_proc_config;
 }
 
 //
@@ -513,7 +525,7 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 {
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_dynstate->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+	m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
 }
@@ -530,11 +542,9 @@ analyzer_threadtable_listener::analyzer_threadtable_listener(sinsp* inspector, s
 void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
 {
 	void *buffer = tinfo->get_private_state(m_analyzer->m_thread_memory_id);
-
-	//
-	// Placement new, see http://www.parashift.com/c++-faq-lite/placement-new.html
-	//
-	tinfo->m_ainfo = new (buffer) thread_analyzer_info();
+	std::memset(buffer, 0, sizeof(thread_analyzer_info));
+	tinfo->m_ainfo = new (buffer) thread_analyzer_info(); // placement new
+	tinfo->m_ainfo->m_percentiles = m_analyzer->m_configuration->get_percentiles();
 	tinfo->m_ainfo->init(m_inspector, tinfo);
 }
 
@@ -542,7 +552,7 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 {
 	if(tinfo->m_ainfo)
 	{
-		tinfo->m_ainfo->destroy();
+		tinfo->m_ainfo->~thread_analyzer_info();
 	}
 }
 

@@ -221,6 +221,31 @@ sinsp_analyzer::~sinsp_analyzer()
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
+void sinsp_analyzer::emit_percentiles_config()
+{
+	const std::set<double>& pctls = m_configuration->get_percentiles();
+	for (double p : pctls)
+	{
+		m_metrics->add_config_percentiles((uint32_t) round(p));
+	}
+}
+
+void sinsp_analyzer::set_percentiles()
+{
+	const std::set<double>& pctls = m_configuration->get_percentiles();
+	if(pctls.size())
+	{
+		m_host_transaction_counters.set_percentiles(pctls);
+		m_host_metrics.set_percentiles(pctls);
+		if(m_host_metrics.m_protostate)
+		{
+			m_host_metrics.m_protostate->set_percentiles(pctls);
+		}
+		m_host_req_metrics.set_percentiles(pctls);
+		m_io_net.set_percentiles(pctls);
+	}
+}
+
 void sinsp_analyzer::on_capture_start()
 {
 	m_initialized = true;
@@ -281,11 +306,24 @@ void sinsp_analyzer::on_capture_start()
 	//
 	ASSERT(m_ipv4_connections == NULL);
 	m_ipv4_connections = new sinsp_ipv4_connection_manager(m_inspector);
+	const std::set<double>& pctls = m_configuration->get_percentiles();
+	if(pctls.size())
+	{
+		m_ipv4_connections->m_percentiles = pctls;
+	}
 #ifdef HAS_UNIX_CONNECTIONS
 	m_unix_connections = new sinsp_unix_connection_manager(m_inspector);
+	if(pctls.size())
+	{
+		m_unix_connections->m_percentiles = pctls;
+	}
 #endif
 #ifdef HAS_PIPE_CONNECTIONS
 	m_pipe_connections = new sinsp_pipe_connection_manager(m_inspector);
+	if(pctls.size())
+	{
+		m_pipe_connections->m_percentiles = pctls;
+	}
 #endif
 	m_trans_table = new sinsp_transaction_table(m_inspector);
 
@@ -540,7 +578,7 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 	if(m_inspector->m_h != NULL)
 	{
 		ASSERT(false);
-		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
+		throw sinsp_exception("Attempting to get the configuration while the inspector is capturing");
 	}
 
 	return m_configuration;
@@ -1598,6 +1636,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			const std::set<double>& pctls = m_configuration->get_percentiles();
+			if(pctls.size())
+			{
+				container->set_percentiles(pctls);
+			}
 			if(container->m_memory_cgroup.empty())
 			{
 				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
@@ -1776,7 +1819,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 						if(m_inspector->is_nodriver())
 						{
-							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo->m_pid, &ainfo->m_dynstate->m_file_io_stats);
+							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo->m_pid, &ainfo->m_file_io_stats);
 							ainfo->m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
 							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
 							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
@@ -1911,6 +1954,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
+			const std::set<double>& pctls = m_configuration->get_percentiles();
+			if(pctls.size())
+			{
+				container->set_percentiles(pctls);
+			}
 		}
 
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
@@ -2430,7 +2478,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				}
 
 				procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
-					proc->mutable_min_transaction_counters(),
+					//proc->mutable_min_transaction_counters(),
 					proc->mutable_max_transaction_counters(),
 					m_sampling_ratio);
 
@@ -2569,7 +2617,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	}
 
 	//
-	// Second pass to perform the aggegation
+	// Second pass to perform the aggregation
 	//
 	for(cit = m_ipv4_connections->m_connections.begin();
 		cit != m_ipv4_connections->m_connections.end();)
@@ -2662,7 +2710,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 			// Note: we don't export connections whose sip or dip is zero.
 			//
 			sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
-
 			if(conn.m_timestamp == 0)
 			{
 				//
@@ -2671,6 +2718,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 				//
 				conn = cit->second;
 				conn.m_timestamp = 1;
+				const std::set<double>& pctls = m_configuration->get_percentiles();
+				if(pctls.size())
+				{
+					conn.m_transaction_metrics.set_percentiles(pctls);
+				}
 			}
 			else
 			{
@@ -2706,6 +2758,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				}
 			}
 		}
+
 		//
 		// Has this connection been closed druring this sample?
 		//
@@ -2816,10 +2869,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
-			conn->mutable_counters()->mutable_min_transaction_counters(),
 			conn->mutable_counters()->mutable_max_transaction_counters(),
 			m_sampling_ratio);
-
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//
@@ -2853,7 +2904,6 @@ void sinsp_analyzer::emit_full_connections()
 
 			cit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
 			cit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
-				conn->mutable_counters()->mutable_min_transaction_counters(),
 				conn->mutable_counters()->mutable_max_transaction_counters(),
 				m_sampling_ratio);
 		}
@@ -3550,8 +3600,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				sinsp_protostate_marker host_marker;
 				host_marker.add(m_host_metrics.m_protostate);
 				host_marker.mark_top(HOST_PROTOS_LIMIT);
-				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(),
-						m_sampling_ratio, HOST_PROTOS_LIMIT);
+				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(), m_sampling_ratio, HOST_PROTOS_LIMIT);
+				//g_logger.log(m_metrics->protos().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 
 			//
@@ -3664,6 +3714,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// User-configured events
 			//
 			emit_user_events();
+
+			//
+			// Percentile configuration
+			//
+			emit_percentiles_config();
 			misc_trc.stop();
 
 			//
@@ -3672,7 +3727,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_delay_calculator->compute_host_container_delays(&m_host_transaction_counters, &m_host_client_transactions, &m_host_server_transactions, &m_host_transaction_delays);
 
 			m_host_transaction_counters.to_protobuf(m_metrics->mutable_hostinfo()->mutable_transaction_counters(),
-				m_metrics->mutable_hostinfo()->mutable_min_transaction_counters(),
 				m_metrics->mutable_hostinfo()->mutable_max_transaction_counters(),
 				m_sampling_ratio);
 
@@ -4341,7 +4395,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 			ASSERT(evt->m_tinfo);
 			ASSERT(evt->m_tinfo->m_ainfo);
 
-			evt->m_tinfo->m_ainfo->m_dynstate->m_syscall_errors.add(evt);
+			evt->m_tinfo->m_ainfo->m_syscall_errors.add(evt);
 
 			if(!evt->m_tinfo->m_container_id.empty())
 			{
@@ -5400,7 +5454,6 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
 
 	it_analyzer->second.m_transaction_counters.to_protobuf(container->mutable_transaction_counters(),
-														   container->mutable_min_transaction_counters(),
 														   container->mutable_max_transaction_counters(),
 														   m_sampling_ratio);
 
@@ -5729,18 +5782,18 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	{
 		thread_analyzer_info* ainfo = it->second.m_ainfo;
 
-		for(uint32_t j = 0; j < ainfo->m_dynstate->m_server_transactions_per_cpu.size(); j++)
+		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{
-			nqueuedtransactions_server += ainfo->m_dynstate->m_server_transactions_per_cpu[j].size();
+			nqueuedtransactions_server += ainfo->m_server_transactions_per_cpu[j].size();
 			nqueuedtransactions_server_capacity +=
-				ainfo->m_dynstate->m_server_transactions_per_cpu[j].capacity();
+				ainfo->m_server_transactions_per_cpu[j].capacity();
 		}
 
-		for(uint32_t j = 0; j < ainfo->m_dynstate->m_client_transactions_per_cpu.size(); j++)
+		for(uint32_t j = 0; j < ainfo->m_client_transactions_per_cpu.size(); j++)
 		{
-			nqueuedtransactions_client += ainfo->m_dynstate->m_client_transactions_per_cpu[j].size();
+			nqueuedtransactions_client += ainfo->m_client_transactions_per_cpu[j].size();
 			nqueuedtransactions_client_capacity +=
-				ainfo->m_dynstate->m_client_transactions_per_cpu[j].capacity();
+				ainfo->m_client_transactions_per_cpu[j].capacity();
 		}
 
 		if(do_complete_report)

@@ -73,28 +73,11 @@ public:
 };
 
 class proc_config;
-class thread_analyzer_dyn_state
-{
-public:
-	// Time spent by this process on each of the CPUs
-	vector<uint64_t> m_cpu_time_ns;
-	// Syscall error table
-	sinsp_error_counters m_syscall_errors;
-	// Completed transactions lists
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
-	// The protocol state
-	sinsp_protostate m_protostate;
-	unique_ptr<proc_config> m_proc_config;
-
-	// Used just by nodriver mode
-	sinsp_proc_file_stats m_file_io_stats;
-};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
-// WARNING: This class is allocated with `placement new`. So the destructor
-// is not called automatically. release any dynamic memory in `destroy()` method
+// WARNING: This class is allocated with `placement new`, so destructor must be
+//          called manually.
 ///////////////////////////////////////////////////////////////////////////////
 class thread_analyzer_info
 {
@@ -119,8 +102,14 @@ public:
 		AF_IS_NOT_DESCENDENT_OF_SHELL = (1 << 11) // Set if there is NOT a shell (bash, tcsh...) among the ancestors of this thread. This means that the ancestors have been navigated with negative result.
 	};
 
+	thread_analyzer_info();
+	~thread_analyzer_info();
+
+	thread_analyzer_info(const thread_analyzer_info&) = delete;
+	thread_analyzer_info(thread_analyzer_info&&) = delete;
+	thread_analyzer_info& operator=(const thread_analyzer_info&) = delete;
+
 	void init(sinsp *inspector, sinsp_threadinfo* tinfo);
-	void destroy();
 	const sinsp_counters* get_metrics();
 	void allocate_procinfo_if_not_present();
 	void propagate_flag(flags flags, thread_analyzer_info* other);
@@ -204,11 +193,23 @@ public:
 	// Time and duration of the last select, poll or epoll
 	uint64_t m_last_wait_end_time_ns;
 	int64_t m_last_wait_duration_ns;
-	// The complext state that needs to be explicitly allocated because placement
-	// new doesn't support it
-	thread_analyzer_dyn_state* m_dynstate;
+
+	// Time spent by this process on each of the CPUs
+	vector<uint64_t> m_cpu_time_ns;
+	// Syscall error table
+	sinsp_error_counters m_syscall_errors;
+	// Completed transactions lists
+	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	// The protocol state
+	sinsp_protostate m_protostate;
+	unique_ptr<proc_config> m_proc_config;
+
 	bool m_called_execve;
 	uint64_t m_last_cmdline_sync_ns;
+	std::set<double> m_percentiles;
+	// Used just by nodriver mode
+	sinsp_proc_file_stats m_file_io_stats;
 
 private:
 	void scan_listening_ports();

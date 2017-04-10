@@ -33,11 +33,22 @@ public:
 
 	void ping(int64_t token, response_cb_t response_cb);
 
+	void perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
+				const std::string &container_id, response_cb_t response_cb);
+
 	// Check for any responses and call their callback functions.
 	void next();
 
+	// Specify an alternate location for the domain socket. Useful
+	// for tests.
+	void set_domain_sock(std::string &domain_sock);
+
 	// Clean up any state left around related to the connection to
-	// the cointerface process, such as the unix domain socket.
+	// the cointerface process, such as the default unix domain
+	// socket.
+	//
+	// Note: this *only* cleans up the default domain socket, and not
+	// any domain socket specified by set_domain_sock().
 	static void cleanup();
 
 protected:
@@ -52,7 +63,7 @@ protected:
 	struct call_context {
 		sdc_internal::cointerface_message_type msg_type;
 
-		unique_ptr<google::protobuf::Message> response_msg;
+		std::unique_ptr<google::protobuf::Message> response_msg;
 
 		response_cb_t response_cb;
 
@@ -65,6 +76,7 @@ protected:
 
 		// Depending on msg_type, the context will use one of these readers
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 	};
 
 	// Created by CreateChannel
@@ -74,5 +86,6 @@ protected:
 
 	google::protobuf::TextFormat::Printer m_print;
 
-	static std::string m_domain_sock;
+	std::string m_domain_sock;
+	static std::string default_domain_sock;
 };

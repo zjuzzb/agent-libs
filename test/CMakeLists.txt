@@ -8,6 +8,7 @@ set(DRAIOS_BOOST_VERSION "1_57_0")
 set(DRAIOS_CURL_VERSION "7.52.1")
 set(DRAIOS_JQ_VERSION "1.5")
 set(DRAIOS_B64_VERSION "1.2")
+set(DRAIOS_GRPC_VERSION "1.1.4")
 
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
@@ -22,6 +23,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent)
+include_directories(${PROJECT_BINARY_DIR}/userspace/dragent)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
@@ -31,6 +33,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/targe
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -39,10 +42,14 @@ add_executable(tests
 	app_checks.cpp
 	capture_to_file_test.cpp
 	container.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/coclient.cpp
+	coclient_test.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/draios.pb.cc
 	event_capture.cpp
 	falco_events_test.cpp
 	forking.cpp
 	fs.cpp
+	memdump.cpp
 	tracers.cpp
 	metric_limits.cpp
 	net.cpp
@@ -50,6 +57,9 @@ add_executable(tests
 	pipe.cpp
 	prefix_search_test.cpp
 	process.cpp
+	percentile.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/sdc_internal.pb.cc
+	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/sdc_internal.grpc.pb.cc
 	socketpair.cpp
 	sql.cpp
 	sys_call_test.cpp
@@ -63,6 +73,9 @@ add_executable(tests
 	yaml_configuration.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/configuration.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/logger.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/protocol.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_worker.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_data_handler.cpp
 	configuration_test.cpp
 	statsd.cpp
 	jmx_proxy.cpp
@@ -79,7 +92,9 @@ target_link_libraries(tests
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a)
+	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc++_unsecure.a
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a)
 
 add_executable(test_helper
 		test_helper.cpp)

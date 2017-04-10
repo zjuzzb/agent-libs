@@ -40,6 +40,7 @@ add_library(sanalyzer STATIC
 	baseliner.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/chisel_api.cpp
+	cm_quantile.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	connectinfo.cpp 
 	config.cpp
@@ -54,6 +55,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/fdinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
+	heap.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
@@ -108,6 +110,7 @@ add_library(sanalyzer STATIC
 	parser_tls.cpp
 	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
+	percentile.cpp
 	procfs_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
 	protostate.cpp

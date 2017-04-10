@@ -61,7 +61,8 @@ public:
 class sinsp_connection_aggregator
 {
 public:
-	sinsp_connection_aggregator():
+	sinsp_connection_aggregator(const std::set<double>* percentiles = nullptr):
+		m_transaction_metrics(percentiles),
 		m_count(0)
 	{}
 	void clear();
@@ -170,6 +171,7 @@ public:
 	sinsp * m_inspector;
 	uint64_t m_last_connection_removal_ts;
 	uint32_t m_n_drops;
+	std::set<double> m_percentiles;
 };
 
 template<class TKey, class THash, class TCompare>
@@ -190,6 +192,12 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	// Insert the new connection
 	//
 	sinsp_connection& conn = m_connections[key];
+
+	if(m_percentiles.size() && !conn.m_transaction_metrics.has_percentiles())
+	{
+		conn.m_transaction_metrics.set_percentiles(m_percentiles);
+	}
+
 	if(conn.m_timestamp == 0)
 	{
 		conn.m_timestamp = timestamp;

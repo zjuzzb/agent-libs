@@ -40,7 +40,7 @@ dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_sinsp_worker(&m_configuration, &m_connection_manager, &m_queue),
+	m_sinsp_worker(&m_configuration, &m_queue),
 	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
 	m_log_reporter(&m_queue, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),

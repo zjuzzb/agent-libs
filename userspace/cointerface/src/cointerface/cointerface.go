@@ -46,7 +46,7 @@ func createJSONEscapeFormatter(params string) log.FormatterFunc {
 
 //     <format id="agent-json" format="{&quot;pid&quot;: %d, &quot;level&quot;: &quot;%%Level&quot;, &quot;message&quot;: &quot;%%JSONEscapeMsg&quot;}"/>
 
-func initLogging(logFile string) {
+func initLogging(useJson bool) {
 
 	err := log.RegisterCustomFormatter("JSONEscapeMsg", createJSONEscapeFormatter)
 	if err != nil {
@@ -57,6 +57,17 @@ func initLogging(logFile string) {
 	config := `
 <seelog>
   <formats>
+    <format id="agent-plain" format="%Msg%n"/>
+  </formats>
+  <outputs>
+    <console formatid="agent-plain"/>
+  </outputs>
+</seelog>
+`
+	if useJson {
+		config = `
+<seelog>
+  <formats>
     <format id="agent-json" format="%JSONEscapeMsg"/>
   </formats>
   <outputs>
@@ -64,6 +75,8 @@ func initLogging(logFile string) {
   </outputs>
 </seelog>
 `
+	}
+
 	logger, err := log.LoggerFromConfigAsBytes([]byte(config))
 
 	if err != nil {
@@ -77,11 +90,11 @@ func initLogging(logFile string) {
 func mymain() int {
 	flag.Usage = usage
 	sockPtr := flag.String("sock", "/opt/draios/run/cointerface.sock", "domain socket for messages")
-	logFilePtr := flag.String("log_file", "/opt/draios/logs/cointerface.log", "log file")
+	useJson := flag.Bool("use_json", true, "log using json")
 
 	flag.Parse()
 
-	initLogging(*logFilePtr)
+	initLogging(*useJson)
 	defer log.Flush()
 
 	// Only returns when server is killed

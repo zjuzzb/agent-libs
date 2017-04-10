@@ -352,6 +352,22 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 	}
 }
 
+void dragent_configuration::add_percentiles()
+{
+	// TODO?
+	// getting set directly compile fails in yaml-cpp:
+	// error: incomplete type ‘YAML::convert<std::set<double> >’ used in nested name specifier
+	// as a workaround, we get vector and copy it
+	std::vector<double> pctls = m_config->get_scalar<std::vector<double>>("percentiles", {});
+	if(pctls.size() > MAX_PERCENTILES)
+	{
+		m_ignored_percentiles.clear();
+		std::copy(pctls.begin() + MAX_PERCENTILES, pctls.end(), std::back_inserter(m_ignored_percentiles));
+		pctls.resize(MAX_PERCENTILES);
+	}
+	std::copy(pctls.begin(), pctls.end(), std::inserter(m_percentiles, m_percentiles.end()));
+}
+
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
 {
 	if(!m_config) { return; }
@@ -382,7 +398,7 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 		}
 	}
 
-	// find the first `user_events` across our files
+	// find the first user `events` across our files
 	for(const auto& root : roots)
 	{
 		user_events = yaml_configuration::get_deep_sequence<seq_t>(*m_config, root, "events", system, component);
@@ -580,6 +596,7 @@ void dragent_configuration::init(Application* app)
 		add_event_filter(m_docker_event_filter, "docker", "network");
 	}
 
+	add_percentiles();
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -649,6 +666,7 @@ void dragent_configuration::init(Application* app)
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
+	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("max sysdig captures", 10);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
@@ -940,6 +958,28 @@ void dragent_configuration::print_configuration()
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
 	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
+	if(m_percentiles.size())
+	{
+		std::ostringstream os;
+		os << '[';
+		for(const auto& p : m_percentiles) { os << p << ','; }
+		os.seekp(-1, os.cur); os << ']';
+		g_log->information("Percentiles: " + os.str());
+	}
+	if(m_ignored_percentiles.size())
+	{
+		std::ostringstream os;
+		os << "Percentiles ignored (max allowed " + std::to_string(MAX_PERCENTILES) + "): [";
+		for(const auto& p : m_ignored_percentiles) { os << p << ','; }
+		os.seekp(-1, os.cur); os << ']';
+		g_log->warning(os.str());
+		sinsp_user_event::tag_map_t tags;
+		tags["source"] = "dragent";
+		g_logger.log(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
+					std::string("PercentileLimitExceeded"), std::string(os.str()),
+					std::string(), std::move(tags)), sinsp_logger::SEV_EVT_WARNING);
+
+	}
 	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
 	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
@@ -951,6 +991,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
+	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
@@ -1259,26 +1300,21 @@ string dragent_configuration::get_distribution()
 
 void dragent_configuration::write_statsite_configuration()
 {
-	static const char STATSITE_INI_TEMPLATE[] =
-			"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
-					"[statsite]\n"
-					"bind_address = 127.0.0.1\n"
-					"port = %u\n"
-					"udp_port = %u\n"
-					"log_level = %s\n"
-					"flush_interval = %u\n"
-					"parse_stdin = 1\n";
+	std::string statsite_ini =
+		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
+				"[statsite]\nbind_address = 127.0.0.1\n";
 
 	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_statsd_port;
 	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one
-	// our levels: debug, info, warning, error
+	// our levels: trace, debug, info, notice, warning, error, critical, fatal
 	// statsite levels: DEBUG, INFO, WARN, ERROR, CRITICAL
 	auto loglevel = m_config->get_scalar<string>("log", "file_priority", "info");
-	static const unordered_map<string, string> conversion_map{ { "debug", "DEBUG" }, { "info", "INFO" },
-															   {"warning", "WARN"}, {"error", "ERROR"}};
+	static const unordered_map<string, string> conversion_map{ { "trace", "DEBUG" }, { "debug", "DEBUG" }, { "info", "INFO" },
+															   { "notice", "WARN" }, { "warning", "WARN"}, { "error", "ERROR"},
+															   { "critical", "CRITICAL"}, { "fatal", "CRITICAL"}};
 	if (conversion_map.find(loglevel) != conversion_map.end())
 	{
 		loglevel = conversion_map.at(loglevel);
@@ -1288,8 +1324,25 @@ void dragent_configuration::write_statsite_configuration()
 		loglevel = "INFO";
 	}
 
-	char formatted_config[sizeof(STATSITE_INI_TEMPLATE)+100];
-	snprintf(formatted_config, sizeof(formatted_config), STATSITE_INI_TEMPLATE, tcp_port, udp_port, loglevel.c_str(), flush_interval);
+	statsite_ini.append("port = ").append(std::to_string(tcp_port)).append(1, '\n');
+	statsite_ini.append("udp_port = ").append(std::to_string(udp_port)).append(1, '\n');
+	statsite_ini.append("log_level = ").append(loglevel).append(1, '\n');
+	statsite_ini.append("flush_interval = ").append(std::to_string(flush_interval)).append(1, '\n');
+	statsite_ini.append("parse_stdin = 1").append(1, '\n');
+	if(m_percentiles.size())
+	{
+		std::ostringstream os;
+		for(const auto& p : m_percentiles)
+		{
+			os << p/100.0 << ',';
+		}
+		if(os.str().size())
+		{
+			os.seekp(-1, os.cur);
+			os << '\n';
+		}
+		statsite_ini.append("quantiles = ").append(os.str());
+	}
 
 	string filename("/opt/draios/etc/statsite.ini");
 	if(!m_agent_installed)
@@ -1299,9 +1352,8 @@ void dragent_configuration::write_statsite_configuration()
 	std::ofstream ostr(filename);
 	if(ostr.good())
 	{
-		ostr << formatted_config;
+		ostr << statsite_ini;
 	}
-	ostr.close();
 }
 
 void dragent_configuration::refresh_machine_id()
