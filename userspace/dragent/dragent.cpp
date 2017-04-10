@@ -961,7 +961,7 @@ void dragent_app::initialize_logging()
 	file_channel->setProperty("archive", "timestamp");
 
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P, %p, %t"));
-	AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel));
+	AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, m_configuration.m_machine_id));
 	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
