@@ -1,6 +1,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <iostream>
 #include <sinsp.h>
 #include <sinsp_int.h>

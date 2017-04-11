@@ -1194,6 +1194,7 @@ class sisnp_baseliner
 {
 public:
 	void init(sinsp* inspector);
+	~sisnp_baseliner();
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1218,10 +1219,11 @@ public:
 private:
 	void init_programs(uint64_t time);
 	void init_containers();
+	inline blprogram* get_program(sinsp_threadinfo* tinfo);
 
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
-	unordered_map<size_t, blprogram> m_progtable;
+	unordered_map<size_t, blprogram*> m_progtable;
 	unordered_map<string, blcontainer> m_container_table;
 #ifndef HAS_ANALYZER
 	string m_hostname;
