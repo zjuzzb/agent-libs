@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"draiosproto"
 	"sdc_internal"
@@ -10,15 +9,14 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
-	"github.com/docker/docker/client"
 	"github.com/gogo/protobuf/proto"
-	"os"
 	"strings"
 )
 
 func labelsToProtobuf(labels map[string]string) (ret []*draiosproto.SwarmPair) {
 	for k, v := range labels {
-		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(k), Value: proto.String(v)})
+		// Strip com.docker. from labels
+		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(strings.TrimPrefix(k,"com.docker.")), Value: proto.String(v)})
 	}
 	return
 }
@@ -121,23 +119,10 @@ func quorum(nodes []swarm.Node) (*bool) {
 }
 
 func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
-	// logparser can't handle large logs
-	// log.Debugf("Received swarmstate command message: %s", cmd.String())
-
-	// If SYSDIG_HOST_ROOT is set, use that as a part of the
-	// socket path.
-
-	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
-	if sysdigRoot != "" {
-		sysdigRoot = sysdigRoot + "/"
-	}
-	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
-	cli, err := client.NewClient(dockerSock, "v1.26", nil, nil)
-	if err != nil {
-		ferr := log.Errorf("Could not create docker client: %s", err)
-		log.Errorf(ferr.Error())
-		return nil, ferr
-	}
+	cli, err := GetDockerClient("v1.24")
+    if (err != nil) {
+        return nil, err
+    }
 
 	info, err := cli.Info(ctx)
 	if err != nil {
@@ -171,11 +156,6 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 		if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
 			for _, service := range services {
 				m.Services = append(m.Services, serviceToProtobuf(service, taskmap))
-				stack := service.Spec.Labels["com.docker.stack.namespace"]
-				if stack == "" {
-					stack = "none"
-				}
-				// fmt.Printf("service id=%s name=%s stack=%s ip=%s\n", service.ID[:10], service.Spec.Name, stack, virtualIPsToProtobuf(service.Endpoint.VirtualIPs))
 			}
 		} else {
 			log.Errorf("Error fetching services: %s\n", err)
@@ -198,8 +178,6 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
         res.Errstr = proto.String(err.Error())
     }
 	res.State = m
-
-    // log.Debugf("SwarmState Sending response: %s", res.String())
 
     return res, nil
 }

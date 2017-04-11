@@ -5305,6 +5305,14 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		// Filter out docker swarm and docker stack labels because that data
+		// should get sent in the swarm protobuf section by swarm managers
+		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
+		if(!it_labels->first.compare(0, swarmstr.size(), swarmstr) ||
+			!it_labels->first.compare(0, stackstr.size(), stackstr))
+		{
+			continue;
+		}
 		draiosproto::container_label* label = container->add_labels();
 
 		label->set_key(it_labels->first);

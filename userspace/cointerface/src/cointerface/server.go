@@ -16,12 +16,7 @@ import (
 	"time"
 )
 
-type coInterfaceServer struct {
-}
-
-func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_internal.DockerCommand) (*sdc_internal.DockerCommandResult, error) {
-	log.Debugf("Received docker command message: %s", cmd.String())
-
+func GetDockerClient(ver string) (*client.Client, error) {
 	// If SYSDIG_HOST_ROOT is set, use that as a part of the
 	// socket path.
 
@@ -30,11 +25,25 @@ func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_i
 		sysdigRoot = sysdigRoot + "/"
 	}
 	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
-	cli, err := client.NewClient(dockerSock, "v1.18", nil, nil)
+
+	cli, err := client.NewClient(dockerSock, ver, nil, nil)
 	if err != nil {
 		ferr := fmt.Errorf("Could not create docker client: %s", err)
 		log.Errorf(ferr.Error())
 		return nil, ferr
+	}
+	return cli, nil
+}
+
+type coInterfaceServer struct {
+}
+
+func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_internal.DockerCommand) (*sdc_internal.DockerCommandResult, error) {
+	log.Debugf("Received docker command message: %s", cmd.String())
+
+	cli, err := GetDockerClient("v1.18")
+	if (err != nil) {
+		return nil, err
 	}
 
 	thirty_secs := time.Second * 30
