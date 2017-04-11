@@ -204,7 +204,7 @@ S3_URL=$1
 
 
 progress "Reading current date"
-DATE=`date +%Y%m%d%H%m`
+DATE=`date +%Y%m%d%H%m%s`
 if [ $? -ne 0 ]; then
     progress "failed"
     leave "Cannot execute \`date\` command." 1
