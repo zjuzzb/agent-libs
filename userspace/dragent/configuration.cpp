@@ -988,6 +988,9 @@ void dragent_configuration::print_configuration()
 	g_log->information("java detected: " + bool_as_text(java_present()));
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
+	if(m_sdjagent_enabled && getppid() == 1) {
+		g_log->warning("Sysdig Agent container has been launched without `--pid host` parameter, JMX metrics will not be available");
+	}
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
