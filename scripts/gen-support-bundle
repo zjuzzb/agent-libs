@@ -6,6 +6,9 @@
 #
 
 
+APP_NAME="gen-support-bundle"
+APP_VERSION="0.1"
+NO_S3_UPLOAD=0
 HOME_DIR="/opt/draios"
 HOME_DIR_S=${HOME_DIR:1}
 LOG_DIR="$HOME_DIR/logs"
@@ -175,33 +178,70 @@ function tarball()
 }
 
 
-function uploadS3()
+function upload_s3()
 {
     progress "Uploading archive to Amazon S3"
-    response=$(curl -s -S --request PUT --upload-file $BZIP_ARCHIVE $S3_URL)
-    if [[ -z $response ]]; then
-        progress "done"
+    if [ $NO_S3_UPLOAD -eq 1 ]; then
+        progress "skipped"
     else
-        progress "failed"
+        response=$(curl -s -S --request PUT --upload-file $BZIP_ARCHIVE $S3_URL)
+        if [[ -z $response ]]; then
+            progress "done"
+        else
+            progress "failed"
+        fi
     fi
 }
 
 
-
-function helpMessage()
+function help_message()
 {
-    echo "Usage: gen-support-bundle <presigned url>"
-    exit 0
+    echo "Usage: $APP_NAME [options...] <presigned url>"
+    echo "--help                  this help message"
+    echo "--no-s3-upload          enables/disables upload of a bundle to Amazon S3 bucket"
+    echo "--version               prints program version"
+    exit 1
 }
 
 
 # script start #
 
-if [[ "$#" -ne 1 ]]; then
-    helpMessage
-fi
-S3_URL=$1
 
+CMD_INPUT="$(getopt -o '' -l help,no-s3-upload,version -q -n "$0" -- "$@")"
+if [ $? -ne 0 ]; then
+    leave "Incorrect parameters." 1
+fi
+eval set -- "$CMD_INPUT"
+while true
+do
+    case "$1" in
+        --help)
+            help_message
+            ;;
+        --no-s3-upload)
+            NO_S3_UPLOAD=1
+            shift
+            ;;
+        --version)
+            echo "$APP_NAME $APP_VERSION"
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unknown parameter: $1" >&2
+            echo "Usage: $APP_NAME [options...] <presigned url>"
+            exit 1
+            ;;
+    esac
+done
+
+S3_URL=$1
+if [[ -z $S3_URL ]] && [[ $NO_S3_UPLOAD -eq 0 ]]; then
+    leave "Empty URL not allowed." 1
+fi
 
 progress "Reading current date"
 DATE=`date +%Y%m%d%H%m%s`
@@ -226,5 +266,5 @@ TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
 verify_files
 docker_info
 tarball
-uploadS3
-leave "" 0
+upload_s3
+leave "Done." 0
