@@ -1,0 +1,159 @@
+require 'erb'
+
+CACHED_IMAGES_FILE = "cloud_images.json"
+HVM_TYPE = "t2.micro"
+PARA_TYPE = "t1.micro"
+
+CLOUD_INIT = ERB.new <<-EOF
+#cloud-config
+write_files:
+-   path: /etc/sudoers.d/999-vagrant-cloud-init-requiretty
+    permissions: 440
+    content: |
+        Defaults:<%= value[:username] %> !requiretty
+EOF
+
+if (not File.exist? CACHED_IMAGES_FILE) or Time.now - File.mtime(CACHED_IMAGES_FILE) >= 24*3600
+  puts "Fetching cloud images data.."
+  require 'json'
+  require 'net/http'
+
+  # Static images 
+  BOXES = {
+    :squeeze64 => {
+      :ami => "ami-5e12dc36",
+      :instance_type => PARA_TYPE,
+      :username => "admin",
+    },
+    :wheezy64 => {
+      :ami => "ami-baeda9d2",
+      :instance_type => PARA_TYPE,
+      :username => "admin"
+    },
+    :jessie64 => {
+      :ami => "ami-c8bda8a2",
+      :instance_type => HVM_TYPE,
+      :username => "admin"
+    },
+    :fedora21_64 => {
+      :ami => "ami-16ec977e",
+      :instance_type => HVM_TYPE,
+      :username => "fedora"
+    },
+    :fedora22_64 => {
+      :ami => "ami-76dfc41e",
+      :instance_type => HVM_TYPE,
+      :username => "fedora"
+    },
+    :centos5_64 => {
+      :ami => "ami-7ea24a17",
+      :instance_type => HVM_TYPE,
+      :username => "root"
+    },
+    :centos6_64 => {
+      :ami => "ami-8997afe0",
+      :instance_type => PARA_TYPE,
+      :username => "root"
+    },
+    :centos6_32 => {
+      :ami =>"ami-fdbdc894",
+      :instance_type => PARA_TYPE,
+      :username => "root"
+    },
+    :centos7_64 => {
+      :ami => "ami-6d1c2007",
+      :instance_type => HVM_TYPE,
+      :username => "centos"
+    },
+    :amazon64 => {
+      :ami => "ami-f5f41398",
+      :instance_type => HVM_TYPE,
+      :username => "ec2-user",
+    },
+    :rhel5 => {
+      :ami => "ami-0293da6a",
+      :instance_type => PARA_TYPE,
+      :username => "root"
+    },
+    :rhel7 => {
+      :ami => "ami-2051294a",
+      :instance_type => HVM_TYPE,
+      :username => "ec2-user"
+    },
+    :rhel7atomic => {
+      :ami => "ami-eea69e86",
+      :instance_type => HVM_TYPE,
+      :username => "cloud-user"
+    },
+    :sles12 => {
+      :ami => "ami-fde4ebea",
+      :instance_type => HVM_TYPE,
+      :username => "root"
+    }
+  }
+
+  # CoreOS
+  [ :stable, :beta, :alpha ].each do |channel|
+    catalog = JSON.parse(Net::HTTP.get(URI("https://coreos.com/dist/aws/aws-#{channel}.json")))
+    BOXES["coreos-#{channel}"] = {
+      :ami => catalog["us-east-1"]["hvm"],
+      :instance_type => HVM_TYPE,
+      :username => "core"
+    }
+  end
+
+  # Ubuntu
+  ubuntu_images_s = Net::HTTP.get(URI("https://cloud-images.ubuntu.com/locator/ec2/releasesTable"))
+  ubuntu_images_s.slice! -6 # Delete trailing "," on array, causes JSON.parse to fail
+  ubuntu_images_j = JSON.parse(ubuntu_images_s)
+  ubuntu_images = ubuntu_images_j["aaData"].select { |a| a[0] == "us-east-1" and a[4] == "hvm:ebs-ssd"}
+  ubuntu_images.each do |image|
+    type = image[3] == "amd64"? "64" : "32"
+    BOXES[image[1]+type] = {
+      :ami => image[6][/ami-[a-z0-9]+/],
+      :instance_type => HVM_TYPE,
+      :username => "ubuntu"
+    }
+  end
+  File.open(CACHED_IMAGES_FILE, "w") do |f|
+    f.write(BOXES.to_json)
+  end
+else
+  puts "Using cached images"
+  File.open(CACHED_IMAGES_FILE, "r") do |f|
+    BOXES = JSON.parse(f.read, symbolize_names: true)
+  end
+end
+
+Vagrant.configure("2") do |config|
+  BOXES.each do |key, value|
+    config.vm.define key do |node|
+      node.vm.box = "dummy"
+
+      node.vm.provider :aws do |aws, override|
+        aws.access_key_id = ENV['AWS_ID']
+        aws.secret_access_key = ENV["AWS_SECRET"]
+        aws.keypair_name = "testinfrastructure"
+        aws.security_groups = %w(sg-2219285f)
+        aws.tags = {
+          'Name' => "vagrant-#{key}",
+        }
+        aws.ami = value[:ami]
+        aws.subnet_id = "subnet-45b87468"
+        if ENV['INSTANCE_TYPE']
+          aws.instance_type = ENV['INSTANCE_TYPE']
+        else  
+          aws.instance_type = value[:instance_type]
+        end
+        #aws.block_device_mapping = [{ 'DeviceName' => '/dev/sda1', 'Ebs.VolumeSize' => 20 }]
+        aws.associate_public_ip = true
+        aws.ssh_host_attribute = :public_ip_address
+        aws.terminate_on_shutdown = true
+        aws.user_data = CLOUD_INIT.result binding
+        override.ssh.username = value[:username]
+        override.ssh.private_key_path = ENV["PEM_PATH"]
+      end
+      node.vm.synced_folder '.', '/v'
+    end
+  end
+end
