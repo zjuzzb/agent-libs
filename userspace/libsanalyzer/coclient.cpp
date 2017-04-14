@@ -135,7 +135,8 @@ void coclient::next()
 
 	if(call->status.ok()) {
 		string tmp;
-		m_print.PrintToString(*(call->response_msg), &tmp);
+		// FIXME: disabled because causes segfault on tests
+		// m_print.PrintToString(*(call->response_msg), &tmp);
 
 		g_logger.log("Got response from cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
