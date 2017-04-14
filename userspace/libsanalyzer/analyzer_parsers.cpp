@@ -248,7 +248,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// If command line capture is disabled, we stop here
 	//
-	if(!m_analyzer->m_command_lines_capture_enabled)
+	if(!m_analyzer->get_configuration_read_only()->get_command_lines_capture_enabled())
 	{
 		return;
 	}
@@ -281,14 +281,22 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	if(m_analyzer->m_command_lines_capture_all_commands) {
-		if(!login_shell_id) {
-			return;
-		}
-	} else {
-		if(!tinfo->m_tty) {
-			return;
-		}
+	switch(m_analyzer->get_configuration_read_only()->get_command_lines_capture_mode())
+	{
+		case sinsp_configuration::command_capture_mode_t::CM_TTY:
+			if(!tinfo->m_tty) {
+				return;
+			}
+			break;
+		case sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR:
+			if(!login_shell_id) {
+				return;
+			}
+			break;
+		case sinsp_configuration::command_capture_mode_t::CM_ALL:
+			break;
+		default:
+			ASSERT(false);
 	}
 
 	//

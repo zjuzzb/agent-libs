@@ -208,6 +208,7 @@ public:
 	// Get and set the library configuration settings
 	//
 	sinsp_configuration* get_configuration();
+	const sinsp_configuration* get_configuration_read_only();
 	void set_configuration(const sinsp_configuration& configuration);
 
 	//
@@ -609,8 +610,6 @@ VISIBILITY_PRIVATE
 	sisnp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
-	bool m_command_lines_capture_enabled = false;
-	bool m_command_lines_capture_all_commands = false;
 
 	//
 	// Memory dump stuff
