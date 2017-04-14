@@ -282,6 +282,7 @@ dragent_configuration::dragent_configuration()
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
 	m_cointerface_enabled = true;
+	m_swarm_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -868,6 +869,7 @@ void dragent_configuration::init(Application* app)
 	}
 
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
+	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 }
 
 void dragent_configuration::print_configuration()

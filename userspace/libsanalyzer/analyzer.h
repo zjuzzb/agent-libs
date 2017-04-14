@@ -491,7 +491,7 @@ VISIBILITY_PRIVATE
 	//
 	// Checking Docker swarm state every 10 seconds
 	//
-	run_on_interval m_swarmstate_interval = {10*ONE_SECOND_IN_NS};
+	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
 	coclient m_coclient;
 
 	//

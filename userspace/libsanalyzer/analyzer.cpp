@@ -3289,8 +3289,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
-				// Only run every 10 seconds (see analyzer.h)
-				if (m_configuration->get_cointerface_enabled())
+				// Only run every 10 seconds or 5 minutes
+				if (m_configuration->get_cointerface_enabled() &&
+					m_configuration->get_swarm_enabled())
 				{
 					tracer_emitter ss_trc("get_swarm_state", f_trc);
 					m_swarmstate_interval.run([this]()
@@ -3304,6 +3305,19 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 								sdc_internal::swarm_state_result *res = (sdc_internal::swarm_state_result *) response_msg;
 								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
 								m_docker_swarm_state->CopyFrom(res->state());
+								if (!res->successful()) {
+									
+									g_logger.format(sinsp_logger::SEV_INFO, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
+									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
+								}
+								if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
+								{
+									g_logger.format(sinsp_logger::SEV_INFO, "Swarm state poll recovered, changing interval back to %lds\n", SWARM_POLL_INTERVAL / ONE_SECOND_IN_NS);
+									m_swarmstate_interval.interval(SWARM_POLL_INTERVAL);
+								}
+							} else {
+								g_logger.format(sinsp_logger::SEV_INFO, "Swarm state poll failed, setting interval to %lds\n", SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
+								m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 							}
 						};
 						m_coclient.get_swarm_state(callback);

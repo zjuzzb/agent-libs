@@ -32,7 +32,8 @@ sinsp_configuration::sinsp_configuration()
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
 	m_capture_dragent_events = false;
-	m_cointerface_enabled = false;
+	m_cointerface_enabled = true;
+	m_swarm_enabled = true;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -747,5 +748,15 @@ bool sinsp_configuration::get_cointerface_enabled() const
 void sinsp_configuration::set_cointerface_enabled(bool val)
 {
 	m_cointerface_enabled = val;
+}
+
+bool sinsp_configuration::get_swarm_enabled() const
+{
+	return m_swarm_enabled;
+}
+
+void sinsp_configuration::set_swarm_enabled(bool val)
+{
+	m_swarm_enabled = val;
 }
 #endif // HAS_ANALYZER

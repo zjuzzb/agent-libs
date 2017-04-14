@@ -142,6 +142,8 @@ public:
 	void set_app_checks_limit(unsigned value);
 	bool get_cointerface_enabled() const;
 	void set_cointerface_enabled(bool enabled);
+	bool get_swarm_enabled() const;
+	void set_swarm_enabled(bool enabled);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -217,6 +219,7 @@ private:
 	unsigned m_app_checks_limit;
 
 	bool m_cointerface_enabled;
+	bool m_swarm_enabled;
 };
 
 #endif // HAS_ANALYZER

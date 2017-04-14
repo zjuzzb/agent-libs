@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-
+//	"fmt"
 	"draiosproto"
 	"sdc_internal"
 	log "github.com/cihub/seelog"
@@ -66,8 +66,21 @@ func taskToProtobuf(task swarm.Task) *draiosproto.SwarmTask {
 	if cidlen > 12 {
 		cidlen = 12
 	}
+
+	/*
+	// This is the way `docker service ps` constructs the task name
+	name := ""
+	if task.Slot != 0 {
+		name = fmt.Sprintf("%v.%v", serviceName, task.Slot)
+	} else {
+		name = fmt.Sprintf("%v.%v", serviceName, task.NodeID)
+	}
+	*/
+	name := task.Name
+
 	return &draiosproto.SwarmTask{Common: &draiosproto.SwarmCommon{
 			Id: proto.String(task.ID),
+			Name: proto.String(name),
 		},
 		ServiceId:   proto.String(task.ServiceID),
 		NodeId:      proto.String(task.NodeID),
@@ -129,47 +142,54 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 		ferr := log.Errorf("Could not get docker client info: %s", err)
 		return nil, ferr
 	}
-	clusterId := proto.String(info.Swarm.Cluster.ID)
+
 	isManager := info.Swarm.ControlAvailable
 
+	// If this host is not a manager we won't be able to get any swarm state
+	// from it, so treat it as an error and the agent will reduce the
+	// poll-frequency
+	if !isManager {
+		ferr := log.Error("Host is not a swarm manager")
+		return nil, ferr
+	}
+
+	clusterId := proto.String(info.Swarm.Cluster.ID)
 	m := &draiosproto.SwarmState{ClusterId: clusterId}
 
-	if isManager {
-		taskmap := make(map[string]uint64)
-		args := filters.NewArgs()
-		args.Add("desired-state", "running")
-		args.Add("desired-state", "accepted")
+	taskmap := make(map[string]uint64)
+	args := filters.NewArgs()
+	args.Add("desired-state", "running")
+	args.Add("desired-state", "accepted")
 
-		tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args})
-		if err == nil {
-			for _, task := range tasks {
-				m.Tasks = append(m.Tasks, taskToProtobuf(task))
-				// fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
-				if task.Status.State == swarm.TaskStateRunning && len(task.ServiceID) > 0 {
-					taskmap[task.ServiceID]++
-				}
+	tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args})
+	if err == nil {
+		for _, task := range tasks {
+			m.Tasks = append(m.Tasks, taskToProtobuf(task))
+			// fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
+			if task.Status.State == swarm.TaskStateRunning && len(task.ServiceID) > 0 {
+				taskmap[task.ServiceID]++
 			}
-		} else {
-			log.Errorf("Error fetching tasks: %s\n", err)
 		}
+	} else {
+		log.Errorf("Error fetching tasks: %s\n", err)
+	}
 
-		if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
-			for _, service := range services {
-				m.Services = append(m.Services, serviceToProtobuf(service, taskmap))
-			}
-		} else {
-			log.Errorf("Error fetching services: %s\n", err)
+	if services, err := cli.ServiceList(ctx, types.ServiceListOptions{}); err == nil {
+		for _, service := range services {
+			m.Services = append(m.Services, serviceToProtobuf(service, taskmap))
 		}
+	} else {
+		log.Errorf("Error fetching services: %s\n", err)
+	}
 
-		if nodes, err := cli.NodeList(ctx, types.NodeListOptions{}); err == nil {
-			for _, node := range nodes {
-				m.Nodes = append(m.Nodes, nodeToProtobuf(node))
-				// fmt.Printf("node id=%s name=%s role=%s availability=%s\n", node.ID, node.Description.Hostname, node.Spec.Role, node.Spec.Availability)
-			}
-			m.Quorum = quorum(nodes)
-		} else {
-			log.Errorf("Error fetching nodes: %s\n", err)
+	if nodes, err := cli.NodeList(ctx, types.NodeListOptions{}); err == nil {
+		for _, node := range nodes {
+			m.Nodes = append(m.Nodes, nodeToProtobuf(node))
+			// fmt.Printf("node id=%s name=%s role=%s availability=%s\n", node.ID, node.Description.Hostname, node.Spec.Role, node.Spec.Availability)
 		}
+		m.Quorum = quorum(nodes)
+	} else {
+		log.Errorf("Error fetching nodes: %s\n", err)
 	}
 
     res := &sdc_internal.SwarmStateResult{}
