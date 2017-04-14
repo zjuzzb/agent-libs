@@ -11,6 +11,7 @@ import (
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/gogo/protobuf/proto"
 	"strings"
+	"errors"
 )
 
 func labelsToProtobuf(labels map[string]string) (ret []*draiosproto.SwarmPair) {
@@ -153,7 +154,8 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 	// from it, so treat it as an error and the agent will reduce the
 	// poll-frequency
 	if !isManager {
-		ferr := log.Error("Host is not a swarm manager")
+		ferr := errors.New("Host is not a swarm manager")
+		log.Debug(ferr)
 		return nil, ferr
 	}
 
