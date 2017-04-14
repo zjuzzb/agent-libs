@@ -581,6 +581,7 @@ public:
 	dragent_mode_t m_mode;
 
 	bool m_cointerface_enabled;
+	bool m_swarm_enabled;
 
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;

@@ -34,6 +34,8 @@ enum cointerface_message_type {
     PONG = 2;
     DOCKER_COMMAND = 3;
     DOCKER_COMMAND_RESULT = 4;
+    SWARM_STATE_COMMAND = 5;
+    SWARM_STATE_RESULT = 6;
 }
 
 enum docker_cmd_type {
@@ -63,7 +65,18 @@ message docker_command_result {
     optional string errstr = 2;
 }
 
+message swarm_state_command {
+    optional string container_id = 2;
+}
+
+message swarm_state_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+    optional draiosproto.swarm_state state = 3;
+}
+
 service CoInterface {
     rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
     rpc PerformPing(ping) returns (pong) {}
+    rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
 }

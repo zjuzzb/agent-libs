@@ -158,7 +158,10 @@ public:
 	void set_percentiles(const std::set<double>&);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
-
+	bool get_cointerface_enabled() const;
+	void set_cointerface_enabled(bool enabled);
+	bool get_swarm_enabled() const;
+	void set_swarm_enabled(bool enabled);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -229,7 +232,7 @@ private:
 	uint64_t m_memdump_size;
 
 	uint32_t m_protocols_truncation_size;
-	
+
 	std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 
@@ -239,6 +242,9 @@ private:
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
+
+	bool m_cointerface_enabled;
+	bool m_swarm_enabled;
 };
 
 #endif // HAS_ANALYZER

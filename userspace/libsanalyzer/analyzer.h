@@ -17,6 +17,7 @@
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "memdumper.h"
+#include "coclient.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -516,6 +517,12 @@ VISIBILITY_PRIVATE
 	FILE* m_protobuf_fp;
 
 	//
+	// Checking Docker swarm state every 10 seconds
+	//
+	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
+	coclient m_coclient;
+
+	//
 	// The callback we invoke when a sample is ready
 	//
 	analyzer_callback_interface* m_sample_callback;
@@ -654,6 +661,7 @@ VISIBILITY_PRIVATE
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 	bool                                 m_k8s_proc_detected = false;
 
+	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
 	unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state
@@ -693,6 +701,7 @@ VISIBILITY_PRIVATE
 	user_event_queue::ptr_t m_user_event_queue;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
+
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//

@@ -266,7 +266,7 @@ void subprocesses_logger::run()
 				if(FD_ISSET(fileno(fds.first), &readset_w))
 				{
 					auto available_stream = fds.first;
-					static const auto READ_BUFFER_SIZE = 1024;
+					static const auto READ_BUFFER_SIZE = 4096;
 					char buffer[READ_BUFFER_SIZE];
 					auto fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					while(fgets_res != NULL)

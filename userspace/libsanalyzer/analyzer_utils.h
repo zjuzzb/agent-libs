@@ -254,6 +254,8 @@ public:
 
 	template<typename Callable>
 	inline void run(const Callable& c, uint64_t now = sinsp_utils::get_current_time_ns());
+	uint64_t interval() const { return m_interval; }
+	void interval(uint64_t i) { m_interval = i; }
 private:
 	uint64_t m_last_run_ns;
 	uint64_t m_interval;
