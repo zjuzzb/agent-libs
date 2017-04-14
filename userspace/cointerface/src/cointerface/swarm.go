@@ -2,22 +2,22 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"draiosproto"
-	"sdc_internal"
+	"errors"
+	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/gogo/protobuf/proto"
+	"sdc_internal"
 	"strings"
-	"errors"
 )
 
 func labelsToProtobuf(labels map[string]string) (ret []*draiosproto.SwarmPair) {
 	for k, v := range labels {
 		// Strip com.docker. from labels
-		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(strings.TrimPrefix(k,"com.docker.")), Value: proto.String(v)})
+		ret = append(ret, &draiosproto.SwarmPair{Key: proto.String(strings.TrimPrefix(k, "com.docker.")), Value: proto.String(v)})
 	}
 	return
 }
@@ -40,9 +40,9 @@ func portsToProtobuf(ports []swarm.PortConfig) (ret []*draiosproto.SwarmPort) {
 
 func serviceToProtobuf(service swarm.Service, taskmap map[string]uint64) *draiosproto.SwarmService {
 	srv := draiosproto.SwarmService{Common: &draiosproto.SwarmCommon{
-			Id:     proto.String(service.ID),
-			Name:   proto.String(service.Spec.Name),
-			Labels: labelsToProtobuf(service.Spec.Labels)},
+		Id:     proto.String(service.ID),
+		Name:   proto.String(service.Spec.Name),
+		Labels: labelsToProtobuf(service.Spec.Labels)},
 		VirtualIps: virtualIPsToProtobuf(service.Endpoint.VirtualIPs),
 		Ports:      portsToProtobuf(service.Endpoint.Ports),
 	}
@@ -84,9 +84,9 @@ func taskToProtobuf(task swarm.Task, srvmap map[string]string) *draiosproto.Swar
 	}
 
 	return &draiosproto.SwarmTask{Common: &draiosproto.SwarmCommon{
-			Id: proto.String(task.ID),
-			Name: proto.String(name),
-		},
+		Id:   proto.String(task.ID),
+		Name: proto.String(name),
+	},
 		ServiceId:   proto.String(task.ServiceID),
 		NodeId:      proto.String(task.NodeID),
 		ContainerId: proto.String(task.Status.ContainerStatus.ContainerID[:cidlen]),
@@ -109,20 +109,20 @@ func nodeToProtobuf(node swarm.Node) *draiosproto.SwarmNode {
 			Name:   proto.String(node.Description.Hostname),
 			Labels: labelsToProtobuf(node.Spec.Labels),
 		},
-		Role: proto.String(string(node.Spec.Role)),
-		IpAddress: proto.String(addr),
-		Version: proto.String(node.Description.Engine.EngineVersion),
+		Role:         proto.String(string(node.Spec.Role)),
+		IpAddress:    proto.String(addr),
+		Version:      proto.String(node.Description.Engine.EngineVersion),
 		Availability: proto.String(string(node.Spec.Availability)),
-		State: proto.String(string(node.Status.State))}
+		State:        proto.String(string(node.Status.State))}
 	if node.ManagerStatus != nil {
 		sn.Manager = &draiosproto.SwarmManager{
-			Leader: proto.Bool(node.ManagerStatus.Leader),
+			Leader:       proto.Bool(node.ManagerStatus.Leader),
 			Reachability: proto.String(string(node.ManagerStatus.Reachability))}
 	}
 	return &sn
 }
 
-func quorum(nodes []swarm.Node) (*bool) {
+func quorum(nodes []swarm.Node) *bool {
 	var on, total uint32 = 0, 0
 	for _, node := range nodes {
 		if node.ManagerStatus != nil {
@@ -132,15 +132,15 @@ func quorum(nodes []swarm.Node) (*bool) {
 			total++
 		}
 	}
-	var q bool = on >= (total / 2) + 1
+	var q bool = on >= (total/2)+1
 	return &q
 }
 
 func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
 	cli, err := GetDockerClient("v1.24")
-    if (err != nil) {
-        return nil, err
-    }
+	if err != nil {
+		return nil, err
+	}
 
 	info, err := cli.Info(ctx)
 	if err != nil {
@@ -162,7 +162,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 	clusterId := proto.String(info.Swarm.Cluster.ID)
 	m := &draiosproto.SwarmState{ClusterId: clusterId}
 
-	taskmap := make(map[string]uint64) // count of running tasks per service id
+	taskmap := make(map[string]uint64)    // count of running tasks per service id
 	servicemap := make(map[string]string) // service id to name
 
 	args := filters.NewArgs()
@@ -205,12 +205,12 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 		log.Errorf("Error fetching nodes: %s\n", err)
 	}
 
-    res := &sdc_internal.SwarmStateResult{}
-    res.Successful = proto.Bool(err == nil)
-    if err != nil {
-        res.Errstr = proto.String(err.Error())
-    }
+	res := &sdc_internal.SwarmStateResult{}
+	res.Successful = proto.Bool(err == nil)
+	if err != nil {
+		res.Errstr = proto.String(err.Error())
+	}
 	res.State = m
 
-    return res, nil
+	return res, nil
 }

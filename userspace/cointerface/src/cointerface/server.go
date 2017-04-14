@@ -11,8 +11,8 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"sdc_internal"
+	"sync"
 	"time"
 )
 
@@ -24,9 +24,9 @@ var dockerClientMapMutex = &sync.Mutex{}
 var dockerClientMap = make(map[string]*client.Client)
 
 func GetDockerClient(ver string) (*client.Client, error) {
-	dockerClientMapMutex.Lock();
+	dockerClientMapMutex.Lock()
 	if cli, exists := dockerClientMap[ver]; exists {
-		dockerClientMapMutex.Unlock();
+		dockerClientMapMutex.Unlock()
 		return cli, nil
 	}
 	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
@@ -38,13 +38,13 @@ func GetDockerClient(ver string) (*client.Client, error) {
 
 	cli, err := client.NewClient(dockerSock, ver, nil, nil)
 	if err != nil {
-		dockerClientMapMutex.Unlock();
+		dockerClientMapMutex.Unlock()
 		ferr := fmt.Errorf("Could not create docker client: %s", err)
 		log.Errorf(ferr.Error())
 		return nil, ferr
 	}
 	dockerClientMap[ver] = cli
-	dockerClientMapMutex.Unlock();
+	dockerClientMapMutex.Unlock()
 	return cli, nil
 }
 
@@ -55,7 +55,7 @@ func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_i
 	log.Debugf("Received docker command message: %s", cmd.String())
 
 	cli, err := GetDockerClient("v1.18")
-	if (err != nil) {
+	if err != nil {
 		return nil, err
 	}
 
