@@ -39,7 +39,8 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	}
 
 	string tmp;
-	m_print.PrintToString(*request_msg, &tmp);
+	// FIXME: disabled because causes segfault on tests
+	// m_print.PrintToString(*request_msg, &tmp);
 	g_logger.log("Sending message to cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
 	call_context *call = new call_context();
