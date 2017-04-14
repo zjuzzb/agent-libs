@@ -169,6 +169,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_mesos_last_failure_ns = 0;
 	m_last_mesos_refresh = 0;
+
+	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -3086,6 +3088,8 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			executed_command_cmp);
 
 #if 0
+		uint32_t j;
+		int32_t last_pipe_head = -1;
 		//
 		// Consolidate command with pipes
 		//
@@ -3378,6 +3382,47 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
+				// Only run every 10 seconds or 5 minutes
+				if (m_configuration->get_cointerface_enabled() &&
+					m_configuration->get_swarm_enabled())
+				{
+					tracer_emitter ss_trc("get_swarm_state", f_trc);
+					m_swarmstate_interval.run([this]()
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Sending Swarm State Command");
+						//  callback to be executed by coclient::next()
+						coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+							m_metrics->mutable_swarm()->Clear();
+							if(successful)
+							{
+								sdc_internal::swarm_state_result *res = (sdc_internal::swarm_state_result *) response_msg;
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
+								m_docker_swarm_state->CopyFrom(res->state());
+								if (!res->successful()) {
+									
+									g_logger.format(sinsp_logger::SEV_INFO, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
+									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
+								}
+								if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
+								{
+									g_logger.format(sinsp_logger::SEV_INFO, "Swarm state poll recovered, changing interval back to %lds\n", SWARM_POLL_INTERVAL / ONE_SECOND_IN_NS);
+									m_swarmstate_interval.interval(SWARM_POLL_INTERVAL);
+								}
+							} else {
+								g_logger.format(sinsp_logger::SEV_INFO, "Swarm state poll failed, setting interval to %lds\n", SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
+								m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
+							}
+						};
+						m_coclient.get_swarm_state(callback);
+					});
+					// Read available responses
+					m_coclient.next();
+					ss_trc.stop();
+					tracer_emitter copy_trc("copy_swarm_state", f_trc);
+					// Copy from cached swarm state
+					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
+				}
+
 				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();
 				if(m_mounted_fs_proxy)
@@ -5371,6 +5416,14 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		// Filter out docker swarm and docker stack labels because that data
+		// should get sent in the swarm protobuf section by swarm managers
+		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
+		if(!it_labels->first.compare(0, swarmstr.size(), swarmstr) ||
+			!it_labels->first.compare(0, stackstr.size(), stackstr))
+		{
+			continue;
+		}
 		draiosproto::container_label* label = container->add_labels();
 
 		label->set_key(it_labels->first);

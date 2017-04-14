@@ -33,6 +33,8 @@ sinsp_configuration::sinsp_configuration()
 	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
 	m_command_lines_capture_all_commands = false;
 	m_capture_dragent_events = false;
+	m_cointerface_enabled = true;
+	m_swarm_enabled = true;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -789,4 +791,23 @@ void sinsp_configuration::set_app_checks_limit(unsigned value)
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
 }
 
+bool sinsp_configuration::get_cointerface_enabled() const
+{
+	return m_cointerface_enabled;
+}
+
+void sinsp_configuration::set_cointerface_enabled(bool val)
+{
+	m_cointerface_enabled = val;
+}
+
+bool sinsp_configuration::get_swarm_enabled() const
+{
+	return m_swarm_enabled;
+}
+
+void sinsp_configuration::set_swarm_enabled(bool val)
+{
+	m_swarm_enabled = val;
+}
 #endif // HAS_ANALYZER

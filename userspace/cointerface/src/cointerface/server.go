@@ -11,10 +11,42 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"sdc_internal"
-
 	"time"
 )
+
+// Reusing docker clients, so we don't need to reconnect to docker daemon
+// for every request and also because connections don't appear to get closed
+// when the docker client goes out of scope
+// We keep one per version, they're supposed to be thread-safe
+var dockerClientMapMutex = &sync.Mutex{}
+var dockerClientMap = make(map[string]*client.Client)
+
+func GetDockerClient(ver string) (*client.Client, error) {
+	dockerClientMapMutex.Lock();
+	if cli, exists := dockerClientMap[ver]; exists {
+		dockerClientMapMutex.Unlock();
+		return cli, nil
+	}
+	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
+	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+	if sysdigRoot != "" {
+		sysdigRoot = sysdigRoot + "/"
+	}
+	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
+
+	cli, err := client.NewClient(dockerSock, ver, nil, nil)
+	if err != nil {
+		dockerClientMapMutex.Unlock();
+		ferr := fmt.Errorf("Could not create docker client: %s", err)
+		log.Errorf(ferr.Error())
+		return nil, ferr
+	}
+	dockerClientMap[ver] = cli
+	dockerClientMapMutex.Unlock();
+	return cli, nil
+}
 
 type coInterfaceServer struct {
 }
@@ -22,19 +54,9 @@ type coInterfaceServer struct {
 func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_internal.DockerCommand) (*sdc_internal.DockerCommandResult, error) {
 	log.Debugf("Received docker command message: %s", cmd.String())
 
-	// If SYSDIG_HOST_ROOT is set, use that as a part of the
-	// socket path.
-
-	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
-	if sysdigRoot != "" {
-		sysdigRoot = sysdigRoot + "/"
-	}
-	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
-	cli, err := client.NewClient(dockerSock, "v1.18", nil, nil)
-	if err != nil {
-		ferr := fmt.Errorf("Could not create docker client: %s", err)
-		log.Errorf(ferr.Error())
-		return nil, ferr
+	cli, err := GetDockerClient("v1.18")
+	if (err != nil) {
+		return nil, err
 	}
 
 	thirty_secs := time.Second * 30
@@ -93,6 +115,10 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 	log.Debugf("Sending response: %s", res.String())
 
 	return res, nil
+}
+
+func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
+	return getSwarmState(ctx, cmd)
 }
 
 func startServer(sock string) int {

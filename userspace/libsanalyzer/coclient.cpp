@@ -1,15 +1,20 @@
 #include <Poco/File.h>
 
+// From sysdig, for g_logger
+#include "sinsp.h"
+#include "sinsp_int.h"
 #include "logger.h"
 
+#include "analyzer_utils.h"
 #include "coclient.h"
 
 using namespace std;
 
 std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
 
-coclient::coclient()
-	: m_domain_sock(default_domain_sock)
+coclient::coclient():
+	m_domain_sock(default_domain_sock),
+	m_outstanding_swarm_state(false)
 {
 	m_print.SetSingleLineMode(true);
 }
@@ -35,10 +40,11 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 
 	string tmp;
 	m_print.PrintToString(*request_msg, &tmp);
-	g_log->debug("Sending message to cointerface: " + tmp);
+	g_logger.log("Sending message to cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
 	call_context *call = new call_context();
 
+	call->msg_type = msg_type;
 	call->response_cb = response_cb;
 
 	// Perform the (async) rpc
@@ -47,10 +53,11 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	switch(msg_type) {
 		sdc_internal::ping *ping;
 		sdc_internal::docker_command *docker_command;
+		sdc_internal::swarm_state_command *sscmd;
 
 	case sdc_internal::PING:
-                // Start the rpc call and have the pong reader read the response when
-                // it's ready.
+		// Start the rpc call and have the pong reader read the response when
+		// it's ready.
 		ping = static_cast<sdc_internal::ping *>(request_msg);
 		call->pong_reader = m_stub->AsyncPerformPing(&call->ctx, *ping, &m_cq);
 
@@ -60,7 +67,14 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		// that is the address of the call struct.
 		call->response_msg = make_unique<sdc_internal::pong>();
 		call->pong_reader->Finish(static_cast<sdc_internal::pong *>(call->response_msg.get()), &call->status, (void*)call);
+		break;
 
+	case sdc_internal::SWARM_STATE_COMMAND:
+		sscmd = static_cast<sdc_internal::swarm_state_command *>(request_msg);
+		call->swarm_state_reader = m_stub->AsyncPerformSwarmState(&call->ctx, *sscmd, &m_cq);
+
+		call->response_msg = make_unique<sdc_internal::swarm_state_result>();
+		call->swarm_state_reader->Finish(static_cast<sdc_internal::swarm_state_result *>(call->response_msg.get()), &call->status, (void*)call);
 		break;
 
 	case sdc_internal::DOCKER_COMMAND:
@@ -80,7 +94,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		break;
 
 	default:
-		g_log->error("Unknown message type " + to_string(msg_type));
+		g_logger.log("Unknown message type " + to_string(msg_type), sinsp_logger::SEV_ERROR);
 		break;
 	}
 }
@@ -95,8 +109,9 @@ void coclient::next()
 
 	if(status == grpc::CompletionQueue::SHUTDOWN)
 	{
-		g_log->error("cointerface process shut down, disconnecting");
+		g_logger.log("cointerface process shut down, disconnecting", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
+		m_outstanding_swarm_state = false;
 		return;
 	}
 	else if(status == grpc::CompletionQueue::TIMEOUT)
@@ -106,8 +121,13 @@ void coclient::next()
 
 	call_context *call = static_cast<call_context *>(tag);
 
+	if(call->msg_type == sdc_internal::SWARM_STATE_COMMAND)
+	{
+		m_outstanding_swarm_state = false;
+	}
+
 	if(!updates_ok) {
-		g_log->error("cointerface RPC could not be scheduled successfully");
+		g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
 		return;
 	}
@@ -116,10 +136,10 @@ void coclient::next()
 		string tmp;
 		m_print.PrintToString(*(call->response_msg), &tmp);
 
-		g_log->debug("Got response from cointerface: " + tmp);
+		g_logger.log("Got response from cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
 	} else {
-		g_log->debug("cointerface rpc failed");
+		g_logger.log("cointerface rpc failed", sinsp_logger::SEV_DEBUG);
 	}
 
 	call->response_cb(call->status.ok(), call->response_msg.get());
@@ -159,4 +179,17 @@ void coclient::perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
 	docker_cmd.set_container_id(container_id);
 
 	prepare(&docker_cmd, sdc_internal::DOCKER_COMMAND, response_cb);
+}
+
+void coclient::get_swarm_state(response_cb_t response_cb)
+{
+	if(m_outstanding_swarm_state)
+	{
+		g_logger.log("Swarm State requested while still pending", sinsp_logger::SEV_WARNING);
+		return;
+	}
+	m_outstanding_swarm_state = true;
+
+	sdc_internal::swarm_state_command cmd;
+	prepare(&cmd, sdc_internal::SWARM_STATE_COMMAND, response_cb);
 }

@@ -42,7 +42,7 @@ add_executable(tests
 	app_checks.cpp
 	capture_to_file_test.cpp
 	container.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/coclient.cpp
+	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp
 	coclient_test.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/draios.pb.cc
 	event_capture.cpp

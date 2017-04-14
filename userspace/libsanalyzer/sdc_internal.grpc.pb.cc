@@ -18,6 +18,7 @@ namespace sdc_internal {
 static const char* CoInterface_method_names[] = {
   "/sdc_internal.CoInterface/PerformDockerCommand",
   "/sdc_internal.CoInterface/PerformPing",
+  "/sdc_internal.CoInterface/PerformSwarmState",
 };
 
 std::unique_ptr< CoInterface::Stub> CoInterface::NewStub(const std::shared_ptr< ::grpc::ChannelInterface>& channel, const ::grpc::StubOptions& options) {
@@ -28,6 +29,7 @@ std::unique_ptr< CoInterface::Stub> CoInterface::NewStub(const std::shared_ptr< 
 CoInterface::Stub::Stub(const std::shared_ptr< ::grpc::ChannelInterface>& channel)
   : channel_(channel), rpcmethod_PerformDockerCommand_(CoInterface_method_names[0], ::grpc::RpcMethod::NORMAL_RPC, channel)
   , rpcmethod_PerformPing_(CoInterface_method_names[1], ::grpc::RpcMethod::NORMAL_RPC, channel)
+  , rpcmethod_PerformSwarmState_(CoInterface_method_names[2], ::grpc::RpcMethod::NORMAL_RPC, channel)
   {}
 
 ::grpc::Status CoInterface::Stub::PerformDockerCommand(::grpc::ClientContext* context, const ::sdc_internal::docker_command& request, ::sdc_internal::docker_command_result* response) {
@@ -46,6 +48,14 @@ CoInterface::Stub::Stub(const std::shared_ptr< ::grpc::ChannelInterface>& channe
   return new ::grpc::ClientAsyncResponseReader< ::sdc_internal::pong>(channel_.get(), cq, rpcmethod_PerformPing_, context, request);
 }
 
+::grpc::Status CoInterface::Stub::PerformSwarmState(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::sdc_internal::swarm_state_result* response) {
+  return ::grpc::BlockingUnaryCall(channel_.get(), rpcmethod_PerformSwarmState_, context, request, response);
+}
+
+::grpc::ClientAsyncResponseReader< ::sdc_internal::swarm_state_result>* CoInterface::Stub::AsyncPerformSwarmStateRaw(::grpc::ClientContext* context, const ::sdc_internal::swarm_state_command& request, ::grpc::CompletionQueue* cq) {
+  return new ::grpc::ClientAsyncResponseReader< ::sdc_internal::swarm_state_result>(channel_.get(), cq, rpcmethod_PerformSwarmState_, context, request);
+}
+
 CoInterface::Service::Service() {
   AddMethod(new ::grpc::RpcServiceMethod(
       CoInterface_method_names[0],
@@ -57,6 +67,11 @@ CoInterface::Service::Service() {
       ::grpc::RpcMethod::NORMAL_RPC,
       new ::grpc::RpcMethodHandler< CoInterface::Service, ::sdc_internal::ping, ::sdc_internal::pong>(
           std::mem_fn(&CoInterface::Service::PerformPing), this)));
+  AddMethod(new ::grpc::RpcServiceMethod(
+      CoInterface_method_names[2],
+      ::grpc::RpcMethod::NORMAL_RPC,
+      new ::grpc::RpcMethodHandler< CoInterface::Service, ::sdc_internal::swarm_state_command, ::sdc_internal::swarm_state_result>(
+          std::mem_fn(&CoInterface::Service::PerformSwarmState), this)));
 }
 
 CoInterface::Service::~Service() {
@@ -70,6 +85,13 @@ CoInterface::Service::~Service() {
 }
 
 ::grpc::Status CoInterface::Service::PerformPing(::grpc::ServerContext* context, const ::sdc_internal::ping* request, ::sdc_internal::pong* response) {
+  (void) context;
+  (void) request;
+  (void) response;
+  return ::grpc::Status(::grpc::StatusCode::UNIMPLEMENTED, "");
+}
+
+::grpc::Status CoInterface::Service::PerformSwarmState(::grpc::ServerContext* context, const ::sdc_internal::swarm_state_command* request, ::sdc_internal::swarm_state_result* response) {
   (void) context;
   (void) request;
   (void) response;
