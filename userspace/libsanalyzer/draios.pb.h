@@ -2284,6 +2284,13 @@ class command_details : public ::google::protobuf::Message {
   inline ::google::protobuf::uint32 login_shell_distance() const;
   inline void set_login_shell_distance(::google::protobuf::uint32 value);
 
+  // optional uint32 tty = 11;
+  inline bool has_tty() const;
+  inline void clear_tty();
+  static const int kTtyFieldNumber = 11;
+  inline ::google::protobuf::uint32 tty() const;
+  inline void set_tty(::google::protobuf::uint32 value);
+
   // @@protoc_insertion_point(class_scope:draiosproto.command_details)
  private:
   inline void set_has_timestamp();
@@ -2306,6 +2313,8 @@ class command_details : public ::google::protobuf::Message {
   inline void clear_has_login_shell_id();
   inline void set_has_login_shell_distance();
   inline void clear_has_login_shell_distance();
+  inline void set_has_tty();
+  inline void clear_has_tty();
 
   ::google::protobuf::UnknownFieldSet _unknown_fields_;
 
@@ -2319,9 +2328,10 @@ class command_details : public ::google::protobuf::Message {
   ::google::protobuf::uint64 uid_;
   ::std::string* cwd_;
   ::google::protobuf::uint64 login_shell_id_;
+  ::google::protobuf::uint32 tty_;
 
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(10 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(11 + 31) / 32];
 
   friend void  protobuf_AddDesc_draios_2eproto();
   friend void protobuf_AssignDesc_draios_2eproto();
@@ -14713,6 +14723,28 @@ inline ::google::protobuf::uint32 command_details::login_shell_distance() const 
 inline void command_details::set_login_shell_distance(::google::protobuf::uint32 value) {
   set_has_login_shell_distance();
   login_shell_distance_ = value;
+}
+
+// optional uint32 tty = 11;
+inline bool command_details::has_tty() const {
+  return (_has_bits_[0] & 0x00000400u) != 0;
+}
+inline void command_details::set_has_tty() {
+  _has_bits_[0] |= 0x00000400u;
+}
+inline void command_details::clear_has_tty() {
+  _has_bits_[0] &= ~0x00000400u;
+}
+inline void command_details::clear_tty() {
+  tty_ = 0u;
+  clear_has_tty();
+}
+inline ::google::protobuf::uint32 command_details::tty() const {
+  return tty_;
+}
+inline void command_details::set_tty(::google::protobuf::uint32 value) {
+  set_has_tty();
+  tty_ = value;
 }
 
 // -------------------------------------------------------------------

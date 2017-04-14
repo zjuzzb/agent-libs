@@ -260,7 +260,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	sinsp_threadinfo* ttinfo = tinfo;
 	uint32_t shell_dist = 0;
 	uint64_t login_shell_id = 0;
-	bool found_tty = false;
 
 	for(uint32_t j = 0; ; j++)
 	{
@@ -275,10 +274,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 			shell_dist = j;
 		}
 
-		if(!found_tty && ttinfo->m_tty) {
-			found_tty = true;
-		}
-
 		ttinfo = ttinfo->get_parent_thread();
 		if(ttinfo == NULL)
 		{
@@ -291,7 +286,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 			return;
 		}
 	} else {
-		if(!found_tty) {
+		if(!tinfo->m_tty) {
 			return;
 		}
 	}
@@ -317,6 +312,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	cmdinfo.m_ppid = tinfo->m_ptid;
 	cmdinfo.m_uid = tinfo->m_uid;
 	cmdinfo.m_cwd = tinfo->m_cwd;
+	cmdinfo.m_tty = tinfo->m_tty;
 
 	//
 	// Build the arguments string

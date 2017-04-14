@@ -3227,6 +3227,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				cd->set_ppid(it->m_ppid);
 				cd->set_uid(it->m_uid);
 				cd->set_cwd(it->m_cwd);
+				cd->set_tty(it->m_tty);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{
