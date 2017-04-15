@@ -398,24 +398,16 @@ void avoid_block_channel::log(const Message &message)
 		{
 			// set immediately to prevent many threads racing in here
 			m_error_event_sent = true;
-			try
+			string fname = m_file_channel->getProperty("path");
+			struct statvfs buf;
+			if(0 == statvfs(fname.c_str(), &buf))
 			{
-				string fname = m_file_channel->getProperty("path");
-				struct statvfs buf;
-				if(0 == statvfs(fname.c_str(), &buf))
-				{
-					ostringstream os;
-					os << "Logger (" << fname << "): [" << ex.displayText() << ']' << std::endl <<
-						"disk free=" << buf.f_bsize * buf.f_bfree / 1024 << " kb";
-					unordered_map<string, string> tags{{"source", "dragent"}};
-					g_log->error_event(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
-									"DragentLoggerError", os.str(), event_scope("host.mac", m_machine_id), move(tags)));
-				}
-			}
-			catch(std::exception& ex)
-			{
-				cerr << ex.what() << std::endl;
-				m_error_event_sent = false;
+				ostringstream os;
+				os << "Logger (" << fname << "): [" << ex.displayText() << ']' << std::endl <<
+					"disk free=" << buf.f_bsize * buf.f_bfree / 1024 << " kb";
+				unordered_map<string, string> tags{{"source", "dragent"}};
+				g_log->error_event(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
+					"DragentLoggerError", os.str(), event_scope("host.mac", m_machine_id), move(tags)));
 			}
 		}
 	}

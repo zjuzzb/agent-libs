@@ -869,35 +869,36 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 	try
 	{
 		job_state->m_dumper->open(job_state->m_file, true);
-		job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
-		if(job_state->m_fp == NULL)
-		{
-			send_error(request.m_token, strerror(errno));
-			return;
-		}
-
-		job_state->m_duration_ns = request.m_duration_ns;
-		job_state->m_max_size = request.m_max_size;
-		job_state->m_past_duration_ns = 0;
-		job_state->m_delete_file_when_done = request.m_delete_file_when_done;
-		job_state->m_send_file = request.m_send_file;
-		job_state->m_start_ns = ts;
-		job_state->m_memdumper_job = NULL;
-
-		if(m_running_standard_dump_jobs.empty())
-		{
-			g_log->information("Disabling dropping mode");
-			m_analyzer->set_autodrop_enabled(false);
-			m_analyzer->stop_dropping_mode();
-			m_driver_stopped_dropping_ns = ts;
-		}
-
-		m_running_standard_dump_jobs.push_back(job_state);
 	}
 	catch(std::exception& ex)
 	{
 		send_error(request.m_token, ex.what());
+		return;
 	}
+	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
+	if(job_state->m_fp == NULL)
+	{
+		send_error(request.m_token, strerror(errno));
+		return;
+	}
+
+	job_state->m_duration_ns = request.m_duration_ns;
+	job_state->m_max_size = request.m_max_size;
+	job_state->m_past_duration_ns = 0;
+	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
+	job_state->m_send_file = request.m_send_file;
+	job_state->m_start_ns = ts;
+	job_state->m_memdumper_job = NULL;
+
+	if(m_running_standard_dump_jobs.empty())
+	{
+		g_log->information("Disabling dropping mode");
+		m_analyzer->set_autodrop_enabled(false);
+		m_analyzer->stop_dropping_mode();
+		m_driver_stopped_dropping_ns = ts;
+	}
+
+	m_running_standard_dump_jobs.push_back(job_state);
 }
 
 void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t ts)
