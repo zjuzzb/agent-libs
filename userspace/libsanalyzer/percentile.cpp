@@ -144,7 +144,7 @@ percentile::p_map_type percentile::percentiles()
 	p_map_type pm;
 	for(uint32_t i = 0; i < m_cm.num_quantiles; ++i)
 	{
-		pm[m_cm.quantiles[i] * 100] = cm_query(&m_cm, m_cm.quantiles[i]);
+		pm[round(m_cm.quantiles[i] * 100.)] = cm_query(&m_cm, m_cm.quantiles[i]);
 	}
 	return pm;
 }
