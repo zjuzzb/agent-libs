@@ -193,7 +193,6 @@ void sinsp_configuration::set_autodrop_enabled(bool enabled)
 	}
 	else
 	{
-		//m_inspector->stop_dropping_mode();
 		m_autodrop_enabled = false;	
 	}
 }
@@ -250,7 +249,6 @@ void sinsp_configuration::set_memdump_size(uint64_t size)
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
 {
-	//return 5;
 	if(nprocs > 0)
 	{
 		return MIN(m_drop_upper_threshold + (nprocs - 1), 100);

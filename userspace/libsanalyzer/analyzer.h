@@ -530,12 +530,8 @@ VISIBILITY_PRIVATE
 	//
 	// State required for CPU load calculation
 	//
-	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
 	sinsp_proc_stat m_proc_stat;
-
-	// Sum of the cpu usage of all the processes
-	double m_total_process_cpu;
 
 	//
 	// The table of aggregated connections
@@ -607,7 +603,6 @@ VISIBILITY_PRIVATE
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
 	double m_my_cpuload;
-	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
 	

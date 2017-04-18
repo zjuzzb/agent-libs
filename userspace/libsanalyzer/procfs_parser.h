@@ -31,13 +31,15 @@ private:
 
 struct sinsp_proc_stat
 {
-	vector<double> m_loads;
-	vector<double> m_steals;
 	vector<double> m_user;
 	vector<double> m_nice;
 	vector<double> m_system;
 	vector<double> m_idle;
 	vector<double> m_iowait;
+	vector<double> m_irq;
+	vector<double> m_softirq;
+	vector<double> m_steal;
+	vector<double> m_loads;
 	uint64_t m_btime = 0;
 	uint64_t m_uptime = 0;
 };
@@ -61,16 +63,22 @@ class sinsp_procfs_parser
 {
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
-	double get_global_cpu_load(OUT uint64_t* global_total_jiffies = NULL, uint64_t* global_idle_jiffies = NULL, uint64_t* global_steal_jiffies = NULL);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
 
 	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled, const string& mtab="/etc/mtab");
 
-	//
-	// must call get_total_cpu_load to update the system time before calling this
-	//
-	double get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies, uint64_t delta_global_total_jiffies);
+	void set_global_cpu_jiffies();
+
+	// must call set_global_cpu_jiffies() before calling this function
+	// note that, due to the non-atomic (loop) nature of process CPU times collection,
+	// this function produces an inherent error when called in a loop for all processes or
+	// threads; additionally, there is an OS inaccuracy in reporting per-thread CPU times
+	// in the presence of steal time
+	double get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies);
+
+	// returns the stolen percentage of total cpu usage
+	uint64_t global_steal_pct();
 
 	//
 	// Scans /proc lightly to retrieve just the list of processes that are alive
@@ -85,9 +93,10 @@ public:
 													 uint64_t *old_last_out_bytes);
 	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
 private:
+	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 	void lookup_memory_cgroup_dir();
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
-	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size);
+	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
 
 	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
@@ -102,25 +111,71 @@ private:
 	// "" means that it cannot find memory cgroup mount point
 	unique_ptr<string> m_memory_cgroup_dir;
 
-	vector<uint64_t> m_old_total;
-	vector<uint64_t> m_old_work;
-	vector<uint64_t> m_old_steal;
 	vector<uint64_t> m_old_user;
 	vector<uint64_t> m_old_nice;
 	vector<uint64_t> m_old_system;
 	vector<uint64_t> m_old_idle;
 	vector<uint64_t> m_old_iowait;
-	uint64_t m_old_global_total;
-	uint64_t m_old_global_work;
+	vector<uint64_t> m_old_irq;
+	vector<uint64_t> m_old_softirq;
+	vector<uint64_t> m_old_steal;
+	vector<uint64_t> m_old_work;
+	vector<uint64_t> m_old_total;
+
+	// utility class to deal with jiffie counters housekeeping
+	class jiffies_t
+	{
+	public:
+		static const uint64_t NO_JIFFIES;
+
+		jiffies_t() = delete;
+		jiffies_t(const sinsp_procfs_parser& procfs_parser);
+
+		void set();
+		uint64_t delta_total() const;
+		uint64_t delta_steal() const;
+
+	private:
+		void set_current();
+
+		uint64_t m_current_total = NO_JIFFIES;
+		uint64_t m_old_total = NO_JIFFIES;
+		uint64_t m_delta_total = NO_JIFFIES;
+		uint64_t m_current_steal = NO_JIFFIES;
+		uint64_t m_old_steal = NO_JIFFIES;
+		uint64_t m_delta_steal = NO_JIFFIES;
+		const sinsp_procfs_parser& m_procfs_parser;
+	};
+	jiffies_t m_global_jiffies;
+
+	friend class jiffies_t;
 };
 
 inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
 {
 	double val = (double)delta_jiffies * 100 / delta_tot_jiffies;
-	val = MIN(val, 100);
-	vec.push_back(val);
+	vec.push_back(std::min(val, 100.0));
 }
 
+inline void sinsp_procfs_parser::set_global_cpu_jiffies()
+{
+	m_global_jiffies.set();
+}
+
+inline uint64_t sinsp_procfs_parser::jiffies_t::delta_total() const
+{
+	return m_delta_total;
+}
+
+inline uint64_t sinsp_procfs_parser::jiffies_t::delta_steal() const
+{
+	return m_delta_steal;
+}
+
+inline void sinsp_procfs_parser::jiffies_t::set_current()
+{
+	m_current_total = m_procfs_parser.get_global_cpu_jiffies(&m_current_steal);
+}
 
 class mounted_fs_proxy
 {
