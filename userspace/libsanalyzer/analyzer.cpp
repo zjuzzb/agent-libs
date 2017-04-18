@@ -348,12 +348,6 @@ void sinsp_analyzer::on_capture_start()
 	m_falco_baseliner->init(m_inspector);
 
 	//
-	// If required, enable the command line captures
-	//
-	m_command_lines_capture_enabled	= m_configuration->get_command_lines_capture_enabled();
-	m_command_lines_capture_all_commands = m_configuration->get_command_lines_capture_all_commands();
-
-	//
 	// Enable memery dump
 	//
 	uint64_t memdump_size = m_configuration->get_memdump_size();
@@ -583,6 +577,11 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 		throw sinsp_exception("Attempting to get the configuration while the inspector is capturing");
 	}
 
+	return m_configuration;
+}
+
+const sinsp_configuration* sinsp_analyzer::get_configuration_read_only()
+{
 	return m_configuration;
 }
 
@@ -3231,6 +3230,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				cd->set_ppid(it->m_ppid);
 				cd->set_uid(it->m_uid);
 				cd->set_cwd(it->m_cwd);
+				cd->set_tty(it->m_tty);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{
@@ -3696,7 +3696,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Executed commands
 			//
-			if(m_command_lines_capture_enabled)
+			if(m_configuration->get_command_lines_capture_enabled())
 			{
 				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
 			}

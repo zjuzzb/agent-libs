@@ -16,6 +16,13 @@ using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 class SINSP_PUBLIC sinsp_configuration
 {
 public:
+	enum command_capture_mode_t
+	{
+		CM_TTY = 0,
+		CM_SHELL_ANCESTOR = 1,
+		CM_ALL = 2
+	};
+
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
@@ -139,8 +146,8 @@ public:
 	void set_falco_baselining_enabled(bool enabled);
 	bool get_command_lines_capture_enabled() const;
 	void set_command_lines_capture_enabled(bool enabled);
-	bool get_command_lines_capture_all_commands() const;
-	void set_command_lines_capture_all_commands(bool all_commands);
+	command_capture_mode_t get_command_lines_capture_mode() const;
+	void set_command_lines_capture_mode(command_capture_mode_t capture_mode);
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
@@ -220,7 +227,7 @@ private:
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
-	bool m_command_lines_capture_all_commands;
+	command_capture_mode_t m_command_lines_capture_mode;
 	bool m_capture_dragent_events;
 	uint64_t m_memdump_size;
 

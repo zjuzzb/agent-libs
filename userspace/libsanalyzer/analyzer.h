@@ -136,11 +136,12 @@ public:
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
-    string m_comm; // program executable name
-    uint64_t m_pid; // process pid
-    uint64_t m_ppid; // parent process pid
-    uint64_t m_uid; // user ID
-    string m_cwd; // process' current working directory
+	string m_comm; // program executable name
+	uint64_t m_pid; // process pid
+	uint64_t m_ppid; // parent process pid
+	uint64_t m_uid; // user ID
+	string m_cwd; // process' current working directory
+	uint32_t m_tty; // tty
 };
 
 #ifndef _WIN32
@@ -208,6 +209,7 @@ public:
 	// Get and set the library configuration settings
 	//
 	sinsp_configuration* get_configuration();
+	const sinsp_configuration* get_configuration_read_only();
 	void set_configuration(const sinsp_configuration& configuration);
 
 	//
@@ -615,8 +617,6 @@ VISIBILITY_PRIVATE
 	sisnp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
-	bool m_command_lines_capture_enabled = false;
-	bool m_command_lines_capture_all_commands = false;
 
 	//
 	// Memory dump stuff
