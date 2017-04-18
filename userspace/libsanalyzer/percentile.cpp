@@ -1,6 +1,7 @@
 #include "percentile.h"
 #include "sinsp_int.h"
 #include <cstring>
+#include <cmath>
 
 percentile::percentile(const std::set<double>& pctls, double eps)
 {
