@@ -995,11 +995,3 @@ message falco_baseline {
     repeated falco_prog progs = 1;
     repeated falco_container containers = 2;
 }
-
-//
-// METRICS LIMITS
-//
-message agent_limits {
-    optional uint64 num_jmx_metrics = 1;
-    optional uint64 num_appcheck_metrics = 2;
-}

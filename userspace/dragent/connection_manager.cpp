@@ -469,10 +469,6 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
-			case draiosproto::message_type::AGENT_LIMITS:
-				handle_agent_limits(m_buffer.begin() + sizeof(dragent_protocol_header),
-					header->len - sizeof(dragent_protocol_header));
-				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
@@ -695,30 +691,5 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 	if(term)
 	{
 		dragent_configuration::m_terminate = true;
-	}
-}
-
-
-void connection_manager::handle_agent_limits(uint8_t* buf, uint32_t size) const
-{
-	draiosproto::agent_limits agent_limits;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &agent_limits))
-	{
-		g_log->error("Received JMX limit = " + num_jmx_metrics);
-		return;
-	}
-
-	if(agent_limits.has_num_jmx_metrics())
-	{
-		uint64_t num_jmx_metrics = agent_limits.num_jmx_metrics();
-		g_log->information("Received JMX limit = " + num_jmx_metrics);
-		m_configuration->set_jmx_limit(num_jmx_metrics);
-	}
-
-	if(agent_limits.has_num_appcheck_metrics())
-	{
-		uint64_t num_appcheck_metrics = agent_limits.num_appcheck_metrics();
-		g_log->information("Received appcheck limit = " + num_appcheck_metrics);
-		m_configuration->set_app_checks_limit(num_appcheck_metrics);
 	}
 }
