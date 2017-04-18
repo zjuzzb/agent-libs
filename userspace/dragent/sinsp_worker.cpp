@@ -869,8 +869,15 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
 	g_log->information("Starting dump job in " + job_state->m_file +
 		", filter '" + request.m_filter + "'");
-	job_state->m_dumper->open(job_state->m_file, true);
-
+	try
+	{
+		job_state->m_dumper->open(job_state->m_file, true);
+	}
+	catch(std::exception& ex)
+	{
+		send_error(request.m_token, ex.what());
+		return;
+	}
 	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
 	if(job_state->m_fp == NULL)
 	{
