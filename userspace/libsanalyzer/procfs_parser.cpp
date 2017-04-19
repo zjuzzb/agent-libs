@@ -22,24 +22,43 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "procfs_parser.h"
+#include "Poco/StringTokenizer.h"
 
-sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture)
+using Poco::StringTokenizer;
+
+const uint64_t sinsp_procfs_parser::jiffies_t::NO_JIFFIES = ~0;
+
+sinsp_procfs_parser::jiffies_t::jiffies_t(const sinsp_procfs_parser& procfs_parser):
+	m_procfs_parser(procfs_parser)
 {
-	m_ncpus = ncpus;
-	m_physical_memory_kb = physical_memory_kb;
-	m_is_live_capture = is_live_capture;
-
-	m_old_global_total = 0;
-	m_old_global_work = 0;
-	m_last_in_bytes = 0;
-	m_last_out_bytes = 0;
+	set_current();
 }
 
-double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total, uint64_t* global_idle, uint64_t* global_steal)
+void sinsp_procfs_parser::jiffies_t::set()
 {
-	double res = -1;
-	char line[512];
-	char tmps[32];
+	m_old_total = m_current_total;
+	m_old_steal = m_current_steal;
+	set_current();
+	ASSERT(m_current_total >= m_old_total);
+	m_delta_total = m_current_total - m_old_total;
+	ASSERT(m_current_steal >= m_old_steal);
+	m_delta_steal = m_current_steal - m_old_steal;
+}
+
+
+sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture):
+	m_ncpus(ncpus),
+	m_physical_memory_kb(physical_memory_kb),
+	m_is_live_capture(is_live_capture),
+	m_last_in_bytes(0),
+	m_last_out_bytes(0),
+	m_global_jiffies(*this)
+{
+}
+
+double sinsp_procfs_parser::get_global_cpu_jiffies(uint64_t* stolen) const
+{
+	char line[512] = {0};
 
 	if(!m_is_live_capture)
 	{
@@ -55,9 +74,7 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total, uint
 		return -1;
 	}
 
-	//
 	// Consume the first line which is the global system summary
-	//
 	if(fgets(line, sizeof(line), f) == NULL)
 	{
 		ASSERT(false);
@@ -65,72 +82,28 @@ double sinsp_procfs_parser::get_global_cpu_load(OUT uint64_t* global_total, uint
 		return -1;
 	}
 
-	uint64_t val1, val2, val3, val4, val5, val6, val7, val8;
-	uint64_t total;
-	uint64_t work;
-	uint64_t delta_total;
-	uint64_t delta_work;
+	char tmps[32];
+	uint64_t user, nice, system, idle, iowait, irq, softirq, steal;
 
-	//
-	// Extract the line content
-	//
+	// Extract the cpu line content
 	if(sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
 		tmps,
-		&val1,
-		&val2,
-		&val3,
-		&val4,
-		&val5,
-		&val6,
-		&val7,
-		&val8) != 9)
+		&user,
+		&nice,
+		&system,
+		&idle,
+		&iowait,
+		&irq,
+		&softirq,
+		&steal) != 9)
 	{
 		ASSERT(false);
 		fclose(f);
 		return -1;
 	}
-
-	//
-	// Calculate the value
-	//
-	total = val1 + val2 + val3 + val4 + val5 + val6 + val7 + val8;
-	work = val1 + val2 + val3 + val8;
-
-	if(m_old_global_total != 0)
-	{
-		delta_work = work - m_old_global_work;
-		delta_total = total - m_old_global_total;
-
-		res = (double)delta_work * 100 / delta_total;
-
-		m_old_global_total = total;
-		m_old_global_work = work;
-	}
-
-	m_old_global_total = total;
-	m_old_global_work = work;
-
-	//
-	// Optionally return the total jiffies to the user
-	//
-	if(global_total)
-	{
-		*global_total = total;
-	}
-
-	if(global_idle)
-	{
-		*global_idle = val4;
-	}
-
-	if(global_steal)
-	{
-		*global_steal = val8;
-	}
-
 	fclose(f);
-
-	return res;
+	if(stolen) { *stolen = steal; }
+	return user + nice + system + idle + iowait + irq + softirq + steal;
 }
 
 void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
@@ -138,14 +111,15 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 	ASSERT(proc_stat);
 
 	char line[512];
-	uint32_t old_array_size = (uint32_t)m_old_total.size();
-	proc_stat->m_loads.clear();
-	proc_stat->m_steals.clear();
 	proc_stat->m_user.clear();
 	proc_stat->m_nice.clear();
 	proc_stat->m_system.clear();
 	proc_stat->m_idle.clear();
 	proc_stat->m_iowait.clear();
+	proc_stat->m_irq.clear();
+	proc_stat->m_softirq.clear();
+	proc_stat->m_steal.clear();
+	proc_stat->m_loads.clear();
 
 	if(!m_is_live_capture) { return; }
 
@@ -172,7 +146,7 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 	{
 		if(strstr(line, "cpu") == line)
 		{
-			if(!get_cpus_load(proc_stat, line, j, old_array_size))
+			if(!get_cpus_load(proc_stat, line, j))
 			{
 				ASSERT(false); break;
 			}
@@ -192,6 +166,7 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 		}
 	}
 	fclose(f);
+	ASSERT(!proc_stat->m_loads.size() || proc_stat->m_loads.size() == m_ncpus);
 }
 
 bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line)
@@ -214,7 +189,7 @@ bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* li
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
-bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j, uint32_t old_array_size)
+bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j)
 {
 	ASSERT(proc_stat);
 
@@ -229,19 +204,20 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	uint64_t iowait = 0;
 	uint64_t irq = 0;
 	uint64_t softirq = 0;
-	uint64_t total = 0;
-	uint64_t work = 0;
 	uint64_t steal = 0;
-	uint64_t delta_total = 0;
-	uint64_t delta_work = 0;
-	uint64_t delta_steal = 0;
+	uint64_t work = 0;
+	uint64_t total = 0;
 	uint64_t delta_user = 0;
 	uint64_t delta_nice = 0;
 	uint64_t delta_system = 0;
 	uint64_t delta_idle = 0;
 	uint64_t delta_iowait = 0;
+	uint64_t delta_irq = 0;
+	uint64_t delta_softirq = 0;
+	uint64_t delta_steal = 0;
+	uint64_t delta_work = 0;
+	uint64_t delta_total = 0;
 
-	g_logger.log(std::string("sinsp_procfs_parser::get_cpus_load() scanning: ").append(line), sinsp_logger::SEV_TRACE);
 	int scanned = sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
 		cpu, &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal);
 	if(scanned != 9)
@@ -250,49 +226,56 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 					 " values (expected 9), giving up", sinsp_logger::SEV_ERROR);
 		return false;
 	}
-	g_logger.log("sinsp_procfs_parser::get_cpus_load() scanned " + std::to_string(scanned) + " values", sinsp_logger::SEV_TRACE);
 
 	total = user + nice + system + idle + iowait + irq + softirq + steal;
 	work = user + nice + system + iowait + irq + softirq + steal;
 
-	if(old_array_size == 0)
+	if(m_old_total.size() <static_cast<vector<uint64_t>::size_type>(j + 1))
 	{
-		m_old_total.push_back(total);
-		m_old_work.push_back(work);
-		m_old_steal.push_back(steal);
 		m_old_user.push_back(user);
 		m_old_nice.push_back(nice);
 		m_old_system.push_back(system);
 		m_old_idle.push_back(idle);
 		m_old_iowait.push_back(iowait);
+		m_old_irq.push_back(irq);
+		m_old_softirq.push_back(softirq);
+		m_old_steal.push_back(steal);
+		m_old_work.push_back(work);
+		m_old_total.push_back(total);
 	}
 	else
 	{
-		delta_work = work - m_old_work[j];
-		delta_steal = steal - m_old_steal[j];
-		delta_total = total - m_old_total[j];
 		delta_user = user - m_old_user[j];
 		delta_nice = nice - m_old_nice[j];
 		delta_system = system - m_old_system[j];
 		delta_idle = idle - m_old_idle[j];
 		delta_iowait = iowait - m_old_iowait[j];
+		delta_irq = irq - m_old_irq[j];
+		delta_softirq = softirq - m_old_softirq[j];
+		delta_steal = steal - m_old_steal[j];
+		delta_work = work - m_old_work[j];
+		delta_total = total - m_old_total[j];
 
-		assign_jiffies(proc_stat->m_loads, delta_work, delta_total);
-		assign_jiffies(proc_stat->m_steals, delta_steal, delta_total);
 		assign_jiffies(proc_stat->m_user, delta_user, delta_total);
 		assign_jiffies(proc_stat->m_nice, delta_nice, delta_total);
 		assign_jiffies(proc_stat->m_system, delta_system, delta_total);
 		assign_jiffies(proc_stat->m_idle, delta_idle, delta_total);
 		assign_jiffies(proc_stat->m_iowait, delta_iowait, delta_total);
+		assign_jiffies(proc_stat->m_irq, delta_irq, delta_total);
+		assign_jiffies(proc_stat->m_softirq, delta_softirq, delta_total);
+		assign_jiffies(proc_stat->m_steal, delta_steal, delta_total);
+		assign_jiffies(proc_stat->m_loads, delta_work, delta_total);
 
-		m_old_total[j] = total;
-		m_old_work[j] = work;
-		m_old_steal[j] = steal;
 		m_old_user[j] = user;
 		m_old_nice[j] = nice;
 		m_old_system[j] = system;
 		m_old_idle[j] = idle;
 		m_old_iowait[j] = iowait;
+		m_old_irq[j] = irq;
+		m_old_softirq[j] = softirq;
+		m_old_steal[j] = steal;
+		m_old_work[j] = work;
+		m_old_total[j] = total;
 	}
 
 	return true;
@@ -416,90 +399,67 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	}
 }
 
-double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc, uint64_t delta_global_total)
+uint64_t sinsp_procfs_parser::global_steal_pct()
 {
-	char line[512];
-	char tmps[32];
+	uint64_t steal_pct = 0;
+	uint64_t global_steal_jiffies_delta = m_global_jiffies.delta_steal();
+	if(global_steal_jiffies_delta)
+	{
+		uint64_t global_total_jiffies_delta = m_global_jiffies.delta_total();
+		if(global_total_jiffies_delta > 0 && (global_steal_jiffies_delta < global_total_jiffies_delta))
+		{
+			steal_pct = std::round(((double)global_steal_jiffies_delta / global_total_jiffies_delta) * 100);
+		}
+	}
+	return steal_pct;
+}
+
+double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc)
+{
+	if(!m_is_live_capture) { return -1; }
 	double res = -1;
+	uint64_t global_total_jiffies_delta = m_global_jiffies.delta_total();
 
-	string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
-	uint64_t tval, val1, val2, val3, val4;
-
-	if(!m_is_live_capture)
+	if(global_total_jiffies_delta != jiffies_t::NO_JIFFIES)
 	{
-		return -1;
+		string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
+
+		// we are looking for /proc/[PID]/stat entries [(14) utime %lu] and [(15) stime %lu],
+		// see http://man7.org/linux/man-pages/man5/proc.5.html
+		// the important bit here is that [(2) comm %s] may contain spaces, so sscanf is not bullet-proof;
+		// we find the first closing paren (ie. skip the first two entries) and then extract desired values
+		// from the rest of the line. so, (14) and (15), after adjustment for shift and zero-base, translates to (11) and (12)
+		std::ifstream f(path);
+		std::string line;
+		if(std::getline(f, line))
+		{
+			if(line.size())
+			{
+				std::string::size_type pos = line.find(')');
+				if((pos != std::string::npos) && (line.size() > pos + 1))
+				{
+					StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+					if(st.count() >= 13)
+					{
+						unsigned long int utime = strtoul(st[11].c_str(), nullptr, 10);
+						if(utime == ULONG_MAX && errno == ERANGE) { ASSERT(false); return res; }
+						unsigned long int stime = strtoul(st[12].c_str(), nullptr, 10);
+						if(stime == ULONG_MAX && errno == ERANGE) { ASSERT(false); return res; }
+						uint64_t proc = utime + stime;
+						if(*old_proc != (uint64_t)-1LL)
+						{
+							uint64_t delta_proc = proc - *old_proc;
+							res = ((double)delta_proc * 100 / global_total_jiffies_delta) * m_ncpus;
+							res = std::min(res, 100.0 * m_ncpus);
+						}
+						*old_proc = proc;
+						return res;
+					}
+				}
+			}
+		}
 	}
-
-	FILE* f = fopen(path.c_str(), "r");
-	if(f == NULL)
-	{
-		return -1;
-	}
-
-	//
-	// Consume the line
-	//
-	if(fgets(line, sizeof(line), f) == NULL)
-	{
-		ASSERT(false);
-		fclose(f);
-		return -1;
-	}
-
-	//
-	// Extract the line content
-	//
-	if(sscanf(line, "%" PRIu64 " %s %s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRId64,
-		&tval,
-		tmps,
-		tmps,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&val1,
-		&val2,
-		&val3,
-		&val4,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval,
-		&tval
-		) != 24)
-	{
-		ASSERT(false);
-		fclose(f);
-		return -1;
-	}
-
-	//
-	// Calculate the value
-	//
-	uint64_t proc = val1 + val2;
-
-	if(*old_proc != (uint64_t)-1LL)
-	{
-		uint64_t delta_proc = proc - *old_proc;
-
-		res = ((double)delta_proc * 100 / delta_global_total) * m_ncpus;
-
-		res = MIN(res, double(100 * m_ncpus));
-	}
-
-	*old_proc = proc;
-
-	fclose(f);
-
-	return res;	
+	return res;
 }
 
 //

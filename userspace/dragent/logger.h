@@ -3,6 +3,21 @@
 #include "main.h"
 #include <token_bucket.h>
 
+class avoid_block_channel : public Poco::Channel
+{
+public:
+	avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const string& machine_id);
+
+	virtual void log(const Poco::Message& message) override;
+	virtual void open() override;
+	virtual void close() override;
+
+private:
+	AutoPtr<Poco::FileChannel> m_file_channel;
+	string m_machine_id;
+	atomic<bool> m_error_event_sent;
+};
+
 class dragent_logger
 {
 public:

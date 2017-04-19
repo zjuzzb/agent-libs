@@ -548,7 +548,7 @@ public:
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
-	bool m_command_lines_capture_all_commands;
+	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
 
@@ -581,6 +581,7 @@ public:
 	dragent_mode_t m_mode;
 
 	bool m_cointerface_enabled;
+	bool m_swarm_enabled;
 
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;

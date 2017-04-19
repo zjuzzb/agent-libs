@@ -17,6 +17,7 @@
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "memdumper.h"
+#include "coclient.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -135,11 +136,12 @@ public:
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
-    string m_comm; // program executable name
-    uint64_t m_pid; // process pid
-    uint64_t m_ppid; // parent process pid
-    uint64_t m_uid; // user ID
-    string m_cwd; // process' current working directory
+	string m_comm; // program executable name
+	uint64_t m_pid; // process pid
+	uint64_t m_ppid; // parent process pid
+	uint64_t m_uid; // user ID
+	string m_cwd; // process' current working directory
+	uint32_t m_tty; // tty
 };
 
 #ifndef _WIN32
@@ -207,6 +209,7 @@ public:
 	// Get and set the library configuration settings
 	//
 	sinsp_configuration* get_configuration();
+	const sinsp_configuration* get_configuration_read_only();
 	void set_configuration(const sinsp_configuration& configuration);
 
 	//
@@ -514,6 +517,12 @@ VISIBILITY_PRIVATE
 	FILE* m_protobuf_fp;
 
 	//
+	// Checking Docker swarm state every 10 seconds
+	//
+	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
+	coclient m_coclient;
+
+	//
 	// The callback we invoke when a sample is ready
 	//
 	analyzer_callback_interface* m_sample_callback;
@@ -521,12 +530,8 @@ VISIBILITY_PRIVATE
 	//
 	// State required for CPU load calculation
 	//
-	uint64_t m_old_global_total_jiffies;
 	sinsp_procfs_parser* m_procfs_parser;
 	sinsp_proc_stat m_proc_stat;
-
-	// Sum of the cpu usage of all the processes
-	double m_total_process_cpu;
 
 	//
 	// The table of aggregated connections
@@ -598,7 +603,6 @@ VISIBILITY_PRIVATE
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
 	double m_my_cpuload;
-	double m_last_system_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
 	
@@ -608,8 +612,6 @@ VISIBILITY_PRIVATE
 	sisnp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
-	bool m_command_lines_capture_enabled = false;
-	bool m_command_lines_capture_all_commands = false;
 
 	//
 	// Memory dump stuff
@@ -654,6 +656,7 @@ VISIBILITY_PRIVATE
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
 	bool                                 m_k8s_proc_detected = false;
 
+	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
 	unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state
@@ -693,6 +696,7 @@ VISIBILITY_PRIVATE
 	user_event_queue::ptr_t m_user_event_queue;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
+
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//

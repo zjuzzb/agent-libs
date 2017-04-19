@@ -30,9 +30,11 @@ sinsp_configuration::sinsp_configuration()
 	m_app_checks_limit = 300;
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
-	m_command_lines_capture_enabled = COMMAND_LINES_CAPTURE_ENABLED;
-	m_command_lines_capture_all_commands = false;
+	m_command_lines_capture_enabled = false;
+	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_capture_dragent_events = false;
+	m_cointerface_enabled = true;
+	m_swarm_enabled = true;
 }
 
 sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
@@ -191,7 +193,6 @@ void sinsp_configuration::set_autodrop_enabled(bool enabled)
 	}
 	else
 	{
-		//m_inspector->stop_dropping_mode();
 		m_autodrop_enabled = false;	
 	}
 }
@@ -216,14 +217,14 @@ void sinsp_configuration::set_command_lines_capture_enabled(bool enabled)
 	m_command_lines_capture_enabled = enabled;
 }
 
-bool sinsp_configuration::get_command_lines_capture_all_commands() const
+sinsp_configuration::command_capture_mode_t sinsp_configuration::get_command_lines_capture_mode() const
 {
-	return m_command_lines_capture_all_commands;
+	return m_command_lines_capture_mode;
 }
 
-void sinsp_configuration::set_command_lines_capture_all_commands(bool all_commands)
+void sinsp_configuration::set_command_lines_capture_mode(command_capture_mode_t capture_mode)
 {
-	m_command_lines_capture_all_commands = all_commands;
+	m_command_lines_capture_mode = capture_mode;
 }
 
 bool sinsp_configuration::get_capture_dragent_events() const
@@ -248,7 +249,6 @@ void sinsp_configuration::set_memdump_size(uint64_t size)
 
 uint32_t sinsp_configuration::get_drop_upper_threshold(uint32_t nprocs) const
 {
-	//return 5;
 	if(nprocs > 0)
 	{
 		return MIN(m_drop_upper_threshold + (nprocs - 1), 100);
@@ -789,4 +789,23 @@ void sinsp_configuration::set_app_checks_limit(unsigned value)
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
 }
 
+bool sinsp_configuration::get_cointerface_enabled() const
+{
+	return m_cointerface_enabled;
+}
+
+void sinsp_configuration::set_cointerface_enabled(bool val)
+{
+	m_cointerface_enabled = val;
+}
+
+bool sinsp_configuration::get_swarm_enabled() const
+{
+	return m_swarm_enabled;
+}
+
+void sinsp_configuration::set_swarm_enabled(bool val)
+{
+	m_swarm_enabled = val;
+}
 #endif // HAS_ANALYZER

@@ -16,6 +16,13 @@ using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 class SINSP_PUBLIC sinsp_configuration
 {
 public:
+	enum command_capture_mode_t
+	{
+		CM_TTY = 0,
+		CM_SHELL_ANCESTOR = 1,
+		CM_ALL = 2
+	};
+
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
@@ -139,8 +146,8 @@ public:
 	void set_falco_baselining_enabled(bool enabled);
 	bool get_command_lines_capture_enabled() const;
 	void set_command_lines_capture_enabled(bool enabled);
-	bool get_command_lines_capture_all_commands() const;
-	void set_command_lines_capture_all_commands(bool all_commands);
+	command_capture_mode_t get_command_lines_capture_mode() const;
+	void set_command_lines_capture_mode(command_capture_mode_t capture_mode);
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
@@ -151,7 +158,10 @@ public:
 	void set_percentiles(const std::set<double>&);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
-
+	bool get_cointerface_enabled() const;
+	void set_cointerface_enabled(bool enabled);
+	bool get_swarm_enabled() const;
+	void set_swarm_enabled(bool enabled);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -217,13 +227,13 @@ private:
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
-	bool m_command_lines_capture_all_commands;
+	command_capture_mode_t m_command_lines_capture_mode;
 	bool m_capture_dragent_events;
 	uint64_t m_memdump_size;
 
 	uint32_t m_protocols_truncation_size;
 
-    std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
+	std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 
 	metrics_filter_vec m_metrics_filter;
@@ -232,6 +242,9 @@ private:
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
+
+	bool m_cointerface_enabled;
+	bool m_swarm_enabled;
 };
 
 #endif // HAS_ANALYZER

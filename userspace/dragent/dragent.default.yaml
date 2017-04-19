@@ -1006,7 +1006,7 @@ events:
 
 # End of events section
 
-percentiles: [50, 95, 99]
+# percentiles: [50, 95, 99]
 
 known_ports:
   - 902 # VMware 

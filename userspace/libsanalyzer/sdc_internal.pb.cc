@@ -44,6 +44,12 @@ const ::google::protobuf::internal::GeneratedMessageReflection*
 const ::google::protobuf::Descriptor* docker_command_result_descriptor_ = NULL;
 const ::google::protobuf::internal::GeneratedMessageReflection*
   docker_command_result_reflection_ = NULL;
+const ::google::protobuf::Descriptor* swarm_state_command_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  swarm_state_command_reflection_ = NULL;
+const ::google::protobuf::Descriptor* swarm_state_result_descriptor_ = NULL;
+const ::google::protobuf::internal::GeneratedMessageReflection*
+  swarm_state_result_reflection_ = NULL;
 const ::google::protobuf::EnumDescriptor* cointerface_message_type_descriptor_ = NULL;
 const ::google::protobuf::EnumDescriptor* docker_cmd_type_descriptor_ = NULL;
 
@@ -184,6 +190,38 @@ void protobuf_AssignDesc_sdc_5finternal_2eproto() {
       ::google::protobuf::DescriptorPool::generated_pool(),
       ::google::protobuf::MessageFactory::generated_factory(),
       sizeof(docker_command_result));
+  swarm_state_command_descriptor_ = file->message_type(8);
+  static const int swarm_state_command_offsets_[1] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_command, container_id_),
+  };
+  swarm_state_command_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      swarm_state_command_descriptor_,
+      swarm_state_command::default_instance_,
+      swarm_state_command_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_command, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_command, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(swarm_state_command));
+  swarm_state_result_descriptor_ = file->message_type(9);
+  static const int swarm_state_result_offsets_[3] = {
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_result, successful_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_result, errstr_),
+    GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_result, state_),
+  };
+  swarm_state_result_reflection_ =
+    new ::google::protobuf::internal::GeneratedMessageReflection(
+      swarm_state_result_descriptor_,
+      swarm_state_result::default_instance_,
+      swarm_state_result_offsets_,
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_result, _has_bits_[0]),
+      GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(swarm_state_result, _unknown_fields_),
+      -1,
+      ::google::protobuf::DescriptorPool::generated_pool(),
+      ::google::protobuf::MessageFactory::generated_factory(),
+      sizeof(swarm_state_result));
   cointerface_message_type_descriptor_ = file->enum_type(0);
   docker_cmd_type_descriptor_ = file->enum_type(1);
 }
@@ -214,6 +252,10 @@ void protobuf_RegisterTypes(const ::std::string&) {
     docker_command_descriptor_, &docker_command::default_instance());
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
     docker_command_result_descriptor_, &docker_command_result::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    swarm_state_command_descriptor_, &swarm_state_command::default_instance());
+  ::google::protobuf::MessageFactory::InternalRegisterGeneratedMessage(
+    swarm_state_result_descriptor_, &swarm_state_result::default_instance());
 }
 
 }  // namespace
@@ -235,6 +277,10 @@ void protobuf_ShutdownFile_sdc_5finternal_2eproto() {
   delete docker_command_reflection_;
   delete docker_command_result::default_instance_;
   delete docker_command_result_reflection_;
+  delete swarm_state_command::default_instance_;
+  delete swarm_state_command_reflection_;
+  delete swarm_state_result::default_instance_;
+  delete swarm_state_result_reflection_;
 }
 
 void protobuf_AddDesc_sdc_5finternal_2eproto() {
@@ -259,15 +305,22 @@ void protobuf_AddDesc_sdc_5finternal_2eproto() {
     "command\022*\n\003cmd\030\001 \002(\0162\035.sdc_internal.dock"
     "er_cmd_type\022\024\n\014container_id\030\002 \001(\t\";\n\025doc"
     "ker_command_result\022\022\n\nsuccessful\030\001 \002(\010\022\016"
-    "\n\006errstr\030\002 \001(\t*]\n\030cointerface_message_ty"
-    "pe\022\010\n\004PING\020\001\022\010\n\004PONG\020\002\022\022\n\016DOCKER_COMMAND"
-    "\020\003\022\031\n\025DOCKER_COMMAND_RESULT\020\004*3\n\017docker_"
-    "cmd_type\022\010\n\004STOP\020\001\022\t\n\005PAUSE\020\002\022\013\n\007UNPAUSE"
-    "\020\0032\243\001\n\013CoInterface\022[\n\024PerformDockerComma"
-    "nd\022\034.sdc_internal.docker_command\032#.sdc_i"
-    "nternal.docker_command_result\"\000\0227\n\013Perfo"
-    "rmPing\022\022.sdc_internal.ping\032\022.sdc_interna"
-    "l.pong\"\000B\002H\001", 892);
+    "\n\006errstr\030\002 \001(\t\"+\n\023swarm_state_command\022\024\n"
+    "\014container_id\030\002 \001(\t\"a\n\022swarm_state_resul"
+    "t\022\022\n\nsuccessful\030\001 \002(\010\022\016\n\006errstr\030\002 \001(\t\022\'\n"
+    "\005state\030\003 \001(\0132\030.draiosproto.swarm_state*\216"
+    "\001\n\030cointerface_message_type\022\010\n\004PING\020\001\022\010\n"
+    "\004PONG\020\002\022\022\n\016DOCKER_COMMAND\020\003\022\031\n\025DOCKER_CO"
+    "MMAND_RESULT\020\004\022\027\n\023SWARM_STATE_COMMAND\020\005\022"
+    "\026\n\022SWARM_STATE_RESULT\020\006*3\n\017docker_cmd_ty"
+    "pe\022\010\n\004STOP\020\001\022\t\n\005PAUSE\020\002\022\013\n\007UNPAUSE\020\0032\377\001\n"
+    "\013CoInterface\022[\n\024PerformDockerCommand\022\034.s"
+    "dc_internal.docker_command\032#.sdc_interna"
+    "l.docker_command_result\"\000\0227\n\013PerformPing"
+    "\022\022.sdc_internal.ping\032\022.sdc_internal.pong"
+    "\"\000\022Z\n\021PerformSwarmState\022!.sdc_internal.s"
+    "warm_state_command\032 .sdc_internal.swarm_"
+    "state_result\"\000B\002H\001", 1178);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "sdc_internal.proto", &protobuf_RegisterTypes);
   container_mounts::default_instance_ = new container_mounts();
@@ -278,6 +331,8 @@ void protobuf_AddDesc_sdc_5finternal_2eproto() {
   pong::default_instance_ = new pong();
   docker_command::default_instance_ = new docker_command();
   docker_command_result::default_instance_ = new docker_command_result();
+  swarm_state_command::default_instance_ = new swarm_state_command();
+  swarm_state_result::default_instance_ = new swarm_state_result();
   container_mounts::default_instance_->InitAsDefaultInstance();
   mounted_fs_response::default_instance_->InitAsDefaultInstance();
   container_info::default_instance_->InitAsDefaultInstance();
@@ -286,6 +341,8 @@ void protobuf_AddDesc_sdc_5finternal_2eproto() {
   pong::default_instance_->InitAsDefaultInstance();
   docker_command::default_instance_->InitAsDefaultInstance();
   docker_command_result::default_instance_->InitAsDefaultInstance();
+  swarm_state_command::default_instance_->InitAsDefaultInstance();
+  swarm_state_result::default_instance_->InitAsDefaultInstance();
   ::google::protobuf::internal::OnShutdown(&protobuf_ShutdownFile_sdc_5finternal_2eproto);
 }
 
@@ -305,6 +362,8 @@ bool cointerface_message_type_IsValid(int value) {
     case 2:
     case 3:
     case 4:
+    case 5:
+    case 6:
       return true;
     default:
       return false;
@@ -2401,6 +2460,543 @@ void docker_command_result::Swap(docker_command_result* other) {
   ::google::protobuf::Metadata metadata;
   metadata.descriptor = docker_command_result_descriptor_;
   metadata.reflection = docker_command_result_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int swarm_state_command::kContainerIdFieldNumber;
+#endif  // !_MSC_VER
+
+swarm_state_command::swarm_state_command()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void swarm_state_command::InitAsDefaultInstance() {
+}
+
+swarm_state_command::swarm_state_command(const swarm_state_command& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void swarm_state_command::SharedCtor() {
+  _cached_size_ = 0;
+  container_id_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+swarm_state_command::~swarm_state_command() {
+  SharedDtor();
+}
+
+void swarm_state_command::SharedDtor() {
+  if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+    delete container_id_;
+  }
+  if (this != default_instance_) {
+  }
+}
+
+void swarm_state_command::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* swarm_state_command::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return swarm_state_command_descriptor_;
+}
+
+const swarm_state_command& swarm_state_command::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_sdc_5finternal_2eproto();
+  return *default_instance_;
+}
+
+swarm_state_command* swarm_state_command::default_instance_ = NULL;
+
+swarm_state_command* swarm_state_command::New() const {
+  return new swarm_state_command;
+}
+
+void swarm_state_command::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (has_container_id()) {
+      if (container_id_ != &::google::protobuf::internal::kEmptyString) {
+        container_id_->clear();
+      }
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool swarm_state_command::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // optional string container_id = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_container_id()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->container_id().data(), this->container_id().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void swarm_state_command::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // optional string container_id = 2;
+  if (has_container_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->container_id().data(), this->container_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->container_id(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* swarm_state_command::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // optional string container_id = 2;
+  if (has_container_id()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->container_id().data(), this->container_id().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->container_id(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int swarm_state_command::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // optional string container_id = 2;
+    if (has_container_id()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->container_id());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void swarm_state_command::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const swarm_state_command* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const swarm_state_command*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void swarm_state_command::MergeFrom(const swarm_state_command& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_container_id()) {
+      set_container_id(from.container_id());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void swarm_state_command::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void swarm_state_command::CopyFrom(const swarm_state_command& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool swarm_state_command::IsInitialized() const {
+
+  return true;
+}
+
+void swarm_state_command::Swap(swarm_state_command* other) {
+  if (other != this) {
+    std::swap(container_id_, other->container_id_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata swarm_state_command::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = swarm_state_command_descriptor_;
+  metadata.reflection = swarm_state_command_reflection_;
+  return metadata;
+}
+
+
+// ===================================================================
+
+#ifndef _MSC_VER
+const int swarm_state_result::kSuccessfulFieldNumber;
+const int swarm_state_result::kErrstrFieldNumber;
+const int swarm_state_result::kStateFieldNumber;
+#endif  // !_MSC_VER
+
+swarm_state_result::swarm_state_result()
+  : ::google::protobuf::Message() {
+  SharedCtor();
+}
+
+void swarm_state_result::InitAsDefaultInstance() {
+  state_ = const_cast< ::draiosproto::swarm_state*>(&::draiosproto::swarm_state::default_instance());
+}
+
+swarm_state_result::swarm_state_result(const swarm_state_result& from)
+  : ::google::protobuf::Message() {
+  SharedCtor();
+  MergeFrom(from);
+}
+
+void swarm_state_result::SharedCtor() {
+  _cached_size_ = 0;
+  successful_ = false;
+  errstr_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+  state_ = NULL;
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+}
+
+swarm_state_result::~swarm_state_result() {
+  SharedDtor();
+}
+
+void swarm_state_result::SharedDtor() {
+  if (errstr_ != &::google::protobuf::internal::kEmptyString) {
+    delete errstr_;
+  }
+  if (this != default_instance_) {
+    delete state_;
+  }
+}
+
+void swarm_state_result::SetCachedSize(int size) const {
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+}
+const ::google::protobuf::Descriptor* swarm_state_result::descriptor() {
+  protobuf_AssignDescriptorsOnce();
+  return swarm_state_result_descriptor_;
+}
+
+const swarm_state_result& swarm_state_result::default_instance() {
+  if (default_instance_ == NULL) protobuf_AddDesc_sdc_5finternal_2eproto();
+  return *default_instance_;
+}
+
+swarm_state_result* swarm_state_result::default_instance_ = NULL;
+
+swarm_state_result* swarm_state_result::New() const {
+  return new swarm_state_result;
+}
+
+void swarm_state_result::Clear() {
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    successful_ = false;
+    if (has_errstr()) {
+      if (errstr_ != &::google::protobuf::internal::kEmptyString) {
+        errstr_->clear();
+      }
+    }
+    if (has_state()) {
+      if (state_ != NULL) state_->::draiosproto::swarm_state::Clear();
+    }
+  }
+  ::memset(_has_bits_, 0, sizeof(_has_bits_));
+  mutable_unknown_fields()->Clear();
+}
+
+bool swarm_state_result::MergePartialFromCodedStream(
+    ::google::protobuf::io::CodedInputStream* input) {
+#define DO_(EXPRESSION) if (!(EXPRESSION)) return false
+  ::google::protobuf::uint32 tag;
+  while ((tag = input->ReadTag()) != 0) {
+    switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
+      // required bool successful = 1;
+      case 1: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_VARINT) {
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &successful_)));
+          set_has_successful();
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(18)) goto parse_errstr;
+        break;
+      }
+
+      // optional string errstr = 2;
+      case 2: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_errstr:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_errstr()));
+          ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+            this->errstr().data(), this->errstr().length(),
+            ::google::protobuf::internal::WireFormat::PARSE);
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectTag(26)) goto parse_state;
+        break;
+      }
+
+      // optional .draiosproto.swarm_state state = 3;
+      case 3: {
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_LENGTH_DELIMITED) {
+         parse_state:
+          DO_(::google::protobuf::internal::WireFormatLite::ReadMessageNoVirtual(
+               input, mutable_state()));
+        } else {
+          goto handle_uninterpreted;
+        }
+        if (input->ExpectAtEnd()) return true;
+        break;
+      }
+
+      default: {
+      handle_uninterpreted:
+        if (::google::protobuf::internal::WireFormatLite::GetTagWireType(tag) ==
+            ::google::protobuf::internal::WireFormatLite::WIRETYPE_END_GROUP) {
+          return true;
+        }
+        DO_(::google::protobuf::internal::WireFormat::SkipField(
+              input, tag, mutable_unknown_fields()));
+        break;
+      }
+    }
+  }
+  return true;
+#undef DO_
+}
+
+void swarm_state_result::SerializeWithCachedSizes(
+    ::google::protobuf::io::CodedOutputStream* output) const {
+  // required bool successful = 1;
+  if (has_successful()) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(1, this->successful(), output);
+  }
+
+  // optional string errstr = 2;
+  if (has_errstr()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->errstr().data(), this->errstr().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    ::google::protobuf::internal::WireFormatLite::WriteString(
+      2, this->errstr(), output);
+  }
+
+  // optional .draiosproto.swarm_state state = 3;
+  if (has_state()) {
+    ::google::protobuf::internal::WireFormatLite::WriteMessageMaybeToArray(
+      3, this->state(), output);
+  }
+
+  if (!unknown_fields().empty()) {
+    ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
+        unknown_fields(), output);
+  }
+}
+
+::google::protobuf::uint8* swarm_state_result::SerializeWithCachedSizesToArray(
+    ::google::protobuf::uint8* target) const {
+  // required bool successful = 1;
+  if (has_successful()) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(1, this->successful(), target);
+  }
+
+  // optional string errstr = 2;
+  if (has_errstr()) {
+    ::google::protobuf::internal::WireFormat::VerifyUTF8String(
+      this->errstr().data(), this->errstr().length(),
+      ::google::protobuf::internal::WireFormat::SERIALIZE);
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->errstr(), target);
+  }
+
+  // optional .draiosproto.swarm_state state = 3;
+  if (has_state()) {
+    target = ::google::protobuf::internal::WireFormatLite::
+      WriteMessageNoVirtualToArray(
+        3, this->state(), target);
+  }
+
+  if (!unknown_fields().empty()) {
+    target = ::google::protobuf::internal::WireFormat::SerializeUnknownFieldsToArray(
+        unknown_fields(), target);
+  }
+  return target;
+}
+
+int swarm_state_result::ByteSize() const {
+  int total_size = 0;
+
+  if (_has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    // required bool successful = 1;
+    if (has_successful()) {
+      total_size += 1 + 1;
+    }
+
+    // optional string errstr = 2;
+    if (has_errstr()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::StringSize(
+          this->errstr());
+    }
+
+    // optional .draiosproto.swarm_state state = 3;
+    if (has_state()) {
+      total_size += 1 +
+        ::google::protobuf::internal::WireFormatLite::MessageSizeNoVirtual(
+          this->state());
+    }
+
+  }
+  if (!unknown_fields().empty()) {
+    total_size +=
+      ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
+        unknown_fields());
+  }
+  GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
+  _cached_size_ = total_size;
+  GOOGLE_SAFE_CONCURRENT_WRITES_END();
+  return total_size;
+}
+
+void swarm_state_result::MergeFrom(const ::google::protobuf::Message& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  const swarm_state_result* source =
+    ::google::protobuf::internal::dynamic_cast_if_available<const swarm_state_result*>(
+      &from);
+  if (source == NULL) {
+    ::google::protobuf::internal::ReflectionOps::Merge(from, this);
+  } else {
+    MergeFrom(*source);
+  }
+}
+
+void swarm_state_result::MergeFrom(const swarm_state_result& from) {
+  GOOGLE_CHECK_NE(&from, this);
+  if (from._has_bits_[0 / 32] & (0xffu << (0 % 32))) {
+    if (from.has_successful()) {
+      set_successful(from.successful());
+    }
+    if (from.has_errstr()) {
+      set_errstr(from.errstr());
+    }
+    if (from.has_state()) {
+      mutable_state()->::draiosproto::swarm_state::MergeFrom(from.state());
+    }
+  }
+  mutable_unknown_fields()->MergeFrom(from.unknown_fields());
+}
+
+void swarm_state_result::CopyFrom(const ::google::protobuf::Message& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+void swarm_state_result::CopyFrom(const swarm_state_result& from) {
+  if (&from == this) return;
+  Clear();
+  MergeFrom(from);
+}
+
+bool swarm_state_result::IsInitialized() const {
+  if ((_has_bits_[0] & 0x00000001) != 0x00000001) return false;
+
+  if (has_state()) {
+    if (!this->state().IsInitialized()) return false;
+  }
+  return true;
+}
+
+void swarm_state_result::Swap(swarm_state_result* other) {
+  if (other != this) {
+    std::swap(successful_, other->successful_);
+    std::swap(errstr_, other->errstr_);
+    std::swap(state_, other->state_);
+    std::swap(_has_bits_[0], other->_has_bits_[0]);
+    _unknown_fields_.Swap(&other->_unknown_fields_);
+    std::swap(_cached_size_, other->_cached_size_);
+  }
+}
+
+::google::protobuf::Metadata swarm_state_result::GetMetadata() const {
+  protobuf_AssignDescriptorsOnce();
+  ::google::protobuf::Metadata metadata;
+  metadata.descriptor = swarm_state_result_descriptor_;
+  metadata.reflection = swarm_state_result_reflection_;
   return metadata;
 }
 

@@ -248,7 +248,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// If command line capture is disabled, we stop here
 	//
-	if(!m_analyzer->m_command_lines_capture_enabled)
+	if(!m_analyzer->get_configuration_read_only()->get_command_lines_capture_enabled())
 	{
 		return;
 	}
@@ -260,7 +260,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	sinsp_threadinfo* ttinfo = tinfo;
 	uint32_t shell_dist = 0;
 	uint64_t login_shell_id = 0;
-	bool found_tty = false;
 
 	for(uint32_t j = 0; ; j++)
 	{
@@ -275,10 +274,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 			shell_dist = j;
 		}
 
-		if(!found_tty && ttinfo->m_tty) {
-			found_tty = true;
-		}
-
 		ttinfo = ttinfo->get_parent_thread();
 		if(ttinfo == NULL)
 		{
@@ -286,14 +281,22 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		}
 	}
 
-	if(m_analyzer->m_command_lines_capture_all_commands) {
-		if(!login_shell_id) {
-			return;
-		}
-	} else {
-		if(!found_tty) {
-			return;
-		}
+	switch(m_analyzer->get_configuration_read_only()->get_command_lines_capture_mode())
+	{
+		case sinsp_configuration::command_capture_mode_t::CM_TTY:
+			if(!tinfo->m_tty) {
+				return;
+			}
+			break;
+		case sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR:
+			if(!login_shell_id) {
+				return;
+			}
+			break;
+		case sinsp_configuration::command_capture_mode_t::CM_ALL:
+			break;
+		default:
+			ASSERT(false);
 	}
 
 	//
@@ -317,6 +320,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	cmdinfo.m_ppid = tinfo->m_ptid;
 	cmdinfo.m_uid = tinfo->m_uid;
 	cmdinfo.m_cwd = tinfo->m_cwd;
+	cmdinfo.m_tty = tinfo->m_tty;
 
 	//
 	// Build the arguments string

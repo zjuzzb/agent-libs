@@ -257,8 +257,8 @@ void sinsp_worker::init()
 		g_log->information("Setting command lines capture");
 		m_analyzer->get_configuration()->set_command_lines_capture_enabled(
 			m_configuration->m_command_lines_capture_enabled);
-		m_analyzer->get_configuration()->set_command_lines_capture_all_commands(
-			m_configuration->m_command_lines_capture_all_commands);
+		m_analyzer->get_configuration()->set_command_lines_capture_mode(
+			m_configuration->m_command_lines_capture_mode);
 	}
 
 	if(m_configuration->m_capture_dragent_events)
@@ -283,6 +283,9 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_app_checks_limit(m_configuration->m_app_checks_limit);
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
+
+	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
+	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
 
 	//
 	// Load the chisels
@@ -866,8 +869,15 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
 	g_log->information("Starting dump job in " + job_state->m_file +
 		", filter '" + request.m_filter + "'");
-	job_state->m_dumper->open(job_state->m_file, true);
-
+	try
+	{
+		job_state->m_dumper->open(job_state->m_file, true);
+	}
+	catch(std::exception& ex)
+	{
+		send_error(request.m_token, ex.what());
+		return;
+	}
 	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
 	if(job_state->m_fp == NULL)
 	{

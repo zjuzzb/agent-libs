@@ -437,6 +437,7 @@ protected:
 	string agent_dump_token = "agent-dump-events";
 };
 
+/* FIXME: put these back 
 TEST_F(memdump_test, standard_dump)
 {
 	// Set the dump chunk size to something very small so
@@ -503,4 +504,4 @@ TEST_F(memdump_test, request_queue_full)
 	m_sinsp_worker->run();
 
 	m_dump_client.join();
-}
+} */
