@@ -11,6 +11,8 @@
 
 extern sinsp_evttables g_infotables;
 
+#define AVOID_FDS_FROM_THREAD_TABLE
+
 ///////////////////////////////////////////////////////////////////////////////
 // sisnp_baseliner implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -67,6 +69,28 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 		tinfo->m_blprogram = NULL;
 
+#ifdef AVOID_FDS_FROM_THREAD_TABLE
+		//
+		// If this is not the beginning of the capture, we just go through every FD
+		// and we reset its baseline flag
+		//
+		if(time != 0)
+		{
+			sinsp_fdtable* fdt = tinfo->get_fd_table();
+
+			if(fdt != NULL)
+			{
+				for(auto itf : fdt->m_table)
+				{
+					sinsp_fdinfo_t* fdinfo = &itf.second;
+					fdinfo->reset_inpipeline();
+				}
+			}
+		}
+#endif
+		//
+		// Add main threads and their FDs to the program table.
+		//
 		if(tinfo->is_main_thread())
 		{
 			blprogram* np;
@@ -119,6 +143,13 @@ void sisnp_baseliner::init_programs(uint64_t time)
 				cdelta = time - clone_ts;
 			}
 
+#ifdef AVOID_FDS_FROM_THREAD_TABLE
+			if(time != 0)
+			{
+				continue;
+			}
+#endif
+
 			//
 			// Process the FD table
 			//
@@ -144,7 +175,6 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						//
 						string sdir = blfiletable::file_to_dir(fdinfo->m_name);
 						np->m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
-//						np->m_dirs_reduced.add(sdir, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					}
@@ -155,7 +185,6 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						//
 						string sdir = fdinfo->m_name + '/';
 						np->m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
-//						np->m_dirs_reduced.add(sdir, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					}
@@ -348,14 +377,6 @@ void sisnp_baseliner::serialize_json(string filename)
 			eprog["dirs"] = edirs;
 		}
 
-		// Dirs reduced
-		//Json::Value edirsr;
-		//it.second.m_dirs_reduced.serialize_json(edirsr);
-		//if(!edirsr.empty())
-		//{
-		//	eprog["dirsr"] = edirsr;
-		//}
-
 		// Executed Programs
 		Json::Value eeprogs;
 		it.second->m_executed_programs.serialize_json(eeprogs);
@@ -394,6 +415,14 @@ void sisnp_baseliner::serialize_json(string filename)
 		if(!ec_subnet_endpoints.empty())
 		{
 			eprog["c_subnet_endpoints"] = ec_subnet_endpoints;
+		}
+
+		// syscalls
+		Json::Value eesyscalls;
+		it.second->m_syscalls.serialize_json(eesyscalls);
+		if(!eesyscalls.empty())
+		{
+			eprog["syscalls"] = eesyscalls;
 		}
 
 		table.append(eprog);
@@ -473,14 +502,6 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 			cdirs->set_name("dirs");
 			it.second.m_dirs.serialize_protobuf(cdirs);
 		}
-
-		// Dirs reduced
-		//if(it.second.m_dirs_reduced.has_data())
-		//{
-		//	draiosproto::falco_category* cdirs = prog->add_cats();
-		//	cdirs->set_name("dirsr");
-		//	it.second.m_dirs_reduced.serialize_protobuf(cdirs);
-		//}
 
 		// Executed Programs
 		if(it.second.m_executed_programs.has_data())
@@ -594,7 +615,9 @@ inline blprogram* sisnp_baseliner::get_program(sinsp_threadinfo* tinfo)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // Table update methods
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
 {
@@ -631,9 +654,6 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 
 	pinfo->m_dirs.add(sdir, openflags, false,
 		evt->get_ts() - clone_ts);
-
-//	pinfo->m_dirs_reduced.add(sdir, openflags, false,
-//		evt->get_ts() - clone_ts);
 }
 
 void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
@@ -858,14 +878,110 @@ void sisnp_baseliner::on_new_container(const sinsp_container_info& container_inf
 		container_info.m_imageid);
 }
 
-#if 0
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Single event processing methods
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+void sisnp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category)
+{
+	sinsp_fdinfo_t* fdinfo = evt->m_fdinfo;
+	if(fdinfo == NULL)
+	{
+		return;
+	}
+
+	scap_fd_type fd_type = fdinfo->m_type;
+
+	switch(fd_type)
+	{
+	case SCAP_FD_FILE:
+	case SCAP_FD_DIRECTORY:
+		if(category == EC_IO_READ)
+		{
+			if(!evt->m_fdinfo->is_inpipeline_r())
+			{
+				on_file_open(evt, fdinfo->m_name, PPM_O_RDONLY);
+				evt->m_fdinfo->set_inpipeline_r();
+			}
+		}
+		else if(category == EC_IO_WRITE)
+		{
+			if(!evt->m_fdinfo->is_inpipeline_rw())
+			{
+				on_file_open(evt, fdinfo->m_name, PPM_O_RDWR);
+				evt->m_fdinfo->set_inpipeline_rw();
+			}
+		}
+		else if(category == EC_IO_OTHER)
+		{
+			if(!evt->m_fdinfo->is_inpipeline_other())
+			{
+				on_file_open(evt, fdinfo->m_name, 0);
+				evt->m_fdinfo->set_inpipeline_other();
+			}
+		}
+		else
+		{
+			ASSERT(false);
+		}
+
+		break;
+	case SCAP_FD_IPV4_SOCK:
+	case SCAP_FD_IPV6_SOCK:
+	case SCAP_FD_IPV4_SERVSOCK:
+	case SCAP_FD_IPV6_SERVSOCK:
+		if(!evt->m_fdinfo->is_inpipeline_r())
+		{
+			if(fdinfo->is_role_server())
+			{
+				on_accept(evt, fdinfo);
+			}
+			else
+			{
+				on_connect(evt);
+			}
+
+			evt->m_fdinfo->set_inpipeline_r();
+		}
+
+		break;
+	}
+}
+
 void sisnp_baseliner::process_event(sinsp_evt *evt)
 {
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	uint16_t etype = evt->m_pevt->type;
+	if(!PPME_IS_ENTER(etype))
+	{
+		return;
+	}
 
 	//
-	// Find the program entry
+	// Skip some unnecessary events
 	//
+	enum ppm_event_flags flags = g_infotables.m_event_info[etype].flags;
+	enum ppm_event_category category = g_infotables.m_event_info[etype].category;
+
+	if(etype == PPME_SCHEDSWITCH_6_E || (flags & (EF_SKIPPARSERESET | EF_UNUSED)))
+	{
+		return;
+	}
+
+	//
+	// Find the thread info
+	//
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	if(tinfo == NULL)
+	{
+		return;
+	}
+
+	if(category & EC_IO_BASE)
+	{
+		add_fd_from_io_evt(evt, category);
+	}
+/*
 	blprogram* pinfo = get_program(tinfo);
 	if(pinfo == NULL)
 	{
@@ -873,30 +989,24 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	}
 
 	//
+	// Extract the ID, which depends on the type event: for generic
+	// events we need to go find the system call ID.
 	//
-	//
-	uint16_t etype = evt->m_pevt->type;
-	enum ppm_event_flags flags = g_infotables.m_event_info[etype].flags;
-
-	if(etype == PPME_SCHEDSWITCH_6_E ||
-		(flags & EC_INTERNAL) || (flags & EF_SKIPPARSERESET))
-	{
-		return NULL;
-	}
+	uint32_t evid;
 
 	if(etype == PPME_GENERIC_E || etype == PPME_GENERIC_X)
 	{
 		sinsp_evt_param *parinfo = evt->get_param(0);
 		ASSERT(parinfo->m_len == sizeof(uint16_t));
-		uint16_t evid = *(uint16_t *)parinfo->m_val;
+		uint16_t val = *(uint16_t *)parinfo->m_val;
 
-		evname = (uint8_t*)g_infotables.m_syscall_info_table[evid].name;
+		evid = val << 16;
 	}
 	else
 	{
-		evname = (uint8_t*)evt->get_name();
+		evid = evt->get_type();
 	}
 
-	return evname;
+	pinfo->m_syscalls.add(evid, 0);
+*/
 }
-#endif

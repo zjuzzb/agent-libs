@@ -434,8 +434,7 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 	}
 	catch(sinsp_exception e)
 	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: " +
-			m_active_state->m_bufsize);
+		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size");
 
 		m_disabled = true;
 	}
