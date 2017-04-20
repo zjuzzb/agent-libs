@@ -457,7 +457,6 @@ TEST_F(sys_call_test, process_thread_table_limit)
 	{		
 		sinsp_evt *evt = param.m_evt;
 
-printf("@@@@@@@@@3\n");		
 		if(evt->get_type() == PPME_GENERIC_E)
 		{
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
@@ -703,28 +702,6 @@ TEST_F(sys_call_test, procfs_cpuload_longinterval)
 	}
 }
 
-TEST_F(sys_call_test, procfs_globalcpuload)
-{
-	double load;
-	uint32_t j;
-	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
-	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
-
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
-
-	load = pparser.get_global_cpu_load();
-	sleep(1);
-	EXPECT_EQ((int32_t)-1, (int32_t)load);
-
-	for(j = 0; j < 5; j++)
-	{
-		load = pparser.get_global_cpu_load();
-		EXPECT_NE((double)-1, (int32_t)load);
-		EXPECT_LE((double)0, load);
-		EXPECT_GE((double)100, load);
-		sleep(1);
-	}
-}
 
 TEST_F(sys_call_test, procfs_processcpuload)
 {
@@ -732,17 +709,14 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	uint32_t j, k;
 	uint32_t t = 1;
 	int pid = getpid();
-	uint64_t old_global_total_jiffies;
-	uint64_t cur_global_total_jiffies;
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	load = pparser.get_global_cpu_load(&old_global_total_jiffies);
-	EXPECT_EQ((double)-1, load);
-	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
+	pparser.set_global_cpu_jiffies();
+	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
 	EXPECT_EQ((double)-1, load);
 	
 	sleep(1);
@@ -755,12 +729,11 @@ TEST_F(sys_call_test, procfs_processcpuload)
 			t = t % 35689;
 		}
 
-		pparser.get_global_cpu_load(&cur_global_total_jiffies);
-		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
+		pparser.set_global_cpu_jiffies();
+		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
 		EXPECT_NE((double)-1, load);
 		EXPECT_LE((double)0, load);
 		EXPECT_GE((double)100, load);
-		old_global_total_jiffies = cur_global_total_jiffies;
 
 		usleep(100000);
 	}
@@ -828,30 +801,31 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	double load;
 	uint32_t j;
 	int pid = getpid();
-	uint64_t old_global_total_jiffies;
-	uint64_t cur_global_total_jiffies;
-	uint64_t old_global_steal_jiffies;
-	uint64_t cur_global_steal_jiffies;
 	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 	uint32_t num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-	uint32_t m = (num_cpus > 2) ? 2:num_cpus;
  
-	Poco::Thread th;
-	loadthread ct;
-	Poco::RunnableAdapter<loadthread> runnable(ct, &loadthread::run);
-	th.start(runnable);
+	std::vector<std::shared_ptr<Poco::Thread>> pts;
+	std::vector<std::shared_ptr<loadthread>> lts;
+	std::vector<std::shared_ptr<Poco::RunnableAdapter<loadthread>>> rs;
 
-	Poco::Thread th1;
-	loadthread ct1;
-	Poco::RunnableAdapter<loadthread> runnable1(ct1, &loadthread::run);
-	th1.start(runnable1);
+	for(j = 0; j < num_cpus; ++j)
+	{
+		std::shared_ptr<Poco::Thread> pt(new Poco::Thread());
+		pts.push_back(pt);
+		std::shared_ptr<loadthread> lt(new loadthread());
+		lts.push_back(lt);
+		std::shared_ptr<Poco::RunnableAdapter<loadthread>> r(
+			new Poco::RunnableAdapter<loadthread>(*lts.back(), &loadthread::run));
+		rs.push_back(r);
+		pts.back()->start(*rs.back());
+	}
 
 	sinsp_procfs_parser pparser(nprocs, memkb, true);
 
-	pparser.get_global_cpu_load(&old_global_total_jiffies, NULL, &old_global_steal_jiffies);
-	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, 0);
+	pparser.set_global_cpu_jiffies();
+	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
 
 	sleep(1);
 
@@ -859,32 +833,23 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 
 	for(j = 0; j < 3; j++)
 	{
-		pparser.get_global_cpu_load(&cur_global_total_jiffies, NULL, &cur_global_steal_jiffies);
-		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies, cur_global_total_jiffies - old_global_total_jiffies);
+		pparser.set_global_cpu_jiffies();
+		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
 
 		sleep(1);
 
-		double stolen = (double) (cur_global_steal_jiffies - old_global_steal_jiffies) * 100 / (cur_global_total_jiffies - old_global_total_jiffies);
-
-		//
-		// When there's steal time, on AWS there are processes that if ran at 100% will have low spikes of 10-20% cpu for a second 
-		// (verified, top/htop show the exact same information, even after accounting steal time). 
-		// On Digital Ocean instead, every process always consumes 100% after accounting steal time.
-		// It recently broke because the stolen time was not accounted as a global cpu time, so the math was working most of the time, but
-		// now that the measurements are more precise, the issue is more frequent, so in case of stolen time, we'll just lower the threshold.
-		//
-		EXPECT_LE((double)m * 100 - 15 - stolen, load);
-		EXPECT_GE((double)m * 100 + 15, load);
-
-		old_global_total_jiffies = cur_global_total_jiffies;
-		old_global_steal_jiffies = cur_global_steal_jiffies;
+		EXPECT_GE((double)num_cpus * 100, load);
 	}
 
-	ct.m_die = true;
-	ct1.m_die = true;
+	for(auto l : lts)
+	{
+		l->m_die = true;
+	}
 
-	th.join();
-	th1.join();
+	for(auto p : pts)
+	{
+		p->join();
+	}
 }
 
 TEST_F(sys_call_test, procfs_globalmemory)

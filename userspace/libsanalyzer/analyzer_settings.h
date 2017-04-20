@@ -181,11 +181,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define FALCO_BASELINING_ENABLED false
 
 //
-// Determines if command lines capture is going to happen by default
-//
-#define COMMAND_LINES_CAPTURE_ENABLED false
-
-//
 // Falco baseline emit interval
 //
 #define FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
@@ -241,3 +236,6 @@ static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
 static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 #define MESOS_RETRY_ON_ERRORS_TIMEOUT_NS (10 * ONE_SECOND_IN_NS)
 #define NODRIVER_PROCLIST_REFRESH_INTERVAL_NS (5 * ONE_SECOND_IN_NS)
+
+#define SWARM_POLL_INTERVAL (10 * ONE_SECOND_IN_NS)
+#define SWARM_POLL_FAIL_INTERVAL (300 * ONE_SECOND_IN_NS)

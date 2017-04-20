@@ -1,0 +1,270 @@
+#!/bin/bash
+# Tool to collect log files for Sysdig Cloud Agent
+# www.sysdig.com
+#
+# (c) 2017 Sysdig Inc.
+#
+
+
+APP_NAME="gen-support-bundle"
+APP_VERSION="0.1"
+NO_S3_UPLOAD=0
+HOME_DIR="/opt/draios"
+HOME_DIR_S=${HOME_DIR:1}
+LOG_DIR="$HOME_DIR/logs"
+ETC_DIR="$HOME_DIR/etc"
+CUSTOM_CHECKS_DIR="$HOME_DIR/lib/python/checks.custom.d"
+TMP_DIR="/tmp"
+TMP_DIR_S=${TMP_DIR:1}
+MACHINE_ID=
+TAR_ARCHIVE=
+BZIP_ARCHIVE=
+
+
+progress_flag=0
+function progress()
+{
+    pad=$(printf '%0.1s' "."{1..60})
+    line='.......................................................'
+
+    if [ $progress_flag -eq 1 ]; then
+        printf " [%s]\n" "$1"
+        progress_flag=0
+    else
+        printf "%s %s" "$1" "${line:${#1}}"
+        progress_flag=1
+    fi
+
+}
+
+
+function leave()
+{
+    if [ $2 -eq 0 ]; then
+        echo "$1"
+    else
+        echo "ERROR: $1"
+        if [[ ! -z $TAR_ARCHIVE ]]; then
+            rm -f $TAR_ARCHIVE
+        fi
+    fi
+
+    rm -f $TMP_DIR/docker*.log
+    exit $2
+}
+
+
+function verify_dirs()
+{
+    progress "Verifying directory structure"
+
+    if [ ! -d "$HOME_DIR" ]; then
+        progress "failed"
+        leave "Directory \`$HOME_DIR\` does not exist." 1
+    fi
+
+    if [ ! -d "$LOG_DIR" ]; then
+        progress "failed"
+        leave "Directory \`$LOG_DIR\` does not exist." 1
+    fi
+
+    if [ ! -d "$ETC_DIR" ]; then
+        progress "failed"
+        leave "Directory \`$ETC_DIR\` does not exist." 1
+    fi
+
+    progress "done"
+}
+
+
+function verify_files()
+{
+    progress "Verifying log files title"
+    for entry in $LOG_DIR/*.log*; do
+        if [ `grep -m 1 -E "[\d\.\,\:\-]+\ +Agent\ starting\ +\(version .+\)" $entry | wc -l` -ne 0 ]; then
+            progress "done"
+            return
+        fi
+    done
+    leave "No starting log message among the given log files." 1
+}
+
+
+function docker_info()
+{
+    progress "Inspecting docker"
+    info=$(docker info &>/dev/null)
+    if [ $? -ne 0 ]; then
+        progress "skipped"
+        return
+    fi
+
+    msg=${info:0:14}
+    if [ "$msg" == "Cannot connect" ]; then
+        progress "skipped"
+        return
+    fi
+
+    regex="^([0-9a-zA-Z]+)\s+([0-9a-zA-Z\/\-]+)"
+    containers=$(docker ps)
+    first_line=1
+    while read -r line; do
+        if [ $first_line -eq 1 ]; then
+            first_line=0
+            continue
+        fi
+        if [[ $line =~ $regex ]]; then
+            if [ ${BASH_REMATCH[2]} == "sysdig/agent" ]; then
+                docker inspect ${BASH_REMATCH[1]} > $TMP_DIR/docker_${BASH_REMATCH[1]}.log
+            fi
+        fi
+    done <<< "$containers"
+
+    progress "done"
+}
+
+
+function tarball()
+{
+    progress "Archiving logs"
+    tar -cvf $TAR_ARCHIVE $LOG_DIR/*.log* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
+    if [ $? -ne 0 ]; then
+        progress "failed"
+        leave "Failed executing \`tar\`." 1
+    fi
+    progress "done"
+
+    progress "Archiving configurations"
+    tar -uvf $TAR_ARCHIVE $ETC_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
+    if [ $? -ne 0 ]; then
+        progress "failed"
+        leave "Failed executing \`tar\`." 1
+    fi
+    progress "done"
+
+    progress "Archiving custom checks"
+    if [ ! -d "$CUSTOM_CHECKS_DIR" ]; then
+        progress "skipped"
+    else
+        tar -uvf $TAR_ARCHIVE $CUSTOM_CHECKS_DIR/* --transform s,$HOME_DIR_S,$MACHINE_ID, &>/dev/null
+        if [ $? -ne 0 ]; then
+            progress "failed"
+            leave "Failed executing \`tar\`." 1
+        fi
+        progress "done"
+    fi
+
+    progress "Archiving docker info"
+    docker_files=$(ls $TMP_DIR/docker*.log 2> /dev/null | wc -l)
+    if [[ "$docker_files" != "0" ]]; then
+        tar -uvf $TAR_ARCHIVE $TMP_DIR/docker*.log --transform s,$TMP_DIR_S,$MACHINE_ID, &>/dev/null
+        if [ $? -ne 0 ]; then
+            progress "failed"
+            leave "Failed executing \`tar\`." 1
+        fi
+        progress "done"
+    else
+        progress "skipped"
+    fi
+
+    BZIP_ARCHIVE="$TAR_ARCHIVE.bz2"
+    progress "Compressing tar archive"
+    bzip2 $TAR_ARCHIVE &>/dev/null
+    if [ $? -ne 0 ]; then
+        progress "skipped"
+    else
+        progress "done"
+    fi
+}
+
+
+function upload_s3()
+{
+    progress "Uploading archive to Amazon S3"
+    if [ $NO_S3_UPLOAD -eq 1 ]; then
+        progress "skipped"
+    else
+        response=$(curl -s -S --request PUT --upload-file $BZIP_ARCHIVE $S3_URL)
+        if [[ -z $response ]]; then
+            progress "done"
+        else
+            progress "failed"
+        fi
+    fi
+}
+
+
+function help_message()
+{
+    echo "Usage: $APP_NAME [options...] <presigned url>"
+    echo "--help                  this help message"
+    echo "--no-s3-upload          enables/disables upload of a bundle to Amazon S3 bucket"
+    echo "--version               prints program version"
+    exit 1
+}
+
+
+# script start #
+
+
+CMD_INPUT="$(getopt -o '' -l help,no-s3-upload,version -q -n "$0" -- "$@")"
+if [ $? -ne 0 ]; then
+    leave "Incorrect parameters." 1
+fi
+eval set -- "$CMD_INPUT"
+while true
+do
+    case "$1" in
+        --help)
+            help_message
+            ;;
+        --no-s3-upload)
+            NO_S3_UPLOAD=1
+            shift
+            ;;
+        --version)
+            echo "$APP_NAME $APP_VERSION"
+            exit 0
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unknown parameter: $1" >&2
+            echo "Usage: $APP_NAME [options...] <presigned url>"
+            exit 1
+            ;;
+    esac
+done
+
+S3_URL=$1
+if [[ -z $S3_URL ]] && [[ $NO_S3_UPLOAD -eq 0 ]]; then
+    leave "Empty URL not allowed." 1
+fi
+
+progress "Reading current date"
+DATE=`date +%Y%m%d%H%m%s`
+if [ $? -ne 0 ]; then
+    progress "failed"
+    leave "Cannot execute \`date\` command." 1
+fi
+progress "done"
+
+verify_dirs
+
+progress "Searching for machine ID"
+if [[ `grep -i "machine id" -m 1 $LOG_DIR/*.log*` =~ .*machine\ id\:\ *(.*) ]]; then
+    MACHINE_ID=${BASH_REMATCH[1]//\:/}
+else
+    progress "failed"
+    leave "Cannot find machine ID in log files" 1
+fi
+progress "done"
+
+TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
+verify_files
+docker_info
+tarball
+upload_s3
+leave "Done." 0

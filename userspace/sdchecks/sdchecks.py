@@ -281,14 +281,15 @@ class Config:
     def set_percentiles(self):
         global GLOBAL_PERCENTILES
         percentiles = self._yaml_config.get_single("percentiles")
-        configstr = ''
-        first = True
-        for pct in percentiles:
-            if not first:
-                configstr += ','
-            configstr += str(float(pct) / 100.0)
-            first = False
-        GLOBAL_PERCENTILES = config.get_histogram_percentiles(configstr)
+        if not percentiles is None:
+            configstr = ''
+            first = True
+            for pct in percentiles:
+                if not first:
+                    configstr += ','
+                configstr += str(float(pct) / 100.0)
+                first = False
+                GLOBAL_PERCENTILES = config.get_histogram_percentiles(configstr)
 
 class PosixQueueType:
     SEND = 0

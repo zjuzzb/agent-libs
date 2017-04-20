@@ -241,7 +241,7 @@ dragent_configuration::dragent_configuration()
 	m_autodrop_enabled = false;
 	m_falco_baselining_enabled = false;
 	m_command_lines_capture_enabled = false;
-	m_command_lines_capture_all_commands = false;
+	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
 	m_drop_upper_threshold = 0;
@@ -282,7 +282,8 @@ dragent_configuration::dragent_configuration()
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
-	m_cointerface_enabled = false;
+	m_cointerface_enabled = true;
+	m_swarm_enabled = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -611,7 +612,15 @@ void dragent_configuration::init(Application* app)
 	m_autodrop_enabled = m_config->get_scalar<bool>("autodrop", "enabled", true);
 	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 	m_command_lines_capture_enabled =  m_config->get_scalar<bool>("commandlines_capture", "enabled", false);
-	m_command_lines_capture_all_commands =  m_config->get_scalar<bool>("commandlines_capture", "all_commands", false);
+	string command_lines_capture_mode_s = m_config->get_scalar<string>("commandlines_capture", "capture_mode", "tty");
+	if (command_lines_capture_mode_s == "tty") {
+		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_TTY;
+	} else if (command_lines_capture_mode_s == "shell_ancestor") {
+		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR;
+	} else if (command_lines_capture_mode_s == "all") {
+		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_ALL;
+	}
+
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
 	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 200 * 1024 * 1024);
 
@@ -904,7 +913,8 @@ void dragent_configuration::init(Application* app)
 		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
 	}
 
-	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", false);
+	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
+	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 }
 
 void dragent_configuration::print_configuration()
@@ -933,7 +943,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
 	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
-	g_log->information("commandlines_capture.all_commands: " + bool_as_text(m_command_lines_capture_all_commands));
+	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	g_log->information("memdump.enabled: " + bool_as_text(m_memdump_enabled));
 	g_log->information("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
@@ -988,6 +998,9 @@ void dragent_configuration::print_configuration()
 	g_log->information("java detected: " + bool_as_text(java_present()));
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
+	if(m_sdjagent_enabled && getppid() == 1) {
+		g_log->warning("Sysdig Agent container has been launched without `--pid host` parameter, JMX metrics will not be available");
+	}
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));

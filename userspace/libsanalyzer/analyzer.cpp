@@ -95,7 +95,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_serialize_prev_sample_evtnum = 0;
 	m_serialize_prev_sample_time = 0;
 	m_client_tr_time_by_servers = 0;
-	m_total_process_cpu = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
 	m_procfs_parser = NULL;
@@ -119,7 +118,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_above_thresholds = 0;
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
-	m_last_system_cpuload = 0;
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
 	m_die = false;
@@ -169,6 +167,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_mesos_last_failure_ns = 0;
 	m_last_mesos_refresh = 0;
+
+	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -295,7 +295,6 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
-	m_procfs_parser->get_global_cpu_load(&m_old_global_total_jiffies);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
@@ -344,12 +343,6 @@ void sinsp_analyzer::on_capture_start()
 	//
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	m_falco_baseliner->init(m_inspector);
-
-	//
-	// If required, enable the command line captures
-	//
-	m_command_lines_capture_enabled	= m_configuration->get_command_lines_capture_enabled();
-	m_command_lines_capture_all_commands = m_configuration->get_command_lines_capture_all_commands();
 
 	//
 	// Enable memery dump
@@ -581,6 +574,11 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 		throw sinsp_exception("Attempting to get the configuration while the inspector is capturing");
 	}
 
+	return m_configuration;
+}
+
+const sinsp_configuration* sinsp_analyzer::get_configuration_read_only()
+{
 	return m_configuration;
 }
 
@@ -1586,22 +1584,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 
 	//
-	// Extract global CPU info
+	// Snapshot global CPU state
+	// (used as the reference value to calculate process CPU usages in the threadtable loop)
 	//
-	uint64_t cur_global_total_jiffies;
-	if(!m_inspector->is_capture())
+	if(!m_inspector->is_capture() &&
+	  (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) &&
+	  !m_skip_proc_parsing)
 	{
-		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-		{
-			if(!m_skip_proc_parsing)
-			{
-				m_procfs_parser->get_global_cpu_load(&cur_global_total_jiffies);
-			}
-		}
-	}
-	else
-	{
-		cur_global_total_jiffies = 0;
+		m_procfs_parser->set_global_cpu_jiffies();
 	}
 
 	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
@@ -1627,10 +1617,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	{
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
-
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
-
 		analyzer_container_state* container = NULL;
 
 		if(!tinfo->m_container_id.empty())
@@ -1800,19 +1788,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					{
 						if(!m_skip_proc_parsing)
 						{
-							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid,
-								&ainfo->m_old_proc_jiffies,
-								cur_global_total_jiffies - m_old_global_total_jiffies);
+							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid, &ainfo->m_old_proc_jiffies);
 						}
 
-						if(ainfo->m_cpuload >= 0)
-						{
-							m_total_process_cpu += ainfo->m_cpuload;
-						}
 #if defined(HAS_CAPTURE)
 						if(it->first == m_inspector->m_sysdig_pid)
 						{
 							m_my_cpuload = ainfo->m_cpuload;
+							uint64_t steal_pct = m_procfs_parser->global_steal_pct();
+							if(m_my_cpuload > 0.1 && steal_pct > 0 && steal_pct < 100)
+							{
+								m_my_cpuload -= (m_my_cpuload * ((double)steal_pct / 100));
+								g_logger.log("Agent internal CPU time adjusted for steal time by factor " +
+											std::to_string(m_my_cpuload/ainfo->m_cpuload) +
+											": ainfo->m_cpuload=" + std::to_string(ainfo->m_cpuload) +
+											" => m_my_cpuload=" + std::to_string(m_my_cpuload), sinsp_logger::SEV_DEBUG);
+							}
 						}
 #else
 						m_my_cpuload = 0;
@@ -2004,10 +1995,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 #ifdef _DEBUG
 			procinfo->m_proc_metrics.calculate_totals();
-			double totpct = procinfo->m_proc_metrics.get_processing_percentage() +
-							procinfo->m_proc_metrics.get_file_percentage() +
-							procinfo->m_proc_metrics.get_net_percentage() +
-							procinfo->m_proc_metrics.get_other_percentage();
+			double processing = procinfo->m_proc_metrics.get_processing_percentage();
+			double file = procinfo->m_proc_metrics.get_file_percentage();
+			double net = procinfo->m_proc_metrics.get_net_percentage();
+			double other = procinfo->m_proc_metrics.get_other_percentage();
+			double totpct = processing + file + net + other;
+			g_logger.log("Metrics [" + tinfo->m_comm + "] processing=" + to_string(processing) +
+						 ", file=" + to_string(file) +
+						 ", net=" + to_string(net) +
+						 ", other=" + to_string(other) +
+						 ", totpct=" + to_string(totpct), sinsp_logger::SEV_DEBUG);
 			ASSERT(totpct == 0 || (totpct > 0.99 && totpct < 1.01));
 #endif // _DEBUG
 
@@ -2520,11 +2517,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						m_configuration->get_app_checks_limit());
 	}
 
-	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-	{
-		m_old_global_total_jiffies = cur_global_total_jiffies;
-	}
-
 #ifndef _WIN32
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
@@ -2949,13 +2941,9 @@ void sinsp_analyzer::emit_full_connections()
 
 void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metric)
 {
-	//
-	// Drop mode logic:
-	// if we stay above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we increase the sampling,
-	// if we stay above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, we decrease the sampling,
-	//
-	uint32_t j;
-
+	//g_logger.log("drop_upper_threshold =" + std::to_string(m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
+	//g_logger.log("drop_lower_threshold =" + std::to_string(m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
+	//g_logger.log("drop_threshold_consecutive_seconds =" + std::to_string(m_configuration->get_drop_threshold_consecutive_seconds()), sinsp_logger::SEV_DEBUG);
 	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		if(threshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
@@ -2971,15 +2959,9 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 			m_seconds_above_thresholds = 0;
 		}
 
+		// if above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, increase the sampling
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds())
 		{
-			m_last_system_cpuload = 0;
-
-			for(j = 0; j < m_proc_stat.m_loads.size(); j++)
-			{
-				m_last_system_cpuload += m_proc_stat.m_loads[j];
-			}
-
 			m_seconds_above_thresholds = 0;
 
 			if(m_sampling_ratio < 128)
@@ -2996,7 +2978,7 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 
 				if(m_new_sampling_ratio == 2)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baseliling");
+					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
 					m_do_baseline_calculation = false;
 					m_falco_baseliner->clear_tables();
 				}
@@ -3007,8 +2989,12 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Reached maximum sampling ratio and still too high");
 			}
+			// done adjusting
+			return;
 		}
 
+		// sampling ratio was not increased, let's check if it should be decreased
+		// if above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, decrease the sampling,
 		if(threshold_metric <= (double)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus))
 		{
 			m_seconds_below_thresholds++;
@@ -3025,46 +3011,57 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 			m_seconds_below_thresholds = 0;
 		}
 
-		if(m_seconds_below_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds() &&
-			m_is_sampling)
+		if(m_seconds_below_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds() && m_is_sampling)
 		{
-			double totcpuload = 0;
-			bool skip = false;
+			m_seconds_below_thresholds = 0;
 
-			for(j = 0; j < m_proc_stat.m_loads.size(); j++)
+			if(m_sampling_ratio > 1)
 			{
-				totcpuload += m_proc_stat.m_loads[j];
-			}
-
-			if(m_last_system_cpuload != 0)
-			{
-				if(fabs(totcpuload - m_last_system_cpuload) / min(totcpuload, m_last_system_cpuload) < 0.15)
+				double totcpuload = 0;
+				ASSERT(m_machine_info->num_cpus == m_proc_stat.m_loads.size());
+				for(unsigned j = 0; j < m_proc_stat.m_loads.size(); j++)
 				{
-					if(m_seconds_below_thresholds <= m_configuration->get_drop_threshold_consecutive_seconds() * 50)
-					{
-						skip = true;
-					}
+					// here, we are only accounting for the real workload on this machine; in overcommitted virtual environments
+					// stealing may cause total load to be 100% all the time, which then permanently prevents recovery back from
+					// the reduced sampling rate (ie. increased sampling ratio)
+					// note also that the internal agent cpu usage (unlike cpu usage values for all the processes reported to the
+					// backend and seen in the UI) is scaled down proportionaly to the amount of system steal cpu time, so it is
+					// expected to see higher agent usage in eg. top than what agent log says (neither value is 100% accurate,
+					// but agent log value is less likely to be erroneous because unrealistically high values in the presence
+					// of steal time are trimmed down proportionately to the ratio of system steal_time / total_cpu_time)
+					ASSERT(m_proc_stat.m_user.size() > j)
+					totcpuload += m_proc_stat.m_user[j];
+					ASSERT(m_proc_stat.m_nice.size() > j)
+					totcpuload += m_proc_stat.m_nice[j];
+					ASSERT(m_proc_stat.m_system.size() > j)
+					totcpuload += m_proc_stat.m_system[j];
+					ASSERT(m_proc_stat.m_irq.size() > j)
+					totcpuload += m_proc_stat.m_irq[j];
+					ASSERT(m_proc_stat.m_softirq.size() > j)
+					totcpuload += m_proc_stat.m_softirq[j];
 				}
-			}
 
-			if(!skip)
-			{
-				m_last_system_cpuload = 0;
+				double avail_cpu = (m_machine_info->num_cpus * 100.0) - totcpuload;
+				ASSERT(avail_cpu >= 0);
+				g_logger.log("avail_cpu=" + std::to_string(avail_cpu) + ", m_my_cpuload=" + std::to_string(m_my_cpuload),
+							 sinsp_logger::SEV_DEBUG);
+				if(!avail_cpu || m_my_cpuload > avail_cpu) { return; }
 
-				m_seconds_below_thresholds = 0;
-				m_new_sampling_ratio = m_sampling_ratio / 2;
-
-				if(m_new_sampling_ratio >= 1)
+				if(m_new_sampling_ratio > 1)
 				{
-					if(m_is_sampling)
+					m_new_sampling_ratio = m_sampling_ratio / 2;
+
+					if(m_new_sampling_ratio <= 128)
 					{
 						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_new_sampling_ratio);
 						start_dropping_mode(m_new_sampling_ratio);
 					}
 					else
 					{
-						ASSERT(m_new_sampling_ratio == 1);
-						stop_dropping_mode();
+						// default to lowest, tuner will adjust it quick if there's not much load
+						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", m_new_sampling_ratio);
+						m_new_sampling_ratio = 128;
+						start_dropping_mode(m_new_sampling_ratio);
 					}
 				}
 			}
@@ -3086,6 +3083,8 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			executed_command_cmp);
 
 #if 0
+		uint32_t j;
+		int32_t last_pipe_head = -1;
 		//
 		// Consolidate command with pipes
 		//
@@ -3227,6 +3226,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				cd->set_ppid(it->m_ppid);
 				cd->set_uid(it->m_uid);
 				cd->set_cwd(it->m_cwd);
+				cd->set_tty(it->m_tty);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{
@@ -3246,7 +3246,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 {
 	tracer_emitter f_trc("analyzer_flush");
 	m_cputime_analyzer.begin_flush();
-	//g_logger.format(sinsp_logger::SEV_INFO, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
+	//g_logger.format(sinsp_logger::SEV_TRACE, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
 	uint64_t nevts_in_last_sample;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
@@ -3361,8 +3361,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			m_total_process_cpu = 0; // this will be calculated when scanning the processes
-
 			//
 			// Flush the scheduler analyzer
 			//
@@ -3378,6 +3376,47 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
+				// Only run every 10 seconds or 5 minutes
+				if (m_configuration->get_cointerface_enabled() &&
+					m_configuration->get_swarm_enabled())
+				{
+					tracer_emitter ss_trc("get_swarm_state", f_trc);
+					m_swarmstate_interval.run([this]()
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Sending Swarm State Command");
+						//  callback to be executed by coclient::next()
+						coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+							m_metrics->mutable_swarm()->Clear();
+							if(successful)
+							{
+								sdc_internal::swarm_state_result *res = (sdc_internal::swarm_state_result *) response_msg;
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
+								m_docker_swarm_state->CopyFrom(res->state());
+								if (!res->successful()) {
+									
+									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
+									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
+								}
+								if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
+								{
+									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll recovered, changing interval back to %lds\n", SWARM_POLL_INTERVAL / ONE_SECOND_IN_NS);
+									m_swarmstate_interval.interval(SWARM_POLL_INTERVAL);
+								}
+							} else {
+								g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll failed, setting interval to %lds\n", SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
+								m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
+							}
+						};
+						m_coclient.get_swarm_state(callback);
+					});
+					// Read available responses
+					m_coclient.next();
+					ss_trc.stop();
+					tracer_emitter copy_trc("copy_swarm_state", f_trc);
+					// Copy from cached swarm state
+					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
+				}
+
 				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();
 				if(m_mounted_fs_proxy)
@@ -3535,36 +3574,34 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			ASSERT(m_proc_stat.m_loads.size() == 0 || m_proc_stat.m_loads.size() == m_machine_info->num_cpus);
-			ASSERT(m_proc_stat.m_loads.size() == m_proc_stat.m_steals.size());
-			string cpustr;
-
-			double totcpuload = 0;
-			double totcpusteal = 0;
+			ASSERT(m_proc_stat.m_loads.size() == m_proc_stat.m_steal.size());
 
 			for(uint32_t k = 0; k < m_proc_stat.m_loads.size(); k++)
 			{
-				cpustr += to_string((long double) m_proc_stat.m_loads[k]) + "(" + to_string((long double) m_proc_stat.m_steals[k]) + ") ";
+				if((g_logger.get_severity() >= sinsp_logger::SEV_DEBUG) && (flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT))
+				{
+					g_logger.log("CPU[" + to_string(k) +
+								 "]: us=" + to_string(m_proc_stat.m_user[k]) +
+								 ", sy=" + to_string(m_proc_stat.m_system[k]) +
+								 ", ni=" + to_string(m_proc_stat.m_nice[k]) +
+								 ", id=" + to_string(m_proc_stat.m_idle[k]) +
+								 ", wa=" + to_string(m_proc_stat.m_iowait[k]) +
+								 ", hi=" + to_string(m_proc_stat.m_irq[k]) +
+								 ", si=" + to_string(m_proc_stat.m_softirq[k]) +
+								 ", st=" + to_string((long double) m_proc_stat.m_steal[k]) +
+								 ", ld=" + to_string((long double) m_proc_stat.m_loads[k]), sinsp_logger::SEV_DEBUG);
+				}
 				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_proc_stat.m_loads[k] * 100));
-				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_proc_stat.m_steals[k] * 100));
+				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_proc_stat.m_steal[k] * 100));
 				m_metrics->mutable_hostinfo()->add_cpu_idle((uint32_t)(m_proc_stat.m_idle[k] * 100));
 				m_metrics->mutable_hostinfo()->add_user_cpu((uint32_t)(m_proc_stat.m_user[k] * 100));
 				m_metrics->mutable_hostinfo()->add_nice_cpu((uint32_t)(m_proc_stat.m_nice[k] * 100));
 				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k] * 100));
 				m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
-
-				totcpuload += m_proc_stat.m_loads[k];
-				totcpusteal += m_proc_stat.m_steals[k];
 			}
 
 			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
 
-			ASSERT(totcpuload <= 100 * m_proc_stat.m_loads.size());
-			ASSERT(totcpusteal <= 100 * m_proc_stat.m_loads.size());
-
-			if(totcpuload < m_total_process_cpu)
-			{
-				totcpuload = m_total_process_cpu;
-			}
 			double loadavg[3] = {0};
 			if(getloadavg(loadavg, 3) != -1)
 			{
@@ -3578,14 +3615,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			else
 			{
 				g_logger.log("Could not obtain load averages", sinsp_logger::SEV_WARNING);
-			}
-
-			if(m_proc_stat.m_loads.size() != 0)
-			{
-				if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG, "CPU:%s", cpustr.c_str());
-				}
 			}
 
 			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
@@ -3651,7 +3680,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Executed commands
 			//
-			if(m_command_lines_capture_enabled)
+			if(m_configuration->get_command_lines_capture_enabled())
 			{
 				emit_executed_commands(m_metrics, NULL, &(m_executed_commands[""]));
 			}
@@ -3995,7 +4024,14 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	if(m_configuration->get_autodrop_enabled())
 	{
 		m_prev_flush_cpu_pct = m_cputime_analyzer.calc_flush_percent();
+		g_logger.log("m_prev_flush_cpu_pct=" + std::to_string(m_prev_flush_cpu_pct) + ", m_my_cpuload=" + std::to_string(m_my_cpuload) +
+					" (" + std::to_string(m_my_cpuload*(1-m_prev_flush_cpu_pct)) + '/' + std::to_string(m_sampling_ratio) + ')',
+					sinsp_logger::SEV_DEBUG);
 		tune_drop_mode(flshflags, m_my_cpuload*(1-m_prev_flush_cpu_pct));
+	}
+	else
+	{
+		g_logger.log("Skipping drop mode tuning.", sinsp_logger::SEV_DEBUG);
 	}
 }
 
@@ -5371,6 +5407,14 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		// Filter out docker swarm and docker stack labels because that data
+		// should get sent in the swarm protobuf section by swarm managers
+		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
+		if(!it_labels->first.compare(0, swarmstr.size(), swarmstr) ||
+			!it_labels->first.compare(0, stackstr.size(), stackstr))
+		{
+			continue;
+		}
 		draiosproto::container_label* label = container->add_labels();
 
 		label->set_key(it_labels->first);
@@ -6099,14 +6143,12 @@ uint64_t self_cputime_analyzer::read_cputime()
 
 void self_cputime_analyzer::begin_flush()
 {
-	auto cputime = read_cputime();
-	m_othertime[m_index] = cputime;
+	m_othertime[m_index] = read_cputime();
 }
 
 void self_cputime_analyzer::end_flush()
 {
-	auto cputime = read_cputime();
-	m_flushtime[m_index] = cputime;
+	m_flushtime[m_index] = read_cputime();
 	incr_index();
 }
 
@@ -6114,7 +6156,9 @@ double self_cputime_analyzer::calc_flush_percent()
 {
 	double tot_flushtime = accumulate(m_flushtime.begin(), m_flushtime.end(), 0);
 	double tot_othertime = accumulate(m_othertime.begin(), m_othertime.end(), 0);
-	return tot_flushtime/(tot_flushtime+tot_othertime);
+	double ret = tot_flushtime/(tot_flushtime+tot_othertime);
+	if(std::isnan(ret) || std::isinf(ret)) { return 0; }
+	return ret;
 }
 
 // This method is here because analyzer_container_state has not a .cpp file and
