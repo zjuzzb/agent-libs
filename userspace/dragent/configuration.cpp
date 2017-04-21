@@ -149,6 +149,11 @@ public:
 
 	bool validate(const string &config_data, string &errstr)
 	{
+		if(config_data.empty())
+		{
+			return true;
+		}
+		
 		yaml_configuration new_conf(config_data);
 		if(!new_conf.errors().empty())
 		{
