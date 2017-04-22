@@ -38,6 +38,7 @@ protected:
 
 	virtual void TearDown()
 	{
+		g_logger.remove_callback_log();
 		m_inspector->close();
 		delete m_inspector;
 		delete m_analyzer;
