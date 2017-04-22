@@ -27,7 +27,7 @@ protected:
 
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
-		m_configuration.init(NULL);
+		m_configuration.init(NULL, false);
 		dragent_configuration::m_terminate = false;
 
 		m_configuration.m_capture_dragent_events  = true;
