@@ -489,12 +489,12 @@ void dragent_configuration::configure_k8s_from_env()
 	}
 }
 
-void dragent_configuration::init(Application* app)
+void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
 	refresh_machine_id();
 
 	File package_dir("/opt/draios");
-	if(package_dir.exists())
+	if(package_dir.exists() && use_installed_dragent_yaml)
 	{
 		m_agent_installed = true;
 		m_root_dir = "/opt/draios";
