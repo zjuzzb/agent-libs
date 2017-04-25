@@ -1,6 +1,8 @@
 #!/bin/bash
 set -exuo pipefail
 
+JOBS=${JOBS:-$(nproc)}
+
 rmmod sysdig-probe || true
 rmmod sysdigcloud-probe || true
 rm -rf agent/build || true
@@ -8,11 +10,11 @@ rm -rf sysdig/build || true
 agent/bootstrap-agent
 agent/bootstrap-sysdig
 
-make -C agent/build/debug VERBOSE=1
-make -C sysdig/build/debug VERBOSE=1
+make -C agent/build/debug VERBOSE=1 -j$JOBS
+make -C sysdig/build/debug VERBOSE=1 -j$JOBS
 insmod sysdig/driver/sysdigcloud-probe.ko
 cd agent/build/debug/test
-./tests ${GTEST_ARGS:=}
+./tests ${GTEST_ARGS:-}
 cd -
 insmod sysdig/driver/sysdig-probe.ko
 cd sysdig/build/debug/userspace/sysdig
@@ -23,11 +25,11 @@ cd -
 rmmod sysdig-probe
 rmmod sysdigcloud-probe
 
-make -C agent/build/release VERBOSE=1
-make -C sysdig/build/release VERBOSE=1
+make -C agent/build/release VERBOSE=1 -j$JOBS
+make -C sysdig/build/release VERBOSE=1 -j$JOBS
 insmod sysdig/driver/sysdigcloud-probe.ko
 cd agent/build/release/test
-./tests ${GTEST_ARGS:=}
+./tests ${GTEST_ARGS:-}
 cd -
 insmod sysdig/driver/sysdig-probe.ko
 cd sysdig/build/release/userspace/sysdig
