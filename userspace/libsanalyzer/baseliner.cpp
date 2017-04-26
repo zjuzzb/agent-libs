@@ -558,6 +558,14 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 			cc_subnet_endpoints->set_name("c_subnet_endpoints");
 			it.second->m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
 		}
+
+		// syscalls
+		if(it.second->m_syscalls.has_data())
+		{
+			draiosproto::falco_category* csyscalls = prog->add_cats();
+			csyscalls->set_name("syscalls");
+			it.second->m_syscalls.serialize_protobuf(csyscalls);
+		}
 	}
 
 	//
@@ -1026,7 +1034,6 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 		return;
 	}
 
-/*
 	//
 	// Extract the ID, which depends on the type event: for generic
 	// events we need to go find the system call ID.
@@ -1047,5 +1054,4 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	}
 
 	pinfo->m_syscalls.add(evid, 0);
-*/
 }
