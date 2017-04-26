@@ -476,20 +476,20 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
 
-		prog->set_comm(it.second.m_comm);
-		prog->set_exe(it.second.m_exe);
+		prog->set_comm(it.second->m_comm);
+		prog->set_exe(it.second->m_exe);
 
 		//
 		// For java processes, we patch the comm and exe with the name coming from
 		// the JMX information for the first process associated with this program
 		//
-		if(it.second.m_comm == "java")
+		if(it.second->m_comm == "java")
 		{
-			ASSERT(it.second.m_pids.size() != 0);
+			ASSERT(it.second->m_pids.size() != 0);
 
-			if(it.second.m_pids.size() != 0)
+			if(it.second->m_pids.size() != 0)
 			{
-				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second.m_pids[0]);
+				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second->m_pids[0]);
 				if(el != m_inspector->m_analyzer->m_jmx_metrics.end())
 				{
 					string jname = el->second.name();
@@ -497,66 +497,66 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 				}
 			}
 		}
-		prog->set_user_id(it.second.m_user_id);
-		if(!it.second.m_container_id.empty())
+		prog->set_user_id(it.second->m_user_id);
+		if(!it.second->m_container_id.empty())
 		{
-			prog->set_container_id(it.second.m_container_id);
+			prog->set_container_id(it.second->m_container_id);
 		}
 
 		// Files
-		if(it.second.m_files.has_data())
+		if(it.second->m_files.has_data())
 		{
 			draiosproto::falco_category* cfiles = prog->add_cats();
 			cfiles->set_name("files");
-			it.second.m_files.serialize_protobuf(cfiles);
+			it.second->m_files.serialize_protobuf(cfiles);
 		}
 
 		// Dirs
-		if(it.second.m_dirs.has_data())
+		if(it.second->m_dirs.has_data())
 		{
 			draiosproto::falco_category* cdirs = prog->add_cats();
 			cdirs->set_name("dirs");
-			it.second.m_dirs.serialize_protobuf(cdirs);
+			it.second->m_dirs.serialize_protobuf(cdirs);
 		}
 
 		// Executed Programs
-		if(it.second.m_executed_programs.has_data())
+		if(it.second->m_executed_programs.has_data())
 		{
 			draiosproto::falco_category* cexecuted_programs = prog->add_cats();
 			cexecuted_programs->set_name("executed_programs");
-			it.second.m_executed_programs.serialize_protobuf(cexecuted_programs);
+			it.second->m_executed_programs.serialize_protobuf(cexecuted_programs);
 		}
 
 		// Server ports
-		if(it.second.m_server_ports.has_data())
+		if(it.second->m_server_ports.has_data())
 		{
 			draiosproto::falco_category* cserver_ports = prog->add_cats();
 			cserver_ports->set_name("server_ports");
-			it.second.m_server_ports.serialize_protobuf(cserver_ports);
+			it.second->m_server_ports.serialize_protobuf(cserver_ports);
 		}
 
 		// bound ports
-		if(it.second.m_bound_ports.has_data())
+		if(it.second->m_bound_ports.has_data())
 		{
 			draiosproto::falco_category* cbound_ports = prog->add_cats();
 			cbound_ports->set_name("bound_ports");
-			it.second.m_bound_ports.serialize_protobuf(cbound_ports);
+			it.second->m_bound_ports.serialize_protobuf(cbound_ports);
 		}
 
 		// IP endpoints
-		if(it.second.m_ip_endpoints.has_data())
+		if(it.second->m_ip_endpoints.has_data())
 		{
 			draiosproto::falco_category* cip_endpoints = prog->add_cats();
 			cip_endpoints->set_name("ip_endpoints");
-			it.second.m_ip_endpoints.serialize_protobuf(cip_endpoints);
+			it.second->m_ip_endpoints.serialize_protobuf(cip_endpoints);
 		}
 
 		// IP c subnets
-		if(it.second.m_c_subnet_endpoints.has_data())
+		if(it.second->m_c_subnet_endpoints.has_data())
 		{
 			draiosproto::falco_category* cc_subnet_endpoints = prog->add_cats();
 			cc_subnet_endpoints->set_name("c_subnet_endpoints");
-			it.second.m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
+			it.second->m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
 		}
 	}
 
@@ -978,6 +978,8 @@ void sisnp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 			evt->m_fdinfo->set_inpipeline_r();
 		}
 
+		break;
+	default:
 		break;
 	}
 }
