@@ -716,6 +716,8 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 	else
 	{
 		blprogram* pinfo = it->second;
+		tinfo->m_blprogram = pinfo;
+
 		if(tinfo->m_comm == "java" && tinfo->is_main_thread())
 		{
 			pinfo->m_pids.push_back(tinfo->m_pid);
@@ -983,6 +985,7 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	}
 /*
 	blprogram* pinfo = get_program(tinfo);
+
 	if(pinfo == NULL)
 	{
 		return;
