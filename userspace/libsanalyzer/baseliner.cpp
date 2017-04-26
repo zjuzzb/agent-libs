@@ -948,6 +948,8 @@ void sisnp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 		}
 
 		break;
+	default:
+		break;
 	}
 }
 
@@ -983,7 +985,7 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	{
 		add_fd_from_io_evt(evt, category);
 	}
-/*
+
 	blprogram* pinfo = get_program(tinfo);
 
 	if(pinfo == NULL)
@@ -991,6 +993,7 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 		return;
 	}
 
+/*
 	//
 	// Extract the ID, which depends on the type event: for generic
 	// events we need to go find the system call ID.
