@@ -18,6 +18,8 @@
 #include <cassert>
 #include "scap-int.h"
 
+#include <iostream>
+
 TEST_F(sys_call_test, container_cgroups)
 {
 	int ctid;
@@ -377,7 +379,6 @@ TEST_F(sys_call_test, container_rkt)
 {
 	bool done = false;
 
-
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
@@ -391,8 +392,11 @@ TEST_F(sys_call_test, container_rkt)
 
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		// TODO: In order to start Rocket, SE Linux has to be turned off with `setenforce 0`.
+		// TODO: In order to start rkt, SE Linux has to be turned off with `setenforce 0`.
 		// TODO: `systemd-run` can be used on all distros?
+                // TODO: Replace etcs with busybox and `--exec=sleep` option.
+                // TODO: Check if rkt container is already running.
+                // TODO: Skip tests if rkt is not installed.
 
 		int rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt coreos.com/etcd --name=myrkt");
 		if(rc != 0)
@@ -409,17 +413,25 @@ TEST_F(sys_call_test, container_rkt)
 	{
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
-		//ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
-		//ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
-		//ASSERT_TRUE(tinfo->m_container_id.length() == 12);
+		//std::cout << "tinfo->m_vtid=" << tinfo->m_vtid << ", tinfo->m_tid=" << tinfo->m_tid <<
+		//    ", tinfo->m_vpid=" << tinfo->m_vpid << ", tinfo->m_pid=" << tinfo->m_pid << std::endl;
+		if (tinfo->m_comm == "etcd")
+		{
+			ASSERT_NE(tinfo->m_vtid, tinfo->m_tid);
+			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
+		}
+
+		ASSERT_TRUE(tinfo->m_container_id.length() == 42);
 
 		sinsp_container_info container_info;
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
 		ASSERT_TRUE(found);
 
 		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info.m_type);
-		//EXPECT_EQ("myrkt", container_info.m_name);
-		//EXPECT_EQ("myrkt", container_info.m_image);
+		EXPECT_EQ("myrkt", container_info.m_name);
+		EXPECT_EQ("coreos.com/etcd:v2.3.7", container_info.m_image);
+		//std::cout << "container_info.m_image=" << container_info.m_image << std::endl;
+		//std::cout << "tinfo->m_comm=" << tinfo->m_comm << std::endl;
 
 		done = true;
 	};
