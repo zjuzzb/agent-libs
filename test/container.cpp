@@ -106,6 +106,8 @@ TEST_F(sys_call_test, container_cgroups)
 			}
 
 			done = true;
+		} else {
+			printf("event type: %d != %d\n", param.m_evt->get_type(), PPME_SYSCALL_CLONE_20_X);
 		}
 	};
 

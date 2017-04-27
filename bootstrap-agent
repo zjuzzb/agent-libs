@@ -9,6 +9,7 @@ fi
 
 AGENT_SOURCEDIR=$(dirname $SCRIPT)
 ROOT_SOURCEDIR=$AGENT_SOURCEDIR/..
+ARCH=$(uname -m)
 
 if [ -z "$WORKDIR" ]; then
 	WORKDIR=$AGENT_SOURCEDIR/..
@@ -43,11 +44,12 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
-PROTBUF_DIR=$DEPENDENCIES/protobuf-2.5.0
+PROTBUF_DIR=$DEPENDENCIES/protobuf-2.6.1
 if [ ! -d "$PROTBUF_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/protobuf-2.5.0.tar.bz2
-	tar -xjf protobuf-2.5.0.tar.bz2
+	#wget $DEPENDENCIES_URL/protobuf-2.5.0.tar.bz2
+	wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.bz2
+	tar -xjf protobuf-2.6.1.tar.bz2
 	cd $PROTBUF_DIR
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib
 	make
@@ -93,6 +95,38 @@ if [ ! -d "$GRPC_DIR" ]; then
 	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
 	cd $GRPC_DIR
 	make grpc_cpp_plugin static_cxx static_c
+fi
+
+# The normal build process for grpc involves git clone + git submodule
+# update --init, which pulls in a lot of additional dependencies that
+# we don't need. Instead, we download our own repackaged tarball that
+# has only grpc and the necessary third party libraries (protobuf
+# 3.0.0, boringssl) to build the targets we need (grpc_cpp_plugin,
+# static_cxx, and static_c).
+#
+# We also symlink third_party/zlib to the zlib we built above.
+# The build process still recompiles zlib source files, but
+# at least it's one set of source files.
+#
+# Specificially, this tarball was created by:
+# git clone -b v1.1.4 https://github.com/grpc/grpc &&
+#     mv grpc grpc-1.1.4 &&
+#     cd grpc-1.1.4 &&
+#     git submodule update --init third_party/{boringssl,protobuf} &&
+#     rm -rf .git &&
+#     rm -rf third_party/{boringssl,protobuf}/.git
+# boringssl has no versions/releases, so this is whatever commit grpc
+# chose at the time. For protobuf, this is v3.2.0.
+
+GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
+if [ ! -d "$GRPC_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/grpc-1.1.4-with-third-party-libs.tar.gz
+	tar -xzf grpc-1.1.4-with-third-party-libs.tar.gz
+	rm -rf grpc-1.1.4/third_party/zlib
+	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	cd $GRPC_DIR
+	NO_SECURE=true make grpc_cpp_plugin static_cxx static_c
 fi
 
 OPENSSL_VER=1.0.2j
@@ -166,6 +200,16 @@ if [ ! -d "$LIBSSH_DIR" ]; then
 	make -C include install
 fi
 
+if [[ "$ARCH" == "s390x" ]]; then
+LUAJIT_DIR=$DEPENDENCIES/lua-5.1.5
+if [ ! -d "$LUAJIT_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://www.lua.org/ftp/lua-5.1.5.tar.gz
+	tar -xzf lua-5.1.5.tar.gz
+	cd $LUAJIT_DIR
+	make linux
+fi
+else
 LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
 if [ ! -d "$LUAJIT_DIR" ]; then
 	cd $DEPENDENCIES
@@ -173,6 +217,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	tar -xzf LuaJIT-2.0.3.tar.gz
 	cd $LUAJIT_DIR
 	make
+fi
 fi
 
 CURL_NAME=curl-7.52.1
@@ -232,7 +277,6 @@ if [ ! -d "$B64_DIR" ]; then
 fi
 
 JAVA_DIR=$DEPENDENCIES/jdk1.7.0_75
-ARCH=$(uname -m)
 if [ ! -d "$JAVA_DIR" ]; then
 	cd $DEPENDENCIES
 	if [[ $ARCH == "x86_64" ]]; then
@@ -370,7 +414,7 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	wget $DEPENDENCIES_URL/lyaml-release-v6.0.tar.gz
 	tar -xzf lyaml-release-v6.0.tar.gz
 	cd $LYAML_DIR
-	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/luajit
+	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/lua
 	make
 	make install
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/falco/userspace/engine/lua"
@@ -394,3 +438,4 @@ if [ -z "$ONLY_DEPS" ]; then
   cd $AGENT_BUILD_DIR/release
   $CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
 fi
+

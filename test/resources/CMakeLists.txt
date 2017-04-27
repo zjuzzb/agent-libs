@@ -57,18 +57,18 @@ install(TARGETS chname
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
 
-if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-	add_executable(execve
-		execve.c)
-	install(TARGETS execve 
-		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-		COMPONENT tests)
-
-	add_executable(execve32
-		execve.c)
-	install(TARGETS execve32
-		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-		COMPONENT tests)
-	set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-
-endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+#if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+#	add_executable(execve
+#		execve.c)
+#	install(TARGETS execve 
+#		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+#		COMPONENT tests)
+#
+#	add_executable(execve32
+#		execve.c)
+#	install(TARGETS execve32
+#		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+#		COMPONENT tests)
+#	set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+#
+#endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
