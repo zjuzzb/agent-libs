@@ -373,6 +373,61 @@ TEST_F(sys_call_test, container_docker)
 	ASSERT_TRUE(done);
 }
 
+TEST_F(sys_call_test, container_rkt)
+{
+	bool done = false;
+
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// TODO: In order to start Rocket, SE Linux has to be turned off with `setenforce 0`.
+		// TODO: `systemd-run` can be used on all distros?
+
+		int rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt coreos.com/etcd --name=myrkt");
+		if(rc != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		sleep(5);
+
+		system("cat /tmp/myrkt | xargs rkt stop");
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+		//ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
+		//ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
+		//ASSERT_TRUE(tinfo->m_container_id.length() == 12);
+
+		sinsp_container_info container_info;
+		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
+		ASSERT_TRUE(found);
+
+		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info.m_type);
+		//EXPECT_EQ("myrkt", container_info.m_name);
+		//EXPECT_EQ("myrkt", container_info.m_image);
+
+		done = true;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
 TEST_F(sys_call_test, DISABLED_container_lxc)
 {
 	bool done = false;
