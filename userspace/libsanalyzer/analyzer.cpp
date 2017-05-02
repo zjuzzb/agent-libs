@@ -4288,6 +4288,14 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
+	// If process the event in the baseliner
+	//
+	if(m_do_baseline_calculation)
+	{
+		m_falco_baseliner->process_event(evt);
+	}
+
+	//
 	// This is where normal event parsing starts.
 	// The following code is executed for every event
 	//

@@ -628,6 +628,10 @@ int main(int argc, char **argv)
 		known_ports.reset(32000);
 		known_ports.reset(31000);
 		analyzer->get_configuration()->set_known_ports(known_ports);
+
+		// Turn on baselining
+		analyzer->get_configuration()->set_falco_baselining_enabled(true);
+
 		//
 		// the filter is specified at the end of the command line
 		//
