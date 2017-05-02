@@ -428,7 +428,7 @@ class dragent_configuration
 public:
 	dragent_configuration();
 
-	void init(Application* app);
+	void init(Application* app, bool use_installed_dragent_yaml=true);
 	void print_configuration();
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);

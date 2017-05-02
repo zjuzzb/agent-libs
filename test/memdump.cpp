@@ -27,7 +27,7 @@ protected:
 
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
-		m_configuration.init(NULL);
+		m_configuration.init(NULL, false);
 		dragent_configuration::m_terminate = false;
 
 		m_configuration.m_capture_dragent_events  = true;
@@ -437,7 +437,6 @@ protected:
 	string agent_dump_token = "agent-dump-events";
 };
 
-/* FIXME: put these back 
 TEST_F(memdump_test, standard_dump)
 {
 	// Set the dump chunk size to something very small so
@@ -504,4 +503,4 @@ TEST_F(memdump_test, request_queue_full)
 	m_sinsp_worker->run();
 
 	m_dump_client.join();
-} */
+}
