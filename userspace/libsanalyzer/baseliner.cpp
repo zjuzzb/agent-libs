@@ -165,22 +165,6 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					{
 					case SCAP_FD_FILE:
 					{
-if(((string)fdinfo->m_name).find("docker") != string::npos) 
-{
-	if(tinfo->m_container_id != "" && tinfo->m_container_id != "host")
-	{
-		sinsp_container_info container_info;
-
-		if(m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info))
-		{
-			if(container_info.m_image.find("martin") == string::npos && container_info.m_image.find("sysdig") == string::npos && container_info.m_image.find("logrotate") == string::npos)
-			{
-				lo(sinsp_logger::SEV_ERROR, "DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD %s", fdinfo->m_name.c_str());
-				m_inspector->m_flush_memory_dump = true;
-			}
-		}
-	}
-}
 						//
 						// Add the entry to the file table
 						//
@@ -664,23 +648,6 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 	{
 		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
 	}
-
-if(((string)name).find("docker") != string::npos) 
-{
-	if(evt->m_tinfo->m_container_id != "" && evt->m_tinfo->m_container_id != "host")
-	{
-		sinsp_container_info container_info;
-
-		if(m_inspector->m_container_manager.get_container(evt->m_tinfo->m_container_id, &container_info))
-		{
-			if(container_info.m_image.find("martin") == string::npos && container_info.m_image.find("sysdig") == string::npos && container_info.m_image.find("logrotate") == string::npos)
-			{
-				lo(sinsp_logger::SEV_ERROR, "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC %s", name.c_str());
-				m_inspector->m_flush_memory_dump = true;
-			}
-		}
-	}
-}
 
 	//
 	// Add the entry to the file table
