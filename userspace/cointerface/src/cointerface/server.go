@@ -40,7 +40,6 @@ func GetDockerClient(ver string) (*client.Client, error) {
 	if err != nil {
 		dockerClientMapMutex.Unlock()
 		ferr := fmt.Errorf("Could not create docker client: %s", err)
-		log.Errorf(ferr.Error())
 		return nil, ferr
 	}
 	dockerClientMap[ver] = cli

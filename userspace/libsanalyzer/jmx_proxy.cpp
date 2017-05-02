@@ -265,7 +265,14 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	Json::Value ret;
 	ret["pid"] = static_cast<Json::Value::Int64>(tinfo->m_pid);
 	ret["vpid"] = static_cast<Json::Value::Int64>(tinfo->m_vpid);
-	ret["root"] = tinfo->m_root;
+	// FIXME: we added support for a root different than `/` for rkt
+	// it turns out that new rkt versions even if they use chroot,
+	// with coreos-stage1 root value is / after container startup
+	// and it's not reflected by sysdig state parsing
+	// To hot-patch this, right now let's assume that root is always "/"
+	// it breaks rkt-fly
+	// We are assuming few people use rkt-fly for java apps right now
+	ret["root"] = "/"; // tinfo->m_root;
 
 	// Serializing all args leds very big Json > 4kb, so try to
 	// do a gross filtering and let sdjagent parse them
