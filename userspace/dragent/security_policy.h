@@ -46,9 +46,6 @@ public:
 	// continuing on to later policies.
 	bool perform_actions(sinsp_evt *evt, draiosproto::policy_event *event);
 
-	// Return true if the policy has at least one action of the provided type.
-	bool has_action(draiosproto::action_type action);
-
 	// Check the list of outstanding actions and see if any are
 	// complete. If they are, pass the policy event to the security mgr.
 	void check_outstanding_actions(uint64_t ts_ns);
@@ -69,7 +66,8 @@ protected:
 		actions_state(draiosproto::policy_event *event,
 			      uint32_t num_remaining_actions)
 			: m_event(event),
-			m_num_remaining_actions(num_remaining_actions)
+  			  m_num_remaining_actions(num_remaining_actions),
+			  m_send_now(false)
 		{
 		};
 
@@ -79,6 +77,10 @@ protected:
 
 		shared_ptr<draiosproto::policy_event> m_event;
 		uint32_t m_num_remaining_actions;
+
+		// If true, this policy event must be sent as soon as
+		// all actions are complete.
+		bool m_send_now;
 	};
 
 	std::list<actions_state> m_outstanding_actions;

@@ -8,6 +8,7 @@
 #include "user_event_channel.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
+#include "capture_job_handler.h"
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
@@ -40,9 +41,11 @@ dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
+	m_enable_autodrop(true),
 	m_policy_events(MAX_QUEUED_POLICY_EVENTS),
-	m_sinsp_worker(&m_configuration, &m_queue, &m_policy_events),
-	m_connection_manager(&m_configuration, &m_queue, &m_policy_events, &m_sinsp_worker),
+	m_sinsp_worker(&m_configuration, &m_queue, &m_enable_autodrop, &m_policy_events, &m_capture_job_handler),
+	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
+	m_connection_manager(&m_configuration, &m_queue, &m_policy_events, &m_sinsp_worker, &m_capture_job_handler),
 	m_log_reporter(&m_queue, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),
 	m_last_dump_s(0)
@@ -572,6 +575,9 @@ int dragent_app::sdagent_main()
 
 	ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+	m_sinsp_worker.init();
+	m_capture_job_handler.init(m_sinsp_worker.get_inspector());
+	ThreadPool::defaultPool().start(m_capture_job_handler, "capture_job_handler");
 	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 
 	uint64_t uptime_s = 0;

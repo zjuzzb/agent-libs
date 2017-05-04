@@ -20,7 +20,8 @@ const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 connection_manager::connection_manager(dragent_configuration* configuration,
 				       protocol_queue* queue,
 				       synchronized_policy_events *policy_events,
-				       sinsp_worker* sinsp_worker):
+				       sinsp_worker* sinsp_worker,
+				       capture_job_handler *capture_job_handler) :
 	m_socket(NULL),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
@@ -29,6 +30,7 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 	m_queue(queue),
 	m_policy_events(policy_events),
 	m_sinsp_worker(sinsp_worker),
+	m_capture_job_handler(capture_job_handler),
 	m_last_loop_ns(0),
 	m_reconnect_interval(0)
 {
@@ -538,10 +540,10 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	SharedPtr<sinsp_worker::dump_job_request> job_request(
-		new sinsp_worker::dump_job_request());
+	SharedPtr<capture_job_handler::dump_job_request> job_request(
+		new capture_job_handler::dump_job_request());
 
-	job_request->m_request_type = sinsp_worker::dump_job_request::JOB_START;
+	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = request.token();
 
 	if(request.has_filters())
@@ -569,6 +571,8 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 		job_request->m_past_size = request.past_size();
 	}
 
+	// Note: sending request via sinsp_worker so it can add on
+	// needed state (e.g. sinsp_dumper)
 	m_sinsp_worker->queue_job_request(job_request);
 }
 
@@ -580,12 +584,17 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	SharedPtr<sinsp_worker::dump_job_request> job_request(
-		new sinsp_worker::dump_job_request());
+	SharedPtr<capture_job_handler::dump_job_request> job_request(
+		new capture_job_handler::dump_job_request());
 
-	job_request->m_request_type = sinsp_worker::dump_job_request::JOB_STOP;
+	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
 	job_request->m_token = request.token();
 
+	// This could go directly to the capture handler as there's no
+	// need to add any state when stopping a job. However, still
+	// sending it via the sinsp_worker so there's no chance of the
+	// stop message arriving at the capture handler before the
+	// start. (Unlikely, but just being safe).
 	m_sinsp_worker->queue_job_request(job_request);
 }
 

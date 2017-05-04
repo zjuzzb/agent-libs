@@ -1,5 +1,10 @@
 #pragma once
 
+#include "Poco/Mutex.h"
+#include "Poco/ScopedLock.h"
+
+#include "sinsp_int.h"
+
 class sinsp_memory_dumper_state
 {
 public:
@@ -40,7 +45,7 @@ public:
 		catch(sinsp_exception e)
 		{
 			throw sinsp_exception(
-				"capture memory buffer too small to store process information. Current size: " + 
+				"capture memory buffer too small to store process information. Current size: " +
 				to_string(m_bufsize));
 		}
 	}
@@ -70,6 +75,7 @@ public:
 		m_state = ST_INPROGRESS;
 		m_dumper = NULL;
 		m_filter = NULL;
+		m_n_events = 0;
 	}
 
 	~sinsp_memory_dumper_job()
@@ -103,6 +109,8 @@ public:
 				}
 			}
 
+			m_n_events++;
+
 			m_dumper->dump(evt);
 		}
 	}
@@ -125,6 +133,7 @@ public:
 	string m_lasterr;
 	sinsp_dumper* m_dumper;
 	sinsp_filter* m_filter;
+	uint64_t m_n_events;
 };
 
 class sinsp_memory_dumper
@@ -135,8 +144,19 @@ public:
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
 	void to_file_multi(string name, uint64_t ts_ns);
-	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter, 
-		uint64_t delta_time_past_ns, uint64_t delta_time_future_ns);
+
+	// Write a file on disk that contains the result of applying
+	// the filter to the events in the memory buffer. If track_job
+	// is true, also create internal state to track this memory
+	// dumper job going forward.
+	// Returns an object containing details on what occurred. If
+	// track_job is false, the caller should delete this
+	// object. Otherwise, the caller should pass it to remove_job
+	// later.
+	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter,
+					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
+					 bool track_job);
+
 	void remove_job(sinsp_memory_dumper_job* job);
 	inline void process_event(sinsp_evt *evt)
 	{
@@ -167,8 +187,12 @@ public:
 			}
 #endif
 
-			m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
-			m_active_state->m_dumper->dump(evt);
+			{
+				Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+
+				m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
+				m_active_state->m_dumper->dump(evt);
+			}
 
 			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
 			{
@@ -177,6 +201,8 @@ public:
 		}
 		catch(sinsp_exception e)
 		{
+			Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+
 			ASSERT(evt != NULL);
 			switch_states(evt->get_ts());
 			m_active_state->m_dumper->dump(evt);
@@ -189,7 +215,7 @@ public:
 	}
 
 private:
-	void flush_state_to_disk(FILE* fp, 
+	void flush_state_to_disk(FILE* fp,
 		sinsp_memory_dumper_state* state,
 		bool is_last_event_complete);
 	void switch_states(uint64_t ts);
@@ -218,4 +244,7 @@ private:
 	bool m_capture_dragent_events;
 	int64_t m_sysdig_pid;
 #endif
+
+	// Mutex that protects access to the list of states
+	Poco::FastMutex m_state_mtx;
 };

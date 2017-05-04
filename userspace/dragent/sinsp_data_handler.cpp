@@ -62,7 +62,9 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 	}
 }
 
-void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns, draiosproto::throttled_policy_events *tevents)
+void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
+							     draiosproto::throttled_policy_events *tevents,
+							     uint32_t total_throttled_count)
 {
 	if(m_configuration->m_print_protobuf)
 	{
@@ -81,10 +83,9 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns, dra
 		return;
 	}
 
-	g_log->information("ts="
-			   + NumberFormatter::format(ts_ns / 1000000000)
-			   + ", len=" + NumberFormatter::format(buffer->buffer.size())
-			   + ", nte=" + NumberFormatter::format(tevents->events_size()));
+	g_log->information("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
+			   + ", nte=" + NumberFormatter::format(tevents->events_size())
+			   + ", tcount=" + NumberFormatter::format(total_throttled_count));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
 	{

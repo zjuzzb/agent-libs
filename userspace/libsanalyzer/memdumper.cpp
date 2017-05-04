@@ -253,6 +253,7 @@ void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 			}
 		}
 
+		job->m_n_events++;
 		job->m_dumper->dump(ev);
 	}
 
@@ -260,13 +261,17 @@ void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 }
 
 sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter,
-	uint64_t delta_time_past_ns, uint64_t delta_time_future_ns)
+						      uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
+						      bool track_job)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
 
 	sinsp_memory_dumper_job* job = new sinsp_memory_dumper_job();
-	m_jobs.push_back(job);
+	if(track_job)
+	{
+		m_jobs.push_back(job);
+	}
 
 	string fname = "/tmp/dragent_i_" + to_string(tm.tv_sec) + to_string(tm.tv_usec);
 	struct stat st;
@@ -286,11 +291,15 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 		return job;
 	}
 
-	sinsp_memory_dumper_state* inactive_state =
-		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
+	{
+		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 
-	flush_state_to_disk(tfp, inactive_state, false);
-	flush_state_to_disk(tfp, m_active_state, false);
+		sinsp_memory_dumper_state* inactive_state =
+			(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
+
+		flush_state_to_disk(tfp, inactive_state, false);
+		flush_state_to_disk(tfp, m_active_state, false);
+	}
 
 	fclose(tfp);
 

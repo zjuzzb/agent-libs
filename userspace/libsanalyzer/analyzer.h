@@ -16,7 +16,6 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
-#include "memdumper.h"
 #include "coclient.h"
 
 //
@@ -132,7 +131,7 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
@@ -394,15 +393,6 @@ public:
 			  double sampling_multiplier);
 
 	void disable_falco();
-	bool is_memdump_active()
-	{
-		return m_do_memdump;
-	}
-
-	sinsp_memory_dumper* get_memory_dumper()
-	{
-		return m_memdumper;
-	}
 
 	void set_emit_tracers(bool enabled);
 
@@ -620,11 +610,6 @@ VISIBILITY_PRIVATE
 	uint64_t m_last_falco_dump_ts = 0;
 
 	//
-	// Memory dump stuff
-	//
-	bool m_do_memdump = false;
-
-	//
 	// Chisel-generated metrics infrastructure
 	//
 	vector<sinsp_chisel*> m_chisels;
@@ -685,8 +670,6 @@ VISIBILITY_PRIVATE
 	bool m_has_docker;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
-
-	sinsp_memory_dumper* m_memdumper = NULL;
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

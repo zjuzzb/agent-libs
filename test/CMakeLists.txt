@@ -71,6 +71,7 @@ add_executable(tests
 	unix_udp_client_server.cpp
 	main.cpp
 	yaml_configuration.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/capture_job_handler.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/configuration.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/logger.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/protocol.cpp

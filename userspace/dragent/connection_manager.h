@@ -4,6 +4,7 @@
 #include "configuration.h"
 #include "blocking_queue.h"
 #include "sinsp_worker.h"
+#include "capture_job_handler.h"
 #include <chrono>
 
 class connection_manager : public Runnable
@@ -12,7 +13,8 @@ public:
 	connection_manager(dragent_configuration* configuration,
 			   protocol_queue* queue,
 			   synchronized_policy_events *policy_events,
-			   sinsp_worker* sinsp_worker);
+			   sinsp_worker* sinsp_worker,
+			   capture_job_handler *capture_job_handler);
 	~connection_manager();
 
 	void run();
@@ -65,6 +67,7 @@ private:
 	protocol_queue* m_queue;
 	synchronized_policy_events *m_policy_events;
 	sinsp_worker* m_sinsp_worker;
+	capture_job_handler *m_capture_job_handler;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 

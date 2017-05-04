@@ -21,8 +21,7 @@
 
 #include "coclient.h"
 
-class sinsp_worker;
-
+#include "capture_job_handler.h"
 #include "configuration.h"
 #include "sinsp_data_handler.h"
 #include "security_policy.h"
@@ -35,7 +34,7 @@ public:
 
 	void init(sinsp *inspector,
 		  sinsp_data_handler *sinsp_handler,
-		  sinsp_worker *sinsp_worker,
+		  capture_job_handler *capture_job_handler,
 		  dragent_configuration *configuration);
 
 	// Returns true if loaded successfully, false otherwise. Sets
@@ -53,10 +52,14 @@ public:
 	// reports it immediately, depending on send_now)
 	void accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now);
 
-	// Start a sysdig capture
-	void start_capture(const string &token, const string &filter,
+	// Start a sysdig capture. Returns true on success, false (and
+	// fills in errstr) if the capture couldn't be started.
+	bool start_capture(uint64_t ts_ns,
+			   const string &token, const string &filter,
 			   uint64_t before_event_ns, uint64_t after_event_ns,
-			   bool apply_scope, std::string &container_id);
+			   bool apply_scope,
+			   std::string &container_id,
+			   std::string &errstr);
 
 private:
 
@@ -86,7 +89,7 @@ private:
 	bool m_initialized;
 	sinsp* m_inspector;
 	sinsp_data_handler *m_sinsp_handler;
-	sinsp_worker *m_sinsp_worker;
+	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;
 
 	Poco::RWLock m_policies_lock;

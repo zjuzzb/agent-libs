@@ -14,7 +14,7 @@ security_mgr::security_mgr()
 	: m_initialized(false),
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
-	  m_sinsp_worker(NULL),
+	  m_capture_job_handler(NULL),
 	  m_configuration(NULL)
 
 {
@@ -27,13 +27,13 @@ security_mgr::~security_mgr()
 
 void security_mgr::init(sinsp *inspector,
 			sinsp_data_handler *sinsp_handler,
-			sinsp_worker *sinsp_worker,
+			capture_job_handler *capture_job_handler,
 			dragent_configuration *configuration)
 
 {
 	m_inspector = inspector;
 	m_sinsp_handler = sinsp_handler;
-	m_sinsp_worker = sinsp_worker;
+	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
@@ -173,14 +173,16 @@ void security_mgr::process_event(sinsp_evt *evt)
 	m_policies_lock.unlock();
 }
 
-void security_mgr::start_capture(const string &token, const string &filter,
+bool security_mgr::start_capture(uint64_t ts_ns,
+				 const string &token, const string &filter,
 				 uint64_t before_event_ns, uint64_t after_event_ns,
-				 bool apply_scope, std::string &container_id)
+				 bool apply_scope, std::string &container_id,
+				 std::string &errstr)
 {
-	SharedPtr<sinsp_worker::dump_job_request> job_request(
-		new sinsp_worker::dump_job_request());
+	SharedPtr<capture_job_handler::dump_job_request> job_request(
+		new capture_job_handler::dump_job_request());
 
-	job_request->m_request_type = sinsp_worker::dump_job_request::JOB_START;
+	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = token;
 
 	job_request->m_filter = filter;
@@ -198,10 +200,10 @@ void security_mgr::start_capture(const string &token, const string &filter,
 
 	job_request->m_duration_ns = after_event_ns;
 	job_request->m_past_duration_ns = before_event_ns;
+	job_request->m_start_ns = ts_ns;
 
 	// Note: Not enforcing any maximum size.
-
-	m_sinsp_worker->queue_job_request(job_request);
+	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);
 }
 
 void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
@@ -309,6 +311,8 @@ void security_mgr::report_events_now(uint64_t ts_ns, draiosproto::policy_events 
 
 void security_mgr::report_throttled_events(uint64_t ts_ns)
 {
+	uint32_t total_throttled_count = 0;
+
 	if(m_policy_throttled_counts.size() > 0)
 	{
 		draiosproto::throttled_policy_events tevents;
@@ -322,9 +326,10 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 			new_tevent->set_container_id(it.first.first);
 			new_tevent->set_policy_id(it.first.second);
 			new_tevent->set_count(it.second);
+			total_throttled_count += it.second;
 		}
 
-		m_sinsp_handler->security_mgr_throttled_events_ready(ts_ns, &tevents);
+		m_sinsp_handler->security_mgr_throttled_events_ready(ts_ns, &tevents, total_throttled_count);
 	}
 
 	// Also remove any token buckets that haven't been seen in

@@ -18,7 +18,9 @@ public:
 
 	void security_mgr_policy_events_ready(uint64_t ts_ns, draiosproto::policy_events *events);
 
-	void security_mgr_throttled_events_ready(uint64_t ts_ns, draiosproto::throttled_policy_events *events);
+	void security_mgr_throttled_events_ready(uint64_t ts_ns,
+						 draiosproto::throttled_policy_events *events,
+						 uint32_t total_throttled_count);
 
 	uint64_t get_last_loop_ns() const
 	{

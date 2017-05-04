@@ -101,6 +101,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 
 		string tmp;
 		bool apply_scope = false;
+		string errstr;
 
 		switch(action.type())
 		{
@@ -112,12 +113,27 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 			{
 				apply_scope = action.capture().is_limited_to_container();
 			}
-			m_mgr->start_capture(result->token(),
-					     (action.capture().has_filter() ? action.capture().filter() : ""),
-					     action.capture().before_event_ns(),
-					     action.capture().after_event_ns(),
-					     apply_scope,
-					     container_id);
+
+			if(!m_mgr->start_capture(evt->get_ts(),
+						 result->token(),
+						 (action.capture().has_filter() ? action.capture().filter() : ""),
+						 action.capture().before_event_ns(),
+						 action.capture().after_event_ns(),
+						 apply_scope,
+						 container_id,
+						 errstr))
+			{
+				result->set_successful(false);
+				result->set_errmsg(errstr);
+			}
+			else
+			{
+				// We had at least one capture action
+				// that was successful, so we must
+				// send the policy event immediately.
+				astate.m_send_now = true;
+			}
+
 			astate.m_num_remaining_actions--;
 
 			m_print.PrintToString(*result, &tmp);
@@ -141,18 +157,6 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 	return true;
 }
 
-bool security_policy::has_action(draiosproto::action_type action)
-{
-	for (auto &act : m_actions)
-	{
-		if(act.type() == action)
-		{
-			return true;
-		}
-	}
-
-	return false;
-}
 
 void security_policy::check_outstanding_actions(uint64_t ts_ns)
 {
@@ -161,7 +165,7 @@ void security_policy::check_outstanding_actions(uint64_t ts_ns)
 	{
 		if(i->m_num_remaining_actions == 0)
 		{
-			m_mgr->accept_policy_event(ts_ns, i->m_event, has_action(draiosproto::ACTION_CAPTURE));
+			m_mgr->accept_policy_event(ts_ns, i->m_event, i->m_send_now);
 			m_outstanding_actions.erase(i++);
 		}
 		else
