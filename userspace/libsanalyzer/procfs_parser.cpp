@@ -715,24 +715,37 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	// Look for mount point of cgroup memory filesystem
 	// It should be already mounted on the host or by
 	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/proc/mounts", "r");
-	struct mntent* entry = getmntent(fp);
-	while(entry != NULL)
+	if(strcmp(scap_get_host_root(), "") != 0)
 	{
-		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
-		   hasmntopt(entry, "memory") != NULL)
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
-			m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
-			break;
-		}
-		entry = getmntent(fp);
+		// We are inside our container, so we should use the directory
+		// mounted by it
+		auto memory_cgroup = string(scap_get_host_root()) + "/cgroup/memory";
+		m_memory_cgroup_dir = make_unique<string>(memory_cgroup);
 	}
-	endmntent(fp);
+	else
+	{
+		FILE* fp = setmntent("/proc/mounts", "r");
+		struct mntent* entry = getmntent(fp);
+		while(entry != NULL)
+		{
+			if(strcmp(entry->mnt_type, "cgroup") == 0 &&
+			   hasmntopt(entry, "memory") != NULL)
+			{
+				m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
+				break;
+			}
+			entry = getmntent(fp);
+		}
+		endmntent(fp);
+	}
 	if(!m_memory_cgroup_dir)
 	{
 		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
 		m_memory_cgroup_dir = make_unique<string>();
+	}
+	else
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", m_memory_cgroup_dir->c_str());
 	}
 }
 
