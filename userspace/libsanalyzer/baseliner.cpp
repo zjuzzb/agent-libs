@@ -14,13 +14,22 @@
 extern sinsp_evttables g_infotables;
 
 ///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 // /proc parser thread
+///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 void proc_parser(proc_parser_state* state)
 {
 	sinsp* inspector_ori = state->m_bl->m_inspector;
+	
+	//
+	// Create and open the secondary inspector used for /proc parsing
+	//
 	state->m_inspector = new sinsp();
 	state->m_inspector->set_hostname_and_port_resolution_mode(false);
+
+	g_logger.format(sinsp_logger::SEV_INFO, 
+		"baseliner /proc scanner thread started");
 
 	try
 	{
@@ -41,9 +50,17 @@ void proc_parser(proc_parser_state* state)
 		return;
 	}
 
+	//
+	// This signals to the baseliner that our inspector can be merged
+	//
 	state->m_done = true;
 }
 
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Baseliner
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 void sisnp_baseliner::init(sinsp* inspector)
 {
 #ifdef ASYNC_PROC_PARSING
@@ -658,10 +675,14 @@ void sisnp_baseliner::merge_proc_data()
 		}
 	}
 
+	//
+	// If m_procparser_state->m_inspector is not NULL, it means that 
+	// the data hasn't been flushed yet
+	//
 	if(m_procparser_state->m_inspector != NULL)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, 
-			"flusing baseliner /proc data during interval switch");
+			"merging baseliner /proc data during interval switch");
 
 		//
 		// If the /proc thread is still scanning, we have a problem
@@ -678,6 +699,10 @@ void sisnp_baseliner::merge_proc_data()
 		//
 		init_programs(m_procparser_state->m_inspector, 
 			m_procparser_state->m_time, false);
+
+		//
+		// Destroy the second inspector that was used to scan proc/
+		//
 		delete m_procparser_state->m_inspector;
 		m_procparser_state->m_inspector = NULL;
 	}
@@ -711,14 +736,6 @@ void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baselin
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
 #endif
-
-	if(!m_procparser_thread_done)
-	{
-		g_logger.format(sinsp_logger::SEV_ERROR, 
-			"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
-		return;
-	}
-
 	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, time);
 
 	serialize_protobuf(pbentry);
@@ -1109,7 +1126,6 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	// Skip some unnecessary events
 	//
 	enum ppm_event_flags flags = g_infotables.m_event_info[etype].flags;
-	enum ppm_event_category category = g_infotables.m_event_info[etype].category;
 
 	if(etype == PPME_SCHEDSWITCH_6_E || (flags & (EF_SKIPPARSERESET | EF_UNUSED)))
 	{
@@ -1123,10 +1139,17 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, 
-			"flusing baseliner /proc data during syscall parsing");
+			"merging baseliner /proc data during syscall parsing");
 
+		//
+		// Merge the data extracted by the /proc scanner
+		//
 		init_programs(m_procparser_state->m_inspector, 
 			m_procparser_state->m_time, false);
+
+		//
+		// Destroy the second inspector that was used to scan proc/
+		//
 		delete m_procparser_state->m_inspector;
 		m_procparser_state->m_inspector = NULL;
 	}
@@ -1142,6 +1165,7 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 	}
 
 #ifdef AVOID_FDS_FROM_THREAD_TABLE
+	enum ppm_event_category category = g_infotables.m_event_info[etype].category;
 	if(category & EC_IO_BASE)
 	{
 		add_fd_from_io_evt(evt, category);
