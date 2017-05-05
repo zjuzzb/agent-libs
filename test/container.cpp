@@ -492,7 +492,7 @@ TEST_F(sys_call_test, container_rkt_before)
 	{
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
-		if (tinfo->m_comm == "init")
+		if (tinfo->m_comm != "init")
 		{
 			ASSERT_NE(tinfo->m_vtid, tinfo->m_tid);
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
