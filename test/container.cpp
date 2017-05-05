@@ -421,7 +421,7 @@ TEST_F(sys_call_test, container_rkt_after)
 	{
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
-		if (tinfo->m_comm == "busybox")
+		if (tinfo->m_comm != "init")
 		{
 			ASSERT_NE(tinfo->m_vtid, tinfo->m_tid);
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
@@ -492,7 +492,7 @@ TEST_F(sys_call_test, container_rkt_before)
 	{
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
-		if (tinfo->m_comm == "busybox")
+		if (tinfo->m_comm == "init")
 		{
 			ASSERT_NE(tinfo->m_vtid, tinfo->m_tid);
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
@@ -514,7 +514,6 @@ TEST_F(sys_call_test, container_rkt_before)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	ASSERT_TRUE(done);
 }
-
 
 TEST_F(sys_call_test, DISABLED_container_lxc)
 {
