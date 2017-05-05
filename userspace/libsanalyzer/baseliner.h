@@ -1,6 +1,8 @@
 #pragma once
 
 #include <unordered_set>
+#include <thread>
+#include <atomic>
 
 extern sinsp_evttables g_infotables;
 
@@ -8,6 +10,36 @@ extern sinsp_evttables g_infotables;
 #define BL_MAX_DIRS_TABLE_SIZE 1024
 #define BL_MAX_PROG_TABLE_SIZE 1024
 #define BL_STARTUP_TIME_NS (30LL * 1000000000)
+#define ASYNC_PROC_PARSING
+
+//
+// The state of the /proc parser thread
+//
+class proc_parser_state
+{
+public:
+	proc_parser_state(sisnp_baseliner* bl, uint64_t time)
+	{
+		m_bl = bl;
+		m_time = time;
+		m_done = false;
+		m_inspector = NULL;
+	}
+
+	~proc_parser_state()
+	{
+		if(m_inspector != NULL)
+		{
+			delete m_inspector;
+		}
+	}
+
+	sisnp_baseliner* m_bl;
+	uint64_t m_time;
+	sinsp* m_inspector;
+
+	std::atomic<bool> m_done;
+};
 
 //
 // This class stores the set of files that a program accesses
@@ -1292,6 +1324,9 @@ public:
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
+#ifdef ASYNC_PROC_PARSING
+	void merge_proc_data();
+#endif
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
@@ -1307,8 +1342,7 @@ public:
 	void on_new_container(const sinsp_container_info& container_info);
 	void process_event(sinsp_evt *evt);
 
-private:
-	void init_programs(uint64_t time);
+	void init_programs(sinsp* inspector, uint64_t time, bool skip_fds);
 	void init_containers();
 	inline blprogram* get_program(sinsp_threadinfo* tinfo);
 	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
@@ -1320,5 +1354,9 @@ private:
 #ifndef HAS_ANALYZER
 	string m_hostname;
 	uint64_t m_hostid;
-#endif	
+#endif
+#ifdef ASYNC_PROC_PARSING
+	std::thread* m_procparser_thread;
+	proc_parser_state* m_procparser_state;
+#endif
 };

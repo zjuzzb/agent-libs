@@ -9,15 +9,46 @@
 #endif
 #include <baseliner.h>
 
+#undef AVOID_FDS_FROM_THREAD_TABLE
+
 extern sinsp_evttables g_infotables;
 
-#define AVOID_FDS_FROM_THREAD_TABLE
+///////////////////////////////////////////////////////////////////////////////
+// /proc parser thread
+///////////////////////////////////////////////////////////////////////////////
+void proc_parser(proc_parser_state* state)
+{
+	sinsp* inspector_ori = state->m_bl->m_inspector;
+	state->m_inspector = new sinsp();
+	state->m_inspector->set_hostname_and_port_resolution_mode(false);
 
-///////////////////////////////////////////////////////////////////////////////
-// sisnp_baseliner implementation
-///////////////////////////////////////////////////////////////////////////////
+	try
+	{
+		if(inspector_ori->is_live())
+		{
+			state->m_inspector->open();
+		}
+		else
+		{
+			state->m_inspector->open(inspector_ori->get_input_filename());
+		}
+	}
+	catch(...)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, 
+			"baseliner proc parser failure: can't open inspector %s",
+			state->m_inspector->getlasterr().c_str());
+		return;
+	}
+
+	state->m_done = true;
+}
+
 void sisnp_baseliner::init(sinsp* inspector)
 {
+#ifdef ASYNC_PROC_PARSING
+	m_procparser_thread = NULL;
+#endif
 	m_inspector = inspector;
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
@@ -28,15 +59,52 @@ void sisnp_baseliner::init(sinsp* inspector)
 #endif
 }
 
-sisnp_baseliner::~sisnp_baseliner() 
+sisnp_baseliner::~sisnp_baseliner()
 {
 	clear_tables();
+
+#ifdef ASYNC_PROC_PARSING
+	if(m_procparser_thread != NULL)
+	{
+		if(m_procparser_thread->joinable())
+		{
+			m_procparser_thread->join();
+		}
+		delete m_procparser_thread;
+		delete m_procparser_state;
+	}
+#endif
 }
 
 void sisnp_baseliner::load_tables(uint64_t time)
 {
 	init_containers();
-	init_programs(time);
+
+#ifdef ASYNC_PROC_PARSING
+	init_programs(m_inspector, time, true);
+
+	if(m_procparser_thread != NULL)
+	{
+		//
+		// Note: if we get there, the m_done flag of the thread state is guaranteed 
+		//       to be set to true, so we are sure that the join returns immediately.
+		//       we still call it because otherwise, based on specification of C++11
+		//       threads, the delete will crash.
+		//
+		if(m_procparser_thread->joinable())
+		{
+			m_procparser_thread->join();
+		}
+
+		delete m_procparser_thread;
+		delete m_procparser_state;
+	}
+
+	m_procparser_state = new proc_parser_state(this, time);
+	m_procparser_thread = new std::thread(proc_parser, m_procparser_state);
+#else
+	init_programs(m_inspector, time, false);
+#endif
 }
 
 void sisnp_baseliner::clear_tables()
@@ -56,13 +124,13 @@ void sisnp_baseliner::clear_tables()
 	m_container_table.clear();
 }
 
-void sisnp_baseliner::init_programs(uint64_t time)
+void sisnp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
 {
 	//
 	// Go through the thread list and identify the main threads
 	//
-	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
-		it != m_inspector->m_thread_manager->m_threadtable.end();
+	for(auto it = inspector->m_thread_manager->m_threadtable.begin();
+		it != inspector->m_thread_manager->m_threadtable.end();
 		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
@@ -86,6 +154,8 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					fdinfo->reset_inpipeline();
 				}
 			}
+
+			skip_fds = true;
 		}
 #endif
 		//
@@ -139,16 +209,14 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 			if(time != 0)
 			{
-				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : inspector->m_firstevent_ts;
 				cdelta = time - clone_ts;
 			}
 
-#ifdef AVOID_FDS_FROM_THREAD_TABLE
-			if(time != 0)
+			if(skip_fds)
 			{
 				continue;
 			}
-#endif
 
 			//
 			// Process the FD table
@@ -255,8 +323,8 @@ void sisnp_baseliner::init_programs(uint64_t time)
 	// In this second pass, we go over the thread table and add all of the main processes
 	// to their prarents' executed program list
 	//
-	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
-		it != m_inspector->m_thread_manager->m_threadtable.end();
+	for(auto it = inspector->m_thread_manager->m_threadtable.begin();
+		it != inspector->m_thread_manager->m_threadtable.end();
 		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
@@ -278,7 +346,7 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 				if(time != 0)
 				{
-					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : inspector->m_firstevent_ts;
 					cdelta = time - clone_ts;
 				}
 
@@ -575,23 +643,91 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 }
 #endif
 
+#ifdef ASYNC_PROC_PARSING
+void sisnp_baseliner::merge_proc_data()
+{
+	//
+	// If this is a file, we get here at the end of the capture.
+	// We join the /proc scanner thread to make sure it's done
+	//
+	if(!m_inspector->is_live())
+	{
+		if(m_procparser_thread->joinable())
+		{
+			m_procparser_thread->join();
+		}
+	}
+
+	if(m_procparser_state->m_inspector != NULL)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, 
+			"flusing baseliner /proc data during interval switch");
+
+		//
+		// If the /proc thread is still scanning, we have a problem
+		//
+		if(!m_procparser_state->m_done)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, 
+				"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
+			return;
+		}
+
+		//
+		// Merge the data extracted by the /proc scanner
+		//
+		init_programs(m_procparser_state->m_inspector, 
+			m_procparser_state->m_time, false);
+		delete m_procparser_state->m_inspector;
+		m_procparser_state->m_inspector = NULL;
+	}
+}
+#endif
+
 #ifndef HAS_ANALYZER
 void sisnp_baseliner::emit_as_json(uint64_t time)
-{	
+{
+#ifdef ASYNC_PROC_PARSING
+	merge_proc_data();
+#endif
+
+	//
+	// Perform the serialization
+	//
 	serialize_json(string("bline/") + to_string(m_hostid) + "_" + to_string(time) + ".json");
 
-	clear_tables();
-	load_tables(time);
+	//
+	// Get ready for the new sample
+	//
+	if(m_inspector->is_live())
+	{
+		clear_tables();
+		load_tables(time);
+	}
 }
 #else
 void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
 {
+#ifdef ASYNC_PROC_PARSING
+	merge_proc_data();
+#endif
+
+	if(!m_procparser_thread_done)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, 
+			"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
+		return;
+	}
+
 	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, time);
 
 	serialize_protobuf(pbentry);
 
-	clear_tables();
-	load_tables(time);
+	if(m_inspector->is_live())
+	{
+		clear_tables();
+		load_tables(time);
+	}
 }
 #endif
 
@@ -980,6 +1116,22 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 		return;
 	}
 
+#ifdef ASYNC_PROC_PARSING
+	//
+	// Check if it's time to merge the data from the /proc scanner thread
+	//
+	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, 
+			"flusing baseliner /proc data during syscall parsing");
+
+		init_programs(m_procparser_state->m_inspector, 
+			m_procparser_state->m_time, false);
+		delete m_procparser_state->m_inspector;
+		m_procparser_state->m_inspector = NULL;
+	}
+#endif
+
 	//
 	// Find the thread info
 	//
@@ -989,10 +1141,12 @@ void sisnp_baseliner::process_event(sinsp_evt *evt)
 		return;
 	}
 
+#ifdef AVOID_FDS_FROM_THREAD_TABLE
 	if(category & EC_IO_BASE)
 	{
 		add_fd_from_io_evt(evt, category);
 	}
+#endif
 
 	blprogram* pinfo = get_program(tinfo);
 
