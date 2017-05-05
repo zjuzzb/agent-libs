@@ -144,7 +144,7 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 
 	info, err := cli.Info(ctx)
 	if err != nil {
-		ferr := log.Errorf("Could not get docker client info: %s", err)
+		ferr := fmt.Errorf("Could not get docker client info: %s", err)
 		return nil, ferr
 	}
 
