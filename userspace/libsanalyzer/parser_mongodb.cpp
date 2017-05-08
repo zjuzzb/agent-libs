@@ -220,6 +220,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 			else
 			{
 				// in this case wait a little more if some more data arrives
+				if(m_reassembly_buf.get_size() == 0)
+				{
+					m_reassembly_buf.copy(buf, buflen);
+				}
 				return true;
 			}
 			break;
