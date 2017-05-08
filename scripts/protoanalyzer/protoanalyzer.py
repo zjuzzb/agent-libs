@@ -31,25 +31,34 @@ class MetricsFile(object):
       self._tail = subprocess.Popen(["tail", "-f", path], stdout=subprocess.PIPE)
       atexit.register(self.close_tail)
       self._file = self._tail.stdout
-      self._last_line = self._file.readline()
-      while not self._last_line.startswith("timestamp_ns"):
-        self._last_line = self._file.readline()
     else:
       self._file = open(path)
-      self._last_line = self._file.readline()
+
+    # Detect if it's a "metrics {" or "timestamp_ns" file
+    self._last_line = self._file.readline()
+    while True:
+      if self._last_line.startswith("timestamp_ns"):
+        self.proto_start = "timestamp_ns"
+        break
+      elif self._last_line.startswith("metrics {"):
+        self.proto_start = "metrics {"
+        break
+      else:
+        self._last_line = self._file.readline()
 
   def next(self):
     ascii_repr = self._last_line
     self._last_line = self._file.readline()
     if len(self._last_line) == 0:
       raise StopIteration()
-    while not self._last_line.startswith("timestamp_ns"):
+    while not self._last_line.startswith(self.proto_start):
       ascii_repr += self._last_line
       self._last_line = self._file.readline()
       if len(self._last_line) == 0:
         raise StopIteration()
     # Trim "metrics {"
-    #ascii_repr = "\n".join(ascii_repr.split("\n")[1:-2])
+    if self.proto_start == "metrics {":
+      ascii_repr = "\n".join(ascii_repr.split("\n")[1:-2])
     metrics = draios_pb2.metrics()
     parse_text_protobuf(ascii_repr, metrics)
     return metrics
