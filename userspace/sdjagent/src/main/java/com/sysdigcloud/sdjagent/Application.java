@@ -58,6 +58,7 @@ public class Application {
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
             LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
+            LOGGER.info(String.format("Java classpath: %s", System.getProperty("java.class.path")));
             if(JAVA_VERSION < MIN_JAVA_VERSION) {
                 LOGGER.severe("Java version unsupported");
                 System.exit(MONITOR_DONT_RESTART_CODE);
