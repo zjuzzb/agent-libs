@@ -150,14 +150,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else
 		{
-//			printf("MongoDB reconstruct\n");
 			m_reassembly_buf.copy(buf, buflen);
 			rbuf = m_reassembly_buf.get_buf();
 			rbuflen = m_reassembly_buf.get_size();
 		}
-//		printf("MongoDB extract: ");
-//		debug_print_binary_buf(rbuf, rbuflen);
-//		printf("\n");
 		m_wireopcode = (wire_opcode)(*(int32_t*)(rbuf+12));
 		//
 		// Do the parsing
@@ -195,8 +191,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 						{
 							// Discern if it's find or findandmodify, right now it's the
 							// only clash, otherwise we'll need a better approach
-							if(command == *(uint32_t*)"find" &&
-								(*(uint32_t*)(doc+5+4) | 0x20202020) == *(uint32_t*)"andm")
+							if(j == 9 && (*(uint32_t*)(doc+5+4) | 0x20202020) == *(uint32_t*)"andm")
 							{
 								continue;
 							}
