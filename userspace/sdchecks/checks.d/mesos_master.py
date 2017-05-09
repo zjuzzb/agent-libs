@@ -11,7 +11,6 @@ import requests
 # project
 from checks import AgentCheck, CheckException
 
-
 class MesosMaster(AgentCheck):
     GAUGE = AgentCheck.gauge
     MONOTONIC_COUNT = AgentCheck.monotonic_count
@@ -136,8 +135,12 @@ class MesosMaster(AgentCheck):
             r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers, auth=self.auth, verify=False)
 
             if r.status_code != 200:
-                status = AgentCheck.CRITICAL
-                msg = "Got %s when hitting %s" % (r.status_code, url)
+                if r.status_code == 307:
+                    # standby mesos master, ignore
+                    return None
+                else:
+                    status = AgentCheck.CRITICAL
+                    msg = "Got %s when hitting %s" % (r.status_code, url)
             else:
                 status = AgentCheck.OK
                 msg = "Mesos master instance detected at %s " % url
@@ -242,6 +245,5 @@ class MesosMaster(AgentCheck):
                 for m in metrics:
                     for key_name, (metric_name, metric_func) in m.iteritems():
                         metric_func(self, metric_name, stats_metrics[key_name], tags=tags)
-
 
         self.service_check_needed = True
