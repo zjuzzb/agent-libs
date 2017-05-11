@@ -3,6 +3,7 @@ from urlparse import urljoin
 
 # 3rd party
 import requests
+import simplejson as json
 
 # project
 from checks import AgentCheck
@@ -61,11 +62,12 @@ class Marathon(AgentCheck):
 
     def get_json(self, url, timeout):
         try:
-            headers = {}
+            # Disable gzip enconding that by default requests puts, see below
+            headers = {"Accept-Encoding": ""}
             if self.auth_token != '':
                 headers["Authorization"] = "token=%s" % (self.auth_token)
 
-            r = requests.get(url, timeout=timeout, auth=self.auth, allow_redirects=False, headers=headers, verify=False)
+            r = requests.get(url, timeout=timeout, auth=self.auth, allow_redirects=False, headers=headers, verify=False, stream=True)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout
@@ -91,4 +93,8 @@ class Marathon(AgentCheck):
                 tags = ["url:{0}".format(url)]
             )
 
-        return r.json()
+        # This hack has been done because parsing a 8 MiB json from memory causes 140 MiB of memory usage
+        # in this way the json is parsed as it comes in a streaming fashion
+        # we disabled gzip compression because it was hard to implement streaming decompression also
+        # we poll only local endpoints here so it should not be an issue
+        return json.load(r.raw)
