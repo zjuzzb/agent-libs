@@ -8,17 +8,6 @@
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
 
-// XXX/mstemm TODO
-// - DONE Actually implement the mutexes that allow the sinsp_worker and capture_job_handler threads to run together
-// - DONE Get an accurate number of events for memdump phase
-// - DONE Properly handle restore_drop_mode
-// - DONE Should I signal to the sinsp_worker thread when captures are being transmitted so it can disable autodrop?
-// - DONE (not doing) Wait a bit to start capture jobs until after autodrop has been disabled
-// - DONE Check for all XXXs
-// - DONE Make sure memtest unit test is passing
-// - Actually add segmentation to memory buffer instead of locking on entire memory buffer
-// - Do another flame graph to look at cpu
-
 using namespace std;
 
 class capture_job
@@ -214,7 +203,7 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 		// in memory. Afterward, it can be treated like a
 		// normal capture job.
 		sinsp_memory_dumper_job *memjob = m_memdumper->add_job(m_start_ns, m_file, request.m_filter,
-								       m_past_duration_ns, m_duration_ns, false);
+								       m_past_duration_ns, m_duration_ns, false, &(m_handler->m_membuf_mtx));
 
 		if(memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
@@ -236,6 +225,7 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 		// handled by process_event but *not* be handled by
 		// this job.
 		m_handler->add_job(job_state);
+		m_handler->m_membuf_mtx.unlock();
 	}
 
 	m_fp = fopen(m_file.c_str(), "r");
@@ -603,14 +593,17 @@ void capture_job_handler::process_event(sinsp_evt *ev)
 	//
 	if(m_configuration->m_memdump_enabled)
 	{
+		Poco::ScopedLock<Poco::Mutex> lck(m_membuf_mtx);
 		m_memdumper->process_event(ev);
 	}
 
-	Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
-
-	for (auto &job : m_jobs)
 	{
-		job->process_event(ev);
+		Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
+
+		for (auto &job : m_jobs)
+		{
+			job->process_event(ev);
+		}
 	}
 }
 
@@ -831,7 +824,7 @@ void capture_job_handler::cleanup_jobs(uint64_t ts)
 	{
 		if(it->get()->is_complete())
 		{
-			g_log->debug("job " + it->get()->token() + ": removing state");
+			g_log->information("job " + it->get()->token() + ": removing state");
 			it = m_jobs.erase(it);
 		}
 		else

@@ -19,7 +19,6 @@ extern sinsp_evttables g_infotables;
 sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events)
 {
 	m_inspector = inspector;
-	m_active_state = &m_states[0];
 	m_file_id = 0;
 	m_f = NULL;
 	m_cf = NULL;
@@ -58,22 +57,28 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	//
 	m_bsize = bufsize / 2;
 
-	m_states[0].init(m_inspector, m_bsize);
-	m_states[1].init(m_inspector, m_bsize);
+	// 2 states
+	for(uint32_t i=0; i < 2; i++)
+	{
+		string name = "/dragent-memdumper-" + to_string(m_file_id++);
+		std::shared_ptr<sinsp_memory_dumper_state> state = make_shared<sinsp_memory_dumper_state>();
+		state->init(m_inspector, m_bsize, name);
+		m_states.emplace_back(state);
+	}
+	m_active_state = m_states.begin();
+
+	// No reader right now
+	m_reader_state = m_states.rend();
 
 	//
 	// Initialize the dumprt
 	//
-	try
-	{
-		m_active_state->m_dumper->open("", true, true);
-		m_active_state->m_has_data = true;
-	}
-	catch(sinsp_exception e)
-	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled. Current size: %" PRIu64,
-			m_bsize);
 
+	// Reopen the first state
+	string errstr;
+	if (!(*m_active_state)->open(m_inspector, errstr))
+	{
+		lo(sinsp_logger::SEV_ERROR, "memdump: could not swap states: %s. Memory dump disabled", errstr.c_str());
 		m_disabled = true;
 	}
 
@@ -172,11 +177,8 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 		return;
 	}
 
-	sinsp_memory_dumper_state* inactive_state =
-		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
-
-	flush_state_to_disk(m_cf, inactive_state, false);
-//	flush_state_to_disk(m_cf, m_active_state, true);
+//	sinsp_memory_dumper_state* inactive_state =
+//		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
 
 //	fclose(m_cf);
 //	m_cf = NULL;
@@ -184,33 +186,31 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 	m_cur_dump_size = m_bsize;
 }
 
-void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
-	sinsp_memory_dumper_job* job)
+// Read as much of the shared memory buffer held in state as possible
+// using the provided inspector.
+bool sinsp_memory_dumper::read_membuf_using_inspector(sinsp &inspector,
+						      const std::shared_ptr<sinsp_memory_dumper_state> &state,
+						      sinsp_memory_dumper_job* job)
 {
 	int32_t res;
 	sinsp_evt* ev;
 
-	sinsp inspector;
-	inspector.set_hostname_and_port_resolution_mode(false);
+	// Flush the dumper state, which also returns the number of
+	// bytes written so far. Don't read past this point.
+	uint64_t dumper_bytes_written = state->flush();
 
-	try
-	{
-		inspector.open(intermediate_filename);
-	}
-	catch(...)
-	{
-		job->m_lasterr = inspector.getlasterr();
-		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-		return;
-	}
+	// Force a seek to 0 and back to our position to ensure that
+	// no cached read data is kept--we may have read data from the
+	// file that was stale and updated by the flush we just did.
+	uint64_t bytes_read = inspector.get_bytes_read();
+	inspector.fseek(0);
+	inspector.fseek(bytes_read);
 
-	if(job->m_filterstr != "")
-	{
-		string flt = "(" + job->m_filterstr + ") or evt.type=notification";
-		inspector.set_filter(flt);
-	}
+	lo(sinsp_logger::SEV_DEBUG, "memdumper: reading %s from pos %lu to %lu",
+	   state->m_shm_name.c_str(),
+	   inspector.get_bytes_read(), dumper_bytes_written);
 
-	while(1)
+	while(inspector.get_bytes_read() < dumper_bytes_written)
 	{
 		res = inspector.next(&ev);
 
@@ -228,9 +228,9 @@ void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 			// There was an error. Just stop here and log the error
 			//
 			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-			job->m_lasterr = "apply_job_filter error reading events from file " + intermediate_filename;
+			job->m_lasterr = "apply_job_filter error reading events from file " + state->m_shm_name + ": " + inspector.getlasterr();
 			ASSERT(false);
-			break;
+			return false;
 		}
 
 		if(job->m_start_time != 0 && ev->get_ts() < job->m_start_time)
@@ -247,9 +247,9 @@ void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 			}
 			catch(...)
 			{
-				job->m_lasterr = inspector.getlasterr();
+				job->m_lasterr = "inspector returned error: " + inspector.getlasterr();
 				job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-				return;
+				return false;
 			}
 		}
 
@@ -257,12 +257,92 @@ void sinsp_memory_dumper::apply_job_filter(string intermediate_filename,
 		job->m_dumper->dump(ev);
 	}
 
+	return true;
+}
+
+void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_state> &state,
+					   sinsp_memory_dumper_job* job,
+					   Poco::Mutex *membuf_mtx)
+{
+	if (!state->m_dumper->is_open() || state->m_dumper->written_events() == 0)
+	{
+		return;
+	}
+
+	sinsp inspector;
+	inspector.set_hostname_and_port_resolution_mode(false);
+
+	// Open the shared memory segment again so we can read from
+	// the beginning.
+	int fd = shm_open(state->m_shm_name.c_str(), O_RDONLY, 0);
+	if(fd == -1)
+	{
+		job->m_lasterr = "Could not open shared memory region " + state->m_shm_name + " for reading: " + strerror(errno);
+		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+		return;
+	}
+
+	// Flush state to disk so an inspector reading the
+	// same shm file will have its initial state.
+	state->flush();
+
+	try
+	{
+		inspector.fdopen(fd);
+	}
+	catch(exception &e)
+	{
+		job->m_lasterr = "inspector could not open shared memory region. inspector_err=" + inspector.getlasterr() + " e=" + e.what() + " nevt=" + to_string((*m_active_state)->m_dumper->written_events());
+		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+		::close(fd);
+		return;
+	}
+
+	if(job->m_filterstr != "")
+	{
+		string flt = "(" + job->m_filterstr + ") or evt.type=notification";
+		inspector.set_filter(flt);
+	}
+
+	if (!read_membuf_using_inspector(inspector, state, job))
+	{
+		inspector.close();
+		::close(fd);
+		return;
+	}
+
+	// Now check the offset and read again. If we're currently
+	// reading the active state, lock the membuf mutex now, so no
+	// additional events can again until unlocked (by the caller
+	// of add_job()).
+	{
+		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+		if(membuf_mtx && (*m_active_state)->m_shm_name == state->m_shm_name)
+		{
+			lo(sinsp_logger::SEV_DEBUG, "Approaching end of state=%s, locking membuf mutex", state->m_shm_name.c_str());
+			membuf_mtx->lock();
+		}
+	}
+
+	if (!read_membuf_using_inspector(inspector, state, job))
+	{
+		// When returning a failure, don't keep the mutex locked.
+		if(membuf_mtx)
+		{
+			membuf_mtx->unlock();
+		}
+		inspector.close();
+		::close(fd);
+		return;
+	}
+
 	inspector.close();
+	::close(fd);
 }
 
 sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter,
 						      uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-						      bool track_job)
+						      bool track_job, Poco::Mutex *membuf_mtx)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
@@ -272,36 +352,6 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	{
 		m_jobs.push_back(job);
 	}
-
-	string fname = "/tmp/dragent_i_" + to_string(tm.tv_sec) + to_string(tm.tv_usec);
-	struct stat st;
-
-	if (stat(fname.c_str(), &st) != -1)
-	{
-		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-		job->m_lasterr = "temporary file " + fname + " already exists";
-		return job;
-	}
-
-	FILE* tfp = fopen(fname.c_str(), "wb");
-	if(tfp == NULL)
-	{
-		job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-		job->m_lasterr = "can't open temporary file " + fname;
-		return job;
-	}
-
-	{
-		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
-
-		sinsp_memory_dumper_state* inactive_state =
-			(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
-
-		flush_state_to_disk(tfp, inactive_state, false);
-		flush_state_to_disk(tfp, m_active_state, false);
-	}
-
-	fclose(tfp);
 
 	job->m_start_time =
 		delta_time_past_ns != 0? ts - delta_time_past_ns : 0;
@@ -325,9 +375,32 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 		}
 	}
 
-	apply_job_filter(fname, job);
+	{
+		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+		m_reader_state = m_states.rbegin();
+	}
 
-	unlink(fname.c_str());
+	while(m_reader_state != m_states.rend())
+	{
+		apply_job_filter(*m_reader_state, job, membuf_mtx);
+		{
+			Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+			m_reader_state++;
+		}
+	}
+
+	// It's possible (although unlikely) that while reading
+	// through the memory buffers it was necessary to create a
+	// temporary third buffer. In this case, remove the oldest
+	// buffer.
+	{
+		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+		while (m_states.size() > 2)
+		{
+			lo(sinsp_logger::SEV_DEBUG, "Removing temporary additional state while reader was active");
+			m_states.pop_back();
+		}
+	}
 
 	//
 	// If no capture in the future is required, the job can stop here
@@ -346,54 +419,18 @@ void sinsp_memory_dumper::remove_job(sinsp_memory_dumper_job* job)
 	delete job;
 }
 
-void sinsp_memory_dumper::flush_state_to_disk(FILE* fp,
-	sinsp_memory_dumper_state* state,
-	bool is_last_event_complete)
-{
-	if(state->m_has_data)
-	{
-		uint64_t datalen;
-
-		if(is_last_event_complete)
-		{
-			datalen = state->m_dumper->written_bytes();
-		}
-		else
-		{
-			datalen = state->m_last_valid_bufpos - state->m_buf;
-		}
-
-		m_file_id++;
-
-		if(fp != NULL)
-		{
-			fwrite(state->m_buf, datalen, 1, fp);
-		}
-
-		/*
-		uint64_t dlen = 400 * 1024 * 1024;
-		printf("YYY\n");
-
-		if(compr(state->m_buf + datalen + 1,
-			&dlen, state->m_buf, datalen, 1) != SCAP_SUCCESS)
-		{
-			printf("FAILED\n");
-		}
-		printf("XXX %ld %ld\n", datalen, dlen);
-
-		fwrite(state->m_buf + datalen + 1, dlen, 1, f);
-		*/
-	}
-}
-
 void sinsp_memory_dumper::switch_states(uint64_t ts)
 {
+	Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
+
+	lo(sinsp_logger::SEV_DEBUG, "Switching memory buffer states");
+
 	//
 	// Save the capture to disk
 	//
 	if(m_cf)
 	{
-		flush_state_to_disk(m_cf, m_active_state, false);
+//		flush_state_to_disk(m_cf, m_active_state, false);
 		m_cur_dump_size += m_bsize;
 		m_switches_to_go--;
 
@@ -419,33 +456,35 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 		}
 	}
 
-	//
-	// The buffer is full, swap the states
-	//
-	if(m_active_state == &m_states[0])
+	// Close the first state
+	(*m_active_state)->m_dumper->close();
+
+	// If a reader is reading the last state, create a new state
+	// and put it at the front. Otherwise, take the last state and
+	// put it at the front.
+	if(m_reader_state == m_states.rbegin())
 	{
-		m_active_state = &m_states[1];
+		shared_ptr<sinsp_memory_dumper_state> st = m_states.back();
+		m_states.pop_back();
+		m_states.push_front(st);
 	}
 	else
 	{
-		m_active_state = &m_states[0];
+		lo(sinsp_logger::SEV_DEBUG, "Creating temporary additional state while reader is active");
+		string name = "/dragent-memdumper-" + to_string(m_file_id++);
+		m_states.emplace_front();
+		(*m_states.begin())->init(m_inspector, m_bsize, name);
 	}
 
-	//
-	// Close and reopen the new state
-	//
-	m_active_state->m_dumper->close();
+	m_active_state = m_states.begin();
 
-	try
+	// Reopen the first state
+	string errstr;
+	if (!(*m_active_state)->open(m_inspector, errstr))
 	{
-		m_active_state->m_dumper->open("", false, true);
-		m_active_state->m_has_data = true;
-	}
-	catch(sinsp_exception e)
-	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: capture memory buffer too small to store process information. Memory dump disabled.");
-
+		lo(sinsp_logger::SEV_ERROR, "memdump: could not swap states: %s. Memory dump disabled", errstr.c_str());
 		m_disabled = true;
+		return;
 	}
 }
 
@@ -471,5 +510,4 @@ void sinsp_memory_dumper::push_notification(uint64_t ts, uint64_t tid, string id
 	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
 
 	process_event(&m_notification_evt);
-	m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
 }

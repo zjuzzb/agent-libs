@@ -1,5 +1,12 @@
 #pragma once
 
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+#include <atomic>
+
 #include "Poco/Mutex.h"
 #include "Poco/ScopedLock.h"
 
@@ -11,8 +18,8 @@ public:
 	sinsp_memory_dumper_state()
 	{
 		m_dumper = NULL;
-		m_buf = NULL;
-		m_has_data = false;
+		m_shm_fd = 0;
+		m_shm_name = "";
 	}
 
 	~sinsp_memory_dumper_state()
@@ -22,25 +29,69 @@ public:
 			delete m_dumper;
 		}
 
-		if(m_buf != NULL)
+		::close(m_shm_fd);
+
+		if(shm_unlink(m_shm_name.c_str()) != 0)
 		{
-			free(m_buf);
+			throw sinsp_exception(string("unable to remove the shared memory region for the sysdig memory dump: ") + strerror(errno));
 		}
 	}
 
-	void init(sinsp* inspector, uint64_t bufsize)
+	void close()
 	{
-		m_buf = (uint8_t*)malloc(bufsize);
-		if(m_buf == NULL)
-		{
-			throw sinsp_exception("unable to allocate the buffer for the sysdig memory dump");
-		}
+		m_dumper->close();
+	}
 
-		m_bufsize = bufsize;
+	bool open(sinsp *inspector, std::string &errstr)
+	{
+		if (lseek(m_shm_fd, SEEK_SET, 0) != 0)
+		{
+			errstr = "could not reset shared memory segment";
+			return false;
+		}
 
 		try
 		{
-			m_dumper = new sinsp_dumper(inspector, m_buf, m_bufsize);
+			// NOTE: Compression is intentionally disabled. In
+			// addition to being a better tradeoff of cpu time vs
+			// space savings, the file offsets used in
+			// inspector.get_bytes_read()/m_dumper->written_bytes()
+			// only match up when using pass-through uncompressed
+			// files. Otherwise, you have to perform an lseek
+			// system call every time you check the offsets.
+			m_dumper->fdopen(m_shm_fd, false, true);
+		}
+		catch(sinsp_exception e)
+		{
+			errstr = "capture memory buffer too small to store process information. Current size: " +
+				m_bufsize;
+			return false;
+		}
+
+		return true;
+	}
+
+	void init(sinsp* inspector, uint64_t bufsize, string shm_name)
+	{
+		m_shm_name = shm_name;
+
+		// Try to remove the shared memory segment first.
+		shm_unlink(m_shm_name.c_str());
+
+		m_shm_fd = shm_open(m_shm_name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
+		if(m_shm_fd == -1)
+		{
+			throw sinsp_exception(string("unable to allocate the shared memory region for the sysdig memory dump: ") + strerror(errno));
+		}
+
+		if(ftruncate(m_shm_fd, bufsize) != 0)
+		{
+			throw sinsp_exception(string("unable to initialize the shared memory region for the sysdig memory dump: ") + strerror(errno));
+		}
+
+		try
+		{
+			m_dumper = new sinsp_dumper(inspector);
 		}
 		catch(sinsp_exception e)
 		{
@@ -50,11 +101,22 @@ public:
 		}
 	}
 
+	// Returns the number of bytes written.
+	inline uint64_t flush()
+	{
+		Poco::ScopedLock<Poco::FastMutex> lck(m_dumper_mtx);
+		m_dumper->flush();
+
+		return m_dumper->written_bytes();
+	}
+
+        std::string m_shm_name;
 	sinsp_dumper* m_dumper;
-	uint8_t* m_buf;
+	int m_shm_fd;
 	uint64_t m_bufsize;
-	bool m_has_data;
-	uint8_t* m_last_valid_bufpos;
+
+	// Mutex that protects access to this state's dumper
+	Poco::FastMutex m_dumper_mtx;
 };
 
 class sinsp_memory_dumper_job
@@ -153,9 +215,16 @@ public:
 	// track_job is false, the caller should delete this
 	// object. Otherwise, the caller should pass it to remove_job
 	// later.
+	//
+	// If membuf_mtx is non-NULL, lock the mutex before the job has
+	// fully read the memory buffer, to guarantee that
+	// process_event will stop adding new events to the
+	// buffer. The caller will unlock the mutex when the job has
+	// been added to the list of jobs.
+
 	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter,
 					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-					 bool track_job);
+					 bool track_job, Poco::Mutex *membuf_mtx);
 
 	void remove_job(sinsp_memory_dumper_job* job);
 	inline void process_event(sinsp_evt *evt)
@@ -188,10 +257,8 @@ public:
 #endif
 
 			{
-				Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
-
-				m_active_state->m_last_valid_bufpos = m_active_state->m_dumper->get_memory_dump_cur_buf();
-				m_active_state->m_dumper->dump(evt);
+				Poco::ScopedLock<Poco::FastMutex> lck((*m_active_state)->m_dumper_mtx);
+				(*m_active_state)->m_dumper->dump(evt);
 			}
 
 			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
@@ -201,11 +268,12 @@ public:
 		}
 		catch(sinsp_exception e)
 		{
-			Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
-
 			ASSERT(evt != NULL);
 			switch_states(evt->get_ts());
-			m_active_state->m_dumper->dump(evt);
+			{
+				Poco::ScopedLock<Poco::FastMutex> lck((*m_active_state)->m_dumper_mtx);
+				(*m_active_state)->m_dumper->dump(evt);
+			}
 		}
 	}
 	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
@@ -215,17 +283,18 @@ public:
 	}
 
 private:
-	void flush_state_to_disk(FILE* fp,
-		sinsp_memory_dumper_state* state,
-		bool is_last_event_complete);
 	void switch_states(uint64_t ts);
-	void apply_job_filter(string intemrdiate_filename, sinsp_memory_dumper_job* job);
+	bool read_membuf_using_inspector(sinsp &inspector, const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job);
+	void apply_job_filter(const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job, Poco::Mutex *membuf_mtx);
+
+	typedef std::list<std::shared_ptr<sinsp_memory_dumper_state>> memdump_state;
 
 	scap_threadinfo* m_scap_proclist;
 	sinsp* m_inspector;
 
-	sinsp_memory_dumper_state m_states[2];
-	sinsp_memory_dumper_state* m_active_state;
+	memdump_state m_states;
+	memdump_state::iterator m_active_state;
+	memdump_state::const_reverse_iterator m_reader_state;
 	uint32_t m_file_id;
 	FILE* m_f;
 	FILE* m_cf;
@@ -244,7 +313,6 @@ private:
 	bool m_capture_dragent_events;
 	int64_t m_sysdig_pid;
 #endif
-
 	// Mutex that protects access to the list of states
 	Poco::FastMutex m_state_mtx;
 };

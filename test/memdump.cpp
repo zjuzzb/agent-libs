@@ -7,6 +7,7 @@
 #include <Poco/NullChannel.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
+#include <Poco/ErrorHandler.h>
 
 #include <gtest.h>
 
@@ -19,6 +20,28 @@
 #include <security_messages.h>
 
 using namespace std;
+
+class memdump_error_handler : public Poco::ErrorHandler
+{
+public:
+	memdump_error_handler() {};
+
+	void exception(const Poco::Exception& exc) {
+		dragent_configuration::m_terminate = true;
+		FAIL() << "Got Poco::Exception " << exc.displayText();
+	}
+
+	void exception(const std::exception& exc) {
+		dragent_configuration::m_terminate = true;
+		FAIL() << "Got std::exception " << exc.what();
+	}
+
+	void exception() {
+		dragent_configuration::m_terminate = true;
+		FAIL() << "Got unknown exception";
+	}
+};
+
 
 class memdump_test : public testing::Test
 {
@@ -64,6 +87,8 @@ protected:
 		m_sinsp_worker = new sinsp_worker(&m_configuration, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
 		m_sinsp_worker->init();
 		m_capture_job_handler->init(m_sinsp_worker->get_inspector());
+
+		Poco::ErrorHandler::set(&m_error_handler);
 
 		ThreadPool::defaultPool().start(*m_capture_job_handler, "capture_job_handler");
 		ThreadPool::defaultPool().start(*m_sinsp_worker, "sinsp_worker");
@@ -331,24 +356,30 @@ protected:
 		}
 	}
 
-	// Request 11 dumps, 100 ms apart. We expect the first 10 to
+	// Request 11 dumps back to back. We expect the first 10 to
 	// succeed and the 11th to fail with a "max outstanding
 	// captures" message.
 	void perform_too_many_dumps()
 	{
 		string errstr;
+		SharedPtr<protocol_queue_item> buf;
+
+		queue_fetch(draiosproto::METRICS, buf);
 
 		for(uint32_t i=0; i < 10; i++)
 		{
-			SharedPtr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), 3000, 30000, false);
+			g_log->debug("Queuing request for capture " + to_string(i));
+			SharedPtr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), 500, 30000, false);
 			ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 		}
 
-		// Sleep 2 seconds to make sure the capture job handler
+		// Sleep 5 seconds to make sure the capture job handler
 		// has picked up all the requests and started the
 		// jobs.
-		sleep(2);
+		g_log->debug("Waiting 5 seconds for all jobs to start");
+		sleep(5);
 
+		g_log->debug("Starting capture over limit (should fail)");
 		SharedPtr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(10), 3000, 30000, false);
 		ASSERT_FALSE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 
@@ -443,6 +474,7 @@ protected:
 	protocol_queue *m_queue;
 	atomic<bool> m_enable_autodrop;
 	synchronized_policy_events *m_policy_events;
+	memdump_error_handler m_error_handler;
 
 	string test_filename_pat = "/tmp/memdump_agent_test";
 	string agent_dump_token = "agent-dump-events";

@@ -114,6 +114,9 @@ public:
 
 	int64_t m_sysdig_pid;
 
+	// Mutex that protects access to the end of the active memdump buffer
+	Poco::Mutex m_membuf_mtx;
+
 private:
 	// Clean up all jobs
 	void cleanup();
