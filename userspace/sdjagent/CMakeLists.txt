@@ -19,7 +19,8 @@ if(Java_Development_FOUND)
                     src/main/java/com/sysdigcloud/sdjagent/MonitoredVM.java
                     src/main/java/com/sysdigcloud/sdjagent/PosixQueue.java
                     src/main/java/com/sysdigcloud/sdjagent/VMRequest.java
-                    src/main/java/com/sysdigcloud/sdjagent/YamlConfig.java)
+                    src/main/java/com/sysdigcloud/sdjagent/YamlConfig.java
+                    pom.xml)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/java/sdjagent-1.0-jar-with-dependencies.jar
             DESTINATION ${DRAIOS_BIN_PREFIX}/share RENAME sdjagent.jar
             COMPONENT agent)
