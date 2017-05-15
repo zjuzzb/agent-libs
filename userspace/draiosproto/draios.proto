@@ -805,16 +805,15 @@ message swarm_node {
 }
 
 message swarm_state {
-    // Every node in the cluster will send the cluster_id
-    // it can be used if we'll hit duplicate ip addresses
-    // in the cluster
-    optional string cluster_id = 1;
     // This values will be filled only
     // by swarm manager nodes
     repeated swarm_service services = 2;
     repeated swarm_node nodes = 3;
     repeated swarm_task tasks = 4;
     optional bool quorum = 5;
+    // Every node in the cluster will send its node_id
+    // it can be used if we'll hit duplicate ip addresses
+    optional string node_id = 7;
 }
 
 // ENTRY POINT MESSAGE
