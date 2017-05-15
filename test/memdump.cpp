@@ -436,7 +436,8 @@ protected:
 	string test_filename_pat = "/tmp/memdump_agent_test";
 	string agent_dump_token = "agent-dump-events";
 };
-
+// Disabling until a better version from the security branch is merged.
+#if 0
 TEST_F(memdump_test, standard_dump)
 {
 	// Set the dump chunk size to something very small so
@@ -504,3 +505,4 @@ TEST_F(memdump_test, request_queue_full)
 
 	m_dump_client.join();
 }
+#endif
