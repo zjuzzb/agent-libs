@@ -331,22 +331,11 @@ void sinsp_analyzer::on_capture_start()
 	// Start the falco baseliner
 	//
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
-
-
-		m_falco_baseliner->init(m_inspector);
-	}
-
 	if(m_do_baseline_calculation)
 	{
 		lo("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
 	}
-
-	//
-	// If required, enable the command line captures
-	//
-	m_command_lines_capture_enabled	= m_configuration->get_command_lines_capture_enabled();
-	m_command_lines_capture_all_commands = m_configuration->get_command_lines_capture_all_commands();
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -4236,7 +4225,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		// Probably driver switched to sampling=1 without
 		// sending a drop_event with an updated sampleratio.
 		// forcing it
-		g_logger.log("Did not receive drop event to confirm sampling_ratio, forcing update", sinsp_logger::SEV_WARNING);
+		g_logger.log("Did not receive drop event to confirm sampling_ratio " + to_string(m_sampling_ratio) + ", forcing update", sinsp_logger::SEV_WARNING);
 		set_sampling_ratio(m_new_sampling_ratio);
 		m_last_dropmode_switch_time = ts;
 	}

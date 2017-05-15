@@ -639,7 +639,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
-	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 200 * 1024 * 1024);
+	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 300 * 1024 * 1024);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);

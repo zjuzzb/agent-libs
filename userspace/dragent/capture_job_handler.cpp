@@ -42,6 +42,8 @@ public:
 
 	const string &token();
 
+	uint64_t start_ns();
+
 private:
 
 	void log_information(const string &msg);
@@ -380,6 +382,11 @@ const string &capture_job::token()
 	return m_token;
 }
 
+uint64_t capture_job::start_ns()
+{
+	return m_start_ns;
+}
+
 void capture_job::log_information(const string &msg)
 {
 	g_log->information("job " + m_token + ": " + msg);
@@ -526,6 +533,7 @@ capture_job_handler::capture_job_handler(dragent_configuration *configuration,
 					 protocol_queue *queue,
 					 atomic<bool> *enable_autodrop)
 	: m_sysdig_pid(getpid()),
+	  m_log_stats_interval(10000000000),
 	  m_inspector(NULL),
 	  m_configuration(configuration),
 	  m_queue(queue),
@@ -570,6 +578,28 @@ void capture_job_handler::run()
 	{
 		uint32_t sleep_ms = 200;
 		m_last_job_check_ns = sinsp_utils::get_current_time_ns();
+
+		m_log_stats_interval.run([this]()
+                {
+			uint32_t num_jobs = 0;
+			uint64_t oldest = m_last_job_check_ns;
+			{
+				Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
+				num_jobs = m_jobs.size();
+
+				for(auto &job : m_jobs)
+				{
+					if(job->start_ns() < oldest)
+					{
+						oldest = job->start_ns();
+					}
+				}
+			}
+			if(num_jobs > 0)
+			{
+				g_log->information("capture_jobs: nj=" + to_string(num_jobs) + " oldest_delta_ms=" + to_string((m_last_job_check_ns-oldest)/1000000));
+			}
+		}, m_last_job_check_ns);
 
 		process_job_requests();
 

@@ -583,6 +583,10 @@ void sinsp_worker::process_job_requests()
 
 void sinsp_worker::check_autodrop(uint64_t ts_ns)
 {
+	if(!m_configuration->m_autodrop_enabled)
+	{
+		return;
+	}
 	if(*m_enable_autodrop)
 	{
 		if (!m_autodrop_currently_enabled)
@@ -591,8 +595,8 @@ void sinsp_worker::check_autodrop(uint64_t ts_ns)
 
 			if(m_configuration->m_autodrop_enabled)
 			{
-				m_analyzer->set_autodrop_enabled(true);
 				m_analyzer->start_dropping_mode(1);
+				m_analyzer->set_capture_in_progress(false);
 			}
 
 			m_autodrop_currently_enabled = true;
@@ -602,9 +606,9 @@ void sinsp_worker::check_autodrop(uint64_t ts_ns)
 	{
 		if (m_autodrop_currently_enabled)
 		{
-			g_log->information("Disabling dropping mode");
-			m_analyzer->set_autodrop_enabled(false);
-			m_analyzer->stop_dropping_mode();
+			g_log->information("Disabling dropping mode by setting sampling ratio to 1");
+			m_analyzer->start_dropping_mode(1);
+			m_analyzer->set_capture_in_progress(true);
 			m_autodrop_currently_enabled = false;
 		}
 	}

@@ -121,7 +121,7 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 void security_mgr::process_event(sinsp_evt *evt)
 {
 	// Write lock acquired in load()
-	if(!m_policies_lock.tryReadLock() || !m_initialized)
+	if(!m_initialized || !m_policies_lock.tryReadLock())
 	{
 		return;
 	}

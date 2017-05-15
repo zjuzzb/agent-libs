@@ -10,48 +10,58 @@
 #include "Poco/Mutex.h"
 #include "Poco/ScopedLock.h"
 
+#include "analyzer_utils.h"
 #include "sinsp_int.h"
 
 class sinsp_memory_dumper_state
 {
 public:
-	sinsp_memory_dumper_state()
+	sinsp_memory_dumper_state(sinsp* inspector, uint64_t bufsize, string shm_name)
+		: m_inspector(inspector),
+		m_shm_name(shm_name),
+		m_shm_fd(0),
+		m_bufsize(bufsize),
+		m_begin_ts(0),
+		m_end_ts(0)
 	{
-		m_dumper = NULL;
-		m_shm_fd = 0;
-		m_shm_name = "";
 	}
 
 	~sinsp_memory_dumper_state()
 	{
-		if(m_dumper != NULL)
-		{
-			delete m_dumper;
-		}
+		close();
 
-		::close(m_shm_fd);
+		if(m_shm_fd != 0)
+		{
+			::close(m_shm_fd);
+		}
 
 		if(shm_unlink(m_shm_name.c_str()) != 0)
 		{
-			throw sinsp_exception(string("unable to remove the shared memory region for the sysdig memory dump: ") + strerror(errno));
+			throw sinsp_exception(string("unable to remove the shared memory region " + m_shm_name + " : ") + strerror(errno));
 		}
 	}
 
 	void close()
 	{
-		m_dumper->close();
+		m_dumper = NULL;
+		m_shm_fd = 0;
 	}
 
-	bool open(sinsp *inspector, std::string &errstr)
+	bool open(std::string &errstr)
 	{
-		if (lseek(m_shm_fd, SEEK_SET, 0) != 0)
+		shm_unlink(m_shm_name.c_str());
+
+		m_shm_fd = shm_open(m_shm_name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
+		if(m_shm_fd == -1)
 		{
-			errstr = "could not reset shared memory segment";
+			errstr = string("could not reset shared memory segment: ") + strerror(errno);
 			return false;
 		}
 
 		try
 		{
+			m_dumper = make_unique<sinsp_dumper>(m_inspector);
+
 			// NOTE: Compression is intentionally disabled. In
 			// addition to being a better tradeoff of cpu time vs
 			// space savings, the file offsets used in
@@ -68,37 +78,14 @@ public:
 			return false;
 		}
 
+		m_begin_ts = m_end_ts = 0;
+
 		return true;
 	}
 
-	void init(sinsp* inspector, uint64_t bufsize, string shm_name)
+	bool is_open()
 	{
-		m_shm_name = shm_name;
-
-		// Try to remove the shared memory segment first.
-		shm_unlink(m_shm_name.c_str());
-
-		m_shm_fd = shm_open(m_shm_name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
-		if(m_shm_fd == -1)
-		{
-			throw sinsp_exception(string("unable to allocate the shared memory region for the sysdig memory dump: ") + strerror(errno));
-		}
-
-		if(ftruncate(m_shm_fd, bufsize) != 0)
-		{
-			throw sinsp_exception(string("unable to initialize the shared memory region for the sysdig memory dump: ") + strerror(errno));
-		}
-
-		try
-		{
-			m_dumper = new sinsp_dumper(inspector);
-		}
-		catch(sinsp_exception e)
-		{
-			throw sinsp_exception(
-				"capture memory buffer too small to store process information. Current size: " +
-				to_string(m_bufsize));
-		}
+		return (m_dumper && m_dumper->is_open());
 	}
 
 	// Returns the number of bytes written.
@@ -110,10 +97,29 @@ public:
 		return m_dumper->written_bytes();
 	}
 
+	inline void dump(sinsp_evt *evt)
+	{
+		Poco::ScopedLock<Poco::FastMutex> lck(m_dumper_mtx);
+
+		if(m_begin_ts == 0)
+		{
+			m_begin_ts = evt->get_ts();
+		}
+
+		m_end_ts = evt->get_ts();
+
+		m_dumper->dump(evt);
+	}
+
+	sinsp *m_inspector;
         std::string m_shm_name;
-	sinsp_dumper* m_dumper;
+	std::unique_ptr<sinsp_dumper> m_dumper;
 	int m_shm_fd;
 	uint64_t m_bufsize;
+
+	// Reflects the timerange covered by events in this memory state.
+	uint64_t m_begin_ts;
+	uint64_t m_end_ts;
 
 	// Mutex that protects access to this state's dumper
 	Poco::FastMutex m_dumper_mtx;
@@ -237,6 +243,22 @@ public:
 			return;
 		}
 
+		// If a delayed state switch is needed, see if it is
+		// ready and if so switch states. Otherwise, skip the
+		// event.
+		if(m_delayed_switch_states_needed)
+		{
+			if(m_delayed_switch_states_ready)
+			{
+				switch_states(evt->get_ts());
+			}
+			else
+			{
+				m_delayed_switch_states_missed_events++;
+				return;
+			}
+		}
+
 		try
 		{
 #if defined(HAS_CAPTURE)
@@ -256,9 +278,12 @@ public:
 			}
 #endif
 
+			(*m_active_state)->dump(evt);
+
+			// If we've written at least m_bsize bytes to the active state, switch states.
+			if((*m_active_state)->m_dumper->next_write_position() >= (*m_active_state)->m_bufsize)
 			{
-				Poco::ScopedLock<Poco::FastMutex> lck((*m_active_state)->m_dumper_mtx);
-				(*m_active_state)->m_dumper->dump(evt);
+				switch_states(evt->get_ts());
 			}
 
 			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
@@ -309,6 +334,11 @@ private:
 	uint64_t m_saturation_inactivity_pause_ns;
 	uint64_t m_saturation_inactivity_start_time;
 	vector<sinsp_memory_dumper_job*> m_jobs;
+
+	atomic<bool> m_delayed_switch_states_needed;
+	atomic<bool> m_delayed_switch_states_ready;
+	uint64_t m_delayed_switch_states_missed_events;
+
 #if defined(HAS_CAPTURE)
 	bool m_capture_dragent_events;
 	int64_t m_sysdig_pid;

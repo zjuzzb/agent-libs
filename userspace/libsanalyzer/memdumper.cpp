@@ -25,6 +25,8 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_
 	m_disabled = false;
 	m_switches_to_go = 0;
 	m_saturation_inactivity_start_time = 0;
+	m_delayed_switch_states_needed = false;
+	m_delayed_switch_states_ready = false;
 
 #if defined(HAS_CAPTURE)
 	m_capture_dragent_events = capture_dragent_events;
@@ -39,7 +41,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	uint64_t max_disk_size,
 	uint64_t saturation_inactivity_pause_ns)
 {
-	lo(sinsp_logger::SEV_INFO, "memdump: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64 ", saturation_inactivity_pause_ns=%" PRIu64,
+	lo(sinsp_logger::SEV_INFO, "memdumper: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64 ", saturation_inactivity_pause_ns=%" PRIu64,
 		bufsize,
 		max_disk_size,
 		saturation_inactivity_pause_ns);
@@ -53,34 +55,32 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	m_inspector->m_is_dumping = true;
 
 	//
-	// Initialize the buffers
+	// Initialize the buffers. In the common case, we use 2 memory
+	// buffers. There is a possibility of using 3 when there
+	// are simultaneous readers and writers of the memory
+	// buffer. Hence the dividing by 3.
 	//
-	m_bsize = bufsize / 2;
+	m_bsize = bufsize / 3;
 
 	// 2 states
 	for(uint32_t i=0; i < 2; i++)
 	{
+		string errstr;
 		string name = "/dragent-memdumper-" + to_string(m_file_id++);
-		std::shared_ptr<sinsp_memory_dumper_state> state = make_shared<sinsp_memory_dumper_state>();
-		state->init(m_inspector, m_bsize, name);
+		std::shared_ptr<sinsp_memory_dumper_state> state = make_shared<sinsp_memory_dumper_state>(m_inspector, m_bsize, name);
 		m_states.emplace_back(state);
+
+		if(!state->open(errstr))
+		{
+			lo(sinsp_logger::SEV_ERROR, "memdump: could not open memdumer state %s: %s. Memory dump disabled", name.c_str(), errstr.c_str());
+			m_disabled = true;
+		}
+
 	}
 	m_active_state = m_states.begin();
 
 	// No reader right now
 	m_reader_state = m_states.rend();
-
-	//
-	// Initialize the dumprt
-	//
-
-	// Reopen the first state
-	string errstr;
-	if (!(*m_active_state)->open(m_inspector, errstr))
-	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: could not swap states: %s. Memory dump disabled", errstr.c_str());
-		m_disabled = true;
-	}
 
 /*
 	//
@@ -104,7 +104,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	m_f = fopen(fname.c_str(), "wb");
 	if(m_f == NULL)
 	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: cannot open file %s", fname.c_str());
+		lo(sinsp_logger::SEV_ERROR, "memdumper: cannot open file %s", fname.c_str());
 	}
 */
 	m_f = NULL;
@@ -167,13 +167,13 @@ void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
 
 	string fname = string("/tmp/sd_dump_") + name + "_" + tbuf + ".scap";
 
-	lo(sinsp_logger::SEV_INFO, "memdump: saving dump %s", fname.c_str());
+	lo(sinsp_logger::SEV_INFO, "memdumper: saving dump %s", fname.c_str());
 
 	m_cf = fopen(fname.c_str(), "wb");
 	if(m_cf == NULL)
 	{
 		lo(sinsp_logger::SEV_ERROR,
-			"memdump: cannot open file %s, dump will not happen", fname.c_str());
+			"memdumper: cannot open file %s, dump will not happen", fname.c_str());
 		return;
 	}
 
@@ -264,7 +264,14 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 					   sinsp_memory_dumper_job* job,
 					   Poco::Mutex *membuf_mtx)
 {
-	if (!state->m_dumper->is_open() || state->m_dumper->written_events() == 0)
+	if (!state->is_open() || state->m_dumper->written_events() == 0)
+	{
+		return;
+	}
+
+	// If the timerange of this memory buffer doesn't overlap with
+	// the timerange of the job, return immediately
+	if (job->m_start_time != 0 && state->m_end_ts < job->m_start_time)
 	{
 		return;
 	}
@@ -319,7 +326,7 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 		if(membuf_mtx && (*m_active_state)->m_shm_name == state->m_shm_name)
 		{
-			lo(sinsp_logger::SEV_DEBUG, "Approaching end of state=%s, locking membuf mutex", state->m_shm_name.c_str());
+			lo(sinsp_logger::SEV_DEBUG, "memdumper: Approaching end of state=%s, locking membuf mutex", state->m_shm_name.c_str());
 			membuf_mtx->lock();
 		}
 	}
@@ -397,9 +404,16 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 		while (m_states.size() > 2)
 		{
-			lo(sinsp_logger::SEV_DEBUG, "Removing temporary additional state while reader was active");
+			lo(sinsp_logger::SEV_DEBUG, "memdumper: Removing temporary additional state while reader was active");
 			m_states.pop_back();
 		}
+	}
+
+	// If process_event was waiting for a delayed state switch,
+	// allow it now.
+	if(m_delayed_switch_states_needed)
+	{
+		m_delayed_switch_states_ready = true;
 	}
 
 	//
@@ -423,7 +437,18 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 {
 	Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 
-	lo(sinsp_logger::SEV_DEBUG, "Switching memory buffer states");
+	lo(sinsp_logger::SEV_DEBUG, "memdumper: switching memory buffer states");
+
+	// If a delayed switch was needed, it's no longer needed. Log
+	// an error with the number of missed events.
+
+	if(m_delayed_switch_states_needed)
+	{
+		lo(sinsp_logger::SEV_WARNING, "memdumper: missed %lu events waiting for new job creation to finish", m_delayed_switch_states_missed_events);
+		m_delayed_switch_states_needed = false;
+		m_delayed_switch_states_ready = false;
+		m_delayed_switch_states_missed_events = 0;
+	}
 
 	//
 	// Save the capture to disk
@@ -445,44 +470,54 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 			if(toobig)
 			{
 				m_saturation_inactivity_start_time = ts;
-				lo(sinsp_logger::SEV_INFO, "memdump: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns",
+				lo(sinsp_logger::SEV_INFO, "memdumper: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns",
 					m_max_disk_size,
 					m_saturation_inactivity_pause_ns);
 			}
 			else
 			{
-				lo(sinsp_logger::SEV_INFO, "memdump: dump closed");
+				lo(sinsp_logger::SEV_INFO, "memdumper: dump closed");
 			}
 		}
 	}
 
-	// Close the first state
-	(*m_active_state)->m_dumper->close();
-
 	// If a reader is reading the last state, create a new state
-	// and put it at the front. Otherwise, take the last state and
-	// put it at the front.
+	// and put it at the front. However, never create more than 3
+	// states. If there are already 3 states, simply skip event
+	// processing until the reader has read all the states and
+	// brought the total down to 2.
+
+	// Otherwise, take the last state and put it at the front.
 	if(m_reader_state == m_states.rbegin())
+	{
+		if(m_states.size() < 3)
+		{
+			lo(sinsp_logger::SEV_DEBUG, "memdumper: creating temporary additional state while reader is active");
+			string name = "/dragent-memdumper-" + to_string(m_file_id++);
+			m_states.emplace_front(make_shared<sinsp_memory_dumper_state>(m_inspector, m_bsize, name));
+		}
+		else
+		{
+			lo(sinsp_logger::SEV_WARNING, "memdumper: stopping event processing while new job creation is active");
+			m_delayed_switch_states_needed = true;
+			m_delayed_switch_states_ready = false;
+			m_delayed_switch_states_missed_events = 0;
+		}
+	}
+	else
 	{
 		shared_ptr<sinsp_memory_dumper_state> st = m_states.back();
 		m_states.pop_back();
 		m_states.push_front(st);
-	}
-	else
-	{
-		lo(sinsp_logger::SEV_DEBUG, "Creating temporary additional state while reader is active");
-		string name = "/dragent-memdumper-" + to_string(m_file_id++);
-		m_states.emplace_front();
-		(*m_states.begin())->init(m_inspector, m_bsize, name);
 	}
 
 	m_active_state = m_states.begin();
 
 	// Reopen the first state
 	string errstr;
-	if (!(*m_active_state)->open(m_inspector, errstr))
+	if (!(*m_active_state)->open(errstr))
 	{
-		lo(sinsp_logger::SEV_ERROR, "memdump: could not swap states: %s. Memory dump disabled", errstr.c_str());
+		lo(sinsp_logger::SEV_ERROR, "memdumper: could not reopen swapped state: %s. Memory dump disabled", errstr.c_str());
 		m_disabled = true;
 		return;
 	}
