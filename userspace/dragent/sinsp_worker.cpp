@@ -895,10 +895,13 @@ void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t 
 
 	if(m_running_standard_dump_jobs.empty())
 	{
-		g_log->information("Disabling dropping mode");
-		m_analyzer->set_autodrop_enabled(false);
-		m_analyzer->stop_dropping_mode();
-		m_driver_stopped_dropping_ns = ts;
+		if(m_configuration->m_autodrop_enabled)
+		{
+			g_log->information("Disabling dropping mode by setting sampling ratio to 1");
+			m_analyzer->start_dropping_mode(1);
+			m_analyzer->set_capture_in_progress(true);
+			m_driver_stopped_dropping_ns = ts;
+		}
 	}
 
 	m_running_standard_dump_jobs.push_back(job_state);
@@ -1038,8 +1041,8 @@ void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jo
 
 				if(m_configuration->m_autodrop_enabled)
 				{
-					m_analyzer->set_autodrop_enabled(true);
 					m_analyzer->start_dropping_mode(1);
+					m_analyzer->set_capture_in_progress(false);
 				}
 			}
 		}

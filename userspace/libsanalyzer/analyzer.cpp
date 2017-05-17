@@ -111,6 +111,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 #endif
 	m_trans_table = NULL;
 	m_is_sampling = false;
+	m_capture_in_progress = false;
 	m_driver_stopped_dropping = false;
 	m_sampling_ratio = 1;
 	m_new_sampling_ratio = m_sampling_ratio;
@@ -2963,27 +2964,28 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds())
 		{
 			m_seconds_above_thresholds = 0;
+			uint32_t new_sampling_ratio = 1;
 
 			if(m_sampling_ratio < 128)
 			{
 				if(!m_is_sampling)
 				{
-					m_new_sampling_ratio = 1;
+					new_sampling_ratio = 1;
 					m_is_sampling = true;
 				}
 				else
 				{
-					m_new_sampling_ratio = m_sampling_ratio * 2;
+					new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
-				if(m_new_sampling_ratio == 2)
+				if(new_sampling_ratio == 2)
 				{
 					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
 					m_do_baseline_calculation = false;
 					m_falco_baseliner->clear_tables();
 				}
 
-				start_dropping_mode(m_new_sampling_ratio);
+				start_dropping_mode(new_sampling_ratio);
 			}
 			else
 			{
@@ -3049,19 +3051,19 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 
 				if(m_new_sampling_ratio > 1)
 				{
-					m_new_sampling_ratio = m_sampling_ratio / 2;
+					uint32_t new_sampling_ratio = m_sampling_ratio / 2;
 
-					if(m_new_sampling_ratio <= 128)
+					if(new_sampling_ratio <= 128)
 					{
-						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_new_sampling_ratio);
-						start_dropping_mode(m_new_sampling_ratio);
+						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, new_sampling_ratio);
+						start_dropping_mode(new_sampling_ratio);
 					}
 					else
 					{
 						// default to lowest, tuner will adjust it quick if there's not much load
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", m_new_sampling_ratio);
-						m_new_sampling_ratio = 128;
-						start_dropping_mode(m_new_sampling_ratio);
+						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", new_sampling_ratio);
+						new_sampling_ratio = 128;
+						start_dropping_mode(new_sampling_ratio);
 					}
 				}
 			}
@@ -4021,7 +4023,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
 	m_cputime_analyzer.end_flush();
-	if(m_configuration->get_autodrop_enabled())
+	if(m_configuration->get_autodrop_enabled() && !m_capture_in_progress)
 	{
 		m_prev_flush_cpu_pct = m_cputime_analyzer.calc_flush_percent();
 		g_logger.log("m_prev_flush_cpu_pct=" + std::to_string(m_prev_flush_cpu_pct) + ", m_my_cpuload=" + std::to_string(m_my_cpuload) +
@@ -6047,6 +6049,7 @@ void sinsp_analyzer::stop_dropping_mode()
 
 void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 {
+	m_new_sampling_ratio = sampling_ratio;
 	m_inspector->start_dropping_mode(sampling_ratio);
 
 	if(m_falco_engine)

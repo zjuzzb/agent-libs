@@ -281,6 +281,11 @@ public:
 		m_is_sampling = is_sampling;
 	}
 
+	void set_capture_in_progress(bool in_progress)
+	{
+		m_capture_in_progress = in_progress;
+	}
+
 #ifndef _WIN32
 	inline void check_metric_limits()
 	{
@@ -596,6 +601,7 @@ VISIBILITY_PRIVATE
 	// Subsampling-related stuff
 	//
 	bool m_is_sampling;
+	bool m_capture_in_progress;
 	bool m_driver_stopped_dropping;
 	uint32_t m_sampling_ratio;
 	uint32_t m_new_sampling_ratio;
