@@ -343,7 +343,11 @@ void sinsp_analyzer::on_capture_start()
 	// Start the falco baseliner
 	//
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
-	m_falco_baseliner->init(m_inspector);
+	if(m_do_baseline_calculation)
+	{
+		lo("starting baseliner");
+		m_falco_baseliner->init(m_inspector);
+	}
 
 	//
 	// Enable memery dump
@@ -2980,9 +2984,12 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 
 				if(new_sampling_ratio == 2)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-					m_do_baseline_calculation = false;
-					m_falco_baseliner->clear_tables();
+					if(m_do_baseline_calculation)
+					{
+						g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
+						m_do_baseline_calculation = false;
+						m_falco_baseliner->clear_tables();
+					}
 				}
 
 				start_dropping_mode(new_sampling_ratio);
@@ -3850,7 +3857,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 				}
-//				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > 5000000000)
 				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
 				{
 					if(m_last_falco_dump_ts != 0)
