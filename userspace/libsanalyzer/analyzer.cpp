@@ -5804,7 +5804,11 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
-		thread_analyzer_info* ainfo = it->second.m_ainfo;
+		if(!it->second.is_main_thread())
+		{
+			continue;
+		}
+		auto ainfo = it->second.m_ainfo->main_thread_ainfo();
 
 		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{
