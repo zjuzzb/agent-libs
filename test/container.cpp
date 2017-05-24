@@ -404,8 +404,14 @@ TEST_F(sys_call_test, container_rkt_after)
 			system("xargs -a /tmp/myrkt rkt rm > /dev/null");
 		}
 
-		int rc = system("systemd-run rkt run --interactive --insecure-options=image --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
-		if(rc != 0)
+		int rc = system("rkt fetch --insecure-options=image docker://busybox");
+		if (rc != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
+		if (rc != 0)
 		{
 			ASSERT_TRUE(false);
 		}
@@ -461,8 +467,15 @@ TEST_F(sys_call_test, container_rkt_before)
 	}
 
 	// start rkt before sysdig
-	int rc = system("systemd-run rkt run --interactive --insecure-options=image --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
-	if(rc != 0)
+
+	int rc = system("rkt fetch --insecure-options=image docker://busybox");
+	if (rc != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
+	if (rc != 0)
 	{
 		ASSERT_TRUE(false);
 	}
