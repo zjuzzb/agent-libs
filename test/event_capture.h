@@ -113,6 +113,8 @@ public:
 		{
 			GTEST_MESSAGE_(capturing.m_start_failure_message.c_str(), ::testing::TestPartResult::kFatalFailure);
 		}
+
+		thread.join();
 	}
 
 private:

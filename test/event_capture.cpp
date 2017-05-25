@@ -48,10 +48,10 @@ void event_capture::capture()
 			m_inspector->open(ONE_SECOND_MS);
 		}
 	}
-	catch(...)
+	catch(sinsp_exception &e)
 	{
 		m_start_failed = true;
-		m_start_failure_message = "couldn't open inspector (maybe driver hasn't been loaded yet?)";
+		m_start_failure_message = "couldn't open inspector (maybe driver hasn't been loaded yet?) err=" + m_inspector->getlasterr() + " exception=" + e.what();
 		m_capture_started.set();
 		delete m_inspector;
 		delete m_analyzer;
@@ -136,4 +136,15 @@ void event_capture::capture()
 	delete m_inspector;
 	delete m_analyzer;
 	m_capture_stopped.set();
+
+	// At this point there should be no consumers of the driver remaining.
+	uint32_t num_consumers = 0;
+
+	FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
+	ASSERT_TRUE(ref != NULL);
+
+	ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
+	ASSERT_EQ(num_consumers, 0);
+
+	fclose(ref);
 }

@@ -159,7 +159,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 				//
 				// Wait for child to exit, and store its status
 				//
-				wait(&status);	
+				ASSERT_EQ(waitpid(ctid, &status, 0), ctid);
 			}
 		}
 		else
