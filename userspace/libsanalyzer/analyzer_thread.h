@@ -218,7 +218,7 @@ public:
 	main_thread_analyzer_info* main_thread_ainfo()
 	{
 		auto main_thread = m_tinfo->get_main_thread();
-		if(m_tinfo != main_thread)
+		if(main_thread != nullptr && m_tinfo != main_thread)
 		{
 			return main_thread->m_ainfo->main_thread_ainfo();
 		}
