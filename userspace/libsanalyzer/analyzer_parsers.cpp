@@ -351,15 +351,15 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	if((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
 	}
 	else if((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;
 	}
 	else if((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
 	}
 
 	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);
