@@ -387,6 +387,11 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+	void set_simpledriver_mode()
+	{
+		m_simpledriver_enabled = true;
+	}
+
 	void enable_falco(const string &default_rules_filename,
 			  const string &auto_rules_filename,
 			  const string &rules_filename,

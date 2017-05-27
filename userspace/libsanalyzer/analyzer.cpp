@@ -120,7 +120,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
 	m_skip_proc_parsing = false;
-	m_simpledriver_enabled = true;
+	m_simpledriver_enabled = false;
 	m_prev_flush_wall_time = 0;
 	m_die = false;
 	m_run_chisels = false;

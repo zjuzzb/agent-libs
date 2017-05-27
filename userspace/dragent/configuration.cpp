@@ -900,6 +900,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		// our dropping mechanism can't help in this mode
 		m_autodrop_enabled = false;
 	}
+	else if(mode_s == "simpledriver")
+	{
+		m_mode = dragent_mode_t::SIMPLEDRIVER;
+		// disabling features that don't work in this mode
+		m_enable_falco_engine = false;
+		m_falco_baselining_enabled = false;
+	}
 
 	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
 	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
@@ -1169,9 +1176,14 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Emitting sysdig tracers enabled");
 	}
+
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
 		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
+	}
+	else if(m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		g_log->information("Running in simple driver mode, Falco and Sysdig Captures will not work");
 	}
 
 	g_log->information("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));

@@ -420,7 +420,8 @@ private:
 
 enum class dragent_mode_t {
 	STANDARD,
-	NODRIVER
+	NODRIVER,
+	SIMPLEDRIVER
 };
 
 class dragent_configuration
