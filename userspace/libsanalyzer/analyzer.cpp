@@ -120,6 +120,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
 	m_skip_proc_parsing = false;
+	m_simpledriver_enabled = true;
 	m_prev_flush_wall_time = 0;
 	m_die = false;
 	m_run_chisels = false;
@@ -603,13 +604,16 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 {
-	m_ipv4_connections->remove_expired_connections(ts);
+	if(!m_simpledriver_enabled)
+	{
+		m_ipv4_connections->remove_expired_connections(ts);
 #ifdef HAS_UNIX_CONNECTIONS
-	m_unix_connections->remove_expired_connections(ts);
+		m_unix_connections->remove_expired_connections(ts);
 #endif
 #ifdef HAS_PIPE_CONNECTIONS
-	m_pipe_connections->remove_expired_connections(ts);
+		m_pipe_connections->remove_expired_connections(ts);
 #endif
+	}
 }
 
 sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
@@ -834,7 +838,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 }
 
 template<class Iterator>
-void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
@@ -975,6 +979,124 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//		break;
 	//	}
 	//}
+}
+
+//
+// The simple driver only captures a very limited number of system calls, like clone, execve, connect and accept.
+// As a consequence, process filtering needs to use simpler criteria.
+//
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+{
+	uint32_t j;
+
+	vector<sinsp_threadinfo*> prog_sortable_list;
+
+	for(auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
+	{
+		if(cs_only)
+		{
+			uint64_t netops = (*ptit)->m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count;
+
+			if(netops != 0)
+			{
+				prog_sortable_list.push_back(*ptit);
+			}
+		}
+		else
+		{
+			prog_sortable_list.push_back(*ptit);
+		}
+	}
+
+	if(prog_sortable_list.size() <= howmany)
+	{
+		for(j = 0; j < prog_sortable_list.size(); j++)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+
+		return;
+	}
+
+	//
+	// Mark the top CPU consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
+
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	//
+	// Mark the top memory consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_memory_cs:threadinfo_cmp_memory);
+
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_vmsize_kb > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	//
+	// Mark the top syscall producers
+	//
+	if(!m_inspector->is_nodriver())
+	{
+		partial_sort(prog_sortable_list.begin(),
+					 prog_sortable_list.begin() + howmany,
+					 prog_sortable_list.end(),
+					 threadinfo_cmp_evtcnt);
+
+		for(j = 0; j < howmany; j++)
+		{
+			ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+
+			if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+			{
+				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+			}
+			else
+			{
+				break;
+			}
+		}
+	}
+}
+
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+{
+	if(m_simpledriver_enabled)
+	{
+		filter_top_programs_simpledriver(progtable_begin, progtable_end, cs_only, howmany);
+	}
+	else
+	{
+		filter_top_programs_normaldriver(progtable_begin, progtable_end, cs_only, howmany);
+
+	}
 }
 
 bool sinsp_analyzer::check_k8s_server(string& addr)
@@ -2844,9 +2966,12 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Skip connection that had no activity during the sample
 		//
-		if(!acit->second.is_active())
+		if(!m_simpledriver_enabled)
 		{
-			continue;
+			if(!acit->second.is_active())
+			{
+				continue;
+			}
 		}
 
 		//

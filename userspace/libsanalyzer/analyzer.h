@@ -415,8 +415,12 @@ VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
 	void chisels_do_timeout(sinsp_evt* ev);
-	template<class Iterator>
-	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	void filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	void filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
@@ -547,8 +551,11 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
+
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
+
+	bool m_simpledriver_enabled;
 
 	//
 	// The scheduler analyzer
