@@ -1062,25 +1062,22 @@ void sinsp_analyzer::filter_top_programs_simpledriver(Iterator progtable_begin, 
 	//
 	// Mark the top syscall producers
 	//
-	if(!m_inspector->is_nodriver())
+	partial_sort(prog_sortable_list.begin(),
+				 prog_sortable_list.begin() + howmany,
+				 prog_sortable_list.end(),
+				 threadinfo_cmp_evtcnt);
+
+	for(j = 0; j < howmany; j++)
 	{
-		partial_sort(prog_sortable_list.begin(),
-					 prog_sortable_list.begin() + howmany,
-					 prog_sortable_list.end(),
-					 threadinfo_cmp_evtcnt);
+		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
 
-		for(j = 0; j < howmany; j++)
+		if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
 		{
-			ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
-
-			if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
-			{
-				prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
-			}
-			else
-			{
-				break;
-			}
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
 		}
 	}
 }

@@ -318,6 +318,7 @@ void sinsp_worker::init()
 	{
 		m_inspector->open("");
 		m_inspector->set_simpledriver_mode();
+		m_analyzer->set_simpledriver_mode();
 		// Change these values so the inactive thread pruning
 		// runs more often
 		m_inspector->m_thread_timeout_ns = 0;
