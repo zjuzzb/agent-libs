@@ -20,7 +20,7 @@ class log_reporter
 {
 public:
 	log_reporter(protocol_queue*, dragent_configuration*);
-	void send_report();
+	void send_report(uint64_t ts_ns);
 private:
 	protocol_queue* m_queue;
 	dragent_configuration* m_configuration;

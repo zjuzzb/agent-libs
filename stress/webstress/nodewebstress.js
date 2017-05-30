@@ -41,13 +41,13 @@ function req_loop()
   j++;
 //  options.path = '/' + j.toString();
 //  sleep.usleep(100);
-  http.request(options, callback).end();
+//  http.request(options, callback).end();
 
   if(j < MAX_VIDEO_REQUESTS)
   {
-    setTimeout(req_loop, 0);
+    setTimeout(req_loop, 1);
   }
 }
 
 http.globalAgent.maxSockets = 400;
-req_loop()
+  req_loop()

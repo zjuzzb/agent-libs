@@ -297,7 +297,7 @@ void subprocesses_logger::run()
 		}
 		if(dragent_configuration::m_send_log_report)
 		{
-			m_log_reporter->send_report();
+			m_log_reporter->send_report(m_last_loop_ns);
 			dragent_configuration::m_send_log_report = false;
 		}
 	}

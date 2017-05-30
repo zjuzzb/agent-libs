@@ -136,8 +136,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_falco_baseliner = new sisnp_baseliner();
 
-	m_memdumper = NULL;
-
 	//
 	// Listeners
 	//
@@ -214,11 +212,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_falco_baseliner;
 	}
 
-	if(m_memdumper != NULL)
-	{
-		delete m_memdumper;
-	}
-
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -255,11 +248,6 @@ void sinsp_analyzer::on_capture_start()
 	{
 		throw sinsp_exception("analyzer can be opened only once");
 	}
-
-	//
-	// Allocate the memory dumprt
-	//
-	m_memdumper = new sinsp_memory_dumper(m_inspector, m_configuration->get_capture_dragent_events());
 
 	//
 	// Start dropping of non-critical events
@@ -347,17 +335,6 @@ void sinsp_analyzer::on_capture_start()
 	{
 		lo("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
-	}
-
-	//
-	// Enable memery dump
-	//
-	uint64_t memdump_size = m_configuration->get_memdump_size();
-	m_do_memdump = (memdump_size != 0);
-	if(m_do_memdump)
-	{
-		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
-		m_memdumper->init(memdump_size, memdump_size, 300LL * 1000000000LL);
 	}
 }
 
@@ -3224,7 +3201,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 					ASSERT(host_dest == NULL);
 					ASSERT(container_dest != NULL);
 					cd = container_dest->add_commands();
-				}					
+				}
 
 				cd->set_timestamp(it->m_ts);
 				cd->set_count(it->m_count);
@@ -3402,7 +3379,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
 								m_docker_swarm_state->CopyFrom(res->state());
 								if (!res->successful()) {
-									
+
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 								}
@@ -4248,7 +4225,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		// Probably driver switched to sampling=1 without
 		// sending a drop_event with an updated sampleratio.
 		// forcing it
-		g_logger.log("Did not receive drop event to confirm sampling_ratio, forcing update", sinsp_logger::SEV_WARNING);
+		g_logger.log("Did not receive drop event to confirm sampling_ratio " + to_string(m_sampling_ratio) + ", forcing update", sinsp_logger::SEV_WARNING);
 		set_sampling_ratio(m_new_sampling_ratio);
 		m_last_dropmode_switch_time = ts;
 	}
@@ -4281,19 +4258,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-	// If required, dump the event in the memory circular buffer
-	//
-	if(m_do_memdump)
-	{
-		m_memdumper->process_event(evt);
-
-		if(m_inspector->m_flush_memory_dump)
-		{
-			m_memdumper->push_notification(evt->get_ts(), evt->get_tid(), to_string(evt->get_num()), "dump triggered by agent engine");
-			m_memdumper->to_file_multi("sinsp", evt->get_ts());
-			m_inspector->m_flush_memory_dump = false;
-		}
-	}
 
 	//
 	// If process the event in the baseliner
