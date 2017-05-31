@@ -131,4 +131,5 @@ private:
 
 	friend class dragent_app;
 	friend class memdump_test;
+	friend class security_policies_test;
 };

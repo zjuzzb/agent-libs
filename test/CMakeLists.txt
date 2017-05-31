@@ -60,6 +60,7 @@ add_executable(tests
 	percentile.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/sdc_internal.pb.cc
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/sdc_internal.grpc.pb.cc
+	security_policies.cpp
 	socketpair.cpp
 	sql.cpp
 	sys_call_test.cpp
