@@ -3007,7 +3007,7 @@ void sinsp_analyzer::emit_full_connections()
 		//
 		// We only include connections that had activity during the sample
 		//
-		if(cit->second.is_active())
+		if(cit->second.is_active() || m_simpledriver_enabled)
 		{
 			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
