@@ -257,28 +257,37 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// Navigate the parent processes to determine if this is the descendent of a shell
 	// and if yes what's the shell ID
 	//
-	sinsp_threadinfo* ttinfo = tinfo;
 	uint32_t shell_dist = 0;
 	uint64_t login_shell_id = 0;
+	uint32_t cur_shell_dist = 0;
 
-	for(uint32_t j = 0; ; j++)
+	sinsp_threadinfo::visitor_func_t visitor = [&login_shell_id, &shell_dist, &cur_shell_dist] (sinsp_threadinfo *ptinfo)
 	{
-		uint32_t cl = ttinfo->m_comm.size();
-		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
+		uint32_t cl = ptinfo->m_comm.size();
+		if(cl >= 2 && ptinfo->m_comm[cl - 2] == 's' && ptinfo->m_comm[cl - 1] == 'h')
 		{
 			//
 			// We found a shell. Patch the descendat but don't stop here since there might
 			// be another parent shell
 			//
-			login_shell_id = ttinfo->m_tid;
-			shell_dist = j;
+			login_shell_id = ptinfo->m_tid;
+			shell_dist = cur_shell_dist;
 		}
 
-		ttinfo = ttinfo->get_parent_thread();
-		if(ttinfo == NULL)
-		{
-			break;
-		}
+		cur_shell_dist++;
+		return true;
+	};
+
+	if(visitor(tinfo))
+	{
+		tinfo->traverse_parent_state(visitor);
+	}
+
+	// If the parents chain is broken, ignore login_shell_id and shell_dist because not meaningful
+	if(tinfo->m_parent_loop_detected)
+	{
+		login_shell_id = 0;
+		shell_dist = 0;
 	}
 
 	switch(m_analyzer->get_configuration_read_only()->get_command_lines_capture_mode())
@@ -342,15 +351,15 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	if((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
 	}
 	else if((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;
 	}
 	else if((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
 	}
 
 	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);

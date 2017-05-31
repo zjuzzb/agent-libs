@@ -489,13 +489,18 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		// 1. some processes (eg. redis) wipe their env
 		// try to grab the env from it up to its parent (within the same container)
 		auto conf = m_tinfo->get_env(SYSDIG_AGENT_CONF);
-		auto ptinfo = m_tinfo->get_parent_thread();
-		while(conf.empty() && ptinfo != nullptr &&
-				ptinfo->m_container_id == m_tinfo->m_container_id)
+		sinsp_threadinfo::visitor_func_t visitor = [&conf, this] (sinsp_threadinfo *ptinfo)
 		{
+			if(!conf.empty() || ptinfo->m_container_id != this->m_tinfo->m_container_id)
+			{
+				return false;
+			}
+
 			conf = ptinfo->get_env(SYSDIG_AGENT_CONF);
-			ptinfo = ptinfo->get_parent_thread();
-		}
+			return true;
+		};
+
+		m_tinfo->traverse_parent_state(visitor);
 
 		// 2. As last chance, use the Env coming from Docker
 		if(conf.empty() && !m_tinfo->m_container_id.empty())
