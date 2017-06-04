@@ -101,6 +101,16 @@ int main(int argc, char **argv)
 	md.TreatAsMap(FindField(m1, "metrics.programs"),
 		      FindField(m1, "metrics.programs.pids"));
 
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.client_queries"),
+				  FindField(m1, "metrics.protos.mysql.client_queries.name"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.client_query_types"),
+				  FindField(m1, "metrics.protos.mysql.client_query_types.type"));
+
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.client_query_types"),
+				  FindField(m1, "metrics.protos.mysql.client_query_types.type"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.http.client_urls"),
+				  FindField(m1, "metrics.protos.http.client_urls.url"));
+
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_1"));
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_5"));
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_15"));
