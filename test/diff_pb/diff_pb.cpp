@@ -105,11 +105,24 @@ int main(int argc, char **argv)
 				  FindField(m1, "metrics.protos.mysql.client_queries.name"));
 	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.client_query_types"),
 				  FindField(m1, "metrics.protos.mysql.client_query_types.type"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.client_tables"),
+				  FindField(m1, "metrics.protos.mysql.client_tables.name"));
 
-	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.client_query_types"),
-				  FindField(m1, "metrics.protos.mysql.client_query_types.type"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.server_queries"),
+				  FindField(m1, "metrics.protos.mysql.server_queries.name"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.server_query_types"),
+				  FindField(m1, "metrics.protos.mysql.server_query_types.type"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.mysql.server_tables"),
+				  FindField(m1, "metrics.protos.mysql.server_tables.name"));
+
 	md.TreatAsMap(FindField(m1, "metrics.protos.http.client_urls"),
 				  FindField(m1, "metrics.protos.http.client_urls.url"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.http.client_status_codes"),
+				  FindField(m1, "metrics.protos.http.client_status_codes.status_code"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.http.server_urls"),
+				  FindField(m1, "metrics.protos.http.server_urls.url"));
+	md.TreatAsMap(FindField(m1, "metrics.protos.http.server_status_codes"),
+				  FindField(m1, "metrics.protos.http.server_status_codes.status_code"));
 
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_1"));
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_5"));
