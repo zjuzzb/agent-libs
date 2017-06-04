@@ -86,7 +86,7 @@ string posix_queue::receive(uint64_t timeout_s)
 		ts.tv_sec = now / ONE_SECOND_IN_NS + timeout_s;
 		unsigned int prio = 0;
 		auto res = mq_timedreceive(m_queue_d, m_readbuffer, MAX_MSGSIZE, &prio, &ts);
-		if(res > 0)
+		if(res >= 0)
 		{
 			return string(m_readbuffer, res);
 		} else if (errno == ETIMEDOUT || errno == EINTR) {
