@@ -187,6 +187,74 @@ TEST_F(sys_call_test, open_close)
 	EXPECT_EQ(4, callnum);
 }
 
+TEST_F(sys_call_test, open_close_dropping)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return (0 == strcmp(evt->get_name(), "open") || 0 == strcmp(evt->get_name(), "close")) && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		inspector->start_dropping_mode(1);
+		int fd = open("/tmp", O_RDONLY);
+		close(fd);
+		inspector->stop_dropping_mode();
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		if (0 == strcmp(param.m_evt->get_name(),"open") && param.m_evt->get_direction() == SCAP_ED_OUT)
+		{
+			EXPECT_EQ("<f>/tmp", param.m_evt->get_param_value_str("fd"));
+		}
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(4, callnum);
+}
+
+TEST_F(sys_call_test, close_badfd)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return 0 == strcmp(evt->get_name(), "close") && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		close(-1);
+		close(INT_MAX);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(4, callnum);
+}
+
+TEST_F(sys_call_test, close_badfd_dropping)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return 0 == strcmp(evt->get_name(), "close") && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		inspector->start_dropping_mode(1);
+		close(-1);
+		close(INT_MAX);
+		inspector->stop_dropping_mode();
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(0, callnum);
+}
+
 TEST_F(sys_call_test, poll_timeout)
 {
 	int callnum = 0;
