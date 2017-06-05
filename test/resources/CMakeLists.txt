@@ -24,6 +24,7 @@ file(COPY fake_backend.cert
 		jmx_ok.json
 		jmx_segfault.json
 		jmx_wrong_object.json
+		security_policies_message.txt
 		statsite_output.txt
 		tcp_client.py
 		tcp_server.py
