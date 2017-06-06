@@ -97,15 +97,6 @@ protected:
 
 	virtual void TearDown()
 	{
-		// Remove any existing trace files
-		std::set<string> traces;
-		Poco::Glob::glob(string("/tmp/") + memdump_test::agent_dump_token + "*", traces);
-
-		for(auto file : traces)
-		{
-			ASSERT_EQ(unlink(file.c_str()), 0);
-		}
-
 		dragent_configuration::m_terminate = true;
 
 		ThreadPool::defaultPool().stopAll();
@@ -114,6 +105,16 @@ protected:
 		delete m_capture_job_handler;
 		delete m_queue;
 		delete m_policy_events;
+
+		// Remove any existing trace files. This shouldn't
+		// strictly be necessary but just making sure.
+		std::set<string> traces;
+		Poco::Glob::glob(string("/tmp/") + memdump_test::agent_dump_token + "*", traces);
+
+		for(auto file : traces)
+		{
+			ASSERT_EQ(unlink(file.c_str()), 0);
+		}
 	}
 
 	string make_token(const string &tag)
