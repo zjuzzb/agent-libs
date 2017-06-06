@@ -209,6 +209,7 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 
 		if(memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
+			m_state = ST_DONE_ERROR;
 			errstr = memjob->m_lasterr;
 			delete memjob;
 			return false;
@@ -286,16 +287,19 @@ void capture_job::flush(uint64_t ts, bool &throttled)
 		}
 	}, ts);
 
-	struct stat st;
-	if(stat(m_file.c_str(), &st) != 0)
+	if(m_state != ST_DONE_ERROR)
 	{
-		log_error("error checking file size");
-		m_handler->send_error(m_token, "Error checking file size");
-		m_state = ST_DONE_ERROR;
-		ASSERT(false);
-	}
+		struct stat st;
+		if(stat(m_file.c_str(), &st) != 0)
+		{
+			log_error("error checking file size");
+			m_handler->send_error(m_token, "Error checking file size");
+			m_state = ST_DONE_ERROR;
+			ASSERT(false);
+		}
 
-	m_file_size = st.st_size;
+		m_file_size = st.st_size;
+	}
 
 	// Note that if any job is throttled while
 	// iterating over the vector of jobs, the
