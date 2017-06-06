@@ -211,8 +211,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_falco_baseliner;
 	}
-
-	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void sinsp_analyzer::emit_percentiles_config()

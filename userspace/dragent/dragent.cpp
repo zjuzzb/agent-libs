@@ -55,6 +55,7 @@ dragent_app::dragent_app():
 dragent_app::~dragent_app()
 {
 	delete g_log;
+	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void dragent_app::initialize(Application& self)
