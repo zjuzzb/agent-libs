@@ -90,6 +90,9 @@ public:
 
 	statsd_metric();
 
+	static string sanitize_container_id(string container_id);
+	static string desanitize_container_id(string container_id);
+
 	static const char CONTAINER_ID_SEPARATOR = '$';
 private:
 	uint64_t m_timestamp;
@@ -122,6 +125,7 @@ public:
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:
+
 	FILE* m_input_fd;
 	FILE* m_output_fd;
 	statsd_metric m_metric;
@@ -138,6 +142,7 @@ public:
 private:
 	void on_read(Poco::Net::ReadableNotification* notification);
 	void on_error(Poco::Net::ErrorNotification* notification);
+	
 	unique_ptr<Poco::Net::DatagramSocket> make_socket(const Poco::Net::SocketAddress& address);
 	string m_containerid;
 	statsite_proxy& m_statsite;

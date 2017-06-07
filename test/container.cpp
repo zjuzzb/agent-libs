@@ -433,7 +433,7 @@ TEST_F(sys_call_test, container_rkt_after)
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
 		}
 
-		ASSERT_TRUE(tinfo->m_container_id.length() == 42);
+		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
 		sinsp_container_info container_info;
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
@@ -511,7 +511,7 @@ TEST_F(sys_call_test, container_rkt_before)
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
 		}
 
-		ASSERT_TRUE(tinfo->m_container_id.length() == 42);
+		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
 		sinsp_container_info container_info;
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);

@@ -7,6 +7,7 @@
 #include "statsite_proxy.h"
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
+#include <algorithm>
 
 #ifndef _WIN32
 
@@ -98,13 +99,12 @@ bool statsd_metric::parse_line(const string& line)
 			}
 			m_name = name;
 
-			const auto& container_id = name_and_container_id_split.at(0);
+			auto container_id = desanitize_container_id(name_and_container_id_split.at(0));
 			if(m_full_identifier_parsed && m_container_id != container_id)
 			{
 				return false;
-
 			}
-			m_container_id = container_id;
+			m_container_id = move(container_id);
 		}
 		else
 		{
@@ -238,6 +238,23 @@ void statsd_metric::to_protobuf(draiosproto::statsd_metric *proto) const
 	}
 }
 
+string statsd_metric::sanitize_container_id(string container_id)
+{
+	// Unfortunately rkt container id have `:` char which is a reserved char in statsd protocol
+	// as a workaround we translate it to another char
+	ASSERT(container_id.find('+') == container_id.end());
+	replace(container_id.begin(), container_id.end(), ':', '+');
+	return container_id;
+}
+
+string statsd_metric::desanitize_container_id(string container_id)
+{
+	// rkt containerid has a ':' char that we have translated to "+"
+	// because its reserved in statsd protocol, here we put it back to :
+	replace(container_id.begin(), container_id.end(), '+', ':');
+	return container_id;
+}
+
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 		m_input_fd(fds.first),
 		m_output_fd(fds.second)
@@ -365,7 +382,8 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 {
 	// Send the metric with containerid prefix
 	// Prefix container metrics with containerid and $
-	auto container_prefix = container_id + statsd_metric::CONTAINER_ID_SEPARATOR;
+	auto container_prefix = statsd_metric::sanitize_container_id(container_id) +
+							statsd_metric::CONTAINER_ID_SEPARATOR;
 
 	// Init metric data with initial container_prefix
 	auto metric_data = container_prefix;

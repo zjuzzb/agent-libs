@@ -122,6 +122,14 @@ TEST(statsd_metric, parser_edge_cases)
 	EXPECT_DOUBLE_EQ(2.0, metric.value());
 }
 
+TEST(statsd_metric, sanitize_container)
+{
+	EXPECT_EQ("d19fefe08-18fb-40e2-82c6-dd5d971785d0+statsd-example",
+				statsd_metric::sanitize_container_id("d19fefe08-18fb-40e2-82c6-dd5d971785d0:statsd-example"));
+	EXPECT_EQ("d19fefe08-18fb-40e2-82c6-dd5d971785d0:statsd-example",
+				statsd_metric::desanitize_container_id("d19fefe08-18fb-40e2-82c6-dd5d971785d0+statsd-example"));
+}
+
 TEST(statsite_proxy, parser)
 {
 	auto output_file = fopen("resources/statsite_output.txt", "r");
