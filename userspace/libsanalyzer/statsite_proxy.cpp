@@ -242,7 +242,7 @@ string statsd_metric::sanitize_container_id(string container_id)
 {
 	// Unfortunately rkt container id have `:` char which is a reserved char in statsd protocol
 	// as a workaround we translate it to another char
-	ASSERT(container_id.find('+') == container_id.end());
+	ASSERT(container_id.find('+') == string::npos);
 	replace(container_id.begin(), container_id.end(), ':', '+');
 	return container_id;
 }
