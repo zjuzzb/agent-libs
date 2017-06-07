@@ -117,6 +117,21 @@ jmx:
           attributes:
             - name: Value
               alias: cassandra.write.pending
+        - query: "org.apache.cassandra.metrics:type=DroppedMessage,scope=MUTATION,name=Dropped"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.mutation.dropped
+        - query: "org.apache.cassandra.metrics:type=DroppedMessage,scope=COUNTER_MUTATION,name=Dropped"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.counter.mutation.dropped
+        - query: "org.apache.cassandra.metrics:type=DroppedMessage,scope=READ,name=Dropped"
+          attributes:
+            - name: Count
+              type: counter
+              alias: cassandra.read.dropped
     tomcat:
       pattern: "catalina"
       beans:
