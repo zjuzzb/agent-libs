@@ -74,7 +74,7 @@ public:
 		catch(sinsp_exception e)
 		{
 			errstr = "capture memory buffer too small to store process information. Current size: " +
-				m_bufsize;
+				to_string(m_bufsize);
 			return false;
 		}
 
