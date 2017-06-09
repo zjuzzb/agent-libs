@@ -134,7 +134,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sisnp_baseliner();
+	m_falco_baseliner = new sinsp_baseliner();
 
 	//
 	// Listeners

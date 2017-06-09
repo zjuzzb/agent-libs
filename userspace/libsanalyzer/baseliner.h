@@ -18,7 +18,7 @@ extern sinsp_evttables g_infotables;
 class proc_parser_state
 {
 public:
-	proc_parser_state(sisnp_baseliner* bl, uint64_t time)
+	proc_parser_state(sinsp_baseliner* bl, uint64_t time)
 	{
 		m_bl = bl;
 		m_time = time;
@@ -34,7 +34,7 @@ public:
 		}
 	}
 
-	sisnp_baseliner* m_bl;
+	sinsp_baseliner* m_bl;
 	uint64_t m_time;
 	sinsp* m_inspector;
 
@@ -1315,11 +1315,11 @@ public:
 //
 // The baseliner class
 //
-class sisnp_baseliner
+class sinsp_baseliner
 {
 public:
 	void init(sinsp* inspector);
-	~sisnp_baseliner();
+	~sinsp_baseliner();
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
