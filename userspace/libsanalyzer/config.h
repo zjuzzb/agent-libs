@@ -148,6 +148,9 @@ public:
 	void set_command_lines_capture_enabled(bool enabled);
 	command_capture_mode_t get_command_lines_capture_mode() const;
 	void set_command_lines_capture_mode(command_capture_mode_t capture_mode);
+	set<string> get_command_lines_valid_ancestors() const;
+	void set_command_lines_valid_ancestors(const set<string>& valid_ancestors);
+	bool is_command_lines_valid_ancestor(const string& ancestor) const;
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
@@ -228,6 +231,7 @@ private:
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
 	command_capture_mode_t m_command_lines_capture_mode;
+	set<string> m_command_lines_valid_ancestors;
 	bool m_capture_dragent_events;
 	uint64_t m_memdump_size;
 

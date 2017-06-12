@@ -245,10 +245,12 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
 	tainfo->m_called_execve = true;
 
+	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
+	
 	//
 	// If command line capture is disabled, we stop here
 	//
-	if(!m_analyzer->get_configuration_read_only()->get_command_lines_capture_enabled())
+	if(!sinsp_conf->get_command_lines_capture_enabled())
 	{
 		return;
 	}
@@ -260,9 +262,16 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	uint32_t shell_dist = 0;
 	uint64_t login_shell_id = 0;
 	uint32_t cur_shell_dist = 0;
+	bool valid_ancestor = false;
 
-	sinsp_threadinfo::visitor_func_t visitor = [&login_shell_id, &shell_dist, &cur_shell_dist] (sinsp_threadinfo *ptinfo)
+	sinsp_threadinfo::visitor_func_t visitor = 
+		[sinsp_conf, &login_shell_id, &shell_dist, &cur_shell_dist, &valid_ancestor] (sinsp_threadinfo *ptinfo)
 	{
+		if(cur_shell_dist && sinsp_conf->is_command_lines_valid_ancestor(ptinfo->m_comm))
+		{
+			valid_ancestor = true;
+		}
+
 		uint32_t cl = ptinfo->m_comm.size();
 		if(cl >= 2 && ptinfo->m_comm[cl - 2] == 's' && ptinfo->m_comm[cl - 1] == 'h')
 		{
@@ -290,15 +299,15 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		shell_dist = 0;
 	}
 
-	switch(m_analyzer->get_configuration_read_only()->get_command_lines_capture_mode())
+	switch(sinsp_conf->get_command_lines_capture_mode())
 	{
 		case sinsp_configuration::command_capture_mode_t::CM_TTY:
-			if(!tinfo->m_tty) {
+			if(!tinfo->m_tty && !valid_ancestor) {
 				return;
 			}
 			break;
 		case sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR:
-			if(!login_shell_id) {
+			if(!login_shell_id && !valid_ancestor) {
 				return;
 			}
 			break;
