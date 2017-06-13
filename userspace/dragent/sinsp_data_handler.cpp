@@ -1,3 +1,5 @@
+#include <memory>
+
 #include "sinsp_data_handler.h"
 #include "configuration.h"
 #include "utils.h"
@@ -22,13 +24,13 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		g_log->information(metrics->DebugString());
 	}
 
-	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
 		draiosproto::message_type::METRICS,
 		*metrics,
 		m_configuration->m_compression_enabled);
 
-	if(buffer.isNull())
+	if(!buffer)
 	{
 		g_log->error("NULL converting message to buffer");
 		return;
@@ -71,13 +73,13 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 		g_log->information(string("Throttled Security Events:") + tevents->DebugString());
 	}
 
-	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,
 		draiosproto::message_type::THROTTLED_POLICY_EVENTS,
 		*tevents,
 		m_configuration->m_compression_enabled);
 
-	if(buffer.isNull())
+	if(!buffer)
 	{
 		g_log->error("NULL converting message to buffer");
 		return;

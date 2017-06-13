@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 
 #include <token_bucket.h>
 
@@ -43,7 +44,7 @@ public:
 	// request along to the capture_job_handler thread, but does
 	// some necessary prep work such as creating sinsp_dumper
 	// objects, etc.
-	void queue_job_request(SharedPtr<capture_job_handler::dump_job_request> job_request);
+	void queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request);
 
 	uint64_t get_last_loop_ns() const
 	{
@@ -115,7 +116,7 @@ private:
 	security_mgr *m_security_mgr;
 	capture_job_handler *m_capture_job_handler;
 	sinsp_data_handler m_sinsp_handler;
-	blocking_queue<SharedPtr<capture_job_handler::dump_job_request>> m_dump_job_requests;
+	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
 	volatile uint64_t m_last_loop_ns;
 	volatile pthread_t m_pthread_id;
 	shared_ptr<pipe_manager> m_statsite_pipes;
