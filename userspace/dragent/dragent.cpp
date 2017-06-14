@@ -576,10 +576,21 @@ int dragent_app::sdagent_main()
 
 	ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
-	m_sinsp_worker.init();
-	m_capture_job_handler.init(m_sinsp_worker.get_inspector());
-	ThreadPool::defaultPool().start(m_capture_job_handler, "capture_job_handler");
-	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+	try {
+		m_sinsp_worker.init();
+	}
+	catch (const sinsp_exception &e)
+	{
+		dragent_configuration::m_terminate = true;
+		dragent_error_handler::m_exception = true;
+	}
+
+	if(!dragent_configuration::m_terminate)
+	{
+		m_capture_job_handler.init(m_sinsp_worker.get_inspector());
+		ThreadPool::defaultPool().start(m_capture_job_handler, "capture_job_handler");
+		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+	}
 
 	uint64_t uptime_s = 0;
 
