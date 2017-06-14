@@ -1019,12 +1019,6 @@ events:
 
 # percentiles: [50, 95, 99]
 
-commandlines_capture:
-  valid_ancestors:
-    - foo
-    - bar
-    - runc
-
 known_ports:
   - 902 # VMware 
   - 903 # VMware
