@@ -19,15 +19,19 @@ public class JvmstatVM {
         try {
             //vmId = new VmIdentifier(String.format("file:/tmp/hsperfdata_root/%d", pid));
             vmId = new VmIdentifier(String.format("//%d", pid));
+            MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(vmId);
+            vm = monitoredHost.getMonitoredVm(vmId,-1);
+            //vm = new FileMonitoredVm(vmId, -1);
         } catch (URISyntaxException e) {
             // This exception should be very rare
             // rename it to MonitorException to avoid to deal with it
             // on throws clause
             throw new MonitorException(e);
+        } catch (NullPointerException e) {
+            // This happened when running on IBM Websphere JRE
+            // we are wrapping it right now
+            throw new MonitorException(e);
         }
-        MonitoredHost monitoredHost = MonitoredHost.getMonitoredHost(vmId);
-        vm = monitoredHost.getMonitoredVm(vmId,-1);
-        //vm = new FileMonitoredVm(vmId, -1);
     }
 
     public void detach() {
