@@ -227,6 +227,21 @@ void sinsp_configuration::set_command_lines_capture_mode(command_capture_mode_t 
 	m_command_lines_capture_mode = capture_mode;
 }
 
+set<string> sinsp_configuration::get_command_lines_valid_ancestors() const
+{
+	return m_command_lines_valid_ancestors;
+}
+
+void sinsp_configuration::set_command_lines_valid_ancestors(const set<string>& valid_ancestors)
+{
+	m_command_lines_valid_ancestors = valid_ancestors;
+}
+
+bool sinsp_configuration::is_command_lines_valid_ancestor(const string& ancestor) const
+{
+	return m_command_lines_valid_ancestors.find(ancestor) != m_command_lines_valid_ancestors.end();
+}
+
 bool sinsp_configuration::get_capture_dragent_events() const
 {
 	return m_capture_dragent_events;
