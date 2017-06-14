@@ -1,3 +1,5 @@
+#include <memory>
+
 #include "error_handler.h"
 
 #include "logger.h"
@@ -95,13 +97,13 @@ void log_reporter::send_report(uint64_t ts_ns)
 	report.set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
 	report.set_log(buf.begin(), buf.size());
 
-	SharedPtr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
-                        ts_ns,
-			draiosproto::message_type::DIRTY_SHUTDOWN_REPORT,
-			report,
-			m_configuration->m_compression_enabled);
+	std::shared_ptr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::DIRTY_SHUTDOWN_REPORT,
+		report,
+		m_configuration->m_compression_enabled);
 
-	if(report_serialized.isNull())
+	if(!report_serialized)
 	{
 		g_log->error("NULL converting message to buffer");
 		return;
