@@ -134,7 +134,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sisnp_baseliner();
+	m_falco_baseliner = new sinsp_baseliner();
 
 	//
 	// Listeners
@@ -3769,8 +3769,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						"Patching host external networking, from (%u, %u) to (%u, %u)",
 						m_io_net.m_bytes_in, m_io_net.m_bytes_out,
 						interfaces_stats.first, interfaces_stats.second);
-				external_io_net->set_bytes_in(interfaces_stats.first);
-				external_io_net->set_bytes_out(interfaces_stats.second);
+				// protobuf uint32 is converted to int in java. It means that numbers higher than int max
+				// are translated into negative ones. This is a problem specifically when agent loses samples
+				// and here we send current value - prev read value. It can be very high
+				// so at this point let's patch it to avoid the overflow
+				static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int>::max());
+				external_io_net->set_bytes_in(std::min(interfaces_stats.first, max_int32));
+				external_io_net->set_bytes_out(std::min(interfaces_stats.second, max_int32));
 			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 

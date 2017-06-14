@@ -90,7 +90,7 @@ public:
 	// otherwise. Even when returning true, the capture job might
 	// return an error later. In that case, an error message will
 	// be sent to the connection manager's queue.
-	bool queue_job_request(sinsp *inspector, SharedPtr<dump_job_request> job_request, std::string &errstr);
+	bool queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, std::string &errstr);
 
 	// Change the chunk size used for event captures. This is only
 	// used for testing.
@@ -126,7 +126,7 @@ private:
 	void process_job_requests();
 	void start_job(const dump_job_request& request);
 
-	void add_job(SharedPtr<capture_job> &job);
+	void add_job(std::shared_ptr<capture_job> &job);
 
 	void flush_jobs(uint64_t ts);
 
@@ -135,8 +135,8 @@ private:
 	bool can_send(uint32_t buffer_size, uint64_t ts_ns);
 
 	void prepare_response(const string& token, draiosproto::dump_response* response);
-	SharedPtr<protocol_queue_item> dump_response_to_queue_item(const draiosproto::dump_response& response);
-	bool queue_item(SharedPtr<protocol_queue_item> &item, protocol_queue::item_priority priority);
+	std::shared_ptr<protocol_queue_item> dump_response_to_queue_item(const draiosproto::dump_response& response);
+	bool queue_item(std::shared_ptr<protocol_queue_item> &item, protocol_queue::item_priority priority);
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
 
 	static const uint64_t default_max_chunk_size = 100 * 1024;
@@ -150,13 +150,13 @@ private:
 	protocol_queue* m_queue;
 	atomic<bool> *m_enable_autodrop;
 	uint64_t m_max_chunk_size;
-	blocking_queue<SharedPtr<dump_job_request>> m_dump_job_requests;
+	blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
 	std::unique_ptr<sinsp_memory_dumper> m_memdumper;
 
 	// Mutex that protects access to the list of jobs
 	Poco::RWLock m_jobs_lock;
 
-	vector<SharedPtr<capture_job>> m_jobs;
+	vector<std::shared_ptr<capture_job>> m_jobs;
 	token_bucket m_sysdig_captures_tb;
 	atomic<uint64_t> m_last_job_check_ns;
 	atomic<uint64_t> m_last_event_ns;

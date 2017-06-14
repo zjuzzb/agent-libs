@@ -179,8 +179,8 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 				 bool apply_scope, std::string &container_id,
 				 std::string &errstr)
 {
-	SharedPtr<capture_job_handler::dump_job_request> job_request(
-		new capture_job_handler::dump_job_request());
+	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
+		std::make_shared<capture_job_handler::dump_job_request>();
 
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = token;

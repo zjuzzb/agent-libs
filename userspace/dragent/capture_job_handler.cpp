@@ -29,10 +29,10 @@ public:
 	virtual ~capture_job();
 
 	// job_state actually contains the pointer this--we pass the
-	// SharedPointer to keep the chain of related SharedPtr
+	// SharedPointer to keep the chain of related std::shared_ptr
 	// objects intact.
 	bool start(sinsp *inspector, const capture_job_handler::dump_job_request &request,
-		   string &errstr, SharedPtr<capture_job> &job_state);
+		   string &errstr, std::shared_ptr<capture_job> &job_state);
 	void stop();
 	void flush(uint64_t ts, bool &throttled);
 
@@ -85,7 +85,7 @@ private:
 	uint64_t m_last_chunk_offset;
 	uint64_t m_last_chunk_idx;
 	string m_last_chunk;
-	SharedPtr<protocol_queue_item> m_last_dump_queue_item;
+	std::shared_ptr<protocol_queue_item> m_last_dump_queue_item;
 
 	// Prevents stop() and process_event() from being called
 	// simultaneously from different threads.
@@ -142,7 +142,7 @@ capture_job::~capture_job()
 }
 
 bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_request &request,
-			string &errstr, SharedPtr<capture_job> &job_state)
+			string &errstr, std::shared_ptr<capture_job> &job_state)
 {
 	if(!request.m_filter.empty())
 	{
@@ -641,7 +641,7 @@ void capture_job_handler::process_event(sinsp_evt *ev)
 	}
 }
 
-bool capture_job_handler::queue_job_request(sinsp *inspector, SharedPtr<dump_job_request> job_request, string &errstr)
+bool capture_job_handler::queue_job_request(sinsp *inspector, std::shared_ptr<dump_job_request> job_request, string &errstr)
 {
 	Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
 
@@ -721,7 +721,7 @@ void capture_job_handler::cleanup()
 
 void capture_job_handler::process_job_requests()
 {
-	SharedPtr<dump_job_request> request;
+	std::shared_ptr<dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
 		g_log->debug(m_name + ": dequeued dump request type=" +
@@ -781,8 +781,8 @@ void capture_job_handler::process_job_requests()
 
 void capture_job_handler::start_job(const dump_job_request& request)
 {
-	SharedPtr<capture_job> job_state(new capture_job(this, m_configuration, m_memdumper.get(),
-							 m_keepalive_interval_ns, m_max_chunk_size));
+	std::shared_ptr<capture_job> job_state = make_shared<capture_job>(this, m_configuration, m_memdumper.get(),
+									  m_keepalive_interval_ns, m_max_chunk_size);
 	string errstr;
 
 	if(m_configuration->m_sysdig_capture_enabled == false)
@@ -819,7 +819,7 @@ void capture_job_handler::start_job(const dump_job_request& request)
 	}
 }
 
-void capture_job_handler::add_job(SharedPtr<capture_job> &job)
+void capture_job_handler::add_job(std::shared_ptr<capture_job> &job)
 {
 	Poco::ScopedWriteRWLock jobs_lck(m_jobs_lock);
 	m_jobs.push_back(job);
@@ -852,7 +852,7 @@ void capture_job_handler::cleanup_jobs(uint64_t ts)
 	Poco::ScopedWriteRWLock jobs_lck(m_jobs_lock);
 	uint32_t old_size = m_jobs.size();
 
-	vector<SharedPtr<capture_job>>::iterator it = m_jobs.begin();
+	vector<std::shared_ptr<capture_job>>::iterator it = m_jobs.begin();
 
 	while(it != m_jobs.end())
 	{
@@ -889,7 +889,7 @@ void capture_job_handler::prepare_response(const string& token, draiosproto::dum
 	response->set_token(token);
 }
 
-SharedPtr<protocol_queue_item> capture_job_handler::dump_response_to_queue_item(const draiosproto::dump_response& response)
+shared_ptr<protocol_queue_item> capture_job_handler::dump_response_to_queue_item(const draiosproto::dump_response& response)
 {
 	return dragent_protocol::message_to_buffer(
 		sinsp_utils::get_current_time_ns(),
@@ -899,9 +899,9 @@ SharedPtr<protocol_queue_item> capture_job_handler::dump_response_to_queue_item(
 		m_configuration->m_sysdig_capture_compression_level);
 }
 
-bool capture_job_handler::queue_item(SharedPtr<protocol_queue_item> &item, protocol_queue::item_priority priority)
+bool capture_job_handler::queue_item(std::shared_ptr<protocol_queue_item> &item, protocol_queue::item_priority priority)
 {
-	if(item.isNull())
+	if(!item)
 	{
 		g_log->error(m_name + ": NULL converting message to item");
 		return true;
@@ -918,7 +918,7 @@ bool capture_job_handler::queue_item(SharedPtr<protocol_queue_item> &item, proto
 
 bool capture_job_handler::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
 {
-	SharedPtr<protocol_queue_item> item = dump_response_to_queue_item(response);
+	std::shared_ptr<protocol_queue_item> item = dump_response_to_queue_item(response);
 
 	return queue_item(item, priority);
 }

@@ -1,3 +1,5 @@
+#include <memory>
+
 #include <Poco/NullChannel.h>
 #include <Poco/ConsoleChannel.h>
 #include <Poco/Formatter.h>
@@ -100,7 +102,7 @@ protected:
 	}
 
 	// Wait for the next message of the provided type
-	void queue_fetch(uint8_t messagetype, SharedPtr<protocol_queue_item> &item)
+	void queue_fetch(uint8_t messagetype, std::shared_ptr<protocol_queue_item> &item)
 	{
 		// The capture_job_handler may send a variety of messages
 		// (e.g. metrics, dump responses, etc). so try up to
@@ -138,7 +140,7 @@ protected:
 
 TEST_F(security_policies_test, events_flood)
 {
-	SharedPtr<protocol_queue_item> item;
+	std::shared_ptr<protocol_queue_item> item;
 
 	// Repeatedly try to read /etc/shadow. This will result in a flood of policy events.
 

@@ -130,7 +130,7 @@ protected:
 	}
 
 	// Wait for the next message of the provided type
-	void queue_fetch(uint8_t messagetype, SharedPtr<protocol_queue_item> &item)
+	void queue_fetch(uint8_t messagetype, std::shared_ptr<protocol_queue_item> &item)
 	{
 		// The capture_job_handler may send a variety of messages
 		// (e.g. metrics, dump responses, etc). so try up to
@@ -155,7 +155,7 @@ protected:
 	}
 
 	// Parse a generic queue item into a dump response object.
-	void parse_dump_response(SharedPtr<protocol_queue_item> item, draiosproto::dump_response &response)
+	void parse_dump_response(std::shared_ptr<protocol_queue_item> item, draiosproto::dump_response &response)
 	{
 		ASSERT_TRUE(dragent_protocol::buffer_to_protobuf((uint8_t *) item->buffer.data() + sizeof(dragent_protocol_header),
 								 (uint32_t) item->buffer.size()-sizeof(dragent_protocol_header),
@@ -182,7 +182,7 @@ protected:
 		// 50M) before giving up.
 		for(uint32_t attempts = 0; attempts < 5000; attempts++)
 		{
-			SharedPtr<protocol_queue_item> buf;
+			std::shared_ptr<protocol_queue_item> buf;
 			draiosproto::dump_response response;
 			queue_fetch(draiosproto::DUMP_RESPONSE, buf);
 
@@ -206,11 +206,11 @@ protected:
 		FAIL() << "Did not receive dump_responses containg all tags after 1000 attempts";
 	}
 
-	SharedPtr<capture_job_handler::dump_job_request> generate_dump_request(const string &tag,
+	std::shared_ptr<capture_job_handler::dump_job_request> generate_dump_request(const string &tag,
 									       uint32_t before_ms, uint32_t after_ms,
 									       uint32_t max_size=0)
 	{
-		SharedPtr<capture_job_handler::dump_job_request> req = new capture_job_handler::dump_job_request();
+		std::shared_ptr<capture_job_handler::dump_job_request> req = std::make_shared<capture_job_handler::dump_job_request>();
 		req->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 		req->m_delete_file_when_done = false;
 		req->m_send_file = true;
@@ -229,11 +229,11 @@ protected:
 			       bool wait_for_response=true,
 			       uint32_t max_size=0)
 	{
-		SharedPtr<protocol_queue_item> buf;
+		std::shared_ptr<protocol_queue_item> buf;
 		string errstr;
 		draiosproto::dump_response response;
 
-		SharedPtr<capture_job_handler::dump_job_request> req = generate_dump_request(tag, before_ms, after_ms, max_size);
+		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(tag, before_ms, after_ms, max_size);
 
 		g_log->debug("Queuing job request tag=" + tag);
 		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
@@ -278,7 +278,7 @@ protected:
         //  - wait for the dump to complete
 	void perform_single_dump(bool dump_before, bool limit_size)
 	{
-		SharedPtr<protocol_queue_item> buf;
+		std::shared_ptr<protocol_queue_item> buf;
 		draiosproto::dump_response response;
 
 		queue_fetch(draiosproto::METRICS, buf);
@@ -323,7 +323,7 @@ protected:
 	// open.
 	void perform_overlapping_dumps(uint32_t total)
 	{
-		SharedPtr<protocol_queue_item> buf;
+		std::shared_ptr<protocol_queue_item> buf;
 		map<string,draiosproto::dump_response> responses;
 
 		queue_fetch(draiosproto::METRICS, buf);
@@ -363,14 +363,14 @@ protected:
 	void perform_too_many_dumps()
 	{
 		string errstr;
-		SharedPtr<protocol_queue_item> buf;
+		std::shared_ptr<protocol_queue_item> buf;
 
 		queue_fetch(draiosproto::METRICS, buf);
 
 		for(uint32_t i=0; i < 10; i++)
 		{
 			g_log->debug("Queuing request for capture " + to_string(i));
-			SharedPtr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), 500, 30000, false);
+			std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), 500, 30000, false);
 			ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 		}
 
@@ -381,7 +381,7 @@ protected:
 		sleep(5);
 
 		g_log->debug("Starting capture over limit (should fail)");
-		SharedPtr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(10), 3000, 30000, false);
+		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(10), 3000, 30000, false);
 		ASSERT_FALSE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 
 		ASSERT_STREQ(errstr.c_str(), "maximum number of outstanding captures (10) reached");

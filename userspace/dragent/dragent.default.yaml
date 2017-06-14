@@ -606,11 +606,7 @@ app_checks:
       username: stats
       password: stats
       url: http://localhost:1936/
-      status_check: True
       collect_aggregates_only: True
-      collect_status_metrics: True
-      collect_status_metrics_by_host: True
-      tag_service_check_by_host: True
     log_errors: false
   - name: elasticsearch
     check_module: elastic

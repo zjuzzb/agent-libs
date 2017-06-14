@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "main.h"
 #include "configuration.h"
 #include "blocking_queue.h"
@@ -37,7 +39,7 @@ private:
 	bool init();
 	bool connect();
 	void disconnect();
-	bool transmit_buffer(uint64_t now, SharedPtr<protocol_queue_item> &item);
+	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);
 	void receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);

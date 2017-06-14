@@ -193,7 +193,7 @@ void connection_manager::run()
 
 	if(init())
 	{
-		SharedPtr<protocol_queue_item> item;
+		std::shared_ptr<protocol_queue_item> item;
 
 		while(!dragent_configuration::m_terminate)
 		{
@@ -230,7 +230,7 @@ void connection_manager::run()
 			//
 			receive_message();
 
-			if(item.isNull())
+			if(!item)
 			{
 				//
 				// Wait 300ms to get a message from the queue
@@ -238,7 +238,7 @@ void connection_manager::run()
 				m_queue->get(&item, 300);
 			}
 
-			if(!item.isNull())
+			if(item)
 			{
 				//
 				// Got a message, transmit it
@@ -257,7 +257,7 @@ void connection_manager::run()
 	g_log->information(m_name + ": Terminating");
 }
 
-bool connection_manager::transmit_buffer(uint64_t now, SharedPtr<protocol_queue_item> &item)
+bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item)
 {
 	// Sometimes now can be less than ts_ns. The timestamp in
 	// metrics messages is rounded up to the following metrics
@@ -540,8 +540,8 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	SharedPtr<capture_job_handler::dump_job_request> job_request(
-		new capture_job_handler::dump_job_request());
+	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
+		make_shared<capture_job_handler::dump_job_request>();
 
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = request.token();
@@ -584,8 +584,8 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	SharedPtr<capture_job_handler::dump_job_request> job_request(
-		new capture_job_handler::dump_job_request());
+	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
+		make_shared<capture_job_handler::dump_job_request>();
 
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
 	job_request->m_token = request.token();
@@ -775,13 +775,13 @@ void connection_manager::send_policy_events_messages(uint64_t ts_ns)
 			first_event_ts = events.events(0).timestamp_ns();
 		}
 
-		SharedPtr<protocol_queue_item> item = dragent_protocol::message_to_buffer(
+		std::shared_ptr<protocol_queue_item> item = dragent_protocol::message_to_buffer(
 			first_event_ts,
 			draiosproto::message_type::POLICY_EVENTS,
 			events,
 			m_configuration->m_compression_enabled);
 
-		if(item.isNull())
+		if(!item)
 		{
 			g_log->error("NULL converting message to item");
 			return;

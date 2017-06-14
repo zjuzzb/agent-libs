@@ -492,7 +492,7 @@ void sinsp_worker::run()
 	g_log->information("sinsp_worker: Terminating");
 }
 
-void sinsp_worker::queue_job_request(SharedPtr<capture_job_handler::dump_job_request> job_request)
+void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
 {
 	g_log->information(m_name + ": scheduling job request type=" +
 			   (job_request->m_request_type == capture_job_handler::dump_job_request::JOB_START ? "start" : "stop") +
@@ -551,8 +551,8 @@ void sinsp_worker::process_job_requests()
 		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
 
-		SharedPtr<capture_job_handler::dump_job_request> job_request(
-			new capture_job_handler::dump_job_request());
+		std::shared_ptr<capture_job_handler::dump_job_request> job_request
+			= make_shared<capture_job_handler::dump_job_request>();
 
 		job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
@@ -566,7 +566,7 @@ void sinsp_worker::process_job_requests()
 		}
 	}
 
-	SharedPtr<capture_job_handler::dump_job_request> request;
+	std::shared_ptr<capture_job_handler::dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
 		string errstr;

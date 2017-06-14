@@ -51,7 +51,7 @@ class docker;
 class uri;
 class falco_engine;
 class falco_events;
-class sisnp_baseliner;
+class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
 
@@ -605,7 +605,7 @@ VISIBILITY_PRIVATE
 	//
 	// Falco stuff
 	//
-	sisnp_baseliner* m_falco_baseliner = NULL;
+	sinsp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 
@@ -708,7 +708,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
-	friend class sisnp_baseliner;
+	friend class sinsp_baseliner;
 };
 
 #endif // HAS_ANALYZER

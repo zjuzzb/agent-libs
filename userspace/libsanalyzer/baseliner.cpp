@@ -61,7 +61,7 @@ void proc_parser(proc_parser_state* state)
 // Baseliner
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void sisnp_baseliner::init(sinsp* inspector)
+void sinsp_baseliner::init(sinsp* inspector)
 {
 #ifdef ASYNC_PROC_PARSING
 	m_procparser_thread = NULL;
@@ -76,7 +76,7 @@ void sisnp_baseliner::init(sinsp* inspector)
 #endif
 }
 
-sisnp_baseliner::~sisnp_baseliner()
+sinsp_baseliner::~sinsp_baseliner()
 {
 	clear_tables();
 
@@ -93,7 +93,7 @@ sisnp_baseliner::~sisnp_baseliner()
 #endif
 }
 
-void sisnp_baseliner::load_tables(uint64_t time)
+void sinsp_baseliner::load_tables(uint64_t time)
 {
 	init_containers();
 
@@ -124,7 +124,7 @@ void sisnp_baseliner::load_tables(uint64_t time)
 #endif
 }
 
-void sisnp_baseliner::clear_tables()
+void sinsp_baseliner::clear_tables()
 {
 	//
 	// Free all of the allocated entries in the prog table, which is a table of pointers
@@ -141,7 +141,7 @@ void sisnp_baseliner::clear_tables()
 	m_container_table.clear();
 }
 
-void sisnp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
+void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
 {
 	//
 	// Go through the thread list and identify the main threads
@@ -374,7 +374,7 @@ void sisnp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 }
 
-void sisnp_baseliner::init_containers()
+void sinsp_baseliner::init_containers()
 {
 	const unordered_map<string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
 
@@ -385,7 +385,7 @@ void sisnp_baseliner::init_containers()
 	}
 }
 
-void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
+void sinsp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 {
 	//
 	// Initialize the FD listener
@@ -393,7 +393,7 @@ void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 	m_inspector->m_parser->m_fd_listener = listener;
 }
 
-void sisnp_baseliner::serialize_json(string filename)
+void sinsp_baseliner::serialize_json(string filename)
 {
 	Json::Value root;
 	Json::Value econt;
@@ -536,7 +536,7 @@ void sisnp_baseliner::serialize_json(string filename)
 }
 
 #ifdef HAS_ANALYZER
-void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
 	//
 	// Serialize the programs
@@ -661,7 +661,7 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 #endif
 
 #ifdef ASYNC_PROC_PARSING
-void sisnp_baseliner::merge_proc_data()
+void sinsp_baseliner::merge_proc_data()
 {
 	//
 	// If this is a file, we get here at the end of the capture.
@@ -710,7 +710,7 @@ void sisnp_baseliner::merge_proc_data()
 #endif
 
 #ifndef HAS_ANALYZER
-void sisnp_baseliner::emit_as_json(uint64_t time)
+void sinsp_baseliner::emit_as_json(uint64_t time)
 {
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
@@ -731,7 +731,7 @@ void sisnp_baseliner::emit_as_json(uint64_t time)
 	}
 }
 #else
-void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
 {
 #ifdef ASYNC_PROC_PARSING
 	merge_proc_data();
@@ -748,7 +748,7 @@ void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baselin
 }
 #endif
 
-inline blprogram* sisnp_baseliner::get_program(sinsp_threadinfo* tinfo)
+inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 {
 	blprogram* pinfo;
 
@@ -780,7 +780,7 @@ inline blprogram* sisnp_baseliner::get_program(sinsp_threadinfo* tinfo)
 // Table update methods
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
+void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
@@ -817,7 +817,7 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 		evt->get_ts() - clone_ts);
 }
 
-void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
+void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 {
 	ASSERT(tinfo != NULL);
 
@@ -893,7 +893,7 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 	}
 }
 
-void sisnp_baseliner::on_connect(sinsp_evt *evt)
+void sinsp_baseliner::on_connect(sinsp_evt *evt)
 {
 	//
 	// Note: the presence of fdinfo is assured in sinsp_parser::parse_connect_exit, so
@@ -953,7 +953,7 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 	}
 }
 
-void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
+void sinsp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 {
 	if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 	{
@@ -993,7 +993,7 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 	}
 }
 
-void sisnp_baseliner::on_bind(sinsp_evt *evt)
+void sinsp_baseliner::on_bind(sinsp_evt *evt)
 {
 	//
 	// Note: the presence of fdinfo is assured in sinsp_parser::parse_connect_exit, so
@@ -1034,7 +1034,7 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 	}
 }
 
-void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
+void sinsp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
 	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, 
 		container_info.m_image, 
@@ -1046,7 +1046,7 @@ void sisnp_baseliner::on_new_container(const sinsp_container_info& container_inf
 // Single event processing methods
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
-void sisnp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category)
+void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category)
 {
 	sinsp_fdinfo_t* fdinfo = evt->m_fdinfo;
 	if(fdinfo == NULL)
@@ -1114,7 +1114,7 @@ void sisnp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 	}
 }
 
-void sisnp_baseliner::process_event(sinsp_evt *evt)
+void sinsp_baseliner::process_event(sinsp_evt *evt)
 {
 	uint16_t etype = evt->m_pevt->type;
 	if(!PPME_IS_ENTER(etype))
