@@ -265,8 +265,6 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	bool valid_ancestor = false;
 	bool found_container_init = false;
 
-	printf("-----------------------------------------------------------\n");
-
 	sinsp_threadinfo::visitor_func_t visitor = 
 		[sinsp_conf, &login_shell_id, &shell_dist, &cur_dist,
 		 &valid_ancestor, &found_container_init] (sinsp_threadinfo *ptinfo)
