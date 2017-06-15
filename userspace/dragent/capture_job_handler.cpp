@@ -532,8 +532,8 @@ void capture_job::read_chunk()
 }
 
 const string capture_job_handler::m_name = "capture_job_handler";
-const uint64_t capture_job_handler::default_max_chunk_size;
-const uint64_t capture_job_handler::m_keepalive_interval_ns;
+const uint64_t capture_job_handler::default_max_chunk_size = 100 * 1024;
+const uint64_t capture_job_handler::m_keepalive_interval_ns = 30 * 1000000000LL;
 
 capture_job_handler::capture_job_handler(dragent_configuration *configuration,
 					 protocol_queue *queue,
