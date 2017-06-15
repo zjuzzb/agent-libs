@@ -139,8 +139,8 @@ private:
 	bool queue_item(std::shared_ptr<protocol_queue_item> &item, protocol_queue::item_priority priority);
 	bool queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority);
 
-	static const uint64_t default_max_chunk_size = 100 * 1024;
-	static const uint64_t m_keepalive_interval_ns = 30 * 1000000000LL;
+	static constexpr uint64_t default_max_chunk_size = 100 * 1024;
+	static constexpr uint64_t m_keepalive_interval_ns = 30 * 1000000000LL;
 
 	run_on_interval m_log_stats_interval;
 
