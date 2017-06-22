@@ -44,6 +44,32 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
+if [[ "$ARCH" == "s390x" ]]; then
+GO_DIR=/usr/local/go
+if [ ! -d "$GO_DIR" ]; then
+	mkdir -p $GO_DIR
+	wget https://storage.googleapis.com/golang/go1.8.1.linux-s390x.tar.gz
+	tar -C $GO_DIR/.. -xzf go1.8.1.linux-s390x.tar.gz
+	ln -s $GO_DIR/bin/go /usr/local/bin
+	ln -s /usr/bin/gcc s390x-linux-gnu-gcc
+	rm go1.8.1.linux-s390x.tar.gz
+fi
+# SLES doesn't have dpkg but we need it for CPackDeb
+# Build it ourselves
+DPKG_VER=1.18.23
+DPKG_DIR=$DEPENDENCIES/dpkg-$DPKG_VER
+if [ ! -d "$DPKG_DIR" ]; then
+	cd $DEPENDENCIES
+	git clone https://anonscm.debian.org/git/dpkg/dpkg.git $DPKG_DIR
+	cd $DPKG_DIR
+	git checkout tags/$DPKG_VER
+	autoreconf -f -i
+	./configure
+	make
+	make install
+fi
+fi
+
 PROTBUF_DIR=$DEPENDENCIES/protobuf-2.6.1
 if [ ! -d "$PROTBUF_DIR" ]; then
 	cd $DEPENDENCIES
@@ -93,6 +119,10 @@ if [ ! -d "$GRPC_DIR" ]; then
 	tar -xzf grpc-1.1.4-with-third-party-libs.tar.gz
 	rm -rf grpc-1.1.4/third_party/zlib
 	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	if [[ "$ARCH" == "s390x" ]]; then
+		# Boringssl build fails on s390x, rely on openssl instead
+		rm -rf $GRPC_DIR/third_party/boringssl $GRPC_DIR/third_party/boringssl-with-bazel
+	fi
 	cd $GRPC_DIR
 	make grpc_cpp_plugin static_cxx static_c
 fi
@@ -208,6 +238,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	tar -xzf lua-5.1.5.tar.gz
 	cd $LUAJIT_DIR
 	make linux
+	ln -s $LUAJIT_DIR $DEPENDENCIES/lua
 fi
 else
 LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
@@ -276,6 +307,10 @@ if [ ! -d "$B64_DIR" ]; then
 	make
 fi
 
+# On s390x we'll rely on Suse's jdk 1.7.0 for now
+if [[ "$ARCH" == "s390x" ]]; then
+JAVA_DIR=/usr/lib64/jvm/java-1.7.0-openjdk-1.7.0
+else
 JAVA_DIR=$DEPENDENCIES/jdk1.7.0_75
 if [ ! -d "$JAVA_DIR" ]; then
 	cd $DEPENDENCIES
@@ -286,6 +321,7 @@ if [ ! -d "$JAVA_DIR" ]; then
 	fi
 	wget $DEPENDENCIES_URL/$TARFILE
 	tar -xjf $TARFILE
+fi
 fi
 
 MAVEN_DIR=$DEPENDENCIES/apache-maven-3.2.5

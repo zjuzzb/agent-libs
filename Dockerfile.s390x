@@ -1,0 +1,63 @@
+# Opensuse needs more s390x repos, but we can only seem to find factory or tumbleweed versions
+# http://download.opensuse.org/ports/zsystems/tumbleweed/
+#FROM opensuse/s390x
+#FROM s390x/opensuse:leap
+FROM suse/sles12
+
+# Sles12 needs a bunch of repos supplied by linuxone host marist.edu
+# Ugh, docker replaces /etc/hosts for every container
+#RUN [ "/bin/bash", "-c", "echo 148.100.42.9 lxslsmt.marist.edui lxslsmt >> /etc/hosts" ]
+#RUN [ "/bin/bash", "-c", "cat /etc/hosts"]
+# docker 17.04 apparently has an --add-host option.
+# Not sure if we want to require 17.04, using hardcoded IPs for now.
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Containers/12/s390x/product?credentials=SMT-http_lxslsmt" "SLE-Module-Containers12-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Containers/12/s390x/product_source?credentials=SMT-http_lxslsmt" "SLE-Module-Containers12-Source-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-Module-Containers/12/s390x/update?credentials=SMT-http_lxslsmt" "SLE-Module-Containers12-Updates"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Toolchain/12/s390x/product?credentials=SMT-http_lxslsmt" "SLE-Module-Toolchain12-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-Module-Toolchain/12/s390x/update?credentials=SMT-http_lxslsmt" "SLE-Module-Toolchain12-Updates"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Web-Scripting/12/s390x/product?credentials=SMT-http_lxslsmt" "SLE-Module-Web-Scripting12-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-Module-Web-Scripting/12/s390x/update?credentials=SMT-http_lxslsmt" "SLE-Module-Web-Scripting12-Updates"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SDK/12-SP1/s390x/product?credentials=SMT-http_lxslsmt" "SLE-SDK12-SP1-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SDK/12-SP1/s390x/product_source?credentials=SMT-http_lxslsmt" "SLE-SDK12-SP1-Source-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-SDK/12-SP1/s390x/update?credentials=SMT-http_lxslsmt" "SLE-SDK12-SP1-Updates"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SERVER/12-SP1/s390x/product?credentials=SMT-http_lxslsmt" "SLES12-SP1-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SERVER/12-SP1/s390x/product_source?credentials=SMT-http_lxslsmt" "SLES12-SP1-Source-Pool"
+RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-SERVER/12-SP1/s390x/update?credentials=SMT-http_lxslsmt" "SLES12-SP1-Updates"
+RUN zypper addrepo "http://download.opensuse.org/repositories/openSUSE:/Backports:/SLE-12-SP1/standard/" "openSUSE_Backports_SLE-12-SP1"
+RUN zypper addrepo "http://download.opensuse.org/repositories/openSUSE:/Backports:/SLE-12/standard/" "openSUSE_Backports_SLE-12"
+
+RUN zypper -n --gpg-auto-import-keys ref -s
+RUN zypper -n install \
+        createrepo \
+        expect \
+        gcc \
+        gcc-c++ \
+        git \
+        glibc-static \
+	java-1_7_0-openjdk \
+	java-1_7_0-openjdk-devel \
+        make \
+        rpm-build \
+        unzip \
+        wget \
+        tar \
+        autoconf \
+        automake \
+        libtool \
+        glibc-devel \
+	libopenssl-devel \
+	readline-devel \
+	gettext-tools \
+	docker
+
+RUN mkdir -p /code/agent
+ADD bootstrap-agent /code/agent/
+ADD patches /code/agent/patches
+RUN mkdir -p /code/falco/userspace/engine/lua
+ADD https://raw.githubusercontent.com/draios/falco/dev/scripts/build-lpeg.sh /code/falco/scripts/build-lpeg.sh
+RUN chmod +x /code/falco/scripts/build-lpeg.sh
+
+RUN cd /code/agent && ONLY_DEPS=true ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip
+ADD docker-builder-entrypoint.sh /
+VOLUME [ "/code/agent/build", "/out", "/root/.cache" ]
+ENTRYPOINT [ "/docker-builder-entrypoint.sh" ]

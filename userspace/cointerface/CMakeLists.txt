@@ -37,8 +37,8 @@ add_custom_target(go_get_protoc-gen-gofast
 	COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/protoc-gen-gofast)
 
 set(PROTOC_CMDLINE env PATH=${CMAKE_CURRENT_SOURCE_DIR}/bin:$$PATH
-                   LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs
-                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/protoc
+                   LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.6.1/src/.libs
+                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.6.1/src/.libs/protoc
                    -I ${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 
 add_custom_target(sdc_internal_pb_go

@@ -1133,6 +1133,7 @@ TEST_F(sys_call_test, fs_fcntl)
 		fd = open(FILENAME, O_CREAT | O_WRONLY, 0);
 		fd1 = fcntl(fd, F_DUPFD);
 		fd2 = fcntl(fd, F_DUPFD_CLOEXEC);
+		printf("fd: %d %d %d, errno: %d\n", fd, fd1, fd2, errno);
 
 		close(fd);
 		close(fd1);

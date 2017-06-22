@@ -1,5 +1,5 @@
 set(DRAIOS_OPENSSL_VERSION "1.0.2j")
-set(DRAIOS_PROTOBUF_VERSION "2.5.0")
+set(DRAIOS_PROTOBUF_VERSION "2.6.1")
 set(DRAIOS_ZLIB_VERSION "1.2.8")
 set(DRAIOS_LUAJIT_VERSION "2.0.3")
 set(DRAIOS_CURL_VERSION "7.52.1")
@@ -158,8 +158,8 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc++_unsecure.a
         ${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a)
 
-set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs
-                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/protoc
+set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.6.1/src/.libs
+                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.6.1/src/.libs/protoc
                    -I ${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 
 add_custom_target(sdc_internal_pb_cpp

@@ -111,7 +111,11 @@ protected:
 		system("docker unpause coclient_test > /dev/null 2>&1");
 		system("docker rm -f coclient_test > /dev/null 2>&1");
 
+#ifdef __s390x__
+		ASSERT_EQ(system("docker run -d --name coclient_test s390x/busybox sleep 6000 > /dev/null 2>&1"), 0) << "Could not start test container";
+#else
 		ASSERT_EQ(system("docker run -d --name coclient_test busybox sleep 6000 > /dev/null 2>&1"), 0) << "Could not start test container";
+#endif
 
 		m_coclient.perform_docker_cmd(cmd, "coclient_test", callback);
 

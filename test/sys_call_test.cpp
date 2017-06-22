@@ -808,6 +808,8 @@ TEST_F(sys_call_test, quotactl_ko)
 			switch(callnum)
 			{
 			case 1:
+				
+				printf("quotactl: on str: %s\n", e->get_param_value_str("cmd").c_str());
 				EXPECT_EQ("Q_QUOTAON", e->get_param_value_str("cmd"));
 				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
 				EXPECT_EQ("QFMT_VFS_V0", e->get_param_value_str("quota_fmt"));

@@ -306,23 +306,20 @@ TEST_F(sys_call_test, unix_client_server)
 		}
 
 		//
-		// 32bit uses send() and recv(), while 64bit always uses sendto() and
-		// recvfrom() and sets the address to NULL
+		// 32bit (and s390x) uses send() and recv(), while 64bit
+		// uses sendto() and recvfrom() and sets the address to NULL
 		//
-#ifdef __i386__
 		if(evt->get_type() == PPME_SOCKET_SEND_E ||
-		        evt->get_type() == PPME_SOCKET_RECV_E)
-#else
-		if(evt->get_type() == PPME_SOCKET_SENDTO_E ||
+		        evt->get_type() == PPME_SOCKET_RECV_E || 
+			evt->get_type() == PPME_SOCKET_SENDTO_E ||
 		        evt->get_type() == PPME_SOCKET_RECVFROM_E)
-#endif
 		{
-#ifndef __i386__
-			if(evt->get_param_value_str("tuple") != "")
+			if (((evt->get_type() == PPME_SOCKET_RECVFROM_X) ||
+				(evt->get_type() == PPME_SOCKET_RECVFROM_X)) &&
+				(evt->get_param_value_str("tuple") != ""))
 			{
 				EXPECT_EQ("NULL", evt->get_param_value_str("tuple"));
 			}
-#endif
 
 			string fdtuple = evt->get_param_value_str("fd");
 			string fdaddrs = fdtuple.substr(0, fdtuple.find(" "));
@@ -340,15 +337,13 @@ TEST_F(sys_call_test, unix_client_server)
 
 			callnum++;
 		}
-#ifdef __i386__
-		else if(evt->get_type() == PPME_SOCKET_RECV_X)
-#else
-		else if(evt->get_type() == PPME_SOCKET_RECVFROM_X)
-#endif
+		else if((evt->get_type() == PPME_SOCKET_RECV_X) ||
+			(evt->get_type() == PPME_SOCKET_RECVFROM_X))
 		{
-#ifndef __i386__
-			EXPECT_EQ("NULL", evt->get_param_value_str("tuple"));
-#endif
+			if (evt->get_type() == PPME_SOCKET_RECVFROM_X)
+			{
+				EXPECT_EQ("NULL", evt->get_param_value_str("tuple"));
+			}
 			EXPECT_EQ(PAYLOAD, evt->get_param_value_str("data"));
 
 			callnum++;
