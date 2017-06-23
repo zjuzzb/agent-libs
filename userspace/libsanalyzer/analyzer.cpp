@@ -282,6 +282,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+	m_procfs_parser->read_mount_points(m_mount_points);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
@@ -1857,8 +1858,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			if(m_jmx_proxy && tinfo->get_comm() == "java")
 			{
+				if (!tinfo->m_ainfo->m_root_refreshed)
+				{
+					tinfo->m_ainfo->m_root_refreshed = true;
+					tinfo->m_root = m_procfs_parser->read_proc_root(tinfo->m_pid);
+				}
 				java_process_requests.emplace_back(tinfo);
 			}
+
 			// May happen that for processes like apache with mpm_prefork there are hundred of
 			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
@@ -2197,8 +2204,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					{
 						return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
 					});
+
 					if(long_running_proc != it->second.end())
 					{
+						if (!(*long_running_proc)->m_ainfo->m_root_refreshed)
+						{
+							(*long_running_proc)->m_ainfo->m_root_refreshed = true;
+							(*long_running_proc)->m_root = m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
+						}
 						containers_for_mounted_fs.push_back(*long_running_proc);
 					}
 				}

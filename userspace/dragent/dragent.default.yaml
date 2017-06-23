@@ -1084,3 +1084,40 @@ known_ports:
   - 15433 # pgbouncer
   - 26379 # Redis sentinel
   - 27017 # MongoDB
+
+# format of a mount filter is:
+# ```
+# mounts_filter:
+#   - exclude: "device|filesystem|mount_directory"
+#   - include: "pattern1|pattern2|pattern3"
+# ```
+mounts_filter:
+  - exclude: "*|autofs|*"
+  - exclude: "*|proc|*"
+  - exclude: "*|cgroup|*"
+  - exclude: "*|subfs|*"
+  - exclude: "*|debugfs|*"
+  - exclude: "*|devpts|*"
+  - exclude: "*|fusectl|*"
+  - exclude: "*|mqueue|*"
+  - exclude: "*|rpc_pipefs|*"
+  - exclude: "*|sysfs|*"
+  - exclude: "*|devfs|*"
+  - exclude: "*|devtmpfs|*"
+  - exclude: "*|kernfs|*"
+  - exclude: "*|ignore|*"
+  - exclude: "*|rootfs|*"
+  - exclude: "*|none|*"
+  - exclude: "*|tmpfs|*"
+  - exclude: "*|pstore|*"
+  - exclude: "*|hugetlbfs|*"
+  - exclude: "*|*|/etc/resolv.conf"
+  - exclude: "*|*|/etc/hostname"
+  - exclude: "*|*|/etc/hosts"
+  - exclude: "*|*|/var/lib/rkt/pods/*"
+  - exclude: "overlay|*|/opt/stage2/*"
+  - exclude: "/dev/mapper/cl-root*|*|/opt/stage2/*"
+  - exclude: "*|*|/dev/termination-log*"
+  - include: "*|*|*"
+mounts_limit_size: 15
+

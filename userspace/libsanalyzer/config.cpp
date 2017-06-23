@@ -754,6 +754,26 @@ void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_f
 	m_metrics_filter = metrics_filter;
 }
 
+metrics_filter_vec sinsp_configuration::get_mounts_filter() const
+{
+	return m_mounts_filter;
+}
+
+void sinsp_configuration::set_mounts_filter(const mount_points_filter_vec& mounts_filter)
+{
+	m_mounts_filter = mounts_filter;
+}
+
+unsigned sinsp_configuration::get_mounts_limit_size() const
+{
+	return m_mounts_limit_size;
+}
+
+void sinsp_configuration::set_mounts_limit_size(unsigned mounts_limit_size)
+{
+	m_mounts_limit_size = mounts_limit_size;
+}
+
 bool sinsp_configuration::get_excess_metrics_log() const
 {
 	return m_excess_metrics_log;

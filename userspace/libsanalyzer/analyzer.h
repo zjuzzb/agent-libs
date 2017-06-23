@@ -305,6 +305,8 @@ public:
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
 			checked = true;
 		}
+
+		m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 	}
 
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
@@ -681,6 +683,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<falco_events> m_falco_events;
 
 	metric_limits::sptr_t m_metric_limits;
+	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;
 

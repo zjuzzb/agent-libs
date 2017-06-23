@@ -138,6 +138,10 @@ public:
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
 	metrics_filter_vec get_metrics_filter() const;
 	void set_metrics_filter(const metrics_filter_vec& event_filter);
+	mount_points_filter_vec get_mounts_filter() const;
+	void set_mounts_filter(const mount_points_filter_vec& mount_filter);
+	unsigned get_mounts_limit_size() const;
+	void set_mounts_limit_size(unsigned mounts_limit_size);
 	bool get_excess_metrics_log() const;
 	void set_excess_metrics_log(bool log);
 	unsigned get_metrics_cache() const;
@@ -243,6 +247,8 @@ private:
 	metrics_filter_vec m_metrics_filter;
 	bool m_excess_metrics_log = false;
 	unsigned m_metrics_cache = 0;
+	mount_points_filter_vec m_mounts_filter;
+	unsigned m_mounts_limit_size;
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
