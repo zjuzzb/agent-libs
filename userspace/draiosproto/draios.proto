@@ -650,7 +650,7 @@ enum congroup_event_type {
     UPDATED = 3;
 }
 
-message update_event {
+message congroup_update_event {
     optional congroup_event_type type = 1;
     optional congroup_uid uid = 2;
     optional container_group object = 3;

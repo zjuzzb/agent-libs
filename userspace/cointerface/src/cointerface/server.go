@@ -10,7 +10,10 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"os"
+	"io"
+	"crypto/rand"
 	"os/signal"
+	"draiosproto"
 	"sdc_internal"
 	"sync"
 	"time"
@@ -118,6 +121,66 @@ func (c *coInterfaceServer) PerformPing(ctx context.Context, cmd *sdc_internal.P
 
 func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*sdc_internal.SwarmStateResult, error) {
 	return getSwarmState(ctx, cmd)
+}
+
+func newUUID() string {
+	uuid := make([]byte, 16)
+	n, err := io.ReadFull(rand.Reader, uuid)
+	if n != len(uuid) || err != nil {
+		return ""
+	}
+	// variant bits; see section 4.1.1
+	uuid[8] = uuid[8]&^0xc0 | 0x80
+	// version 4 (pseudo-random); see section 4.1.3
+	uuid[6] = uuid[6]&^0xf0 | 0x40
+	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
+}
+
+func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUid) (*draiosproto.ContainerGroup) {
+	return &draiosproto.ContainerGroup{
+	     	Uid:  uid,
+		Name: proto.String(uid.GetKind() + "-" + uid.GetId()[0:4]),
+		Tags: map[string]string{
+			"key": "value",
+		},
+		Labels: map[string]string{
+			"tier":    "cache",
+			"release": "stable",
+		},
+		IpAddresses: []string{"1.2.3.4"},
+		// Ports
+		Metrics: map[string]uint32{
+			"restart_count": 0,
+		},
+		// Children: <- we could probably avoid to pass this info on the wire
+		Parents: parents,
+	}
+}
+
+func (c *coInterfaceServer) PerformKubernetesStream(cmd *sdc_internal.K8SStreamCommand, stream sdc_internal.CoInterface_PerformKubernetesStreamServer) error {
+	for ;; {
+		uids := []*draiosproto.CongroupUid{
+			&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
+			&draiosproto.CongroupUid{Kind:proto.String("k8s_node"),Id:proto.String(newUUID())},
+			&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
+		}
+		for i := 0; i < len(uids); i++ {
+			parents := []*draiosproto.CongroupUid{}
+			if i != 0 {
+				parents = uids[:i]
+			} 
+			evt := &draiosproto.CongroupUpdateEvent{
+				Type :   draiosproto.CongroupEventType_ADDED.Enum(),
+				Uid:     uids[i],
+				Object : newCongroup(uids[i], parents),
+			}
+			if err := stream.Send(evt); err != nil {
+				return err
+			}
+			time.Sleep(time.Second)
+		}
+	}
+	return nil
 }
 
 func startServer(sock string) int {
