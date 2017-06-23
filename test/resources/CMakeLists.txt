@@ -1,3 +1,12 @@
+add_custom_target(resources-cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/userspace/cointerface/cointerface ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+	DEPENDS ${CMAKE_BINARY_DIR}/userspace/cointerface/cointerface)
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+	COMPONENT tests)
+
 add_executable(forking_main_thread_exit
 	forking_main_thread_exit.c)
 
