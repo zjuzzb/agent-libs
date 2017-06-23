@@ -38,8 +38,8 @@ enum cointerface_message_type {
     DOCKER_COMMAND_RESULT = 4;
     SWARM_STATE_COMMAND = 5;
     SWARM_STATE_RESULT = 6;
-    K8S_STREAM_COMMAND = 7;
-    K8S_STREAM_RESULT = 8;
+    ORCHESTRATOR_STREAM_EVENTS_COMMAND = 7;
+    ORCHESTRATOR_STREAM_EVENTS_RESULT = 8;
 }
 
 enum docker_cmd_type {
@@ -79,12 +79,24 @@ message swarm_state_result {
     optional draiosproto.swarm_state state = 3;
 }
 
-message k8s_stream_command {
+message orchestrator_events_stream_command {
+}
+
+enum congroup_event_type {
+    ADDED = 1;
+    REMOVED = 2;
+    UPDATED = 3;
+}
+
+message congroup_update_event {
+    required congroup_event_type type = 1;
+    required draiosproto.congroup_uid uid = 2;
+    required draiosproto.container_group object = 3;
 }
 
 service CoInterface {
     rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
     rpc PerformPing(ping) returns (pong) {}
     rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
-    rpc PerformKubernetesStream(k8s_stream_command) returns (stream draiosproto.congroup_update_event) {}
+    rpc PerformOrchestratorEventsStream(orchestrator_events_stream_command) returns (stream congroup_update_event) {}
 }

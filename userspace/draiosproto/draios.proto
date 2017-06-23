@@ -644,18 +644,6 @@ message container_group {
     repeated congroup_uid parents = 9;
 }
 
-enum congroup_event_type {
-    ADDED = 1;
-    REMOVED = 2;
-    UPDATED = 3;
-}
-
-message congroup_update_event {
-    optional congroup_event_type type = 1;
-    optional congroup_uid uid = 2;
-    optional container_group object = 3;
-}
-
 //
 // KUBERNETES
 //

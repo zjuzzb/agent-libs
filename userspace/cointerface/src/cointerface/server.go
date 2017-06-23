@@ -157,7 +157,7 @@ func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUi
 	}
 }
 
-func (c *coInterfaceServer) PerformKubernetesStream(cmd *sdc_internal.K8SStreamCommand, stream sdc_internal.CoInterface_PerformKubernetesStreamServer) error {
+func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	for ;; {
 		uids := []*draiosproto.CongroupUid{
 			&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
@@ -169,8 +169,8 @@ func (c *coInterfaceServer) PerformKubernetesStream(cmd *sdc_internal.K8SStreamC
 			if i != 0 {
 				parents = uids[:i]
 			} 
-			evt := &draiosproto.CongroupUpdateEvent{
-				Type :   draiosproto.CongroupEventType_ADDED.Enum(),
+			evt := &sdc_internal.CongroupUpdateEvent{
+				Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
 				Uid:     uids[i],
 				Object : newCongroup(uids[i], parents),
 			}
