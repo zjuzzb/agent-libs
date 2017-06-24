@@ -168,6 +168,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_mesos_refresh = 0;
 
 	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
+	m_orchestrator_events_requested = false;
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -4283,6 +4284,24 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	{
 		m_falco_baseliner->process_event(evt);
 	}
+
+	if (!m_orchestrator_events_requested) {
+		g_logger.format(sinsp_logger::SEV_INFO, "Sending Request for orchestrator events.");
+		coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+			google::protobuf::TextFormat::Printer printer;
+			string tmp;
+			printer.PrintToString(*response_msg, &tmp);
+			g_logger.format(sinsp_logger::SEV_INFO, "[%s] Received update_event message, size %d", successful?"true":"false", response_msg->ByteSize());
+			g_logger.format(sinsp_logger::SEV_INFO, "update_event message: %s", tmp.c_str());
+		};
+		m_orchestrator_events_coclient.get_orchestrator_events(callback);
+		m_orchestrator_events_requested = true;
+
+	}
+	m_orchestrator_events_interval.run([this]()
+	{
+		m_orchestrator_events_coclient.next();
+	});
 
 	//
 	// This is where normal event parsing starts.

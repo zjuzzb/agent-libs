@@ -158,28 +158,31 @@ func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUi
 }
 
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
-	for ;; {
-		uids := []*draiosproto.CongroupUid{
-			&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
-			&draiosproto.CongroupUid{Kind:proto.String("k8s_node"),Id:proto.String(newUUID())},
-			&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
-		}
-		for i := 0; i < len(uids); i++ {
-			parents := []*draiosproto.CongroupUid{}
-			if i != 0 {
-				parents = uids[:i]
-			} 
-			evt := &sdc_internal.CongroupUpdateEvent{
-				Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
-				Uid:     uids[i],
-				Object : newCongroup(uids[i], parents),
-			}
-			if err := stream.Send(evt); err != nil {
-				return err
-			}
-			time.Sleep(time.Second)
-		}
+	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
+	uids := []*draiosproto.CongroupUid{
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_node"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
 	}
+	for i := 0; i < len(uids); i++ {
+		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Starting to create event #%d.", i+1))
+		parents := []*draiosproto.CongroupUid{}
+		if i != 0 {
+			parents = uids[:i]
+		}
+		evt := &sdc_internal.CongroupUpdateEvent{
+			Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
+			Object : newCongroup(uids[i], parents),
+		}
+		log.Infof("[PerformOrchestratorEventsStream] evt created.")
+		log.Infof("[PerformOrchestratorEventsStream] " + evt.String())
+		if err := stream.Send(evt); err != nil {
+			return err
+		}
+		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Event #%d sent.", i+1))
+		time.Sleep(time.Second)
+	}
+	log.Infof("[PerformOrchestratorEventsStream] All events sent. Exiting.")
 	return nil
 }
 

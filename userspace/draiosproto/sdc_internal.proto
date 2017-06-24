@@ -38,8 +38,8 @@ enum cointerface_message_type {
     DOCKER_COMMAND_RESULT = 4;
     SWARM_STATE_COMMAND = 5;
     SWARM_STATE_RESULT = 6;
-    ORCHESTRATOR_STREAM_EVENTS_COMMAND = 7;
-    ORCHESTRATOR_STREAM_EVENTS_RESULT = 8;
+    ORCHESTRATOR_EVENTS_STREAM_COMMAND = 7;
+    ORCHESTRATOR_EVENTS_STREAM_RESULT = 8;
 }
 
 enum docker_cmd_type {
@@ -90,7 +90,6 @@ enum congroup_event_type {
 
 message congroup_update_event {
     required congroup_event_type type = 1;
-    required draiosproto.congroup_uid uid = 2;
     required draiosproto.container_group object = 3;
 }
 
