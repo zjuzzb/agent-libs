@@ -297,10 +297,10 @@ public:
 			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
 			{
 				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
-				if(m_configuration->get_excess_metrics_log())
-				{
-					m_metric_limits->enable_logging();
-				}
+			}
+			if(m_configuration->get_excess_metrics_log())
+			{
+				metric_limits::enable_logging();
 			}
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
 			checked = true;
