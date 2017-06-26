@@ -227,6 +227,21 @@ void sinsp_configuration::set_command_lines_capture_mode(command_capture_mode_t 
 	m_command_lines_capture_mode = capture_mode;
 }
 
+set<string> sinsp_configuration::get_command_lines_valid_ancestors() const
+{
+	return m_command_lines_valid_ancestors;
+}
+
+void sinsp_configuration::set_command_lines_valid_ancestors(const set<string>& valid_ancestors)
+{
+	m_command_lines_valid_ancestors = valid_ancestors;
+}
+
+bool sinsp_configuration::is_command_lines_valid_ancestor(const string& ancestor) const
+{
+	return m_command_lines_valid_ancestors.find(ancestor) != m_command_lines_valid_ancestors.end();
+}
+
 bool sinsp_configuration::get_capture_dragent_events() const
 {
 	return m_capture_dragent_events;
@@ -737,6 +752,26 @@ metrics_filter_vec sinsp_configuration::get_metrics_filter() const
 void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_filter)
 {
 	m_metrics_filter = metrics_filter;
+}
+
+metrics_filter_vec sinsp_configuration::get_mounts_filter() const
+{
+	return m_mounts_filter;
+}
+
+void sinsp_configuration::set_mounts_filter(const mount_points_filter_vec& mounts_filter)
+{
+	m_mounts_filter = mounts_filter;
+}
+
+unsigned sinsp_configuration::get_mounts_limit_size() const
+{
+	return m_mounts_limit_size;
+}
+
+void sinsp_configuration::set_mounts_limit_size(unsigned mounts_limit_size)
+{
+	m_mounts_limit_size = mounts_limit_size;
 }
 
 bool sinsp_configuration::get_excess_metrics_log() const

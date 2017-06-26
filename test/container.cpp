@@ -15,8 +15,10 @@
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
 #include <list>
+#include <fstream>
 #include <cassert>
 #include "scap-int.h"
+
 
 TEST_F(sys_call_test, container_cgroups)
 {
@@ -379,6 +381,159 @@ TEST_F(sys_call_test, container_docker)
 #else
 		EXPECT_EQ("busybox", container_info.m_image);
 #endif
+
+		done = true;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_rkt_after)
+{
+	bool done = false;
+
+	if(system("rkt version > /dev/null 2>&1") != 0)
+	{
+		printf("rkt not installed, skipping test\n");
+		return;
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		if (std::ifstream("/tmp/myrkt"))
+		{
+			system("xargs -a /tmp/myrkt rkt stop > /dev/null");
+			system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+		}
+
+		int rc = system("rkt fetch --insecure-options=image docker://busybox");
+		if (rc != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
+		if (rc != 0)
+		{
+			ASSERT_TRUE(false);
+		}
+
+		sleep(10);
+
+		system("xargs -a /tmp/myrkt rkt stop > /dev/null");
+		system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+		remove("/tmp/myrkt");
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+		if (tinfo->m_comm != "init")
+		{
+			ASSERT_NE(tinfo->m_vtid, tinfo->m_tid);
+			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
+		}
+
+		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
+
+		sinsp_container_info container_info;
+		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
+		ASSERT_TRUE(found);
+
+		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info.m_type);
+		EXPECT_EQ("myrkt", container_info.m_name);
+		EXPECT_EQ("registry-1.docker.io/library/busybox:latest", container_info.m_image);
+
+		done = true;
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_rkt_before)
+{
+	bool done = false;
+
+	if(system("rkt version > /dev/null 2>&1") != 0)
+	{
+		printf("rkt not installed, skipping test\n");
+		return;
+	}
+
+	if (std::ifstream("/tmp/myrkt"))
+	{
+		system("xargs -a /tmp/myrkt rkt stop > /dev/null");
+		system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+	}
+
+	// start rkt before sysdig
+
+	int rc = system("rkt fetch --insecure-options=image docker://busybox");
+	if (rc != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	rc = system("systemd-run rkt run --uuid-file-save=/tmp/myrkt docker://busybox --name=myrkt --exec=sleep -- 5");
+	if (rc != 0)
+	{
+		ASSERT_TRUE(false);
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// wait to be sure that rkt container is started and verified by the callback below
+		sleep(10);
+
+		system("xargs -a /tmp/myrkt rkt stop > /dev/null");
+		system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+		remove("/tmp/myrkt");
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+		if (tinfo->m_comm != "init")
+		{
+			ASSERT_NE(tinfo->m_vtid, tinfo->m_tid);
+			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
+		}
+
+		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
+
+		sinsp_container_info container_info;
+		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
+		ASSERT_TRUE(found);
+
+		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info.m_type);
+		EXPECT_EQ("myrkt", container_info.m_name);
+		EXPECT_EQ("registry-1.docker.io/library/busybox:latest", container_info.m_image);
 
 		done = true;
 	};

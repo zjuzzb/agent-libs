@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <time.h>
 
+#define CNT 100000000
+
 int main()
 {
 	int j;
@@ -14,7 +16,7 @@ int main()
 
 	duration = ((double)clock()) / CLOCKS_PER_SEC;
 
-	for(j = 0; j < 6000000; j++)
+	for(j = 0; j < CNT; j++)
 	{
 		fwrite("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", 40, 1, f);
 		fflush(f);
@@ -22,7 +24,7 @@ int main()
 
 	duration = ((double)clock()) / CLOCKS_PER_SEC - duration;
 
-	printf("%.3lf\n", duration);
+	printf("duration:%.3lf %.3f writes/s\n", duration, ((double)CNT) / duration);
 
 	fclose(f);
 }

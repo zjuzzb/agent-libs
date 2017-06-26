@@ -86,7 +86,7 @@ class MesosSlave(AgentCheck):
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
-        self.cluster_name = None
+        self.version = None
 
     def _get_json(self, url, timeout):
         # Use a hash of the URL as an aggregation key
@@ -134,16 +134,16 @@ class MesosSlave(AgentCheck):
 
     def _get_constant_attributes(self, url, timeout):
         state_metrics = None
-        if self.cluster_name is None:
+        if self.version is None:
             state_metrics = self._get_state(url, timeout)
             if state_metrics is not None:
                 self.version = map(int, state_metrics['version'].split('.'))
-                proto = 'http://'
-                if self.auth_token != '':
-                    proto = 'https://'
-                master_state = self._get_state(proto + state_metrics['master_hostname'] + ':5050', timeout)
-                if master_state is not None:
-                    self.cluster_name = master_state.get('cluster')
+                #proto = 'http://'
+                #if self.auth_token != '':
+                #    proto = 'https://'
+                #master_state = self._get_state(proto + state_metrics['master_hostname'] + ':5050', timeout)
+                #if master_state is not None:
+                #    self.cluster_name = master_state.get('cluster')
 
         return state_metrics
 
@@ -170,15 +170,15 @@ class MesosSlave(AgentCheck):
         state_metrics = self._get_constant_attributes(url, timeout)
         tags = None
 
-        if state_metrics is None:
+        if len(tasks) > 0 and state_metrics is None:
             state_metrics = self._get_state(url, timeout)
-        if state_metrics:
+        if len(tasks) > 0 and state_metrics:
             tags = [
                 'mesos_pid:{0}'.format(state_metrics['pid']),
                 'mesos_node:slave',
             ]
-            if self.cluster_name:
-                tags.append('mesos_cluster:{0}'.format(self.cluster_name))
+            #if self.cluster_name:
+            #    tags.append('mesos_cluster:{0}'.format(self.cluster_name))
 
             tags += instance_tags
 

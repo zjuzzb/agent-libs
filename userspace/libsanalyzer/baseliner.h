@@ -1,9 +1,45 @@
 #pragma once
 
+#include <unordered_set>
+#include <thread>
+#include <atomic>
+
+extern sinsp_evttables g_infotables;
+
 #define BL_MAX_FILE_TABLE_SIZE 256
 #define BL_MAX_DIRS_TABLE_SIZE 1024
 #define BL_MAX_PROG_TABLE_SIZE 1024
 #define BL_STARTUP_TIME_NS (30LL * 1000000000)
+#define ASYNC_PROC_PARSING
+
+//
+// The state of the /proc parser thread
+//
+class proc_parser_state
+{
+public:
+	proc_parser_state(sinsp_baseliner* bl, uint64_t time)
+	{
+		m_bl = bl;
+		m_time = time;
+		m_done = false;
+		m_inspector = NULL;
+	}
+
+	~proc_parser_state()
+	{
+		if(m_inspector != NULL)
+		{
+			delete m_inspector;
+		}
+	}
+
+	sinsp_baseliner* m_bl;
+	uint64_t m_time;
+	sinsp* m_inspector;
+
+	std::atomic<bool> m_done;
+};
 
 //
 // This class stores the set of files that a program accesses
@@ -18,7 +54,6 @@ public:
 		m_is_c_full = false;
 		m_is_other_full = false;
 		m_is_uncategorized_full = false;
-		//m_reduced = false;
 		m_max_table_size = BL_MAX_FILE_TABLE_SIZE;
 	}
 
@@ -38,30 +73,7 @@ public:
 
 	inline void insert(set<string>* table, string* name)
 	{
-		//if(m_reduced)
-		//{
-		//	size_t pos = name->find('/');
-		//	const char* rs = name->c_str();
-		//	const char* ss = NULL;
-
-		//	while(pos != string::npos)
-		//	{
-		//		const char* se = rs + pos + 1;
-		//		if(ss != NULL)
-		//		{
-		//			string dirs(ss, se - 1);
-		//			int a = 0;
-		//		}
-		//		pos = name->find('/', pos + 1);
-		//		ss = se;
-		//	}
-
-		//	int a = 0;
-		//}
-		//else
-		//{
-			table->insert(*name);
-		//}
+		table->insert(*name);
 	}
 
 	inline void erase_from_uncategorized(string* name)
@@ -73,6 +85,19 @@ public:
 			if(it != m_uncategorized.end())
 			{
 				m_uncategorized.erase(it);
+			}
+		}
+	}
+
+	inline void erase_from_r(string* name)
+	{
+		if(m_r.size() != 0)
+		{
+			auto it = m_r.find(*name);
+
+			if(it != m_r.end())
+			{
+				m_r.erase(it);
 			}
 		}
 	}
@@ -90,6 +115,7 @@ public:
 				}
 
 				erase_from_uncategorized(&name);
+				erase_from_r(&name);
 			}
 		}
 		else if(openflags & PPM_O_RDONLY)
@@ -305,7 +331,6 @@ public:
 	bool m_is_c_full;
 	bool m_is_other_full;
 	bool m_is_uncategorized_full;
-//	bool m_reduced;
 	uint32_t m_max_table_size;
 };
 
@@ -449,10 +474,110 @@ public:
 };
 
 //
-// This class manages two blprogtable tables, one for the process startup phase and one
+// This class stores the set of system calls that a program accesses
+//
+class syscallstable
+{
+public:
+	syscallstable()
+	{
+		m_is_p_full = false;
+	}
+
+	void clear()
+	{
+		m_is_p_full = false;
+		m_p.clear();
+	}
+
+	inline void add(uint32_t val)
+	{
+		if(!m_is_p_full)
+		{
+			m_p.insert(val);
+			if(m_p.size() >= BL_MAX_FILE_TABLE_SIZE)
+			{
+				m_is_p_full = true;
+			}
+		}
+	}
+
+	inline const char* id_to_str(uint32_t id)
+	{
+		if((id & 0xffff) != 0)
+		{
+			if(id < PPM_EVENT_MAX)
+			{
+				return g_infotables.m_event_info[id].name;
+			}
+			else
+			{
+				ASSERT(false);
+				return "NA";
+			}
+		}
+		else
+		{
+			id = id >> 16;
+			if(id < PPM_SC_MAX)
+			{
+				return g_infotables.m_syscall_info_table[id].name;
+			}
+			else
+			{
+				ASSERT(false);
+				return "NA";
+			}
+		}
+	}
+
+#ifdef HAS_ANALYZER
+	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
+	{
+		if(m_p.size() != 0)
+		{
+			draiosproto::falco_subcategory* sp = cat->add_subcats();
+			sp->set_name("p");
+			sp->set_full(m_is_p_full);
+
+			for(auto it : m_p)
+			{
+				sp->add_d(id_to_str(it));
+			}
+		}
+	}
+#endif
+
+	void serialize_json(Json::Value& element)
+	{
+		Json::Value echild;
+
+		if(m_p.size() != 0)
+		{
+			for(auto it : m_p)
+			{
+				echild[id_to_str(it)] = 1;
+			}
+			element["p"]["d"] = echild;
+			element["p"]["full"] = m_is_p_full;
+			echild.clear();
+		}
+	}
+
+	bool has_data()
+	{
+		return (m_p.size() != 0);
+	}
+
+	set<uint32_t> m_p;
+	bool m_is_p_full;
+};
+
+//
+// This class manages two tables that require a simple add, one for the process startup phase and one
 // for regular long term activity
 //
-class blprogtable_split
+template <class A, typename B> class simpletable_split
 {
 public:
 	void clear()
@@ -461,15 +586,15 @@ public:
 		m_regular_table.clear();
 	}
 
-	inline void add(string& name, uint64_t time_from_clone)
+	inline void add(B val, uint64_t time_from_clone)
 	{
 		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_startup_table.add(name);
+			m_startup_table.add(val);
 		}
 		else
 		{
-			m_regular_table.add(name);
+			m_regular_table.add(val);
 		}
 	}
 
@@ -512,8 +637,8 @@ public:
 		return m_startup_table.has_data() || m_regular_table.has_data();
 	}
 
-	blprogtable m_startup_table;
-	blprogtable m_regular_table;
+	A m_startup_table;
+	A m_regular_table;
 };
 
 //
@@ -1157,12 +1282,12 @@ public:
 	uint32_t m_user_id; // user id
 	blfiletable_split m_files;
 	blfiletable_split m_dirs;
-//	blfiletable_split m_dirs_reduced;
-	blprogtable_split m_executed_programs;
+	simpletable_split<blprogtable, string&> m_executed_programs;
 	blporttable_split m_server_ports;
 	blporttable_split m_bound_ports;
 	bl_ip_endpoint_table_split m_ip_endpoints;
 	bl_ip_endpoint_table_split m_c_subnet_endpoints;
+	simpletable_split<syscallstable, uint32_t> m_syscalls; 
 };
 
 //
@@ -1190,14 +1315,18 @@ public:
 //
 // The baseliner class
 //
-class sisnp_baseliner
+class sinsp_baseliner
 {
 public:
 	void init(sinsp* inspector);
+	~sinsp_baseliner();
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
 	void serialize_json(string filename);
+#ifdef ASYNC_PROC_PARSING
+	void merge_proc_data();
+#endif
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
@@ -1211,20 +1340,23 @@ public:
 	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
 	void on_bind(sinsp_evt *evt);
 	void on_new_container(const sinsp_container_info& container_info);
-#if 0
 	void process_event(sinsp_evt *evt);
-#endif
 
-private:
-	void init_programs(uint64_t time);
+	void init_programs(sinsp* inspector, uint64_t time, bool skip_fds);
 	void init_containers();
+	inline blprogram* get_program(sinsp_threadinfo* tinfo);
+	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
 
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
-	unordered_map<size_t, blprogram> m_progtable;
+	unordered_map<size_t, blprogram*> m_progtable;
 	unordered_map<string, blcontainer> m_container_table;
 #ifndef HAS_ANALYZER
 	string m_hostname;
 	uint64_t m_hostid;
-#endif	
+#endif
+#ifdef ASYNC_PROC_PARSING
+	std::thread* m_procparser_thread;
+	proc_parser_state* m_procparser_state;
+#endif
 };

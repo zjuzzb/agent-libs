@@ -9,6 +9,7 @@ add_executable(sinsp-open
 
 target_link_libraries(sinsp-open
 	sanalyzer
+	draiosproto
 	pthread)
 
 install(TARGETS sinsp-open 

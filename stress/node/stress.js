@@ -25,16 +25,24 @@ callback = function(response) {
   });
 
   cnt++;
-  console.log(cnt.toString());  
+  if(cnt % 1000 == 0) {
+   console.log(cnt.toString());
+ }
 }
 
 function req_loop()
 {
   j++;
+  if(j >= 5000) {
+    console.timeEnd("test");
+    return;
+  }
+
   options.path = '/' + j.toString();
   http.request(options, callback).end();
-  setTimeout(req_loop, 100);
+  setTimeout(req_loop, 0);
 }
 
+console.time("test");
 http.globalAgent.maxSockets = 20;
 req_loop()

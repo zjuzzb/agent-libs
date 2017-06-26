@@ -45,7 +45,6 @@ void sinsp_procfs_parser::jiffies_t::set()
 	m_delta_steal = m_current_steal - m_old_steal;
 }
 
-
 sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture):
 	m_ncpus(ncpus),
 	m_physical_memory_kb(physical_memory_kb),
@@ -54,6 +53,11 @@ sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory
 	m_last_out_bytes(0),
 	m_global_jiffies(*this)
 {
+}
+
+void sinsp_procfs_parser::read_mount_points(mount_points_limits::sptr_t mount_points)
+{
+	m_mount_points = mount_points;
 }
 
 double sinsp_procfs_parser::get_global_cpu_jiffies(uint64_t* stolen) const
@@ -502,9 +506,10 @@ return;
 #endif // _WIN32
 }
 
-vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled, const string& mtab)
+vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled,
+															const string& mtab)
 {
-	vector<mounted_fs> ret;
+	map<string, mounted_fs> mount_points;
 #ifndef _WIN32
 	FILE* fp = setmntent(mtab.c_str(), "r");
 	if(fp == NULL)
@@ -512,6 +517,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		throw sinsp_exception("error opening " + mtab);
 	}
 
+	m_mount_points->reset();
 	while(true)
 	{
 		struct mntent* entry = getmntent(fp);
@@ -520,39 +526,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			break;
 		}
 
-		//
-		// Dummy detection from coreutils
-		//
-  		if(strcmp(entry->mnt_type, "autofs") == 0 // dummy fs
-			|| strcmp(entry->mnt_type, "proc") == 0
-			|| strcmp(entry->mnt_type, "subfs") == 0
-			|| strcmp(entry->mnt_type, "debugfs") == 0
-			|| strcmp(entry->mnt_type, "devpts") == 0
-			|| strcmp(entry->mnt_type, "fusectl") == 0
-			|| strcmp(entry->mnt_type, "mqueue") == 0
-			|| strcmp(entry->mnt_type, "rpc_pipefs") == 0
-			|| strcmp(entry->mnt_type, "sysfs") == 0
-			|| strcmp(entry->mnt_type, "devfs") == 0
-			|| strcmp(entry->mnt_type, "devtmpfs") == 0
-			|| strcmp(entry->mnt_type, "kernfs") == 0
-			|| strcmp(entry->mnt_type, "ignore") == 0
-			|| strcmp(entry->mnt_type, "rootfs") == 0
-			|| strcmp(entry->mnt_type, "none") == 0)
-		{
-			continue;
-		}
-
-		// Skip stuff like /proc/kcore, /sys/fs/cgroup, etc.
-		// Docker and other container/orch systems each use a slightly
-		// different path for their secrets directory so skip all
-		// "*/secrets*" mounts
-		if (strcmp(entry->mnt_type, "tmpfs") == 0 &&
-		    (strncmp(entry->mnt_dir, "/proc/", strlen("/proc/")) == 0
-		     || strcmp(entry->mnt_dir, "/sys/fs/cgroup") == 0
-		     || strstr(entry->mnt_dir, "/secrets") != nullptr))
-		{
-			continue;
-		}
+		bool colon_found = (strchr(entry->mnt_fsname, ':') != NULL);
 
 		//
 		// From coreutils, if dev contains ':', then remote
@@ -560,7 +534,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		if(!remotefs_enabled)
 		{
 			// if remotefs are disabled, recognize them and skip
-			if((strchr(entry->mnt_fsname, ':') != NULL && strstr(entry->mnt_fsname, "docker") == NULL)
+			if((colon_found && strstr(entry->mnt_fsname, "docker") == NULL)
 				|| strcmp(entry->mnt_type, "nfs") == 0 // remote fs
 				|| strcmp(entry->mnt_type, "smbfs") == 0
 				|| strcmp(entry->mnt_type, "cifs") == 0)
@@ -569,12 +543,8 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			}
 		}
 
-		if(strcmp(entry->mnt_dir, "/etc/resolv.conf") == 0 ||
-			strcmp(entry->mnt_dir, "/etc/hostname") == 0 ||
-			strcmp(entry->mnt_dir, "/etc/hosts") == 0)
+		if (!m_mount_points->allow(entry->mnt_fsname, entry->mnt_type, entry->mnt_dir))
 		{
-			// Skipping these /etc mounts, they are always present inside containers
-			// Usually they are just noise
 			continue;
 		}
 
@@ -600,8 +570,11 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			blocksize = statfs.f_bsize;
 		}
 
+		if (mount_points.find(entry->mnt_dir) == mount_points.end() && !m_mount_points->increase())
+		{
+			continue;
+		}
 		mounted_fs fs;
-
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;
 		fs.type =  entry->mnt_type;
@@ -610,11 +583,14 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 		fs.total_inodes = statfs.f_files;
 		fs.used_inodes = statfs.f_files - statfs.f_ffree;
-		ret.emplace_back(move(fs));
+		mount_points[entry->mnt_dir] = move(fs);
 	}
 
 	endmntent(fp);
 #endif
+	vector<mounted_fs> ret;
+	for (auto& mp : mount_points)
+		ret.emplace_back(move(mp.second));
 	return ret;
 }
 
@@ -715,24 +691,37 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 	// Look for mount point of cgroup memory filesystem
 	// It should be already mounted on the host or by
 	// our docker-entrypoint.sh script
-	FILE* fp = setmntent("/proc/mounts", "r");
-	struct mntent* entry = getmntent(fp);
-	while(entry != NULL)
+	if(strcmp(scap_get_host_root(), "") != 0)
 	{
-		if(strcmp(entry->mnt_type, "cgroup") == 0 &&
-		   hasmntopt(entry, "memory") != NULL)
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", entry->mnt_dir);
-			m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
-			break;
-		}
-		entry = getmntent(fp);
+		// We are inside our container, so we should use the directory
+		// mounted by it
+		auto memory_cgroup = string(scap_get_host_root()) + "/cgroup/memory";
+		m_memory_cgroup_dir = make_unique<string>(memory_cgroup);
 	}
-	endmntent(fp);
+	else
+	{
+		FILE* fp = setmntent("/proc/mounts", "r");
+		struct mntent* entry = getmntent(fp);
+		while(entry != NULL)
+		{
+			if(strcmp(entry->mnt_type, "cgroup") == 0 &&
+			   hasmntopt(entry, "memory") != NULL)
+			{
+				m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
+				break;
+			}
+			entry = getmntent(fp);
+		}
+		endmntent(fp);
+	}
 	if(!m_memory_cgroup_dir)
 	{
 		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
 		m_memory_cgroup_dir = make_unique<string>();
+	}
+	else
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", m_memory_cgroup_dir->c_str());
 	}
 }
 
@@ -874,6 +863,23 @@ sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid, sin
 	return ret;
 }
 
+string sinsp_procfs_parser::read_proc_root(int64_t pid)
+{
+	char path[SCAP_MAX_PATH_SIZE];
+	string root_link = string(scap_get_host_root()) + "/proc/" + to_string(pid) + "/root";
+	ssize_t len = readlink(root_link.c_str(), path, SCAP_MAX_PATH_SIZE - 1);
+	if (len > 0)
+	{
+		path[len] = '\0';
+		return path;
+	}
+	else
+	{
+		g_logger.log("Cannot read root link.", sinsp_logger::SEV_WARNING);
+		return "/";
+	}
+}
+
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
 	device(proto.device()),
 	mount_dir(proto.mount_dir()),
@@ -967,13 +973,14 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 	return m_output.send(req_s);
 }
 
-mounted_fs_reader::mounted_fs_reader(bool remotefs):
+mounted_fs_reader::mounted_fs_reader(bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
 	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
 	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
 	m_procfs_parser(0, 0, true),
 	m_remotefs(remotefs)
 {
 	g_logger.add_stderr_log();
+	m_procfs_parser.read_mount_points(make_shared<mount_points_limits>(filters, mounts_limit_size));
 }
 
 int mounted_fs_reader::open_ns_fd(int pid)

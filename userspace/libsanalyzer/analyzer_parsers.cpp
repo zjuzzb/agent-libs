@@ -245,10 +245,12 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
 	tainfo->m_called_execve = true;
 
+	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
+	
 	//
 	// If command line capture is disabled, we stop here
 	//
-	if(!m_analyzer->get_configuration_read_only()->get_command_lines_capture_enabled())
+	if(!sinsp_conf->get_command_lines_capture_enabled())
 	{
 		return;
 	}
@@ -257,46 +259,90 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	// Navigate the parent processes to determine if this is the descendent of a shell
 	// and if yes what's the shell ID
 	//
-	sinsp_threadinfo* ttinfo = tinfo;
 	uint32_t shell_dist = 0;
 	uint64_t login_shell_id = 0;
+	uint32_t cur_dist = 0;
+	bool valid_ancestor = false;
+	bool found_container_init = false;
 
-	for(uint32_t j = 0; ; j++)
+	sinsp_threadinfo::visitor_func_t visitor = 
+		[sinsp_conf, &login_shell_id, &shell_dist, &cur_dist,
+		 &valid_ancestor, &found_container_init] (sinsp_threadinfo *ptinfo)
 	{
-		uint32_t cl = ttinfo->m_comm.size();
-		if(cl >= 2 && ttinfo->m_comm[cl - 2] == 's' && ttinfo->m_comm[cl - 1] == 'h')
+		if(cur_dist && sinsp_conf->is_command_lines_valid_ancestor(ptinfo->m_comm))
+		{
+			valid_ancestor = true;
+		}
+
+		if(ptinfo->m_vpid == 1 && !ptinfo->m_container_id.empty())
+		{
+			found_container_init = true;
+		}
+
+		uint32_t cl = ptinfo->m_comm.size();
+		if(cl >= 2 && ptinfo->m_comm[cl - 2] == 's' && ptinfo->m_comm[cl - 1] == 'h')
 		{
 			//
 			// We found a shell. Patch the descendat but don't stop here since there might
 			// be another parent shell
 			//
-			login_shell_id = ttinfo->m_tid;
-			shell_dist = j;
+			login_shell_id = ptinfo->m_tid;
+			shell_dist = cur_dist;
 		}
 
-		ttinfo = ttinfo->get_parent_thread();
-		if(ttinfo == NULL)
-		{
-			break;
-		}
+		cur_dist++;
+		return true;
+	};
+
+	if(visitor(tinfo))
+	{
+		tinfo->traverse_parent_state(visitor);
 	}
 
-	switch(m_analyzer->get_configuration_read_only()->get_command_lines_capture_mode())
+	// If the parents chain is broken, ignore login_shell_id and shell_dist because not meaningful
+	if(tinfo->m_parent_loop_detected)
+	{
+		login_shell_id = 0;
+		shell_dist = 0;
+	}
+
+	bool mode_ok = false;
+	switch(sinsp_conf->get_command_lines_capture_mode())
 	{
 		case sinsp_configuration::command_capture_mode_t::CM_TTY:
-			if(!tinfo->m_tty) {
-				return;
+			if(tinfo->m_tty)
+			{
+				mode_ok = true;
 			}
 			break;
 		case sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR:
-			if(!login_shell_id) {
-				return;
+			if(login_shell_id)
+			{
+				mode_ok = true;
 			}
 			break;
 		case sinsp_configuration::command_capture_mode_t::CM_ALL:
+			mode_ok = true;
 			break;
 		default:
 			ASSERT(false);
+	}
+
+	//
+	// Let a process show up if it was executed inside a container but
+	// doesn't have the container init as parent (and it's in a separate
+	// pid ns), very likely it comes from docker exec
+	//
+	bool container_exec = false;
+	if(!tinfo->m_container_id.empty() && !found_container_init &&
+		tinfo->m_vpid != tinfo->m_pid)
+	{
+		container_exec = true;
+	}
+
+	if(!mode_ok && !valid_ancestor && !container_exec)
+	{
+		return;
 	}
 
 	//
@@ -342,15 +388,15 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	if((tinfo->m_flags & (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_SRC | PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_MIDDLE;
 	}
 	else if((tinfo->m_flags & (PPM_CL_PIPE_SRC)) == (PPM_CL_PIPE_SRC))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_HEAD;
 	}
 	else if((tinfo->m_flags & (PPM_CL_PIPE_DST)) == (PPM_CL_PIPE_DST))
 	{
-		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;		
+		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
 	}
 
 	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);

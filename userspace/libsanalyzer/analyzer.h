@@ -16,7 +16,6 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
-#include "memdumper.h"
 #include "coclient.h"
 
 //
@@ -52,7 +51,7 @@ class docker;
 class uri;
 class falco_engine;
 class falco_events;
-class sisnp_baseliner;
+class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
 
@@ -132,7 +131,7 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
@@ -281,6 +280,11 @@ public:
 		m_is_sampling = is_sampling;
 	}
 
+	void set_capture_in_progress(bool in_progress)
+	{
+		m_capture_in_progress = in_progress;
+	}
+
 #ifndef _WIN32
 	inline void check_metric_limits()
 	{
@@ -301,6 +305,8 @@ public:
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
 			checked = true;
 		}
+
+		m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 	}
 
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
@@ -389,15 +395,6 @@ public:
 			  double sampling_multiplier);
 
 	void disable_falco();
-	bool is_memdump_active()
-	{
-		return m_do_memdump;
-	}
-
-	sinsp_memory_dumper* get_memory_dumper()
-	{
-		return m_memdumper;
-	}
 
 	void set_emit_tracers(bool enabled);
 
@@ -596,6 +593,7 @@ VISIBILITY_PRIVATE
 	// Subsampling-related stuff
 	//
 	bool m_is_sampling;
+	bool m_capture_in_progress;
 	bool m_driver_stopped_dropping;
 	uint32_t m_sampling_ratio;
 	uint32_t m_new_sampling_ratio;
@@ -605,18 +603,13 @@ VISIBILITY_PRIVATE
 	double m_my_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-	
+
 	//
 	// Falco stuff
 	//
-	sisnp_baseliner* m_falco_baseliner = NULL;
+	sinsp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
-
-	//
-	// Memory dump stuff
-	//
-	bool m_do_memdump = false;
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -680,8 +673,6 @@ VISIBILITY_PRIVATE
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
 
-	sinsp_memory_dumper* m_memdumper = NULL;
-
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
 #ifndef _WIN32
@@ -692,6 +683,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<falco_events> m_falco_events;
 
 	metric_limits::sptr_t m_metric_limits;
+	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;
 
@@ -719,7 +711,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
-	friend class sisnp_baseliner;
+	friend class sinsp_baseliner;
 };
 
 #endif // HAS_ANALYZER

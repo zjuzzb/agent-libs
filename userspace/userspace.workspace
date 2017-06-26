@@ -6,7 +6,7 @@
   <Project Name="sysdig" Path="../../sysdig/userspace/sysdig.project" Active="No"/>
   <Project Name="dragent" Path="dragent.project" Active="Yes"/>
   <BuildMatrix>
-    <WorkspaceConfiguration Name="Debug" Selected="no">
+    <WorkspaceConfiguration Name="Debug" Selected="yes">
       <Environment/>
       <Project Name="docker" ConfigName="Debug"/>
       <Project Name="jq" ConfigName="Debug"/>
@@ -15,7 +15,7 @@
       <Project Name="sysdig" ConfigName="Debug"/>
       <Project Name="dragent" ConfigName="Debug"/>
     </WorkspaceConfiguration>
-    <WorkspaceConfiguration Name="Release" Selected="yes">
+    <WorkspaceConfiguration Name="Release" Selected="no">
       <Environment/>
       <Project Name="docker" ConfigName="Release"/>
       <Project Name="jq" ConfigName="Release"/>

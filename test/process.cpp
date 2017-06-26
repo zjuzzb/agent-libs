@@ -159,7 +159,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 				//
 				// Wait for child to exit, and store its status
 				//
-				wait(&status);	
+				ASSERT_EQ(waitpid(ctid, &status, 0), ctid);
 			}
 		}
 		else
@@ -738,6 +738,25 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		usleep(100000);
 	}
 }
+
+TEST_F(sys_call_test, procfs_get_mounted_fs_list)
+{
+	mount_points_filter_vec filters({{"*|autofs|*", false}, {"*|proc|*", false}, {"*|subfs|*", false}, {"*|debugfs|*", false},
+		{"*|devpts|*", false}, {"*|fusectl|*", false}, {"*|mqueue|*", false}, {"*|rpc_pipefs|*", false},
+		{"*|sysfs|*", false}, {"*|devfs|*", false}, {"*|devtmpfs|*", false}, {"*|kernfs|*", false},
+		{"*|ignore|*", false}, {"*|rootfs|*", false}, {"*|none|*", false}, {"*|*|*", true}});
+	sinsp_proc_stat proc_stat;
+	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
+	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
+
+	sinsp_procfs_parser fs_parser(nprocs, memkb, true);
+	shared_ptr<mount_points_limits> limits = make_shared<mount_points_limits>(filters, 15);
+	fs_parser.read_mount_points(limits);
+	vector<mounted_fs> fs_list = fs_parser.get_mounted_fs_list(false);
+	EXPECT_EQ(limits->get_filters().size(), filters.size());
+	EXPECT_GE(fs_list.size(), 1);
+}
+
 
 class loadthread
 {

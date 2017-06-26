@@ -18,7 +18,7 @@
 // sinsp_mongodb_parser implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-const uint32_t sinsp_mongodb_parser::commands_size = 10;
+const uint32_t sinsp_mongodb_parser::commands_size = 11;
 
 const char* sinsp_mongodb_parser::commands[] = {
 	"insert",
@@ -30,6 +30,7 @@ const char* sinsp_mongodb_parser::commands[] = {
 	"mapreduce",
 	"geonear",
 	"geosearch",
+	"find",
 	"findandmodify",
 };
 
@@ -44,6 +45,7 @@ const uint32_t sinsp_mongodb_parser::commands_sizes_map[] =
 	sizeof("mapreduce"),
 	sizeof("geonear"),
 	sizeof("geosearch"),
+	sizeof("find"),
 	sizeof("findandmodify")
 };
 
@@ -58,6 +60,7 @@ const sinsp_mongodb_parser::opcode sinsp_mongodb_parser::commands_to_opcode[] =
 	MONGODB_OP_MAP_REDUCE,
 	MONGODB_OP_GEO_NEAR,
 	MONGODB_OP_GEO_SEARCH,
+	MONGODB_OP_FIND,
 	MONGODB_OP_FIND_AND_MODIFY,
 };
 
@@ -147,14 +150,10 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else
 		{
-//			printf("MongoDB reconstruct\n");
 			m_reassembly_buf.copy(buf, buflen);
 			rbuf = m_reassembly_buf.get_buf();
 			rbuflen = m_reassembly_buf.get_size();
 		}
-//		printf("MongoDB extract: ");
-//		debug_print_binary_buf(rbuf, rbuflen);
-//		printf("\n");
 		m_wireopcode = (wire_opcode)(*(int32_t*)(rbuf+12));
 		//
 		// Do the parsing
@@ -164,7 +163,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 		case WIRE_OP_QUERY:
 		{
 			// Extract collection name
-			if (rbuflen >= 20)
+			if (rbuflen > 49)
 			{
 				char* start_collection = rbuf+20;
 				for(unsigned int j = 0; j < rbuflen-20; ++j)
@@ -190,6 +189,12 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 					{
 						if (command == *(uint32_t*)(commands[j]))
 						{
+							// Discern if it's find or findandmodify, right now it's the
+							// only clash, otherwise we'll need a better approach
+							if(j == 9 && (*(uint32_t*)(doc+5+4) | 0x20202020) == *(uint32_t*)"andm")
+							{
+								continue;
+							}
 							m_opcode = commands_to_opcode[j];
 							start_collection = doc+5+commands_sizes_map[j]+4;
 							m_collection = m_collection_storage.copy(start_collection, rbuflen, 1);
@@ -206,6 +211,15 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 					m_parsed = true;
 					m_is_req_valid = true;
 				}
+			}
+			else
+			{
+				// in this case wait a little more if some more data arrives
+				if(m_reassembly_buf.get_size() == 0)
+				{
+					m_reassembly_buf.copy(buf, buflen);
+				}
+				return true;
 			}
 			break;
 		}

@@ -2,8 +2,9 @@
 
 #include "logger.h"
 
-SharedPtr<protocol_queue_item> dragent_protocol::message_to_buffer(uint8_t message_type, 
-	const google::protobuf::MessageLite& message, bool compressed)
+std::shared_ptr<protocol_queue_item> dragent_protocol::message_to_buffer(uint64_t ts_ns, uint8_t message_type,
+									 const google::protobuf::MessageLite& message, bool compressed,
+									 int compression_level)
 {
 	//
 	// Find out how many bytes we need for the serialization
@@ -24,17 +25,23 @@ SharedPtr<protocol_queue_item> dragent_protocol::message_to_buffer(uint8_t messa
         return NULL;
     }
 
-    SharedPtr<protocol_queue_item> ptr(new protocol_queue_item());
-    ptr->resize(sizeof(dragent_protocol_header));
+    std::shared_ptr<protocol_queue_item> ptr = std::make_shared<protocol_queue_item>();
+    ptr->ts_ns = ts_ns;
+    ptr->message_type = message_type;
+    ptr->buffer.resize(sizeof(dragent_protocol_header));
 
-    google::protobuf::io::StringOutputStream string_output(ptr);
+    google::protobuf::io::StringOutputStream string_output(&(ptr->buffer));
 
 	//
 	// Do the serialization
 	//
 	if(compressed)
 	{
-        google::protobuf::io::GzipOutputStream gzip_output(&string_output);
+	google::protobuf::io::GzipOutputStream::Options opts;
+
+	opts.compression_level = compression_level;
+
+        google::protobuf::io::GzipOutputStream gzip_output(&string_output, opts);
         bool res = message.SerializeToZeroCopyStream(&gzip_output);
         if(!res)
         {
@@ -53,7 +60,7 @@ SharedPtr<protocol_queue_item> dragent_protocol::message_to_buffer(uint8_t messa
 	}
 	else
 	{
-		google::protobuf::io::StringOutputStream string_output(ptr);
+		google::protobuf::io::StringOutputStream string_output(&(ptr->buffer));
 		bool res = message.SerializeToZeroCopyStream(&string_output);
         if(!res)
         {
@@ -66,8 +73,8 @@ SharedPtr<protocol_queue_item> dragent_protocol::message_to_buffer(uint8_t messa
 	//
 	// Fill the protocol header part
 	//
-	dragent_protocol_header* hdr = (dragent_protocol_header*) ptr->data();
-	hdr->len = htonl(ptr->size());
+	dragent_protocol_header* hdr = (dragent_protocol_header*) ptr->buffer.data();
+	hdr->len = htonl(ptr->buffer.size());
 	hdr->version = PROTOCOL_VERSION_NUMBER;
 	hdr->messagetype = message_type;
 

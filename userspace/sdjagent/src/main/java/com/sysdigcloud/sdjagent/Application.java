@@ -58,6 +58,7 @@ public class Application {
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
             LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
+            LOGGER.info(String.format("Java classpath: %s", System.getProperty("java.class.path")));
             if(JAVA_VERSION < MIN_JAVA_VERSION) {
                 LOGGER.severe("Java version unsupported");
                 System.exit(MONITOR_DONT_RESTART_CODE);
@@ -109,20 +110,23 @@ public class Application {
             MAPPER.writeValue(System.out, vmInfo);
         } else if (command.equals("availableMetrics") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
-            final MonitoredVM vm = buildMonitoredVM(request);
+            // not using buildMonitoredVM since here we don't need
+            // to apply config
+            final MonitoredVM vm = new MonitoredVM(request);
 
-            DumperOptions options = new DumperOptions();
-            options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
-            Yaml yaml = new Yaml(options);
-
-            Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
-            vmInfo.put("pattern", vm.getName());
             if(vm.isAvailable()) {
-                vmInfo.put("beans", vm.availableMetrics());
-            }
+                final DumperOptions options = new DumperOptions();
+                options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
+                final Yaml yaml = new Yaml(options);
 
-            final String dump = yaml.dump(vmInfo);
-            System.out.println(dump);
+                final Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
+                vmInfo.put("pattern", vm.getName());
+                vmInfo.put("beans", vm.availableMetrics());
+                final String dump = yaml.dump(vmInfo);
+                System.out.println(dump);
+            } else {
+                LOGGER.severe("Cannot connect to JVM");
+            }
         } else if (command.equals("getMetrics") && args.length > 1) {
             final VMRequest request = new VMRequest(args);
             final MonitoredVM vm = buildMonitoredVM(request);
@@ -254,15 +258,18 @@ public class Application {
         // Configure VM name if it matches a pattern on configurations
         if(vm.isAvailable()) {
             Map<String, Config.Process> processes = config.getProcesses();
+            final String originalClassName = vm.getName();
+            String matchedConfig = "none";
             for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
-                if (vm.getName().contains(config.getValue().getPattern())) {
+                if (originalClassName.contains(config.getValue().getPattern())) {
                     vm.setName(config.getKey());
+                    matchedConfig = config.getKey();
                     vm.addQueries(config.getValue().getQueries());
                     break;
                 }
             }
-            LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s jmxAddress=%s", request.getPid(),
-                    request.getVpid(), vm.getName(), vm.getAddress()));
+            LOGGER.info(String.format("Detected JVM pid=%d vpid=%d mainClass=%s matchedConfig=%s jmxAddress=%s", request.getPid(),
+                    request.getVpid(), originalClassName, matchedConfig, vm.getAddress()));
         }
         return vm;
     }

@@ -111,6 +111,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 #endif
 	m_trans_table = NULL;
 	m_is_sampling = false;
+	m_capture_in_progress = false;
 	m_driver_stopped_dropping = false;
 	m_sampling_ratio = 1;
 	m_new_sampling_ratio = m_sampling_ratio;
@@ -133,9 +134,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sisnp_baseliner();
-
-	m_memdumper = NULL;
+	m_falco_baseliner = new sinsp_baseliner();
 
 	//
 	// Listeners
@@ -212,13 +211,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_falco_baseliner;
 	}
-
-	if(m_memdumper != NULL)
-	{
-		delete m_memdumper;
-	}
-
-	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -256,11 +248,6 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	//
-	// Allocate the memory dumprt
-	//
-	m_memdumper = new sinsp_memory_dumper(m_inspector, m_configuration->get_capture_dragent_events());
-
-	//
 	// Start dropping of non-critical events
 	//
 	if(m_configuration->get_autodrop_enabled())
@@ -295,6 +282,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+	m_procfs_parser->read_mount_points(m_mount_points);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
@@ -342,17 +330,10 @@ void sinsp_analyzer::on_capture_start()
 	// Start the falco baseliner
 	//
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
-	m_falco_baseliner->init(m_inspector);
-
-	//
-	// Enable memery dump
-	//
-	uint64_t memdump_size = m_configuration->get_memdump_size();
-	m_do_memdump = (memdump_size != 0);
-	if(m_do_memdump)
+	if(m_do_baseline_calculation)
 	{
-		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
-		m_memdumper->init(memdump_size, memdump_size, 300LL * 1000000000LL);
+		glogf("starting baseliner");
+		m_falco_baseliner->init(m_inspector);
 	}
 }
 
@@ -1877,8 +1858,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			if(m_jmx_proxy && tinfo->get_comm() == "java")
 			{
+				if (!tinfo->m_ainfo->m_root_refreshed)
+				{
+					tinfo->m_ainfo->m_root_refreshed = true;
+					tinfo->m_root = m_procfs_parser->read_proc_root(tinfo->m_pid);
+				}
 				java_process_requests.emplace_back(tinfo);
 			}
+
 			// May happen that for processes like apache with mpm_prefork there are hundred of
 			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
@@ -2217,8 +2204,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					{
 						return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
 					});
+
 					if(long_running_proc != it->second.end())
 					{
+						if (!(*long_running_proc)->m_ainfo->m_root_refreshed)
+						{
+							(*long_running_proc)->m_ainfo->m_root_refreshed = true;
+							(*long_running_proc)->m_root = m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
+						}
 						containers_for_mounted_fs.push_back(*long_running_proc);
 					}
 				}
@@ -2963,27 +2956,31 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 		if(m_seconds_above_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds())
 		{
 			m_seconds_above_thresholds = 0;
+			uint32_t new_sampling_ratio = 1;
 
 			if(m_sampling_ratio < 128)
 			{
 				if(!m_is_sampling)
 				{
-					m_new_sampling_ratio = 1;
+					new_sampling_ratio = 1;
 					m_is_sampling = true;
 				}
 				else
 				{
-					m_new_sampling_ratio = m_sampling_ratio * 2;
+					new_sampling_ratio = m_sampling_ratio * 2;
 				}
 
-				if(m_new_sampling_ratio == 2)
+				if(new_sampling_ratio == 2)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-					m_do_baseline_calculation = false;
-					m_falco_baseliner->clear_tables();
+					if(m_do_baseline_calculation)
+					{
+						g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
+						m_do_baseline_calculation = false;
+						m_falco_baseliner->clear_tables();
+					}
 				}
 
-				start_dropping_mode(m_new_sampling_ratio);
+				start_dropping_mode(new_sampling_ratio);
 			}
 			else
 			{
@@ -3049,19 +3046,19 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 
 				if(m_new_sampling_ratio > 1)
 				{
-					m_new_sampling_ratio = m_sampling_ratio / 2;
+					uint32_t new_sampling_ratio = m_sampling_ratio / 2;
 
-					if(m_new_sampling_ratio <= 128)
+					if(new_sampling_ratio <= 128)
 					{
-						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, m_new_sampling_ratio);
-						start_dropping_mode(m_new_sampling_ratio);
+						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, new_sampling_ratio);
+						start_dropping_mode(new_sampling_ratio);
 					}
 					else
 					{
 						// default to lowest, tuner will adjust it quick if there's not much load
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", m_new_sampling_ratio);
-						m_new_sampling_ratio = 128;
-						start_dropping_mode(m_new_sampling_ratio);
+						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", new_sampling_ratio);
+						new_sampling_ratio = 128;
+						start_dropping_mode(new_sampling_ratio);
 					}
 				}
 			}
@@ -3215,7 +3212,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 					ASSERT(host_dest == NULL);
 					ASSERT(container_dest != NULL);
 					cd = container_dest->add_commands();
-				}					
+				}
 
 				cd->set_timestamp(it->m_ts);
 				cd->set_count(it->m_count);
@@ -3393,7 +3390,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
 								m_docker_swarm_state->CopyFrom(res->state());
 								if (!res->successful()) {
-									
+
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 								}
@@ -3785,8 +3782,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						"Patching host external networking, from (%u, %u) to (%u, %u)",
 						m_io_net.m_bytes_in, m_io_net.m_bytes_out,
 						interfaces_stats.first, interfaces_stats.second);
-				external_io_net->set_bytes_in(interfaces_stats.first);
-				external_io_net->set_bytes_out(interfaces_stats.second);
+				// protobuf uint32 is converted to int in java. It means that numbers higher than int max
+				// are translated into negative ones. This is a problem specifically when agent loses samples
+				// and here we send current value - prev read value. It can be very high
+				// so at this point let's patch it to avoid the overflow
+				static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int>::max());
+				external_io_net->set_bytes_in(std::min(interfaces_stats.first, max_int32));
+				external_io_net->set_bytes_out(std::min(interfaces_stats.second, max_int32));
 			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
@@ -3848,7 +3850,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					//
 					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 				}
-//				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > 5000000000)
 				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
 				{
 					if(m_last_falco_dump_ts != 0)
@@ -4021,7 +4022,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
 	m_cputime_analyzer.end_flush();
-	if(m_configuration->get_autodrop_enabled())
+	if(m_configuration->get_autodrop_enabled() && !m_capture_in_progress)
 	{
 		m_prev_flush_cpu_pct = m_cputime_analyzer.calc_flush_percent();
 		g_logger.log("m_prev_flush_cpu_pct=" + std::to_string(m_prev_flush_cpu_pct) + ", m_my_cpuload=" + std::to_string(m_my_cpuload) +
@@ -4240,7 +4241,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		// Probably driver switched to sampling=1 without
 		// sending a drop_event with an updated sampleratio.
 		// forcing it
-		g_logger.log("Did not receive drop event to confirm sampling_ratio, forcing update", sinsp_logger::SEV_WARNING);
+		g_logger.log("Did not receive drop event to confirm sampling_ratio " + to_string(m_sampling_ratio) + ", forcing update", sinsp_logger::SEV_WARNING);
 		set_sampling_ratio(m_new_sampling_ratio);
 		m_last_dropmode_switch_time = ts;
 	}
@@ -4273,18 +4274,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-	// If required, dump the event in the memory circular buffer
-	//
-	if(m_do_memdump)
-	{
-		m_memdumper->process_event(evt);
 
-		if(m_inspector->m_flush_memory_dump)
-		{
-			m_memdumper->push_notification(evt->get_ts(), evt->get_tid(), to_string(evt->get_num()), "dump triggered by agent engine");
-			m_memdumper->to_file_multi("sinsp", evt->get_ts());
-			m_inspector->m_flush_memory_dump = false;
-		}
+	//
+	// If process the event in the baseliner
+	//
+	if(m_do_baseline_calculation)
+	{
+		m_falco_baseliner->process_event(evt);
 	}
 
 	//
@@ -5824,7 +5820,11 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
-		thread_analyzer_info* ainfo = it->second.m_ainfo;
+		if(!it->second.is_main_thread())
+		{
+			continue;
+		}
+		auto ainfo = it->second.m_ainfo->main_thread_ainfo();
 
 		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{
@@ -6039,6 +6039,7 @@ void sinsp_analyzer::stop_dropping_mode()
 
 void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 {
+	m_new_sampling_ratio = sampling_ratio;
 	m_inspector->start_dropping_mode(sampling_ratio);
 
 	if(m_falco_engine)

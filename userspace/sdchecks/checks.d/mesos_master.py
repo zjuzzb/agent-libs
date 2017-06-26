@@ -7,10 +7,10 @@ from hashlib import md5
 
 # 3rd party
 import requests
+import simplejson as json
 
 # project
 from checks import AgentCheck, CheckException
-
 
 class MesosMaster(AgentCheck):
     GAUGE = AgentCheck.gauge
@@ -129,15 +129,20 @@ class MesosMaster(AgentCheck):
         msg = None
         status = None
         try:
-            headers = {}
+            # Disable gzip enconding that by default requests puts, see below
+            headers = {"Accept-Encoding": ""}
             if self.auth_token != '':
                 headers["Authorization"] = "token=%s" % (self.auth_token)
 
-            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers, auth=self.auth, verify=False)
-
+            r = requests.get(url, timeout=timeout, allow_redirects=False, headers=headers, auth=self.auth, verify=False, stream=True)
+            
             if r.status_code != 200:
-                status = AgentCheck.CRITICAL
-                msg = "Got %s when hitting %s" % (r.status_code, url)
+                if r.status_code == 307:
+                    # standby mesos master, ignore
+                    return None
+                else:
+                    status = AgentCheck.CRITICAL
+                    msg = "Got %s when hitting %s" % (r.status_code, url)
             else:
                 status = AgentCheck.OK
                 msg = "Mesos master instance detected at %s " % url
@@ -158,7 +163,11 @@ class MesosMaster(AgentCheck):
                                    message=msg)
                 raise CheckException("Cannot connect to mesos at url %s (%s), please check your configuration." % (url, msg))
 
-        return r.json()
+        # This hack has been done because parsing a 8 MiB json from memory causes 140 MiB of memory usage
+        # in this way the json is parsed as it comes in a streaming fashion
+        # we disabled gzip compression because it was hard to implement streaming decompression also
+        # we poll only local endpoints here so it should not be an issue
+        return json.load(r.raw)
 
     def _get_master_state(self, url, timeout):
         return self._get_json(url + '/state.json', timeout)
@@ -242,6 +251,5 @@ class MesosMaster(AgentCheck):
                 for m in metrics:
                     for key_name, (metric_name, metric_func) in m.iteritems():
                         metric_func(self, metric_name, stats_metrics[key_name], tags=tags)
-
 
         self.service_check_needed = True

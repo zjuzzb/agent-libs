@@ -74,6 +74,14 @@ public:
 
 class proc_config;
 
+// Holds state allocated only per main_thread
+struct main_thread_analyzer_info
+{
+	sinsp_protostate m_protostate;
+	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Thread-related analyzer state
 // WARNING: This class is allocated with `placement new`, so destructor must be
@@ -199,10 +207,6 @@ public:
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
 	// Completed transactions lists
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
-	// The protocol state
-	sinsp_protostate m_protostate;
 	unique_ptr<proc_config> m_proc_config;
 
 	bool m_called_execve;
@@ -210,8 +214,32 @@ public:
 	std::set<double> m_percentiles;
 	// Used just by nodriver mode
 	sinsp_proc_file_stats m_file_io_stats;
+	bool m_root_refreshed;
 
+	main_thread_analyzer_info* main_thread_ainfo()
+	{
+		auto main_thread = m_tinfo->get_main_thread();
+		if(main_thread != nullptr && m_tinfo != main_thread)
+		{
+			return main_thread->m_ainfo->main_thread_ainfo();
+		}
+		else
+		{
+			if(!m_main_thread_ainfo)
+			{
+				m_main_thread_ainfo = make_unique<main_thread_analyzer_info>();
+				m_main_thread_ainfo->m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+				m_main_thread_ainfo->m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
+				if(!m_percentiles.empty())
+				{
+					m_main_thread_ainfo->m_protostate.set_percentiles(m_percentiles);
+				}
+			}
+			return m_main_thread_ainfo.get();
+		}
+	}
 private:
+	unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
 	set<std::string> m_app_checks_found;

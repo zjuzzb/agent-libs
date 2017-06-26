@@ -9,13 +9,63 @@
 #endif
 #include <baseliner.h>
 
+#undef AVOID_FDS_FROM_THREAD_TABLE
+
 extern sinsp_evttables g_infotables;
 
 ///////////////////////////////////////////////////////////////////////////////
-// sisnp_baseliner implementation
 ///////////////////////////////////////////////////////////////////////////////
-void sisnp_baseliner::init(sinsp* inspector)
+// /proc parser thread
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+void proc_parser(proc_parser_state* state)
 {
+	sinsp* inspector_ori = state->m_bl->m_inspector;
+	
+	//
+	// Create and open the secondary inspector used for /proc parsing
+	//
+	state->m_inspector = new sinsp();
+	state->m_inspector->set_hostname_and_port_resolution_mode(false);
+
+	g_logger.format(sinsp_logger::SEV_INFO, 
+		"baseliner /proc scanner thread started");
+
+	try
+	{
+		if(inspector_ori->is_live())
+		{
+			state->m_inspector->open();
+		}
+		else
+		{
+			state->m_inspector->open(inspector_ori->get_input_filename());
+		}
+	}
+	catch(...)
+	{
+		g_logger.format(sinsp_logger::SEV_ERROR, 
+			"baseliner proc parser failure: can't open inspector %s",
+			state->m_inspector->getlasterr().c_str());
+		return;
+	}
+
+	//
+	// This signals to the baseliner that our inspector can be merged
+	//
+	state->m_done = true;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Baseliner
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_baseliner::init(sinsp* inspector)
+{
+#ifdef ASYNC_PROC_PARSING
+	m_procparser_thread = NULL;
+#endif
 	m_inspector = inspector;
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
@@ -26,47 +76,146 @@ void sisnp_baseliner::init(sinsp* inspector)
 #endif
 }
 
-void sisnp_baseliner::load_tables(uint64_t time)
+sinsp_baseliner::~sinsp_baseliner()
 {
-	init_containers();
-	init_programs(time);
+	clear_tables();
+
+#ifdef ASYNC_PROC_PARSING
+	if(m_procparser_thread != NULL)
+	{
+		if(m_procparser_thread->joinable())
+		{
+			m_procparser_thread->join();
+		}
+		delete m_procparser_thread;
+		delete m_procparser_state;
+	}
+#endif
 }
 
-void sisnp_baseliner::clear_tables()
+void sinsp_baseliner::load_tables(uint64_t time)
 {
+	init_containers();
+
+#ifdef ASYNC_PROC_PARSING
+	init_programs(m_inspector, time, true);
+
+	if(m_procparser_thread != NULL)
+	{
+		//
+		// Note: if we get there, the m_done flag of the thread state is guaranteed 
+		//       to be set to true, so we are sure that the join returns immediately.
+		//       we still call it because otherwise, based on specification of C++11
+		//       threads, the delete will crash.
+		//
+		if(m_procparser_thread->joinable())
+		{
+			m_procparser_thread->join();
+		}
+
+		delete m_procparser_thread;
+		delete m_procparser_state;
+	}
+
+	m_procparser_state = new proc_parser_state(this, time);
+	m_procparser_thread = new std::thread(proc_parser, m_procparser_state);
+#else
+	init_programs(m_inspector, time, false);
+#endif
+}
+
+void sinsp_baseliner::clear_tables()
+{
+	//
+	// Free all of the allocated entries in the prog table, which is a table of pointers
+	//
+	for(auto it : m_progtable)
+	{
+		delete it.second;
+	}
+
+	//
+	// Clear the tables
+	//
 	m_progtable.clear();
 	m_container_table.clear();
 }
 
-void sisnp_baseliner::init_programs(uint64_t time)
+void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_fds)
 {
 	//
 	// Go through the thread list and identify the main threads
 	//
-	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
-		it != m_inspector->m_thread_manager->m_threadtable.end();
+	for(auto it = inspector->m_thread_manager->m_threadtable.begin();
+		it != inspector->m_thread_manager->m_threadtable.end();
 		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
 
+		tinfo->m_blprogram = NULL;
+
+#ifdef AVOID_FDS_FROM_THREAD_TABLE
+		//
+		// If this is not the beginning of the capture, we just go through every FD
+		// and we reset its baseline flag
+		//
+		if(time != 0)
+		{
+			sinsp_fdtable* fdt = tinfo->get_fd_table();
+
+			if(fdt != NULL)
+			{
+				for(auto itf : fdt->m_table)
+				{
+					sinsp_fdinfo_t* fdinfo = &itf.second;
+					fdinfo->reset_inpipeline();
+				}
+			}
+
+			skip_fds = true;
+		}
+#endif
+		//
+		// Add main threads and their FDs to the program table.
+		//
 		if(tinfo->is_main_thread())
 		{
-			blprogram np;
+			blprogram* np;
+
+			auto it = m_progtable.find(tinfo->m_program_hash_falco);
+			if(it == m_progtable.end())
+			{
+				if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
+				{
+					return;
+				}
+
+				np = new blprogram();
+
+				np->m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+				np->m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+
+				m_progtable[tinfo->m_program_hash_falco] = np;
+			}
+			else
+			{
+				np = it->second;
+			}
 
 			//
 			// Copy the basic thread info
 			//
-			np.m_comm = tinfo->m_comm;
-			np.m_exe = tinfo->m_exe;
+			np->m_comm = tinfo->m_comm;
+			np->m_exe = tinfo->m_exe;
 			if(tinfo->m_comm == "java")
 			{
-				np.m_pids.push_back(tinfo->m_pid);
+				np->m_pids.push_back(tinfo->m_pid);
 			}
-			//np.m_args = tinfo->m_args;
-			//np.m_env = tinfo->m_env;
-			np.m_container_id = tinfo->m_container_id;
-			np.m_user_id = tinfo->m_uid;
-			np.m_comm = tinfo->m_comm;
+			//np->m_args = tinfo->m_args;
+			//np->m_env = tinfo->m_env;
+			np->m_container_id = tinfo->m_container_id;
+			np->m_user_id = tinfo->m_uid;
+			np->m_comm = tinfo->m_comm;
 
 			//
 			// Calculate the delta from program creation.
@@ -77,8 +226,13 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 			if(time != 0)
 			{
-				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : inspector->m_firstevent_ts;
 				cdelta = time - clone_ts;
+			}
+
+			if(skip_fds)
+			{
+				continue;
 			}
 
 			//
@@ -99,14 +253,13 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						//
 						// Add the entry to the file table
 						//
-						np.m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
+						np->m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
 
 						//
 						// Add the entry to the directory tables
 						//
 						string sdir = blfiletable::file_to_dir(fdinfo->m_name);
-						np.m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
-//						np.m_dirs_reduced.add(sdir, fdinfo->m_openflags, true, cdelta);
+						np->m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					}
@@ -116,8 +269,7 @@ void sisnp_baseliner::init_programs(uint64_t time)
 						// Add the entry to the directory tables
 						//
 						string sdir = fdinfo->m_name + '/';
-						np.m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
-//						np.m_dirs_reduced.add(sdir, fdinfo->m_openflags, true, cdelta);
+						np->m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
 
 						break;
 					}
@@ -129,16 +281,16 @@ void sisnp_baseliner::init_programs(uint64_t time)
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
-									np.m_server_ports.add_l_tcp(tuple.m_fields.m_dport, cdelta);
-									np.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip, cdelta);
-									np.m_c_subnet_endpoints.add_c_tcp(
+									np->m_server_ports.add_l_tcp(tuple.m_fields.m_dport, cdelta);
+									np->m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip, cdelta);
+									np->m_c_subnet_endpoints.add_c_tcp(
 										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), cdelta);
 								}
 								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 								{
-									np.m_server_ports.add_l_udp(tuple.m_fields.m_dport, cdelta);
-									np.m_ip_endpoints.add_udp(tuple.m_fields.m_sip, cdelta);
-									np.m_c_subnet_endpoints.add_udp(
+									np->m_server_ports.add_l_udp(tuple.m_fields.m_dport, cdelta);
+									np->m_ip_endpoints.add_udp(tuple.m_fields.m_sip, cdelta);
+									np->m_c_subnet_endpoints.add_udp(
 										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), cdelta);
 								}
 							}
@@ -146,16 +298,16 @@ void sisnp_baseliner::init_programs(uint64_t time)
 							{
 								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 								{
-									np.m_server_ports.add_r_tcp(tuple.m_fields.m_dport, cdelta);
-									np.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip, cdelta);
-									np.m_c_subnet_endpoints.add_s_tcp(
+									np->m_server_ports.add_r_tcp(tuple.m_fields.m_dport, cdelta);
+									np->m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip, cdelta);
+									np->m_c_subnet_endpoints.add_s_tcp(
 										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), cdelta);
 								}
 								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 								{
-									np.m_server_ports.add_r_udp(tuple.m_fields.m_dport, cdelta);
-									np.m_ip_endpoints.add_udp(tuple.m_fields.m_dip, cdelta);
-									np.m_c_subnet_endpoints.add_udp(
+									np->m_server_ports.add_r_udp(tuple.m_fields.m_dport, cdelta);
+									np->m_ip_endpoints.add_udp(tuple.m_fields.m_dip, cdelta);
+									np->m_c_subnet_endpoints.add_udp(
 										bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), cdelta);
 								}
 							}
@@ -165,11 +317,11 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					{
 						if(fdinfo->m_sockinfo.m_ipv4serverinfo.m_l4proto == SCAP_L4_TCP)
 						{
-							np.m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
+							np->m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
 						}
 						if(fdinfo->m_sockinfo.m_ipv4serverinfo.m_l4proto == SCAP_L4_UDP)
 						{
-							np.m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
+							np->m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv4serverinfo.m_port, cdelta);
 						}
 						break;
 					}
@@ -181,15 +333,6 @@ void sisnp_baseliner::init_programs(uint64_t time)
 					}
 				}
 			}
-
-			if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
-			{
-				return;
-			}
-
-			m_progtable[tinfo->m_program_hash_falco] = np;
-			m_progtable[tinfo->m_program_hash_falco].m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
-			m_progtable[tinfo->m_program_hash_falco].m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 		}
 	}
 
@@ -197,8 +340,8 @@ void sisnp_baseliner::init_programs(uint64_t time)
 	// In this second pass, we go over the thread table and add all of the main processes
 	// to their prarents' executed program list
 	//
-	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
-		it != m_inspector->m_thread_manager->m_threadtable.end();
+	for(auto it = inspector->m_thread_manager->m_threadtable.begin();
+		it != inspector->m_thread_manager->m_threadtable.end();
 		++it)
 	{
 		sinsp_threadinfo* tinfo = &it->second;
@@ -220,18 +363,18 @@ void sisnp_baseliner::init_programs(uint64_t time)
 
 				if(time != 0)
 				{
-					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : inspector->m_firstevent_ts;
 					cdelta = time - clone_ts;
 				}
 
-				itp->second.m_executed_programs.add(tinfo->m_comm, cdelta);
+				itp->second->m_executed_programs.add(tinfo->m_comm, cdelta);
 			}
 		}
 	}
 
 }
 
-void sisnp_baseliner::init_containers()
+void sinsp_baseliner::init_containers()
 {
 	const unordered_map<string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
 
@@ -242,7 +385,7 @@ void sisnp_baseliner::init_containers()
 	}
 }
 
-void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
+void sinsp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 {
 	//
 	// Initialize the FD listener
@@ -250,7 +393,7 @@ void sisnp_baseliner::register_callbacks(sinsp_fd_listener* listener)
 	m_inspector->m_parser->m_fd_listener = listener;
 }
 
-void sisnp_baseliner::serialize_json(string filename)
+void sinsp_baseliner::serialize_json(string filename)
 {
 	Json::Value root;
 	Json::Value econt;
@@ -267,13 +410,13 @@ void sisnp_baseliner::serialize_json(string filename)
 	{
 		Json::Value eprog;
 
-		eprog["comm"] = it.second.m_comm;
-		eprog["exe"] = it.second.m_exe;
-		eprog["user_id"] = it.second.m_user_id;
+		eprog["comm"] = it.second->m_comm;
+		eprog["exe"] = it.second->m_exe;
+		eprog["user_id"] = it.second->m_user_id;
 
-		if(!it.second.m_container_id.empty())
+		if(!it.second->m_container_id.empty())
 		{
-			eprog["container_id"] = it.second.m_container_id;
+			eprog["container_id"] = it.second->m_container_id;
 		}
 
 /*
@@ -305,7 +448,7 @@ void sisnp_baseliner::serialize_json(string filename)
 */
 		// Files
 		Json::Value efiles;
-		it.second.m_files.serialize_json(efiles);
+		it.second->m_files.serialize_json(efiles);
 		if(!efiles.empty())
 		{
 			eprog["files"] = efiles;
@@ -313,23 +456,15 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		// Dirs
 		Json::Value edirs;
-		it.second.m_dirs.serialize_json(edirs);
+		it.second->m_dirs.serialize_json(edirs);
 		if(!edirs.empty())
 		{
 			eprog["dirs"] = edirs;
 		}
 
-		// Dirs reduced
-		//Json::Value edirsr;
-		//it.second.m_dirs_reduced.serialize_json(edirsr);
-		//if(!edirsr.empty())
-		//{
-		//	eprog["dirsr"] = edirsr;
-		//}
-
 		// Executed Programs
 		Json::Value eeprogs;
-		it.second.m_executed_programs.serialize_json(eeprogs);
+		it.second->m_executed_programs.serialize_json(eeprogs);
 		if(!eeprogs.empty())
 		{
 			eprog["executed_programs"] = eeprogs;
@@ -337,7 +472,7 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		// Server ports
 		Json::Value eserver_ports;
-		it.second.m_server_ports.serialize_json(eserver_ports);
+		it.second->m_server_ports.serialize_json(eserver_ports);
 		if(!eserver_ports.empty())
 		{
 			eprog["server_ports"] = eserver_ports;
@@ -345,7 +480,7 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		// bound ports
 		Json::Value ebound_ports;
-		it.second.m_bound_ports.serialize_json(ebound_ports);
+		it.second->m_bound_ports.serialize_json(ebound_ports);
 		if(!ebound_ports.empty())
 		{
 			eprog["bound_ports"] = ebound_ports;
@@ -353,7 +488,7 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		// IP endpoints
 		Json::Value eip_endpoints;
-		it.second.m_ip_endpoints.serialize_json(eip_endpoints);
+		it.second->m_ip_endpoints.serialize_json(eip_endpoints);
 		if(!eip_endpoints.empty())
 		{
 			eprog["ip_endpoints"] = eip_endpoints;
@@ -361,10 +496,18 @@ void sisnp_baseliner::serialize_json(string filename)
 
 		// IP c subnets
 		Json::Value ec_subnet_endpoints;
-		it.second.m_c_subnet_endpoints.serialize_json(ec_subnet_endpoints);
+		it.second->m_c_subnet_endpoints.serialize_json(ec_subnet_endpoints);
 		if(!ec_subnet_endpoints.empty())
 		{
 			eprog["c_subnet_endpoints"] = ec_subnet_endpoints;
+		}
+
+		// syscalls
+		Json::Value eesyscalls;
+		it.second->m_syscalls.serialize_json(eesyscalls);
+		if(!eesyscalls.empty())
+		{
+			eprog["syscalls"] = eesyscalls;
 		}
 
 		table.append(eprog);
@@ -393,7 +536,7 @@ void sisnp_baseliner::serialize_json(string filename)
 }
 
 #ifdef HAS_ANALYZER
-void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
 	//
 	// Serialize the programs
@@ -402,20 +545,20 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 	{
 		draiosproto::falco_prog* prog = pbentry->add_progs();
 
-		prog->set_comm(it.second.m_comm);
-		prog->set_exe(it.second.m_exe);
+		prog->set_comm(it.second->m_comm);
+		prog->set_exe(it.second->m_exe);
 
 		//
 		// For java processes, we patch the comm and exe with the name coming from
 		// the JMX information for the first process associated with this program
 		//
-		if(it.second.m_comm == "java")
+		if(it.second->m_comm == "java")
 		{
-			ASSERT(it.second.m_pids.size() != 0);
+			ASSERT(it.second->m_pids.size() != 0);
 
-			if(it.second.m_pids.size() != 0)
+			if(it.second->m_pids.size() != 0)
 			{
-				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second.m_pids[0]);
+				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second->m_pids[0]);
 				if(el != m_inspector->m_analyzer->m_jmx_metrics.end())
 				{
 					string jname = el->second.name();
@@ -423,74 +566,74 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 				}
 			}
 		}
-		prog->set_user_id(it.second.m_user_id);
-		if(!it.second.m_container_id.empty())
+		prog->set_user_id(it.second->m_user_id);
+		if(!it.second->m_container_id.empty())
 		{
-			prog->set_container_id(it.second.m_container_id);
+			prog->set_container_id(it.second->m_container_id);
 		}
 
 		// Files
-		if(it.second.m_files.has_data())
+		if(it.second->m_files.has_data())
 		{
 			draiosproto::falco_category* cfiles = prog->add_cats();
 			cfiles->set_name("files");
-			it.second.m_files.serialize_protobuf(cfiles);
+			it.second->m_files.serialize_protobuf(cfiles);
 		}
 
 		// Dirs
-		if(it.second.m_dirs.has_data())
+		if(it.second->m_dirs.has_data())
 		{
 			draiosproto::falco_category* cdirs = prog->add_cats();
 			cdirs->set_name("dirs");
-			it.second.m_dirs.serialize_protobuf(cdirs);
+			it.second->m_dirs.serialize_protobuf(cdirs);
 		}
 
-		// Dirs reduced
-		//if(it.second.m_dirs_reduced.has_data())
-		//{
-		//	draiosproto::falco_category* cdirs = prog->add_cats();
-		//	cdirs->set_name("dirsr");
-		//	it.second.m_dirs_reduced.serialize_protobuf(cdirs);
-		//}
-
 		// Executed Programs
-		if(it.second.m_executed_programs.has_data())
+		if(it.second->m_executed_programs.has_data())
 		{
 			draiosproto::falco_category* cexecuted_programs = prog->add_cats();
 			cexecuted_programs->set_name("executed_programs");
-			it.second.m_executed_programs.serialize_protobuf(cexecuted_programs);
+			it.second->m_executed_programs.serialize_protobuf(cexecuted_programs);
 		}
 
 		// Server ports
-		if(it.second.m_server_ports.has_data())
+		if(it.second->m_server_ports.has_data())
 		{
 			draiosproto::falco_category* cserver_ports = prog->add_cats();
 			cserver_ports->set_name("server_ports");
-			it.second.m_server_ports.serialize_protobuf(cserver_ports);
+			it.second->m_server_ports.serialize_protobuf(cserver_ports);
 		}
 
 		// bound ports
-		if(it.second.m_bound_ports.has_data())
+		if(it.second->m_bound_ports.has_data())
 		{
 			draiosproto::falco_category* cbound_ports = prog->add_cats();
 			cbound_ports->set_name("bound_ports");
-			it.second.m_bound_ports.serialize_protobuf(cbound_ports);
+			it.second->m_bound_ports.serialize_protobuf(cbound_ports);
 		}
 
 		// IP endpoints
-		if(it.second.m_ip_endpoints.has_data())
+		if(it.second->m_ip_endpoints.has_data())
 		{
 			draiosproto::falco_category* cip_endpoints = prog->add_cats();
 			cip_endpoints->set_name("ip_endpoints");
-			it.second.m_ip_endpoints.serialize_protobuf(cip_endpoints);
+			it.second->m_ip_endpoints.serialize_protobuf(cip_endpoints);
 		}
 
 		// IP c subnets
-		if(it.second.m_c_subnet_endpoints.has_data())
+		if(it.second->m_c_subnet_endpoints.has_data())
 		{
 			draiosproto::falco_category* cc_subnet_endpoints = prog->add_cats();
 			cc_subnet_endpoints->set_name("c_subnet_endpoints");
-			it.second.m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
+			it.second->m_c_subnet_endpoints.serialize_protobuf(cc_subnet_endpoints);
+		}
+
+		// syscalls
+		if(it.second->m_syscalls.has_data())
+		{
+			draiosproto::falco_category* csyscalls = prog->add_cats();
+			csyscalls->set_name("syscalls");
+			it.second->m_syscalls.serialize_protobuf(csyscalls);
 		}
 	}
 
@@ -517,41 +660,135 @@ void sisnp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 }
 #endif
 
+#ifdef ASYNC_PROC_PARSING
+void sinsp_baseliner::merge_proc_data()
+{
+	//
+	// If this is a file, we get here at the end of the capture.
+	// We join the /proc scanner thread to make sure it's done
+	//
+	if(!m_inspector->is_live())
+	{
+		if(m_procparser_thread->joinable())
+		{
+			m_procparser_thread->join();
+		}
+	}
+
+	//
+	// If m_procparser_state->m_inspector is not NULL, it means that 
+	// the data hasn't been flushed yet
+	//
+	if(m_procparser_state->m_inspector != NULL)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, 
+			"merging baseliner /proc data during interval switch");
+
+		//
+		// If the /proc thread is still scanning, we have a problem
+		//
+		if(!m_procparser_state->m_done)
+		{
+			g_logger.format(sinsp_logger::SEV_ERROR, 
+				"baseliner proc parser thread not done after a full interval. Skipping baseline emission.");
+			return;
+		}
+
+		//
+		// Merge the data extracted by the /proc scanner
+		//
+		init_programs(m_procparser_state->m_inspector, 
+			m_procparser_state->m_time, false);
+
+		//
+		// Destroy the second inspector that was used to scan proc/
+		//
+		delete m_procparser_state->m_inspector;
+		m_procparser_state->m_inspector = NULL;
+	}
+}
+#endif
+
 #ifndef HAS_ANALYZER
-void sisnp_baseliner::emit_as_json(uint64_t time)
-{	
+void sinsp_baseliner::emit_as_json(uint64_t time)
+{
+#ifdef ASYNC_PROC_PARSING
+	merge_proc_data();
+#endif
+
+	//
+	// Perform the serialization
+	//
 	serialize_json(string("bline/") + to_string(m_hostid) + "_" + to_string(time) + ".json");
 
-	clear_tables();
-	load_tables(time);
+	//
+	// Get ready for the new sample
+	//
+	if(m_inspector->is_live())
+	{
+		clear_tables();
+		load_tables(time);
+	}
 }
 #else
-void sisnp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
+void sinsp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
 {
+#ifdef ASYNC_PROC_PARSING
+	merge_proc_data();
+#endif
 	g_logger.format(sinsp_logger::SEV_INFO, "emitting falco baseline %" PRIu64, time);
 
 	serialize_protobuf(pbentry);
 
-	clear_tables();
-	load_tables(time);
+	if(m_inspector->is_live())
+	{
+		clear_tables();
+		load_tables(time);
+	}
 }
 #endif
 
-void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
+inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
+{
+	blprogram* pinfo;
+
+	if(tinfo->m_blprogram != NULL)
+	{
+		pinfo = tinfo->m_blprogram;
+	}
+	else
+	{
+		//
+		// Find the program entry
+		//
+		auto it = m_progtable.find(tinfo->m_program_hash_falco);
+
+		if(it == m_progtable.end())
+		{
+			return NULL;
+		}
+
+		pinfo = it->second;
+		tinfo->m_blprogram = pinfo;
+	}
+
+	return pinfo;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Table update methods
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
-	//
-	// Find the program entry
-	//
-	auto it = m_progtable.find(tinfo->m_program_hash_falco);
-
-	if(it == m_progtable.end())
+	blprogram* pinfo = get_program(tinfo);
+	if(pinfo == NULL)
 	{
 		return;
 	}
-
-	blprogram& pinfo = it->second;
 
 	sinsp_threadinfo* mt = tinfo->get_main_thread();
 	uint64_t clone_ts;
@@ -568,7 +805,7 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 	//
 	// Add the entry to the file table
 	//
-	pinfo.m_files.add(name, openflags, false, 
+	pinfo->m_files.add(name, openflags, false, 
 		evt->get_ts() - clone_ts);
 
 	//
@@ -576,14 +813,11 @@ void sisnp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 	//
 	string sdir = blfiletable::file_to_dir(name);
 
-	pinfo.m_dirs.add(sdir, openflags, false,
+	pinfo->m_dirs.add(sdir, openflags, false,
 		evt->get_ts() - clone_ts);
-
-//	pinfo.m_dirs_reduced.add(sdir, openflags, false,
-//		evt->get_ts() - clone_ts);
 }
 
-void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
+void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 {
 	ASSERT(tinfo != NULL);
 
@@ -603,14 +837,15 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 			return;
 		}
 
-		blprogram np;
+		blprogram* np = new blprogram();
+		tinfo->m_blprogram = np;
 
-		np.m_comm = tinfo->m_comm;
-		np.m_exe = tinfo->m_exe;
-		np.m_container_id = tinfo->m_container_id;
-		np.m_user_id = tinfo->m_uid;
-		np.m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
-		np.m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+		np->m_comm = tinfo->m_comm;
+		np->m_exe = tinfo->m_exe;
+		np->m_container_id = tinfo->m_container_id;
+		np->m_user_id = tinfo->m_uid;
+		np->m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
+		np->m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 
 		m_progtable[phash] = np;
 
@@ -634,29 +869,31 @@ void sisnp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
 				}
 
-				itp->second.m_executed_programs.add(tinfo->m_comm,
+				itp->second->m_executed_programs.add(tinfo->m_comm,
 					evt->get_ts() - clone_ts);
 			}
 		}
 	}
 	else
 	{
-		blprogram& pinfo = it->second;
+		blprogram* pinfo = it->second;
+		tinfo->m_blprogram = pinfo;
+
 		if(tinfo->m_comm == "java" && tinfo->is_main_thread())
 		{
-			pinfo.m_pids.push_back(tinfo->m_pid);
+			pinfo->m_pids.push_back(tinfo->m_pid);
 		}
 
 		//ASSERT(pinfo.m_comm == tinfo->m_comm);
-		ASSERT(pinfo.m_exe == tinfo->m_exe);
+		ASSERT(pinfo->m_exe == tinfo->m_exe);
 		//ASSERT(pinfo.m_args == tinfo->m_args);
 		//ASSERT(pinfo.m_parent_comm == tinfo->m_parent_comm);
-		ASSERT(pinfo.m_container_id == tinfo->m_container_id);
+		ASSERT(pinfo->m_container_id == tinfo->m_container_id);
 		//ASSERT(pinfo.m_user_id == tinfo->m_uid);
 	}
 }
 
-void sisnp_baseliner::on_connect(sinsp_evt *evt)
+void sinsp_baseliner::on_connect(sinsp_evt *evt)
 {
 	//
 	// Note: the presence of fdinfo is assured in sinsp_parser::parse_connect_exit, so
@@ -671,14 +908,11 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash_falco);
-
-		if(it == m_progtable.end())
+		blprogram* pinfo = get_program(tinfo);
+		if(pinfo == NULL)
 		{
 			return;
 		}
-
-		blprogram& pinfo = it->second;
 
 		sinsp_threadinfo* mt = tinfo->get_main_thread();
 		uint64_t clone_ts;
@@ -698,28 +932,28 @@ void sisnp_baseliner::on_connect(sinsp_evt *evt)
 
 		if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
 		{
-			pinfo.m_server_ports.add_r_tcp(tuple.m_fields.m_dport, 
+			pinfo->m_server_ports.add_r_tcp(tuple.m_fields.m_dport, 
 				cdelta);
-			pinfo.m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip,
+			pinfo->m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip,
 				cdelta);
-			pinfo.m_c_subnet_endpoints.add_s_tcp(
+			pinfo->m_c_subnet_endpoints.add_s_tcp(
 				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
 				cdelta);
 		}
 		else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
 		{
-			pinfo.m_server_ports.add_r_udp(tuple.m_fields.m_dport,
+			pinfo->m_server_ports.add_r_udp(tuple.m_fields.m_dport,
 				cdelta);
-			pinfo.m_ip_endpoints.add_udp(tuple.m_fields.m_dip,
+			pinfo->m_ip_endpoints.add_udp(tuple.m_fields.m_dip,
 				cdelta);
-			pinfo.m_c_subnet_endpoints.add_udp(
+			pinfo->m_c_subnet_endpoints.add_udp(
 				bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
 				cdelta);
 		}
 	}
 }
 
-void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
+void sinsp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 {
 	if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 	{
@@ -728,14 +962,11 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash_falco);
-
-		if(it == m_progtable.end())
+		blprogram* pinfo = get_program(tinfo);
+		if(pinfo == NULL)
 		{
 			return;
 		}
-
-		blprogram& pinfo = it->second;
 
 		sinsp_threadinfo* mt = tinfo->get_main_thread();
 		uint64_t clone_ts;
@@ -752,17 +983,17 @@ void sisnp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 		uint64_t cdelta = evt->get_ts() - clone_ts;
 
 		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
-		pinfo.m_server_ports.add_l_tcp(tuple.m_fields.m_dport,
+		pinfo->m_server_ports.add_l_tcp(tuple.m_fields.m_dport,
 			cdelta);
-		pinfo.m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip,
+		pinfo->m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip,
 			cdelta);
-		pinfo.m_c_subnet_endpoints.add_c_tcp(
+		pinfo->m_c_subnet_endpoints.add_c_tcp(
 			bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip),
 			cdelta);
 	}
 }
 
-void sisnp_baseliner::on_bind(sinsp_evt *evt)
+void sinsp_baseliner::on_bind(sinsp_evt *evt)
 {
 	//
 	// Note: the presence of fdinfo is assured in sinsp_parser::parse_connect_exit, so
@@ -780,14 +1011,11 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 		//
 		// Find the program entry
 		//
-		auto it = m_progtable.find(tinfo->m_program_hash_falco);
-
-		if(it == m_progtable.end())
+		blprogram* pinfo = get_program(tinfo);
+		if(pinfo == NULL)
 		{
 			return;
 		}
-
-		blprogram& pinfo = it->second;
 
 		sinsp_threadinfo* mt = tinfo->get_main_thread();
 		uint64_t clone_ts;
@@ -801,58 +1029,174 @@ ASSERT(false); // Remove this assertion when this code is tested and validated
 			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
 		}
 
-		pinfo.m_bound_ports.add_l_tcp(tuple.m_port,
+		pinfo->m_bound_ports.add_l_tcp(tuple.m_port,
 				evt->get_ts() - clone_ts);
 	}
 }
 
-void sisnp_baseliner::on_new_container(const sinsp_container_info& container_info)
+void sinsp_baseliner::on_new_container(const sinsp_container_info& container_info)
 {
 	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, 
 		container_info.m_image, 
 		container_info.m_imageid);
 }
 
-#if 0
-void sisnp_baseliner::process_event(sinsp_evt *evt)
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// Single event processing methods
+///////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category)
 {
-	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	sinsp_fdinfo_t* fdinfo = evt->m_fdinfo;
+	if(fdinfo == NULL)
+	{
+		return;
+	}
 
-	//
-	// Find the program entry
-	//
-	auto it = m_progtable.find(tinfo->m_program_hash_falco);
+	scap_fd_type fd_type = fdinfo->m_type;
 
-	if(it == m_progtable.end())
+	switch(fd_type)
+	{
+	case SCAP_FD_FILE:
+	case SCAP_FD_DIRECTORY:
+		if(category == EC_IO_READ)
+		{
+			if(!evt->m_fdinfo->is_inpipeline_r())
+			{
+				on_file_open(evt, fdinfo->m_name, PPM_O_RDONLY);
+				evt->m_fdinfo->set_inpipeline_r();
+			}
+		}
+		else if(category == EC_IO_WRITE)
+		{
+			if(!evt->m_fdinfo->is_inpipeline_rw())
+			{
+				on_file_open(evt, fdinfo->m_name, PPM_O_RDWR);
+				evt->m_fdinfo->set_inpipeline_rw();
+			}
+		}
+		else if(category == EC_IO_OTHER)
+		{
+			if(!evt->m_fdinfo->is_inpipeline_other())
+			{
+				on_file_open(evt, fdinfo->m_name, 0);
+				evt->m_fdinfo->set_inpipeline_other();
+			}
+		}
+		else
+		{
+			ASSERT(false);
+		}
+
+		break;
+	case SCAP_FD_IPV4_SOCK:
+	case SCAP_FD_IPV6_SOCK:
+	case SCAP_FD_IPV4_SERVSOCK:
+	case SCAP_FD_IPV6_SERVSOCK:
+		if(!evt->m_fdinfo->is_inpipeline_r())
+		{
+			if(fdinfo->is_role_server())
+			{
+				on_accept(evt, fdinfo);
+			}
+			else
+			{
+				on_connect(evt);
+			}
+
+			evt->m_fdinfo->set_inpipeline_r();
+		}
+
+		break;
+	default:
+		break;
+	}
+}
+
+void sinsp_baseliner::process_event(sinsp_evt *evt)
+{
+	uint16_t etype = evt->m_pevt->type;
+	if(!PPME_IS_ENTER(etype))
 	{
 		return;
 	}
 
 	//
+	// Skip some unnecessary events
 	//
-	//
-	uint16_t etype = evt->m_pevt->type;
 	enum ppm_event_flags flags = g_infotables.m_event_info[etype].flags;
 
-	if(etype == PPME_SCHEDSWITCH_6_E ||
-		(flags & EC_INTERNAL) || (flags & EF_SKIPPARSERESET))
+	if(etype == PPME_SCHEDSWITCH_6_E || (flags & (EF_SKIPPARSERESET | EF_UNUSED)))
 	{
-		return NULL;
+		return;
 	}
+
+#ifdef ASYNC_PROC_PARSING
+	//
+	// Check if it's time to merge the data from the /proc scanner thread
+	//
+	if(m_procparser_state->m_inspector != NULL && m_procparser_state->m_done)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, 
+			"merging baseliner /proc data during syscall parsing");
+
+		//
+		// Merge the data extracted by the /proc scanner
+		//
+		init_programs(m_procparser_state->m_inspector, 
+			m_procparser_state->m_time, false);
+
+		//
+		// Destroy the second inspector that was used to scan proc/
+		//
+		delete m_procparser_state->m_inspector;
+		m_procparser_state->m_inspector = NULL;
+	}
+#endif
+
+	//
+	// Find the thread info
+	//
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	if(tinfo == NULL)
+	{
+		return;
+	}
+
+#ifdef AVOID_FDS_FROM_THREAD_TABLE
+	enum ppm_event_category category = g_infotables.m_event_info[etype].category;
+	if(category & EC_IO_BASE)
+	{
+		add_fd_from_io_evt(evt, category);
+	}
+#endif
+
+	blprogram* pinfo = get_program(tinfo);
+
+	if(pinfo == NULL)
+	{
+		return;
+	}
+
+	//
+	// Extract the ID, which depends on the type event: for generic
+	// events we need to go find the system call ID.
+	//
+	uint32_t evid;
 
 	if(etype == PPME_GENERIC_E || etype == PPME_GENERIC_X)
 	{
 		sinsp_evt_param *parinfo = evt->get_param(0);
 		ASSERT(parinfo->m_len == sizeof(uint16_t));
-		uint16_t evid = *(uint16_t *)parinfo->m_val;
+		uint16_t val = *(uint16_t *)parinfo->m_val;
 
-		evname = (uint8_t*)g_infotables.m_syscall_info_table[evid].name;
+		evid = val << 16;
 	}
 	else
 	{
-		evname = (uint8_t*)evt->get_name();
+		evid = evt->get_type();
 	}
 
-	return evname;
+	pinfo->m_syscalls.add(evid, 0);
 }
-#endif

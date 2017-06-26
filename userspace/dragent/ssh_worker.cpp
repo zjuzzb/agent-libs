@@ -1,3 +1,5 @@
+#include <memory>
+
 #include "ssh_worker.h"
 
 #include <sys/types.h>
@@ -245,12 +247,13 @@ void ssh_worker::prepare_response(draiosproto::ssh_data* response)
 
 void ssh_worker::queue_response(const draiosproto::ssh_data& response)
 {
-	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
-		draiosproto::message_type::SSH_DATA, 
-		response, 
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+		sinsp_utils::get_current_time_ns(),
+		draiosproto::message_type::SSH_DATA,
+		response,
 		m_configuration->m_compression_enabled);
 
-	if(buffer.isNull())
+	if(!buffer)
 	{
 		g_log->error("NULL converting message to buffer");
 		return;

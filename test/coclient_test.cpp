@@ -49,7 +49,7 @@ protected:
 		// server. Capture its output and log everything at
 		// debug level.
 		m_colog = make_shared<Pipe>();
-		m_cointerface = make_shared<ProcessHandle>(Process::launch("../userspace/cointerface/cointerface", args, NULL, m_colog.get(), NULL));
+		m_cointerface = make_shared<ProcessHandle>(Process::launch("./resources/cointerface", args, NULL, m_colog.get(), NULL));
 
 		thread log_reader = thread([] (shared_ptr<Pipe> colog) {
 			PipeInputStream cologstr(*colog);

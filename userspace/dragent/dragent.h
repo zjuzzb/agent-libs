@@ -12,6 +12,7 @@
 #include "connection_manager.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
+#include "capture_job_handler.h"
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
@@ -20,6 +21,8 @@
 #include <memory>
 
 #include "sdc_internal.pb.h"
+#include "draios.pb.h"
+#include "security_messages.h"
 #include "analyzer_utils.h"
 
 class watchdog_state
@@ -93,6 +96,8 @@ private:
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;
+	atomic<bool> m_enable_autodrop;
+	synchronized_policy_events m_policy_events;
 
 	unique_ptr<errpipe_manager> m_jmx_pipes;
 	shared_ptr<pipe_manager> m_statsite_pipes;
@@ -102,6 +107,7 @@ private:
 	unique_ptr<pipe_manager> m_cointerface_pipes;
 
 	sinsp_worker m_sinsp_worker;
+	capture_job_handler m_capture_job_handler;
 	connection_manager m_connection_manager;
 	log_reporter m_log_reporter;
 	subprocesses_logger m_subprocesses_logger;

@@ -8,6 +8,7 @@ SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $SCRIPT)
 BINARIES_DIR="/tmp/binaries"
 REPOSITORY_DIR="/tmp/repo"
+JOBS=${JOBS:-$(nproc)}
 
 export AWS_DEFAULT_REGION="us-east-1"
 
@@ -23,8 +24,8 @@ function build_components {
 			rm -rf agent/build || true
 			agent/bootstrap-agent
 			
-			make -C agent/build/debug package VERBOSE=1
-			make -C agent/build/release package VERBOSE=1
+			make -C agent/build/debug package VERBOSE=1 -j$JOBS
+			make -C agent/build/release package VERBOSE=1 -j$JOBS
 
 			cp agent/build/debug/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/debug
 			cp agent/build/debug/*tests*tar.gz $BINARIES_DIR/debug
@@ -35,8 +36,8 @@ function build_components {
 			rm -rf sysdig/build || true
 			agent/bootstrap-sysdig
 			
-			make -C sysdig/build/debug package VERBOSE=1
-			make -C sysdig/build/release package VERBOSE=1
+			make -C sysdig/build/debug package VERBOSE=1 -j$JOBS
+			make -C sysdig/build/release package VERBOSE=1 -j$JOBS
 
 			cp sysdig/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
 			cp sysdig/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
@@ -46,8 +47,8 @@ function build_components {
 			agent/bootstrap-sysdig
 			agent/bootstrap-falco
 
-			make -C falco/build/debug package VERBOSE=1
-			make -C falco/build/release package VERBOSE=1
+			make -C falco/build/debug package VERBOSE=1 -j$JOBS
+			make -C falco/build/release package VERBOSE=1 -j$JOBS
 
 			cp falco/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
 			cp falco/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release

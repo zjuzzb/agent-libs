@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include <google/protobuf/message_lite.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 #include <google/protobuf/io/gzip_stream.h>
@@ -21,16 +23,22 @@ struct dragent_protocol_header
 };
 #pragma pack(pop)
 
-typedef string protocol_queue_item;
-typedef blocking_queue<SharedPtr<protocol_queue_item>> protocol_queue;
+typedef struct {
+	string buffer;
+	uint64_t ts_ns;
+	uint8_t message_type;
+} protocol_queue_item;
+
+typedef blocking_queue<std::shared_ptr<protocol_queue_item>> protocol_queue;
 
 class dragent_protocol
 {
 public:
 	static const uint8_t PROTOCOL_VERSION_NUMBER = 3;
 
-	static SharedPtr<protocol_queue_item> message_to_buffer(uint8_t message_type, 
-		const google::protobuf::MessageLite& message, bool compressed);
+	static std::shared_ptr<protocol_queue_item> message_to_buffer(uint64_t ts_ns, uint8_t message_type,
+								      const google::protobuf::MessageLite& message, bool compressed,
+								      int compression_level = Z_DEFAULT_COMPRESSION);
 
 	template<class T>
 	static bool buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* message);

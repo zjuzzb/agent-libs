@@ -120,8 +120,6 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_wait_duration_ns = 0;
 	m_last_wait_end_time_ns = 0;
 	ASSERT(m_inspector->get_machine_info() != NULL);
-	m_server_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
-	m_client_transactions_per_cpu.resize(m_inspector->get_machine_info()->num_cpus);
 	m_syscall_errors.clear();
 	m_called_execve = false;
 	m_last_cmdline_sync_ns = 0;
@@ -130,7 +128,6 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 		m_metrics.set_percentiles(m_percentiles);
 		m_transaction_metrics.set_percentiles(m_percentiles);
 		m_external_transaction_metrics.set_percentiles(m_percentiles);
-		m_protostate.set_percentiles(m_percentiles);
 	}
 }
 
@@ -273,23 +270,26 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 
 	m_procinfo->m_syscall_errors.add(&other->m_syscall_errors);
 
-	ASSERT(other->m_server_transactions_per_cpu.size() == m_procinfo->m_server_transactions_per_cpu.size());
-	for(j = 0; j < m_procinfo->m_server_transactions_per_cpu.size(); j++) 
+	if(other->m_main_thread_ainfo)
 	{
-		m_procinfo->m_server_transactions_per_cpu[j].insert(m_procinfo->m_server_transactions_per_cpu[j].end(),
-			other->m_server_transactions_per_cpu[j].begin(),
-			other->m_server_transactions_per_cpu[j].end());
-	}
+		ASSERT(other->m_main_thread_ainfo->m_server_transactions_per_cpu.size() == m_procinfo->m_server_transactions_per_cpu.size());
+		for(j = 0; j < m_procinfo->m_server_transactions_per_cpu.size(); j++)
+		{
+			m_procinfo->m_server_transactions_per_cpu[j].insert(m_procinfo->m_server_transactions_per_cpu[j].end(),
+																other->m_main_thread_ainfo->m_server_transactions_per_cpu[j].begin(),
+																other->m_main_thread_ainfo->m_server_transactions_per_cpu[j].end());
+		}
 
-	ASSERT(other->m_client_transactions_per_cpu.size() == m_procinfo->m_client_transactions_per_cpu.size());
-	for(j = 0; j < m_procinfo->m_client_transactions_per_cpu.size(); j++) 
-	{
-		m_procinfo->m_client_transactions_per_cpu[j].insert(m_procinfo->m_client_transactions_per_cpu[j].end(),
-			other->m_client_transactions_per_cpu[j].begin(),
-			other->m_client_transactions_per_cpu[j].end());
-	}
+		ASSERT(other->m_main_thread_ainfo->m_client_transactions_per_cpu.size() == m_procinfo->m_client_transactions_per_cpu.size());
+		for(j = 0; j < m_procinfo->m_client_transactions_per_cpu.size(); j++)
+		{
+			m_procinfo->m_client_transactions_per_cpu[j].insert(m_procinfo->m_client_transactions_per_cpu[j].end(),
+																other->m_main_thread_ainfo->m_client_transactions_per_cpu[j].begin(),
+																other->m_main_thread_ainfo->m_client_transactions_per_cpu[j].end());
+		}
 
-	m_procinfo->m_protostate.add(&other->m_protostate);
+		m_procinfo->m_protostate.add(&other->m_main_thread_ainfo->m_protostate);
+	}
 
 	m_procinfo->m_fd_count += other->m_tinfo->m_fdtable.size();
 
@@ -329,21 +329,24 @@ void thread_analyzer_info::clear_all_metrics()
 
 	m_syscall_errors.clear();
 
-	vector<vector<sinsp_trlist_entry>>::iterator sts;
-	for(sts = m_server_transactions_per_cpu.begin();
-		sts != m_server_transactions_per_cpu.end(); sts++)
+	if(m_main_thread_ainfo)
 	{
-		sts->clear();
-	}
+		vector<vector<sinsp_trlist_entry>>::iterator sts;
+		for(sts = m_main_thread_ainfo->m_server_transactions_per_cpu.begin();
+			sts != m_main_thread_ainfo->m_server_transactions_per_cpu.end(); sts++)
+		{
+			sts->clear();
+		}
 
-	vector<vector<sinsp_trlist_entry>>::iterator cts;
-	for(cts = m_client_transactions_per_cpu.begin();
-		cts != m_client_transactions_per_cpu.end(); cts++)
-	{
-		cts->clear();
-	}
+		vector<vector<sinsp_trlist_entry>>::iterator cts;
+		for(cts = m_main_thread_ainfo->m_client_transactions_per_cpu.begin();
+			cts != m_main_thread_ainfo->m_client_transactions_per_cpu.end(); cts++)
+		{
+			cts->clear();
+		}
 
-	m_protostate.clear();
+		m_main_thread_ainfo->m_protostate.clear();
+	}
 	m_called_execve = false;
 	m_app_checks_found.clear();
 }
@@ -477,7 +480,7 @@ void thread_analyzer_info::add_completed_server_transaction(sinsp_partial_transa
 {
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_server_transactions_per_cpu[tr->m_cpuid].push_back(
+	main_thread_ainfo()->m_server_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, tr->m_prev_end_time, flags));
 }
 
@@ -489,13 +492,18 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		// 1. some processes (eg. redis) wipe their env
 		// try to grab the env from it up to its parent (within the same container)
 		auto conf = m_tinfo->get_env(SYSDIG_AGENT_CONF);
-		auto ptinfo = m_tinfo->get_parent_thread();
-		while(conf.empty() && ptinfo != nullptr &&
-				ptinfo->m_container_id == m_tinfo->m_container_id)
+		sinsp_threadinfo::visitor_func_t visitor = [&conf, this] (sinsp_threadinfo *ptinfo)
 		{
+			if(!conf.empty() || ptinfo->m_container_id != this->m_tinfo->m_container_id)
+			{
+				return false;
+			}
+
 			conf = ptinfo->get_env(SYSDIG_AGENT_CONF);
-			ptinfo = ptinfo->get_parent_thread();
-		}
+			return true;
+		};
+
+		m_tinfo->traverse_parent_state(visitor);
 
 		// 2. As last chance, use the Env coming from Docker
 		if(conf.empty() && !m_tinfo->m_container_id.empty())
@@ -525,7 +533,7 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 {
 	sinsp_trlist_entry::flags flags = (isexternal)?sinsp_trlist_entry::FL_EXTERNAL : sinsp_trlist_entry::FL_NONE;
 
-	m_client_transactions_per_cpu[tr->m_cpuid].push_back(
+	main_thread_ainfo()->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
 }

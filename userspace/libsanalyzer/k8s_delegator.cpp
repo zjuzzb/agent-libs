@@ -70,6 +70,8 @@ void k8s_delegator::refresh_ipv4_list()
 k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json::Value& addrs)
 {
 	node_ip_addr_list_t node_addrs;
+	bool has_valid_ip = false;
+
 	if(!addrs.isNull() && addrs.isArray())
 	{
 		for(const auto& addr : addrs)
@@ -80,6 +82,7 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 				if(is_ip_address(address) && (address != "127.0.0.1"))
 				{
 					node_addrs.insert(address);
+					has_valid_ip = true;
 				}
 				else // likely not possible, but just in case ...
 				{
@@ -87,7 +90,7 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 					{
 						g_logger.log("K8s delegator: node address [" + address + "] "
 									 "is not an IP address, ignoring.",
-									 sinsp_logger::SEV_ERROR);
+									 sinsp_logger::SEV_DEBUG);
 					}
 					else
 					{
@@ -103,6 +106,13 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 			}
 		}
 	}
+
+	if (!has_valid_ip)
+	{
+		g_logger.log("K8s delegator: no valid node IP addresses found",
+			     sinsp_logger::SEV_WARNING);
+	}
+
 	return node_addrs;
 }
 
