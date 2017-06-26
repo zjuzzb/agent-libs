@@ -2,6 +2,23 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
+# Versions of all third-party libraries used. These may be referred to
+# in lower CMakeLists.txt files.
+set(DRAIOS_OPENSSL_VERSION "1.0.2j")
+set(DRAIOS_PROTOBUF_VERSION "3.1.0")
+set(DRAIOS_ZLIB_VERSION "1.2.8")
+set(DRAIOS_POCO_VERSION "1.7.7-all")
+set(DRAIOS_LIBSSH_VERSION "0.7.3")
+set(DRAIOS_GTEST_VERSION "1.7.0")
+set(DRAIOS_YAML_VERSION "cpp-0.5.1")
+set(DRAIOS_BOOST_VERSION "1_57_0")
+set(DRAIOS_CURL_VERSION "7.52.1")
+set(DRAIOS_JQ_VERSION "1.5")
+set(DRAIOS_B64_VERSION "1.2")
+set(DRAIOS_GRPC_VERSION "1.1.4")
+set(DRAIOS_GPERFTOOLS_VERSION "2.5")
+set(DRAIOS_LUAJIT_VERSION "2.0.3")
+
 set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
@@ -50,6 +67,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINAR
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 add_subdirectory(userspace/cointerface)
 add_subdirectory(userspace/dragent)
+add_subdirectory(userspace/draiosproto)
 add_subdirectory(userspace/libsanalyzer)
 add_subdirectory(userspace/sdjagent)
 add_subdirectory(userspace/sdchecks)

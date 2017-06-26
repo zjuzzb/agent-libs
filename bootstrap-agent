@@ -43,56 +43,14 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
-PROTBUF_DIR=$DEPENDENCIES/protobuf-2.5.0
-if [ ! -d "$PROTBUF_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/protobuf-2.5.0.tar.bz2
-	tar -xjf protobuf-2.5.0.tar.bz2
-	cd $PROTBUF_DIR
-	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib
-	make
-fi
-
 PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.1.0
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
 	wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
 	tar -xzf protobuf-cpp-3.1.0.tar.gz
 	cd $PROTOBUF_V3_DIR
-	./configure
-	make
-fi
-
-# The normal build process for grpc involves git clone + git submodule
-# update --init, which pulls in a lot of additional dependencies that
-# we don't need. Instead, we download our own repackaged tarball that
-# has only grpc and the necessary third party libraries (protobuf
-# 3.0.0, boringssl) to build the targets we need (grpc_cpp_plugin,
-# static_cxx, and static_c).
-#
-# We also symlink third_party/zlib to the zlib we built above.
-# The build process still recompiles zlib source files, but
-# at least it's one set of source files.
-#
-# Specificially, this tarball was created by:
-# git clone -b v1.1.4 https://github.com/grpc/grpc &&
-#     mv grpc grpc-1.1.4 &&
-#     cd grpc-1.1.4 &&
-#     git submodule update --init third_party/{boringssl,protobuf} &&
-#     rm -rf .git &&
-#     rm -rf third_party/{boringssl,protobuf}/.git
-# boringssl has no versions/releases, so this is whatever commit grpc
-# chose at the time. For protobuf, this is v3.2.0.
-
-GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
-if [ ! -d "$GRPC_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/grpc-1.1.4-with-third-party-libs.tar.gz
-	tar -xzf grpc-1.1.4-with-third-party-libs.tar.gz
-	rm -rf grpc-1.1.4/third_party/zlib
-	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
-	cd $GRPC_DIR
-	make grpc_cpp_plugin static_cxx static_c
+	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
+	make install
 fi
 
 OPENSSL_VER=1.0.2j
@@ -106,6 +64,24 @@ if [ ! -d "$OPENSSL_DIR" ]; then
 	./config shared --prefix=$OPENSSL_DIR/target
 	make install
 	cd ..
+fi
+
+# Normally, grpc wants to use its own protobuf library, which it
+# expects to get via git submmodules. It mostly has support for using
+# a "system" protobuf/openssl instead, using pkg-config. The Makefile
+# does require one small change to properly set LDFLAGS to the
+# protobuf lib path returned by pkg-config. Hence the patch.
+GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
+if [ ! -d "$GRPC_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/grpc-1.1.4.tar.gz
+	tar -xzf grpc-1.1.4.tar.gz
+	rm -rf grpc-1.1.4/third_party/zlib
+	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	cd $GRPC_DIR
+	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
+	patch < grpc-1.1.4-Makefile.patch
+	PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR make grpc_cpp_plugin static_cxx static_c
 fi
 
 POCO_VER=1.7.7

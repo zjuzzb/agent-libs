@@ -332,7 +332,7 @@ void sinsp_analyzer::on_capture_start()
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	if(m_do_baseline_calculation)
 	{
-		lo("starting baseliner");
+		glogf("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
 	}
 }
