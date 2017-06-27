@@ -67,18 +67,24 @@ install(TARGETS chname
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
 
-#if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-#	add_executable(execve
-#		execve.c)
-#	install(TARGETS execve 
-#		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-#		COMPONENT tests)
-#
-#	add_executable(execve32
-#		execve.c)
-#	install(TARGETS execve32
-#		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
-#		COMPONENT tests)
-#	set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-#
-#endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+	add_executable(execve
+		execve.c)
+	install(TARGETS execve 
+		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+		COMPONENT tests)
+
+	add_executable(execve32
+		execve.c)
+	install(TARGETS execve32
+		DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
+		COMPONENT tests)
+        if("${ARCH}" STREQUAL "s390x")
+		set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
+        else("${ARCH}" STREQUAL "s390x")
+		set_target_properties(execve32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+        endif("${ARCH}" STREQUAL "s390x")
+
+endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")

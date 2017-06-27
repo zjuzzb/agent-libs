@@ -89,14 +89,20 @@ target_link_libraries(tests
 add_executable(test_helper
 		test_helper.cpp)
 
-#if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
-#	add_executable(test_helper_32
-#		test_helper.cpp)
-#	set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
-#	install(TARGETS test_helper_32
-#		DESTINATION ${DRAIOS_BIN_PREFIX}/test/
-#		COMPONENT tests)
-#endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
+	add_executable(test_helper_32
+		test_helper.cpp)
+	if("${ARCH}" STREQUAL "s390x")
+		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
+	else("${ARCH}" STREQUAL "s390x")
+		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+	endif("${ARCH}" STREQUAL "s390x")
+	install(TARGETS test_helper_32
+		DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+		COMPONENT tests)
+endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
