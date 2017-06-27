@@ -6,7 +6,7 @@ services:
     - docker
 before_install:
     - docker login -u sysdig+agent_travisci -p $QUAY_IO_ROBOT_PASSWORD quay.io
-    - docker pull quay.io/sysdig/agent-builder:use-protobuf3-v2
+    - docker pull quay.io/sysdig/agent-builder:latest
     - sudo apt-get update
 install:
     - sudo apt-get install linux-headers-$(uname -r) dkms gcc-multilib g++-multilib quota
@@ -16,8 +16,8 @@ install:
 before_script:
 # This builds and installs the package simply to allow dkms to build the driver. The make install step installs the unit tests to /opt/draios/test/tests where they can be run.
 script:
-    - docker run --rm -it --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:use-protobuf3-v2 package
-    - docker run --rm -it --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:use-protobuf3-v2 install
+    - docker run --rm -it --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:latest package
+    - docker run --rm -it --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:latest install
     - sudo dpkg -i /draios/pkgs/draios-0.1.1dev-x86_64-agent.deb
     - sudo /etc/init.d/dragent stop
     - sudo insmod /lib/modules/$(uname -r)/updates/dkms/sysdigcloud-probe.ko
