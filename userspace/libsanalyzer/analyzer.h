@@ -17,6 +17,7 @@
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "coclient.h"
+#include "orchestrator_state.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -517,10 +518,6 @@ VISIBILITY_PRIVATE
 	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
 	coclient m_coclient;
 
-	run_on_interval m_orchestrator_events_interval = {ORCHESTRATOR_EVENTS_POLL_INTERVAL};
-	coclient m_orchestrator_events_coclient;
-	bool m_orchestrator_events_requested;
-
 	//
 	// The callback we invoke when a sample is ready
 	//
@@ -652,6 +649,7 @@ VISIBILITY_PRIVATE
 	bool                                 m_k8s_proc_detected = false;
 
 	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
+	unique_ptr<orchestrator_state> m_orchestrator_state;
 	unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state

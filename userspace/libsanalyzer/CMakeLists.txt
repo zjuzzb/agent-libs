@@ -91,6 +91,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
 	metric_limits.cpp
 	metrics.cpp
+	orchestrator_state.cpp
 	parser_http.cpp
 	parser_mysql.cpp
 	parser_postgres.cpp
