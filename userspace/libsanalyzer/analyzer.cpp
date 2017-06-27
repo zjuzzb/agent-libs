@@ -282,6 +282,7 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+	m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 	m_procfs_parser->read_mount_points(m_mount_points);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
