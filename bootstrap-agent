@@ -181,7 +181,6 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	tar -xzf lua-5.1.5.tar.gz
 	cd $LUAJIT_DIR
 	make linux
-	ln -s $LUAJIT_DIR $DEPENDENCIES/lua
 fi
 else
 LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
