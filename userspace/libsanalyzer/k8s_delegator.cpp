@@ -10,30 +10,32 @@
 // event is turned into a single-node array, state is turned into ADDED event
 
 std::string k8s_delegator::EVENT_FILTER = "{"
-										  "  type: .type,"
-										  "  nodes:"
-										  "  ["
-										  "   .object | "
-										  "   {"
-										  "    name: .metadata.name,"
-										  "    timestamp: .metadata.creationTimestamp,"
-										  "    addresses: [.status.addresses[].address] | unique"
-										  "   }"
-										  "  ]"
-										  "}";
+	"  type: .type,"
+	"  nodes:"
+	"  ["
+	"   .object | "
+	"   {"
+	"    name: .metadata.name,"
+	"    timestamp: .metadata.creationTimestamp,"
+	"    taints: [.spec.taints[]?.effect] | unique,"
+	"    addresses: [.status.addresses[].address] | unique"
+	"   }"
+	"  ]"
+	"}";
 
 std::string k8s_delegator::STATE_FILTER = "{"
-										  " type: \"ADDED\","
-										  " nodes:"
-										  " ["
-										  "  .items[] | "
-										  "  {"
-										  "   name: .metadata.name,"
-										  "   timestamp: .metadata.creationTimestamp,"
-										  "   addresses: [.status.addresses[].address] | unique"
-										  "  }"
-										  " ]"
-										  "}";
+	" type: \"ADDED\","
+	" nodes:"
+	" ["
+	"  .items[] | "
+	"  {"
+	"   name: .metadata.name,"
+	"   timestamp: .metadata.creationTimestamp,"
+	"   taints: [.spec.taints[]?.effect] | unique,"
+	"   addresses: [.status.addresses[].address] | unique"
+	"  }"
+	" ]"
+	"}";
 
 k8s_delegator::k8s_delegator(sinsp* inspector,
 	std::string url,
@@ -116,22 +118,99 @@ k8s_delegator::node_ip_addr_list_t k8s_delegator::get_node_addresses(const Json:
 	return node_addrs;
 }
 
-bool k8s_delegator::add_node(time_t timestamp, const Json::Value& addrs)
+k8s_delegator::k8s_taint k8s_delegator::get_max_taint(const Json::Value& taints)
+{
+	k8s_taint max_taint = NO_TAINT;
+
+	// Older k8s versions won't return
+	if(taints.isNull() && !taints.isArray())
+	{
+		g_logger.log("K8s delegator: empty or invalid taint format",
+			     sinsp_logger::SEV_DEBUG);
+		return max_taint;
+	}
+
+	for(const auto& taint : taints)
+	{
+		if(taint.isConvertibleTo(Json::stringValue))
+		{
+			std::string taint_str = taint.asString();
+			k8s_taint curr_taint = NO_TAINT;
+
+			if (taint_str == "PreferNoSchedule")
+			{
+				curr_taint = PREFER_NOSCHEDULE;
+			}
+			else if (taint_str == "NoSchedule")
+			{
+				curr_taint = NOSCHEDULE;
+			}
+			else if (taint_str == "NoExecute")
+			{
+				curr_taint = NOEXECUTE;
+			}
+
+			if (curr_taint > max_taint)
+			{
+				max_taint = curr_taint;
+			}
+		}
+		else
+		{
+			g_logger.log("K8s delegator: taint not convertible to string.",
+				     sinsp_logger::SEV_ERROR);
+		}
+	}
+	return max_taint;
+}
+
+bool k8s_delegator::add_node(time_t timestamp, const Json::Value& addrs,
+			     const Json::Value& taints)
 {
 	node_ip_addr_list_t node_addrs = get_node_addresses(addrs);
 	if(node_addrs.size() > 0)
 	{
+		k8s_taint max_taint = get_max_taint(taints);
+		k8s_node_key node_key(timestamp, max_taint);
 		for(auto it= m_nodes.begin(), end = m_nodes.end(); it != end; ++it)
 		{
 			if(it->second == node_addrs)
 			{
-				if(timestamp == it->first) { return false; }
-				else { m_nodes.erase(it); }
+				if (node_key == it->first)
+				{
+					return false;
+				}
+				else
+				{
+					m_nodes.erase(it);
+				}
 			}
 		}
 
-		m_nodes.insert({timestamp, node_addrs});
+		m_nodes.insert({{timestamp, max_taint}, node_addrs});
 		return true;
+	}
+	return false;
+}
+
+bool k8s_delegator::maybe_modify_node(time_t timestamp, const Json::Value& addrs,
+				      const Json::Value& taints)
+{
+	node_ip_addr_list_t node_addrs = get_node_addresses(addrs);
+	if (node_addrs.size() > 0)
+	{
+		k8s_taint max_taint = get_max_taint(taints);
+		for(auto it= m_nodes.begin(), end = m_nodes.end(); it != end; ++it)
+		{
+			if(it->second == node_addrs
+			   && it->first.get_ts() == timestamp
+			   && it->first.get_max_taint() != max_taint)
+			{
+				m_nodes.erase(it);
+				m_nodes.insert({{timestamp, max_taint}, node_addrs});
+				return true;
+			}
+		}
 	}
 	return false;
 }
@@ -144,7 +223,9 @@ bool k8s_delegator::remove_node(time_t timestamp, const Json::Value& addrs)
 	{
 		if(it->second == node_addrs)
 		{
-			if(timestamp == it->first)
+			// The taints may have changed but we ignore
+			// them and delete from ts+addrs
+			if(timestamp == it->first.get_ts())
 			{
 				m_nodes.erase(it);
 				return true;
@@ -216,7 +297,7 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 				deleted = (type == "DELETED");
 				if(added)
 				{
-					if(add_node(tm, node["addresses"]))
+					if(add_node(tm, node["addresses"], node["taints"]))
 					{
 						g_logger.log("K8s delegator: Added node to list: " + nname, sinsp_logger::SEV_DEBUG);
 					}
@@ -236,6 +317,14 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 					{
 						g_logger.log("K8s delegator: Removed node event for non-existent node: " + nname, sinsp_logger::SEV_WARNING);
 						ret = false;
+					}
+				}
+				else if (type == "MODIFIED")
+				{
+					if (maybe_modify_node(tm, node["addresses"], node["taints"]))
+					{
+						g_logger.log("K8s delegator: Modified taint value for node: " + nname,
+							     sinsp_logger::SEV_DEBUG);
 					}
 				}
 			}
@@ -266,7 +355,7 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 		{
 			std::ostringstream os;
 			for(const auto& n : node.second) { os << n << ", "; }
-			g_logger.log(std::to_string(node.first) + ':' + os.str(), sinsp_logger::SEV_TRACE);
+			g_logger.log(std::to_string(node.first.get_ts()) + ':' + os.str(), sinsp_logger::SEV_TRACE);
 		}
 	}
 	return ret;
