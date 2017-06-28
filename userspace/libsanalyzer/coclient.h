@@ -64,7 +64,7 @@ protected:
 
 	struct call_context {
 
-		call_context() : is_streaming(false) {}
+		call_context() : is_streaming(false), is_server_ready(false) {}
 
 		sdc_internal::cointerface_message_type msg_type;
 
@@ -73,6 +73,7 @@ protected:
 		response_cb_t response_cb;
 
 		bool is_streaming;
+		bool is_server_ready;
 
 		// This can be used to pass additional options to the server
 		// that control how the RPC should be performed (like add

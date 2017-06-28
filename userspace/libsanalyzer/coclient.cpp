@@ -139,10 +139,18 @@ void coclient::next(uint32_t wait_ms)
 	if(!updates_ok) {
 		g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
+		delete call;
 		return;
 	}
 
-	if (call->status.ok() && call->is_streaming) {
+
+	if (call->is_streaming) {
+		//
+		// Server-streaming RPC errors are detected by
+		// updates_ok, so we can now assume that the
+		// call was successful
+		//
+		call->status = grpc::Status::OK;
 		switch(call->msg_type) {
 		case(sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND):
 			call->orchestrator_events_reader->Read(static_cast<sdc_internal::congroup_update_event *>(call->response_msg.get()), (void *)call);
@@ -150,6 +158,16 @@ void coclient::next(uint32_t wait_ms)
 		default:
 			g_logger.log("Unknown streaming message type " + to_string(call->msg_type) + ", can't read response", sinsp_logger::SEV_ERROR);
 			break;
+		}
+		//
+		// The first response notify us that the server
+		// is ready to send messages. If it's the case,
+		// there's nothing else to do
+		//
+		if(!call->is_server_ready) {
+			call->is_server_ready = true;
+			g_logger.log("RPC streaming server connected and ready to send messages.", sinsp_logger::SEV_DEBUG);
+			return;
 		}
 	}
 
