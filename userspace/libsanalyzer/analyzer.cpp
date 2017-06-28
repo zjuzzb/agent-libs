@@ -3417,6 +3417,20 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 				}
 
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Sending Kube Hello Command");
+				//  callback to be executed by coclient::next()
+				coclient::response_cb_t callback =
+					[this] (bool successful, google::protobuf::Message *response_msg) {
+					if(successful)
+					{
+						sdc_internal::kube_hello_result *res = (sdc_internal::kube_hello_result *)response_msg;
+						g_logger.format(sinsp_logger::SEV_INFO, "Received Kube Hello: %d",
+								res->successful());
+					}
+				};
+				m_coclient.do_k8s_hello("bbtest agent to cointerface", callback);
+				m_coclient.next();
+
 				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();
 				if(m_mounted_fs_proxy)

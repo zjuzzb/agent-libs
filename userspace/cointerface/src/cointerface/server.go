@@ -17,6 +17,7 @@ import (
 	"sdc_internal"
 	"sync"
 	"time"
+	"kubecollect"
 )
 
 // Reusing docker clients, so we don't need to reconnect to docker daemon
@@ -270,6 +271,14 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	log.Infof("[PerformOrchestratorEventsStream] All events sent. Exiting.")
 
 	return nil
+}
+
+func (c *coInterfaceServer) PerformKubeHello(ctx context.Context, cmd *sdc_internal.KubeHelloCommand) (*sdc_internal.KubeHelloResult, error) {
+	res, err := kubecollect.HelloPods(ctx, cmd)
+	if err != nil {
+			log.Infof("HelloPods failed with: %v", err)
+	}
+	return res, err
 }
 
 func startServer(sock string) int {

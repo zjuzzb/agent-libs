@@ -33,6 +33,7 @@ public:
 
 	void ping(int64_t token, response_cb_t response_cb);
 	void get_swarm_state(response_cb_t response_cb);
+	void do_k8s_hello(const std::string &k8s_msg, response_cb_t response_cb);
 
 	void perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
 				const std::string &container_id, response_cb_t response_cb);
@@ -87,6 +88,7 @@ protected:
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
 		std::unique_ptr<grpc::ClientAsyncReader<draiosproto::congroup_update_event>> orchestrator_events_reader;
+		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::kube_hello_result>> kube_hello_reader;
 	};
 
 	// Created by CreateChannel

@@ -40,6 +40,8 @@ enum cointerface_message_type {
     SWARM_STATE_RESULT = 6;
     ORCHESTRATOR_EVENTS_STREAM_COMMAND = 7;
     ORCHESTRATOR_EVENTS_STREAM_RESULT = 8;
+    KUBE_HELLO_COMMAND = 9;
+    KUBE_HELLO_RESULT = 10;
 }
 
 enum docker_cmd_type {
@@ -82,9 +84,18 @@ message swarm_state_result {
 message orchestrator_events_stream_command {
 }
 
+message kube_hello_command {
+    required string print_me = 1;
+}
+
+message kube_hello_result {
+    required bool successful = 1;
+}
+
 service CoInterface {
     rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
     rpc PerformPing(ping) returns (pong) {}
     rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
     rpc PerformOrchestratorEventsStream(orchestrator_events_stream_command) returns (stream draiosproto.congroup_update_event) {}
+    rpc PerformKubeHello(kube_hello_command) returns (kube_hello_result) {}
 }
