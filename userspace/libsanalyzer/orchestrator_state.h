@@ -13,6 +13,9 @@
 class orchestrator_state
 {
 public:
+	using uid_t = std::pair<std::string, std::string>;
+	using state_t = std::map<uid_t, std::unique_ptr<draiosproto::container_group>>;
+
 	orchestrator_state(uint64_t refresh_interval);
 
 	~orchestrator_state();
@@ -20,10 +23,11 @@ public:
 	void refresh();
 
 private:
-	using uid_t = std::pair<std::string, std::string>;
-	using state_t = std::map<uid_t, std::shared_ptr<draiosproto::container_group>>;
 
 	void handle_event(sdc_internal::congroup_update_event *evt);
+
+	void connect(orchestrator_state::uid_t& key);
+	void remove(sdc_internal::congroup_update_event *evt);
 
 	state_t m_state;
 
