@@ -141,16 +141,17 @@ func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUi
 	     	Uid:  uid,
 		Name: proto.String(uid.GetKind() + "-" + uid.GetId()[0:4]),
 		Tags: map[string]string{
-			"key": "value",
+			"key1": "value1",
 		},
 		Labels: map[string]string{
-			"tier":    "cache",
-			"release": "stable",
+			"key2": "value2",
+			"key3": "value3",
 		},
 		IpAddresses: []string{"1.2.3.4"},
 		// Ports
 		Metrics: map[string]uint32{
-			"restart_count": 0,
+			"key4": 0,
+			"key5": 0,
 		},
 		// Children: <- we could probably avoid to pass this info on the wire
 		Parents: parents,
@@ -159,20 +160,39 @@ func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUi
 
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
-	uids := []*draiosproto.CongroupUid{
+
+	uids := []*draiosproto.CongroupUid {
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_node"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_deployment"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_service"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_replicaset"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
 	}
+	parents := [][]*draiosproto.CongroupUid {
+		{},				// namespace
+		{uids[0]},			// deployment
+		{uids[0]},			// service
+		{uids[0]},			// replicaset
+		{uids[0], uids[2], uids[3]},	// pod1
+		{uids[0], uids[2], uids[3]},	// pod2
+		{uids[0], uids[2], uids[3]},	// pod3
+		{uids[4]},	   		// container1
+		{uids[5]},	   		// container2
+		{uids[6]},	   		// container3
+	}
+	objects := []*draiosproto.ContainerGroup {}
+	// Add all the components
 	for i := 0; i < len(uids); i++ {
 		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Starting to create event #%d.", i+1))
-		parents := []*draiosproto.CongroupUid{}
-		if i != 0 {
-			parents = uids[:i]
-		}
+		objects = append(objects, newCongroup(uids[i], parents[i]))
 		evt := &sdc_internal.CongroupUpdateEvent{
 			Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
-			Object : newCongroup(uids[i], parents),
+			Object : objects[i],
 		}
 		log.Infof("[PerformOrchestratorEventsStream] evt created.")
 		log.Infof("[PerformOrchestratorEventsStream] " + evt.String())
@@ -182,6 +202,45 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Event #%d sent.", i+1))
 		time.Sleep(time.Second)
 	}
+
+	// Remove 1 Pod
+	time.Sleep(time.Second*2)
+	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
+		Type :   sdc_internal.CongroupEventType_REMOVED.Enum(),
+		Object : objects[6],
+	}); err != nil {
+		return err
+	}
+
+	// Update the replicaset
+	time.Sleep(time.Second*2)
+	objects[3] = &draiosproto.ContainerGroup{
+		Uid:  objects[3].Uid,
+		Name: objects[3].Name,
+		Tags: objects[3].Tags,
+		Labels: objects[3].Labels,
+		Metrics: map[string]uint32{
+			"replicas_desired": 5,
+			"replicas_running": 5,
+		},
+		Parents: objects[3].Parents,
+	}
+	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
+		Type :   sdc_internal.CongroupEventType_UPDATED.Enum(),
+		Object : objects[3],
+	}); err != nil {
+		return err
+	}
+
+	// Add the pod again
+	time.Sleep(time.Second*2)
+	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
+		Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
+		Object : objects[6],
+	}); err != nil {
+		return err
+	}
+
 	log.Infof("[PerformOrchestratorEventsStream] All events sent. Exiting.")
 	return nil
 }
