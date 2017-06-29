@@ -94,6 +94,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_sample_evtnum = 0;
 	m_serialize_prev_sample_evtnum = 0;
 	m_serialize_prev_sample_time = 0;
+	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
@@ -697,6 +698,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 {
 
 	uint64_t nevts = 0;
+	uint64_t num_drop_events = 0;
 
 	if(evt)
 	{
@@ -717,9 +719,15 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		m_serialize_prev_sample_time = ts;
 	}
 
+	// Get the number of dropped events and include that in the log message
+	scap_stats st;
+	m_inspector->get_capture_stats(&st);
+	num_drop_events = st.n_drops - m_serialize_prev_sample_num_drop_events;
+	m_serialize_prev_sample_num_drop_events = st.n_drops;
+
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload,
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, num_drop_events, m_metrics, m_sampling_ratio, m_my_cpuload,
 													 m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
 		m_prev_flushes_duration_ns = 0;
 	}
@@ -736,9 +744,9 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
+			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", de=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
-			buflen, nevts,
+			buflen, nevts, num_drop_events,
 			m_my_cpuload,
 			m_sampling_ratio);
 
