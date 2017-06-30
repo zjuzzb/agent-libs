@@ -1028,17 +1028,16 @@ int mounted_fs_reader::run()
 		home_fd = open_ns_fd(pid);
 	}
 
+	if(home_fd <= 0)
+	{
+		return DONT_RESTART_EXIT;
+	}
+
 	if (setns(home_fd, CLONE_NEWNS) != 0)
 	{
 		g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 		return ERROR_EXIT;
 	};
-
-
-	if(home_fd <= 0)
-	{
-		return DONT_RESTART_EXIT;
-	}
 
 	// Fetching root directory uses a parent PID! This is a solution constrained by Rkt, because it mangles a root
 	// directory of a process. So far, seems it works with Docker, Rkt and standalone Agent. Should be considered for
