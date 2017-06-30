@@ -139,11 +139,8 @@ func newUUID() string {
 func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUid) (*draiosproto.ContainerGroup) {
 	return &draiosproto.ContainerGroup{
 	     	Uid:  uid,
-		Name: proto.String(uid.GetKind() + "-" + uid.GetId()[0:4]),
 		Tags: map[string]string{
 			"key1": "value1",
-		},
-		Labels: map[string]string{
 			"key2": "value2",
 			"key3": "value3",
 		},
@@ -216,9 +213,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	time.Sleep(time.Second*2)
 	objects[3] = &draiosproto.ContainerGroup{
 		Uid:  objects[3].Uid,
-		Name: objects[3].Name,
 		Tags: objects[3].Tags,
-		Labels: objects[3].Labels,
 		Metrics: map[string]uint32{
 			"replicas_desired": 5,
 			"replicas_running": 5,
