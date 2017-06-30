@@ -634,9 +634,7 @@ message congroup_net_port {
 
 message container_group {
     optional congroup_uid uid = 1;
-    optional string name = 2;
     map<string, string> tags = 3;
-    map<string, string> labels = 4;
     repeated string ip_addresses = 5;
     repeated congroup_net_port ports = 6;
     map<string, uint32> metrics = 7;
