@@ -22,12 +22,21 @@ public:
 
 	void refresh();
 
+	bool match(std::string &container_id,
+			   const google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &scope_predicates);
+
 private:
+
+	bool walk_and_match(draiosproto::container_group *congroup,
+						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
+						std::unordered_set<uid_t> &visited_groups);
 
 	void handle_event(sdc_internal::congroup_update_event *evt);
 
 	void connect(orchestrator_state::uid_t& key);
 	void remove(sdc_internal::congroup_update_event *evt);
+
+	void debug_print();
 
 	state_t m_state;
 

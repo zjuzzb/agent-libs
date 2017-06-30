@@ -1034,10 +1034,32 @@ enum policy_type {
     POLICY_MANUAL =3;
 }
 
+enum scope_operator {
+    EQ = 1;
+    NOT_EQ = 2;
+    IN_SET = 3;
+    NOT_IN_SET = 4;
+    CONTAINS = 5;
+    NOT_CONTAINS = 6;
+    STARTS_WITH = 7;
+}
+
+message scope_predicate {
+    required string key = 1;
+    // multiple values when using IN/NOT_IN, otherwise single
+    repeated string values = 2;
+    required scope_operator op = 3;
+}
+
 message policy {
     required uint64 id = 1;
     required string name = 2;
     required policy_type type = 3;
+
+    required bool host_scope = 9;
+    required bool container_scope = 10;
+    // all scope_predicates must match against the entity
+    repeated scope_predicate scope_predicates = 11;
 
     // when type=POLICY_BASELINE
     optional baseline_detail baseline_details = 4;
