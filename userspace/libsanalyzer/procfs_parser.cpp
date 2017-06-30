@@ -987,7 +987,6 @@ int mounted_fs_reader::open_ns_fd(int pid)
 {
 	char filename[SCAP_MAX_PATH_SIZE];
 	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/mnt", scap_get_host_root(), pid);
-	g_logger.log("tok: open_ns_fd(): filename=" + string(filename), sinsp_logger::SEV_DEBUG);
 	return open(filename, O_RDONLY);
 }
 
@@ -1028,19 +1027,43 @@ int mounted_fs_reader::run()
 	{
 		home_fd = open_ns_fd(pid);
 	}
-	g_logger.log("tok:open_ns_fd(): home_fd=" + to_string(home_fd), sinsp_logger::SEV_DEBUG);
+
+	if (setns(home_fd, CLONE_NEWNS) != 0)
+	{
+		g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	};
+
+
 	if(home_fd <= 0)
 	{
 		return DONT_RESTART_EXIT;
 	}
 
+	// Fetching root directory uses a parent PID! This is a solution constrained by Rkt, because it mangles a root
+	// directory of a process. So far, seems it works with Docker, Rkt and standalone Agent. Should be considered for
+	// refactoring in the future.
 	char root_dir[PATH_MAX];
-	string root_dir_link = "/proc/" + to_string(pid) + "/root";
+	string root_dir_link = "/proc/" + to_string(getppid()) + "/root";
 	ssize_t root_dir_sz = readlink(root_dir_link.c_str(), root_dir, PATH_MAX - 1);
-	if (root_dir_sz == -1)
+	if (root_dir_sz <= 0)
+	{
 		g_logger.log("Cannot read root directory.", sinsp_logger::SEV_ERROR);
-	root_dir[root_dir_sz] = '\0';
-	g_logger.log("tok: root_dir=" + string(root_dir), sinsp_logger::SEV_DEBUG);
+		return ERROR_EXIT;
+	}
+	else
+		root_dir[root_dir_sz] = '\0';
+
+	if (chroot(root_dir) < 0)
+	{
+		g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+	if (chdir("/") < 0)
+	{
+		g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
 
 	while(true)
 	{
@@ -1057,14 +1080,8 @@ int mounted_fs_reader::run()
 				// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s", request_proto.DebugString().c_str());
 				for(const auto& container_proto : request_proto.containers())
 				{
-					g_logger.log("tok: container_proto.root()=" + container_proto.root() + ", container_proto.pid()=" + to_string(container_proto.pid()) +
-						", container_proto.id()=" + container_proto.id(), sinsp_logger::SEV_DEBUG);
 					// Go to container mnt ns
 					auto changed = change_ns(container_proto.pid());
-					if (changed)
-						g_logger.log("tok: namespace " + to_string(container_proto.pid()) + " changed...", sinsp_logger::SEV_DEBUG);
-					else
-						g_logger.log("tok: namespace " + to_string(container_proto.pid()) + " not changed...", sinsp_logger::SEV_DEBUG);
 
 					if(changed)
 					{
@@ -1092,11 +1109,8 @@ int mounted_fs_reader::run()
 							{
 								snprintf(filename, sizeof(filename), "/proc/%lu/mounts", container_proto.vpid());
 							}
-							g_logger.log("tok: filename=" + string(filename), sinsp_logger::SEV_DEBUG);
 							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
-							g_logger.log("tok: fetched fs_list", sinsp_logger::SEV_DEBUG);
 							auto container_mounts_proto = response_proto.add_containers();
-							g_logger.log("tok: setting container id=" + container_proto.id(), sinsp_logger::SEV_DEBUG);
 							container_mounts_proto->set_container_id(container_proto.id());
 							for(const auto& fs : fs_list)
 							{
@@ -1108,16 +1122,23 @@ int mounted_fs_reader::run()
 						{
 							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s, vpid=%d", container_proto.id().c_str(), container_proto.pid(), ex.what(), container_proto.vpid());
 						}
-						g_logger.log("tok: back home, home_fd=" + to_string(home_fd), sinsp_logger::SEV_DEBUG);
 						// Back home
 						if(setns(home_fd, CLONE_NEWNS) != 0)
 						{
 							g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 							return ERROR_EXIT;
 						};
-						g_logger.log("tok: resetting rootdir=" + string(root_dir), sinsp_logger::SEV_DEBUG);
-						chroot(root_dir);
-						chdir("/");
+
+						if (chroot(root_dir) < 0)
+						{
+							g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						}
+						if (chdir("/") < 0)
+						{
+							g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						}
 					}
 				}
 				auto response_s = response_proto.SerializeAsString();
