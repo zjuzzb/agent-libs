@@ -167,7 +167,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String("testUUID")},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
 	}
 	parents := [][]*draiosproto.CongroupUid {
@@ -197,11 +197,11 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 			return err
 		}
 		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Event #%d sent.", i+1))
-		time.Sleep(time.Second)
+		//time.Sleep(time.Second)
 	}
 
 	// Remove 1 Pod
-	time.Sleep(time.Second*2)
+	//time.Sleep(time.Second*2)
 	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
 		Type :   sdc_internal.CongroupEventType_REMOVED.Enum(),
 		Object : objects[6],
@@ -210,10 +210,15 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	}
 
 	// Update the replicaset
-	time.Sleep(time.Second*2)
+	//time.Sleep(time.Second*2)
 	objects[3] = &draiosproto.ContainerGroup{
 		Uid:  objects[3].Uid,
-		Tags: objects[3].Tags,
+		Tags: map[string]string{
+			"test_equal": "equaltothis",
+			"test_contains": "first second third",
+			"test_startswith": "prefixfoo",
+			"test_in": "bar",
+		},
 		Metrics: map[string]uint32{
 			"replicas_desired": 5,
 			"replicas_running": 5,
@@ -227,8 +232,28 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
+	// Update the namespace
+	//time.Sleep(time.Second*2)
+	objects[0] = &draiosproto.ContainerGroup{
+		Uid:  objects[0].Uid,
+		Tags: map[string]string{
+			"test_equal_ns": "equaltothis",
+			"test_contains_ns": "first second third",
+			"test_startswith_ns": "prefixfoo",
+			"test_in_ns": "bar",
+		},
+		Metrics: objects[0].Metrics,
+		Parents: objects[0].Parents,
+	}
+	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
+		Type :   sdc_internal.CongroupEventType_UPDATED.Enum(),
+		Object : objects[0],
+	}); err != nil {
+		return err
+	}
+
 	// Add the pod again
-	time.Sleep(time.Second*2)
+	//time.Sleep(time.Second*2)
 	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
 		Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
 		Object : objects[6],

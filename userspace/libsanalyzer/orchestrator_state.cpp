@@ -8,12 +8,7 @@ orchestrator_state::orchestrator_state(uint64_t refresh_interval) :
 	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 		sdc_internal::congroup_update_event *evt = (sdc_internal::congroup_update_event *)response_msg;
 
-		//google::protobuf::TextFormat::Printer printer; std::string tmp; printer.PrintToString(*evt, &tmp);
-		//glogf(sinsp_logger::SEV_DEBUG, "[%s] Received update_event message, size %d", successful?"true":"false", evt->ByteSize());
-		//glogf(sinsp_logger::SEV_DEBUG, "update_event message: %s", tmp.c_str());
-
 		handle_event(evt);
-		debug_print();
 	};
 
 	glogf(sinsp_logger::SEV_DEBUG, "Sending Request for orchestrator events.");
@@ -153,28 +148,30 @@ bool orchestrator_state::walk_and_match(draiosproto::container_group *congroup,
 			ret = p.values(0) != value;
 			break;
 		case draiosproto::CONTAINS:
-			ret = p.values(0).find(value) != std::string::npos;
+			ret = value.find(p.values(0)) != std::string::npos;
 			break;
 		case draiosproto::NOT_CONTAINS:
-			ret = p.values(0).find(value) == std::string::npos;
+			ret = value.find(p.values(0)) == std::string::npos;
 			break;
 		case draiosproto::STARTS_WITH:
-			ret = p.values(0).substr(0, value.size()) == value;
+			ret = value.substr(0, p.values(0).size()) == p.values(0);
 			break;
 		case draiosproto::IN_SET:
 			ret = false;
 			for(auto v : p.values()) {
-				if (v == value)
+				if (v == value) {
 					ret = true;
-				break;
+					break;
+				}
 			}
 			break;
 		case draiosproto::NOT_IN_SET:
 			ret = true;
 			for(auto v : p.values()) {
-				if (v == value)
+				if (v == value) {
 					ret = false;
-				break;
+					break;
+				}
 			}
 			break;
 		default:
@@ -185,23 +182,10 @@ bool orchestrator_state::walk_and_match(draiosproto::container_group *congroup,
 	};
 
 	uid_t uid = make_pair(congroup->uid().kind(), congroup->uid().id());
+
 	if(visited_groups.find(uid) != visited_groups.end()) {
-		// Groups already visited, continue the evaluation
+		// Group already visited, continue the evaluation
 		return true;
-	}
-
-	// Remember we've visited this group
-	visited_groups.emplace(uid);
-
-	//
-	// Evaluate parents' tags
-	//
-	for(auto p_uid : congroup->parents()) {
-		if(!walk_and_match(m_state[make_pair(p_uid.kind(), p_uid.id())].get(), preds, visited_groups)) {
-			// A predicate in the upper levels returned false
-			// The final result is false
-			return false;
-		}
 	}
 
 	//
@@ -218,6 +202,27 @@ bool orchestrator_state::walk_and_match(draiosproto::container_group *congroup,
 		} else {
 			++i;
 		}
+	}
+
+	//
+	// All predicates evalutated successfully,
+	// nothing else to do
+	//
+	if (preds.empty()) return true;
+
+	// Remember we've visited this group
+	visited_groups.emplace(uid);
+
+	//
+	// Evaluate parents' tags
+	//
+	for(auto p_uid : congroup->parents()) {
+		if(!walk_and_match(m_state[make_pair(p_uid.kind(), p_uid.id())].get(), preds, visited_groups)) {
+			// A predicate in the upper levels returned false
+			// The final result is false
+			return false;
+		}
+		if (preds.empty()) break;
 	}
 
 	return true;
