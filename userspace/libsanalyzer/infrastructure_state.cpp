@@ -1,8 +1,8 @@
 #include <algorithm>
 
-#include "orchestrator_state.h"
+#include "infrastructure_state.h"
 
-orchestrator_state::orchestrator_state(uint64_t refresh_interval) :
+infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 	m_interval(refresh_interval)
 {
 	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
@@ -15,9 +15,9 @@ orchestrator_state::orchestrator_state(uint64_t refresh_interval) :
 	m_coclient.get_orchestrator_events(m_callback);
 }
 
-orchestrator_state::~orchestrator_state(){}
+infrastructure_state::~infrastructure_state(){}
 
-void orchestrator_state::refresh()
+void infrastructure_state::refresh()
 {
 	m_interval.run([this]()
 	{
@@ -25,7 +25,7 @@ void orchestrator_state::refresh()
 	});
 }
 
-void orchestrator_state::handle_event(sdc_internal::congroup_update_event *evt)
+void infrastructure_state::handle_event(sdc_internal::congroup_update_event *evt)
 {
 	std::string kind = evt->object().uid().kind();
 	std::string id = evt->object().uid().id();
@@ -69,7 +69,7 @@ void orchestrator_state::handle_event(sdc_internal::congroup_update_event *evt)
 	glogf(sinsp_logger::SEV_DEBUG, "Event with uid <%s,%s> handled. Current state size: %d", kind.c_str(), id.c_str(), m_state.size());
 }
 
-void orchestrator_state::connect(orchestrator_state::uid_t& key)
+void infrastructure_state::connect(infrastructure_state::uid_t& key)
 {
 	//
 	// Connect the new group to the parents
@@ -84,7 +84,7 @@ void orchestrator_state::connect(orchestrator_state::uid_t& key)
 	}
 }
 
-void orchestrator_state::remove(sdc_internal::congroup_update_event *evt)
+void infrastructure_state::remove(sdc_internal::congroup_update_event *evt)
 {
 	//
 	// Remove all children references to this group
@@ -131,7 +131,7 @@ void orchestrator_state::remove(sdc_internal::congroup_update_event *evt)
 	m_state.erase(key);
 }
 
-bool orchestrator_state::walk_and_match(draiosproto::container_group *congroup,
+bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup,
 										google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 										std::unordered_set<uid_t> &visited_groups)
 {
@@ -228,7 +228,7 @@ bool orchestrator_state::walk_and_match(draiosproto::container_group *congroup,
 	return true;
 }
 
-bool orchestrator_state::match(std::string &container_id, const google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &scope_predicates)
+bool infrastructure_state::match(std::string &container_id, const google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &scope_predicates)
 {
 	auto pos = m_state.find(make_pair("container", container_id));
 	if (pos == m_state.end())
@@ -240,9 +240,9 @@ bool orchestrator_state::match(std::string &container_id, const google::protobuf
 	return walk_and_match(pos->second.get(), preds, visited) && preds.empty();
 }
 
-void orchestrator_state::debug_print()
+void infrastructure_state::debug_print()
 {
-	glogf(sinsp_logger::SEV_DEBUG, "ORCHESTRATOR STATE (size: %d)", m_state.size());
+	glogf(sinsp_logger::SEV_DEBUG, "INFRASTRUCTURE STATE (size: %d)", m_state.size());
 
 	for (auto it = m_state.begin(), e = m_state.end(); it != e; ++it) {
 		draiosproto::container_group *cong = it->second.get();

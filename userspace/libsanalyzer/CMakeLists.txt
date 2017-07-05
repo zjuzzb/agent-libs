@@ -47,6 +47,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/ifinfo.cpp
+	infrastructure_state.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/internal_metrics.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp/jsoncpp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
@@ -91,7 +92,6 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
 	metric_limits.cpp
 	metrics.cpp
-	orchestrator_state.cpp
 	parser_http.cpp
 	parser_mysql.cpp
 	parser_postgres.cpp

@@ -17,7 +17,7 @@
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "coclient.h"
-#include "orchestrator_state.h"
+#include "infrastructure_state.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -649,7 +649,7 @@ VISIBILITY_PRIVATE
 	bool                                 m_k8s_proc_detected = false;
 
 	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
-	unique_ptr<orchestrator_state> m_orchestrator_state;
+	unique_ptr<infrastructure_state> m_infrastructure_state;
 	unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state

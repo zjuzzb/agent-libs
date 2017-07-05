@@ -1,5 +1,5 @@
-#ifndef ORCHESTRATOR_STATE_H
-#define ORCHESTRATOR_STATE_H
+#ifndef INFRASTRUCTURE_STATE_H
+#define INFRASTRUCTURE_STATE_H
 
 #include <map>
 
@@ -10,15 +10,15 @@
 #include "analyzer_utils.h"
 #include "coclient.h"
 
-class orchestrator_state
+class infrastructure_state
 {
 public:
 	using uid_t = std::pair<std::string, std::string>;
 	using state_t = std::map<uid_t, std::unique_ptr<draiosproto::container_group>>;
 
-	orchestrator_state(uint64_t refresh_interval);
+	infrastructure_state(uint64_t refresh_interval);
 
-	~orchestrator_state();
+	~infrastructure_state();
 
 	void refresh();
 
@@ -33,7 +33,7 @@ private:
 
 	void handle_event(sdc_internal::congroup_update_event *evt);
 
-	void connect(orchestrator_state::uid_t& key);
+	void connect(infrastructure_state::uid_t& key);
 	void remove(sdc_internal::congroup_update_event *evt);
 
 	void debug_print();
@@ -46,4 +46,4 @@ private:
 
 };
 
-#endif // ORCHESTRATOR_STATE_H
+#endif // INFRASTRUCTURE_STATE_H

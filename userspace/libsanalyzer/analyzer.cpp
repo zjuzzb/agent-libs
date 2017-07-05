@@ -168,7 +168,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_mesos_refresh = 0;
 
 	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
-	m_orchestrator_state = make_unique<orchestrator_state>(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
+	m_infrastructure_state = make_unique<infrastructure_state>(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -4286,9 +4286,9 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-	// Refresh the orchestrator state
+	// Refresh the infrastructure state
 	//
-	m_orchestrator_state->refresh();
+	m_infrastructure_state->refresh();
 
 	//
 	// This is where normal event parsing starts.
