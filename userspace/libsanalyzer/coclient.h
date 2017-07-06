@@ -86,7 +86,7 @@ protected:
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
-		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::congroup_update_event>> orchestrator_events_reader;
+		std::unique_ptr<grpc::ClientAsyncReader<draiosproto::congroup_update_event>> orchestrator_events_reader;
 	};
 
 	// Created by CreateChannel

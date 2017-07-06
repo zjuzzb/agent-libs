@@ -99,7 +99,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		orchestrator_events_stream_command = static_cast<sdc_internal::orchestrator_events_stream_command *>(request_msg);
 		call->orchestrator_events_reader = m_stub->AsyncPerformOrchestratorEventsStream(&call->ctx, *orchestrator_events_stream_command, &m_cq, (void *)call);
 
-		call->response_msg = make_unique<sdc_internal::congroup_update_event>();
+		call->response_msg = make_unique<draiosproto::congroup_update_event>();
 
 		break;
 	default:
@@ -153,7 +153,7 @@ void coclient::next(uint32_t wait_ms)
 		call->status = grpc::Status::OK;
 		switch(call->msg_type) {
 		case(sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND):
-			call->orchestrator_events_reader->Read(static_cast<sdc_internal::congroup_update_event *>(call->response_msg.get()), (void *)call);
+			call->orchestrator_events_reader->Read(static_cast<draiosproto::congroup_update_event *>(call->response_msg.get()), (void *)call);
 			break;
 		default:
 			g_logger.log("Unknown streaming message type " + to_string(call->msg_type) + ", can't read response", sinsp_logger::SEV_ERROR);

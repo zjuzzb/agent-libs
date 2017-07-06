@@ -191,8 +191,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	for i := 0; i < len(uids); i++ {
 		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Starting to create event #%d.", i+1))
 		objects = append(objects, newCongroup(uids[i], parents[i]))
-		evt := &sdc_internal.CongroupUpdateEvent{
-			Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
+		evt := &draiosproto.CongroupUpdateEvent{
+			Type :   draiosproto.CongroupEventType_ADDED.Enum(),
 			Object : objects[i],
 		}
 		log.Infof("[PerformOrchestratorEventsStream] evt created.")
@@ -206,8 +206,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// Remove 1 Pod
 	//time.Sleep(time.Second*2)
-	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
-		Type :   sdc_internal.CongroupEventType_REMOVED.Enum(),
+	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
+		Type :   draiosproto.CongroupEventType_REMOVED.Enum(),
 		Object : objects[6],
 	}); err != nil {
 		return err
@@ -229,8 +229,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		},
 		Parents: objects[3].Parents,
 	}
-	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
-		Type :   sdc_internal.CongroupEventType_UPDATED.Enum(),
+	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
+		Type :   draiosproto.CongroupEventType_UPDATED.Enum(),
 		Object : objects[3],
 	}); err != nil {
 		return err
@@ -249,8 +249,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		Metrics: objects[0].Metrics,
 		Parents: objects[0].Parents,
 	}
-	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
-		Type :   sdc_internal.CongroupEventType_UPDATED.Enum(),
+	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
+		Type :   draiosproto.CongroupEventType_UPDATED.Enum(),
 		Object : objects[0],
 	}); err != nil {
 		return err
@@ -258,8 +258,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// Add the pod again
 	//time.Sleep(time.Second*2)
-	if err := stream.Send(&sdc_internal.CongroupUpdateEvent {
-		Type :   sdc_internal.CongroupEventType_ADDED.Enum(),
+	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
+		Type :   draiosproto.CongroupEventType_ADDED.Enum(),
 		Object : objects[6],
 	}); err != nil {
 		return err

@@ -6,7 +6,7 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 	m_interval(refresh_interval)
 {
 	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
-		sdc_internal::congroup_update_event *evt = (sdc_internal::congroup_update_event *)response_msg;
+		draiosproto::congroup_update_event *evt = (draiosproto::congroup_update_event *)response_msg;
 
 		handle_event(evt);
 	};
@@ -25,7 +25,7 @@ void infrastructure_state::refresh()
 	});
 }
 
-void infrastructure_state::handle_event(sdc_internal::congroup_update_event *evt)
+void infrastructure_state::handle_event(draiosproto::congroup_update_event *evt)
 {
 	std::string kind = evt->object().uid().kind();
 	std::string id = evt->object().uid().id();
@@ -37,27 +37,27 @@ void infrastructure_state::handle_event(sdc_internal::congroup_update_event *evt
 	bool is_present = m_state.find(key) != m_state.end();
 	if(!is_present) {
 		switch(evt->type()) {
-		case sdc_internal::ADDED:
+		case draiosproto::ADDED:
 			m_state[key] = make_unique<draiosproto::container_group>();
 			m_state[key]->CopyFrom(evt->object());
 			connect(key);
 			break;
-		case sdc_internal::REMOVED:
+		case draiosproto::REMOVED:
 			throw new sinsp_exception("Cannot remove container_group with id " + id + " because it does not exists.");
 			break;
-		case sdc_internal::UPDATED:
+		case draiosproto::UPDATED:
 			throw new sinsp_exception("Cannot update container_group with id " + id + " because it does not exists.");
 			break;
 		}
 	} else {
 		switch(evt->type()) {
-		case sdc_internal::ADDED:
+		case draiosproto::ADDED:
 			throw new sinsp_exception("Cannot add container_group with id " + id + " because it's already present.");
 			break;
-		case sdc_internal::REMOVED:
+		case draiosproto::REMOVED:
 			remove(evt);
 			break;
-		case sdc_internal::UPDATED:
+		case draiosproto::UPDATED:
 			*m_state[key]->mutable_tags() = evt->object().tags();
 			m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 			m_state[key]->mutable_ports()->CopyFrom(evt->object().ports());
@@ -84,7 +84,7 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 	}
 }
 
-void infrastructure_state::remove(sdc_internal::congroup_update_event *evt)
+void infrastructure_state::remove(draiosproto::congroup_update_event *evt)
 {
 	//
 	// Remove all children references to this group

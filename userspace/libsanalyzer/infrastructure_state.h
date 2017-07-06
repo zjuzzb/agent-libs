@@ -38,10 +38,10 @@ private:
 						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 						std::unordered_set<uid_t> &visited_groups);
 
-	void handle_event(sdc_internal::congroup_update_event *evt);
+	void handle_event(draiosproto::congroup_update_event *evt);
 
 	void connect(infrastructure_state::uid_t& key);
-	void remove(sdc_internal::congroup_update_event *evt);
+	void remove(draiosproto::congroup_update_event *evt);
 
 	void debug_print();
 
