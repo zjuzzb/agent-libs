@@ -166,21 +166,25 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String("testUUID")},
+		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
 	}
 	parents := [][]*draiosproto.CongroupUid {
 		{},				// namespace
 		{uids[0]},			// deployment
 		{uids[0]},			// service
-		{uids[0]},			// replicaset
+		{uids[0], uids[1]},		// replicaset
 		{uids[0], uids[2], uids[3]},	// pod1
 		{uids[0], uids[2], uids[3]},	// pod2
 		{uids[0], uids[2], uids[3]},	// pod3
+		{uids[0]},			// pod4
 		{uids[4]},	   		// container1
 		{uids[5]},	   		// container2
 		{uids[6]},	   		// container3
+		{uids[7]},	   		// container3
 	}
 	objects := []*draiosproto.ContainerGroup {}
 	// Add all the components

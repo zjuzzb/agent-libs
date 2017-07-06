@@ -25,7 +25,14 @@ public:
 	bool match(std::string &container_id,
 			   const google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &scope_predicates);
 
+	void state_of(const std::vector<std::string> &container_ids,
+		std::vector<std::unique_ptr<draiosproto::container_group>>& state);
+
 private:
+
+	void state_of(const draiosproto::container_group *grp,
+		std::vector<std::unique_ptr<draiosproto::container_group>>& state,
+		std::unordered_set<uid_t>& visited);
 
 	bool walk_and_match(draiosproto::container_group *congroup,
 						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,

@@ -842,6 +842,10 @@ message swarm_state {
     optional string node_id = 7;
 }
 
+message orchestrator_state_t {
+    repeated container_group groups = 1;
+}
+
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -868,6 +872,7 @@ message metrics {
     optional proto_info protos = 20; // Information about protocols that have been decoded
     repeated container containers = 22;
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
+    optional orchestrator_state_t orchestrator_state = 31;
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events

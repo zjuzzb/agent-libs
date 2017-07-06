@@ -240,6 +240,74 @@ bool infrastructure_state::match(std::string &container_id, const google::protob
 	return walk_and_match(pos->second.get(), preds, visited) && preds.empty();
 }
 
+
+void infrastructure_state::state_of(const draiosproto::container_group *grp,
+				     std::vector<std::unique_ptr<draiosproto::container_group>>& state,
+				     std::unordered_set<uid_t>& visited)
+{
+	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
+
+	if(visited.find(uid) != visited.end()) {
+		// Group already visited, skip it
+		return;
+	}
+	visited.emplace(uid);
+
+
+	for (const auto &p_uid : grp->parents()) {
+		auto parent = m_state[make_pair(p_uid.kind(), p_uid.id())].get();
+		//
+		// Build parent state
+		//
+		state_of(parent, state, visited);
+	}
+
+	//
+	// Except for containers, add the current node
+	//
+	if(grp->uid().kind() != "container") {
+		auto x = make_unique<draiosproto::container_group>();
+		x->CopyFrom(*grp);
+		state.emplace_back(std::move(x));
+	}
+}
+
+void infrastructure_state::state_of(const std::vector<std::string> &container_ids,
+				     std::vector<std::unique_ptr<draiosproto::container_group>>& state)
+{
+	std::unordered_set<uid_t, std::hash<uid_t>> inserted;
+
+	//
+	// Retrieve the state of every container
+	//
+	for(const auto &c_id : container_ids) {
+		auto pos = m_state.find(make_pair("container", c_id));
+		if (pos == m_state.end()) {
+			//
+			// This container is not in the orchestrator state
+			//
+			continue;
+		}
+
+		state_of(pos->second.get(), state, inserted);
+	}
+
+	//
+	// Clean up the broken links
+	// (except for container links, that are used to identify the containers)
+	//
+	for(const auto &state_cgroup : state) {
+		for(auto i = state_cgroup->mutable_children()->begin(); i != state_cgroup->mutable_children()->end();) {
+			if(i->kind() != "container" &&
+			   inserted.find(make_pair(i->kind(), i->id())) == inserted.end()) {
+				i = state_cgroup->mutable_children()->erase(i);
+			} else {
+				++i;
+			}
+		}
+	}
+}
+
 void infrastructure_state::debug_print()
 {
 	glogf(sinsp_logger::SEV_DEBUG, "INFRASTRUCTURE STATE (size: %d)", m_state.size());
