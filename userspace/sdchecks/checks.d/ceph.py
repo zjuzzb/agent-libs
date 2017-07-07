@@ -1,3 +1,7 @@
+# (C) Datadog, Inc. 2010-2016
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 """ceph check
 Collects metrics from ceph clusters
 """
@@ -14,14 +18,16 @@ from config import _is_affirmative
 # third party
 import simplejson as json
 
+
 class Ceph(AgentCheck):
     """ Collect metrics and events from ceph """
 
     DEFAULT_CEPH_CMD = '/usr/bin/ceph'
+    DEFAULT_CEPH_CLUSTER = 'ceph'
     NEEDED_NS = ( 'mnt', 'uts' )
-    NAMESPACE = "ceph"
+    NAMESPACE = 'ceph'
 
-    def _collect_raw(self, ceph_cmd, instance):
+    def _collect_raw(self, ceph_cmd, ceph_cluster, instance):
         use_sudo = _is_affirmative(instance.get('use_sudo', False))
         ceph_args = []
         if use_sudo:
@@ -31,6 +37,8 @@ class Ceph(AgentCheck):
             ceph_args = ['sudo', ceph_cmd]
         else:
             ceph_args = [ceph_cmd]
+
+        ceph_args += ['--cluster', ceph_cluster]
 
         args = ceph_args + ['version']
         try:
@@ -217,7 +225,8 @@ class Ceph(AgentCheck):
 
     def check(self, instance):
         ceph_cmd = instance.get('ceph_cmd') or self.DEFAULT_CEPH_CMD
-        raw = self._collect_raw(ceph_cmd, instance)
+        ceph_cluster = instance.get('ceph_cluster') or self.DEFAULT_CEPH_CLUSTER
+        raw = self._collect_raw(ceph_cmd, ceph_cluster, instance)
         tags = self._extract_tags(raw, instance)
         self._extract_metrics(raw, tags)
         self._perform_service_checks(raw, tags)

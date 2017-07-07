@@ -1,3 +1,7 @@
+# (C) Datadog, Inc. 2010-2016
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 # stdlib
 import socket
 import time
@@ -22,6 +26,7 @@ class TCPCheck(AgentCheck):
         port = instance.get('port', None)
         timeout = float(instance.get('timeout', 1))
         response_time = instance.get('collect_response_time', False)
+        custom_tags = instance.get('tags', [])
         socket_type = None
         try:
             port = int(port)
@@ -51,10 +56,10 @@ class TCPCheck(AgentCheck):
             except Exception:
                 raise BadConfException("URL: %s is not a correct IPv4, IPv6 or hostname" % addr)
 
-        return addr, port, socket_type, timeout, response_time
+        return addr, port, custom_tags, socket_type, timeout, response_time
 
     def _check(self, instance):
-        addr, port, socket_type, timeout, response_time = self._load_conf(instance)
+        addr, port, custom_tags, socket_type, timeout, response_time = self._load_conf(instance)
         start = time.time()
         try:
             self.log.debug("Connecting to %s %s" % (addr, port))
@@ -65,13 +70,13 @@ class TCPCheck(AgentCheck):
             finally:
                 sock.close()
 
-        except socket.timeout, e:
+        except socket.timeout as e:
             # The connection timed out because it took more time than the specified value in the yaml config file
             length = int((time.time() - start) * 1000)
             self.log.info("%s:%s is DOWN (%s). Connection failed after %s ms" % (addr, port, str(e), length))
             return Status.DOWN, "%s. Connection failed after %s ms" % (str(e), length)
 
-        except socket.error, e:
+        except socket.error as e:
             length = int((time.time() - start) * 1000)
             if "timed out" in str(e):
 
@@ -85,13 +90,13 @@ class TCPCheck(AgentCheck):
                 self.log.info("%s:%s is DOWN (%s). Connection failed after %s ms" % (addr, port, str(e), length))
                 return Status.DOWN, "%s. Connection failed after %s ms" % (str(e), length)
 
-        except Exception, e:
+        except Exception as e:
             length = int((time.time() - start) * 1000)
             self.log.info("%s:%s is DOWN (%s). Connection failed after %s ms" % (addr, port, str(e), length))
             return Status.DOWN, "%s. Connection failed after %s ms" % (str(e), length)
 
         if response_time:
-            self.gauge('network.tcp.response_time', time.time() - start, tags=['url:%s:%s' % (instance.get('host', None), port)])
+            self.gauge('network.tcp.response_time', time.time() - start, tags=['url:%s:%s' % (instance.get('host', None), port), 'instance:%s' % instance.get('name')] + custom_tags)
 
         self.log.debug("%s:%s is UP" % (addr, port))
         return Status.UP, "UP"

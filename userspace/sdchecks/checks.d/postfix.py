@@ -1,3 +1,8 @@
+# (C) Datadog, Inc. 2013-2016
+# (C) Josiah C Webb <rootkix@gmail.com> 2013
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 # stdlib
 import os
 
@@ -13,7 +18,7 @@ class PostfixCheck(AgentCheck):
              sudo access is not required when running dd-agent as root (not recommended)
 
     example /etc/sudoers entry:
-             dd-agent ALL=(ALL) NOPASSWD:/usr/bin/find
+             dd-agent ALL=(ALL) NOPASSWD:/usr/bin/find /var/spool/postfix* -type f
 
     YAML config options:
         "directory" - the value of 'postconf -h queue_directory'
@@ -57,7 +62,7 @@ class PostfixCheck(AgentCheck):
                 # can dd-agent user run sudo?
                 test_sudo = os.system('setsid sudo -l < /dev/null')
                 if test_sudo == 0:
-                    output, _, _ = get_subprocess_output(['sudo', 'find', queue_path, '-type', 'f'], self.log)
+                    output, _, _ = get_subprocess_output(['sudo', 'find', queue_path, '-type', 'f'], self.log, False)
                     count = len(output.splitlines())
                 else:
                     raise Exception('The dd-agent user does not have sudo access')
