@@ -956,6 +956,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	{
 		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
 	}
+	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
+	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);

@@ -153,10 +153,10 @@ TEST_F(security_policies_test, events_flood)
 
 	queue_fetch(draiosproto::METRICS, item);
 
-	g_log->debug("Reading /etc/shadow 1000 times");
+	g_log->debug("Reading /etc/sample-sensitive-file.txt 1000 times");
 	for(uint32_t i = 0; i < 1000; i++)
 	{
-		int fd = open("/etc/shadow", O_RDONLY);
+		int fd = open("/etc/sample-sensitive-file.txt", O_RDONLY);
 		close(fd);
 
 		Poco::Thread::sleep(10);

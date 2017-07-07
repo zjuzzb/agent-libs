@@ -911,7 +911,7 @@ TEST_F(sys_call_test, quotactl_ok)
 
 	// Clean environment
 	auto ret = system("umount /tmp/testquotamnt");
-	ret = system("rm -r /tmp/testquotactl /tmp/testquotamnt");
+	ret = system("rm -rf /tmp/testquotactl /tmp/testquotamnt");
 	// Setup a tmpdisk to test quotas
 	char command[] = "dd if=/dev/zero of=/tmp/testquotactl bs=1M count=200 &&\n"
 						"echo y | mkfs.ext4 -q /tmp/testquotactl &&\n"
@@ -1695,7 +1695,7 @@ TEST_F(sys_call_test32, quotactl_ok)
 
 	// Clean environment
 	auto ret = system("umount /tmp/testquotamnt");
-	ret = system("rm -r /tmp/testquotactl /tmp/testquotamnt");
+	ret = system("rm -rf /tmp/testquotactl /tmp/testquotamnt");
 	// Setup a tmpdisk to test quotas
 	char command[] = "dd if=/dev/zero of=/tmp/testquotactl bs=1M count=200 &&\n"
 						"echo y | mkfs.ext4 -q /tmp/testquotactl &&\n"

@@ -1,15 +1,3 @@
-set(DRAIOS_OPENSSL_VERSION "1.0.2j")
-set(DRAIOS_PROTOBUF_VERSION "2.5.0")
-set(DRAIOS_ZLIB_VERSION "1.2.8")
-set(DRAIOS_POCO_VERSION "1.7.7-all")
-set(DRAIOS_GTEST_VERSION "1.7.0")
-set(DRAIOS_YAML_VERSION "cpp-0.5.1")
-set(DRAIOS_BOOST_VERSION "1_57_0")
-set(DRAIOS_CURL_VERSION "7.52.1")
-set(DRAIOS_JQ_VERSION "1.5")
-set(DRAIOS_B64_VERSION "1.2")
-set(DRAIOS_GRPC_VERSION "1.1.4")
-
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
 
@@ -24,11 +12,12 @@ include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent)
+include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
@@ -44,7 +33,6 @@ add_executable(tests
 	container.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp
 	coclient_test.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/draios.pb.cc
 	event_capture.cpp
 	falco_events_test.cpp
 	forking.cpp
@@ -58,8 +46,6 @@ add_executable(tests
 	prefix_search_test.cpp
 	process.cpp
 	percentile.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/sdc_internal.pb.cc
-	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/sdc_internal.grpc.pb.cc
 	security_policies.cpp
 	socketpair.cpp
 	sql.cpp
@@ -92,14 +78,13 @@ add_executable(tests
 target_link_libraries(tests
 	pthread
 	sanalyzer
+	draiosproto
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
-	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc++_unsecure.a
-	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a)
+	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a)
 
 add_executable(test_helper
 		test_helper.cpp)

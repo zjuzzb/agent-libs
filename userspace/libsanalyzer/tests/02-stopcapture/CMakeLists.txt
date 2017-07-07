@@ -9,6 +9,7 @@ add_executable(sinsp-stopcapture
 
 target_link_libraries(sinsp-stopcapture
 	sanalyzer
+	draiosproto
 	pthread)
 
 install(TARGETS sinsp-stopcapture 

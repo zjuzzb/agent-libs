@@ -567,6 +567,8 @@ public:
 	bool m_excess_metric_log = false;
 	metrics_filter_vec m_metrics_filter;
 	unsigned m_metrics_cache;
+	mount_points_filter_vec m_mounts_filter;
+	unsigned m_mounts_limit_size;
 
 	bool m_enable_coredump;
 	bool m_auto_config;

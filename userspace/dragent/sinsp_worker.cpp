@@ -63,6 +63,8 @@ void sinsp_worker::init()
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
 	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
+	m_analyzer->get_configuration()->set_mounts_filter(m_configuration->m_mounts_filter);
+	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)

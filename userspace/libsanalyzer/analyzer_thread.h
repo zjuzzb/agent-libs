@@ -214,6 +214,7 @@ public:
 	std::set<double> m_percentiles;
 	// Used just by nodriver mode
 	sinsp_proc_file_stats m_file_io_stats;
+	bool m_root_refreshed;
 
 	main_thread_analyzer_info* main_thread_ainfo()
 	{

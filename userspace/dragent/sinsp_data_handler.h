@@ -14,7 +14,8 @@ public:
 			   protocol_queue* queue,
 			   synchronized_policy_events *policy_events);
 
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns);
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events,
+				       draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns);
 
 	void security_mgr_policy_events_ready(uint64_t ts_ns, draiosproto::policy_events *events);
 

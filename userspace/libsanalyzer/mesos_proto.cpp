@@ -69,11 +69,11 @@ void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, drai
 {
 	for(const auto& group : groups)
 	{
-		to_group = to_group ? to_group->add_groups() : m_proto.add_groups();
-		to_group->set_id(group.first);
+		auto new_group = to_group ? to_group->add_groups() : m_proto.add_groups();
+		new_group->set_id(group.first);
 		for(const auto& app : group.second->get_apps())
 		{
-			draiosproto::marathon_app* a = to_group->add_apps();
+			draiosproto::marathon_app* a = new_group->add_apps();
 			a->set_id(app.first);
 			for(const auto& task : app.second->get_tasks())
 			{
@@ -84,7 +84,7 @@ void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, drai
 		const marathon_group::group_map_t& g_groups = group.second->get_groups();
 		if(g_groups.size())
 		{
-			extract_groups(g_groups, to_group);
+			extract_groups(g_groups, new_group);
 		}
 	}
 }

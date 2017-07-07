@@ -453,7 +453,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("mountedfs_reader", [this](void)
 		{
 			m_mounted_fs_reader_pipe->attach_child();
-			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled);
+			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
+					       this->m_configuration.m_mounts_filter,
+					       this->m_configuration.m_mounts_limit_size);
 			return proc.run();
 		});
 	}

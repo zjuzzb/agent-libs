@@ -16,6 +16,7 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         glibc-static \
         golang \
         make \
+	pkg-config \
         rpm-build \
         unzip \
         wget \

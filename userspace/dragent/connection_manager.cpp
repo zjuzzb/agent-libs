@@ -751,13 +751,13 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies))
 	{
-		g_log->debug("Could not parse policies message");
+		g_log->error("Could not parse policies message");
 		return;
 	}
 
 	if (!m_sinsp_worker->load_policies(policies, errstr))
 	{
-		g_log->debug("Could not load policies message: " + errstr);
+		g_log->error("Could not load policies message: " + errstr);
 		return;
 	}
 }

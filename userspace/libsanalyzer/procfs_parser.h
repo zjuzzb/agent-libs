@@ -2,6 +2,7 @@
 
 #include "posix_queue.h"
 #include "sdc_internal.pb.h"
+#include "metric_limits.h"
 
 class mounted_fs
 {
@@ -13,6 +14,8 @@ public:
 	{
 	}
 	explicit mounted_fs(const draiosproto::mounted_fs& proto);
+	mounted_fs(mounted_fs&&) = default;
+	mounted_fs& operator=(mounted_fs&&) = default;
 
 	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
@@ -63,10 +66,12 @@ class sinsp_procfs_parser
 {
 public:
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
+	void read_mount_points(mount_points_limits::sptr_t mount_points);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
 
-	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled, const string& mtab="/etc/mtab");
+	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled,
+										   const string& mtab="/etc/mtab");
 
 	void set_global_cpu_jiffies();
 
@@ -92,6 +97,8 @@ public:
 	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
 													 uint64_t *old_last_out_bytes);
 	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
+	string read_proc_root(int64_t pid);
+
 private:
 	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 	void lookup_memory_cgroup_dir();
@@ -100,6 +107,8 @@ private:
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
 
 	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
+
+	mount_points_limits::sptr_t m_mount_points;
 
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
@@ -191,7 +200,7 @@ private:
 class mounted_fs_reader
 {
 public:
-	explicit mounted_fs_reader(bool remotefs);
+	mounted_fs_reader(bool remotefs, const mount_points_filter_vec& mount_points, unsigned mounts_limit_size);
 	int run();
 private:
 	static const uint16_t ERROR_EXIT = 1;

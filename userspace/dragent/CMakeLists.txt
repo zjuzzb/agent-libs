@@ -1,24 +1,12 @@
-set(DRAIOS_OPENSSL_VERSION "1.0.2j")
-set(DRAIOS_PROTOBUF_VERSION "2.5.0")
-set(DRAIOS_ZLIB_VERSION "1.2.8")
-set(DRAIOS_POCO_VERSION "1.7.7-all")
-set(DRAIOS_LIBSSH_VERSION "0.7.3")
-set(DRAIOS_YAML_VERSION "cpp-0.5.1")
-set(DRAIOS_BOOST_VERSION "1_57_0")
-set(DRAIOS_CURL_VERSION "7.52.1")
-set(DRAIOS_B64_VERSION "1.2")
-set(DRAIOS_JQ_VERSION "1.5")
-set(DRAIOS_GRPC_VERSION "1.1.4")
-set(DRAIOS_GPERFTOOLS_VERSION "2.5")
-
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
@@ -58,6 +46,7 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc.a
 	pthread
 	sanalyzer
+	draiosproto
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
