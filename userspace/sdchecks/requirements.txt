@@ -61,3 +61,12 @@ prometheus_client==0.0.15
 
 # sdchecks.py
 sysdig-tracers==0.1.2
+
+# checks.d/mongo.py
+pymongo==3.2
+
+# checks.d/mysql.py
+pymysql=0.6.6
+
+# checks.d/spark.py
+beautifulsoup4==4.5.1
