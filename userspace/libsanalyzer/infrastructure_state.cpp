@@ -67,14 +67,15 @@ void infrastructure_state::handle_event(draiosproto::congroup_update_event *evt)
 	}
 
 	glogf(sinsp_logger::SEV_DEBUG, "Event with uid <%s,%s> handled. Current state size: %d", kind.c_str(), id.c_str(), m_state.size());
+	debug_print();
 }
 
 void infrastructure_state::connect(infrastructure_state::uid_t& key)
 {
 	//
-	// Connect the new group to the parents
+	// Connect the new group to his parents
 	//
-	for (auto x : m_state[key]->parents()) {
+	for (const auto &x : m_state[key]->parents()) {
 		auto pkey = make_pair(x.kind(), x.id());
 		draiosproto::congroup_uid *child = m_state[pkey]->mutable_children()->Add();
 		child->set_kind(key.first);
@@ -82,6 +83,19 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 		glogf(sinsp_logger::SEV_DEBUG, "child <%s,%s> added to <%s,%s>",
 			  key.first.c_str(), key.second.c_str(), pkey.first.c_str(), pkey.second.c_str());
 	}
+
+	//
+	// and connect his children to him
+	//
+	for (const auto &x : m_state[key]->children()) {
+		auto ckey = make_pair(x.kind(), x.id());
+		draiosproto::congroup_uid *parent = m_state[ckey]->mutable_parents()->Add();
+		parent->set_kind(key.first);
+		parent->set_id(key.second);
+		glogf(sinsp_logger::SEV_DEBUG, "parent <%s,%s> added to <%s,%s>",
+			  key.first.c_str(), key.second.c_str(), ckey.first.c_str(), ckey.second.c_str());
+	}
+
 }
 
 void infrastructure_state::remove(draiosproto::congroup_update_event *evt)
@@ -92,18 +106,16 @@ void infrastructure_state::remove(draiosproto::congroup_update_event *evt)
 	auto key = make_pair(evt->object().uid().kind(), evt->object().uid().id());
 	glogf(sinsp_logger::SEV_DEBUG, "Remove container group <%s,%s>", key.first.c_str(), key.second.c_str());
 
-	for (auto x : m_state[key]->parents()) {
+	for (const auto &x : m_state[key]->parents()) {
 		auto pkey = make_pair(x.kind(), x.id());
 		auto pos = m_state[pkey]->children().begin();
 		bool erased = false;
 		glogf(sinsp_logger::SEV_DEBUG, "Searching children link inside container group <%s,%s>", pkey.first.c_str(), pkey.second.c_str());
 
 		for (; pos != m_state[pkey]->children().end(); ++pos) {
-			if (pos->kind() == evt->object().uid().kind() &&
-				pos->id() == evt->object().uid().id()) {
+			if (pos->kind() == evt->object().uid().kind() && pos->id() == evt->object().uid().id()) {
 				glogf(sinsp_logger::SEV_DEBUG, "Erase children link from <%s,%s>", pkey.first.c_str(), pkey.second.c_str());
 				m_state[pkey]->mutable_children()->erase(pos);
-				glogf(sinsp_logger::SEV_DEBUG, "Erased.");
 				erased = true;
 				break;
 			}
@@ -120,7 +132,7 @@ void infrastructure_state::remove(draiosproto::congroup_update_event *evt)
 	//
 	// Delete also the container children
 	//
-	for (auto x : m_state[key]->children()) {
+	for (const auto &x : m_state[key]->children()) {
 		if (x.kind() == "container") {
 			glogf(sinsp_logger::SEV_DEBUG, "Erase container children <%s,%s>", x.kind().c_str(), x.id().c_str());
 			m_state.erase(make_pair(x.kind(), x.id()));
@@ -135,7 +147,7 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 										google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 										std::unordered_set<uid_t> &visited_groups)
 {
-	auto evaluate = [](draiosproto::scope_predicate p, const std::string value)
+	auto evaluate = [](draiosproto::scope_predicate p, const std::string &value)
 	{
 		// KISS for now
 
@@ -216,7 +228,7 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	//
 	// Evaluate parents' tags
 	//
-	for(auto p_uid : congroup->parents()) {
+	for(const auto &p_uid : congroup->parents()) {
 		if(!walk_and_match(m_state[make_pair(p_uid.kind(), p_uid.id())].get(), preds, visited_groups)) {
 			// A predicate in the upper levels returned false
 			// The final result is false
@@ -308,6 +320,94 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 	}
 }
 
+void infrastructure_state::refresh_host_metadata(google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events)
+{
+	//
+	// Remove current hosts
+	//
+	for (auto i = m_state.begin(); i != m_state.end();) {
+		auto congroup = i->second.get();
+		// remove all the links to host nodes
+		if(host_children.find(congroup->uid().kind()) != host_children.end()) {
+			for(auto j = congroup->children().begin(), j_end = congroup->children().end(); j != j_end; ++j) {
+				if(j->kind() == "host") {
+					congroup->mutable_children()->erase(j);
+					break;
+				}
+			}
+		}
+
+		if(congroup->uid().kind() == "host") {
+			i = m_state.erase(i);
+		} else {
+			++i;
+		}
+	}
+
+
+	//
+	// Connect the refreshed data to the state
+	//
+	for(auto &hevt : host_events) {
+
+		auto host = hevt.object();
+
+		uid_t child_uid;
+		std::vector<uid_t> nodes;
+
+		for (auto i = m_state.begin(), e = m_state.end(); i != e; ++i) {
+			auto congroup = i->second.get();
+			if (host_children.find(congroup->uid().kind()) != host_children.end()) {
+				for (auto j = congroup->ip_addresses().begin(), j_end = congroup->ip_addresses().end(); j != j_end; ++j) {
+					for(auto k = host.ip_addresses().begin(), k_end = host.ip_addresses().end(); k != k_end; ++k) {
+						if(*j == *k) {
+							nodes.emplace_back(congroup->uid().kind(), congroup->uid().id());
+						}
+					}
+				}
+			}
+		}
+
+		if (nodes.empty()) {
+			// this could also happen if the node has been removed but the backend didn't realized it yet
+			glogf(sinsp_logger::SEV_WARNING, "Cannot Matching host %s , no suitable orchestrator nodes found.", host.uid().id().c_str());
+			continue;
+		} else if(nodes.size() == 1) {
+			child_uid = *nodes.begin();
+		} else {
+			glogf(sinsp_logger::SEV_WARNING, "Multiple matches while inserting metadata of host %s inside the infrastructure state", host.uid().id().c_str());
+
+			//
+			// Tiebreak based on hostName
+			//
+			bool found = false;
+			if(host.tags().find("host.hostName") != host.tags().end()) {
+				for(const auto c_uid : nodes) {
+					if(m_state[c_uid]->tags().find("host.hostName") != m_state[c_uid]->tags().end() &&
+						m_state[c_uid]->tags().at("host.hostName") == host.tags().at("host.hostName")) {
+						found = true;
+						child_uid = c_uid;
+					}
+				}
+			}
+
+			if (!found) {
+				glogf(sinsp_logger::SEV_WARNING, "Matching host %s when multiple agents matched based on IP but none matched on hostname", host.uid().id().c_str());
+				child_uid = *nodes.begin();
+			}
+		}
+
+		//
+		// Add the children link, handle_event will take care of connecting the host to the state
+		//
+		draiosproto::congroup_uid *c = host.mutable_children()->Add();
+		c->set_kind(child_uid.first);
+		c->set_id(child_uid.second);
+
+		handle_event(&hevt);
+	}
+}
+
 void infrastructure_state::debug_print()
 {
 	glogf(sinsp_logger::SEV_DEBUG, "INFRASTRUCTURE STATE (size: %d)", m_state.size());
@@ -336,16 +436,3 @@ void infrastructure_state::debug_print()
 			glogf(sinsp_logger::SEV_DEBUG, "   <%s,%s>", m.kind().c_str(), m.id().c_str());
 	}
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

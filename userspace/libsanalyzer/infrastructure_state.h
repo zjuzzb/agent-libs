@@ -28,7 +28,14 @@ public:
 	void state_of(const std::vector<std::string> &container_ids,
 		std::vector<std::unique_ptr<draiosproto::container_group>>& state);
 
+	void refresh_host_metadata(google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
+
 private:
+
+	std::unordered_set<string> host_children{
+		"k8s_node",
+		// other orchestrators nodes
+	};
 
 	void state_of(const draiosproto::container_group *grp,
 		std::vector<std::unique_ptr<draiosproto::container_group>>& state,
