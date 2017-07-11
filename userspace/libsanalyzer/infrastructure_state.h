@@ -22,8 +22,9 @@ public:
 
 	void refresh();
 
-	bool match(std::string &container_id,
-			   const google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &scope_predicates);
+	bool match_container_scope(std::string &container_id, const draiosproto::policy &policy);
+
+	bool match_host_scope(std::string &host_id, const draiosproto::policy &policy);
 
 	void state_of(const std::vector<std::string> &container_ids,
 		std::vector<std::unique_ptr<draiosproto::container_group>>& state);

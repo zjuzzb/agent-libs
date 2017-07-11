@@ -2,6 +2,68 @@
 
 #include "infrastructure_state.h"
 
+bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
+{
+	auto evaluate = [](draiosproto::scope_predicate p, const std::string &value)
+	{
+		// KISS for now
+
+		bool ret;
+		switch(p.op()) {
+		case draiosproto::EQ:
+			ret = p.values(0) == value;
+			break;
+		case draiosproto::NOT_EQ:
+			ret = p.values(0) != value;
+			break;
+		case draiosproto::CONTAINS:
+			ret = value.find(p.values(0)) != std::string::npos;
+			break;
+		case draiosproto::NOT_CONTAINS:
+			ret = value.find(p.values(0)) == std::string::npos;
+			break;
+		case draiosproto::STARTS_WITH:
+			ret = value.substr(0, p.values(0).size()) == p.values(0);
+			break;
+		case draiosproto::IN_SET:
+			ret = false;
+			for(auto v : p.values()) {
+				if (v == value) {
+					ret = true;
+					break;
+				}
+			}
+			break;
+		case draiosproto::NOT_IN_SET:
+			ret = true;
+			for(auto v : p.values()) {
+				if (v == value) {
+					ret = false;
+					break;
+				}
+			}
+			break;
+		default:
+			throw new sinsp_exception("Cannot evaluated scope_predicate " + p.DebugString());
+		}
+
+		return ret;
+	};
+
+	for(auto i = preds.begin(); i != preds.end();) {
+		if(congroup->tags().find(i->key()) != congroup->tags().end()) {
+			if(!evaluate(*i, congroup->tags().at(i->key()))) {
+				return false;
+			} else {
+				i = preds.erase(i);
+			}
+		} else {
+			++i;
+		}
+	}
+
+	return true;
+}
 infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 	m_interval(refresh_interval)
 {
@@ -147,52 +209,6 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 										google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 										std::unordered_set<uid_t> &visited_groups)
 {
-	auto evaluate = [](draiosproto::scope_predicate p, const std::string &value)
-	{
-		// KISS for now
-
-		bool ret;
-		switch(p.op()) {
-		case draiosproto::EQ:
-			ret = p.values(0) == value;
-			break;
-		case draiosproto::NOT_EQ:
-			ret = p.values(0) != value;
-			break;
-		case draiosproto::CONTAINS:
-			ret = value.find(p.values(0)) != std::string::npos;
-			break;
-		case draiosproto::NOT_CONTAINS:
-			ret = value.find(p.values(0)) == std::string::npos;
-			break;
-		case draiosproto::STARTS_WITH:
-			ret = value.substr(0, p.values(0).size()) == p.values(0);
-			break;
-		case draiosproto::IN_SET:
-			ret = false;
-			for(auto v : p.values()) {
-				if (v == value) {
-					ret = true;
-					break;
-				}
-			}
-			break;
-		case draiosproto::NOT_IN_SET:
-			ret = true;
-			for(auto v : p.values()) {
-				if (v == value) {
-					ret = false;
-					break;
-				}
-			}
-			break;
-		default:
-			throw new sinsp_exception("Cannot evaluated scope_predicate " + p.DebugString());
-		}
-
-		return ret;
-	};
-
 	uid_t uid = make_pair(congroup->uid().kind(), congroup->uid().id());
 
 	if(visited_groups.find(uid) != visited_groups.end()) {
@@ -204,16 +220,9 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	// Evaluate current group's fields
 	// Remove the successfully evaluated ones
 	//
-	for(auto i = preds.begin(); i != preds.end();) {
-		if(congroup->tags().find(i->key()) != congroup->tags().end()) {
-			if(!evaluate(*i, congroup->tags().at(i->key()))) {
-				return false;
-			} else {
-				i = preds.erase(i);
-			}
-		} else {
-			++i;
-		}
+	if(!evaluate_on(congroup, preds)) {
+		// A predicate is false
+		return false;
 	}
 
 	//
@@ -240,16 +249,27 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	return true;
 }
 
-bool infrastructure_state::match(std::string &container_id, const google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &scope_predicates)
+bool infrastructure_state::match_container_scope(std::string &container_id, const draiosproto::policy &policy)
 {
 	auto pos = m_state.find(make_pair("container", container_id));
 	if (pos == m_state.end())
 		return false;
 
-	google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(scope_predicates);
+	google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
 	std::unordered_set<uid_t, std::hash<uid_t>> visited;
 
 	return walk_and_match(pos->second.get(), preds, visited) && preds.empty();
+}
+
+bool infrastructure_state::match_host_scope(std::string &host_id, const draiosproto::policy &policy)
+{
+	auto pos = m_state.find(make_pair("host", host_id));
+	if (pos == m_state.end())
+		return false;
+
+	google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
+
+	return evaluate_on(pos->second.get(), preds) && preds.empty();
 }
 
 
