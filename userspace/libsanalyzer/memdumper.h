@@ -251,6 +251,13 @@ public:
 			if(m_delayed_switch_states_ready)
 			{
 				switch_states(evt->get_ts());
+
+				// If after switching, memdump is
+				// disabled, just return.
+				if(m_disabled)
+				{
+					return;
+				}
 			}
 			else
 			{
@@ -284,6 +291,13 @@ public:
 			if((*m_active_state)->m_dumper->next_write_position() >= (*m_active_state)->m_bufsize)
 			{
 				switch_states(evt->get_ts());
+
+				// If after switching, memdump is
+				// disabled, just return.
+				if(m_disabled)
+				{
+					return;
+				}
 			}
 
 			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
@@ -295,6 +309,14 @@ public:
 		{
 			ASSERT(evt != NULL);
 			switch_states(evt->get_ts());
+
+			// If after switching, memdump is
+			// disabled, just return.
+			if(m_disabled)
+			{
+				return;
+			}
+
 			{
 				Poco::ScopedLock<Poco::FastMutex> lck((*m_active_state)->m_dumper_mtx);
 				(*m_active_state)->m_dumper->dump(evt);

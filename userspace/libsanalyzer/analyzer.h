@@ -25,7 +25,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -447,7 +447,7 @@ VISIBILITY_PRIVATE
 	void emit_docker_events();
 	void emit_top_files();
 	vector<string> emit_containers(const progtable_by_container_t& active_containers);
-	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -477,6 +477,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_time;
+	uint64_t m_serialize_prev_sample_num_drop_events;
 
 	sinsp_analyzer_parsers* m_parser;
 	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go
