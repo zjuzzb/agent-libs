@@ -239,6 +239,11 @@ void sinsp_analyzer::set_percentiles()
 	}
 }
 
+infrastructure_state *sinsp_analyzer::infra_state()
+{
+	return m_infrastructure_state.get();
+}
+
 void sinsp_analyzer::on_capture_start()
 {
 	m_initialized = true;

@@ -11,56 +11,35 @@ using namespace std;
 
 security_policy::security_policy(security_mgr *mgr,
 				 dragent_configuration *configuration,
-				 uint64_t id,
-				 const std::string &name,
-				 const google::protobuf::RepeatedPtrField<draiosproto::action> &actions,
-				 shared_ptr<coclient> &coclient,
-				 bool enabled)
+				 const draiosproto::policy &policy,
+				 shared_ptr<coclient> &coclient)
 	: m_mgr(mgr),
 	  m_configuration(configuration),
-	  m_id(id),
-	  m_name(name),
-	  m_enabled(enabled),
+	  m_policy(policy),
 	  m_coclient(coclient)
 {
 	m_print.SetSingleLineMode(true);
-
-	for(auto &action : actions)
-	{
-		m_actions.push_back(action);
-	}
 }
 
 security_policy::~security_policy()
 {
 }
 
-std::string &security_policy::to_string()
+std::string security_policy::to_string()
 {
-	m_str = m_name + " [" + std::to_string(m_id) + "] actions=";
-
-	for(auto it = m_actions.begin(); it != m_actions.end(); it++)
-	{
-		string tmp;
-
-		m_str += (it == m_actions.begin() ? "" : ",");
-		m_print.PrintToString(*it, &tmp);
-		m_str += tmp;
-	}
-
-	m_str += " enabled=" + std::to_string(m_enabled);
-
-	return m_str;
+	string tmp;
+	m_print.PrintToString(m_policy, &tmp);
+	return tmp;
 }
 
-std::string &security_policy::name()
+const std::string &security_policy::name()
 {
-	return m_name;
+	return m_policy.name();
 }
 
 bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event *event)
 {
-	m_outstanding_actions.emplace_back(event, m_actions.size());
+	m_outstanding_actions.emplace_back(event, m_policy.actions().size());
 	actions_state &astate = m_outstanding_actions.back();
 
 	sinsp_threadinfo *tinfo = evt->get_thread_info();
@@ -72,7 +51,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 		container_id = tinfo->m_container_id;
 	}
 
-	for(auto &action : m_actions)
+	for(auto &action : m_policy.actions())
 	{
 		draiosproto::action_result *result = astate.m_event->add_action_results();
 		result->set_type(action.type());
@@ -175,6 +154,32 @@ void security_policy::check_outstanding_actions(uint64_t ts_ns)
 	}
 }
 
+bool security_policy::match_scope(sinsp_evt *evt)
+{
+	sinsp_threadinfo *tinfo = evt->get_thread_info();
+	std::string container_id = (tinfo ? tinfo->m_container_id : "");
+	sinsp_analyzer *analyzer = m_mgr->analyzer();
+	std::string machine_id = analyzer->get_configuration_read_only()->get_machine_id();
+
+	// If container_scope is true, then the scope predicate
+	// includes at least one term related to containers. In that
+	// case, we should try to match using the container id.
+	if(m_policy.container_scope())
+	{
+		return analyzer->infra_state()->match_container_scope(container_id, m_policy);
+	}
+	else if(m_policy.container_scope())
+	{
+		return analyzer->infra_state()->match_container_scope(machine_id, m_policy);
+	}
+	else
+	{
+		// This should never occur. Err on the side of allowing the policy to run.
+		g_log->error("Impossible scope with host/container_scope == false. Allowing policy anyway.");
+		return true;
+	}
+}
+
 falco_security_policy::falco_security_policy(security_mgr *mgr,
 					     dragent_configuration *configuration,
 					     const draiosproto::policy &policy,
@@ -184,11 +189,8 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 					     shared_ptr<coclient> &coclient)
 	: security_policy(mgr,
 			  configuration,
-			  policy.id(),
-			  policy.name(),
-			  policy.actions(),
-			  coclient,
-			  policy.enabled()),
+			  policy,
+			  coclient),
 	  m_falco_engine(falco_engine),
 	  m_falco_events(falco_events),
 	  m_formatters(inspector)
@@ -200,12 +202,12 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 	string all_rules = ".*";
 
 	// We *only* want those rules selected by name/tags, so first disable all rules.
-	m_falco_engine->enable_rule(all_rules, false, m_name);
+	m_falco_engine->enable_rule(all_rules, false, m_policy.name());
 
 	if(policy.falco_details().rule_filter().has_name())
 	{
 		m_rule_filter = policy.falco_details().rule_filter().name();
-		m_falco_engine->enable_rule(m_rule_filter, true, m_name);
+		m_falco_engine->enable_rule(m_rule_filter, true, m_policy.name());
 	}
 
 	for(auto tag : policy.falco_details().rule_filter().tags())
@@ -213,9 +215,9 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 		m_tags.insert(tag);
 	}
 
-	m_falco_engine->enable_rule_by_tag(m_tags, true, m_name);
+	m_falco_engine->enable_rule_by_tag(m_tags, true, m_policy.name());
 
-	m_ruleset_id = m_falco_engine->find_ruleset_id(m_name);
+	m_ruleset_id = m_falco_engine->find_ruleset_id(m_policy.name());
 }
 
 falco_security_policy::~falco_security_policy()
@@ -224,16 +226,22 @@ falco_security_policy::~falco_security_policy()
 
 draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 {
-	if(m_enabled && m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
+	if(m_policy.enabled() && m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
 	{
+		if (!match_scope(evt))
+		{
+//			g_log->debug("Policy " + m_policy.name() + ": event out of scope");
+			return NULL;
+		}
+
 		try {
 			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, m_ruleset_id);
 			if(res)
 			{
 				draiosproto::policy_event *event = new draiosproto::policy_event();
 				draiosproto::falco_event_detail *fdetail = event->mutable_falco_details();
-				string output;
 				sinsp_threadinfo *tinfo = evt->get_thread_info();
+				string output;
 
 				g_log->debug("Event matched falco policy: rule=" + res->rule);
 
@@ -243,7 +251,7 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 				}
 
 				event->set_timestamp_ns(evt->get_ts());
-				event->set_policy_id(m_id);
+				event->set_policy_id(m_policy.id());
 				if(tinfo && !tinfo->m_container_id.empty())
 				{
 					event->set_container_id(tinfo->m_container_id);
@@ -266,7 +274,7 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 	return NULL;
 }
 
-std::string &falco_security_policy::to_string()
+std::string falco_security_policy::to_string()
 {
 	string tmp;
 

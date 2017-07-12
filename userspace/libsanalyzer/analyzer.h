@@ -400,6 +400,8 @@ public:
 	void set_percentiles();
 	void emit_percentiles_config();
 
+	infrastructure_state *infra_state();
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 

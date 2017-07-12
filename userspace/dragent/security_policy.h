@@ -24,11 +24,8 @@ class SINSP_PUBLIC security_policy
 public:
 	security_policy(security_mgr *mgr,
 			dragent_configuration *confguration,
-			uint64_t id,
-			const std::string &name,
-			const google::protobuf::RepeatedPtrField<draiosproto::action> &actions,
-			std::shared_ptr<coclient> &coclient,
-			bool enabled);
+			const draiosproto::policy &policy,
+			std::shared_ptr<coclient> &coclient);
 	virtual ~security_policy();
 
 	// Try to match the sinsp event against this policy. If the
@@ -51,10 +48,10 @@ public:
 	void check_outstanding_actions(uint64_t ts_ns);
 
 	// Return a string representation of this rule.
-	virtual std::string &to_string();
+	virtual std::string to_string();
 
 	// Return the name of this policy.
-	std::string &name();
+	const std::string &name();
 
 protected:
 	// Keeps track of any policy events and their outstanding
@@ -83,18 +80,18 @@ protected:
 		bool m_send_now;
 	};
 
+	// Return whether or not the provided event matches this
+	// policy's scope.
+	bool match_scope(sinsp_evt *evt);
+
 	std::list<actions_state> m_outstanding_actions;
 
 	google::protobuf::TextFormat::Printer m_print;
 
 	security_mgr *m_mgr;
 	dragent_configuration *m_configuration;
-	uint64_t m_id;
-	std::string m_name;
-	list<draiosproto::action> m_actions;
-	bool m_enabled;
+	draiosproto::policy m_policy;
 	std::shared_ptr<coclient> m_coclient;
-	std::string m_str;
 };
 
 class SINSP_PUBLIC falco_security_policy : public security_policy
@@ -113,7 +110,7 @@ public:
 	draiosproto::policy_event *process_event(sinsp_evt *evt);
 
 	// Return a string representation of this rule.
-	virtual std::string &to_string();
+	virtual std::string to_string();
 
 private:
 

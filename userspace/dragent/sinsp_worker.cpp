@@ -325,6 +325,7 @@ void sinsp_worker::init()
 		m_security_mgr = new security_mgr();
 		m_security_mgr->init(m_inspector,
 				     &m_sinsp_handler,
+				     m_analyzer,
 				     m_capture_job_handler,
 				     m_configuration);
 
