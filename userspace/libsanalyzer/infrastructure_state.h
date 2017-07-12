@@ -16,6 +16,8 @@ public:
 	using uid_t = std::pair<std::string, std::string>;
 	using state_t = std::map<uid_t, std::unique_ptr<draiosproto::container_group>>;
 
+	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<uint64_t, bool>>;
+
 	infrastructure_state(uint64_t refresh_interval);
 
 	~infrastructure_state();
@@ -54,6 +56,9 @@ private:
 	void debug_print();
 
 	state_t m_state;
+
+	policy_cache_t m_container_p_cache;
+	policy_cache_t m_host_p_cache;
 
 	coclient m_coclient;
 	coclient::response_cb_t m_callback;

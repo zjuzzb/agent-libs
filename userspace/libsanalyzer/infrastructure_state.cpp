@@ -2,6 +2,34 @@
 
 #include "infrastructure_state.h"
 
+bool get_cached_result(infrastructure_state::policy_cache_t &cache, std::string &id, uint64_t policy_id, bool *res)
+{
+	auto cached_results = cache.find(id);
+	if(cached_results != cache.end()) {
+		auto cached_result = cached_results->second.find(policy_id);
+		if (cached_result != cached_results->second.end()) {
+			glogf(sinsp_logger::SEV_DEBUG, "Found cached result for id %s, policy id %llu --> %s", id.c_str(), policy_id, res?"true":"false");
+			*res = cached_result->second;
+			return true;
+		}
+	}
+
+	glogf(sinsp_logger::SEV_DEBUG, "Cannot find cached result for id %s, policy id %llu", id.c_str(), policy_id);
+
+	return false;
+}
+
+void insert_cached_result(infrastructure_state::policy_cache_t &cache, std::string &id, uint64_t policy_id, bool res)
+{
+	if(cache.find(id) == cache.end()) {
+		cache.emplace(id, std::unordered_map<uint64_t, bool>());
+	}
+
+	cache[id].emplace(policy_id, res);
+
+	glogf(sinsp_logger::SEV_DEBUG, "Cache result (%s) for id %s, policy id %llu", res?"true":"false", id.c_str(), policy_id);
+}
+
 bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
 {
 	auto evaluate = [](draiosproto::scope_predicate p, const std::string &value)
@@ -64,6 +92,7 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 
 	return true;
 }
+
 infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 	m_interval(refresh_interval)
 {
@@ -198,6 +227,11 @@ void infrastructure_state::remove(draiosproto::congroup_update_event *evt)
 		if (x.kind() == "container") {
 			glogf(sinsp_logger::SEV_DEBUG, "Erase container children <%s,%s>", x.kind().c_str(), x.id().c_str());
 			m_state.erase(make_pair(x.kind(), x.id()));
+
+			//
+			// Delete all cached results for this container
+			//
+			m_container_p_cache.erase(x.id());
 		}
 	}
 
@@ -251,25 +285,43 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 
 bool infrastructure_state::match_container_scope(std::string &container_id, const draiosproto::policy &policy)
 {
-	auto pos = m_state.find(make_pair("container", container_id));
-	if (pos == m_state.end())
-		return false;
+	bool result;
 
-	google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
-	std::unordered_set<uid_t, std::hash<uid_t>> visited;
+	if(!get_cached_result(m_container_p_cache, container_id, policy.id(), &result)) {
 
-	return walk_and_match(pos->second.get(), preds, visited) && preds.empty();
+		auto pos = m_state.find(make_pair("container", container_id));
+		if (pos == m_state.end())
+			return false;
+
+		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
+		std::unordered_set<uid_t, std::hash<uid_t>> visited;
+
+		result = walk_and_match(pos->second.get(), preds, visited) && preds.empty();
+
+		insert_cached_result(m_container_p_cache, container_id, policy.id(), result);
+	}
+
+	return result;
 }
 
 bool infrastructure_state::match_host_scope(std::string &host_id, const draiosproto::policy &policy)
 {
-	auto pos = m_state.find(make_pair("host", host_id));
-	if (pos == m_state.end())
-		return false;
+	bool result;
 
-	google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
+	if(!get_cached_result(m_host_p_cache, host_id, policy.id(), &result)) {
 
-	return evaluate_on(pos->second.get(), preds) && preds.empty();
+		auto pos = m_state.find(make_pair("host", host_id));
+		if (pos == m_state.end())
+			return false;
+
+		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
+
+		result = evaluate_on(pos->second.get(), preds) && preds.empty();
+
+		insert_cached_result(m_host_p_cache, host_id, policy.id(), result);
+	}
+
+	return result;
 }
 
 
@@ -364,6 +416,10 @@ void infrastructure_state::refresh_host_metadata(google::protobuf::RepeatedPtrFi
 		}
 	}
 
+	//
+	// Delete all cached results for host scope policies
+	//
+	m_host_p_cache.clear();
 
 	//
 	// Connect the refreshed data to the state
