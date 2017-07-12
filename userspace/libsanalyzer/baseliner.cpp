@@ -755,7 +755,11 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 {
 	blprogram* pinfo;
 
-	if(tinfo->m_blprogram != NULL)
+	if(tinfo == NULL)
+	{
+		return NULL;
+	}
+	else if(tinfo->m_blprogram != NULL)
 	{
 		pinfo = tinfo->m_blprogram;
 	}

@@ -4036,6 +4036,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	{
 		g_logger.log("Skipping drop mode tuning.", sinsp_logger::SEV_DEBUG);
 	}
+
+	//
+	// Disable the baseline if the ring buffer is full
+	//
+	scap_stats st;
+	m_inspector->get_capture_stats(&st);
+	if(st.n_drops_buffer > FALCOBL_MAX_DROPS_FULLBUF && m_do_baseline_calculation)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
+		m_do_baseline_calculation = false;
+		m_falco_baseliner->clear_tables();
+	}
 }
 
 //
