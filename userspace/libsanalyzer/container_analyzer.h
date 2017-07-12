@@ -12,7 +12,6 @@ public:
 	sinsp_delays_info m_transaction_delays;
 	vector<vector<sinsp_trlist_entry>> m_server_transactions;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions;
-	string m_memory_cgroup;
 	unique_ptr<unordered_map<uint16_t, sinsp_connection_aggregator>> m_connections_by_serverport;
 
 	void set_percentiles(const std::set<double>& percentiles)

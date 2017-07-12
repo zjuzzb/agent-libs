@@ -1,3 +1,6 @@
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+
 #include "sinsp_worker.h"
 
 #include "logger.h"
@@ -9,18 +12,25 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
-			   protocol_queue* queue):
+			   protocol_queue* queue,
+			   atomic<bool> *enable_autodrop,
+			   synchronized_policy_events *policy_events,
+			   capture_job_handler *capture_job_handler):
+	m_job_requests_interval(1000000000),
+	m_initialized(false),
 	m_configuration(configuration),
 	m_queue(queue),
+	m_enable_autodrop(enable_autodrop),
+	m_autodrop_currently_enabled(true),
 	m_inspector(NULL),
 	m_analyzer(NULL),
-	m_sinsp_handler(configuration, queue),
+	m_security_mgr(NULL),
+	m_capture_job_handler(capture_job_handler),
+	m_sinsp_handler(configuration, queue, policy_events),
 	m_dump_job_requests(10),
-	m_driver_stopped_dropping_ns(0),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
-	m_max_chunk_size(default_max_chunk_size),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration)
 {
@@ -35,16 +45,26 @@ sinsp_worker::~sinsp_worker()
 	}
 
 	delete m_analyzer;
+	delete m_security_mgr;
 }
 
 void sinsp_worker::init()
 {
+	if(m_initialized)
+	{
+		return;
+	}
+
+	m_initialized = true;
+
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
 	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
+	m_analyzer->get_configuration()->set_mounts_filter(m_configuration->m_mounts_filter);
+	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
@@ -239,6 +259,8 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
 	}
 
+	m_autodrop_currently_enabled = m_configuration->m_autodrop_enabled;
+
 	if(m_configuration->m_autodrop_enabled)
 	{
 		g_log->information("Setting autodrop");
@@ -259,6 +281,8 @@ void sinsp_worker::init()
 			m_configuration->m_command_lines_capture_enabled);
 		m_analyzer->get_configuration()->set_command_lines_capture_mode(
 			m_configuration->m_command_lines_capture_mode);
+		m_analyzer->get_configuration()->set_command_lines_valid_ancestors(
+			m_configuration->m_command_lines_valid_ancestors);
 	}
 
 	if(m_configuration->m_capture_dragent_events)
@@ -266,13 +290,6 @@ void sinsp_worker::init()
 		g_log->information("Setting capture dragent events");
 		m_analyzer->get_configuration()->set_capture_dragent_events(
 			m_configuration->m_capture_dragent_events);
-	}
-
-	if(m_configuration->m_memdump_enabled)
-	{
-		g_log->information("Setting memdump, size=" + to_string(m_configuration->m_memdump_size));
-		m_analyzer->get_configuration()->set_memdump_size(
-			m_configuration->m_memdump_size);
 	}
 
 	m_analyzer->get_configuration()->set_version(AGENT_VERSION);
@@ -297,6 +314,39 @@ void sinsp_worker::init()
 	}
 
 	m_analyzer->initialize_chisels();
+
+	if(m_configuration->m_security_enabled)
+	{
+		if(!m_configuration->m_cointerface_enabled)
+		{
+			throw sinsp_exception("Security capabilities depend on cointerface, but cointerface is disabled.");
+		}
+
+		m_security_mgr = new security_mgr();
+		m_security_mgr->init(m_inspector,
+				     &m_sinsp_handler,
+				     m_capture_job_handler,
+				     m_configuration);
+
+		if(m_configuration->m_security_policies_file != "")
+		{
+			string errstr;
+			draiosproto::policies policies;
+
+			int fd = open(m_configuration->m_security_policies_file.c_str(), O_RDONLY);
+			google::protobuf::io::FileInputStream fstream(fd);
+			if (!google::protobuf::TextFormat::Parse(&fstream, &policies)) {
+				throw sinsp_exception("Failed to parse policies file "
+						      + m_configuration->m_security_policies_file);
+			}
+			close(fd);
+
+			if(!m_security_mgr->load(policies, errstr))
+			{
+				throw sinsp_exception("Could not load policies: " + errstr);
+			}
+		}
+	}
 
 	//
 	// Start the capture with sinsp
@@ -367,7 +417,6 @@ void sinsp_worker::run()
 	sinsp_evt* ev;
 	uint64_t ts;
 
-	m_last_job_check_ns = 0;
 	m_pthread_id = pthread_self();
 
 	g_log->information("sinsp_worker: Starting");
@@ -412,23 +461,12 @@ void sinsp_worker::run()
 		ts = ev->get_ts();
 		m_last_loop_ns = ts;
 
-		if(ts - m_last_job_check_ns > 1000000000)
-		{
-			m_last_job_check_ns = ts;
+		m_job_requests_interval.run([this]()
+                {
+			process_job_requests();
+		}, ts);
 
-			process_job_requests(ts);
-
-			//
-			// Also, just every second, cleanup the old ones
-			// Why every second? Because the sending queue might be
-			// full and we still send each one every second
-			//
-			flush_jobs(ts, &m_running_standard_dump_jobs, true);
-			flush_jobs(ts, &m_running_memdump_jobs, false);
-		}
-
-		run_standard_jobs(ev);
-		check_memdump_jobs(ev);
+		check_autodrop(ts);
 
 		if(!m_inspector->is_capture() && (ts > m_next_iflist_refresh_ns) && !m_aws_metadata_refresher.is_running())
 		{
@@ -448,6 +486,15 @@ void sinsp_worker::run()
 			}
 			m_aws_metadata_refresher.reset();
 		}
+
+		// Possibly pass the event to the security manager
+		if(m_security_mgr)
+		{
+			m_security_mgr->process_event(ev);
+		}
+
+		m_capture_job_handler->process_event(ev);
+
 		//
 		// Update the event count
 		//
@@ -457,289 +504,34 @@ void sinsp_worker::run()
 	g_log->information("sinsp_worker: Terminating");
 }
 
-void sinsp_worker::queue_job_request(SharedPtr<dump_job_request> job_request)
+void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
 {
-	g_log->information("Scheduling job request " + job_request->m_token);
+	g_log->information(m_name + ": scheduling job request type=" +
+			   (job_request->m_request_type == capture_job_handler::dump_job_request::JOB_START ? "start" : "stop") +
+			    ", token= " + job_request->m_token);
 
 	if(!m_dump_job_requests.put(job_request))
 	{
-		send_error(job_request->m_token, "Maximum number of requests reached");
+		// Note that although the queue is for communication
+		// between some other thread and the sinsp_worker
+		// thread, the error response is sent via the capture
+		// job handler, as it has the queue of messages that
+		// go back to the connection manager.
+
+		m_capture_job_handler->send_error(job_request->m_token, "Maximum number of requests reached");
 	}
 }
 
-void sinsp_worker::prepare_response(const string& token, draiosproto::dump_response* response)
+bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &errstr)
 {
-	response->set_timestamp_ns(sinsp_utils::get_current_time_ns());
-	response->set_customer_id(m_configuration->m_customer_id);
-	response->set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
-	response->set_token(token);
-}
-
-bool sinsp_worker::queue_response(const draiosproto::dump_response& response, protocol_queue::item_priority priority)
-{
-	SharedPtr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
-		draiosproto::message_type::DUMP_RESPONSE,
-		response,
-		m_configuration->m_compression_enabled);
-
-	if(buffer.isNull())
+	if(m_security_mgr)
 	{
-		g_log->error("NULL converting message to buffer");
-		return true;
+		return m_security_mgr->load(policies, errstr);
 	}
-
-	while(!m_queue->put(buffer, priority))
+	else
 	{
-		g_log->information("Queue full");
+		errstr = "No Security Manager object created";
 		return false;
-	}
-
-	return true;
-}
-
-void sinsp_worker::run_standard_jobs(sinsp_evt* ev)
-{
-	if(m_running_standard_dump_jobs.empty())
-	{
-		return;
-	}
-
-	if(m_driver_stopped_dropping_ns)
-	{
-		if(!m_analyzer->driver_stopped_dropping())
-		{
-			//
-			// Wait maximum 5 seconds after disabling dropping prior to running the job
-			//
-			if(ev->get_ts() - m_driver_stopped_dropping_ns < 5 * 1000000000LL)
-			{
-				return;
-			}
-
-			g_log->error("Timeout waiting for drop ack event, proceeding anyway");
-		}
-		else
-		{
-			g_log->information("Received drop ack event, proceeding");
-		}
-
-		m_driver_stopped_dropping_ns = 0;
-	}
-
-	for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_standard_dump_jobs.begin();
-		it != m_running_standard_dump_jobs.end(); ++it)
-	{
-		SharedPtr<dump_job_state> job = *it;
-
-		if(job->m_terminated)
-		{
-			continue;
-		}
-
-		//
-		// We don't want dragent to show up in captures
-		//
-		sinsp_threadinfo* tinfo = ev->get_thread_info();
-		uint16_t etype = ev->get_type();
-
-		if(!m_configuration->m_capture_dragent_events &&
-			tinfo &&
-			tinfo->m_pid == m_inspector->m_sysdig_pid &&
-			etype != PPME_SCHEDSWITCH_1_E &&
-			etype != PPME_SCHEDSWITCH_6_E)
-		{
-			continue;
-		}
-
-		if(job->m_max_size &&
-			job->m_file_size > job->m_max_size)
-		{
-			stop_standard_job(job);
-			continue;
-		}
-
-		if(job->m_duration_ns &&
-			ev->get_ts() - job->m_start_ns > job->m_duration_ns)
-		{
-			stop_standard_job(job);
-			continue;
-		}
-
-		if(job->m_filter)
-		{
-			if(!job->m_filter->run(ev))
-			{
-				continue;
-			}
-		}
-
-		job->m_dumper->dump(ev);
-		++job->m_n_events;
-	}
-}
-
-void sinsp_worker::stop_standard_job(dump_job_state* job)
-{
-	ASSERT(!job->m_terminated);
-	job->m_terminated = true;
-
-	g_log->information("Job " + job->m_token + " stopped, captured events: "
-		+ NumberFormatter::format(job->m_n_events));
-
-	//
-	// Stop the job, but don't delete it yet, there might be
-	// a bunch of pending chunks
-	//
-	delete job->m_dumper;
-	job->m_dumper = NULL;
-}
-
-void sinsp_worker::check_memdump_jobs(sinsp_evt* ev)
-{
-	if(m_running_memdump_jobs.empty())
-	{
-		return;
-	}
-
-	for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_memdump_jobs.begin();
-		it != m_running_memdump_jobs.end(); ++it)
-	{
-		SharedPtr<dump_job_state> job = *it;
-
-		if(job->m_terminated)
-		{
-			continue;
-		}
-
-		if(job->m_memdumper_job->is_done())
-		{
-			stop_memdump_job(job);
-			continue;
-		}
-	}
-}
-
-void sinsp_worker::stop_memdump_job(dump_job_state* job)
-{
-	ASSERT(!job->m_terminated);
-	job->m_terminated = true;
-
-	g_log->information("memdump Job " + job->m_token + " stopped");
-
-	//
-	// Stop the job, but don't delete it yet, there might be
-	// a bunch of pending chunks
-	//
-	sinsp_memory_dumper* memdumper = m_analyzer->get_memory_dumper();
-	if(memdumper == NULL)
-	{
-		send_error(job->m_token, "memory dump corrupted in the agent. Cannot perform back in time capture.");
-		ASSERT(false);
-		return;
-	}
-
-	job->m_memdumper_job->stop();
-	memdumper->remove_job(job->m_memdumper_job);
-}
-
-void sinsp_worker::send_error(const string& token, const string& error)
-{
-	g_log->error(error);
-	draiosproto::dump_response response;
-	prepare_response(token, &response);
-	response.set_error(error);
-	queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
-}
-
-void sinsp_worker::send_dump_chunks(dump_job_state* job)
-{
-	ASSERT(job->m_last_chunk_offset <= job->m_file_size);
-	while(job->m_last_chunk_offset < job->m_file_size &&
-		(job->m_terminated ||
-		job->m_file_size - job->m_last_chunk_offset > m_max_chunk_size))
-	{
-		if(job->m_last_chunk.empty())
-		{
-			read_chunk(job);
-		}
-
-		uint32_t progress = 0;
-		ASSERT(job->m_file_size > 0);
-		if(job->m_file_size > 0)
-		{
-			progress = (job->m_last_chunk_offset * 100) / job->m_file_size;
-		}
-
-		g_log->information(m_name + ": " + job->m_file + ": Sending chunk "
-			+ NumberFormatter::format(job->m_last_chunk_idx) + " of size "
-			+ NumberFormatter::format(job->m_last_chunk.size())
-			+ ", progress " + NumberFormatter::format(progress) + "%%");
-
-		draiosproto::dump_response response;
-		prepare_response(job->m_token, &response);
-		response.set_content(job->m_last_chunk);
-		response.set_chunk_no(job->m_last_chunk_idx);
-
-		ASSERT(job->m_last_chunk_offset + job->m_last_chunk.size() <= job->m_file_size);
-		if(job->m_last_chunk_offset + job->m_last_chunk.size() >= job->m_file_size)
-		{
-			response.set_final_chunk(true);
-		}
-
-		if(job->m_terminated)
-		{
-			response.set_final_size_bytes(job->m_file_size);
-		}
-
-		if(!queue_response(response, protocol_queue::BQ_PRIORITY_LOW))
-		{
-			g_log->information(m_name + ": " + job->m_file + ": Queue full while sending chunk "
-				+ NumberFormatter::format(job->m_last_chunk_idx) + ", will retry in 1 second");
-			return;
-		}
-
-		++job->m_last_chunk_idx;
-		job->m_last_chunk_offset += job->m_last_chunk.size();
-		job->m_last_chunk.clear();
-	}
-}
-
-void sinsp_worker::read_chunk(dump_job_state* job)
-{
-	Buffer<char> buffer(16384);
-	uint64_t chunk_size = m_max_chunk_size;
-	bool eof = false;
-
-	while(!eof && chunk_size)
-	{
-		size_t to_read = min<u_int64_t>(buffer.size(), chunk_size);
-		ASSERT(job->m_fp);
-		size_t res = fread(buffer.begin(), 1, to_read, job->m_fp);
-		if(res != to_read)
-		{
-			if(feof(job->m_fp))
-			{
-				g_log->information(m_name + ": " + job->m_file + ": EOF");
-				eof = true;
-			}
-			else if(ferror(job->m_fp))
-			{
-				g_log->error(m_name + ": ferror while reading " + job->m_file);
-				job->m_error = true;
-				send_error(job->m_token, "ferror while reading " + job->m_file);
-				ASSERT(false);
-				return;
-			} else {
-				g_log->error(m_name + ": unknown error while reading " + job->m_file);
-				job->m_error = true;
-				send_error(job->m_token, "unknown error while reading " + job->m_file);
-				ASSERT(false);
-				return;
-			}
-		}
-
-		chunk_size -= res;
-		job->m_last_chunk.append(buffer.begin(), res);
 	}
 }
 
@@ -758,303 +550,80 @@ void sinsp_worker::init_falco()
 	m_configuration->m_reset_falco_engine = false;
 }
 
-void sinsp_worker::process_job_requests(uint64_t ts)
+// Receive job requests and pass them along to the capture job
+// handler, adding a sinsp_dumper object associated with our
+// inspector.
+
+void sinsp_worker::process_job_requests()
 {
+	string errstr;
+
 	if(dragent_configuration::m_signal_dump)
 	{
 		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
 
-		SharedPtr<sinsp_worker::dump_job_request> job_request(
-			new sinsp_worker::dump_job_request());
+		std::shared_ptr<capture_job_handler::dump_job_request> job_request
+			= make_shared<capture_job_handler::dump_job_request>();
 
-		job_request->m_request_type = dump_job_request::JOB_START;
+		job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
 		job_request->m_duration_ns = 20000000000LL;
 		job_request->m_delete_file_when_done = false;
 		job_request->m_send_file = false;
 
-		queue_job_request(job_request);
+		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
+		{
+			g_log->error("sinsp_worker: could not start capture: " + errstr);
+		}
 	}
 
-	SharedPtr<dump_job_request> request;
+	std::shared_ptr<capture_job_handler::dump_job_request> request;
 	while(m_dump_job_requests.get(&request, 0))
 	{
-		g_log->debug("Dequeued dump request token=" + request->m_token);
-		switch(request->m_request_type)
+		string errstr;
+
+		g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
+
+		if(!m_capture_job_handler->queue_job_request(m_inspector, request, errstr))
 		{
-		case dump_job_request::JOB_START:
-			if(request->m_duration_ns == 0 && request->m_past_duration_ns == 0)
-			{
-				send_error(request->m_token, "either duration or past_duration must be nonzero");
-				return;
-			}
-
-			// As a resource exaustion prevention
-			// mechanism, only allow "max sysdig captures"
-			// to be outstanding at one time.
-			if((m_running_standard_dump_jobs.size() + m_running_memdump_jobs.size()) >= m_configuration->m_max_sysdig_captures)
-			{
-				send_error(request->m_token, "maximum number of outstanding captures (" +
-					   to_string(m_configuration->m_max_sysdig_captures) +
-					   ") reached");
-				return;
-			}
-
-			if(request->m_past_duration_ns == 0)
-			{
-				start_standard_job(*request, ts);
-			}
-			else
-			{
-				start_memdump_job(*request, ts);
-			}
-			break;
-		case dump_job_request::JOB_STOP:
-			{
-				bool found = false;
-
-				for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_standard_dump_jobs.begin();
-					it != m_running_standard_dump_jobs.end(); ++it)
-				{
-					if((*it)->m_token == request->m_token)
-					{
-						stop_standard_job(*it);
-						found = true;
-						break;
-					}
-				}
-
-				for(vector<SharedPtr<dump_job_state>>::iterator it = m_running_memdump_jobs.begin();
-					it != m_running_memdump_jobs.end(); ++it)
-				{
-					if((*it)->m_token == request->m_token)
-					{
-						stop_memdump_job(*it);
-						found = true;
-						break;
-					}
-				}
-
-				if(!found)
-				{
-					g_log->error("Can't find job " + request->m_token);
-				}
-
-				break;
-			}
-		default:
-			ASSERT(false);
+			// It's assumed these requests were ones from
+			// the backend, so send an error to the
+			// backend.
+			m_capture_job_handler->send_error(request->m_token, errstr);
 		}
 	}
 }
 
-void sinsp_worker::start_standard_job(const dump_job_request& request, uint64_t ts)
+void sinsp_worker::check_autodrop(uint64_t ts_ns)
 {
-	SharedPtr<dump_job_state> job_state(new dump_job_state());
-
-	if(m_configuration->m_sysdig_capture_enabled == false)
+	if(!m_configuration->m_autodrop_enabled)
 	{
-		send_error(request.m_token, "Sysdig capture disabled from agent configuration file, not starting capture");
 		return;
 	}
-
-	if(!request.m_filter.empty())
+	if(*m_enable_autodrop)
 	{
-		try
+		if (!m_autodrop_currently_enabled)
 		{
-			sinsp_filter_compiler compiler(m_inspector, request.m_filter);
-			job_state->m_filter = compiler.compile();
-		}
-		catch(sinsp_exception& e)
-		{
-			send_error(request.m_token, e.what());
-			return;
+			g_log->information("Restoring dropping mode state");
+
+			if(m_configuration->m_autodrop_enabled)
+			{
+				m_analyzer->start_dropping_mode(1);
+				m_analyzer->set_capture_in_progress(false);
+			}
+
+			m_autodrop_currently_enabled = true;
 		}
 	}
-
-	job_state->m_token = request.m_token;
-
-	job_state->m_dumper = new sinsp_dumper(m_inspector);
-	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
-	g_log->information("Starting dump job in " + job_state->m_file +
-		", filter '" + request.m_filter + "'");
-	try
+	else
 	{
-		job_state->m_dumper->open(job_state->m_file, true);
-	}
-	catch(std::exception& ex)
-	{
-		send_error(request.m_token, ex.what());
-		return;
-	}
-	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
-	if(job_state->m_fp == NULL)
-	{
-		send_error(request.m_token, strerror(errno));
-		return;
-	}
-
-	job_state->m_duration_ns = request.m_duration_ns;
-	job_state->m_max_size = request.m_max_size;
-	job_state->m_past_duration_ns = 0;
-	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
-	job_state->m_send_file = request.m_send_file;
-	job_state->m_start_ns = ts;
-	job_state->m_memdumper_job = NULL;
-
-	if(m_running_standard_dump_jobs.empty())
-	{
-		if(m_configuration->m_autodrop_enabled)
+		if (m_autodrop_currently_enabled)
 		{
 			g_log->information("Disabling dropping mode by setting sampling ratio to 1");
 			m_analyzer->start_dropping_mode(1);
 			m_analyzer->set_capture_in_progress(true);
-			m_driver_stopped_dropping_ns = ts;
-		}
-	}
-
-	m_running_standard_dump_jobs.push_back(job_state);
-}
-
-void sinsp_worker::start_memdump_job(const dump_job_request& request, uint64_t ts)
-{
-	SharedPtr<dump_job_state> job_state(new dump_job_state());
-
-	if(m_configuration->m_sysdig_capture_enabled == false)
-	{
-		send_error(request.m_token, "Sysdig capture disabled from agent configuration file, not starting capture");
-		return;
-	}
-
-	if(!m_analyzer->is_memdump_active())
-	{
-		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
-		return;
-	}
-
-	//
-	// Populate the job state
-	//
-	job_state->m_token = request.m_token;
-	job_state->m_dumper = NULL;
-	job_state->m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
-
-	//
-	// Create the dumper job
-	//
-	sinsp_memory_dumper* memdumper = m_analyzer->get_memory_dumper();
-	if(memdumper == NULL)
-	{
-		send_error(request.m_token, "memory dump functionality not working in the target agent. Cannot perform back in time capture.");
-		ASSERT(false);
-		return;
-	}
-
-	// We inject a notification to make it easier to identify the starting point
-	memdumper->push_notification(ts, m_inspector->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
-
-	job_state->m_memdumper_job = memdumper->add_job(ts, job_state->m_file, request.m_filter, request.m_past_duration_ns, request.m_duration_ns);
-	if(job_state->m_memdumper_job->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
-	{
-		send_error(request.m_token, job_state->m_memdumper_job->m_lasterr);
-		return;
-	}
-
-	//
-	// Open the job output file for reading so we are ready to send it to the backend
-	//
-	job_state->m_fp = fopen(job_state->m_file.c_str(), "r");
-	if(job_state->m_fp == NULL)
-	{
-		send_error(request.m_token, "unable to open file " + job_state->m_file);
-		return;
-	}
-
-	//
-	// Finish populating the job state
-	//
-	job_state->m_duration_ns = request.m_duration_ns;
-	job_state->m_max_size = request.m_max_size;
-	job_state->m_past_duration_ns = request.m_past_duration_ns;
-	job_state->m_delete_file_when_done = request.m_delete_file_when_done;
-	job_state->m_send_file = request.m_send_file;
-	job_state->m_start_ns = ts;
-
-	g_log->debug("starting memory dumper job, file: " + job_state->m_file
-		     + " start time " + Poco::DateTimeFormatter::format(Poco::Timestamp((job_state->m_start_ns - job_state->m_past_duration_ns) / 1000), "%Y-%m-%d %H:%M:%S.%i")
-		     + " end time " + Poco::DateTimeFormatter::format(Poco::Timestamp((job_state->m_start_ns + job_state->m_duration_ns) /1000), "%Y-%m-%d %H:%M:%S.%i"));
-
-	m_running_memdump_jobs.push_back(job_state);
-}
-
-void sinsp_worker::flush_jobs(uint64_t ts, vector<SharedPtr<dump_job_state>>* jobs, bool restore_drop_mode)
-{
-	vector<SharedPtr<dump_job_state>>::iterator it = jobs->begin();
-
-	while(it != jobs->end())
-	{
-		SharedPtr<dump_job_state> job = *it;
-
-		if((ts - job->m_last_keepalive_ns > m_keepalive_interval_ns)
-			&& job->m_send_file)
-		{
-			job->m_last_keepalive_ns = ts;
-			draiosproto::dump_response response;
-			prepare_response(job->m_token, &response);
-			response.set_keep_alive(true);
-			g_log->information("Job " + job->m_token + ": sending keepalive");
-			queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
-		}
-
-		struct stat st;
-		if(stat(job->m_file.c_str(), &st) != 0)
-		{
-			g_log->error("Error checking file size");
-			send_error(job->m_token, "Error checking file size");
-			job->m_error = true;
-			ASSERT(false);
-		}
-
-		job->m_file_size = st.st_size;
-
-		if(!job->m_error && job->m_send_file)
-		{
-			send_dump_chunks(job);
-		}
-
-		if(job->m_error)
-		{
-			g_log->information("Job " + job->m_token
-				+ ": in error state, deleting");
-			it = jobs->erase(it);
-		}
-		else if(job->m_terminated &&
-			(!job->m_send_file ||
-			job->m_last_chunk_offset >= job->m_file_size))
-		{
-			ASSERT(job->m_last_chunk_offset <= job->m_file_size);
-			g_log->information("Job " + job->m_token
-				+ ": sent all chunks to backend, deleting");
-			it = jobs->erase(it);
-		}
-		else
-		{
-			++it;
-		}
-
-		if(restore_drop_mode)
-		{
-			if(jobs->empty())
-			{
-				g_log->information("Restoring dropping mode state");
-
-				if(m_configuration->m_autodrop_enabled)
-				{
-					m_analyzer->start_dropping_mode(1);
-					m_analyzer->set_capture_in_progress(false);
-				}
-			}
+			m_autodrop_currently_enabled = false;
 		}
 	}
 }

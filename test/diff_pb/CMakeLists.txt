@@ -6,5 +6,8 @@ add_executable(diff_pb
 	diff_pb.cpp)
 	
 target_link_libraries(diff_pb
-	${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.1.0/src/.libs/libprotobuf.a)
+	${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.1.0/target/lib/libprotobuf.a)
 
+install(TARGETS diff_pb
+        DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+        COMPONENT tests)

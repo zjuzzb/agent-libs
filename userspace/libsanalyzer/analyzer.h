@@ -16,7 +16,6 @@
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
-#include "memdumper.h"
 #include "coclient.h"
 
 //
@@ -25,7 +24,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -52,7 +51,7 @@ class docker;
 class uri;
 class falco_engine;
 class falco_events;
-class sisnp_baseliner;
+class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
 
@@ -132,7 +131,7 @@ public:
 	uint32_t m_flags;
 	uint64_t m_ts;
 	string m_exe;
-	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users 
+	uint64_t m_shell_id; // this is equivalent to the shell ID in spy_users
 	uint32_t m_login_shell_distance; // This is equivalent to the indentation in spy_users
 	string m_cmdline;
 	uint32_t m_count; // how many times this command has been repeated
@@ -298,10 +297,10 @@ public:
 			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
 			{
 				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
-				if(m_configuration->get_excess_metrics_log())
-				{
-					m_metric_limits->enable_logging();
-				}
+			}
+			if(m_configuration->get_excess_metrics_log())
+			{
+				metric_limits::enable_logging();
 			}
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
 			checked = true;
@@ -399,15 +398,6 @@ public:
 			  double sampling_multiplier);
 
 	void disable_falco();
-	bool is_memdump_active()
-	{
-		return m_do_memdump;
-	}
-
-	sinsp_memory_dumper* get_memory_dumper()
-	{
-		return m_memdumper;
-	}
 
 	void set_emit_tracers(bool enabled);
 
@@ -463,7 +453,7 @@ VISIBILITY_PRIVATE
 	void emit_docker_events();
 	void emit_top_files();
 	vector<string> emit_containers(const progtable_by_container_t& active_containers);
-	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -493,6 +483,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_time;
+	uint64_t m_serialize_prev_sample_num_drop_events;
 
 	sinsp_analyzer_parsers* m_parser;
 	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go
@@ -623,18 +614,13 @@ VISIBILITY_PRIVATE
 	double m_my_cpuload;
 	bool m_skip_proc_parsing;
 	uint64_t m_prev_flush_wall_time;
-	
+
 	//
 	// Falco stuff
 	//
-	sisnp_baseliner* m_falco_baseliner = NULL;
+	sinsp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
-
-	//
-	// Memory dump stuff
-	//
-	bool m_do_memdump = false;
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -698,8 +684,6 @@ VISIBILITY_PRIVATE
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
 
-	sinsp_memory_dumper* m_memdumper = NULL;
-
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
 #ifndef _WIN32
@@ -710,6 +694,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<falco_events> m_falco_events;
 
 	metric_limits::sptr_t m_metric_limits;
+	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;
 
@@ -737,7 +722,7 @@ VISIBILITY_PRIVATE
 	friend class sinsp_sched_analyzer;
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
-	friend class sisnp_baseliner;
+	friend class sinsp_baseliner;
 };
 
 #endif // HAS_ANALYZER

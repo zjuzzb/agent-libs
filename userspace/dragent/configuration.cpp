@@ -1,5 +1,6 @@
 #include "configuration.h"
 
+#include "zlib.h"
 #include "Poco/Net/HTTPClientSession.h"
 #include "Poco/Net/HTTPRequest.h"
 #include "Poco/Net/HTTPResponse.h"
@@ -153,7 +154,7 @@ public:
 		{
 			return true;
 		}
-		
+
 		yaml_configuration new_conf(config_data);
 		if(!new_conf.errors().empty())
 		{
@@ -270,6 +271,9 @@ dragent_configuration::dragent_configuration()
 	m_agent_installed = true;
 	m_ssh_enabled = true;
 	m_sysdig_capture_enabled = true;
+	m_max_sysdig_captures = 1;
+	m_sysdig_capture_transmit_rate = 1024 * 1024;
+	m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
 	m_statsd_enabled = true;
 	m_statsd_limit = 100;
 	m_statsd_port = 8125;
@@ -282,6 +286,14 @@ dragent_configuration::dragent_configuration()
 	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
 	m_falco_engine_sampling_multiplier = 0;
 	m_reset_falco_engine = false;
+	m_security_enabled = false;
+	m_security_policies_file = "";
+	m_security_report_interval_ns = 1000000000;
+	m_security_throttled_report_interval_ns = 10000000000;
+	m_actions_poll_interval_ns = 1000000000;
+	m_security_send_monitor_events = false;
+	m_policy_events_rate = 0.5;
+	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
@@ -618,16 +630,19 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_falco_baselining_enabled =  m_config->get_scalar<bool>("falcobaseline", "enabled", false);
 	m_command_lines_capture_enabled =  m_config->get_scalar<bool>("commandlines_capture", "enabled", false);
 	string command_lines_capture_mode_s = m_config->get_scalar<string>("commandlines_capture", "capture_mode", "tty");
-	if (command_lines_capture_mode_s == "tty") {
+	if(command_lines_capture_mode_s == "tty")
+	{
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_TTY;
-	} else if (command_lines_capture_mode_s == "shell_ancestor") {
+	} else if(command_lines_capture_mode_s == "shell_ancestor")
+	{
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_SHELL_ANCESTOR;
-	} else if (command_lines_capture_mode_s == "all") {
+	} else if(command_lines_capture_mode_s == "all") {
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_ALL;
 	}
+	m_command_lines_valid_ancestors = m_config->get_deep_merged_sequence<set<string>>("commandlines_capture", "valid_ancestors");
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
-	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 200 * 1024 * 1024);
+	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 300 * 1024 * 1024);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
@@ -649,9 +664,18 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_watchdog_subprocesses_logger_timeout_s = m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>("watchdog", "subprocesses_logger_timeout_s", 60);
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
 	m_watchdog_sinsp_data_handler_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_data_handler_timeout_s)>("watchdog", "sinsp_data_handler_timeout_s", 60);
-	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", 512);
-	m_watchdog_warn_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_warn_memory_usage_mb)>("watchdog", "warn_memory_usage_mb",
-													  m_watchdog_max_memory_usage_mb / 2);
+
+	uint64_t default_max_memory_usage_mb = 512;
+	uint64_t default_warn_memory_usage_mb = default_max_memory_usage_mb / 2;
+	if(m_memdump_enabled)
+	{
+		uint64_t memdump_size_mb = m_memdump_size / 1024 / 1024;
+		default_max_memory_usage_mb += memdump_size_mb;
+		default_warn_memory_usage_mb += memdump_size_mb;
+	}
+
+	m_watchdog_max_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_max_memory_usage_mb)>("watchdog", "max_memory_usage_mb", default_max_memory_usage_mb);
+	m_watchdog_warn_memory_usage_mb = m_config->get_scalar<decltype(m_watchdog_warn_memory_usage_mb)>("watchdog", "warn_memory_usage_mb", default_warn_memory_usage_mb);
 	if(m_watchdog_warn_memory_usage_mb > m_watchdog_max_memory_usage_mb)
 	{
 		m_config->add_warning("watchdog:warn_memory_usage_mb cannot be higher than watchdog:max_memory_usage_mb");
@@ -680,7 +704,9 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
 	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
-	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("max sysdig captures", 10);
+	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("sysdig capture", "max outstanding", 1);
+	m_sysdig_capture_transmit_rate = m_config->get_scalar<double>("sysdig capture", "transmit rate", 1024 * 1024);
+	m_sysdig_capture_compression_level = m_config->get_scalar<int32_t>("sysdig capture", "compression level", Z_DEFAULT_COMPRESSION);
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
@@ -863,6 +889,19 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
+	m_security_enabled = m_config->get_scalar<bool>("security", "enabled", false);
+	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
+	// 1 second
+	m_security_report_interval_ns = m_config->get_scalar<uint64_t>("security" "report_interval", 1000000000);
+	// 10 seconds
+	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
+	// 100 ms
+	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
+
+	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
+	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
+	m_security_send_monitor_events = m_config->get_scalar<bool>("security", "send_monitor_events", false);
+
 	//
 	// If falco is enabled, check to see if the rules file exists and
 	// switch to a built-in default if it does not.
@@ -924,6 +963,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	{
 		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
 	}
+	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
+	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
@@ -956,6 +997,12 @@ void dragent_configuration::print_configuration()
 	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
+	string ancestors;
+	for(auto s : m_command_lines_valid_ancestors) 
+	{
+		ancestors.append(s + " ");
+	}
+	g_log->information("commandlines_capture.valid_ancestors: " + ancestors);
 	g_log->information("memdump.enabled: " + bool_as_text(m_memdump_enabled));
 	g_log->information("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
@@ -1015,6 +1062,9 @@ void dragent_configuration::print_configuration()
 	}
 	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
+	g_log->information("sysdig capture.max outstanding: " + NumberFormatter::format(m_max_sysdig_captures));
+	g_log->information("sysdig capture.transmit rate (bytes/sec): " + NumberFormatter::format(m_sysdig_capture_transmit_rate));
+	g_log->information("sysdig capture.compression level: " + NumberFormatter::format(m_sysdig_capture_compression_level));
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
@@ -1144,6 +1194,25 @@ void dragent_configuration::print_configuration()
 		g_log->information("Falco engine sampling multiplier: " + NumberFormatter::format(m_falco_engine_sampling_multiplier));
 	}
 
+	if(m_security_enabled)
+	{
+		g_log->information("Security Features: Enabled");
+
+		if(m_security_policies_file != "")
+		{
+			g_log->information("Using security policies file: " + m_security_policies_file);
+		}
+
+		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
+		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
+		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
+
+		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
+		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
+		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
+	}
+
+
 	if(m_k8s_event_filter)
 	{
 		g_log->information("K8s events filter:" + m_k8s_event_filter->to_string());
@@ -1185,6 +1254,16 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Running in simple driver mode, Falco and Sysdig Captures will not work");
 	}
+
+	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||
+	   m_sysdig_capture_compression_level > Z_BEST_COMPRESSION)
+	{
+		g_log->warning("Invalid compression level "
+			       + std::to_string(m_sysdig_capture_compression_level)
+			       + ". Setting to " + std::to_string(Z_DEFAULT_COMPRESSION) + ".");
+		m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
+	}
+
 
 	g_log->information("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));
 	std::ostringstream os;

@@ -39,8 +39,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	}
 
 	string tmp;
-	// FIXME: disabled because causes segfault on tests
-	// m_print.PrintToString(*request_msg, &tmp);
+	m_print.PrintToString(*request_msg, &tmp);
 	g_logger.log("Sending message to cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 
 	call_context *call = new call_context();
@@ -100,13 +99,14 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	}
 }
 
-void coclient::next()
+void coclient::next(uint32_t wait_ms)
 {
 	void *tag;
 	bool updates_ok;
 	grpc::CompletionQueue::NextStatus status;
+	gpr_timespec deadline = gpr_time_from_millis(wait_ms, GPR_TIMESPAN);
 
-	status = m_cq.AsyncNext(&tag, &updates_ok, std::chrono::system_clock::now() + std::chrono::milliseconds(10));
+	status = m_cq.AsyncNext(&tag, &updates_ok, deadline);
 
 	if(status == grpc::CompletionQueue::SHUTDOWN)
 	{
@@ -135,8 +135,7 @@ void coclient::next()
 
 	if(call->status.ok()) {
 		string tmp;
-		// FIXME: disabled because causes segfault on tests
-		// m_print.PrintToString(*(call->response_msg), &tmp);
+		m_print.PrintToString(*(call->response_msg), &tmp);
 
 		g_logger.log("Got response from cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
 

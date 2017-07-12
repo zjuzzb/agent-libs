@@ -8,6 +8,7 @@
 #include "user_event_channel.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
+#include "capture_job_handler.h"
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
@@ -40,8 +41,11 @@ dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
-	m_sinsp_worker(&m_configuration, &m_queue),
-	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker),
+	m_enable_autodrop(true),
+	m_policy_events(MAX_QUEUED_POLICY_EVENTS),
+	m_sinsp_worker(&m_configuration, &m_queue, &m_enable_autodrop, &m_policy_events, &m_capture_job_handler),
+	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
+	m_connection_manager(&m_configuration, &m_queue, &m_policy_events, &m_sinsp_worker, &m_capture_job_handler),
 	m_log_reporter(&m_queue, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),
 	m_last_dump_s(0)
@@ -51,6 +55,7 @@ dragent_app::dragent_app():
 dragent_app::~dragent_app()
 {
 	delete g_log;
+	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void dragent_app::initialize(Application& self)
@@ -448,7 +453,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		monitor_process.emplace_process("mountedfs_reader", [this](void)
 		{
 			m_mounted_fs_reader_pipe->attach_child();
-			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled);
+			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
+					       this->m_configuration.m_mounts_filter,
+					       this->m_configuration.m_mounts_limit_size);
 			return proc.run();
 		});
 	}
@@ -571,7 +578,21 @@ int dragent_app::sdagent_main()
 
 	ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
 	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
-	ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+	try {
+		m_sinsp_worker.init();
+	}
+	catch (const sinsp_exception &e)
+	{
+		dragent_configuration::m_terminate = true;
+		dragent_error_handler::m_exception = true;
+	}
+
+	if(!dragent_configuration::m_terminate)
+	{
+		m_capture_job_handler.init(m_sinsp_worker.get_inspector());
+		ThreadPool::defaultPool().start(m_capture_job_handler, "capture_job_handler");
+		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
+	}
 
 	uint64_t uptime_s = 0;
 
@@ -748,7 +769,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		});
 
 		// Try to read any responses
-		m_coclient->next();
+		m_coclient->next(10);
 	}
 
 	uint64_t memory;
@@ -890,7 +911,7 @@ void dragent_app::check_for_clean_shutdown()
 	File f(p);
 	if(f.exists())
 	{
-		m_log_reporter.send_report();
+		m_log_reporter.send_report(sinsp_utils::get_current_time_ns());
 	}
 	else
 	{

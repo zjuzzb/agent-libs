@@ -101,6 +101,30 @@ int main(int argc, char **argv)
 	md.TreatAsMap(FindField(m1, "metrics.programs"),
 		      FindField(m1, "metrics.programs.pids"));
 
+	for(const string& n: { "", ".containers"})
+	{
+		for(const string& t : { "client", "server"})
+		{
+			for(const string& sql : { "mysql", "postgres"})
+			{
+				md.TreatAsMap(FindField(m1, "metrics" + n + ".protos." + sql + "." + t + "_queries"),
+							  FindField(m1, "metrics" + n + ".protos." + sql + "." + t + "_queries.name"));
+				md.TreatAsMap(FindField(m1, "metrics" + n + ".protos." + sql + "." + t + "_query_types"),
+							  FindField(m1, "metrics" + n + ".protos." + sql + "." + t + "_query_types.type"));
+				md.TreatAsMap(FindField(m1, "metrics" + n + ".protos." + sql + "." + t + "_tables"),
+							  FindField(m1, "metrics" + n + ".protos." + sql + "." + t + "_tables.name"));
+			}
+			md.TreatAsMap(FindField(m1, "metrics" + n + ".protos.http." + t + "_urls"),
+						  FindField(m1, "metrics" + n + ".protos.http." + t + "_urls.url"));
+			md.TreatAsMap(FindField(m1, "metrics" + n + ".protos.http." + t + "_status_codes"),
+						  FindField(m1, "metrics" + n + ".protos.http." + t + "_status_codes.status_code"));
+			md.TreatAsMap(FindField(m1, "metrics" + n + ".protos.mongodb." + (t == "server" ? "servers" : t) + "_ops"), // Unluckily there is a typo on mongodb proto struct
+						  FindField(m1, "metrics" + n + ".protos.mongodb." + (t == "server" ? "servers" : t) + "_ops.op"));
+			md.TreatAsMap(FindField(m1, "metrics" + n + ".protos.mongodb." + t + "_collections"),
+						  FindField(m1, "metrics" + n + ".protos.mongodb." + t + "_collections.name"));
+		}
+	}
+
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_1"));
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_5"));
 	md.IgnoreField(FindField(m1, "metrics.hostinfo.system_load_15"));

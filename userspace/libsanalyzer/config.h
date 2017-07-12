@@ -138,6 +138,10 @@ public:
     void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
 	metrics_filter_vec get_metrics_filter() const;
 	void set_metrics_filter(const metrics_filter_vec& event_filter);
+	mount_points_filter_vec get_mounts_filter() const;
+	void set_mounts_filter(const mount_points_filter_vec& mount_filter);
+	unsigned get_mounts_limit_size() const;
+	void set_mounts_limit_size(unsigned mounts_limit_size);
 	bool get_excess_metrics_log() const;
 	void set_excess_metrics_log(bool log);
 	unsigned get_metrics_cache() const;
@@ -148,6 +152,9 @@ public:
 	void set_command_lines_capture_enabled(bool enabled);
 	command_capture_mode_t get_command_lines_capture_mode() const;
 	void set_command_lines_capture_mode(command_capture_mode_t capture_mode);
+	set<string> get_command_lines_valid_ancestors() const;
+	void set_command_lines_valid_ancestors(const set<string>& valid_ancestors);
+	bool is_command_lines_valid_ancestor(const string& ancestor) const;
 	bool get_capture_dragent_events() const;
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
@@ -228,6 +235,7 @@ private:
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
 	command_capture_mode_t m_command_lines_capture_mode;
+	set<string> m_command_lines_valid_ancestors;
 	bool m_capture_dragent_events;
 	uint64_t m_memdump_size;
 
@@ -239,6 +247,8 @@ private:
 	metrics_filter_vec m_metrics_filter;
 	bool m_excess_metrics_log = false;
 	unsigned m_metrics_cache = 0;
+	mount_points_filter_vec m_mounts_filter;
+	unsigned m_mounts_limit_size;
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;

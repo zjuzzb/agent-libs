@@ -1,3 +1,5 @@
+syntax = "proto2";
+
 package draiosproto;
 
 option optimize_for = SPEED;
@@ -539,6 +541,9 @@ enum message_type {
     DIRTY_SHUTDOWN_REPORT = 10;
     CONFIG_DATA = 11;
     ERROR_MESSAGE = 12;
+    POLICIES = 13;
+    POLICY_EVENTS = 14;
+    THROTTLED_POLICY_EVENTS = 15;
 }
 
 //
@@ -800,16 +805,15 @@ message swarm_node {
 }
 
 message swarm_state {
-    // Every node in the cluster will send the cluster_id
-    // it can be used if we'll hit duplicate ip addresses
-    // in the cluster
-    optional string cluster_id = 1;
     // This values will be filled only
     // by swarm manager nodes
     repeated swarm_service services = 2;
     repeated swarm_node nodes = 3;
     repeated swarm_task tasks = 4;
     optional bool quorum = 5;
+    // Every node in the cluster will send its node_id
+    // it can be used if we'll hit duplicate ip addresses
+    optional string node_id = 7;
 }
 
 // ENTRY POINT MESSAGE
@@ -943,6 +947,165 @@ message config_file {
 
 message config_data {
     repeated config_file config_files = 1;
+}
+
+message stop_action {
+    // This is the message to send to the thing being stopped.
+    optional string msg = 1;
+}
+
+message pause_action {
+    // This is the message to send to the thing being paused.
+    optional string msg = 1;
+}
+
+message capture_action {
+    required uint64 before_event_ns = 1;
+    required uint64 after_event_ns = 2;
+    optional string filter = 3;
+    optional bool is_limited_to_container = 4;
+}
+
+enum action_type {
+    ACTION_STOP = 1;
+    ACTION_PAUSE = 2;
+    ACTION_CAPTURE = 3;
+}
+
+// If we were using gproto >= 2.6, we could use oneof
+message action {
+    required action_type type = 1;
+
+    // when type=ACTION_STOP
+    optional stop_action stop = 2;
+
+    // when type=ACTION_PAUSE
+    optional pause_action pause = 3;
+
+    // when type=ACTION_CAPTURE
+    optional capture_action capture = 4;
+}
+
+// XXX/mstemm fill these in
+message baseline_detail {
+}
+
+message manual_detail {
+}
+
+message falco_rule_filter {
+    repeated string tags = 1;
+    optional string name = 2;
+}
+
+message falco_detail {
+    required falco_rule_filter rule_filter = 1;
+}
+
+enum policy_type {
+    POLICY_BASELINE = 1;
+    POLICY_FALCO = 2;
+    POLICY_MANUAL =3;
+}
+
+message policy {
+    required uint64 id = 1;
+    required string name = 2;
+    required policy_type type = 3;
+
+    // when type=POLICY_BASELINE
+    optional baseline_detail baseline_details = 4;
+
+    // when type=POLICY_FALCO
+    optional falco_detail falco_details = 5;
+
+    // when type=POLICY_MANUAL
+    optional manual_detail manual_details = 6;
+
+    repeated action actions = 7;
+    required bool enabled = 8;
+}
+
+// It's repeated to allow for pushing multiple rule files from the
+// backend (think a rules.d with many files below it). The rule files
+// will be loaded in message order.
+message falco_rules_contents {
+    repeated string contents = 1;
+}
+
+message policies {
+    repeated policy policy_list = 1;
+    optional falco_rules_contents falco_rules = 2;
+}
+
+// XXX/mstemm fill these in
+message baseline_event_detail {
+}
+
+message manual_event_detail {
+}
+
+message falco_event_detail {
+    required string rule = 1;
+    required string output = 2;
+}
+
+message action_result {
+    required action_type type = 1;
+
+    // Whether or not the action was completed successfully
+    required bool successful = 2;
+
+    // When successful == false, details on why the action failed
+    optional string errmsg = 3;
+
+    // An optional token that can be related to later messages. For
+    // example, when the type is ACTION_CAPTURE, A series of
+    // dump_response messages will follow. Each will have a token
+    // field == this token.
+    optional string token = 4;
+}
+
+// Once we add a scope, we'll want to also include the scope of the
+// event as well.
+message policy_event {
+    required uint64 timestamp_ns = 1;
+    required uint64 policy_id = 2;
+    optional string container_id = 3;
+
+    // Which of these are present depends on the type of the policy
+    // referred to by policy_id.
+    optional baseline_event_detail baseline_details = 4;
+    optional falco_event_detail falco_details = 5;
+    optional manual_event_detail manual_details = 6;
+
+    repeated action_result action_results = 7;
+}
+
+message policy_events {
+    required string machine_id = 1; // The unique ID of the machine that is sending this data
+    optional string customer_id = 2; // The unique ID of the customer that this machine belongs to
+
+    repeated policy_event events = 3;
+}
+
+// This represents a count of policy events that couldn't be sent as
+// policy_event messages due to exceeding the per-policy + scope rate
+// limit. In these cases we simply report a count.
+
+message throttled_policy_event {
+    required uint64 timestamp_ns = 1;
+    required uint64 policy_id = 2;
+    optional string container_id = 3;
+
+    required uint64 count = 4;
+}
+
+message throttled_policy_events {
+    required string machine_id = 1; // The unique ID of the machine that is sending this data
+    optional string customer_id = 2; // The unique ID of the customer that this machine belongs to
+
+    repeated throttled_policy_event events = 3;
 }
 
 enum error_type {

@@ -150,17 +150,21 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 
 	isManager := info.Swarm.ControlAvailable
 
+	nodeId := proto.String(info.Swarm.NodeID)
+	m := &draiosproto.SwarmState{NodeId: nodeId}
+
 	// If this host is not a manager we won't be able to get any swarm state
 	// from it, so treat it as an error and the agent will reduce the
 	// poll-frequency
 	if !isManager {
 		ferr := errors.New("Host is not a swarm manager")
 		log.Debug(ferr)
-		return nil, ferr
+		res := &sdc_internal.SwarmStateResult{}
+		res.Successful = proto.Bool(false)
+		res.Errstr = proto.String(ferr.Error())
+		res.State = m
+		return res, nil
 	}
-
-	clusterId := proto.String(info.Swarm.Cluster.ID)
-	m := &draiosproto.SwarmState{ClusterId: clusterId}
 
 	taskmap := make(map[string]uint64)    // count of running tasks per service id
 	servicemap := make(map[string]string) // service id to name

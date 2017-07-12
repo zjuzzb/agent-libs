@@ -1,16 +1,4 @@
-set(DRAIOS_OPENSSL_VERSION "1.0.2j")
-set(DRAIOS_PROTOBUF_VERSION "2.5.0")
-set(DRAIOS_ZLIB_VERSION "1.2.8")
-set(DRAIOS_LUAJIT_VERSION "2.0.3")
-set(DRAIOS_CURL_VERSION "7.52.1")
-set(DRAIOS_POCO_VERSION "1.7.7-all")
-set(DRAIOS_B64_VERSION "1.2")
-set(DRAIOS_YAML_VERSION "cpp-0.5.1")
-set(DRAIOS_BOOST_VERSION "1_57_0")
-set(DRAIOS_JQ_VERSION "1.5")
-set(DRAIOS_GRPC_VERSION "1.1.4")
-
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/include)
@@ -27,6 +15,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../draiosproto)
 
 add_definitions( -DHAS_ANALYZER )
 add_definitions(-DK8S_DISABLE_THREAD)
@@ -45,7 +34,6 @@ add_library(sanalyzer STATIC
 	connectinfo.cpp 
 	config.cpp
 	delays.cpp
-	draios.pb.cc
 	falco_events.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
@@ -130,15 +118,14 @@ add_library(sanalyzer STATIC
 	statsite_proxy.cpp
 	app_checks.cpp
 	posix_queue.cpp
-	sdc_internal.pb.cc
-	sdc_internal.grpc.pb.cc
 	coclient.cpp
 	proc_config.h)
+
+add_dependencies(sanalyzer draiosproto)
 
 target_link_libraries(sanalyzer
 	scap 
 	falco_engine
-	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/src/.libs/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src/libluajit.a
 	${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a
@@ -154,26 +141,7 @@ target_link_libraries(sanalyzer
 	anl
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc++_unsecure.a
-        ${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a)
-
-set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs
-                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-2.5.0/src/.libs/protoc
-                   -I ${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
-
-add_custom_target(sdc_internal_pb_cpp
-	COMMENT Building cpp sources from .proto files
-	COMMAND ${PROTOC_CMDLINE}
-	        --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
-	COMMAND ${PROTOC_CMDLINE}
-                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/bins/opt/grpc_cpp_plugin
-		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
-	COMMAND ${PROTOC_CMDLINE}
-                --cpp_out=.
-		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
-	WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
 
 add_subdirectory(tests/01-open)
 add_subdirectory(tests/02-stopcapture)

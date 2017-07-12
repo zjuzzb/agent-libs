@@ -94,6 +94,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_prev_sample_evtnum = 0;
 	m_serialize_prev_sample_evtnum = 0;
 	m_serialize_prev_sample_time = 0;
+	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
 
 	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
@@ -135,9 +136,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
-	m_falco_baseliner = new sisnp_baseliner();
-
-	m_memdumper = NULL;
+	m_falco_baseliner = new sinsp_baseliner();
 
 	//
 	// Listeners
@@ -214,13 +213,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_falco_baseliner;
 	}
-
-	if(m_memdumper != NULL)
-	{
-		delete m_memdumper;
-	}
-
-	google::protobuf::ShutdownProtobufLibrary();
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -258,11 +250,6 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	//
-	// Allocate the memory dumprt
-	//
-	m_memdumper = new sinsp_memory_dumper(m_inspector, m_configuration->get_capture_dragent_events());
-
-	//
 	// Start dropping of non-critical events
 	//
 	if(m_configuration->get_autodrop_enabled())
@@ -297,6 +284,8 @@ void sinsp_analyzer::on_capture_start()
 	}
 
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+	m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
+	m_procfs_parser->read_mount_points(m_mount_points);
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
@@ -346,19 +335,8 @@ void sinsp_analyzer::on_capture_start()
 	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
 	if(m_do_baseline_calculation)
 	{
-		lo("starting baseliner");
+		glogf("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
-	}
-
-	//
-	// Enable memery dump
-	//
-	uint64_t memdump_size = m_configuration->get_memdump_size();
-	m_do_memdump = (memdump_size != 0);
-	if(m_do_memdump)
-	{
-		lo("initializing memory dumper to %" PRIu64 " bytes", memdump_size);
-		m_memdumper->init(memdump_size, memdump_size, 300LL * 1000000000LL);
 	}
 }
 
@@ -724,6 +702,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 {
 
 	uint64_t nevts = 0;
+	uint64_t num_drop_events = 0;
 
 	if(evt)
 	{
@@ -744,9 +723,15 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		m_serialize_prev_sample_time = ts;
 	}
 
+	// Get the number of dropped events and include that in the log message
+	scap_stats st;
+	m_inspector->get_capture_stats(&st);
+	num_drop_events = st.n_drops - m_serialize_prev_sample_num_drop_events;
+	m_serialize_prev_sample_num_drop_events = st.n_drops;
+
 	if(m_sample_callback != NULL)
 	{
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, m_metrics, m_sampling_ratio, m_my_cpuload,
+		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, num_drop_events, m_metrics, m_sampling_ratio, m_my_cpuload,
 													 m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
 		m_prev_flushes_duration_ns = 0;
 	}
@@ -763,9 +748,9 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
+			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", de=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
 			ts / 100000000,
-			buflen, nevts,
+			buflen, nevts, num_drop_events,
 			m_my_cpuload,
 			m_sampling_ratio);
 
@@ -1753,18 +1738,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				container->set_percentiles(pctls);
 			}
-			if(container->m_memory_cgroup.empty())
-			{
-				auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
-								[](const pair<string, string>& cgroup)
-								{
-									return cgroup.first == "memory";
-								});
-				if(memory_cgroup_it != tinfo->m_cgroups.cend())
-				{
-					container->m_memory_cgroup = memory_cgroup_it->second;
-				}
-			}
 		}
 
 		// We need to reread cmdline only in live mode, with nodriver mode
@@ -2001,8 +1974,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			if(m_jmx_proxy && tinfo->get_comm() == "java")
 			{
+				if (!tinfo->m_ainfo->m_root_refreshed)
+				{
+					tinfo->m_ainfo->m_root_refreshed = true;
+					tinfo->m_root = m_procfs_parser->read_proc_root(tinfo->m_pid);
+				}
 				java_process_requests.emplace_back(tinfo);
 			}
+
 			// May happen that for processes like apache with mpm_prefork there are hundred of
 			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
@@ -2341,8 +2320,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					{
 						return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
 					});
+
 					if(long_running_proc != it->second.end())
 					{
+						if (!(*long_running_proc)->m_ainfo->m_root_refreshed)
+						{
+							(*long_running_proc)->m_ainfo->m_root_refreshed = true;
+							(*long_running_proc)->m_root = m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
+						}
 						containers_for_mounted_fs.push_back(*long_running_proc);
 					}
 				}
@@ -3346,7 +3331,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 					ASSERT(host_dest == NULL);
 					ASSERT(container_dest != NULL);
 					cd = container_dest->add_commands();
-				}					
+				}
 
 				cd->set_timestamp(it->m_ts);
 				cd->set_count(it->m_count);
@@ -3524,7 +3509,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 								g_logger.format(sinsp_logger::SEV_DEBUG, "Received Swarm State: size=%d", res->state().ByteSize());
 								m_docker_swarm_state->CopyFrom(res->state());
 								if (!res->successful()) {
-									
+
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 								}
@@ -3916,8 +3901,13 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						"Patching host external networking, from (%u, %u) to (%u, %u)",
 						m_io_net.m_bytes_in, m_io_net.m_bytes_out,
 						interfaces_stats.first, interfaces_stats.second);
-				external_io_net->set_bytes_in(interfaces_stats.first);
-				external_io_net->set_bytes_out(interfaces_stats.second);
+				// protobuf uint32 is converted to int in java. It means that numbers higher than int max
+				// are translated into negative ones. This is a problem specifically when agent loses samples
+				// and here we send current value - prev read value. It can be very high
+				// so at this point let's patch it to avoid the overflow
+				static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int>::max());
+				external_io_net->set_bytes_in(std::min(interfaces_stats.first, max_int32));
+				external_io_net->set_bytes_out(std::min(interfaces_stats.second, max_int32));
 			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
@@ -4370,7 +4360,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		// Probably driver switched to sampling=1 without
 		// sending a drop_event with an updated sampleratio.
 		// forcing it
-		g_logger.log("Did not receive drop event to confirm sampling_ratio, forcing update", sinsp_logger::SEV_WARNING);
+		g_logger.log("Did not receive drop event to confirm sampling_ratio " + to_string(m_sampling_ratio) + ", forcing update", sinsp_logger::SEV_WARNING);
 		set_sampling_ratio(m_new_sampling_ratio);
 		m_last_dropmode_switch_time = ts;
 	}
@@ -4403,19 +4393,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-	// If required, dump the event in the memory circular buffer
-	//
-	if(m_do_memdump)
-	{
-		m_memdumper->process_event(evt);
-
-		if(m_inspector->m_flush_memory_dump)
-		{
-			m_memdumper->push_notification(evt->get_ts(), evt->get_tid(), to_string(evt->get_num()), "dump triggered by agent engine");
-			m_memdumper->to_file_multi("sinsp", evt->get_ts());
-			m_inspector->m_flush_memory_dump = false;
-		}
-	}
 
 	//
 	// If process the event in the baseliner
@@ -5389,8 +5366,9 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			// We need any pid of a process running within this container
 			// to get net stats via /proc, using .at() because it will never fail
 			// since we are getting containerids from that table
-			auto pid = progtable_by_container.at(containerid).front()->m_pid;
-			this->emit_container(containerid, &statsd_limit, total_cpu_shares, pid);
+			// same tinfo is used also to get memory cgroup path
+			auto tinfo = progtable_by_container.at(containerid).front();
+			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo);
 			emitted_containers.emplace_back(containerid);
 			containers_ids.erase(containers_ids.begin());
 		}
@@ -5472,7 +5450,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 
 void
 sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares,
-							   int64_t pid)
+							   sinsp_threadinfo* tinfo)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -5563,9 +5541,18 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
 	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_used_kb;
-	if(!it_analyzer->second.m_memory_cgroup.empty())
+	auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+									[](const pair<string, string>& cgroup)
+									{
+										return cgroup.first == "memory";
+									});
+	// Exclude memory_cgroup=/, it's very unlikely for containers and will lead
+	// to wrong metrics reported, rely on our processes memory sum in that case
+	// it happens when there are race conditions during the creating phase of a container
+	// and lasts very little
+	if(memory_cgroup_it != tinfo->m_cgroups.cend() && memory_cgroup_it->second != "/")
 	{
-		const auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(it_analyzer->second.m_memory_cgroup);
+		const auto cgroup_memory = m_procfs_parser->read_cgroup_used_memory(memory_cgroup_it->second);
 		if(cgroup_memory > 0)
 		{
 			res_memory_kb = cgroup_memory / 1024;
@@ -5620,9 +5607,9 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		// We need to patch network metrics reading from /proc
 		// since we don't have sysdig events in this case
 		auto io_net = tcounters->mutable_io_net();
-		auto net_bytes = m_procfs_parser->read_proc_network_stats(pid, &it_analyzer->second.m_last_bytes_in, &it_analyzer->second.m_last_bytes_out);
+		auto net_bytes = m_procfs_parser->read_proc_network_stats(tinfo->m_pid, &it_analyzer->second.m_last_bytes_in, &it_analyzer->second.m_last_bytes_out);
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Patching container=%s pid=%ld networking from (%u, %u) to (%u, %u)",
-						container_id.c_str(), pid, io_net->bytes_in(), io_net->bytes_out(),
+						container_id.c_str(), tinfo->m_pid, io_net->bytes_in(), io_net->bytes_out(),
 						net_bytes.first, net_bytes.second);
 		io_net->set_bytes_in(net_bytes.first);
 		io_net->set_bytes_out(net_bytes.second);
@@ -5962,7 +5949,11 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
-		thread_analyzer_info* ainfo = it->second.m_ainfo;
+		if(!it->second.is_main_thread())
+		{
+			continue;
+		}
+		auto ainfo = it->second.m_ainfo->main_thread_ainfo();
 
 		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{

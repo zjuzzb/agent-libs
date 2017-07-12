@@ -32,6 +32,12 @@
 //
 #define MAX_SAMPLE_STORE_SIZE 300
 
+//
+// The maximum number of policy events that can be queued for sending
+// to the backend.
+//
+#define MAX_QUEUED_POLICY_EVENTS 500
+
 static const int PIPE_BUFFER_SIZE = 1048576;
 #define SDJAGENT_JMX_TIMEOUT "2000"
 
@@ -504,6 +510,8 @@ public:
 	bool m_ssh_enabled;
 	bool m_sysdig_capture_enabled;
 	uint32_t m_max_sysdig_captures;
+	double m_sysdig_capture_transmit_rate;
+	int32_t m_sysdig_capture_compression_level;
 	bool m_statsd_enabled;
 	unsigned m_statsd_limit;
 	uint16_t m_statsd_port;
@@ -550,6 +558,7 @@ public:
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
+	set<string> m_command_lines_valid_ancestors;
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
 
@@ -559,6 +568,8 @@ public:
 	bool m_excess_metric_log = false;
 	metrics_filter_vec m_metrics_filter;
 	unsigned m_metrics_cache;
+	mount_points_filter_vec m_mounts_filter;
+	unsigned m_mounts_limit_size;
 
 	bool m_enable_coredump;
 	bool m_auto_config;
@@ -576,6 +587,15 @@ public:
 	// sinsp_agent and when set will reload the falco engine and
 	// clear.
 	std::atomic_bool m_reset_falco_engine;
+
+	bool m_security_enabled;
+	string m_security_policies_file;
+	uint64_t m_security_report_interval_ns;
+	uint64_t m_security_throttled_report_interval_ns;
+	uint64_t m_actions_poll_interval_ns;
+	double m_policy_events_rate;
+	uint32_t m_policy_events_max_burst;
+	bool m_security_send_monitor_events;
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
