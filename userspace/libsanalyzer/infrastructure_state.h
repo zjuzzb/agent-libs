@@ -31,7 +31,7 @@ public:
 	void state_of(const std::vector<std::string> &container_ids,
 		std::vector<std::unique_ptr<draiosproto::container_group>>& state);
 
-	void refresh_host_metadata(google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
+	void refresh_host_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
 
 private:
 
@@ -48,10 +48,10 @@ private:
 						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 						std::unordered_set<uid_t> &visited_groups);
 
-	void handle_event(draiosproto::congroup_update_event *evt);
+	void handle_event(const draiosproto::congroup_update_event *evt);
 
 	void connect(infrastructure_state::uid_t& key);
-	void remove(draiosproto::congroup_update_event *evt);
+	void remove(const draiosproto::congroup_update_event *evt);
 
 	void debug_print();
 

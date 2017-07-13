@@ -50,6 +50,7 @@ private:
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
 	void handle_policies_message(uint8_t* buf, uint32_t size);
+	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
 	void send_policy_events_messages(uint64_t ts_ns);
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;

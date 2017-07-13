@@ -544,6 +544,7 @@ enum message_type {
     POLICIES = 13;
     POLICY_EVENTS = 14;
     THROTTLED_POLICY_EVENTS = 15;
+    ORCHESTRATOR_EVENTS = 16;
 }
 
 //
@@ -651,6 +652,10 @@ enum congroup_event_type {
 message congroup_update_event {
     required congroup_event_type type = 1;
     required container_group object = 3;
+}
+
+message orchestrator_events {
+    repeated congroup_update_event events = 1;
 }
 
 //

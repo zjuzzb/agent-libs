@@ -506,6 +506,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::ORCHESTRATOR_EVENTS:
+				handle_orchestrator_events(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
@@ -760,6 +765,19 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 		g_log->error("Could not load policies message: " + errstr);
 		return;
 	}
+}
+
+void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
+{
+	draiosproto::orchestrator_events evts;
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &evts))
+	{
+		g_log->error("Could not parse orchestrator_events message");
+		return;
+	}
+
+	m_sinsp_worker->refresh_host_metadata(evts);
 }
 
 void connection_manager::send_policy_events_messages(uint64_t ts_ns)
