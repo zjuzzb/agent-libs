@@ -5862,6 +5862,7 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 			switch(fdit->second.m_type)
 			{
 				case SCAP_FD_FILE:
+				case SCAP_FD_FILE_V2:
 					nfds_file++;
 					break;
 				case SCAP_FD_IPV4_SOCK:

@@ -249,6 +249,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 					switch(fdinfo->m_type)
 					{
 					case SCAP_FD_FILE:
+					case SCAP_FD_FILE_V2:
 					{
 						//
 						// Add the entry to the file table
@@ -1076,6 +1077,7 @@ void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 
 	switch(fd_type)
 	{
+	case SCAP_FD_FILE_V2:
 	case SCAP_FD_FILE:
 	case SCAP_FD_DIRECTORY:
 		if(category == EC_IO_READ)

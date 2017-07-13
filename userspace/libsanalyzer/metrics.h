@@ -280,7 +280,7 @@ public:
 		{
 			scap_fd_type fdtype = fdinfo->m_type;
 
-			if(fdtype == SCAP_FD_FILE)
+			if(fdtype == SCAP_FD_FILE || fdtype == SCAP_FD_FILE_V2)
 			{
 				m_count_file++;
 			}
