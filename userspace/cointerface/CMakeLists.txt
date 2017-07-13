@@ -38,6 +38,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/kubecollect/client.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/kubecollect/pod.go
                 ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
                 ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go)

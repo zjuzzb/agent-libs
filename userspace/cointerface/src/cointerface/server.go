@@ -172,6 +172,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String("testUUID")},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
+		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())}, // pod5
 	}
 	parents := [][]*draiosproto.CongroupUid {
 		{},				// namespace
@@ -186,6 +187,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		{uids[5]},	   		// container2
 		{uids[6]},	   		// container3
 		{uids[7]},	   		// container3
+		{uids[0]},			// pod5
 	}
 	objects := []*draiosproto.ContainerGroup {}
 	// Add all the components
@@ -266,9 +268,67 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
-	time.Sleep(time.Second * 120);
+	//log.Infof("[PerformOrchestratorEventsStream] All initial events sent.")
 
-	log.Infof("[PerformOrchestratorEventsStream] All events sent. Exiting.")
+	apiserver := "http://127.0.0.1:8080"
+	kubeClient, err := kubecollect.CreateKubeClient(apiserver)
+	if err != nil {
+		return err
+	}
+	log.Infof("Testing communication with server")
+	srvVersion, err := kubeClient.Discovery().ServerVersion()
+	if err != nil {
+		return err
+	}
+	log.Infof("Communication with server successful: %v", srvVersion)
+
+	// make sure we can cancel stuff later
+	ctx, cancel := context.WithCancel(stream.Context())
+	defer cancel()
+
+	// let's talk
+	evtc := make(chan draiosproto.CongroupUpdateEvent)
+	defer close(evtc)
+
+	// start watching some stuff
+	kubecollect.WatchPods(ctx, kubeClient, evtc)
+
+	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
+	tick := time.Tick(5 * time.Second)
+	podAdded := true
+	for {
+		select {
+		case <-tick:
+			log.Infof("Got another tick");
+			if !podAdded {
+				log.Infof("ADDING the pod via the subroutine");
+				if err := stream.Send(&draiosproto.CongroupUpdateEvent {
+					Type :   draiosproto.CongroupEventType_ADDED.Enum(),
+					Object : objects[12], // pod5
+				}); err != nil {
+					log.Errorf("Error when ADDING: %v", err)
+					return err
+				} else {
+					podAdded = true
+				}
+			} else {
+				log.Infof("REMOVING the pod via the subroutine");
+				if err := stream.Send(&draiosproto.CongroupUpdateEvent {
+					Type :   draiosproto.CongroupEventType_REMOVED.Enum(),
+					Object : objects[12], // pod5
+				}); err != nil {
+					log.Errorf("Error when REMOVING: %v", err)
+					return err
+				} else {
+					podAdded = false
+				}
+			}
+		case evt := <-evtc:
+			stream.Send(&evt)
+		case <-ctx.Done():
+			return nil
+		}
+	}
 
 	return nil
 }
