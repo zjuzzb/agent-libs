@@ -109,6 +109,8 @@ private:
 
 	unique_ptr<run_on_interval> m_actions_poll_interval;
 
+	unique_ptr<run_on_interval> m_metrics_report_interval;
+
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;
 

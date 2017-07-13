@@ -8,6 +8,7 @@
 
 #include <memory>
 #include <list>
+#include <algorithm>
 
 #include <google/protobuf/text_format.h>
 
@@ -53,6 +54,11 @@ public:
 	// Return the name of this policy.
 	const std::string &name();
 
+	// Log info on the number of events handled by this policy and what happened.
+	void log_metrics();
+
+	void reset_metrics();
+
 protected:
 	// Keeps track of any policy events and their outstanding
 	// actions. When all actions are complete, the policy will
@@ -80,9 +86,58 @@ protected:
 		bool m_send_now;
 	};
 
+	class evt_metrics
+	{
+	public:
+		enum reason
+		{
+			EVM_MATCHED = 0,
+			EVM_POLICY_DISABLED,
+			EVM_NO_FALCO_ENGINE,
+			EVM_EF_DROP_FALCO,
+			EVM_SCOPE_MISS,
+			EVM_FALCO_MISS,
+			EVM_MAX
+		};
+
+		void incr(reason res)
+		{
+			m_metrics[res]++;
+		}
+
+		void reset()
+		{
+			std::fill_n(m_metrics, EVM_MAX, 0);
+		}
+
+		std::string to_string()
+		{
+			std::string str;
+
+			for(uint32_t i = 0; i < EVM_MAX; i++)
+			{
+				str += " " + m_metric_names[i] + "=" + std::to_string(m_metrics[i]);
+			}
+
+			return str;
+		}
+
+	private:
+		uint64_t m_metrics[EVM_MAX];
+		std::string m_metric_names[EVM_MAX]{
+			"matched",
+			"policy_disabled",
+			"no_falco_engine",
+			"ef_drop_falco",
+			"scope_miss",
+			"falco_miss"};
+	};
+
 	// Return whether or not the provided event matches this
 	// policy's scope.
 	bool match_scope(sinsp_evt *evt);
+
+	evt_metrics m_metrics;
 
 	std::list<actions_state> m_outstanding_actions;
 

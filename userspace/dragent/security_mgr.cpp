@@ -43,6 +43,8 @@ void security_mgr::init(sinsp *inspector,
 
 	m_actions_poll_interval = make_unique<run_on_interval>(m_configuration->m_actions_poll_interval_ns);
 
+	m_metrics_report_interval = make_unique<run_on_interval>(m_configuration->m_metrics_report_interval_ns);
+
 	m_coclient = make_shared<coclient>();
 	m_initialized = true;
 }
@@ -146,6 +148,15 @@ void security_mgr::process_event(sinsp_evt *evt)
 	m_actions_poll_interval->run([this]()
         {
 		m_coclient->next();
+	}, ts_ns);
+
+	m_metrics_report_interval->run([this]()
+        {
+		for(auto &policy : m_falco_policies)
+		{
+			policy.log_metrics();
+			policy.reset_metrics();
+		}
 	}, ts_ns);
 
 	for(auto &fpolicy : m_falco_policies)

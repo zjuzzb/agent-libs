@@ -37,6 +37,16 @@ const std::string &security_policy::name()
 	return m_policy.name();
 }
 
+void security_policy::log_metrics()
+{
+	g_log->debug("Policy event counts: (" + name() + "): " + m_metrics.to_string());
+}
+
+void security_policy::reset_metrics()
+{
+	m_metrics.reset();
+}
+
 bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event *event)
 {
 	m_outstanding_actions.emplace_back(event, m_policy.actions().size());
@@ -216,51 +226,68 @@ falco_security_policy::~falco_security_policy()
 
 draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 {
-	if(m_policy.enabled() && m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
+	if(!m_policy.enabled())
 	{
-		if (!match_scope(evt))
-		{
-//			g_log->debug("Policy " + m_policy.name() + ": event out of scope");
-			return NULL;
-		}
-
-		try {
-			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, m_ruleset_id);
-			if(res)
-			{
-				draiosproto::policy_event *event = new draiosproto::policy_event();
-				draiosproto::falco_event_detail *fdetail = event->mutable_falco_details();
-				sinsp_threadinfo *tinfo = evt->get_thread_info();
-				string output;
-
-				g_log->debug("Event matched falco policy: rule=" + res->rule);
-
-				if(m_falco_events && m_configuration->m_security_send_monitor_events)
-				{
-					m_falco_events->generate_user_event(res);
-				}
-
-				event->set_timestamp_ns(evt->get_ts());
-				event->set_policy_id(m_policy.id());
-				if(tinfo && !tinfo->m_container_id.empty())
-				{
-					event->set_container_id(tinfo->m_container_id);
-				}
-
-				fdetail->set_rule(res->rule);
-
-				m_formatters.tostring(evt, res->format, &output);
-				fdetail->set_output(output);
-
-				return event;
-			}
-		}
-		catch (falco_exception& e)
-		{
-			g_log->error("Error processing event against falco engine: " + string(e.what()));
-		}
+		m_metrics.incr(evt_metrics::EVM_POLICY_DISABLED);
+		return NULL;
 	}
 
+	if(!m_falco_engine)
+	{
+		m_metrics.incr(evt_metrics::EVM_NO_FALCO_ENGINE);
+		return NULL;
+	}
+
+	if((evt->get_info_flags() & EF_DROP_FALCO) != 0)
+	{
+		m_metrics.incr(evt_metrics::EVM_EF_DROP_FALCO);
+		return NULL;
+	}
+
+	if (!match_scope(evt))
+	{
+		m_metrics.incr(evt_metrics::EVM_SCOPE_MISS);
+		return NULL;
+	}
+
+	try {
+		unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, m_ruleset_id);
+		if(res)
+		{
+			draiosproto::policy_event *event = new draiosproto::policy_event();
+			draiosproto::falco_event_detail *fdetail = event->mutable_falco_details();
+			sinsp_threadinfo *tinfo = evt->get_thread_info();
+			string output;
+
+			g_log->debug("Event matched falco policy: rule=" + res->rule);
+
+			if(m_falco_events && m_configuration->m_security_send_monitor_events)
+			{
+				m_falco_events->generate_user_event(res);
+			}
+
+			event->set_timestamp_ns(evt->get_ts());
+			event->set_policy_id(m_policy.id());
+			if(tinfo && !tinfo->m_container_id.empty())
+			{
+				event->set_container_id(tinfo->m_container_id);
+			}
+
+			fdetail->set_rule(res->rule);
+
+			m_formatters.tostring(evt, res->format, &output);
+			fdetail->set_output(output);
+
+			m_metrics.incr(evt_metrics::EVM_MATCHED);
+			return event;
+		}
+	}
+	catch (falco_exception& e)
+	{
+		g_log->error("Error processing event against falco engine: " + string(e.what()));
+	}
+
+	m_metrics.incr(evt_metrics::EVM_FALCO_MISS);
 	return NULL;
 }
 
