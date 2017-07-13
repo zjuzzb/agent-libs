@@ -345,6 +345,10 @@ class AgentCheck(object):
         self.svc_metadata = []
         self.historate_dict = {}
 
+    # Dummy stub, not supporting proxies yet 
+    def get_instance_proxy(self, instance, uri):
+        return None
+
     def instance_count(self):
         """ Return the number of instances that are configured for this check. """
         return len(self.instances)
