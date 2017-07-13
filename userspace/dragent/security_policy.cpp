@@ -161,23 +161,13 @@ bool security_policy::match_scope(sinsp_evt *evt)
 	sinsp_analyzer *analyzer = m_mgr->analyzer();
 	std::string machine_id = analyzer->get_configuration_read_only()->get_machine_id();
 
-	// If container_scope is true, then the scope predicate
-	// includes at least one term related to containers. In that
-	// case, we should try to match using the container id.
-	if(m_policy.container_scope())
-	{
-		return analyzer->infra_state()->match_container_scope(container_id, m_policy);
-	}
-	else if(m_policy.container_scope())
-	{
-		return analyzer->infra_state()->match_container_scope(machine_id, m_policy);
-	}
-	else
-	{
+	if(!m_policy.container_scope() && !m_policy.host_scope()) {
 		// This should never occur. Err on the side of allowing the policy to run.
 		g_log->error("Impossible scope with host/container_scope == false. Allowing policy anyway.");
 		return true;
 	}
+
+	return analyzer->infra_state()->match_scope(container_id, machine_id, m_policy);
 }
 
 falco_security_policy::falco_security_policy(security_mgr *mgr,

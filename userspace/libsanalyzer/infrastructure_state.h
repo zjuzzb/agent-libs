@@ -24,7 +24,7 @@ public:
 
 	void refresh();
 
-	bool match_container_scope(std::string &container_id, const draiosproto::policy &policy);
+	bool match_scope(std::string &container_id, std::string &host_id, const draiosproto::policy &policy);
 
 	bool match_host_scope(std::string &host_id, const draiosproto::policy &policy);
 

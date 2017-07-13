@@ -27,7 +27,7 @@ void insert_cached_result(infrastructure_state::policy_cache_t &cache, std::stri
 
 	cache[id].emplace(policy_id, res);
 
-	glogf(sinsp_logger::SEV_DEBUG, "Cache result (%s) for id %s, policy id %llu", res?"true":"false", id.c_str(), policy_id);
+	//glogf(sinsp_logger::SEV_DEBUG, "Cache result (%s) for id %s, policy id %llu", res?"true":"false", id.c_str(), policy_id);
 }
 
 bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
@@ -283,47 +283,56 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	return true;
 }
 
-bool infrastructure_state::match_container_scope(std::string &container_id, const draiosproto::policy &policy)
+bool infrastructure_state::match_scope(std::string &container_id, std::string &host_id, const draiosproto::policy &policy)
 {
+	glogf(sinsp_logger::SEV_DEBUG, "Match policy scope with c_id: \"%s\", h_id: \"%s\", p_id: %llu, container_scope: %s, host_scope: %s",
+		container_id.c_str(), host_id.c_str(), policy.id(), policy.container_scope()?"true":"false", policy.host_scope()?"true":"false");
+
 	bool result;
 
-	if(!get_cached_result(m_container_p_cache, container_id, policy.id(), &result)) {
+	uid_t uid;
 
-		auto pos = m_state.find(make_pair("container", container_id));
+	if((container_id.empty() && !policy.host_scope()) ||
+		(!container_id.empty() && !policy.container_scope())) {
+		// the policy isn't meant to be applied to this event
+		return false;
+	}
+
+	if (!container_id.empty() && policy.container_scope()) {
+		uid = make_pair("container", container_id);
+	} else {
+		uid = make_pair("host", host_id);
+	}
+
+	policy_cache_t &cache = uid.first == "host" ? m_host_p_cache : m_container_p_cache;
+
+	if(policy.scope_predicates().empty()) {
+		// no predicates, we can safely return true immediately
+		result = true;
+	} else {
+
+		if(get_cached_result(cache, uid.second, policy.id(), &result)) {
+			return result;
+		}
+
+		auto pos = m_state.find(uid);
 		if (pos == m_state.end())
 			return false;
 
 		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
-		std::unordered_set<uid_t, std::hash<uid_t>> visited;
 
-		result = walk_and_match(pos->second.get(), preds, visited) && preds.empty();
-
-		insert_cached_result(m_container_p_cache, container_id, policy.id(), result);
+		if (uid.first == "host") {
+			result = preds.empty() && evaluate_on(pos->second.get(), preds);
+		} else {
+			std::unordered_set<uid_t, std::hash<uid_t>> visited;
+			result = preds.empty() && walk_and_match(pos->second.get(), preds, visited);
+		}
 	}
+
+	insert_cached_result(cache, uid.second, policy.id(), result);
 
 	return result;
 }
-
-bool infrastructure_state::match_host_scope(std::string &host_id, const draiosproto::policy &policy)
-{
-	bool result;
-
-	if(!get_cached_result(m_host_p_cache, host_id, policy.id(), &result)) {
-
-		auto pos = m_state.find(make_pair("host", host_id));
-		if (pos == m_state.end())
-			return false;
-
-		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
-
-		result = evaluate_on(pos->second.get(), preds) && preds.empty();
-
-		insert_cached_result(m_host_p_cache, host_id, policy.id(), result);
-	}
-
-	return result;
-}
-
 
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
 				     std::vector<std::unique_ptr<draiosproto::container_group>>& state,
