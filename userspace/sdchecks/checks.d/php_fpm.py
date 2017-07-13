@@ -32,58 +32,76 @@ class PHPFPMCheck(AgentCheck):
     }
 
     def check(self, instance):
-        status_url = instance.get('status_url')
-        ping_url = instance.get('ping_url')
+        status_url = instance.get('status_url', '/status')
+        ping_url = instance.get('ping_url', '/ping')
         ping_reply = instance.get('ping_reply')
 
-        auth = None
-        user = instance.get('user')
-        password = instance.get('password')
-
         tags = instance.get('tags', [])
-        http_host = instance.get('http_host')
-
-        if user and password:
-            auth = (user, password)
 
         if status_url is None and ping_url is None:
             raise Exception("No status_url or ping_url specified for this instance")
 
         pool = None
         status_exception = None
+        host = instance.get("host", "localhost")
+        port = instance.get("port", 9000)
         if status_url is not None:
             try:
-                pool = self._process_status(status_url, auth, tags, http_host)
+                pool = self._process_status(status_url, host, port, tags)
             except Exception as e:
                 status_exception = e
                 pass
 
         if ping_url is not None:
-            self._process_ping(ping_url, ping_reply, auth, tags, pool, http_host)
+            self._process_ping(ping_url, ping_reply, host, port, tags, pool)
 
         # pylint doesn't understand that we are raising this only if it's here
         if status_exception is not None:
             raise status_exception  # pylint: disable=E0702
 
-    def _process_status(self, status_url, auth, tags, http_host):
+    def _request_url(self, url, query, host, port):
+        # Example taken from: http://stackoverflow.com/questions/6801673/python-fastcgi-client
+        fcgi = fcgi_client.FCGIApp(host = host, port = port)
+        env = {
+           'SCRIPT_FILENAME': url,
+           'QUERY_STRING': query,
+           'REQUEST_METHOD': 'GET',
+           'SCRIPT_NAME': url,
+           'REQUEST_URI': url,
+           'GATEWAY_INTERFACE': 'CGI/1.1',
+           'SERVER_SOFTWARE': 'Sysdig Cloud',
+           'REDIRECT_STATUS': '200',
+           'CONTENT_TYPE': '',
+           'CONTENT_LENGTH': '0',
+           'DOCUMENT_URI': url,
+           'DOCUMENT_ROOT': '/var/www/html',
+           #'SERVER_PROTOCOL' : ???
+           'REMOTE_ADDR': '127.0.0.1',
+           'REMOTE_PORT': '123',
+           'SERVER_ADDR': host,
+           'SERVER_PORT': str(port),
+           'SERVER_NAME': host
+           }
+        ret = fcgi(env)
+        self.log.info("php-fpm returned: %s" % repr(ret))
+        return ret
+
+    def _process_status(self, status_url, host, port, tags):
         data = {}
         try:
             # TODO: adding the 'full' parameter gets you per-process detailed
             # informations, which could be nice to parse and output as metrics
-            resp = requests.get(status_url, auth=auth,
-                                headers=headers(self.agentConfig, http_host=http_host),
-                                params={'json': True})
-            resp.raise_for_status()
-
-            data = resp.json()
+            code, headers, out, err = self._request_url(status_url, "json=true", host, port)
+            if code.startswith('200'):
+                data = json.loads(out)
+            else:
+                raise Exception("Wrong response code from %s url" % status_url)
         except Exception as e:
             self.log.error("Failed to get metrics from {0}.\nError {1}".format(status_url, e))
             raise
 
         pool_name = data.get('pool', 'default')
         metric_tags = tags + ["pool:{0}".format(pool_name)]
-        if http_host is not None:
-            metric_tags += ["http_host:{0}".format(http_host)]
 
         for key, mname in self.GAUGES.iteritems():
             if key not in data:
@@ -100,24 +118,20 @@ class PHPFPMCheck(AgentCheck):
         # return pool, to tag the service check with it if we have one
         return pool_name
 
-    def _process_ping(self, ping_url, ping_reply, auth, tags, pool_name, http_host):
+    def _process_ping(self, ping_url, ping_reply, host, port, tags, pool_name):
         if ping_reply is None:
             ping_reply = 'pong'
 
         sc_tags = ["ping_url:{0}".format(ping_url)] + tags
-        if http_host is not None:
-            sc_tags += ["http_host:{0}".format(http_host)]
 
         try:
             # TODO: adding the 'full' parameter gets you per-process detailed
             # informations, which could be nice to parse and output as metrics
-            resp = requests.get(ping_url, auth=auth,
-                                headers=headers(self.agentConfig, http_host=http_host))
-            resp.raise_for_status()
-
-            if ping_reply not in resp.text:
-                raise Exception("Received unexpected reply to ping {0}".format(resp.text))
-
+            code, headers, out, err = self._request_url(ping_url, "", host, port)
+            if not code.startswith('200'):
+                raise Exception("Wrong response code from %s url" % ping_url)
+            if ping_reply not in out:
+                raise Exception("Received unexpected reply to ping {0}".format(out))
         except Exception as e:
             self.log.error("Failed to ping FPM pool {0} on URL {1}."
                            "\nError {2}".format(pool_name, ping_url, e))
