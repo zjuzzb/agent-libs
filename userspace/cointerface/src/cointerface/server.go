@@ -158,7 +158,7 @@ func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUi
 
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
-
+/*
 	uids := []*draiosproto.CongroupUid {
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
 		&draiosproto.CongroupUid{Kind:proto.String("k8s_deployment"),Id:proto.String(newUUID())},
@@ -268,7 +268,8 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
-	//log.Infof("[PerformOrchestratorEventsStream] All initial events sent.")
+	log.Infof("[PerformOrchestratorEventsStream] All initial events sent.")
+*/
 
 	apiserver := "http://127.0.0.1:8080"
 	kubeClient, err := kubecollect.CreateKubeClient(apiserver)
@@ -292,12 +293,14 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// start watching some stuff
 	kubecollect.WatchPods(ctx, kubeClient, evtc)
+	nsInf := kubecollect.WatchNamespaces(ctx, kubeClient, evtc)
 
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
-	tick := time.Tick(5 * time.Second)
-	podAdded := true
+	//tick := time.Tick(5 * time.Second)
+	//podAdded := true
 	for {
 		select {
+/*
 		case <-tick:
 			log.Infof("Got another tick");
 			if !podAdded {
@@ -323,7 +326,17 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 					podAdded = false
 				}
 			}
+*/
 		case evt := <-evtc:
+			if evt.Object.GetUid().GetKind() == "k8s_pod" {
+				log.Infof("got a k8s_pod event")
+			} else {
+				log.Infof("got a non-k8s_pod event: %v", evt.Object.GetUid().GetKind())
+			}
+			log.Infof("nsInf.HasSynced(): %v", nsInf.HasSynced())
+			if nsInf.HasSynced() {
+				log.Infof("dumping ns keys: %v", nsInf.GetStore().ListKeys())
+			}
 			stream.Send(&evt)
 		case <-ctx.Done():
 			return nil

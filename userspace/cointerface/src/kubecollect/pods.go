@@ -37,12 +37,15 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 		ips = append(ips, pod.Status.PodIP)
 	}
 
+	// C++ side isn't handling this yet
+/*
 	var cids []*draiosproto.CongroupUid
 	for _, c := range pod.Status.ContainerStatuses {
 		cids = append(cids, &draiosproto.CongroupUid{
 			Kind:proto.String("container"),
 			Id:proto.String(c.ContainerID)})
 	}
+*/
 
 	return &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
@@ -50,7 +53,7 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 			Id:proto.String(string(pod.GetUID()))},
 		Tags: tags,
 		IpAddresses: ips,
-		Children: cids,
+		//Children: cids,
 		Parents: nil,
 	}
 }
