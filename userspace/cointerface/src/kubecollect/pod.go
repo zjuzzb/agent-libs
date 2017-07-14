@@ -37,17 +37,27 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 		ips = append(ips, pod.Status.PodIP)
 	}
 
+	var cids []*draiosproto.CongroupUid
+	for _, c := range pod.Status.ContainerStatuses {
+		cids = append(cids, &draiosproto.CongroupUid{
+			Kind:proto.String("container"),
+			Id:proto.String(c.ContainerID)})
+	}
+
 	return &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_pod"),
 			Id:proto.String(string(pod.GetUID()))},
 		Tags: tags,
 		IpAddresses: ips,
+		Children: cids,
 		Parents: nil,
 	}
 }
 
 func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) {
+	log.Debugf("In WatchPods()")
+
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, nil)
 	resyncPeriod := time.Duration(10) * time.Second;
@@ -56,7 +66,7 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 	inf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
+				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
 				evtc <- podEvent(obj.(*v1.Pod),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
@@ -64,14 +74,14 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 				oldPod := oldObj.(*v1.Pod)
 				newPod := newObj.(*v1.Pod)
 				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
-					log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
-					log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
+					//log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
+					//log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
 					evtc <- podEvent(newPod,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
+				//log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
 				evtc <- podEvent(obj.(*v1.Pod),
 					draiosproto.CongroupEventType_REMOVED.Enum())
 			},
