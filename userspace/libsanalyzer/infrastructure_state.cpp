@@ -97,13 +97,20 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 	m_interval(refresh_interval)
 {
 	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
-		draiosproto::congroup_update_event *evt = (draiosproto::congroup_update_event *)response_msg;
 
-		handle_event(evt);
+		if(successful) {
+			draiosproto::congroup_update_event *evt = (draiosproto::congroup_update_event *)response_msg;
+			handle_event(evt);
+		} else {
+			//
+			// Error from cointerface, destroy the whole state and subscribe again
+			//
+			glogf(sinsp_logger::SEV_WARNING, "Error while receiving orchestrator events. Reset and retry.");
+			reset();
+		}
 	};
 
-	glogf(sinsp_logger::SEV_DEBUG, "Sending Request for orchestrator events.");
-	m_coclient.get_orchestrator_events(m_callback);
+	reset();
 }
 
 infrastructure_state::~infrastructure_state(){}
@@ -114,6 +121,16 @@ void infrastructure_state::refresh()
 	{
 		m_coclient.next();
 	});
+}
+
+void infrastructure_state::reset()
+{
+	m_container_p_cache.clear();
+	m_host_p_cache.clear();
+	m_state.clear();
+
+	glogf(sinsp_logger::SEV_DEBUG, "Subscribe to orchestrator events.");
+	m_coclient.get_orchestrator_events(m_callback);
 }
 
 void infrastructure_state::handle_event(const draiosproto::congroup_update_event *evt)

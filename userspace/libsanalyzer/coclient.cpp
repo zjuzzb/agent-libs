@@ -137,9 +137,14 @@ void coclient::next(uint32_t wait_ms)
 	}
 
 	if(!updates_ok) {
-		g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
-		delete call;
+		if(call->is_streaming) {
+			g_logger.log("cointerface streaming RPC returned error", sinsp_logger::SEV_WARNING);
+			call->response_cb(false, nullptr);
+		} else {
+			g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
+			delete call;
+		}
 		return;
 	}
 

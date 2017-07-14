@@ -53,6 +53,8 @@ private:
 	void connect(infrastructure_state::uid_t& key);
 	void remove(const draiosproto::congroup_update_event *evt);
 
+	void reset();
+
 	void debug_print();
 
 	state_t m_state;
