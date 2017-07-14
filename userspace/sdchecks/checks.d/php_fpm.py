@@ -83,7 +83,7 @@ class PHPFPMCheck(AgentCheck):
            'SERVER_NAME': host
            }
         ret = fcgi(env)
-        self.log.info("php-fpm returned: %s" % repr(ret))
+        self.log.debug("php-fpm returned: %s" % repr(ret))
         return ret
 
     def _process_status(self, status_url, host, port, tags):
