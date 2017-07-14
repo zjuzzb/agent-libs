@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"sdc_internal"
 	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -80,10 +79,4 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 	)
 
 	go inf.Run(ctx.Done())
-}
-
-func HelloPods(ctx context.Context, cmd *sdc_internal.KubeHelloCommand) (*sdc_internal.KubeHelloResult, error) {
-	res := &sdc_internal.KubeHelloResult{}
-	res.Successful = proto.Bool(true)
-	return res, nil
 }

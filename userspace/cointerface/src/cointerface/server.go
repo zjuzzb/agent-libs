@@ -333,14 +333,6 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	return nil
 }
 
-func (c *coInterfaceServer) PerformKubeHello(ctx context.Context, cmd *sdc_internal.KubeHelloCommand) (*sdc_internal.KubeHelloResult, error) {
-	res, err := kubecollect.HelloPods(ctx, cmd)
-	if err != nil {
-			log.Infof("HelloPods failed with: %v", err)
-	}
-	return res, err
-}
-
 func startServer(sock string) int {
 
 	// Try to remove any existing socket

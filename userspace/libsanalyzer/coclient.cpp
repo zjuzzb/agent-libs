@@ -55,7 +55,6 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		sdc_internal::docker_command *docker_command;
 		sdc_internal::swarm_state_command *sscmd;
 		sdc_internal::orchestrator_events_stream_command *orchestrator_events_stream_command;
-		sdc_internal::kube_hello_command *kube_cmd;
 
 	case sdc_internal::PING:
 		// Start the rpc call and have the pong reader read the response when
@@ -102,13 +101,6 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 
 		call->response_msg = make_unique<draiosproto::congroup_update_event>();
 
-		break;
-	case sdc_internal::KUBE_HELLO_COMMAND:
-		kube_cmd = static_cast<sdc_internal::kube_hello_command *>(request_msg);
-		call->kube_hello_reader = m_stub->AsyncPerformKubeHello(&call->ctx, *kube_cmd, &m_cq);
-
-		call->response_msg = make_unique<sdc_internal::kube_hello_result>();
-		call->kube_hello_reader->Finish(static_cast<sdc_internal::kube_hello_result *>(call->response_msg.get()), &call->status, (void*)call);
 		break;
 	default:
 		g_logger.log("Unknown message type " + to_string(msg_type), sinsp_logger::SEV_ERROR);
@@ -256,11 +248,4 @@ void coclient::get_orchestrator_events(response_cb_t response_cb)
 {
 	sdc_internal::orchestrator_events_stream_command cmd;
 	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND, response_cb);
-}
-
-void coclient::do_k8s_hello(const std::string &k8s_msg, response_cb_t response_cb)
-{
-	sdc_internal::kube_hello_command cmd;
-	cmd.set_print_me(k8s_msg);
-	prepare(&cmd, sdc_internal::KUBE_HELLO_COMMAND, response_cb);
 }

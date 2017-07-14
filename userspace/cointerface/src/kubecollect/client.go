@@ -9,8 +9,6 @@ import (
 )
 
 func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err error) {
-	log.Info("HelloPods: calling createKubeClient")
-
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: apiserver}}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
@@ -26,6 +24,7 @@ func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err er
 		return nil, err
 	}
 
+	// XXX - cleanup
 	// Informers don't seem to do a good job logging error messages when it
 	// can't reach the server, making debugging hard. This makes it easier to
 	// figure out if apiserver is configured incorrectly.
