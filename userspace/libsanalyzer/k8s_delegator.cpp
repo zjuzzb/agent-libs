@@ -238,7 +238,6 @@ bool k8s_delegator::remove_node(time_t timestamp, const Json::Value& addrs)
 bool k8s_delegator::is_delegated(bool trace)
 {
 	refresh_ipv4_list(); // get current list of local IP addresses
-	int i = 1;
 
 	if(trace && g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{
@@ -251,25 +250,45 @@ bool k8s_delegator::is_delegated(bool trace)
 		g_logger.log(os.str(), sinsp_logger::SEV_TRACE);
 	}
 
-	for(node_map_t::const_iterator it = m_nodes.begin(),
-		end = m_nodes.end(); it != end; ++it, ++i)
+	auto it = m_nodes.cbegin();
+	bool delegated = false;
+	for (int ii = 1; ii <= m_delegate_count; ++ii)
 	{
-		if(i > m_delegate_count) { break; }
+		if (it == m_nodes.end())
+		{
+			break;
+		}
+
+		std::ostringstream os;
+		os << "Delegated node (" << ii << " of "
+		   << m_delegate_count << "):";
 		for(const auto& addr : it->second)
 		{
+			os << " " << addr;
 			if(m_local_ip_addrs.find(addr) != m_local_ip_addrs.end())
 			{
-				return true;
+				g_logger.log("This node (" + std::to_string(ii) +
+					     ") is delegated", sinsp_logger::SEV_DEBUG);
+				delegated = true;
 			}
 		}
+		g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
+
+		++it;
 	}
-	return false;
+
+	if (!delegated) {
+		g_logger.log("This node is NOT delegated",
+			     sinsp_logger::SEV_DEBUG);
+	}
+	return delegated;
 }
 
 bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 {
 	bool added = false;
 	bool deleted = false;
+	bool taint_modified = false;
 	bool ret = true;
 
 	const Json::Value& nodes = json["nodes"];
@@ -323,6 +342,7 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 				{
 					if (maybe_modify_node(tm, node["addresses"], node["taints"]))
 					{
+						taint_modified = true;
 						g_logger.log("K8s delegator: Modified taint value for node: " + nname,
 							     sinsp_logger::SEV_DEBUG);
 					}
@@ -341,7 +361,7 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 		ret = false;
 	}
 
-	if(added || deleted)
+	if(added || deleted || taint_modified)
 	{
 		std::string d;
 		if(!is_delegated(true)) { d = "NOT "; }
