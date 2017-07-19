@@ -7,6 +7,8 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt
                    COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/proto
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/api/meta
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/apis/meta/v1
+                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/api/authentication/v1
+                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/tools/clientcmd/api
                    COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt)
 
 #add_custom_target(go_get_kubecollect DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/k8s-collectors-go-get-complete.txt)
