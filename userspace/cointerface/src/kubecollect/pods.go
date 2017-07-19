@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 )
 
 // make this a library function?
@@ -62,7 +63,7 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 	log.Debugf("In WatchPods()")
 
 	client := kubeClient.CoreV1().RESTClient()
-	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, nil)
+	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fields.Everything())
 	resyncPeriod := time.Duration(10) * time.Second;
 	inf := cache.NewSharedInformer(lw, &v1.Pod{}, resyncPeriod)
 

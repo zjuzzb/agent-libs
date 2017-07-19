@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 )
 
 // make this a library function?
@@ -29,31 +30,11 @@ func newNSCongroup(ns *v1.Namespace) (*draiosproto.ContainerGroup) {
 		tags[k] = v
 	}
 
-/*
-	var ips []string
-	if ns.Status.HostIP != "" {
-		ips = append(ips, ns.Status.HostIP)
-	}
-	if ns.Status.PodIP != "" {
-		ips = append(ips, ns.Status.PodIP)
-	}
-
-	var cids []*draiosproto.CongroupUid
-	for _, c := range ns.Status.ContainerStatuses {
-		cids = append(cids, &draiosproto.CongroupUid{
-			Kind:proto.String("container"),
-			Id:proto.String(c.ContainerID)})
-	}
-*/
-
 	return &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_namespace"),
 			Id:proto.String(string(ns.GetUID()))},
 		Tags: tags,
-		IpAddresses: nil,
-		Children: nil,
-		Parents: nil,
 	}
 }
 
@@ -61,7 +42,7 @@ func WatchNamespaces(ctx context.Context, kubeClient kubeclient.Interface, evtc 
 	log.Debugf("In WatchNamespaces()")
 
 	client := kubeClient.CoreV1().RESTClient()
-	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, nil)
+	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
 	resyncPeriod := time.Duration(10) * time.Second;
 	inf := cache.NewSharedInformer(lw, &v1.Namespace{}, resyncPeriod)
 

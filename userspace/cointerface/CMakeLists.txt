@@ -5,10 +5,18 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt
                    COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/src
                    COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/protoc-gen-gofast
                    COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/proto
-                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/api/meta
+		   # horrific hack, fix this
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/apis/meta/v1
+                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/util/runtime
+                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/util/wait
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/api/authentication/v1
+		   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/api/core/v1
+                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/tools/clientcmd
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/tools/clientcmd/api
+		   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/tools/cache
+		   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/kubernetes
+		   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/rest
+		   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/client-go/discovery
                    COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt)
 
 #add_custom_target(go_get_kubecollect DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/k8s-collectors-go-get-complete.txt)
