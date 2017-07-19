@@ -1,5 +1,6 @@
 # (C) Datadog, Inc. 2013-2016
 # (C)  Dan Crosta <dcrosta@late.am> 2013
+# (C) Sysdig, Inc. 2016-2017
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
@@ -61,8 +62,7 @@ class HDFSCheck(AgentCheck):
                 # We are running snakebite 1.x which is not compatible with the HA mode
                 # Let's display a warning and use regular mode
                 self.warning("HA Mode is not available with snakebite < 2.2.0"
-                    "Upgrade to the latest version of snakebiteby running: "
-                    "sudo /opt/datadog-agent/embedded/bin/pip install --upgrade snakebite")
+                    "Upgrade to the latest version of snakebite")
 
                 host, port = instance['namenodes'][0]['url'], instance['namenodes'][0].get('port', DEFAULT_PORT)
                 return snakebite.client.Client(host, port)
@@ -75,7 +75,7 @@ class HDFSCheck(AgentCheck):
                 return snakebite.client.HAClient(nodes)
 
     def check(self, instance):
-        self.warning('The "hdfs" check is deprecated and will be removed '
+        self.log.info('The "hdfs" check is deprecated and will be removed '
                      'in a future version of the agent. Please use the "hdfs_namenode" '
                      'and "hdfs_datanode" checks instead')
 

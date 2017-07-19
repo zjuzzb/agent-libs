@@ -1,5 +1,6 @@
 # (C) Datadog, Inc. 2013-2016
 # (C) Brett Langdon <brett@blangdon.com> 2013
+# (C) Sysdig, Inc. 2015-2017
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 

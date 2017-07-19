@@ -1,4 +1,5 @@
 # (C) Datadog, Inc. 2010-2016
+# (C) Sysdig, Inc. 2015-2017
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
@@ -674,6 +675,10 @@ SELECT s.schemaname,
         dbname = instance.get('dbname', None)
         relations = instance.get('relations', [])
         ssl = _is_affirmative(instance.get('ssl', False))
+        unix_sock = instance.get("unix_sock", None)
+        if unix_sock and unix_sock.startswith('/'):
+            host = unix_sock
+            port = ''
         function_metrics = _is_affirmative(instance.get('collect_function_metrics', False))
         # Default value for `count_metrics` is True for backward compatibility
         count_metrics = _is_affirmative(instance.get('collect_count_metrics', True))
