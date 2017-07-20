@@ -38,13 +38,29 @@ func newNSCongroup(ns *v1.Namespace) (*draiosproto.ContainerGroup) {
 	}
 }
 
+var inf cache.SharedInformer
+
+func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
+	// Check first if (inf.HasSynced() == true) ??
+	for _, obj := range inf.GetStore().List() {
+		nsObj := obj.(*v1.Namespace)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		if ns == nsObj.GetName() {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_namespace"),
+				Id:proto.String(string(nsObj.GetUID()))})
+			return
+		}
+	}
+}
+
 func WatchNamespaces(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchNamespaces()")
 
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
 	resyncPeriod := time.Duration(10) * time.Second;
-	inf := cache.NewSharedInformer(lw, &v1.Namespace{}, resyncPeriod)
+	inf = cache.NewSharedInformer(lw, &v1.Namespace{}, resyncPeriod)
 
 	inf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

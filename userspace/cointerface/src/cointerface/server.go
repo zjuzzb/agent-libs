@@ -158,118 +158,6 @@ func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUi
 
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
-/*
-	uids := []*draiosproto.CongroupUid {
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_namespace"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_deployment"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_service"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_replicaset"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String("testUUID")},
-		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("container"),Id:proto.String(newUUID())},
-		&draiosproto.CongroupUid{Kind:proto.String("k8s_pod"),Id:proto.String(newUUID())}, // pod5
-	}
-	parents := [][]*draiosproto.CongroupUid {
-		{},				// namespace
-		{uids[0]},			// deployment
-		{uids[0]},			// service
-		{uids[0], uids[1]},		// replicaset
-		{uids[0], uids[2], uids[3]},	// pod1
-		{uids[0], uids[2], uids[3]},	// pod2
-		{uids[0], uids[2], uids[3]},	// pod3
-		{uids[0]},			// pod4
-		{uids[4]},	   		// container1
-		{uids[5]},	   		// container2
-		{uids[6]},	   		// container3
-		{uids[7]},	   		// container3
-		{uids[0]},			// pod5
-	}
-	objects := []*draiosproto.ContainerGroup {}
-	// Add all the components
-	for i := 0; i < len(uids); i++ {
-		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Starting to create event #%d.", i+1))
-		objects = append(objects, newCongroup(uids[i], parents[i]))
-		evt := &draiosproto.CongroupUpdateEvent{
-			Type :   draiosproto.CongroupEventType_ADDED.Enum(),
-			Object : objects[i],
-		}
-		log.Infof("[PerformOrchestratorEventsStream] evt created.")
-		log.Infof("[PerformOrchestratorEventsStream] " + evt.String())
-		if err := stream.Send(evt); err != nil {
-			return err
-		}
-		log.Infof(fmt.Sprintf("[PerformOrchestratorEventsStream] Event #%d sent.", i+1))
-		//time.Sleep(time.Second)
-	}
-
-	// Remove 1 Pod
-	//time.Sleep(time.Second*2)
-	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
-		Type :   draiosproto.CongroupEventType_REMOVED.Enum(),
-		Object : objects[6],
-	}); err != nil {
-		return err
-	}
-
-	// Update the replicaset
-	//time.Sleep(time.Second*2)
-	objects[3] = &draiosproto.ContainerGroup{
-		Uid:  objects[3].Uid,
-		Tags: map[string]string{
-			"test_equal": "equaltothis",
-			"test_contains": "first second third",
-			"test_startswith": "prefixfoo",
-			"test_in": "bar",
-		},
-		Metrics: map[string]uint32{
-			"replicas_desired": 5,
-			"replicas_running": 5,
-		},
-		Parents: objects[3].Parents,
-	}
-	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
-		Type :   draiosproto.CongroupEventType_UPDATED.Enum(),
-		Object : objects[3],
-	}); err != nil {
-		return err
-	}
-
-	// Update the namespace
-	//time.Sleep(time.Second*2)
-	objects[0] = &draiosproto.ContainerGroup{
-		Uid:  objects[0].Uid,
-		Tags: map[string]string{
-			"test_equal_ns": "equaltothis",
-			"test_contains_ns": "first second third",
-			"test_startswith_ns": "prefixfoo",
-			"test_in_ns": "bar",
-		},
-		Metrics: objects[0].Metrics,
-		Parents: objects[0].Parents,
-	}
-	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
-		Type :   draiosproto.CongroupEventType_UPDATED.Enum(),
-		Object : objects[0],
-	}); err != nil {
-		return err
-	}
-
-	// Add the pod again
-	//time.Sleep(time.Second*2)
-	if err := stream.Send(&draiosproto.CongroupUpdateEvent {
-		Type :   draiosproto.CongroupEventType_ADDED.Enum(),
-		Object : objects[6],
-	}); err != nil {
-		return err
-	}
-
-	log.Infof("[PerformOrchestratorEventsStream] All initial events sent.")
-*/
 
 	apiserver := "http://127.0.0.1:8080"
 	kubeClient, err := kubecollect.CreateKubeClient(apiserver)
@@ -293,50 +181,23 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// start watching some stuff
 	kubecollect.WatchPods(ctx, kubeClient, evtc)
-	nsInf := kubecollect.WatchNamespaces(ctx, kubeClient, evtc)
+	kubecollect.WatchNamespaces(ctx, kubeClient, evtc)
 
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
-	//tick := time.Tick(5 * time.Second)
-	//podAdded := true
 	for {
 		select {
-/*
-		case <-tick:
-			log.Infof("Got another tick");
-			if !podAdded {
-				log.Infof("ADDING the pod via the subroutine");
-				if err := stream.Send(&draiosproto.CongroupUpdateEvent {
-					Type :   draiosproto.CongroupEventType_ADDED.Enum(),
-					Object : objects[12], // pod5
-				}); err != nil {
-					log.Errorf("Error when ADDING: %v", err)
-					return err
-				} else {
-					podAdded = true
-				}
-			} else {
-				log.Infof("REMOVING the pod via the subroutine");
-				if err := stream.Send(&draiosproto.CongroupUpdateEvent {
-					Type :   draiosproto.CongroupEventType_REMOVED.Enum(),
-					Object : objects[12], // pod5
-				}); err != nil {
-					log.Errorf("Error when REMOVING: %v", err)
-					return err
-				} else {
-					podAdded = false
-				}
-			}
-*/
 		case evt := <-evtc:
 			if evt.Object.GetUid().GetKind() == "k8s_pod" {
-				log.Infof("got a k8s_pod event")
+				log.Debugf("got a k8s_pod event")
 			} else {
-				log.Infof("got a non-k8s_pod event: %v", evt.Object.GetUid().GetKind())
+				log.Debugf("got a non-k8s_pod event: %v", evt.Object.GetUid().GetKind())
 			}
+/*
 			log.Infof("nsInf.HasSynced(): %v", nsInf.HasSynced())
 			if nsInf.HasSynced() {
 				log.Infof("dumping ns keys: %v", nsInf.GetStore().ListKeys())
 			}
+*/
 			stream.Send(&evt)
 		case <-ctx.Done():
 			return nil

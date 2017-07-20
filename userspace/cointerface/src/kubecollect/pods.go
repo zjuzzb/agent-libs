@@ -38,6 +38,10 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 		ips = append(ips, pod.Status.PodIP)
 	}
 
+	var parents []*draiosproto.CongroupUid
+	AddNSParents(&parents, pod.GetNamespace())
+	log.Debugf("WatchPods(): parent size: %v", len(parents))
+
 	// C++ side isn't handling this yet
 /*
 	var cids []*draiosproto.CongroupUid
@@ -55,7 +59,7 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 		Tags: tags,
 		IpAddresses: ips,
 		//Children: cids,
-		Parents: nil,
+		Parents: parents,
 	}
 }
 
