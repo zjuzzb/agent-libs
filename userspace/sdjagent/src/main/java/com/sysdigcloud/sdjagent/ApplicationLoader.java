@@ -11,47 +11,52 @@ import java.lang.reflect.InvocationTargetException;
 
 
 public class ApplicationLoader {
-    private static final int MIN_JAVA_VERSION = 7;
+    public static final double MIN_JAVA_VERSION = 1.7;
 
     public static void main(String[] args) {
-        if (getJDKVersion() < MIN_JAVA_VERSION) {
-            System.out.println("Java 7 or later must be used. Current version is " + System.getProperty("java.version"));
-            System.exit(1);
+        if (getJavaVersion() < MIN_JAVA_VERSION) {
+            String msg = "Java 7 or later must be used. Current version is " + System.getProperty("java.version");
+            System.err.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
+            System.exit(Application.MONITOR_DONT_RESTART_CODE);
         }
 
         try {
             Class<?> appClass = Class.forName("com.sysdigcloud.sdjagent.Application");
             Method appMain = appClass.getMethod("main", String[].class);
             Object o = appMain.invoke(null, (Object)args);
-        } catch (ClassNotFoundException exc) {
-            System.out.println("Cannot start sdjagent: " + exc.getMessage());
+        }
+        catch (ClassNotFoundException exc) {
+            String msg = "Cannot start sdjagent: " + exc.getMessage();
+            System.out.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
             System.exit(1);
         }
         catch (NoSuchMethodException exc) {
-            System.out.println("Cannot start sdjagent: " + exc.getMessage());
+            String msg = "Cannot start sdjagent: " + exc.getMessage();
+            System.err.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
             System.exit(1);
         }
         catch (IllegalAccessException exc) {
-            System.out.println("Cannot start sdjagent: " + exc.getMessage());
+            String msg = "Cannot start sdjagent: " + exc.getMessage();
+            System.err.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
             System.exit(1);
         }
         catch (InvocationTargetException exc) {
-            System.out.println("Cannot start sdjagent: " + exc.getMessage());
+            String msg = "Cannot start sdjagent: " + exc.getMessage();
+            System.out.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
             System.exit(1);
         }
         catch (java.lang.UnsupportedClassVersionError exc)
         {
-            System.out.println("Incompatible class loaded: " + exc.getMessage());
-            System.exit(1);
+            String msg = "Incompatible class loaded: " + exc.getMessage();
+            System.err.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
+            System.exit(Application.MONITOR_DONT_RESTART_CODE);
         }
     }
 
-    public static int getJDKVersion() {
-        final char VERSION_SEPARATOR = '.';
-        String javaVersion = System.getProperty("java.version");
-        int majorVersionDot = javaVersion.indexOf(VERSION_SEPARATOR);
-        int minorVersionDot = javaVersion.indexOf(VERSION_SEPARATOR, majorVersionDot + 1);
-        int version = Integer.parseInt(javaVersion.substring(majorVersionDot + 1, minorVersionDot));
-        return version;
+    public static double getJavaVersion() {
+        String version = System.getProperty("java.version");
+        int pos = version.indexOf('.');
+        pos = version.indexOf('.', pos+1);
+        return Double.parseDouble(version.substring (0, pos));
     }
 }
