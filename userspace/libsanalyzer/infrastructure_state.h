@@ -26,12 +26,16 @@ public:
 
 	bool match_scope(std::string &container_id, std::string &host_id, const draiosproto::policy &policy);
 
-	bool match_host_scope(std::string &host_id, const draiosproto::policy &policy);
-
 	void state_of(const std::vector<std::string> &container_ids,
 		std::vector<std::unique_ptr<draiosproto::container_group>>& state);
 
 	void refresh_host_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
+
+	void load_single_event(const draiosproto::congroup_update_event &evt);
+
+	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
+	bool has(uid_t uid);
+	unsigned int size();
 
 private:
 

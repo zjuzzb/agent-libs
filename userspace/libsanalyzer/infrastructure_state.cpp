@@ -133,6 +133,33 @@ void infrastructure_state::reset()
 	m_coclient.get_orchestrator_events(m_callback);
 }
 
+void infrastructure_state::load_single_event(const draiosproto::congroup_update_event &evt)
+{
+	handle_event(&evt);
+}
+
+unsigned int infrastructure_state::size()
+{
+	return m_state.size();
+}
+
+bool infrastructure_state::has(uid_t uid)
+{
+	return m_state.find(uid) != m_state.end();
+}
+
+std::unique_ptr<draiosproto::container_group> infrastructure_state::get(uid_t uid)
+{
+	if(!has(uid)) {
+		return nullptr;
+	}
+
+	auto res = make_unique<draiosproto::container_group>();
+	res->CopyFrom(*m_state[uid]);
+
+	return res;
+}
+
 void infrastructure_state::handle_event(const draiosproto::congroup_update_event *evt)
 {
 	std::string kind = evt->object().uid().kind();
@@ -142,8 +169,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 
 	auto key = make_pair(kind, id);
 
-	bool is_present = m_state.find(key) != m_state.end();
-	if(!is_present) {
+	if(!has(key)) {
 		switch(evt->type()) {
 		case draiosproto::ADDED:
 			m_state[key] = make_unique<draiosproto::container_group>();
@@ -306,7 +332,6 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 	// 	container_id.c_str(), host_id.c_str(), policy.id(), policy.container_scope()?"true":"false", policy.host_scope()?"true":"false");
 
 	bool result;
-
 	uid_t uid;
 
 	if((container_id.empty() && !policy.host_scope()) ||
@@ -339,10 +364,10 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
 
 		if (uid.first == "host") {
-			result = preds.empty() && evaluate_on(pos->second.get(), preds);
+			result = evaluate_on(pos->second.get(), preds);
 		} else {
 			std::unordered_set<uid_t, std::hash<uid_t>> visited;
-			result = preds.empty() && walk_and_match(pos->second.get(), preds, visited);
+			result = walk_and_match(pos->second.get(), preds, visited);
 		}
 	}
 
@@ -373,9 +398,9 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 
 	//
-	// Except for containers, add the current node
+	// Except for containers and hosts, add the current node
 	//
-	if(grp->uid().kind() != "container") {
+	if(grp->uid().kind() != "container" && grp->uid().kind() != "host") {
 		auto x = make_unique<draiosproto::container_group>();
 		x->CopyFrom(*grp);
 		state.emplace_back(std::move(x));
@@ -452,12 +477,11 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 	//
 	// Connect the refreshed data to the state
 	//
-	for(auto &hevt : host_events) {
+	for(auto hevt : host_events) {
 
-		auto host = hevt.object();
+		auto host = hevt.mutable_object();
 
-		glogf(sinsp_logger::SEV_DEBUG, "Add host %s to infrastructure state", host.uid().id().c_str());
-
+		glogf(sinsp_logger::SEV_DEBUG, "Add host %s to infrastructure state", host->uid().id().c_str());
 		uid_t child_uid;
 		std::vector<uid_t> nodes;
 
@@ -465,7 +489,7 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 			auto congroup = i->second.get();
 			if (host_children.find(congroup->uid().kind()) != host_children.end()) {
 				for (auto j = congroup->ip_addresses().begin(), j_end = congroup->ip_addresses().end(); j != j_end; ++j) {
-					for(auto k = host.ip_addresses().begin(), k_end = host.ip_addresses().end(); k != k_end; ++k) {
+					for(auto k = host->ip_addresses().begin(), k_end = host->ip_addresses().end(); k != k_end; ++k) {
 						if(*j == *k) {
 							nodes.emplace_back(congroup->uid().kind(), congroup->uid().id());
 						}
@@ -476,29 +500,35 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 
 		if (nodes.empty()) {
 			// this could also happen if the node has been removed but the backend didn't realized it yet
-			glogf(sinsp_logger::SEV_WARNING, "Cannot match host %s, no suitable orchestrator nodes found.", host.uid().id().c_str());
+			glogf(sinsp_logger::SEV_WARNING, "Cannot match host %s, no suitable orchestrator nodes found.", host->uid().id().c_str());
 			continue;
 		} else if(nodes.size() == 1) {
 			child_uid = *nodes.begin();
 		} else {
-			glogf(sinsp_logger::SEV_WARNING, "Multiple matches while inserting metadata of host %s inside the infrastructure state", host.uid().id().c_str());
+			glogf(sinsp_logger::SEV_WARNING, "Multiple matches while inserting metadata of host %s inside the infrastructure state", host->uid().id().c_str());
 
 			//
 			// Tiebreak based on hostName
 			//
 			bool found = false;
-			if(host.tags().find("host.hostName") != host.tags().end()) {
+			if(host->tags().find("host.hostName") != host->tags().end()) {
 				for(const auto c_uid : nodes) {
-					if(m_state[c_uid]->tags().find("host.hostName") != m_state[c_uid]->tags().end() &&
-						m_state[c_uid]->tags().at("host.hostName") == host.tags().at("host.hostName")) {
-						found = true;
-						child_uid = c_uid;
+					if(m_state[c_uid]->tags().find(c_uid.first + ".name") != m_state[c_uid]->tags().end()) {
+						std::string h_hn = m_state[c_uid]->tags().at(c_uid.first + ".name");
+						std::string n_hn = host->tags().at("host.hostName");
+						std::transform(h_hn.begin(), h_hn.end(), h_hn.begin(), ::tolower);
+						std::transform(n_hn.begin(), n_hn.end(), n_hn.begin(), ::tolower);
+						if (h_hn == n_hn) {
+							found = true;
+							child_uid = c_uid;
+							break;
+						}
 					}
 				}
 			}
 
 			if (!found) {
-				glogf(sinsp_logger::SEV_WARNING, "Matching host %s when multiple agents matched based on IP but none matched on hostname", host.uid().id().c_str());
+				glogf(sinsp_logger::SEV_WARNING, "Matching host %s when multiple agents matched based on IP but none matched on hostname", host->uid().id().c_str());
 				child_uid = *nodes.begin();
 			}
 		}
@@ -506,7 +536,7 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 		//
 		// Add the children link, handle_event will take care of connecting the host to the state
 		//
-		draiosproto::congroup_uid *c = host.mutable_children()->Add();
+		draiosproto::congroup_uid *c = host->mutable_children()->Add();
 		c->set_kind(child_uid.first);
 		c->set_id(child_uid.second);
 

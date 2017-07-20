@@ -265,7 +265,10 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
+	time.Sleep(time.Second * 120);
+
 	log.Infof("[PerformOrchestratorEventsStream] All events sent. Exiting.")
+
 	return nil
 }
 
