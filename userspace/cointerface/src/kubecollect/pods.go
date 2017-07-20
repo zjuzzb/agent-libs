@@ -13,15 +13,15 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 )
 
-// make this a library function?
-func podEvent(pod *v1.Pod, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
-	return draiosproto.CongroupUpdateEvent {
-		Type: eventType,
-		Object: newPodCongroup(pod),
+// pods get their own special version because they send events for containers too
+func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType)  {
+	updates := newPodEvents(pod, eventType)
+	for _, evt := range updates {
+		evtc <- *evt
 	}
 }
 
-func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
+func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*draiosproto.CongroupUpdateEvent) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -30,6 +30,7 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 		tags[k] = v
 	}
 
+	// Need a way to distinguish these too
 	var ips []string
 	if pod.Status.HostIP != "" {
 		ips = append(ips, pod.Status.HostIP)
@@ -42,25 +43,40 @@ func newPodCongroup(pod *v1.Pod) (*draiosproto.ContainerGroup) {
 	AddNSParents(&parents, pod.GetNamespace())
 	log.Debugf("WatchPods(): parent size: %v", len(parents))
 
-	// C++ side isn't handling this yet
-/*
-	var cids []*draiosproto.CongroupUid
-	for _, c := range pod.Status.ContainerStatuses {
-		cids = append(cids, &draiosproto.CongroupUid{
-			Kind:proto.String("container"),
-			Id:proto.String(c.ContainerID)})
-	}
-*/
+	var cg []*draiosproto.CongroupUpdateEvent
+	cg = append(cg, &draiosproto.CongroupUpdateEvent {
+		Type: eventType.Enum(),
+		Object: &draiosproto.ContainerGroup{
+			Uid: &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))},
+			Tags: tags,
+			IpAddresses: ips,
+			Parents: parents,
+		},
+	})
 
-	return &draiosproto.ContainerGroup{
-		Uid: &draiosproto.CongroupUid{
+	// We assume the container<->pod relationship
+	// is static for the lifetime of the pod
+	if eventType == draiosproto.CongroupEventType_ADDED || eventType == draiosproto.CongroupEventType_REMOVED {
+		par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
 			Kind:proto.String("k8s_pod"),
-			Id:proto.String(string(pod.GetUID()))},
-		Tags: tags,
-		IpAddresses: ips,
-		//Children: cids,
-		Parents: parents,
+			Id:proto.String(string(pod.GetUID()))}}
+		for _, c := range pod.Status.ContainerStatuses {
+			cg = append(cg, &draiosproto.CongroupUpdateEvent {
+				Type: eventType.Enum(),
+				Object: &draiosproto.ContainerGroup {
+					Uid: &draiosproto.CongroupUid {
+						Kind:proto.String("container"),
+						Id:proto.String(c.ContainerID),
+					},
+					Parents: par,
+				},
+			})
+		}
 	}
+
+	return cg
 }
 
 func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) {
@@ -75,8 +91,8 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
-				evtc <- podEvent(obj.(*v1.Pod),
-					draiosproto.CongroupEventType_ADDED.Enum())
+				sendPodEvents(evtc, obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
+				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPod := oldObj.(*v1.Pod)
@@ -84,14 +100,14 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
 					//log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
 					//log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
-					evtc <- podEvent(newPod,
-						draiosproto.CongroupEventType_UPDATED.Enum())
+					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED)
+					//evtc <- podEvent(newPod, draiosproto.CongroupEventType_UPDATED)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
-				evtc <- podEvent(obj.(*v1.Pod),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				sendPodEvents(evtc, obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
+				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
 			},
 		},
 	)
