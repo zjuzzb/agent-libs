@@ -1,3 +1,7 @@
+# (C) Sysdig, Inc. 2015-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 # project
 from checks import AgentCheck
 from utils.voltdbclient import FastSerializer

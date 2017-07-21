@@ -1,3 +1,8 @@
+# (C) Datadog, Inc. 2010-2016
+# (C) Sysdig, Inc. 2015-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 """PostgreSQL check
 
 Collects database-wide metrics and optionally per-relation metrics, custom metrics.
@@ -6,14 +11,27 @@ Collects database-wide metrics and optionally per-relation metrics, custom metri
 import socket
 
 # 3rd party
-import pg8000 as pg
-from pg8000 import InterfaceError, ProgrammingError
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
+import pg8000
 
 # project
 from checks import AgentCheck, CheckException
 from config import _is_affirmative
 
 MAX_CUSTOM_RESULTS = 100
+TABLE_COUNT_LIMIT = 200
+
+def psycopg2_connect(*args, **kwargs):
+    if 'ssl' in kwargs:
+        del kwargs['ssl']
+    if 'unix_sock' in kwargs:
+        kwargs['host'] = kwargs['unix_sock']
+        del kwargs['unix_sock']
+    return psycopg2.connect(*args, **kwargs)
 
 
 class ShouldRestartException(Exception):
@@ -58,6 +76,9 @@ SELECT datname,
         'tup_inserted'      : ('postgresql.rows_inserted', RATE),
         'tup_updated'       : ('postgresql.rows_updated', RATE),
         'tup_deleted'       : ('postgresql.rows_deleted', RATE),
+    }
+
+    DATABASE_SIZE_METRICS = {
         'pg_database_size(datname) as pg_database_size' : ('postgresql.database_size', GAUGE),
     }
 
@@ -113,7 +134,6 @@ SELECT mode,
         'relation': False,
     }
 
-
     REL_METRICS = {
         'descriptors': [
             ('relname', 'table'),
@@ -134,7 +154,7 @@ SELECT mode,
         'query': """
 SELECT relname,schemaname,%s
   FROM pg_stat_user_tables
- WHERE relname = ANY(%s)""",
+ WHERE relname = ANY(array[%s])""",
         'relation': True,
     }
 
@@ -155,7 +175,7 @@ SELECT relname,
        indexrelname,
        %s
   FROM pg_stat_user_indexes
- WHERE relname = ANY(%s)""",
+ WHERE relname = ANY(array[%s])""",
         'relation': True,
     }
 
@@ -178,7 +198,7 @@ LEFT JOIN pg_namespace N ON (N.oid = C.relnamespace)
 WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND
   nspname !~ '^pg_toast' AND
   relkind IN ('r') AND
-  relname = ANY(%s)"""
+  relname = ANY(array[%s])"""
     }
 
     COUNT_METRICS = {
@@ -190,10 +210,14 @@ WHERE nspname NOT IN ('pg_catalog', 'information_schema') AND
         },
         'relation': False,
         'query': """
-SELECT schemaname, count(*)
-FROM %s
-GROUP BY schemaname
-        """
+SELECT schemaname, count(*) FROM
+(
+  SELECT schemaname
+  FROM %s
+  ORDER BY schemaname, relname
+  LIMIT {table_count_limit}
+) AS subquery GROUP BY schemaname
+        """.format(table_count_limit=TABLE_COUNT_LIMIT)
     }
 
     REPLICATION_METRICS_9_1 = {
@@ -247,8 +271,39 @@ SELECT relname,
        schemaname,
        %s
   FROM pg_statio_user_tables
- WHERE relname = ANY(%s)""",
+ WHERE relname = ANY(array[%s])""",
         'relation': True,
+    }
+
+    FUNCTION_METRICS = {
+        'descriptors': [
+            ('schemaname', 'schema'),
+            ('funcname', 'function'),
+        ],
+        'metrics': {
+            'calls'     : ('postgresql.function.calls', RATE),
+            'total_time': ('postgresql.function.total_time', RATE),
+            'self_time' : ('postgresql.function.self_time', RATE),
+        },
+        'query': """
+WITH overloaded_funcs AS (
+ SELECT funcname
+   FROM pg_stat_user_functions s
+  GROUP BY s.funcname
+ HAVING COUNT(*) > 1
+)
+SELECT s.schemaname,
+       CASE WHEN o.funcname is null THEN p.proname
+            else p.proname || '_' || array_to_string(p.proargnames, '_')
+        END funcname,
+        %s
+  FROM pg_proc p
+  JOIN pg_stat_user_functions s
+    ON p.oid = s.funcid
+  LEFT join overloaded_funcs o
+    ON o.funcname = s.funcname;
+""",
+        'relation': False
     }
 
     def __init__(self, name, init_config, agentConfig, instances=None):
@@ -261,6 +316,16 @@ SELECT relname,
         self.db_bgw_metrics = []
         self.replication_metrics = {}
         self.custom_metrics = {}
+
+    def _get_pg_attrs(self, instance):
+        if _is_affirmative(instance.get('use_psycopg2', False)):
+            if psycopg2 is None:
+                self.log.error("Unable to import psycopg2, falling back to pg8000")
+            else:
+                return psycopg2_connect, psycopg2.InterfaceError, psycopg2.ProgrammingError
+
+        # Let's use pg8000
+        return pg8000.connect, pg8000.InterfaceError, pg8000.ProgrammingError
 
     def _get_version(self, key, db):
         if key not in self.versions:
@@ -289,7 +354,7 @@ SELECT relname,
     def _is_9_2_or_above(self, key, db):
         return self._is_above(key, db, [9,2,0])
 
-    def _get_instance_metrics(self, key, db):
+    def _get_instance_metrics(self, key, db, database_size_metrics):
         """Use either COMMON_METRICS or COMMON_METRICS + NEWER_92_METRICS
         depending on the postgres version.
         Uses a dictionnary to save the result for each instance
@@ -313,6 +378,10 @@ SELECT relname,
                 self.instance_metrics[key] = dict(self.COMMON_METRICS, **self.NEWER_92_METRICS)
             else:
                 self.instance_metrics[key] = dict(self.COMMON_METRICS)
+
+            if database_size_metrics:
+                self.instance_metrics[key] = dict(self.instance_metrics[key], **self.DATABASE_SIZE_METRICS)
+
             metrics = self.instance_metrics.get(key)
         return metrics
 
@@ -376,7 +445,7 @@ SELECT relname,
                 self.log.warn('Failed to parse config element=%s, check syntax' % str(element))
         return config
 
-    def _collect_stats(self, key, db, instance_tags, relations, custom_metrics):
+    def _collect_stats(self, key, db, instance_tags, relations, custom_metrics, function_metrics, count_metrics, database_size_metrics, interface_error, programming_error):
         """Query pg_stat_* for various metrics
         If relations is not an empty list, gather per-relation metrics
         on top of that.
@@ -386,11 +455,16 @@ SELECT relname,
         metric_scope = [
             self.CONNECTION_METRICS,
             self.LOCK_METRICS,
-            self.COUNT_METRICS,
         ]
 
+        if function_metrics:
+            metric_scope.append(self.FUNCTION_METRICS)
+
+        if count_metrics:
+            metric_scope.append(self.COUNT_METRICS)
+
         # These are added only once per PG server, thus the test
-        db_instance_metrics = self._get_instance_metrics(key, db)
+        db_instance_metrics = self._get_instance_metrics(key, db, database_size_metrics)
         bgw_instance_metrics = self._get_bgw_metrics(key, db)
 
         if db_instance_metrics is not None:
@@ -436,17 +510,17 @@ SELECT relname,
                 try:
                     # if this is a relation-specific query, we need to list all relations last
                     if scope['relation'] and len(relations) > 0:
-                        relnames = relations_config.keys()
+                        relnames = ', '.join("'{0}'".format(w) for w in relations_config.iterkeys())
                         query = scope['query'] % (", ".join(cols), "%s")  # Keep the last %s intact
                         self.log.debug("Running query: %s with relations: %s" % (query, relnames))
-                        cursor.execute(query, (relnames, ))
+                        cursor.execute(query % (relnames))
                     else:
                         query = scope['query'] % (", ".join(cols))
                         self.log.debug("Running query: %s" % query)
                         cursor.execute(query.replace(r'%', r'%%'))
 
                     results = cursor.fetchall()
-                except ProgrammingError, e:
+                except programming_error as e:
                     log_func("Not all metrics may be available: %s" % str(e))
                     continue
 
@@ -511,10 +585,10 @@ SELECT relname,
                         v[0][1](self, v[0][0], v[1], tags=tags)
 
             cursor.close()
-        except InterfaceError, e:
+        except interface_error as e:
             self.log.error("Connection error: %s" % str(e))
             raise ShouldRestartException
-        except socket.error, e:
+        except socket.error as e:
             self.log.error("Connection error: %s" % str(e))
             raise ShouldRestartException
 
@@ -526,22 +600,26 @@ SELECT relname,
         ]
         return service_check_tags
 
-    def get_connection(self, key, host, port, user, password, dbname, ssl, use_cached=True, unix_sock=None):
+    def get_connection(self, key, host, port, user, password, dbname, ssl, connect_fct, use_cached=True):
         "Get and memoize connections to instances"
         if key in self.dbs and use_cached:
             return self.dbs[key]
-        elif unix_sock:
-            connection = pg.connect(unix_sock=unix_sock, user=user)
+
         elif host != "" and user != "":
             try:
                 if host == 'localhost' and password == '':
                     # Use ident method
-                    connection = pg.connect("user=%s dbname=%s" % (user, dbname))
+                    connection = connect_fct("user=%s dbname=%s" % (user, dbname))
                 elif port != '':
-                    connection = pg.connect(host=host, port=port, user=user,
+                    connection = connect_fct(host=host, port=port, user=user,
                         password=password, database=dbname, ssl=ssl)
+                elif host.startswith('/'):
+                    # If the hostname starts with /, it's probably a path
+                    # to a UNIX socket. This is similar behaviour to psql
+                    connection = connect_fct(unix_sock=host, user=user,
+                        password=password, database=dbname)
                 else:
-                    connection = pg.connect(host=host, user=user, password=password,
+                    connection = connect_fct(host=host, user=user, password=password,
                         database=dbname, ssl=ssl)
             except Exception as e:
                 message = u'Error establishing postgres connection: %s' % (str(e))
@@ -573,14 +651,17 @@ SELECT relname,
 
             self.log.debug("Metric: {0}".format(m))
 
-            for ref, (_, mtype) in m['metrics'].iteritems():
-                cap_mtype = mtype.upper()
-                if cap_mtype not in ('RATE', 'GAUGE', 'MONOTONIC'):
-                    raise CheckException("Collector method {0} is not known."
-                        " Known methods are RATE, GAUGE, MONOTONIC".format(cap_mtype))
+            try:
+                for ref, (_, mtype) in m['metrics'].iteritems():
+                    cap_mtype = mtype.upper()
+                    if cap_mtype not in ('RATE', 'GAUGE', 'MONOTONIC'):
+                        raise CheckException("Collector method {0} is not known."
+                            " Known methods are RATE, GAUGE, MONOTONIC".format(cap_mtype))
 
-                m['metrics'][ref][1] = getattr(PostgreSql, cap_mtype)
-                self.log.debug("Method: %s" % (str(mtype)))
+                    m['metrics'][ref][1] = getattr(PostgreSql, cap_mtype)
+                    self.log.debug("Method: %s" % (str(mtype)))
+            except Exception as e:
+                raise CheckException("Error processing custom metric '{}': {}".format(m, e))
 
         self.custom_metrics[key] = custom_metrics
         return custom_metrics
@@ -595,6 +676,13 @@ SELECT relname,
         relations = instance.get('relations', [])
         ssl = _is_affirmative(instance.get('ssl', False))
         unix_sock = instance.get("unix_sock", None)
+        if unix_sock and unix_sock.startswith('/'):
+            host = unix_sock
+            port = ''
+        function_metrics = _is_affirmative(instance.get('collect_function_metrics', False))
+        # Default value for `count_metrics` is True for backward compatibility
+        count_metrics = _is_affirmative(instance.get('collect_count_metrics', True))
+        database_size_metrics = _is_affirmative(instance.get('collect_database_size_metrics', True))
 
         if relations and not dbname:
             self.warning('"dbname" parameter must be set when using the "relations" parameter.')
@@ -621,17 +709,19 @@ SELECT relname,
         # preset tags to the database name
         db = None
 
+        connect_fct, interface_error, programming_error = self._get_pg_attrs(instance)
+
         # Collect metrics
         try:
             # Check version
-            db = self.get_connection(key, host, port, user, password, dbname, ssl, unix_sock=unix_sock)
+            db = self.get_connection(key, host, port, user, password, dbname, ssl, connect_fct)
             version = self._get_version(key, db)
             self.log.debug("Running check against version %s" % version)
-            self._collect_stats(key, db, tags, relations, custom_metrics)
+            self._collect_stats(key, db, tags, relations, custom_metrics, function_metrics, count_metrics, database_size_metrics, interface_error, programming_error)
         except ShouldRestartException:
             self.log.info("Resetting the connection")
-            db = self.get_connection(key, host, port, user, password, dbname, ssl, use_cached=False, unix_sock=unix_sock)
-            self._collect_stats(key, db, tags, relations, custom_metrics)
+            db = self.get_connection(key, host, port, user, password, dbname, ssl, connect_fct, use_cached=False)
+            self._collect_stats(key, db, tags, relations, custom_metrics, function_metrics, count_metrics, database_size_metrics, interface_error, programming_error)
 
         if db is not None:
             service_check_tags = self._get_service_check_tags(host, port, dbname)
@@ -641,5 +731,5 @@ SELECT relname,
             try:
                 # commit to close the current query transaction
                 db.commit()
-            except Exception, e:
+            except Exception as e:
                 self.log.warning("Unable to commit: {0}".format(e))

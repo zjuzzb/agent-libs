@@ -70,7 +70,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.sysdigcloud.sdjagent.Application</mainClass>
+                            <mainClass>com.sysdigcloud.sdjagent.ApplicationLoader</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>

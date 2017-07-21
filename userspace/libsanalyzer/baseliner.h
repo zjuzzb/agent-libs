@@ -12,6 +12,15 @@ extern sinsp_evttables g_infotables;
 #define BL_STARTUP_TIME_NS (30LL * 1000000000)
 #define ASYNC_PROC_PARSING
 
+enum file_category : uint32_t
+{
+	NONE = (1 << 0),
+	UNCATEGORIZED = (1 << 1),
+	FAILED_OPS = (1 << 2),
+	READ_ONLY = (1 << 3),
+	READ_WRITE = (1 << 4),
+};
+
 //
 // The state of the /proc parser thread
 //
@@ -54,6 +63,7 @@ public:
 		m_is_c_full = false;
 		m_is_other_full = false;
 		m_is_uncategorized_full = false;
+		m_is_failed_full = false;
 		m_max_table_size = BL_MAX_FILE_TABLE_SIZE;
 	}
 
@@ -63,12 +73,14 @@ public:
 		m_is_rw_full = false;
 		m_is_c_full = false;
 		m_is_other_full = false;
-		m_is_other_full = false;
+		m_is_uncategorized_full = false;
+		m_is_failed_full = false;
 		m_r.clear();
 		m_rw.clear();
 		m_c.clear();
 		m_other.clear();
 		m_uncategorized.clear();
+		m_failed.clear();
 	}
 
 	inline void insert(set<string>* table, string* name)
@@ -102,9 +114,20 @@ public:
 		}
 	}
 
-	inline void add(string& name, uint32_t openflags, bool uncategorized)
+	inline void add(string& name, file_category cat)
 	{
-		if(openflags & PPM_O_WRONLY)
+		if(cat & FAILED_OPS)
+		{
+			if(!m_is_failed_full)
+			{
+				insert(&m_failed, &name);
+				if(m_failed.size() >= m_max_table_size)
+				{
+					m_is_failed_full = true;
+				}
+			}
+		}
+		else if(cat & READ_WRITE)
 		{
 			if(!m_is_rw_full)
 			{
@@ -118,7 +141,7 @@ public:
 				erase_from_r(&name);
 			}
 		}
-		else if(openflags & PPM_O_RDONLY)
+		else if(cat & READ_ONLY)
 		{
 			if(!m_is_r_full)
 			{
@@ -131,31 +154,28 @@ public:
 				erase_from_uncategorized(&name);
 			}
 		}
-		else
+		else if(cat & UNCATEGORIZED)
 		{
-			if(uncategorized)
+			if(!m_is_uncategorized_full)
 			{
-				if(!m_is_uncategorized_full)
+				insert(&m_uncategorized, &name);
+				if(m_uncategorized.size() >= m_max_table_size)
 				{
-					insert(&m_uncategorized, &name);
-					if(m_uncategorized.size() >= m_max_table_size)
-					{
-						m_is_uncategorized_full = true;
-					}
+					m_is_uncategorized_full = true;
 				}
 			}
-			else
+		}
+		else
+		{
+			if(!m_is_other_full)
 			{
-				if(!m_is_other_full)
+				insert(&m_other, &name);
+				if(m_other.size() >= m_max_table_size)
 				{
-					insert(&m_other, &name);
-					if(m_other.size() >= m_max_table_size)
-					{
-						m_is_other_full = true;
-					}
-
-					erase_from_uncategorized(&name);
+					m_is_other_full = true;
 				}
+
+				erase_from_uncategorized(&name);
 			}
 		}
 	}
@@ -210,6 +230,22 @@ public:
 		ASSERT(false);
 	}
 
+	inline static file_category flags2filecategory(file_category orig_category, uint32_t openflags)
+	{
+		if(openflags & PPM_O_WRONLY)
+		{
+			return static_cast<file_category>(orig_category | file_category::READ_WRITE);
+		}
+		else if(openflags & PPM_O_RDONLY)
+		{
+			return static_cast<file_category>(orig_category | file_category::READ_ONLY);
+		}
+		else
+		{
+			return orig_category;
+		}
+	}
+
 #ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
@@ -258,6 +294,18 @@ public:
 			for(auto it : m_uncategorized)
 			{
 				suncategorized->add_d(it);
+			}
+		}
+
+		if(m_failed.size() != 0)
+		{
+			draiosproto::falco_subcategory* sfailed = cat->add_subcats();
+			sfailed->set_name("failed");
+			sfailed->set_full(m_is_failed_full);
+
+			for(auto it : m_failed)
+			{
+				sfailed->add_d(it);
 			}
 		}
 	}
@@ -310,6 +358,17 @@ public:
 			element["uncategorized"]["full"] = m_is_uncategorized_full;
 			echild.clear();
 		}
+
+		if(m_failed.size() != 0)
+		{
+			for(auto it : m_failed)
+			{
+				echild[it] = 1;
+			}
+			element["failed"]["d"] = echild;
+			element["failed"]["full"] = m_is_failed_full;
+			echild.clear();
+		}
 	}
 
 	bool has_data()
@@ -318,7 +377,8 @@ public:
 			(m_rw.size() != 0) ||
 			(m_c.size() != 0) ||
 			(m_other.size() != 0) ||
-			(m_uncategorized.size() != 0);
+			(m_uncategorized.size() != 0) ||
+			(m_failed.size() != 0);
 	}
 
 	set<string> m_r;	// entries opened for reading only
@@ -326,11 +386,13 @@ public:
 	set<string> m_c;	// entries opened with the create flag
 	set<string> m_other; // entries that have only flags different from read or write
 	set<string> m_uncategorized; // entries not categorized yet, likely because they come from scanning proc, where we don't extract open flags yet
+	set<string> m_failed; // entries coming from failed operations
 	bool m_is_r_full;
 	bool m_is_rw_full;
 	bool m_is_c_full;
 	bool m_is_other_full;
 	bool m_is_uncategorized_full;
+	bool m_is_failed_full;
 	uint32_t m_max_table_size;
 };
 
@@ -347,15 +409,15 @@ public:
 		m_regular_table.clear();
 	}
 
-	inline void add(string& name, uint32_t openflags, bool uncategorized, uint64_t time_from_clone)
+	inline void add(string& name, file_category cat, uint64_t time_from_clone)
 	{
 		if(time_from_clone < BL_STARTUP_TIME_NS)
 		{
-			m_startup_table.add(name, openflags, uncategorized);
+			m_startup_table.add(name, cat);
 		}
 		else
 		{
-			m_regular_table.add(name, openflags, uncategorized);
+			m_regular_table.add(name, cat);
 		}
 	}
 

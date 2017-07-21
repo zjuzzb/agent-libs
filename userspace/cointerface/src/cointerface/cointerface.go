@@ -34,6 +34,9 @@ func createJSONEscapeFormatter(params string) log.FormatterFunc {
 			Level:   level.String(),
 			Message: message,
 		})
+		// Turn the json into jsonl by appending a newline
+		endl := "\n"
+		bytes = append(bytes, endl...)
 
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not format log message: %s\n", err)

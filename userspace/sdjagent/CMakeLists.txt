@@ -8,7 +8,8 @@ if(Java_Development_FOUND)
             ${DRAIOS_DEPENDENCIES_DIR}/apache-maven-3.2.5/bin/mvn -q -PcustomBuild
             -Dcustom.build.directory=${CMAKE_CURRENT_BINARY_DIR}/java compile assembly:single
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-            DEPENDS src/main/java/com/sysdigcloud/sdjagent/Application.java
+            DEPENDS src/main/java/com/sysdigcloud/sdjagent/ApplicationLoader.java
+                    src/main/java/com/sysdigcloud/sdjagent/Application.java
                     src/main/java/com/sysdigcloud/sdjagent/AttachAPI.java
                     src/main/java/com/sysdigcloud/sdjagent/BeanData.java
                     src/main/java/com/sysdigcloud/sdjagent/CLibrary.java
