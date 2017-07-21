@@ -321,6 +321,9 @@ class AgentCheck(object):
         self.agentConfig = agentConfig
         self.in_developer_mode = agentConfig.get('developer_mode') and psutil
         self._internal_profiling_stats = None
+        self.allow_profiling = self.agentConfig.get('allow_profiling', True)
+
+        self.default_integration_http_timeout = float(agentConfig.get('default_integration_http_timeout', 9))
 
         self.hostname = agentConfig.get('checksd_hostname') or get_hostname(agentConfig)
         self.log = logging.getLogger('%s.%s' % (__name__, name))
@@ -341,6 +344,10 @@ class AgentCheck(object):
         self._instance_metadata = []
         self.svc_metadata = []
         self.historate_dict = {}
+
+    # Dummy stub, not supporting proxies yet 
+    def get_instance_proxy(self, instance, uri):
+        return None
 
     def instance_count(self):
         """ Return the number of instances that are configured for this check. """
