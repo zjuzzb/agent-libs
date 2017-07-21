@@ -62,6 +62,7 @@ private:
 	void debug_print();
 
 	state_t m_state;
+	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 
 	policy_cache_t m_container_p_cache;
 	policy_cache_t m_host_p_cache;

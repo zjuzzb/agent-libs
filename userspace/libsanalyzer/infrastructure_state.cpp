@@ -127,6 +127,7 @@ void infrastructure_state::reset()
 {
 	m_container_p_cache.clear();
 	m_host_p_cache.clear();
+	m_orphans.clear();
 	m_state.clear();
 
 	glogf(sinsp_logger::SEV_DEBUG, "Subscribe to orchestrator events.");
@@ -211,11 +212,18 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 	//
 	for (const auto &x : m_state[key]->parents()) {
 		auto pkey = make_pair(x.kind(), x.id());
-		draiosproto::congroup_uid *child = m_state[pkey]->mutable_children()->Add();
-		child->set_kind(key.first);
-		child->set_id(key.second);
-		glogf(sinsp_logger::SEV_DEBUG, "child <%s,%s> added to <%s,%s>",
-			  key.first.c_str(), key.second.c_str(), pkey.first.c_str(), pkey.second.c_str());
+		if(!has(pkey)) {
+			// keep track of the missing parent. We will fix the children link when this event arrives
+			if(m_orphans.find(pkey) == m_orphans.end())
+				m_orphans[pkey] = std::vector<uid_t>();
+			m_orphans[pkey].emplace_back(key.first, key.second);
+		} else {
+			draiosproto::congroup_uid *child = m_state[pkey]->mutable_children()->Add();
+			child->set_kind(key.first);
+			child->set_id(key.second);
+			glogf(sinsp_logger::SEV_DEBUG, "child <%s,%s> added to <%s,%s>",
+				  key.first.c_str(), key.second.c_str(), pkey.first.c_str(), pkey.second.c_str());
+		}
 	}
 
 	//
@@ -230,6 +238,18 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 			  key.first.c_str(), key.second.c_str(), ckey.first.c_str(), ckey.second.c_str());
 	}
 
+	// Fix any broken link involving this container group
+	// do this after checking the children otherwise this node will be added as parent twice
+	if(m_orphans.find(key) != m_orphans.end()) {
+		for(const auto &orphan_uid : m_orphans[key]) {
+			draiosproto::congroup_uid *child = m_state[key]->mutable_children()->Add();
+			child->set_kind(orphan_uid.first);
+			child->set_id(orphan_uid.second);
+			glogf(sinsp_logger::SEV_DEBUG, "(deferred) child <%s,%s> added to <%s,%s>",
+				  orphan_uid.first.c_str(), orphan_uid.second.c_str(), key.first.c_str(), key.second.c_str());
+		}
+		m_orphans.erase(key);
+	}
 }
 
 void infrastructure_state::remove(const draiosproto::congroup_update_event *evt)
@@ -315,7 +335,16 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	// Evaluate parents' tags
 	//
 	for(const auto &p_uid : congroup->parents()) {
-		if(!walk_and_match(m_state[make_pair(p_uid.kind(), p_uid.id())].get(), preds, visited_groups)) {
+
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if(!has(pkey)) {
+			// We don't have this parent (yet...)
+			glogf(sinsp_logger::SEV_WARNING, "Warning, cannot fully evaluate policy scope because the infrastructure state is incomplete.");
+			return false;
+		}
+
+		if(!walk_and_match(m_state[pkey].get(), preds, visited_groups)) {
 			// A predicate in the upper levels returned false
 			// The final result is false
 			return false;
@@ -390,11 +419,17 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 
 
 	for (const auto &p_uid : grp->parents()) {
-		auto parent = m_state[make_pair(p_uid.kind(), p_uid.id())].get();
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if(!has(pkey)) {
+			// We don't have this parent (yet...)
+			continue;
+		}
+
 		//
 		// Build parent state
 		//
-		state_of(parent, state, visited);
+		state_of(m_state[pkey].get(), state, visited);
 	}
 
 	//
