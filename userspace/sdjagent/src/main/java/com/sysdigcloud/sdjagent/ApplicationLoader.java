@@ -6,9 +6,6 @@
 
 package com.sysdigcloud.sdjagent;
 
-import java.lang.reflect.Method;
-import java.lang.reflect.InvocationTargetException;
-
 
 public class ApplicationLoader {
     public static final double MIN_JAVA_VERSION = 1.7;
@@ -21,29 +18,7 @@ public class ApplicationLoader {
         }
 
         try {
-            Class<?> appClass = Class.forName("com.sysdigcloud.sdjagent.Application");
-            Method appMain = appClass.getMethod("main", String[].class);
-            Object o = appMain.invoke(null, (Object)args);
-        }
-        catch (ClassNotFoundException exc) {
-            String msg = "Cannot start sdjagent: " + exc.getMessage();
-            System.out.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
-            System.exit(1);
-        }
-        catch (NoSuchMethodException exc) {
-            String msg = "Cannot start sdjagent: " + exc.getMessage();
-            System.err.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
-            System.exit(1);
-        }
-        catch (IllegalAccessException exc) {
-            String msg = "Cannot start sdjagent: " + exc.getMessage();
-            System.err.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
-            System.exit(1);
-        }
-        catch (InvocationTargetException exc) {
-            String msg = "Cannot start sdjagent: " + exc.getMessage();
-            System.out.println("{\"pid\": 0, \"level\": \"SEVERE\", \"message\": \"" + msg + "\"}");
-            System.exit(1);
+            Application.main(args);
         }
         catch (java.lang.UnsupportedClassVersionError exc)
         {
