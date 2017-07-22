@@ -134,9 +134,35 @@ def get_check_class(check_name, LOADED_CHECKS={}):
         LOADED_CHECKS[check_name] = check_class
         return check_class
 
+def detect_root(mntns):
+    # When running inside a chroot jail (ex, rkt fly pod)
+    # by running setns(mntns) the process escapes the jail
+    # since setns will reset the root
+    #
+    # We need to know which is our root to proper go back to it
+    # To do this we are using this trick:
+    # 1. setns(mymntns)
+    # 2. read /proc/<parent_pid>/root link
+    # 3. chroot inside the jail
+    # Assuming that our parent will still be in the jail
+    ret = setns(mntns)
+    if ret != 0:
+        logging.error("Error while calling setns")
+        sys.exit(1)
+    try:
+        root = os.readlink("/proc/%d/root" % os.getppid())
+        if root != "/":
+            os.chroot(root)
+            os.chdir("/")
+        return root
+    except OSError as ex:
+        logging.error("Error while setting root: %s" % str(ex))
+        sys.exit(1)
+
 class AppCheckInstance:
     try:
         MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+        MYROOT = detect_root(MYMNT)
         MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
         MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
         MYUTS = os.open("%s/proc/self/ns/uts" % SYSDIG_HOST_ROOT, os.O_RDONLY)
@@ -222,6 +248,13 @@ class AppCheckInstance:
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
+                if self.MYROOT != "/":
+                    try:
+                        os.chroot(self.MYROOT)
+                        os.chdir("/")
+                    except OSError as ex:
+                        logging.error("Error while setting root: %s" % str(ex))
+                        sys.exit(1)
                 setns(self.MYUTS)
             # We don't need them, but this method clears them so we avoid memory growing
             self.check_instance.get_events()
