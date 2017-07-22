@@ -5330,12 +5330,12 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	check_and_emit_containers(top_cpu_containers);
 
 	// Build a global orchestrator state of the emitted containers
-//	vector<unique_ptr<draiosproto::container_group>> o_state;
-//	m_infrastructure_state->state_of(emitted_containers, o_state);
-//	for(const auto &congroup : o_state) {
-//		draiosproto::container_group *grp = m_metrics->mutable_orchestrator_state()->add_groups();
-//		grp->CopyFrom(*congroup);
-//	}
+	vector<unique_ptr<draiosproto::container_group>> o_state;
+	m_infrastructure_state->state_of(emitted_containers, o_state);
+	for(const auto &congroup : o_state) {
+		draiosproto::container_group *grp = m_metrics->mutable_orchestrator_state()->add_groups();
+		grp->CopyFrom(*congroup);
+	}
 
 /*
 	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);

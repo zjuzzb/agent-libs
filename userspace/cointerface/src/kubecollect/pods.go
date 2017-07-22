@@ -11,6 +11,7 @@ import (
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"strings"
 )
 
 // pods get their own special version because they send events for containers too
@@ -25,11 +26,11 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
-	tags := pod.GetAnnotations()
+	tags := make(map[string]string)
 	for k, v := range pod.GetLabels() {
-		tags[k] = v
+		tags["kubernetes.pod.label." + k] = v
 	}
-
+	tags["kubernetes.pod.name"] = pod.GetName()
 	// Need a way to distinguish these too
 	var ips []string
 	if pod.Status.HostIP != "" {
@@ -63,12 +64,28 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 			Kind:proto.String("k8s_pod"),
 			Id:proto.String(string(pod.GetUID()))}}
 		for _, c := range pod.Status.ContainerStatuses {
+			// Kubernetes reports containers in this format:
+			// docker://<fulldockercontainerid>
+			// rkt://<rktpodid>:<rktappname>
+			// We instead use
+			// <dockershortcontainerid>
+			// <rktpodid>:<rktappname>
+			// so here we are doing this conversion
+			containerId := c.ContainerID
+			if strings.HasPrefix(containerId, "docker://") {
+				containerId = containerId[9:21]
+			} else if strings.HasPrefix(containerId, "rkt://") {
+				containerId = containerId[6:]
+			} else {
+				// unknown container type
+				continue
+			}
 			cg = append(cg, &draiosproto.CongroupUpdateEvent {
 				Type: eventType.Enum(),
 				Object: &draiosproto.ContainerGroup {
 					Uid: &draiosproto.CongroupUid {
 						Kind:proto.String("container"),
-						Id:proto.String(c.ContainerID),
+						Id:proto.String(containerId),
 					},
 					Parents: par,
 				},

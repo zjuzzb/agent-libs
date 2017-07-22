@@ -25,10 +25,11 @@ func newNSCongroup(ns *v1.Namespace) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
-	tags := ns.GetAnnotations()
+	tags := make(map[string]string)
 	for k, v := range ns.GetLabels() {
-		tags[k] = v
+		tags["kubernetes.namespace.label." + k] = v
 	}
+	tags["kubernetes.namespace.name"] = ns.GetName()
 
 	return &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
