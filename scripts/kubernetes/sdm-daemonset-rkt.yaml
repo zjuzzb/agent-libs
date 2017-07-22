@@ -31,6 +31,8 @@ spec:
         - name: rkt-vol
           hostPath:
             path: /var/lib/rkt
+      hostNetwork: true
+      hostPID: true
       containers:
         - name: sysdig-agent
           image: sysdig/agent:rkt
