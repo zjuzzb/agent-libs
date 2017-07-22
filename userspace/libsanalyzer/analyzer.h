@@ -446,6 +446,7 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
+	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 	vector<string> emit_containers(const progtable_by_container_t& active_containers);
 	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);

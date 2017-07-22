@@ -1027,10 +1027,50 @@ int mounted_fs_reader::run()
 	{
 		home_fd = open_ns_fd(pid);
 	}
+
 	if(home_fd <= 0)
 	{
 		return DONT_RESTART_EXIT;
 	}
+
+	// The procedure of traversing containers and their mounted file systems (the loop below) requires changing
+	// namespace (and perhaps the root directory) of the agent/mounted_fs_reader to the one of a container. When examining
+	// of a mounted file system is over, a step back to the home namespace and it's root directory is performed.
+	// Executing `setns` to the home namespace together with `chroot` to the original root directory and then `chdir` is
+	// sufficient in most cases to switch back.
+	// However, there are situations like in case of Rkt containers when this is not good enough to break the root jail
+	// (made by Rkt). To force jail break, there is an initial `setns` to the home namespace (which resets the root
+	// directory) and then subsequent calls to `chroot` and `chdir` to set the real root directory. Since the purpose of
+	// this trick is not obvious, it should be considered for refactoring in the future.
+
+	if (setns(home_fd, CLONE_NEWNS) != 0)
+	{
+		g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	};
+
+	char root_dir[PATH_MAX];
+	string root_dir_link = "/proc/" + to_string(getppid()) + "/root";
+	ssize_t root_dir_sz = readlink(root_dir_link.c_str(), root_dir, PATH_MAX - 1);
+	if (root_dir_sz <= 0)
+	{
+		g_logger.log("Cannot read root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+	else
+		root_dir[root_dir_sz] = '\0';
+
+	if (chroot(root_dir) < 0)
+	{
+		g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+	if (chdir("/") < 0)
+	{
+		g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+
 	while(true)
 	{
 		// Send heartbeat
@@ -1048,6 +1088,7 @@ int mounted_fs_reader::run()
 				{
 					// Go to container mnt ns
 					auto changed = change_ns(container_proto.pid());
+
 					if(changed)
 					{
 						try
@@ -1085,7 +1126,7 @@ int mounted_fs_reader::run()
 						}
 						catch (const sinsp_exception& ex)
 						{
-							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
+							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s, vpid=%d", container_proto.id().c_str(), container_proto.pid(), ex.what(), container_proto.vpid());
 						}
 						// Back home
 						if(setns(home_fd, CLONE_NEWNS) != 0)
@@ -1093,6 +1134,17 @@ int mounted_fs_reader::run()
 							g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 							return ERROR_EXIT;
 						};
+
+						if (chroot(root_dir) < 0)
+						{
+							g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						}
+						if (chdir("/") < 0)
+						{
+							g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						}
 					}
 				}
 				auto response_s = response_proto.SerializeAsString();

@@ -2940,129 +2940,128 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 	//g_logger.log("drop_upper_threshold =" + std::to_string(m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
 	//g_logger.log("drop_lower_threshold =" + std::to_string(m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
 	//g_logger.log("drop_threshold_consecutive_seconds =" + std::to_string(m_configuration->get_drop_threshold_consecutive_seconds()), sinsp_logger::SEV_DEBUG);
-	if(flshflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
-		if(threshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
-		{
-			m_seconds_above_thresholds++;
+		return;
+	}
 
-			g_logger.format(sinsp_logger::SEV_INFO, "sinsp above drop threshold %d secs: %" PRIu32 ":%" PRIu32,
-				(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds,
-				m_configuration->get_drop_threshold_consecutive_seconds());
-		}
-		else
-		{
-			m_seconds_above_thresholds = 0;
-		}
+	if(threshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
+	{
+		m_seconds_above_thresholds++;
 
-		// if above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, increase the sampling
-		if(m_seconds_above_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds())
-		{
-			m_seconds_above_thresholds = 0;
-			uint32_t new_sampling_ratio = 1;
+		g_logger.format(sinsp_logger::SEV_INFO, "sinsp above drop threshold %d secs: %" PRIu32 ":%" PRIu32,
+			(int)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus), m_seconds_above_thresholds,
+			m_configuration->get_drop_threshold_consecutive_seconds());
+	}
+	else
+	{
+		m_seconds_above_thresholds = 0;
+	}
 
-			if(m_sampling_ratio < 128)
+	// if above DROP_UPPER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, increase the sampling
+	if(m_seconds_above_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds())
+	{
+		m_seconds_above_thresholds = 0;
+		uint32_t new_sampling_ratio = 1;
+
+		if(m_sampling_ratio < 128)
+		{
+			if(!m_is_sampling)
 			{
-				if(!m_is_sampling)
-				{
-					new_sampling_ratio = 1;
-					m_is_sampling = true;
-				}
-				else
-				{
-					new_sampling_ratio = m_sampling_ratio * 2;
-				}
-
-				if(new_sampling_ratio == 2)
-				{
-					if(m_do_baseline_calculation)
-					{
-						g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-						m_do_baseline_calculation = false;
-						m_falco_baseliner->clear_tables();
-					}
-				}
-
-				start_dropping_mode(new_sampling_ratio);
+				new_sampling_ratio = 1;
+				m_is_sampling = true;
 			}
 			else
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Reached maximum sampling ratio and still too high");
+				new_sampling_ratio = m_sampling_ratio * 2;
 			}
-			// done adjusting
-			return;
-		}
 
-		// sampling ratio was not increased, let's check if it should be decreased
-		// if above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, decrease the sampling,
-		if(threshold_metric <= (double)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus))
-		{
-			m_seconds_below_thresholds++;
-
-			if(m_is_sampling && m_sampling_ratio > 1)
+			if(new_sampling_ratio > 1 && m_do_baseline_calculation)
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop threshold %d secs: %" PRIu32 ":%" PRIu32,
-					(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds,
-					m_configuration->get_drop_threshold_consecutive_seconds());
+				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
+				m_do_baseline_calculation = false;
+				m_falco_baseliner->clear_tables();
 			}
+
+			start_dropping_mode(new_sampling_ratio);
 		}
 		else
 		{
-			m_seconds_below_thresholds = 0;
+			g_logger.format(sinsp_logger::SEV_ERROR, "sinsp Reached maximum sampling ratio and still too high");
 		}
+		// done adjusting
+		return;
+	}
 
-		if(m_seconds_below_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds() && m_is_sampling)
+	// sampling ratio was not increased, let's check if it should be decreased
+	// if above DROP_LOWER_THRESHOLD for DROP_THRESHOLD_CONSECUTIVE_SECONDS, decrease the sampling,
+	if(threshold_metric <= (double)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus))
+	{
+		m_seconds_below_thresholds++;
+
+		if(m_is_sampling && m_sampling_ratio > 1)
 		{
-			m_seconds_below_thresholds = 0;
+			g_logger.format(sinsp_logger::SEV_INFO, "sinsp below drop threshold %d secs: %" PRIu32 ":%" PRIu32,
+				(int)m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus), m_seconds_below_thresholds,
+				m_configuration->get_drop_threshold_consecutive_seconds());
+		}
+	}
+	else
+	{
+		m_seconds_below_thresholds = 0;
+	}
 
-			if(m_sampling_ratio > 1)
+	if(m_seconds_below_thresholds >= m_configuration->get_drop_threshold_consecutive_seconds() && m_is_sampling)
+	{
+		m_seconds_below_thresholds = 0;
+
+		if(m_sampling_ratio > 1)
+		{
+			double totcpuload = 0;
+			ASSERT(m_machine_info->num_cpus == m_proc_stat.m_loads.size());
+			for(unsigned j = 0; j < m_proc_stat.m_loads.size(); j++)
 			{
-				double totcpuload = 0;
-				ASSERT(m_machine_info->num_cpus == m_proc_stat.m_loads.size());
-				for(unsigned j = 0; j < m_proc_stat.m_loads.size(); j++)
+				// here, we are only accounting for the real workload on this machine; in overcommitted virtual environments
+				// stealing may cause total load to be 100% all the time, which then permanently prevents recovery back from
+				// the reduced sampling rate (ie. increased sampling ratio)
+				// note also that the internal agent cpu usage (unlike cpu usage values for all the processes reported to the
+				// backend and seen in the UI) is scaled down proportionaly to the amount of system steal cpu time, so it is
+				// expected to see higher agent usage in eg. top than what agent log says (neither value is 100% accurate,
+				// but agent log value is less likely to be erroneous because unrealistically high values in the presence
+				// of steal time are trimmed down proportionately to the ratio of system steal_time / total_cpu_time)
+				ASSERT(m_proc_stat.m_user.size() > j)
+				totcpuload += m_proc_stat.m_user[j];
+				ASSERT(m_proc_stat.m_nice.size() > j)
+				totcpuload += m_proc_stat.m_nice[j];
+				ASSERT(m_proc_stat.m_system.size() > j)
+				totcpuload += m_proc_stat.m_system[j];
+				ASSERT(m_proc_stat.m_irq.size() > j)
+				totcpuload += m_proc_stat.m_irq[j];
+				ASSERT(m_proc_stat.m_softirq.size() > j)
+				totcpuload += m_proc_stat.m_softirq[j];
+			}
+
+			double avail_cpu = (m_machine_info->num_cpus * 100.0) - totcpuload;
+			ASSERT(avail_cpu >= 0);
+			g_logger.log("avail_cpu=" + std::to_string(avail_cpu) + ", m_my_cpuload=" + std::to_string(m_my_cpuload),
+						 sinsp_logger::SEV_DEBUG);
+			if(!avail_cpu || m_my_cpuload > avail_cpu) { return; }
+
+			if(m_new_sampling_ratio > 1)
+			{
+				uint32_t new_sampling_ratio = m_sampling_ratio / 2;
+
+				if(new_sampling_ratio <= 128)
 				{
-					// here, we are only accounting for the real workload on this machine; in overcommitted virtual environments
-					// stealing may cause total load to be 100% all the time, which then permanently prevents recovery back from
-					// the reduced sampling rate (ie. increased sampling ratio)
-					// note also that the internal agent cpu usage (unlike cpu usage values for all the processes reported to the
-					// backend and seen in the UI) is scaled down proportionaly to the amount of system steal cpu time, so it is
-					// expected to see higher agent usage in eg. top than what agent log says (neither value is 100% accurate,
-					// but agent log value is less likely to be erroneous because unrealistically high values in the presence
-					// of steal time are trimmed down proportionately to the ratio of system steal_time / total_cpu_time)
-					ASSERT(m_proc_stat.m_user.size() > j)
-					totcpuload += m_proc_stat.m_user[j];
-					ASSERT(m_proc_stat.m_nice.size() > j)
-					totcpuload += m_proc_stat.m_nice[j];
-					ASSERT(m_proc_stat.m_system.size() > j)
-					totcpuload += m_proc_stat.m_system[j];
-					ASSERT(m_proc_stat.m_irq.size() > j)
-					totcpuload += m_proc_stat.m_irq[j];
-					ASSERT(m_proc_stat.m_softirq.size() > j)
-					totcpuload += m_proc_stat.m_softirq[j];
+					g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, new_sampling_ratio);
+					start_dropping_mode(new_sampling_ratio);
 				}
-
-				double avail_cpu = (m_machine_info->num_cpus * 100.0) - totcpuload;
-				ASSERT(avail_cpu >= 0);
-				g_logger.log("avail_cpu=" + std::to_string(avail_cpu) + ", m_my_cpuload=" + std::to_string(m_my_cpuload),
-							 sinsp_logger::SEV_DEBUG);
-				if(!avail_cpu || m_my_cpuload > avail_cpu) { return; }
-
-				if(m_new_sampling_ratio > 1)
+				else
 				{
-					uint32_t new_sampling_ratio = m_sampling_ratio / 2;
-
-					if(new_sampling_ratio <= 128)
-					{
-						g_logger.format(sinsp_logger::SEV_INFO, "sinsp -- Setting drop mode to %" PRIu32, new_sampling_ratio);
-						start_dropping_mode(new_sampling_ratio);
-					}
-					else
-					{
-						// default to lowest, tuner will adjust it quick if there's not much load
-						g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", new_sampling_ratio);
-						new_sampling_ratio = 128;
-						start_dropping_mode(new_sampling_ratio);
-					}
+					// default to lowest, tuner will adjust it quick if there's not much load
+					g_logger.format(sinsp_logger::SEV_ERROR, "Invalid sampling ratio: %" PRIu32 ", setting to 128", new_sampling_ratio);
+					new_sampling_ratio = 128;
+					start_dropping_mode(new_sampling_ratio);
 				}
 			}
 		}
@@ -3240,6 +3239,66 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			}
 		}
 	}
+}
+
+void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc)
+{
+	//
+	// If it's time to emit the falco baseline, do the serialization and then restart it
+	//
+	tracer_emitter falco_trc("falco_baseline", f_trc);
+	if(m_do_baseline_calculation)
+	{
+		if(is_eof)
+		{
+			//
+			// Make sure to push a baseline when reading from file and we reached EOF
+			//
+			m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
+		}
+		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+		{
+			if(m_last_falco_dump_ts != 0)
+			{
+				m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
+			}
+
+			m_last_falco_dump_ts = evt->get_ts();
+		}
+	}
+	else
+	{
+		if(m_configuration->get_falco_baselining_enabled())
+		{
+			//
+			// Once in a while, try to turn baseline calculation on again
+			//
+			if(m_sampling_ratio == 1)
+			{
+				if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DISABLE_TIME)
+				{
+					//
+					// It's safe to turn baselining on again.
+					// Reset the tables and restart the baseline time counter.
+					//
+					m_do_baseline_calculation = true;
+					m_falco_baseliner->clear_tables();
+					m_falco_baseliner->load_tables(evt->get_ts());
+					m_last_falco_dump_ts = evt->get_ts();
+					g_logger.format("enabling falco baselining creation after %lus pause",
+							FALCOBL_DISABLE_TIME / 1000000000);
+				}
+			}
+			else
+			{
+				//
+				// Sampling ratio is still high, reset the baseline counter
+				//
+				m_last_falco_dump_ts = evt->get_ts();
+			}
+		}
+	}
+	falco_trc.stop();
 }
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
@@ -3840,62 +3899,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				}
 			}
 
-			//
-			// If it's time to emit the falco baseline, do the serialization and then restart it
-			//
-			tracer_emitter falco_trc("falco_baseline", f_trc);
-			if(m_do_baseline_calculation)
-			{
-				if(is_eof)
-				{
-					//
-					// Make sure to push a baseline when reading from file and we reached EOF
-					//
-					m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
-				}
-				else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
-				{
-					if(m_last_falco_dump_ts != 0)
-					{
-						m_falco_baseliner->emit_as_protobuf(evt->get_ts(), m_metrics->mutable_falcobl());
-					}
-
-					m_last_falco_dump_ts = evt->get_ts();
-				}
-			}
-			else
-			{
-				if(m_configuration->get_falco_baselining_enabled())
-				{
-					//
-					// Once in a while, try to turn baseline calculation on again
-					//
-					if(m_sampling_ratio == 1)
-					{
-						if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DISABLE_TIME)
-						{
-							//
-							// It's safe to turn baselining on again.
-							// Reset the tables and restart the baseline time counter.
-							//
-							m_do_baseline_calculation = true;
-							m_falco_baseliner->clear_tables();
-							m_falco_baseliner->load_tables(evt->get_ts());
-							m_last_falco_dump_ts = evt->get_ts();
-							g_logger.format("enabling falco baselining creation after %lus pause",
-								FALCOBL_DISABLE_TIME / 1000000000);
-						}
-					}
-					else
-					{
-						//
-						// Sampling ratio is still high, reset the baseline counter
-						//
-						m_last_falco_dump_ts = evt->get_ts();
-					}
-				}
-			}
-			falco_trc.stop();
+			emit_baseline(evt, is_eof, f_trc);
 
 			////////////////////////////////////////////////////////////////////////////
 			// Serialize the whole crap
@@ -4025,6 +4029,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
 	m_cputime_analyzer.end_flush();
+
 	if(m_configuration->get_autodrop_enabled() && !m_capture_in_progress)
 	{
 		m_prev_flush_cpu_pct = m_cputime_analyzer.calc_flush_percent();
@@ -4036,6 +4041,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	else
 	{
 		g_logger.log("Skipping drop mode tuning.", sinsp_logger::SEV_DEBUG);
+	}
+
+	//
+	// Disable the baseline if the ring buffer is full
+	//
+	scap_stats st;
+	m_inspector->get_capture_stats(&st);
+	if(st.n_drops_buffer > FALCOBL_MAX_DROPS_FULLBUF && m_do_baseline_calculation)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
+		m_do_baseline_calculation = false;
+		m_falco_baseliner->clear_tables();
 	}
 }
 
@@ -5882,6 +5899,7 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 			switch(fdit->second.m_type)
 			{
 				case SCAP_FD_FILE:
+				case SCAP_FD_FILE_V2:
 					nfds_file++;
 					break;
 				case SCAP_FD_IPV4_SOCK:

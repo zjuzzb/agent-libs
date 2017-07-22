@@ -192,6 +192,12 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define FALCOBL_DISABLE_TIME (60LL * 30LL * 1000000000)
 
 //
+// Max number of dropped events(because of full ring buffer).
+// After that, the baseline is disabled.
+//
+#define FALCOBL_MAX_DROPS_FULLBUF 64
+
+//
 // Time after which we should try to reenable the falco baseliner after
 // we disable it for mperformance reasons.
 //

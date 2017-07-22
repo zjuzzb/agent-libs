@@ -249,6 +249,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 					switch(fdinfo->m_type)
 					{
 					case SCAP_FD_FILE:
+					case SCAP_FD_FILE_V2:
 					{
 						//
 						// Add the entry to the file table
@@ -754,7 +755,11 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 {
 	blprogram* pinfo;
 
-	if(tinfo->m_blprogram != NULL)
+	if(tinfo == NULL)
+	{
+		return NULL;
+	}
+	else if(tinfo->m_blprogram != NULL)
 	{
 		pinfo = tinfo->m_blprogram;
 	}
@@ -1076,6 +1081,7 @@ void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 
 	switch(fd_type)
 	{
+	case SCAP_FD_FILE_V2:
 	case SCAP_FD_FILE:
 	case SCAP_FD_DIRECTORY:
 		if(category == EC_IO_READ)
