@@ -9,9 +9,11 @@ import (
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/api/core/v1"
+	"k8s.io/api/extensions/v1beta1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"strings"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // pods get their own special version because they send events for containers too
@@ -42,6 +44,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 
 	var parents []*draiosproto.CongroupUid
 	AddNSParents(&parents, pod.GetNamespace())
+	AddReplicaSetParents(&parents, pod)
 	log.Debugf("WatchPods(): parent size: %v", len(parents))
 
 	var cg []*draiosproto.CongroupUpdateEvent
@@ -96,15 +99,30 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 	return cg
 }
 
+var podInf cache.SharedInformer
+
+func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {
+	selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		if pod.GetNamespace() == replicaSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicaset"),
+				Id:proto.String(string(replicaSet.GetUID()))})
+		}
+	}
+}
+
 func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchPods()")
 
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fields.Everything())
 	resyncPeriod := time.Duration(10) * time.Second;
-	inf := cache.NewSharedInformer(lw, &v1.Pod{}, resyncPeriod)
+	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, resyncPeriod)
 
-	inf.AddEventHandler(
+	podInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
@@ -129,5 +147,5 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 		},
 	)
 
-	go inf.Run(ctx.Done())
+	go podInf.Run(ctx.Done())
 }
