@@ -33,11 +33,19 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet) (*draiosproto.Contain
 	}
 	tags["kubernetes.replicaset.name"] = replicaSet.GetName()
 
+	desiredReplicas := uint32(0)
+	if replicaSet.Spec.Replicas != nil {
+		desiredReplicas = uint32(*replicaSet.Spec.Replicas)
+	}
+	metrics := map[string]uint32{"kubernetes.replicaSet.replicas.desired": desiredReplicas,
+		"kubernetes.replicaSet.replicas.running": uint32(replicaSet.Status.Replicas),}
+
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicaset"),
 			Id:proto.String(string(replicaSet.GetUID()))},
 		Tags: tags,
+		Metrics: metrics,
 	}
 	AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 	AddReplicaSetChildren(&ret.Children, replicaSet)
