@@ -40,6 +40,13 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 		ips = append(ips, pod.Status.PodIP)
 	}
 
+	// This duplicates the ContainerStatuses loop below, refactor?
+	restartCount := uint32(0)
+	for _, c := range pod.Status.ContainerStatuses {
+		restartCount += uint32(c.RestartCount)
+	}
+	podMetrics := map[string]uint32{"kubernetes.pod.restart.count": restartCount}
+
 	var parents []*draiosproto.CongroupUid
 	AddNSParents(&parents, pod.GetNamespace())
 	log.Debugf("WatchPods(): parent size: %v", len(parents))
@@ -54,6 +61,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 			Tags: tags,
 			IpAddresses: ips,
 			Parents: parents,
+			Metrics: podMetrics,
 		},
 	})
 
