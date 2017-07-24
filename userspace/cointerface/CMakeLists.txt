@@ -7,6 +7,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt
                    COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/proto
 		   # horrific hack, fix this
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/apis/meta/v1
+                   COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/labels
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/util/runtime
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/apimachinery/pkg/util/wait
                    COMMAND env GOPATH=${GOPATH} go get -u k8s.io/api/authentication/v1
