@@ -42,21 +42,13 @@ spec:
           image: sysdig/agent:dev
           # With this option, rkt pulls image from scratch even if
           # it it's already downloaded in the system
-          # so may be better to disable it
+          # so may be better to disable it. If causes troubles
           imagePullPolicy: Always
           securityContext:
             privileged: true
           env:
             - name: ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: sysdig-agent
-                  key: access-key
-            - name: COLLECTOR
-              valueFrom:
-                configMapKeyRef:
-                  name: sysdig-agent
-                  key: collector
+              value: <ACCESS_KEY>
           volumeMounts:
             - mountPath: /host/dev
               name: dev-vol
