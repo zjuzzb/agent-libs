@@ -108,8 +108,8 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, replicaSet *v1b
 		//log.Debugf("AddNSParents: %v", nsObj.GetName())
 		if pod.GetNamespace() == replicaSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
 			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicaset"),
-				Id:proto.String(string(replicaSet.GetUID()))})
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
 		}
 	}
 }
