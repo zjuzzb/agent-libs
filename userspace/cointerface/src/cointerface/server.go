@@ -10,8 +10,6 @@ import (
 	"google.golang.org/grpc"
 	"net"
 	"os"
-	"io"
-	"crypto/rand"
 	"os/signal"
 	"draiosproto"
 	"sdc_internal"
@@ -124,38 +122,6 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 	return getSwarmState(ctx, cmd)
 }
 
-func newUUID() string {
-	uuid := make([]byte, 16)
-	n, err := io.ReadFull(rand.Reader, uuid)
-	if n != len(uuid) || err != nil {
-		return ""
-	}
-	// variant bits; see section 4.1.1
-	uuid[8] = uuid[8]&^0xc0 | 0x80
-	// version 4 (pseudo-random); see section 4.1.3
-	uuid[6] = uuid[6]&^0xf0 | 0x40
-	return fmt.Sprintf("%x-%x-%x-%x-%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:])
-}
-
-func newCongroup(uid *draiosproto.CongroupUid, parents []*draiosproto.CongroupUid) (*draiosproto.ContainerGroup) {
-	return &draiosproto.ContainerGroup{
-	     	Uid:  uid,
-		Tags: map[string]string{
-			"key1": "value1",
-			"key2": "value2",
-			"key3": "value3",
-		},
-		IpAddresses: []string{"1.2.3.4"},
-		// Ports
-		Metrics: map[string]uint32{
-			"key4": 0,
-			"key5": 0,
-		},
-		// Children: <- we could probably avoid to pass this info on the wire
-		Parents: parents,
-	}
-}
-
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
 
@@ -181,6 +147,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 
 	// start watching some stuff
 	kubecollect.WatchNamespaces(ctx, kubeClient, evtc)
+	kubecollect.WatchDeployments(ctx, kubeClient, evtc)
 	kubecollect.WatchReplicaSets(ctx, kubeClient, evtc)
 	kubecollect.WatchPods(ctx, kubeClient, evtc)
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")

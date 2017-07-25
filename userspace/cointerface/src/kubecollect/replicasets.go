@@ -48,6 +48,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet) (*draiosproto.Contain
 		Metrics: metrics,
 	}
 	AddNSParents(&ret.Parents, replicaSet.GetNamespace())
+	AddDeploymentParents(&ret.Parents, replicaSet)
 	AddReplicaSetChildren(&ret.Children, replicaSet)
 	return ret
 }
@@ -78,7 +79,7 @@ func WatchReplicaSets(ctx context.Context, kubeClient kubeclient.Interface, evtc
 	replicaSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				//log.Debugf("AddFunc dumping ReplicaSet: %v", obj.(*v1.ReplicaSet))
+				//log.Debugf("AddFunc dumping ReplicaSet: %v", obj.(*v1beta1.ReplicaSet))
 				evtc <- replicaSetEvent(obj.(*v1beta1.ReplicaSet),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
@@ -93,7 +94,7 @@ func WatchReplicaSets(ctx context.Context, kubeClient kubeclient.Interface, evtc
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.ReplicaSet))
+				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1beta1.ReplicaSet))
 				evtc <- replicaSetEvent(obj.(*v1beta1.ReplicaSet),
 					draiosproto.CongroupEventType_REMOVED.Enum())
 			},
