@@ -9,7 +9,6 @@ import (
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/api/core/v1"
-	"k8s.io/api/extensions/v1beta1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"strings"
@@ -149,23 +148,9 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 
 var podInf cache.SharedInformer
 
-func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {
-	selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
-	for _, obj := range podInf.GetStore().List() {
-		pod := obj.(*v1.Pod)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		if pod.GetNamespace() == replicaSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))})
-		}
-	}
-}
-
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	for _, obj := range podInf.GetStore().List() {
 		pod := obj.(*v1.Pod)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
 		if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_pod"),

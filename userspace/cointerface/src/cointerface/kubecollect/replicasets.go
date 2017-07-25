@@ -49,7 +49,8 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet) (*draiosproto.Contain
 	}
 	AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 	AddDeploymentParents(&ret.Parents, replicaSet)
-	AddReplicaSetChildren(&ret.Children, replicaSet)
+	selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
+	AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
 	return ret
 }
 

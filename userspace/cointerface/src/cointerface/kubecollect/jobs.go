@@ -10,9 +10,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/api/extensions/v1beta1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/api/core/v1"
 	v1batch "k8s.io/api/batch/v1"
 )
 
@@ -58,22 +55,22 @@ func WatchJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 	jobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				evtc <- replicaSetEvent(obj.(*v1batch.Job),
+				evtc <- jobEvent(obj.(*v1batch.Job),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldReplicaSet := oldObj.(*v1batch.Job)
-				newReplicaSet := newObj.(*v1batch.Job)
-				if oldReplicaSet.GetResourceVersion() != newReplicaSet.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping ReplicaSet oldReplicaSet %v", oldReplicaSet)
-					//log.Debugf("UpdateFunc dumping ReplicaSet newReplicaSet %v", newReplicaSet)
-					evtc <- replicaSetEvent(newReplicaSet,
+				oldJob := oldObj.(*v1batch.Job)
+				newJob := newObj.(*v1batch.Job)
+				if oldJob.GetResourceVersion() != newJob.GetResourceVersion() {
+					//log.Debugf("UpdateFunc dumping ReplicaSet oldJob %v", oldJob)
+					//log.Debugf("UpdateFunc dumping ReplicaSet newJob %v", newJob)
+					evtc <- jobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.ReplicaSet))
-				evtc <- replicaSetEvent(obj.(*v1batch.Job),
+				evtc <- jobEvent(obj.(*v1batch.Job),
 					draiosproto.CongroupEventType_REMOVED.Enum())
 			},
 		},
