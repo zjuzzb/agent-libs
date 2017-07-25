@@ -11,6 +11,8 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	v1batch "k8s.io/api/batch/v1"
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 // make this a library function?
@@ -41,6 +43,18 @@ func newJobConGroup(job *v1batch.Job) (*draiosproto.ContainerGroup) {
 	selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
 	AddPodChildren(&ret.Children, selector, job.GetNamespace())
 	return ret
+}
+
+func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
+	for _, obj := range jobInf.GetStore().List() {
+		job := obj.(*v1batch.Job)
+		selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
+		if pod.GetNamespace() == job.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_job"),
+				Id:proto.String(string(job.GetUID()))})
+		}
+	}
 }
 
 var jobInf cache.SharedInformer
