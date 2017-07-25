@@ -6,7 +6,6 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/gogo/protobuf/proto"
 	"github.com/shirou/gopsutil/process"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"net"
 	"os"
@@ -15,7 +14,8 @@ import (
 	"sdc_internal"
 	"sync"
 	"time"
-	"kubecollect"
+	"cointerface/kubecollect"
+	"golang.org/x/net/context"
 )
 
 // Reusing docker clients, so we don't need to reconnect to docker daemon
@@ -152,6 +152,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	kubecollect.WatchServices(ctx, kubeClient, evtc)
 	kubecollect.WatchDaemonSets(ctx, kubeClient, evtc)
 	kubecollect.WatchNodes(ctx, kubeClient, evtc)
+	//kubecollect.WatchJobs(ctx, kubeClient, evtc)
 	kubecollect.WatchPods(ctx, kubeClient, evtc)
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
 	for {
