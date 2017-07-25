@@ -92,6 +92,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	AddNSParents(&parents, pod.GetNamespace())
 	AddReplicaSetParents(&parents, pod)
 	AddServiceParents(&parents, pod)
+	AddDaemonSetParents(&parents, pod)
 	AddNodeParents(&parents, pod.Spec.NodeName)
 	log.Debugf("WatchPods(): parent size: %v", len(parents))
 

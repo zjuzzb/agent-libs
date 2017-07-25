@@ -38,7 +38,6 @@ func newServiceCongroup(service *v1.Service) (*draiosproto.ContainerGroup) {
 			Id:proto.String(string(service.GetUID()))},
 		Tags: tags,
 	}
-	log.Debugf("SERVICE NAMESPACE: %s", service.GetNamespace())
 	AddNSParents(&ret.Parents, service.GetNamespace())
 	return ret
 }
