@@ -166,7 +166,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 	std::string kind = evt->object().uid().kind();
 	std::string id = evt->object().uid().id();
 
-	glogf(sinsp_logger::SEV_DEBUG, "Handling event with uid <%s,%s>", kind.c_str(), id.c_str());
+	glogf(sinsp_logger::SEV_DEBUG, "Handling %s event with uid <%s,%s>", draiosproto::congroup_event_type_Name(evt->type()).c_str(), kind.c_str(), id.c_str());
 
 	auto key = make_pair(kind, id);
 
@@ -193,6 +193,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			remove(evt);
 			break;
 		case draiosproto::UPDATED:
+			glogf(sinsp_logger::SEV_DEBUG, "Current container_group: %s", m_state[key]->DebugString().c_str());
 			*m_state[key]->mutable_tags() = evt->object().tags();
 			m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 			m_state[key]->mutable_ports()->CopyFrom(evt->object().ports());
@@ -201,7 +202,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 		}
 	}
 
-	glogf(sinsp_logger::SEV_DEBUG, "Event with uid <%s,%s> handled. Current state size: %d", kind.c_str(), id.c_str(), m_state.size());
+	glogf(sinsp_logger::SEV_DEBUG, "%s event with uid <%s,%s> handled. Current state size: %d", draiosproto::congroup_event_type_Name(evt->type()).c_str(), kind.c_str(), id.c_str(), m_state.size());
 	debug_print();
 }
 
@@ -213,7 +214,7 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 	for (const auto &x : m_state[key]->parents()) {
 		auto pkey = make_pair(x.kind(), x.id());
 		if(!has(pkey)) {
-			// keep track of the missing parent. We will fix the children link when this event arrives
+			// keep track of the missing parent. We will fix the children links when this event arrives
 			if(m_orphans.find(pkey) == m_orphans.end())
 				m_orphans[pkey] = std::vector<uid_t>();
 			m_orphans[pkey].emplace_back(key.first, key.second);
@@ -231,6 +232,10 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 	//
 	for (const auto &x : m_state[key]->children()) {
 		auto ckey = make_pair(x.kind(), x.id());
+		if(!has(ckey)) {
+			// the connection will be created when the child arrives
+			continue;
+		}
 		draiosproto::congroup_uid *parent = m_state[ckey]->mutable_parents()->Add();
 		parent->set_kind(key.first);
 		parent->set_id(key.second);
@@ -260,20 +265,31 @@ void infrastructure_state::remove(const draiosproto::congroup_update_event *evt)
 	auto key = make_pair(evt->object().uid().kind(), evt->object().uid().id());
 	glogf(sinsp_logger::SEV_DEBUG, "Remove container group <%s,%s>", key.first.c_str(), key.second.c_str());
 
+	glogf(sinsp_logger::SEV_DEBUG, "Container group <%s,%s> has %d parents", key.first.c_str(), key.second.c_str(), m_state[key]->parents().size());
 	for (const auto &x : m_state[key]->parents()) {
 		auto pkey = make_pair(x.kind(), x.id());
-		auto pos = m_state[pkey]->children().begin();
-		bool erased = false;
-		glogf(sinsp_logger::SEV_DEBUG, "Searching children link inside container group <%s,%s>", pkey.first.c_str(), pkey.second.c_str());
 
-		for (; pos != m_state[pkey]->children().end(); ++pos) {
+		if(!has(pkey)) {
+			// parent has already been deleted
+			glogf(sinsp_logger::SEV_DEBUG, "Container group <%s,%s> has been already deleted", pkey.first.c_str(), pkey.second.c_str());
+			continue;
+		}
+
+		bool erased = false;
+		glogf(sinsp_logger::SEV_DEBUG, "Searching children links inside container group <%s,%s>", pkey.first.c_str(), pkey.second.c_str());
+
+		for (auto pos = m_state[pkey]->children().begin(); pos != m_state[pkey]->children().end();) {
 			if (pos->kind() == evt->object().uid().kind() && pos->id() == evt->object().uid().id()) {
-				glogf(sinsp_logger::SEV_DEBUG, "Erase children link from <%s,%s>", pkey.first.c_str(), pkey.second.c_str());
+				glogf(sinsp_logger::SEV_DEBUG, "Erase child link from <%s,%s>", pkey.first.c_str(), pkey.second.c_str());
 				m_state[pkey]->mutable_children()->erase(pos);
+				glogf(sinsp_logger::SEV_DEBUG, "Child link erased.");
 				erased = true;
 				break;
+			} else {
+				++pos;
 			}
 		}
+
 		if (!erased) {
 			glogf(sinsp_logger::SEV_DEBUG, "Error. Container groups inconsistency detected.");
 			throw new sinsp_exception("Container groups inconsistency detected. "
@@ -283,23 +299,17 @@ void infrastructure_state::remove(const draiosproto::congroup_update_event *evt)
 		}
 	}
 
-	//
-	// Delete also the container children
-	//
-	for (const auto &x : m_state[key]->children()) {
-		if (x.kind() == "container") {
-			glogf(sinsp_logger::SEV_DEBUG, "Erase container children <%s,%s>", x.kind().c_str(), x.id().c_str());
-			m_state.erase(make_pair(x.kind(), x.id()));
-
-			//
-			// Delete all cached results for this container
-			//
-			m_container_p_cache.erase(x.id());
-		}
+	if (m_state[key]->uid().kind() == "container") {
+		//
+		// Delete all cached results for this container
+		//
+		m_container_p_cache.erase(m_state[key]->uid().id());
 	}
 
 	// Remove the group itself
 	m_state.erase(key);
+
+	glogf(sinsp_logger::SEV_DEBUG, "Container group <%s,%s> removed.", key.first.c_str(), key.second.c_str());
 }
 
 bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup,

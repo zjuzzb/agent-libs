@@ -17,14 +17,53 @@ import (
 )
 
 // pods get their own special version because they send events for containers too
-func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType)  {
-	updates := newPodEvents(pod, eventType)
+func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod)  {
+	updates := newPodEvents(pod, eventType, oldPod)
 	for _, evt := range updates {
 		evtc <- *evt
 	}
 }
 
-func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*draiosproto.CongroupUpdateEvent) {
+func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEventType, cg *[]*draiosproto.CongroupUpdateEvent, podUID string) {
+	par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
+		Kind:proto.String("k8s_pod"),
+		Id:proto.String(podUID)},
+	}
+
+	// Kubernetes reports containers in this format:
+	// docker://<fulldockercontainerid>
+	// rkt://<rktpodid>:<rktappname>
+	// We instead use
+	// <dockershortcontainerid>
+	// <rktpodid>:<rktappname>
+	// so here we are doing this conversion
+	containerId := c.ContainerID
+	if strings.HasPrefix(containerId, "docker://") {
+		containerId = containerId[9:21]
+	} else if strings.HasPrefix(containerId, "rkt://") {
+		containerId = containerId[6:]
+	} else {
+		// unknown container type
+		return
+	}
+
+	*cg = append(*cg, &draiosproto.CongroupUpdateEvent {
+		Type: eventType.Enum(),
+		Object: &draiosproto.ContainerGroup {
+			Uid: &draiosproto.CongroupUid {
+				Kind:proto.String("container"),
+				Id:proto.String(containerId),
+			},
+			Tags: map[string]string{
+				"container.name"    : c.Name,
+				"container.image"   : c.Image,
+			},
+			Parents: par,
+		},
+	})
+}
+
+func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod) ([]*draiosproto.CongroupUpdateEvent) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -68,40 +107,38 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType) ([]*drai
 		},
 	})
 
-	// We assume the container<->pod relationship
-	// is static for the lifetime of the pod
-	if eventType == draiosproto.CongroupEventType_ADDED || eventType == draiosproto.CongroupEventType_REMOVED {
-		par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
-			Kind:proto.String("k8s_pod"),
-			Id:proto.String(string(pod.GetUID()))}}
-		for _, c := range pod.Status.ContainerStatuses {
-			// Kubernetes reports containers in this format:
-			// docker://<fulldockercontainerid>
-			// rkt://<rktpodid>:<rktappname>
-			// We instead use
-			// <dockershortcontainerid>
-			// <rktpodid>:<rktappname>
-			// so here we are doing this conversion
-			containerId := c.ContainerID
-			if strings.HasPrefix(containerId, "docker://") {
-				containerId = containerId[9:21]
-			} else if strings.HasPrefix(containerId, "rkt://") {
-				containerId = containerId[6:]
-			} else {
-				// unknown container type
-				continue
+	var oldContainers []v1.ContainerStatus
+	if oldPod != nil {
+		oldContainers = append(oldContainers, oldPod.Status.ContainerStatuses...)
+	}
+	for _, c := range pod.Status.ContainerStatuses {
+		found := false
+		i := 0
+		if oldPod != nil {
+			for _, oldC := range oldPod.Status.ContainerStatuses {
+				if oldC.ContainerID == c.ContainerID {
+					oldContainers[i] = oldContainers[len(oldContainers)-1]
+					oldContainers = oldContainers[:len(oldContainers)-1]
+					found = true
+					break
+				}
+				i++
 			}
-			cg = append(cg, &draiosproto.CongroupUpdateEvent {
-				Type: eventType.Enum(),
-				Object: &draiosproto.ContainerGroup {
-					Uid: &draiosproto.CongroupUid {
-						Kind:proto.String("container"),
-						Id:proto.String(containerId),
-					},
-					Parents: par,
-				},
-			})
 		}
+		if found {
+			// Never fire UPDATED events for containers
+			continue
+		}
+		var cEvtType draiosproto.CongroupEventType
+		if eventType == draiosproto.CongroupEventType_UPDATED {
+			cEvtType = draiosproto.CongroupEventType_ADDED
+		} else {
+			cEvtType = eventType
+		}
+		newContainerEvent(&c, cEvtType, &cg, string(pod.GetUID()))
+	}
+	for _, removedC := range oldContainers {
+		newContainerEvent(&removedC, draiosproto.CongroupEventType_REMOVED, &cg, string(pod.GetUID()))
 	}
 
 	return cg
@@ -134,7 +171,8 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
-				sendPodEvents(evtc, obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
+				newPod := obj.(*v1.Pod)
+				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil)
 				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
@@ -143,13 +181,13 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
 					//log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
 					//log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
-					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED)
+					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod)
 					//evtc <- podEvent(newPod, draiosproto.CongroupEventType_UPDATED)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
-				sendPodEvents(evtc, obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
+				sendPodEvents(evtc, obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED, nil)
 				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
 			},
 		},
