@@ -162,7 +162,7 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, replicaSet *v1b
 	}
 }
 
-/*func AddChildren(children *[]*draiosproto.CongroupUid, selector *labels.Selector, namespace string) {
+func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	for _, obj := range podInf.GetStore().List() {
 		pod := obj.(*v1.Pod)
 		//log.Debugf("AddNSParents: %v", nsObj.GetName())
@@ -172,7 +172,7 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, replicaSet *v1b
 				Id:proto.String(string(pod.GetUID()))})
 		}
 	}
-}*/
+}
 
 func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchPods()")

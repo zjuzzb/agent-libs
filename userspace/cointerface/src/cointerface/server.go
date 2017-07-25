@@ -152,7 +152,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	kubecollect.WatchServices(ctx, kubeClient, evtc)
 	kubecollect.WatchDaemonSets(ctx, kubeClient, evtc)
 	kubecollect.WatchNodes(ctx, kubeClient, evtc)
-	//kubecollect.WatchJobs(ctx, kubeClient, evtc)
+	kubecollect.WatchJobs(ctx, kubeClient, evtc)
 	kubecollect.WatchPods(ctx, kubeClient, evtc)
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
 	for {
