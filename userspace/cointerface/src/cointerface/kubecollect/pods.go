@@ -90,6 +90,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	var parents []*draiosproto.CongroupUid
 	AddNSParents(&parents, pod.GetNamespace())
 	AddReplicaSetParents(&parents, pod)
+	AddReplicationControllerParents(&parents, pod)
 	AddServiceParents(&parents, pod)
 	AddDaemonSetParents(&parents, pod)
 	AddNodeParents(&parents, pod.Spec.NodeName)

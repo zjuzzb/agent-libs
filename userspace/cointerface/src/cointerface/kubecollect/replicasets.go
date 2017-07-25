@@ -16,10 +16,10 @@ import (
 )
 
 // make this a library function?
-func replicaSetEvent(ns *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newReplicaSetCongroup(ns),
+		Object: newReplicaSetCongroup(rs),
 	}
 }
 
