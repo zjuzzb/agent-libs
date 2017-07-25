@@ -91,6 +91,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	AddNSParents(&parents, pod.GetNamespace())
 	AddReplicaSetParents(&parents, pod)
 	AddReplicationControllerParents(&parents, pod)
+	AddStatefulSetParentsFromPod(&parents, pod)
 	AddServiceParents(&parents, pod)
 	AddDaemonSetParents(&parents, pod)
 	AddNodeParents(&parents, pod.Spec.NodeName)
@@ -179,6 +180,19 @@ func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_pod"),
 				Id:proto.String(string(pod.GetUID()))})
+		}
+	}
+}
+
+func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		for _, owner := range pod.GetOwnerReferences() {
+			if owner.UID == parent.GetUID() {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_pod"),
+					Id:proto.String(string(pod.GetUID()))})
+			}
 		}
 	}
 }
