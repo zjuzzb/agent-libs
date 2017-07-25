@@ -14,7 +14,6 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         gcc-c++ \
         git \
         glibc-static \
-        golang \
         make \
 	pkg-config \
         rpm-build \
@@ -33,6 +32,10 @@ RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.
     mv docker/docker /usr/local/bin/docker && \
     chmod +x /usr/local/bin/docker && \
     rm -fr docker.tgz docker/
+
+RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
+    curl -s https://mirror.go-repo.io/centos/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo && \
+    yum install golang
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/
