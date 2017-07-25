@@ -48,6 +48,12 @@ func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	for _, obj := range serviceInf.GetStore().List() {
 		service := obj.(*v1.Service)
 		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+
+		if len(service.Spec.Selector) == 0 {
+			// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
+			continue
+		}
+
 		lselector := &v1meta.LabelSelector{}
 		for k, v := range service.Spec.Selector {
 			v1meta.AddLabelToSelector(lselector, k, v)
