@@ -37,8 +37,8 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet) (*draiosproto.Contain
 	if replicaSet.Spec.Replicas != nil {
 		desiredReplicas = uint32(*replicaSet.Spec.Replicas)
 	}
-	metrics := map[string]uint32{"kubernetes.replicaSet.replicas.desired": desiredReplicas,
-		"kubernetes.replicaSet.replicas.running": uint32(replicaSet.Status.Replicas),}
+	metrics := map[string]uint32{"kubernetes.replicaset.replicas.desired": desiredReplicas,
+		"kubernetes.replicaset.replicas.running": uint32(replicaSet.Status.Replicas),}
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
