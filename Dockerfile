@@ -35,7 +35,7 @@ RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.
 
 RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
     curl -s https://mirror.go-repo.io/centos/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo && \
-    yum install golang
+    yum -y install golang
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/
