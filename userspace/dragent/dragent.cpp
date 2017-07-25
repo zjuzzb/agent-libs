@@ -583,6 +583,7 @@ int dragent_app::sdagent_main()
 	}
 	catch (const sinsp_exception &e)
 	{
+		g_log->error(string("Failed to init sinsp_worker. Exception message: ") + string(e.what()));
 		dragent_configuration::m_terminate = true;
 		dragent_error_handler::m_exception = true;
 	}
