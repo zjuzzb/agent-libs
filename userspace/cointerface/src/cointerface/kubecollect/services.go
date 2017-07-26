@@ -22,6 +22,14 @@ func serviceEvent(ns *v1.Service, eventType *draiosproto.CongroupEventType) (dra
 	}
 }
 
+func serviceSelector(service *v1.Service) (labels.Selector, error) {
+	lselector := &v1meta.LabelSelector{}
+	for k, v := range service.Spec.Selector {
+		v1meta.AddLabelToSelector(lselector, k, v)
+	}
+	return v1meta.LabelSelectorAsSelector(lselector)
+}
+
 func newServiceCongroup(service *v1.Service) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
@@ -39,6 +47,11 @@ func newServiceCongroup(service *v1.Service) (*draiosproto.ContainerGroup) {
 		Tags: tags,
 	}
 	AddNSParents(&ret.Parents, service.GetNamespace())
+	// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
+	if len(service.Spec.Selector) > 0 {
+		selector, _ := serviceSelector(service)
+		AddPodChildren(&ret.Children, selector, service.GetNamespace())
+	}
 	return ret
 }
 
@@ -50,17 +63,23 @@ func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 		//log.Debugf("AddNSParents: %v", nsObj.GetName())
 
 		if len(service.Spec.Selector) == 0 {
-			// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
 			continue
 		}
 
-		lselector := &v1meta.LabelSelector{}
-		for k, v := range service.Spec.Selector {
-			v1meta.AddLabelToSelector(lselector, k, v)
-		}
-		selector, _ := v1meta.LabelSelectorAsSelector(lselector)
+		selector, _ := serviceSelector(service)
 		if pod.GetNamespace() == service.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_service"),
+				Id:proto.String(string(service.GetUID()))})
+		}
+	}
+}
+
+func AddServiceChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range serviceInf.GetStore().List() {
+		service := obj.(*v1.Service)
+		if service.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_service"),
 				Id:proto.String(string(service.GetUID()))})
 		}

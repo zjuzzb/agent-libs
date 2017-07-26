@@ -17,11 +17,11 @@ import (
 func nsEvent(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newNSCongroup(ns),
+		Object: newNSCongroup(ns, eventType),
 	}
 }
 
-func newNSCongroup(ns *v1.Namespace) (*draiosproto.ContainerGroup) {
+func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -31,12 +31,24 @@ func newNSCongroup(ns *v1.Namespace) (*draiosproto.ContainerGroup) {
 	}
 	tags["kubernetes.namespace.name"] = ns.GetName()
 
-	return &draiosproto.ContainerGroup{
+	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_namespace"),
 			Id:proto.String(string(ns.GetUID()))},
 		Tags: tags,
 	}
+
+	if eventType == draiosproto.CongroupEventType_ADDED.Enum() {
+		AddDeploymentChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddDaemonSetChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddServiceChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddCronJobChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddJobChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddPodChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddReplicaSetChildrenFromNamespace(&ret.Children, ns.GetName())
+	}
+
+	return ret
 }
 
 var inf cache.SharedInformer

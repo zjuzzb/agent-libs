@@ -29,9 +29,9 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 	//     should work on all v1.Object types
 	tags := make(map[string]string)
 	for k, v := range daemonSet.GetLabels() {
-		tags["kubernetes.daemonset.label." + k] = v
+		tags["kubernetes.daemonSet.label." + k] = v
 	}
-	tags["kubernetes.daemonset.name"] = daemonSet.GetName()
+	tags["kubernetes.daemonSet.name"] = daemonSet.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
@@ -40,6 +40,8 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 		Tags: tags,
 	}
 	AddNSParents(&ret.Parents, daemonSet.GetNamespace())
+	selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
+	AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())
 	return ret
 }
 
@@ -52,6 +54,17 @@ func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 		selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
 		if pod.GetNamespace() == daemonSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_daemonset"),
+				Id:proto.String(string(daemonSet.GetUID()))})
+		}
+	}
+}
+
+func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range daemonSetInf.GetStore().List() {
+		daemonSet := obj.(*v1beta1.DaemonSet)
+		if daemonSet.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_daemonset"),
 				Id:proto.String(string(daemonSet.GetUID()))})
 		}

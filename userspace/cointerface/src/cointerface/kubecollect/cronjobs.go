@@ -61,6 +61,17 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
 	}
 }
 
+func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range cronJobInf.GetStore().List() {
+		cronJob := obj.(*v2alpha1.CronJob)
+		if cronJob.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_cronjob"),
+				Id:proto.String(string(cronJob.GetUID()))})
+		}
+	}
+}
+
 func WatchCronJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())

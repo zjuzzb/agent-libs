@@ -160,6 +160,28 @@ func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Select
 	}
 }
 
+func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName string) {
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if pod.Spec.NodeName == nodeName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
+		}
+	}
+}
+
+func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if pod.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
+		}
+	}
+}
+
 func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchPods()")
 

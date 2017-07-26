@@ -46,6 +46,8 @@ func newJobConGroup(job *v1batch.Job) (*draiosproto.ContainerGroup) {
 	return ret
 }
 
+var jobInf cache.SharedInformer
+
 func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	for _, obj := range jobInf.GetStore().List() {
 		job := obj.(*v1batch.Job)
@@ -58,7 +60,16 @@ func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	}
 }
 
-var jobInf cache.SharedInformer
+func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range jobInf.GetStore().List() {
+		job := obj.(*v1batch.Job)
+		if job.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_job"),
+				Id:proto.String(string(job.GetUID()))})
+		}
+	}
+}
 
 func WatchJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchReplicaSets()")

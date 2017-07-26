@@ -39,6 +39,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment) (*draiosproto.Contain
 		Tags: tags,
 	}
 	AddNSParents(&ret.Parents, deployment.GetNamespace())
+	AddReplicaSetChildren(&ret.Children, deployment)
 	return ret
 }
 
@@ -50,6 +51,17 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1bet
 		selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
 		if replicaSet.GetNamespace() == deployment.GetNamespace() && selector.Matches(labels.Set(replicaSet.GetLabels())) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_deployment"),
+				Id:proto.String(string(deployment.GetUID()))})
+		}
+	}
+}
+
+func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range deploymentInf.GetStore().List() {
+		deployment := obj.(*v1beta1.Deployment)
+		if deployment.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_deployment"),
 				Id:proto.String(string(deployment.GetUID()))})
 		}
