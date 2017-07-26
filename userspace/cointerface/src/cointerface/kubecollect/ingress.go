@@ -56,7 +56,6 @@ func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) 
 					}
 				}
 			}
-
 		}
 	}
 	return ret
@@ -67,24 +66,25 @@ var ingressInf cache.SharedInformer
 func AddIngressParents(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
 	for _, obj := range ingressInf.GetStore().List() {
 		ingress := obj.(*v1beta1.Ingress)
-		if ingress.GetNamespace() == service.GetNamespace() {
-			if backend := ingress.Spec.Backend; backend != nil && backend.ServiceName == service.GetName(){
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_ingress"),
-					Id:proto.String(string(ingress.GetUID()))})
-			} else {
-				for _, rule := range ingress.Spec.Rules {
-					if http := rule.HTTP ; http != nil {
-						for _, path := range http.Paths {
-							if path.Backend.ServiceName == service.GetName() {
-								*parents = append(*parents, &draiosproto.CongroupUid{
-									Kind:proto.String("k8s_ingress"),
-									Id:proto.String(string(ingress.GetUID()))})
-							}
+		if ingress.GetNamespace() != service.GetNamespace() {
+			continue
+		}
+		if backend := ingress.Spec.Backend; backend != nil && backend.ServiceName == service.GetName(){
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_ingress"),
+				Id:proto.String(string(ingress.GetUID()))})
+		} else {
+			for _, rule := range ingress.Spec.Rules {
+				if http := rule.HTTP ; http != nil {
+					for _, path := range http.Paths {
+						if path.Backend.ServiceName == service.GetName() {
+							*parents = append(*parents, &draiosproto.CongroupUid{
+								Kind:proto.String("k8s_ingress"),
+								Id:proto.String(string(ingress.GetUID()))})
 						}
 					}
-
 				}
+
 			}
 		}
 	}
