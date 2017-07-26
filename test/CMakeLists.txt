@@ -37,7 +37,7 @@ add_executable(tests
 	falco_events_test.cpp
 	forking.cpp
 	fs.cpp
-	infrastructure_state_test.cpp
+	# infrastructure_state_test.cpp
 	memdump.cpp
 	tracers.cpp
 	metric_limits.cpp
