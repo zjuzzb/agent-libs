@@ -4306,7 +4306,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	//
 	// Refresh the infrastructure state
 	//
-	m_infrastructure_state->refresh();
+	m_infrastructure_state->refresh(ts);
 
 	//
 	// This is where normal event parsing starts.

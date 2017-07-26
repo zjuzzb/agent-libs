@@ -115,12 +115,12 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 
 infrastructure_state::~infrastructure_state(){}
 
-void infrastructure_state::refresh()
+void infrastructure_state::refresh(uint64_t ts)
 {
 	m_interval.run([this]()
 	{
 		m_coclient.next();
-	});
+	}, ts);
 }
 
 void infrastructure_state::reset()

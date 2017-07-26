@@ -22,7 +22,7 @@ public:
 
 	~infrastructure_state();
 
-	void refresh();
+	void refresh(uint64_t ts);
 
 	bool match_scope(std::string &container_id, std::string &host_id, const draiosproto::policy &policy);
 
