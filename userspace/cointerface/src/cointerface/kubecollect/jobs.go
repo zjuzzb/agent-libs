@@ -42,6 +42,7 @@ func newJobConGroup(job *v1batch.Job) (*draiosproto.ContainerGroup) {
 	AddNSParents(&ret.Parents, job.GetNamespace())
 	selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
 	AddPodChildren(&ret.Children, selector, job.GetNamespace())
+	AddCronJobParent(&ret.Parents, job)
 	return ret
 }
 
