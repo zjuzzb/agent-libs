@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v2alpha1"
-	log "github.com/cihub/seelog"
 )
 
 // make this a library function?
@@ -54,14 +53,14 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
 		cronJob := item.(*v2alpha1.CronJob)
 		for _, activeJob := range cronJob.Status.Active {
 			if activeJob.UID == job.GetUID() {
-				log.Infof("Found cronJob %s for job %s", cronJob.GetUID(), job.GetUID())
-				parents = append(parents, &draiosproto.CongroupUid{
+				*parents = append(*parents, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_cronjob"),
 					Id:proto.String(string(cronJob.UID))})
 			}
 		}
 	}
 }
+
 func WatchCronJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
