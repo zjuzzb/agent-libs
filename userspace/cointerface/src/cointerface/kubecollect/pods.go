@@ -195,13 +195,15 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 			AddFunc: func(obj interface{}) {
 				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
 				newPod := obj.(*v1.Pod)
-				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil)
+				if newPod.Status.Phase == "Running" || newPod.Status.Phase == "Pending" {
+					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil)
+				}
 				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPod := oldObj.(*v1.Pod)
 				newPod := newObj.(*v1.Pod)
-				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
+				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() && (newPod.Status.Phase == "Running" || newPod.Status.Phase == "Pending") && (oldPod.Status.Phase == "Running" || oldPod.Status.Phase == "Pending") {
 					//log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
 					//log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
 					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod)
@@ -210,7 +212,10 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
-				sendPodEvents(evtc, obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED, nil)
+				oldPod := obj.(*v1.Pod)
+				if oldPod.Status.Phase == "Running" || oldPod.Status.Phase == "Pending" { 
+					sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil)
+				}
 				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
 			},
 		},
