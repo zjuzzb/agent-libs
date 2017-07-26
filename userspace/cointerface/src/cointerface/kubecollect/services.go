@@ -30,6 +30,17 @@ func serviceSelector(service *v1.Service) (labels.Selector, error) {
 	return v1meta.LabelSelectorAsSelector(lselector)
 }
 
+func lookupServiceByName(serviceName, namespace string) string {
+	// Probably we should map them by name somehow
+	for _, obj := range serviceInf.GetStore().List() {
+		service := obj.(*v1.Service)
+		if service.GetNamespace() == namespace && service.GetName() == serviceName {
+			return string(service.GetUID())
+		}
+	}
+	return ""
+}
+
 func newServiceCongroup(service *v1.Service) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
@@ -47,6 +58,7 @@ func newServiceCongroup(service *v1.Service) (*draiosproto.ContainerGroup) {
 		Tags: tags,
 	}
 	AddNSParents(&ret.Parents, service.GetNamespace())
+	AddIngressParents(&ret.Parents, service)
 	// ref: https://kubernetes.io/docs/concepts/services-networking/service/#services-without-selectors
 	if len(service.Spec.Selector) > 0 {
 		selector, _ := serviceSelector(service)

@@ -45,6 +45,7 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 		AddJobChildrenFromNamespace(&ret.Children, ns.GetName())
 		AddPodChildrenFromNamespace(&ret.Children, ns.GetName())
 		AddReplicaSetChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddIngressChildrenFromNamespace(&ret.Children, ns.GetName())
 	}
 
 	return ret
