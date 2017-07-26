@@ -37,8 +37,7 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 			Id:proto.String(string(ns.GetUID()))},
 		Tags: tags,
 	}
-
-	if eventType == draiosproto.CongroupEventType_ADDED.Enum() {
+	if *eventType == draiosproto.CongroupEventType_ADDED {
 		AddDeploymentChildrenFromNamespace(&ret.Children, ns.GetName())
 		AddDaemonSetChildrenFromNamespace(&ret.Children, ns.GetName())
 		AddServiceChildrenFromNamespace(&ret.Children, ns.GetName())
