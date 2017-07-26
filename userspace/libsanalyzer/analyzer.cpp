@@ -2384,6 +2384,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// at least one process for each container
 	tracer_emitter container_trc("emit_container", proc_trc);
 	auto emitted_containers = emit_containers(progtable_by_container);
+
 	container_trc.stop();
 	bool progtable_needs_filtering = false;
 
@@ -2569,6 +2570,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			proc->set_netrole(netrole);
 
 #ifndef _WIN32
+			proc->mutable_resource_counters()->set_jmx_sent(0);
+			proc->mutable_resource_counters()->set_jmx_total(0);
+			proc->mutable_resource_counters()->set_app_checks_sent(0);
+			proc->mutable_resource_counters()->set_app_checks_total(0);
+
 			// Add JMX metrics
 			if (m_jmx_proxy)
 			{
@@ -2588,13 +2594,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 							auto java_proto = proc->mutable_protos()->mutable_java();
-							jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
+							unsigned jmx_total = jmx_metrics_it->second.total_metrics();
+							unsigned jmx_sent = jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
 										"process", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT_PER_PROC));
+							jmx_limit -= jmx_sent;
 							if(jmx_limit == 0)
 							{
 								g_logger.format(sinsp_logger::SEV_WARNING,
 									"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
 							}
+
+							proc->mutable_resource_counters()->set_jmx_sent(jmx_sent);
+							proc->mutable_resource_counters()->set_jmx_total(jmx_total);
+							if (!tinfo->m_container_id.empty())
+							{
+								std::get<0>(m_jmx_metrics_by_containers[tinfo->m_container_id]) += jmx_sent;
+								std::get<1>(m_jmx_metrics_by_containers[tinfo->m_container_id]) += jmx_total;
+							}
+							std::get<0>(m_jmx_metrics_by_containers[""]) += jmx_sent;
+							std::get<1>(m_jmx_metrics_by_containers[""]) += jmx_total;
 						}
 						else if(metric_limits::log_enabled())
 						{
@@ -2611,6 +2629,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				set<string> app_data_set;
 				// Send data for each app-check for the processes in procinfo
+				unsigned sent_app_checks_metrics = 0;
+				unsigned total_app_checks_metrics = 0;
+				unsigned sent_prometheus_metrics = 0;
+				unsigned total_prometheus_metrics = 0;
 				for(auto pid: procinfo->m_program_pids)
 				{
 					auto datamap_it = m_app_metrics.find(pid);
@@ -2634,17 +2656,26 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
 						if (prometheus_conf::is_prometheus(app_data.first))
 						{
-							app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
+							sent_prometheus_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
 								prom_metrics_limit, m_prom_conf.max_metrics());
+							total_prometheus_metrics += app_data.second.total_metrics();
 						}
 						else
 						{
-							app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+							sent_app_checks_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
 								app_checks_limit, m_configuration->get_app_checks_limit());
+							total_app_checks_metrics += app_data.second.total_metrics();
 						}
 						app_data_set.emplace(app_data.first);
 					}
 				}
+				if (!tinfo->m_container_id.empty())
+				{
+					std::get<0>(m_app_checks_by_containers[tinfo->m_container_id]) += sent_app_checks_metrics;
+					std::get<1>(m_app_checks_by_containers[tinfo->m_container_id]) += total_app_checks_metrics;
+				}
+				std::get<0>(m_app_checks_by_containers[""]) += sent_app_checks_metrics;
+				std::get<1>(m_app_checks_by_containers[""]) += total_app_checks_metrics;
 			}
 #endif
 
@@ -2725,6 +2756,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		tinfo->m_ainfo->clear_all_metrics();
 	}
 	at_trc.stop();
+
+	// add jmx and app checks per container
+	for (int i = 0; i < m_metrics->containers_size(); i++)
+	{
+		draiosproto::container* container = m_metrics->mutable_containers(i);
+		string container_id = container->id();
+
+		container->mutable_resource_counters()->set_jmx_sent(std::get<0>(m_jmx_metrics_by_containers[container_id]));
+		container->mutable_resource_counters()->set_jmx_total(std::get<1>(m_jmx_metrics_by_containers[container_id]));
+
+		container->mutable_resource_counters()->set_app_checks_sent(std::get<0>(m_app_checks_by_containers[container_id]));
+		container->mutable_resource_counters()->set_app_checks_total(std::get<1>(m_app_checks_by_containers[container_id]));
+	}
 
 	if(app_checks_limit == 0)
 	{
@@ -4008,16 +4052,47 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			tracer_emitter misc_trc("misc_emit", f_trc);
 			emit_top_files();
 
-			//
-			// Statsd metrics
-			//
 #ifndef _WIN32
-			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
+			// statsd metrics
+			unsigned statsd_total = 0, statsd_sent = 0;
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(0);
+			if (m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""),
-					    m_metrics->mutable_protos()->mutable_statsd(),
-					    m_configuration->get_statsd_limit(), m_configuration->get_statsd_limit());
+				statsd_total += std::get<1>(m_statsd_metrics.at(""));
+				statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at("")),
+					m_metrics->mutable_protos()->mutable_statsd(),
+					m_configuration->get_statsd_limit(),
+					m_configuration->get_statsd_limit());
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(statsd_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(statsd_total);
 			}
+
+			// jmx metrics for the host
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_total(0);
+			if (m_jmx_metrics_by_containers.find("") != m_jmx_metrics_by_containers.end())
+			{
+				auto jmx_sent = std::get<0>(m_jmx_metrics_by_containers[""]);
+				auto jmx_total = std::get<1>(m_jmx_metrics_by_containers[""]);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_sent(jmx_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_total(jmx_total);
+			}
+			// clear the cache for the next round of sampling
+			m_jmx_metrics_by_containers.clear();
+
+			// app checks for the host
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_total(0);
+			if (m_app_checks_by_containers.find("") != m_app_checks_by_containers.end())
+			{
+				auto checks_sent = std::get<0>(m_app_checks_by_containers[""]);
+				auto checks_total = std::get<1>(m_app_checks_by_containers[""]);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_sent(checks_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_total(checks_total);
+			}
+			// clear the cache for the next round of sampling
+			m_app_checks_by_containers.clear();
 #endif
 
 			//
@@ -5803,11 +5878,17 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 	}
 #ifndef _WIN32
+	container->mutable_resource_counters()->set_statsd_sent(0);
+	container->mutable_resource_counters()->set_statsd_total(0);
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
-		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(),
+		unsigned statsd_total = std::get<1>(m_statsd_metrics.at(it->second.m_id));
+		auto statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at(it->second.m_id)),
+										container->mutable_protos()->mutable_statsd(),
 										*statsd_limit, m_configuration->get_statsd_limit());
-		*statsd_limit -= statsd_emitted;
+		*statsd_limit -= statsd_sent;
+		container->mutable_resource_counters()->set_statsd_sent(statsd_sent);
+		container->mutable_resource_counters()->set_statsd_total(statsd_total);
 	}
 #endif
 	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
@@ -5848,7 +5929,7 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
-		while(!m_statsd_metrics.empty() && m_statsd_metrics.begin()->second.at(0).timestamp() < look_for_ts)
+		while(!m_statsd_metrics.empty() && std::get<0>(m_statsd_metrics.begin()->second).at(0).timestamp() < look_for_ts)
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
@@ -5859,15 +5940,15 @@ void sinsp_analyzer::get_statsd()
 #ifndef _WIN32
 unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit)
 {
-	unsigned j = 0;
+	unsigned metrics_found = 0;
 	for(const auto& metric : statsd_metrics)
 	{
-		if(j >= limit)
+		if (metrics_found >= limit)
 		{
-			if(metric_limits::log_enabled())
+			if (metric_limits::log_enabled())
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit, metric.name().c_str());
-				continue;
+				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit,
+					metric.name().c_str());
 			}
 			else
 			{
@@ -5875,15 +5956,20 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 				break;
 			}
 		}
-		auto statsd_proto = statsd_info->add_statsd_metrics();
-		metric.to_protobuf(statsd_proto);
-		++j;
+		else
+		{
+			auto statsd_proto = statsd_info->add_statsd_metrics();
+			metric.to_protobuf(statsd_proto);
+			++metrics_found;
+		}
 	}
-	if (j > 0)
+
+	if (metrics_found > 0)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
+		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", metrics_found);
 	}
-	return j;
+
+	return metrics_found;
 }
 #endif
 

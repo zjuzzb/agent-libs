@@ -41,31 +41,34 @@ TEST_F(app_checks_proxy_f, read_ok)
 	EXPECT_EQ(2U, metrics.size());
 }
 
-void print(const app_checks_proxy::metric_map_t& metrics)
+string print(const app_checks_proxy::metric_map_t& metrics)
 {
+	stringstream out;
 	//unordered_map<int, map<string, app_check_data>>
 	for(auto app : metrics)
 	{
 		int metric = 0, services = 0;
-		std::cout << app.first << std::endl;
+		out << app.first << std::endl;
 		for(auto acd : app.second)
 		{
-			std::cout << '\t' << acd.first << std::endl;
+			out << '\t' << acd.first << std::endl;
 			for(auto m : acd.second.metrics())
 			{
-				std::cout << "\t\t" << m.name() << std::endl;
+				out << "\t\t" << m.name() << std::endl;
 				++metric;
 			}
 			for(auto d : acd.second.services())
 			{
-				std::cout << "\t\t" << d.name() << std::endl;
+				out << "\t\t" << d.name() << std::endl;
 				++services;
 			}
+			out << acd.second.total_metrics() << " total metrics" << std::endl;
 		}
-		std::cout << "-------" << std::endl;
-		std::cout << metric << " metrics" << std::endl;
-		std::cout << services << " services" << std::endl;
+		out << "-------" << std::endl;
+		out << metric << " metrics" << std::endl;
+		out << services << " services" << std::endl;
 	}
+	return out.str();
 }
 
 template <typename T>
@@ -104,13 +107,25 @@ TEST_F(app_checks_proxy_f, filters)
 	metric_limits::sptr_t ml(new metric_limits(f));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
-	EXPECT_EQ(0, metrics.size());
+	ASSERT_EQ(2U, metrics.size()) << print(metrics);
+	metric_list = metrics[805].begin()->second.metrics();
+	EXPECT_EQ(0U, metric_list.size());
+	service_list = metrics[805].begin()->second.services();
+	EXPECT_EQ(0U, service_list.size());
+	service_list = metrics[2115].begin()->second.services();
+	EXPECT_EQ(0U, service_list.size());
 
 	f = {{"redis.mem.*", true}, {"*.can_connect", true}, {"*", false}};
 	ml.reset(new metric_limits(f));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
-	EXPECT_EQ(2U, metrics.size());
+	ASSERT_EQ(2U, metrics.size()) << print(metrics);
+	metric_list = metrics[805].begin()->second.metrics();
+	EXPECT_EQ(5U, metric_list.size()) << print(metrics);
+	service_list = metrics[805].begin()->second.services();
+	EXPECT_EQ(1U, service_list.size());
+	service_list = metrics[2115].begin()->second.services();
+	EXPECT_EQ(1U, service_list.size());
 
 	metric_list = metrics[2115].begin()->second.metrics();
 	EXPECT_EQ(0, metric_list.size());
@@ -138,13 +153,25 @@ TEST_F(app_checks_proxy_f, filters)
 	ml.reset(new metric_limits(f));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
-	EXPECT_EQ(0, metrics.size());
+	ASSERT_EQ(2U, metrics.size()) << print(metrics);
+	metric_list = metrics[805].begin()->second.metrics();
+	EXPECT_EQ(0U, metric_list.size());
+	service_list = metrics[805].begin()->second.services();
+	EXPECT_EQ(0U, service_list.size());
+	service_list = metrics[2115].begin()->second.services();
+	EXPECT_EQ(0U, service_list.size());
 
 	f = {{"*", false}};
 	ml.reset(new metric_limits(f));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);
-	EXPECT_EQ(0, metrics.size());
+	ASSERT_EQ(2U, metrics.size()) << print(metrics);
+	metric_list = metrics[805].begin()->second.metrics();
+	EXPECT_EQ(0U, metric_list.size());
+	service_list = metrics[805].begin()->second.services();
+	EXPECT_EQ(0U, service_list.size());
+	service_list = metrics[2115].begin()->second.services();
+	EXPECT_EQ(0U, service_list.size());
 }
 
 TEST_F(app_checks_proxy_f, limits)

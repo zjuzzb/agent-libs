@@ -172,7 +172,8 @@ public:
 	// Added for unordered_map::operator[]
 	app_check_data():
 			m_pid(0),
-			m_expiration_ts(0)
+			m_expiration_ts(0),
+			m_total_metrics(0)
 	{};
 
 	explicit app_check_data(const Json::Value& obj, metric_limits::cref_sptr_t ml = nullptr);
@@ -187,7 +188,8 @@ public:
 		return m_expiration_ts;
 	}
 
-	void to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
+	unsigned to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
+
 
 	const string& name() const
 	{
@@ -204,12 +206,18 @@ public:
 		return m_service_checks;
 	}
 
+	unsigned total_metrics() const
+	{
+		return m_total_metrics;
+	}
+
 private:
 	int m_pid;
 	string m_process_name;
 	metrics_t m_metrics;
 	services_t m_service_checks;
 	uint64_t m_expiration_ts;
+	unsigned m_total_metrics;
 };
 
 class app_checks_proxy

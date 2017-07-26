@@ -121,7 +121,7 @@ public:
 	typedef unordered_map<string, vector<statsd_metric>> metric_map_t;
 
 	statsite_proxy(const pair<FILE*, FILE*>& pipes);
-	unordered_map<string, vector<statsd_metric>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 private:

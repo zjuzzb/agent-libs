@@ -139,8 +139,8 @@ TEST(statsite_proxy, parser)
 
 	auto ret = proxy.read_metrics();
 	EXPECT_EQ(2U, ret.size());
-	EXPECT_EQ(10U, ret.at("").size());
-	EXPECT_EQ(10U, ret.at("3ce9120d8307").size());
+	EXPECT_EQ(10U, std::get<0>(ret.at("")).size());
+	EXPECT_EQ(10U, std::get<0>(ret.at("3ce9120d8307")).size());
 
 	set<string> reference_set;
 	for(unsigned j = 1; j < 11; ++j)
@@ -150,7 +150,7 @@ TEST(statsite_proxy, parser)
 	for(const auto& item : ret)
 	{
 		set<string> found_set;
-		for(const auto& m : item.second)
+		for(const auto& m : std::get<0>(item.second))
 		{
 			found_set.insert(m.name());
 		}
@@ -174,8 +174,8 @@ TEST(statsite_proxy, filter)
 	metric_limits::sptr_t ml(new metric_limits(f));
 	auto ret = proxy.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());
-	EXPECT_EQ(1U, ret.at("").size());
-	EXPECT_EQ(1U, ret.at("3ce9120d8307").size());
+	EXPECT_EQ(1U, std::get<0>(ret.at("")).size());
+	EXPECT_EQ(1U, std::get<0>(ret.at("3ce9120d8307")).size());
 
 	fclose(output_file);
 	fclose(input_fd);
@@ -189,8 +189,8 @@ TEST(statsite_proxy, filter)
 	ml.reset(new metric_limits(f));
 	ret = proxy2.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());
-	EXPECT_EQ(2U, ret.at("").size());
-	EXPECT_EQ(2U, ret.at("3ce9120d8307").size());
+	EXPECT_EQ(2U, std::get<0>(ret.at("")).size());
+	EXPECT_EQ(2U, std::get<0>(ret.at("3ce9120d8307")).size());
 
 	fclose(output_file);
 	fclose(input_fd);
