@@ -157,6 +157,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	kubecollect.WatchCronJobs(ctx, kubeClient, evtc)
 	kubecollect.WatchReplicationControllers(ctx, kubeClient, evtc)
 	kubecollect.WatchStatefulSets(ctx, kubeClient, evtc)
+	kubecollect.WatchResourceQuotas(ctx, kubeClient, evtc)
 	kubecollect.WatchPods(ctx, kubeClient, evtc)
 	/*watch, _ := kubeClient.CoreV1().Events("").Watch(metav1.ListOptions{})
 
