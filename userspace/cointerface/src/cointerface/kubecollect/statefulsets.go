@@ -33,12 +33,19 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 	}
 	tags["kubernetes.statefulset.name"] = statefulSet.GetName()
 
+	desiredReplicas := uint32(0)
+	if statefulSet.Spec.Replicas != nil {
+		desiredReplicas = uint32(*statefulSet.Spec.Replicas)
+	}
+	metrics := map[string]uint32{"kubernetes.statefulset.replicas": desiredReplicas,
+		"kubernetes.statefulset.status.replicas": uint32(statefulSet.Status.Replicas),}
+
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_statefulset"),
 			Id:proto.String(string(statefulSet.GetUID()))},
 		Tags: tags,
-		//Metrics: metrics,
+		Metrics: metrics,
 	}
 	AddNSParents(&ret.Parents, statefulSet.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)
