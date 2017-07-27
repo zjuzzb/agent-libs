@@ -18,7 +18,7 @@ public:
 
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<uint64_t, bool>>;
 
-	infrastructure_state(uint64_t refresh_interval);
+	infrastructure_state(const string& k8s_url, uint64_t refresh_interval);
 
 	~infrastructure_state();
 
@@ -70,7 +70,7 @@ private:
 	coclient m_coclient;
 	coclient::response_cb_t m_callback;
 	run_on_interval m_interval;
-
+	string m_k8s_url;
 };
 
 #endif // INFRASTRUCTURE_STATE_H

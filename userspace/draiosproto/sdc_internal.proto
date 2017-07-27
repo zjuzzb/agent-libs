@@ -80,6 +80,7 @@ message swarm_state_result {
 }
 
 message orchestrator_events_stream_command {
+    required string url = 1;
 }
 
 service CoInterface {

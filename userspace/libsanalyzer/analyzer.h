@@ -402,6 +402,10 @@ public:
 
 	infrastructure_state *infra_state();
 
+	void set_use_new_k8s(bool v)
+	{
+		m_use_new_k8s = v;
+	}
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
@@ -638,6 +642,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	unique_ptr<k8s> m_k8s;
+	bool m_use_new_k8s;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_ssl::ptr_t          m_k8s_ssl;

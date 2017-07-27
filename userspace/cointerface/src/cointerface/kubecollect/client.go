@@ -1,11 +1,11 @@
 package kubecollect
 
 import (
-	"fmt"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/rest"
 )
 
 func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err error) {
@@ -24,16 +24,20 @@ func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err er
 		return nil, err
 	}
 
-	// XXX - cleanup
-	// Informers don't seem to do a good job logging error messages when it
-	// can't reach the server, making debugging hard. This makes it easier to
-	// figure out if apiserver is configured incorrectly.
-	//log.Infof("Testing communication with server")
-	_, err = kubeClient.Discovery().ServerVersion()
-	if err != nil {
-		return nil, fmt.Errorf("ERROR communicating with apiserver: %v", err)
-	}
-	//log.Infof("INSIDE - Communication with server successful")
-
 	return kubeClient, nil
+}
+
+func CreateInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		log.Errorf("Cannot create InCluster config: ", err)
+		return nil, err
+	}
+	// creates the clientset
+	kubeClient, err = kubeclient.NewForConfig(config)
+	if err != nil {
+		log.Errorf("Cannot create client using cluster config", err)
+		return nil, err
+	}
+	return
 }

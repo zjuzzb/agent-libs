@@ -16,6 +16,7 @@ import (
 	"time"
 	"cointerface/kubecollect"
 	"golang.org/x/net/context"
+	"k8s.io/client-go/kubernetes"
 )
 
 // Reusing docker clients, so we don't need to reconnect to docker daemon
@@ -125,14 +126,30 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
 
-	apiserver := "http://127.0.0.1:8080"
-	kubeClient, err := kubecollect.CreateKubeClient(apiserver)
-	if err != nil {
-		return err
+	// TODO: refactor error messages
+	var kubeClient kubernetes.Interface
+
+	if cmd.Url != nil && *cmd.Url != "" {
+		log.Infof("Connecting to k8s server at %s", *cmd.Url)
+		var err error
+		kubeClient, err = kubecollect.CreateKubeClient(*cmd.Url)
+		if err != nil {
+			log.Errorf("Cannot create k8s client: %s", err)
+			return err
+		}
+	} else {
+		log.Infof("Connecting to k8s server using inCluster config")
+		var err error
+		kubeClient, err = kubecollect.CreateInClusterKubeClient()
+		if err != nil {
+			log.Errorf("Cannot create k8s client: %s", err)
+			return err
+		}
 	}
 	log.Infof("Testing communication with server")
 	srvVersion, err := kubeClient.Discovery().ServerVersion()
 	if err != nil {
+		log.Errorf("K8s server not responding: %s", err)
 		return err
 	}
 	log.Infof("Communication with server successful: %v", srvVersion)

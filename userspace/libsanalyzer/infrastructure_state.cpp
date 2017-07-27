@@ -93,8 +93,9 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	return true;
 }
 
-infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
-	m_interval(refresh_interval)
+infrastructure_state::infrastructure_state(const string& k8s_url, uint64_t refresh_interval) :
+	m_interval(refresh_interval),
+	m_k8s_url(k8s_url)
 {
 	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 
@@ -123,6 +124,7 @@ void infrastructure_state::refresh(uint64_t ts)
 	}, ts);
 }
 
+// TODO: handle better various orchestartors
 void infrastructure_state::reset()
 {
 	m_container_p_cache.clear();
@@ -131,7 +133,9 @@ void infrastructure_state::reset()
 	m_state.clear();
 
 	glogf(sinsp_logger::SEV_DEBUG, "Subscribe to orchestrator events.");
-	m_coclient.get_orchestrator_events(m_callback);
+	sdc_internal::orchestrator_events_stream_command cmd;
+	cmd.set_url(m_k8s_url);
+	m_coclient.get_orchestrator_events(cmd, m_callback);
 }
 
 void infrastructure_state::load_single_event(const draiosproto::congroup_update_event &evt)

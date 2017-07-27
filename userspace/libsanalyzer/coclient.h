@@ -37,7 +37,7 @@ public:
 	void perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
 				const std::string &container_id, response_cb_t response_cb);
 
-	void get_orchestrator_events(response_cb_t response_cb);
+	void get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd, response_cb_t response_cb);
 
 	// Check for any responses and call their callback functions.
 	void next(uint32_t wait_ms = 0);

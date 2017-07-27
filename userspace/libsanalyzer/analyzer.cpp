@@ -169,7 +169,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_last_mesos_refresh = 0;
 
 	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
-	m_infrastructure_state = make_unique<infrastructure_state>(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -342,6 +341,19 @@ void sinsp_analyzer::on_capture_start()
 	{
 		glogf("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
+	}
+
+	if(m_use_new_k8s)
+	{
+		// Url to use
+		string k8s_url;
+		// autodetect is automatically disabled when running in daemonset mode
+		// url instead will always point to get_k8s_api_server
+		if(m_configuration->get_k8s_delegated_nodes() <= 0)
+		{
+			k8s_url = m_configuration->get_k8s_api_server();
+		}
+		m_infrastructure_state = make_unique<infrastructure_state>(k8s_url, ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 	}
 }
 
@@ -1268,7 +1280,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			return new k8s(k8s_api.to_string(), false /*not captured*/,
 						   m_k8s_ssl, m_k8s_bt, false,
 						   m_configuration->get_k8s_event_filter(),
-						   m_ext_list_ptr);
+						   m_ext_list_ptr, m_use_new_k8s);
 		}
 	}
 	catch(std::exception& ex)
@@ -4303,10 +4315,13 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		m_falco_baseliner->process_event(evt);
 	}
 
-	//
-	// Refresh the infrastructure state
-	//
-	m_infrastructure_state->refresh(ts);
+	if(m_infrastructure_state)
+	{
+		//
+		// Refresh the infrastructure state
+		//
+		m_infrastructure_state->refresh(ts);
+	}
 
 	//
 	// This is where normal event parsing starts.
@@ -4608,7 +4623,7 @@ void sinsp_analyzer::get_k8s_data()
 	if(m_k8s)
 	{
 		m_k8s->watch();
-		if(m_metrics)
+		if(m_metrics && !m_use_new_k8s)
 		{
 			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_kubernetes())
@@ -5329,12 +5344,15 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	}
 	check_and_emit_containers(top_cpu_containers);
 
-	// Build a global orchestrator state of the emitted containers
-	vector<unique_ptr<draiosproto::container_group>> o_state;
-	m_infrastructure_state->state_of(emitted_containers, o_state);
-	for(const auto &congroup : o_state) {
-		draiosproto::container_group *grp = m_metrics->mutable_orchestrator_state()->add_groups();
-		grp->CopyFrom(*congroup);
+	if(m_infrastructure_state)
+	{
+		// Build a global orchestrator state of the emitted containers
+		vector<unique_ptr<draiosproto::container_group>> o_state;
+		m_infrastructure_state->state_of(emitted_containers, o_state);
+		for(const auto &congroup : o_state) {
+			draiosproto::container_group *grp = m_metrics->mutable_orchestrator_state()->add_groups();
+			grp->CopyFrom(*congroup);
+		}
 	}
 
 /*

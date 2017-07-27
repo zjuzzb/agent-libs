@@ -542,6 +542,7 @@ public:
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
+	bool m_use_new_k8s;
 	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
 
 	string m_mesos_state_uri;

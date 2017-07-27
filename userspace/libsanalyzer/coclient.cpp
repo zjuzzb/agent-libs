@@ -244,8 +244,8 @@ void coclient::get_swarm_state(response_cb_t response_cb)
 	prepare(&cmd, sdc_internal::SWARM_STATE_COMMAND, response_cb);
 }
 
-void coclient::get_orchestrator_events(response_cb_t response_cb)
+void coclient::get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd,
+										response_cb_t response_cb)
 {
-	sdc_internal::orchestrator_events_stream_command cmd;
 	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND, response_cb);
 }
