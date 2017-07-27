@@ -178,7 +178,8 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			connect(key);
 			break;
 		case draiosproto::REMOVED:
-			throw new sinsp_exception("Cannot remove container_group with id " + id + " because it does not exists.");
+			// allow double delete (example: remove a container for an already terminated k8s_job)
+			glogf(sinsp_logger::SEV_DEBUG, "Ignoring request to delete non-existent container group <%s,%s>", kind.c_str(), id.c_str());
 			break;
 		case draiosproto::UPDATED:
 			throw new sinsp_exception("Cannot update container_group with id " + id + " because it does not exists.");

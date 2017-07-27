@@ -201,8 +201,9 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 	log.Debugf("In WatchPods()")
 
 	client := kubeClient.CoreV1().RESTClient()
-	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
+	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
+	resyncPeriod := time.Duration(10) * time.Second
 	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, resyncPeriod)
 
 	podInf.AddEventHandler(
@@ -210,27 +211,22 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 			AddFunc: func(obj interface{}) {
 				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
 				newPod := obj.(*v1.Pod)
-				if newPod.Status.Phase == "Running" || newPod.Status.Phase == "Pending" {
-					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil)
-				}
+				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil)
 				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPod := oldObj.(*v1.Pod)
 				newPod := newObj.(*v1.Pod)
-				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() && (newPod.Status.Phase == "Running" || newPod.Status.Phase == "Pending") && (oldPod.Status.Phase == "Running" || oldPod.Status.Phase == "Pending") {
+				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
 					//log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
 					//log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
 					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod)
-					//evtc <- podEvent(newPod, draiosproto.CongroupEventType_UPDATED)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
 				oldPod := obj.(*v1.Pod)
-				if oldPod.Status.Phase == "Running" || oldPod.Status.Phase == "Pending" { 
-					sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil)
-				}
+				sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil)
 				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
 			},
 		},
