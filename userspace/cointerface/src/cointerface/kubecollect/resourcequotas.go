@@ -43,6 +43,17 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 
 var resourceQuotaInf cache.SharedInformer
 
+func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range resourceQuotaInf.GetStore().List() {
+		resourceQuota := obj.(*v1.ResourceQuota)
+		if resourceQuota.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_resourcequota"),
+				Id:proto.String(string(resourceQuota.GetUID()))})
+		}
+	}
+}
+
 func WatchResourceQuotas(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchResourceQuotas()")
 

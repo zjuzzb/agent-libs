@@ -80,6 +80,17 @@ func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, servi
 	}
 }
 
+func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range statefulSetInf.GetStore().List() {
+		statefulSet := obj.(*v1beta1.StatefulSet)
+		if statefulSet.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_statefulset"),
+				Id:proto.String(string(statefulSet.GetUID()))})
+		}
+	}
+}
+
 func WatchStatefulSets(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchStatefulSets()")
 

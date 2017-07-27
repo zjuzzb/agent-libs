@@ -67,6 +67,17 @@ func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v
 	}
 }
 
+func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	for _, obj := range replicationControllerInf.GetStore().List() {
+		replicationController := obj.(*v1.ReplicationController)
+		if replicationController.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicationcontroller"),
+				Id:proto.String(string(replicationController.GetUID()))})
+		}
+	}
+}
+
 func WatchReplicationControllers(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchReplicationControllers()")
 
