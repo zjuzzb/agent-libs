@@ -122,6 +122,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_my_cpuload = -1;
 	m_skip_proc_parsing = false;
 	m_prev_flush_wall_time = 0;
+	m_mode_switch_state = sinsp_analyzer::MSR_NONE;
 	m_die = false;
 	m_run_chisels = false;
 
@@ -245,7 +246,14 @@ void sinsp_analyzer::on_capture_start()
 
 	if(m_procfs_parser != NULL)
 	{
-		throw sinsp_exception("analyzer can be opened only once");
+		//
+		// Note, we can get here if we switch from regular to nodriver and vice 
+		// versa. In that case, sinsp is opened and closed and as a consequence
+		// on_capture_start is called again. It's fine, because the analyzer
+		// keeps running in the meantime.
+		//
+		//throw sinsp_exception("analyzer can be opened only once");
+		return;
 	}
 
 	//
@@ -1488,6 +1496,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
+	bool can_disable_nodriver = true;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -1592,10 +1601,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	{
 		m_k8s_proc_detected = false;
 	}
+
+	///////////////////////////////////////////////////////////////////////////
 	// Emit process has 3 cycles on thread_table:
-	// 1. Aggregate process into programs
-	// 2. (only on programs) aggregate programs metrics to host and container ones
-	// 3. (only on programs) Write programs on protobuf
+	//  1. Aggregate process into programs
+	//  2. (only on programs) aggregate programs metrics to host and container ones
+	//  3. (only on programs) Write programs on protobuf
+	///////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
@@ -1604,7 +1616,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
+		{
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
@@ -1793,6 +1805,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
 							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
 							ainfo->m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
+
+							if(m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
+							{
+								if(tinfo->m_comm == "dd")
+								{
+									can_disable_nodriver = false;
+								}
+							}
 						}
 					}
 				}
@@ -1912,6 +1932,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 	}
 	am_trc.stop();
+
+	if(m_inspector->is_nodriver() && m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER && can_disable_nodriver)
+	{
+		m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_REGULAR;		
+	}
 
 	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
 	{

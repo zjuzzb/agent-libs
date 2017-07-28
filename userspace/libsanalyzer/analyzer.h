@@ -191,6 +191,15 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
+
+	enum mode_switch_state
+	{
+		MSR_NONE = 0,
+		MSR_SWITCHED_TO_NODRIVER = 1,
+		MSR_REQUEST_NODRIVER = 2,
+		MSR_REQUEST_REGULAR = 3,
+	};
+
 	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
@@ -398,6 +407,11 @@ public:
 
 	void set_percentiles();
 	void emit_percentiles_config();
+
+	//
+	// Used to request the agent worker to swtich working mode
+	//
+	mode_switch_state m_mode_switch_state;
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);

@@ -34,6 +34,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration)
 {
+	m_last_mode_switch_time = 0;
 }
 
 sinsp_worker::~sinsp_worker()
@@ -443,6 +444,32 @@ void sinsp_worker::run()
 		{
 			cerr << "res = " << res << endl;
 			throw sinsp_exception(m_inspector->getlasterr().c_str());
+		}
+
+		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
+		{
+			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
+			{
+				m_last_mode_switch_time = ev->get_ts();
+
+				m_inspector->close();
+				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER;
+
+				m_inspector->open_nodriver();
+				// Change these values so the inactive thread pruning
+				// runs more often
+				m_inspector->m_thread_timeout_ns = 0;
+				m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
+
+				continue;
+			}
+			else
+			{
+				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
+				{
+					throw sinsp_exception("restarting agent to restore normal operation mode");
+				}
+			}
 		}
 
 		//
