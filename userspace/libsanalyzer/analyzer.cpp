@@ -1663,7 +1663,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 &&
 			tinfo->is_main_thread() && !m_inspector->is_capture())
 		{
-			/*if(!m_k8s_proc_detected)
+			if(!m_k8s_proc_detected)
 			{
 				m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
 			}
@@ -1671,7 +1671,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				tracer_emitter k8s_trc("detect_k8s", am_trc);
 				k8s_detected = !(detect_k8s(main_tinfo).empty());
-			}*/
+			}
 
 			// mesos autodetection flagging, happens only if mesos is not explicitly configured
 			// we only record the relevant mesos process thread ID here; later, this flag is detected by
