@@ -4632,7 +4632,7 @@ void sinsp_analyzer::get_k8s_data()
 				g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 		}
-		else
+		else if (!m_metrics)
 		{
 			g_logger.log("Proto metrics are NULL.", sinsp_logger::SEV_ERROR);
 		}
