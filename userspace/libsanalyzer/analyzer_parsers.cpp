@@ -247,15 +247,15 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
 	
 	//
+	// Detect if this is a stress tool and in that case request to go in nodriver mode
 	//
-	//
-	if(tinfo->m_comm == "dd")
+	if(m_analyzer->m_stress_tool_matcher.match(tinfo->m_comm))
 	{
 		if(!m_analyzer->m_inspector->is_nodriver())
 		{
 			m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
 		}
-		
+
 		return true;
 	}
 

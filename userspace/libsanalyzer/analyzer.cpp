@@ -1808,7 +1808,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 							if(m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
 							{
-								if(tinfo->m_comm == "dd")
+								if(m_stress_tool_matcher.match(tinfo->m_comm))
 								{
 									can_disable_nodriver = false;
 								}

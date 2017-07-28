@@ -175,10 +175,37 @@ private:
 class sinsp_curl;
 class uri;
 
+class stress_tool_matcher
+{
+public:
+	stress_tool_matcher()
+	{
+		m_comm_list.push_back("dd");
+		//
+		// XXX Populate this with the list of stress tools to match
+		//
+	}
+
+	bool match(string comm)
+	{
+		for(auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
+		{
+			if(*it == comm)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+private:
+	vector<string> m_comm_list;
+};
+
 //
 // The main analyzer class
 //
-
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -409,9 +436,10 @@ public:
 	void emit_percentiles_config();
 
 	//
-	// Used to request the agent worker to swtich working mode
+	// Test tool detection state
 	//
 	mode_switch_state m_mode_switch_state;
+	stress_tool_matcher m_stress_tool_matcher;
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
