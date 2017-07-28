@@ -77,7 +77,9 @@ function kernel_warning {
 }
 
 function help {
-	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] [-cp | collector_port <value>] [-s | --secure <value>] [-cc | check_certificate] [-h | --help]"
+	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] \ "
+        echo "                [-cp | --collector_port <value>] [-s | --secure <value>] [-cc | --check_certificate] \ "
+        echo "                [-ac | --additional_conf <value>] [-h | --help]"
 	echo "  access_key: Secret access key, as shown in Sysdig Cloud"
 	echo "  tags: List of tags for this host."
 	echo "        The syntax can be a comma-separated list of"
@@ -91,6 +93,7 @@ function help {
 	echo "          accepted values: true or false [default true]"
 	echo "  check_certificate: disable strong SSL certificate check for Sysdig Cloud on-premises installation"
 	echo "          accepted values: true or false [default true]"
+	echo "  additional_conf: If provided, will be appended to agent configuration file"
 	echo "  help: print this usage and exit"
 	echo
 	exit 1
@@ -183,6 +186,15 @@ if [[ ${BACKWARD} != true ]]; then
 				CHECK_CERT="${2}"
 			else
 				echo "ERROR: no value provided for SSL check certificate option, use -h | --help for $(basename ${0}) Usage"
+				exit 1
+			fi
+			shift
+			;;
+		-ac|--additional_conf)
+			if is_valid_value "${2}"; then
+				ADDITIONAL_CONF="${2}"
+			else
+				echo "ERROR: no value provided for additional conf option, use -h | --help for $(basename ${0}) Usage"
 				exit 1
 			fi
 			shift
@@ -350,6 +362,12 @@ if [ ! -z "$CHECK_CERT" ]; then
 	else
 		sed -i "s/^ssl_verify_certificate.*/ssl_verify_certificate: $CHECK_CERT/g" $CONFIG_FILE
 	fi
+fi
+
+if [ ! -z "$ADDITIONAL_CONF" ]; then
+	echo "* Adding additional configuration to dragent.yaml"
+
+	echo -e "$ADDITIONAL_CONF" >> $CONFIG_FILE
 fi
 
 service dragent restart
