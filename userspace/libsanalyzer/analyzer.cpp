@@ -1863,6 +1863,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				java_process_requests.emplace_back(tinfo);
 			}
 
+			vector<prom_process> prom_procs;
+			match_prom_checks(tinfo, mtinfo, prom_procs);
+
 			// May happen that for processes like apache with mpm_prefork there are hundred of
 			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
@@ -1875,6 +1878,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
+
 				match_checks_list(tinfo, mtinfo, custom_checks, app_checks, "env");
 				// Ignore the global list if we found custom checks
 				if (app_checks.empty()) {
@@ -5695,6 +5699,22 @@ void sinsp_analyzer::emit_user_events()
 			}
 			g_logger.log(ostr.str(), sinsp_logger::SEV_TRACE);
 		}
+	}
+}
+
+void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
+	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs)
+{
+	// TODO: Check if main thread already has prometheus check
+	sinsp_container_info container;
+	bool got_cont = m_inspector->m_container_manager.get_container(
+		tinfo->m_container_id, &container);
+
+	// sinsp_container_info* container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+
+	if (m_prom_conf.match(tinfo, got_cont ? &container : NULL)) {
+		prom_process pp(tinfo);
+		prom_procs.emplace_back(pp);
 	}
 }
 

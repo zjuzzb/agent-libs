@@ -307,6 +307,22 @@ public:
 		return ret;
 	}
 
+	template<typename T>
+	T get_struct(const string& key)
+	{
+		for(const auto& root : m_roots)
+		{
+			auto node = root[key];
+			if (node.IsDefined())
+			{
+				return node.as<T>();
+			}
+		}
+		T ret;
+
+		return ret;
+	}
+
 	inline const vector<string>& errors() const
 	{
 		return m_errors;
@@ -525,6 +541,7 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+	prometheus_conf m_prom_conf;
 
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;

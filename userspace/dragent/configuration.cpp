@@ -713,6 +713,9 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
+
+	m_prom_conf = m_config->get_struct<prometheus_conf>("prometheus");
+
 	// Filter out disabled checks
 	unordered_set<string> disabled_checks;
 	for(const auto& item : m_app_checks)
