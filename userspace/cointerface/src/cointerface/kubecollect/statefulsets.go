@@ -33,27 +33,36 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 	}
 	tags["kubernetes.statefulset.name"] = statefulSet.GetName()
 
-	desiredReplicas := uint32(0)
-	if statefulSet.Spec.Replicas != nil {
-		desiredReplicas = uint32(*statefulSet.Spec.Replicas)
-	}
-	metrics := map[string]uint32{"kubernetes.statefulset.replicas": desiredReplicas,
-		"kubernetes.statefulset.status.replicas": uint32(statefulSet.Status.Replicas),}
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_statefulset"),
 			Id:proto.String(string(statefulSet.GetUID()))},
 		Tags: tags,
-		Metrics: metrics,
 	}
+
+	ret.Metrics = getStatefulSetMetrics(statefulSet)
 	AddNSParents(&ret.Parents, statefulSet.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)
 	AddServiceChildrenFromServiceName(&ret.Children, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
+
 	return ret
 }
 
 var statefulSetInf cache.SharedInformer
+
+func getStatefulSetMetrics(statefulSet *v1beta1.StatefulSet) map[string]uint32 {
+	metrics := make(map[string]uint32)
+	prefix := "kubernetes.statefulset."
+
+	desiredReplicas := uint32(0)
+	if statefulSet.Spec.Replicas != nil {
+		desiredReplicas = uint32(*statefulSet.Spec.Replicas)
+	}
+
+	metrics[prefix + "replicas"] = desiredReplicas
+	metrics[prefix + "status.replicas"] = uint32(statefulSet.Status.Replicas)
+	return metrics
+}
 
 func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	if CompatibilityMap["statefulsets"] {
