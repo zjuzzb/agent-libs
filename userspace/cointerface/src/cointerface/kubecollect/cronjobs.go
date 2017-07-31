@@ -1,6 +1,8 @@
 package kubecollect
 
 import (
+	// "os"
+	// "encoding/json"
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
@@ -78,6 +80,9 @@ func WatchCronJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc ch
 	resyncPeriod := time.Duration(10) * time.Second;
 	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, resyncPeriod)
 
+	// fold, _ := os.Create("/tmp/cronjob_updates_old.json")
+	// fnew, _ := os.Create("/tmp/cronjob_updates_new.json")
+
 	cronJobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
@@ -90,6 +95,12 @@ func WatchCronJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc ch
 				if oldJob.GetResourceVersion() != newJob.GetResourceVersion() {
 					//log.Debugf("UpdateFunc dumping ReplicaSet oldJob %v", oldJob)
 					//log.Debugf("UpdateFunc dumping ReplicaSet newJob %v", newJob)
+					// oldJson, _ := json.Marshal(oldJob)
+					// fold.Write(oldJson)
+					// fold.WriteString("\n")
+					// newJson, _ := json.Marshal(newJob)
+					// fnew.Write(newJson)
+					// fnew.WriteString("\n")
 					evtc <- cronJobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}

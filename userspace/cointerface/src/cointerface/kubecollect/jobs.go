@@ -88,14 +88,14 @@ func WatchJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 				oldJob := oldObj.(*v1batch.Job)
 				newJob := newObj.(*v1batch.Job)
 				if oldJob.GetResourceVersion() != newJob.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping ReplicaSet oldJob %v", oldJob)
-					//log.Debugf("UpdateFunc dumping ReplicaSet newJob %v", newJob)
+					//log.Debugf("UpdateFunc dumping Job oldJob %v", oldJob)
+					//log.Debugf("UpdateFunc dumping Job newJob %v", newJob)
 					evtc <- jobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.ReplicaSet))
+				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.Job))
 				evtc <- jobEvent(obj.(*v1batch.Job),
 					draiosproto.CongroupEventType_REMOVED.Enum())
 			},

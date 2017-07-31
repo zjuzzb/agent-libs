@@ -5,6 +5,7 @@ import (
 	"context"
 	"github.com/gogo/protobuf/proto"
 	"time"
+	"reflect"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -15,14 +16,41 @@ import (
 )
 
 // make this a library function?
-func deploymentEvent(ns *v1beta1.Deployment, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+func deploymentEvent(ns *v1beta1.Deployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newDeploymentCongroup(ns),
+		Object: newDeploymentCongroup(ns, setLinks),
 	}
 }
 
-func newDeploymentCongroup(deployment *v1beta1.Deployment) (*draiosproto.ContainerGroup) {
+func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (bool, bool) {
+	in := true
+	out := true
+
+	if lhs.GetName() != rhs.GetName() {
+		in = false
+	}
+
+	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
+		in = false
+	} else {
+		for k,v := range lhs.GetLabels() {
+			if rhs.GetLabels()[k] != v {
+				in = false
+			}
+		}
+	}
+
+	if lhs.GetNamespace() != rhs.GetNamespace() {
+		out = false
+	} else if !reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels) {
+		out = false
+	}
+
+	return in, out
+}
+
+func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -38,8 +66,10 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment) (*draiosproto.Contain
 			Id:proto.String(string(deployment.GetUID()))},
 		Tags: tags,
 	}
-	AddNSParents(&ret.Parents, deployment.GetNamespace())
-	AddReplicaSetChildren(&ret.Children, deployment)
+	if setLinks {
+		AddNSParents(&ret.Parents, deployment.GetNamespace())
+		AddReplicaSetChildren(&ret.Children, deployment)
+	}
 	return ret
 }
 
@@ -79,24 +109,30 @@ func WatchDeployments(ctx context.Context, kubeClient kubeclient.Interface, evtc
 	deploymentInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				//log.Debugf("AddFunc dumping Deployment: %v", obj.(*v1beta1.Deployment))
 				evtc <- deploymentEvent(obj.(*v1beta1.Deployment),
-					draiosproto.CongroupEventType_ADDED.Enum())
+					draiosproto.CongroupEventType_ADDED.Enum(), true)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldDeployment := oldObj.(*v1beta1.Deployment)
 				newDeployment := newObj.(*v1beta1.Deployment)
 				if oldDeployment.GetResourceVersion() != newDeployment.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping Deployment oldDeployment %v", oldDeployment)
-					//log.Debugf("UpdateFunc dumping Deployment newDeployment %v", newDeployment)
-					evtc <- deploymentEvent(newDeployment,
-						draiosproto.CongroupEventType_UPDATED.Enum())
+					sameEntity, sameLinks := deploymentEquals(oldDeployment, newDeployment)
+					if !sameEntity || !sameLinks {
+						evtc <- deploymentEvent(newDeployment,
+							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
+					}
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping Deployment: %v", obj.(*v1beta1.Deployment))
-				evtc <- deploymentEvent(obj.(*v1beta1.Deployment),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				oldDeployment := obj.(*v1beta1.Deployment)
+				evtc <- draiosproto.CongroupUpdateEvent {
+					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+					Object: &draiosproto.ContainerGroup{
+						Uid: &draiosproto.CongroupUid{
+							Kind:proto.String("k8s_deployment"),
+							Id:proto.String(string(oldDeployment.GetUID()))},
+					},
+				}
 			},
 		},
 	)

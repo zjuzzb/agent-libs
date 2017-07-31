@@ -21,6 +21,23 @@ func nsEvent(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (draios
 	}
 }
 
+func nsEquals(lhs *v1.Namespace, rhs *v1.Namespace) bool {
+	if lhs.GetName() != rhs.GetName() {
+		return false
+	}
+
+	if len(lhs.GetLabels()) != len(rhs.GetLabels()) {
+		return false
+	}
+	for k,v := range lhs.GetLabels() {
+		if rhs.GetLabels()[k] != v {
+			return false
+		}
+	}
+
+	return true
+}
+
 func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
@@ -88,7 +105,7 @@ func WatchNamespaces(ctx context.Context, kubeClient kubeclient.Interface, evtc 
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNS := oldObj.(*v1.Namespace)
 				newNS := newObj.(*v1.Namespace)
-				if oldNS.GetResourceVersion() != newNS.GetResourceVersion() {
+				if oldNS.GetResourceVersion() != newNS.GetResourceVersion() && !nsEquals(oldNS, newNS) {
 					//log.Debugf("UpdateFunc dumping namespace oldNS %v", oldNS)
 					//log.Debugf("UpdateFunc dumping namespace newNS %v", newNS)
 					evtc <- nsEvent(newNS,
@@ -96,9 +113,15 @@ func WatchNamespaces(ctx context.Context, kubeClient kubeclient.Interface, evtc 
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping namespace: %v", obj.(*v1.Namespace))
-				evtc <- nsEvent(obj.(*v1.Namespace),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				oldNS := obj.(*v1.Namespace)
+				evtc <- draiosproto.CongroupUpdateEvent {
+					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+					Object: &draiosproto.ContainerGroup{
+						Uid: &draiosproto.CongroupUid{
+							Kind:proto.String("k8s_namespace"),
+							Id:proto.String(string(oldNS.GetUID()))},
+					},
+				}
 			},
 		},
 	)

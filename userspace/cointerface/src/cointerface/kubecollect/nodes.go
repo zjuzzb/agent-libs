@@ -21,6 +21,22 @@ func nodeEvent(ns *v1.Node, eventType *draiosproto.CongroupEventType) (draiospro
 	}
 }
 
+func nodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
+
+	if oldNode.GetName() != newNode.GetName() {
+		return false
+	}
+	if len(oldNode.GetLabels()) != len(newNode.GetLabels()){
+		return false
+	}
+	for k, v := range oldNode.GetLabels() {
+		if newNode.GetLabels()[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
@@ -65,24 +81,27 @@ func WatchNodes(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<
 	nodeInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				//log.Debugf("AddFunc dumping Node: %v", obj.(*v1.Node))
 				evtc <- nodeEvent(obj.(*v1.Node),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNode := oldObj.(*v1.Node)
 				newNode := newObj.(*v1.Node)
-				if oldNode.GetResourceVersion() != newNode.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping Node oldNode %v", oldNode)
-					//log.Debugf("UpdateFunc dumping Node newNode %v", newNode)
+				if oldNode.GetResourceVersion() != newNode.GetResourceVersion() && !nodeEquals(oldNode, newNode) {
 					evtc <- nodeEvent(newNode,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping Node: %v", obj.(*v1.Node))
-				evtc <- nodeEvent(obj.(*v1.Node),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				oldNode := obj.(*v1.Node)
+				evtc <- draiosproto.CongroupUpdateEvent {
+					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+					Object: &draiosproto.ContainerGroup{
+						Uid: &draiosproto.CongroupUid{
+							Kind:proto.String("k8s_node"),
+							Id:proto.String(string(oldNode.GetUID()))},
+					},
+				}
 			},
 		},
 	)

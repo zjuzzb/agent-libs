@@ -4,6 +4,7 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
+	"reflect"
 	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -16,14 +17,54 @@ import (
 )
 
 // make this a library function?
-func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newReplicaSetCongroup(rs),
+		Object: newReplicaSetCongroup(rs, setLinks),
 	}
 }
 
-func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet) (*draiosproto.ContainerGroup) {
+func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, bool) {
+	in := true
+	out := true
+
+	if lhs.GetName() != rhs.GetName() {
+		in = false
+	}
+
+	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
+		in = false
+	} else {
+		for k,v := range lhs.GetLabels() {
+			if rhs.GetLabels()[k] != v {
+				in = false
+			}
+		}
+	}
+
+	if in && lhs.Status.Replicas != rhs.Status.Replicas {
+		in = false
+	}
+
+	if in && ((lhs.Spec.Replicas == nil && rhs.Spec.Replicas != nil) ||
+		(lhs.Spec.Replicas != nil && rhs.Spec.Replicas == nil)) {
+		in = false
+	}
+
+	if in && (lhs.Spec.Replicas != nil && uint32(*lhs.Spec.Replicas) != uint32(*rhs.Spec.Replicas)) {
+		in = false
+	}
+
+	if lhs.GetNamespace() != rhs.GetNamespace() {
+		out = false
+	} else if !reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels) {
+		out = false
+	}
+
+	return in, out
+}
+
+func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -47,10 +88,12 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet) (*draiosproto.Contain
 		Tags: tags,
 		Metrics: metrics,
 	}
-	AddNSParents(&ret.Parents, replicaSet.GetNamespace())
-	AddDeploymentParents(&ret.Parents, replicaSet)
-	selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
-	AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+	if setLinks {
+		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
+		AddDeploymentParents(&ret.Parents, replicaSet)
+		selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
+		AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+	}
 	return ret
 }
 
@@ -103,24 +146,30 @@ func WatchReplicaSets(ctx context.Context, kubeClient kubeclient.Interface, evtc
 	replicaSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				//log.Debugf("AddFunc dumping ReplicaSet: %v", obj.(*v1beta1.ReplicaSet))
 				evtc <- replicaSetEvent(obj.(*v1beta1.ReplicaSet),
-					draiosproto.CongroupEventType_ADDED.Enum())
+					draiosproto.CongroupEventType_ADDED.Enum(), true)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldReplicaSet := oldObj.(*v1beta1.ReplicaSet)
 				newReplicaSet := newObj.(*v1beta1.ReplicaSet)
 				if oldReplicaSet.GetResourceVersion() != newReplicaSet.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping ReplicaSet oldReplicaSet %v", oldReplicaSet)
-					//log.Debugf("UpdateFunc dumping ReplicaSet newReplicaSet %v", newReplicaSet)
-					evtc <- replicaSetEvent(newReplicaSet,
-						draiosproto.CongroupEventType_UPDATED.Enum())
+					sameEntity, sameLinks := replicaSetEquals(oldReplicaSet, newReplicaSet)
+					if !sameEntity || !sameLinks {
+						evtc <- replicaSetEvent(newReplicaSet,
+							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
+					}
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1beta1.ReplicaSet))
-				evtc <- replicaSetEvent(obj.(*v1beta1.ReplicaSet),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				oldReplicaSet := obj.(*v1beta1.ReplicaSet)
+				evtc <- draiosproto.CongroupUpdateEvent {
+					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+					Object: &draiosproto.ContainerGroup{
+						Uid: &draiosproto.CongroupUid{
+							Kind:proto.String("k8s_replicaset"),
+							Id:proto.String(string(oldReplicaSet.GetUID()))},
+					},
+				}
 			},
 		},
 	)

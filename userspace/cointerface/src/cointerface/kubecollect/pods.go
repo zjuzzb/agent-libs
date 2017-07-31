@@ -16,14 +16,14 @@ import (
 )
 
 // pods get their own special version because they send events for containers too
-func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod)  {
-	updates := newPodEvents(pod, eventType, oldPod)
+func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
+	updates := newPodEvents(pod, eventType, oldPod, setLinks)
 	for _, evt := range updates {
 		evtc <- *evt
 	}
 }
 
-func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEventType, cg *[]*draiosproto.CongroupUpdateEvent, podUID string) {
+func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEventType, containerEvents *[]*draiosproto.CongroupUpdateEvent, podUID string, children *[]*draiosproto.CongroupUid) {
 	par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
 		Kind:proto.String("k8s_pod"),
 		Id:proto.String(podUID)},
@@ -46,7 +46,7 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 		return
 	}
 
-	*cg = append(*cg, &draiosproto.CongroupUpdateEvent {
+	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent {
 		Type: eventType.Enum(),
 		Object: &draiosproto.ContainerGroup {
 			Uid: &draiosproto.CongroupUid {
@@ -60,9 +60,104 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 			Parents: par,
 		},
 	})
+
+	*children = append(*children, &draiosproto.CongroupUid {
+		Kind:proto.String("container"),
+		Id:proto.String(containerId)},
+	)
 }
 
-func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod) ([]*draiosproto.CongroupUpdateEvent) {
+func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
+	in := true
+	out := true
+
+	if lhs.GetName() != rhs.GetName() {
+		in = false
+	}
+
+	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
+		in = false
+	} else {
+		for k,v := range lhs.GetLabels() {
+			if rhs.GetLabels()[k] != v {
+				in = false
+			}
+		}
+	}
+
+	if in && lhs.Status.HostIP != rhs.Status.HostIP {
+		in = false
+	}
+	if in && lhs.Status.PodIP != rhs.Status.PodIP {
+		in = false
+	}
+
+	if in {
+		lRestartCount := uint32(0)
+		for _, c := range lhs.Status.ContainerStatuses {
+			lRestartCount += uint32(c.RestartCount)
+		}
+		rRestartCount := uint32(0)
+		for _, c := range rhs.Status.ContainerStatuses {
+			rRestartCount += uint32(c.RestartCount)
+		}
+		if lRestartCount != rRestartCount {
+			in = false
+		}
+	}
+
+	if lhs.GetNamespace() != rhs.GetNamespace() {
+		out = false
+	}
+
+	if out && lhs.Spec.NodeName != rhs.Spec.NodeName {
+		out = false
+	}
+
+	if out && len(lhs.GetOwnerReferences()) != len(rhs.GetOwnerReferences()) {
+		out = false
+	} else if out {
+		count := 0
+		for _, lOwner := range lhs.GetOwnerReferences() {
+			for _, rOwner := range rhs.GetOwnerReferences() {
+				if lOwner.UID == rOwner.UID {
+					count++
+					break
+				}
+			}
+		}
+		if count != len(lhs.GetOwnerReferences()) {
+			out = false
+		}
+	}
+
+	if out && len(lhs.Status.ContainerStatuses) != len(rhs.Status.ContainerStatuses) {
+		out = false
+	} else if out {
+		count := 0
+		for _, lC := range lhs.Status.ContainerStatuses {
+			if lC.ContainerID == "" {
+				continue
+			}
+			for _, rC := range rhs.Status.ContainerStatuses {
+				if rC.ContainerID == "" {
+					continue
+				}
+				if lC.ContainerID == rC.ContainerID {
+					count++
+					break
+				}
+			}
+		}
+		if count != len(lhs.Status.ContainerStatuses) {
+			out = false
+		}
+	}
+
+	return in, out
+}
+
+func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
 	//     should work on all v1.Object types
@@ -88,15 +183,62 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	podMetrics := map[string]uint32{"kubernetes.pod.restart.count": restartCount}
 
 	var parents []*draiosproto.CongroupUid
-	AddNSParents(&parents, pod.GetNamespace())
-	AddReplicaSetParents(&parents, pod)
-	AddReplicationControllerParents(&parents, pod)
-	AddStatefulSetParentsFromPod(&parents, pod)
-	AddServiceParents(&parents, pod)
-	AddDaemonSetParents(&parents, pod)
-	AddNodeParents(&parents, pod.Spec.NodeName)
-	AddJobParents(&parents, pod)
-	log.Debugf("WatchPods(): parent size: %v", len(parents))
+	if setLinks {
+		AddNSParents(&parents, pod.GetNamespace())
+		AddReplicaSetParents(&parents, pod)
+		AddReplicationControllerParents(&parents, pod)
+		AddStatefulSetParentsFromPod(&parents, pod)
+		AddServiceParents(&parents, pod)
+		AddDaemonSetParents(&parents, pod)
+		AddNodeParents(&parents, pod.Spec.NodeName)
+		AddJobParents(&parents, pod)
+	}
+
+	var children []*draiosproto.CongroupUid
+	var containerEvents []*draiosproto.CongroupUpdateEvent
+	if setLinks {
+		var oldContainers []v1.ContainerStatus
+		if oldPod != nil {
+			for _, oldC := range oldPod.Status.ContainerStatuses {
+				if oldC.ContainerID != "" {
+					oldContainers = append(oldContainers, oldC)
+				}
+			}
+		}
+		for _, c := range pod.Status.ContainerStatuses {
+
+			if c.ContainerID == "" {
+				continue
+			}
+
+			found := false
+			for i := 0; i < len(oldContainers); i++ {
+				if oldContainers[i].ContainerID == c.ContainerID {
+					oldContainers[i] = oldContainers[len(oldContainers)-1]
+					oldContainers = oldContainers[:len(oldContainers)-1]
+					found = true
+					break
+				}
+			}
+			if found {
+				// Never fire UPDATED events for containers
+				continue
+			}
+
+			var cEvtType draiosproto.CongroupEventType
+			if eventType == draiosproto.CongroupEventType_UPDATED {
+				cEvtType = draiosproto.CongroupEventType_ADDED
+			} else {
+				cEvtType = eventType
+			}
+			newContainerEvent(&c, cEvtType, &containerEvents, string(pod.GetUID()), &children)
+		}
+		for _, removedC := range oldContainers {
+			if removedC.ContainerID != "" {
+				newContainerEvent(&removedC, draiosproto.CongroupEventType_REMOVED, &containerEvents, string(pod.GetUID()), &children)
+			}
+		}
+	}
 
 	var cg []*draiosproto.CongroupUpdateEvent
 	cg = append(cg, &draiosproto.CongroupUpdateEvent {
@@ -107,44 +249,12 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 				Id:proto.String(string(pod.GetUID()))},
 			Tags: tags,
 			IpAddresses: ips,
-			Parents: parents,
 			Metrics: podMetrics,
+			Parents: parents,
+			Children: children,
 		},
 	})
-
-	var oldContainers []v1.ContainerStatus
-	if oldPod != nil {
-		oldContainers = append(oldContainers, oldPod.Status.ContainerStatuses...)
-	}
-	for _, c := range pod.Status.ContainerStatuses {
-		found := false
-		i := 0
-		if oldPod != nil {
-			for _, oldC := range oldPod.Status.ContainerStatuses {
-				if oldC.ContainerID == c.ContainerID {
-					oldContainers[i] = oldContainers[len(oldContainers)-1]
-					oldContainers = oldContainers[:len(oldContainers)-1]
-					found = true
-					break
-				}
-				i++
-			}
-		}
-		if found {
-			// Never fire UPDATED events for containers
-			continue
-		}
-		var cEvtType draiosproto.CongroupEventType
-		if eventType == draiosproto.CongroupEventType_UPDATED {
-			cEvtType = draiosproto.CongroupEventType_ADDED
-		} else {
-			cEvtType = eventType
-		}
-		newContainerEvent(&c, cEvtType, &cg, string(pod.GetUID()))
-	}
-	for _, removedC := range oldContainers {
-		newContainerEvent(&removedC, draiosproto.CongroupEventType_REMOVED, &cg, string(pod.GetUID()))
-	}
+	cg = append(cg, containerEvents...)
 
 	return cg
 }
@@ -209,25 +319,23 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 	podInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
-				//log.Debugf("AddFunc dumping pod: %v", obj.(*v1.Pod))
 				newPod := obj.(*v1.Pod)
-				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil)
-				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_ADDED)
+				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil, true)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPod := oldObj.(*v1.Pod)
 				newPod := newObj.(*v1.Pod)
 				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping pod oldPod %v", oldPod)
-					//log.Debugf("UpdateFunc dumping pod newPod %v", newPod)
-					sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod)
+					sameEntity, sameLinks := podEquals(oldPod, newPod)
+					if !sameEntity || !sameLinks {
+						sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod, !sameLinks)
+					}
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping pod: %v", obj.(*v1.Pod))
 				oldPod := obj.(*v1.Pod)
-				sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil)
-				//evtc <- podEvent(obj.(*v1.Pod), draiosproto.CongroupEventType_REMOVED)
+				// we have to call the function in this case because it will remove the containers too
+				sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil, true)
 			},
 		},
 	)
