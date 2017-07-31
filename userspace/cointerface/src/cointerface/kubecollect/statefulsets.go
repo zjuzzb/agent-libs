@@ -54,12 +54,12 @@ func getStatefulSetMetrics(statefulSet *v1beta1.StatefulSet) map[string]uint32 {
 	metrics := make(map[string]uint32)
 	prefix := "kubernetes.statefulset."
 
-	desiredReplicas := uint32(0)
+	specReplicas := uint32(0)
 	if statefulSet.Spec.Replicas != nil {
-		desiredReplicas = uint32(*statefulSet.Spec.Replicas)
+		specReplicas = uint32(*statefulSet.Spec.Replicas)
 	}
 
-	metrics[prefix + "replicas"] = desiredReplicas
+	metrics[prefix + "replicas"] = specReplicas
 	metrics[prefix + "status.replicas"] = uint32(statefulSet.Status.Replicas)
 	return metrics
 }
