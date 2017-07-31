@@ -137,6 +137,7 @@ public:
 #endif
 			return;
 		}
+		cout << "SERVER UP" << endl;
 		do
 		{
 			/* Set the size of the in-out parameter */

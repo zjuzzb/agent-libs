@@ -102,6 +102,7 @@ void runtest(iotype iot,
 	{
 		auto server_handle = start_process(&server_proc);
 		server_pid = get<0>(server_handle).id();
+		wait_for_message(*(get<1>(server_handle)), "SERVER UP\n");
 
 		auto client_handle = start_process(&test_proc);
 		client_pid = get<0>(client_handle).id();
@@ -235,14 +236,15 @@ void runtest(iotype iot,
 		// 32bit uses send() and recv(), while 64bit always uses sendto() and
 		// recvfrom() and sets the address to NULL
 		//
-		if(evt->get_type() == PPME_SOCKET_SEND_E ||
+		if((evt->get_type() == PPME_SOCKET_SEND_E ||
 		   evt->get_type() == PPME_SOCKET_RECV_E ||
 		   evt->get_type() == PPME_SOCKET_SENDTO_E ||
 		   evt->get_type() == PPME_SOCKET_RECVFROM_E ||
 		   evt->get_type() == PPME_SYSCALL_READ_E ||
 		   evt->get_type() == PPME_SYSCALL_WRITE_E ||
 		   evt->get_type() == PPME_SYSCALL_READV_E ||
-		   evt->get_type() == PPME_SYSCALL_WRITEV_E)
+		   evt->get_type() == PPME_SYSCALL_WRITEV_E) &&
+		   evt->m_fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 		{
 			if(evt->get_type() == PPME_SOCKET_RECVFROM_E)
 			{
