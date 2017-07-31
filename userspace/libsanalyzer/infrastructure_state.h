@@ -55,7 +55,8 @@ private:
 	void handle_event(const draiosproto::congroup_update_event *evt);
 
 	void connect(infrastructure_state::uid_t& key);
-	void remove(const draiosproto::congroup_update_event *evt);
+	void remove(infrastructure_state::uid_t& key);
+	bool has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid);
 
 	void reset();
 
