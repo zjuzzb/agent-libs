@@ -74,20 +74,14 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 	}
 	tags["kubernetes.replicaSet.name"] = replicaSet.GetName()
 
-	desiredReplicas := uint32(0)
-	if replicaSet.Spec.Replicas != nil {
-		desiredReplicas = uint32(*replicaSet.Spec.Replicas)
-	}
-	metrics := map[string]uint32{"kubernetes.replicaSet.replicas.desired": desiredReplicas,
-		"kubernetes.replicaSet.replicas.running": uint32(replicaSet.Status.Replicas),}
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicaset"),
 			Id:proto.String(string(replicaSet.GetUID()))},
 		Tags: tags,
-		Metrics: metrics,
 	}
+
+	ret.Metrics = getReplicaSetMetrics(replicaSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
@@ -98,6 +92,25 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 }
 
 var replicaSetInf cache.SharedInformer
+
+func getReplicaSetMetrics(replicaSet *v1beta1.ReplicaSet) map[string]uint32 {
+	metrics := make(map[string]uint32)
+	prefix := "kubernetes.replicaset."
+
+	specReplicas := uint32(0)
+	if replicaSet.Spec.Replicas != nil {
+		specReplicas = uint32(*replicaSet.Spec.Replicas)
+	}
+
+	metrics[prefix + "status.replicas"] = uint32(replicaSet.Status.Replicas)
+	metrics[prefix + "status.fully.labeled.replicas"] = uint32(replicaSet.Status.FullyLabeledReplicas)
+	metrics[prefix + "status.ready.replicas"] = uint32(replicaSet.Status.ReadyReplicas)
+	metrics[prefix + "spec.replicas"] = specReplicas
+	// Legacy metrics
+	metrics[prefix + "replicas.desired"] = specReplicas
+	metrics[prefix + "replicas.running"] = uint32(replicaSet.Status.Replicas)
+	return metrics
+}
 
 func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	if CompatibilityMap["replicasets"] {
