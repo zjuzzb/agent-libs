@@ -135,13 +135,16 @@ func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 }
 
-func WatchReplicaSets(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchReplicaSets()")
-
+func StartReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, resyncPeriod)
+	go replicaSetInf.Run(ctx.Done())
+}
+
+func WatchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchReplicaSets()")
 
 	replicaSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -173,8 +176,6 @@ func WatchReplicaSets(ctx context.Context, kubeClient kubeclient.Interface, evtc
 			},
 		},
 	)
-
-	go replicaSetInf.Run(ctx.Done())
 
 	return replicaSetInf
 }

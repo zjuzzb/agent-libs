@@ -163,19 +163,34 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	defer close(evtc)
 
 	// start watching some stuff
-	kubecollect.WatchNamespaces(ctx, kubeClient, evtc)
-	kubecollect.WatchDeployments(ctx, kubeClient, evtc)
-	kubecollect.WatchReplicaSets(ctx, kubeClient, evtc)
-	kubecollect.WatchServices(ctx, kubeClient, evtc)
-	kubecollect.WatchIngress(ctx, kubeClient, evtc)
-	kubecollect.WatchDaemonSets(ctx, kubeClient, evtc)
-	kubecollect.WatchNodes(ctx, kubeClient, evtc)
-	kubecollect.WatchJobs(ctx, kubeClient, evtc)
-	kubecollect.WatchCronJobs(ctx, kubeClient, evtc)
-	kubecollect.WatchReplicationControllers(ctx, kubeClient, evtc)
-	kubecollect.WatchStatefulSets(ctx, kubeClient, evtc)
-	kubecollect.WatchResourceQuotas(ctx, kubeClient, evtc)
-	kubecollect.WatchPods(ctx, kubeClient, evtc)
+	kubecollect.StartNamespacesSInformer(ctx, kubeClient)
+	kubecollect.StartDeploymentsSInformer(ctx, kubeClient)
+	kubecollect.StartReplicaSetsSInformer(ctx, kubeClient)
+	kubecollect.StartServicesSInformer(ctx, kubeClient)
+	kubecollect.StartIngressSInformer(ctx, kubeClient)
+	kubecollect.StartDaemonSetsSInformer(ctx, kubeClient)
+	kubecollect.StartNodesSInformer(ctx, kubeClient)
+	kubecollect.StartJobsSInformer(ctx, kubeClient)
+	kubecollect.StartCronJobsSInformer(ctx, kubeClient)
+	kubecollect.StartReplicationControllersSInformer(ctx, kubeClient)
+	kubecollect.StartStatefulSetsSInformer(ctx, kubeClient)
+	kubecollect.StartResourceQuotasSInformer(ctx, kubeClient)
+	kubecollect.StartPodsSInformer(ctx, kubeClient)
+
+	kubecollect.WatchNamespaces(evtc)
+	kubecollect.WatchDeployments(evtc)
+	kubecollect.WatchReplicaSets(evtc)
+	kubecollect.WatchServices(evtc)
+	kubecollect.WatchIngress(evtc)
+	kubecollect.WatchDaemonSets(evtc)
+	kubecollect.WatchNodes(evtc)
+	kubecollect.WatchJobs(evtc)
+	kubecollect.WatchCronJobs(evtc)
+	kubecollect.WatchReplicationControllers(evtc)
+	kubecollect.WatchStatefulSets(evtc)
+	kubecollect.WatchResourceQuotas(evtc)
+	kubecollect.WatchPods(evtc)
+
 	/*watch, _ := kubeClient.CoreV1().Events("").Watch(metav1.ListOptions{})
 
 	go func() {
@@ -189,11 +204,11 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	for {
 		select {
 		case evt := <-evtc:
-			if evt.Object.GetUid().GetKind() == "k8s_pod" {
-				log.Debugf("got a k8s_pod event")
-			} else {
-				log.Debugf("got a non-k8s_pod event: %v", evt.Object.GetUid().GetKind())
-			}
+			// if evt.Object.GetUid().GetKind() == "k8s_pod" {
+			// 	log.Debugf("got a k8s_pod event")
+			// } else {
+			// 	log.Debugf("got a non-k8s_pod event: %v", evt.Object.GetUid().GetKind())
+			// }
 /*
 			log.Infof("nsInf.HasSynced(): %v", nsInf.HasSynced())
 			if nsInf.HasSynced() {

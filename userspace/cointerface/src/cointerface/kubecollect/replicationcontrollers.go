@@ -78,13 +78,16 @@ func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.Cong
 	}
 }
 
-func WatchReplicationControllers(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchReplicationControllers()")
-
+func StartReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
 	resyncPeriod := time.Duration(10) * time.Second;
 	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, resyncPeriod)
+	go replicationControllerInf.Run(ctx.Done())
+}
+
+func WatchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchReplicationControllers()")
 
 	replicationControllerInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -110,8 +113,6 @@ func WatchReplicationControllers(ctx context.Context, kubeClient kubeclient.Inte
 			},
 		},
 	)
-
-	go replicationControllerInf.Run(ctx.Done())
 
 	return replicationControllerInf
 }

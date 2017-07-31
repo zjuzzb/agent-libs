@@ -137,13 +137,16 @@ func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, nam
 	}
 }
 
-func WatchServices(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchServices()")
-
+func StartServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Services", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	serviceInf = cache.NewSharedInformer(lw, &v1.Service{}, resyncPeriod)
+	go serviceInf.Run(ctx.Done())
+}
+
+func WatchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchServices()")
 
 	serviceInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -175,8 +178,6 @@ func WatchServices(ctx context.Context, kubeClient kubeclient.Interface, evtc ch
 			},
 		},
 	)
-
-	go serviceInf.Run(ctx.Done())
 
 	return serviceInf
 }

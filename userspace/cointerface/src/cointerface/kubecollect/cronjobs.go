@@ -74,11 +74,15 @@ func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 	}
 }
 
-func WatchCronJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func StartCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, resyncPeriod)
+	go cronJobInf.Run(ctx.Done())
+}
+
+func WatchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 
 	// fold, _ := os.Create("/tmp/cronjob_updates_old.json")
 	// fnew, _ := os.Create("/tmp/cronjob_updates_new.json")
@@ -112,8 +116,6 @@ func WatchCronJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc ch
 			},
 		},
 	)
-
-	go cronJobInf.Run(ctx.Done())
 
 	return cronJobInf
 }

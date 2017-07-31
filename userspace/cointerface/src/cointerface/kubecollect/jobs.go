@@ -71,12 +71,16 @@ func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 	}
 }
 
-func WatchJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchReplicaSets()")
+func StartJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, resyncPeriod)
+	go jobInf.Run(ctx.Done())
+}
+
+func WatchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchReplicaSets()")
 
 	jobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -101,8 +105,6 @@ func WatchJobs(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 			},
 		},
 	)
-
-	go jobInf.Run(ctx.Done())
 
 	return jobInf
 }

@@ -54,13 +54,16 @@ func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid,
 	}
 }
 
-func WatchResourceQuotas(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchResourceQuotas()")
-
+func StartResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ResourceQuotas", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	resourceQuotaInf = cache.NewSharedInformer(lw, &v1.ResourceQuota{}, resyncPeriod)
+	go resourceQuotaInf.Run(ctx.Done())
+}
+
+func WatchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchResourceQuotas()")
 
 	resourceQuotaInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -86,8 +89,6 @@ func WatchResourceQuotas(ctx context.Context, kubeClient kubeclient.Interface, e
 			},
 		},
 	)
-
-	go resourceQuotaInf.Run(ctx.Done())
 
 	return resourceQuotaInf
 }

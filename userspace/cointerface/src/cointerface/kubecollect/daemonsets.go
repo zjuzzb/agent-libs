@@ -71,13 +71,16 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 	}
 }
 
-func WatchDaemonSets(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchDaemonSets()")
-
+func StartDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, resyncPeriod)
+	go daemonSetInf.Run(ctx.Done())
+}
+
+func WatchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchDaemonSets()")
 
 	daemonSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -103,8 +106,6 @@ func WatchDaemonSets(ctx context.Context, kubeClient kubeclient.Interface, evtc 
 			},
 		},
 	)
-
-	go daemonSetInf.Run(ctx.Done())
 
 	return daemonSetInf
 }

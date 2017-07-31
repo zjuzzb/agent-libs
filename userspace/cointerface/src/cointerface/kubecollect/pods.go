@@ -307,14 +307,17 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 	}
 }
 
-func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) {
-	log.Debugf("In WatchPods()")
-
+func StartPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
 	resyncPeriod := time.Duration(10) * time.Second
 	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, resyncPeriod)
+	go podInf.Run(ctx.Done())
+}
+
+func WatchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
+	log.Debugf("In WatchPods()")
 
 	podInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -339,6 +342,4 @@ func WatchPods(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<-
 			},
 		},
 	)
-
-	go podInf.Run(ctx.Done())
 }

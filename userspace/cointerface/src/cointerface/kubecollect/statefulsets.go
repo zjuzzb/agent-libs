@@ -91,13 +91,16 @@ func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, n
 	}
 }
 
-func WatchStatefulSets(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchStatefulSets()")
-
+func StartStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.AppsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "StatefulSets", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	statefulSetInf = cache.NewSharedInformer(lw, &v1beta1.StatefulSet{}, resyncPeriod)
+	go statefulSetInf.Run(ctx.Done())
+}
+
+func WatchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchStatefulSets()")
 
 	statefulSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -123,8 +126,6 @@ func WatchStatefulSets(ctx context.Context, kubeClient kubeclient.Interface, evt
 			},
 		},
 	)
-
-	go statefulSetInf.Run(ctx.Done())
 
 	return statefulSetInf
 }

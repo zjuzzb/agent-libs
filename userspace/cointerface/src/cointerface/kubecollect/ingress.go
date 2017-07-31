@@ -101,13 +101,16 @@ func AddIngressChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 	}
 }
 
-func WatchIngress(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchServices()")
-
+func StartIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ingresses", v1meta.NamespaceAll, fields.Everything())
 	resyncPeriod := time.Duration(10) * time.Second;
 	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, resyncPeriod)
+	go ingressInf.Run(ctx.Done())
+}
+
+func WatchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchIngress()")
 
 	ingressInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -131,8 +134,6 @@ func WatchIngress(ctx context.Context, kubeClient kubeclient.Interface, evtc cha
 			},
 		},
 	)
-
-	go ingressInf.Run(ctx.Done())
 
 	return ingressInf
 }

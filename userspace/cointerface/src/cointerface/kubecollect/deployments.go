@@ -98,13 +98,16 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 }
 
-func WatchDeployments(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchDeployments()")
-
+func StartDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Deployments", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
+	resyncPeriod := time.Duration(10) * time.Second
 	deploymentInf = cache.NewSharedInformer(lw, &v1beta1.Deployment{}, resyncPeriod)
+	go deploymentInf.Run(ctx.Done())
+}
+
+func WatchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchDeployments()")
 
 	deploymentInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
@@ -136,8 +139,6 @@ func WatchDeployments(ctx context.Context, kubeClient kubeclient.Interface, evtc
 			},
 		},
 	)
-
-	go deploymentInf.Run(ctx.Done())
 
 	return deploymentInf
 }

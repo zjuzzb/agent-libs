@@ -71,11 +71,11 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 	return ret
 }
 
-var inf cache.SharedInformer
+var namespaceInf cache.SharedInformer
 
 func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
 	// Check first if (inf.HasSynced() == true) ??
-	for _, obj := range inf.GetStore().List() {
+	for _, obj := range namespaceInf.GetStore().List() {
 		nsObj := obj.(*v1.Namespace)
 		//log.Debugf("AddNSParents: %v", nsObj.GetName())
 		if ns == nsObj.GetName() {
@@ -87,15 +87,18 @@ func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
 	}
 }
 
-func WatchNamespaces(ctx context.Context, kubeClient kubeclient.Interface, evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchNamespaces()")
-
+func StartNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
-	inf = cache.NewSharedInformer(lw, &v1.Namespace{}, resyncPeriod)
+	resyncPeriod := time.Duration(10) * time.Second
+	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, resyncPeriod)
+	go namespaceInf.Run(ctx.Done())
+}
 
-	inf.AddEventHandler(
+func WatchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchNamespaces()")
+
+	namespaceInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				//log.Debugf("AddFunc dumping namespace: %v", obj.(*v1.Namespace))
@@ -126,9 +129,7 @@ func WatchNamespaces(ctx context.Context, kubeClient kubeclient.Interface, evtc 
 		},
 	)
 
-	go inf.Run(ctx.Done())
-
 	//store := inf.GetStore()
 	//return &store
-	return inf
+	return namespaceInf
 }
