@@ -32,20 +32,14 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 	}
 	tags["kubernetes.replicationcontroller.name"] = replicationController.GetName()
 
-	desiredReplicas := uint32(0)
-	if replicationController.Spec.Replicas != nil {
-		desiredReplicas = uint32(*replicationController.Spec.Replicas)
-	}
-	metrics := map[string]uint32{"kubernetes.replicationController.replicas.desired": desiredReplicas,
-		"kubernetes.replicationController.replicas.running": uint32(replicationController.Status.Replicas),}
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicationcontroller"),
 			Id:proto.String(string(replicationController.GetUID()))},
 		Tags: tags,
-		Metrics: metrics,
 	}
+
+	ret.Metrics = getReplicationControllerMetrics(replicationController)
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
 	AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
@@ -53,6 +47,26 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 }
 
 var replicationControllerInf cache.SharedInformer
+
+func getReplicationControllerMetrics(replicationController *v1.ReplicationController) map[string]uint32 {
+	metrics := make(map[string]uint32)
+	prefix := "kubernetes.replicationcontroller."
+
+	specReplicas := uint32(0)
+	if replicationController.Spec.Replicas != nil {
+		specReplicas = uint32(*replicationController.Spec.Replicas)
+	}
+
+	metrics[prefix + "status.replicas"] = uint32(replicationController.Status.Replicas)
+	metrics[prefix + "status.fully.labeled.replicas"] = uint32(replicationController.Status.FullyLabeledReplicas)
+	metrics[prefix + "status.ready.replicas"] = uint32(replicationController.Status.ReadyReplicas)
+	metrics[prefix + "status.available.replicas"] = uint32(replicationController.Status.AvailableReplicas)
+	metrics[prefix + "spec.replicas"] = specReplicas
+	// Legacy metrics
+	metrics[prefix + "replicas.desired"] = specReplicas
+	metrics[prefix + "replicas.running"] = uint32(replicationController.Status.Replicas)
+	return metrics
+}
 
 func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	if CompatibilityMap["replicationcontrollers"] {
