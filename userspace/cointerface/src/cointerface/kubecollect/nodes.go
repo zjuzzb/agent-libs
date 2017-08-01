@@ -53,6 +53,11 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 			Id:proto.String(string(node.GetUID()))},
 		Tags: tags,
 	}
+
+	for _, nodeAddress := range node.Status.Addresses {
+		ret.IpAddresses = append(ret.IpAddresses, nodeAddress.Address)
+	}
+
 	AddPodChildrenFromNodeName(&ret.Children, node.GetName())
 	return ret
 }

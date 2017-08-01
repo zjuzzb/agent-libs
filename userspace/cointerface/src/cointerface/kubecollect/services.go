@@ -85,6 +85,18 @@ func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.Contai
 			Id:proto.String(string(service.GetUID()))},
 		Tags: tags,
 	}
+
+	ret.IpAddresses = append(ret.IpAddresses, service.Spec.ClusterIP)
+
+	/* TODO: implement this
+		for _, port := range service.Spec.Ports {
+		ret.Ports = append(ret.Ports, &draiosproto.CongroupNetPort{
+			Port: proto.Uint32(uint32(port.Port)),
+			TargetPort: proto.Uint32(uint32(port.TargetPort)),
+			Protocol: proto.String(string(port.Protocol)),
+		})
+	} */
+
 	if setLinks {
 		AddNSParents(&ret.Parents, service.GetNamespace())
 		AddIngressParents(&ret.Parents, service)
