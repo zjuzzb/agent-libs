@@ -160,10 +160,12 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
+	
 	kubecollect.CompatibilityMap = make(map[string]bool)
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			kubecollect.CompatibilityMap[resource.Name] = true
+			log.Debugf("K8s server has %s API support.", resource.Name)
 		}
 	}
 
