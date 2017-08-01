@@ -47,7 +47,6 @@ func CreateInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
 }
 
 func AppendMetricInt32(metrics *[]*draiosproto.AppMetric, name string, val int32) {
-	log.Errorf("Adding metric with val: %v", val)
 	*metrics = append(*metrics, &draiosproto.AppMetric{
 		Name:proto.String(name),
 		Type:draiosproto.AppMetricType_APP_METRIC_TYPE_GAUGE.Enum(),
