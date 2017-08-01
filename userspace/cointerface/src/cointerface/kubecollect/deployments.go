@@ -67,7 +67,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 		Tags: tags,
 	}
 
-	//ret.Metrics = getDeploymentMetrics(deployment)
+	AddDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())
 		AddReplicaSetChildren(&ret.Children, deployment)
@@ -77,25 +77,20 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 
 var deploymentInf cache.SharedInformer
 
-func getDeploymentMetrics(deployment *v1beta1.Deployment) map[string]uint32 {
-	metrics := make(map[string]uint32)
+func AddDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1.Deployment) {
 	prefix := "kubernetes.deployment."
-
-	specReplicas := uint32(0)
-	if deployment.Spec.Replicas != nil {
-		specReplicas = uint32(*deployment.Spec.Replicas)
-	}
-
-	metrics[prefix + "status.replicas"] = uint32(deployment.Status.Replicas)
-	metrics[prefix + "status.replicas.available"] = uint32(deployment.Status.AvailableReplicas)
-	metrics[prefix + "status.replicas.unavailable"] = uint32(deployment.Status.UnavailableReplicas)
-	metrics[prefix + "status.replicas.updated"] = uint32(deployment.Status.UpdatedReplicas)
-	metrics[prefix + "spec.replicas"] = specReplicas
-	//metrics[prefix + "spec.paused"] = uint32(deployment.Spec.Paused)
+	AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.Replicas)
+	// kube-state-metrics uses "kube_deployment_status_replicas_available" but
+	// we use availableReplicas instead of replicasAvailable because it matches
+	// the name in DeploymentStatus and other resources like ReplicationControllers
+	AppendMetricInt32(metrics, prefix+"status.availableReplicas", deployment.Status.AvailableReplicas)
+	AppendMetricInt32(metrics, prefix+"status.unavailableReplicas", deployment.Status.UnavailableReplicas)
+	AppendMetricInt32(metrics, prefix+"status.updatedReplicas", deployment.Status.UpdatedReplicas)
+	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", deployment.Spec.Replicas)
+	AppendMetricBool(metrics, prefix+"spec.paused", deployment.Spec.Paused)
 	//if deployment.Spec.Strategy.RollingUpdate != nil {
 	//	metrics[prefix + "spec.strategy.rollingupdate.max.unavailable"] = uint32(deployment.Spec.Strategy.RollingUpdate.MaxUnavailable)
 	//}
-	return metrics
 }
 
 func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {

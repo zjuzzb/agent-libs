@@ -40,7 +40,7 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 		Tags: tags,
 	}
 
-	//ret.Metrics = getDaemonSetMetrics(daemonSet)
+	AddDaemonSetMetrics(&ret.Metrics, daemonSet)
 	AddNSParents(&ret.Parents, daemonSet.GetNamespace())
 	selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
 	AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())
@@ -49,15 +49,12 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 
 var daemonSetInf cache.SharedInformer
 
-func getDaemonSetMetrics(daemonSet *v1beta1.DaemonSet) map[string]uint32 {
-	metrics := make(map[string]uint32)
+func AddDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet *v1beta1.DaemonSet) {
 	prefix := "kubernetes.daemonset."
-
-	metrics[prefix + "status.current.number.scheduled"] = uint32(daemonSet.Status.CurrentNumberScheduled)
-	metrics[prefix + "status.number.misscheduled"] = uint32(daemonSet.Status.NumberMisscheduled)
-	metrics[prefix + "status.desired.number.scheduled"] = uint32(daemonSet.Status.DesiredNumberScheduled)
-	metrics[prefix + "status.number.ready"] = uint32(daemonSet.Status.NumberReady)
-	return metrics
+	AppendMetricInt32(metrics, prefix+"status.currentNumberScheduled", daemonSet.Status.CurrentNumberScheduled)
+	AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
+	AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
+	AppendMetricInt32(metrics, prefix+"status.numberReady", daemonSet.Status.NumberReady)
 }
 
 func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {

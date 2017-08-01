@@ -61,3 +61,11 @@ func AppendMetricPtrInt32(metrics *[]*draiosproto.AppMetric, name string, val *i
 	}
 	AppendMetricInt32(metrics, name, v)
 }
+
+func AppendMetricBool(metrics *[]*draiosproto.AppMetric, name string, val bool) {
+	v := int32(0)
+	if val == true {
+		v = 1
+	}
+	AppendMetricInt32(metrics, name, v)
+}
