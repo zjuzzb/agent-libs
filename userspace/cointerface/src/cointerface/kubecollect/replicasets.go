@@ -81,7 +81,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 		Tags: tags,
 	}
 
-	//ret.Metrics = getReplicaSetMetrics(replicaSet)
+	AddReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
@@ -93,23 +93,15 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 
 var replicaSetInf cache.SharedInformer
 
-func getReplicaSetMetrics(replicaSet *v1beta1.ReplicaSet) map[string]uint32 {
-	metrics := make(map[string]uint32)
+func AddReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1.ReplicaSet) {
 	prefix := "kubernetes.replicaset."
-
-	specReplicas := uint32(0)
-	if replicaSet.Spec.Replicas != nil {
-		specReplicas = uint32(*replicaSet.Spec.Replicas)
-	}
-
-	metrics[prefix + "status.replicas"] = uint32(replicaSet.Status.Replicas)
-	metrics[prefix + "status.fully.labeled.replicas"] = uint32(replicaSet.Status.FullyLabeledReplicas)
-	metrics[prefix + "status.ready.replicas"] = uint32(replicaSet.Status.ReadyReplicas)
-	metrics[prefix + "spec.replicas"] = specReplicas
+	AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.Replicas)
+	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
+	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
+	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
 	// Legacy metrics
-	metrics[prefix + "replicas.desired"] = specReplicas
-	metrics[prefix + "replicas.running"] = uint32(replicaSet.Status.Replicas)
-	return metrics
+	AppendMetricInt32(metrics, prefix+"replicas.running", replicaSet.Status.Replicas)
+	AppendMetricPtrInt32(metrics, prefix+"replicas.desired", replicaSet.Spec.Replicas)
 }
 
 func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {

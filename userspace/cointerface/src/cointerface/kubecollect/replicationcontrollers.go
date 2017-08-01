@@ -39,7 +39,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 		Tags: tags,
 	}
 
-	//ret.Metrics = getReplicationControllerMetrics(replicationController)
+	AddReplicationControllerMetrics(&ret.Metrics, replicationController)
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
 	AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
@@ -48,24 +48,16 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 
 var replicationControllerInf cache.SharedInformer
 
-func getReplicationControllerMetrics(replicationController *v1.ReplicationController) map[string]uint32 {
-	metrics := make(map[string]uint32)
+func AddReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController *v1.ReplicationController) {
 	prefix := "kubernetes.replicationcontroller."
-
-	specReplicas := uint32(0)
-	if replicationController.Spec.Replicas != nil {
-		specReplicas = uint32(*replicationController.Spec.Replicas)
-	}
-
-	metrics[prefix + "status.replicas"] = uint32(replicationController.Status.Replicas)
-	metrics[prefix + "status.fully.labeled.replicas"] = uint32(replicationController.Status.FullyLabeledReplicas)
-	metrics[prefix + "status.ready.replicas"] = uint32(replicationController.Status.ReadyReplicas)
-	metrics[prefix + "status.available.replicas"] = uint32(replicationController.Status.AvailableReplicas)
-	metrics[prefix + "spec.replicas"] = specReplicas
+	AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.Replicas)
+	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
+	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
+	AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
+	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
 	// Legacy metrics
-	metrics[prefix + "replicas.desired"] = specReplicas
-	metrics[prefix + "replicas.running"] = uint32(replicationController.Status.Replicas)
-	return metrics
+	AppendMetricInt32(metrics, prefix+"replicas.running", replicationController.Status.Replicas)
+	AppendMetricPtrInt32(metrics, prefix+"replicas.desired", replicationController.Spec.Replicas)
 }
 
 func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
