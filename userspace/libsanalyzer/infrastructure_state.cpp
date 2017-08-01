@@ -227,7 +227,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				*m_state[key]->mutable_tags() = evt->object().tags();
 				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 				m_state[key]->mutable_ports()->CopyFrom(evt->object().ports());
-				*m_state[key]->mutable_metrics() = evt->object().metrics();
+				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 			}
 			break;
 		}
@@ -658,7 +658,7 @@ void infrastructure_state::debug_print()
 				  p.port(), p.protocol().c_str(), p.target_port(), p.node_port(), p.published_port());
 		glogf(sinsp_logger::SEV_DEBUG, "  Metrics:");
 		for (auto m: cong->metrics())
-			glogf(sinsp_logger::SEV_DEBUG, "   %s:%d", m.first.c_str(), m.second);
+			glogf(sinsp_logger::SEV_DEBUG, "   %s:%g", m.name().c_str(), m.value());
 		glogf(sinsp_logger::SEV_DEBUG, "  Parents:");
 		for (auto m: cong->parents())
 			glogf(sinsp_logger::SEV_DEBUG, "   <%s,%s>", m.kind().c_str(), m.id().c_str());

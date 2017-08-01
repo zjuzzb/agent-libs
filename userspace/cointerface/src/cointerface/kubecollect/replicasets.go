@@ -81,7 +81,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 		Tags: tags,
 	}
 
-	ret.Metrics = getReplicaSetMetrics(replicaSet)
+	//ret.Metrics = getReplicaSetMetrics(replicaSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)

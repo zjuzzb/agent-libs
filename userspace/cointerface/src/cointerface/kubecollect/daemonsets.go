@@ -40,7 +40,7 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 		Tags: tags,
 	}
 
-	ret.Metrics = getDaemonSetMetrics(daemonSet)
+	//ret.Metrics = getDaemonSetMetrics(daemonSet)
 	AddNSParents(&ret.Parents, daemonSet.GetNamespace())
 	selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
 	AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())

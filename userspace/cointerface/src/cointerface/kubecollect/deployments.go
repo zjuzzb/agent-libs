@@ -67,7 +67,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 		Tags: tags,
 	}
 
-	ret.Metrics = getDeploymentMetrics(deployment)
+	//ret.Metrics = getDeploymentMetrics(deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())
 		AddReplicaSetChildren(&ret.Children, deployment)

@@ -638,7 +638,7 @@ message container_group {
     map<string, string> tags = 3;
     repeated string ip_addresses = 5;
     repeated congroup_net_port ports = 6;
-    map<string, uint32> metrics = 7;
+    repeated app_metric metrics = 7;
     repeated congroup_uid children = 8;
     repeated congroup_uid parents = 9;
 }

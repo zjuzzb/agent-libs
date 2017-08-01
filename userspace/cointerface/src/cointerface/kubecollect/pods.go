@@ -179,7 +179,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 		ips = append(ips, pod.Status.PodIP)
 	}
 
-	podMetrics := getPodMetrics(pod)
+	//podMetrics := getPodMetrics(pod)
 
 	var parents []*draiosproto.CongroupUid
 	if setLinks {
@@ -248,7 +248,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 				Id:proto.String(string(pod.GetUID()))},
 			Tags: tags,
 			IpAddresses: ips,
-			Metrics: podMetrics,
+			//Metrics: podMetrics,
 			Parents: parents,
 			Children: children,
 		},

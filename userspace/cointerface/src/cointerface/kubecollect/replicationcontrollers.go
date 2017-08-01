@@ -39,7 +39,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 		Tags: tags,
 	}
 
-	ret.Metrics = getReplicationControllerMetrics(replicationController)
+	//ret.Metrics = getReplicationControllerMetrics(replicationController)
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
 	AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())

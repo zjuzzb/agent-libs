@@ -6,6 +6,8 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/rest"
+	"draiosproto"
+	"github.com/gogo/protobuf/proto"
 )
 
 var CompatibilityMap map[string]bool
@@ -42,4 +44,21 @@ func CreateInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
 		return nil, err
 	}
 	return
+}
+
+func AppendMetricInt32(metrics *[]*draiosproto.AppMetric, name string, val int32) {
+	log.Errorf("Adding metric with val: %v", val)
+	*metrics = append(*metrics, &draiosproto.AppMetric{
+		Name:proto.String(name),
+		Type:draiosproto.AppMetricType_APP_METRIC_TYPE_GAUGE.Enum(),
+		Value:proto.Float64(float64(val)),
+	})
+}
+
+func AppendMetricPtrInt32(metrics *[]*draiosproto.AppMetric, name string, val *int32) {
+	v := int32(0)
+	if val != nil {
+		v = *val
+	}
+	AppendMetricInt32(metrics, name, v)
 }
