@@ -48,25 +48,29 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 var daemonSetInf cache.SharedInformer
 
 func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	for _, obj := range daemonSetInf.GetStore().List() {
-		daemonSet := obj.(*v1beta1.DaemonSet)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
-		if pod.GetNamespace() == daemonSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_daemonset"),
-				Id:proto.String(string(daemonSet.GetUID()))})
+	if CompatibilityMap["daemonsets"] {
+		for _, obj := range daemonSetInf.GetStore().List() {
+			daemonSet := obj.(*v1beta1.DaemonSet)
+			//log.Debugf("AddNSParents: %v", nsObj.GetName())
+			selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
+			if pod.GetNamespace() == daemonSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+				*parents = append(*parents, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_daemonset"),
+					Id:proto.String(string(daemonSet.GetUID()))})
+			}
 		}
 	}
 }
 
 func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	for _, obj := range daemonSetInf.GetStore().List() {
-		daemonSet := obj.(*v1beta1.DaemonSet)
-		if daemonSet.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_daemonset"),
-				Id:proto.String(string(daemonSet.GetUID()))})
+	if CompatibilityMap["daemonsets"] {
+		for _, obj := range daemonSetInf.GetStore().List() {
+			daemonSet := obj.(*v1beta1.DaemonSet)
+			if daemonSet.GetNamespace() == namespaceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_daemonset"),
+					Id:proto.String(string(daemonSet.GetUID()))})
+			}
 		}
 	}
 }

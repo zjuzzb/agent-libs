@@ -74,15 +74,17 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 var namespaceInf cache.SharedInformer
 
 func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
-	// Check first if (inf.HasSynced() == true) ??
-	for _, obj := range namespaceInf.GetStore().List() {
-		nsObj := obj.(*v1.Namespace)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		if ns == nsObj.GetName() {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_namespace"),
-				Id:proto.String(string(nsObj.GetUID()))})
-			return
+	if CompatibilityMap["namespaces"] {
+		// Check first if (inf.HasSynced() == true) ??
+		for _, obj := range namespaceInf.GetStore().List() {
+			nsObj := obj.(*v1.Namespace)
+			//log.Debugf("AddNSParents: %v", nsObj.GetName())
+			if ns == nsObj.GetName() {
+				*parents = append(*parents, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_namespace"),
+					Id:proto.String(string(nsObj.GetUID()))})
+				return
+			}
 		}
 	}
 }

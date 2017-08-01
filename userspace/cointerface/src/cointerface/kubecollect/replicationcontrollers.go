@@ -55,25 +55,29 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 var replicationControllerInf cache.SharedInformer
 
 func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	for _, obj := range replicationControllerInf.GetStore().List() {
-		replicationController := obj.(*v1.ReplicationController)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		selector := labels.Set(replicationController.Spec.Selector).AsSelector()
-		if pod.GetNamespace() == replicationController.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicationcontroller"),
-				Id:proto.String(string(replicationController.GetUID()))})
+	if CompatibilityMap["replicationcontrollers"] {
+		for _, obj := range replicationControllerInf.GetStore().List() {
+			replicationController := obj.(*v1.ReplicationController)
+			//log.Debugf("AddNSParents: %v", nsObj.GetName())
+			selector := labels.Set(replicationController.Spec.Selector).AsSelector()
+			if pod.GetNamespace() == replicationController.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+				*parents = append(*parents, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_replicationcontroller"),
+					Id:proto.String(string(replicationController.GetUID()))})
+			}
 		}
 	}
 }
 
 func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	for _, obj := range replicationControllerInf.GetStore().List() {
-		replicationController := obj.(*v1.ReplicationController)
-		if replicationController.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_replicationcontroller"),
-				Id:proto.String(string(replicationController.GetUID()))})
+	if CompatibilityMap["replicationcontrollers"] 	{
+		for _, obj := range replicationControllerInf.GetStore().List() {
+			replicationController := obj.(*v1.ReplicationController)
+			if replicationController.GetNamespace() == namespaceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_replicationcontroller"),
+					Id:proto.String(string(replicationController.GetUID()))})
+			}
 		}
 	}
 }

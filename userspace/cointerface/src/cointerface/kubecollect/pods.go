@@ -262,46 +262,54 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 var podInf cache.SharedInformer
 
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
-	for _, obj := range podInf.GetStore().List() {
-		pod := obj.(*v1.Pod)
-		if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))})
+	if CompatibilityMap["pods"] {
+		for _, obj := range podInf.GetStore().List() {
+			pod := obj.(*v1.Pod)
+			if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_pod"),
+					Id:proto.String(string(pod.GetUID()))})
+			}
 		}
 	}
 }
 
 func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName string) {
-	for _, obj := range podInf.GetStore().List() {
-		pod := obj.(*v1.Pod)
-		if pod.Spec.NodeName == nodeName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))})
+	if CompatibilityMap["pods"] {
+		for _, obj := range podInf.GetStore().List() {
+			pod := obj.(*v1.Pod)
+			if pod.Spec.NodeName == nodeName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_pod"),
+					Id:proto.String(string(pod.GetUID()))})
+			}
 		}
 	}
 }
 
 func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	for _, obj := range podInf.GetStore().List() {
-		pod := obj.(*v1.Pod)
-		if pod.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_pod"),
-				Id:proto.String(string(pod.GetUID()))})
+	if CompatibilityMap["pods"] {
+		for _, obj := range podInf.GetStore().List() {
+			pod := obj.(*v1.Pod)
+			if pod.GetNamespace() == namespaceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_pod"),
+					Id:proto.String(string(pod.GetUID()))})
+			}
 		}
 	}
 }
 
 func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
-	for _, obj := range podInf.GetStore().List() {
-		pod := obj.(*v1.Pod)
-		for _, owner := range pod.GetOwnerReferences() {
-			if owner.UID == parent.GetUID() {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_pod"),
-					Id:proto.String(string(pod.GetUID()))})
+	if CompatibilityMap["pods"] {
+		for _, obj := range podInf.GetStore().List() {
+			pod := obj.(*v1.Pod)
+			for _, owner := range pod.GetOwnerReferences() {
+				if owner.UID == parent.GetUID() {
+					*children = append(*children, &draiosproto.CongroupUid{
+						Kind:proto.String("k8s_pod"),
+						Id:proto.String(string(pod.GetUID()))})
+				}
 			}
 		}
 	}

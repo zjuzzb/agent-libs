@@ -8,6 +8,8 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+var CompatibilityMap map[string]bool
+
 func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err error) {
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: apiserver}}

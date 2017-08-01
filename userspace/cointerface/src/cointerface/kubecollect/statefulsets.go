@@ -56,37 +56,42 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 var statefulSetInf cache.SharedInformer
 
 func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*v1beta1.StatefulSet)
-		for _, owner := range pod.GetOwnerReferences() {
-			if owner.UID == statefulSet.GetUID() {
+	if CompatibilityMap["statefulsets"] {
+		for _, obj := range statefulSetInf.GetStore().List() {
+			statefulSet := obj.(*v1beta1.StatefulSet)
+			for _, owner := range pod.GetOwnerReferences() {
+				if owner.UID == statefulSet.GetUID() {
+					*parents = append(*parents, &draiosproto.CongroupUid{
+						Kind:proto.String("k8s_statefulset"),
+						Id:proto.String(string(statefulSet.GetUID()))})
+				}
+			}
+		}
+	}
+}
+
+func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
+	if CompatibilityMap["statefulsets"] {
+		for _, obj := range statefulSetInf.GetStore().List() {
+			statefulSet := obj.(*v1beta1.StatefulSet)
+			if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
 				*parents = append(*parents, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_statefulset"),
 					Id:proto.String(string(statefulSet.GetUID()))})
 			}
 		}
-
-	}
-}
-
-func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
-	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*v1beta1.StatefulSet)
-		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_statefulset"),
-				Id:proto.String(string(statefulSet.GetUID()))})
-		}
 	}
 }
 
 func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	for _, obj := range statefulSetInf.GetStore().List() {
-		statefulSet := obj.(*v1beta1.StatefulSet)
-		if statefulSet.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_statefulset"),
-				Id:proto.String(string(statefulSet.GetUID()))})
+	if CompatibilityMap["statefulsets"] {
+		for _, obj := range statefulSetInf.GetStore().List() {
+			statefulSet := obj.(*v1beta1.StatefulSet)
+			if statefulSet.GetNamespace() == namespaceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_statefulset"),
+					Id:proto.String(string(statefulSet.GetUID()))})
+			}
 		}
 	}
 }

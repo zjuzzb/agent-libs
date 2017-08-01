@@ -60,12 +60,14 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 var nodeInf cache.SharedInformer
 
 func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
-	for _, obj := range nodeInf.GetStore().List() {
-		node := obj.(*v1.Node)
-		if node.GetName() == nodeName {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_node"),
-				Id:proto.String(string(node.GetUID()))})
+	if CompatibilityMap["nodes"] {
+		for _, obj := range nodeInf.GetStore().List() {
+			node := obj.(*v1.Node)
+			if node.GetName() == nodeName {
+				*parents = append(*parents, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_node"),
+					Id:proto.String(string(node.GetUID()))})
+			}
 		}
 	}
 }

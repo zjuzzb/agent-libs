@@ -101,19 +101,21 @@ func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.Contai
 var serviceInf cache.SharedInformer
 
 func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	for _, obj := range serviceInf.GetStore().List() {
-		service := obj.(*v1.Service)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+	if CompatibilityMap["services"] {
+		for _, obj := range serviceInf.GetStore().List() {
+			service := obj.(*v1.Service)
+			//log.Debugf("AddNSParents: %v", nsObj.GetName())
 
-		if len(service.Spec.Selector) == 0 {
-			continue
-		}
+			if len(service.Spec.Selector) == 0 {
+				continue
+			}
 
-		selector, _ := serviceSelector(service)
-		if pod.GetNamespace() == service.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-			*parents = append(*parents, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_service"),
-				Id:proto.String(string(service.GetUID()))})
+			selector, _ := serviceSelector(service)
+			if pod.GetNamespace() == service.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+				*parents = append(*parents, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_service"),
+					Id:proto.String(string(service.GetUID()))})
+			}
 		}
 	}
 }
@@ -123,16 +125,18 @@ func AddServiceChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 }
 
 func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, namespaceName string, serviceName string) {
-	for _, obj := range serviceInf.GetStore().List() {
-		service := obj.(*v1.Service)
-		if service.GetNamespace() != namespaceName {
-			continue
-		}
+	if CompatibilityMap["services"] {
+		for _, obj := range serviceInf.GetStore().List() {
+			service := obj.(*v1.Service)
+			if service.GetNamespace() != namespaceName {
+				continue
+			}
 
-		if "" == serviceName || service.GetName() == serviceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_service"),
-				Id:proto.String(string(service.GetUID()))})
+			if "" == serviceName || service.GetName() == serviceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_service"),
+					Id:proto.String(string(service.GetUID()))})
+			}
 		}
 	}
 }

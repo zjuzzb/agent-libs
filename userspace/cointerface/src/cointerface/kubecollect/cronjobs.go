@@ -51,25 +51,29 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 var cronJobInf cache.SharedInformer
 
 func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
-	for _, item := range cronJobInf.GetStore().List() {
-		cronJob := item.(*v2alpha1.CronJob)
-		for _, activeJob := range cronJob.Status.Active {
-			if activeJob.UID == job.GetUID() {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_cronjob"),
-					Id:proto.String(string(cronJob.UID))})
+	if CompatibilityMap["cronjobs"] {
+		for _, item := range cronJobInf.GetStore().List() {
+			cronJob := item.(*v2alpha1.CronJob)
+			for _, activeJob := range cronJob.Status.Active {
+				if activeJob.UID == job.GetUID() {
+					*parents = append(*parents, &draiosproto.CongroupUid{
+						Kind:proto.String("k8s_cronjob"),
+						Id:proto.String(string(cronJob.UID))})
+				}
 			}
 		}
 	}
 }
 
 func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	for _, obj := range cronJobInf.GetStore().List() {
-		cronJob := obj.(*v2alpha1.CronJob)
-		if cronJob.GetNamespace() == namespaceName {
-			*children = append(*children, &draiosproto.CongroupUid{
-				Kind:proto.String("k8s_cronjob"),
-				Id:proto.String(string(cronJob.GetUID()))})
+	if CompatibilityMap["cronjobs"] {
+		for _, obj := range cronJobInf.GetStore().List() {
+			cronJob := obj.(*v2alpha1.CronJob)
+			if cronJob.GetNamespace() == namespaceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_cronjob"),
+					Id:proto.String(string(cronJob.GetUID()))})
+			}
 		}
 	}
 }

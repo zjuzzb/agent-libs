@@ -154,6 +154,19 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	}
 	log.Infof("Communication with server successful: %v", srvVersion)
 
+	resources, err := kubeClient.Discovery().ServerResources()
+	if err != nil {
+		log.Errorf("K8s server returned error: %s", err)
+		return err
+	}
+
+	kubecollect.CompatibilityMap = make(map[string]bool)
+	for _, resourceList := range resources {
+		for _, resource := range resourceList.APIResources {
+			kubecollect.CompatibilityMap[resource.Name] = true
+		}
+	}
+
 	// make sure we can cancel stuff later
 	ctx, cancel := context.WithCancel(stream.Context())
 	defer cancel()
@@ -163,34 +176,111 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	defer close(evtc)
 
 	// start watching some stuff
-	kubecollect.StartNamespacesSInformer(ctx, kubeClient)
-	kubecollect.StartDeploymentsSInformer(ctx, kubeClient)
-	kubecollect.StartReplicaSetsSInformer(ctx, kubeClient)
-	kubecollect.StartServicesSInformer(ctx, kubeClient)
-	kubecollect.StartIngressSInformer(ctx, kubeClient)
-	kubecollect.StartDaemonSetsSInformer(ctx, kubeClient)
-	kubecollect.StartNodesSInformer(ctx, kubeClient)
-	kubecollect.StartJobsSInformer(ctx, kubeClient)
-	kubecollect.StartCronJobsSInformer(ctx, kubeClient)
-	kubecollect.StartReplicationControllersSInformer(ctx, kubeClient)
-	kubecollect.StartStatefulSetsSInformer(ctx, kubeClient)
-	kubecollect.StartResourceQuotasSInformer(ctx, kubeClient)
-	kubecollect.StartPodsSInformer(ctx, kubeClient)
+	if kubecollect.CompatibilityMap["namespaces"] {
+		kubecollect.StartNamespacesSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have namespaces API support.")
+	}
+	if kubecollect.CompatibilityMap["deployments"] {
+		kubecollect.StartDeploymentsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have deployments API support.")
+	}
+	if kubecollect.CompatibilityMap["replicasets"] {
+		kubecollect.StartReplicaSetsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have replicasets API support.")
+	}
+	if kubecollect.CompatibilityMap["services"] {
+		kubecollect.StartServicesSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have services API support.")
+	}
+	if kubecollect.CompatibilityMap["ingress"] {
+		kubecollect.StartIngressSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have ingress API support.")
+	}
+	if kubecollect.CompatibilityMap["daemonsets"] {
+		kubecollect.StartDaemonSetsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have daemonsets API support.")
+	}
+	if kubecollect.CompatibilityMap["nodes"] {
+		kubecollect.StartNodesSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have nodes API support.")
+	}
+	if kubecollect.CompatibilityMap["jobs"] {
+		kubecollect.StartJobsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have jobs API support.")
+	}
+	if kubecollect.CompatibilityMap["cronjobs"] {
+		kubecollect.StartCronJobsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have cronjobs API support.")
+	}
+	if kubecollect.CompatibilityMap["replicationcontrollers"] {
+		kubecollect.StartReplicationControllersSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have replicationcontrollers API support.")
+	}
+	if kubecollect.CompatibilityMap["statefulsets"] {
+		kubecollect.StartStatefulSetsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have statefulsets API support.")
+	}
+	if kubecollect.CompatibilityMap["resourcequotas"] {
+		kubecollect.StartResourceQuotasSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have resourcequotas API support.")
+	}
+	if kubecollect.CompatibilityMap["pods"] {
+		kubecollect.StartPodsSInformer(ctx, kubeClient)
+	} else {
+		log.Warnf("K8s server doesn't have pods API support.")
+	}
 
-	kubecollect.WatchNamespaces(evtc)
-	kubecollect.WatchDeployments(evtc)
-	kubecollect.WatchReplicaSets(evtc)
-	kubecollect.WatchServices(evtc)
-	kubecollect.WatchIngress(evtc)
-	kubecollect.WatchDaemonSets(evtc)
-	kubecollect.WatchNodes(evtc)
-	kubecollect.WatchJobs(evtc)
-	kubecollect.WatchCronJobs(evtc)
-	kubecollect.WatchReplicationControllers(evtc)
-	kubecollect.WatchStatefulSets(evtc)
-	kubecollect.WatchResourceQuotas(evtc)
-	kubecollect.WatchPods(evtc)
-
+	if kubecollect.CompatibilityMap["namespaces"] {
+		kubecollect.WatchNamespaces(evtc)
+	}
+	if kubecollect.CompatibilityMap["deployments"] {
+		kubecollect.WatchDeployments(evtc)
+	}
+	if kubecollect.CompatibilityMap["replicasets"] {
+		kubecollect.WatchReplicaSets(evtc)
+	}
+	if kubecollect.CompatibilityMap["services"] {
+		kubecollect.WatchServices(evtc)
+	}
+	if kubecollect.CompatibilityMap["ingress"] {
+		kubecollect.WatchIngress(evtc)
+	}
+	if kubecollect.CompatibilityMap["daemonsets"] {
+		kubecollect.WatchDaemonSets(evtc)
+	}
+	if kubecollect.CompatibilityMap["nodes"] {
+		kubecollect.WatchNodes(evtc)
+	}
+	if kubecollect.CompatibilityMap["jobs"] {
+		kubecollect.WatchJobs(evtc)
+	}
+	if kubecollect.CompatibilityMap["cronjobs"] {
+		kubecollect.WatchCronJobs(evtc)
+	}
+	if kubecollect.CompatibilityMap["replicationcontrollers"] {
+		kubecollect.WatchReplicationControllers(evtc)
+	}
+	if kubecollect.CompatibilityMap["statefulsets"] {
+		kubecollect.WatchStatefulSets(evtc)
+	}
+	if kubecollect.CompatibilityMap["resourcequotas"] {
+		kubecollect.WatchResourceQuotas(evtc)
+	}
+	if kubecollect.CompatibilityMap["pods"] {
+		kubecollect.WatchPods(evtc)
+	}
 	/*watch, _ := kubeClient.CoreV1().Events("").Watch(metav1.ListOptions{})
 
 	go func() {
