@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -333,8 +332,7 @@ func StartPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
-	resyncPeriod := time.Duration(10) * time.Second
-	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, resyncPeriod)
+	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, RsyncInterval)
 	go podInf.Run(ctx.Done())
 }
 

@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	"reflect"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -156,8 +155,7 @@ func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, nam
 func StartServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Services", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	serviceInf = cache.NewSharedInformer(lw, &v1.Service{}, resyncPeriod)
+	serviceInf = cache.NewSharedInformer(lw, &v1.Service{}, RsyncInterval)
 	go serviceInf.Run(ctx.Done())
 }
 

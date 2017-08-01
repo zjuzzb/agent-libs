@@ -6,7 +6,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -81,8 +80,7 @@ func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 func StartCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, resyncPeriod)
+	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, RsyncInterval)
 	go cronJobInf.Run(ctx.Done())
 }
 

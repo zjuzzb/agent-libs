@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -92,8 +91,7 @@ func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
 func StartNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, resyncPeriod)
+	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, RsyncInterval)
 	go namespaceInf.Run(ctx.Done())
 }
 

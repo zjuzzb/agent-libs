@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -89,8 +88,7 @@ func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, n
 func StartStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.AppsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "StatefulSets", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	statefulSetInf = cache.NewSharedInformer(lw, &v1beta1.StatefulSet{}, resyncPeriod)
+	statefulSetInf = cache.NewSharedInformer(lw, &v1beta1.StatefulSet{}, RsyncInterval)
 	go statefulSetInf.Run(ctx.Done())
 }
 

@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -78,8 +77,7 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 func StartDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, resyncPeriod)
+	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, RsyncInterval)
 	go daemonSetInf.Run(ctx.Done())
 }
 

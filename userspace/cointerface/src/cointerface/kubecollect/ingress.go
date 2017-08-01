@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -107,8 +106,7 @@ func AddIngressChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 func StartIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ingresses", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
-	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, resyncPeriod)
+	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, RsyncInterval)
 	go ingressInf.Run(ctx.Done())
 }
 

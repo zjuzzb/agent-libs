@@ -9,9 +9,12 @@ import (
 	"draiosproto"
 	"github.com/gogo/protobuf/proto"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"time"
 )
 
 var CompatibilityMap map[string]bool
+
+const RsyncInterval = 10 * time.Minute
 
 func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err error) {
 	baseConfig := clientcmdapi.NewConfig()

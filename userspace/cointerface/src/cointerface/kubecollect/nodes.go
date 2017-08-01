@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -86,8 +85,7 @@ func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
 func StartNodesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Nodes", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	nodeInf = cache.NewSharedInformer(lw, &v1.Node{}, resyncPeriod)
+	nodeInf = cache.NewSharedInformer(lw, &v1.Node{}, RsyncInterval)
 	go nodeInf.Run(ctx.Done())
 }
 

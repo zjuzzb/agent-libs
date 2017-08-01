@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -82,8 +81,7 @@ func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.Cong
 func StartReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second;
-	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, resyncPeriod)
+	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, RsyncInterval)
 	go replicationControllerInf.Run(ctx.Done())
 }
 

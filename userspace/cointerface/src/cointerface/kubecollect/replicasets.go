@@ -5,7 +5,6 @@ import (
 	"context"
 	"github.com/gogo/protobuf/proto"
 	"reflect"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -139,8 +138,7 @@ func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 func StartReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, resyncPeriod)
+	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, RsyncInterval)
 	go replicaSetInf.Run(ctx.Done())
 }
 

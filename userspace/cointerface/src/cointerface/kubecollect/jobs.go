@@ -4,7 +4,6 @@ import (
 	"draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
-	"time"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -78,8 +77,7 @@ func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 func StartJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
-	resyncPeriod := time.Duration(10) * time.Second
-	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, resyncPeriod)
+	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, RsyncInterval)
 	go jobInf.Run(ctx.Done())
 }
 
