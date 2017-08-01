@@ -42,9 +42,12 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 	} else if strings.HasPrefix(containerId, "rkt://") {
 		containerId = containerId[6:]
 	} else {
-		// unknown container type
+		// unknown container type or ContainerID not available yet
 		return
 	}
+
+	imageId := c.ImageID[strings.LastIndex(c.ImageID, ":")+1:]
+	imageId = imageId[:12]
 
 	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent {
 		Type: eventType.Enum(),
@@ -56,6 +59,7 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 			Tags: map[string]string{
 				"container.name"    : c.Name,
 				"container.image"   : c.Image,
+				"container.image.id": imageId,
 			},
 			Parents: par,
 		},
