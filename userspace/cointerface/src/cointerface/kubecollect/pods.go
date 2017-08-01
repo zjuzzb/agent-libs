@@ -179,7 +179,8 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 		ips = append(ips, pod.Status.PodIP)
 	}
 
-	//podMetrics := getPodMetrics(pod)
+	var metrics []*draiosproto.AppMetric
+	addPodMetrics(&metrics, pod)
 
 	var parents []*draiosproto.CongroupUid
 	if setLinks {
@@ -248,7 +249,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 				Id:proto.String(string(pod.GetUID()))},
 			Tags: tags,
 			IpAddresses: ips,
-			//Metrics: podMetrics,
+			Metrics: metrics,
 			Parents: parents,
 			Children: children,
 		},
@@ -260,23 +261,18 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 
 var podInf cache.SharedInformer
 
-func getPodMetrics(pod *v1.Pod) map[string]uint32 {
-	metrics := make(map[string]uint32)
+func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	prefix := "kubernetes.pod."
 
-	//for _, c := range pod.Spec.Containers {
-	//	restartCount += uint32(c.RestartCount)
-	//}
-
-	restartCount := uint32(0)
+	// Dummy stub, we need to make the container status
+	// metrics part of the container events
+	restartCount := int32(0)
 	for _, c := range pod.Status.ContainerStatuses {
-		restartCount += uint32(c.RestartCount)
+		restartCount += c.RestartCount
 	}
 
-	metrics[prefix + "container.status.restarts"] = restartCount
-	// Legacy metrics
-	metrics[prefix + "restart.count"] = restartCount
-	return metrics
+	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
+	AppendMetricInt32(metrics, prefix+"restart.count", restartCount)
 }
 
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {

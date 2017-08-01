@@ -58,19 +58,16 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 		ret.IpAddresses = append(ret.IpAddresses, nodeAddress.Address)
 	}
 
-	//ret.Metrics = getNodeMetrics(node)
+	addNodeMetrics(&ret.Metrics, node)
 	AddPodChildrenFromNodeName(&ret.Children, node.GetName())
 	return ret
 }
 
 var nodeInf cache.SharedInformer
 
-func getNodeMetrics(node *v1.Node) map[string]uint32 {
-	metrics := make(map[string]uint32)
-	//prefix := "kubernetes.node."
-
-	//metrics[prefix + "spec.unschedulable"] = node.Spec.Unschedulable
-	return metrics
+func addNodeMetrics(metrics *[]*draiosproto.AppMetric, node *v1.Node) {
+	prefix := "kubernetes.node."
+	AppendMetricBool(metrics, prefix+"spec.unschedulable", node.Spec.Unschedulable)
 }
 
 func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
