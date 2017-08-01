@@ -179,12 +179,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 		ips = append(ips, pod.Status.PodIP)
 	}
 
-	// This duplicates the ContainerStatuses loop below, refactor?
-	restartCount := uint32(0)
-	for _, c := range pod.Status.ContainerStatuses {
-		restartCount += uint32(c.RestartCount)
-	}
-	podMetrics := map[string]uint32{"kubernetes.pod.restart.count": restartCount}
+	podMetrics := getPodMetrics(pod)
 
 	var parents []*draiosproto.CongroupUid
 	if setLinks {
@@ -264,6 +259,25 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 }
 
 var podInf cache.SharedInformer
+
+func getPodMetrics(pod *v1.Pod) map[string]uint32 {
+	metrics := make(map[string]uint32)
+	prefix := "kubernetes.pod."
+
+	//for _, c := range pod.Spec.Containers {
+	//	restartCount += uint32(c.RestartCount)
+	//}
+
+	restartCount := uint32(0)
+	for _, c := range pod.Status.ContainerStatuses {
+		restartCount += uint32(c.RestartCount)
+	}
+
+	metrics[prefix + "container.status.restarts"] = restartCount
+	// Legacy metrics
+	metrics[prefix + "restart.count"] = restartCount
+	return metrics
+}
 
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	if CompatibilityMap["pods"] {
