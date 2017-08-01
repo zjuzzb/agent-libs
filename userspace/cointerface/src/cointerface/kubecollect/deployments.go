@@ -66,6 +66,8 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 			Id:proto.String(string(deployment.GetUID()))},
 		Tags: tags,
 	}
+
+	ret.Metrics = getDeploymentMetrics(deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())
 		AddReplicaSetChildren(&ret.Children, deployment)
@@ -74,6 +76,27 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 }
 
 var deploymentInf cache.SharedInformer
+
+func getDeploymentMetrics(deployment *v1beta1.Deployment) map[string]uint32 {
+	metrics := make(map[string]uint32)
+	prefix := "kubernetes.deployment."
+
+	specReplicas := uint32(0)
+	if deployment.Spec.Replicas != nil {
+		specReplicas = uint32(*deployment.Spec.Replicas)
+	}
+
+	metrics[prefix + "status.replicas"] = uint32(deployment.Status.Replicas)
+	metrics[prefix + "status.replicas.available"] = uint32(deployment.Status.AvailableReplicas)
+	metrics[prefix + "status.replicas.unavailable"] = uint32(deployment.Status.UnavailableReplicas)
+	metrics[prefix + "status.replicas.updated"] = uint32(deployment.Status.UpdatedReplicas)
+	metrics[prefix + "spec.replicas"] = specReplicas
+	//metrics[prefix + "spec.paused"] = uint32(deployment.Spec.Paused)
+	//if deployment.Spec.Strategy.RollingUpdate != nil {
+	//	metrics[prefix + "spec.strategy.rollingupdate.max.unavailable"] = uint32(deployment.Spec.Strategy.RollingUpdate.MaxUnavailable)
+	//}
+	return metrics
+}
 
 func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {
 	if CompatibilityMap["deployments"] {
