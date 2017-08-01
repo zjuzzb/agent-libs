@@ -343,17 +343,21 @@ void sinsp_analyzer::on_capture_start()
 		m_falco_baseliner->init(m_inspector);
 	}
 
-	if(m_use_new_k8s)
+	if(m_configuration->get_security_enabled() || m_use_new_k8s)
 	{
-		// Url to use
-		string k8s_url;
-		// autodetect is automatically disabled when running in daemonset mode
-		// url instead will always point to get_k8s_api_server
-		if(m_configuration->get_k8s_delegated_nodes() <= 0)
-		{
-			k8s_url = m_configuration->get_k8s_api_server();
+		m_infrastructure_state = make_unique<infrastructure_state>(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
+
+		// K8s url to use
+		string k8s_url = m_configuration->get_k8s_api_server();
+		if (!k8s_url.empty()) {
+			// autodetect is automatically disabled when running in daemonset mode
+			// url instead will always point to get_k8s_api_server
+			if(m_configuration->get_k8s_delegated_nodes() != 0)
+			{
+				k8s_url = "";
+			}
+			m_infrastructure_state->subscribe_to_k8s(k8s_url);
 		}
-		m_infrastructure_state = make_unique<infrastructure_state>(k8s_url, ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 	}
 }
 
@@ -4306,8 +4310,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-
-	//
 	// If process the event in the baseliner
 	//
 	if(m_do_baseline_calculation)
@@ -4315,10 +4317,10 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		m_falco_baseliner->process_event(evt);
 	}
 
-	if(m_infrastructure_state)
+	if(m_infrastructure_state && m_infrastructure_state->subscribed())
 	{
 		//
-		// Refresh the infrastructure state
+		// Refresh the infrastructure state with pending orchestrators events
 		//
 		m_infrastructure_state->refresh(ts);
 	}
@@ -5344,7 +5346,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	}
 	check_and_emit_containers(top_cpu_containers);
 
-	if(m_infrastructure_state)
+	if(m_use_new_k8s)
 	{
 		// Build a global orchestrator state of the emitted containers
 		vector<unique_ptr<draiosproto::container_group>> o_state;

@@ -33,6 +33,7 @@ sinsp_configuration::sinsp_configuration()
 	m_command_lines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_capture_dragent_events = false;
+	m_security_enabled = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 }
@@ -822,6 +823,16 @@ unsigned sinsp_configuration::get_app_checks_limit() const
 void sinsp_configuration::set_app_checks_limit(unsigned value)
 {
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
+
+bool sinsp_configuration::get_security_enabled() const
+{
+	return m_security_enabled;
+}
+
+void sinsp_configuration::set_security_enabled(bool val)
+{
+	m_security_enabled = val;
 }
 
 bool sinsp_configuration::get_cointerface_enabled() const

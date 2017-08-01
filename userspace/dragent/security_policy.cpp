@@ -177,7 +177,6 @@ bool security_policy::match_scope(sinsp_evt *evt)
 		return true;
 	}
 
-	// TODO: this feature right now should be used only if configuration->m_use_new_k8s is true
 	return analyzer->infra_state()->match_scope(container_id, machine_id, m_policy);
 }
 

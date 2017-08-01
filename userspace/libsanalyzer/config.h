@@ -165,6 +165,8 @@ public:
 	void set_percentiles(const std::set<double>&);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
+	bool get_security_enabled() const;
+	void set_security_enabled(bool enabled);
 	bool get_cointerface_enabled() const;
 	void set_cointerface_enabled(bool enabled);
 	bool get_swarm_enabled() const;
@@ -253,6 +255,7 @@ private:
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
 
+	bool m_security_enabled;
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
 };

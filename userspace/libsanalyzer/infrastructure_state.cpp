@@ -93,11 +93,11 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	return true;
 }
 
-infrastructure_state::infrastructure_state(const string& k8s_url, uint64_t refresh_interval) :
-	m_interval(refresh_interval),
-	m_k8s_url(k8s_url)
+infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
+	m_k8s_interval(refresh_interval),
+	m_k8s_subscribed(false)
 {
-	m_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+	m_k8s_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 
 		if(successful) {
 			draiosproto::congroup_update_event *evt = (draiosproto::congroup_update_event *)response_msg;
@@ -106,7 +106,7 @@ infrastructure_state::infrastructure_state(const string& k8s_url, uint64_t refre
 			//
 			// Error from cointerface, destroy the whole state and subscribe again
 			//
-			glogf(sinsp_logger::SEV_WARNING, "Error while receiving orchestrator events. Reset and retry.");
+			glogf(sinsp_logger::SEV_WARNING, "Error while receiving k8s orchestrator events. Reset and retry.");
 			reset();
 		}
 	};
@@ -116,12 +116,31 @@ infrastructure_state::infrastructure_state(const string& k8s_url, uint64_t refre
 
 infrastructure_state::~infrastructure_state(){}
 
+void infrastructure_state::subscribe_to_k8s(const string& url)
+{
+	m_k8s_url = url;
+	glogf(sinsp_logger::SEV_DEBUG, "Subscribe to k8s orchestrator events.");
+	sdc_internal::orchestrator_events_stream_command cmd;
+	cmd.set_url(m_k8s_url);
+	m_k8s_subscribed = true;
+	m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
+}
+
+bool infrastructure_state::subscribed()
+{
+	return m_k8s_subscribed; // || m_mesos_subscribed || ...
+}
+
 void infrastructure_state::refresh(uint64_t ts)
 {
-	m_interval.run([this]()
-	{
-		m_coclient.next();
-	}, ts);
+	if (m_k8s_subscribed) {
+		m_k8s_interval.run([this]()
+		{
+			m_k8s_coclient.next();
+		}, ts);
+	}
+
+	// if (m_mesos_subscribed) { ... }
 }
 
 // TODO: handle better various orchestartors
@@ -132,10 +151,9 @@ void infrastructure_state::reset()
 	m_orphans.clear();
 	m_state.clear();
 
-	glogf(sinsp_logger::SEV_DEBUG, "Subscribe to orchestrator events.");
-	sdc_internal::orchestrator_events_stream_command cmd;
-	cmd.set_url(m_k8s_url);
-	m_coclient.get_orchestrator_events(cmd, m_callback);
+	if (m_k8s_subscribed) {
+		subscribe_to_k8s(m_k8s_url);
+	}
 }
 
 void infrastructure_state::load_single_event(const draiosproto::congroup_update_event &evt)
