@@ -72,7 +72,8 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 			}
 			break;
 		default:
-			throw new sinsp_exception("Cannot evaluated scope_predicate " + p.DebugString());
+			glogf(sinsp_logger::SEV_WARNING, "Cannot evaluated scope_predicate %s", p.DebugString().c_str());
+			ret = true;
 		}
 
 		return ret;
@@ -198,13 +199,14 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			m_state[key] = make_unique<draiosproto::container_group>();
 			m_state[key]->CopyFrom(evt->object());
 			connect(key);
+			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
 			break;
 		case draiosproto::REMOVED:
 			// allow double delete (example: remove a container for an already terminated k8s_job)
 			glogf(sinsp_logger::SEV_DEBUG, "Ignoring request to delete non-existent container group <%s,%s>", kind.c_str(), id.c_str());
 			break;
 		case draiosproto::UPDATED:
-			throw new sinsp_exception("Cannot update container_group with id " + id + " because it does not exists.");
+			glogf(sinsp_logger::SEV_WARNING, "Ignoring request to update container_group <%s,%s> because it does not exists.", kind.c_str(), id.c_str());
 			break;
 		}
 	} else {
@@ -213,6 +215,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			throw new sinsp_exception("Cannot add container_group with id " + id + " because it's already present.");
 			break;
 		case draiosproto::REMOVED:
+			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
 			remove(key);
 			break;
 		case draiosproto::UPDATED:
@@ -229,12 +232,15 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				m_state[key]->mutable_ports()->CopyFrom(evt->object().ports());
 				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 			}
+			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
 			break;
 		}
 	}
 
 	glogf(sinsp_logger::SEV_DEBUG, "%s event with uid <%s,%s> handled. Current state size: %d", draiosproto::congroup_event_type_Name(evt->type()).c_str(), kind.c_str(), id.c_str(), m_state.size());
-	debug_print();
+	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE) {
+		debug_print();
+	}
 }
 
 bool infrastructure_state::has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid)
@@ -659,6 +665,7 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 		//
 		// Add the children link, handle_event will take care of connecting the host to the state
 		//
+		glogf(sinsp_logger::SEV_DEBUG, "Host %s will be added as parent of <%s,%s>", host->uid().id().c_str(), child_uid.first.c_str(), child_uid.second.c_str());
 		draiosproto::congroup_uid *c = host->mutable_children()->Add();
 		c->set_kind(child_uid.first);
 		c->set_id(child_uid.second);
@@ -669,29 +676,29 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 
 void infrastructure_state::debug_print()
 {
-	glogf(sinsp_logger::SEV_DEBUG, "INFRASTRUCTURE STATE (size: %d)", m_state.size());
+	glogf(sinsp_logger::SEV_TRACE, "INFRASTRUCTURE STATE (size: %d)", m_state.size());
 
 	for (auto it = m_state.begin(), e = m_state.end(); it != e; ++it) {
 		draiosproto::container_group *cong = it->second.get();
-		glogf(sinsp_logger::SEV_DEBUG, " Container group <%s,%s>", cong->uid().kind().c_str(), cong->uid().id().c_str());
-		glogf(sinsp_logger::SEV_DEBUG, "  Tags:");
+		glogf(sinsp_logger::SEV_TRACE, " Container group <%s,%s>", cong->uid().kind().c_str(), cong->uid().id().c_str());
+		glogf(sinsp_logger::SEV_TRACE, "  Tags:");
 		for (auto t: cong->tags())
-			glogf(sinsp_logger::SEV_DEBUG, "   %s:%s", t.first.c_str(), t.second.c_str());
-		glogf(sinsp_logger::SEV_DEBUG, "  IP Addresses:");
+			glogf(sinsp_logger::SEV_TRACE, "   %s:%s", t.first.c_str(), t.second.c_str());
+		glogf(sinsp_logger::SEV_TRACE, "  IP Addresses:");
 		for (auto i: cong->ip_addresses())
-			glogf(sinsp_logger::SEV_DEBUG, "   %s", i.c_str());
-		glogf(sinsp_logger::SEV_DEBUG, "  Ports:");
+			glogf(sinsp_logger::SEV_TRACE, "   %s", i.c_str());
+		glogf(sinsp_logger::SEV_TRACE, "  Ports:");
 		for (auto p: cong->ports())
-			glogf(sinsp_logger::SEV_DEBUG, "   %d:%s (target:%d, node:%d, published:%d)",
+			glogf(sinsp_logger::SEV_TRACE, "   %d:%s (target:%d, node:%d, published:%d)",
 				  p.port(), p.protocol().c_str(), p.target_port(), p.node_port(), p.published_port());
-		glogf(sinsp_logger::SEV_DEBUG, "  Metrics:");
+		glogf(sinsp_logger::SEV_TRACE, "  Metrics:");
 		for (auto m: cong->metrics())
-			glogf(sinsp_logger::SEV_DEBUG, "   %s:%g", m.name().c_str(), m.value());
-		glogf(sinsp_logger::SEV_DEBUG, "  Parents:");
+			glogf(sinsp_logger::SEV_TRACE, "   %s:%g", m.name().c_str(), m.value());
+		glogf(sinsp_logger::SEV_TRACE, "  Parents:");
 		for (auto m: cong->parents())
-			glogf(sinsp_logger::SEV_DEBUG, "   <%s,%s>", m.kind().c_str(), m.id().c_str());
-		glogf(sinsp_logger::SEV_DEBUG, "  Children:");
+			glogf(sinsp_logger::SEV_TRACE, "   <%s,%s>", m.kind().c_str(), m.id().c_str());
+		glogf(sinsp_logger::SEV_TRACE, "  Children:");
 		for (auto m: cong->children())
-			glogf(sinsp_logger::SEV_DEBUG, "   <%s,%s>", m.kind().c_str(), m.id().c_str());
+			glogf(sinsp_logger::SEV_TRACE, "   <%s,%s>", m.kind().c_str(), m.id().c_str());
 	}
 }
