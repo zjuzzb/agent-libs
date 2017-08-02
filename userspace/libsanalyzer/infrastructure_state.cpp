@@ -466,7 +466,7 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 }
 
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
-				     std::vector<std::unique_ptr<draiosproto::container_group>>& state,
+				     google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
 				     std::unordered_set<uid_t>& visited)
 {
 	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
@@ -496,16 +496,15 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	// Except for containers and hosts, add the current node
 	//
 	if(grp->uid().kind() != "container" && grp->uid().kind() != "host") {
-		auto x = make_unique<draiosproto::container_group>();
+		auto x = state->Add();
 		x->CopyFrom(*grp);
-		state.emplace_back(std::move(x));
+		x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 	}
 }
 
-void infrastructure_state::state_of(const std::vector<std::string> &container_ids,
-				     std::vector<std::unique_ptr<draiosproto::container_group>>& state)
+void infrastructure_state::state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state)
 {
-	std::unordered_set<uid_t, std::hash<uid_t>> inserted;
+	std::unordered_set<uid_t, std::hash<uid_t>> visited;
 
 	//
 	// Retrieve the state of every container
@@ -519,17 +518,17 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 			continue;
 		}
 
-		state_of(pos->second.get(), state, inserted);
+		state_of(pos->second.get(), state, visited);
 	}
 
 	//
 	// Clean up the broken links
 	// (except for container links, that are used to identify the containers)
 	//
-	for(const auto &state_cgroup : state) {
+	for(auto state_cgroup = state->begin(), state_end = state->end(); state_cgroup != state_end; ++state_cgroup) {
 		for(auto i = state_cgroup->mutable_children()->begin(); i != state_cgroup->mutable_children()->end();) {
 			if(i->kind() != "container" &&
-			   inserted.find(make_pair(i->kind(), i->id())) == inserted.end()) {
+			   visited.find(make_pair(i->kind(), i->id())) == visited.end()) {
 				i = state_cgroup->mutable_children()->erase(i);
 			} else {
 				++i;
@@ -547,12 +546,12 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 	}
 }
 
-void infrastructure_state::get_state(std::vector<std::unique_ptr<draiosproto::container_group>>& state)
+void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state)
 {
 	for (auto i = m_state.begin(); i != m_state.end(); ++i) {
 		auto cg = i->second.get();
 		if(cg->uid().kind() != "container" && cg->uid().kind() != "host") {
-			auto x = make_unique<draiosproto::container_group>();
+			auto x = state->Add();
 			x->CopyFrom(*cg);
 			// clean up host links
 			if(host_children.find(cg->uid().kind()) != host_children.end()) {
@@ -563,7 +562,6 @@ void infrastructure_state::get_state(std::vector<std::unique_ptr<draiosproto::co
 					}
 				}
 			}
-			state.emplace_back(std::move(x));
 		}
 	}
 }
