@@ -23,23 +23,14 @@ func replicationControllerEvent(rc *v1.ReplicationController, eventType *draiosp
 }
 
 func newReplicationControllerCongroup(replicationController *v1.ReplicationController) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range replicationController.GetLabels() {
-		tags["kubernetes.replicationcontroller.label." + k] = v
-	}
-	tags["kubernetes.replicationcontroller.name"] = replicationController.GetName()
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicationcontroller"),
 			Id:proto.String(string(replicationController.GetUID()))},
-		Tags: tags,
 	}
 
-	AddReplicationControllerMetrics(&ret.Metrics, replicationController)
+	ret.Tags = GetTags(replicationController.ObjectMeta, "kubernetes.replicationcontroller.")
+	addReplicationControllerMetrics(&ret.Metrics, replicationController)
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
 	AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
@@ -48,7 +39,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 
 var replicationControllerInf cache.SharedInformer
 
-func AddReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController *v1.ReplicationController) {
+func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController *v1.ReplicationController) {
 	prefix := "kubernetes.replicationcontroller."
 	AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)

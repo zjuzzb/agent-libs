@@ -16,7 +16,6 @@ import (
 	"k8s.io/api/core/v1"
 )
 
-// make this a library function?
 func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
@@ -65,23 +64,14 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 }
 
 func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range replicaSet.GetLabels() {
-		tags["kubernetes.replicaSet.label." + k] = v
-	}
-	tags["kubernetes.replicaSet.name"] = replicaSet.GetName()
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_replicaset"),
 			Id:proto.String(string(replicaSet.GetUID()))},
-		Tags: tags,
 	}
 
-	AddReplicaSetMetrics(&ret.Metrics, replicaSet)
+	ret.Tags = GetTags(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
+	addReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
@@ -93,7 +83,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 
 var replicaSetInf cache.SharedInformer
 
-func AddReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1.ReplicaSet) {
+func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1.ReplicaSet) {
 	prefix := "kubernetes.replicaset."
 	AppendMetricInt32(metrics, prefix+"status.replicas", replicaSet.Status.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)

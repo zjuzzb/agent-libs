@@ -15,11 +15,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// make this a library function?
-func deploymentEvent(ns *v1beta1.Deployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
+var deploymentInf cache.SharedInformer
+
+func deploymentEvent(dep *v1beta1.Deployment, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newDeploymentCongroup(ns, setLinks),
+		Object: newDeploymentCongroup(dep, setLinks),
 	}
 }
 
@@ -51,23 +52,14 @@ func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (bool, b
 }
 
 func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range deployment.GetLabels() {
-		tags["kubernetes.deployment.label." + k] = v
-	}
-	tags["kubernetes.deployment.name"] = deployment.GetName()
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_deployment"),
 			Id:proto.String(string(deployment.GetUID()))},
-		Tags: tags,
 	}
 
-	AddDeploymentMetrics(&ret.Metrics, deployment)
+	ret.Tags = GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
+	addDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())
 		AddReplicaSetChildren(&ret.Children, deployment)
@@ -75,9 +67,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 	return ret
 }
 
-var deploymentInf cache.SharedInformer
-
-func AddDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1.Deployment) {
+func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1.Deployment) {
 	prefix := "kubernetes.deployment."
 	AppendMetricInt32(metrics, prefix+"status.replicas", deployment.Status.Replicas)
 	// kube-state-metrics uses "kube_deployment_status_replicas_available" but

@@ -11,11 +11,11 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/api/apps/v1beta1"
-	//"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/api/core/v1"
 )
 
-// make this a library function?
+var statefulSetInf cache.SharedInformer
+
 func statefulSetEvent(ss *v1beta1.StatefulSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
@@ -24,23 +24,14 @@ func statefulSetEvent(ss *v1beta1.StatefulSet, eventType *draiosproto.CongroupEv
 }
 
 func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range statefulSet.GetLabels() {
-		tags["kubernetes.statefulset.label." + k] = v
-	}
-	tags["kubernetes.statefulset.name"] = statefulSet.GetName()
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_statefulset"),
 			Id:proto.String(string(statefulSet.GetUID()))},
-		Tags: tags,
 	}
 
-	AddStatefulSetMetrics(&ret.Metrics, statefulSet)
+	ret.Tags = GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
+	addStatefulSetMetrics(&ret.Metrics, statefulSet)
 	AddNSParents(&ret.Parents, statefulSet.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)
 	AddServiceChildrenFromServiceName(&ret.Children, statefulSet.GetNamespace(), statefulSet.Spec.ServiceName)
@@ -48,9 +39,7 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 	return ret
 }
 
-var statefulSetInf cache.SharedInformer
-
-func AddStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *v1beta1.StatefulSet) {
+func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *v1beta1.StatefulSet) {
 	prefix := "kubernetes.statefulset."
 	AppendMetricPtrInt32(metrics, prefix+"replicas", statefulSet.Spec.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.replicas", statefulSet.Status.Replicas)

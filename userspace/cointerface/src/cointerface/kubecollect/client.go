@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/rest"
 	"draiosproto"
 	"github.com/gogo/protobuf/proto"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var CompatibilityMap map[string]bool
@@ -44,6 +45,15 @@ func CreateInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
 		return nil, err
 	}
 	return
+}
+
+func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
+	tags := make(map[string]string)
+	for k, v := range obj.GetLabels() {
+		tags[prefix+"label." + k] = v
+	}
+	tags[prefix+"name"] = obj.GetName()
+	return tags
 }
 
 func AppendMetricInt32(metrics *[]*draiosproto.AppMetric, name string, val int32) {

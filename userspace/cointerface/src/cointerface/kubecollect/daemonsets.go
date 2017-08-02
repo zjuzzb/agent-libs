@@ -15,7 +15,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-// make this a library function?
+var daemonSetInf cache.SharedInformer
+
 func daemonSetEvent(ns *v1beta1.DaemonSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
@@ -24,33 +25,22 @@ func daemonSetEvent(ns *v1beta1.DaemonSet, eventType *draiosproto.CongroupEventT
 }
 
 func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range daemonSet.GetLabels() {
-		tags["kubernetes.daemonSet.label." + k] = v
-	}
-	tags["kubernetes.daemonSet.name"] = daemonSet.GetName()
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_daemonset"),
 			Id:proto.String(string(daemonSet.GetUID()))},
-		Tags: tags,
 	}
 
-	AddDaemonSetMetrics(&ret.Metrics, daemonSet)
+	ret.Tags = GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
+	addDaemonSetMetrics(&ret.Metrics, daemonSet)
 	AddNSParents(&ret.Parents, daemonSet.GetNamespace())
 	selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
 	AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())
 	return ret
 }
 
-var daemonSetInf cache.SharedInformer
-
-func AddDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet *v1beta1.DaemonSet) {
-	prefix := "kubernetes.daemonset."
+func addDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet *v1beta1.DaemonSet) {
+	prefix := "kubernetes.daemonSet."
 	AppendMetricInt32(metrics, prefix+"status.currentNumberScheduled", daemonSet.Status.CurrentNumberScheduled)
 	AppendMetricInt32(metrics, prefix+"status.numberMisscheduled", daemonSet.Status.NumberMisscheduled)
 	AppendMetricInt32(metrics, prefix+"status.desiredNumberScheduled", daemonSet.Status.DesiredNumberScheduled)
