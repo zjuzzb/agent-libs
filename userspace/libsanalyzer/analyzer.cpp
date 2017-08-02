@@ -5346,14 +5346,25 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	}
 	check_and_emit_containers(top_cpu_containers);
 
-	if(m_use_new_k8s)
+	if(m_use_new_k8s && m_infrastructure_state->subscribed())
 	{
-		// Build a global orchestrator state of the emitted containers
+		// Build the orchestrator state of the emitted containers (without metrics)
 		vector<unique_ptr<draiosproto::container_group>> o_state;
 		m_infrastructure_state->state_of(emitted_containers, o_state);
 		for(const auto &congroup : o_state) {
 			draiosproto::container_group *grp = m_metrics->mutable_orchestrator_state()->add_groups();
+			// remove metrics from this state
+			congroup->mutable_metrics()->erase(congroup->mutable_metrics()->begin(), congroup->mutable_metrics()->end());
 			grp->CopyFrom(*congroup);
+		}
+		if(check_k8s_delegation()) {
+			// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
+			vector<unique_ptr<draiosproto::container_group>> global_o_state;
+			m_infrastructure_state->get_state(global_o_state);
+			for(const auto &congroup : global_o_state) {
+				draiosproto::container_group *grp = m_metrics->mutable_global_orchestrator_state()->add_groups();
+				grp->CopyFrom(*congroup);
+			}
 		}
 	}
 

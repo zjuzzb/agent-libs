@@ -535,6 +535,36 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 				++i;
 			}
 		}
+		// clean up the host link
+		if(host_children.find(state_cgroup->uid().kind()) != host_children.end()) {
+			for(auto i = state_cgroup->mutable_parents()->begin(), i_end = state_cgroup->mutable_parents()->end(); i != i_end; ++i) {
+				if(i->kind() == "host") {
+					state_cgroup->mutable_parents()->erase(i);
+					break;
+				}
+			}
+		}
+	}
+}
+
+void infrastructure_state::get_state(std::vector<std::unique_ptr<draiosproto::container_group>>& state)
+{
+	for (auto i = m_state.begin(); i != m_state.end(); ++i) {
+		auto cg = i->second.get();
+		if(cg->uid().kind() != "container" && cg->uid().kind() != "host") {
+			auto x = make_unique<draiosproto::container_group>();
+			x->CopyFrom(*cg);
+			// clean up host links
+			if(host_children.find(cg->uid().kind()) != host_children.end()) {
+				for(auto j = x->mutable_parents()->begin(), j_end = x->mutable_parents()->end(); j != j_end; ++i) {
+					if(j->kind() == "host") {
+						x->mutable_parents()->erase(j);
+						break;
+					}
+				}
+			}
+			state.emplace_back(std::move(x));
+		}
 	}
 }
 
@@ -547,9 +577,9 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 		auto congroup = i->second.get();
 		// remove all the links to host nodes
 		if(host_children.find(congroup->uid().kind()) != host_children.end()) {
-			for(auto j = congroup->children().begin(), j_end = congroup->children().end(); j != j_end; ++j) {
+			for(auto j = congroup->mutable_parents()->begin(), j_end = congroup->mutable_parents()->end(); j != j_end; ++j) {
 				if(j->kind() == "host") {
-					congroup->mutable_children()->erase(j);
+					congroup->mutable_parents()->erase(j);
 					break;
 				}
 			}
