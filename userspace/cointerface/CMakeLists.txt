@@ -8,25 +8,14 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt
                    COMMAND env GOPATH=${GOPATH} go get -u google.golang.org/grpc
                    COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt)
 
-#add_custom_target(go_get_kubecollect DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/k8s-collectors-go-get-complete.txt)
-#add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/k8s-collectors-go-get-complete.txt
-#                   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-#                   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/kubecollect/pod.go
-#		   COMMAND env GOPATH=${GOPATH} go fmt kubecollect
-#		   COMMAND env GOPATH=${GOPATH} go install kubecollect
-#		   COMMAND echo ${GOPATH}
-#		   COMMAND echo ${GOBIN}
-#		   COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/k8s-collectors-go-get-complete.txt)
-
-#add_custom_target(go_get_cointerface_coclient
-#                  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
-#add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt
-#                   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-#                           ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
-#                           go_get_kubecollect
+add_custom_target(go_get_cointerface_coclient
+                  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt
+                   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
+                           ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
 #                   COMMAND env GOPATH=${GOPATH} go get cointerface
-#                   COMMAND env GOPATH=${GOPATH} go get coclient
-#                   COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
+                   COMMAND env GOPATH=${GOPATH} go get coclient
+                   COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
@@ -54,16 +43,16 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
                 ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
                 ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go)
 
-#add_custom_target(coclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/coclient)
-#add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coclient
-#        COMMAND env GOPATH=${GOPATH} go fmt coclient
-#        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/coclient" coclient
-#        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-#	DEPENDS go_get_cointerface_coclient
-#	        ${CMAKE_CURRENT_SOURCE_DIR}/src/coclient/coclient.go
-#                ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-#                ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
-#		cointerface)
+add_custom_target(coclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/coclient)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coclient
+        COMMAND env GOPATH=${GOPATH} go fmt coclient
+        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/coclient" coclient
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	DEPENDS go_get_cointerface_coclient
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/coclient/coclient.go
+                ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
+                ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
+		cointerface)
 
 set(PROTOC_CMDLINE env PATH=${CMAKE_CURRENT_BINARY_DIR}/bin:$$PATH
                    LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.1.0/target/lib
