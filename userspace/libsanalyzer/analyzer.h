@@ -618,6 +618,8 @@ VISIBILITY_PRIVATE
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 
+	infrastructure_state* m_infrastructure_state = NULL;
+
 	//
 	// Chisel-generated metrics infrastructure
 	//
@@ -658,7 +660,6 @@ VISIBILITY_PRIVATE
 	bool                                 m_k8s_proc_detected = false;
 
 	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
-	unique_ptr<infrastructure_state> m_infrastructure_state;
 	unique_ptr<mesos> m_mesos;
 
 	// Used to generate mesos-specific app check state

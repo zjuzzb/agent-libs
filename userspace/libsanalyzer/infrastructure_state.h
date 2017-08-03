@@ -22,6 +22,8 @@ public:
 
 	~infrastructure_state();
 
+	void init(sinsp *inspector, const std::string& machine_id);
+
 	void subscribe_to_k8s(const string& url);
 
 	bool subscribed();
@@ -34,9 +36,12 @@ public:
 
 	void get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
 
+	void on_new_container(const sinsp_container_info& container_info);
+	void on_remove_container(const sinsp_container_info& container_info);
+
 	void refresh_host_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
 
-	void load_single_event(const draiosproto::congroup_update_event &evt);
+	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
 	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
 	bool has(uid_t uid);
@@ -44,8 +49,8 @@ public:
 
 private:
 
-	std::unordered_set<string> host_children{
-		"k8s_node",
+	std::unordered_map<std::string, std::string> host_children {
+		{"k8s_node", "kubernetes.node.name"}
 		// other orchestrators nodes
 	};
 
@@ -57,7 +62,7 @@ private:
 						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 						std::unordered_set<uid_t> &visited_groups);
 
-	void handle_event(const draiosproto::congroup_update_event *evt);
+	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
 
 	void connect(infrastructure_state::uid_t& key);
 	void remove(infrastructure_state::uid_t& key);
@@ -73,11 +78,14 @@ private:
 	policy_cache_t m_container_p_cache;
 	policy_cache_t m_host_p_cache;
 
+	sinsp *m_inspector;
+	std::string m_machine_id;
+
 	coclient m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;
-	run_on_interval m_k8s_interval;
 	string m_k8s_url;
 	bool m_k8s_subscribed;
+	run_on_interval m_k8s_interval;
 };
 
 #endif // INFRASTRUCTURE_STATE_H

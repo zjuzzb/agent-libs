@@ -136,6 +136,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_parser = new sinsp_analyzer_parsers(this);
 
 	m_falco_baseliner = new sinsp_baseliner();
+	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 
 	//
 	// Listeners
@@ -212,6 +213,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_falco_baseliner;
 	}
+
+	if(m_infrastructure_state != NULL)
+	{
+		delete m_infrastructure_state;
+	}
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -241,7 +247,7 @@ void sinsp_analyzer::set_percentiles()
 
 infrastructure_state *sinsp_analyzer::infra_state()
 {
-	return m_infrastructure_state.get();
+	return m_infrastructure_state;
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -345,7 +351,7 @@ void sinsp_analyzer::on_capture_start()
 
 	if(m_configuration->get_security_enabled() || m_use_new_k8s)
 	{
-		m_infrastructure_state = make_unique<infrastructure_state>(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
+		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
 
 		// K8s url to use
 		string k8s_url = m_configuration->get_k8s_api_server();
