@@ -860,7 +860,11 @@ message swarm_state {
 
 message orchestrator_state_t {
     repeated container_group groups = 1;
+    // This is the UID of default namespace
     optional string cluster_id = 2;
+    // This is a *likely* unique identifier set by customer or automatically
+    // scraped by AWS, GCP and so on
+    optional string cluster_name = 3;
 }
 
 // ENTRY POINT MESSAGE
