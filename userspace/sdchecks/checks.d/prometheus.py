@@ -58,12 +58,12 @@ class Prometheus(AgentCheck):
                                        value,
                                        tags)
 
-                    if parse_sum != None and parse_count != None:
+                    if parse_sum != None and parse_count > 0:
                         logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
                         self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
                 elif family.type == 'counter':
                     logging.debug('prom: adding counter with name %s' %(name))
-                    self.count(name, value, tags)
+                    self.rate(name, value, tags)
                 else:
                     # Could be a gauge or untyped value, which we treat as a gauge for now
                     logging.debug('prom: adding gauge with name %s' %(name))

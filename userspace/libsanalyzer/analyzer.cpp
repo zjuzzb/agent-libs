@@ -1488,6 +1488,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
+	vector<prom_process> prom_procs;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -1863,9 +1864,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				java_process_requests.emplace_back(tinfo);
 			}
 
-			vector<prom_process> prom_procs;
-			match_prom_checks(tinfo, mtinfo, prom_procs);
-
 			// May happen that for processes like apache with mpm_prefork there are hundred of
 			// apache processes with same comm, cmdline and ports, some of them are always alive,
 			// some die and are recreated.
@@ -1876,6 +1874,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			// we don't need more checks instances for each process.
 			if(m_app_proxy)
 			{
+				// Prometheus checks are done through the app proxy as well.
+				match_prom_checks(tinfo, mtinfo, prom_procs);
+
 				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
 
@@ -2518,9 +2519,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			m_jmx_proxy->send_get_metrics(java_process_requests);
 		}
-		if(m_app_proxy && !app_checks_processes.empty())
+		if(m_app_proxy && (!app_checks_processes.empty() || !prom_procs.empty()))
 		{
-			m_app_proxy->send_get_metrics_cmd(app_checks_processes);
+			m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs);
 		}
 	}
 #endif
@@ -5705,16 +5706,21 @@ void sinsp_analyzer::emit_user_events()
 void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs)
 {
-	// TODO: Check if main thread already has prometheus check
+	if (mtinfo->m_ainfo->found_prom_check())
+		return;
+
 	sinsp_container_info container;
 	bool got_cont = m_inspector->m_container_manager.get_container(
 		tinfo->m_container_id, &container);
 
 	// sinsp_container_info* container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
-	if (m_prom_conf.match(tinfo, got_cont ? &container : NULL)) {
-		prom_process pp(tinfo);
+	set<uint16_t> ports;
+	if (m_prom_conf.match(tinfo, got_cont ? &container : NULL, ports)) {
+		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports);
 		prom_procs.emplace_back(pp);
+
+		tinfo->m_ainfo->set_found_prom_check();
 	}
 }
 

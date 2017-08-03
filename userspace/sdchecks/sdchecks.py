@@ -373,14 +373,39 @@ class Application:
 
     def handle_command(self, command_s):
         response_body = []
-        #print "Received command: %s" % command_s
-        processes = json.loads(command_s)
+        print "Received command: %s" % command_s
+        command = json.loads(command_s)
+        #processes = json.loads(command_s)
+        processes = command["processes"]
+        promchecks = command["prometheus"]
+        print promchecks
         self.last_request_pidnames.clear()
         trc = Tracer()
         trc.start("checks")
         numchecks = 0
         numrun = 0
         nummetrics = 0
+        # Temp: create app_checks for prometheus
+        for pc in promchecks:
+            print "promcheck:", pc
+            for port in pc["ports"]:
+                print "port:", port
+                newconf = {'url': "http://localhost:" + str(port) + "/metrics"}
+                newcheck = {
+                    'check_module': 'prometheus',
+                    "log_errors": True,
+                    "conf": newconf,
+                    "name": "prometheus" + str(port)
+                }
+                newproc = {
+                    "check": newcheck,
+                    "pid": pc["pid"],
+                    "ports": [port],
+                    "vpid": pc["vpid"],
+                    "conf_vals": {}
+                }
+                print "Adding", newproc
+                processes.append(newproc)
 
         for p in processes:
             numchecks += 1
@@ -422,6 +447,7 @@ class Application:
                 "pid":str(check_instance.pid),
                 "other_container":str(check_instance.is_on_another_container)})
             metrics, service_checks, ex = check_instance.run()
+            print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", ex
             numrun += 1
             nm = len(metrics) if metrics else 0
             trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})

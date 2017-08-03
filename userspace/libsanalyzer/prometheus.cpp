@@ -5,15 +5,62 @@
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
 
-bool prometheus_conf::match(sinsp_threadinfo *tinfo, sinsp_container_info *container) const
+bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_container_info *container, set<uint16_t> &ports) const
 {
 	if (!m_enabled)
 		return false;
+	auto start_ports = tinfo->m_ainfo->listening_ports();
+	decltype(start_ports) filtered_ports;
 
 	// Testing
 	char reason[256];
 	memset(reason, 0, 256);
 	int rn = 0;
+	for (const auto& portrule: m_port_rules)
+	{
+		if (start_ports.empty())
+			break;
+		set<uint16_t> matched_ports;
+		for (const auto& port : start_ports)
+		{
+			if (portrule.m_use_set) {
+				if (portrule.m_port_set.find(port) != portrule.m_port_set.end())
+				{
+					matched_ports.insert(port);
+				}
+			} else {
+				if ((port >= portrule.m_range_start) &&
+					(port <= portrule.m_range_end))
+				{
+					matched_ports.insert(port);
+				}
+			}
+		}
+		if (!matched_ports.empty())
+		{
+			if (portrule.m_include)
+			{
+				filtered_ports.insert(matched_ports.begin(), matched_ports.end());
+			}
+			else
+			{
+				for (const auto &p : matched_ports)
+				{
+					start_ports.erase(p);
+				}
+			}
+		}
+	}
+	if (m_port_rules.empty()) {
+		filtered_ports = start_ports;
+	}
+	printf("Prometheus: process %s (%d): %d ports found, first is %d\n",
+		tinfo->m_comm.c_str(), tinfo->m_pid, filtered_ports.size(),
+		filtered_ports.empty() ? 0 : *(filtered_ports.begin()) );
+
+	if (filtered_ports.empty())
+		return false;
+
 	for (const auto& rule: m_rules)
 	{
 		bool matchrule = true;
@@ -27,10 +74,18 @@ bool prometheus_conf::match(sinsp_threadinfo *tinfo, sinsp_container_info *conta
 				// Just looking for single port for the moment
 				// Should change to match port range
 				auto ports = tinfo->m_ainfo->listening_ports();
-				uint16_t port = (uint16_t)std::stoi(cond.m_pattern);
-				if (ports.find(port) == ports.end()) {
+				if (cond.m_pattern == "matched")
+				{
+					if (filtered_ports.empty())
+						matchcond = false;
+					else
+						sprintf(reason, "port matched");
+					break;
+				}
+				uint16_t port = atoi(cond.m_pattern.c_str());
+				if (ports.find(port) == ports.end())
 					matchcond = false;
-				} else
+				else
 					sprintf(reason, "port = %s", cond.m_pattern.c_str());
 				break;
 			}
@@ -89,11 +144,13 @@ bool prometheus_conf::match(sinsp_threadinfo *tinfo, sinsp_container_info *conta
 		if (matchrule) {
 			printf("Process %d matches prometheus rule: %d: %s\n", tinfo->m_pid,
 				rn, reason);
+			if (rule.m_include)
+				ports = filtered_ports;
 			return rule.m_include;
 		}
 		rn++;
 	}
-	printf("Prometheus: %s (%d) not matched\n", tinfo->m_comm.c_str(), tinfo->m_tid);
+	// printf("Prometheus: %s (%d) not matched\n", tinfo->m_comm.c_str(), tinfo->m_tid);
 	return false;
 }
 
@@ -145,6 +202,65 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 	if(interval_node.IsScalar())
 	{
 		rhs.m_interval = interval_node.as<int>();
+	}
+	auto metperproc_node = node["max_metrics_per_process"];
+	if(metperproc_node.IsScalar())
+	{
+		rhs.m_max_metrics_per_proc = metperproc_node.as<int>();
+	}
+	auto tagspermet_node = node["max_tags_per_metric"];
+	if(tagspermet_node.IsScalar())
+	{
+		rhs.m_max_tags_per_metric = tagspermet_node.as<int>();
+	}
+
+	auto portfilter_node = node["port_filter"];
+	if (portfilter_node.IsSequence())
+	{
+		for (const auto& rule_node : portfilter_node)
+		{
+			if (!rule_node.IsMap()) 
+				continue;
+
+			for (auto rule_it = rule_node.begin();
+				rule_it != rule_node.end(); rule_it++)
+			{
+				prometheus_conf::port_filter_rule rule;
+				if (rule_it->first.IsScalar())
+				{
+					rule.m_include = (rule_it->first.as<string>() == "include");
+				}
+				printf("port filter rule: %s, type %d\n", rule.m_include ?
+					"include" : "exclude", rule_it->second.Type());
+
+				if (rule_it->second.IsSequence())
+				{
+					rule.m_use_set = true;
+					for (const auto& port_node : rule_it->second)
+					{
+						if (!port_node.IsScalar())
+							continue;
+
+						uint16_t p = port_node.as<uint16_t>();
+						if (p) {
+							rule.m_port_set.insert(p);
+						}
+					}
+				}
+				else if (rule_it->second.IsScalar())
+				{
+					rule.m_use_set = false;
+					// Parse single port or range
+					string str = rule_it->second.as<string>();
+					auto delim = str.find("-");
+					rule.m_range_start = atoi(str.substr(0, delim).c_str());
+					rule.m_range_end = (delim == string::npos) ?
+						rule.m_range_start :
+						atoi(str.substr(delim + 1, string::npos).c_str());
+				}
+				rhs.m_port_rules.emplace_back(rule);
+			}
+		}
 	}
 
 	auto filter_node = node["filter"];
@@ -199,16 +315,10 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 	return true;
 }
 
-prom_process::prom_process(sinsp_threadinfo *tinfo)
-{
-	m_pid = tinfo->m_pid;
-	m_vpid = tinfo->m_vpid;
-	// m_ports = tinfo->m_server_ports;
-}
-
 Json::Value prom_process::to_json() const
 {
 	Json::Value ret;
+	ret["name"] = m_name;
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
 	ret["ports"] = Json::Value(Json::arrayValue);

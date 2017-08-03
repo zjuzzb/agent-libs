@@ -20,6 +20,7 @@
 
 
 Json::Value yaml_to_json(const YAML::Node& node);
+class prom_process;
 
 class app_check
 {
@@ -216,7 +217,9 @@ public:
 
 	app_checks_proxy();
 
-	void send_get_metrics_cmd(const vector<app_process>& processes);
+	// void send_get_metrics_cmd(const vector<app_process>& processes);
+	void send_get_metrics_cmd(const vector<app_process>& processes,
+		const vector<prom_process>& prom_procs);
 
 	metric_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 

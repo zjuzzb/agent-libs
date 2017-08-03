@@ -22,6 +22,15 @@ class sinsp_container_info;
 class prometheus_conf
 {
 public:
+	struct port_filter_rule {
+		explicit port_filter_rule() : m_include(false) { }
+		bool m_include;
+		bool m_use_set; // Use set instead of range
+		// Start and end are inclusive
+		uint16_t m_range_start;
+		uint16_t m_range_end;
+		set<uint16_t> m_port_set;
+	};
 	struct filter_condition {
 		enum param_type {
 			string,
@@ -48,10 +57,12 @@ public:
 	explicit prometheus_conf():
 		m_enabled(false),
 		m_log_errors(true),
-		m_interval(-1)
+		m_interval(-1),
+		m_max_metrics_per_proc(40),
+		m_max_tags_per_metric(20)
 	{}
 
-	bool match(sinsp_threadinfo* tinfo, sinsp_container_info *container) const;
+	bool match(const sinsp_threadinfo* tinfo, const sinsp_container_info *container, set<uint16_t> &ports) const;
 
 	bool enabled() const {
 		return m_enabled;
@@ -65,6 +76,9 @@ private:
 	bool m_enabled;
 	bool m_log_errors;
 	int m_interval;
+	int m_max_metrics_per_proc;
+	int m_max_tags_per_metric;
+	vector<port_filter_rule> m_port_rules;
 	vector<filter_rule> m_rules;
 };
 
@@ -80,10 +94,12 @@ namespace YAML {
 class prom_process
 {
 public:
-	explicit prom_process(sinsp_threadinfo *tinfo);
+	explicit prom_process(string name, int pid, int vpid, const set<uint16_t> &ports) :
+		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports) { }
 
 	Json::Value to_json() const;
 private:
+	string m_name;	// Just for debugging
 	int m_pid;
 	int m_vpid;
 	set<uint16_t> m_ports;

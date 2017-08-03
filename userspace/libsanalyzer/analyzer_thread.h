@@ -159,6 +159,19 @@ public:
 		return *m_listening_ports;
 	}
 
+	inline bool found_prom_check() const
+	{
+		return m_prom_check_found;
+	}
+	inline void set_found_prom_check()
+	{
+		m_prom_check_found = true;
+	}
+	inline void clear_found_prom_check()
+	{
+		m_prom_check_found = false;
+	}
+
 	inline bool found_app_check(const app_check& check)
 	{
 		const string& module = check.module().empty() ? check.name() : check.module();
@@ -168,6 +181,10 @@ public:
 	{
 		const string& module = check.module().empty() ? check.name() : check.module();
 		m_app_checks_found.emplace(module);
+	}
+	inline void clear_found_app_checks()
+	{
+		m_app_checks_found.clear();
 	}
 
 
@@ -243,6 +260,7 @@ private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
 	set<std::string> m_app_checks_found;
+	bool m_prom_check_found;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
