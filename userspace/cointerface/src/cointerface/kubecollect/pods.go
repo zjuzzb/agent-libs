@@ -134,26 +134,42 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		}
 	}
 
-	if out && len(lhs.Status.ContainerStatuses) != len(rhs.Status.ContainerStatuses) {
-		out = false
-	} else if out {
-		count := 0
-		for _, lC := range lhs.Status.ContainerStatuses {
-			if lC.ContainerID == "" {
-				continue
-			}
-			for _, rC := range rhs.Status.ContainerStatuses {
-				if rC.ContainerID == "" {
-					continue
-				}
-				if lC.ContainerID == rC.ContainerID {
-					count++
-					break
-				}
+	if out {
+		lContainerCount := 0
+		rContainerCount := 0
+
+		for _, c := range lhs.Status.ContainerStatuses {
+			if c.ContainerID != "" {
+				lContainerCount++
 			}
 		}
-		if count != len(lhs.Status.ContainerStatuses) {
+		for _, c := range rhs.Status.ContainerStatuses {
+			if c.ContainerID != "" {
+				rContainerCount++
+			}
+		}
+
+		if lContainerCount != rContainerCount {
 			out = false
+		} else if out {
+			count := 0
+			for _, lC := range lhs.Status.ContainerStatuses {
+				if lC.ContainerID == "" {
+					continue
+				}
+				for _, rC := range rhs.Status.ContainerStatuses {
+					if rC.ContainerID == "" {
+						continue
+					}
+					if lC.ContainerID == rC.ContainerID {
+						count++
+						break
+					}
+				}
+			}
+			if count != len(lhs.Status.ContainerStatuses) {
+				out = false
+			}
 		}
 	}
 
