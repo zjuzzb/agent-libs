@@ -171,9 +171,9 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	tags["kubernetes.pod.name"] = pod.GetName()
 	// Need a way to distinguish these too
 	var ips []string
-	if pod.Status.HostIP != "" {
+	/*if pod.Status.HostIP != "" {
 		ips = append(ips, pod.Status.HostIP)
-	}
+	}*/
 	if pod.Status.PodIP != "" {
 		ips = append(ips, pod.Status.PodIP)
 	}

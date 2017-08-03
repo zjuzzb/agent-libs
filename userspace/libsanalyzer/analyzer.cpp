@@ -5349,8 +5349,10 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	if(m_use_new_k8s && m_infrastructure_state->subscribed())
 	{
 		// Build the orchestrator state of the emitted containers (without metrics)
+		m_metrics->mutable_orchestrator_state()->set_cluster_id("default");
 		m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
 		if(check_k8s_delegation()) {
+			m_metrics->mutable_global_orchestrator_state()->set_cluster_id("default");
 			// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
 			m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
 		}

@@ -860,6 +860,7 @@ message swarm_state {
 
 message orchestrator_state_t {
     repeated container_group groups = 1;
+    optional string cluster_id = 2;
 }
 
 // ENTRY POINT MESSAGE
