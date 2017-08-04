@@ -55,6 +55,7 @@ public:
 		uint64_t m_max_size;
 		uint64_t m_past_duration_ns;
 		uint64_t m_past_size;
+		std::string m_notification_desc;
 
 		// Start the capture as close as possible to this
 		// time. If 0 will use current time.

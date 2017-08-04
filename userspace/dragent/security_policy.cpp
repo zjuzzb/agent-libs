@@ -115,6 +115,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 			}
 
 			if(!m_mgr->start_capture(evt->get_ts(),
+						 m_name,
 						 result->token(),
 						 (action.capture().has_filter() ? action.capture().filter() : ""),
 						 action.capture().before_event_ns(),
