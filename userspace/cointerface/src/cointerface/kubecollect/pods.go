@@ -290,6 +290,28 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	AppendMetricInt32(metrics, prefix+"restart.count", restartCount)
 }
 
+func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
+	if !CompatibilityMap["pods"] {
+		return 0
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if !(pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels()))) {
+			continue
+		}
+
+		for _, c := range pod.Spec.Containers {
+			for _, p := range c.Ports {
+				if p.Name == name {
+					return uint32(p.ContainerPort)
+				}
+			}
+		}
+	}
+	return 0
+}
+
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
 	if CompatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {

@@ -240,7 +240,9 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			remove(key);
 			break;
 		case draiosproto::UPDATED:
-			if(evt->object().parents().size() > 0 || evt->object().children().size() > 0) {
+			if(evt->object().parents().size() > 0 ||
+			   evt->object().children().size() > 0 ||
+			   evt->object().ports().size() > 0) {
 				glogf(sinsp_logger::SEV_DEBUG, "UPDATED event will change relationships, remove the container group then connect it again");
 				remove(key);
 				m_state[key] = make_unique<draiosproto::container_group>();
@@ -250,7 +252,6 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				glogf(sinsp_logger::SEV_DEBUG, "UPDATED event will not change relationships, just update the metadata");
 				*m_state[key]->mutable_tags() = evt->object().tags();
 				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
-				m_state[key]->mutable_ports()->CopyFrom(evt->object().ports());
 				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 			}
 			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());

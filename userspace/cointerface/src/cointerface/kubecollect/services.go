@@ -12,6 +12,8 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // make this a library function?
@@ -87,16 +89,8 @@ func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.Contai
 
 	ret.IpAddresses = append(ret.IpAddresses, service.Spec.ClusterIP)
 
-	/* TODO: implement this
-		for _, port := range service.Spec.Ports {
-		ret.Ports = append(ret.Ports, &draiosproto.CongroupNetPort{
-			Port: proto.Uint32(uint32(port.Port)),
-			TargetPort: proto.Uint32(uint32(port.TargetPort)),
-			Protocol: proto.String(string(port.Protocol)),
-		})
-	} */
-
 	if setLinks {
+		addServicePorts(&ret.Ports, service)
 		AddNSParents(&ret.Parents, service.GetNamespace())
 		AddIngressParents(&ret.Parents, service)
 		AddStatefulSetParentsFromService(&ret.Parents, service)
@@ -110,6 +104,40 @@ func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.Contai
 }
 
 var serviceInf cache.SharedInformer
+var unresolvedPorts = map[types.UID]bool{}
+
+func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service) {
+	for _, port := range service.Spec.Ports {
+		sPort := draiosproto.CongroupNetPort{
+			Port: proto.Uint32(uint32(port.Port)),
+			Protocol: proto.String(string(port.Protocol)),
+		}
+
+		p := uint32(0)
+		if port.TargetPort.Type == intstr.Int {
+			p = uint32(port.TargetPort.IntValue())
+		} else {
+			if len(service.Spec.Selector) > 0 {
+				selector, _ := serviceSelector(service)
+				p = resolveTargetPort(port.TargetPort.String(),
+					selector, service.GetNamespace())
+				// Resolving may have failed if we race
+				// with pods being added. Note this service
+				// so we can later send an update event with
+				// the populated TargetPort
+				if p == 0 {
+					log.Debugf("Marking k8s_service %v for port resolution",
+						service.GetName())
+					unresolvedPorts[service.GetUID()] = true
+				}
+
+			}
+		}
+		sPort.TargetPort = proto.Uint32(p)
+
+		*ports = append(*ports, &sPort)
+	}
+}
 
 func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	if CompatibilityMap["services"] {
@@ -171,16 +199,24 @@ func WatchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfo
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldService := oldObj.(*v1.Service)
 				newService := newObj.(*v1.Service)
+
+				sameEntity, sameLinks := true, true
 				if oldService.GetResourceVersion() != newService.GetResourceVersion() {
-					sameEntity, sameLinks := serviceEquals(oldService, newService)
-					if !sameEntity || !sameLinks {
-						evtc <- serviceEvent(newService,
-							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
-					}
+					sameEntity, sameLinks = serviceEquals(oldService, newService)
+				} else if unresolvedPorts[newService.GetUID()] {
+					sameEntity, sameLinks = false, false
+					delete(unresolvedPorts, newService.GetUID())
+				}
+
+				if !sameEntity || !sameLinks {
+					evtc <- serviceEvent(newService,
+						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldService := obj.(*v1.Service)
+				// We may not have an unresolved port, but delete is still safe
+				delete(unresolvedPorts, oldService.GetUID())
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
