@@ -39,7 +39,7 @@ public:
 	void on_new_container(const sinsp_container_info& container_info);
 	void on_remove_container(const sinsp_container_info& container_info);
 
-	void refresh_host_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
+	void receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
@@ -64,6 +64,8 @@ private:
 
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
 
+	void refresh_hosts_metadata();
+
 	void connect(infrastructure_state::uid_t& key);
 	void remove(infrastructure_state::uid_t& key);
 	bool has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid);
@@ -74,6 +76,9 @@ private:
 
 	state_t m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
+
+	std::queue<draiosproto::congroup_update_event> m_host_events_queue;
+	std::mutex m_host_events_queue_mutex;
 
 	policy_cache_t m_container_p_cache;
 	policy_cache_t m_host_p_cache;

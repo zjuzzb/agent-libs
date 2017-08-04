@@ -4323,10 +4323,10 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		m_falco_baseliner->process_event(evt);
 	}
 
-	if(m_infrastructure_state && m_infrastructure_state->subscribed())
+	if(m_infrastructure_state && (m_configuration->get_security_enabled() || m_infrastructure_state->subscribed()))
 	{
 		//
-		// Refresh the infrastructure state with pending orchestrators events
+		// Refresh the infrastructure state with pending orchestrators or hosts events
 		//
 		m_infrastructure_state->refresh(ts);
 	}

@@ -777,7 +777,7 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 		return;
 	}
 
-	m_sinsp_worker->refresh_host_metadata(evts);
+	m_sinsp_worker->receive_hosts_metadata(evts);
 }
 
 void connection_manager::send_policy_events_messages(uint64_t ts_ns)

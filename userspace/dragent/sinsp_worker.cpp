@@ -530,9 +530,9 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	}
 }
 
-void sinsp_worker::refresh_host_metadata(draiosproto::orchestrator_events &evts)
+void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
 {
-	m_analyzer->infra_state()->refresh_host_metadata(evts.events());
+	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
 }
 
 void sinsp_worker::init_falco()

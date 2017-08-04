@@ -8,7 +8,7 @@ bool get_cached_result(infrastructure_state::policy_cache_t &cache, std::string 
 	if(cached_results != cache.end()) {
 		auto cached_result = cached_results->second.find(policy_id);
 		if (cached_result != cached_results->second.end()) {
-			glogf(sinsp_logger::SEV_DEBUG, "Found cached result for id %s, policy id %llu --> %s", id.c_str(), policy_id, res?"true":"false");
+			//glogf(sinsp_logger::SEV_DEBUG, "Found cached result for id %s, policy id %llu --> %s", id.c_str(), policy_id, res?"true":"false");
 			*res = cached_result->second;
 			return true;
 		}
@@ -32,10 +32,11 @@ void insert_cached_result(infrastructure_state::policy_cache_t &cache, std::stri
 
 bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
 {
-	auto evaluate = [](draiosproto::scope_predicate p, const std::string &value)
+	auto evaluate = [](const draiosproto::scope_predicate &p, const std::string &value)
 	{
 		// KISS for now
-
+		glogf(sinsp_logger::SEV_DEBUG, "Evaluating %s %s %s%s with value %s", p.key().c_str(), draiosproto::scope_operator_Name(p.op()).c_str(), p.values(0).c_str(),
+			((p.op() == draiosproto::IN_SET || p.op() == draiosproto::NOT_IN_SET)?"...":""), value.c_str());
 		bool ret;
 		switch(p.op()) {
 		case draiosproto::EQ:
@@ -146,6 +147,16 @@ void infrastructure_state::refresh(uint64_t ts)
 	}
 
 	// if (m_mesos_subscribed) { ... }
+
+	//
+	// Calling empty before locking to avoid useless overhead
+	//
+	if(!m_host_events_queue.empty() && m_host_events_queue_mutex.try_lock()) {
+		glogf(sinsp_logger::SEV_DEBUG, "Hosts metadata available and lock aquired. Start refresh operation of %d hosts.", m_host_events_queue.size());
+		refresh_hosts_metadata();
+		m_host_events_queue_mutex.unlock();
+		glogf(sinsp_logger::SEV_DEBUG, "Refresh of hosts metadata completed and lock unlocked.");
+	}
 }
 
 void infrastructure_state::reset()
@@ -474,6 +485,13 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 			std::unordered_set<uid_t, std::hash<uid_t>> visited;
 			result = walk_and_match(pos->second.get(), preds, visited);
 		}
+
+		// investigating about this
+		// if(!preds.empty()) {
+		// 	result = false;
+		// }
+
+		glogf(sinsp_logger::SEV_DEBUG, "Matching policy %llu, composed by %d predicates, against <%s,%s> ----> %s", policy.id(), policy.scope_predicates().size(), uid.first.c_str(), uid.second.c_str(), (result?"true":"false"));
 	}
 
 	insert_cached_result(cache, uid.second, policy.id(), result);
@@ -585,7 +603,7 @@ void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiospr
 void infrastructure_state::on_new_container(const sinsp_container_info& container_info)
 {
 	if(container_info.m_name.find("k8s_POD") != std::string::npos) {
-		// filter out k8s network namespace holder
+		// filter out k8s internal container/s
 		return;
 	}
 
@@ -613,6 +631,11 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 
 void infrastructure_state::on_remove_container(const sinsp_container_info& container_info)
 {
+	if(container_info.m_name.find("k8s_POD") != std::string::npos) {
+		// filter out k8s internal container/s
+		return;
+	}
+
 	glogf(sinsp_logger::SEV_DEBUG, "Receiving remove container event (id: %s) from container_manager", container_info.m_id.c_str());
 	draiosproto::congroup_update_event evt;
 	evt.set_type(draiosproto::REMOVED);
@@ -623,7 +646,18 @@ void infrastructure_state::on_remove_container(const sinsp_container_info& conta
 	handle_event(&evt);
 }
 
-void infrastructure_state::refresh_host_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events)
+void infrastructure_state::receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events)
+{
+	m_host_events_queue_mutex.lock();
+	glogf(sinsp_logger::SEV_DEBUG, "Lock and receive hosts metadata");
+	for(auto hevt : host_events) {
+		m_host_events_queue.emplace(std::move(hevt));
+	}
+	glogf(sinsp_logger::SEV_DEBUG, "%d hosts metadata received. Unlock.", m_host_events_queue.size());
+	m_host_events_queue_mutex.unlock();
+}
+
+void infrastructure_state::refresh_hosts_metadata()
 {
 	//
 	// Remove current hosts
@@ -652,19 +686,21 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 	//
 	m_host_p_cache.clear();
 
-	glogf(sinsp_logger::SEV_INFO, "Adding %d hosts to infrastructure state", host_events.size());
+	glogf(sinsp_logger::SEV_INFO, "Adding %d hosts to infrastructure state", m_host_events_queue.size());
 
 	//
 	// Connect the refreshed data to the state
 	//
-	for(auto hevt : host_events) {
+	while(!m_host_events_queue.empty()) {
 
+		auto& hevt = m_host_events_queue.front();
 		auto host = hevt.mutable_object();
 
 		glogf(sinsp_logger::SEV_DEBUG, "Add host %s to infrastructure state", host->uid().id().c_str());
 
 		if (m_k8s_subscribed) {
 			uid_t child_uid;
+			bool has_child = true;
 			std::vector<uid_t> nodes;
 
 			for (auto i = m_state.begin(), e = m_state.end(); i != e; ++i) {
@@ -676,6 +712,7 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 							if(*j == *k) {
 								glogf(sinsp_logger::SEV_DEBUG, "Host %s match with congroup <%s,%s> for IP %s", host->uid().id().c_str(), congroup->uid().kind().c_str(), congroup->uid().id().c_str(), (*j).c_str());
 								nodes.emplace_back(congroup->uid().kind(), congroup->uid().id());
+								found = true;
 								break;
 							}
 						}
@@ -689,7 +726,7 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 			if (nodes.empty()) {
 				// this could also happen if the node has been removed but the backend didn't realized it yet
 				glogf(sinsp_logger::SEV_WARNING, "Cannot match host %s, no suitable orchestrator nodes found.", host->uid().id().c_str());
-				continue;
+				has_child = false;
 			} else if(nodes.size() == 1) {
 				child_uid = *nodes.begin();
 			} else {
@@ -723,13 +760,15 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 				}
 			}
 
-			//
-			// Add the children link, handle_event will take care of connecting the host to the state
-			//
-			glogf(sinsp_logger::SEV_DEBUG, "Host %s is parent of <%s,%s>", host->uid().id().c_str(), child_uid.first.c_str(), child_uid.second.c_str());
-			draiosproto::congroup_uid *c = host->mutable_children()->Add();
-			c->set_kind(child_uid.first);
-			c->set_id(child_uid.second);
+			if(has_child) {
+				//
+				// Add the children link, handle_event will take care of connecting the host to the state
+				//
+				glogf(sinsp_logger::SEV_DEBUG, "Host %s is parent of <%s,%s>", host->uid().id().c_str(), child_uid.first.c_str(), child_uid.second.c_str());
+				draiosproto::congroup_uid *c = host->mutable_children()->Add();
+				c->set_kind(child_uid.first);
+				c->set_id(child_uid.second);
+			}
 		}
 
 		if(host->uid().id() == m_machine_id) {
@@ -745,6 +784,8 @@ void infrastructure_state::refresh_host_metadata(const google::protobuf::Repeate
 		}
 
 		handle_event(&hevt);
+
+		m_host_events_queue.pop();
 	}
 }
 
