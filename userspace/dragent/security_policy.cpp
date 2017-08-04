@@ -244,7 +244,7 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 		return NULL;
 	}
 
-	if (!match_scope(evt))
+	if (m_policy.scope_predicates().size() > 0 && !match_scope(evt))
 	{
 		m_metrics.incr(evt_metrics::EVM_SCOPE_MISS);
 		return NULL;
