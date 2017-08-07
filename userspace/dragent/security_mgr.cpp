@@ -60,6 +60,7 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 
 	m_falco_policies.clear();
 	m_policy_names.clear();
+	m_analyzer->infra_state()->clear_scope_cache();
 
 	m_print.PrintToString(policies, &tmp);
 

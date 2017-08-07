@@ -668,6 +668,13 @@ void infrastructure_state::receive_hosts_metadata(const google::protobuf::Repeat
 	m_host_events_queue_mutex.unlock();
 }
 
+void infrastructure_state::clear_scope_cache()
+{
+	glogf(sinsp_logger::SEV_DEBUG, "Clear container/host scope cache because policies will be reloaded...");
+	m_container_p_cache.clear();
+	m_host_p_cache.clear();
+}
+
 void infrastructure_state::refresh_hosts_metadata()
 {
 	//

@@ -41,6 +41,8 @@ public:
 
 	void receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
 
+	void clear_scope_cache();
+
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
 	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
