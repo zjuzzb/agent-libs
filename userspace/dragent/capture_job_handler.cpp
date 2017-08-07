@@ -331,21 +331,6 @@ void capture_job::process_event(sinsp_evt *ev)
 		return;
 	}
 
-	//
-	// We don't want dragent to show up in captures
-	//
-	sinsp_threadinfo* tinfo = ev->get_thread_info();
-	uint16_t etype = ev->get_type();
-
-	if(!m_configuration->m_capture_dragent_events &&
-	   tinfo &&
-	   tinfo->m_pid == m_handler->m_sysdig_pid &&
-	   etype != PPME_SCHEDSWITCH_1_E &&
-	   etype != PPME_SCHEDSWITCH_6_E)
-	{
-		return;
-	}
-
 	if(m_max_size &&
 	   m_file_size > m_max_size)
 	{
@@ -546,6 +531,7 @@ capture_job_handler::capture_job_handler(dragent_configuration *configuration,
 					 protocol_queue *queue,
 					 atomic<bool> *enable_autodrop)
 	: m_sysdig_pid(getpid()),
+	  m_sysdig_sid(0),
 	  m_log_stats_interval(10000000000),
 	  m_inspector(NULL),
 	  m_configuration(configuration),
@@ -630,6 +616,18 @@ void capture_job_handler::run()
 void capture_job_handler::process_event(sinsp_evt *ev)
 {
 	m_last_event_ns = ev->get_ts();
+
+	//
+	// We don't want dragent to show up in captures
+	//
+	sinsp_threadinfo* tinfo = ev->get_thread_info();
+
+	if(!m_configuration->m_capture_dragent_events &&
+	   tinfo &&
+	   tinfo->m_sid == m_sysdig_sid)
+	{
+		return;
+	}
 
 	//
 	// If required, dump the event in the memory circular buffer
@@ -804,6 +802,11 @@ void capture_job_handler::start_job(const dump_job_request& request)
 	{
 		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
 		return;
+	}
+
+	if(m_sysdig_sid == 0)
+	{
+		m_sysdig_sid = getsid(0);
 	}
 
 	// If there were no capture jobs previously, and now there

@@ -143,6 +143,7 @@ private:
 	static const uint64_t default_max_chunk_size;
 	static const uint64_t m_keepalive_interval_ns;
 
+	pid_t m_sysdig_sid;
 	run_on_interval m_log_stats_interval;
 
 	// The sinsp_worker's inspector. Only used to compile filters when creating jobs.
