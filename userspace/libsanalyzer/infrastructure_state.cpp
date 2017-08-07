@@ -486,10 +486,21 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 			result = walk_and_match(pos->second.get(), preds, visited);
 		}
 
-		// investigating about this
-		// if(!preds.empty()) {
-		// 	result = false;
-		// }
+		if (!preds.empty()) {
+			glogf(sinsp_logger::SEV_DEBUG, "Predicates list not empty, check operators...");
+			auto i = preds.begin();
+			for(; i != preds.end(); ++i) {
+				if(i->op() != draiosproto::NOT_EQ && i->op() != draiosproto::NOT_IN_SET && i->op() != draiosproto::NOT_CONTAINS) {
+					break;
+				}
+			}
+			if (i == preds.end()) {
+				glogf(sinsp_logger::SEV_DEBUG, "The unmatched predicates are only !=, not in, not contains. Assume the metrics are not set in the current sub-infrastructure and apply the policy");
+				result = true;
+			} else {
+				result = false;
+			}
+		}
 
 		glogf(sinsp_logger::SEV_DEBUG, "Matching policy %llu, composed by %d predicates, against <%s,%s> ----> %s", policy.id(), policy.scope_predicates().size(), uid.first.c_str(), uid.second.c_str(), (result?"true":"false"));
 	}
