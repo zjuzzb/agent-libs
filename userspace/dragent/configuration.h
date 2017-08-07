@@ -272,6 +272,41 @@ public:
 		return ret;
 	}
 
+	template<typename T>
+	vector<T> get_merged_sequence(const string& key, vector<T> &default_value)
+	{
+		bool defined = false;
+		vector<T> ret;
+		for(const auto& root : m_roots)
+		{
+			auto node = root[key];
+			if(node.IsDefined())
+			{
+				defined = true;
+
+				for(const auto& item : node)
+				{
+					try
+					{
+						ret.push_back(item.as<T>());
+					}
+					catch (const YAML::BadConversion& ex)
+					{
+						m_errors.emplace_back(string("Config file error at key ") + key);
+					}
+				}
+			}
+		}
+		if(defined)
+		{
+			return ret;
+		}
+		else
+		{
+			return default_value;
+		}
+	}
+
 	/**
 	* Get data from a map of objects, they
 	* will be merged between settings and
@@ -553,6 +588,7 @@ public:
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
+	std::set<std::string> m_marathon_skip_labels;
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;

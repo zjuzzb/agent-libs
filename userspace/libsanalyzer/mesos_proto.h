@@ -15,7 +15,7 @@ class mesos_state_t;
 class mesos_proto
 {
 public:
-	mesos_proto(draiosproto::metrics& metrics, const mesos_state_t& state);
+	mesos_proto(draiosproto::metrics& metrics, const mesos_state_t& state, const std::set<std::string> &marathon_skip_labels);
 
 	~mesos_proto();
 
@@ -44,4 +44,5 @@ private:
 
 	draiosproto::mesos_state& m_proto;
 	const mesos_state_t&      m_state;
+	const std::set<std::string> &m_marathon_skip_labels;
 };

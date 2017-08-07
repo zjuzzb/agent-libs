@@ -4789,7 +4789,7 @@ void sinsp_analyzer::get_mesos_data()
 	if(m_mesos && m_mesos->get_state().has_data())
 	{
 		ASSERT(m_metrics);
-		mesos_proto(*m_metrics, m_mesos->get_state()).get_proto();
+		mesos_proto(*m_metrics, m_mesos->get_state(), m_configuration->get_marathon_skip_labels()).get_proto();
 
 		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_mesos())
 		{
