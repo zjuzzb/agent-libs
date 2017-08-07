@@ -68,6 +68,7 @@ private:
 	uint64_t m_past_size;
 	bool m_delete_file_when_done;
 	bool m_send_file;
+	string m_notification_desc;
 	string m_file;
 
 	// This is only modified in flush() or the destructor
@@ -165,6 +166,7 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 	m_past_duration_ns = request.m_past_duration_ns;
 	m_delete_file_when_done = request.m_delete_file_when_done;
 	m_send_file = request.m_send_file;
+	m_notification_desc = request.m_notification_desc;
 
 	// If the start time is unspecified, it's set to the last
 	// event time, or if that fails the current time.
@@ -197,8 +199,13 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 	}
 	else
 	{
-		// We inject a notification to make it easier to identify the starting point
-		m_memdumper->push_notification(m_start_ns, m_handler->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
+		// We inject a notification to make it easier to identify the starting point.
+		if(m_notification_desc.empty())
+		{
+			m_notification_desc = "starting capture job " + request.m_token;
+		}
+
+		m_memdumper->push_notification(m_start_ns, m_handler->m_sysdig_pid, request.m_token, request.m_notification_desc);
 
 		// This will create a file on disk that is the result
 		// of the applying the filter against the events held
