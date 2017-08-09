@@ -296,18 +296,13 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	for {
 		select {
 		case evt := <-evtc:
-			// if evt.Object.GetUid().GetKind() == "k8s_pod" {
-			// 	log.Debugf("got a k8s_pod event")
-			// } else {
-			// 	log.Debugf("got a non-k8s_pod event: %v", evt.Object.GetUid().GetKind())
-			// }
-/*
-			log.Infof("nsInf.HasSynced(): %v", nsInf.HasSynced())
-			if nsInf.HasSynced() {
-				log.Infof("dumping ns keys: %v", nsInf.GetStore().ListKeys())
+			if err := stream.Send(&evt); err != nil {
+				log.Errorf("Stream response for {%v:%v} failed: %v",
+					evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId(), err)
+
+				// The C++ side will be out of sync, so
+				// kill the stream and force a full resync?
 			}
-*/
-			stream.Send(&evt)
 		case <-ctx.Done():
 			return nil
 		}
