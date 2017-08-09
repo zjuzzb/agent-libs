@@ -27,6 +27,7 @@ from sysdig_tracers import Tracer
 import yaml
 import simplejson as json
 import posix_ipc
+from requests.exceptions import ConnectionError
 
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
@@ -163,6 +164,9 @@ class AppCheckInstance:
         self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
+        self.is_generated = _is_affirmative(check.get("is_generated", False))
+        # self.retry = _is_affirmative(check.get("retry", True))
+        self.retry = True
 
         try:
             check_module = check["check_module"]
@@ -214,6 +218,14 @@ class AppCheckInstance:
                         raise OSError("Cannot setns to pid: %d" % self.pid)
             self.check_instance.check(self.instance_conf)
         except Exception as ex: # Raised from check run
+            # print "Exception:", type(ex), ":", ex
+            # This may be ambiguous. It may be hard to tell apart some
+            # temporary errors from protocol errors
+            # Tried to do this by catching ConnectionError, but couldn't
+            # figure out how to distinguish ProtocolError from others
+            if self.is_generated and (repr(ex).startswith("ConnectionError(ProtocolError") or repr(ex).startswith(HTTPError)):
+                logging.info("Skip retries for Prometheus error: %s\n", str(ex))
+                self.retry = False
             traceback_message = traceback.format_exc()
             saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
@@ -390,10 +402,15 @@ class Application:
             print "promcheck:", pc
             for port in pc["ports"]:
                 print "port:", port
-                newconf = {'url': "http://localhost:" + str(port) + "/metrics"}
+                newconf = {"url": "http://localhost:" + str(port) + "/metrics"}
+                if pc.get("max_metrics"):
+                    newconf["max_metrics"] = pc["max_metrics"]
+                if pc.get("max_tags"):
+                    newconf["max_tags"] = pc["max_tags"]
                 newcheck = {
-                    'check_module': 'prometheus',
+                    "check_module": "prometheus",
                     "log_errors": True,
+                    "is_generated": True,
                     "conf": newconf,
                     "name": "prometheus" + str(port)
                 }
@@ -442,12 +459,16 @@ class Application:
                     continue
                 self.known_instances[pidname] = check_instance
 
+            if pidname in self.blacklisted_pidnames and not check_instance.retry:
+                print "Not retrying ", check_instance.name
+                continue
+
             trc2 = trc.span(check_instance.name)
             trc2.start(trc2.tag, args={"check_name": check_instance.name,
                 "pid":str(check_instance.pid),
                 "other_container":str(check_instance.is_on_another_container)})
             metrics, service_checks, ex = check_instance.run()
-            print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", ex
+            print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
             numrun += 1
             nm = len(metrics) if metrics else 0
             trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})

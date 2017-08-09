@@ -23,12 +23,17 @@ class Prometheus(AgentCheck):
             return name[:-len('_sum')] + '_avg'
         
     def check(self, instance):
-        logging.debug('Starting app check-prometheus')
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
 
         # Load values from the instance config
         query_url = instance['url']
+        max_metrics = instance.get('max_metrics')
+        if max_metrics:
+            max_metrics = int(max_metrics)
+        max_tags = instance.get('max_tags')
+        if max_tags:
+            max_tags = int(max_tags)
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
@@ -37,9 +42,15 @@ class Prometheus(AgentCheck):
         for family in metrics:
             parse_sum = None
             parse_count = None
+            if max_metrics and len(self.aggregator.metrics) >= max_metrics:
+                break
 
             for sample in family.samples:
+                if max_metrics and len(self.aggregator.metrics) >= max_metrics:
+                    break
                 (name, tags, value) = sample
+                if tags and max_tags and len(tags) > max_tags:
+                    tags = {k: tags[k] for k in tags.keys()[:max_tags]}
                 tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
 
                 # First handle summary

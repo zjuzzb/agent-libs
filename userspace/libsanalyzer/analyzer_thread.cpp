@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -538,6 +539,16 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 	main_thread_ainfo()->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
+}
+
+bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
+{
+	for (const auto& ac_found : m_app_checks_found)
+	{
+		if (!fnmatch(pattern.c_str(), ac_found.c_str(), FNM_EXTMATCH))
+			return true;
+	}
+	return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

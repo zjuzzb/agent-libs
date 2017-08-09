@@ -213,7 +213,7 @@ app_checks_proxy::app_checks_proxy():
 {
 }
 
-void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes, const vector<prom_process>& prom_procs)
+void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes, const vector<prom_process>& prom_procs, const prometheus_conf &prom_conf)
 {
 	Json::Value procs = Json::Value(Json::arrayValue);
 	for(const auto& p : processes)
@@ -223,7 +223,7 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 	Json::Value promps = Json::Value(Json::arrayValue);
 	for(const auto& p : prom_procs)
 	{
-		promps.append(p.to_json());
+		promps.append(p.to_json(prom_conf));
 	}
 
 	Json::Value command;

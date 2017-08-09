@@ -172,10 +172,15 @@ public:
 		m_prom_check_found = false;
 	}
 
+	bool found_app_check_by_fnmatch(const string& pattern);
+	inline bool found_app_check_by_name(const string& name)
+	{
+		return (m_app_checks_found.find(name) != m_app_checks_found.end());
+	}
 	inline bool found_app_check(const app_check& check)
 	{
 		const string& module = check.module().empty() ? check.name() : check.module();
-		return (m_app_checks_found.find(module) != m_app_checks_found.end());
+		return found_app_check_by_name(module);
 	}
 	inline void set_found_app_check(const app_check& check)
 	{

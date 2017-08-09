@@ -5,7 +5,7 @@
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
 
-bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_container_info *container, set<uint16_t> &ports) const
+bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo, const sinsp_container_info *container, set<uint16_t> &ports) const
 {
 	if (!m_enabled)
 		return false;
@@ -54,9 +54,6 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_container
 	if (m_port_rules.empty()) {
 		filtered_ports = start_ports;
 	}
-	printf("Prometheus: process %s (%d): %d ports found, first is %d\n",
-		tinfo->m_comm.c_str(), tinfo->m_pid, filtered_ports.size(),
-		filtered_ports.empty() ? 0 : *(filtered_ports.begin()) );
 
 	if (filtered_ports.empty())
 		return false;
@@ -130,6 +127,34 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_container
 				if (matchcond)
 					sprintf(reason, "container.image = %s", container->m_image.c_str());
 				break;
+			case filter_condition::param_type::container_label:
+			{
+				if (!container) {
+					matchcond = false;
+					break;
+				}
+				// Temp, testing
+				printf("Container %s labels:\n", container->m_name.c_str());
+				for (const auto& lval_it : container->m_labels) {
+					printf("\t%s = %s\n", lval_it.first.c_str(), lval_it.second.c_str());
+				}
+				const auto& lval_it = container->m_labels.find(cond.m_param);
+				if ((lval_it == container->m_labels.end()) ||
+					fnmatch(cond.m_pattern.c_str(), lval_it->second.c_str(), FNM_EXTMATCH))
+				{
+					matchcond = false;
+					break;
+				}
+				matchcond = true;
+				sprintf(reason, "container.label.%s = %s", cond.m_param.c_str(),
+					lval_it->second.c_str());
+				break;
+			}
+			case filter_condition::param_type::app_check_match:
+				matchcond = mtinfo->m_ainfo->found_app_check_by_fnmatch(cond.m_pattern);
+				if (matchcond)
+					sprintf(reason, "app_check found for %s", cond.m_pattern.c_str());
+				break;
 			default:
 				printf("Condition for param_type %d not yet implemented\n",
 					cond.m_param_type);
@@ -142,34 +167,38 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_container
 			}
 		}
 		if (matchrule) {
-			printf("Process %d matches prometheus rule: %d: %s\n", tinfo->m_pid,
-				rn, reason);
+			printf("Process %d matches prometheus rule: %d: %s\n",
+				(int)tinfo->m_pid, rn, reason);
 			if (rule.m_include)
 				ports = filtered_ports;
 			return rule.m_include;
 		}
 		rn++;
 	}
-	// printf("Prometheus: %s (%d) not matched\n", tinfo->m_comm.c_str(), tinfo->m_tid);
 	return false;
 }
 
 prometheus_conf::filter_condition::param_type 
 prometheus_conf::filter_condition::param2type(std::string pstr)
 {
+	const std::string cont_label_str = "container.label";
 	static const map<std::string, param_type> param_map =
 	{
 		{ "port", port },
 		{ "container.image", container_image },
 		{ "container.name", container_name },
-		{ "container.label", container_label },
+		{ cont_label_str, container_label },
 		{ "process.name", process_name },
-		{ "process.cmdline", process_cmdline }
+		{ "process.cmdline", process_cmdline },
+		{ "appcheck.match", app_check_match }
 	};
 
 	auto it = param_map.find(pstr);
 	if (it != param_map.end())
 		return(it->second);
+	
+	if (!pstr.compare(0, cont_label_str.size(), cont_label_str))
+		return container_label;
 
 	return param_type::string;
 }
@@ -230,8 +259,6 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 				{
 					rule.m_include = (rule_it->first.as<string>() == "include");
 				}
-				printf("port filter rule: %s, type %d\n", rule.m_include ?
-					"include" : "exclude", rule_it->second.Type());
 
 				if (rule_it->second.IsSequence())
 				{
@@ -266,7 +293,7 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 	auto filter_node = node["filter"];
 	if (filter_node.IsSequence())
 	{
-		for (const auto& rule_node :  filter_node)
+		for (const auto& rule_node : filter_node)
 		{
 			if (!rule_node.IsMap()) 
 				continue;
@@ -285,24 +312,25 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 				for (auto cond_it = rule_it->second.begin();
 					cond_it != rule_it->second.end(); cond_it++)
 				{
+					if (!cond_it->first.IsScalar())
+						continue;
+
 					prometheus_conf::filter_condition cond;
-					bool got_param = false;
-					if (cond_it->first.IsScalar())
+					cond.m_param = cond_it->first.as<string>();
+					if (cond.m_param.empty())
+						continue;
+					cond.m_param_type = prometheus_conf::filter_condition::param2type(cond.m_param);
+					if (cond.m_param_type == prometheus_conf::filter_condition::
+						param_type::container_label)
 					{
-						cond.m_param = cond_it->first.as<string>();
-						cond.m_param_type = prometheus_conf::filter_condition::param2type(cond.m_param);
-						if (!cond.m_param.empty()) {
-							got_param = true;
-						}
+						// strip "container.label" from param
+						cond.m_param = cond.m_param.substr(strlen("container.label")+1, string::npos);
 					}
 					if (cond_it->second.IsScalar())
 					{
 						cond.m_pattern = cond_it->second.as<string>();
 					}
-					if (got_param)
-					{
-						rule.m_cond.emplace_back(cond);
-					}
+					rule.m_cond.emplace_back(cond);
 				}
 				if (!rule.m_cond.empty())
 				{
@@ -311,17 +339,21 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 			}
 		}
 	}
-	
+
 	return true;
 }
 
-Json::Value prom_process::to_json() const
+Json::Value prom_process::to_json(const prometheus_conf &conf) const
 {
 	Json::Value ret;
 	ret["name"] = m_name;
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
 	ret["ports"] = Json::Value(Json::arrayValue);
+
+	// Not very efficient to pass these global configs per process
+	ret["max_metrics"] = conf.m_max_metrics_per_proc;
+	ret["max_tags"] = conf.m_max_tags_per_metric;
 	for(auto port : m_ports)
 	{
 		ret["ports"].append(Json::UInt(port));

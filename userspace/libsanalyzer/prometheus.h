@@ -40,6 +40,7 @@ public:
 			container_label,
 			process_name,
 			process_cmdline,
+			app_check_match
 		};
 		static param_type param2type(std::string);
 		
@@ -62,7 +63,8 @@ public:
 		m_max_tags_per_metric(20)
 	{}
 
-	bool match(const sinsp_threadinfo* tinfo, const sinsp_container_info *container, set<uint16_t> &ports) const;
+	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
+		const sinsp_container_info *container, set<uint16_t> &ports) const;
 
 	bool enabled() const {
 		return m_enabled;
@@ -72,6 +74,7 @@ public:
 
 private:
 	friend class YAML::convert<prometheus_conf>;
+	friend class prom_process;
 
 	bool m_enabled;
 	bool m_log_errors;
@@ -97,7 +100,7 @@ public:
 	explicit prom_process(string name, int pid, int vpid, const set<uint16_t> &ports) :
 		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports) { }
 
-	Json::Value to_json() const;
+	Json::Value to_json(const prometheus_conf &conf) const;
 private:
 	string m_name;	// Just for debugging
 	int m_pid;

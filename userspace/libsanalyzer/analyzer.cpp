@@ -1874,9 +1874,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			// we don't need more checks instances for each process.
 			if(m_app_proxy)
 			{
-				// Prometheus checks are done through the app proxy as well.
-				match_prom_checks(tinfo, mtinfo, prom_procs);
-
 				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
 
@@ -1885,6 +1882,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				if (app_checks.empty()) {
 					match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
+
+				// Prometheus checks are done through the app proxy as well.
+				// Looking for matches after app_checks because a rule may
+				// be specified for finding an app_checks match
+				match_prom_checks(tinfo, mtinfo, prom_procs);
 
 				if (!app_checks.empty())
 				{
@@ -2521,7 +2523,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		}
 		if(m_app_proxy && (!app_checks_processes.empty() || !prom_procs.empty()))
 		{
-			m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs);
+			m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
 		}
 	}
 #endif
@@ -5716,7 +5718,7 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	// sinsp_container_info* container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
 	set<uint16_t> ports;
-	if (m_prom_conf.match(tinfo, got_cont ? &container : NULL, ports)) {
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, ports)) {
 		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports);
 		prom_procs.emplace_back(pp);
 
