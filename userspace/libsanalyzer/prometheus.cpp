@@ -4,6 +4,7 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
+#include <utils.h>
 
 bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo, const sinsp_container_info *container, set<uint16_t> &ports) const
 {
@@ -76,21 +77,21 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 					if (filtered_ports.empty())
 						matchcond = false;
 					else
-						sprintf(reason, "port matched");
+						snprintf(reason, sizeof(reason), "port matched");
 					break;
 				}
 				uint16_t port = atoi(cond.m_pattern.c_str());
 				if (ports.find(port) == ports.end())
 					matchcond = false;
 				else
-					sprintf(reason, "port = %s", cond.m_pattern.c_str());
+					snprintf(reason, sizeof(reason), "port = %s", cond.m_pattern.c_str());
 				break;
 			}
 			case filter_condition::param_type::process_name:
 				// matchcond = tinfo->m_comm.find(cond.m_pattern) != string::npos;
 				matchcond = !fnmatch(cond.m_pattern.c_str(), tinfo->m_comm.c_str(), FNM_EXTMATCH);
 				if (matchcond)
-					sprintf(reason, "procname = %s", cond.m_pattern.c_str());
+					snprintf(reason, sizeof(reason), "procname = %s", cond.m_pattern.c_str());
 				break;
 			case filter_condition::param_type::process_cmdline:
 			{
@@ -105,7 +106,7 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 					matchcond = false;
 				}
 				if (matchcond)
-					sprintf(reason, "arg found: %s", cond.m_pattern.c_str());
+					snprintf(reason, sizeof(reason), "arg found: %s", cond.m_pattern.c_str());
 
 				break;
 			}
@@ -116,7 +117,7 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 				}
 				matchcond = !fnmatch(cond.m_pattern.c_str(), container->m_name.c_str(), FNM_EXTMATCH);
 				if (matchcond)
-					sprintf(reason, "container.name = %s", container->m_name.c_str());
+					snprintf(reason, sizeof(reason), "container.name = %s", container->m_name.c_str());
 				break;
 			case filter_condition::param_type::container_image:
 				if (!container) {
@@ -125,18 +126,13 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 				}
 				matchcond = !fnmatch(cond.m_pattern.c_str(), container->m_image.c_str(), FNM_EXTMATCH);
 				if (matchcond)
-					sprintf(reason, "container.image = %s", container->m_image.c_str());
+					snprintf(reason, sizeof(reason), "container.image = %s", container->m_image.c_str());
 				break;
 			case filter_condition::param_type::container_label:
 			{
 				if (!container) {
 					matchcond = false;
 					break;
-				}
-				// Temp, testing
-				printf("Container %s labels:\n", container->m_name.c_str());
-				for (const auto& lval_it : container->m_labels) {
-					printf("\t%s = %s\n", lval_it.first.c_str(), lval_it.second.c_str());
 				}
 				const auto& lval_it = container->m_labels.find(cond.m_param);
 				if ((lval_it == container->m_labels.end()) ||
@@ -146,17 +142,18 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 					break;
 				}
 				matchcond = true;
-				sprintf(reason, "container.label.%s = %s", cond.m_param.c_str(),
+				snprintf(reason, sizeof(reason), "container.label.%s = %s", cond.m_param.c_str(),
 					lval_it->second.c_str());
 				break;
 			}
 			case filter_condition::param_type::app_check_match:
 				matchcond = mtinfo->m_ainfo->found_app_check_by_fnmatch(cond.m_pattern);
 				if (matchcond)
-					sprintf(reason, "app_check found for %s", cond.m_pattern.c_str());
+					snprintf(reason, sizeof(reason), "app_check found for %s", cond.m_pattern.c_str());
 				break;
 			default:
-				printf("Condition for param_type %d not yet implemented\n",
+				g_logger.format(sinsp_logger::SEV_INFO, 
+					"Condition for param_type %d not yet implemented\n",
 					cond.m_param_type);
 				matchcond = false;
 				break;
@@ -167,7 +164,8 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 			}
 		}
 		if (matchrule) {
-			printf("Process %d matches prometheus rule: %d: %s\n",
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"Process %d matches prometheus rule: %d: %s\n",
 				(int)tinfo->m_pid, rn, reason);
 			if (rule.m_include)
 				ports = filtered_ports;
@@ -352,8 +350,14 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 	ret["ports"] = Json::Value(Json::arrayValue);
 
 	// Not very efficient to pass these global configs per process
-	ret["max_metrics"] = conf.m_max_metrics_per_proc;
-	ret["max_tags"] = conf.m_max_tags_per_metric;
+	ret["log_errors"] = conf.m_log_errors;
+	if (conf.m_interval > 0)
+		ret["interval"] = conf.m_interval;
+	if (conf.m_max_metrics_per_proc > 0)
+		ret["max_metrics"] = conf.m_max_metrics_per_proc;
+	if (conf.m_max_tags_per_metric > 0)
+		ret["max_tags"] = conf.m_max_tags_per_metric;
+
 	for(auto port : m_ports)
 	{
 		ret["ports"].append(Json::UInt(port));

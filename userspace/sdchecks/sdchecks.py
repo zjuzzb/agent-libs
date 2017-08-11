@@ -223,7 +223,7 @@ class AppCheckInstance:
             # temporary errors from protocol errors
             # Tried to do this by catching ConnectionError, but couldn't
             # figure out how to distinguish ProtocolError from others
-            if self.is_generated and (repr(ex).startswith("ConnectionError(ProtocolError") or repr(ex).startswith(HTTPError)):
+            if self.is_generated and (repr(ex).startswith("ConnectionError(ProtocolError") or repr(ex).startswith("HTTPError") or repr(ex).startswith("ValueError")):
                 logging.info("Skip retries for Prometheus error: %s\n", str(ex))
                 self.retry = False
             traceback_message = traceback.format_exc()
@@ -385,12 +385,12 @@ class Application:
 
     def handle_command(self, command_s):
         response_body = []
-        print "Received command: %s" % command_s
+        #print "Received command: %s" % command_s
         command = json.loads(command_s)
         #processes = json.loads(command_s)
         processes = command["processes"]
         promchecks = command["prometheus"]
-        print promchecks
+        #print promchecks
         self.last_request_pidnames.clear()
         trc = Tracer()
         trc.start("checks")
@@ -399,9 +399,9 @@ class Application:
         nummetrics = 0
         # Temp: create app_checks for prometheus
         for pc in promchecks:
-            print "promcheck:", pc
+            # print "promcheck:", pc
             for port in pc["ports"]:
-                print "port:", port
+                # print "port:", port
                 newconf = {"url": "http://localhost:" + str(port) + "/metrics"}
                 if pc.get("max_metrics"):
                     newconf["max_metrics"] = pc["max_metrics"]
@@ -409,7 +409,8 @@ class Application:
                     newconf["max_tags"] = pc["max_tags"]
                 newcheck = {
                     "check_module": "prometheus",
-                    "log_errors": True,
+                    "log_errors": pc.get("log_errors", True),
+                    "interval": pc.get("interval", 1),
                     "is_generated": True,
                     "conf": newconf,
                     "name": "prometheus" + str(port)
@@ -421,7 +422,7 @@ class Application:
                     "vpid": pc["vpid"],
                     "conf_vals": {}
                 }
-                print "Adding", newproc
+                # print "Adding", newproc
                 processes.append(newproc)
 
         for p in processes:
@@ -460,7 +461,7 @@ class Application:
                 self.known_instances[pidname] = check_instance
 
             if pidname in self.blacklisted_pidnames and not check_instance.retry:
-                print "Not retrying ", check_instance.name
+                logging.debug("Not retrying appcheck " + check_instance.name)
                 continue
 
             trc2 = trc.span(check_instance.name)
@@ -468,7 +469,7 @@ class Application:
                 "pid":str(check_instance.pid),
                 "other_container":str(check_instance.is_on_another_container)})
             metrics, service_checks, ex = check_instance.run()
-            print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
+            # print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
             numrun += 1
             nm = len(metrics) if metrics else 0
             trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})

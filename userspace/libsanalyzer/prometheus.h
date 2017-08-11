@@ -59,8 +59,8 @@ public:
 		m_enabled(false),
 		m_log_errors(true),
 		m_interval(-1),
-		m_max_metrics_per_proc(40),
-		m_max_tags_per_metric(20)
+		m_max_metrics_per_proc(-1),
+		m_max_tags_per_metric(-1)
 	{}
 
 	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
