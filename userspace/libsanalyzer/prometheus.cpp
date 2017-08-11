@@ -288,7 +288,7 @@ bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_c
 		}
 	}
 
-	auto filter_node = node["filter"];
+	auto filter_node = node["process_filter"];
 	if (filter_node.IsSequence())
 	{
 		for (const auto& rule_node : filter_node)
