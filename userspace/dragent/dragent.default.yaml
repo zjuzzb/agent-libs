@@ -574,6 +574,12 @@ prometheus:
         process.name: docker-proxy
     - exclude:
         container.image: sysdig/agent
+    # special rule to exclude processes matching configured prometheus appcheck
+    - exclude:
+        appcheck.match: prometheus
+    # Uncomment this to exclude processes with any matching appcheck
+    # - exclude:
+    #     appcheck.match: "*"
     # special rule to include any process with a matched port
     - include:
         port: matched
