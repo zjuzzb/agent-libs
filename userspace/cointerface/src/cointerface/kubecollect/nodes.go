@@ -12,11 +12,12 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 )
 
-// make this a library function?
-func nodeEvent(ns *v1.Node, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+var nodeInf cache.SharedInformer
+
+func nodeEvent(node *v1.Node, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newNodeCongroup(ns),
+		Object: newNodeCongroup(node),
 	}
 }
 
@@ -37,36 +38,61 @@ func nodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
 }
 
 func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range node.GetLabels() {
-		tags["kubernetes.node.label." + k] = v
-	}
-	tags["kubernetes.node.name"] = node.GetName()
-
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_node"),
 			Id:proto.String(string(node.GetUID()))},
-		Tags: tags,
 	}
 
 	for _, nodeAddress := range node.Status.Addresses {
 		ret.IpAddresses = append(ret.IpAddresses, nodeAddress.Address)
 	}
 
+	ret.Tags = GetTags(node.ObjectMeta, "kubernetes.node.")
 	addNodeMetrics(&ret.Metrics, node)
 	AddPodChildrenFromNodeName(&ret.Children, node.GetName())
 	return ret
 }
 
-var nodeInf cache.SharedInformer
-
 func addNodeMetrics(metrics *[]*draiosproto.AppMetric, node *v1.Node) {
 	prefix := "kubernetes.node."
 	AppendMetricBool(metrics, prefix+"spec.unschedulable", node.Spec.Unschedulable)
+	appendMetricResource(metrics, prefix+"status.capacity.cpuCores", node.Status.Capacity, v1.ResourceCPU)
+	appendMetricResource(metrics, prefix+"status.capacity.memoryBytes", node.Status.Capacity, v1.ResourceMemory)
+	appendMetricResource(metrics, prefix+"status.capacity.pods", node.Status.Capacity, v1.ResourcePods)
+	appendMetricResource(metrics, prefix+"status.allocatable.cpuCores", node.Status.Allocatable, v1.ResourceCPU)
+	appendMetricResource(metrics, prefix+"status.allocatable.memoryBytes", node.Status.Allocatable, v1.ResourceMemory)
+	appendMetricResource(metrics, prefix+"status.allocatable.pods", node.Status.Allocatable, v1.ResourcePods)
+	appendMetricNodeCondition(metrics, prefix+"status.ready.", node.Status.Conditions, v1.NodeReady)
+	appendMetricNodeCondition(metrics, prefix+"status.outOfDisk.", node.Status.Conditions, v1.NodeOutOfDisk)
+	appendMetricNodeCondition(metrics, prefix+"status.memoryPressure.", node.Status.Conditions, v1.NodeMemoryPressure)
+	appendMetricNodeCondition(metrics, prefix+"status.diskPressure.", node.Status.Conditions, v1.NodeDiskPressure)
+	appendMetricNodeCondition(metrics, prefix+"status.networkUnavailable.", node.Status.Conditions, v1.NodeNetworkUnavailable)
+	appendMetricNodeCondition(metrics, prefix+"status.inodePressure.", node.Status.Conditions, v1.NodeInodePressure)
+}
+
+func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, prefix string, conditions []v1.NodeCondition, ctype v1.NodeConditionType) {
+	tval, fval, uval := float64(0), float64(0), float64(0)
+	found := false
+	for _, cond := range conditions {
+		if cond.Type != ctype {
+			continue
+		}
+		switch cond.Status {
+		case v1.ConditionTrue:
+			tval, found = 1, true
+		case v1.ConditionFalse:
+			fval, found = 1, true
+		case v1.ConditionUnknown:
+			uval, found = 1, true
+		}
+	}
+
+	if found {
+		AppendMetric(metrics, prefix+"true", tval)
+		AppendMetric(metrics, prefix+"false", fval)
+		AppendMetric(metrics, prefix+"unknown", uval)
+	}
 }
 
 func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {

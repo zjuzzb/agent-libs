@@ -38,6 +38,8 @@ func newJobConGroup(job *v1batch.Job) (*draiosproto.ContainerGroup) {
 			Id:proto.String(string(job.GetUID()))},
 		Tags: tags,
 	}
+
+	addJobMetrics(&ret.Metrics, job)
 	AddNSParents(&ret.Parents, job.GetNamespace())
 	selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
 	AddPodChildren(&ret.Children, selector, job.GetNamespace())
@@ -46,6 +48,16 @@ func newJobConGroup(job *v1batch.Job) (*draiosproto.ContainerGroup) {
 }
 
 var jobInf cache.SharedInformer
+
+func addJobMetrics(metrics *[]*draiosproto.AppMetric, job *v1batch.Job) {
+	prefix := "kubernetes.job."
+
+	AppendMetricPtrInt32(metrics, prefix+"spec.parallelism", job.Spec.Parallelism)
+	AppendMetricPtrInt32(metrics, prefix+"spec.completions", job.Spec.Completions)
+	AppendMetricInt32(metrics, prefix+"status.active", job.Status.Active)
+	AppendMetricInt32(metrics, prefix+"status.succeeded", job.Status.Succeeded)
+	AppendMetricInt32(metrics, prefix+"status.failed", job.Status.Failed)
+}
 
 func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	if CompatibilityMap["jobs"] {

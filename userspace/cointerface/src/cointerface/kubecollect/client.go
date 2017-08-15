@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/rest"
 	"draiosproto"
 	"github.com/gogo/protobuf/proto"
+	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 )
@@ -59,12 +60,16 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	return tags
 }
 
-func AppendMetricInt32(metrics *[]*draiosproto.AppMetric, name string, val int32) {
+func AppendMetric(metrics *[]*draiosproto.AppMetric, name string, val float64) {
 	*metrics = append(*metrics, &draiosproto.AppMetric{
 		Name:proto.String(name),
 		Type:draiosproto.AppMetricType_APP_METRIC_TYPE_GAUGE.Enum(),
-		Value:proto.Float64(float64(val)),
+		Value:proto.Float64(val),
 	})
+}
+
+func AppendMetricInt32(metrics *[]*draiosproto.AppMetric, name string, val int32) {
+	AppendMetric(metrics, name, float64(val))
 }
 
 func AppendMetricPtrInt32(metrics *[]*draiosproto.AppMetric, name string, val *int32) {
@@ -76,9 +81,20 @@ func AppendMetricPtrInt32(metrics *[]*draiosproto.AppMetric, name string, val *i
 }
 
 func AppendMetricBool(metrics *[]*draiosproto.AppMetric, name string, val bool) {
-	v := int32(0)
+	v := float64(0)
 	if val == true {
 		v = 1
 	}
-	AppendMetricInt32(metrics, name, v)
+	AppendMetric(metrics, name, v)
+}
+
+func appendMetricResource(metrics *[]*draiosproto.AppMetric, name string, rList v1.ResourceList, rName v1.ResourceName) {
+	v := float64(0)
+	qty, ok := rList[rName]
+	if ok {
+		// Take MilliValue() and divide because
+		// we could lose precision with Value()
+		v = float64(qty.MilliValue())/1000
+	}
+	AppendMetric(metrics, name, v)
 }
