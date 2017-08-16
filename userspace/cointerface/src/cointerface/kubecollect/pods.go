@@ -14,6 +14,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+var podInf cache.SharedInformer
+
 // pods get their own special version because they send events for containers too
 func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
 	updates := newPodEvents(pod, eventType, oldPod, setLinks)
@@ -22,10 +24,18 @@ func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eve
 	}
 }
 
-func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEventType, containerEvents *[]*draiosproto.CongroupUpdateEvent, podUID string, children *[]*draiosproto.CongroupUid) {
+// We pass the ContainerStatus along with the pod since the caller
+// already has it, and it saves us a lookup. We use the status name
+// to get the corresponding Container aka the spec
+func newContainerEvent(pod *v1.Pod,
+	cstat *v1.ContainerStatus,
+	eventType draiosproto.CongroupEventType,
+	containerEvents *[]*draiosproto.CongroupUpdateEvent,
+	children *[]*draiosproto.CongroupUid) {
+
 	par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
 		Kind:proto.String("k8s_pod"),
-		Id:proto.String(podUID)},
+		Id:proto.String(string(pod.GetUID()))},
 	}
 
 	// Kubernetes reports containers in this format:
@@ -35,7 +45,7 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 	// <dockershortcontainerid>
 	// <rktpodid>:<rktappname>
 	// so here we are doing this conversion
-	containerId := c.ContainerID
+	containerId := cstat.ContainerID
 	if strings.HasPrefix(containerId, "docker://") {
 		containerId = containerId[9:21]
 	} else if strings.HasPrefix(containerId, "rkt://") {
@@ -45,8 +55,24 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 		return
 	}
 
-	imageId := c.ImageID[strings.LastIndex(c.ImageID, ":")+1:]
+	imageId := cstat.ImageID[strings.LastIndex(cstat.ImageID, ":")+1:]
 	imageId = imageId[:12]
+
+	var metrics []*draiosproto.AppMetric
+	found := false
+	// There should always be a spec with the same name
+	// as the status, so complain if we don't find it
+	for _, c := range pod.Spec.Containers {
+		if c.Name == cstat.Name {
+			addContainerMetrics(&metrics, &c)
+			found = true
+			break
+		}
+	}
+	if !found {
+		log.Errorf("Could not find container spec for %v on pod %v",
+			cstat.Name, pod.GetName())
+	}
 
 	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent {
 		Type: eventType.Enum(),
@@ -56,11 +82,12 @@ func newContainerEvent(c *v1.ContainerStatus, eventType draiosproto.CongroupEven
 				Id:proto.String(containerId),
 			},
 			Tags: map[string]string{
-				"container.name"    : c.Name,
-				"container.image"   : c.Image,
+				"container.name"    : cstat.Name,
+				"container.image"   : cstat.Image,
 				"container.image.id": imageId,
 			},
 			Parents: par,
+			Metrics: metrics,
 		},
 	})
 
@@ -177,15 +204,8 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 }
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range pod.GetLabels() {
-		tags["kubernetes.pod.label." + k] = v
-	}
-	tags["kubernetes.pod.name"] = pod.GetName()
-	// Need a way to distinguish these too
+	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
+
 	var ips []string
 	/*if pod.Status.HostIP != "" {
 		ips = append(ips, pod.Status.HostIP)
@@ -220,6 +240,9 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 				}
 			}
 		}
+
+		// Generate ADDED events for containers
+		// that are in the new pod but not oldPod,
 		for _, c := range pod.Status.ContainerStatuses {
 
 			if c.ContainerID == "" {
@@ -237,6 +260,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 			}
 			if found {
 				// Never fire UPDATED events for containers
+				// This means we can't do per-container stat updates
 				continue
 			}
 
@@ -246,11 +270,16 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 			} else {
 				cEvtType = eventType
 			}
-			newContainerEvent(&c, cEvtType, &containerEvents, string(pod.GetUID()), &children)
+			newContainerEvent(pod, &c, cEvtType,
+				&containerEvents, &children)
 		}
+
+		// Any remaining containers must have been deleted
 		for _, removedC := range oldContainers {
 			if removedC.ContainerID != "" {
-				newContainerEvent(&removedC, draiosproto.CongroupEventType_REMOVED, &containerEvents, string(pod.GetUID()), &children)
+				newContainerEvent(pod, &removedC,
+					draiosproto.CongroupEventType_REMOVED,
+					&containerEvents, &children)
 			}
 		}
 	}
@@ -274,18 +303,29 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	return cg
 }
 
-var podInf cache.SharedInformer
+// Containers only send ADDED/REMOVED events, so we can only use the
+// static Container object for stats and nothing from ContainerStatus
+func addContainerMetrics(metrics *[]*draiosproto.AppMetric, con *v1.Container) {
+	prefix := "kubernetes.pod.container."
+	appendMetricResource(metrics, prefix+"resourceRequests.cpuCores",
+		con.Resources.Requests, v1.ResourceCPU)
+	appendMetricResource(metrics, prefix+"resourceRequests.memoryBytes",
+		con.Resources.Requests, v1.ResourceMemory)
+	appendMetricResource(metrics, prefix+"resourceLimits.cpuCores",
+		con.Resources.Limits, v1.ResourceCPU)
+	appendMetricResource(metrics, prefix+"resourceLimits.memoryBytes",
+		con.Resources.Limits, v1.ResourceMemory)
+}
 
 func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	prefix := "kubernetes.pod."
 
-	// Dummy stub, we need to make the container status
-	// metrics part of the container events
+	// Restart count is a legacy metric attributed to pods
+	// instead of the individual containers, so report it here
 	restartCount := int32(0)
 	for _, c := range pod.Status.ContainerStatuses {
 		restartCount += c.RestartCount
 	}
-
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
 	AppendMetricInt32(metrics, prefix+"restart.count", restartCount)
 }
