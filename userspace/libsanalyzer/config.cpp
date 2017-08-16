@@ -704,6 +704,16 @@ void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentia
 	m_dcos_enterprise_credentials = creds;
 }
 
+void sinsp_configuration::set_marathon_skip_labels(std::set<std::string> &labels)
+{
+	m_marathon_skip_labels = labels;
+}
+
+const std::set<std::string> & sinsp_configuration::get_marathon_skip_labels() const
+{
+	return m_marathon_skip_labels;
+}
+
 bool sinsp_configuration::get_curl_debug() const
 {
 	return m_curl_debug;

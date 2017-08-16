@@ -265,18 +265,26 @@ class AppCheckInstance:
 
     def _expand_template(self, value, proc_data, conf_vals):
         try:
+            logging.debug("Expanding template: %s" % repr(value))
             ret = ""
             lastpos = 0
-            for token in re.finditer(self.TOKEN_PATTERN, value):
-                ret += value[lastpos:token.start()]
-                lastpos = token.end()
-                token_key = value[token.start()+1:token.end()-1]
+            for token_pos in re.finditer(self.TOKEN_PATTERN, value):
+                ret += value[lastpos:token_pos.start()]
+                lastpos = token_pos.end()
+                token = value[token_pos.start()+1:token_pos.end()-1]
+                found_in, token_val = "", ""
                 # First try to replace templated values from conf_vals
-                if token_key in conf_vals:
-                    ret += str(conf_vals[token_key])
+                if token in conf_vals:
+                    token_val, found_in = str(conf_vals[token]), "conf_vals"
+                elif token in self.AGENT_CONFIG:
+                    # try from agent config
+                    token_val, found_in = str(self.AGENT_CONFIG[token]), "agent_config"
                 else:
                     # Then try from the per-process data. It will throw an exception if not found.
-                    ret += str(self.PROC_DATA_FROM_TOKEN[token_key](proc_data))
+                    token_val, found_in = str(self.PROC_DATA_FROM_TOKEN[token](proc_data)), "proc_data"
+                logging.debug("Resolved token: %s to value: %s found in %s" %
+                              (token, token_val, found_in))
+                ret += token_val
             ret += value[lastpos:len(value)]
             if ret.isdigit():
                 ret = int(ret)

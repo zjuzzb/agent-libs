@@ -8,7 +8,10 @@
 #include "uri.h"
 #include "draios.pb.h"
 
-mesos_proto::mesos_proto(draiosproto::metrics& met, const mesos_state_t& state) : m_proto(*met.mutable_mesos()), m_state(state)
+mesos_proto::mesos_proto(draiosproto::metrics& met,
+			 const mesos_state_t& state,
+			 const std::set<std::string> &marathon_skip_labels)
+	: m_proto(*met.mutable_mesos()), m_state(state), m_marathon_skip_labels(marathon_skip_labels)
 {
 }
 
@@ -49,9 +52,12 @@ void mesos_proto::make_protobuf()
 
 			for(auto& lbl_pair : task_pair.second->get_labels())
 			{
-				auto label = task->mutable_common()->add_labels();
-				label->set_key(lbl_pair.first);
-				label->set_value(lbl_pair.second);
+				if(m_marathon_skip_labels.find(lbl_pair.first) == m_marathon_skip_labels.end())
+				{
+					auto label = task->mutable_common()->add_labels();
+					label->set_key(lbl_pair.first);
+					label->set_value(lbl_pair.second);
+				}
 			}
 		}
 	}

@@ -55,6 +55,7 @@ public:
 		uint64_t m_max_size;
 		uint64_t m_past_duration_ns;
 		uint64_t m_past_size;
+		std::string m_notification_desc;
 
 		// Start the capture as close as possible to this
 		// time. If 0 will use current time.
@@ -142,6 +143,7 @@ private:
 	static const uint64_t default_max_chunk_size;
 	static const uint64_t m_keepalive_interval_ns;
 
+	pid_t m_sysdig_sid;
 	run_on_interval m_log_stats_interval;
 
 	// The sinsp_worker's inspector. Only used to compile filters when creating jobs.

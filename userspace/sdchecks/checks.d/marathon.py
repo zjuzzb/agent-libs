@@ -17,13 +17,15 @@ class Marathon(AgentCheck):
     APP_METRICS = [
         'backoffFactor',
         'backoffSeconds',
-        'cpus',
-        'dist',
-        'instances',
-        'mem',
-        'taskRateLimit',
         'tasksRunning',
         'tasksStaged'
+    ]
+
+    FULL_APP_METRICS = [
+        'cpus',
+        'disk',
+        'instances',
+        'mem',
     ]
 
     def check(self, instance):
@@ -35,6 +37,7 @@ class Marathon(AgentCheck):
         instance_tags = instance.get('tags', [])
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
+        full_metrics = instance.get('full_metrics', False)
         self.auth_token = instance.get('auth_token', '')
         creds = instance.get('marathon_creds', ':')
 
@@ -53,7 +56,10 @@ class Marathon(AgentCheck):
                 for attr in self.APP_METRICS:
                     if attr in app:
                         self.gauge('marathon.' + attr, app[attr], tags=tags)
-
+                if full_metrics:
+                    for attr in self.FULL_APP_METRICS:
+                        if attr in app:
+                            self.gauge('marathon.' + attr, app[attr], tags=tags)
                 query_url = urljoin(url, "/v2/apps/{0}/versions".format(app['id']))
                 versions_reply = self.get_json(query_url, timeout)
 
