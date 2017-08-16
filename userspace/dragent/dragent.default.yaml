@@ -768,6 +768,7 @@ app_checks:
       url: http://127.0.0.1:8098/stats
   - name: php-fpm
     check_module: php_fpm
+    retry: false
     pattern:
       exe: "php-fpm: master process"
   - name: varnish

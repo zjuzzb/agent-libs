@@ -189,6 +189,7 @@ class AppCheckInstance:
         self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
+        self.retry = _is_affirmative(check.get("retry", True))
 
         try:
             check_module = check["check_module"]
@@ -457,6 +458,10 @@ class Application:
                     self.blacklisted_pidnames.add(pidname)
                     continue
                 self.known_instances[pidname] = check_instance
+
+            if pidname in self.blacklisted_pidnames and not check_instance.retry:
+                logging.debug("Not retrying appcheck " + check_instance.name)
+                continue
 
             trc2 = trc.span(check_instance.name)
             trc2.start(trc2.tag, args={"check_name": check_instance.name,
