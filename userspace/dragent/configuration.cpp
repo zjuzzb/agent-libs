@@ -799,7 +799,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", false);
-
+	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
@@ -1135,6 +1135,10 @@ void dragent_configuration::print_configuration()
 	if(m_use_new_k8s)
 	{
 		g_log->information("Use new K8s integration");
+	}
+	if(!m_k8s_cluster_name.empty())
+	{
+		g_log->information("K8s cluster name: " + m_k8s_cluster_name);
 	}
 	if(!m_blacklisted_ports.empty())
 	{

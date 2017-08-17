@@ -13,8 +13,8 @@
 class infrastructure_state
 {
 public:
+	// <kind, UID> strings
 	using uid_t = std::pair<std::string, std::string>;
-	using state_t = std::map<uid_t, std::unique_ptr<draiosproto::container_group>>;
 
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<uint64_t, bool>>;
 
@@ -49,6 +49,10 @@ public:
 	bool has(uid_t uid);
 	unsigned int size();
 
+	std::string get_k8s_cluster_name() const;
+	// The UID of the default namespace is used as the cluster id
+	std::string get_k8s_cluster_id() const;
+
 private:
 
 	std::unordered_map<std::string, std::string> host_children {
@@ -76,7 +80,7 @@ private:
 
 	void debug_print();
 
-	state_t m_state;
+	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 
 	std::queue<draiosproto::congroup_update_event> m_host_events_queue;
@@ -92,6 +96,7 @@ private:
 	coclient::response_cb_t m_k8s_callback;
 	string m_k8s_url;
 	bool m_k8s_subscribed;
+	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_interval;
 };
 

@@ -538,6 +538,16 @@ const std::set<std::string>& sinsp_configuration::get_k8s_extensions() const
 	return m_k8s_extensions;
 }
 
+void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_name)
+{
+	m_k8s_cluster_name = k8s_cluster_name;
+}
+
+const std::string& sinsp_configuration::get_k8s_cluster_name() const
+{
+	return m_k8s_cluster_name;
+}
+
 unsigned sinsp_configuration::get_statsd_limit() const
 {
 	return m_statsd_limit;

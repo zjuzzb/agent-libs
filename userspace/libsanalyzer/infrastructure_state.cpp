@@ -165,6 +165,7 @@ void infrastructure_state::reset()
 	m_host_p_cache.clear();
 	m_orphans.clear();
 	m_state.clear();
+	m_k8s_cached_cluster_id.clear();
 
 	if (m_k8s_subscribed) {
 		subscribe_to_k8s(m_k8s_url);
@@ -835,4 +836,42 @@ void infrastructure_state::debug_print()
 		for (auto m: cong->children())
 			glogf(sinsp_logger::SEV_TRACE, "   <%s,%s>", m.kind().c_str(), m.id().c_str());
 	}
+}
+
+std::string infrastructure_state::get_k8s_cluster_name() const
+{
+	// XXX get the cluster name from GKE if possible
+	return "default";
+}
+
+// The UID of the default namespace is used as the cluster id
+std::string infrastructure_state::get_k8s_cluster_id() const
+{
+	if (!m_k8s_cached_cluster_id.empty()) {
+		return m_k8s_cached_cluster_id;
+	}
+
+	// Skip ahead to namespaces then walk them sequentially
+	uid_t lb_key("k8s_namespace", "");
+	for (auto it = m_state.lower_bound(lb_key); it != m_state.end(); ++it) {
+		// it.first is a uid_t
+		// it.second is a container_group
+		if (it->first.first != "k8s_namespace") {
+			glogf(sinsp_logger::SEV_DEBUG,
+			      "Unable to find default namespace for cluster id");
+			break;
+		}
+	        auto con_tags = it->second->tags();
+		auto tag_iter = con_tags.find("kubernetes.namespace.name");
+		// This "default" is the namespace name,
+		// not to be confused with final return statement below
+		if (tag_iter != con_tags.end() &&
+		    tag_iter->second == "default") {
+			m_k8s_cached_cluster_id = it->first.second;
+			return m_k8s_cached_cluster_id;
+		}
+	}
+
+	// XXX return "default" or the empty string?
+	return "default";
 }

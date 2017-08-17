@@ -544,6 +544,7 @@ public:
 	k8s_ext_list_t m_k8s_extensions;
 	bool m_use_new_k8s;
 	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
+	std::string m_k8s_cluster_name;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;

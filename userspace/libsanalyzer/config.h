@@ -107,6 +107,8 @@ public:
 	const string & get_k8s_bt_auth_token() const;
 	void set_k8s_extensions(const std::set<std::string>& k8s_extensions);
 	const std::set<std::string>& get_k8s_extensions() const;
+	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
+	const std::string& get_k8s_cluster_name() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
 	string get_mesos_state_uri() const;
@@ -216,6 +218,7 @@ private:
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
+	std::string m_k8s_cluster_name;
 
 	std::set<double> m_percentiles;
 

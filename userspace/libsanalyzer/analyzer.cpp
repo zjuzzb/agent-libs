@@ -5354,14 +5354,20 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 
 	if(m_use_new_k8s && m_infrastructure_state->subscribed())
 	{
+		std::string cluster_name =
+			!m_configuration->get_k8s_cluster_name().empty() ?
+			m_configuration->get_k8s_cluster_name() :
+			m_infrastructure_state->get_k8s_cluster_name();
+
 		// Build the orchestrator state of the emitted containers (without metrics)
-		// TODO: use uid of default namespace as cluster_id
-		m_metrics->mutable_orchestrator_state()->set_cluster_id("default");
-		m_metrics->mutable_orchestrator_state()->set_cluster_name("default");
+		m_metrics->mutable_orchestrator_state()->set_cluster_id(
+			m_infrastructure_state->get_k8s_cluster_id());
+		m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
 		m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
 		if(check_k8s_delegation()) {
-			m_metrics->mutable_global_orchestrator_state()->set_cluster_id("default");
-			m_metrics->mutable_global_orchestrator_state()->set_cluster_name("default");
+			m_metrics->mutable_global_orchestrator_state()->set_cluster_id(
+				m_infrastructure_state->get_k8s_cluster_id());
+			m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 			// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
 			m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
 		}
