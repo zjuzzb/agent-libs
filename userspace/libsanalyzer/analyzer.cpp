@@ -1488,6 +1488,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
+	uint16_t prom_metrics_limit = m_prom_conf.max_metrics();
 	vector<prom_process> prom_procs;
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
@@ -1888,10 +1889,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				bool have_prometheus_metrics = false;
 				if (app_metrics_pid != m_app_metrics.end())
 				{
-					string prom_str("prometheus");
 					for (const auto& app_met : app_metrics_pid->second)
 					{
-						if ((!app_met.first.compare(0, prom_str.size(), prom_str)) &&
+						if (prometheus_conf::is_prometheus(app_met.first) &&
 							(app_met.second.expiration_ts() > (m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
 						{
 							have_prometheus_metrics = true;
@@ -2397,47 +2397,35 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				for(auto pid: procinfo->m_program_pids)
 				{
 					auto datamap_it = m_app_metrics.find(pid);
-					if (datamap_it != m_app_metrics.end())
+					if (datamap_it == m_app_metrics.end())
+						continue;
+					for (auto app_data : datamap_it->second)
 					{
-						for (auto app_data : datamap_it->second)
+						if (app_data_set.find(app_data.first) != app_data_set.end())
 						{
-							if (app_data_set.find(app_data.first) == app_data_set.end())
-							{
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
-									app_data.first.c_str(), app_data.second.expiration_ts() -
-									(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
-								app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
-									app_checks_limit, m_configuration->get_app_checks_limit());
-								if(app_checks_limit == 0)
-								{
-									if(metric_limits::log_enabled())
-									{
-										for(const auto& m : app_data.second.metrics())
-										{
-											g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
-															m_configuration->get_app_checks_limit(), m.name().c_str());
-										}
-										for(const auto& s : app_data.second.services())
-										{
-											g_logger.format(sinsp_logger::SEV_INFO, "[app_check] metric over limit (total, %u max): %s",
-															m_configuration->get_app_checks_limit(), s.name().c_str());
-										}
-									}
-									else { break; }
-								}
-								app_data_set.emplace(app_data.first);
-							}
-							else
-							{
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
-										tinfo->m_pid, pid, app_data.first.c_str(),
-										app_data.second.expiration_ts() -
-										(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
-							}
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+								"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
+									tinfo->m_pid, pid, app_data.first.c_str(),
+									app_data.second.expiration_ts() -
+									(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
+							continue;
 						}
-						if(app_checks_limit == 0 && !metric_limits::log_enabled()) { break; }
+
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
+							app_data.first.c_str(), app_data.second.expiration_ts() -
+							(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
+						if (prometheus_conf::is_prometheus(app_data.first))
+						{
+							app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
+								prom_metrics_limit, m_prom_conf.max_metrics());
+						}
+						else
+						{
+							app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+								app_checks_limit, m_configuration->get_app_checks_limit());
+						}
+						app_data_set.emplace(app_data.first);
 					}
 				}
 			}
@@ -2524,7 +2512,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	if(app_checks_limit == 0)
 	{
 		g_logger.format(sinsp_logger::SEV_WARNING, "App checks metrics limit (%u) reached",
-						m_configuration->get_app_checks_limit());
+			m_configuration->get_app_checks_limit());
+	}
+	if(prom_metrics_limit == 0)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "Prometheus metrics limit (%u) reached",
+			m_prom_conf.max_metrics());
 	}
 
 #ifndef _WIN32

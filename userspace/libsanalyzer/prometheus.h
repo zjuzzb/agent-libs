@@ -4,11 +4,13 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <algorithm>
 
 #include "third-party/jsoncpp/json/json.h"
 #include "posix_queue.h"
 #include "metric_limits.h"
 #include "draios.pb.h"
+#include "analyzer_settings.h"
 // suppress depreacated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
@@ -60,7 +62,7 @@ public:
 		m_enabled(false),
 		m_log_errors(true),
 		m_interval(-1),
-		m_max_metrics(-1),
+		m_max_metrics(PROM_METRICS_HARD_LIMIT),
 		m_max_metrics_per_proc(-1),
 		m_max_tags_per_metric(-1)
 	{}
@@ -72,6 +74,19 @@ public:
 		return m_enabled;
 	}
 
+	unsigned max_metrics() const {
+		return m_max_metrics;
+	}
+
+	void set_max_metrics(int i) {
+		m_max_metrics = ((i<0) ? PROM_METRICS_HARD_LIMIT : min((unsigned)i, PROM_METRICS_HARD_LIMIT));
+	}
+
+	static bool is_prometheus(string str)
+	{
+		const string prom_str("prometheus");
+		return !str.compare(0, prom_str.size(), prom_str);
+	}
 private:
 	friend class YAML::convert<prometheus_conf>;
 	friend class prom_process;
@@ -80,7 +95,7 @@ private:
 	bool m_enabled;
 	bool m_log_errors;
 	int m_interval;
-	int m_max_metrics;
+	unsigned m_max_metrics;
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
 	vector<port_filter_rule> m_port_rules;

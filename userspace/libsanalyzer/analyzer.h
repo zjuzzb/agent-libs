@@ -365,13 +365,20 @@ public:
 		if(!m_app_checks.empty())
 		{
 			check_metric_limits();
-			m_app_proxy = make_unique<app_checks_proxy>();
+			if (!m_app_proxy)
+			{
+				m_app_proxy = make_unique<app_checks_proxy>();
+			}
 		}
 	}
 
 	void set_prometheus_conf(const prometheus_conf& pconf)
 	{
 		m_prom_conf = pconf;
+		if (m_prom_conf.enabled() && !m_app_proxy)
+		{
+			m_app_proxy = make_unique<app_checks_proxy>();
+		}
 	}
 #endif // _WIN32
 
