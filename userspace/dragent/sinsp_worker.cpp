@@ -459,6 +459,7 @@ void sinsp_worker::run()
 
 				m_inspector->close();
 				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER;
+				m_analyzer->set_sampling_ratio(1);
 
 				m_inspector->open_nodriver();
 				// Change these values so the inactive thread pruning
