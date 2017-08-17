@@ -546,6 +546,34 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		auto x = state->Add();
 		x->CopyFrom(*grp);
 		x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
+
+		// Put back legacy metrics
+		auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
+		{
+			auto it = find_if(grp->metrics().cbegin(), grp->metrics().cend(), [&metric_name](const draiosproto::app_metric& m)
+			{
+				return m.name() == metric_name;
+			});
+			if(it != grp->metrics().cend())
+			{
+				dest->mutable_metrics()->Add()->CopyFrom(*it);
+			}
+		};
+
+		if(x->uid().kind() == "k8s_pod")
+		{
+			add_metric_if_found("kubernetes.pod.container.status.restarts", x);
+		}
+		else if(x->uid().kind() == "k8s_replicaset")
+		{
+			add_metric_if_found("kubernetes.replicaset.status.replicas", x);
+			add_metric_if_found("kubernetes.replicaset.spec.replicas", x);
+		}
+		else if(x->uid().kind() == "k8s_replicationcontroller")
+		{
+			add_metric_if_found("kubernetes.replicationcontroller.status.replicas", x);
+			add_metric_if_found("kubernetes.replicationcontroller.spec.replicas", x);
+		}
 	}
 }
 
@@ -861,7 +889,7 @@ std::string infrastructure_state::get_k8s_cluster_id() const
 			      "Unable to find default namespace for cluster id");
 			break;
 		}
-	        auto con_tags = it->second->tags();
+		auto con_tags = it->second->tags();
 		auto tag_iter = con_tags.find("kubernetes.namespace.name");
 		// This "default" is the namespace name,
 		// not to be confused with final return statement below
@@ -872,6 +900,5 @@ std::string infrastructure_state::get_k8s_cluster_id() const
 		}
 	}
 
-	// XXX return "default" or the empty string?
-	return "default";
+	return "";
 }

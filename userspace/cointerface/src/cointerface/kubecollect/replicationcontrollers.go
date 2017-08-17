@@ -45,9 +45,6 @@ func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
 	AppendMetricInt32(metrics, prefix+"status.availableReplicas", replicationController.Status.AvailableReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicationController.Spec.Replicas)
-	// Legacy metrics
-	AppendMetricInt32(metrics, prefix+"replicas.running", replicationController.Status.Replicas)
-	AppendMetricPtrInt32(metrics, prefix+"replicas.desired", replicationController.Spec.Replicas)
 }
 
 func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {

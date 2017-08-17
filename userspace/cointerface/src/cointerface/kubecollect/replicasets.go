@@ -88,9 +88,6 @@ func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicaSet.Status.FullyLabeledReplicas)
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicaSet.Status.ReadyReplicas)
 	AppendMetricPtrInt32(metrics, prefix+"spec.replicas", replicaSet.Spec.Replicas)
-	// Legacy metrics
-	AppendMetricInt32(metrics, prefix+"replicas.running", replicaSet.Status.Replicas)
-	AppendMetricPtrInt32(metrics, prefix+"replicas.desired", replicaSet.Spec.Replicas)
 }
 
 func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {

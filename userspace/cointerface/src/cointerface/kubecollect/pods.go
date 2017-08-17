@@ -327,7 +327,6 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 		restartCount += c.RestartCount
 	}
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
-	AppendMetricInt32(metrics, prefix+"restart.count", restartCount)
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
