@@ -5358,18 +5358,21 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			!m_configuration->get_k8s_cluster_name().empty() ?
 			m_configuration->get_k8s_cluster_name() :
 			m_infrastructure_state->get_k8s_cluster_name();
-
-		// Build the orchestrator state of the emitted containers (without metrics)
-		m_metrics->mutable_orchestrator_state()->set_cluster_id(
-			m_infrastructure_state->get_k8s_cluster_id());
-		m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
-		m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
-		if(check_k8s_delegation()) {
-			m_metrics->mutable_global_orchestrator_state()->set_cluster_id(
-				m_infrastructure_state->get_k8s_cluster_id());
-			m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
-			// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-			m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
+		auto cluster_id = m_infrastructure_state->get_k8s_cluster_id();
+		// if cluster_id is empty, better to don't send anything since
+		// the backend relies on this field
+		if(!cluster_id.empty())
+		{
+			// Build the orchestrator state of the emitted containers (without metrics)
+			m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
+			m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
+			if(check_k8s_delegation()) {
+				m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
+				m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
+				// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
+				m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
+			}
 		}
 	}
 
