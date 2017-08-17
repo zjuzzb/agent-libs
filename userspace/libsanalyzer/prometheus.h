@@ -18,6 +18,7 @@
 
 Json::Value yaml_to_json(const YAML::Node& node);
 class sinsp_container_info;
+class yaml_configuration;
 
 class prometheus_conf
 {
@@ -59,6 +60,7 @@ public:
 		m_enabled(false),
 		m_log_errors(true),
 		m_interval(-1),
+		m_max_metrics(-1),
 		m_max_metrics_per_proc(-1),
 		m_max_tags_per_metric(-1)
 	{}
@@ -70,15 +72,15 @@ public:
 		return m_enabled;
 	}
 
-	// Json::Value to_json() const;
-
 private:
 	friend class YAML::convert<prometheus_conf>;
 	friend class prom_process;
+	friend class dragent_configuration;
 
 	bool m_enabled;
 	bool m_log_errors;
 	int m_interval;
+	int m_max_metrics;
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
 	vector<port_filter_rule> m_port_rules;
@@ -87,10 +89,14 @@ private:
 
 namespace YAML {
 	template<>
-	struct convert<prometheus_conf> {
-		static Node encode(const prometheus_conf& rhs);
-
-		static bool decode(const Node& node, prometheus_conf& rhs);
+	struct convert<prometheus_conf::port_filter_rule> {
+		static Node encode(const prometheus_conf::port_filter_rule& rhs);
+		static bool decode(const Node& node, prometheus_conf::port_filter_rule& rhs);
+	};
+	template<>
+	struct convert<prometheus_conf::filter_rule> {
+		static Node encode(const prometheus_conf::filter_rule& rhs);
+		static bool decode(const Node& node, prometheus_conf::filter_rule& rhs);
 	};
 }
 

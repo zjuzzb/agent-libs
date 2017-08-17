@@ -1,4 +1,5 @@
 #include <fnmatch.h>
+// #include "../dragent/configuration.h"
 #include "prometheus.h"
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -201,144 +202,106 @@ prometheus_conf::filter_condition::param2type(std::string pstr)
 	return param_type::string;
 }
 
-bool YAML::convert<prometheus_conf>::decode(const YAML::Node &node, prometheus_conf &rhs)
+bool YAML::convert<prometheus_conf::port_filter_rule>::decode(const YAML::Node &node, prometheus_conf::port_filter_rule &rhs)
 {
-	/*
-	 * Example:
-	 * prometheus:
-	 *   enabled: true
-	 *   filter:
-	 *     - include:
-	 *       port: 8900
-	 *     - include:
-	 *       container.image: sysdig/agent
-	 *     - exclude:
-	 *       container.image: cassandra
-	 */
-	auto enabled_node = node["enabled"];
-	if(enabled_node.IsScalar())
-	{
-		rhs.m_enabled = enabled_node.as<bool>();
-	}
-	auto log_errors_node = node["log_errors"];
-	if(log_errors_node.IsScalar())
-	{
-		rhs.m_log_errors = log_errors_node.as<bool>();
-	}
-	auto interval_node = node["interval"];
-	if(interval_node.IsScalar())
-	{
-		rhs.m_interval = interval_node.as<int>();
-	}
-	auto metperproc_node = node["max_metrics_per_process"];
-	if(metperproc_node.IsScalar())
-	{
-		rhs.m_max_metrics_per_proc = metperproc_node.as<int>();
-	}
-	auto tagspermet_node = node["max_tags_per_metric"];
-	if(tagspermet_node.IsScalar())
-	{
-		rhs.m_max_tags_per_metric = tagspermet_node.as<int>();
-	}
+	if (!node.IsMap()) 
+		return false;
 
-	auto portfilter_node = node["port_filter"];
-	if (portfilter_node.IsSequence())
+	// This decoder gets called for every port-filter rule 
+	for (auto rule_it = node.begin();
+		rule_it != node.end(); rule_it++)
 	{
-		for (const auto& rule_node : portfilter_node)
+		if (!rule_it->first.IsScalar())
 		{
-			if (!rule_node.IsMap()) 
-				continue;
-
-			for (auto rule_it = rule_node.begin();
-				rule_it != rule_node.end(); rule_it++)
-			{
-				prometheus_conf::port_filter_rule rule;
-				if (rule_it->first.IsScalar())
-				{
-					rule.m_include = (rule_it->first.as<string>() == "include");
-				}
-
-				if (rule_it->second.IsSequence())
-				{
-					rule.m_use_set = true;
-					for (const auto& port_node : rule_it->second)
-					{
-						if (!port_node.IsScalar())
-							continue;
-
-						uint16_t p = port_node.as<uint16_t>();
-						if (p) {
-							rule.m_port_set.insert(p);
-						}
-					}
-				}
-				else if (rule_it->second.IsScalar())
-				{
-					rule.m_use_set = false;
-					// Parse single port or range
-					string str = rule_it->second.as<string>();
-					auto delim = str.find("-");
-					rule.m_range_start = atoi(str.substr(0, delim).c_str());
-					rule.m_range_end = (delim == string::npos) ?
-						rule.m_range_start :
-						atoi(str.substr(delim + 1, string::npos).c_str());
-				}
-				rhs.m_port_rules.emplace_back(rule);
-			}
+			continue;
 		}
-	}
+		prometheus_conf::port_filter_rule rule;
+		rule.m_include = (rule_it->first.as<string>() == "include");
 
-	auto filter_node = node["process_filter"];
-	if (filter_node.IsSequence())
-	{
-		for (const auto& rule_node : filter_node)
+		if (rule_it->second.IsSequence())
 		{
-			if (!rule_node.IsMap()) 
-				continue;
-
-			for (auto rule_it = rule_node.begin();
-				rule_it != rule_node.end(); rule_it++)
+			rule.m_use_set = true;
+			for (const auto& port_node : rule_it->second)
 			{
-				prometheus_conf::filter_rule rule;
-				if (rule_it->first.IsScalar())
-				{
-					rule.m_include = (rule_it->first.as<string>() == "include");
-				}
-				if (!rule_it->second.IsMap())
-					continue; // The rule conditions should be in map form
+				if (!port_node.IsScalar())
+					continue;
 
-				for (auto cond_it = rule_it->second.begin();
-					cond_it != rule_it->second.end(); cond_it++)
-				{
-					if (!cond_it->first.IsScalar())
-						continue;
-
-					prometheus_conf::filter_condition cond;
-					cond.m_param = cond_it->first.as<string>();
-					if (cond.m_param.empty())
-						continue;
-					cond.m_param_type = prometheus_conf::filter_condition::param2type(cond.m_param);
-					if (cond.m_param_type == prometheus_conf::filter_condition::
-						param_type::container_label)
-					{
-						// strip "container.label" from param
-						cond.m_param = cond.m_param.substr(strlen("container.label")+1, string::npos);
-					}
-					if (cond_it->second.IsScalar())
-					{
-						cond.m_pattern = cond_it->second.as<string>();
-					}
-					rule.m_cond.emplace_back(cond);
-				}
-				if (!rule.m_cond.empty())
-				{
-					rhs.m_rules.emplace_back(rule);
+				uint16_t p = port_node.as<uint16_t>();
+				if (p) {
+					rule.m_port_set.insert(p);
 				}
 			}
 		}
-	}
+		else if (rule_it->second.IsScalar())
+		{
+			rule.m_use_set = false;
+			// Parse single port or range
+			string str = rule_it->second.as<string>();
+			auto delim = str.find("-");
+			rule.m_range_start = atoi(str.substr(0, delim).c_str());
+			rule.m_range_end = (delim == string::npos) ?
+				rule.m_range_start :
+				atoi(str.substr(delim + 1, string::npos).c_str());
+		}
+		else
+		{
+			continue;
+		}
 
-	return true;
+		rhs = rule;
+		return true;
+	}
+	return false;
+}
+
+bool YAML::convert<prometheus_conf::filter_rule>::decode(const YAML::Node &node, prometheus_conf::filter_rule &rhs)
+{
+	if (!node.IsMap()) 
+		return false;
+
+	for (auto rule_it = node.begin();
+		rule_it != node.end(); rule_it++)
+	{
+		if (!rule_it->first.IsScalar())
+		{
+			continue;
+		}
+		prometheus_conf::filter_rule rule;
+		rule.m_include = (rule_it->first.as<string>() == "include");
+
+		if (!rule_it->second.IsMap())
+			continue; // The rule conditions should be in map form
+
+		for (auto cond_it = rule_it->second.begin();
+			cond_it != rule_it->second.end(); cond_it++)
+		{
+			if (!cond_it->first.IsScalar())
+				continue;
+
+			prometheus_conf::filter_condition cond;
+			cond.m_param = cond_it->first.as<string>();
+			if (cond.m_param.empty())
+				continue;
+			cond.m_param_type = prometheus_conf::filter_condition::param2type(cond.m_param);
+			if (cond.m_param_type == prometheus_conf::filter_condition::
+				param_type::container_label)
+			{
+				// strip "container.label" from param
+				cond.m_param = cond.m_param.substr(strlen("container.label")+1, string::npos);
+			}
+			if (cond_it->second.IsScalar())
+			{
+				cond.m_pattern = cond_it->second.as<string>();
+			}
+			rule.m_cond.emplace_back(cond);
+		}
+		if (!rule.m_cond.empty())
+		{
+			rhs = rule;
+			return true;
+		}
+	}
+	return false;
 }
 
 Json::Value prom_process::to_json(const prometheus_conf &conf) const
@@ -349,7 +312,6 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 	ret["vpid"] = m_vpid;
 	ret["ports"] = Json::Value(Json::arrayValue);
 
-	// Not very efficient to pass these global configs per process
 	ret["log_errors"] = conf.m_log_errors;
 	if (conf.m_interval > 0)
 		ret["interval"] = conf.m_interval;

@@ -558,7 +558,8 @@ prometheus:
   enabled: false
   interval: 10
   log_errors: true
-  max_metrics_per_process: 50
+  max_metrics: 1000
+  max_metrics_per_process: 100
   max_tags_per_metric: 20
   # Filtering ports for known prometheus exporters
   # Any ports not matching a rule will not be scanned
@@ -580,6 +581,10 @@ prometheus:
     # Uncomment this to exclude processes with any matching appcheck
     # - exclude:
     #     appcheck.match: "*"
+    - include:
+        container.label.io.prometheus.scrape: "true"
+    - exclude:
+        container.label.io.prometheus.scrape: "false"
     # special rule to include any process with a matched port
     - include:
         port: matched

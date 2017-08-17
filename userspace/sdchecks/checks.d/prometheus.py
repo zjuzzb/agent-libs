@@ -10,7 +10,7 @@ from prometheus_client.parser import text_string_to_metric_families
 
 # project
 from checks import AgentCheck
-
+from sdchecks import AppCheckDontRetryException
 
 class Prometheus(AgentCheck):
 
@@ -38,7 +38,7 @@ class Prometheus(AgentCheck):
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
 
-        metrics = self.get_prometheus_metrics(query_url, timeout, instance.get("name", "prometheus"))
+        metrics = self.get_prometheus_metrics(query_url, timeout, "prometheus")
         num = 0
         for family in metrics:
             parse_sum = None
@@ -100,7 +100,9 @@ class Prometheus(AgentCheck):
             self.service_check(name, AgentCheck.CRITICAL,
                 message='%s returned a status of %s' % (url, r.status_code),
                 tags = ["url:{0}".format(url)])
-            raise Exception("Got %s when hitting %s" % (r.status_code, url))
+            raise AppCheckDontRetryException("Got %s when hitting %s" % (r.status_code, url))
+        except (ValueError, requests.exceptions.ConnectionError) as ex:
+            raise AppCheckDontRetryException(ex)
 
         else:
             self.service_check(name, AgentCheck.OK,

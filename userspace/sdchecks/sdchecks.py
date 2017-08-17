@@ -90,6 +90,9 @@ class YamlConfig:
 class AppCheckException(Exception):
     pass
 
+class AppCheckDontRetryException(AppCheckException):
+    pass
+
 def _load_check_module(name, module_name, directory):
     try:
         return imp.load_source('checksd_%s' % name, os.path.join(directory, module_name + ".py"))
@@ -164,8 +167,6 @@ class AppCheckInstance:
         self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
-        self.is_generated = _is_affirmative(check.get("is_generated", False))
-        # self.retry = _is_affirmative(check.get("retry", True))
         self.retry = True
 
         try:
@@ -217,15 +218,12 @@ class AppCheckInstance:
                     if ret != 0:
                         raise OSError("Cannot setns to pid: %d" % self.pid)
             self.check_instance.check(self.instance_conf)
+        except AppCheckDontRetryException as ex:
+            logging.info("Skip retries for Prometheus error: %s", str(ex))
+            self.retry = False
+            saved_ex = ex
+
         except Exception as ex: # Raised from check run
-            # print "Exception:", type(ex), ":", ex
-            # This may be ambiguous. It may be hard to tell apart some
-            # temporary errors from protocol errors
-            # Tried to do this by catching ConnectionError, but couldn't
-            # figure out how to distinguish ProtocolError from others
-            if self.is_generated and (repr(ex).startswith("ConnectionError(ProtocolError") or repr(ex).startswith("HTTPError") or repr(ex).startswith("ValueError")):
-                logging.info("Skip retries for Prometheus error: %s\n", str(ex))
-                self.retry = False
             traceback_message = traceback.format_exc()
             saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
         finally:
@@ -397,7 +395,8 @@ class Application:
         numchecks = 0
         numrun = 0
         nummetrics = 0
-        # Temp: create app_checks for prometheus
+
+        # Create app_checks for prometheus
         for pc in promchecks:
             # print "promcheck:", pc
             for port in pc["ports"]:
@@ -411,9 +410,8 @@ class Application:
                     "check_module": "prometheus",
                     "log_errors": pc.get("log_errors", True),
                     "interval": pc.get("interval", 1),
-                    "is_generated": True,
                     "conf": newconf,
-                    "name": "prometheus" + str(port)
+                    "name": "prometheus." + str(port)
                 }
                 newproc = {
                     "check": newcheck,

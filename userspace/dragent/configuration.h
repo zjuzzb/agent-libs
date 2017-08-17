@@ -122,6 +122,32 @@ public:
 	}
 
 	/**
+	* Will retrieve first found arbitrarily deeply nested sequence
+	* into an STL container T. Also supports scalars;
+	* if found entity is scalar, a container with a
+	* single member is returned.
+	*/
+	template<typename T, typename... Args>
+	T get_first_deep_sequence(Args... args)
+	{
+		T ret;
+		try
+		{
+			for(const auto& root : m_roots)
+			{
+				get_sequence(ret, root, args...);
+				if (!ret.empty())
+					return ret;
+			}
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Config file error."));
+		}
+		return ret;
+	}
+
+	/**
 	* Will retrieve arbitrarily deeply nested sequence
 	* into an STL container T. Also supports scalars;
 	* if found entity is scalar, a container with a
@@ -304,22 +330,6 @@ public:
 				}
 			}
 		}
-		return ret;
-	}
-
-	template<typename T>
-	T get_struct(const string& key)
-	{
-		for(const auto& root : m_roots)
-		{
-			auto node = root[key];
-			if (node.IsDefined())
-			{
-				return node.as<T>();
-			}
-		}
-		T ret;
-
 		return ret;
 	}
 

@@ -1882,36 +1882,49 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				if (app_checks.empty()) {
 					match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
+				auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
 
 				// Prometheus checks are done through the app proxy as well.
+				bool have_prometheus_metrics = false;
+				if (app_metrics_pid != m_app_metrics.end())
+				{
+					string prom_str("prometheus");
+					for (const auto& app_met : app_metrics_pid->second)
+					{
+						if ((!app_met.first.compare(0, prom_str.size(), prom_str)) &&
+							(app_met.second.expiration_ts() > (m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
+						{
+							have_prometheus_metrics = true;
+							break;
+						}
+					}
+				}
 				// Looking for matches after app_checks because a rule may
 				// be specified for finding an app_checks match
-				match_prom_checks(tinfo, mtinfo, prom_procs);
-
-				if (!app_checks.empty())
+				if (!have_prometheus_metrics)
 				{
-					auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
+					match_prom_checks(tinfo, mtinfo, prom_procs);
+				}
 
-					for (auto& appcheck : app_checks)
+				for (auto& appcheck : app_checks)
+				{
+					decltype(app_metrics_pid->second.end()) app_met_it;
+					if ((app_metrics_pid != m_app_metrics.end()) &&
+						((app_met_it = app_metrics_pid->second.find(appcheck.name())) !=
+						app_metrics_pid->second.end()) &&
+						(app_met_it->second.expiration_ts() >
+						(m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
 					{
-						decltype(app_metrics_pid->second.end()) app_met_it;
-						if ((app_metrics_pid != m_app_metrics.end()) &&
-							((app_met_it = app_metrics_pid->second.find(appcheck.name())) !=
-							app_metrics_pid->second.end()) &&
-							(app_met_it->second.expiration_ts() >
-							(m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
-						{
-							// Found metrics for this pid and name that won't
-							// expire this cycle so we use them instead of
-							// running the check again
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"App metrics for %d,%s are still good",
-								tinfo->m_pid, appcheck.name().c_str());
-						}
-						else
-						{
-							app_checks_processes.push_back(move(appcheck));
-						}
+						// Found metrics for this pid and name that won't
+						// expire this cycle so we use them instead of
+						// running the check again
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"App metrics for %d,%s are still good",
+							tinfo->m_pid, appcheck.name().c_str());
+					}
+					else
+					{
+						app_checks_processes.push_back(move(appcheck));
 					}
 				}
 			}
