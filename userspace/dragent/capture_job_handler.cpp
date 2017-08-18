@@ -68,6 +68,7 @@ private:
 	uint64_t m_past_size;
 	bool m_delete_file_when_done;
 	bool m_send_file;
+	string m_notification_desc;
 	string m_file;
 
 	// This is only modified in flush() or the destructor
@@ -165,6 +166,7 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 	m_past_duration_ns = request.m_past_duration_ns;
 	m_delete_file_when_done = request.m_delete_file_when_done;
 	m_send_file = request.m_send_file;
+	m_notification_desc = request.m_notification_desc;
 
 	// If the start time is unspecified, it's set to the last
 	// event time, or if that fails the current time.
@@ -197,8 +199,13 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 	}
 	else
 	{
-		// We inject a notification to make it easier to identify the starting point
-		m_memdumper->push_notification(m_start_ns, m_handler->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
+		// We inject a notification to make it easier to identify the starting point.
+		if(m_notification_desc.empty())
+		{
+			m_notification_desc = "starting capture job " + request.m_token;
+		}
+
+		m_memdumper->push_notification(m_start_ns, m_handler->m_sysdig_pid, request.m_token, request.m_notification_desc);
 
 		// This will create a file on disk that is the result
 		// of the applying the filter against the events held
@@ -320,21 +327,6 @@ void capture_job::process_event(sinsp_evt *ev)
 	Poco::ScopedLock<Poco::Mutex> lck(m_mtx);
 
 	if(m_state != ST_INPROGRESS)
-	{
-		return;
-	}
-
-	//
-	// We don't want dragent to show up in captures
-	//
-	sinsp_threadinfo* tinfo = ev->get_thread_info();
-	uint16_t etype = ev->get_type();
-
-	if(!m_configuration->m_capture_dragent_events &&
-	   tinfo &&
-	   tinfo->m_pid == m_handler->m_sysdig_pid &&
-	   etype != PPME_SCHEDSWITCH_1_E &&
-	   etype != PPME_SCHEDSWITCH_6_E)
 	{
 		return;
 	}
@@ -539,6 +531,7 @@ capture_job_handler::capture_job_handler(dragent_configuration *configuration,
 					 protocol_queue *queue,
 					 atomic<bool> *enable_autodrop)
 	: m_sysdig_pid(getpid()),
+	  m_sysdig_sid(0),
 	  m_log_stats_interval(10000000000),
 	  m_inspector(NULL),
 	  m_configuration(configuration),
@@ -623,6 +616,18 @@ void capture_job_handler::run()
 void capture_job_handler::process_event(sinsp_evt *ev)
 {
 	m_last_event_ns = ev->get_ts();
+
+	//
+	// We don't want dragent to show up in captures
+	//
+	sinsp_threadinfo* tinfo = ev->get_thread_info();
+
+	if(!m_configuration->m_capture_dragent_events &&
+	   tinfo &&
+	   tinfo->m_sid == m_sysdig_sid)
+	{
+		return;
+	}
 
 	//
 	// If required, dump the event in the memory circular buffer
@@ -797,6 +802,11 @@ void capture_job_handler::start_job(const dump_job_request& request)
 	{
 		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
 		return;
+	}
+
+	if(m_sysdig_sid == 0)
+	{
+		m_sysdig_sid = getsid(0);
 	}
 
 	// If there were no capture jobs previously, and now there

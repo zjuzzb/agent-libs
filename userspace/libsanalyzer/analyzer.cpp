@@ -3671,7 +3671,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			double loadavg[3] = {0};
 			if(getloadavg(loadavg, 3) != -1)
 			{
-				if(m_inspector->is_live())
+				if(!m_inspector->is_capture())
 				{
 					m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
 					m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
@@ -4802,7 +4802,7 @@ void sinsp_analyzer::get_mesos_data()
 	if(m_mesos && m_mesos->get_state().has_data())
 	{
 		ASSERT(m_metrics);
-		mesos_proto(*m_metrics, m_mesos->get_state()).get_proto();
+		mesos_proto(*m_metrics, m_mesos->get_state(), m_configuration->get_marathon_skip_labels()).get_proto();
 
 		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_mesos())
 		{

@@ -1,0 +1,81 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: sysdig-agent
+  labels:
+    app: sysdig-agent
+spec:
+  template:
+    metadata:
+      labels:
+        name: sysdig-agent
+      annotations:
+        rkt.alpha.kubernetes.io/stage1-name-override: coreos.com/rkt/stage1-fly
+    spec:
+      volumes:
+        - name: dev-vol
+          hostPath:
+            path: /dev
+        - name: proc-vol
+          hostPath:
+            path: /proc
+        - name: boot-vol
+          hostPath:
+            path: /boot
+        - name: modules-vol
+          hostPath:
+            path: /lib/modules
+        - name: usr-vol
+          hostPath:
+            path: /usr
+        - name: rkt-vol
+          hostPath:
+            path: /var/lib/rkt
+        # Uncomment this to enable Docker containers support
+        # - name: docker-sock
+        #   hostPath:
+        #     path: /var/run/docker.sock
+      hostNetwork: true
+      hostPID: true
+      containers:
+        - name: sysdig-agent
+          image: sysdig/agent:dev
+          # With this option, rkt pulls image from scratch even if
+          # it it's already downloaded in the system
+          # so may be better to disable it
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          env:
+            - name: ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sysdig-agent
+                  key: access-key
+            - name: COLLECTOR
+              valueFrom:
+                configMapKeyRef:
+                  name: sysdig-agent
+                  key: collector
+          volumeMounts:
+            - mountPath: /host/dev
+              name: dev-vol
+              readOnly: false
+            - mountPath: /host/proc
+              name: proc-vol
+              readOnly: true
+            - mountPath: /host/boot
+              name: boot-vol
+              readOnly: true
+            - mountPath: /host/lib/modules
+              name: modules-vol
+              readOnly: true
+            - mountPath: /host/usr
+              name: usr-vol
+              readOnly: true
+            - mountPath: /host/var/lib/rkt
+              name: rkt-vol
+              readOnly: true
+            # Uncomment this to enable Docker containers support
+            # - mountPath: /host/run/lib/docker.sock
+            #   name: docker-sock

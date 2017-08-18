@@ -28,9 +28,7 @@ public class Application {
     private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final long VMS_CLEANUP_INTERVAL = 10 * 60 * 1000;
-    private static final double JAVA_VERSION;
-    private static final double MIN_JAVA_VERSION = 1.6;
-    private static final int MONITOR_DONT_RESTART_CODE = 17;
+    public static final int MONITOR_DONT_RESTART_CODE = 17;
     private static final String HELP_TEXT = "Available commands:\n" +
             "getMetrics <pid> <vpid> - Get metrics from specified JVM, metrics are configure on dragent.yaml\n" +
             "availableMetrics <pid> <vpid> - Print all available beans from specified JVM, " +
@@ -42,11 +40,6 @@ public class Application {
         FilterProvider filters = new SimpleFilterProvider().addFilter("BeanAttributeDataFilter", new BeanData
                 .BeanAttributeDataFilter());
         MAPPER.setFilters(filters);
-
-        String version = System.getProperty("java.version");
-        int pos = version.indexOf('.');
-        pos = version.indexOf('.', pos+1);
-        JAVA_VERSION = Double.parseDouble(version.substring (0, pos));
     }
 
     /**
@@ -59,10 +52,6 @@ public class Application {
             LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));
             LOGGER.info(String.format("Java classpath: %s", System.getProperty("java.class.path")));
-            if(JAVA_VERSION < MIN_JAVA_VERSION) {
-                LOGGER.severe("Java version unsupported");
-                System.exit(MONITOR_DONT_RESTART_CODE);
-            }
             if(args.length > 0) {
                 app.runWithArgs(args);
             } else {

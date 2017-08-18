@@ -47,7 +47,7 @@ class memdump_test : public testing::Test
 {
 protected:
 
-	virtual void SetUp()
+	void SetUpCaptures(bool capture_dragent_events)
 	{
 		// With the 10k packet size and our relatively slow
 		// reading of responses, we need a bigger than normal
@@ -60,7 +60,7 @@ protected:
 		m_configuration.init(NULL, false);
 		dragent_configuration::m_terminate = false;
 
-		m_configuration.m_capture_dragent_events  = true;
+		m_configuration.m_capture_dragent_events  = capture_dragent_events;
 		m_configuration.m_memdump_enabled = true;
 		m_configuration.m_security_enabled = false;
 		m_configuration.m_max_sysdig_captures = 10;
@@ -75,7 +75,7 @@ protected:
 			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
 
 			// To enable debug logging, change the tailing -1 to Message::Priority::PRIO_DEBUG
-			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, -1);
+			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
 
 			AutoPtr<Channel> null_channel(new Poco::NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
@@ -93,6 +93,11 @@ protected:
 		ThreadPool::defaultPool().start(*m_capture_job_handler, "capture_job_handler");
 		ThreadPool::defaultPool().start(*m_sinsp_worker, "sinsp_worker");
 
+	}
+
+	virtual void SetUp()
+	{
+		SetUpCaptures(true);
 	}
 
 	virtual void TearDown()
@@ -481,6 +486,16 @@ protected:
 	string agent_dump_token = "agent-dump-events";
 };
 
+class memdump_no_dragent_events_test : public memdump_test
+{
+protected:
+	virtual void SetUp()
+	{
+		SetUpCaptures(false);
+	}
+};
+
+
 TEST_F(memdump_test, standard_dump)
 {
 	// Set the dump chunk size to something very small so
@@ -522,4 +537,55 @@ TEST_F(memdump_test, overlapping_dumps)
 TEST_F(memdump_test, max_outstanding_dumps)
 {
 	perform_too_many_dumps();
+}
+
+TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
+{
+	perform_single_dump(true, false);
+
+	std::unique_ptr<sinsp> inspector = make_unique<sinsp>();
+	string filter = "proc.name=tests";
+	g_log->debug("Searching through trace file for any events with proc.name=tests");
+
+	inspector->set_hostname_and_port_resolution_mode(false);
+
+	inspector->set_filter(filter);
+
+	try
+	{
+		string dump_file = string("/tmp/agent-dump-events:single.scap");
+		inspector->open(dump_file);
+	}
+	catch(sinsp_exception e)
+	{
+		FAIL() << "Could not open dump file: " << e.what();
+		return;
+	}
+
+	while(1)
+	{
+		int32_t res;
+		sinsp_evt* evt;
+		res = inspector->next(&evt);
+
+		if(res == SCAP_EOF)
+		{
+			break;
+		}
+		else if(res == SCAP_TIMEOUT)
+		{
+			continue;
+		}
+		else if(res != SCAP_SUCCESS && res != SCAP_TIMEOUT)
+		{
+			FAIL() << "Got unexpected error from inspector->next(): " << res;
+			break;
+		}
+
+		// If we got any event other than a notification event, this is a failure.
+		if(evt->get_type() != PPME_NOTIFICATION_E)
+		{
+			FAIL() << "Got event other than notification event for test program";
+		}
+	}
 }

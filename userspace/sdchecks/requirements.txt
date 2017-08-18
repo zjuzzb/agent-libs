@@ -37,7 +37,7 @@ gearman==2.0.2
 python-memcached==1.53
 
 # checks.d/redis.py
-redis==2.10.3
+redis==2.10.5
 
 # checks.d/hdfs.py
 snakebite==2.7.1
@@ -48,16 +48,25 @@ docker-py==1.3.1
 # checks.d/snmp.py
 # Require a compiler because pycrypto is a dep
 pysnmp-mibs==0.1.6
-pysnmp==4.3.3
+pysnmp==4.3.5
 
 # checks.d/riakcs.py
 boto==2.36.0
 
 # checks.d/supervisor.py
-supervisor==3.1.3
+supervisor==3.3.0
 
 # checks.d/prometheus.py
 prometheus_client==0.0.15
 
 # sdchecks.py
 sysdig-tracers==0.1.2
+
+# checks.d/mongo.py
+pymongo==3.2
+
+# checks.d/spark.py
+beautifulsoup4==4.5.1
+
+# checks.d/network.py
+psutil==4.4.1

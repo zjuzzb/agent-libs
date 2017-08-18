@@ -1,3 +1,6 @@
+# (C) Sysdig, Inc. 2016-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
 
 # stdlib
 import logging
@@ -65,7 +68,7 @@ class Prometheus(AgentCheck):
                             continue
                         elif 'quantile' in tags:
                             quantile = int(float(tags['quantile']) * 100)
-                            logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
+                            # logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
                             self.gauge('%s.%dpercentile' % (name, quantile),
                                        value,
                                        tags)
@@ -76,12 +79,12 @@ class Prometheus(AgentCheck):
                         self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
                         num += 1
                 elif family.type == 'counter':
-                    logging.debug('prom: adding counter with name %s' %(name))
+                    # logging.debug('prom: adding counter with name %s' %(name))
                     self.rate(name, value, tags)
                     num += 1
                 else:
                     # Could be a gauge or untyped value, which we treat as a gauge for now
-                    logging.debug('prom: adding gauge with name %s' %(name))
+                    # logging.debug('prom: adding gauge with name %s' %(name))
                     self.gauge(name, value, tags)
                     num += 1
 

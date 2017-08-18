@@ -880,6 +880,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_dcos_enterprise_credentials.first = m_config->get_scalar<std::string>("dcos_user", "");
 	m_dcos_enterprise_credentials.second = m_config->get_scalar<std::string>("dcos_password", "");
 
+	std::vector<std::string> default_skip_labels = {"DCOS_PACKAGE_METADATA", "DCOS_PACKAGE_COMMAND"};
+	auto marathon_skip_labels_v = m_config->get_merged_sequence<std::string>("marathon_skip_labels", default_skip_labels);
+	m_marathon_skip_labels = std::set<std::string>(marathon_skip_labels_v.begin(), marathon_skip_labels_v.end());
+
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);

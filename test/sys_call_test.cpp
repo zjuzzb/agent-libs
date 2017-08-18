@@ -92,20 +92,29 @@ bool ends_with(std::string const &s, std::string const &ending)
 	}
 }
 
+void wait_for_message(Poco::Pipe &pipe, const char *msg)
+{
+	int mlen = strlen(msg);
+	char buf[mlen+1];
+	int readlen, nr;
+
+	for (readlen = nr = 0; readlen < mlen; readlen += nr)
+	{
+		nr = pipe.readBytes(buf+readlen, mlen-readlen);
+		if (nr < 1)
+			break;
+	}
+
+	if (readlen != mlen)
+	{
+		FAIL() << "Cannot read message, read=" << readlen;
+	}
+	ASSERT_EQ(0, strncmp((const char*)buf, msg, mlen)) << "Error waiting for message " << msg;
+}
+
 void wait_for_process_start(Poco::Pipe &pipe)
 {
-	auto start_s = "STARTED\n";
-	char buf[8];
-	// python writes the message on two write events
-	// the readBytes returns 7 bytes instead of 8
-	auto read = pipe.readBytes(buf, 8);
-	if (read == 7) {
-		pipe.readBytes(buf+read, 1);
-	} else if (read != 8)
-	{
-		FAIL() << "Cannot read STARTED message, read=";
-	}
-	ASSERT_EQ(0, strncmp((const char*)buf, (const char*)start_s, 8)) << "Error starting process";
+	wait_for_message(pipe, "STARTED\n");
 }
 
 void wait_for_all(process_handles_t &handles)

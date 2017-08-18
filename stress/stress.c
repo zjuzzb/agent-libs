@@ -7,34 +7,17 @@ void main(void)
 	int j = 0;
 	float cpu_time;
 	FILE *f;
+	char buf[1024];
 
-	cpu_time = (float)clock() / CLOCKS_PER_SEC;
-	while(1)
+	cpu_time = (float)clock() / CLOCKS_PER_SEC - cpu_time;
+	for(j = 0; j < 3000000; j++)
 	{
-		f = fopen("file.txt", "w+");
-		for(j = 0; j < 300000; j++)
-		{
-			fprintf(f, "ciaoz\n");
-		}
-		fclose(f);
+		f = fopen("/etc/passwd", "r");
+		fread(buf, sizeof(buf), 1, f);
+        fclose(f);
 	}
 
 	cpu_time = (float)clock() / CLOCKS_PER_SEC - cpu_time;
-
-	/*
-		cpu_time = (float)clock() / CLOCKS_PER_SEC - cpu_time;
-
-		for(j = 0; j < 30; j++)
-		{
-			f = fopen("/proc/net/if_inet6", "r");
-	        fclose(f);
-		}
-
-		cpu_time = (float)clock() / CLOCKS_PER_SEC - cpu_time;
-
-	    printf ("time: %5.2f\n", cpu_time);
-
-	//    sleep(10);
-	*/
+    printf ("time: %5.2f %d\n", cpu_time, (int)sizeof(buf));
 }
 

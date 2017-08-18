@@ -1,3 +1,9 @@
+# (C) Datadog, Inc. 2015-2016
+# (C) Paul Kirby <pkirby@matrix-solutions.com> 2014
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
+
 # stdlib
 import time
 
@@ -14,6 +20,8 @@ class TeamCityCheck(AgentCheck):
     DEFAULT_TIMEOUT = 10
     NEW_BUILD_URL = "http://{server}/guestAuth/app/rest/builds/?locator=buildType:{build_conf},sinceBuild:id:{since_build},status:SUCCESS"
     LAST_BUILD_URL = "http://{server}/guestAuth/app/rest/builds/?locator=buildType:{build_conf},count:1"
+    NEW_BUILD_URL_AUTHENTICATED = "http://{server}/httpAuth/app/rest/builds/?locator=buildType:{build_conf},sinceBuild:id:{since_build},status:SUCCESS"
+    LAST_BUILD_URL_AUTHENTICATED = "http://{server}/httpAuth/app/rest/builds/?locator=buildType:{build_conf},count:1"
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
@@ -21,18 +29,25 @@ class TeamCityCheck(AgentCheck):
         # Keep track of last build IDs per instance
         self.last_build_ids = {}
 
-    def _initialize_if_required(self, instance_name, server, build_conf):
+    def _initialize_if_required(self, instance_name, server, build_conf, ssl_validation, basic_http_authentication):
         # Already initialized
         if instance_name in self.last_build_ids:
             return
 
         self.log.debug("Initializing {0}".format(instance_name))
-        build_url = self.LAST_BUILD_URL.format(
-            server=server,
-            build_conf=build_conf
-        )
+
+        if basic_http_authentication:
+            build_url = self.LAST_BUILD_URL_AUTHENTICATED.format(
+                server=server,
+                build_conf=build_conf
+            )
+        else:
+            build_url = self.LAST_BUILD_URL.format(
+                server=server,
+                build_conf=build_conf
+            )
         try:
-            resp = requests.get(build_url, timeout=self.DEFAULT_TIMEOUT, headers=self.HEADERS)
+            resp = requests.get(build_url, timeout=self.DEFAULT_TIMEOUT, headers=self.HEADERS, verify=ssl_validation)
             resp.raise_for_status()
 
             last_build_id = resp.json().get('build')[0].get('id')
@@ -91,6 +106,8 @@ class TeamCityCheck(AgentCheck):
         if instance_name is None:
             raise Exception("Each instance must have a unique name")
 
+        ssl_validation = _is_affirmative(instance.get('ssl_validation', True))
+
         server = instance.get('server')
         if 'server' is None:
             raise Exception("Each instance must have a server")
@@ -102,18 +119,26 @@ class TeamCityCheck(AgentCheck):
         host = instance.get('host_affected') or self.hostname
         tags = instance.get('tags')
         is_deployment = _is_affirmative(instance.get('is_deployment', False))
+        basic_http_authentication = _is_affirmative(instance.get('basic_http_authentication', False))
 
-        self._initialize_if_required(instance_name, server, build_conf)
+        self._initialize_if_required(instance_name, server, build_conf, ssl_validation, basic_http_authentication)
 
         # Look for new successful builds
-        new_build_url = self.NEW_BUILD_URL.format(
-            server=server,
-            build_conf=build_conf,
-            since_build=self.last_build_ids[instance_name]
-        )
+        if basic_http_authentication:
+            new_build_url = self.NEW_BUILD_URL_AUTHENTICATED.format(
+                server=server,
+                build_conf=build_conf,
+                since_build=self.last_build_ids[instance_name]
+            )
+        else:
+            new_build_url = self.NEW_BUILD_URL.format(
+                server=server,
+                build_conf=build_conf,
+                since_build=self.last_build_ids[instance_name]
+            )
 
         try:
-            resp = requests.get(new_build_url, timeout=self.DEFAULT_TIMEOUT, headers=self.HEADERS)
+            resp = requests.get(new_build_url, timeout=self.DEFAULT_TIMEOUT, headers=self.HEADERS, verify=ssl_validation)
             resp.raise_for_status()
 
             new_builds = resp.json()
