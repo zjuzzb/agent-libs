@@ -38,8 +38,8 @@ add_executable(tests
 	forking.cpp
 	fs.cpp
 	memdump.cpp
-	tracers.cpp
 	metric_limits.cpp
+	internal_metrics.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp
@@ -53,6 +53,7 @@ add_executable(tests
 	tcp_client_server.cpp
 	tcp_client_server_ipv4_mapped.cpp
 	thread_state.cpp
+	tracers.cpp
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp

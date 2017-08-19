@@ -277,6 +277,8 @@ void run_on_interval::run(const Callable& c, uint64_t now)
 	}
 }
 
+// returns process rss in kb and cpu in [% * 100]
+bool get_proc_mem_and_cpu(long& kb, int& cpu, std::string* err = nullptr);
 void send_subprocess_heartbeat();
 
 class nsenter

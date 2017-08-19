@@ -848,6 +848,7 @@ message metrics {
     optional falco_baseline falcobl = 27; // baseline information for falco
     optional swarm_state swarm = 29;
     repeated uint32 config_percentiles = 30;  // configured percentiles
+    optional statsd_info internal_metrics = 31;
 }
 
 message dump_request_start {
@@ -1080,6 +1081,10 @@ message policy_event {
     optional manual_event_detail manual_details = 6;
 
     repeated action_result action_results = 7;
+
+    // If true, there were inspector events dropped recently, which
+    // might have affected the details in this policy event.
+    optional bool sinsp_events_dropped = 8;
 }
 
 message policy_events {

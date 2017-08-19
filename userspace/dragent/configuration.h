@@ -477,10 +477,10 @@ public:
 	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
-	static volatile bool m_signal_dump;
-	static volatile bool m_terminate;
-	static volatile bool m_send_log_report;
-	static volatile bool m_config_update;
+	static std::atomic<bool> m_signal_dump;
+	static std::atomic<bool> m_terminate;
+	static std::atomic<bool> m_send_log_report;
+	static std::atomic<bool> m_config_update;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
