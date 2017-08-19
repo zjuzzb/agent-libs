@@ -75,7 +75,7 @@ protected:
 			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
 
 			// To enable debug logging, change the tailing -1 to Message::Priority::PRIO_DEBUG
-			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
+			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, -1);
 
 			AutoPtr<Channel> null_channel(new Poco::NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
@@ -541,8 +541,6 @@ TEST_F(memdump_test, max_outstanding_dumps)
 	perform_too_many_dumps();
 }
 
-// Not reliably passing, will fix in a separate PR
-#if 0
 TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 {
 	perform_single_dump(true, false);
@@ -566,8 +564,12 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 		return;
 	}
 
+	sinsp_evt_formatter *formatter = new sinsp_evt_formatter(inspector.get(), std::string("*%evt.num %evt.outputtime %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.info"));
+
 	while(1)
 	{
+		std::string evstr;
+
 		int32_t res;
 		sinsp_evt* evt;
 		res = inspector->next(&evt);
@@ -586,11 +588,14 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 			break;
 		}
 
+		formatter->tostring(evt, &evstr);
+		g_log->debug(evstr);
+
 		// If we got any event other than a notification event, this is a failure.
 		if(evt->get_type() != PPME_NOTIFICATION_E)
 		{
-			FAIL() << "Got event other than notification event for test program";
+			FAIL() << "Got event other than notification event for test program: " + evstr;
 		}
 	}
+	delete(formatter);
 }
-#endif
