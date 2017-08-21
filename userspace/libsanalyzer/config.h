@@ -169,6 +169,8 @@ public:
 	void set_app_checks_limit(unsigned value);
 	bool get_cointerface_enabled() const;
 	void set_cointerface_enabled(bool enabled);
+	bool get_detect_stress_tools() const;
+	void set_detect_stress_tools(bool enabled);
 	bool get_swarm_enabled() const;
 	void set_swarm_enabled(bool enabled);
 private:
@@ -256,6 +258,7 @@ private:
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
 
+	bool m_detect_stress_tools;
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
 };

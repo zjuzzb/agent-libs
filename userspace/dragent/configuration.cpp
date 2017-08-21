@@ -299,6 +299,7 @@ dragent_configuration::dragent_configuration()
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
+	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 }
@@ -963,6 +964,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
+	m_detect_stress_tools = m_config->get_scalar<bool>("absorb_event_bursts", false);
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 }
@@ -994,6 +996,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
+	g_log->information("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
 	string ancestors;
 	for(auto s : m_command_lines_valid_ancestors)
 	{

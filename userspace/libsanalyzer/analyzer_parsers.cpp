@@ -249,14 +249,17 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Detect if this is a stress tool and in that case request to go in nodriver mode
 	//
-	if(m_analyzer->m_stress_tool_matcher.match(tinfo->m_comm))
+	if(m_analyzer->m_configuration->get_detect_stress_tools())
 	{
-		if(!m_analyzer->m_inspector->is_nodriver())
+		if(m_analyzer->m_stress_tool_matcher.match(tinfo->m_comm))
 		{
-			m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
-		}
+			if(!m_analyzer->m_inspector->is_nodriver())
+			{
+				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
+			}
 
-		return true;
+			return true;
+		}
 	}
 
 	//

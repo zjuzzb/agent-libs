@@ -367,7 +367,7 @@ void sinsp_worker::init()
 	{
 		m_inspector->open(m_configuration->m_input_filename);
 	}
-	else if (m_configuration->m_mode == dragent_mode_t::NODRIVER)
+	else if(m_configuration->m_mode == dragent_mode_t::NODRIVER)
 	{
 		m_inspector->open_nodriver();
 		// Change these values so the inactive thread pruning
@@ -377,6 +377,8 @@ void sinsp_worker::init()
 	}
 	else
 	{
+		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
+
 		m_inspector->open("");
 	}
 

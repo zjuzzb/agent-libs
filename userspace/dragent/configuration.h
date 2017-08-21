@@ -635,6 +635,7 @@ public:
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
+	bool m_detect_stress_tools = false;
 
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
