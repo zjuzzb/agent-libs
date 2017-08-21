@@ -255,6 +255,8 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 				m_formatters.tostring(evt, res->format, &output);
 				fdetail->set_output(output);
 
+				event->set_sinsp_events_dropped(m_mgr->get_analyzer()->recent_sinsp_events_dropped());
+
 				return event;
 			}
 		}

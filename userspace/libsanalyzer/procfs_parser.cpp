@@ -466,6 +466,39 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	return res;
 }
 
+long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
+{
+	long res = -1;
+	string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
+
+	// we are looking for /proc/[PID]/stat entry [(24) rss %ld],
+	// see http://man7.org/linux/man-pages/man5/proc.5.html
+	// the important bit here is that [(2) comm %s] may contain spaces, so sscanf is not bullet-proof;
+	// we find the first closing paren (ie. skip the first two entries) and then extract desired values
+	// from the rest of the line. so, (24), after adjustment for shift and zero-base, translates to (21)
+	std::ifstream f(path);
+	std::string line;
+	if(std::getline(f, line))
+	{
+		if(line.size())
+		{
+			std::string::size_type pos = line.find(')');
+			if((pos != std::string::npos) && (line.size() > pos + 1))
+			{
+				StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+				if(st.count() >= 22)
+				{
+					res = strtol(st[21].c_str(), nullptr, 10);
+					if(res == LONG_MAX && errno == ERANGE) { ASSERT(false);}
+					return sysconf(_SC_PAGESIZE) * res;
+				}
+			}
+		}
+	}
+
+	return res;
+}
+
 //
 // Scan a directory containing multiple processes under /proc
 //
@@ -578,8 +611,8 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;
 		fs.type =  entry->mnt_type;
-		fs.available_bytes = blocksize * statfs.f_bavail; 
-		fs.size_bytes = blocksize * statfs.f_blocks; 
+		fs.available_bytes = blocksize * statfs.f_bavail;
+		fs.size_bytes = blocksize * statfs.f_blocks;
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 		fs.total_inodes = statfs.f_files;
 		fs.used_inodes = statfs.f_files - statfs.f_ffree;

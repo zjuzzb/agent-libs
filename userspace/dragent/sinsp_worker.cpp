@@ -12,6 +12,7 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
+			   internal_metrics::sptr_t im,
 			   protocol_queue* queue,
 			   atomic<bool> *enable_autodrop,
 			   synchronized_policy_events *policy_events,
@@ -32,7 +33,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
 	m_next_iflist_refresh_ns(0),
-	m_aws_metadata_refresher(configuration)
+	m_aws_metadata_refresher(configuration),
+	m_internal_metrics(im)
 {
 	m_last_mode_switch_time = 0;
 }
@@ -68,6 +70,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
+	m_analyzer->set_internal_metrics(m_internal_metrics);
+
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
 		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling, m_configuration->m_jmx_limit);
@@ -332,7 +336,8 @@ void sinsp_worker::init()
 		m_security_mgr->init(m_inspector,
 				     &m_sinsp_handler,
 				     m_capture_job_handler,
-				     m_configuration);
+				     m_configuration,
+				     m_analyzer);
 
 		if(m_configuration->m_security_policies_file != "")
 		{
@@ -583,8 +588,8 @@ void sinsp_worker::process_job_requests()
 
 	if(dragent_configuration::m_signal_dump)
 	{
-		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
+		g_log->information("Received SIGUSR1, starting dump");
 
 		std::shared_ptr<capture_job_handler::dump_job_request> job_request
 			= make_shared<capture_job_handler::dump_job_request>();

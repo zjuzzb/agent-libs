@@ -75,7 +75,7 @@ protected:
 			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
 
 			// To enable debug logging, change the tailing -1 to Message::Priority::PRIO_DEBUG
-			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
+			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, -1);
 
 			AutoPtr<Channel> null_channel(new Poco::NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
@@ -84,7 +84,8 @@ protected:
 		}
 
 		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);
-		m_sinsp_worker = new sinsp_worker(&m_configuration, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
+		m_internal_metrics = make_shared<internal_metrics>();
+		m_sinsp_worker = new sinsp_worker(&m_configuration, m_internal_metrics, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
 		m_sinsp_worker->init();
 		m_capture_job_handler->init(m_sinsp_worker->get_inspector());
 
@@ -474,6 +475,7 @@ protected:
 
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
+	internal_metrics::sptr_t m_internal_metrics;
 	sinsp_worker *m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration m_configuration;
@@ -562,8 +564,12 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 		return;
 	}
 
+	sinsp_evt_formatter *formatter = new sinsp_evt_formatter(inspector.get(), std::string("*%evt.num %evt.outputtime %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.info"));
+
 	while(1)
 	{
+		std::string evstr;
+
 		int32_t res;
 		sinsp_evt* evt;
 		res = inspector->next(&evt);
@@ -582,10 +588,14 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 			break;
 		}
 
+		formatter->tostring(evt, &evstr);
+		g_log->debug(evstr);
+
 		// If we got any event other than a notification event, this is a failure.
 		if(evt->get_type() != PPME_NOTIFICATION_E)
 		{
-			FAIL() << "Got event other than notification event for test program";
+			FAIL() << "Got event other than notification event for test program: " + evstr;
 		}
 	}
+	delete(formatter);
 }

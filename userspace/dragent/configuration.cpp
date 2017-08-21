@@ -19,10 +19,10 @@
 using namespace Poco;
 using namespace Poco::Net;
 
-volatile bool dragent_configuration::m_signal_dump = false;
-volatile bool dragent_configuration::m_terminate = false;
-volatile bool dragent_configuration::m_send_log_report = false;
-volatile bool dragent_configuration::m_config_update = false;
+std::atomic<bool> dragent_configuration::m_signal_dump(false);
+std::atomic<bool> dragent_configuration::m_terminate(false);
+std::atomic<bool> dragent_configuration::m_send_log_report(false);
+std::atomic<bool> dragent_configuration::m_config_update(false);
 
 static std::string bool_as_text(bool b)
 {
@@ -995,7 +995,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	string ancestors;
-	for(auto s : m_command_lines_valid_ancestors) 
+	for(auto s : m_command_lines_valid_ancestors)
 	{
 		ancestors.append(s + " ");
 	}
@@ -1356,7 +1356,6 @@ bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 		g_log->error(string("getrusage") + strerror(errno));
 		return false;
 	}
-
 	*memory = usage.ru_maxrss / 1024;
 	return true;
 }
@@ -1405,9 +1404,9 @@ void dragent_configuration::write_statsite_configuration()
 		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
 				"[statsite]\nbind_address = 127.0.0.1\n";
 
-	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
+	uint16_t tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_statsd_port;
-	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
+	uint16_t flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one
 	// our levels: trace, debug, info, notice, warning, error, critical, fatal

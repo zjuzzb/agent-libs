@@ -23,6 +23,7 @@
 
 #include "capture_job_handler.h"
 #include "configuration.h"
+#include "analyzer.h"
 #include "sinsp_data_handler.h"
 #include "security_policy.h"
 
@@ -35,7 +36,8 @@ public:
 	void init(sinsp *inspector,
 		  sinsp_data_handler *sinsp_handler,
 		  capture_job_handler *capture_job_handler,
-		  dragent_configuration *configuration);
+		  dragent_configuration *configuration,
+		  sinsp_analyzer *analyzer);
 
 	// Returns true if loaded successfully, false otherwise. Sets
 	// errstr when returning false.
@@ -61,6 +63,8 @@ public:
 			   bool apply_scope,
 			   std::string &container_id,
 			   std::string &errstr);
+
+	sinsp_analyzer *get_analyzer();
 
 private:
 
@@ -92,6 +96,7 @@ private:
 	sinsp_data_handler *m_sinsp_handler;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;
+	sinsp_analyzer *m_analyzer;
 
 	Poco::RWLock m_policies_lock;
 

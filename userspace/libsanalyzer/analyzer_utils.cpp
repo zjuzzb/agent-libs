@@ -284,6 +284,38 @@ bool should_drop2(sinsp_evt *evt, bool* switched)
 
 #endif /* SIMULATE_DROP_MODE */
 
+// returns process rss in kb and cpu in [% * 100]
+bool get_proc_mem_and_cpu(long& kb, int& cpu, std::string* err)
+{
+	static uint64_t prev_tot_time;
+	static uint64_t prev_cpu_time;
+	struct rusage usage;
+	uint64_t now = sinsp_utils::get_current_time_ns();
+	if(getrusage(RUSAGE_SELF, &usage) == -1)
+	{
+		if(err) { *err = strerror(errno); }
+		return false;
+	}
+	uint64_t cpu_time = (usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) * ONE_SECOND_IN_NS +
+					(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) * 1000;
+	static int cpu_pct = -1;
+	if(prev_tot_time)
+	{
+		uint64_t tot_diff = now - prev_tot_time;
+		uint64_t tot_cpu = cpu_time - prev_cpu_time;
+		if(tot_diff)
+		{
+			cpu_pct = (int)round((((double)tot_cpu / tot_diff) * 100./*%*/ * 100./*scale*/) / sysconf(_SC_NPROCESSORS_ONLN));
+		}
+	}
+	prev_tot_time = now;
+	prev_cpu_time = cpu_time;
+
+	kb = usage.ru_maxrss;
+	cpu = cpu_pct;
+	return true;
+}
+
 void send_subprocess_heartbeat()
 {
 	struct rusage mem_usage;

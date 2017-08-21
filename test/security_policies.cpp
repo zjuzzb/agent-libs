@@ -79,7 +79,8 @@ protected:
 		}
 
 		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);
-		m_sinsp_worker = new sinsp_worker(&m_configuration, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
+		m_internal_metrics = make_shared<internal_metrics>();
+		m_sinsp_worker = new sinsp_worker(&m_configuration, m_internal_metrics, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
 		m_sinsp_worker->init();
 		m_capture_job_handler->init(m_sinsp_worker->get_inspector());
 
@@ -129,6 +130,7 @@ protected:
 
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
+	internal_metrics::sptr_t m_internal_metrics;
 	sinsp_worker *m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration m_configuration;

@@ -15,7 +15,8 @@ security_mgr::security_mgr()
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
 	  m_capture_job_handler(NULL),
-	  m_configuration(NULL)
+	  m_configuration(NULL),
+	  m_analyzer(NULL)
 
 {
 	m_print.SetSingleLineMode(true);
@@ -28,13 +29,15 @@ security_mgr::~security_mgr()
 void security_mgr::init(sinsp *inspector,
 			sinsp_data_handler *sinsp_handler,
 			capture_job_handler *capture_job_handler,
-			dragent_configuration *configuration)
+			dragent_configuration *configuration,
+			sinsp_analyzer *analyzer)
 
 {
 	m_inspector = inspector;
 	m_sinsp_handler = sinsp_handler;
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
+	m_analyzer = analyzer;
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
@@ -206,6 +209,11 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 
 	// Note: Not enforcing any maximum size.
 	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);
+}
+
+sinsp_analyzer *security_mgr::get_analyzer()
+{
+	return m_analyzer;
 }
 
 void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)

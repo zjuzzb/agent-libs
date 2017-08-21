@@ -416,7 +416,7 @@ int statsite_forwarder::run()
 	ErrorHandler::set(this);
 
 	g_logger.format(sinsp_logger::SEV_INFO, "Info Starting with pid=%d\n", getpid());
-	
+
 	Poco::Thread reactor_thread;
 	reactor_thread.start(m_reactor);
 
@@ -443,7 +443,7 @@ int statsite_forwarder::run()
 			g_logger.format(sinsp_logger::SEV_ERROR, "Error parsing msg=%s", msg.c_str());
 			continue;
 		}
-		
+
 		unordered_set<string> containerids;
 		for(const auto& container : root["containers"])
 		{
