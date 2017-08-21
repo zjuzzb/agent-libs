@@ -28,7 +28,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 			Id:proto.String(string(replicationController.GetUID()))},
 	}
 
-	ret.Tags = GetTags(replicationController.ObjectMeta, "kubernetes.replicationcontroller.")
+	ret.Tags = GetTags(replicationController.ObjectMeta, "kubernetes.replicationController.")
 	addReplicationControllerMetrics(&ret.Metrics, replicationController)
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
@@ -39,7 +39,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 var replicationControllerInf cache.SharedInformer
 
 func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicationController *v1.ReplicationController) {
-	prefix := "kubernetes.replicationcontroller."
+	prefix := "kubernetes.replicationController."
 	AppendMetricInt32(metrics, prefix+"status.replicas", replicationController.Status.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.fullyLabeledReplicas", replicationController.Status.FullyLabeledReplicas)
 	AppendMetricInt32(metrics, prefix+"status.readyReplicas", replicationController.Status.ReadyReplicas)
