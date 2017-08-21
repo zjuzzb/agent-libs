@@ -323,10 +323,15 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	// Restart count is a legacy metric attributed to pods
 	// instead of the individual containers, so report it here
 	restartCount := int32(0)
+	waitingCount := int32(0)
 	for _, c := range pod.Status.ContainerStatuses {
 		restartCount += c.RestartCount
+		if c.State.Waiting != nil {
+			waitingCount += 1
+		}
 	}
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
+	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
