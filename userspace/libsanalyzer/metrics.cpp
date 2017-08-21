@@ -1082,6 +1082,7 @@ void sinsp_host_metrics::clear()
 	m_cpuload = 0;
 	m_proc_count = 0;
 	m_proc_start_count = 0;
+	m_threads_count = 0;
 }
 
 void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
@@ -1113,6 +1114,7 @@ void sinsp_host_metrics::add(sinsp_procinfo* pinfo)
 	m_fd_count += pinfo->m_fd_count;
 	m_proc_count += pinfo->m_proc_count;
 	m_proc_start_count += pinfo->m_start_count;
+	m_threads_count += pinfo->m_threads_count;
 }
 
 void sinsp_host_metrics::add_capacity_score(float capacity_score, 

@@ -348,6 +348,7 @@ public:
 	int64_t m_swap_memory_total_kb;
 	int64_t m_swap_memory_avail_kb;
 	double m_cpuload; // for containers
+	unsigned m_threads_count = 0;
 
 	int get_process_count();
 	int get_process_start_count();

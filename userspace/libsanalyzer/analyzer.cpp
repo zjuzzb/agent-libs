@@ -2494,10 +2494,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			draiosproto::program* prog = m_metrics->add_programs();
 			draiosproto::process* proc = prog->mutable_procinfo();
 
-			//for(int64_t pid : procinfo->m_program_pids)
-			//{
-			//	prog->add_pids(pid);
-			//}
 			prog->add_pids(tinfo->m_pid);
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
@@ -2701,6 +2697,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
 			proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
 			proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+			proc->mutable_resource_counters()->set_threads_count(procinfo->m_threads_count);
 
 			if(tot.m_count != 0)
 			{
@@ -2750,6 +2747,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 #endif // ANALYZER_EMITS_PROCESSES
 		}
+
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
@@ -3985,6 +3983,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_host_metrics.get_process_count());
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_proc_start_count(m_host_metrics.get_process_start_count());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_threads_count(m_host_metrics.m_threads_count);
 
 			if(m_mounted_fs_proxy)
 			{
@@ -5900,6 +5899,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			it->to_protobuf(proto_fs);
 		}
 	}
+	auto thread_count = m_containers[container_id].m_metrics.m_threads_count;
+	container->mutable_resource_counters()->set_threads_count(thread_count);
 
 	//
 	// Emit the executed commands for this container

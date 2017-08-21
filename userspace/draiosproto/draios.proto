@@ -116,6 +116,7 @@ message resource_categories {
     optional uint64 statsd_total = 36;
     optional uint64 app_checks_sent = 37;
     optional uint64 app_checks_total = 38;
+    optional uint64 threads_count = 39; // number of threads
 }
 
 message connection_categories {
@@ -499,7 +500,7 @@ message process {
 // info for a program, i.e. a collection of processes with the same name and the same creator.
 //
 message program {
-    required process procinfo = 1; // Inofrmation about this program
+    required process procinfo = 1; // Information about this program
     repeated uint64 pids = 2; // The list of processes that are part of this program
 }
 

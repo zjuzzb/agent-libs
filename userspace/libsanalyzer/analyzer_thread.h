@@ -70,6 +70,7 @@ public:
 	uint64_t m_start_count = 0;
 	// number of process instances
 	int m_proc_count = 0;
+	unsigned m_threads_count = 0;
 };
 
 class proc_config;
