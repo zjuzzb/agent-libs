@@ -97,6 +97,7 @@ public:
 	}
 
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
+	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
 
 private:
 	void init();

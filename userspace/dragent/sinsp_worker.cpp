@@ -177,7 +177,11 @@ void sinsp_worker::init()
 	{
 		m_analyzer->get_configuration()->set_k8s_extensions(m_configuration->m_k8s_extensions);
 	}
-
+	if(m_configuration->m_use_new_k8s)
+	{
+		m_analyzer->set_use_new_k8s(m_configuration->m_use_new_k8s);
+	}
+	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
 	//
 	// mesos
 	//
@@ -310,6 +314,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
+	m_analyzer->get_configuration()->set_security_enabled(m_configuration->m_security_enabled);
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
 
@@ -334,9 +339,9 @@ void sinsp_worker::init()
 		m_security_mgr = new security_mgr();
 		m_security_mgr->init(m_inspector,
 				     &m_sinsp_handler,
+				     m_analyzer,
 				     m_capture_job_handler,
-				     m_configuration,
-				     m_analyzer);
+				     m_configuration);
 
 		if(m_configuration->m_security_policies_file != "")
 		{
@@ -533,6 +538,11 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 		errstr = "No Security Manager object created";
 		return false;
 	}
+}
+
+void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
+{
+	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
 }
 
 void sinsp_worker::init_falco()

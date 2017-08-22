@@ -35,9 +35,9 @@ public:
 
 	void init(sinsp *inspector,
 		  sinsp_data_handler *sinsp_handler,
+		  sinsp_analyzer *analyzer,
 		  capture_job_handler *capture_job_handler,
-		  dragent_configuration *configuration,
-		  sinsp_analyzer *analyzer);
+		  dragent_configuration *configuration);
 
 	// Returns true if loaded successfully, false otherwise. Sets
 	// errstr when returning false.
@@ -64,7 +64,7 @@ public:
 			   std::string &container_id,
 			   std::string &errstr);
 
-	sinsp_analyzer *get_analyzer();
+	sinsp_analyzer *analyzer();
 
 private:
 
@@ -94,9 +94,9 @@ private:
 	bool m_initialized;
 	sinsp* m_inspector;
 	sinsp_data_handler *m_sinsp_handler;
+	sinsp_analyzer *m_analyzer;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;
-	sinsp_analyzer *m_analyzer;
 
 	Poco::RWLock m_policies_lock;
 
@@ -110,6 +110,8 @@ private:
 	std::shared_ptr<coclient> m_coclient;
 
 	unique_ptr<run_on_interval> m_actions_poll_interval;
+
+	unique_ptr<run_on_interval> m_metrics_report_interval;
 
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;

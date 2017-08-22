@@ -17,7 +17,9 @@
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "coclient.h"
+#include "infrastructure_state.h"
 #include "internal_metrics.h"
+
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
@@ -400,7 +402,14 @@ public:
 	void set_percentiles();
 	void emit_percentiles_config();
 
-	bool recent_sinsp_events_dropped()
+	infrastructure_state *infra_state();
+
+	void set_use_new_k8s(bool v)
+	{
+		m_use_new_k8s = v;
+	}
+	
+  bool recent_sinsp_events_dropped()
  	{
  		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
  	}
@@ -617,6 +626,8 @@ VISIBILITY_PRIVATE
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 
+	infrastructure_state* m_infrastructure_state = NULL;
+
 	//
 	// Chisel-generated metrics infrastructure
 	//
@@ -641,6 +652,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	unique_ptr<k8s> m_k8s;
+	bool m_use_new_k8s;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_ssl::ptr_t          m_k8s_ssl;

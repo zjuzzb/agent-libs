@@ -37,6 +37,8 @@ public:
 	void perform_docker_cmd(sdc_internal::docker_cmd_type cmd,
 				const std::string &container_id, response_cb_t response_cb);
 
+	void get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd, response_cb_t response_cb);
+
 	// Check for any responses and call their callback functions.
 	void next(uint32_t wait_ms = 0);
 
@@ -61,11 +63,17 @@ protected:
 	void connect();
 
 	struct call_context {
+
+		call_context() : is_streaming(false), is_server_ready(false) {}
+
 		sdc_internal::cointerface_message_type msg_type;
 
 		std::unique_ptr<google::protobuf::Message> response_msg;
 
 		response_cb_t response_cb;
+
+		bool is_streaming;
+		bool is_server_ready;
 
 		// This can be used to pass additional options to the server
 		// that control how the RPC should be performed (like add
@@ -78,6 +86,7 @@ protected:
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
+		std::unique_ptr<grpc::ClientAsyncReader<draiosproto::congroup_update_event>> orchestrator_events_reader;
 	};
 
 	// Created by CreateChannel
