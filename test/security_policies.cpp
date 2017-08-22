@@ -140,7 +140,7 @@ protected:
 	security_policy_error_handler m_error_handler;
 };
 
-TEST_F(security_policies_test, events_flood)
+TEST_F(security_policies_test, DISABLED_events_flood)
 {
 	std::shared_ptr<protocol_queue_item> item;
 
