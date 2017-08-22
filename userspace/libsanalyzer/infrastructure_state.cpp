@@ -547,7 +547,10 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		x->CopyFrom(*grp);
 		x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 		// Clean children links, backend will reconstruct them from parent ones
-		x->mutable_children()->Clear();
+		if(grp->uid().kind() != "k8s_pod")
+		{
+			x->mutable_children()->Clear();
+		}
 		// Put back legacy metrics
 		auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
 		{
@@ -639,7 +642,10 @@ void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiospr
 				}
 			}
 			// Clean children links, backend will reconstruct them from parent ones
-			x->mutable_children()->Clear();
+			if(cg->uid().kind() != "k8s_pod")
+			{
+				x->mutable_children()->Clear();
+			}
 		}
 	}
 }
