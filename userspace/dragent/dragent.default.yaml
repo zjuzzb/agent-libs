@@ -952,7 +952,7 @@ events:
 #      - Created             # Container Created                            (information)
 #      - Started             # Container Started                            (information)
       - Killing             # Killing Container                            (information)
-#      - Unhealthy           # Container Unhealthy                          (warning)
+      - Unhealthy           # Container Unhealthy                          (warning)
 #      - FailedSync          # Pod Sync Failed                              (warning)
 #      - FailedValidation    # Failed Pod Configuration Validation          (warning)
       - FailedScheduling
