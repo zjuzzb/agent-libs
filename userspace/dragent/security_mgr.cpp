@@ -37,7 +37,6 @@ void security_mgr::init(sinsp *inspector,
 	m_analyzer = analyzer;
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
-	m_analyzer = analyzer;
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
