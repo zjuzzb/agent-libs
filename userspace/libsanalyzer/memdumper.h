@@ -271,13 +271,18 @@ public:
 #if defined(HAS_CAPTURE)
 			if(!m_capture_dragent_events)
 			{
+				if(m_sysdig_sid == 0)
+				{
+					m_sysdig_sid = getsid(0);
+				}
+
 				//
 				// The custom notification events emitted by the memdumper have inspector = NULL
 				//
 				if(evt->m_pevt->type != PPME_NOTIFICATION_E)
 				{
 					sinsp_threadinfo* tinfo = evt->get_thread_info();
-					if(tinfo &&	tinfo->m_pid == m_sysdig_pid)
+					if(tinfo &&	tinfo->m_sid == m_sysdig_sid)
 					{
 						return;
 					}
@@ -363,7 +368,7 @@ private:
 
 #if defined(HAS_CAPTURE)
 	bool m_capture_dragent_events;
-	int64_t m_sysdig_pid;
+	int64_t m_sysdig_sid;
 #endif
 	// Mutex that protects access to the list of states
 	Poco::FastMutex m_state_mtx;

@@ -68,6 +68,8 @@ class Etcd(AgentCheck):
         'standardDeviation': 'etcd.leader.latency.stddev',
     }
 
+    NEEDED_NS = ( 'net', 'mnt', )
+
     def check(self, instance):
         if 'url' not in instance:
             raise Exception('etcd instance missing "url" value.')

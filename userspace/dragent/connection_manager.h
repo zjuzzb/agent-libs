@@ -71,8 +71,8 @@ private:
 	synchronized_policy_events *m_policy_events;
 	sinsp_worker* m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
-	volatile uint64_t m_last_loop_ns;
-	volatile pthread_t m_pthread_id;
+	std::atomic<uint64_t> m_last_loop_ns;
+	std::atomic<pthread_t> m_pthread_id;
 
 	uint32_t m_reconnect_interval;
 	chrono::time_point<std::chrono::system_clock> m_last_connection_failure;

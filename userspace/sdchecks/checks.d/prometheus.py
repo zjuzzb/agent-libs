@@ -56,20 +56,20 @@ class Prometheus(AgentCheck):
                             continue
                         elif 'quantile' in tags:
                             quantile = int(float(tags['quantile']) * 100)
-                            logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
+                            # logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
                             self.gauge('%s.%dpercentile' % (name, quantile),
                                        value,
                                        tags)
 
-                    if parse_sum != None and parse_count != None:
+                    if parse_sum != None and parse_count > 0:
                         logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
                         self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
                 elif family.type == 'counter':
-                    logging.debug('prom: adding counter with name %s' %(name))
-                    self.count(name, value, tags)
+                    # logging.debug('prom: adding counter with name %s' %(name))
+                    self.rate(name, value, tags)
                 else:
                     # Could be a gauge or untyped value, which we treat as a gauge for now
-                    logging.debug('prom: adding gauge with name %s' %(name))
+                    # logging.debug('prom: adding gauge with name %s' %(name))
                     self.gauge(name, value, tags)
 
     def get_prometheus_metrics(self, url, timeout, name):

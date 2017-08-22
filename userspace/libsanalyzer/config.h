@@ -129,6 +129,8 @@ public:
 	const mesos::credentials_t& get_marathon_credentials() const;
 	void set_marathon_credentials(const mesos::credentials_t& creds);
 	const mesos::credentials_t& get_dcos_enterprise_credentials() const;
+	void set_marathon_skip_labels(std::set<std::string> &labels);
+	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
@@ -234,6 +236,7 @@ private:
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
+	std::set<std::string> m_marathon_skip_labels;
 
 	bool m_curl_debug;
 

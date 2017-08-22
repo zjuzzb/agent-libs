@@ -18,6 +18,7 @@
 #include "procfs_parser.h"
 #include "coclient.h"
 #include "infrastructure_state.h"
+#include "internal_metrics.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -396,6 +397,7 @@ public:
 	void disable_falco();
 
 	void set_emit_tracers(bool enabled);
+	void set_internal_metrics(internal_metrics::sptr_t im);
 
 	void set_percentiles();
 	void emit_percentiles_config();
@@ -406,6 +408,12 @@ public:
 	{
 		m_use_new_k8s = v;
 	}
+	
+  bool recent_sinsp_events_dropped()
+ 	{
+ 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
+ 	}
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
@@ -696,6 +704,8 @@ VISIBILITY_PRIVATE
 	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;
+
+	internal_metrics::sptr_t m_internal_metrics;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 

@@ -47891,6 +47891,10 @@
     <File Name="libsanalyzer/metric_limits.cpp"/>
     <File Name="libsanalyzer/orchestrator_state.h"/>
     <File Name="libsanalyzer/orchestrator_state.cpp"/>
+    <File Name="libsanalyzer/internal_metrics.h"/>
+    <File Name="libsanalyzer/tracer_emitter.cpp"/>
+    <File Name="libsanalyzer/tracer_emitter.h"/>
+    <File Name="libsanalyzer/internal_metrics.cpp"/>
   </VirtualDirectory>
   <Description/>
   <Dependencies/>

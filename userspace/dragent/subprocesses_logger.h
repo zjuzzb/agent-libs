@@ -8,7 +8,7 @@ class watchdog_state;
 class pipe_manager: noncopyable
 {
 public:
-	explicit pipe_manager();
+	pipe_manager();
 	~pipe_manager();
 
 	// Get File descriptor to communicate with the child
@@ -132,7 +132,7 @@ private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
 	map<FILE *, pair<function<void(const string&)>, watchdog_state*>> m_error_fds;
-	volatile uint64_t m_last_loop_ns;
-	volatile pthread_t m_pthread_id;
+	std::atomic<uint64_t> m_last_loop_ns;
+	std::atomic<pthread_t> m_pthread_id;
 };
 

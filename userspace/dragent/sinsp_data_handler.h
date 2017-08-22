@@ -32,5 +32,5 @@ private:
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	synchronized_policy_events *m_policy_events;
-	volatile uint64_t m_last_loop_ns;
+	std::atomic<uint64_t> m_last_loop_ns;
 };

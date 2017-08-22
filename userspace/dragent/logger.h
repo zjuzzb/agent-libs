@@ -1,6 +1,7 @@
 #pragma once
 
 #include "main.h"
+#include "internal_metrics.h"
 #include <token_bucket.h>
 
 class avoid_block_channel : public Poco::Channel
@@ -24,6 +25,10 @@ public:
 	dragent_logger(Logger* file_log, Logger* console_log, Logger* event_log = NULL);
 
 	void init_user_events_throttling(uint64_t rate, uint64_t max_burst);
+	void set_internal_metrics(internal_metrics::sptr_t im)
+	{
+		m_internal_metrics = im;
+	}
 
 	// regular logging
 	void log(const string& str, uint32_t sev);
@@ -72,6 +77,7 @@ private:
 	Logger* m_event_log;
 
 	token_bucket m_user_events_tb;
+	internal_metrics::sptr_t m_internal_metrics;
 };
 
 extern dragent_logger* g_log;

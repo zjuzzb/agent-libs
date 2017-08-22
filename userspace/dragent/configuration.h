@@ -272,6 +272,41 @@ public:
 		return ret;
 	}
 
+	template<typename T>
+	vector<T> get_merged_sequence(const string& key, vector<T> &default_value)
+	{
+		bool defined = false;
+		vector<T> ret;
+		for(const auto& root : m_roots)
+		{
+			auto node = root[key];
+			if(node.IsDefined())
+			{
+				defined = true;
+
+				for(const auto& item : node)
+				{
+					try
+					{
+						ret.push_back(item.as<T>());
+					}
+					catch (const YAML::BadConversion& ex)
+					{
+						m_errors.emplace_back(string("Config file error at key ") + key);
+					}
+				}
+			}
+		}
+		if(defined)
+		{
+			return ret;
+		}
+		else
+		{
+			return default_value;
+		}
+	}
+
 	/**
 	* Get data from a map of objects, they
 	* will be merged between settings and
@@ -442,10 +477,10 @@ public:
 	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
-	static volatile bool m_signal_dump;
-	static volatile bool m_terminate;
-	static volatile bool m_send_log_report;
-	static volatile bool m_config_update;
+	static std::atomic<bool> m_signal_dump;
+	static std::atomic<bool> m_terminate;
+	static std::atomic<bool> m_send_log_report;
+	static std::atomic<bool> m_config_update;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
@@ -555,6 +590,7 @@ public:
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
+	std::set<std::string> m_marathon_skip_labels;
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;

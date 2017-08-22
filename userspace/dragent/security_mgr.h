@@ -23,6 +23,7 @@
 
 #include "capture_job_handler.h"
 #include "configuration.h"
+#include "analyzer.h"
 #include "sinsp_data_handler.h"
 #include "security_policy.h"
 
@@ -56,6 +57,7 @@ public:
 	// Start a sysdig capture. Returns true on success, false (and
 	// fills in errstr) if the capture couldn't be started.
 	bool start_capture(uint64_t ts_ns,
+			   const string &policy,
 			   const string &token, const string &filter,
 			   uint64_t before_event_ns, uint64_t after_event_ns,
 			   bool apply_scope,

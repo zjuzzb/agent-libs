@@ -893,7 +893,7 @@ message metrics {
     optional proto_info protos = 20; // Information about protocols that have been decoded
     repeated container containers = 22;
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
-    optional orchestrator_state_t orchestrator_state = 31;
+    optional orchestrator_state_t orchestrator_state = 33;
     optional orchestrator_state_t global_orchestrator_state = 32;
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
@@ -901,6 +901,7 @@ message metrics {
     optional falco_baseline falcobl = 27; // baseline information for falco
     optional swarm_state swarm = 29;
     repeated uint32 config_percentiles = 30;  // configured percentiles
+    optional statsd_info internal_metrics = 31;
 }
 
 message dump_request_start {
@@ -1155,6 +1156,10 @@ message policy_event {
     optional manual_event_detail manual_details = 6;
 
     repeated action_result action_results = 7;
+
+    // If true, there were inspector events dropped recently, which
+    // might have affected the details in this policy event.
+    optional bool sinsp_events_dropped = 8;
 }
 
 message policy_events {

@@ -43,7 +43,8 @@ dragent_app::dragent_app():
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
 	m_policy_events(MAX_QUEUED_POLICY_EVENTS),
-	m_sinsp_worker(&m_configuration, &m_queue, &m_enable_autodrop, &m_policy_events, &m_capture_job_handler),
+	m_internal_metrics(new internal_metrics()),
+	m_sinsp_worker(&m_configuration, m_internal_metrics, &m_queue, &m_enable_autodrop, &m_policy_events, &m_capture_job_handler),
 	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
 	m_connection_manager(&m_configuration, &m_queue, &m_policy_events, &m_sinsp_worker, &m_capture_job_handler),
 	m_log_reporter(&m_queue, &m_configuration),
@@ -266,6 +267,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 	// Add our main process
 	monitor_process.emplace_process("sdagent",[this]()
 	{
+		// only set to get agent show in the watchdog loop
+		m_subprocesses_state["sdagent"].set_name("sdagent");
+
+		// Unlike the other processes, the agent itself
+		// doesn't get a pid from the log file. So set it
+		// here.
+		m_subprocesses_state["sdagent"].reset(getpid(), 0, 0);
+
 		struct sigaction sa;
 		memset(&sa, 0, sizeof(sa));
 		sigemptyset(&sa.sa_mask);
@@ -302,9 +311,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_jmx_pipes = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["sdjagent"];
+		state->set_name("sdjagent");
 		m_subprocesses_logger.add_logfd(m_jmx_pipes->get_file(), sdjagent_parser(), state);
 
-		monitor_process.emplace_process("sdjagent", [this](void) -> int
+		monitor_process.emplace_process("sdjagent", [this]() -> int
 		{
 			static const auto MAX_SDJAGENT_ARGS = 50;
 			this->m_jmx_pipes->attach_child();
@@ -367,7 +377,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 		});
 
-		monitor_process.emplace_process("statsite", [this](void) -> int
+		monitor_process.emplace_process("statsite", [this]() -> int
 		{
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
@@ -385,12 +395,13 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
 			auto state = &m_subprocesses_state["statsite_forwarder"];
+			state->set_name("statsite_forwarder");
 			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(), sinsp_logger_parser("statsite_forwarder"), state);
-			monitor_process.emplace_process("statsite_forwader", [this](void) -> int
+			monitor_process.emplace_process("statsite_forwarder", [this]() -> int
 			{
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(), m_configuration.m_statsd_port);
-				return fwd.run();;
+				return fwd.run();
 			});
 		}
 	}
@@ -399,6 +410,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
 		auto state = &m_subprocesses_state["sdchecks"];
+		state->set_name("sdchecks");
 		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
 		{
 			auto parsed_log = sinsp_split(line, ':');
@@ -434,7 +446,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 				g_log->error("sdchecks, " + line);
 			}
 		}, state);
-		monitor_process.emplace_process("sdchecks", [this](void)
+		monitor_process.emplace_process("sdchecks", [this]()
 		{
 			this->m_sdchecks_pipes->attach_child();
 
@@ -449,8 +461,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
+		state->set_name("mountedfs_reader");
 		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
-		monitor_process.emplace_process("mountedfs_reader", [this](void)
+		monitor_process.emplace_process("mountedfs_reader", [this]()
 		{
 			m_mounted_fs_reader_pipe->attach_child();
 			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
@@ -463,9 +476,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 	{
 		m_cointerface_pipes = make_unique<pipe_manager>();
 		auto* state = &m_subprocesses_state["cointerface"];
+		state->set_name("cointerface");
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_err_fd(), cointerface_parser(), state);
 		m_subprocesses_logger.add_logfd(m_cointerface_pipes->get_out_fd(), cointerface_parser(), state);
-		monitor_process.emplace_process("cointerface", [this](void)
+		monitor_process.emplace_process("cointerface", [this]()
 		{
 			m_cointerface_pipes->attach_child_stdio();
 
@@ -773,6 +787,9 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		m_coclient->next(10);
 	}
 
+	// We now have started all the subprocesses, so pass them to internal_metrics
+	update_subprocesses();
+
 	uint64_t memory;
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
@@ -850,6 +867,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		auto& state = proc.second;
 		if(state.valid())
 		{
+			g_log->debug("valid subprocess: " + proc.first + ", " + to_string(state.memory_used()) + " kb");
 			bool to_kill = false;
 			if(m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.find(proc.first) != m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.end() &&
 			   state.memory_used()/1024 > m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
@@ -871,6 +889,21 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			}
 		}
 	}
+
+	// Pass the (potentially) updated list of subprocesses to the internal metrics module.
+	update_subprocesses();
+}
+
+void dragent_app::update_subprocesses()
+{
+	internal_metrics::subprocs_t subprocs;
+
+	for(auto& proc : m_subprocesses_state)
+	{
+		subprocs.insert(std::pair<std::string,uint64_t>(proc.second.name(),proc.second.pid()));
+	}
+
+	m_internal_metrics->set_subprocesses(subprocs);
 }
 
 void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
@@ -992,4 +1025,6 @@ void dragent_app::initialize_logging()
 
 	g_log->init_user_events_throttling(m_configuration.m_user_events_rate,
 					   m_configuration.m_user_max_burst_events);
+
+	g_log->set_internal_metrics(m_internal_metrics);
 }

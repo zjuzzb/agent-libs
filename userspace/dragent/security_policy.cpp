@@ -104,6 +104,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 			}
 
 			if(!m_mgr->start_capture(evt->get_ts(),
+						 m_policy.name(),
 						 result->token(),
 						 (action.capture().has_filter() ? action.capture().filter() : ""),
 						 action.capture().before_event_ns(),
@@ -279,7 +280,8 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 			fdetail->set_output(output);
 
 			m_metrics.incr(evt_metrics::EVM_MATCHED);
-			return event;
+			event->set_sinsp_events_dropped(m_mgr->analyzer()->recent_sinsp_events_dropped());
+      return event;
 		}
 	}
 	catch (falco_exception& e)

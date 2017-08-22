@@ -82,6 +82,8 @@ public:
 	// in the presence of steal time
 	double get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies);
 
+	long get_process_rss_bytes(uint64_t pid);
+
 	// returns the stolen percentage of total cpu usage
 	uint64_t global_steal_pct();
 
