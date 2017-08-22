@@ -80,6 +80,7 @@ private:
 
 	void debug_print();
 
+
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 
