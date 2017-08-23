@@ -1220,6 +1220,13 @@ void dragent_configuration::print_configuration()
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
+
+		// Note that this agent has secure enabled by adding to the host tags
+		if(m_host_tags != "")
+		{
+			m_host_tags += ",";
+		}
+		m_host_tags += "sysdig_secure.enabled:true";
 	}
 
 
