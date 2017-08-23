@@ -137,6 +137,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_parser = new sinsp_analyzer_parsers(this);
 
 	m_falco_baseliner = new sinsp_baseliner();
+	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 
 	//
 	// Listeners
@@ -213,6 +214,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_falco_baseliner;
 	}
+
+	if(m_infrastructure_state != NULL)
+	{
+		delete m_infrastructure_state;
+	}
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -238,6 +244,11 @@ void sinsp_analyzer::set_percentiles()
 		m_host_req_metrics.set_percentiles(pctls);
 		m_io_net.set_percentiles(pctls);
 	}
+}
+
+infrastructure_state *sinsp_analyzer::infra_state()
+{
+	return m_infrastructure_state;
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -344,6 +355,23 @@ void sinsp_analyzer::on_capture_start()
 	{
 		glogf("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
+	}
+
+	if(m_configuration->get_security_enabled() || m_use_new_k8s)
+	{
+		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
+
+		// K8s url to use
+		string k8s_url = m_configuration->get_k8s_api_server();
+		if (!k8s_url.empty()) {
+			// autodetect is automatically disabled when running in daemonset mode
+			// url instead will always point to get_k8s_api_server
+			if(m_configuration->get_k8s_delegated_nodes() != 0)
+			{
+				k8s_url = "";
+			}
+			m_infrastructure_state->subscribe_to_k8s(k8s_url);
+		}
 	}
 }
 
@@ -1296,7 +1324,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			return new k8s(k8s_api.to_string(), false /*not captured*/,
 						   m_k8s_ssl, m_k8s_bt, false,
 						   m_configuration->get_k8s_event_filter(),
-						   m_ext_list_ptr);
+						   m_ext_list_ptr, m_use_new_k8s);
 		}
 	}
 	catch(std::exception& ex)
@@ -4358,13 +4386,19 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-
-	//
 	// If process the event in the baseliner
 	//
 	if(m_do_baseline_calculation)
 	{
 		m_falco_baseliner->process_event(evt);
+	}
+
+	if(m_infrastructure_state && (m_configuration->get_security_enabled() || m_infrastructure_state->subscribed()))
+	{
+		//
+		// Refresh the infrastructure state with pending orchestrators or hosts events
+		//
+		m_infrastructure_state->refresh(ts);
 	}
 
 	//
@@ -4667,7 +4701,7 @@ void sinsp_analyzer::get_k8s_data()
 	if(m_k8s)
 	{
 		m_k8s->watch();
-		if(m_metrics)
+		if(m_metrics && !m_use_new_k8s)
 		{
 			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_kubernetes())
@@ -4676,7 +4710,7 @@ void sinsp_analyzer::get_k8s_data()
 				g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 		}
-		else
+		else if (!m_metrics)
 		{
 			g_logger.log("Proto metrics are NULL.", sinsp_logger::SEV_ERROR);
 		}
@@ -5395,6 +5429,31 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 					 containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(top_cpu_containers);
+
+	if(m_use_new_k8s && m_infrastructure_state->subscribed())
+	{
+		std::string cluster_name =
+			!m_configuration->get_k8s_cluster_name().empty() ?
+			m_configuration->get_k8s_cluster_name() :
+			m_infrastructure_state->get_k8s_cluster_name();
+		auto cluster_id = m_infrastructure_state->get_k8s_cluster_id();
+		// if cluster_id is empty, better to don't send anything since
+		// the backend relies on this field
+		if(!cluster_id.empty())
+		{
+			// Build the orchestrator state of the emitted containers (without metrics)
+			m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
+			m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
+			if(check_k8s_delegation()) {
+				m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
+				m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
+				// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
+				m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
+			}
+		}
+	}
+
 /*
 	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);
 	for(const auto& c : m_metrics->containers())

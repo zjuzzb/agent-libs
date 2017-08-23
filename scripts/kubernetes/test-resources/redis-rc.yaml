@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: redis-rc
+  labels:
+    name: redis-rc
+    app: demo
+spec:
+  template:
+    spec:
+      containers:
+        - name: redis
+          image: redis:2.8.19
+          ports:
+          - containerPort: 6379
+            name: redis
+          command: [ "redis-server", "--appendonly", "yes" ]
+    metadata:
+      labels:
+        name: redis
+        role: redisdb
+        app: demo

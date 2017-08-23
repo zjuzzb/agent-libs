@@ -5,6 +5,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt
                    COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/src
                    COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/protoc-gen-gofast
                    COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/proto
+                   COMMAND env GOPATH=${GOPATH} go get -u google.golang.org/grpc
                    COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt)
 
 add_custom_target(go_get_cointerface_coclient
@@ -12,7 +13,7 @@ add_custom_target(go_get_cointerface_coclient
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt
                    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
                            ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
-                   COMMAND env GOPATH=${GOPATH} go get cointerface
+#                   COMMAND env GOPATH=${GOPATH} go get cointerface
                    COMMAND env GOPATH=${GOPATH} go get coclient
                    COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
 
@@ -20,11 +21,25 @@ add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerfac
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
         COMMAND env GOPATH=${GOPATH} go fmt cointerface
         COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS go_get_cointerface_coclient
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LISTDIR_DIR}
+	DEPENDS 
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/daemonsets.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/namespaces.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicationcontrollers.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
                 ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
                 ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go)
 

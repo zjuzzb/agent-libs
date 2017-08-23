@@ -541,6 +541,7 @@ TEST_F(memdump_test, max_outstanding_dumps)
 	perform_too_many_dumps();
 }
 
+#if 0
 TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 {
 	perform_single_dump(true, false);
@@ -599,3 +600,4 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 	}
 	delete(formatter);
 }
+#endif // #if 0

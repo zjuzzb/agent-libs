@@ -71,6 +71,7 @@ public:
 	void on_clone(sinsp_evt* evt, sinsp_threadinfo* newtinfo);
 	void on_bind(sinsp_evt *evt);
 	void on_new_container(const sinsp_container_info& container_info);
+	void on_remove_container(const sinsp_container_info& container_info);
 
 	bool patch_network_role(sinsp_threadinfo* ptinfo, 
 		sinsp_fdinfo_t* pfdinfo,

@@ -96,6 +96,7 @@ Json::Value app_check::to_json() const
 		ret["interval"] = m_interval;
 	}
 	ret["log_errors"] = m_log_errors;
+	ret["retry"] = m_retry;
 	return ret;
 }
 bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
@@ -126,6 +127,11 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	if(log_errors_node.IsScalar())
 	{
 		rhs.m_log_errors = log_errors_node.as<bool>();
+	}
+	auto retry_node = node["retry"];
+	if(retry_node.IsScalar())
+	{
+		rhs.m_retry = retry_node.as<bool>();
 	}
 
 	auto pattern_node = node["pattern"];

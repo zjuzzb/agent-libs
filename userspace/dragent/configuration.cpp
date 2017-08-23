@@ -291,6 +291,7 @@ dragent_configuration::dragent_configuration()
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
+	m_metrics_report_interval_ns = 60000000000;
 	m_security_send_monitor_events = false;
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
@@ -798,6 +799,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
+	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", false);
+	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
@@ -902,6 +905,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
 	// 100 ms
 	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
+	m_metrics_report_interval_ns = m_config->get_scalar<uint64_t>("security" "metrics_report_interval_ns", 60000000000);
 
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
@@ -1135,6 +1139,14 @@ void dragent_configuration::print_configuration()
 		}
 		g_log->information("K8S extensions:" + os.str());
 	}
+	if(m_use_new_k8s)
+	{
+		g_log->information("Use new K8s integration");
+	}
+	if(!m_k8s_cluster_name.empty())
+	{
+		g_log->information("K8s cluster name: " + m_k8s_cluster_name);
+	}
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
@@ -1206,6 +1218,7 @@ void dragent_configuration::print_configuration()
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
 		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
 		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
+		g_log->information("Security Metrics Report Interval (ms)" + NumberFormatter::format(m_metrics_report_interval_ns / 1000000));
 
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));

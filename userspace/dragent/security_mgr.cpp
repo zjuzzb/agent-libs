@@ -14,10 +14,9 @@ security_mgr::security_mgr()
 	: m_initialized(false),
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
+	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
-	  m_configuration(NULL),
-	  m_analyzer(NULL)
-
+	  m_configuration(NULL)
 {
 	m_print.SetSingleLineMode(true);
 }
@@ -28,21 +27,23 @@ security_mgr::~security_mgr()
 
 void security_mgr::init(sinsp *inspector,
 			sinsp_data_handler *sinsp_handler,
+			sinsp_analyzer *analyzer,
 			capture_job_handler *capture_job_handler,
-			dragent_configuration *configuration,
-			sinsp_analyzer *analyzer)
+			dragent_configuration *configuration)
 
 {
 	m_inspector = inspector;
 	m_sinsp_handler = sinsp_handler;
+	m_analyzer = analyzer;
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
-	m_analyzer = analyzer;
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
 
 	m_actions_poll_interval = make_unique<run_on_interval>(m_configuration->m_actions_poll_interval_ns);
+
+	m_metrics_report_interval = make_unique<run_on_interval>(m_configuration->m_metrics_report_interval_ns);
 
 	m_coclient = make_shared<coclient>();
 	m_initialized = true;
@@ -59,6 +60,7 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 
 	m_falco_policies.clear();
 	m_policy_names.clear();
+	m_analyzer->infra_state()->clear_scope_cache();
 
 	m_print.PrintToString(policies, &tmp);
 
@@ -149,6 +151,15 @@ void security_mgr::process_event(sinsp_evt *evt)
 		m_coclient->next();
 	}, ts_ns);
 
+	m_metrics_report_interval->run([this]()
+        {
+		for(auto &policy : m_falco_policies)
+		{
+			policy.log_metrics();
+			policy.reset_metrics();
+		}
+	}, ts_ns);
+
 	for(auto &fpolicy : m_falco_policies)
 	{
 		draiosproto::policy_event *event = NULL;
@@ -211,7 +222,7 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);
 }
 
-sinsp_analyzer *security_mgr::get_analyzer()
+sinsp_analyzer *security_mgr::analyzer()
 {
 	return m_analyzer;
 }

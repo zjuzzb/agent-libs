@@ -544,6 +544,7 @@ enum message_type {
     POLICIES = 13;
     POLICY_EVENTS = 14;
     THROTTLED_POLICY_EVENTS = 15;
+    ORCHESTRATOR_EVENTS = 16;
 }
 
 //
@@ -614,6 +615,47 @@ message container {
     optional string mesos_task_id = 23;
     optional string image_id = 24;
     repeated command_details commands = 25; // List of commands executed in this container during the sample.
+}
+
+//
+// ORCHESTRATOR METADATA
+//
+message congroup_uid {
+    optional string kind = 1;
+    optional string id = 2;
+}
+
+message congroup_net_port {
+    required uint32 port = 1;
+    required uint32 target_port = 2;
+    optional string protocol = 3;
+    optional uint32 node_port = 4;
+    optional uint32 published_port = 5; // swarm_port
+}
+
+message container_group {
+    optional congroup_uid uid = 1;
+    map<string, string> tags = 3;
+    repeated string ip_addresses = 5;
+    repeated congroup_net_port ports = 6;
+    repeated app_metric metrics = 7;
+    repeated congroup_uid children = 8;
+    repeated congroup_uid parents = 9;
+}
+
+enum congroup_event_type {
+    ADDED = 1;
+    REMOVED = 2;
+    UPDATED = 3;
+}
+
+message congroup_update_event {
+    required congroup_event_type type = 1;
+    required container_group object = 3;
+}
+
+message orchestrator_events {
+    repeated congroup_update_event events = 1;
 }
 
 //
@@ -816,6 +858,15 @@ message swarm_state {
     optional string node_id = 7;
 }
 
+message orchestrator_state_t {
+    repeated container_group groups = 1;
+    // This is the UID of default namespace
+    optional string cluster_id = 2;
+    // This is a *likely* unique identifier set by customer or automatically
+    // scraped by AWS, GCP and so on
+    optional string cluster_name = 3;
+}
+
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -842,6 +893,8 @@ message metrics {
     optional proto_info protos = 20; // Information about protocols that have been decoded
     repeated container containers = 22;
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
+    optional orchestrator_state_t orchestrator_state = 34;
+    optional orchestrator_state_t global_orchestrator_state = 32;
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
@@ -1009,10 +1062,32 @@ enum policy_type {
     POLICY_MANUAL =3;
 }
 
+enum scope_operator {
+    EQ = 1;
+    NOT_EQ = 2;
+    IN_SET = 3;
+    NOT_IN_SET = 4;
+    CONTAINS = 5;
+    NOT_CONTAINS = 6;
+    STARTS_WITH = 7;
+}
+
+message scope_predicate {
+    required string key = 1;
+    // multiple values when using IN/NOT_IN, otherwise single
+    repeated string values = 2;
+    required scope_operator op = 3;
+}
+
 message policy {
     required uint64 id = 1;
     required string name = 2;
     required policy_type type = 3;
+
+    required bool host_scope = 9;
+    required bool container_scope = 10;
+    // all scope_predicates must match against the entity
+    repeated scope_predicate scope_predicates = 11;
 
     // when type=POLICY_BASELINE
     optional baseline_detail baseline_details = 4;

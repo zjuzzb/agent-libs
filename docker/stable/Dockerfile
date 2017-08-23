@@ -12,7 +12,10 @@ RUN cp /etc/skel/.bashrc /root && cp /etc/skel/.profile /root
 
 ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
-RUN echo "deb http://httpredir.debian.org/debian jessie main" > /etc/apt/sources.list.d/jessie.list \
+RUN echo "deb http://deb.debian.org/debian jessie main" > /etc/apt/sources.list.d/jessie.list \
+# Stretch doesn't have a gcc-4.9 package, we need to
+# fix this before jessie packages start breaking
+#RUN echo "deb http://deb.debian.org/debian stretch main" > /etc/apt/sources.list.d/stretch.list \
  && apt-get update \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
@@ -20,13 +23,14 @@ RUN echo "deb http://httpredir.debian.org/debian jessie main" > /etc/apt/sources
 	gnupg2 \
 	ca-certificates \
 	gcc \
+	gcc-6 \
 	gcc-5 \
 	gcc-4.9 \
 	libelf1 \
 	openjdk-8-jre-headless \
 	python bzip2 && rm -rf /var/lib/apt/lists/*
 
-# Since our base Debian image ships with GCC 5.0 which breaks older kernels, revert the
+# Since our base Debian image ships with GCC 6 which breaks older kernels, revert the
 # default to gcc-4.9. Also, since some customers use some very old distributions whose kernel
 # makefile is hardcoded for gcc-4.6 or so (e.g. Debian Wheezy), we pretend to have gcc 4.6/4.7
 # by symlinking it to 4.9
