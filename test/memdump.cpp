@@ -550,7 +550,7 @@ TEST_F(memdump_test, max_outstanding_dumps)
 	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps());
 }
 
-TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
+TEST_F(memdump_no_dragent_events_test, DISABLED_verify_no_dragent_events)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, false));
 
