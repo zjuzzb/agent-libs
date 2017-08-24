@@ -442,13 +442,9 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 				std::string::size_type pos = line.find(')');
 				if((pos != std::string::npos) && (line.size() > pos + 1))
 				{
-					StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-					if(st.count() >= 13)
+					unsigned long utime = 0, stime = 0;
+					if(sscanf(line.c_str()+pos+1, "%*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %lu %lu", &utime, &stime) > 0)
 					{
-						unsigned long int utime = strtoul(st[11].c_str(), nullptr, 10);
-						if(utime == ULONG_MAX && errno == ERANGE) { ASSERT(false); return res; }
-						unsigned long int stime = strtoul(st[12].c_str(), nullptr, 10);
-						if(stime == ULONG_MAX && errno == ERANGE) { ASSERT(false); return res; }
 						uint64_t proc = utime + stime;
 						if(*old_proc != (uint64_t)-1LL)
 						{
