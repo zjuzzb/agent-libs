@@ -380,6 +380,16 @@ void sinsp_worker::init()
 		m_inspector->m_thread_timeout_ns = 0;
 		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
+	else if (m_configuration->m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		m_inspector->open("");
+		m_inspector->set_simpledriver_mode();
+		m_analyzer->set_simpledriver_mode();
+		// Change these values so the inactive thread pruning
+		// runs more often
+		m_inspector->m_thread_timeout_ns = 0;
+		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
+	}
 	else
 	{
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);

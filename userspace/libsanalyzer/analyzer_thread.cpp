@@ -622,6 +622,22 @@ bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 		dst->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count()); 
 }
 
+bool threadinfo_cmp_evtcnt(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	sinsp_counter_time tot;
+	src->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	uint64_t srctot = tot.m_count;
+	dst->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	uint64_t dsttot = tot.m_count;
+
+	return (srctot > dsttot); 
+}
+
 bool threadinfo_cmp_cpu_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 {
 	int is_src_server = (src->m_ainfo->m_th_analysis_flags & (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER));
