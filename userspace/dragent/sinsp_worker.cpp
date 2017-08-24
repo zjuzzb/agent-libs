@@ -382,6 +382,7 @@ void sinsp_worker::init()
 	}
 	else if (m_configuration->m_mode == dragent_mode_t::SIMPLEDRIVER)
 	{
+		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 		m_inspector->open("");
 		m_inspector->set_simpledriver_mode();
 		m_analyzer->set_simpledriver_mode();
