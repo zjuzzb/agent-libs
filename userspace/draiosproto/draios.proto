@@ -1193,6 +1193,7 @@ enum error_type {
      ERR_INVALID_CUSTOMER_KEY = 2;
      ERR_DUPLICATE_AGENT = 3;
      ERR_SERVER_BUSY = 4;
+     ERR_PROTO_MISMATCH = 5;
 }
 
 message error_message {
