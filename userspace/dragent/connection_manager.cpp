@@ -705,36 +705,37 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 	draiosproto::error_message err_msg;
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &err_msg))
 	{
+		g_log->error(m_name + ": received unparsable error message");
 		return;
 	}
 
-	string err_str;
+	string err_str = "unknown error";
 	bool term = false;
 
-	// If a type isn't provided, we ignore the description string
+	// Log as much useful info as possible from the error_message
 	if(err_msg.has_type())
 	{
 		const draiosproto::error_type err_type = err_msg.type();
-		ASSERT(draiosproto::error_type_IsValid(err_type));
-		err_str = draiosproto::error_type_Name(err_type);
+		if (draiosproto::error_type_IsValid(err_type)) {
+			err_str = draiosproto::error_type_Name(err_type);
 
-		if(err_msg.has_description() && !err_msg.description().empty())
-		{
-			err_str += " (" + err_msg.description() + ")";
+			if(err_msg.has_description() && !err_msg.description().empty())
+			{
+				err_str += " (" + err_msg.description() + ")";
+			}
+
+			if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
+			{
+				term = true;
+				err_str += ", terminating the agent";
+			}
 		}
-
-		if(err_type == draiosproto::error_type::ERR_INVALID_CUSTOMER_KEY)
+		else
 		{
-			term = true;
-			err_str += ", terminating the agent";
+			err_str = ": received invalid error type: " + std::to_string(err_type);
 		}
 	}
-	else
-	{
-		err_str = "unknown error";
-	}
 
-	ASSERT(!err_str.empty());
 	g_log->error(m_name + ": received " + err_str);
 
 	if(term)
