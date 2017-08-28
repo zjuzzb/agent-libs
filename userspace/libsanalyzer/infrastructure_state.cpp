@@ -83,6 +83,7 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	for(auto i = preds.begin(); i != preds.end();) {
 		if(congroup->tags().find(i->key()) != congroup->tags().end()) {
 			if(!evaluate(*i, congroup->tags().at(i->key()))) {
+				preds.erase(i);
 				return false;
 			} else {
 				i = preds.erase(i);
