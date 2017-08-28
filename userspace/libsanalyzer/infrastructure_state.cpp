@@ -450,7 +450,7 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 	// glogf(sinsp_logger::SEV_DEBUG, "Match policy scope with c_id: \"%s\", h_id: \"%s\", p_id: %llu, container_scope: %s, host_scope: %s",
 	// 	container_id.c_str(), host_id.c_str(), policy.id(), policy.container_scope()?"true":"false", policy.host_scope()?"true":"false");
 
-	bool result;
+	bool result = true;
 	uid_t uid;
 
 	if((container_id.empty() && !policy.host_scope()) ||
@@ -489,7 +489,7 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 			result = walk_and_match(pos->second.get(), preds, visited);
 		}
 
-		if (!preds.empty()) {
+		if (result && !preds.empty()) {
 			glogf(sinsp_logger::SEV_DEBUG, "Predicates list not empty, check operators...");
 			auto i = preds.begin();
 			for(; i != preds.end(); ++i) {
