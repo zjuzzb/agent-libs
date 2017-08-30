@@ -1,6 +1,9 @@
 #include "logger.h"
 #include <sys/statvfs.h>
 
+using namespace Poco;
+using Poco::Message;
+
 dragent_logger* g_log = NULL;
 
 dragent_logger::dragent_logger(Logger* file_log, Logger* console_log, Logger* event_log):
@@ -21,11 +24,15 @@ void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_bur
 
 void dragent_logger::log(const string& str, uint32_t sev)
 {
-	Poco::Message m("dragent_logger", str, (Message::Priority) sev);
+	Message m("dragent_logger", str, (Message::Priority) sev);
 	m_file_log->log(m);
 	if(m_console_log != NULL)
 	{
 		m_console_log->log(m);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify((Message::Priority) sev);
 	}
 }
 
@@ -45,6 +52,10 @@ void dragent_logger::debug(const string& str)
 	{
 		m_console_log->debug(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_DEBUG);
+	}
 }
 
 void dragent_logger::information(const string& str)
@@ -53,6 +64,10 @@ void dragent_logger::information(const string& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->information(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_INFORMATION);
 	}
 }
 
@@ -72,6 +87,10 @@ void dragent_logger::warning(const string& str)
 	{
 		m_console_log->warning(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_WARNING);
+	}
 }
 
 void dragent_logger::error(const string& str)
@@ -80,6 +99,10 @@ void dragent_logger::error(const string& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->error(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_ERROR);
 	}
 }
 
@@ -117,6 +140,10 @@ void dragent_logger::debug(string&& str)
 	{
 		m_console_log->debug(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_DEBUG);
+	}
 }
 
 void dragent_logger::information(string&& str)
@@ -125,6 +152,10 @@ void dragent_logger::information(string&& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->information(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_INFORMATION);
 	}
 }
 
@@ -144,6 +175,10 @@ void dragent_logger::warning(string&& str)
 	{
 		m_console_log->warning(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_WARNING);
+	}
 }
 
 void dragent_logger::error(string&& str)
@@ -152,6 +187,10 @@ void dragent_logger::error(string&& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->error(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_ERROR);
 	}
 }
 

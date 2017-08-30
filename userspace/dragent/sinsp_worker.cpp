@@ -12,6 +12,7 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
+			   internal_metrics::sptr_t im,
 			   protocol_queue* queue,
 			   atomic<bool> *enable_autodrop,
 			   synchronized_policy_events *policy_events,
@@ -32,7 +33,8 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
 	m_next_iflist_refresh_ns(0),
-	m_aws_metadata_refresher(configuration)
+	m_aws_metadata_refresher(configuration),
+	m_internal_metrics(im)
 {
 }
 
@@ -67,6 +69,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
+	m_analyzer->set_internal_metrics(m_internal_metrics);
+
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
 		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling, m_configuration->m_jmx_limit);
@@ -173,7 +177,11 @@ void sinsp_worker::init()
 	{
 		m_analyzer->get_configuration()->set_k8s_extensions(m_configuration->m_k8s_extensions);
 	}
-
+	if(m_configuration->m_use_new_k8s)
+	{
+		m_analyzer->set_use_new_k8s(m_configuration->m_use_new_k8s);
+	}
+	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
 	//
 	// mesos
 	//
@@ -306,6 +314,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
+	m_analyzer->get_configuration()->set_security_enabled(m_configuration->m_security_enabled);
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
 
@@ -330,6 +339,7 @@ void sinsp_worker::init()
 		m_security_mgr = new security_mgr();
 		m_security_mgr->init(m_inspector,
 				     &m_sinsp_handler,
+				     m_analyzer,
 				     m_capture_job_handler,
 				     m_configuration);
 
@@ -531,6 +541,11 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	}
 }
 
+void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
+{
+	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
+}
+
 void sinsp_worker::init_falco()
 {
 	if(m_configuration->m_enable_falco_engine)
@@ -556,8 +571,8 @@ void sinsp_worker::process_job_requests()
 
 	if(dragent_configuration::m_signal_dump)
 	{
-		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
+		g_log->information("Received SIGUSR1, starting dump");
 
 		std::shared_ptr<capture_job_handler::dump_job_request> job_request
 			= make_shared<capture_job_handler::dump_job_request>();

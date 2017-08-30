@@ -136,6 +136,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_parser = new sinsp_analyzer_parsers(this);
 
 	m_falco_baseliner = new sinsp_baseliner();
+	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
 
 	//
 	// Listeners
@@ -212,6 +213,11 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		delete m_falco_baseliner;
 	}
+
+	if(m_infrastructure_state != NULL)
+	{
+		delete m_infrastructure_state;
+	}
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -237,6 +243,11 @@ void sinsp_analyzer::set_percentiles()
 		m_host_req_metrics.set_percentiles(pctls);
 		m_io_net.set_percentiles(pctls);
 	}
+}
+
+infrastructure_state *sinsp_analyzer::infra_state()
+{
+	return m_infrastructure_state;
 }
 
 void sinsp_analyzer::on_capture_start()
@@ -336,6 +347,23 @@ void sinsp_analyzer::on_capture_start()
 	{
 		glogf("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
+	}
+
+	if(m_configuration->get_security_enabled() || m_use_new_k8s)
+	{
+		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
+
+		// K8s url to use
+		string k8s_url = m_configuration->get_k8s_api_server();
+		if (!k8s_url.empty()) {
+			// autodetect is automatically disabled when running in daemonset mode
+			// url instead will always point to get_k8s_api_server
+			if(m_configuration->get_k8s_delegated_nodes() != 0)
+			{
+				k8s_url = "";
+			}
+			m_infrastructure_state->subscribe_to_k8s(k8s_url);
+		}
 	}
 }
 
@@ -727,8 +755,34 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 	if(m_sample_callback != NULL)
 	{
+		if(m_internal_metrics)
+		{
+			scap_stats st;
+			m_inspector->get_capture_stats(&st);
+
+			m_internal_metrics->set_n_evts(st.n_evts);
+			m_internal_metrics->set_n_drops(st.n_drops);
+			m_internal_metrics->set_n_drops_buffer(st.n_drops_buffer);
+			m_internal_metrics->set_n_preemptions(st.n_preemptions);
+
+			m_internal_metrics->set_fp((int64_t)round(m_prev_flush_cpu_pct * 100));
+			m_internal_metrics->set_sr(m_sampling_ratio);
+			m_internal_metrics->set_fl(m_prev_flushes_duration_ns / 1000000);
+			if(m_internal_metrics->send_all(m_metrics->mutable_internal_metrics()))
+			{
+				if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+				{
+					g_logger.log(m_metrics->protos().statsd().DebugString(), sinsp_logger::SEV_TRACE);
+				}
+			}
+			else
+			{
+				g_logger.log("Error processing agent internal metrics.", sinsp_logger::SEV_WARNING);
+			}
+		}
 		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, num_drop_events, m_metrics, m_sampling_ratio, m_my_cpuload,
-													 m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
+							     m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
+
 		m_prev_flushes_duration_ns = 0;
 	}
 
@@ -1262,7 +1316,7 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 			return new k8s(k8s_api.to_string(), false /*not captured*/,
 						   m_k8s_ssl, m_k8s_bt, false,
 						   m_configuration->get_k8s_event_filter(),
-						   m_ext_list_ptr);
+						   m_ext_list_ptr, m_use_new_k8s);
 		}
 	}
 	catch(std::exception& ex)
@@ -1594,6 +1648,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	{
 		m_k8s_proc_detected = false;
 	}
+
+	uint64_t process_count = 0;
+
 	// Emit process has 3 cycles on thread_table:
 	// 1. Aggregate process into programs
 	// 2. (only on programs) aggregate programs metrics to host and container ones
@@ -1612,6 +1669,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 		analyzer_container_state* container = NULL;
+
+		if(tinfo->is_main_thread())
+		{
+			++process_count;
+		}
 
 		if(!tinfo->m_container_id.empty())
 		{
@@ -1932,6 +1994,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 	}
 	am_trc.stop();
+
+	if(m_internal_metrics)
+	{
+		// update internal metrics
+		m_internal_metrics->set_process(process_count);
+		m_internal_metrics->set_thread(m_inspector->m_thread_manager->m_threadtable.size());
+		m_internal_metrics->set_container(m_containers.size());
+		m_internal_metrics->set_appcheck(app_checks_processes.size());
+		m_internal_metrics->set_javaproc(java_process_requests.size());
+		m_internal_metrics->set_mesos_autodetect(m_configuration->get_mesos_autodetect_enabled());
+		m_internal_metrics->update_subprocess_metrics(m_procfs_parser);
+	}
 
 	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
 	{
@@ -4301,13 +4375,19 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	}
 
 	//
-
-	//
 	// If process the event in the baseliner
 	//
 	if(m_do_baseline_calculation)
 	{
 		m_falco_baseliner->process_event(evt);
+	}
+
+	if(m_infrastructure_state && (m_configuration->get_security_enabled() || m_infrastructure_state->subscribed()))
+	{
+		//
+		// Refresh the infrastructure state with pending orchestrators or hosts events
+		//
+		m_infrastructure_state->refresh(ts);
 	}
 
 	//
@@ -4610,7 +4690,7 @@ void sinsp_analyzer::get_k8s_data()
 	if(m_k8s)
 	{
 		m_k8s->watch();
-		if(m_metrics)
+		if(m_metrics && !m_use_new_k8s)
 		{
 			k8s_proto(*m_metrics).get_proto(m_k8s->get_state());
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE && m_metrics->has_kubernetes())
@@ -4619,7 +4699,7 @@ void sinsp_analyzer::get_k8s_data()
 				g_logger.log(m_metrics->kubernetes().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 		}
-		else
+		else if (!m_metrics)
 		{
 			g_logger.log("Proto metrics are NULL.", sinsp_logger::SEV_ERROR);
 		}
@@ -4825,6 +4905,10 @@ void sinsp_analyzer::reset_mesos(const std::string& errmsg)
 	m_mesos_last_failure_ns = m_prev_flush_time_ns;
 	m_mesos.reset();
 	m_configuration->set_mesos_state_uri(m_configuration->get_mesos_state_original_uri());
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->set_mesos_detected(false);
+	}
 }
 
 void sinsp_analyzer::emit_mesos()
@@ -4906,6 +4990,10 @@ void sinsp_analyzer::emit_mesos()
 		else if(m_configuration->get_mesos_autodetect_enabled() && (m_prev_flush_time_ns - m_mesos_last_failure_ns) > MESOS_RETRY_ON_ERRORS_TIMEOUT_NS)
 		{
 			detect_mesos();
+		}
+		if(m_internal_metrics && m_mesos && m_mesos->is_alive())
+		{
+			m_internal_metrics->set_mesos_detected(true);
 		}
 	}
 	catch(std::exception& e)
@@ -5330,6 +5418,31 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 					 containers_cmp<decltype(cpu_extractor)>(&m_containers, move(cpu_extractor)));
 	}
 	check_and_emit_containers(top_cpu_containers);
+
+	if(m_use_new_k8s && m_infrastructure_state->subscribed())
+	{
+		std::string cluster_name =
+			!m_configuration->get_k8s_cluster_name().empty() ?
+			m_configuration->get_k8s_cluster_name() :
+			m_infrastructure_state->get_k8s_cluster_name();
+		auto cluster_id = m_infrastructure_state->get_k8s_cluster_id();
+		// if cluster_id is empty, better to don't send anything since
+		// the backend relies on this field
+		if(!cluster_id.empty())
+		{
+			// Build the orchestrator state of the emitted containers (without metrics)
+			m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
+			m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
+			m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
+			if(check_k8s_delegation()) {
+				m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
+				m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
+				// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
+				m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
+			}
+		}
+	}
+
 /*
 	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);
 	for(const auto& c : m_metrics->containers())
@@ -6110,6 +6223,11 @@ void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 bool sinsp_analyzer::driver_stopped_dropping()
 {
 	return m_driver_stopped_dropping;
+}
+
+void sinsp_analyzer::set_internal_metrics(internal_metrics::sptr_t im)
+{
+	m_internal_metrics = im;
 }
 
 #ifndef _WIN32

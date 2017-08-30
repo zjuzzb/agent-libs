@@ -503,10 +503,10 @@ public:
 	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
-	static volatile bool m_signal_dump;
-	static volatile bool m_terminate;
-	static volatile bool m_send_log_report;
-	static volatile bool m_config_update;
+	static std::atomic<bool> m_signal_dump;
+	static std::atomic<bool> m_terminate;
+	static std::atomic<bool> m_send_log_report;
+	static std::atomic<bool> m_config_update;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
@@ -604,7 +604,9 @@ public:
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
+	bool m_use_new_k8s;
 	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
+	std::string m_k8s_cluster_name;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
@@ -655,6 +657,7 @@ public:
 	uint64_t m_security_report_interval_ns;
 	uint64_t m_security_throttled_report_interval_ns;
 	uint64_t m_actions_poll_interval_ns;
+	uint64_t m_metrics_report_interval_ns;
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;
 	bool m_security_send_monitor_events;

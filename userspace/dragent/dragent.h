@@ -17,6 +17,7 @@
 #include "logger.h"
 #include "monitor.h"
 #include "subprocesses_logger.h"
+#include "internal_metrics.h"
 #include <atomic>
 #include <memory>
 
@@ -28,7 +29,7 @@
 class watchdog_state
 {
 public:
-	explicit watchdog_state() noexcept:
+	watchdog_state() noexcept:
 		m_pid(0),
 		m_memory_used(0),
 		m_last_loop_s(0)
@@ -55,10 +56,27 @@ public:
 		return m_pid.load() > 0;
 	}
 
+	const std::string& name() const
+	{
+		return m_name;
+	}
+
 private:
+	// careful here - only app should access this function
+	// at a well-defined time (preferably immediately after object
+	// creation); the name string will be read from subprocess
+	// logger thread
+	void set_name(const std::string& name)
+	{
+		m_name = name;
+	}
+
 	atomic<pid_t> m_pid;
 	atomic<uint64_t> m_memory_used;
 	atomic<uint64_t> m_last_loop_s;
+	std::string m_name;
+
+	friend class dragent_app;
 };
 
 class user_event_channel;
@@ -89,6 +107,8 @@ private:
 	void mark_clean_shutdown();
 	Logger* make_console_channel(AutoPtr<Formatter> formatter);
 	Logger* make_event_channel();
+	void send_internal_metrics(pid_t pid, const std::string& name);
+	void update_subprocesses();
 
 	bool m_help_requested;
 	bool m_version_requested;
@@ -106,6 +126,7 @@ private:
 	unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
 	unique_ptr<pipe_manager> m_cointerface_pipes;
 
+	internal_metrics::sptr_t m_internal_metrics;
 	sinsp_worker m_sinsp_worker;
 	capture_job_handler m_capture_job_handler;
 	connection_manager m_connection_manager;

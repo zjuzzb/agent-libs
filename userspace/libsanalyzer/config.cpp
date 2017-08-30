@@ -33,6 +33,7 @@ sinsp_configuration::sinsp_configuration()
 	m_command_lines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_capture_dragent_events = false;
+	m_security_enabled = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 }
@@ -537,6 +538,16 @@ const std::set<std::string>& sinsp_configuration::get_k8s_extensions() const
 	return m_k8s_extensions;
 }
 
+void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_name)
+{
+	m_k8s_cluster_name = k8s_cluster_name;
+}
+
+const std::string& sinsp_configuration::get_k8s_cluster_name() const
+{
+	return m_k8s_cluster_name;
+}
+
 unsigned sinsp_configuration::get_statsd_limit() const
 {
 	return m_statsd_limit;
@@ -832,6 +843,16 @@ unsigned sinsp_configuration::get_app_checks_limit() const
 void sinsp_configuration::set_app_checks_limit(unsigned value)
 {
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
+
+bool sinsp_configuration::get_security_enabled() const
+{
+	return m_security_enabled;
+}
+
+void sinsp_configuration::set_security_enabled(bool val)
+{
+	m_security_enabled = val;
 }
 
 bool sinsp_configuration::get_cointerface_enabled() const

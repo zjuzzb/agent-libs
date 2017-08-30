@@ -1,0 +1,16 @@
+package: .
+ignore:
+  - draiosproto
+  - sdc_internal
+  - kubecollect
+import:
+  - package: k8s.io/client-go
+    version: master
+  - package: github.com/cihub/seelog
+    version: v2.6.0
+  - package: github.com/docker/docker
+    version: v1.13.1
+  - package: google.golang.org/grpc
+    version: v1.5.0
+  - package: github.com/emicklei/go-restful
+    version: v1.2

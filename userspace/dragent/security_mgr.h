@@ -23,6 +23,7 @@
 
 #include "capture_job_handler.h"
 #include "configuration.h"
+#include "analyzer.h"
 #include "sinsp_data_handler.h"
 #include "security_policy.h"
 
@@ -34,6 +35,7 @@ public:
 
 	void init(sinsp *inspector,
 		  sinsp_data_handler *sinsp_handler,
+		  sinsp_analyzer *analyzer,
 		  capture_job_handler *capture_job_handler,
 		  dragent_configuration *configuration);
 
@@ -61,6 +63,8 @@ public:
 			   bool apply_scope,
 			   std::string &container_id,
 			   std::string &errstr);
+
+	sinsp_analyzer *analyzer();
 
 private:
 
@@ -90,6 +94,7 @@ private:
 	bool m_initialized;
 	sinsp* m_inspector;
 	sinsp_data_handler *m_sinsp_handler;
+	sinsp_analyzer *m_analyzer;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;
 
@@ -105,6 +110,8 @@ private:
 	std::shared_ptr<coclient> m_coclient;
 
 	unique_ptr<run_on_interval> m_actions_poll_interval;
+
+	unique_ptr<run_on_interval> m_metrics_report_interval;
 
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;

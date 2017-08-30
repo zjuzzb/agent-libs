@@ -193,7 +193,7 @@ class AppCheckInstance:
         self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
-        self.retry = True
+        self.retry = _is_affirmative(check.get("retry", True))
 
         try:
             check_module = check["check_module"]

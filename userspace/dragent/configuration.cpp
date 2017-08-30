@@ -19,10 +19,10 @@
 using namespace Poco;
 using namespace Poco::Net;
 
-volatile bool dragent_configuration::m_signal_dump = false;
-volatile bool dragent_configuration::m_terminate = false;
-volatile bool dragent_configuration::m_send_log_report = false;
-volatile bool dragent_configuration::m_config_update = false;
+std::atomic<bool> dragent_configuration::m_signal_dump(false);
+std::atomic<bool> dragent_configuration::m_terminate(false);
+std::atomic<bool> dragent_configuration::m_send_log_report(false);
+std::atomic<bool> dragent_configuration::m_config_update(false);
 
 static std::string bool_as_text(bool b)
 {
@@ -291,6 +291,7 @@ dragent_configuration::dragent_configuration()
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
+	m_metrics_report_interval_ns = 60000000000;
 	m_security_send_monitor_events = false;
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
@@ -809,6 +810,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
+	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", false);
+	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
@@ -913,6 +916,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
 	// 100 ms
 	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
+	m_metrics_report_interval_ns = m_config->get_scalar<uint64_t>("security" "metrics_report_interval_ns", 60000000000);
 
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
@@ -1007,7 +1011,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	string ancestors;
-	for(auto s : m_command_lines_valid_ancestors) 
+	for(auto s : m_command_lines_valid_ancestors)
 	{
 		ancestors.append(s + " ");
 	}
@@ -1144,6 +1148,14 @@ void dragent_configuration::print_configuration()
 		}
 		g_log->information("K8S extensions:" + os.str());
 	}
+	if(m_use_new_k8s)
+	{
+		g_log->information("Use new K8s integration");
+	}
+	if(!m_k8s_cluster_name.empty())
+	{
+		g_log->information("K8s cluster name: " + m_k8s_cluster_name);
+	}
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
@@ -1215,10 +1227,18 @@ void dragent_configuration::print_configuration()
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
 		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
 		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
+		g_log->information("Security Metrics Report Interval (ms)" + NumberFormatter::format(m_metrics_report_interval_ns / 1000000));
 
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
+
+		// Note that this agent has secure enabled by adding to the host tags
+		if(m_host_tags != "")
+		{
+			m_host_tags += ",";
+		}
+		m_host_tags += "sysdig_secure.enabled:true";
 	}
 
 
@@ -1368,7 +1388,6 @@ bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 		g_log->error(string("getrusage") + strerror(errno));
 		return false;
 	}
-
 	*memory = usage.ru_maxrss / 1024;
 	return true;
 }
@@ -1417,9 +1436,9 @@ void dragent_configuration::write_statsite_configuration()
 		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
 				"[statsite]\nbind_address = 127.0.0.1\n";
 
-	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
+	uint16_t tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_statsd_port;
-	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
+	uint16_t flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one
 	// our levels: trace, debug, info, notice, warning, error, critical, fatal

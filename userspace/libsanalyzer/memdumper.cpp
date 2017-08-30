@@ -24,6 +24,7 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_
 	m_cf = NULL;
 	m_disabled = false;
 	m_switches_to_go = 0;
+	m_sysdig_sid = 0;
 	m_saturation_inactivity_start_time = 0;
 	m_delayed_switch_states_needed = false;
 	m_delayed_switch_states_ready = false;

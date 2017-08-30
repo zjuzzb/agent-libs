@@ -50,6 +50,7 @@ private:
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
 	void handle_policies_message(uint8_t* buf, uint32_t size);
+	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
 	void send_policy_events_messages(uint64_t ts_ns);
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
@@ -70,8 +71,8 @@ private:
 	synchronized_policy_events *m_policy_events;
 	sinsp_worker* m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
-	volatile uint64_t m_last_loop_ns;
-	volatile pthread_t m_pthread_id;
+	std::atomic<uint64_t> m_last_loop_ns;
+	std::atomic<pthread_t> m_pthread_id;
 
 	uint32_t m_reconnect_interval;
 	chrono::time_point<std::chrono::system_clock> m_last_connection_failure;

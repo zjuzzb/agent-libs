@@ -275,7 +275,7 @@ void subprocesses_logger::run()
 						trim(data);
 						if(fds.second.second != nullptr && data.find("HB,") == 0)
 						{
-							// This is an heartbeat message, so parse and store values
+							// This is a heartbeat message, so parse and store values
 							// for watchdog, format: HB,pid,memory_used,last_loop_ts
 							StringTokenizer tokenizer(data, ",");
 							if(tokenizer.count() > 3)
@@ -284,7 +284,7 @@ void subprocesses_logger::run()
 														 stoul(tokenizer[2]),
 														 stoul(tokenizer[3]));
 							}
-							g_log->debug("Received heartbeat: " + data);
+							g_log->debug("Received [" + fds.second.second->name() + "] heartbeat: " + data);
 						}
 						else
 						{

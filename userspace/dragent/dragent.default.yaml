@@ -803,6 +803,7 @@ app_checks:
       url: http://127.0.0.1:8098/stats
   - name: php-fpm
     check_module: php_fpm
+    retry: false
     pattern:
       exe: "php-fpm: master process"
   - name: varnish
@@ -983,13 +984,14 @@ events:
       - Failed              # Container Image Pull, Create or Start Failed (warning)
       - InspectFailed       # Container Image Inspect Failed               (warning)
       - ErrImageNeverPull   # Container Image NeverPull Policy Violation   (warning)
-#      - BackOff             # Back Off Container Start or Image Pull       (warning)
+      - BackOff             # Back Off Container Start or Image Pull       (warning)
 #      - Created             # Container Created                            (information)
 #      - Started             # Container Started                            (information)
       - Killing             # Killing Container                            (information)
-#      - Unhealthy           # Container Unhealthy                          (warning)
+      - Unhealthy           # Container Unhealthy                          (warning)
 #      - FailedSync          # Pod Sync Failed                              (warning)
 #      - FailedValidation    # Failed Pod Configuration Validation          (warning)
+      - FailedScheduling
       - OutOfDisk           # Out of Disk                                  (information)
       - HostPortConflict    # Host/Port Conflict                           (warning)
     replicationController:
