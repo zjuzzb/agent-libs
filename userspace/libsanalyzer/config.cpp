@@ -874,4 +874,14 @@ void sinsp_configuration::set_swarm_enabled(bool val)
 {
 	m_swarm_enabled = val;
 }
+
+uint64_t sinsp_configuration::get_security_baseline_report_interval_ns() const
+{
+	return m_security_baseline_report_interval_ns;
+}
+
+void sinsp_configuration::set_security_baseline_report_interval_ns(uint64_t report_interval)
+{
+	m_security_baseline_report_interval_ns = report_interval;
+}
 #endif // HAS_ANALYZER

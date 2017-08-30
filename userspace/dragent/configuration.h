@@ -669,6 +669,8 @@ public:
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
 
+	uint64_t m_security_baseline_report_interval_ns;
+
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;

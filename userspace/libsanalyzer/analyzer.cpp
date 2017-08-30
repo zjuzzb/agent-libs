@@ -3337,7 +3337,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			//
 			m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 		}
-		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > m_configuration->get_security_baseline_report_interval_ns())
 		{
 			if(m_last_falco_dump_ts != 0)
 			{

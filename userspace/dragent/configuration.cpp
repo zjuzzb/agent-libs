@@ -302,6 +302,7 @@ dragent_configuration::dragent_configuration()
 	m_app_checks_limit = 300;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
+	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -981,6 +982,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
+
+	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);
 }
 
 void dragent_configuration::print_configuration()
@@ -1008,6 +1011,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
 	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
+	g_log->information("falcobaseline.report_interval: " + NumberFormatter::format(m_security_baseline_report_interval_ns));
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
 	string ancestors;
