@@ -70,8 +70,6 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 			switch(cond.m_param_type) {
 			case filter_condition::param_type::port:
 			{
-				// Just looking for single port for the moment
-				// Should change to match port range
 				auto ports = tinfo->m_ainfo->listening_ports();
 				if (cond.m_pattern == "matched")
 				{
@@ -81,11 +79,24 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 						snprintf(reason, sizeof(reason), "port matched");
 					break;
 				}
-				uint16_t port = atoi(cond.m_pattern.c_str());
-				if (ports.find(port) == ports.end())
+				auto delim = cond.m_pattern.find("-");
+				unsigned port_start = atoi(cond.m_pattern.substr(0, delim).c_str());
+				unsigned port_end = (delim == string::npos) ? port_start :
+					atoi(cond.m_pattern.substr(delim+1, string::npos).c_str());
+
+				bool portmatch = false;
+				for (const auto port : ports)
+				{
+					if ((port >= port_start) && (port <= port_end))
+					{
+						portmatch = true;
+						snprintf(reason, sizeof(reason), "port %d match", port);
+						break;
+					}
+				}
+				if (!portmatch)
 					matchcond = false;
-				else
-					snprintf(reason, sizeof(reason), "port = %s", cond.m_pattern.c_str());
+
 				break;
 			}
 			case filter_condition::param_type::process_name:
