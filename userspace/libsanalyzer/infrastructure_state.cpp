@@ -546,39 +546,40 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	if(grp->uid().kind() != "container" && grp->uid().kind() != "host") {
 		auto x = state->Add();
 		x->CopyFrom(*grp);
-		x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 		// Clean children links, backend will reconstruct them from parent ones
 		if(grp->uid().kind() != "k8s_pod")
 		{
 			x->mutable_children()->Clear();
 		}
-		// Put back legacy metrics
-		auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
-		{
-			auto it = find_if(grp->metrics().cbegin(), grp->metrics().cend(), [&metric_name](const draiosproto::app_metric& m)
-			{
-				return m.name() == metric_name;
-			});
-			if(it != grp->metrics().cend())
-			{
-				dest->mutable_metrics()->Add()->CopyFrom(*it);
-			}
-		};
 
-		if(x->uid().kind() == "k8s_pod")
-		{
-			add_metric_if_found("kubernetes.pod.container.status.restarts", x);
-		}
-		else if(x->uid().kind() == "k8s_replicaset")
-		{
-			add_metric_if_found("kubernetes.replicaset.status.replicas", x);
-			add_metric_if_found("kubernetes.replicaset.spec.replicas", x);
-		}
-		else if(x->uid().kind() == "k8s_replicationcontroller")
-		{
-			add_metric_if_found("kubernetes.replicationcontroller.status.replicas", x);
-			add_metric_if_found("kubernetes.replicationcontroller.spec.replicas", x);
-		}
+		// x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
+		// // Put back legacy metrics
+		// auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
+		// {
+		// 	auto it = find_if(grp->metrics().cbegin(), grp->metrics().cend(), [&metric_name](const draiosproto::app_metric& m)
+		// 	{
+		// 		return m.name() == metric_name;
+		// 	});
+		// 	if(it != grp->metrics().cend())
+		// 	{
+		// 		dest->mutable_metrics()->Add()->CopyFrom(*it);
+		// 	}
+		// };
+
+		// if(x->uid().kind() == "k8s_pod")
+		// {
+		// 	add_metric_if_found("kubernetes.pod.container.status.restarts", x);
+		// }
+		// else if(x->uid().kind() == "k8s_replicaset")
+		// {
+		// 	add_metric_if_found("kubernetes.replicaset.status.replicas", x);
+		// 	add_metric_if_found("kubernetes.replicaset.spec.replicas", x);
+		// }
+		// else if(x->uid().kind() == "k8s_replicationcontroller")
+		// {
+		// 	add_metric_if_found("kubernetes.replicationcontroller.status.replicas", x);
+		// 	add_metric_if_found("kubernetes.replicationcontroller.spec.replicas", x);
+		// }
 	}
 }
 
