@@ -11,6 +11,7 @@
 #include "statsite_proxy.h"
 #include <atomic>
 #include "app_checks.h"
+#include "prometheus.h"
 #include <unordered_set>
 #include "sinsp_curl.h"
 #include "user_event.h"
@@ -366,6 +367,18 @@ public:
 		if(!m_app_checks.empty())
 		{
 			check_metric_limits();
+			if (!m_app_proxy)
+			{
+				m_app_proxy = make_unique<app_checks_proxy>();
+			}
+		}
+	}
+
+	void set_prometheus_conf(const prometheus_conf& pconf)
+	{
+		m_prom_conf = pconf;
+		if (m_prom_conf.enabled() && !m_app_proxy)
+		{
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
@@ -475,6 +488,8 @@ VISIBILITY_PRIVATE
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
+	void match_prom_checks(sinsp_threadinfo *tinfo,
+			       sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs);
 	void match_checks_list(sinsp_threadinfo *tinfo,
 			       sinsp_threadinfo *mtinfo,
 			       const vector<app_check> &checks,
@@ -649,6 +664,8 @@ VISIBILITY_PRIVATE
 	decltype(m_app_proxy->read_metrics()) m_app_metrics;
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
+
+	prometheus_conf m_prom_conf;
 #endif
 
 	unique_ptr<k8s> m_k8s;

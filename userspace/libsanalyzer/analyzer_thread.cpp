@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -110,7 +111,8 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_analyzer = inspector->m_analyzer;
 	m_tinfo = tinfo;
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
-	m_app_checks_found.clear();
+	clear_found_app_checks();
+	clear_found_prom_check();
 	m_procinfo = NULL;
 	m_connection_queue_usage_pct = 0;
 	m_old_proc_jiffies = -1;
@@ -348,7 +350,8 @@ void thread_analyzer_info::clear_all_metrics()
 		m_main_thread_ainfo->m_protostate.clear();
 	}
 	m_called_execve = false;
-	m_app_checks_found.clear();
+	clear_found_app_checks();
+	clear_found_prom_check();
 }
 
 void thread_analyzer_info::clear_role_flags()
@@ -536,6 +539,16 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 	main_thread_ainfo()->m_client_transactions_per_cpu[tr->m_cpuid].push_back(
 		sinsp_trlist_entry(tr->m_prev_prev_start_of_transaction_time, 
 		tr->m_prev_end_time, flags));
+}
+
+bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
+{
+	for (const auto& ac_found : m_app_checks_found)
+	{
+		if (!fnmatch(pattern.c_str(), ac_found.c_str(), FNM_EXTMATCH))
+			return true;
+	}
+	return false;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

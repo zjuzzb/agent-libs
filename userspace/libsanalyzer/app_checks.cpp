@@ -3,6 +3,7 @@
 //
 
 #include "app_checks.h"
+#include "prometheus.h"
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
@@ -218,13 +219,22 @@ app_checks_proxy::app_checks_proxy():
 {
 }
 
-void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes)
+void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes, const vector<prom_process>& prom_procs, const prometheus_conf &prom_conf)
 {
-	Json::Value command = Json::Value(Json::arrayValue);
+	Json::Value procs = Json::Value(Json::arrayValue);
 	for(const auto& p : processes)
 	{
-		command.append(p.to_json());
+		procs.append(p.to_json());
 	}
+	Json::Value promps = Json::Value(Json::arrayValue);
+	for(const auto& p : prom_procs)
+	{
+		promps.append(p.to_json(prom_conf));
+	}
+
+	Json::Value command;
+	command["processes"] = procs;
+	command["prometheus"] = promps;
 	string data = m_json_writer.write(command);
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Send to sdchecks: %s", data.c_str());
 	m_outqueue.send(data);

@@ -13,7 +13,7 @@ from prometheus_client.parser import text_string_to_metric_families
 
 # project
 from checks import AgentCheck
-
+from sdchecks import AppCheckDontRetryException
 
 class Prometheus(AgentCheck):
 
@@ -26,23 +26,35 @@ class Prometheus(AgentCheck):
             return name[:-len('_sum')] + '_avg'
         
     def check(self, instance):
-        logging.debug('Starting app check-prometheus')
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
 
         # Load values from the instance config
         query_url = instance['url']
+        max_metrics = instance.get('max_metrics')
+        if max_metrics:
+            max_metrics = int(max_metrics)
+        max_tags = instance.get('max_tags')
+        if max_tags:
+            max_tags = int(max_tags)
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
 
-        metrics = self.get_prometheus_metrics(query_url, timeout, instance.get("name", "prometheus"))
+        metrics = self.get_prometheus_metrics(query_url, timeout, "prometheus")
+        num = 0
         for family in metrics:
             parse_sum = None
             parse_count = None
+            if max_metrics and num >= max_metrics:
+                break
 
             for sample in family.samples:
+                if max_metrics and num >= max_metrics:
+                    break
                 (name, tags, value) = sample
+                if tags and max_tags and len(tags) > max_tags:
+                    tags = {k: tags[k] for k in tags.keys()[:max_tags]}
                 tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
 
                 # First handle summary
@@ -60,17 +72,21 @@ class Prometheus(AgentCheck):
                             self.gauge('%s.%dpercentile' % (name, quantile),
                                        value,
                                        tags)
+                            num += 1
 
                     if parse_sum != None and parse_count > 0:
                         logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
                         self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
+                        num += 1
                 elif family.type == 'counter':
                     # logging.debug('prom: adding counter with name %s' %(name))
                     self.rate(name, value, tags)
+                    num += 1
                 else:
                     # Could be a gauge or untyped value, which we treat as a gauge for now
                     # logging.debug('prom: adding gauge with name %s' %(name))
                     self.gauge(name, value, tags)
+                    num += 1
 
     def get_prometheus_metrics(self, url, timeout, name):
         try:
@@ -87,7 +103,9 @@ class Prometheus(AgentCheck):
             self.service_check(name, AgentCheck.CRITICAL,
                 message='%s returned a status of %s' % (url, r.status_code),
                 tags = ["url:{0}".format(url)])
-            raise Exception("Got %s when hitting %s" % (r.status_code, url))
+            raise AppCheckDontRetryException("Got %s when hitting %s" % (r.status_code, url))
+        except (ValueError, requests.exceptions.ConnectionError) as ex:
+            raise AppCheckDontRetryException(ex)
 
         else:
             self.service_check(name, AgentCheck.OK,
