@@ -205,6 +205,9 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
 	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
+	// This gets specially added as a label since we don't have a
+	// better way to report values that can be one of many strings
+	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
 
 	var ips []string
 	/*if pod.Status.HostIP != "" {
@@ -332,6 +335,30 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	}
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
+	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
+}
+
+func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
+	val := float64(0)
+	found := false
+	for _, cond := range conditions {
+		if cond.Type != ctype {
+			continue
+		}
+		switch cond.Status {
+		case v1.ConditionTrue:
+			val, found = 1, true
+		case v1.ConditionFalse:
+			fallthrough
+		case v1.ConditionUnknown:
+			val, found = 0, true
+		}
+		break
+	}
+
+	if found {
+		AppendMetric(metrics, name, val)
+	}
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
