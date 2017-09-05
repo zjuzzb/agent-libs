@@ -15,6 +15,7 @@ from util import headers
 
 # Constants
 COUCHBASE_STATS_PATH = '/pools/default'
+COUCHBASE_TASKS_PATH = '/pools/default/tasks'
 COUCHBASE_VITALS_PATH = '/admin/vitals'
 DEFAULT_TIMEOUT = 10
 
@@ -222,6 +223,19 @@ class Couchbase(AgentCheck):
         'request_time_median',
         'total_threads',
     ])
+    TASK_TAGS = set([
+        'type',
+        'subtype',
+        'source',
+        'bucket'
+    ])
+    TASK_STATS = set([
+        'progress',
+        'docs_checked',
+        'docs_written',
+        'changes_left',
+        'changes_done'
+    ])
 
     TO_SECONDS = {
         'ns': 1e9,
@@ -257,6 +271,28 @@ class Couchbase(AgentCheck):
                     metric_tags = list(tags)
                     metric_tags.append('node:%s' % node_name)
                     self.gauge(metric_name, val, tags=metric_tags, device_name=node_name)
+
+        for task in data['tasks']:
+            tasktags = list()
+            for tagname in self.TASK_TAGS:
+                tagval = task.get(tagname, None)
+                if tagval is not None:
+                    tasktags.append('%s:%s' % (tagname, tagval))
+            if len(tasktags) < 1:
+                continue
+            tasktags = tags + tasktags
+            status = task.get('status', None)
+            if status is not None:
+                val = 1 if status == "running" else 0
+                self.gauge('couchbase.by_task.running', val, tags=tasktags)
+
+            for item_name, val in task.items():
+                metric_name = self.camel_case_to_joined_lower(item_name)
+                if metric_name not in self.TASK_STATS:
+                    continue
+                metric_name = '.'.join(['couchbase', 'by_task', metric_name])
+
+                self.gauge(metric_name, val, tags=tasktags)
 
         for metric_name, val in data['query'].items():
             if val is not None:
@@ -305,6 +341,7 @@ class Couchbase(AgentCheck):
             'buckets': {},
             'nodes': {},
             'query': {},
+            'tasks': {},
         }
 
         # build couchbase stats entry point
@@ -378,6 +415,22 @@ class Couchbase(AgentCheck):
             except requests.exceptions.HTTPError:
                 self.log.error("Error accessing the endpoint %s, make sure you're running at least "
                     "couchbase 4.5 to collect the query monitoring metrics", url)
+
+        endpoint = overall_stats['tasks']['uri']
+        url = '%s%s' % (server, endpoint)
+        tasks = []
+        try:
+            tasks = self._get_stats(url, instance)
+        except requests.exceptions.HTTPError:
+            url_tasks = '%s%s' % (server, COUCHBASE_TASKS_PATH)
+            try:
+                tasks = self._get_stats(url_tasks, instance)
+            except:
+                pass
+        except:
+            pass
+
+        couchbase['tasks'] = tasks
 
         return couchbase
 
