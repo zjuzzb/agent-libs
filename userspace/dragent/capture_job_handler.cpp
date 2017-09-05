@@ -353,12 +353,16 @@ void capture_job::process_event(sinsp_evt *ev)
 		return;
 	}
 
-	if(m_filter)
+	if(m_filter != NULL)
 	{
-		if(!m_filter->run(ev))
-		{
-			return;
-		}
+		m_filter->run(ev);
+	}
+
+	bool do_drop;
+	scap_dump_flags dflags = ev->get_dump_flags(&do_drop);
+	if(do_drop)
+	{
+		return;
 	}
 
 	m_dumper->dump(ev);

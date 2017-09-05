@@ -250,6 +250,11 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(sinsp &inspector,
 			}
 		}
 
+		// Not using sinsp_memory_dumper_job::dump() here,
+		// because we know the start/stop time are within
+		// range, have given the inspector a filter, and the
+		// inspector has determined whether or not the event
+		// qualifies.
 		job->m_n_events++;
 		job->m_dumper->dump(ev);
 	}
@@ -275,6 +280,7 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 
 	sinsp inspector;
 	inspector.set_hostname_and_port_resolution_mode(false);
+	inspector.set_internal_events_mode(true);
 
 	// Open the shared memory segment again so we can read from
 	// the beginning.
@@ -304,8 +310,7 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 
 	if(job->m_filterstr != "")
 	{
-		string flt = "(" + job->m_filterstr + ") or evt.type=notification";
-		inspector.set_filter(flt);
+		inspector.set_filter(job->m_filterstr);
 	}
 
 	if (!read_membuf_using_inspector(inspector, state, job))

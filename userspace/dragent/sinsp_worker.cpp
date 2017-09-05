@@ -84,6 +84,7 @@ void sinsp_worker::init()
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_inspector->set_debug_mode(true);
+	m_inspector->set_internal_events_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
 
 	//
