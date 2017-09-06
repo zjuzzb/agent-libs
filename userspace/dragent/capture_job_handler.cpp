@@ -359,7 +359,7 @@ void capture_job::process_event(sinsp_evt *ev)
 	}
 
 	bool do_drop;
-	scap_dump_flags dflags = ev->get_dump_flags(&do_drop);
+	(void) ev->get_dump_flags(&do_drop);
 	if(do_drop)
 	{
 		return;
