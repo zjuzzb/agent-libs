@@ -175,7 +175,7 @@ public:
 			}
 
 			bool do_drop;
-			scap_dump_flags dflags = evt->get_dump_flags(&do_drop);
+			(void) evt->get_dump_flags(&do_drop);
 			if(do_drop)
 			{
 				return;
