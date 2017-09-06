@@ -240,11 +240,12 @@ class Couchbase(AgentCheck):
     TO_SECONDS = {
         'ns': 1e9,
         'us': 1e6,
+        '\xc2\xb5s': 1e6,
         'ms': 1e3,
         's': 1,
     }
 
-    seconds_value_pattern = re.compile('(\d+(\.\d+)?)(\D+)')
+    seconds_value_pattern = re.compile('(\d+(\.\d+)?)(\D*s)', re.UNICODE)
 
     def _create_metrics(self, data, tags=None):
         storage_totals = data['stats']['storageTotals']
@@ -297,12 +298,15 @@ class Couchbase(AgentCheck):
         for metric_name, val in data['query'].items():
             if val is not None:
                 # for query times, the unit is part of the value, we need to extract it
-                if isinstance(val, basestring):
-                    val = self.extract_seconds_value(val)
                 norm_metric_name = self.camel_case_to_joined_lower(metric_name)
-                if norm_metric_name in self.QUERY_STATS:
-                    full_metric_name = '.'.join(['couchbase', 'query', self.camel_case_to_joined_lower(norm_metric_name)])
-                    self.gauge(full_metric_name, val, tags=tags)
+                if norm_metric_name not in self.QUERY_STATS:
+                    continue
+
+                if isinstance(val, basestring) and 'time' in norm_metric_name:
+                    val = self.extract_seconds_value(val)
+
+                full_metric_name = '.'.join(['couchbase', 'query', self.camel_case_to_joined_lower(norm_metric_name)])
+                self.gauge(full_metric_name, val, tags=tags)
 
     def _get_stats(self, url, instance):
         """ Hit a given URL and return the parsed json. """
@@ -454,6 +458,9 @@ class Couchbase(AgentCheck):
     # Takes a string with a time and a unit (e.g '3.45ms') and returns the value in seconds
     def extract_seconds_value(self, value):
         match = self.seconds_value_pattern.search(value)
+
+        if not match:
+            return float(value)
 
         val, unit = match.group(1, 3)
         # They use the 'micro' symbol for microseconds so there is an encoding problem
