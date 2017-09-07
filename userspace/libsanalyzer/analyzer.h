@@ -718,6 +718,7 @@ VISIBILITY_PRIVATE
 	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> m_statsd_metrics;
 	// sent and total app checks indexed by container (empty string if host)
 	unordered_map<string, tuple<unsigned, unsigned>> m_app_checks_by_containers;
+	unordered_map<string, tuple<unsigned, unsigned>> m_prometheus_by_containers;
 
 	atomic<bool> m_statsd_capture_localhost;
 

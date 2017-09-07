@@ -117,6 +117,8 @@ message resource_categories {
     optional uint64 app_checks_sent = 37;
     optional uint64 app_checks_total = 38;
     optional uint64 threads_count = 39; // number of threads
+    optional uint64 prometheus_sent = 40;
+    optional uint64 prometheus_total = 41;
 }
 
 message connection_categories {

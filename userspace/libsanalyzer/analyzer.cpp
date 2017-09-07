@@ -2570,6 +2570,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			proc->mutable_resource_counters()->set_jmx_total(0);
 			proc->mutable_resource_counters()->set_app_checks_sent(0);
 			proc->mutable_resource_counters()->set_app_checks_total(0);
+			proc->mutable_resource_counters()->set_prometheus_sent(0);
+			proc->mutable_resource_counters()->set_prometheus_total(0);
 
 			// Add JMX metrics
 			if (m_jmx_proxy)
@@ -2669,9 +2671,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				{
 					std::get<0>(m_app_checks_by_containers[tinfo->m_container_id]) += sent_app_checks_metrics;
 					std::get<1>(m_app_checks_by_containers[tinfo->m_container_id]) += total_app_checks_metrics;
+					std::get<0>(m_prometheus_by_containers[tinfo->m_container_id]) += sent_prometheus_metrics;
+					std::get<1>(m_prometheus_by_containers[tinfo->m_container_id]) += total_prometheus_metrics;
 				}
 				std::get<0>(m_app_checks_by_containers[""]) += sent_app_checks_metrics;
 				std::get<1>(m_app_checks_by_containers[""]) += total_app_checks_metrics;
+				std::get<0>(m_prometheus_by_containers[""]) += sent_prometheus_metrics;
+				std::get<1>(m_prometheus_by_containers[""]) += total_prometheus_metrics;
 			}
 #endif
 
@@ -2766,6 +2772,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		container->mutable_resource_counters()->set_app_checks_sent(std::get<0>(m_app_checks_by_containers[container_id]));
 		container->mutable_resource_counters()->set_app_checks_total(std::get<1>(m_app_checks_by_containers[container_id]));
+		container->mutable_resource_counters()->set_prometheus_sent(std::get<0>(m_prometheus_by_containers[container_id]));
+		container->mutable_resource_counters()->set_prometheus_total(std::get<1>(m_prometheus_by_containers[container_id]));
 	}
 
 	if(app_checks_limit == 0)
@@ -4092,6 +4100,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			// clear the cache for the next round of sampling
 			m_app_checks_by_containers.clear();
+			// prometheus for the host
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(0);
+			if (m_prometheus_by_containers.find("") != m_prometheus_by_containers.end())
+			{
+				auto checks_sent = std::get<0>(m_prometheus_by_containers[""]);
+				auto checks_total = std::get<1>(m_prometheus_by_containers[""]);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(checks_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(checks_total);
+			}
+			// clear the cache for the next round of sampling
+			m_prometheus_by_containers.clear();
 #endif
 
 			//
@@ -5899,7 +5919,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			it->to_protobuf(proto_fs);
 		}
 	}
-	auto thread_count = m_containers[container_id].m_metrics.m_threads_count;
+	auto thread_count = it_analyzer->second.m_metrics.m_threads_count;
 	container->mutable_resource_counters()->set_threads_count(thread_count);
 
 	//
