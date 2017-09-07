@@ -11,6 +11,7 @@ dragent_logger::dragent_logger(Logger* file_log, Logger* console_log, Logger* ev
 	m_console_log(console_log),
 	m_event_log(event_log)
 {
+	m_analyzer = NULL;
 }
 
 void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_burst)
@@ -414,6 +415,11 @@ void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 	default:
 		ASSERT(false);
 	}
+}
+
+void dragent_logger::write_to_memdump(string name)
+{
+	printf("$$$$$$$$$$$$$$$$$$$$$$$$ %s\n", name.c_str());
 }
 
 avoid_block_channel::avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const string& machine_id):

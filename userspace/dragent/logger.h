@@ -30,6 +30,11 @@ public:
 		m_internal_metrics = im;
 	}
 
+	void set_analyzer(sinsp_analyzer* analyzer)
+	{
+		m_analyzer = analyzer;
+	}
+
 	// regular logging
 	void log(const string& str, uint32_t sev);
 	void trace(const string& str);
@@ -71,10 +76,12 @@ public:
 
 	static void sinsp_logger_callback(string&& str, uint32_t sev);
 
+	void write_to_memdump(string name);
 private:
 	Logger* m_file_log;
 	Logger* m_console_log;
 	Logger* m_event_log;
+	sinsp_analyzer* m_analyzer;
 
 	token_bucket m_user_events_tb;
 	internal_metrics::sptr_t m_internal_metrics;
