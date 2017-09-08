@@ -409,6 +409,7 @@ message proto_info {
     optional java_info java = 5; // These are not protocols but as backend is structured is better to save here these info
     optional statsd_info statsd = 6;
     optional app_info app = 7;
+    optional app_info prometheus = 9;
 }
 
 message network_by_port {
@@ -1192,6 +1193,8 @@ enum error_type {
      ERR_CONN_LIMIT = 1;
      ERR_INVALID_CUSTOMER_KEY = 2;
      ERR_DUPLICATE_AGENT = 3;
+     ERR_SERVER_BUSY = 4;
+     ERR_PROTO_MISMATCH = 5;
 }
 
 message error_message {

@@ -764,7 +764,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	EXPECT_EQ(500, top_ncalls);
 }
 
-TEST(sinsp_procfs_parser, test_read_network_interfaces_stats)
+TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 {
 	sinsp_procfs_parser parser(1, 1024, true);
 

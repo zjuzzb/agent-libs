@@ -159,15 +159,37 @@ public:
 		return *m_listening_ports;
 	}
 
+	inline bool found_prom_check() const
+	{
+		return m_prom_check_found;
+	}
+	inline void set_found_prom_check()
+	{
+		m_prom_check_found = true;
+	}
+	inline void clear_found_prom_check()
+	{
+		m_prom_check_found = false;
+	}
+
+	bool found_app_check_by_fnmatch(const string& pattern);
+	inline bool found_app_check_by_name(const string& name)
+	{
+		return (m_app_checks_found.find(name) != m_app_checks_found.end());
+	}
 	inline bool found_app_check(const app_check& check)
 	{
 		const string& module = check.module().empty() ? check.name() : check.module();
-		return (m_app_checks_found.find(module) != m_app_checks_found.end());
+		return found_app_check_by_name(module);
 	}
 	inline void set_found_app_check(const app_check& check)
 	{
 		const string& module = check.module().empty() ? check.name() : check.module();
 		m_app_checks_found.emplace(module);
+	}
+	inline void clear_found_app_checks()
+	{
+		m_app_checks_found.clear();
 	}
 
 
@@ -243,6 +265,7 @@ private:
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
 	set<std::string> m_app_checks_found;
+	bool m_prom_check_found;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

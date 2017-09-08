@@ -143,7 +143,10 @@ protected:
 		// 50 times to get a message of the type we want.
 		for(uint32_t attempts = 0; attempts < 50; attempts++)
 		{
-			ASSERT_TRUE(m_queue->get(&item, 5000));
+			// Wait 500ms so this takes at most 50 * 500ms = 25s
+			if (!m_queue->get(&item, 500)) {
+				continue;
+			}
 
 			dragent_protocol_header *hdr = (dragent_protocol_header*) item->buffer.data();
 
@@ -190,9 +193,9 @@ protected:
 		{
 			std::shared_ptr<protocol_queue_item> buf;
 			draiosproto::dump_response response;
-			queue_fetch(draiosproto::DUMP_RESPONSE, buf);
+			ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::DUMP_RESPONSE, buf));
 
-			parse_dump_response(buf, response);
+			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
 
 			// We stop if error is non-empty or if
 			// final_chunk is set to true
@@ -249,8 +252,8 @@ protected:
 			// Wait for the response to the dump
 			// request. This typically has no data and
 			// should not be a final response.
-			queue_fetch(draiosproto::DUMP_RESPONSE, buf);
-			parse_dump_response(buf, response);
+			ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::DUMP_RESPONSE, buf));
+			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
 			ASSERT_STREQ(response.error().c_str(), "");
 			ASSERT_FALSE(response.final_chunk());
 		}
@@ -287,16 +290,18 @@ protected:
 		std::shared_ptr<protocol_queue_item> buf;
 		draiosproto::dump_response response;
 
-		queue_fetch(draiosproto::METRICS, buf);
+		ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::METRICS, buf));
 
 		open_test_file("before");
 
 		// When limiting by size, we don't limit by time.
-		send_dump_request("single",
-				  (dump_before ? 1000 : 0),
-				  (limit_size ? 10000 : 3000),
-				  true,
-				  (limit_size ? 1 : 0));
+		ASSERT_NO_FATAL_FAILURE({
+				send_dump_request("single",
+						  (dump_before ? 1000 : 0),
+						  (limit_size ? 10000 : 3000),
+						  true,
+						  (limit_size ? 1 : 0));
+					});
 
 		if(limit_size) {
 			// Wait for the first chunk of real
@@ -305,8 +310,8 @@ protected:
 			// any actions we perform *after* this
 			// time will not be included in the
 			// sysdig capture.
-			queue_fetch(draiosproto::DUMP_RESPONSE, buf);
-			parse_dump_response(buf, response);
+			ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::DUMP_RESPONSE, buf));
+			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
 			ASSERT_STREQ(response.error().c_str(), "");
 		}
 
@@ -332,7 +337,7 @@ protected:
 		std::shared_ptr<protocol_queue_item> buf;
 		map<string,draiosproto::dump_response> responses;
 
-		queue_fetch(draiosproto::METRICS, buf);
+		ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::METRICS, buf));
 
 		set<string> active_dumps;
 
@@ -344,7 +349,9 @@ protected:
 				// after. This should capture the immediately preceding
 				// and following file open.
 
-				send_dump_request(to_string(i), 1500, 1500, false);
+				ASSERT_NO_FATAL_FAILURE({
+						send_dump_request(to_string(i), 1500, 1500, false);
+					});
 				active_dumps.insert(to_string(i));
 
 			}
@@ -371,7 +378,7 @@ protected:
 		string errstr;
 		std::shared_ptr<protocol_queue_item> buf;
 
-		queue_fetch(draiosproto::METRICS, buf);
+		ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::METRICS, buf));
 
 		for(uint32_t i=0; i < 10; i++)
 		{
@@ -504,11 +511,11 @@ TEST_F(memdump_test, standard_dump)
 	// we get frequent dump_response messages.
 	m_capture_job_handler->set_dump_chunk_size(10240);
 
-	perform_single_dump(false, false);
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, false));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for the after file, but not the before file.
-	read_trace("single", set<string>{string("after")});
+	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{string("after")}));
 }
 
 TEST_F(memdump_test, back_in_time_dump)
@@ -517,34 +524,35 @@ TEST_F(memdump_test, back_in_time_dump)
 	// we get frequent dump_response messages.
 	m_capture_job_handler->set_dump_chunk_size(10240);
 
-	perform_single_dump(true, false);
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, false));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for both the before and after files
-	read_trace("single", set<string>{string("before"), string("after")});
+	ASSERT_NO_FATAL_FAILURE(read_trace("single",set<string>{string("before"), string("after")}));
 }
 
 TEST_F(memdump_test, overlapping_dumps)
 {
-	perform_overlapping_dumps(10);
+	ASSERT_NO_FATAL_FAILURE(perform_overlapping_dumps(10));
 
 	// For a tag i, we expect to see the prior, current, and
 	// following tags in the trace file.
 	for(unsigned int i=1; i < 9; i++)
 	{
-		read_trace(to_string(i), set<string>{to_string(i-1), to_string(i), to_string(i+1)});
+		ASSERT_NO_FATAL_FAILURE({
+				read_trace(to_string(i), set<string>{to_string(i-1), to_string(i), to_string(i+1)});
+			});
 	}
 }
 
 TEST_F(memdump_test, max_outstanding_dumps)
 {
-	perform_too_many_dumps();
+	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps());
 }
 
-#if 0
-TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
+TEST_F(memdump_no_dragent_events_test, DISABLED_verify_no_dragent_events)
 {
-	perform_single_dump(true, false);
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, false));
 
 	std::unique_ptr<sinsp> inspector = make_unique<sinsp>();
 	string filter = "proc.name=tests";
@@ -600,4 +608,3 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 	}
 	delete(formatter);
 }
-#endif // #if 0

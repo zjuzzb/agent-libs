@@ -63,16 +63,16 @@ func addNodeMetrics(metrics *[]*draiosproto.AppMetric, node *v1.Node) {
 	appendMetricResource(metrics, prefix+"status.allocatable.cpuCores", node.Status.Allocatable, v1.ResourceCPU)
 	appendMetricResource(metrics, prefix+"status.allocatable.memoryBytes", node.Status.Allocatable, v1.ResourceMemory)
 	appendMetricResource(metrics, prefix+"status.allocatable.pods", node.Status.Allocatable, v1.ResourcePods)
-	appendMetricNodeCondition(metrics, prefix+"status.ready.", node.Status.Conditions, v1.NodeReady)
-	appendMetricNodeCondition(metrics, prefix+"status.outOfDisk.", node.Status.Conditions, v1.NodeOutOfDisk)
-	appendMetricNodeCondition(metrics, prefix+"status.memoryPressure.", node.Status.Conditions, v1.NodeMemoryPressure)
-	appendMetricNodeCondition(metrics, prefix+"status.diskPressure.", node.Status.Conditions, v1.NodeDiskPressure)
-	appendMetricNodeCondition(metrics, prefix+"status.networkUnavailable.", node.Status.Conditions, v1.NodeNetworkUnavailable)
-	appendMetricNodeCondition(metrics, prefix+"status.inodePressure.", node.Status.Conditions, v1.NodeInodePressure)
+	appendMetricNodeCondition(metrics, prefix+"status.ready", node.Status.Conditions, v1.NodeReady)
+	appendMetricNodeCondition(metrics, prefix+"status.outOfDisk", node.Status.Conditions, v1.NodeOutOfDisk)
+	appendMetricNodeCondition(metrics, prefix+"status.memoryPressure", node.Status.Conditions, v1.NodeMemoryPressure)
+	appendMetricNodeCondition(metrics, prefix+"status.diskPressure", node.Status.Conditions, v1.NodeDiskPressure)
+	appendMetricNodeCondition(metrics, prefix+"status.networkUnavailable", node.Status.Conditions, v1.NodeNetworkUnavailable)
+	appendMetricNodeCondition(metrics, prefix+"status.inodePressure", node.Status.Conditions, v1.NodeInodePressure)
 }
 
-func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, prefix string, conditions []v1.NodeCondition, ctype v1.NodeConditionType) {
-	tval, fval, uval := float64(0), float64(0), float64(0)
+func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.NodeCondition, ctype v1.NodeConditionType) {
+	val := float64(0)
 	found := false
 	for _, cond := range conditions {
 		if cond.Type != ctype {
@@ -80,18 +80,17 @@ func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, prefix string,
 		}
 		switch cond.Status {
 		case v1.ConditionTrue:
-			tval, found = 1, true
+			val, found = 1, true
 		case v1.ConditionFalse:
-			fval, found = 1, true
+			fallthrough
 		case v1.ConditionUnknown:
-			uval, found = 1, true
+			val, found = 0, true
 		}
+		break
 	}
 
 	if found {
-		AppendMetric(metrics, prefix+"true", tval)
-		AppendMetric(metrics, prefix+"false", fval)
-		AppendMetric(metrics, prefix+"unknown", uval)
+		AppendMetric(metrics, name, val)
 	}
 }
 

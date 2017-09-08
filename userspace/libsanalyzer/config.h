@@ -177,6 +177,8 @@ public:
 	void set_detect_stress_tools(bool enabled);
 	bool get_swarm_enabled() const;
 	void set_swarm_enabled(bool enabled);
+	uint64_t get_security_baseline_report_interval_ns() const;
+	void set_security_baseline_report_interval_ns(uint64_t report_interval);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -267,6 +269,8 @@ private:
 	bool m_security_enabled;
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
+
+	uint64_t m_security_baseline_report_interval_ns;
 };
 
 #endif // HAS_ANALYZER

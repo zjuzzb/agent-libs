@@ -27,6 +27,7 @@ from sysdig_tracers import Tracer
 import yaml
 import simplejson as json
 import posix_ipc
+from requests.exceptions import ConnectionError
 
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
@@ -87,6 +88,9 @@ class YamlConfig:
         return default_value
 
 class AppCheckException(Exception):
+    pass
+
+class AppCheckDontRetryException(AppCheckException):
     pass
 
 def _load_check_module(name, module_name, directory):
@@ -240,6 +244,11 @@ class AppCheckInstance:
                     if ret != 0:
                         raise OSError("Cannot setns to pid: %d" % self.pid)
             self.check_instance.check(self.instance_conf)
+        except AppCheckDontRetryException as ex:
+            logging.info("Skip retries for Prometheus error: %s", str(ex))
+            self.retry = False
+            saved_ex = ex
+
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
             saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
@@ -416,13 +425,44 @@ class Application:
     def handle_command(self, command_s):
         response_body = []
         #print "Received command: %s" % command_s
-        processes = json.loads(command_s)
+        command = json.loads(command_s)
+        #processes = json.loads(command_s)
+        processes = command["processes"]
+        promchecks = command["prometheus"]
+        #print promchecks
         self.last_request_pidnames.clear()
         trc = Tracer()
         trc.start("checks")
         numchecks = 0
         numrun = 0
         nummetrics = 0
+
+        # Create app_checks for prometheus
+        for pc in promchecks:
+            # print "promcheck:", pc
+            for port in pc["ports"]:
+                # print "port:", port
+                newconf = {"url": "http://localhost:" + str(port) + "/metrics"}
+                if pc.get("max_metrics"):
+                    newconf["max_metrics"] = pc["max_metrics"]
+                if pc.get("max_tags"):
+                    newconf["max_tags"] = pc["max_tags"]
+                newcheck = {
+                    "check_module": "prometheus",
+                    "log_errors": pc.get("log_errors", True),
+                    "interval": pc.get("interval", 1),
+                    "conf": newconf,
+                    "name": "prometheus." + str(port)
+                }
+                newproc = {
+                    "check": newcheck,
+                    "pid": pc["pid"],
+                    "ports": [port],
+                    "vpid": pc["vpid"],
+                    "conf_vals": {}
+                }
+                # print "Adding", newproc
+                processes.append(newproc)
 
         for p in processes:
             numchecks += 1
@@ -468,6 +508,7 @@ class Application:
                 "pid":str(check_instance.pid),
                 "other_container":str(check_instance.is_on_another_container)})
             metrics, service_checks, ex = check_instance.run()
+            # print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
             numrun += 1
             nm = len(metrics) if metrics else 0
             trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})

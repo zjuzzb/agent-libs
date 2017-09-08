@@ -122,6 +122,32 @@ public:
 	}
 
 	/**
+	* Will retrieve first found arbitrarily deeply nested sequence
+	* into an STL container T. Also supports scalars;
+	* if found entity is scalar, a container with a
+	* single member is returned.
+	*/
+	template<typename T, typename... Args>
+	T get_first_deep_sequence(Args... args)
+	{
+		T ret;
+		try
+		{
+			for(const auto& root : m_roots)
+			{
+				get_sequence(ret, root, args...);
+				if (!ret.empty())
+					return ret;
+			}
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Config file error."));
+		}
+		return ret;
+	}
+
+	/**
 	* Will retrieve arbitrarily deeply nested sequence
 	* into an STL container T. Also supports scalars;
 	* if found entity is scalar, a container with a
@@ -561,6 +587,7 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+	prometheus_conf m_prom_conf;
 
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
@@ -643,6 +670,8 @@ public:
 
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
+
+	uint64_t m_security_baseline_report_interval_ns;
 
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;

@@ -85,6 +85,7 @@ void sinsp_worker::init()
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_inspector->set_debug_mode(true);
+	m_inspector->set_internal_events_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
 
 	//
@@ -318,6 +319,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_security_enabled(m_configuration->m_security_enabled);
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
+	m_analyzer->get_configuration()->set_security_baseline_report_interval_ns(m_configuration->m_security_baseline_report_interval_ns);
 
 	//
 	// Load the chisels
@@ -414,6 +416,7 @@ void sinsp_worker::init()
 	{
 		m_analyzer->set_app_checks(m_configuration->m_app_checks);
 	}
+	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
 	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
 	m_analyzer->set_container_patterns(m_configuration->m_container_patterns);
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;

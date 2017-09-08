@@ -169,12 +169,16 @@ public:
 				return;
 			}
 
-			if(m_filter != NULL && m_filter->run(evt) == false)
+			if(m_filter != NULL)
 			{
-				if(evt->get_type() != PPME_NOTIFICATION_E)
-				{
-					return;
-				}
+				m_filter->run(evt);
+			}
+
+			bool do_drop;
+			(void) evt->get_dump_flags(&do_drop);
+			if(do_drop)
+			{
+				return;
 			}
 
 			m_n_events++;

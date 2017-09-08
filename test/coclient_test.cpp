@@ -147,7 +147,7 @@ static bool check_docker_service()
 	return true;
 }
 
-TEST_F(coclient_test, perform_ping)
+TEST_F(coclient_test, DISABLED_perform_ping)
 {
 	int64_t token = 828271;
 	bool callback_performed = false;
@@ -165,8 +165,9 @@ TEST_F(coclient_test, perform_ping)
 		callback_performed = true;
 
 		EXPECT_TRUE(successful);
-
-		EXPECT_EQ(token, pong->token());
+		if (successful) {
+			EXPECT_EQ(token, pong->token());
+		}
 	};
 
 	m_coclient.ping(token, callback);

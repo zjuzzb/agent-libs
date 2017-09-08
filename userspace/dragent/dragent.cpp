@@ -900,7 +900,15 @@ void dragent_app::update_subprocesses()
 
 	for(auto& proc : m_subprocesses_state)
 	{
-		subprocs.insert(std::pair<std::string,uint64_t>(proc.second.name(),proc.second.pid()));
+		// The agent might not immediately know the pid for
+		// each of the subprocesses, as it may not have read
+		// the heartbeat message or gotten the ping
+		// response. In that case, just skip the subprocess.
+
+		if(proc.second.pid() > 0)
+		{
+			subprocs.insert(std::pair<std::string,uint64_t>(proc.second.name(),proc.second.pid()));
+		}
 	}
 
 	m_internal_metrics->set_subprocesses(subprocs);

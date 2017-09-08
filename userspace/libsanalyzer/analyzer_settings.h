@@ -183,7 +183,7 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // Falco baseline emit interval
 //
-#define FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
+#define DEFAULT_FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
 
 //
 // Time after which we should try to reenable the falco baseliner after
@@ -223,6 +223,7 @@ static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
+static const unsigned PROM_METRICS_HARD_LIMIT = 1000;
 static const unsigned APP_METRICS_HARD_LIMIT = 1000;
 static const unsigned JMX_METRICS_HARD_LIMIT = 3000;
 static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;

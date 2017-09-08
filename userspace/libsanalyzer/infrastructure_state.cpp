@@ -83,6 +83,7 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	for(auto i = preds.begin(); i != preds.end();) {
 		if(congroup->tags().find(i->key()) != congroup->tags().end()) {
 			if(!evaluate(*i, congroup->tags().at(i->key()))) {
+				preds.erase(i);
 				return false;
 			} else {
 				i = preds.erase(i);
@@ -449,7 +450,7 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 	// glogf(sinsp_logger::SEV_DEBUG, "Match policy scope with c_id: \"%s\", h_id: \"%s\", p_id: %llu, container_scope: %s, host_scope: %s",
 	// 	container_id.c_str(), host_id.c_str(), policy.id(), policy.container_scope()?"true":"false", policy.host_scope()?"true":"false");
 
-	bool result;
+	bool result = true;
 	uid_t uid;
 
 	if((container_id.empty() && !policy.host_scope()) ||
@@ -488,7 +489,7 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 			result = walk_and_match(pos->second.get(), preds, visited);
 		}
 
-		if (!preds.empty()) {
+		if (result && !preds.empty()) {
 			glogf(sinsp_logger::SEV_DEBUG, "Predicates list not empty, check operators...");
 			auto i = preds.begin();
 			for(; i != preds.end(); ++i) {
@@ -545,39 +546,40 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	if(grp->uid().kind() != "container" && grp->uid().kind() != "host") {
 		auto x = state->Add();
 		x->CopyFrom(*grp);
-		x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 		// Clean children links, backend will reconstruct them from parent ones
 		if(grp->uid().kind() != "k8s_pod")
 		{
 			x->mutable_children()->Clear();
 		}
-		// Put back legacy metrics
-		auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
-		{
-			auto it = find_if(grp->metrics().cbegin(), grp->metrics().cend(), [&metric_name](const draiosproto::app_metric& m)
-			{
-				return m.name() == metric_name;
-			});
-			if(it != grp->metrics().cend())
-			{
-				dest->mutable_metrics()->Add()->CopyFrom(*it);
-			}
-		};
 
-		if(x->uid().kind() == "k8s_pod")
-		{
-			add_metric_if_found("kubernetes.pod.container.status.restarts", x);
-		}
-		else if(x->uid().kind() == "k8s_replicaset")
-		{
-			add_metric_if_found("kubernetes.replicaset.status.replicas", x);
-			add_metric_if_found("kubernetes.replicaset.spec.replicas", x);
-		}
-		else if(x->uid().kind() == "k8s_replicationcontroller")
-		{
-			add_metric_if_found("kubernetes.replicationcontroller.status.replicas", x);
-			add_metric_if_found("kubernetes.replicationcontroller.spec.replicas", x);
-		}
+		// x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
+		// // Put back legacy metrics
+		// auto add_metric_if_found = [grp](const string& metric_name, draiosproto::container_group* dest)
+		// {
+		// 	auto it = find_if(grp->metrics().cbegin(), grp->metrics().cend(), [&metric_name](const draiosproto::app_metric& m)
+		// 	{
+		// 		return m.name() == metric_name;
+		// 	});
+		// 	if(it != grp->metrics().cend())
+		// 	{
+		// 		dest->mutable_metrics()->Add()->CopyFrom(*it);
+		// 	}
+		// };
+
+		// if(x->uid().kind() == "k8s_pod")
+		// {
+		// 	add_metric_if_found("kubernetes.pod.container.status.restarts", x);
+		// }
+		// else if(x->uid().kind() == "k8s_replicaset")
+		// {
+		// 	add_metric_if_found("kubernetes.replicaset.status.replicas", x);
+		// 	add_metric_if_found("kubernetes.replicaset.spec.replicas", x);
+		// }
+		// else if(x->uid().kind() == "k8s_replicationcontroller")
+		// {
+		// 	add_metric_if_found("kubernetes.replicationcontroller.status.replicas", x);
+		// 	add_metric_if_found("kubernetes.replicationcontroller.spec.replicas", x);
+		// }
 	}
 }
 
