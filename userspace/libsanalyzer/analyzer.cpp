@@ -121,7 +121,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
 	m_skip_proc_parsing = false;
+	m_simpledriver_enabled = false;
 	m_prev_flush_wall_time = 0;
+	m_mode_switch_state = sinsp_analyzer::MSR_NONE;
 	m_die = false;
 	m_run_chisels = false;
 
@@ -256,7 +258,14 @@ void sinsp_analyzer::on_capture_start()
 
 	if(m_procfs_parser != NULL)
 	{
-		throw sinsp_exception("analyzer can be opened only once");
+		//
+		// Note, we can get here if we switch from regular to nodriver and vice 
+		// versa. In that case, sinsp is opened and closed and as a consequence
+		// on_capture_start is called again. It's fine, because the analyzer
+		// keeps running in the meantime.
+		//
+		//throw sinsp_exception("analyzer can be opened only once");
+		return;
 	}
 
 	//
@@ -609,13 +618,16 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 {
-	m_ipv4_connections->remove_expired_connections(ts);
+	if(!m_simpledriver_enabled)
+	{
+		m_ipv4_connections->remove_expired_connections(ts);
 #ifdef HAS_UNIX_CONNECTIONS
-	m_unix_connections->remove_expired_connections(ts);
+		m_unix_connections->remove_expired_connections(ts);
 #endif
 #ifdef HAS_PIPE_CONNECTIONS
-	m_pipe_connections->remove_expired_connections(ts);
+		m_pipe_connections->remove_expired_connections(ts);
 #endif
+	}
 }
 
 sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
@@ -873,7 +885,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 }
 
 template<class Iterator>
-void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
@@ -1014,6 +1026,121 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//		break;
 	//	}
 	//}
+}
+
+//
+// The simple driver only captures a very limited number of system calls, like clone, execve, connect and accept.
+// As a consequence, process filtering needs to use simpler criteria.
+//
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+{
+	uint32_t j;
+
+	vector<sinsp_threadinfo*> prog_sortable_list;
+
+	for(auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
+	{
+		if(cs_only)
+		{
+			uint64_t netops = (*ptit)->m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count;
+
+			if(netops != 0)
+			{
+				prog_sortable_list.push_back(*ptit);
+			}
+		}
+		else
+		{
+			prog_sortable_list.push_back(*ptit);
+		}
+	}
+
+	if(prog_sortable_list.size() <= howmany)
+	{
+		for(j = 0; j < prog_sortable_list.size(); j++)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+
+		return;
+	}
+
+	//
+	// Mark the top CPU consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
+
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	//
+	// Mark the top memory consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_memory_cs:threadinfo_cmp_memory);
+
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_vmsize_kb > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	//
+	// Mark the top syscall producers
+	//
+	partial_sort(prog_sortable_list.begin(),
+				 prog_sortable_list.begin() + howmany,
+				 prog_sortable_list.end(),
+				 threadinfo_cmp_evtcnt);
+
+	for(j = 0; j < howmany; j++)
+	{
+		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+
+		if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+{
+	if(m_simpledriver_enabled)
+	{
+		filter_top_programs_simpledriver(progtable_begin, progtable_end, cs_only, howmany);
+	}
+	else
+	{
+		filter_top_programs_normaldriver(progtable_begin, progtable_end, cs_only, howmany);
+
+	}
 }
 
 bool sinsp_analyzer::check_k8s_server(string& addr)
@@ -1542,6 +1669,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
+	bool can_disable_nodriver = true;
 	uint16_t prom_metrics_limit = m_prom_conf.max_metrics();
 	vector<prom_process> prom_procs;
 
@@ -1651,10 +1779,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 	uint64_t process_count = 0;
 
+	///////////////////////////////////////////////////////////////////////////
 	// Emit process has 3 cycles on thread_table:
-	// 1. Aggregate process into programs
-	// 2. (only on programs) aggregate programs metrics to host and container ones
-	// 3. (only on programs) Write programs on protobuf
+	//  1. Aggregate process into programs
+	//  2. (only on programs) aggregate programs metrics to host and container ones
+	//  3. (only on programs) Write programs on protobuf
+	///////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
@@ -1663,7 +1793,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
+		{
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
@@ -1857,6 +1987,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
 							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
 							ainfo->m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
+
+							if(m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
+							{
+								if(m_stress_tool_matcher.match(tinfo->m_comm))
+								{
+									can_disable_nodriver = false;
+								}
+							}
 						}
 					}
 				}
@@ -1994,6 +2132,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 	}
 	am_trc.stop();
+
+	if(m_inspector->is_nodriver() && m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER && can_disable_nodriver)
+	{
+		m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_REGULAR;
+	}
 
 	if(m_internal_metrics)
 	{
@@ -2916,9 +3059,12 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Skip connection that had no activity during the sample
 		//
-		if(!acit->second.is_active())
+		if(!m_simpledriver_enabled)
 		{
-			continue;
+			if(!acit->second.is_active())
+			{
+				continue;
+			}
 		}
 
 		//
@@ -2957,7 +3103,7 @@ void sinsp_analyzer::emit_full_connections()
 		//
 		// We only include connections that had activity during the sample
 		//
-		if(cit->second.is_active())
+		if(cit->second.is_active() || m_simpledriver_enabled)
 		{
 			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();

@@ -173,6 +173,8 @@ public:
 	void set_security_enabled(bool enabled);
 	bool get_cointerface_enabled() const;
 	void set_cointerface_enabled(bool enabled);
+	bool get_detect_stress_tools() const;
+	void set_detect_stress_tools(bool enabled);
 	bool get_swarm_enabled() const;
 	void set_swarm_enabled(bool enabled);
 	uint64_t get_security_baseline_report_interval_ns() const;
@@ -263,6 +265,7 @@ private:
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
 
+	bool m_detect_stress_tools;
 	bool m_security_enabled;
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;

@@ -178,10 +178,37 @@ private:
 class sinsp_curl;
 class uri;
 
+class stress_tool_matcher
+{
+public:
+	stress_tool_matcher()
+	{
+		m_comm_list.push_back("dd");
+		//
+		// XXX Populate this with the list of stress tools to match
+		//
+	}
+
+	bool match(string comm)
+	{
+		for(auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
+		{
+			if(*it == comm)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+private:
+	vector<string> m_comm_list;
+};
+
 //
 // The main analyzer class
 //
-
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -194,6 +221,15 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
+
+	enum mode_switch_state
+	{
+		MSR_NONE = 0,
+		MSR_SWITCHED_TO_NODRIVER = 1,
+		MSR_REQUEST_NODRIVER = 2,
+		MSR_REQUEST_REGULAR = 3,
+	};
+
 	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
@@ -401,6 +437,11 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+	void set_simpledriver_mode()
+	{
+		m_simpledriver_enabled = true;
+	}
+
 	void enable_falco(const string &default_rules_filename,
 			  const string &auto_rules_filename,
 			  const string &rules_filename,
@@ -427,14 +468,24 @@ public:
  		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
  	}
 
+	//
+	// Test tool detection state
+	//
+	mode_switch_state m_mode_switch_state;
+	stress_tool_matcher m_stress_tool_matcher;
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
 	void chisels_do_timeout(sinsp_evt* ev);
-	template<class Iterator>
-	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	void filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	void filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
@@ -569,8 +620,11 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
+
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
+
+	bool m_simpledriver_enabled;
 
 	//
 	// The scheduler analyzer

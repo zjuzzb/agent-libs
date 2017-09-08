@@ -15,7 +15,7 @@ public:
 
 	void parse_accept_exit(sinsp_evt* evt);
 	void parse_select_poll_epollwait_exit(sinsp_evt *evt);
-	void parse_execve_exit(sinsp_evt* evt);
+	bool parse_execve_exit(sinsp_evt* evt);
 	void parse_drop(sinsp_evt* evt);
 
 	bool process_event(sinsp_evt* evt);
