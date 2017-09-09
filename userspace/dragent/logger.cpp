@@ -1,5 +1,7 @@
 #include "logger.h"
 #include <sys/statvfs.h>
+#include "configuration.h"
+#include "capture_job_handler.h"
 
 using namespace Poco;
 using Poco::Message;
@@ -11,7 +13,7 @@ dragent_logger::dragent_logger(Logger* file_log, Logger* console_log, Logger* ev
 	m_console_log(console_log),
 	m_event_log(event_log)
 {
-	m_analyzer = NULL;
+	m_capture_job_handler = NULL;
 }
 
 void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_burst)
@@ -412,14 +414,32 @@ void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 	case sinsp_logger::SEV_EVT_DEBUG:
 		g_log->debug_event(std::move(str));
 		break;
+
+	// Memdumper logs
+	case sinsp_logger::SEV_EVT_MDUMP_INFORMATION:
+		g_log->write_to_memdump(str);
+		break;
 	default:
 		ASSERT(false);
 	}
 }
 
-void dragent_logger::write_to_memdump(string name)
+void dragent_logger::write_to_memdump(string msg)
 {
-	printf("$$$$$$$$$$$$$$$$$$$$$$$$ %s\n", name.c_str());
+	yaml_configuration yaml(msg);
+	string name = yaml.get_scalar<string>("name");
+	string desc = yaml.get_scalar<string>("description", "");
+	string scope = yaml.get_scalar<string>("scope", "");
+	std::unordered_map<std::string, std::string> tags = yaml.get_merged_map<string>("tags");
+
+printf("$$$$$$$$$$$$$$$$$$$$$$$$ %s\n%s\n%s\n%s\n", name.c_str(), desc.c_str(), scope.c_str(), tags["source"].c_str());
+	for(auto it : tags)
+	{
+		printf("$$ %s=%s\n", it.first.c_str(), it.second.c_str());
+	}
+
+	m_capture_job_handler->m_memdumper->push_notification(0, 33, "AAA", "BBB");
+
 }
 
 avoid_block_channel::avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const string& machine_id):

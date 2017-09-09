@@ -117,6 +117,7 @@ public:
 
 	// Mutex that protects access to the end of the active memdump buffer
 	Poco::Mutex m_membuf_mtx;
+	std::unique_ptr<sinsp_memory_dumper> m_memdumper;
 
 private:
 	// Clean up all jobs
@@ -153,7 +154,6 @@ private:
 	atomic<bool> *m_enable_autodrop;
 	uint64_t m_max_chunk_size;
 	blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
-	std::unique_ptr<sinsp_memory_dumper> m_memdumper;
 
 	// Mutex that protects access to the list of jobs
 	Poco::RWLock m_jobs_lock;

@@ -602,7 +602,7 @@ int dragent_app::sdagent_main()
 		dragent_error_handler::m_exception = true;
 	}
 
-	g_log->set_analyzer(m_sinsp_worker.m_analyzer);
+	g_log->set_capture_job_handler(&m_capture_job_handler);
 
 	if(!dragent_configuration::m_terminate)
 	{
