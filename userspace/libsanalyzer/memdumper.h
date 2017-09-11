@@ -108,6 +108,12 @@ public:
 
 		m_end_ts = evt->get_ts();
 
+{
+	if(evt->get_tid() == 33)
+	{
+		printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
+	}
+}
 		m_dumper->dump(evt);
 	}
 
@@ -162,7 +168,7 @@ public:
 	inline void dump(sinsp_evt* evt)
 	{
 		if(m_state == ST_INPROGRESS)
-		{
+		{		
 			if(evt->m_pevt->ts > m_end_time)
 			{
 				m_state = ST_DONE_OK;
@@ -293,7 +299,6 @@ public:
 				}
 			}
 #endif
-
 			(*m_active_state)->dump(evt);
 
 			// If we've written at least m_bsize bytes to the active state, switch states.
@@ -311,6 +316,7 @@ public:
 
 			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
 			{
+printf("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n");
 				(*it)->dump(evt);
 			}
 		}

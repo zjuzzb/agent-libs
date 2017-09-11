@@ -1,22 +1,22 @@
 package main
 
 import (
+	"cointerface/kubecollect"
+	"draiosproto"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/client"
 	"github.com/gogo/protobuf/proto"
 	"github.com/shirou/gopsutil/process"
+	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"k8s.io/client-go/kubernetes"
 	"net"
 	"os"
 	"os/signal"
-	"draiosproto"
 	"sdc_internal"
 	"sync"
 	"time"
-	"cointerface/kubecollect"
-	"golang.org/x/net/context"
-	"k8s.io/client-go/kubernetes"
 )
 
 // Reusing docker clients, so we don't need to reconnect to docker daemon
@@ -160,7 +160,6 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		return err
 	}
 
-	
 	kubecollect.CompatibilityMap = make(map[string]bool)
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {

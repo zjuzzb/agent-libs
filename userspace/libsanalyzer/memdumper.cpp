@@ -546,5 +546,6 @@ void sinsp_memory_dumper::push_notification(uint64_t ts, uint64_t tid, string id
 
 	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
 
+printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!! %s\n", id.c_str());
 	process_event(&m_notification_evt);
 }
