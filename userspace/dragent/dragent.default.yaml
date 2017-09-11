@@ -1,5 +1,5 @@
 #
-# WARNING: Sysdig Cloud Agent default configuration, don't edit. Please use "dragent.yaml" instead
+# WARNING: Sysdig Agent default configuration, don't edit. Please use "dragent.yaml" instead
 #
 jmx:
   default_beans:

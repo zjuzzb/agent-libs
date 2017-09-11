@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Installer for Sysdig Cloud Agent
+# Installer for Sysdig Agent
 # www.draios.com
 #
 # (c) 2013-2015 Sysdig Inc.
@@ -41,7 +41,7 @@ function install_rpm {
 	else
 		yum -q -y install kernel-devel-$KERNEL_VERSION || kernel_warning
 	fi
-	echo "* Installing Sysdig Cloud agent"
+	echo "* Installing Sysdig Agent"
 	yum -q -y install draios-agent
 }
 
@@ -60,7 +60,7 @@ function install_deb {
 	apt-get -qq update < /dev/null
 	echo "* Installing kernel headers"
 	apt-get -qq -y install linux-headers-$(uname -r) < /dev/null || kernel_warning
-	echo "* Installing Sysdig Cloud agent"
+	echo "* Installing Sysdig Agent"
 	apt-get -qq -y install draios-agent < /dev/null
 }
 
@@ -80,18 +80,18 @@ function help {
 	echo "Usage: $(basename ${0}) -a | --access_key <value> [-t | --tags <value>] [-c | --collector <value>] \ "
         echo "                [-cp | --collector_port <value>] [-s | --secure <value>] [-cc | --check_certificate] \ "
         echo "                [-ac | --additional_conf <value>] [-h | --help]"
-	echo "  access_key: Secret access key, as shown in Sysdig Cloud"
+	echo "  access_key: Secret access key, as shown in Sysdig Monitor"
 	echo "  tags: List of tags for this host."
 	echo "        The syntax can be a comma-separated list of"
 	echo "        TAG_NAME:TAG_VALUE or a single TAG_VALUE (in which case the tag"
 	echo "        name \"Tag\" is implicitly assumed)."
 	echo "        For example, \"role:webserver,location:europe\", \"role:webserver\""
 	echo "        and \"webserver\" are all valid alternatives."
-	echo "  collector: collector IP for Sysdig Cloud on-premises installation"
+	echo "  collector: collector IP for Sysdig Monitor on-premises installation"
 	echo "  collector_port: collector port [default 6666]"
 	echo "  secure: use a secure SSL/TLS connection to send metrics to the collector"
 	echo "          accepted values: true or false [default true]"
-	echo "  check_certificate: disable strong SSL certificate check for Sysdig Cloud on-premises installation"
+	echo "  check_certificate: disable strong SSL certificate check for Sysdig Monitor on-premises installation"
 	echo "          accepted values: true or false [default true]"
 	echo "  additional_conf: If provided, will be appended to agent configuration file"
 	echo "  help: print this usage and exit"

@@ -75,7 +75,7 @@ class PHPFPMCheck(AgentCheck):
            'SCRIPT_NAME': url,
            'REQUEST_URI': url,
            'GATEWAY_INTERFACE': 'CGI/1.1',
-           'SERVER_SOFTWARE': 'Sysdig Cloud',
+           'SERVER_SOFTWARE': 'Sysdig Agent',
            'REDIRECT_STATUS': '200',
            'CONTENT_TYPE': '',
            'CONTENT_LENGTH': '0',

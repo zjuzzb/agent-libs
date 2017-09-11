@@ -134,7 +134,7 @@ public:
 		: dragent_auto_configuration("dragent.auto.yaml",
 					     config_directory,
 					     "#\n"
-					     "# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
+					     "# WARNING: Sysdig Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
 					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
 					     "#\n"),
 		  m_forbidden_keys { "auto_config", "customerid", "collector", "collector_port",
