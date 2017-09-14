@@ -338,6 +338,11 @@ public:
 		return &m_jobs;
 	}
 
+	inline bool is_enabled()
+	{
+		return !m_disabled;
+	}
+
 private:
 	void switch_states(uint64_t ts);
 	bool read_membuf_using_inspector(sinsp &inspector, const std::shared_ptr<sinsp_memory_dumper_state> &state, sinsp_memory_dumper_job* job);
@@ -376,4 +381,6 @@ private:
 #endif
 	// Mutex that protects access to the list of states
 	Poco::FastMutex m_state_mtx;
+
+	char m_errbuf[256];
 };

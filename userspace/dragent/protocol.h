@@ -34,7 +34,7 @@ typedef blocking_queue<std::shared_ptr<protocol_queue_item>> protocol_queue;
 class dragent_protocol
 {
 public:
-	static const uint8_t PROTOCOL_VERSION_NUMBER = 3;
+	static const uint8_t PROTOCOL_VERSION_NUMBER = 4;
 
 	static std::shared_ptr<protocol_queue_item> message_to_buffer(uint64_t ts_ns, uint8_t message_type,
 								      const google::protobuf::MessageLite& message, bool compressed,
