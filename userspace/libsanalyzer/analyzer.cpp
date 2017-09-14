@@ -2667,6 +2667,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						app_data_set.emplace(app_data.first);
 					}
 				}
+				proc->mutable_resource_counters()->set_app_checks_sent(sent_app_checks_metrics);
+				proc->mutable_resource_counters()->set_app_checks_total(total_app_checks_metrics);
+				proc->mutable_resource_counters()->set_prometheus_sent(sent_prometheus_metrics);
+				proc->mutable_resource_counters()->set_prometheus_total(total_prometheus_metrics);
 				if (!tinfo->m_container_id.empty())
 				{
 					std::get<0>(m_app_checks_by_containers[tinfo->m_container_id]) += sent_app_checks_metrics;
