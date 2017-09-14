@@ -707,15 +707,25 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
+	// indexed by pid
 	unordered_map<int, java_process> m_jmx_metrics;
+	// sent and total jmx metrics indexed by container (empty string if host)
+	unordered_map<string, tuple<unsigned, unsigned>> m_jmx_metrics_by_containers;
+
 	unique_ptr<statsite_proxy> m_statsite_proxy;
 	unique_ptr<posix_queue> m_statsite_forwader_queue;
-	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
+	// indexed by container id (empty string if host), stores metrics and their total size
+	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> m_statsd_metrics;
+	// sent and total app checks indexed by container (empty string if host)
+	unordered_map<string, tuple<unsigned, unsigned>> m_app_checks_by_containers;
+	unordered_map<string, tuple<unsigned, unsigned>> m_prometheus_by_containers;
 
 	atomic<bool> m_statsd_capture_localhost;
+
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
 	decltype(m_app_proxy->read_metrics()) m_app_metrics;
+
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 

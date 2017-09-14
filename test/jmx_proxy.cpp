@@ -42,6 +42,12 @@ TEST_F(jmx_proxy_f, test_read_ok)
 	use_json("jmx_ok.json");
 	auto metrics = jmx->read_metrics();
 	EXPECT_EQ(2U, metrics.size());
+	auto it = metrics.find(9675);
+	ASSERT_NE(it, metrics.end());
+	EXPECT_EQ(10u, it->second.total_metrics());
+	it = metrics.find(8951);
+	ASSERT_NE(it, metrics.end());
+	EXPECT_EQ(91u, it->second.total_metrics());
 }
 
 TEST_F(jmx_proxy_f, test_read_fail)
@@ -331,8 +337,9 @@ TEST_F(jmx_proxy_f, limits)
 	auto app = proc->mutable_protos()->mutable_java();
 	EXPECT_EQ(31u, metrics.begin()->second.beans().size());
 	EXPECT_EQ(3u, metrics.begin()->second.beans().rbegin()->attributes().size());
-	auto pid = metrics.begin()->second;
-
+	auto pid = metrics.begin()->second;// Tomcat process from JSON file
+	EXPECT_EQ(91, pid.total_metrics());
+	
 	unsigned limit = 3000;
 	limit -= pid.to_protobuf(app, 1, limit, "process", JMX_METRICS_HARD_LIMIT_PER_PROC);
 	ASSERT_TRUE(limit);

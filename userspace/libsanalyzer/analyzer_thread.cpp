@@ -75,6 +75,7 @@ void sinsp_procinfo::clear()
 	m_fd_count = 0;
 	m_start_count = 0;
 	m_proc_count = 0;
+	m_threads_count = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -304,6 +305,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	{
 		m_procinfo->m_proc_count++;
 	}
+	++m_procinfo->m_threads_count;
 }
 
 void thread_analyzer_info::clear_all_metrics()

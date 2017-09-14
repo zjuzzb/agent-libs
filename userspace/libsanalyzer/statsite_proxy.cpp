@@ -262,7 +262,7 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
 }
 
 #ifndef _WIN32
-unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::read_metrics(metric_limits::cref_sptr_t ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724
@@ -272,7 +272,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 	// 1. bunch of metrics with different timestamps are not separated by each other
 	// 2. more lines sometimes are parsed to a single metric (eg. histograms)
 
-	unordered_map<string, statsd_metric::list_t> ret;
+	unordered_map<string, tuple<statsd_metric::list_t, unsigned>> ret;
 	uint64_t timestamp = 0;
 	char buffer[300] = {};
 	unsigned metric_count = 0;
@@ -283,7 +283,6 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 		while (continue_read)
 		{
 			g_logger.format(sinsp_logger::SEV_TRACE, "Received from statsite: %s", buffer);
-			//printf(buffer);
 			try {
 				bool parsed = m_metric.parse_line(buffer);
 				if(!parsed)
@@ -293,19 +292,23 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 						timestamp = m_metric.timestamp();
 					}
 
+					if (ret.find(m_metric.container_id()) == ret.end())
+						std::get<1>(ret[m_metric.container_id()]) = 0;
+					++std::get<1>(ret[m_metric.container_id()]);
+
 					std::string filter;
 					if(ml)
 					{
 						if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
 						{
-							ret[m_metric.container_id()].push_back(move(m_metric));
+							std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 							++metric_count;
 						}
 					}
 					else // no filtering, add every metric and log explicitly
 					{
 						metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
-						ret[m_metric.container_id()].push_back(move(m_metric));
+						std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 						++metric_count;
 					}
 					m_metric = statsd_metric();
@@ -329,18 +332,19 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 		{
 			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
 			std::string filter;
+			++std::get<1>(ret[m_metric.container_id()]);
 			if(ml)
 			{
 				if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
 				{
-					ret[m_metric.container_id()].push_back(move(m_metric));
+					std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 					++metric_count;
 				}
 			}
 			else // otherwise, add indiscriminately and log explicitly
 			{
 				metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
-				ret[m_metric.container_id()].push_back(move(m_metric));
+				std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 				++metric_count;
 			}
 			m_metric = statsd_metric();
@@ -348,7 +352,7 @@ unordered_map<string, vector<statsd_metric>> statsite_proxy::read_metrics(metric
 		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
 		if(m_metric.timestamp() > 0)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? ret.at("").at(0).timestamp() : 0);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
 			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
 		}
 	}
