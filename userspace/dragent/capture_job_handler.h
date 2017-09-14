@@ -113,6 +113,13 @@ public:
 
 	void send_error(const string& token, const string& error);
 
+	// Inject a notification event into the event stream (at least
+	// the part that's visible by capture jobs). This will make
+	// sure it's present in the memdump buffer and any active
+	// capture jobs. It will not be handled by the analyzer or
+	// sinsp_worker.
+	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
+
 	int64_t m_sysdig_pid;
 
 	// Mutex that protects access to the end of the active memdump buffer
@@ -162,5 +169,9 @@ private:
 	token_bucket m_sysdig_captures_tb;
 	atomic<uint64_t> m_last_job_check_ns;
 	atomic<uint64_t> m_last_event_ns;
+
+	sinsp_evt m_notification_evt;
+	uint8_t m_notification_scap_evt_storage[4096];
+	scap_evt* m_notification_scap_evt;
 };
 

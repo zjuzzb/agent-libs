@@ -438,7 +438,7 @@ printf("$$$$$$$$$$$$$$$$$$$$$$$$ %s\n%s\n%s\n%s\n", name.c_str(), desc.c_str(), 
 		printf("$$ %s=%s\n", it.first.c_str(), it.second.c_str());
 	}
 
-	m_capture_job_handler->m_memdumper->push_notification(0, 33, "AAA", "BBB");
+	m_capture_job_handler->push_notification(sinsp_utils::get_current_time_ns(), 33, "AAA", "BBB");
 }
 
 avoid_block_channel::avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const string& machine_id):
