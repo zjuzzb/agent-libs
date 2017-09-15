@@ -2091,7 +2091,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				{
 					for (const auto& app_met : app_metrics_pid->second)
 					{
-						if (prometheus_conf::is_prometheus(app_met.first) &&
+						if ((app_met.second.type() == app_check_data::check_type::PROMETHEUS) &&
 							(app_met.second.expiration_ts() > (m_prev_flush_time_ns/ONE_SECOND_IN_NS)))
 						{
 							have_prometheus_metrics = true;
@@ -2652,7 +2652,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
 							app_data.first.c_str(), app_data.second.expiration_ts() -
 							(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
-						if (prometheus_conf::is_prometheus(app_data.first))
+						if (app_data.second.type() == app_check_data::check_type::PROMETHEUS)
 						{
 							sent_prometheus_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
 								prom_metrics_limit, m_prom_conf.max_metrics());

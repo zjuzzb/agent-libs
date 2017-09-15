@@ -81,12 +81,6 @@ public:
 	void set_max_metrics(int i) {
 		m_max_metrics = ((i<0) ? PROM_METRICS_HARD_LIMIT : min((unsigned)i, PROM_METRICS_HARD_LIMIT));
 	}
-
-	static bool is_prometheus(string str)
-	{
-		const string prom_str("prometheus");
-		return !str.compare(0, prom_str.size(), prom_str);
-	}
 private:
 	friend class YAML::convert<prometheus_conf>;
 	friend class prom_process;

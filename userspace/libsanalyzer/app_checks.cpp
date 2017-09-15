@@ -252,14 +252,27 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 			Json::Value response_obj;
 			if(m_json_reader.parse(msg, response_obj, false))
 			{
-				for(const auto& process : response_obj)
-				{
-					app_check_data data(process, ml);
-					// only add if there are metrics or services
-					if(data.metrics().size() || data.services().size() || data.total_metrics())
+				auto proc_metrics = [](Json::Value obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
+					for(const auto& process : obj)
 					{
-						ret[data.pid()][data.name()] = move(data);
+						app_check_data data(process, ml);
+						// only add if there are metrics or services
+						if(data.metrics().size() || data.services().size() || data.total_metrics())
+						{
+							data.set_type(t);
+							ret[data.pid()][data.name()] = move(data);
+						}
 					}
+				};
+				if (response_obj.isMember("processes"))
+				{
+					auto resp_obj = response_obj["processes"];
+					proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
+				}
+				if (response_obj.isMember("prometheus"))
+				{
+					auto resp_obj = response_obj["prometheus"];
+					proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
 				}
 			}
 			else
