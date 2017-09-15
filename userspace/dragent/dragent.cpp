@@ -602,6 +602,8 @@ int dragent_app::sdagent_main()
 		dragent_error_handler::m_exception = true;
 	}
 
+	g_log->set_capture_job_handler(&m_capture_job_handler);
+
 	if(!dragent_configuration::m_terminate)
 	{
 		m_capture_job_handler.init(m_sinsp_worker.get_inspector());

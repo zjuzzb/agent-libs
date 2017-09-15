@@ -143,15 +143,6 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	}
 */
 	m_f = NULL;
-
-	//
-	// Initialize the notification event
-	//
-	m_notification_scap_evt = (scap_evt*)m_notification_scap_evt_storage;
-	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
-	m_notification_evt.m_poriginal_evt = NULL;
-	m_notification_evt.m_pevt = m_notification_scap_evt;
-	m_notification_evt.m_inspector = m_inspector;
 }
 
 sinsp_memory_dumper::~sinsp_memory_dumper()
@@ -561,28 +552,4 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 		m_disabled = true;
 		return;
 	}
-}
-
-void sinsp_memory_dumper::push_notification(uint64_t ts, uint64_t tid, string id, string description)
-{
-	m_notification_scap_evt->ts = ts;
-	m_notification_scap_evt->tid = tid;
-
-	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
-	uint16_t idlen = id.length() + 1;
-	uint16_t desclen = description.length() + 1;
-	lens[0] = idlen;
-	lens[1] = desclen;
-
-	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4),
-		id.c_str(),
-		idlen);
-
-	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4 + idlen),
-		description.c_str(),
-		desclen);
-
-	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
-
-	process_event(&m_notification_evt);
 }

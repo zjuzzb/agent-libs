@@ -162,7 +162,7 @@ public:
 	inline void dump(sinsp_evt* evt)
 	{
 		if(m_state == ST_INPROGRESS)
-		{
+		{		
 			if(evt->m_pevt->ts > m_end_time)
 			{
 				m_state = ST_DONE_OK;
@@ -293,7 +293,6 @@ public:
 				}
 			}
 #endif
-
 			(*m_active_state)->dump(evt);
 
 			// If we've written at least m_bsize bytes to the active state, switch states.
@@ -332,7 +331,7 @@ public:
 			}
 		}
 	}
-	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
+
 	inline vector<sinsp_memory_dumper_job*>* get_jobs()
 	{
 		return &m_jobs;
@@ -360,9 +359,6 @@ private:
 	FILE* m_f;
 	FILE* m_cf;
 	bool m_disabled;
-	sinsp_evt m_notification_evt;
-	uint8_t m_notification_scap_evt_storage[4096];
-	scap_evt* m_notification_scap_evt;
 	uint32_t m_switches_to_go;
 	uint32_t m_cur_dump_size;
 	uint32_t m_max_disk_size;

@@ -4,6 +4,8 @@
 #include "internal_metrics.h"
 #include <token_bucket.h>
 
+class capture_job_handler;
+
 class avoid_block_channel : public Poco::Channel
 {
 public:
@@ -28,6 +30,11 @@ public:
 	void set_internal_metrics(internal_metrics::sptr_t im)
 	{
 		m_internal_metrics = im;
+	}
+
+	void set_capture_job_handler(capture_job_handler* h)
+	{
+		m_capture_job_handler = h;
 	}
 
 	// regular logging
@@ -71,10 +78,12 @@ public:
 
 	static void sinsp_logger_callback(string&& str, uint32_t sev);
 
+	void write_to_memdump(string msg);
 private:
 	Logger* m_file_log;
 	Logger* m_console_log;
 	Logger* m_event_log;
+	capture_job_handler* m_capture_job_handler;
 
 	token_bucket m_user_events_tb;
 	internal_metrics::sptr_t m_internal_metrics;
