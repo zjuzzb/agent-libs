@@ -33,6 +33,7 @@ sinsp_configuration::sinsp_configuration()
 	m_command_lines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_capture_dragent_events = false;
+	m_detect_stress_tools = false;
 	m_security_enabled = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
@@ -865,6 +866,16 @@ void sinsp_configuration::set_cointerface_enabled(bool val)
 	m_cointerface_enabled = val;
 }
 
+bool sinsp_configuration::get_detect_stress_tools() const
+{
+	return m_detect_stress_tools;
+}
+
+void sinsp_configuration::set_detect_stress_tools(bool val)
+{
+	m_detect_stress_tools = val;
+}
+
 bool sinsp_configuration::get_swarm_enabled() const
 {
 	return m_swarm_enabled;
@@ -873,5 +884,15 @@ bool sinsp_configuration::get_swarm_enabled() const
 void sinsp_configuration::set_swarm_enabled(bool val)
 {
 	m_swarm_enabled = val;
+}
+
+uint64_t sinsp_configuration::get_security_baseline_report_interval_ns() const
+{
+	return m_security_baseline_report_interval_ns;
+}
+
+void sinsp_configuration::set_security_baseline_report_interval_ns(uint64_t report_interval)
+{
+	m_security_baseline_report_interval_ns = report_interval;
 }
 #endif // HAS_ANALYZER

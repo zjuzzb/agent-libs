@@ -249,7 +249,6 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 		if(!msg.empty())
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
-			//g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
 			Json::Value response_obj;
 			if(m_json_reader.parse(msg, response_obj, false))
 			{
@@ -257,7 +256,7 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 				{
 					app_check_data data(process, ml);
 					// only add if there are metrics or services
-					if(data.metrics().size() || data.services().size())
+					if(data.metrics().size() || data.services().size() || data.total_metrics())
 					{
 						ret[data.pid()][data.name()] = move(data);
 					}
@@ -279,7 +278,8 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 
 app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_t ml):
 	m_pid(obj["pid"].asInt()),
-	m_expiration_ts(obj["expiration_ts"].asUInt64())
+	m_expiration_ts(obj["expiration_ts"].asUInt64()),
+	m_total_metrics(0)
 {
 	if(obj.isMember("display_name"))
 	{
@@ -305,6 +305,7 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 					metric_limits::log(m[0].asString(), "app_check", true, metric_limits::log_enabled(), " ");
 					m_metrics.emplace_back(m);
 				}
+				++m_total_metrics;
 			}
 		}
 	}
@@ -330,15 +331,18 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 					metric_limits::log(s["check"].asString(), "app_check", true, metric_limits::log_enabled(), " ");
 					m_service_checks.emplace_back(s);
 				}
+				++m_total_metrics;
 			}
 		}
 	}
 }
 
-void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
+unsigned app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
 {
+	unsigned emitted_metrics = 0;
+
 	bool ml_log = metric_limits::log_enabled();
-	if(limit == 0 && !ml_log) { return; }
+	if(limit == 0 && !ml_log) { return emitted_metrics; }
 	// Right now process name is not used by backend
 	//proto->set_process_name(m_process_name);
 	for(const auto& m : m_metrics)
@@ -351,12 +355,12 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 			continue;
 		}
 		m.to_protobuf(proto->add_metrics());
-		if((--limit == 0) && !ml_log) { return; }
+		emitted_metrics++;
+		if((--limit == 0) && !ml_log) { return emitted_metrics; }
 	}
-	/*
-	 * Right now service checks are not supported by the backend
-	 * we are sending them as 1/0 metrics
-	 */
+
+	// Right now service checks are not supported by the backend
+	// we are sending them as 1/0 metrics
 	for(const auto& s : m_service_checks)
 	{
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
@@ -367,9 +371,13 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 			continue;
 		}
 		s.to_protobuf_as_metric(proto->add_metrics());
-		if((--limit == 0) && !ml_log) { return; }
+		emitted_metrics++;
+		if((--limit == 0) && !ml_log) { return emitted_metrics; }
 	}
+
+	return emitted_metrics;
 }
+
 
 app_metric::app_metric(const Json::Value &obj):
 	m_name(obj[0].asString()),

@@ -92,7 +92,7 @@ java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned
 }
 
 java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
-	m_name(json["name"].asString())
+	m_name(json["name"].asString()), m_total_metrics(0)
 {
 	for(const auto& attribute : json["attributes"])
 	{
@@ -188,6 +188,7 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 		{
 			m_attributes.emplace_back(attribute);
 		}
+		++m_total_metrics;
 	}
 }
 
@@ -218,11 +219,13 @@ unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned 
 
 java_process::java_process(const Json::Value& json, metric_limits::cref_sptr_t ml):
 	m_pid(json["pid"].asInt()),
-	m_name(json["name"].asString())
+	m_name(json["name"].asString()),
+	m_total_metrics(0)
 {
 	for(const auto& bean : json["beans"])
 	{
 		java_bean jb = java_bean(bean, ml);
+		m_total_metrics += jb.total_metrics();
 		if(jb.attribute_count())
 		{
 			m_beans.push_back(move(jb));
@@ -248,7 +251,6 @@ unsigned int java_process::to_protobuf(draiosproto::java_info *protobuf, unsigne
 		{
 			bean_it->to_protobuf(nullptr, 0, max_limit, limit_type, max_limit);
 		}
-		else { break; }
 	}
 	return emitted_attributes;
 }

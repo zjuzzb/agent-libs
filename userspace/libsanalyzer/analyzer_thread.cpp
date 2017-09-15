@@ -75,6 +75,7 @@ void sinsp_procinfo::clear()
 	m_fd_count = 0;
 	m_start_count = 0;
 	m_proc_count = 0;
+	m_threads_count = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -304,6 +305,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	{
 		m_procinfo->m_proc_count++;
 	}
+	++m_procinfo->m_threads_count;
 }
 
 void thread_analyzer_info::clear_all_metrics()
@@ -633,6 +635,22 @@ bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 
 	return (src->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() > 
 		dst->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count()); 
+}
+
+bool threadinfo_cmp_evtcnt(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	sinsp_counter_time tot;
+	src->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	uint64_t srctot = tot.m_count;
+	dst->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	uint64_t dsttot = tot.m_count;
+
+	return (srctot > dsttot); 
 }
 
 bool threadinfo_cmp_cpu_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst)

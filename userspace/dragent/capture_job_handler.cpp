@@ -810,7 +810,7 @@ void capture_job_handler::start_job(const dump_job_request& request)
 		return;
 	}
 
-	if(request.m_past_duration_ns != 0 && !m_configuration->m_memdump_enabled)
+	if(request.m_past_duration_ns != 0 && (!m_configuration->m_memdump_enabled || !m_memdumper->is_enabled()))
 	{
 		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
 		return;

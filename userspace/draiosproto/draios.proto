@@ -110,6 +110,15 @@ message resource_categories {
     optional uint32 swap_memory_available_kb = 30;  // swapped memory available (as kb).
     optional uint64 count_processes = 31;  // total processes
     optional uint64 proc_start_count = 32; // started processes
+    optional uint64 jmx_sent = 33;
+    optional uint64 jmx_total = 34;
+    optional uint64 statsd_sent = 35;
+    optional uint64 statsd_total = 36;
+    optional uint64 app_checks_sent = 37;
+    optional uint64 app_checks_total = 38;
+    optional uint64 threads_count = 39; // number of threads
+    optional uint64 prometheus_sent = 40;
+    optional uint64 prometheus_total = 41;
 }
 
 message connection_categories {
@@ -493,7 +502,7 @@ message process {
 // info for a program, i.e. a collection of processes with the same name and the same creator.
 //
 message program {
-    required process procinfo = 1; // Inofrmation about this program
+    required process procinfo = 1; // Information about this program
     repeated uint64 pids = 2; // The list of processes that are part of this program
 }
 

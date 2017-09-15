@@ -14,6 +14,9 @@
 #endif
 #include <memdumper.h>
 
+#include <sys/mman.h>
+#include <fcntl.h>
+
 extern sinsp_evttables g_infotables;
 
 sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events)
@@ -42,6 +45,41 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 		bufsize,
 		max_disk_size,
 		saturation_inactivity_pause_ns);
+
+	// Try to allocate a shared memory region of this size
+	// immediately. If we can't, log an error and disable
+	// memdumper. (The memdumper itself allocates memory
+	// across several memory regions but in aggregate the
+	// amount is the same).
+	string name = "/dragent-mem-test";
+	string err = "Could not allocate " + to_string(bufsize) + " bytes of shared memory for memdump: %s. Disabling memdump";
+	shm_unlink(name.c_str());
+
+	int shm_fd = shm_open(name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
+	if(shm_fd == -1)
+	{
+		glogf(sinsp_logger::SEV_ERROR, err.c_str(), strerror_r(errno, m_errbuf, sizeof(m_errbuf)));
+		m_disabled = true;
+	}
+	else
+	{
+		int rc;
+
+		// Make sure the file is fully allocated and
+		// actually uses all the size.
+		if ((rc = posix_fallocate(shm_fd, 0, bufsize)) != 0)
+		{
+			glogf(sinsp_logger::SEV_ERROR, err.c_str(), strerror_r(rc, m_errbuf, sizeof(m_errbuf)));
+			m_disabled = true;
+		}
+		::close(shm_fd);
+		shm_unlink(name.c_str());
+	}
+
+	if(m_disabled)
+	{
+		return;
+	}
 
 	m_max_disk_size = max_disk_size;
 	m_saturation_inactivity_pause_ns = saturation_inactivity_pause_ns;

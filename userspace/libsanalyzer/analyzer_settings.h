@@ -183,7 +183,7 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // Falco baseline emit interval
 //
-#define FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
+#define DEFAULT_FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
 
 //
 // Time after which we should try to reenable the falco baseliner after
@@ -247,4 +247,5 @@ static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 #define SWARM_POLL_INTERVAL (10 * ONE_SECOND_IN_NS)
 #define SWARM_POLL_FAIL_INTERVAL (300 * ONE_SECOND_IN_NS)
 
+#define MIN_NODRIVER_SWITCH_TIME (3 * 60 * ONE_SECOND_IN_NS)
 #define ORCHESTRATOR_EVENTS_POLL_INTERVAL (ONE_SECOND_IN_NS / 500)

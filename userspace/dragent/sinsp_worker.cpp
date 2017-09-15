@@ -36,6 +36,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_aws_metadata_refresher(configuration),
 	m_internal_metrics(im)
 {
+	m_last_mode_switch_time = 0;
 }
 
 sinsp_worker::~sinsp_worker()
@@ -318,6 +319,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_security_enabled(m_configuration->m_security_enabled);
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
+	m_analyzer->get_configuration()->set_security_baseline_report_interval_ns(m_configuration->m_security_baseline_report_interval_ns);
 
 	//
 	// Load the chisels
@@ -372,7 +374,7 @@ void sinsp_worker::init()
 	{
 		m_inspector->open(m_configuration->m_input_filename);
 	}
-	else if (m_configuration->m_mode == dragent_mode_t::NODRIVER)
+	else if(m_configuration->m_mode == dragent_mode_t::NODRIVER)
 	{
 		m_inspector->open_nodriver();
 		// Change these values so the inactive thread pruning
@@ -380,8 +382,17 @@ void sinsp_worker::init()
 		m_inspector->m_thread_timeout_ns = 0;
 		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
+	else if (m_configuration->m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
+		m_inspector->open("");
+		m_inspector->set_simpledriver_mode();
+		m_analyzer->set_simpledriver_mode();
+	}
 	else
 	{
+		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
+
 		m_inspector->open("");
 	}
 
@@ -460,6 +471,33 @@ void sinsp_worker::run()
 		{
 			cerr << "res = " << res << endl;
 			throw sinsp_exception(m_inspector->getlasterr().c_str());
+		}
+
+		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
+		{
+			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
+			{
+				m_last_mode_switch_time = ev->get_ts();
+
+				m_inspector->close();
+				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER;
+				m_analyzer->set_sampling_ratio(1);
+
+				m_inspector->open_nodriver();
+				// Change these values so the inactive thread pruning
+				// runs more often
+				m_inspector->m_thread_timeout_ns = 0;
+				m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
+
+				continue;
+			}
+			else
+			{
+				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
+				{
+					throw sinsp_exception("restarting agent to restore normal operation mode");
+				}
+			}
 		}
 
 		//

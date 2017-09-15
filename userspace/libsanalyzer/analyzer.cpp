@@ -121,7 +121,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_seconds_below_thresholds = 0;
 	m_my_cpuload = -1;
 	m_skip_proc_parsing = false;
+	m_simpledriver_enabled = false;
 	m_prev_flush_wall_time = 0;
+	m_mode_switch_state = sinsp_analyzer::MSR_NONE;
 	m_die = false;
 	m_run_chisels = false;
 
@@ -256,7 +258,14 @@ void sinsp_analyzer::on_capture_start()
 
 	if(m_procfs_parser != NULL)
 	{
-		throw sinsp_exception("analyzer can be opened only once");
+		//
+		// Note, we can get here if we switch from regular to nodriver and vice 
+		// versa. In that case, sinsp is opened and closed and as a consequence
+		// on_capture_start is called again. It's fine, because the analyzer
+		// keeps running in the meantime.
+		//
+		//throw sinsp_exception("analyzer can be opened only once");
+		return;
 	}
 
 	//
@@ -609,13 +618,16 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 {
-	m_ipv4_connections->remove_expired_connections(ts);
+	if(!m_simpledriver_enabled)
+	{
+		m_ipv4_connections->remove_expired_connections(ts);
 #ifdef HAS_UNIX_CONNECTIONS
-	m_unix_connections->remove_expired_connections(ts);
+		m_unix_connections->remove_expired_connections(ts);
 #endif
 #ifdef HAS_PIPE_CONNECTIONS
-	m_pipe_connections->remove_expired_connections(ts);
+		m_pipe_connections->remove_expired_connections(ts);
 #endif
+	}
 }
 
 sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_t timestamp)
@@ -873,7 +885,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 }
 
 template<class Iterator>
-void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
@@ -1014,6 +1026,121 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	//		break;
 	//	}
 	//}
+}
+
+//
+// The simple driver only captures a very limited number of system calls, like clone, execve, connect and accept.
+// As a consequence, process filtering needs to use simpler criteria.
+//
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+{
+	uint32_t j;
+
+	vector<sinsp_threadinfo*> prog_sortable_list;
+
+	for(auto ptit = progtable_begin; ptit != progtable_end; (++ptit))
+	{
+		if(cs_only)
+		{
+			uint64_t netops = (*ptit)->m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count;
+
+			if(netops != 0)
+			{
+				prog_sortable_list.push_back(*ptit);
+			}
+		}
+		else
+		{
+			prog_sortable_list.push_back(*ptit);
+		}
+	}
+
+	if(prog_sortable_list.size() <= howmany)
+	{
+		for(j = 0; j < prog_sortable_list.size(); j++)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+
+		return;
+	}
+
+	//
+	// Mark the top CPU consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_cpu_cs:threadinfo_cmp_cpu);
+
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_ainfo->m_cpuload > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	//
+	// Mark the top memory consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		prog_sortable_list.begin() + howmany,
+		prog_sortable_list.end(),
+		(cs_only)?threadinfo_cmp_memory_cs:threadinfo_cmp_memory);
+
+	for(j = 0; j < howmany; j++)
+	{
+		if(prog_sortable_list[j]->m_vmsize_kb > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+
+	//
+	// Mark the top syscall producers
+	//
+	partial_sort(prog_sortable_list.begin(),
+				 prog_sortable_list.begin() + howmany,
+				 prog_sortable_list.end(),
+				 threadinfo_cmp_evtcnt);
+
+	for(j = 0; j < howmany; j++)
+	{
+		ASSERT(prog_sortable_list[j]->m_ainfo->m_procinfo != NULL);
+
+		if(prog_sortable_list[j]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0)
+		{
+			prog_sortable_list[j]->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+		}
+		else
+		{
+			break;
+		}
+	}
+}
+
+template<class Iterator>
+void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+{
+	if(m_simpledriver_enabled)
+	{
+		filter_top_programs_simpledriver(progtable_begin, progtable_end, cs_only, howmany);
+	}
+	else
+	{
+		filter_top_programs_normaldriver(progtable_begin, progtable_end, cs_only, howmany);
+
+	}
 }
 
 bool sinsp_analyzer::check_k8s_server(string& addr)
@@ -1542,6 +1669,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
+	bool can_disable_nodriver = true;
 	uint16_t prom_metrics_limit = m_prom_conf.max_metrics();
 	vector<prom_process> prom_procs;
 
@@ -1651,10 +1779,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 	uint64_t process_count = 0;
 
+	///////////////////////////////////////////////////////////////////////////
 	// Emit process has 3 cycles on thread_table:
-	// 1. Aggregate process into programs
-	// 2. (only on programs) aggregate programs metrics to host and container ones
-	// 3. (only on programs) Write programs on protobuf
+	//  1. Aggregate process into programs
+	//  2. (only on programs) aggregate programs metrics to host and container ones
+	//  3. (only on programs) Write programs on protobuf
+	///////////////////////////////////////////////////////////////////////////
 
 	///////////////////////////////////////////////////////////////////////////
 	// First pass of the list of threads: emit the metrics (if defined)
@@ -1663,7 +1793,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
+		{
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
@@ -1857,6 +1987,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
 							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
 							ainfo->m_metrics.m_io_file.m_count_out = file_io_stats.m_syscw;
+
+							if(m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
+							{
+								if(m_stress_tool_matcher.match(tinfo->m_comm))
+								{
+									can_disable_nodriver = false;
+								}
+							}
 						}
 					}
 				}
@@ -1994,6 +2132,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 	}
 	am_trc.stop();
+
+	if(m_inspector->is_nodriver() && m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER && can_disable_nodriver)
+	{
+		m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_REGULAR;
+	}
 
 	if(m_internal_metrics)
 	{
@@ -2241,6 +2384,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// at least one process for each container
 	tracer_emitter container_trc("emit_container", proc_trc);
 	auto emitted_containers = emit_containers(progtable_by_container);
+
 	container_trc.stop();
 	bool progtable_needs_filtering = false;
 
@@ -2350,10 +2494,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			draiosproto::program* prog = m_metrics->add_programs();
 			draiosproto::process* proc = prog->mutable_procinfo();
 
-			//for(int64_t pid : procinfo->m_program_pids)
-			//{
-			//	prog->add_pids(pid);
-			//}
 			prog->add_pids(tinfo->m_pid);
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
@@ -2426,6 +2566,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			proc->set_netrole(netrole);
 
 #ifndef _WIN32
+			proc->mutable_resource_counters()->set_jmx_sent(0);
+			proc->mutable_resource_counters()->set_jmx_total(0);
+			proc->mutable_resource_counters()->set_app_checks_sent(0);
+			proc->mutable_resource_counters()->set_app_checks_total(0);
+			proc->mutable_resource_counters()->set_prometheus_sent(0);
+			proc->mutable_resource_counters()->set_prometheus_total(0);
+
 			// Add JMX metrics
 			if (m_jmx_proxy)
 			{
@@ -2445,13 +2592,25 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
 							auto java_proto = proc->mutable_protos()->mutable_java();
-							jmx_limit -= jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
+							unsigned jmx_total = jmx_metrics_it->second.total_metrics();
+							unsigned jmx_sent = jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
 										"process", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT_PER_PROC));
+							jmx_limit -= jmx_sent;
 							if(jmx_limit == 0)
 							{
 								g_logger.format(sinsp_logger::SEV_WARNING,
 									"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
 							}
+
+							proc->mutable_resource_counters()->set_jmx_sent(jmx_sent);
+							proc->mutable_resource_counters()->set_jmx_total(jmx_total);
+							if (!tinfo->m_container_id.empty())
+							{
+								std::get<0>(m_jmx_metrics_by_containers[tinfo->m_container_id]) += jmx_sent;
+								std::get<1>(m_jmx_metrics_by_containers[tinfo->m_container_id]) += jmx_total;
+							}
+							std::get<0>(m_jmx_metrics_by_containers[""]) += jmx_sent;
+							std::get<1>(m_jmx_metrics_by_containers[""]) += jmx_total;
 						}
 						else if(metric_limits::log_enabled())
 						{
@@ -2468,6 +2627,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				set<string> app_data_set;
 				// Send data for each app-check for the processes in procinfo
+				unsigned sent_app_checks_metrics = 0;
+				unsigned total_app_checks_metrics = 0;
+				unsigned sent_prometheus_metrics = 0;
+				unsigned total_prometheus_metrics = 0;
 				for(auto pid: procinfo->m_program_pids)
 				{
 					auto datamap_it = m_app_metrics.find(pid);
@@ -2491,17 +2654,34 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
 						if (prometheus_conf::is_prometheus(app_data.first))
 						{
-							app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
+							sent_prometheus_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
 								prom_metrics_limit, m_prom_conf.max_metrics());
+							total_prometheus_metrics += app_data.second.total_metrics();
 						}
 						else
 						{
-							app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+							sent_app_checks_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
 								app_checks_limit, m_configuration->get_app_checks_limit());
+							total_app_checks_metrics += app_data.second.total_metrics();
 						}
 						app_data_set.emplace(app_data.first);
 					}
 				}
+				proc->mutable_resource_counters()->set_app_checks_sent(sent_app_checks_metrics);
+				proc->mutable_resource_counters()->set_app_checks_total(total_app_checks_metrics);
+				proc->mutable_resource_counters()->set_prometheus_sent(sent_prometheus_metrics);
+				proc->mutable_resource_counters()->set_prometheus_total(total_prometheus_metrics);
+				if (!tinfo->m_container_id.empty())
+				{
+					std::get<0>(m_app_checks_by_containers[tinfo->m_container_id]) += sent_app_checks_metrics;
+					std::get<1>(m_app_checks_by_containers[tinfo->m_container_id]) += total_app_checks_metrics;
+					std::get<0>(m_prometheus_by_containers[tinfo->m_container_id]) += sent_prometheus_metrics;
+					std::get<1>(m_prometheus_by_containers[tinfo->m_container_id]) += total_prometheus_metrics;
+				}
+				std::get<0>(m_app_checks_by_containers[""]) += sent_app_checks_metrics;
+				std::get<1>(m_app_checks_by_containers[""]) += total_app_checks_metrics;
+				std::get<0>(m_prometheus_by_containers[""]) += sent_prometheus_metrics;
+				std::get<1>(m_prometheus_by_containers[""]) += total_prometheus_metrics;
 			}
 #endif
 
@@ -2527,6 +2707,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
 			proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
 			proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+			proc->mutable_resource_counters()->set_threads_count(procinfo->m_threads_count);
 
 			if(tot.m_count != 0)
 			{
@@ -2576,12 +2757,28 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 #endif // ANALYZER_EMITS_PROCESSES
 		}
+
 		//
 		// Clear the thread metrics, so we're ready for the next sample
 		//
 		tinfo->m_ainfo->clear_all_metrics();
 	}
 	at_trc.stop();
+
+	// add jmx and app checks per container
+	for (int i = 0; i < m_metrics->containers_size(); i++)
+	{
+		draiosproto::container* container = m_metrics->mutable_containers(i);
+		string container_id = container->id();
+
+		container->mutable_resource_counters()->set_jmx_sent(std::get<0>(m_jmx_metrics_by_containers[container_id]));
+		container->mutable_resource_counters()->set_jmx_total(std::get<1>(m_jmx_metrics_by_containers[container_id]));
+
+		container->mutable_resource_counters()->set_app_checks_sent(std::get<0>(m_app_checks_by_containers[container_id]));
+		container->mutable_resource_counters()->set_app_checks_total(std::get<1>(m_app_checks_by_containers[container_id]));
+		container->mutable_resource_counters()->set_prometheus_sent(std::get<0>(m_prometheus_by_containers[container_id]));
+		container->mutable_resource_counters()->set_prometheus_total(std::get<1>(m_prometheus_by_containers[container_id]));
+	}
 
 	if(app_checks_limit == 0)
 	{
@@ -2916,9 +3113,12 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Skip connection that had no activity during the sample
 		//
-		if(!acit->second.is_active())
+		if(!m_simpledriver_enabled)
 		{
-			continue;
+			if(!acit->second.is_active())
+			{
+				continue;
+			}
 		}
 
 		//
@@ -2957,7 +3157,7 @@ void sinsp_analyzer::emit_full_connections()
 		//
 		// We only include connections that had activity during the sample
 		//
-		if(cit->second.is_active())
+		if(cit->second.is_active() || m_simpledriver_enabled)
 		{
 			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
@@ -3337,7 +3537,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 			//
 			m_falco_baseliner->emit_as_protobuf(0, m_metrics->mutable_falcobl());
 		}
-		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > FALCOBL_DUMP_DELTA_NS)
+		else if(evt != NULL && evt->get_ts() - m_last_falco_dump_ts > m_configuration->get_security_baseline_report_interval_ns())
 		{
 			if(m_last_falco_dump_ts != 0)
 			{
@@ -3795,6 +3995,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_metrics->mutable_hostinfo()->set_memory_bytes_available_kb(m_host_metrics.m_res_memory_avail_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_count_processes(m_host_metrics.get_process_count());
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_proc_start_count(m_host_metrics.get_process_start_count());
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_threads_count(m_host_metrics.m_threads_count);
 
 			if(m_mounted_fs_proxy)
 			{
@@ -3862,16 +4063,59 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			tracer_emitter misc_trc("misc_emit", f_trc);
 			emit_top_files();
 
-			//
-			// Statsd metrics
-			//
 #ifndef _WIN32
-			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
+			// statsd metrics
+			unsigned statsd_total = 0, statsd_sent = 0;
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(0);
+			if (m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
-				emit_statsd(m_statsd_metrics.at(""),
-					    m_metrics->mutable_protos()->mutable_statsd(),
-					    m_configuration->get_statsd_limit(), m_configuration->get_statsd_limit());
+				statsd_total += std::get<1>(m_statsd_metrics.at(""));
+				statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at("")),
+					m_metrics->mutable_protos()->mutable_statsd(),
+					m_configuration->get_statsd_limit(),
+					m_configuration->get_statsd_limit());
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(statsd_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(statsd_total);
 			}
+
+			// jmx metrics for the host
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_total(0);
+			if (m_jmx_metrics_by_containers.find("") != m_jmx_metrics_by_containers.end())
+			{
+				auto jmx_sent = std::get<0>(m_jmx_metrics_by_containers[""]);
+				auto jmx_total = std::get<1>(m_jmx_metrics_by_containers[""]);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_sent(jmx_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_total(jmx_total);
+			}
+			// clear the cache for the next round of sampling
+			m_jmx_metrics_by_containers.clear();
+
+			// app checks for the host
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_total(0);
+			if (m_app_checks_by_containers.find("") != m_app_checks_by_containers.end())
+			{
+				auto checks_sent = std::get<0>(m_app_checks_by_containers[""]);
+				auto checks_total = std::get<1>(m_app_checks_by_containers[""]);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_sent(checks_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_app_checks_total(checks_total);
+			}
+			// clear the cache for the next round of sampling
+			m_app_checks_by_containers.clear();
+			// prometheus for the host
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(0);
+			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(0);
+			if (m_prometheus_by_containers.find("") != m_prometheus_by_containers.end())
+			{
+				auto checks_sent = std::get<0>(m_prometheus_by_containers[""]);
+				auto checks_total = std::get<1>(m_prometheus_by_containers[""]);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_sent(checks_sent);
+				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_prometheus_total(checks_total);
+			}
+			// clear the cache for the next round of sampling
+			m_prometheus_by_containers.clear();
 #endif
 
 			//
@@ -5657,11 +5901,17 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 	}
 #ifndef _WIN32
+	container->mutable_resource_counters()->set_statsd_sent(0);
+	container->mutable_resource_counters()->set_statsd_total(0);
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
-		auto statsd_emitted = emit_statsd(m_statsd_metrics.at(it->second.m_id), container->mutable_protos()->mutable_statsd(),
+		unsigned statsd_total = std::get<1>(m_statsd_metrics.at(it->second.m_id));
+		auto statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at(it->second.m_id)),
+										container->mutable_protos()->mutable_statsd(),
 										*statsd_limit, m_configuration->get_statsd_limit());
-		*statsd_limit -= statsd_emitted;
+		*statsd_limit -= statsd_sent;
+		container->mutable_resource_counters()->set_statsd_sent(statsd_sent);
+		container->mutable_resource_counters()->set_statsd_total(statsd_total);
 	}
 #endif
 	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
@@ -5673,6 +5923,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			it->to_protobuf(proto_fs);
 		}
 	}
+	auto thread_count = it_analyzer->second.m_metrics.m_threads_count;
+	container->mutable_resource_counters()->set_threads_count(thread_count);
 
 	//
 	// Emit the executed commands for this container
@@ -5702,7 +5954,7 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
-		while(!m_statsd_metrics.empty() && m_statsd_metrics.begin()->second.at(0).timestamp() < look_for_ts)
+		while(!m_statsd_metrics.empty() && std::get<0>(m_statsd_metrics.begin()->second).at(0).timestamp() < look_for_ts)
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
@@ -5713,15 +5965,15 @@ void sinsp_analyzer::get_statsd()
 #ifndef _WIN32
 unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit)
 {
-	unsigned j = 0;
+	unsigned metrics_found = 0;
 	for(const auto& metric : statsd_metrics)
 	{
-		if(j >= limit)
+		if (metrics_found >= limit)
 		{
-			if(metric_limits::log_enabled())
+			if (metric_limits::log_enabled())
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit, metric.name().c_str());
-				continue;
+				g_logger.format(sinsp_logger::SEV_INFO, "[statsd] metric over limit (total, %u max): %s", max_limit,
+					metric.name().c_str());
 			}
 			else
 			{
@@ -5729,15 +5981,20 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 				break;
 			}
 		}
-		auto statsd_proto = statsd_info->add_statsd_metrics();
-		metric.to_protobuf(statsd_proto);
-		++j;
+		else
+		{
+			auto statsd_proto = statsd_info->add_statsd_metrics();
+			metric.to_protobuf(statsd_proto);
+			++metrics_found;
+		}
 	}
-	if (j > 0)
+
+	if (metrics_found > 0)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", j);
+		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", metrics_found);
 	}
-	return j;
+
+	return metrics_found;
 }
 #endif
 

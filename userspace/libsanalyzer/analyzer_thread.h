@@ -70,6 +70,7 @@ public:
 	uint64_t m_start_count = 0;
 	// number of process instances
 	int m_proc_count = 0;
+	unsigned m_threads_count = 0;
 };
 
 class proc_config;
@@ -291,6 +292,7 @@ bool threadinfo_cmp_memory(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_io(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_net(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst);
+bool threadinfo_cmp_evtcnt(sinsp_threadinfo* src , sinsp_threadinfo* dst);
 
 bool threadinfo_cmp_cpu_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst); 
 bool threadinfo_cmp_memory_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst);

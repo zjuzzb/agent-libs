@@ -300,8 +300,10 @@ dragent_configuration::dragent_configuration()
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
+	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
+	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -959,6 +961,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		// our dropping mechanism can't help in this mode
 		m_autodrop_enabled = false;
 	}
+	else if(mode_s == "simpledriver")
+	{
+		m_mode = dragent_mode_t::SIMPLEDRIVER;
+		// disabling features that don't work in this mode
+		m_enable_falco_engine = false;
+		m_falco_baselining_enabled = false;
+	}
 
 	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
 	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
@@ -979,8 +988,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
+	m_detect_stress_tools = m_config->get_scalar<bool>("absorb_event_bursts", false);
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
+
+	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);
 }
 
 void dragent_configuration::print_configuration()
@@ -1008,8 +1020,10 @@ void dragent_configuration::print_configuration()
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
 	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
+	g_log->information("falcobaseline.report_interval: " + NumberFormatter::format(m_security_baseline_report_interval_ns));
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
+	g_log->information("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
 	string ancestors;
 	for(auto s : m_command_lines_valid_ancestors)
 	{
@@ -1274,9 +1288,14 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Emitting sysdig tracers enabled");
 	}
+
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
 		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
+	}
+	else if(m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		g_log->information("Running in simple driver mode, Falco and Sysdig Captures will not work");
 	}
 
 	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||
