@@ -108,12 +108,6 @@ public:
 
 		m_end_ts = evt->get_ts();
 
-{
-	if(evt->get_tid() == 33)
-	{
-		printf("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n");
-	}
-}
 		m_dumper->dump(evt);
 	}
 
@@ -316,7 +310,6 @@ public:
 
 			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
 			{
-printf("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD\n");
 				(*it)->dump(evt);
 			}
 		}

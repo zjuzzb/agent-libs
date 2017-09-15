@@ -976,7 +976,6 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 		desclen);
 
 	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
-	fprintf(stderr, "IN PUSH_NOTIFICATION\n");
 
 	process_event(&m_notification_evt);
 }
