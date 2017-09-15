@@ -416,7 +416,7 @@ void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 		break;
 
 	// Memdumper logs
-	case sinsp_logger::SEV_EVT_MDUMP_INFORMATION:
+	case sinsp_logger::SEV_EVT_MDUMP:
 		g_log->write_to_memdump(str);
 		break;
 	default:
