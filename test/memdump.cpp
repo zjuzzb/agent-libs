@@ -103,6 +103,7 @@ protected:
 
 	virtual void TearDown()
 	{
+		m_capture_job_handler->m_force_cleanup = true;
 		dragent_configuration::m_terminate = true;
 
 		ThreadPool::defaultPool().stopAll();

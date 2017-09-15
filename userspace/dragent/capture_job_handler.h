@@ -127,6 +127,9 @@ public:
 	Poco::Mutex m_membuf_mtx;
 	std::unique_ptr<sinsp_memory_dumper> m_memdumper;
 
+	// Only used in unit tests to force a faster shutdown.
+	bool m_force_cleanup = false;
+
 private:
 	// Clean up all jobs
 	void cleanup();
