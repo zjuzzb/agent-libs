@@ -154,6 +154,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_jmx_sampling = 1;
 #endif
 
+	m_use_new_k8s = false;
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 	m_containers_limit = CONTAINERS_HARD_LIMIT;

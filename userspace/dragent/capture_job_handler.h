@@ -118,6 +118,9 @@ public:
 	// Mutex that protects access to the end of the active memdump buffer
 	Poco::Mutex m_membuf_mtx;
 
+	// Only used in unit tests to force a faster shutdown.
+	bool m_force_cleanup = false;
+
 private:
 	// Clean up all jobs
 	void cleanup();

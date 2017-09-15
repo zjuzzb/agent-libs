@@ -695,7 +695,7 @@ bool capture_job_handler::queue_job_request(sinsp *inspector, std::shared_ptr<du
 
 void capture_job_handler::cleanup()
 {
-	g_log->information(m_name + ": cleaning up");
+	g_log->information(m_name + ": cleaning up, force=" + string(m_force_cleanup ? "yes" : "no"));
 
 	// Stop all jobs
 	{
@@ -711,14 +711,17 @@ void capture_job_handler::cleanup()
 	// Flush all state. Due to throttling, it's possible that this
 	// may take more than one attempt. We try up to 10 times
 	// before giving up.
-	uint32_t attempt = 0;
-
-	while(attempt < 10 && m_jobs.size() > 0)
+	if(!m_force_cleanup)
 	{
-		flush_jobs(m_last_job_check_ns);
-		cleanup_jobs(m_last_job_check_ns);
+		uint32_t attempt = 0;
 
-		Thread::sleep(200);
+		while(attempt < 10 && m_jobs.size() > 0)
+		{
+			flush_jobs(m_last_job_check_ns);
+			cleanup_jobs(m_last_job_check_ns);
+
+			Thread::sleep(200);
+		}
 	}
 
 	if(m_jobs.size() > 0)
