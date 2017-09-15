@@ -4173,7 +4173,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				// are translated into negative ones. This is a problem specifically when agent loses samples
 				// and here we send current value - prev read value. It can be very high
 				// so at this point let's patch it to avoid the overflow
-				static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int>::max());
+				static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int32_t>::max());
 				external_io_net->set_bytes_in(std::min(interfaces_stats.first, max_int32));
 				external_io_net->set_bytes_out(std::min(interfaces_stats.second, max_int32));
 			}
