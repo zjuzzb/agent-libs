@@ -119,6 +119,7 @@ public:
 	// capture jobs. It will not be handled by the analyzer or
 	// sinsp_worker.
 	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
+	void push_infra_event(uint64_t ts, uint64_t tid, string source, string name, string description, string scope);
 
 	int64_t m_sysdig_pid;
 

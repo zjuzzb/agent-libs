@@ -426,19 +426,20 @@ void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 
 void dragent_logger::write_to_memdump(string msg)
 {
-	yaml_configuration yaml(msg);
-	string name = yaml.get_scalar<string>("name");
-	string desc = yaml.get_scalar<string>("description", "");
-	string scope = yaml.get_scalar<string>("scope", "");
-	std::unordered_map<std::string, std::string> tags = yaml.get_merged_map<string>("tags");
-
-printf("$$$$$$$$$$$$$$$$$$$$$$$$ %s\n%s\n%s\n%s\n", name.c_str(), desc.c_str(), scope.c_str(), tags["source"].c_str());
-	for(auto it : tags)
+	try
 	{
-		printf("$$ %s=%s\n", it.first.c_str(), it.second.c_str());
-	}
+		yaml_configuration yaml(msg);
+		string name = yaml.get_scalar<string>("name");
+		string desc = yaml.get_scalar<string>("description", "");
+		string scope = yaml.get_scalar<string>("scope", "");
+		std::unordered_map<std::string, std::string> tags = yaml.get_merged_map<string>("tags");
 
-	m_capture_job_handler->push_notification(sinsp_utils::get_current_time_ns(), 33, "AAA", "BBB");
+		m_capture_job_handler->push_infra_event(sinsp_utils::get_current_time_ns(), 0, "docker", name, desc, scope);
+	}
+	catch(YAML::ParserException& ex)
+	{
+		return;
+	}
 }
 
 avoid_block_channel::avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const string& machine_id):

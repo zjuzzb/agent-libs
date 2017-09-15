@@ -576,7 +576,6 @@ void capture_job_handler::init(const sinsp *inspector)
 	// Initialize the notification event
 	//
 	m_notification_scap_evt = (scap_evt*)m_notification_scap_evt_storage;
-	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
 	m_notification_evt.m_poriginal_evt = NULL;
 	m_notification_evt.m_pevt = m_notification_scap_evt;
 	m_notification_evt.m_inspector = m_inspector;
@@ -982,4 +981,41 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 	process_event(&m_notification_evt);
 }
 
+void capture_job_handler::push_infra_event(uint64_t ts, uint64_t tid, string source, string name, string description, string scope)
+{
+	uint32_t hdrlen = sizeof(struct ppm_evt_hdr) + 4 * 2;
 
+	m_notification_scap_evt->ts = ts;
+	m_notification_scap_evt->tid = tid;
+	m_notification_scap_evt->type = PPME_INFRASTRUCTURE_EVENT_E;
+
+	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
+	uint16_t sourcelen = source.length() + 1;
+	uint16_t namelen = name.length() + 1;
+	uint16_t desclen = description.length() + 1;
+	uint16_t scopelen = scope.length() + 1;
+	lens[0] = sourcelen;
+	lens[1] = namelen;
+	lens[2] = desclen;
+	lens[3] = scopelen;
+
+	memcpy((m_notification_scap_evt_storage + hdrlen),
+		source.c_str(),
+		sourcelen);
+
+	memcpy((m_notification_scap_evt_storage + hdrlen + sourcelen),
+		name.c_str(),
+		namelen);
+
+	memcpy((m_notification_scap_evt_storage + hdrlen + sourcelen + namelen),
+		description.c_str(),
+		desclen);
+
+	memcpy((m_notification_scap_evt_storage + hdrlen + sourcelen + namelen + desclen),
+		scope.c_str(),
+		scopelen);
+
+	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 * 2 + sourcelen + namelen + desclen + scopelen + 1;
+
+	process_event(&m_notification_evt);
+}
