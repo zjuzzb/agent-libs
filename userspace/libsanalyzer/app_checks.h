@@ -169,6 +169,12 @@ public:
 	typedef vector<app_metric> metrics_t;
 	typedef vector<app_service_check> services_t;
 
+	enum check_type
+	{
+		APPCHECK,
+		PROMETHEUS
+	};
+
 	// Added for unordered_map::operator[]
 	app_check_data():
 			m_pid(0),
@@ -177,6 +183,16 @@ public:
 	{};
 
 	explicit app_check_data(const Json::Value& obj, metric_limits::cref_sptr_t ml = nullptr);
+
+	check_type type() const
+	{
+		return m_type;
+	}
+
+	void set_type(const check_type t)
+	{
+		m_type = t;
+	}
 
 	int pid() const
 	{
@@ -212,6 +228,7 @@ public:
 	}
 
 private:
+	check_type m_type;
 	int m_pid;
 	string m_process_name;
 	metrics_t m_metrics;

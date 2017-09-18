@@ -422,8 +422,66 @@ class Application:
             if not key in self.last_request_pidnames:
                 del self.known_instances[key]
 
+    def run_check(self, response_body, pidname, check, conf, trc):
+        self.last_request_pidnames.add(pidname)
+        log_errors = _is_affirmative(check.get("log_errors", True))
+
+        try:
+            check_instance = self.known_instances[pidname]
+            if check_instance.proc_data != conf:
+                # The configuration for this check has changed. Remove it
+                # and try to access it again, which triggers the KeyError
+                # and lets the exception handler recreate the AppCheckInstance.
+                logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
+                              conf["check"].get("name", "N/A"),
+                              str(check_instance.proc_data), str(conf))
+                del self.known_instances[pidname]
+                check_instance = self.known_instances[pidname]
+
+        except KeyError:
+            if pidname in self.blacklisted_pidnames:
+                logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
+                return False, 0
+            logging.debug("Requested check %s", repr(check))
+
+            try:
+                check_instance = AppCheckInstance(check, conf)
+            except AppCheckException as ex:
+                if log_errors:
+                    logging.error("Exception on creating check %s: %s", check["name"], ex)
+                self.blacklisted_pidnames.add(pidname)
+                return False, 0
+            self.known_instances[pidname] = check_instance
+
+        if pidname in self.blacklisted_pidnames and not check_instance.retry:
+            logging.debug("Not retrying appcheck " + check_instance.name)
+            return False, 0
+
+        trc2 = trc.span(check_instance.name)
+        trc2.start(trc2.tag, args={"check_name": check_instance.name,
+            "pid":str(check_instance.pid),
+            "other_container":str(check_instance.is_on_another_container)})
+        metrics, service_checks, ex = check_instance.run()
+        # print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
+        nm = len(metrics) if metrics else 0
+        trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
+
+        if ex and pidname not in self.blacklisted_pidnames:
+            if log_errors:
+                logging.error("Exception on running check %s: %s", check_instance.name, ex)
+            self.blacklisted_pidnames.add(pidname)
+
+        expiration_ts = datetime.now() + check_instance.interval
+        response_body.append({"pid": pidname[0],
+                              "display_name": check_instance.name,
+                              "metrics": metrics,
+                              "service_checks": service_checks,
+                              "expiration_ts": int(expiration_ts.strftime("%s"))})
+        return True, nm
+
     def handle_command(self, command_s):
-        response_body = []
+        appcheck_resp = []
+        promcheck_resp = []
         #print "Received command: %s" % command_s
         command = json.loads(command_s)
         #processes = json.loads(command_s)
@@ -439,7 +497,6 @@ class Application:
 
         # Create app_checks for prometheus
         for pc in promchecks:
-            # print "promcheck:", pc
             for port in pc["ports"]:
                 # print "port:", port
                 newconf = {"url": "http://localhost:" + str(port) + "/metrics"}
@@ -461,72 +518,27 @@ class Application:
                     "vpid": pc["vpid"],
                     "conf_vals": {}
                 }
-                # print "Adding", newproc
-                processes.append(newproc)
+                pidname = (newproc["pid"],newcheck["name"])
+                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc) 
+                if ran:
+                    numrun += 1
+                nummetrics += nm
 
         for p in processes:
             numchecks += 1
             check = p["check"]
             pidname = (p["pid"],check["name"])
-            self.last_request_pidnames.add(pidname)
-            log_errors = _is_affirmative(check.get("log_errors", True))
-
-            try:
-                check_instance = self.known_instances[pidname]
-                if check_instance.proc_data != p:
-
-                    # The configuration for this check has changed. Remove it
-                    # and try to access it again, which triggers the KeyError
-                    # and lets the exception handler recreate the AppCheckInstance.
-                    logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
-                                  p["check"].get("name", "N/A"),
-                                  str(check_instance.proc_data), str(p))
-                    del self.known_instances[pidname]
-                    check_instance = self.known_instances[pidname]
-
-            except KeyError:
-                if pidname in self.blacklisted_pidnames:
-                    logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
-                    continue
-                logging.debug("Requested check %s", repr(check))
-
-                try:
-                    check_instance = AppCheckInstance(check, p)
-                except AppCheckException as ex:
-                    if log_errors:
-                        logging.error("Exception on creating check %s: %s", check["name"], ex)
-                    self.blacklisted_pidnames.add(pidname)
-                    continue
-                self.known_instances[pidname] = check_instance
-
-            if pidname in self.blacklisted_pidnames and not check_instance.retry:
-                logging.debug("Not retrying appcheck " + check_instance.name)
-                continue
-
-            trc2 = trc.span(check_instance.name)
-            trc2.start(trc2.tag, args={"check_name": check_instance.name,
-                "pid":str(check_instance.pid),
-                "other_container":str(check_instance.is_on_another_container)})
-            metrics, service_checks, ex = check_instance.run()
-            # print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
-            numrun += 1
-            nm = len(metrics) if metrics else 0
-            trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
+            ran, nm = self.run_check(appcheck_resp, pidname, check, p, trc)
+            if ran:
+                numrun += 1
             nummetrics += nm
 
-            if ex and pidname not in self.blacklisted_pidnames:
-                if log_errors:
-                    logging.error("Exception on running check %s: %s", check_instance.name, ex)
-                self.blacklisted_pidnames.add(pidname)
-
-            expiration_ts = datetime.now() + check_instance.interval
-            response_body.append({"pid": pidname[0],
-                                  "display_name": check_instance.name,
-                                  "metrics": metrics,
-                                  "service_checks": service_checks,
-                                  "expiration_ts": int(expiration_ts.strftime("%s"))})
         trc.stop(args={"total_metrics": nummetrics, "checks_run": numrun,
             "checks_total": numchecks})
+        response_body = {
+            "processes": appcheck_resp,
+            "prometheus": promcheck_resp
+        }
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
         self.outqueue.send(response_s)
