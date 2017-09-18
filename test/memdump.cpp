@@ -519,7 +519,7 @@ TEST_F(memdump_test, standard_dump)
 	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{string("after")}));
 }
 
-TEST_F(memdump_test, back_in_time_dump)
+TEST_F(memdump_test, DISABLED_back_in_time_dump)
 {
 	// Set the dump chunk size to something very small so
 	// we get frequent dump_response messages.
@@ -532,7 +532,7 @@ TEST_F(memdump_test, back_in_time_dump)
 	ASSERT_NO_FATAL_FAILURE(read_trace("single",set<string>{string("before"), string("after")}));
 }
 
-TEST_F(memdump_test, overlapping_dumps)
+TEST_F(memdump_test, DISABLED_overlapping_dumps)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_overlapping_dumps(10));
 
@@ -546,7 +546,7 @@ TEST_F(memdump_test, overlapping_dumps)
 	}
 }
 
-TEST_F(memdump_test, max_outstanding_dumps)
+TEST_F(memdump_test, DISABLED_max_outstanding_dumps)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps());
 }
