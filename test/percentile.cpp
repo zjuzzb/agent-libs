@@ -1,6 +1,11 @@
 #include <gtest.h>
 #include "percentile.h"
 
+extern "C"
+{
+	#include "cm_quantile.h"
+}
+
 using namespace std;
 
 TEST(percentile, integers)
@@ -20,7 +25,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
-	EXPECT_DOUBLE_EQ(p_it->second, 5.);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
 
 	percentile pc(p);
 	EXPECT_EQ(pc.sample_count(), 8);
@@ -28,7 +33,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
-	EXPECT_DOUBLE_EQ(p_it->second, 5.);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
 
 	pctls = {85};
 	percentile p1(pctls);
@@ -38,7 +43,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 85);
-	EXPECT_DOUBLE_EQ(p_it->second, 9.);
+	EXPECT_DOUBLE_EQ(p_it->second, 9.5);
 
 	pc = p1;
 	EXPECT_EQ(pc.sample_count(), 20);
@@ -46,7 +51,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 85);
-	EXPECT_DOUBLE_EQ(p_it->second, 9.);
+	EXPECT_DOUBLE_EQ(p_it->second, 9.5);
 
 	pctls = {50};
 	percentile p2(pctls);
@@ -56,7 +61,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first,50);
-	EXPECT_FLOAT_EQ(p_it->second, 3.);
+	EXPECT_FLOAT_EQ(p_it->second, 4.);
 
 	pctls = {50,75,85,95};
 	percentile p3(pctls);
@@ -69,10 +74,10 @@ TEST(percentile, integers)
 	EXPECT_FLOAT_EQ(p_it->second, 5.);
 	++p_it;
 	EXPECT_EQ(p_it->first, 75);
-	EXPECT_FLOAT_EQ(p_it->second, 9.);
+	EXPECT_FLOAT_EQ(p_it->second, 9.5);
 	++p_it;
 	EXPECT_EQ(p_it->first, 85);
-	EXPECT_FLOAT_EQ(p_it->second, 11.);
+	EXPECT_FLOAT_EQ(p_it->second, 10.5);
 	++p_it;
 	EXPECT_EQ(p_it->first, 95);
 	EXPECT_FLOAT_EQ(p_it->second, 11.);
@@ -95,7 +100,7 @@ TEST(percentile, doubles)
 	EXPECT_EQ(pctl_map.size(), 1);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
-	EXPECT_DOUBLE_EQ(p_it->second, 5.3);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.205);
 }
 
 TEST(percentile, randoms)
