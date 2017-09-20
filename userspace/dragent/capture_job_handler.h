@@ -42,6 +42,7 @@ public:
 			m_max_size(0),
 			m_past_duration_ns(0),
 			m_past_size(0),
+			m_notification_pid(0),
 			m_start_ns(0),
 			m_delete_file_when_done(true),
 			m_send_file(true),
@@ -56,6 +57,7 @@ public:
 		uint64_t m_past_duration_ns;
 		uint64_t m_past_size;
 		std::string m_notification_desc;
+		uint64_t m_notification_pid;
 
 		// Start the capture as close as possible to this
 		// time. If 0 will use current time.

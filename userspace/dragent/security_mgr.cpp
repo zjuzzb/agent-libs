@@ -192,6 +192,7 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 				 const string &token, const string &filter,
 				 uint64_t before_event_ns, uint64_t after_event_ns,
 				 bool apply_scope, std::string &container_id,
+				 uint64_t pid,
 				 std::string &errstr)
 {
 	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
@@ -217,6 +218,7 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 	job_request->m_past_duration_ns = before_event_ns;
 	job_request->m_start_ns = ts_ns;
 	job_request->m_notification_desc = policy;
+	job_request->m_notification_pid = pid;
 
 	// Note: Not enforcing any maximum size.
 	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);

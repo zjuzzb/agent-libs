@@ -205,7 +205,10 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 			m_notification_desc = "starting capture job " + request.m_token;
 		}
 
-		m_handler->push_notification(m_start_ns, m_handler->m_sysdig_pid, request.m_token, request.m_notification_desc);
+		m_handler->push_notification(m_start_ns,
+					     (request.m_notification_pid ? request.m_notification_pid : 0),
+					     request.m_token,
+					     request.m_notification_desc);
 
 		// This will create a file on disk that is the result
 		// of the applying the filter against the events held

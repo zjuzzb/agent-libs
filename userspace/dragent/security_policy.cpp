@@ -55,10 +55,12 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 	sinsp_threadinfo *tinfo = evt->get_thread_info();
 	sinsp_container_info container_info;
 	string container_id;
+	uint64_t pid = 0;
 
 	if(tinfo)
 	{
 		container_id = tinfo->m_container_id;
+		pid = tinfo->m_pid;
 	}
 
 	for(auto &action : m_policy.actions())
@@ -111,6 +113,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 						 action.capture().after_event_ns(),
 						 apply_scope,
 						 container_id,
+						 pid,
 						 errstr))
 			{
 				result->set_successful(false);

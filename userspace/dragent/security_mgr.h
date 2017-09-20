@@ -62,6 +62,7 @@ public:
 			   uint64_t before_event_ns, uint64_t after_event_ns,
 			   bool apply_scope,
 			   std::string &container_id,
+			   uint64_t pid,
 			   std::string &errstr);
 
 	sinsp_analyzer *analyzer();
