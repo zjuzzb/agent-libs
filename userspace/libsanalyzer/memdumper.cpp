@@ -264,21 +264,6 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(sinsp &inspector,
 			continue;
 		}
 
-		if(job->m_dumper == NULL)
-		{
-			job->m_dumper = new sinsp_dumper(&inspector);
-			try
-			{
-				job->m_dumper->open(job->m_filename, false, true);
-			}
-			catch(exception &e)
-			{
-				job->m_lasterr = "inspector could not open dump file " + job->m_filename + ". inspector_err=" + inspector.getlasterr() + " e=" + e.what();
-				job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-				return false;
-			}
-		}
-
 		// Not using sinsp_memory_dumper_job::dump() here,
 		// because we know the start/stop time are within
 		// range, have given the inspector a filter, and the
@@ -340,6 +325,23 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 	if(job->m_filterstr != "")
 	{
 		inspector.set_filter(job->m_filterstr);
+	}
+
+	if(job->m_dumper == NULL)
+	{
+		job->m_dumper = new sinsp_dumper(&inspector);
+		try
+		{
+			job->m_dumper->open(job->m_filename, false, true);
+		}
+		catch(exception &e)
+		{
+			job->m_lasterr = "inspector could not open dump file " + job->m_filename + ". inspector_err=" + inspector.getlasterr() + " e=" + e.what();
+			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+			inspector.close();
+			::close(fd);
+			return;
+		}
 	}
 
 	if (!read_membuf_using_inspector(inspector, state, job))

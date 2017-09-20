@@ -106,6 +106,7 @@ protected:
 		m_capture_job_handler->m_force_cleanup = true;
 		dragent_configuration::m_terminate = true;
 
+		ThreadPool::defaultPool().joinAll();
 		ThreadPool::defaultPool().stopAll();
 
 		delete m_sinsp_worker;

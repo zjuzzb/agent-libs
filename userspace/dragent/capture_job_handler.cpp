@@ -229,6 +229,11 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 		memjob->m_dumper = NULL;
 		delete memjob;
 
+		// Set the inspector of the dumper to the live
+		// inspector. This inspector is only used to hold
+		// things like error messages, but should be valid.
+		m_dumper->set_inspector(m_handler->m_inspector);
+
 		// Before releasing the memdumper lock, lock the list
 		// of jobs and add this job to the list. Otherwise
 		// there's a brief window where events could be
