@@ -394,6 +394,11 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
 
 		m_inspector->open("");
+
+		if(m_configuration->m_snaplen != 0)
+		{
+			m_inspector->set_snaplen(m_configuration->m_snaplen);
+		}
 	}
 
 	if(m_configuration->m_subsampling_ratio != 1)

@@ -677,6 +677,8 @@ public:
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
 
+	unsigned m_snaplen;
+
 	bool java_present()
 	{
 		return !m_java_binary.empty();

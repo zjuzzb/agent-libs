@@ -304,6 +304,7 @@ dragent_configuration::dragent_configuration()
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
+	m_snaplen = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -993,6 +994,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 
 	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);
+
+	m_snaplen = m_config->get_scalar<unsigned>("snaplen", true);
 }
 
 void dragent_configuration::print_configuration()
@@ -1334,6 +1337,8 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Metrics cache disabled");
 	}
+
+	g_log->information("snaplen: " + to_string(m_snaplen));
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
