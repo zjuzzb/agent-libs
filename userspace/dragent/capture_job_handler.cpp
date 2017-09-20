@@ -587,6 +587,7 @@ void capture_job_handler::init(const sinsp *inspector)
 	m_notification_evt.m_poriginal_evt = NULL;
 	m_notification_evt.m_pevt = m_notification_scap_evt;
 	m_notification_evt.m_inspector = m_inspector;
+	m_notification_evt.m_cpuid = 0;
 }
 
 void capture_job_handler::run()
@@ -971,6 +972,7 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 {
 	m_notification_scap_evt->ts = ts;
 	m_notification_scap_evt->tid = tid;
+	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
 
 	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
 	uint16_t idlen = id.length() + 1;
