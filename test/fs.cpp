@@ -1522,7 +1522,7 @@ TEST_F(sys_call_test, fs_sendfile64)
 #endif
 
 #ifdef __x86_64__
-TEST_F(sys_call_test32, fs_pread)
+TEST_F(sys_call_test32, DISABLED_fs_pread)
 {
 	proc_started_filter test_started_filter;
 	int callnum = 0;

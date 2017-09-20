@@ -181,7 +181,7 @@ TEST_F(coclient_test, DISABLED_perform_ping)
 	EXPECT_TRUE(callback_performed) << "Did not receive pong message after 10 seconds";
 }
 
-TEST_F(coclient_test, docker_pause)
+TEST_F(coclient_test, DISABLED_docker_pause)
 {
 	if (!check_docker_service())
 	{
