@@ -995,7 +995,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);
 
-	m_snaplen = m_config->get_scalar<unsigned>("snaplen", true);
+	m_snaplen = m_config->get_scalar<unsigned>("snaplen", 0);
 }
 
 void dragent_configuration::print_configuration()
