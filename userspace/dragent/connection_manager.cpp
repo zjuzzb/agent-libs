@@ -773,6 +773,12 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 {
 	draiosproto::orchestrator_events evts;
 
+	if(!m_configuration->m_security_enabled)
+	{
+		g_log->debug("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
+		return;
+	}
+
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &evts))
 	{
 		g_log->error("Could not parse orchestrator_events message");
