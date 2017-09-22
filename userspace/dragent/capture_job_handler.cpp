@@ -361,13 +361,19 @@ void capture_job::process_event(sinsp_evt *ev)
 		return;
 	}
 
+	bool current_filtered_out = ev->m_filtered_out;
 	if(m_filter != NULL)
 	{
-		m_filter->run(ev);
+		if (!m_filter->run(ev))
+		{
+			ev->m_filtered_out = true;
+		}
 	}
 
 	bool do_drop;
 	(void) ev->get_dump_flags(&do_drop);
+	ev->m_filtered_out = current_filtered_out;
+
 	if(do_drop)
 	{
 		return;
@@ -581,13 +587,12 @@ void capture_job_handler::init(const sinsp *inspector)
 	}
 
 	//
-	// Initialize the notification event
+	// Initialize the underlying scap notification event and set
+	// the inspector for the sinsp-level event. We'll fill in the
+	// rest of the sinsp-level event when we set the type.
 	//
 	m_notification_scap_evt = (scap_evt*)m_notification_scap_evt_storage;
-	m_notification_evt.m_poriginal_evt = NULL;
-	m_notification_evt.m_pevt = m_notification_scap_evt;
 	m_notification_evt.m_inspector = m_inspector;
-	m_notification_evt.m_cpuid = 0;
 }
 
 void capture_job_handler::run()
@@ -973,6 +978,7 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 	m_notification_scap_evt->ts = ts;
 	m_notification_scap_evt->tid = tid;
 	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
+	m_notification_evt.init((uint8_t *) m_notification_scap_evt, 0);
 
 	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
 	uint16_t idlen = id.length() + 1;
@@ -1000,6 +1006,7 @@ void capture_job_handler::push_infra_event(uint64_t ts, uint64_t tid, string sou
 	m_notification_scap_evt->ts = ts;
 	m_notification_scap_evt->tid = tid;
 	m_notification_scap_evt->type = PPME_INFRASTRUCTURE_EVENT_E;
+	m_notification_evt.init((uint8_t *) m_notification_scap_evt, 0);
 
 	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
 	uint16_t sourcelen = source.length() + 1;
