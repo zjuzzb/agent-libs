@@ -1698,7 +1698,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				for (auto it2 = it->second.begin(); it2 != it->second.end();)
 				{
 					auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
-					if(flush_time_s >= it2->second.expiration_ts())
+					if(flush_time_s > it2->second.expiration_ts() + APP_METRICS_EXPIRATION_TIMEOUT_S)
 					{
 						g_logger.format(sinsp_logger::SEV_DEBUG, "Wiping expired app metrics for pid %d,%s", it->first, it2->first.c_str());
 						it2 = it->second.erase(it2);
@@ -2626,46 +2626,58 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 			if(m_app_proxy)
 			{
-				set<string> app_data_set;
 				// Send data for each app-check for the processes in procinfo
 				unsigned sent_app_checks_metrics = 0;
 				unsigned total_app_checks_metrics = 0;
 				unsigned sent_prometheus_metrics = 0;
 				unsigned total_prometheus_metrics = 0;
+				// Map of app_check data by app-check name and how long the
+				// metrics have been expired to ensure we serve the most recent
+				// metrics available 
+				map<string, map<int, const app_check_data *>> app_data_to_send;
 				for(auto pid: procinfo->m_program_pids)
 				{
 					auto datamap_it = m_app_metrics.find(pid);
 					if (datamap_it == m_app_metrics.end())
 						continue;
-					for (auto app_data : datamap_it->second)
+					for (const auto& app_data : datamap_it->second)
 					{
-						if (app_data_set.find(app_data.first) != app_data_set.end())
+						int age = (m_prev_flush_time_ns/ONE_SECOND_IN_NS) -
+									app_data.second.expiration_ts();
+						app_data_to_send[app_data.first][age] = &(app_data.second);
+					}
+				}
+
+				for (auto app_age_map : app_data_to_send)
+				{
+					bool sent = false;
+					for (auto app_data : app_age_map.second)
+					{
+						if (sent)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
-									tinfo->m_pid, pid, app_data.first.c_str(),
-									app_data.second.expiration_ts() -
-									(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
+								tinfo->m_pid, app_data.second->pid(),
+								app_age_map.first.c_str(), -app_data.first);
 							continue;
 						}
-
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
-							app_data.first.c_str(), app_data.second.expiration_ts() -
-							(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
-						if (app_data.second.type() == app_check_data::check_type::PROMETHEUS)
+							"Found app metrics for %d(%d),%s, exp in %d", tinfo->m_pid, app_data.second->pid(),
+							app_age_map.first.c_str(), -app_data.first);
+						sent = true;
+
+						if (app_data.second->type() == app_check_data::check_type::PROMETHEUS)
 						{
-							sent_prometheus_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
+							sent_prometheus_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_prometheus(),
 								prom_metrics_limit, m_prom_conf.max_metrics());
-							total_prometheus_metrics += app_data.second.total_metrics();
+							total_prometheus_metrics += app_data.second->total_metrics();
 						}
 						else
 						{
-							sent_app_checks_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+							sent_app_checks_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_app(),
 								app_checks_limit, m_configuration->get_app_checks_limit());
-							total_app_checks_metrics += app_data.second.total_metrics();
+							total_app_checks_metrics += app_data.second->total_metrics();
 						}
-						app_data_set.emplace(app_data.first);
 					}
 				}
 				proc->mutable_resource_counters()->set_app_checks_sent(sent_app_checks_metrics);

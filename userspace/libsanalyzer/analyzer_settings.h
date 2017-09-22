@@ -239,6 +239,8 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 5*60; // 5 minutes
 #endif
 
+static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
+
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
 static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 #define MESOS_RETRY_ON_ERRORS_TIMEOUT_NS (10 * ONE_SECOND_IN_NS)
