@@ -2,14 +2,7 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-extern "C"
-{
-	#include "cm_quantile.h"
-}
-
-//
-// statsite wrapper http://statsite.github.io/statsite/
-//
+#include "tdigest/tdigest.h"
 
 class percentile
 {
@@ -26,10 +19,7 @@ public:
 	template <typename T>
 	void add(T val)
 	{
-		if(0 != cm_add_sample(&m_cm, val))
-		{
-			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(val));
-		}
+		m_digest->add(val);
 		++m_num_samples;
 	}
 
@@ -43,10 +33,7 @@ public:
 	template <typename T>
 	void insert(const std::vector<T>& val)
 	{
-		if(val.size())
-		{
-			for(const auto& v : val) { add(v); }
-		}
+		for(const auto& v : val) { add(v); }
 	}
 
 	p_map_type percentiles();
@@ -84,12 +71,13 @@ public:
 	void flush() const;
 
 private:
-	void init(double* percentiles, size_t size, double eps = 0.1);
+	void init(const std::vector<double> &percentiles, double eps = 0.1);
 	void copy(const percentile& other);
 	void destroy(std::vector<double>* percentiles = nullptr);
 
-	cm_quantile m_cm = {0};
-	 // cm_quantile::num_samples is not a reliable source of information
+	std::vector<double> m_percentiles;
+	double m_eps;
+	std::unique_ptr<tdigest::TDigest> m_digest;
 	size_t m_num_samples = 0;
 };
 
