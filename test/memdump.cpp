@@ -507,7 +507,7 @@ protected:
 };
 
 
-TEST_F(memdump_test, standard_dump)
+TEST_F(memdump_test, DISABLED_standard_dump)
 {
 	// Set the dump chunk size to something very small so
 	// we get frequent dump_response messages.

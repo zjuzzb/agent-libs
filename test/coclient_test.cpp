@@ -191,7 +191,7 @@ TEST_F(coclient_test, DISABLED_docker_pause)
 	test_docker_cmd(sdc_internal::PAUSE);
 }
 
-TEST_F(coclient_test, docker_stop)
+TEST_F(coclient_test, DISABLED_docker_stop)
 {
 	if (!check_docker_service())
 	{

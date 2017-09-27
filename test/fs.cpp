@@ -144,7 +144,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 #define FILENAME1 FILENAME "1"
 #define FILENAME2 FILENAME "2"
 
-TEST_F(sys_call_test, fs_link)
+TEST_F(sys_call_test, DISABLED_fs_link)
 {
 	int callnum = 0;
 	char bcwd[1024];
