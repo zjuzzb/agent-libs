@@ -368,6 +368,7 @@ void sinsp_analyzer::on_capture_start()
 
 	if(m_configuration->get_security_enabled() || m_use_new_k8s)
 	{
+		glogf("initializing infrastructure state");
 		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
 
 		// K8s url to use
@@ -380,6 +381,7 @@ void sinsp_analyzer::on_capture_start()
 				k8s_url = "";
 			}
 			m_infrastructure_state->subscribe_to_k8s(k8s_url);
+			glogf("infrastructure state is now subscribed to k8s API server");
 		}
 	}
 }
