@@ -1,6 +1,8 @@
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/resource.h>
+#include <dlfcn.h>
+#include <execinfo.h>
 #endif
 
 #include "sinsp.h"
@@ -373,6 +375,7 @@ int nsenter::open_ns_fd(int pid, const string& type)
 	return open(filename, O_RDONLY);
 }
 
+
 template<>
 void threshold_filter<double>::log(double value)
 {
@@ -384,3 +387,22 @@ void threshold_filter<long>::log(long value)
 {
 	g_logger.format(sinsp_logger::SEV_WARNING, "%s above threshold curr=%ld/%ld %u:%u", m_desc, value, m_threshold, m_ntimes, m_ntimes_max);
 }
+
+#ifndef _WIN32
+thread_local void *exception_backtrace[1024];
+thread_local int exception_backtrace_size;
+extern "C" {
+	void __cxa_throw(void *ex, void *info, void (*dest)(void *))
+	{
+		static void (*const __throw_exc)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) = (void (*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+
+		exception_backtrace_size = backtrace(exception_backtrace, 1024);
+
+		if(!__throw_exc) {
+			g_logger.format(sinsp_logger::SEV_ERROR, "Unable to rethrow exception");
+			ASSERT(false);
+		}
+		__throw_exc(ex,info,dest);
+	}
+}
+#endif
