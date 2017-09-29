@@ -735,10 +735,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.m_enabled = m_config->get_scalar<bool>("prometheus", "enabled", false);
     m_prom_conf.m_log_errors = m_config->get_scalar<bool>("prometheus", "log_errors", false);
     m_prom_conf.m_interval = m_config->get_scalar<int>("prometheus", "interval", -1);
+	m_prom_conf.m_k8s_get_config = m_config->get_scalar<bool>("prometheus", "get_kubernetes_config", true);
     m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
-    m_prom_conf.m_max_metrics_per_proc = m_config->get_scalar<int>("prometheus", "max_metrics_per_proc", -1);
+    m_prom_conf.m_max_metrics_per_proc = m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1);
     m_prom_conf.m_max_tags_per_metric = m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1);
-	m_prom_conf.m_port_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::port_filter_rule>>("prometheus", "port_filter");
+	// m_prom_conf.m_port_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::port_filter_rule>>("prometheus", "port_filter");
 	m_prom_conf.m_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::filter_rule>>("prometheus", "process_filter");
 
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",

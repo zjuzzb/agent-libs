@@ -359,7 +359,7 @@ void sinsp_analyzer::on_capture_start()
 		m_falco_baseliner->init(m_inspector);
 	}
 
-	if(m_configuration->get_security_enabled() || m_use_new_k8s)
+	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
 
@@ -6085,7 +6085,7 @@ void sinsp_analyzer::emit_user_events()
 void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs)
 {
-	if (mtinfo->m_ainfo->found_prom_check())
+	if (!m_prom_conf.enabled() || mtinfo->m_ainfo->found_prom_check())
 		return;
 
 	sinsp_container_info container;
@@ -6095,8 +6095,9 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	// sinsp_container_info* container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
 	set<uint16_t> ports;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, ports)) {
-		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports);
+	string path;
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, infra_state(), ports, path)) {
+		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
 		prom_procs.emplace_back(pp);
 
 		tinfo->m_ainfo->set_found_prom_check();
