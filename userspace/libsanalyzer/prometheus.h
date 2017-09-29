@@ -113,6 +113,7 @@ private:
 	unsigned m_max_metrics;
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
+	// Not using default port filter any more
 	// vector<port_filter_rule> m_port_rules;
 	vector<filter_rule> m_rules;
 

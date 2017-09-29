@@ -166,7 +166,6 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 	if (!m_enabled)
 		return false;
 	auto start_ports = tinfo->m_ainfo->listening_ports();
-	decltype(start_ports) filtered_ports;
 
 	std::shared_ptr<draiosproto::container_group> k8s_pod;
 
@@ -199,32 +198,13 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 			switch(cond.m_param_type) {
 			case filter_condition::param_type::port:
 			{
-				// TODO: Match to port sets
-				auto ports = tinfo->m_ainfo->listening_ports();
-				if (cond.m_pattern == "matched")
+				auto ports = filter_ports(start_ports, cond.m_port_match);
+				if (!ports.empty())
 				{
-					if (filtered_ports.empty())
-						matchcond = false;
-					else
-						snprintf(reason, sizeof(reason), "port matched");
-					break;
+					snprintf(reason, sizeof(reason), "%d ports match: %d", 
+						(int)ports.size(), (int)*(ports.begin()));
 				}
-				auto delim = cond.m_pattern.find("-");
-				unsigned port_start = atoi(cond.m_pattern.substr(0, delim).c_str());
-				unsigned port_end = (delim == string::npos) ? port_start :
-					atoi(cond.m_pattern.substr(delim+1, string::npos).c_str());
-
-				bool portmatch = false;
-				for (const auto port : ports)
-				{
-					if ((port >= port_start) && (port <= port_end))
-					{
-						portmatch = true;
-						snprintf(reason, sizeof(reason), "port %d match", port);
-						break;
-					}
-				}
-				if (!portmatch)
+				else
 					matchcond = false;
 
 				break;
@@ -318,10 +298,10 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 				"Process %d matches prometheus rule: %d: %s",
 				(int)tinfo->m_pid, rn, reason);
 			if (rule.m_include) {
-				// out_ports = filtered_ports;
-				out_ports.clear();
+				out_ports = start_ports;
 				if (!rule.m_config.m_port.empty())
 				{
+					out_ports.clear();
 					string pstr = rule.m_config.m_port_subst ? replace_tokens(rule.m_config.m_port, container, k8s_pod) : rule.m_config.m_port;
 					uint16_t p = atoi(pstr.c_str());
 					// If port is non-null we assume only that port should be
@@ -343,9 +323,12 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 				}
 				// If we found a matching configured port we skip
 				// the port-filter
-				if (out_ports.empty() && !rule.m_config.m_port_rules.empty())
+				if (!rule.m_config.m_port_rules.empty() && (rule.m_config.m_port.empty() || out_ports.empty()))
 				{
 					out_ports = filter_ports(start_ports, rule.m_config.m_port_rules);
+				}
+				if (out_ports.empty()) {
+					return false;
 				}
 				if (!rule.m_config.m_path.empty())
 				{
@@ -429,49 +412,12 @@ bool YAML::convert<prometheus_conf::port_filter_rule>::decode(const YAML::Node &
 			rhs = rule;
 			return true;
 		}
-
-/* Obsolete
-		if (rule_it->second.IsSequence())
-		{
-			rule.m_use_set = true;
-			for (const auto& port_node : rule_it->second)
-			{
-				if (!port_node.IsScalar())
-					continue;
-
-				uint16_t p = port_node.as<uint16_t>();
-				if (p) {
-					rule.m_port_set.insert(p);
-				}
-			}
-		}
-		else if (rule_it->second.IsScalar())
-		{
-			rule.m_use_set = false;
-			// Parse single port or range
-			string str = rule_it->second.as<string>();
-			auto delim = str.find("-");
-			rule.m_range_start = atoi(str.substr(0, delim).c_str());
-			rule.m_range_end = (delim == string::npos) ?
-				rule.m_range_start :
-				atoi(str.substr(delim + 1, string::npos).c_str());
-		}
-		else
-		{
-			continue;
-		}
-
-		rhs = rule;
-		return true;
-*/
 	}
 	return false;
 }
 
 bool YAML::convert<prometheus_conf::rule_config>::decode(const YAML::Node &node, prometheus_conf::rule_config &rhs)
 {
-	// printf("Prometheus converting config: type %d\n", node.Type());
-
 	if (!node.IsMap()) 
 		return false;
 
@@ -482,13 +428,10 @@ bool YAML::convert<prometheus_conf::rule_config>::decode(const YAML::Node &node,
 		{
 			continue;
 		}
-		// printf("config: %s, type %d\n", conf_line->first.as<string>().c_str(),
-		// 	conf_line->second.Type());
 		if ((conf_line->first.as<string>() == "port_filter") &&
 			conf_line->second.IsSequence())
 		{
 			rhs.m_port_rules = get_sequence<prometheus_conf::port_filter_rule>(conf_line->second);
-			// printf("rule_config: found %d port filter rules\n", rhs.m_port_rules.size());
 		}
 		else if (conf_line->first.as<string>() == "path")
 		{
@@ -510,7 +453,6 @@ bool YAML::convert<prometheus_conf::rule_config>::decode(const YAML::Node &node,
 				rhs.m_path = conf_line->second.as<string>();
 			}
 			rhs.m_path_subst = contains_token(rhs.m_path);
-			// printf("path: %s, %s\n", rhs.m_path.c_str(), rhs.m_path_subst ? "has token" : "literal");
 		}
 		else if (conf_line->first.as<string>() == "port")
 		{
@@ -532,7 +474,6 @@ bool YAML::convert<prometheus_conf::rule_config>::decode(const YAML::Node &node,
 				rhs.m_port = conf_line->second.as<string>();
 			}
 			rhs.m_port_subst = contains_token(rhs.m_port);
-			// printf("port: %s, %s\n", rhs.m_port.c_str(), rhs.m_port_subst ? "has token" : "literal");
 		}
 	}
 	return true;
@@ -561,7 +502,6 @@ bool YAML::convert<prometheus_conf::filter_rule>::decode(const YAML::Node &node,
 		{
 			if (!cond_it->first.IsScalar())
 				continue;
-			// printf("Prometheus filter rule: %s, type %d\n", cond_it->first.as<string>().c_str(), cond_it->second.Type());
 
 			if (cond_it->first.as<string>() == "conf") {
 				rule.m_config = cond_it->second.as<prometheus_conf::rule_config>();
@@ -591,6 +531,7 @@ bool YAML::convert<prometheus_conf::filter_rule>::decode(const YAML::Node &node,
 				// having to reparse the string
 				prometheus_conf::port_filter_rule pfr;
 				prometheus_conf::portdef_to_pfrule(cond_it->second, pfr);
+				pfr.m_include = true;
 				cond.m_port_match.push_back(pfr);
 			}
 			if (cond_it->second.IsScalar())

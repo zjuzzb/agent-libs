@@ -499,7 +499,10 @@ class Application:
         for pc in promchecks:
             for port in pc["ports"]:
                 # print "port:", port
-                newconf = {"url": "http://localhost:" + str(port) + "/metrics"}
+                path = pc.get("path", "/metrics");
+                if len(path) > 0 and path[0] != '/':
+                    path = "/" + path
+                newconf = {"url": "http://localhost:" + str(port) + path}
                 if pc.get("max_metrics"):
                     newconf["max_metrics"] = pc["max_metrics"]
                 if pc.get("max_tags"):
