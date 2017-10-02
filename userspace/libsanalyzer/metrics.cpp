@@ -15,11 +15,46 @@ using namespace google::protobuf::io;
 #include "analyzer_thread.h"
 #include "percentile.h"
 
+namespace {
+std::shared_ptr<percentile> init_percentile(
+	const std::set<double>* percentiles,
+	std::shared_ptr<percentile> shared)
+{
+	if (shared) {
+		return shared;
+	} else if (percentiles && percentiles->size()) {
+		return std::make_shared<percentile>(*percentiles);
+	}
+	return shared;
+}
+
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// base sinsp_counter_percentile implementations
+///////////////////////////////////////////////////////////////////////////////
+sinsp_counter_percentile::sinsp_counter_percentile(
+	const std::set<double>* percentiles,
+	const sinsp_counter_percentile *shared)
+{
+	m_percentile = init_percentile(percentiles, shared ? shared->m_percentile : nullptr);
+}
+
+sinsp_counter_percentile_in_out::sinsp_counter_percentile_in_out(
+	const std::set<double>* percentiles,
+	const sinsp_counter_percentile_in_out *shared)
+{
+	m_percentile_in  = init_percentile(percentiles, shared ? shared->m_percentile_in  : nullptr);
+	m_percentile_out = init_percentile(percentiles, shared ? shared->m_percentile_out : nullptr);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_time::sinsp_counter_time(const std::set<double>* percentiles):
-	m_percentile((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
+sinsp_counter_time::sinsp_counter_time(
+	const std::set<double>* percentiles,
+	const sinsp_counter_percentile *shared)
+	: sinsp_counter_percentile(percentiles, shared)
 {
 	clear();
 }
@@ -28,14 +63,15 @@ sinsp_counter_time::~sinsp_counter_time()
 {
 }
 
-sinsp_counter_time::sinsp_counter_time(const sinsp_counter_time& other):
-	m_count(other.m_count),
-	m_time_ns(other.m_time_ns),
-	m_percentile(other.m_percentile ? new percentile(*other.m_percentile) : nullptr)
+sinsp_counter_time::sinsp_counter_time(const sinsp_counter_time& other)
+	: sinsp_counter_percentile()
+	, m_count(other.m_count)
+	, m_time_ns(other.m_time_ns)
 {
+	m_percentile.reset(other.m_percentile ? new percentile(*other.m_percentile) : nullptr);
 }
 
-sinsp_counter_time& sinsp_counter_time::operator=(sinsp_counter_time other)
+sinsp_counter_time& sinsp_counter_time::operator=(sinsp_counter_time &other)
 {
 	if(this != &other)
 	{
@@ -49,19 +85,11 @@ sinsp_counter_time& sinsp_counter_time::operator=(sinsp_counter_time other)
 	return *this;
 }
 
-void sinsp_counter_time::set_percentiles(const std::set<double>& percentiles)
+void sinsp_counter_time::set_percentiles(
+	const std::set<double>& percentiles,
+	const sinsp_counter_percentile *shared)
 {
-	if(percentiles.size())
-	{
-		if(!m_percentile)
-		{
-			m_percentile.reset(new percentile(percentiles));
-		}
-	}
-	else
-	{
-		m_percentile.reset();
-	}
+	m_percentile = init_percentile(&percentiles, shared ? shared->m_percentile : nullptr);
 }
 
 void sinsp_counter_time::add(uint32_t cnt_delta, uint64_t time_delta)
@@ -80,7 +108,9 @@ void sinsp_counter_time::add(sinsp_counter_time* other)
 {
 	m_count += other->m_count;
 	m_time_ns += other->m_time_ns;
-	if(m_percentile && other->m_percentile)
+	// merge the 2 percentile stores if there are unique
+	if(m_percentile && other->m_percentile &&
+	   (m_percentile != other->m_percentile))
 	{
 		m_percentile->merge(other->m_percentile.get());
 	}
@@ -170,9 +200,10 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 // sinsp_counter_time_bidirectional implementation
 ///////////////////////////////////////////////////////////////////////////////
 
-sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const std::set<double>* percentiles):
-	m_percentile_in((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr),
-	m_percentile_out((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(
+	const std::set<double>* percentiles,
+	const sinsp_counter_percentile_in_out *shared)
+	: sinsp_counter_percentile_in_out(percentiles, shared)
 {
 	clear();
 }
@@ -181,19 +212,21 @@ sinsp_counter_time_bidirectional::~sinsp_counter_time_bidirectional()
 {
 }
 
-sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(const sinsp_counter_time_bidirectional& other):
-	m_count_in(other.m_count_in),
-	m_count_out(other.m_count_out),
-	m_count_other(other.m_count_other),
-	m_time_ns_in(other.m_time_ns_in),
-	m_time_ns_out(other.m_time_ns_out),
-	m_time_ns_other(other.m_time_ns_other),
-	m_percentile_in(other.m_percentile_in ? new percentile(*other.m_percentile_in) : nullptr),
-	m_percentile_out(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr)
+sinsp_counter_time_bidirectional::sinsp_counter_time_bidirectional(
+	const sinsp_counter_time_bidirectional& other)
+	: sinsp_counter_percentile_in_out()
+	, m_count_in(other.m_count_in)
+	, m_count_out(other.m_count_out)
+	, m_count_other(other.m_count_other)
+	, m_time_ns_in(other.m_time_ns_in)
+	, m_time_ns_out(other.m_time_ns_out)
+	, m_time_ns_other(other.m_time_ns_other)
 {
+	m_percentile_in.reset( other.m_percentile_in  ? new percentile(*other.m_percentile_in)  : nullptr);
+	m_percentile_out.reset(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr);
 }
 
-sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(sinsp_counter_time_bidirectional other)
+sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(sinsp_counter_time_bidirectional &other)
 {
 	if(this != &other)
 	{
@@ -215,24 +248,14 @@ sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(si
 	return *this;
 }
 
-void sinsp_counter_time_bidirectional::set_percentiles(const std::set<double>& percentiles)
+void sinsp_counter_time_bidirectional::set_percentiles(
+	const std::set<double>& percentiles,
+	const sinsp_counter_percentile_in_out *shared)
 {
-	if(percentiles.size())
-	{
-		if(!m_percentile_in)
-		{
-			m_percentile_in.reset(new percentile(percentiles));
-		}
-		if(!m_percentile_out)
-		{
-			m_percentile_out.reset(new percentile(percentiles));
-		}
-	}
-	else
-	{
-		m_percentile_in.reset();
-		m_percentile_out.reset();
-	}
+	m_percentile_in  = init_percentile(&percentiles,
+	                                   shared ? shared->m_percentile_in  : nullptr);
+	m_percentile_out = init_percentile(&percentiles,
+	                                   shared ? shared->m_percentile_out : nullptr);
 }
 
 void sinsp_counter_time_bidirectional::add_in(uint32_t cnt_delta, uint64_t time_delta)
@@ -276,11 +299,15 @@ void sinsp_counter_time_bidirectional::add(sinsp_counter_time_bidirectional* oth
 	m_time_ns_in += other->m_time_ns_in;
 	m_time_ns_out += other->m_time_ns_out;
 	m_time_ns_other += other->m_time_ns_other;
-	if(m_percentile_in && other->m_percentile_in)
+
+	// merge the corresponding percentile stores if there are unique
+	if(m_percentile_in && other->m_percentile_in &&
+	   (m_percentile_in != other->m_percentile_in))
 	{
 		m_percentile_in->merge(other->m_percentile_in.get());
 	}
-	if(m_percentile_out && other->m_percentile_out)
+	if(m_percentile_out && other->m_percentile_out &&
+	   (m_percentile_out != other->m_percentile_out))
 	{
 		m_percentile_out->merge(other->m_percentile_out.get());
 	}
@@ -381,9 +408,10 @@ void sinsp_counter_bytes::to_protobuf(draiosproto::counter_bytes* protobuf_msg, 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time_bytes implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_counter_time_bytes::sinsp_counter_time_bytes(const std::set<double>* percentiles):
-	m_percentile_in((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr),
-	m_percentile_out((percentiles && percentiles->size()) ? new percentile(*percentiles) : nullptr)
+sinsp_counter_time_bytes::sinsp_counter_time_bytes(
+	const std::set<double>* percentiles,
+	const sinsp_counter_percentile_in_out *shared)
+	: sinsp_counter_percentile_in_out(percentiles, shared)
 {
 	clear();
 }
@@ -392,22 +420,23 @@ sinsp_counter_time_bytes::~sinsp_counter_time_bytes()
 {
 }
 
-sinsp_counter_time_bytes::sinsp_counter_time_bytes(const sinsp_counter_time_bytes& other):
-	m_count_in(other.m_count_in),
-	m_count_out(other.m_count_out),
-	m_count_other(other.m_count_other),
-	m_time_ns_in(other.m_time_ns_in),
-	m_time_ns_out(other.m_time_ns_out),
-	m_time_ns_other(other.m_time_ns_other),
-	m_bytes_in(other.m_bytes_in),
-	m_bytes_out(other.m_bytes_out),
-	m_bytes_other(other.m_bytes_other),
-	m_percentile_in(other.m_percentile_in ? new percentile(*other.m_percentile_in) : nullptr),
-	m_percentile_out(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr)
+sinsp_counter_time_bytes::sinsp_counter_time_bytes(const sinsp_counter_time_bytes& other)
+	: sinsp_counter_percentile_in_out()
+	, m_count_in(other.m_count_in)
+	, m_count_out(other.m_count_out)
+	, m_count_other(other.m_count_other)
+	, m_time_ns_in(other.m_time_ns_in)
+	, m_time_ns_out(other.m_time_ns_out)
+	, m_time_ns_other(other.m_time_ns_other)
+	, m_bytes_in(other.m_bytes_in)
+	, m_bytes_out(other.m_bytes_out)
+	, m_bytes_other(other.m_bytes_other)
 {
+	m_percentile_in.reset( other.m_percentile_in  ? new percentile(*other.m_percentile_in)  : nullptr);
+	m_percentile_out.reset(other.m_percentile_out ? new percentile(*other.m_percentile_out) : nullptr);
 }
 
-sinsp_counter_time_bytes& sinsp_counter_time_bytes::operator=(sinsp_counter_time_bytes other)
+sinsp_counter_time_bytes& sinsp_counter_time_bytes::operator=(sinsp_counter_time_bytes &other)
 {
 	if(this != &other)
 	{
@@ -472,11 +501,15 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 	m_bytes_in += other->m_bytes_in;
 	m_bytes_out += other->m_bytes_out;
 	m_bytes_other += other->m_bytes_other;
-	if(m_percentile_in && other->m_percentile_in)
+
+	// merge the corresponding percentile stores if there are unique
+	if(m_percentile_in && other->m_percentile_in &&
+	   (m_percentile_in != other->m_percentile_in))
 	{
 		m_percentile_in->merge(other->m_percentile_in.get());
 	}
-	if(m_percentile_out && other->m_percentile_out)
+	if(m_percentile_out && other->m_percentile_out &&
+	   (m_percentile_out != other->m_percentile_out))
 	{
 		m_percentile_out->merge(other->m_percentile_out.get());
 	}
@@ -531,24 +564,14 @@ void sinsp_counter_time_bytes::clear()
 	}
 }
 
-void sinsp_counter_time_bytes::set_percentiles(const std::set<double>& percentiles)
+void sinsp_counter_time_bytes::set_percentiles(
+	const std::set<double>& percentiles,
+	const sinsp_counter_percentile_in_out *shared)
 {
-	if(percentiles.size())
-	{
-		if(!m_percentile_in)
-		{
-			m_percentile_in.reset(new percentile(percentiles));
-		}
-		if(!m_percentile_out)
-		{
-			m_percentile_out.reset(new percentile(percentiles));
-		}
-	}
-	else
-	{
-		m_percentile_in.reset();
-		m_percentile_out.reset();
-	}
+	m_percentile_in  = init_percentile(&percentiles,
+	                                   shared ? shared->m_percentile_in  : nullptr);
+	m_percentile_out = init_percentile(&percentiles,
+	                                   shared ? shared->m_percentile_out : nullptr);
 }
 
 void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
@@ -727,12 +750,13 @@ void sinsp_counters::calculate_totals()
 	m_tot_relevant.add(&m_processing);
 }
 
-void sinsp_counters::set_percentiles(const std::set<double>& percentiles)
+void sinsp_counters::set_percentiles(const std::set<double>& percentiles,
+                                     const sinsp_counters *shared)
 {
-	m_io_file.set_percentiles(percentiles);
-	m_io_net.set_percentiles(percentiles);
-	m_tot_io_file.set_percentiles(percentiles);
-	m_tot_io_net.set_percentiles(percentiles);
+	m_io_file.set_percentiles(percentiles, shared ? &(shared->m_io_file) : nullptr);
+	m_io_net.set_percentiles(percentiles, shared ? &(shared->m_io_net) : nullptr);
+	m_tot_io_file.set_percentiles(percentiles, shared ? &(shared->m_tot_io_file) : nullptr);
+	m_tot_io_net.set_percentiles(percentiles, shared ? &(shared->m_tot_io_net) : nullptr);
 	m_percentiles = percentiles;
 }
 
@@ -861,7 +885,10 @@ double sinsp_counters::get_other_percentage()
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_transaction_counters implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_transaction_counters::sinsp_transaction_counters(const std::set<double>* percentiles): m_counter(percentiles)
+sinsp_transaction_counters::sinsp_transaction_counters(
+	const std::set<double>* percentiles,
+	const sinsp_transaction_counters *shared)
+	: m_counter(percentiles, shared ? &(shared->m_counter) : nullptr)
 {
 }
 
@@ -872,9 +899,11 @@ void sinsp_transaction_counters::clear()
 	m_max_counter.clear();
 }
 
-void sinsp_transaction_counters::set_percentiles(const std::set<double>& percentiles)
+void sinsp_transaction_counters::set_percentiles(
+	const std::set<double>& percentiles,
+	const sinsp_transaction_counters *shared)
 {
-	m_counter.set_percentiles(percentiles);
+	m_counter.set_percentiles(percentiles, shared ? &(shared->m_counter) : nullptr);
 	m_has_percentiles = (percentiles.size() != 0);
 }
 
