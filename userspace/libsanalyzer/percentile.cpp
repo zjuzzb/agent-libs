@@ -74,7 +74,7 @@ void percentile::destroy(std::vector<double>* percentiles)
 		*percentiles = m_percentiles;
 	}
 
-	m_digest.release();
+	m_digest.reset();
 	m_eps = 0;
 	m_percentiles.clear();
 	m_num_samples = 0;
