@@ -277,6 +277,67 @@ void run_on_interval::run(const Callable& c, uint64_t now)
 	}
 }
 
+template<typename T>
+class threshold_filter
+{
+public:
+	threshold_filter(const char* desc, T threshold, unsigned ntimes):
+			m_desc(desc),
+			m_threshold(threshold),
+			m_ntimes(0),
+			m_ntimes_max(ntimes)
+	{
+	}
+
+	threshold_filter(const char* desc):
+			m_desc(desc),
+			m_threshold(0),
+			m_ntimes(0),
+			m_ntimes_max(0)
+	{
+	}
+
+	template<typename Callable>
+	inline void run_on_threshold(T v, const Callable& trigger)
+	{
+		if(m_ntimes_max == 0)
+		{
+			return;
+		}
+		if(v > m_threshold)
+		{
+			m_ntimes += 1;
+			log(v);
+			if(m_ntimes >= m_ntimes_max)
+			{
+				trigger();
+				m_ntimes = 0;
+			}
+		}
+		else
+		{
+			m_ntimes = 0;
+		}
+	}
+
+	void set_ntimes_max(unsigned value)
+	{
+		m_ntimes_max = value;
+	}
+
+	void set_threshold(T value)
+	{
+		m_threshold = value;
+	}
+
+private:
+	void log(T value);
+	const char* m_desc;
+	T m_threshold;
+	unsigned m_ntimes;
+	unsigned m_ntimes_max;
+};
+
 // returns process rss in kb and cpu in [% * 100]
 bool get_proc_mem_and_cpu(long& kb, int& cpu, std::string* err = nullptr);
 void send_subprocess_heartbeat();

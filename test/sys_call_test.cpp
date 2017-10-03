@@ -1902,3 +1902,48 @@ TEST_F(sys_call_test32, ppoll_timeout)
 	EXPECT_EQ(2, callnum);
 }
 #endif
+
+TEST_F(sys_call_test, get_n_tracepoint_hit)
+{
+	int callnum = 0;
+	vector<long> old_evts;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return false;
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto ncpu = inspector->get_machine_info()->num_cpus;
+		// just test the tracepoint hit
+		auto evts_vec = inspector->get_n_tracepoint_hit();
+		for(unsigned j = 0; j < ncpu; ++j)
+		{
+			EXPECT_GE(evts_vec[j], 0) << "cpu=" << j;
+		}
+		Poco::Thread::sleep(500);
+		auto evts_vec2 = inspector->get_n_tracepoint_hit();
+		for(unsigned j = 0; j < ncpu; ++j)
+		{
+			EXPECT_GE(evts_vec2[j], evts_vec[j]) << "cpu=" << j;
+		}
+		old_evts = evts_vec2;
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	// rerun again to check that counters are properly reset when userspace shutdowns
+	test = [&](sinsp* inspector)
+	{
+		// we can't compare by cpu because processes may be scheduled on other cpus
+		// let's just compare the whole sum for now
+		auto evts_vec = inspector->get_n_tracepoint_hit();
+		auto new_count = std::accumulate(evts_vec.begin(), evts_vec.end(), 0);
+		auto old_count = std::accumulate(old_evts.begin(), old_evts.end(), 0);
+		EXPECT_LT(new_count, old_count);
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(0, callnum);
+}

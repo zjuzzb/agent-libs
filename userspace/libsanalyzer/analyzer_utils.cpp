@@ -372,3 +372,15 @@ int nsenter::open_ns_fd(int pid, const string& type)
 	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/%s", scap_get_host_root(), pid, type.c_str());
 	return open(filename, O_RDONLY);
 }
+
+template<>
+void threshold_filter<double>::log(double value)
+{
+	g_logger.format(sinsp_logger::SEV_WARNING, "%s above threshold curr=%.2f/%.2f %u:%u", m_desc, value, m_threshold, m_ntimes, m_ntimes_max);
+}
+
+template<>
+void threshold_filter<long>::log(long value)
+{
+	g_logger.format(sinsp_logger::SEV_WARNING, "%s above threshold curr=%ld/%ld %u:%u", m_desc, value, m_threshold, m_ntimes, m_ntimes_max);
+}

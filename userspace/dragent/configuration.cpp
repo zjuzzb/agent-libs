@@ -252,6 +252,8 @@ dragent_configuration::dragent_configuration()
 	m_memdump_size = 0;
 	m_drop_upper_threshold = 0;
 	m_drop_lower_threshold = 0;
+	m_tracepoint_hits_threshold = 0;
+	m_cpu_usage_max_sr_threshold = 0.0;
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
 	m_watchdog_enabled = true;
@@ -651,6 +653,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
+	m_tracepoint_hits_threshold = m_config->get_scalar<long>("tracepoint_hits_threshold", 0);
+	m_tracepoint_hits_ntimes = m_config->get_scalar<unsigned>("tracepoint_hits_seconds", 5);
+	m_cpu_usage_max_sr_threshold = m_config->get_scalar<double>("cpu_usage_max_sr_threshold", 0.0);
+	m_cpu_usage_max_sr_ntimes = m_config->get_scalar<unsigned>("cpu_usage_max_sr_seconds", 5);
+
 	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
 	m_host_tags = m_config->get_scalar<string>("tags", "");
 	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
@@ -989,7 +996,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
-	m_detect_stress_tools = m_config->get_scalar<bool>("absorb_event_bursts", false);
+	m_stress_tools = m_config->get_merged_sequence<string>("perf_sensitive_programs");
+	m_detect_stress_tools = !m_stress_tools.empty();
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 
@@ -1037,6 +1045,14 @@ void dragent_configuration::print_configuration()
 	g_log->information("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	g_log->information("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
+	if(m_tracepoint_hits_threshold > 0)
+	{
+		g_log->information("tracepoint_hits_threshold: " + NumberFormatter::format(m_tracepoint_hits_threshold) + " seconds=" + NumberFormatter::format(m_tracepoint_hits_ntimes));
+	}
+	if(m_cpu_usage_max_sr_threshold > 0)
+	{
+		g_log->information("cpu_usage_max_sr_threshold: " + NumberFormatter::format(m_cpu_usage_max_sr_threshold) + " seconds=" + NumberFormatter::format(m_cpu_usage_max_sr_ntimes));
+	}
 	g_log->information("ui.customname: " + m_host_custom_name);
 	g_log->information("tags: " + m_host_tags);
 	g_log->information("ui.custommap: " + m_host_custom_map);

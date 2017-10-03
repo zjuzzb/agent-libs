@@ -244,6 +244,16 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_threshold);
 	}
 
+	if(m_configuration->m_tracepoint_hits_threshold > 0)
+	{
+		m_analyzer->get_configuration()->set_tracepoint_hits_threshold(m_configuration->m_tracepoint_hits_threshold, m_configuration->m_tracepoint_hits_ntimes);
+	}
+
+	if(m_configuration->m_cpu_usage_max_sr_threshold > 0)
+	{
+		m_analyzer->get_configuration()->set_cpu_max_sr_threshold(m_configuration->m_cpu_usage_max_sr_threshold, m_configuration->m_cpu_usage_max_sr_ntimes);
+	}
+
 	if(m_configuration->m_host_custom_name != "")
 	{
 		g_log->information("Setting custom name=" + m_configuration->m_host_custom_name);
@@ -320,6 +330,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
 	m_analyzer->get_configuration()->set_security_baseline_report_interval_ns(m_configuration->m_security_baseline_report_interval_ns);
+
+	stress_tool_matcher::set_comm_list(m_configuration->m_stress_tools);
 
 	//
 	// Load the chisels
@@ -482,6 +494,12 @@ void sinsp_worker::run()
 		{
 			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
 			{
+				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
+																 "Agent switch to nodriver",
+																 "Agent switched to nodriver mode due to high overhead",
+																 event_scope("host.mac", m_configuration->m_machine_id_prefix + m_configuration->m_machine_id),
+																 { {"source", "agent"}},
+																 4));
 				m_last_mode_switch_time = ev->get_ts();
 
 				m_inspector->close();
@@ -498,9 +516,23 @@ void sinsp_worker::run()
 			}
 			else
 			{
+				static bool full_mode_event_sent = false;
 				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
 				{
+					// TODO: investigate if we can void agent restart and just reopen the inspector
 					throw sinsp_exception("restarting agent to restore normal operation mode");
+				}
+				else if(!full_mode_event_sent && ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME - 2*ONE_SECOND_IN_NS)
+				{
+					// Since we restart the agent to apply the switch back, we have to send the event
+					// few seconds before doing it otherwise there can be chances that it's not sent at all
+					full_mode_event_sent = true;
+					g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
+																	 "Agent restore full mode",
+																	 "Agent restarting to restore full operation mode",
+																	 event_scope("host.mac", m_configuration->m_machine_id_prefix + m_configuration->m_machine_id),
+																	 { {"source", "agent"}},
+																	 4));
 				}
 			}
 		}
@@ -512,7 +544,7 @@ void sinsp_worker::run()
 		m_last_loop_ns = ts;
 
 		m_job_requests_interval.run([this]()
-                {
+		{
 			process_job_requests();
 		}, ts);
 

@@ -4,7 +4,9 @@
 
 #ifdef HAS_ANALYZER
 
-sinsp_configuration::sinsp_configuration()
+sinsp_configuration::sinsp_configuration():
+	m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
+	m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS)
 {
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
 	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;
@@ -895,4 +897,25 @@ void sinsp_configuration::set_security_baseline_report_interval_ns(uint64_t repo
 {
 	m_security_baseline_report_interval_ns = report_interval;
 }
+
+const pair<long, unsigned>& sinsp_configuration::get_tracepoint_hits_threshold() const
+{
+	return m_tracepoint_hits_threshold;
+}
+
+void sinsp_configuration::set_tracepoint_hits_threshold(long threshold, unsigned ntimes)
+{
+	m_tracepoint_hits_threshold = make_pair(threshold, ntimes);
+}
+
+const pair<double, unsigned>& sinsp_configuration::get_cpu_max_sr_threshold() const
+{
+	return m_cpu_max_sr_threshold;
+}
+
+void sinsp_configuration::set_cpu_max_sr_threshold(double threshold, unsigned ntimes)
+{
+	m_cpu_max_sr_threshold = make_pair(threshold, ntimes);
+}
+
 #endif // HAS_ANALYZER
