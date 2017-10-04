@@ -189,14 +189,12 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 					     const draiosproto::policy &policy,
 					     sinsp *inspector,
 					     shared_ptr<falco_engine> &falco_engine,
-					     shared_ptr<falco_events> &falco_events,
 					     shared_ptr<coclient> &coclient)
 	: security_policy(mgr,
 			  configuration,
 			  policy,
 			  coclient),
 	  m_falco_engine(falco_engine),
-	  m_falco_events(falco_events),
 	  m_formatters(inspector)
 {
 
@@ -264,11 +262,6 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 			string output;
 
 			g_log->debug("Event matched falco policy: rule=" + res->rule);
-
-			if(m_falco_events && m_configuration->m_security_send_monitor_events)
-			{
-				m_falco_events->generate_user_event(res);
-			}
 
 			event->set_timestamp_ns(evt->get_ts());
 			event->set_policy_id(m_policy.id());

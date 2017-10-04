@@ -10,7 +10,6 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
-include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
@@ -34,7 +33,6 @@ add_library(sanalyzer STATIC
 	connectinfo.cpp 
 	config.cpp
 	delays.cpp
-	falco_events.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
@@ -128,7 +126,6 @@ add_dependencies(sanalyzer draiosproto)
 
 target_link_libraries(sanalyzer
 	scap 
-	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src/libluajit.a
 	${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a

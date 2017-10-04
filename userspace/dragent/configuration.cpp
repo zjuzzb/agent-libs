@@ -8,8 +8,6 @@
 #include "Poco/File.h"
 #include <netdb.h>
 
-#include "falco_engine.h"
-
 #include "logger.h"
 #include "uri.h"
 
@@ -183,54 +181,6 @@ private:
 	const vector<string> m_forbidden_keys;
 };
 
-class falco_rules_auto_configuration
-	: public dragent_auto_configuration
-{
-public:
-	falco_rules_auto_configuration(const std::string &config_directory)
-		: dragent_auto_configuration("falco_rules.auto.yaml",
-					     config_directory,
-					     "#\n"
-					     "# WARNING: Falco Engine auto configuration, don't edit. Please use \"falco_rules.yaml\" instead\n"
-					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
-					     "#\n")
-	{
-	};
-
-	~falco_rules_auto_configuration()
-	{
-	};
-
-	bool validate(const string &config_data, string &errstr)
-	{
-		falco_engine eng;
-		sinsp *inspector = new sinsp();
-		bool verbose = false;
-		bool all_events = false;
-
-		eng.set_inspector(inspector);
-
-		try {
-			eng.load_rules(config_data, verbose, all_events);
-		}
-		catch (falco_exception &e)
-		{
-			errstr = string(e.what());
-			delete(inspector);
-			return false;
-		}
-		delete(inspector);
-		return true;
-	}
-
-	void apply(dragent_configuration &config)
-	{
-		g_log->information("New auto falco rules file applied");
-		config.m_reset_falco_engine = true;
-	}
-};
-
-
 dragent_configuration::dragent_configuration()
 {
 	m_server_port = 0;
@@ -284,10 +234,6 @@ dragent_configuration::dragent_configuration()
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
 	m_auto_config = true;
-	m_enable_falco_engine = false;
-	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
-	m_falco_engine_sampling_multiplier = 0;
-	m_reset_falco_engine = false;
 	m_security_enabled = false;
 	m_security_policies_file = "";
 	m_security_report_interval_ns = 1000000000;
@@ -900,21 +846,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
-	m_enable_falco_engine = m_config->get_scalar<bool>("falco_engine", "enabled", false);
-	m_falco_default_rules_filename = m_config->get_scalar<string>("falco_engine", "default_rules_filename",
-								      m_root_dir + "/etc/falco_rules.default.yaml");
-
-	m_falco_auto_rules_filename = Path(m_root_dir).append("etc").append("falco_rules.auto.yaml").toString();
-
-	m_supported_auto_configs[string("falco_rules.auto.yaml")] =
-		unique_ptr<dragent_auto_configuration>(new falco_rules_auto_configuration(Path(m_root_dir).append("etc").toString()));
-
-	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
-							      m_root_dir + "/etc/falco_rules.yaml");
-
-	m_falco_engine_disabled_rule_patterns = m_config->get_deep_merged_sequence<set<string>>("falco_engine", "disabled_rule_patterns");
-	m_falco_engine_sampling_multiplier = m_config->get_scalar<double>("falco_engine", "sampling_multiplier", 0);
-
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
@@ -931,19 +862,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
 	m_security_send_monitor_events = m_config->get_scalar<bool>("security", "send_monitor_events", false);
-
-	//
-	// If falco is enabled, check to see if the rules file exists and
-	// switch to a built-in default if it does not.
-	//
-	if(m_enable_falco_engine)
-	{
-		File rules_file(m_falco_default_rules_filename);
-		if(!rules_file.exists())
-		{
-			m_falco_default_rules_filename = m_falco_fallback_default_rules_filename;
-		}
-	}
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -1234,19 +1152,6 @@ void dragent_configuration::print_configuration()
 		g_log->information("DC/OS Enterprise credentials provided.");
 	}
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
-	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
-	if(m_enable_falco_engine)
-	{
-		g_log->information("Falco engine default rules file: " + m_falco_default_rules_filename);
-		g_log->information("Falco engine auto rules file: " + m_falco_auto_rules_filename);
-		g_log->information("Falco engine rules file: " + m_falco_rules_filename);
-		g_log->information("Falco disabled rule patterns: ");
-		for(auto pattern : m_falco_engine_disabled_rule_patterns)
-		{
-			g_log->information("  " + pattern);
-		}
-		g_log->information("Falco engine sampling multiplier: " + NumberFormatter::format(m_falco_engine_sampling_multiplier));
-	}
 
 	if(m_security_enabled)
 	{
@@ -1310,11 +1215,11 @@ void dragent_configuration::print_configuration()
 
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
-		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
+		g_log->information("Running in nodriver mode, Security and Sysdig Captures will not work");
 	}
 	else if(m_mode == dragent_mode_t::SIMPLEDRIVER)
 	{
-		g_log->information("Running in simple driver mode, Falco and Sysdig Captures will not work");
+		g_log->information("Running in simple driver mode, Security and Sysdig Captures will not work");
 	}
 
 	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||

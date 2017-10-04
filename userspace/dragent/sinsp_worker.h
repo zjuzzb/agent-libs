@@ -103,7 +103,6 @@ private:
 	void init();
 	void process_job_requests();
 	void check_autodrop(uint64_t ts_ns);
-	void init_falco();
 
 	void get_internal_metrics();
 

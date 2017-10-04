@@ -16,7 +16,6 @@
 #include "coclient.h"
 
 #include <falco_engine.h>
-#include <falco_events.h>
 
 class security_mgr;
 
@@ -157,7 +156,6 @@ public:
 			      const draiosproto::policy &policy,
 			      sinsp *inspector,
 			      shared_ptr<falco_engine> &falco_engine,
-			      shared_ptr<falco_events> &falco_events,
 			      std::shared_ptr<coclient> &coclient);
 
 	virtual ~falco_security_policy();
@@ -172,7 +170,6 @@ private:
 	std::string m_rule_filter;
 	std::set<std::string> m_tags;
 	shared_ptr<falco_engine> m_falco_engine;
-	shared_ptr<falco_events> m_falco_events;
 	sinsp_evt_formatter_cache m_formatters;
 	std::string m_fstr;
 

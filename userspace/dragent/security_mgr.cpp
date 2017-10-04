@@ -56,7 +56,6 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 	string tmp;
 
 	m_falco_engine = NULL;
-	m_falco_events = NULL;
 
 	m_falco_policies.clear();
 	m_policy_names.clear();
@@ -89,9 +88,6 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 				return false;
 			}
 		}
-
-		m_falco_events = make_shared<falco_events>();
-		m_falco_events->init(m_inspector, m_configuration->m_machine_id);
 	}
 
 	for(auto &policy : policies.policy_list())
@@ -104,7 +100,6 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 						      policy,
 						      m_inspector,
 						      m_falco_engine,
-						      m_falco_events,
 						      m_coclient);
 
 			g_log->debug("Loaded Falco Policy: "

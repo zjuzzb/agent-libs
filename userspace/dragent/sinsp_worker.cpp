@@ -441,8 +441,6 @@ void sinsp_worker::init()
 	m_analyzer->set_user_event_queue(m_user_event_queue);
 
 	m_analyzer->set_emit_tracers(m_configuration->m_emit_tracers);
-
-	init_falco();
 }
 
 void sinsp_worker::run()
@@ -466,11 +464,6 @@ void sinsp_worker::run()
 		{
 			dragent_configuration::m_terminate = true;
 			break;
-		}
-
-		if(m_configuration->m_reset_falco_engine)
-		{
-			init_falco();
 		}
 
 		res = m_inspector->next(&ev);
@@ -620,21 +613,6 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
-}
-
-void sinsp_worker::init_falco()
-{
-	if(m_configuration->m_enable_falco_engine)
-	{
-		m_analyzer->disable_falco();
-		m_analyzer->enable_falco(m_configuration->m_falco_default_rules_filename,
-					 m_configuration->m_falco_auto_rules_filename,
-					 m_configuration->m_falco_rules_filename,
-					 m_configuration->m_falco_engine_disabled_rule_patterns,
-					 m_configuration->m_falco_engine_sampling_multiplier);
-	}
-
-	m_configuration->m_reset_falco_engine = false;
 }
 
 // Receive job requests and pass them along to the capture job

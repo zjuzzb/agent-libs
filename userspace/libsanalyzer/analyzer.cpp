@@ -65,8 +65,6 @@ using namespace google::protobuf::io;
 #include <memory>
 #include <iostream>
 #include <numeric>
-#include "falco_engine.h"
-#include "falco_events.h"
 #include "proc_config.h"
 #include "tracer_emitter.h"
 #include "metric_limits.h"
@@ -130,8 +128,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_die = false;
 	m_run_chisels = false;
 
-	m_falco_engine = NULL;
-	m_falco_events = NULL;
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -4730,22 +4726,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		return;
 	}
 
-	if(m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
-	{
-		try {
-
-			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt);
-			if(res && m_falco_events)
-			{
-				m_falco_events->generate_user_event(res);
-			}
-		}
-		catch (falco_exception& e)
-		{
-			g_logger.log("Error processing event against falco engine: " + string(e.what()));
-		}
-	}
-
 	//
 	// Get the event category and type
 	//
@@ -6529,22 +6509,12 @@ void sinsp_analyzer::stop_dropping_mode()
 {
 	m_inspector->stop_dropping_mode();
 	m_driver_stopped_dropping = false;
-
-	if(m_falco_engine)
-	{
-		m_falco_engine->set_sampling_ratio(1);
-	}
 }
 
 void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 {
 	m_new_sampling_ratio = sampling_ratio;
 	m_inspector->start_dropping_mode(sampling_ratio);
-
-	if(m_falco_engine)
-	{
-		m_falco_engine->set_sampling_ratio(sampling_ratio);
-	}
 }
 
 bool sinsp_analyzer::driver_stopped_dropping()
@@ -6579,55 +6549,6 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 	{
 		m_mounted_fs_proxy.reset();
 	}
-}
-
-void sinsp_analyzer::enable_falco(const string &default_rules_filename,
-				  const string &auto_rules_filename,
-				  const string &rules_filename,
-				  set<string> &disabled_rule_patterns,
-				  double sampling_multiplier)
-{
-	bool verbose = false;
-	bool all_events = true;
-
-	m_falco_engine = make_unique<falco_engine>();
-	m_falco_engine->set_inspector(m_inspector);
-	m_falco_engine->set_sampling_multiplier(sampling_multiplier);
-
-	// If the auto rules file exists, it is loaded instead of the
-	// default rules file
-	Poco::File auto_rules_file(auto_rules_filename);
-	if(auto_rules_file.exists())
-	{
-		m_falco_engine->load_rules_file(auto_rules_filename, verbose, all_events);
-	}
-	else
-	{
-		m_falco_engine->load_rules_file(default_rules_filename, verbose, all_events);
-	}
-
-	//
-	// Only load the user rules file if it exists
-	//
-	Poco::File user_rules_file(rules_filename);
-	if(user_rules_file.exists())
-	{
-		m_falco_engine->load_rules_file(rules_filename, verbose, all_events);
-	}
-
-	for (auto pattern : disabled_rule_patterns)
-	{
-		m_falco_engine->enable_rule(pattern, false);
-	}
-
-	m_falco_events = make_unique<falco_events>();
-	m_falco_events->init(m_inspector, m_configuration->get_machine_id());
-}
-
-void sinsp_analyzer::disable_falco()
-{
-	m_falco_engine = NULL;
-	m_falco_events = NULL;
 }
 
 void sinsp_analyzer::set_emit_tracers(bool enabled)

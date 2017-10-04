@@ -17,7 +17,6 @@
 
 #include <draios.pb.h>
 #include <falco_engine.h>
-#include <falco_events.h>
 
 #include "coclient.h"
 
@@ -102,7 +101,6 @@ private:
 	Poco::RWLock m_policies_lock;
 
 	shared_ptr<falco_engine> m_falco_engine;
-	shared_ptr<falco_events> m_falco_events;
 
 	std::list<falco_security_policy> m_falco_policies;
 

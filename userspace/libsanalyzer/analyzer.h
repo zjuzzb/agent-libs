@@ -52,8 +52,6 @@ class k8s_delegator;
 class mesos;
 class docker;
 class uri;
-class falco_engine;
-class falco_events;
 class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
@@ -443,14 +441,6 @@ public:
 		m_simpledriver_enabled = true;
 	}
 
-	void enable_falco(const string &default_rules_filename,
-			  const string &auto_rules_filename,
-			  const string &rules_filename,
-			  std::set<std::string> &disabled_rule_patterns,
-			  double sampling_multiplier);
-
-	void disable_falco();
-
 	void set_emit_tracers(bool enabled);
 	void set_internal_metrics(internal_metrics::sptr_t im);
 
@@ -782,9 +772,6 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
-
-	unique_ptr<falco_engine> m_falco_engine;
-	unique_ptr<falco_events> m_falco_events;
 
 	metric_limits::sptr_t m_metric_limits;
 	mount_points_limits::sptr_t m_mount_points;
