@@ -14,11 +14,12 @@ public:
 	~percentile();
 
 	percentile(const percentile& other);
-	percentile& operator=(percentile other);
+	percentile& operator=(const percentile &other);
 
 	template <typename T>
 	void add(T val)
 	{
+		alloc_tdigest_if_needed();
 		m_digest->add(val);
 		++m_num_samples;
 	}
@@ -34,8 +35,11 @@ public:
 
 	void merge(const percentile *other)
 	{
-		m_digest->merge(other->m_digest.get());
-		m_num_samples += other->sample_count();
+		if (other->sample_count()) {
+			alloc_tdigest_if_needed();
+			m_digest->merge(other->m_digest.get());
+			m_num_samples += other->sample_count();
+		}
 	}
 
 	p_map_type percentiles();
@@ -43,13 +47,7 @@ public:
 	template <typename P, typename C>
 	void to_protobuf(P* proto, C* (P::*add_func)())
 	{
-		p_map_type pm = percentiles();
-		for(const auto& p : pm)
-		{
-			C* cp = (proto->*add_func)();
-			cp->set_percentile(p.first);
-			cp->set_value(p.second);
-		}
+		to_protobuf(percentiles(), proto, add_func);
 		reset();
 	}
 
@@ -65,24 +63,23 @@ public:
 	}
 
 	void reset();
-	std::vector<double> get_percentiles() const;
-	uint32_t sample_count() const;
+	inline std::vector<double> get_percentiles() const;
+	uint32_t sample_count() const
+	{
+		return m_num_samples;
+	}
 
 	void dump_samples();
-	void flush() const;
+	inline void flush() const;
 
 private:
-	void init(const std::vector<double> &percentiles, double eps = 0.1);
-	void copy(const percentile& other);
-	void destroy(std::vector<double>* percentiles = nullptr);
+	inline void init(const std::vector<double> &percentiles, double eps = 0.1);
+	inline void copy(const percentile& other);
+	inline void destroy(std::vector<double>* percentiles = nullptr);
+	void alloc_tdigest_if_needed(void);
 
 	std::vector<double> m_percentiles;
 	double m_eps;
 	std::unique_ptr<tdigest::TDigest> m_digest;
 	size_t m_num_samples = 0;
 };
-
-inline uint32_t percentile::sample_count() const
-{
-	return m_num_samples;
-}
