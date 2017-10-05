@@ -188,9 +188,9 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
 	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
-	// This gets specially added as a label since we don't have a
+	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
-	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
+	tags["kubernetes.pod.status.phase"] = string(pod.Status.Phase)
 
 	var ips []string
 	/*if pod.Status.HostIP != "" {
