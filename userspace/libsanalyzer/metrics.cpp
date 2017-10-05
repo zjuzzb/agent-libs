@@ -82,7 +82,7 @@ void sinsp_counter_time::add(sinsp_counter_time* other)
 	m_time_ns += other->m_time_ns;
 	if(m_percentile && other->m_percentile)
 	{
-		m_percentile->insert(other->m_percentile->get_samples());
+		m_percentile->merge(other->m_percentile.get());
 	}
 }
 
@@ -92,7 +92,7 @@ void sinsp_counter_time::add(sinsp_counter_time_bytes* other)
 	m_time_ns += (other->m_time_ns_in + other->m_time_ns_out + other->m_time_ns_other);
 	/*if(m_percentile && other->m_percentile)
 	{
-		m_percentile->insert(other->m_percentile->get_samples());
+		m_percentile->merge(other->m_percentile.get());
 	}*/
 }
 
@@ -104,11 +104,11 @@ void sinsp_counter_time::add(sinsp_counter_time_bidirectional* other)
 	{
 		if(other->m_percentile_in)
 		{
-			m_percentile->insert(other->m_percentile_in->get_samples());
+			m_percentile->merge(other->m_percentile_in.get());
 		}
 		if(other->m_percentile_out)
 		{
-			m_percentile->insert(other->m_percentile_out->get_samples());
+			m_percentile->merge(other->m_percentile_out.get());
 		}
 	}
 }
@@ -278,11 +278,11 @@ void sinsp_counter_time_bidirectional::add(sinsp_counter_time_bidirectional* oth
 	m_time_ns_other += other->m_time_ns_other;
 	if(m_percentile_in && other->m_percentile_in)
 	{
-		m_percentile_in->insert(other->m_percentile_in->get_samples());
+		m_percentile_in->merge(other->m_percentile_in.get());
 	}
 	if(m_percentile_out && other->m_percentile_out)
 	{
-		m_percentile_out->insert(other->m_percentile_out->get_samples());
+		m_percentile_out->merge(other->m_percentile_out.get());
 	}
 }
 
@@ -474,11 +474,11 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bytes* other)
 	m_bytes_other += other->m_bytes_other;
 	if(m_percentile_in && other->m_percentile_in)
 	{
-		m_percentile_in->insert(other->m_percentile_in->get_samples());
+		m_percentile_in->merge(other->m_percentile_in.get());
 	}
 	if(m_percentile_out && other->m_percentile_out)
 	{
-		m_percentile_out->insert(other->m_percentile_out->get_samples());
+		m_percentile_out->merge(other->m_percentile_out.get());
 	}
 }
 
@@ -496,11 +496,11 @@ void sinsp_counter_time_bytes::add(sinsp_counter_time_bidirectional* other, bool
 	m_time_ns_other += other->m_time_ns_other;
 	if(m_percentile_in && other->m_percentile_in)
 	{
-		m_percentile_in->insert(other->m_percentile_in->get_samples());
+		m_percentile_in->merge(other->m_percentile_in.get());
 	}
 	if(m_percentile_out && other->m_percentile_out)
 	{
-		m_percentile_out->insert(other->m_percentile_out->get_samples());
+		m_percentile_out->merge(other->m_percentile_out.get());
 	}
 }
 

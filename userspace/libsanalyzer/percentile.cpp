@@ -85,24 +85,6 @@ std::vector<double> percentile::get_percentiles() const
 	return m_percentiles;
 }
 
-// XXX/nags: We should be returning the weight for each value which is
-//           a crucial part for accurate percentiles
-std::vector<double> percentile::get_samples() const
-{
-	std::vector<double> samples;
-	auto &c1 = m_digest->processed();
-	auto &c2 = m_digest->unprocessed();
-	samples.reserve(c1.size() + c2.size());
-	for (auto &c : c1) {
-		samples.emplace_back(c.mean());
-	}
-	for (auto &c : c2) {
-		samples.emplace_back(c.mean());
-	}
-
-	return samples;
-}
-
 void percentile::reset()
 {
 	if(sample_count())
