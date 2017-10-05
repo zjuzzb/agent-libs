@@ -27,13 +27,14 @@ public:
 	void copy(const std::vector<T>& val)
 	{
 		reset();
-		insert(val);
+		for(auto &v: val) {
+			add(v);
+		}
 	}
 
-	template <typename T>
-	void insert(const std::vector<T>& val)
+	void merge(const percentile *other)
 	{
-		for(const auto& v : val) { add(v); }
+		m_digest->merge(other->m_digest.get());
 	}
 
 	p_map_type percentiles();
@@ -64,7 +65,6 @@ public:
 
 	void reset();
 	std::vector<double> get_percentiles() const;
-	std::vector<double> get_samples() const;
 	uint32_t sample_count() const;
 
 	void dump_samples();
