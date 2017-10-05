@@ -193,30 +193,70 @@ bool security_mgr::start_capture(uint64_t ts_ns,
 	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
 		std::make_shared<capture_job_handler::dump_job_request>();
 
+	job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = token;
 
-	job_request->m_filter = filter;
+	job_request->m_start_details->m_filter = filter;
 
 	if(apply_scope && container_id != "")
 	{
 		// Limit the capture to the container where the event occurred.
-		if(!job_request->m_filter.empty())
+		if(!job_request->m_start_details->m_filter.empty())
 		{
-			job_request->m_filter += " and ";
+			job_request->m_start_details->m_filter += " and ";
 		}
 
-		job_request->m_filter += "container.id=" + container_id;
+		job_request->m_start_details->m_filter += "container.id=" + container_id;
 	}
 
-	job_request->m_duration_ns = after_event_ns;
-	job_request->m_past_duration_ns = before_event_ns;
-	job_request->m_start_ns = ts_ns;
-	job_request->m_notification_desc = policy;
-	job_request->m_notification_pid = pid;
+	job_request->m_start_details->m_duration_ns = after_event_ns;
+	job_request->m_start_details->m_past_duration_ns = before_event_ns;
+	job_request->m_start_details->m_start_ns = ts_ns;
+	job_request->m_start_details->m_notification_desc = policy;
+	job_request->m_start_details->m_notification_pid = pid;
+	job_request->m_start_details->m_defer_send = true;
 
 	// Note: Not enforcing any maximum size.
 	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);
+}
+
+void security_mgr::start_sending_capture(const string &token)
+{
+	string errstr;
+
+	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
+		std::make_shared<capture_job_handler::dump_job_request>();
+
+	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_SEND_START;
+	job_request->m_token = token;
+
+	if (!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
+	{
+		g_log->error("security_mgr::start_sending_capture could not start sending capture token=" + token + "(" + errstr + "). Trying to stop capture.");
+		stop_capture(token);
+	}
+}
+
+void security_mgr::stop_capture(const string &token)
+{
+	string errstr;
+
+	std::shared_ptr<capture_job_handler::dump_job_request> stop_request =
+		std::make_shared<capture_job_handler::dump_job_request>();
+
+	stop_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
+	stop_request->m_token = token;
+
+	if (!m_capture_job_handler->queue_job_request(m_inspector, stop_request, errstr))
+	{
+		g_log->critical("security_mgr::start_sending_capture could not stop capture token=" + token + "(" + errstr + ")");
+
+		// This will result in a capture that runs to
+		// completion but is never sent, and a file on
+		// disk that is never cleaned up.
+	}
 }
 
 sinsp_analyzer *security_mgr::analyzer()
@@ -224,8 +264,10 @@ sinsp_analyzer *security_mgr::analyzer()
 	return m_analyzer;
 }
 
-void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
+bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
 {
+	bool accepted = true;
+
 	// Find the matching token bucket, creating it if necessary
 
 	rate_limit_scope_t scope(event->container_id(), event->policy_id());
@@ -274,6 +316,8 @@ void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 	}
 	else
 	{
+		accepted = false;
+
 		string policy_name = "N/A";
 		auto it = m_policy_names.find(event->policy_id());
 		if(it != m_policy_names.end())
@@ -297,6 +341,8 @@ void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 			     + ", container=" + event->container_id()
 			     + ", tcount=" + NumberFormatter::format(it2->second));
 	}
+
+	return accepted;
 }
 
 

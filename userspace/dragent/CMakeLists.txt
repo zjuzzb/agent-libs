@@ -31,7 +31,6 @@ add_executable(dragent
 	main.cpp
 	monitor.cpp
 	protocol.cpp
-	security_messages.cpp
 	security_mgr.cpp
 	security_policy.cpp
 	sinsp_data_handler.cpp

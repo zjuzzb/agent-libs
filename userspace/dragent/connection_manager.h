@@ -14,7 +14,6 @@ class connection_manager : public Runnable
 public:
 	connection_manager(dragent_configuration* configuration,
 			   protocol_queue* queue,
-			   synchronized_policy_events *policy_events,
 			   sinsp_worker* sinsp_worker,
 			   capture_job_handler *capture_job_handler);
 	~connection_manager();
@@ -68,7 +67,6 @@ private:
 	uint32_t m_buffer_used;
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
-	synchronized_policy_events *m_policy_events;
 	sinsp_worker* m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
 	std::atomic<uint64_t> m_last_loop_ns;

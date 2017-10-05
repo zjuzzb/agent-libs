@@ -15,7 +15,6 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 			   internal_metrics::sptr_t im,
 			   protocol_queue* queue,
 			   atomic<bool> *enable_autodrop,
-			   synchronized_policy_events *policy_events,
 			   capture_job_handler *capture_job_handler):
 	m_job_requests_interval(1000000000),
 	m_initialized(false),
@@ -27,7 +26,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_analyzer(NULL),
 	m_security_mgr(NULL),
 	m_capture_job_handler(capture_job_handler),
-	m_sinsp_handler(configuration, queue, policy_events),
+	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
@@ -582,7 +581,7 @@ void sinsp_worker::run()
 void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
 {
 	g_log->information(m_name + ": scheduling job request type=" +
-			   (job_request->m_request_type == capture_job_handler::dump_job_request::JOB_START ? "start" : "stop") +
+			   capture_job_handler::dump_job_request::request_type_str(job_request->m_request_type) +
 			    ", token= " + job_request->m_token);
 
 	if(!m_dump_job_requests.put(job_request))
@@ -631,11 +630,13 @@ void sinsp_worker::process_job_requests()
 		std::shared_ptr<capture_job_handler::dump_job_request> job_request
 			= make_shared<capture_job_handler::dump_job_request>();
 
+		job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+
 		job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
-		job_request->m_duration_ns = 20000000000LL;
-		job_request->m_delete_file_when_done = false;
-		job_request->m_send_file = false;
+		job_request->m_start_details->m_duration_ns = 20000000000LL;
+		job_request->m_start_details->m_delete_file_when_done = false;
+		job_request->m_start_details->m_send_file = false;
 
 		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
 		{

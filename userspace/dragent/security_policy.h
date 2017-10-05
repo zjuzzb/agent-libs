@@ -59,6 +59,17 @@ public:
 	void reset_metrics();
 
 protected:
+
+	// Return whether or not this policy has an action of the
+	// specified type
+	bool has_action(const draiosproto::action_type &atype);
+
+	// Return whether or not this event has an action result of
+	// the specified type. Return a pointer to that action result
+	// or NULL.
+	draiosproto::action_result *has_action_result(draiosproto::policy_event *evt,
+						      const draiosproto::action_type &atype);
+
 	// Keeps track of any policy events and their outstanding
 	// actions. When all actions are complete, the policy will
 	// send the policy event message.

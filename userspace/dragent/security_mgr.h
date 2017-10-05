@@ -50,8 +50,14 @@ public:
 	// Accept the provided policy event. This method enforces any
 	// rate limits that apply for the given (policy, container)
 	// tuple and adds the event to the pending events list (or
-	// reports it immediately, depending on send_now)
-	void accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now);
+	// reports it immediately, depending on send_now).
+	//
+	// Returns true if the policy event was fully
+	// accepted. Returns false if the policy event was throttled,
+	// meaning that it will be added to the periodic throttled
+	// events message instead of being sent as a complete policy
+	// event.
+	bool accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now);
 
 	// Start a sysdig capture. Returns true on success, false (and
 	// fills in errstr) if the capture couldn't be started.
@@ -63,6 +69,10 @@ public:
 			   std::string &container_id,
 			   uint64_t pid,
 			   std::string &errstr);
+
+	void start_sending_capture(const string &token);
+
+	void stop_capture(const string &token);
 
 	sinsp_analyzer *analyzer();
 
