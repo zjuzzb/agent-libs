@@ -35,6 +35,7 @@ public:
 	void merge(const percentile *other)
 	{
 		m_digest->merge(other->m_digest.get());
+		m_num_samples += other->sample_count();
 	}
 
 	p_map_type percentiles();

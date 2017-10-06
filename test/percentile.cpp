@@ -180,3 +180,63 @@ TEST(percentile, random)
 	EXPECT_GE(val, 2126008810 - 21474836);
 	EXPECT_LE(val, 2126008810 + 21474836);
 }
+
+TEST(percentile, merge)
+{
+	std::set<double> pctls = {25};
+	percentile p(pctls);
+	p.add(5);
+	p.add(3);
+	p.add(8);
+	p.add(7);
+	p.add(11);
+	p.add(9);
+	p.add(15);
+	p.add(13);
+	EXPECT_EQ(p.sample_count(), 8);
+	percentile::p_map_type pctl_map = p.percentiles();
+	EXPECT_EQ(pctl_map.size(), 1);
+	auto p_it = pctl_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+
+	// test merging to an empty percentile store
+	percentile pmerge(pctls);
+	EXPECT_EQ(pmerge.sample_count(), 0);
+	pmerge.merge(&p);
+	EXPECT_EQ(pmerge.sample_count(), p.sample_count());
+	auto pmerge_map = pmerge.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+
+	// test merging to non-empty percentile store
+	pmerge.merge(&p);
+	EXPECT_EQ(pmerge.sample_count(), 2 * p.sample_count());
+	pmerge_map = pmerge.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+
+	// test merging 2 empty percentile stores
+	percentile pempty1(pctls);
+	percentile pempty2(pctls);
+	pempty1.merge(&pempty2);
+	EXPECT_EQ(pempty1.sample_count(), 0);
+	pmerge_map = pempty1.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 0);
+
+	// test merging an empty percentile store
+	pmerge.merge(&pempty2);
+	EXPECT_EQ(pmerge.sample_count(), 2 * p.sample_count());
+	pmerge_map = pmerge.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+}
