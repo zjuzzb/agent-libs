@@ -38,7 +38,7 @@ public:
 	};
 	struct filter_condition {
 		enum param_type {
-			string,
+			none,
 			port,
 			container_image,
 			container_name,
@@ -46,7 +46,8 @@ public:
 			process_name,
 			process_cmdline,
 			app_check_match,
-			k8s_annotation
+			k8s_annotation,	// obsolete, to be replaced with generic tag
+			tag
 		};
 		static param_type param2type(std::string);
 		

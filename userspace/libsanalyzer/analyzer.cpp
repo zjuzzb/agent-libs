@@ -6099,7 +6099,6 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	set<uint16_t> ports;
 	string path;
 	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, infra_state(), ports, path)) {
-		// printf("match_prom_checks(): Adding pid %d (main %d, hash %08.8x), %d ports\n", tinfo->m_pid, mtinfo->m_pid, tinfo->m_program_hash, ports.size());
 		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
 		prom_procs.emplace_back(pp);
 

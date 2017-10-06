@@ -57,9 +57,8 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 		tags[prefix+"label." + k] = v
 	}
 	// Prometheus autodetection needs pod annotations
-	// May need to move somewhere else
 	for k, v := range obj.GetAnnotations() {
-		tags[prefix+"annotation." + k] = v
+		internal_tags[prefix+"annotation." + k] = v
 	}
 	tags[prefix+"name"] = obj.GetName()
 	return tags
