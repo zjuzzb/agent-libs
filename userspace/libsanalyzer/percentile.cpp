@@ -106,7 +106,7 @@ percentile::p_map_type percentile::percentiles()
 	flush();
 	p_map_type pm;
 	for (auto q : m_percentiles) {
-		pm[round(q * 100.)] = m_digest->quantile(q);
+		pm[round(q * 100.)] = (m_num_samples) ? m_digest->quantile(q) : 0;
 	}
 	return pm;
 }
