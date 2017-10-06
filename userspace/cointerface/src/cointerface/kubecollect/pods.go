@@ -58,22 +58,6 @@ func newContainerEvent(pod *v1.Pod,
 	imageId := cstat.ImageID[strings.LastIndex(cstat.ImageID, ":")+1:]
 	imageId = imageId[:12]
 
-	var metrics []*draiosproto.AppMetric
-	found := false
-	// There should always be a spec with the same name
-	// as the status, so complain if we don't find it
-	for _, c := range pod.Spec.Containers {
-		if c.Name == cstat.Name {
-			addContainerMetrics(&metrics, &c)
-			found = true
-			break
-		}
-	}
-	if !found {
-		log.Errorf("Could not find container spec for %v on pod %v",
-			cstat.Name, pod.GetName())
-	}
-
 	*containerEvents = append(*containerEvents, &draiosproto.CongroupUpdateEvent {
 		Type: eventType.Enum(),
 		Object: &draiosproto.ContainerGroup {
@@ -87,7 +71,6 @@ func newContainerEvent(pod *v1.Pod,
 				"container.image.id": imageId,
 			},
 			Parents: par,
-			Metrics: metrics,
 		},
 	})
 
@@ -205,9 +188,9 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
 	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
-	// This gets specially added as a label since we don't have a
+	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
-	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
+	tags["kubernetes.pod.status.phase"] = string(pod.Status.Phase)
 
 	var ips []string
 	/*if pod.Status.HostIP != "" {
@@ -306,20 +289,6 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	return cg
 }
 
-// Containers only send ADDED/REMOVED events, so we can only use the
-// static Container object for stats and nothing from ContainerStatus
-func addContainerMetrics(metrics *[]*draiosproto.AppMetric, con *v1.Container) {
-	prefix := "kubernetes.pod.container."
-	appendMetricResource(metrics, prefix+"resourceRequests.cpuCores",
-		con.Resources.Requests, v1.ResourceCPU)
-	appendMetricResource(metrics, prefix+"resourceRequests.memoryBytes",
-		con.Resources.Requests, v1.ResourceMemory)
-	appendMetricResource(metrics, prefix+"resourceLimits.cpuCores",
-		con.Resources.Limits, v1.ResourceCPU)
-	appendMetricResource(metrics, prefix+"resourceLimits.memoryBytes",
-		con.Resources.Limits, v1.ResourceMemory)
-}
-
 func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	prefix := "kubernetes.pod."
 
@@ -336,6 +305,7 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
+	appendMetricContainerResources(metrics, prefix, pod.Spec.Containers)
 }
 
 func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
@@ -359,6 +329,34 @@ func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, co
 	if found {
 		AppendMetric(metrics, name, val)
 	}
+}
+
+func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, containers []v1.Container) {
+	podRequestsCpuCores := float64(0)
+	podLimitsCpuCores := float64(0)
+	podRequestsMemoryBytes := float64(0)
+	podLimitsMemoryBytes := float64(0)
+	for _, c := range containers {
+		podRequestsCpuCores += resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		podLimitsCpuCores += resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		podRequestsMemoryBytes += resourceVal(c.Resources.Requests, v1.ResourceMemory)
+		podLimitsMemoryBytes += resourceVal(c.Resources.Limits, v1.ResourceMemory)
+	}
+	AppendMetric(metrics, prefix+"resourceRequests.cpuCores", podRequestsCpuCores)
+	AppendMetric(metrics, prefix+"resourceLimits.cpuCores", podLimitsCpuCores)
+	AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", podRequestsMemoryBytes)
+	AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", podLimitsMemoryBytes)
+}
+
+func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
+	v := float64(0)
+	qty, ok := rList[rName]
+	if ok {
+		// Take MilliValue() and divide because
+		// we could lose precision with Value()
+		v = float64(qty.MilliValue())/1000
+	}
+	return v
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {

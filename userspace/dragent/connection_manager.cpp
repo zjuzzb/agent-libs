@@ -19,7 +19,6 @@ const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
 
 connection_manager::connection_manager(dragent_configuration* configuration,
 				       protocol_queue* queue,
-				       synchronized_policy_events *policy_events,
 				       sinsp_worker* sinsp_worker,
 				       capture_job_handler *capture_job_handler) :
 	m_socket(NULL),
@@ -28,7 +27,6 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 	m_buffer_used(0),
 	m_configuration(configuration),
 	m_queue(queue),
-	m_policy_events(policy_events),
 	m_sinsp_worker(sinsp_worker),
 	m_capture_job_handler(capture_job_handler),
 	m_last_loop_ns(0),
@@ -248,9 +246,6 @@ void connection_manager::run()
 					item = NULL;
 				}
 			}
-
-			// Also try to fetch policy events messages.
-			send_policy_events_messages(m_last_loop_ns);
 		}
 	}
 
@@ -548,32 +543,34 @@ void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)
 	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
 		make_shared<capture_job_handler::dump_job_request>();
 
+	job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = request.token();
 
 	if(request.has_filters())
 	{
-		job_request->m_filter = request.filters();
+		job_request->m_start_details->m_filter = request.filters();
 	}
 
 	if(request.has_duration_ns())
 	{
-		job_request->m_duration_ns = request.duration_ns();
+		job_request->m_start_details->m_duration_ns = request.duration_ns();
 	}
 
 	if(request.has_max_size())
 	{
-		job_request->m_max_size = request.max_size();
+		job_request->m_start_details->m_max_size = request.max_size();
 	}
 
 	if(request.has_past_duration_ns())
 	{
-		job_request->m_past_duration_ns = request.past_duration_ns();
+		job_request->m_start_details->m_past_duration_ns = request.past_duration_ns();
 	}
 
 	if(request.has_past_size())
 	{
-		job_request->m_past_size = request.past_size();
+		job_request->m_start_details->m_past_size = request.past_size();
 	}
 
 	// Note: sending request via sinsp_worker so it can add on
@@ -773,6 +770,12 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 {
 	draiosproto::orchestrator_events evts;
 
+	if(!m_configuration->m_security_enabled)
+	{
+		g_log->debug("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
+		return;
+	}
+
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &evts))
 	{
 		g_log->error("Could not parse orchestrator_events message");
@@ -781,39 +784,3 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 
 	m_sinsp_worker->receive_hosts_metadata(evts);
 }
-
-void connection_manager::send_policy_events_messages(uint64_t ts_ns)
-{
-	draiosproto::policy_events events;
-
-	if(m_policy_events->get(events))
-	{
-		uint64_t first_event_ts = 0;
-
-		if(events.events_size() > 0)
-		{
-			first_event_ts = events.events(0).timestamp_ns();
-		}
-
-		std::shared_ptr<protocol_queue_item> item = dragent_protocol::message_to_buffer(
-			first_event_ts,
-			draiosproto::message_type::POLICY_EVENTS,
-			events,
-			m_configuration->m_compression_enabled);
-
-		if(!item)
-		{
-			g_log->error("NULL converting message to item");
-			return;
-		}
-
-		g_log->information("sec_evts len=" + NumberFormatter::format(item->buffer.size())
-				   + ", ne=" + NumberFormatter::format(events.events_size()));
-
-		if(!transmit_buffer(ts_ns, item))
-		{
-			g_log->error("Could not send policy_events message");
-		}
-	}
-}
-

@@ -179,6 +179,11 @@ public:
 	void set_swarm_enabled(bool enabled);
 	uint64_t get_security_baseline_report_interval_ns() const;
 	void set_security_baseline_report_interval_ns(uint64_t report_interval);
+
+	const pair<long, unsigned>& get_tracepoint_hits_threshold() const;
+	void set_tracepoint_hits_threshold(long, unsigned);
+	const pair<double, unsigned>& get_cpu_max_sr_threshold() const;
+	void set_cpu_max_sr_threshold(double, unsigned);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -271,6 +276,9 @@ private:
 	bool m_swarm_enabled;
 
 	uint64_t m_security_baseline_report_interval_ns;
+
+	pair<long, unsigned> m_tracepoint_hits_threshold;
+	pair<double, unsigned> m_cpu_max_sr_threshold;
 };
 
 #endif // HAS_ANALYZER

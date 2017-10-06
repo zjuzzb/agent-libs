@@ -29,29 +29,25 @@ class capture_job_handler : public Runnable
 {
 	friend class capture_job;
 public:
-	class dump_job_request
+
+	class start_job_details
 	{
 	public:
-		enum request_type {
-			JOB_START,
-			JOB_STOP
-		};
-
-		dump_job_request():
+		start_job_details():
 			m_duration_ns(0),
 			m_max_size(0),
 			m_past_duration_ns(0),
 			m_past_size(0),
 			m_notification_pid(0),
+			m_defer_send(false),
 			m_start_ns(0),
+			m_send_initial_keepalive(false),
 			m_delete_file_when_done(true),
 			m_send_file(true),
 			m_dumper(NULL)
 		{
 		}
 
-		request_type m_request_type;
-		string m_token;
 		uint64_t m_duration_ns;
 		uint64_t m_max_size;
 		uint64_t m_past_duration_ns;
@@ -59,14 +55,59 @@ public:
 		std::string m_notification_desc;
 		uint64_t m_notification_pid;
 
+		// If true, none of the capture file will be sent
+		// until a later JOB_SEND_START message is
+		// received.
+		bool m_defer_send;
+
 		// Start the capture as close as possible to this
 		// time. If 0 will use current time.
 		uint64_t m_start_ns;
+
+		// If true, send a keepalive message immediately.
+		bool m_send_initial_keepalive;
 
 		string m_filter;
 		bool m_delete_file_when_done;
 		bool m_send_file;
 		sinsp_dumper *m_dumper;
+	};
+
+	class dump_job_request
+	{
+	public:
+		enum request_type {
+			JOB_START,
+			JOB_STOP,
+			JOB_SEND_START
+		};
+
+		static string request_type_str(request_type &type)
+		{
+			switch(type)
+			{
+			case JOB_START :
+				return string("start");
+				break;
+			case JOB_STOP :
+				return string("stop");
+				break;
+			case JOB_SEND_START :
+				return string("send_start");
+				break;
+			default:
+				return string("unknown");
+				break;
+			}
+		}
+
+		dump_job_request() {};
+
+		string m_token;
+		request_type m_request_type;
+
+		// Only valid when type == JOB_START
+		unique_ptr<start_job_details> m_start_details;
 	};
 
 	capture_job_handler(dragent_configuration *configuration,
@@ -139,7 +180,8 @@ private:
 	static const string m_name;
 
 	void process_job_requests();
-	void start_job(const dump_job_request& request);
+	void start_job(string &token,
+		       const start_job_details& request);
 
 	void add_job(std::shared_ptr<capture_job> &job);
 

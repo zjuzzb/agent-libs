@@ -6,11 +6,9 @@
 #include "logger.h"
 
 sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
-				       protocol_queue* queue,
-				       synchronized_policy_events *policy_events) :
+				       protocol_queue* queue) :
 	m_configuration(configuration),
 	m_queue(queue),
-	m_policy_events(policy_events),
 	m_last_loop_ns(0)
 {
 }
@@ -59,9 +57,24 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 		g_log->information(string("Security Events:") + events->DebugString());
 	}
 
-	if(!m_policy_events->put(*events))
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::POLICY_EVENTS,
+		*events,
+		m_configuration->m_compression_enabled);
+
+	if(!buffer)
 	{
-		g_log->information("Policy events buffer full, discarding");
+		g_log->error("NULL converting message to buffer");
+		return;
+	}
+
+	g_log->information("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
+			   + ", ne=" + NumberFormatter::format(events->events_size()));
+
+	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	{
+		g_log->information("Queue full, discarding sample");
 	}
 }
 

@@ -13,7 +13,6 @@
 
 #include "capture_job_handler.h"
 #include "security_mgr.h"
-#include "security_messages.h"
 
 class captureinfo
 {
@@ -35,7 +34,6 @@ public:
 		     internal_metrics::sptr_t im,
 		     protocol_queue* queue,
 		     atomic<bool> *enable_autodrop,
-		     synchronized_policy_events *events,
 		     capture_job_handler *handler);
 	~sinsp_worker();
 
@@ -103,7 +101,6 @@ private:
 	void init();
 	void process_job_requests();
 	void check_autodrop(uint64_t ts_ns);
-	void init_falco();
 
 	void get_internal_metrics();
 

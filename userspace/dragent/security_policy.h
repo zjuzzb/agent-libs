@@ -16,7 +16,6 @@
 #include "coclient.h"
 
 #include <falco_engine.h>
-#include <falco_events.h>
 
 class security_mgr;
 
@@ -60,6 +59,17 @@ public:
 	void reset_metrics();
 
 protected:
+
+	// Return whether or not this policy has an action of the
+	// specified type
+	bool has_action(const draiosproto::action_type &atype);
+
+	// Return whether or not this event has an action result of
+	// the specified type. Return a pointer to that action result
+	// or NULL.
+	draiosproto::action_result *has_action_result(draiosproto::policy_event *evt,
+						      const draiosproto::action_type &atype);
+
 	// Keeps track of any policy events and their outstanding
 	// actions. When all actions are complete, the policy will
 	// send the policy event message.
@@ -157,7 +167,6 @@ public:
 			      const draiosproto::policy &policy,
 			      sinsp *inspector,
 			      shared_ptr<falco_engine> &falco_engine,
-			      shared_ptr<falco_events> &falco_events,
 			      std::shared_ptr<coclient> &coclient);
 
 	virtual ~falco_security_policy();
@@ -172,7 +181,6 @@ private:
 	std::string m_rule_filter;
 	std::set<std::string> m_tags;
 	shared_ptr<falco_engine> m_falco_engine;
-	shared_ptr<falco_events> m_falco_events;
 	sinsp_evt_formatter_cache m_formatters;
 	std::string m_fstr;
 

@@ -60,8 +60,6 @@ set(LIBYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/libyaml-0.1.4/target/lib/libyaml.a")
 set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${DRAIOS_BIN_PREFIX}/share")
 set(FALCO_COMPONENT agent)
-set(FALCO_ETC_DIR "${DRAIOS_BIN_PREFIX}/etc")
-set(FALCO_RULES_DEST_FILENAME "falco_rules.default.yaml")
 add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)

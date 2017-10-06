@@ -535,10 +535,17 @@ public:
 	string m_dump_dir;
 	string m_input_filename;
 	uint64_t m_evtcnt;
+
+	// parameters used by cpu usage tuning
 	uint32_t m_subsampling_ratio;
 	bool m_autodrop_enabled;
 	uint32_t m_drop_upper_threshold;
 	uint32_t m_drop_lower_threshold;
+	long m_tracepoint_hits_threshold;
+	unsigned m_tracepoint_hits_ntimes;
+	double m_cpu_usage_max_sr_threshold;
+	unsigned m_cpu_usage_max_sr_ntimes;
+
 	string m_host_custom_name;
 	string m_host_tags;
 	string m_host_custom_map;
@@ -667,6 +674,7 @@ public:
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
 	bool m_detect_stress_tools = false;
+	vector<string> m_stress_tools;
 
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
@@ -676,6 +684,8 @@ public:
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
+
+	unsigned m_snaplen;
 
 	bool java_present()
 	{

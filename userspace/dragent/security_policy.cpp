@@ -19,6 +19,7 @@ security_policy::security_policy(security_mgr *mgr,
 	  m_coclient(coclient)
 {
 	m_print.SetSingleLineMode(true);
+	m_metrics.reset();
 }
 
 security_policy::~security_policy()
@@ -46,6 +47,35 @@ void security_policy::reset_metrics()
 {
 	m_metrics.reset();
 }
+
+bool security_policy::has_action(const draiosproto::action_type &atype)
+{
+	for(auto &action : m_policy.actions())
+	{
+		if(action.type() == atype)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+draiosproto::action_result *security_policy::has_action_result(draiosproto::policy_event *evt,
+							       const draiosproto::action_type &atype)
+{
+	for(int i=0; i<evt->action_results_size(); i++)
+	{
+		draiosproto::action_result *aresult = evt->mutable_action_results(i);
+		if(aresult->type() == atype)
+		{
+			return aresult;
+		}
+	}
+
+	return NULL;
+}
+
 
 bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event *event)
 {
@@ -96,7 +126,6 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 
 		switch(action.type())
 		{
-			// XXX/mstemm, technically, I need to start this only after the truly asynch actions have completed, to ensure the policy event message is sent before any sinsp capture chunk messages.
 		case draiosproto::ACTION_CAPTURE:
 
 			result->set_token(Poco::UUIDGenerator().createRandom().toString());
@@ -158,7 +187,39 @@ void security_policy::check_outstanding_actions(uint64_t ts_ns)
 	{
 		if(i->m_num_remaining_actions == 0)
 		{
-			m_mgr->accept_policy_event(ts_ns, i->m_event, i->m_send_now);
+			bool accepted = m_mgr->accept_policy_event(ts_ns, i->m_event, i->m_send_now);
+
+			const draiosproto::action_result *aresult;
+
+			if((aresult = has_action_result(i->m_event.get(), draiosproto::ACTION_CAPTURE)) &&
+			   aresult->successful())
+			{
+				string token = aresult->token();
+
+				if(token.empty())
+				{
+					g_log->error("Could not find capture token for policy event that had capture action?");
+				}
+				else
+				{
+					if(accepted)
+					{
+						// If one of the actions was a capture, when
+						// we scheduled the capture we deferred
+						// actually sending the capture data. Start
+						// sending the data now.
+						m_mgr->start_sending_capture(token);
+					}
+					else
+					{
+						// The policy event was throttled, so we
+						// should stop the capture without sending
+						// anything.
+						m_mgr->stop_capture(token);
+					}
+				}
+			}
+
 			m_outstanding_actions.erase(i++);
 		}
 		else
@@ -189,14 +250,12 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 					     const draiosproto::policy &policy,
 					     sinsp *inspector,
 					     shared_ptr<falco_engine> &falco_engine,
-					     shared_ptr<falco_events> &falco_events,
 					     shared_ptr<coclient> &coclient)
 	: security_policy(mgr,
 			  configuration,
 			  policy,
 			  coclient),
 	  m_falco_engine(falco_engine),
-	  m_falco_events(falco_events),
 	  m_formatters(inspector)
 {
 
@@ -264,11 +323,6 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 			string output;
 
 			g_log->debug("Event matched falco policy: rule=" + res->rule);
-
-			if(m_falco_events && m_configuration->m_security_send_monitor_events)
-			{
-				m_falco_events->generate_user_event(res);
-			}
 
 			event->set_timestamp_ns(evt->get_ts());
 			event->set_policy_id(m_policy.id());

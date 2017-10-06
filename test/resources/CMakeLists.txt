@@ -44,13 +44,6 @@ file(COPY fake_backend.cert
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-file(COPY falco/falco_rules.default.yaml
-  falco/falco_rules.yaml
-  falco/match-system-rules.scap
-  falco/match-user-rules.scap
-  falco/match-nothing.scap
-  DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/falco)
-
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test
 	COMPONENT tests)

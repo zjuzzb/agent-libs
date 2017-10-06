@@ -17,7 +17,6 @@
 #include <sinsp_worker.h>
 #include <configuration.h>
 #include <protocol.h>
-#include <security_messages.h>
 
 using namespace std;
 
@@ -42,6 +41,82 @@ public:
 	}
 };
 
+// Performs a role similar to sinsp_worker, but much simpler. Only
+// contains the inspector loop and capture job management.
+class test_sinsp_worker : public Runnable
+{
+public:
+	test_sinsp_worker(protocol_queue *queue,
+			  capture_job_handler *capture_job_handler)
+		: m_ready(false),
+		  m_queue(queue),
+		  m_capture_job_handler(capture_job_handler)
+	{
+		m_inspector = make_unique<sinsp>();
+
+		m_inspector->set_debug_mode(true);
+		m_inspector->set_internal_events_mode(true);
+		m_inspector->set_hostname_and_port_resolution_mode(false);
+
+		m_inspector->open("");
+	}
+
+	~test_sinsp_worker()
+	{
+		m_inspector->set_log_callback(0);
+	}
+
+	const sinsp* get_inspector() const
+	{
+		return m_inspector.get();
+	}
+
+	void run()
+	{
+		g_log->information("test_sinsp_worker: Starting");
+
+		while(!dragent_configuration::m_terminate)
+		{
+			int32_t res;
+			sinsp_evt* ev;
+
+			res = m_inspector->next(&ev);
+
+			if(res == SCAP_TIMEOUT)
+			{
+				continue;
+			}
+			else if(res == SCAP_EOF)
+			{
+				break;
+			}
+			else if(res != SCAP_SUCCESS)
+			{
+				cerr << "res = " << res << endl;
+				throw sinsp_exception(m_inspector->getlasterr().c_str());
+			}
+
+			m_capture_job_handler->process_event(ev);
+			if(!m_ready)
+			{
+				g_log->information("test_sinsp_worker: ready");
+				m_ready = true;
+			}
+		}
+
+		scap_stats st;
+		m_inspector->get_capture_stats(&st);
+
+		g_log->information("sinsp_worker: Terminating. events=" + to_string(st.n_evts) + " dropped=" + to_string(st.n_drops + st.n_drops_buffer));
+	}
+
+	atomic<bool> m_ready;
+private:
+	protocol_queue *m_queue;
+	capture_job_handler *m_capture_job_handler;
+	unique_ptr<sinsp> m_inspector;
+};
+
 
 class memdump_test : public testing::Test
 {
@@ -53,7 +128,6 @@ protected:
 		// reading of responses, we need a bigger than normal
 		// queue length.
 		m_queue = new protocol_queue(1000);
-		m_policy_events = new synchronized_policy_events(10);
 
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
@@ -84,16 +158,19 @@ protected:
 		}
 
 		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);
-		m_internal_metrics = make_shared<internal_metrics>();
-		m_sinsp_worker = new sinsp_worker(&m_configuration, m_internal_metrics, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
-		m_sinsp_worker->init();
+		m_sinsp_worker = new test_sinsp_worker(m_queue, m_capture_job_handler);
 		m_capture_job_handler->init(m_sinsp_worker->get_inspector());
 
 		Poco::ErrorHandler::set(&m_error_handler);
 
 		ThreadPool::defaultPool().start(*m_capture_job_handler, "capture_job_handler");
-		ThreadPool::defaultPool().start(*m_sinsp_worker, "sinsp_worker");
+		ThreadPool::defaultPool().start(*m_sinsp_worker, "test_sinsp_worker");
 
+		// Wait for the test_sinsp_worker to be ready.
+		while(!m_sinsp_worker->m_ready)
+		{
+			Poco::Thread::sleep(100);
+		}
 	}
 
 	virtual void SetUp()
@@ -112,7 +189,6 @@ protected:
 		delete m_sinsp_worker;
 		delete m_capture_job_handler;
 		delete m_queue;
-		delete m_policy_events;
 
 		// Remove any existing trace files. This shouldn't
 		// strictly be necessary but just making sure.
@@ -137,34 +213,6 @@ protected:
 		return token.substr(idx+1);
 	}
 
-	// Wait for the next message of the provided type
-	void queue_fetch(uint8_t messagetype, std::shared_ptr<protocol_queue_item> &item)
-	{
-		// The capture_job_handler may send a variety of messages
-		// (e.g. metrics, dump responses, etc). so try up to
-		// 50 times to get a message of the type we want.
-		for(uint32_t attempts = 0; attempts < 50; attempts++)
-		{
-			// Wait 500ms so this takes at most 50 * 500ms = 25s
-			if (!m_queue->get(&item, 500)) {
-				continue;
-			}
-
-			dragent_protocol_header *hdr = (dragent_protocol_header*) item->buffer.data();
-
-			g_log->debug("Got message type=" + to_string(hdr->messagetype));
-
-			if(hdr->messagetype != messagetype)
-			{
-				continue;
-			}
-
-			return;
-		}
-
-		FAIL() << "Did not receive message with type " << to_string(messagetype) << " after 50 attempts";
-	}
-
 	// Parse a generic queue item into a dump response object.
 	void parse_dump_response(std::shared_ptr<protocol_queue_item> item, draiosproto::dump_response &response)
 	{
@@ -182,31 +230,32 @@ protected:
 	// Read messages until all the all the dumps in the set tags
 	// are complete. Fill in responses with the response message
 	// for each tag.
-	void wait_dump_complete(const set<string> &tags, map<string,
-				draiosproto::dump_response> &responses)
+	void wait_dump_complete(const set<string> &tags)
 	{
 		g_log->debug("Waiting for all dump files to be sent...");
 
 		set<string> remaining = tags;
 
-		// We'll try up to 5000 messages (at 10k chunk size,
-		// 50M) before giving up.
-		for(uint32_t attempts = 0; attempts < 5000; attempts++)
+		// We'll attempt to read capture contents for up to 60 seconds.
+		for(time_t now = time(NULL); time(NULL) < now + 60;)
 		{
 			std::shared_ptr<protocol_queue_item> buf;
 			draiosproto::dump_response response;
-			ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::DUMP_RESPONSE, buf));
+			if(!m_queue->get(&buf, 100))
+			{
+				continue;
+			}
 
 			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
 
 			// We stop if error is non-empty or if
 			// final_chunk is set to true
-			if(response.error().size() != 0 ||
-			   response.final_chunk()) {
+			ASSERT_STREQ(response.error().c_str(), "");
+
+			if(response.final_chunk()) {
 				string tag = extract_tag(response.token());
 
 				remaining.erase(tag);
-				responses.insert(pair<string,draiosproto::dump_response>(tag,response));
 				if (remaining.size() == 0)
 				{
 					return;
@@ -214,22 +263,29 @@ protected:
 			}
 		}
 
-		FAIL() << "Did not receive dump_responses containg all tags after 1000 attempts";
+		FAIL() << "All captures did not complete within 60 seconds";
 	}
 
 	std::shared_ptr<capture_job_handler::dump_job_request> generate_dump_request(const string &tag,
-									       uint32_t before_ms, uint32_t after_ms,
-									       uint32_t max_size=0)
+										     bool filter_events,
+										     bool defer_send,
+										     uint32_t before_ms, uint32_t after_ms)
 	{
 		std::shared_ptr<capture_job_handler::dump_job_request> req = std::make_shared<capture_job_handler::dump_job_request>();
+		req->m_start_details = make_unique<capture_job_handler::start_job_details>();
 		req->m_request_type = capture_job_handler::dump_job_request::JOB_START;
-		req->m_delete_file_when_done = false;
-		req->m_send_file = true;
+		req->m_start_details->m_delete_file_when_done = false;
+		req->m_start_details->m_send_file = true;
 		// Only measure our own process to get semi-consistent trace sizes
-		req->m_filter = "proc.name=tests";
-		req->m_duration_ns = after_ms * 1000000LL;
-		req->m_past_duration_ns = before_ms * 1000000LL;
-		req->m_max_size = max_size;
+		if(filter_events)
+		{
+			req->m_start_details->m_filter = "proc.name=tests";
+		}
+		req->m_start_details->m_send_initial_keepalive = true;
+		req->m_start_details->m_defer_send = defer_send;
+		req->m_start_details->m_duration_ns = after_ms * 1000000LL;
+		req->m_start_details->m_past_duration_ns = before_ms * 1000000LL;
+		req->m_start_details->m_max_size = 0;
 		req->m_token = make_token(tag);
 
 		return req;
@@ -237,28 +293,43 @@ protected:
 
 	void send_dump_request(const string &tag,
 			       uint32_t before_ms, uint32_t after_ms,
-			       bool wait_for_response=true,
-			       uint32_t max_size=0)
+			       bool filter_events,
+			       bool defer_send,
+			       bool wait_for_start)
 	{
 		std::shared_ptr<protocol_queue_item> buf;
 		string errstr;
 		draiosproto::dump_response response;
 
-		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(tag, before_ms, after_ms, max_size);
+		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(tag, filter_events, defer_send,
+												   before_ms, after_ms);
 
 		g_log->debug("Queuing job request tag=" + tag);
 		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 
-		if(wait_for_response)
+		// Wait for the initial (keepalive) response to arrive
+		// from the queue. That way we know the capture has
+		// started.
+		if(wait_for_start)
 		{
-			// Wait for the response to the dump
-			// request. This typically has no data and
-			// should not be a final response.
-			ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::DUMP_RESPONSE, buf));
+			ASSERT_EQ(m_queue->get(&buf, 5000), true);
 			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
-			ASSERT_STREQ(response.error().c_str(), "");
-			ASSERT_FALSE(response.final_chunk());
+			ASSERT_EQ(response.keep_alive(), true);
 		}
+	}
+
+	void send_dump_start(const string &tag)
+	{
+		string errstr;
+
+		std::shared_ptr<capture_job_handler::dump_job_request> req = std::make_shared<capture_job_handler::dump_job_request>();
+
+		req->m_request_type = capture_job_handler::dump_job_request::JOB_SEND_START;
+		req->m_token = make_token(tag);
+
+		g_log->debug("Queuing job request send_start tag=" + tag);
+
+		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 	}
 
 	// Open a filename with a known fixed pattern + unique
@@ -278,8 +349,6 @@ protected:
 	}
 
         // Create a thread that does the following:
-        //  - Wait for a metrics message. This will let us know
-        //    that the sinsp_worker is running.
         //  - open a file with a known filename for reading
         //  - Request an event dump from the capture_job_handler, looking
         //    for file open events. If before == true, the past duration
@@ -287,47 +356,23 @@ protected:
         //  - wait for a keep-alive message for the dump we started
         //  - open a different file with a known filename for reading
         //  - wait for the dump to complete
-	void perform_single_dump(bool dump_before, bool limit_size)
+	void perform_single_dump(bool dump_before, bool filter_events)
 	{
-		std::shared_ptr<protocol_queue_item> buf;
-		draiosproto::dump_response response;
-
-		ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::METRICS, buf));
-
 		open_test_file("before");
 
 		// When limiting by size, we don't limit by time.
 		ASSERT_NO_FATAL_FAILURE({
 				send_dump_request("single",
 						  (dump_before ? 1000 : 0),
-						  (limit_size ? 10000 : 3000),
-						  true,
-						  (limit_size ? 1 : 0));
+						  3000,
+						  filter_events,
+						  false,
+						  true);
 					});
-
-		if(limit_size) {
-			// Wait for the first chunk of real
-			// data. This, combined with the 1
-			// byte size limit above, ensures that
-			// any actions we perform *after* this
-			// time will not be included in the
-			// sysdig capture.
-			ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::DUMP_RESPONSE, buf));
-			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
-			ASSERT_STREQ(response.error().c_str(), "");
-		}
 
 		open_test_file("after");
 
-		if (!response.final_chunk()) {
-			map<string, draiosproto::dump_response> responses;
-
-			wait_dump_complete(set<string>{string("single")}, responses);
-			response = responses[string("single")];
-		}
-
-		ASSERT_STREQ(response.error().c_str(), "");
-		ASSERT_TRUE(response.final_chunk());
+		wait_dump_complete(set<string>{string("single")});
 	}
 
 	// Interleave a stream of file opens and dump requests. The
@@ -337,10 +382,6 @@ protected:
 	void perform_overlapping_dumps(uint32_t total)
 	{
 		std::shared_ptr<protocol_queue_item> buf;
-		map<string,draiosproto::dump_response> responses;
-
-		ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::METRICS, buf));
-
 		set<string> active_dumps;
 
 		for(uint32_t i=0; i < total; i++)
@@ -352,7 +393,7 @@ protected:
 				// and following file open.
 
 				ASSERT_NO_FATAL_FAILURE({
-						send_dump_request(to_string(i), 1500, 1500, false);
+						send_dump_request(to_string(i), 1500, 1500, false, false, false);
 					});
 				active_dumps.insert(to_string(i));
 
@@ -363,13 +404,7 @@ protected:
 			Poco::Thread::sleep(1000);
 		}
 
-		wait_dump_complete(active_dumps, responses);
-
-		for(auto &pair : responses)
-		{
-			ASSERT_STREQ(pair.second.error().c_str(), "");
-			ASSERT_TRUE(pair.second.final_chunk());
-		}
+		wait_dump_complete(active_dumps);
 	}
 
 	// Request 11 dumps back to back. We expect the first 10 to
@@ -380,12 +415,11 @@ protected:
 		string errstr;
 		std::shared_ptr<protocol_queue_item> buf;
 
-		ASSERT_NO_FATAL_FAILURE(queue_fetch(draiosproto::METRICS, buf));
-
 		for(uint32_t i=0; i < 10; i++)
 		{
 			g_log->debug("Queuing request for capture " + to_string(i));
-			std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), 500, 30000, false);
+			std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), true, false,
+													   500, 30000);
 			ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 		}
 
@@ -396,7 +430,8 @@ protected:
 		sleep(5);
 
 		g_log->debug("Starting capture over limit (should fail)");
-		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(10), 3000, 30000, false);
+		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(10), true, false,
+												   3000, 30000);
 		ASSERT_FALSE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 
 		ASSERT_STREQ(errstr.c_str(), "maximum number of outstanding captures (10) reached");
@@ -483,14 +518,11 @@ protected:
 	}
 
 	sinsp *m_inspector;
-	sinsp_analyzer *m_analyzer;
-	internal_metrics::sptr_t m_internal_metrics;
-	sinsp_worker *m_sinsp_worker;
+	test_sinsp_worker *m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration m_configuration;
 	protocol_queue *m_queue;
 	atomic<bool> m_enable_autodrop;
-	synchronized_policy_events *m_policy_events;
 	memdump_error_handler m_error_handler;
 
 	string test_filename_pat = "/tmp/memdump_agent_test";
@@ -507,33 +539,33 @@ protected:
 };
 
 
-TEST_F(memdump_test, standard_dump)
+TEST_F(memdump_test, DISABLED_standard_dump)
 {
 	// Set the dump chunk size to something very small so
 	// we get frequent dump_response messages.
 	m_capture_job_handler->set_dump_chunk_size(10240);
 
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, false));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, true));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for the after file, but not the before file.
 	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{string("after")}));
 }
 
-TEST_F(memdump_test, DISABLED_back_in_time_dump)
+TEST_F(memdump_test, back_in_time_dump)
 {
 	// Set the dump chunk size to something very small so
 	// we get frequent dump_response messages.
 	m_capture_job_handler->set_dump_chunk_size(10240);
 
-	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, false));
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, true));
 
 	// At this point, /tmp/agent-dump-events.scap should exist and
 	// contain an open event for both the before and after files
 	ASSERT_NO_FATAL_FAILURE(read_trace("single",set<string>{string("before"), string("after")}));
 }
 
-TEST_F(memdump_test, DISABLED_overlapping_dumps)
+TEST_F(memdump_test, overlapping_dumps)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_overlapping_dumps(10));
 
@@ -547,12 +579,12 @@ TEST_F(memdump_test, DISABLED_overlapping_dumps)
 	}
 }
 
-TEST_F(memdump_test, DISABLED_max_outstanding_dumps)
+TEST_F(memdump_test, max_outstanding_dumps)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps());
 }
 
-TEST_F(memdump_no_dragent_events_test, DISABLED_verify_no_dragent_events)
+TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 {
 	ASSERT_NO_FATAL_FAILURE(perform_single_dump(true, false));
 
@@ -609,4 +641,32 @@ TEST_F(memdump_no_dragent_events_test, DISABLED_verify_no_dragent_events)
 		}
 	}
 	delete(formatter);
+}
+
+TEST_F(memdump_test, delayed_capture_start)
+{
+	// We start a capture, wait 10 seconds, and then send a second
+	// message telling the capture to start sending. The
+	// connection manager should not receive any capture chunks
+	// before the time at which we tell it to start sending.
+	ASSERT_NO_FATAL_FAILURE({
+			send_dump_request("delayed", 1000, 3000,
+					  false,
+					  true,
+					  true);
+		});
+
+	// Poll waiting for the capture to finish.
+	sleep(10);
+
+	// Verify that the connection manager has not received any
+	// capture chunks.
+	std::shared_ptr<protocol_queue_item> buf;
+	ASSERT_EQ(m_queue->get(&buf, 1000), false);
+
+	// Tell the capture to start sending
+	send_dump_start("delayed");
+
+	// Verify that all of the capture was sent.
+	wait_dump_complete(set<string>{string("delayed")});
 }

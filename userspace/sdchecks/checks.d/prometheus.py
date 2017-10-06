@@ -43,50 +43,55 @@ class Prometheus(AgentCheck):
 
         metrics = self.get_prometheus_metrics(query_url, timeout, "prometheus")
         num = 0
-        for family in metrics:
-            parse_sum = None
-            parse_count = None
-            if max_metrics and num >= max_metrics:
-                break
-
-            for sample in family.samples:
+        try:
+            for family in metrics:
+                parse_sum = None
+                parse_count = None
                 if max_metrics and num >= max_metrics:
                     break
-                (name, tags, value) = sample
-                if tags and max_tags and len(tags) > max_tags:
-                    tags = {k: tags[k] for k in tags.keys()[:max_tags]}
-                tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
-
-                # First handle summary
-                if family.type == 'histogram' or family.type == 'summary':
-                    if name.endswith('_sum'):
-                        parse_sum = value
-                    elif name.endswith('_count'):
-                        parse_count = value
-                    else:
-                        if family.type == 'histogram':
-                            continue
-                        elif 'quantile' in tags:
-                            quantile = int(float(tags['quantile']) * 100)
-                            # logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
-                            self.gauge('%s.%dpercentile' % (name, quantile),
-                                       value,
-                                       tags)
+    
+                for sample in family.samples:
+                    if max_metrics and num >= max_metrics:
+                        break
+                    (name, tags, value) = sample
+                    if tags and max_tags and len(tags) > max_tags:
+                        tags = {k: tags[k] for k in tags.keys()[:max_tags]}
+                    tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
+    
+                    # First handle summary
+                    if family.type == 'histogram' or family.type == 'summary':
+                        if name.endswith('_sum'):
+                            parse_sum = value
+                        elif name.endswith('_count'):
+                            parse_count = value
+                        else:
+                            if family.type == 'histogram':
+                                continue
+                            elif 'quantile' in tags:
+                                quantile = int(float(tags['quantile']) * 100)
+                                # logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
+                                self.gauge('%s.%dpercentile' % (name, quantile),
+                                           value,
+                                           tags)
+                                num += 1
+    
+                        if parse_sum != None and parse_count > 0:
+                            logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
+                            self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
                             num += 1
-
-                    if parse_sum != None and parse_count > 0:
-                        logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
-                        self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
+                    elif family.type == 'counter':
+                        # logging.debug('prom: adding counter with name %s' %(name))
+                        self.rate(name, value, tags)
                         num += 1
-                elif family.type == 'counter':
-                    # logging.debug('prom: adding counter with name %s' %(name))
-                    self.rate(name, value, tags)
-                    num += 1
-                else:
-                    # Could be a gauge or untyped value, which we treat as a gauge for now
-                    # logging.debug('prom: adding gauge with name %s' %(name))
-                    self.gauge(name, value, tags)
-                    num += 1
+                    else:
+                        # Could be a gauge or untyped value, which we treat as a gauge for now
+                        # logging.debug('prom: adding gauge with name %s' %(name))
+                        self.gauge(name, value, tags)
+                        num += 1
+        # text_string_to_metric_families() generator can raise exceptions
+        # for parse values. Treat them all as failures and don't retry.
+        except Exception as ex:
+            raise AppCheckDontRetryException(ex)
 
     def get_prometheus_metrics(self, url, timeout, name):
         try:
@@ -111,5 +116,9 @@ class Prometheus(AgentCheck):
             self.service_check(name, AgentCheck.OK,
                 tags = ["url:{0}".format(url)])
 
-        metrics = text_string_to_metric_families(r.text)
+        try:
+            metrics = text_string_to_metric_families(r.text)
+        # Treat all parse errrors as failures and don't retry.
+        except Exception as ex:
+            raise AppCheckDontRetryException(ex)
         return metrics

@@ -42,11 +42,10 @@ dragent_app::dragent_app():
 	m_version_requested(false),
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
-	m_policy_events(MAX_QUEUED_POLICY_EVENTS),
 	m_internal_metrics(new internal_metrics()),
-	m_sinsp_worker(&m_configuration, m_internal_metrics, &m_queue, &m_enable_autodrop, &m_policy_events, &m_capture_job_handler),
+	m_sinsp_worker(&m_configuration, m_internal_metrics, &m_queue, &m_enable_autodrop, &m_capture_job_handler),
 	m_capture_job_handler(&m_configuration, &m_queue, &m_enable_autodrop),
-	m_connection_manager(&m_configuration, &m_queue, &m_policy_events, &m_sinsp_worker, &m_capture_job_handler),
+	m_connection_manager(&m_configuration, &m_queue, &m_sinsp_worker, &m_capture_job_handler),
 	m_log_reporter(&m_queue, &m_configuration),
 	m_subprocesses_logger(&m_configuration, &m_log_reporter),
 	m_last_dump_s(0)

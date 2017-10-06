@@ -239,6 +239,8 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 5*60; // 5 minutes
 #endif
 
+static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
+
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
 static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 #define MESOS_RETRY_ON_ERRORS_TIMEOUT_NS (10 * ONE_SECOND_IN_NS)
@@ -249,3 +251,7 @@ static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 
 #define MIN_NODRIVER_SWITCH_TIME (3 * 60 * ONE_SECOND_IN_NS)
 #define ORCHESTRATOR_EVENTS_POLL_INTERVAL (ONE_SECOND_IN_NS / 500)
+
+static const long N_TRACEPOINT_HITS_THRESHOLD = 1000000;
+static const double CPU_MAX_SR_THRESHOLD = 20.0;
+static const unsigned SWITCHER_NSECONDS = 5;

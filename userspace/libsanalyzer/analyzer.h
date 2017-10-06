@@ -52,8 +52,6 @@ class k8s_delegator;
 class mesos;
 class docker;
 class uri;
-class falco_engine;
-class falco_events;
 class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
@@ -183,7 +181,7 @@ class stress_tool_matcher
 public:
 	stress_tool_matcher()
 	{
-		m_comm_list.push_back("dd");
+		//m_comm_list.push_back("dd");
 		//
 		// XXX Populate this with the list of stress tools to match
 		//
@@ -202,8 +200,9 @@ public:
 		return false;
 	}
 
+	static void set_comm_list(const vector<string>& comms);
 private:
-	vector<string> m_comm_list;
+	static vector<string> m_comm_list;
 };
 
 //
@@ -442,14 +441,6 @@ public:
 		m_simpledriver_enabled = true;
 	}
 
-	void enable_falco(const string &default_rules_filename,
-			  const string &auto_rules_filename,
-			  const string &rules_filename,
-			  std::set<std::string> &disabled_rule_patterns,
-			  double sampling_multiplier);
-
-	void disable_falco();
-
 	void set_emit_tracers(bool enabled);
 	void set_internal_metrics(internal_metrics::sptr_t im);
 
@@ -462,11 +453,11 @@ public:
 	{
 		m_use_new_k8s = v;
 	}
-	
-  bool recent_sinsp_events_dropped()
- 	{
- 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
- 	}
+
+	bool recent_sinsp_events_dropped()
+	{
+		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
+	}
 
 	//
 	// Test tool detection state
@@ -546,7 +537,8 @@ VISIBILITY_PRIVATE
 			       const vector<app_check> &checks,
 				   vector<app_process> &app_checks_processes,
 			       const char *location);
-
+	vector<long> get_n_tracepoint_diff();
+	
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
@@ -682,6 +674,9 @@ VISIBILITY_PRIVATE
 	uint32_t m_sampling_ratio;
 	uint32_t m_new_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
+	vector<long> m_last_total_evts_by_cpu;
+	threshold_filter<long> m_total_evts_switcher;
+	threshold_filter<double> m_very_high_cpu_switcher;
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
 	double m_my_cpuload;
@@ -777,9 +772,6 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
-
-	unique_ptr<falco_engine> m_falco_engine;
-	unique_ptr<falco_events> m_falco_events;
 
 	metric_limits::sptr_t m_metric_limits;
 	mount_points_limits::sptr_t m_mount_points;

@@ -65,13 +65,14 @@ using namespace google::protobuf::io;
 #include <memory>
 #include <iostream>
 #include <numeric>
-#include "falco_engine.h"
-#include "falco_events.h"
 #include "proc_config.h"
 #include "tracer_emitter.h"
 #include "metric_limits.h"
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
+	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
+	m_total_evts_switcher("driver overhead"),
+	m_very_high_cpu_switcher("agent cpu usage with sr=128")
 {
 	m_initialized = false;
 	m_inspector = inspector;
@@ -127,8 +128,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector)
 	m_die = false;
 	m_run_chisels = false;
 
-	m_falco_engine = NULL;
-	m_falco_events = NULL;
 
 	inspector->m_max_n_proc_lookups = 5;
 	inspector->m_max_n_proc_socket_lookups = 3;
@@ -302,6 +301,14 @@ void sinsp_analyzer::on_capture_start()
 		ASSERT(false);
 		throw sinsp_exception("machine info missing, analyzer can't start");
 	}
+
+	auto cpu_max_sr_threshold = m_configuration->get_cpu_max_sr_threshold();
+	m_very_high_cpu_switcher.set_threshold(cpu_max_sr_threshold.first*m_machine_info->num_cpus);
+	m_very_high_cpu_switcher.set_ntimes_max(cpu_max_sr_threshold.second);
+
+	auto tracepoint_hits_threshold = m_configuration->get_tracepoint_hits_threshold();
+	m_total_evts_switcher.set_threshold(tracepoint_hits_threshold.first);
+	m_total_evts_switcher.set_ntimes_max(tracepoint_hits_threshold.second);
 
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
 	m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
@@ -1698,7 +1705,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				for (auto it2 = it->second.begin(); it2 != it->second.end();)
 				{
 					auto flush_time_s = m_prev_flush_time_ns/ONE_SECOND_IN_NS;
-					if(flush_time_s >= it2->second.expiration_ts())
+					if(flush_time_s > it2->second.expiration_ts() + APP_METRICS_EXPIRATION_TIMEOUT_S)
 					{
 						g_logger.format(sinsp_logger::SEV_DEBUG, "Wiping expired app metrics for pid %d,%s", it->first, it2->first.c_str());
 						it2 = it->second.erase(it2);
@@ -2626,46 +2633,58 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 			if(m_app_proxy)
 			{
-				set<string> app_data_set;
 				// Send data for each app-check for the processes in procinfo
 				unsigned sent_app_checks_metrics = 0;
 				unsigned total_app_checks_metrics = 0;
 				unsigned sent_prometheus_metrics = 0;
 				unsigned total_prometheus_metrics = 0;
+				// Map of app_check data by app-check name and how long the
+				// metrics have been expired to ensure we serve the most recent
+				// metrics available 
+				map<string, map<int, const app_check_data *>> app_data_to_send;
 				for(auto pid: procinfo->m_program_pids)
 				{
 					auto datamap_it = m_app_metrics.find(pid);
 					if (datamap_it == m_app_metrics.end())
 						continue;
-					for (auto app_data : datamap_it->second)
+					for (const auto& app_data : datamap_it->second)
 					{
-						if (app_data_set.find(app_data.first) != app_data_set.end())
+						int age = (m_prev_flush_time_ns/ONE_SECOND_IN_NS) -
+									app_data.second.expiration_ts();
+						app_data_to_send[app_data.first][age] = &(app_data.second);
+					}
+				}
+
+				for (auto app_age_map : app_data_to_send)
+				{
+					bool sent = false;
+					for (auto app_data : app_age_map.second)
+					{
+						if (sent)
 						{
 							g_logger.format(sinsp_logger::SEV_DEBUG,
 								"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
-									tinfo->m_pid, pid, app_data.first.c_str(),
-									app_data.second.expiration_ts() -
-									(m_prev_flush_time_ns/ONE_SECOND_IN_NS) );
+								tinfo->m_pid, app_data.second->pid(),
+								app_age_map.first.c_str(), -app_data.first);
 							continue;
 						}
-
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"Found app metrics for %d,%s, exp in %d", tinfo->m_pid,
-							app_data.first.c_str(), app_data.second.expiration_ts() -
-							(m_prev_flush_time_ns/ONE_SECOND_IN_NS));
-						if (app_data.second.type() == app_check_data::check_type::PROMETHEUS)
+							"Found app metrics for %d(%d),%s, exp in %d", tinfo->m_pid, app_data.second->pid(),
+							app_age_map.first.c_str(), -app_data.first);
+						sent = true;
+
+						if (app_data.second->type() == app_check_data::check_type::PROMETHEUS)
 						{
-							sent_prometheus_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_prometheus(),
+							sent_prometheus_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_prometheus(),
 								prom_metrics_limit, m_prom_conf.max_metrics());
-							total_prometheus_metrics += app_data.second.total_metrics();
+							total_prometheus_metrics += app_data.second->total_metrics();
 						}
 						else
 						{
-							sent_app_checks_metrics += app_data.second.to_protobuf(proc->mutable_protos()->mutable_app(),
+							sent_app_checks_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_app(),
 								app_checks_limit, m_configuration->get_app_checks_limit());
-							total_app_checks_metrics += app_data.second.total_metrics();
+							total_app_checks_metrics += app_data.second->total_metrics();
 						}
-						app_data_set.emplace(app_data.first);
 					}
 				}
 				proc->mutable_resource_counters()->set_app_checks_sent(sent_app_checks_metrics);
@@ -3217,6 +3236,34 @@ void sinsp_analyzer::emit_full_connections()
 	}
 }
 
+vector<long> sinsp_analyzer::get_n_tracepoint_diff()
+{
+	auto print_cpu_vec = [this](const vector<long>& v, stringstream& ss)
+	{
+		for(unsigned j = 0; j < m_machine_info->num_cpus; ++j)
+		{
+			ss << " cpu[" << j << "]=" << v[j];
+		}
+	};
+
+	auto n_evts_by_cpu = m_inspector->get_n_tracepoint_hit();
+	vector<long> evts_per_second_by_cpu(n_evts_by_cpu.size());
+	for(unsigned j=0; j < n_evts_by_cpu.size(); ++j)
+	{
+		evts_per_second_by_cpu[j] = n_evts_by_cpu[j] - m_last_total_evts_by_cpu[j];
+	}
+	m_last_total_evts_by_cpu = move(n_evts_by_cpu);
+
+	if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+	{
+		stringstream ss;
+		ss << "Raw events per cpu: ";
+		print_cpu_vec(evts_per_second_by_cpu, ss);
+		g_logger.log(ss.str(), sinsp_logger::SEV_DEBUG);
+	}
+	return evts_per_second_by_cpu;
+}
+
 void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metric)
 {
 	//g_logger.log("drop_upper_threshold =" + std::to_string(m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
@@ -3225,6 +3272,24 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 	if(flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		return;
+	}
+
+	if(m_inspector->is_live() && m_configuration->get_security_enabled() == false)
+	{
+		auto evts_per_second_by_cpu = get_n_tracepoint_diff();
+		auto max_evts_per_second = *max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
+		m_total_evts_switcher.run_on_threshold(max_evts_per_second, [this]()
+		{
+			m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
+		});
+
+		if(m_sampling_ratio >= 128)
+		{
+			m_very_high_cpu_switcher.run_on_threshold(threshold_metric, [this]()
+			{
+				m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
+			});
+		}
 	}
 
 	if(threshold_metric >= (double)m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus))
@@ -4659,22 +4724,6 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		//
 		ASSERT(false);
 		return;
-	}
-
-	if(m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
-	{
-		try {
-
-			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt);
-			if(res && m_falco_events)
-			{
-				m_falco_events->generate_user_event(res);
-			}
-		}
-		catch (falco_exception& e)
-		{
-			g_logger.log("Error processing event against falco engine: " + string(e.what()));
-		}
 	}
 
 	//
@@ -6463,22 +6512,12 @@ void sinsp_analyzer::stop_dropping_mode()
 {
 	m_inspector->stop_dropping_mode();
 	m_driver_stopped_dropping = false;
-
-	if(m_falco_engine)
-	{
-		m_falco_engine->set_sampling_ratio(1);
-	}
 }
 
 void sinsp_analyzer::start_dropping_mode(uint32_t sampling_ratio)
 {
 	m_new_sampling_ratio = sampling_ratio;
 	m_inspector->start_dropping_mode(sampling_ratio);
-
-	if(m_falco_engine)
-	{
-		m_falco_engine->set_sampling_ratio(sampling_ratio);
-	}
 }
 
 bool sinsp_analyzer::driver_stopped_dropping()
@@ -6513,55 +6552,6 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 	{
 		m_mounted_fs_proxy.reset();
 	}
-}
-
-void sinsp_analyzer::enable_falco(const string &default_rules_filename,
-				  const string &auto_rules_filename,
-				  const string &rules_filename,
-				  set<string> &disabled_rule_patterns,
-				  double sampling_multiplier)
-{
-	bool verbose = false;
-	bool all_events = true;
-
-	m_falco_engine = make_unique<falco_engine>();
-	m_falco_engine->set_inspector(m_inspector);
-	m_falco_engine->set_sampling_multiplier(sampling_multiplier);
-
-	// If the auto rules file exists, it is loaded instead of the
-	// default rules file
-	Poco::File auto_rules_file(auto_rules_filename);
-	if(auto_rules_file.exists())
-	{
-		m_falco_engine->load_rules_file(auto_rules_filename, verbose, all_events);
-	}
-	else
-	{
-		m_falco_engine->load_rules_file(default_rules_filename, verbose, all_events);
-	}
-
-	//
-	// Only load the user rules file if it exists
-	//
-	Poco::File user_rules_file(rules_filename);
-	if(user_rules_file.exists())
-	{
-		m_falco_engine->load_rules_file(rules_filename, verbose, all_events);
-	}
-
-	for (auto pattern : disabled_rule_patterns)
-	{
-		m_falco_engine->enable_rule(pattern, false);
-	}
-
-	m_falco_events = make_unique<falco_events>();
-	m_falco_events->init(m_inspector, m_configuration->get_machine_id());
-}
-
-void sinsp_analyzer::disable_falco()
-{
-	m_falco_engine = NULL;
-	m_falco_events = NULL;
 }
 
 void sinsp_analyzer::set_emit_tracers(bool enabled)
@@ -6620,4 +6610,10 @@ void analyzer_container_state::clear()
 	m_connections_by_serverport->clear();
 }
 
+vector<string> stress_tool_matcher::m_comm_list;
+
+void stress_tool_matcher::set_comm_list(const vector<string> &comms)
+{
+	m_comm_list = comms;
+}
 #endif // HAS_ANALYZER
