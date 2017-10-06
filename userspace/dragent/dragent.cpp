@@ -863,6 +863,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		kill(getpid(), SIGKILL);
 	}
 
+	uint64_t now = sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS;
 	for(auto& proc : m_subprocesses_state)
 	{
 		auto& state = proc.second;
@@ -876,7 +877,16 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 				g_log->critical("watchdog: " + proc.first + " using " + to_string(state.memory_used()) + " of memory, killing");
 				to_kill = true;
 			}
-			uint64_t diff = (sinsp_utils::get_current_time_ns()/ONE_SECOND_IN_NS) - state.last_loop_s();
+			uint64_t last_loop_s = state.last_loop_s();
+			uint64_t diff = 0;
+			if(now > last_loop_s)
+			{
+				diff = now - last_loop_s;
+			}
+			else if(last_loop_s > now)
+			{
+				g_log->debug("watchdog: " + proc.first + " last activity " + NumberFormatter::format(last_loop_s - now) + " s in the future!");
+			}
 			if(m_configuration.m_watchdog_subprocesses_timeout_s.find(proc.first) != m_configuration.m_watchdog_subprocesses_timeout_s.end() &&
 			   diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
 			{
