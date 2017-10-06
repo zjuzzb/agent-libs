@@ -46,9 +46,12 @@ const size_t kHighWater = 40000;
 
 class Centroid {
  public:
-  Centroid() : Centroid(0.0, 0.0) {}
+  Centroid() = delete;
 
-  Centroid(Value mean, Weight weight = 1) : mean_(mean), weight_(weight) {}
+  Centroid(Value mean, Weight weight = 1) : mean_(mean), weight_(weight)
+  {
+	CHECK_GT(weight_, 0);
+  }
 
   inline Value mean() const noexcept { return mean_; }
 
@@ -209,8 +212,8 @@ class TDigest {
   }
 
   TDigest(TDigest&& o)
-      : TDigest(std::move(o.processed_), std::move(o.unprocessed_),
-                o.compression_, o.maxUnprocessed_, o.maxProcessed_) {}
+    : TDigest(std::move(o.processed_), std::move(o.unprocessed_),
+              o.compression_, o.maxUnprocessed_, o.maxProcessed_) {}
 
   // member accessors and misc.
   Value compression() const { return compression_; }
@@ -332,7 +335,10 @@ class TDigest {
     }
   }
 
-  inline void compress() { process(); }
+  inline void compress()
+  {
+    processIfNecessary();
+  }
 
   // return the cdf on the t-digest
   Value cdf(Value x)
@@ -509,6 +515,16 @@ class TDigest {
     return w;
   }
 
+  static void validate(const std::vector<Centroid> &vec)
+  {
+    (void)(vec);
+#if !defined(NDEBUG) || defined(DEBUG)
+    for (auto &c: vec) {
+      CHECK_GT(c.weight(), 0);
+    }
+#endif
+  }
+
   TDigest(std::vector<Centroid>&& processed,
           std::vector<Centroid>&& unprocessed, Value compression,
           Index unmergedSize, Index mergedSize)
@@ -544,6 +560,8 @@ class TDigest {
 
     unprocessed_.reserve(total);
     for (auto& td : tdigests) {
+      validate(td->unprocessed_);
+
       unprocessed_.insert(unprocessed_.end(), td->unprocessed_.cbegin(), td->unprocessed_.cend());
       unprocessedWeight_ += td->unprocessedWeight_;
     }
@@ -586,6 +604,7 @@ class TDigest {
       min_ = std::min(min_, processed_.front().mean());
       max_ = std::max(max_, processed_.back().mean());
     }
+    validate(processed_);
   }
 
   inline void processIfNecessary() {
@@ -616,6 +635,9 @@ class TDigest {
     auto count = unprocessed_.size();
     unprocessed_.insert(unprocessed_.end(), processed_.cbegin(), processed_.cend());
     std::inplace_merge(unprocessed_.begin(), unprocessed_.begin() + count, unprocessed_.end(), cc);
+
+    CHECK_GT(unprocessed_.size(), 0);
+    validate(unprocessed_);
 
     processedWeight_ += unprocessedWeight_;
     unprocessedWeight_ = 0;
@@ -655,6 +677,7 @@ class TDigest {
         processed_.emplace_back(centroid);
       }
     }
+    validate(processed_);
     unprocessed_.clear(); unprocessed_.reserve(maxUnprocessed_ + 1);
     min_ = std::min(min_, processed_.front().mean());
     max_ = std::max(max_, processed_.back().mean());
