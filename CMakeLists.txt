@@ -59,6 +59,7 @@ set(LYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/lyaml-release-v6.0/target/lib/lua/5.1/
 set(LIBYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/libyaml-0.1.4/target/lib/libyaml.a")
 set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${DRAIOS_BIN_PREFIX}/share")
+set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent)
 add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
