@@ -337,7 +337,9 @@ class TDigest {
 
   inline void compress()
   {
-    processIfNecessary();
+    if (! unprocessed_.empty() || isDirty()) {
+      process();
+    }
   }
 
   // return the cdf on the t-digest
