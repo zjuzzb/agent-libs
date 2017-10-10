@@ -49,6 +49,7 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 	}
 
 	ret.Tags = GetTags(node.ObjectMeta, "kubernetes.node.")
+	ret.InternalTags = GetAnnotations(node.ObjectMeta, "kubernetes.node.")
 	addNodeMetrics(&ret.Metrics, node)
 	AddPodChildrenFromNodeName(&ret.Children, node.GetName())
 	return ret

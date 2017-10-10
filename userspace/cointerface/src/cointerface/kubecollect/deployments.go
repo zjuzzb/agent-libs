@@ -58,6 +58,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 	}
 
 	ret.Tags = GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
+	ret.InternalTags = GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
 	addDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())

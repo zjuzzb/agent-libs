@@ -586,6 +586,8 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		{
 			x->mutable_children()->Clear();
 		}
+		// Internal_tags are meant for use inside agent only
+		x->mutable_internal_tags()->clear();
 
 		// x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 		// // Put back legacy metrics
@@ -683,6 +685,8 @@ void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiospr
 			{
 				x->mutable_children()->Clear();
 			}
+			// Internal_tags are meant for use inside agent only
+			x->mutable_internal_tags()->clear();
 		}
 	}
 }

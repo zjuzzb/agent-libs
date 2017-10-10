@@ -31,6 +31,7 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 	}
 
 	ret.Tags = GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
+	ret.InternalTags = GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	addDaemonSetMetrics(&ret.Metrics, daemonSet)
 	AddNSParents(&ret.Parents, daemonSet.GetNamespace())
 	selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)

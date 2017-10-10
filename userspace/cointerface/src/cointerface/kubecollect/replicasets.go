@@ -70,6 +70,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 	}
 
 	ret.Tags = GetTags(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
+	ret.InternalTags = GetAnnotations(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
 	addReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
