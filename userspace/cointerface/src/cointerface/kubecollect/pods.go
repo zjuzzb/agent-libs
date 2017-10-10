@@ -88,27 +88,8 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		in = false
 	}
 
-	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
-		in = false
-	} else {
-		for k,v := range lhs.GetLabels() {
-			if rhs.GetLabels()[k] != v {
-				in = false
-				break
-			}
-		}
-	}
-
-	if in && len(lhs.GetAnnotations()) != len(rhs.GetAnnotations()) {
-		in = false
-	} else {
-		for k,v := range lhs.GetAnnotations() {
-			if rhs.GetAnnotations()[k] != v {
-				in = false
-				break
-			}
-		}
-	}
+	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if in && lhs.Status.HostIP != rhs.Status.HostIP {
 		in = false
