@@ -128,9 +128,17 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_cmdline_sync_ns = 0;
 	if(m_percentiles.size())
 	{
-		m_metrics.set_percentiles(m_percentiles);
-		m_transaction_metrics.set_percentiles(m_percentiles);
-		m_external_transaction_metrics.set_percentiles(m_percentiles);
+		// all the threads that belong to a process will share the
+		// same percentile store allocated for the main thread
+		auto main_thread = m_tinfo->get_main_thread();
+		auto mt_ainfo = (main_thread != nullptr) ? main_thread->m_ainfo : nullptr;
+		bool share_store = ((mt_ainfo != nullptr) && (this != mt_ainfo));
+		m_metrics.set_percentiles(m_percentiles,
+			share_store ? &(mt_ainfo->m_metrics) : nullptr);
+		m_transaction_metrics.set_percentiles(m_percentiles,
+			share_store ? &(mt_ainfo->m_transaction_metrics) : nullptr);
+		m_external_transaction_metrics.set_percentiles(m_percentiles,
+			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
 	}
 }
 

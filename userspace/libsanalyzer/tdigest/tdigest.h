@@ -237,6 +237,20 @@ class TDigest {
   long totalWeight() const { return static_cast<long>(processedWeight_ + unprocessedWeight_); }
 
   /**
+   * Clear the contents and reset members to initial state/values
+   */
+  void clear()
+  {
+    processed_.clear(); processed_.reserve(maxProcessed_);
+    unprocessed_.clear(); unprocessed_.reserve(maxUnprocessed_ + 1);
+    cumulative_.clear();
+
+    processedWeight_ = unprocessedWeight_ = 0.0;
+    min_ = std::numeric_limits<Value>::max();
+    max_ = std::numeric_limits<Value>::min();
+  }
+
+  /**
    * Add a sample to tdigest.
    *
    *  @param x	Sample value.

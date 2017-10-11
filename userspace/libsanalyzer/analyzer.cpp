@@ -1803,7 +1803,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-		{
+	{
 		sinsp_threadinfo* tinfo = &it->second;
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
@@ -1815,6 +1815,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			++process_count;
 		}
 
+		// xxx/nags : why not do this once for the main_thread?
 		if(!tinfo->m_container_id.empty())
 		{
 			container = &m_containers[tinfo->m_container_id];
@@ -2186,7 +2187,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
 		//
-		// ... And to the host ones
+		// ... Add to the host ones
 		//
 		m_host_transaction_counters.add(&procinfo->m_external_transaction_metrics);
 
