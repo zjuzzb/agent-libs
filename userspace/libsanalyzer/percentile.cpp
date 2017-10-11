@@ -98,12 +98,9 @@ std::vector<double> percentile::get_percentiles() const
 
 void percentile::reset()
 {
-	if(sample_count())
-	{
-		auto eps = m_eps;
-		std::vector<double> percentiles;
-		destroy(&percentiles);
-		init(percentiles, eps);
+	if (m_digest) {
+		m_digest->clear();
+		m_num_samples = 0;
 	}
 }
 
