@@ -1,5 +1,6 @@
 #include <gtest.h>
 #include "percentile.h"
+#include "draios.pb.h"
 
 extern "C"
 {
@@ -239,4 +240,42 @@ TEST(percentile, merge)
 	p_it = pmerge_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+}
+
+TEST(percentile, serialization)
+{
+	std::set<double> pctls = {25, 50, 75, 85, 95, 99};
+
+	auto test_serialization = [&pctls] (percentile &p1) {
+		auto p1_map = p1.percentiles();
+
+		draiosproto::counter_percentile_data data;
+		p1.serialize(&data);
+
+		percentile p2(pctls);
+		p2.deserialize(&data);
+		auto p2_map = p2.percentiles();
+
+		// compare the percentiles computed
+		EXPECT_EQ(p1_map.size(), p2_map.size());
+		auto it1 = p1_map.cbegin();
+		auto it2 = p2_map.cbegin();
+		for (; it1 != p1_map.cend(); ++it1, ++it2) {
+			EXPECT_EQ(it1->first, it2->first);
+			EXPECT_DOUBLE_EQ(it1->second, it2->second);
+		}
+	};
+
+	// test with few samples
+	percentile simple(pctls);
+	simple.copy(std::vector<int>({4,4,5,5,5,5,6,6,6,7,7,7,8,8,9,9,9,10,10,10}));
+	test_serialization(simple);
+
+	// test with lot of samples
+	percentile complex(pctls);
+	srandom(time(0));
+	for (int i=0; i < 100000; i++) {
+		complex.add(random());
+	}
+	test_serialization(complex);
 }

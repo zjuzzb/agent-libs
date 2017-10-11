@@ -1,5 +1,6 @@
 #include "percentile.h"
 #include "sinsp_int.h"
+#include "draios.pb.h"
 #include <cstring>
 #include <cmath>
 
@@ -130,6 +131,68 @@ void percentile::dump_samples()
 		}
 		for (auto &c : m_digest->unprocessed()) {
 			std::cout << "value=" << c.mean() << ", weight=" << c.weight() << std::endl;
+		}
+	}
+}
+
+void percentile::serialize(draiosproto::counter_percentile_data *pdata) const
+{
+	flush();
+	if (m_num_samples) {
+		auto &samples = m_digest->processed();
+		pdata->set_min(samples.front().mean());
+		pdata->set_max(samples.back().mean());
+		pdata->set_compression(m_digest->compression());
+		pdata->set_num_samples(samples.size());
+		double prev_mean = 0;
+		for (auto &s : samples) {
+			pdata->add_means(s.mean() - prev_mean);
+			pdata->add_weights(s.weight());
+			prev_mean = s.mean();
+		}
+	}
+}
+
+void percentile::deserialize(const draiosproto::counter_percentile_data *pdata)
+{
+	std::vector<double> percentiles;
+	destroy(&percentiles);
+	init(percentiles, 1.0/pdata->compression());
+	alloc_tdigest_if_needed();
+
+	// validate the counts
+	if ((int)(pdata->num_samples()) != pdata->means_size()) {
+		throw sinsp_exception("percentiles::deserialize: Invalid counts. #samples: "
+				+ std::to_string(pdata->num_samples()) + " #means: "
+				+ std::to_string(pdata->means_size()));
+	}
+	if (pdata->means_size() != pdata->weights_size()) {
+		throw sinsp_exception("percentiles::deserialize: Invalid counts. #means: "
+				+ std::to_string(pdata->means_size()) + " #weights: "
+				+ std::to_string(pdata->weights_size()));
+	}
+
+	// ingest the samples
+	double curr_mean = 0;
+	for (uint32_t ndx = 0; ndx < pdata->num_samples(); ++ndx) {
+		curr_mean += pdata->means(ndx);
+		m_digest->add(curr_mean, pdata->weights(ndx));
+		m_num_samples++;
+	}
+
+	// validate the min and max sample values
+	if (m_num_samples) {
+		flush();
+		auto &samples = m_digest->processed();
+		if (pdata->min() != samples.front().mean()) {
+			throw sinsp_exception("percentiles::deserialize: Mismatch. min: "
+					+ std::to_string(pdata->min()) + " sample: "
+					+ std::to_string(samples.front().mean()));
+		}
+		if (pdata->max() != samples.back().mean()) {
+			throw sinsp_exception("percentiles::deserialize: Mismatch. max: "
+					+ std::to_string(pdata->max()) + " sample: "
+					+ std::to_string(samples.back().mean()));
 		}
 	}
 }

@@ -151,9 +151,12 @@ public:
 		// percentiles
 		typedef draiosproto::counter_proto_entry CTB;
 		typedef draiosproto::counter_percentile CP;
+		typedef draiosproto::counter_percentile_data CPD;
 		if(m_percentile && m_percentile->sample_count())
 		{
-			m_percentile->to_protobuf<CTB, CP>(counters, &CTB::add_percentile);
+			m_percentile->to_protobuf<CTB, CP, CPD>(counters,
+			                                        &CTB::add_percentile,
+			                                        &CTB::mutable_percentile_data);
 		}
 	}
 
@@ -421,9 +424,12 @@ public:
 	{
 		typedef draiosproto::counter_proto_entry CTB;
 		typedef draiosproto::counter_percentile CP;
+		typedef draiosproto::counter_percentile_data CPD;
 		if(pct && pct->sample_count())
 		{
-			pct->to_protobuf<CTB, CP>(protoent, &CTB::add_percentile);
+			pct->to_protobuf<CTB, CP, CPD>(protoent,
+			                               &CTB::add_percentile,
+			                               &CTB::mutable_percentile_data);
 		}
 	}
 
