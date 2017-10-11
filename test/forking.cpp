@@ -311,7 +311,7 @@ TEST_F(sys_call_test, forking_process_expired)
 	EXPECT_TRUE(sleep_caught);
 }
 
-TEST_F(sys_call_test, forking_execve)
+TEST_F(sys_call_test, DISABLED_forking_execve)
 {
 	int callnum = 0;
 	int ptid;	// parent tid
