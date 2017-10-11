@@ -249,7 +249,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			m_state[key] = make_unique<draiosproto::container_group>();
 			m_state[key]->CopyFrom(evt->object());
 			connect(key);
-			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
+			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
 		case draiosproto::REMOVED:
 			// allow double delete (example: remove a container for an already terminated k8s_job)
@@ -270,10 +270,10 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			}
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Overwrite container group <%s,%s>", kind.c_str(), id.c_str());
 			m_state[key]->CopyFrom(evt->object());
-			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
+			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
 		case draiosproto::REMOVED:
-			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
+			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			remove(key);
 			break;
 		case draiosproto::UPDATED:
@@ -291,7 +291,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 			}
-			glogf(sinsp_logger::SEV_DEBUG, m_state[key]->DebugString().c_str());
+			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
 		}
 	}
