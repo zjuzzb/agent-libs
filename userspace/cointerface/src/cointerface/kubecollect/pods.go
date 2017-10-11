@@ -88,15 +88,8 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		in = false
 	}
 
-	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
-		in = false
-	} else {
-		for k,v := range lhs.GetLabels() {
-			if rhs.GetLabels()[k] != v {
-				in = false
-			}
-		}
-	}
+	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if in && lhs.Status.HostIP != rhs.Status.HostIP {
 		in = false
@@ -191,6 +184,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
 	tags["kubernetes.pod.status.phase"] = string(pod.Status.Phase)
+	inttags := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 
 	var ips []string
 	/*if pod.Status.HostIP != "" {
@@ -278,6 +272,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 				Kind:proto.String("k8s_pod"),
 				Id:proto.String(string(pod.GetUID()))},
 			Tags: tags,
+			InternalTags: inttags,
 			IpAddresses: ips,
 			Metrics: metrics,
 			Parents: parents,

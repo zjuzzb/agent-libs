@@ -60,6 +60,43 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	return tags
 }
 
+func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
+	tags := make(map[string]string)
+	for k, v := range obj.GetAnnotations() {
+		tags[prefix+"annotation." + k] = v
+	}
+	tags[prefix+"name"] = obj.GetName()
+	return tags
+}
+
+func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
+	left := lhs.GetLabels()
+	right := rhs.GetLabels()
+	if (len(left) != len(right)) {
+		return false
+	}
+	for k,v := range left {
+		if right[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
+	left := lhs.GetAnnotations()
+	right := rhs.GetAnnotations()
+	if (len(left) != len(right)) {
+		return false
+	}
+	for k,v := range left {
+		if right[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 func AppendMetric(metrics *[]*draiosproto.AppMetric, name string, val float64) {
 	*metrics = append(*metrics, &draiosproto.AppMetric{
 		Name:proto.String(name),

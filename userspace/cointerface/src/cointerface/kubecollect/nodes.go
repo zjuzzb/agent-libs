@@ -26,14 +26,12 @@ func nodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
 	if oldNode.GetName() != newNode.GetName() {
 		return false
 	}
-	if len(oldNode.GetLabels()) != len(newNode.GetLabels()){
+
+	if !EqualLabels(oldNode.ObjectMeta, newNode.ObjectMeta) ||
+        !EqualAnnotations(oldNode.ObjectMeta, newNode.ObjectMeta) {
 		return false
 	}
-	for k, v := range oldNode.GetLabels() {
-		if newNode.GetLabels()[k] != v {
-			return false
-		}
-	}
+
 	return true
 }
 
@@ -49,6 +47,7 @@ func newNodeCongroup(node *v1.Node) (*draiosproto.ContainerGroup) {
 	}
 
 	ret.Tags = GetTags(node.ObjectMeta, "kubernetes.node.")
+	ret.InternalTags = GetAnnotations(node.ObjectMeta, "kubernetes.node.")
 	addNodeMetrics(&ret.Metrics, node)
 	AddPodChildrenFromNodeName(&ret.Children, node.GetName())
 	return ret

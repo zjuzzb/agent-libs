@@ -30,15 +30,8 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 		in = false
 	}
 
-	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
-		in = false
-	} else {
-		for k,v := range lhs.GetLabels() {
-			if rhs.GetLabels()[k] != v {
-				in = false
-			}
-		}
-	}
+	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+        EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if in && lhs.Status.Replicas != rhs.Status.Replicas {
 		in = false
@@ -70,6 +63,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 	}
 
 	ret.Tags = GetTags(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
+	ret.InternalTags = GetAnnotations(replicaSet.ObjectMeta, "kubernetes.replicaSet.")
 	addReplicaSetMetrics(&ret.Metrics, replicaSet)
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())

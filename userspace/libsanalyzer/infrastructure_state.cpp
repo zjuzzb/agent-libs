@@ -200,6 +200,41 @@ std::unique_ptr<draiosproto::container_group> infrastructure_state::get(uid_t ui
 	return res;
 }
 
+bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited)
+{
+	if (!has(uid) || (visited.find(uid) != visited.end())) {
+		return false;
+	}
+	visited.emplace(uid);
+
+	auto *cg = m_state[uid].get();
+	
+	if (!cg) {	// Shouldn't happen
+		return false;
+	}
+	if (cg->tags().find(tag) != cg->tags().end())
+	{
+		value = cg->tags().at(tag);
+		return true;
+	}
+	if (cg->internal_tags().find(tag) != cg->internal_tags().end())
+	{
+		value = cg->internal_tags().at(tag);
+		return true;
+	}
+
+	for(const auto &p_uid : cg->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if (find_tag(pkey, tag, value, visited))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void infrastructure_state::handle_event(const draiosproto::congroup_update_event *evt, bool overwrite)
 {
 	std::string kind = evt->object().uid().kind();
@@ -551,6 +586,8 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		{
 			x->mutable_children()->Clear();
 		}
+		// Internal_tags are meant for use inside agent only
+		x->mutable_internal_tags()->clear();
 
 		// x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 		// // Put back legacy metrics
@@ -648,6 +685,8 @@ void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiospr
 			{
 				x->mutable_children()->Clear();
 			}
+			// Internal_tags are meant for use inside agent only
+			x->mutable_internal_tags()->clear();
 		}
 	}
 }

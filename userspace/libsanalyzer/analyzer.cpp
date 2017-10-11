@@ -366,7 +366,7 @@ void sinsp_analyzer::on_capture_start()
 		m_falco_baseliner->init(m_inspector);
 	}
 
-	if(m_configuration->get_security_enabled() || m_use_new_k8s)
+	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
 		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
@@ -2109,8 +2109,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						}
 					}
 				}
-				// Looking for matches after app_checks because a rule may
-				// be specified for finding an app_checks match
+				// Looking for prometheus matches after app_checks because
+				// a rule may be specified for finding an app_checks match
 				if (!have_prometheus_metrics)
 				{
 					match_prom_checks(tinfo, mtinfo, prom_procs);
@@ -6136,21 +6136,24 @@ void sinsp_analyzer::emit_user_events()
 void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs)
 {
-	if (mtinfo->m_ainfo->found_prom_check())
+	// TODO: Ensure we only scan a given port only once per container
+	// It's currently possible for multiple processes (with different
+	// program hashes) to both be listening to a port.
+	// Seen with nginx master and nginx worker
+	if (!m_prom_conf.enabled() || mtinfo->m_ainfo->found_prom_check())
 		return;
 
 	sinsp_container_info container;
 	bool got_cont = m_inspector->m_container_manager.get_container(
 		tinfo->m_container_id, &container);
 
-	// sinsp_container_info* container = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
-
 	set<uint16_t> ports;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, ports)) {
-		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports);
+	string path;
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, infra_state(), ports, path)) {
+		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
 		prom_procs.emplace_back(pp);
 
-		tinfo->m_ainfo->set_found_prom_check();
+		mtinfo->m_ainfo->set_found_prom_check();
 	}
 }
 

@@ -25,33 +25,24 @@ func nsEquals(lhs *v1.Namespace, rhs *v1.Namespace) bool {
 		return false
 	}
 
-	if len(lhs.GetLabels()) != len(rhs.GetLabels()) {
+	if !EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
+        !EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
 		return false
-	}
-	for k,v := range lhs.GetLabels() {
-		if rhs.GetLabels()[k] != v {
-			return false
-		}
 	}
 
 	return true
 }
 
 func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range ns.GetLabels() {
-		tags["kubernetes.namespace.label." + k] = v
-	}
-	tags["kubernetes.namespace.name"] = ns.GetName()
+	tags:= GetTags(ns.ObjectMeta, "kubernetes.namespace.")
+	inttags:= GetAnnotations(ns.ObjectMeta, "kubernetes.namespace.")
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_namespace"),
 			Id:proto.String(string(ns.GetUID()))},
 		Tags: tags,
+		InternalTags: inttags,
 	}
 	if *eventType == draiosproto.CongroupEventType_ADDED {
 		AddDeploymentChildrenFromNamespace(&ret.Children, ns.GetName())

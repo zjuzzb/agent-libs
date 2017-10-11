@@ -30,6 +30,7 @@ func newStatefulSetCongroup(statefulSet *v1beta1.StatefulSet) (*draiosproto.Cont
 	}
 
 	ret.Tags = GetTags(statefulSet.ObjectMeta, "kubernetes.statefulset.")
+	ret.InternalTags = GetAnnotations(statefulSet.ObjectMeta, "kubernetes.statefulset.")
 	addStatefulSetMetrics(&ret.Metrics, statefulSet)
 	AddNSParents(&ret.Parents, statefulSet.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, statefulSet.ObjectMeta)

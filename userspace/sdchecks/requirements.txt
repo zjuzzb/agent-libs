@@ -57,7 +57,7 @@ boto==2.36.0
 supervisor==3.3.0
 
 # checks.d/prometheus.py
-prometheus_client==0.0.15
+prometheus_client==0.0.21
 
 # sdchecks.py
 sysdig-tracers==0.1.2

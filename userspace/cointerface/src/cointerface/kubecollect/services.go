@@ -32,15 +32,8 @@ func serviceEquals(lhs *v1.Service, rhs *v1.Service) (bool, bool) {
 		in = false
 	}
 
-	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
-		in = false
-	} else {
-		for k,v := range lhs.GetLabels() {
-			if rhs.GetLabels()[k] != v {
-				in = false
-			}
-		}
-	}
+	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false
@@ -71,20 +64,15 @@ func lookupServiceByName(serviceName, namespace string) string {
 }
 
 func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.ContainerGroup) {
-	// Need a way to distinguish them
-	// ... and make merging annotations+labels it a library function?
-	//     should work on all v1.Object types
-	tags := make(map[string]string)
-	for k, v := range service.GetLabels() {
-		tags["kubernetes.service.label." + k] = v
-	}
-	tags["kubernetes.service.name"] = service.GetName()
+	tags := GetTags(service.ObjectMeta, "kubernetes.service.")
+	inttags := GetAnnotations(service.ObjectMeta, "kubernetes.service.")
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_service"),
 			Id:proto.String(string(service.GetUID()))},
 		Tags: tags,
+		InternalTags: inttags,
 	}
 
 	ret.IpAddresses = append(ret.IpAddresses, service.Spec.ClusterIP)

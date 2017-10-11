@@ -31,15 +31,8 @@ func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (bool, b
 		in = false
 	}
 
-	if in && len(lhs.GetLabels()) != len(rhs.GetLabels()) {
-		in = false
-	} else {
-		for k,v := range lhs.GetLabels() {
-			if rhs.GetLabels()[k] != v {
-				in = false
-			}
-		}
-	}
+	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+        EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false
@@ -58,6 +51,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 	}
 
 	ret.Tags = GetTags(deployment.ObjectMeta, "kubernetes.deployment.")
+	ret.InternalTags = GetAnnotations(deployment.ObjectMeta, "kubernetes.deployment.")
 	addDeploymentMetrics(&ret.Metrics, deployment)
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())

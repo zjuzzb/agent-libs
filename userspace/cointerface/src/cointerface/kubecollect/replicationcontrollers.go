@@ -29,6 +29,7 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 	}
 
 	ret.Tags = GetTags(replicationController.ObjectMeta, "kubernetes.replicationController.")
+	ret.InternalTags = GetAnnotations(replicationController.ObjectMeta, "kubernetes.replicationController.")
 	addReplicationControllerMetrics(&ret.Metrics, replicationController)
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
