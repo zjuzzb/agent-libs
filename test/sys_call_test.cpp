@@ -1903,7 +1903,7 @@ TEST_F(sys_call_test32, ppoll_timeout)
 }
 #endif
 
-TEST_F(sys_call_test, get_n_tracepoint_hit)
+TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
 {
 	int callnum = 0;
 	vector<long> old_evts;
@@ -1946,4 +1946,53 @@ TEST_F(sys_call_test, get_n_tracepoint_hit)
 	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(0, callnum);
+}
+
+TEST_F(sys_call_test, get_n_tracepoint_hit_counts)
+{
+	static const int SYSCALL_COUNT = 1000000;
+	int callnum = 0;
+	bool started = false;
+	vector<long> old_evts;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) &&
+				evt->get_type() == PPME_SYSCALL_CLOSE_X &&
+				evt->get_param_value_str("res", false) != "0";
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// Use close events as sentinels
+		close(-34);
+		for(int j = 0; j < SYSCALL_COUNT; ++j)
+		{
+			open("/tmp/ksdlajdklsa", 0);
+		}
+		close(-34);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		if(started)
+		{
+			auto new_evts = param.m_inspector->get_n_tracepoint_hit();
+			int sum = 0;
+			for(unsigned j = 0; j < old_evts.size(); ++j)
+			{
+				sum += (new_evts[j] - old_evts[j]);
+			}
+			// Sum should at least greater than syscall_count*2 since
+			// we generated those
+			EXPECT_GT(sum, SYSCALL_COUNT*2);
+		}
+		else
+		{
+			old_evts = param.m_inspector->get_n_tracepoint_hit();
+			started = true;
+		}
+		++callnum;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+	EXPECT_TRUE(started);
 }
