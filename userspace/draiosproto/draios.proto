@@ -6,6 +6,15 @@ option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
+message counter_percentile_data {
+    required double min = 1; // minimum of all the samples
+    required double max = 2; // maximum of all the samples
+    required uint32 compression = 3;
+    required uint32 num_samples = 4;
+    repeated double means = 5 [packed=true]; // the first value is the actual sample, the rest are relative diff compared to previous sample
+    repeated double weights = 6 [packed=true]; // weight of corresponding sample
+}
+
 message counter_percentile {
     optional uint32 percentile = 1;
     optional uint32 value = 2;
@@ -16,6 +25,7 @@ message counter_time {
     required uint64 time_ns = 2;
     optional uint32 time_percentage = 3;
     repeated counter_percentile percentile = 8;
+    optional counter_percentile_data percentile_data = 9;
 }
 
 message counter_time_bidirectional {
@@ -25,6 +35,8 @@ message counter_time_bidirectional {
     required uint64 time_ns_out = 4;
     repeated counter_percentile percentile_in = 10;
     repeated counter_percentile percentile_out = 11;
+    optional counter_percentile_data percentile_in_data = 12;
+    optional counter_percentile_data percentile_out_data = 13;
 }
 
 message counter_bytes {
@@ -49,6 +61,8 @@ message counter_time_bytes {
     optional uint32 time_percentage_other = 12;
     repeated counter_percentile percentile_in = 26;
     repeated counter_percentile percentile_out = 27;
+    optional counter_percentile_data percentile_in_data = 28;
+    optional counter_percentile_data percentile_out_data = 29;
 }
 
 message time_categories {
@@ -164,6 +178,7 @@ message counter_proto_entry {
     required uint64 bytes_out = 5;
     required uint32 nerrors = 6;
     repeated counter_percentile percentile = 13;
+    optional counter_percentile_data percentile_data = 14;
 }
 
 //
@@ -362,6 +377,7 @@ message statsd_metric {
     optional double max = 7;
     optional double count = 8;
     repeated counter_percentile percentile = 12;
+    optional counter_percentile_data percentile_data = 13;
 }
 
 message statsd_info {

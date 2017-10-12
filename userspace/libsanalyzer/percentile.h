@@ -4,6 +4,11 @@
 #include "sinsp_int.h"
 #include "tdigest/tdigest.h"
 
+// fwd declarations
+namespace draiosproto {
+class counter_percentile_data;
+};
+
 class percentile
 {
 public:
@@ -44,10 +49,11 @@ public:
 
 	p_map_type percentiles();
 
-	template <typename P, typename C>
-	void to_protobuf(P* proto, C* (P::*add_func)())
+	template <typename P, typename C1, typename C2>
+	void to_protobuf(P* proto, C1* (P::*add_pctl)(), C2* (P::*data)())
 	{
-		to_protobuf(percentiles(), proto, add_func);
+		to_protobuf(percentiles(), proto, add_pctl);
+		serialize((proto->*data)());
 		reset();
 	}
 
@@ -71,6 +77,8 @@ public:
 
 	void dump_samples();
 	inline void flush() const;
+	void serialize(draiosproto::counter_percentile_data *pdata) const;
+	void deserialize(const draiosproto::counter_percentile_data *pdata);
 
 private:
 	inline void init(const std::vector<double> &percentiles, double eps = 0.1);

@@ -190,9 +190,12 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 	// percentiles
 	typedef draiosproto::counter_time CTB;
 	typedef draiosproto::counter_percentile CP;
+	typedef draiosproto::counter_percentile_data CPD;
 	if(m_percentile && m_percentile->sample_count())
 	{
-		m_percentile->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile);
+		m_percentile->to_protobuf<CTB, CP, CPD>(protobuf_msg,
+		                                        &CTB::add_percentile,
+		                                        &CTB::mutable_percentile_data);
 	}
 }
 
@@ -342,13 +345,18 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	// percentiles
 	typedef draiosproto::counter_time_bidirectional CTB;
 	typedef draiosproto::counter_percentile CP;
+	typedef draiosproto::counter_percentile_data CPD;
 	if(m_percentile_in && m_percentile_in->sample_count())
 	{
-		m_percentile_in->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
+		m_percentile_in->to_protobuf<CTB, CP, CPD>(protobuf_msg,
+		                                           &CTB::add_percentile_in,
+		                                           &CTB::mutable_percentile_in_data);
 	}
 	if(m_percentile_out && m_percentile_out->sample_count())
 	{
-		m_percentile_out->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
+		m_percentile_out->to_protobuf<CTB, CP, CPD>(protobuf_msg,
+		                                            &CTB::add_percentile_out,
+		                                            &CTB::mutable_percentile_out_data);
 	}
 }
 
@@ -609,13 +617,18 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	// percentiles
 	typedef draiosproto::counter_time_bytes CTB;
 	typedef draiosproto::counter_percentile CP;
+	typedef draiosproto::counter_percentile_data CPD;
 	if(m_percentile_in && m_percentile_in->sample_count())
 	{
-		m_percentile_in->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_in);
+		m_percentile_in->to_protobuf<CTB, CP, CPD>(protobuf_msg,
+		                                           &CTB::add_percentile_in,
+		                                           &CTB::mutable_percentile_in_data);
 	}
 	if(m_percentile_out && m_percentile_out->sample_count())
 	{
-		m_percentile_out->to_protobuf<CTB, CP>(protobuf_msg, &CTB::add_percentile_out);
+		m_percentile_out->to_protobuf<CTB, CP, CPD>(protobuf_msg,
+		                                            &CTB::add_percentile_out,
+		                                            &CTB::mutable_percentile_out_data);
 	}
 }
 
