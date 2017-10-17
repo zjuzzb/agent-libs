@@ -82,9 +82,16 @@ class Prometheus(AgentCheck):
                                 num += 1
                                 continue
     
-                        if parse_sum != None and parse_count > 0:
-                            logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
-                            self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
+                        if parse_sum != None and parse_count != None:
+                            logging.debug('prom: Adding gauge-avg %s%s' %(self.avg_metric_name(name), repr(tags)))
+                            self.gauge(self.avg_metric_name(name),
+                                       parse_sum/parse_count if parse_count else 0,
+                                       tags)
+                            # reset refs to sum and count samples in order to
+                            # have them point to other segments within the same
+                            # family
+                            parse_sum = None
+                            parse_count = None
                             num += 1
                     elif family.type == 'counter':
                         # logging.debug('prom: adding counter with name %s' %(name))
