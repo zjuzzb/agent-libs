@@ -24,7 +24,7 @@ public:
 
 	void init(sinsp *inspector, const std::string& machine_id);
 
-	void subscribe_to_k8s(const string& url, int timeout_ms);
+	void subscribe_to_k8s(const string& url, uint64_t timeout_s);
 
 	bool subscribed();
 

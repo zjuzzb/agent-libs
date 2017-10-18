@@ -97,8 +97,8 @@ public:
 	const string & get_k8s_ssl_ca_certificate() const;
 	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
 	bool get_k8s_ssl_verify_certificate() const;
-	void set_k8s_timeout_ms(int k8s_timeout_ms);
-	int get_k8s_timeout_ms() const;
+	void set_k8s_timeout_s(uint64_t k8s_timeout_s);
+	uint64_t get_k8s_timeout_s() const;
 	void set_k8s_simulate_delegation(bool k8s_simulate_delegation);
 	bool get_k8s_simulate_delegation() const;
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
@@ -224,7 +224,7 @@ private:
 	string m_k8s_ssl_key_password;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
-	int m_k8s_timeout_ms;
+	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;

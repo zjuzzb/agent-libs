@@ -128,18 +128,15 @@ void infrastructure_state::init(sinsp *inspector, const std::string& machine_id)
 
 infrastructure_state::~infrastructure_state(){}
 
-void infrastructure_state::subscribe_to_k8s(const string& url, int timeout_ms)
+void infrastructure_state::subscribe_to_k8s(const string& url, uint64_t timeout_s)
 {
 	ASSERT(!m_k8s_connected);
 
 	glogf(sinsp_logger::SEV_INFO,
-	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, interval: %d sec",
-	      url.c_str(), timeout_ms/1000);
+	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, reconnect interval: %d sec",
+	      url.c_str(), timeout_s);
 	m_k8s_url = url;
-	if (timeout_ms > 0) {
-		// interval is in nanoseconds
-		m_k8s_connect_interval.interval((uint64_t)timeout_ms * 1000 * 1000);
-	}
+	m_k8s_connect_interval.interval(timeout_s * ONE_SECOND_IN_NS);
 
 	connect_to_k8s();
 }
