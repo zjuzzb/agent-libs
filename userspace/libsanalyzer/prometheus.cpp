@@ -293,12 +293,15 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinf
 					if (p && (start_ports.find(p) != start_ports.end()))
 					{
 						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"Process %d set port to : %d",
+							"Prometheus autodetection: process %d defined port %d found",
 							(int)tinfo->m_pid, (int)p);
 						out_ports.emplace(p);
 					}
 					else if (p)
 					{
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Prometheus autodetection: process %d defined port %d not found, not scanning",
+							(int)tinfo->m_pid, (int)p);
 						// port is non-null but not found -> skip scan.
 						return false;
 					}

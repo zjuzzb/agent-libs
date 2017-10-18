@@ -933,6 +933,9 @@ void infrastructure_state::debug_print()
 		glogf(sinsp_logger::SEV_TRACE, "infra_state:   Tags:");
 		for (auto t: cong->tags())
 			glogf(sinsp_logger::SEV_TRACE, "infra_state:    %s:%s", t.first.c_str(), t.second.c_str());
+		glogf(sinsp_logger::SEV_TRACE, "infra_state:   Int-Tags:");
+		for (auto t: cong->internal_tags())
+			glogf(sinsp_logger::SEV_TRACE, "infra_state:    %s:%s", t.first.c_str(), t.second.c_str());
 		glogf(sinsp_logger::SEV_TRACE, "infra_state:   IP Addresses:");
 		for (auto i: cong->ip_addresses())
 			glogf(sinsp_logger::SEV_TRACE, "infra_state:    %s", i.c_str());
