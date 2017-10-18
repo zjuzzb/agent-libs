@@ -49,6 +49,15 @@ class Prometheus(AgentCheck):
                 parse_count = None
                 if max_metrics and num >= max_metrics:
                     break
+
+                # Histogram and summary reported by prometheus just give us
+                # accumulated values.
+                # The average value over that timespan is not a good
+                # representation of the current state.
+                # Disabling histogram and summary for now until we
+                # add support in agent and/or backend
+                if family.type == 'histogram' or family.type == 'summary':
+                    continue
     
                 for sample in family.samples:
                     if max_metrics and num >= max_metrics:
@@ -59,6 +68,7 @@ class Prometheus(AgentCheck):
                     tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
     
                     # First handle summary
+                    # Unused, see above
                     if family.type == 'histogram' or family.type == 'summary':
                         if name.endswith('_sum'):
                             parse_sum = value
