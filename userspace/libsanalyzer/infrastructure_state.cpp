@@ -2,7 +2,7 @@
 
 #include "infrastructure_state.h"
 
-#define CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
+#define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
 bool get_cached_result(infrastructure_state::policy_cache_t &cache, std::string &id, uint64_t policy_id, bool *res)
 {
@@ -102,7 +102,7 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval)
 	: m_k8s_subscribed(false)
 	, m_k8s_connected(false)
 	, m_k8s_refresh_interval(refresh_interval)
-	, m_k8s_connect_interval(CONNECT_INTERVAL)
+	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
 {
 	m_k8s_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 
@@ -128,20 +128,37 @@ void infrastructure_state::init(sinsp *inspector, const std::string& machine_id)
 
 infrastructure_state::~infrastructure_state(){}
 
-void infrastructure_state::subscribe_to_k8s(const string& url, uint64_t ts)
+void infrastructure_state::subscribe_to_k8s(const string& url, int timeout_ms)
 {
+	ASSERT(!m_k8s_connected);
+
+	glogf(sinsp_logger::SEV_INFO,
+	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, interval: %d sec",
+	      url.c_str(), timeout_ms/1000);
+	m_k8s_url = url;
+	if (timeout_ms > 0) {
+		// interval is in nanoseconds
+		m_k8s_connect_interval.interval((uint64_t)timeout_ms * 1000 * 1000);
+	}
+
+	connect_to_k8s();
+}
+
+void infrastructure_state::connect_to_k8s(uint64_t ts)
+{
+	// Make sure we only have one RPC active
 	if (m_k8s_connected)
 	{
-		ASSERT(false);
+		glogf(sinsp_logger::SEV_DEBUG,
+		      "infra_state: Ignoring k8s connection attempt because an RPC is already active");
 		return;
 	}
 
 	m_k8s_connect_interval.run(
-		[this, url]()
+		[this]()
 		{
-			m_k8s_url = url;
-			glogf(sinsp_logger::SEV_DEBUG,
-			      "infra_state: Subscribe to k8s orchestrator events.");
+			glogf(sinsp_logger::SEV_INFO,
+			      "infra_state: Connect to k8s orchestrator events.");
 			sdc_internal::orchestrator_events_stream_command cmd;
 			cmd.set_url(m_k8s_url);
 			m_k8s_subscribed = true;
@@ -164,9 +181,7 @@ void infrastructure_state::refresh(uint64_t ts)
 			m_k8s_coclient.next();
 		}, ts);
 	} else if (m_k8s_subscribed) {
-		// We're already subscribed but can reuse this
-		// function to do the coclient RPC call
-		subscribe_to_k8s(m_k8s_url, ts);
+		connect_to_k8s(ts);
 	}
 
 	// if (m_mesos_subscribed) { ... }
@@ -191,7 +206,7 @@ void infrastructure_state::reset()
 	m_k8s_cached_cluster_id.clear();
 
 	if (m_k8s_subscribed) {
-		subscribe_to_k8s(m_k8s_url);
+		connect_to_k8s();
 	}
 }
 

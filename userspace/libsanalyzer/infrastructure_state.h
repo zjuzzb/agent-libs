@@ -24,8 +24,7 @@ public:
 
 	void init(sinsp *inspector, const std::string& machine_id);
 
-	void subscribe_to_k8s(const string& url,
-			      uint64_t ts = sinsp_utils::get_current_time_ns());
+	void subscribe_to_k8s(const string& url, int timeout_ms);
 
 	bool subscribed();
 
@@ -88,6 +87,7 @@ private:
 
 	void debug_print();
 
+	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
