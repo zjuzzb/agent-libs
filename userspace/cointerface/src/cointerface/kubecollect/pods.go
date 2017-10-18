@@ -183,7 +183,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	tags := GetTags(pod.ObjectMeta, "kubernetes.pod.")
 	// This gets specially added as a tag since we don't have a
 	// better way to report values that can be one of many strings
-	tags["kubernetes.pod.status.phase"] = string(pod.Status.Phase)
+	tags["kubernetes.pod.label.status.phase"] = string(pod.Status.Phase)
 	inttags := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 
 	var ips []string
