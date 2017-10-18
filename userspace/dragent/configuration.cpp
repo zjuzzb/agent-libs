@@ -765,7 +765,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_ssl_key_password = m_config->get_scalar<string>("k8s_ssl_key_password", "");
 	normalize_path(m_config->get_scalar<string>("k8s_ca_certificate", ""), m_k8s_ssl_ca_certificate);
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
-	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
+	m_k8s_timeout_s = m_config->get_scalar<uint64_t>("k8s_timeout_s", 60);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", false);
 	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
@@ -1041,7 +1041,7 @@ void dragent_configuration::print_configuration()
 		g_log->log(log_entry.second, log_entry.first);
 	}
 	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
-	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
+	g_log->information("K8S connection timeout [sec]: " + std::to_string(m_k8s_timeout_s));
 
 	if (!m_k8s_api_server.empty())
 	{

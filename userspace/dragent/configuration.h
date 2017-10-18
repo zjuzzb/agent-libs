@@ -607,7 +607,7 @@ public:
 	string m_k8s_ssl_key_password;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
-	int m_k8s_timeout_ms;
+	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;

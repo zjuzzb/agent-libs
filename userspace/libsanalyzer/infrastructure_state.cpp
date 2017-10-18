@@ -2,6 +2,8 @@
 
 #include "infrastructure_state.h"
 
+#define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
+
 bool get_cached_result(infrastructure_state::policy_cache_t &cache, std::string &id, uint64_t policy_id, bool *res)
 {
 	auto cached_results = cache.find(id);
@@ -96,9 +98,11 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	return true;
 }
 
-infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
-	m_k8s_subscribed(false),
-	m_k8s_interval(refresh_interval)
+infrastructure_state::infrastructure_state(uint64_t refresh_interval)
+	: m_k8s_subscribed(false)
+	, m_k8s_connected(false)
+	, m_k8s_refresh_interval(refresh_interval)
+	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
 {
 	m_k8s_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 
@@ -110,6 +114,7 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval) :
 			// Error from cointerface, destroy the whole state and subscribe again
 			//
 			glogf(sinsp_logger::SEV_WARNING, "infra_state: Error while receiving k8s orchestrator events. Reset and retry.");
+			m_k8s_connected = false;
 			reset();
 		}
 	};
@@ -123,14 +128,40 @@ void infrastructure_state::init(sinsp *inspector, const std::string& machine_id)
 
 infrastructure_state::~infrastructure_state(){}
 
-void infrastructure_state::subscribe_to_k8s(const string& url)
+void infrastructure_state::subscribe_to_k8s(const string& url, uint64_t timeout_s)
 {
+	ASSERT(!m_k8s_connected);
+
+	glogf(sinsp_logger::SEV_INFO,
+	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, reconnect interval: %d sec",
+	      url.c_str(), timeout_s);
 	m_k8s_url = url;
-	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Subscribe to k8s orchestrator events.");
-	sdc_internal::orchestrator_events_stream_command cmd;
-	cmd.set_url(m_k8s_url);
-	m_k8s_subscribed = true;
-	m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
+	m_k8s_connect_interval.interval(timeout_s * ONE_SECOND_IN_NS);
+
+	connect_to_k8s();
+}
+
+void infrastructure_state::connect_to_k8s(uint64_t ts)
+{
+	// Make sure we only have one RPC active
+	if (m_k8s_connected)
+	{
+		glogf(sinsp_logger::SEV_DEBUG,
+		      "infra_state: Ignoring k8s connection attempt because an RPC is already active");
+		return;
+	}
+
+	m_k8s_connect_interval.run(
+		[this]()
+		{
+			glogf(sinsp_logger::SEV_INFO,
+			      "infra_state: Connect to k8s orchestrator events.");
+			sdc_internal::orchestrator_events_stream_command cmd;
+			cmd.set_url(m_k8s_url);
+			m_k8s_subscribed = true;
+			m_k8s_connected = true;
+			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
+		}, ts);
 }
 
 bool infrastructure_state::subscribed()
@@ -140,11 +171,14 @@ bool infrastructure_state::subscribed()
 
 void infrastructure_state::refresh(uint64_t ts)
 {
-	if (m_k8s_subscribed) {
-		m_k8s_interval.run([this]()
+	if (m_k8s_connected) {
+		ASSERT(m_k8s_subscribed);
+		m_k8s_refresh_interval.run([this]()
 		{
 			m_k8s_coclient.next();
 		}, ts);
+	} else if (m_k8s_subscribed) {
+		connect_to_k8s(ts);
 	}
 
 	// if (m_mesos_subscribed) { ... }
@@ -169,7 +203,7 @@ void infrastructure_state::reset()
 	m_k8s_cached_cluster_id.clear();
 
 	if (m_k8s_subscribed) {
-		subscribe_to_k8s(m_k8s_url);
+		connect_to_k8s();
 	}
 }
 

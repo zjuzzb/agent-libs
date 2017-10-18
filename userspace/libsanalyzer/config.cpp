@@ -491,14 +491,14 @@ bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
 	return m_k8s_ssl_verify_certificate;
 }
 
-void sinsp_configuration::set_k8s_timeout_ms(int k8s_timeout_ms)
+void sinsp_configuration::set_k8s_timeout_s(uint64_t k8s_timeout_s)
 {
-	m_k8s_timeout_ms = k8s_timeout_ms;
+	m_k8s_timeout_s = k8s_timeout_s;
 }
 
-int sinsp_configuration::get_k8s_timeout_ms() const
+uint64_t sinsp_configuration::get_k8s_timeout_s() const
 {
-	return m_k8s_timeout_ms;
+	return m_k8s_timeout_s;
 }
 
 void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)

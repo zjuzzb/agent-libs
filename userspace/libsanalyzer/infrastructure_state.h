@@ -24,7 +24,7 @@ public:
 
 	void init(sinsp *inspector, const std::string& machine_id);
 
-	void subscribe_to_k8s(const string& url);
+	void subscribe_to_k8s(const string& url, uint64_t timeout_s);
 
 	bool subscribed();
 
@@ -87,6 +87,7 @@ private:
 
 	void debug_print();
 
+	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
@@ -103,9 +104,11 @@ private:
 	coclient m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;
 	string m_k8s_url;
-	bool m_k8s_subscribed;
+	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
+	bool m_k8s_connected;    // True if we have an active RPC connection
 	mutable std::string m_k8s_cached_cluster_id;
-	run_on_interval m_k8s_interval;
+	run_on_interval m_k8s_refresh_interval;
+	run_on_interval m_k8s_connect_interval;
 };
 
 #endif // INFRASTRUCTURE_STATE_H

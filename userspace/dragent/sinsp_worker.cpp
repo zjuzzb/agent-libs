@@ -169,7 +169,7 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
 
-	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
+	m_analyzer->get_configuration()->set_k8s_timeout_s(m_configuration->m_k8s_timeout_s);
 
 	m_analyzer->get_configuration()->set_k8s_simulate_delegation(m_configuration->m_k8s_simulate_delegation);
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
