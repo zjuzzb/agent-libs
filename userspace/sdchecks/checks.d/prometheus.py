@@ -19,13 +19,11 @@ from sdchecks import AppCheckDontRetryException
 class Prometheus(AgentCheck):
 
     DEFAULT_TIMEOUT = 5
-    
-    def avg_metric_name(self, name):
-        if name.endswith('_count'):
-            return name[:-len('_count')] + '_avg'
-        else:
-            return name[:-len('_sum')] + '_avg'
-        
+
+    def __init__(self, name, init_config, agentConfig, instances=None):
+        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
+        self.metric_history = {}
+
     def check(self, instance):
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
@@ -59,11 +57,13 @@ class Prometheus(AgentCheck):
                 # add support in agent and/or backend
                 if family.type == 'histogram' or family.type == 'summary':
                     continue
+
+                name = family.name
     
                 for sample in family.samples:
                     if max_metrics and num >= max_metrics:
                         break
-                    (name, stags, value) = sample
+                    (sname, stags, value) = sample
                     # convert the dictionary of tags into a list of '<name>:<val>' items
                     # also exclude 'quantile' as a key as it isn't a tag
                     tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k != 'quantile']
@@ -75,9 +75,9 @@ class Prometheus(AgentCheck):
                     # First handle summary
                     # Unused, see above
                     if family.type == 'histogram' or family.type == 'summary':
-                        if name.endswith('_sum'):
+                        if sname == name + '_sum':
                             parse_sum = value
-                        elif name.endswith('_count'):
+                        elif sname == name + '_count':
                             parse_count = value
                         else:
                             if family.type == 'histogram':
@@ -93,10 +93,23 @@ class Prometheus(AgentCheck):
                                 continue
     
                         if parse_sum != None and parse_count != None:
-                            logging.debug('prom: Adding gauge-avg %s%s' %(self.avg_metric_name(name), repr(tags)))
-                            self.gauge(self.avg_metric_name(name),
-                                       parse_sum/parse_count if parse_count else 0,
-                                       tags)
+                            prev = self.metric_history.get(name+str(tags), None) 
+                            val = None
+                            if prev and prev.get("sum") != None and prev.get("count") != None:
+                                dcnt = parse_count - prev.get("count")
+                                if dcnt > 0:
+                                    val = (parse_sum - prev.get("sum")) / dcnt
+                                elif dcnt == 0:
+                                    val = prev.get("val")
+                                else:
+                                    logging.info('prom: Descending count for %s%s' %(name, repr(tags)))
+                            if val == None:
+                                val = parse_sum/parse_count if parse_count else 0
+                            if math.isnan(val):
+                                val = 0
+                            # logging.debug('prom: Adding gauge(diff-avg) %s%s' %(name, repr(tags)))
+                            self.gauge(name, val, tags)
+                            self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count, "val":val }
                             # reset refs to sum and count samples in order to
                             # have them point to other segments within the same
                             # family
@@ -105,12 +118,12 @@ class Prometheus(AgentCheck):
                             num += 1
                     elif family.type == 'counter':
                         # logging.debug('prom: adding counter with name %s' %(name))
-                        self.rate(name, value, tags)
+                        self.rate(name, value if not math.isnan(value) else 0, tags)
                         num += 1
                     else:
                         # Could be a gauge or untyped value, which we treat as a gauge for now
                         # logging.debug('prom: adding gauge with name %s' %(name))
-                        self.gauge(name, value, tags)
+                        self.gauge(name, value if not math.isnan(value) else 0, tags)
                         num += 1
         # text_string_to_metric_families() generator can raise exceptions
         # for parse values. Treat them all as failures and don't retry.
