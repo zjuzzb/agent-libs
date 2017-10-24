@@ -94,7 +94,7 @@ int main(int argc, char** argv)
 {
     if (argc < 3)
     {
-        fprintf(stderr, "invalid arguments, usage: %s queue_name rwcn [msg]\n");
+        fprintf(stderr, "invalid arguments, usage: %s queue_name rwcn [msg]\n", argv[0]);
         return 1;
     }
     set_queue_limits();
