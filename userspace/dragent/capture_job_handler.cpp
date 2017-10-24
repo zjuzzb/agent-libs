@@ -222,7 +222,7 @@ bool capture_job::start(sinsp *inspector, string &token,
 		// in memory. Afterward, it can be treated like a
 		// normal capture job.
 		sinsp_memory_dumper_job *memjob = m_memdumper->add_job(m_start_ns, m_file, details.m_filter,
-								       m_past_duration_ns, m_duration_ns, false, &(m_handler->m_membuf_mtx));
+								       m_past_duration_ns, m_duration_ns, &(m_handler->m_membuf_mtx));
 
 		if(memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
@@ -608,7 +608,7 @@ void capture_job_handler::init(const sinsp *inspector)
 	if(m_configuration->m_memdump_enabled)
 	{
 		g_log->information(m_name + ": enabling memdump, size=" + to_string(m_configuration->m_memdump_size));
-		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector, m_configuration->m_capture_dragent_events);
+		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector);
 		m_memdumper->init(m_configuration->m_memdump_size, m_configuration->m_memdump_size, 300LL * 1000000000LL);
 	}
 
@@ -672,6 +672,12 @@ void capture_job_handler::process_event(sinsp_evt *ev)
 	//
 	// We don't want dragent to show up in captures
 	//
+
+	if(m_sysdig_sid == 0)
+	{
+		m_sysdig_sid = getsid(0);
+	}
+
 	sinsp_threadinfo* tinfo = ev->get_thread_info();
 
 	if(!m_configuration->m_capture_dragent_events &&
@@ -902,11 +908,6 @@ void capture_job_handler::start_job(string &token,
 	{
 		send_error(token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
 		return;
-	}
-
-	if(m_sysdig_sid == 0)
-	{
-		m_sysdig_sid = getsid(0);
 	}
 
 	// If there were no capture jobs previously, and now there

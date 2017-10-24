@@ -211,7 +211,7 @@ public:
 class sinsp_memory_dumper
 {
 public:
-	sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events);
+	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
@@ -221,10 +221,8 @@ public:
 	// the filter to the events in the memory buffer. If track_job
 	// is true, also create internal state to track this memory
 	// dumper job going forward.
-	// Returns an object containing details on what occurred. If
-	// track_job is false, the caller should delete this
-	// object. Otherwise, the caller should pass it to remove_job
-	// later.
+	// Returns an object containing details on what occurred.
+	// The caller should delete this object.
 	//
 	// If membuf_mtx is non-NULL, lock the mutex before the job has
 	// fully read the memory buffer, to guarantee that
@@ -234,9 +232,8 @@ public:
 
 	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter,
 					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-					 bool track_job, Poco::Mutex *membuf_mtx);
+					 Poco::Mutex *membuf_mtx);
 
-	void remove_job(sinsp_memory_dumper_job* job);
 	inline void process_event(sinsp_evt *evt)
 	{
 		//
@@ -272,27 +269,6 @@ public:
 
 		try
 		{
-#if defined(HAS_CAPTURE)
-			if(!m_capture_dragent_events)
-			{
-				if(m_sysdig_sid == 0)
-				{
-					m_sysdig_sid = getsid(0);
-				}
-
-				//
-				// The custom notification events emitted by the memdumper have inspector = NULL
-				//
-				if(evt->m_pevt->type != PPME_NOTIFICATION_E)
-				{
-					sinsp_threadinfo* tinfo = evt->get_thread_info();
-					if(tinfo &&	tinfo->m_sid == m_sysdig_sid)
-					{
-						return;
-					}
-				}
-			}
-#endif
 			(*m_active_state)->dump(evt);
 
 			// If we've written at least m_bsize bytes to the active state, switch states.
@@ -306,11 +282,6 @@ public:
 				{
 					return;
 				}
-			}
-
-			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
-			{
-				(*it)->dump(evt);
 			}
 		}
 		catch(sinsp_exception e)
@@ -330,11 +301,6 @@ public:
 				(*m_active_state)->m_dumper->dump(evt);
 			}
 		}
-	}
-
-	inline vector<sinsp_memory_dumper_job*>* get_jobs()
-	{
-		return &m_jobs;
 	}
 
 	inline bool is_enabled()
@@ -365,16 +331,11 @@ private:
 	uint64_t m_bsize;
 	uint64_t m_saturation_inactivity_pause_ns;
 	uint64_t m_saturation_inactivity_start_time;
-	vector<sinsp_memory_dumper_job*> m_jobs;
 
 	atomic<bool> m_delayed_switch_states_needed;
 	atomic<bool> m_delayed_switch_states_ready;
 	uint64_t m_delayed_switch_states_missed_events;
 
-#if defined(HAS_CAPTURE)
-	bool m_capture_dragent_events;
-	int64_t m_sysdig_sid;
-#endif
 	// Mutex that protects access to the list of states
 	Poco::FastMutex m_state_mtx;
 

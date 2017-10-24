@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <map>
+#include <vector>
 
 #include <google/protobuf/text_format.h>
 
@@ -78,6 +79,8 @@ public:
 
 private:
 
+	void check_periodic_tasks(uint64_t ts_ns);
+
 	// Send the latest events to the backend
 	void report_events(uint64_t ts_ns);
 
@@ -99,6 +102,7 @@ private:
 
 	std::unique_ptr<run_on_interval> m_report_events_interval;
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
+	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
 
 	google::protobuf::TextFormat::Printer m_print;
 	bool m_initialized;
@@ -112,7 +116,7 @@ private:
 
 	shared_ptr<falco_engine> m_falco_engine;
 
-	std::list<falco_security_policy> m_falco_policies;
+	std::vector<std::unique_ptr<falco_security_policy>> m_falco_policies;
 
 	std::map<uint64_t,std::string> m_policy_names;
 
@@ -128,4 +132,10 @@ private:
 	// The current set of events that have occurred. Periodically,
 	// it calls flush() to send these events to the collector.
 	draiosproto::policy_events m_events;
+
+	// The event types that are relevant. It's the union of all
+	// event types for all policies.
+	std::vector<bool> m_evttypes;
+
+	uint64_t m_skipped_evts;
 };

@@ -38,12 +38,17 @@ void security_mgr::init(sinsp *inspector,
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
 
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
 
 	m_actions_poll_interval = make_unique<run_on_interval>(m_configuration->m_actions_poll_interval_ns);
 
 	m_metrics_report_interval = make_unique<run_on_interval>(m_configuration->m_metrics_report_interval_ns);
+
+	// Only check the above every second
+	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
 	m_coclient = make_shared<coclient>();
 	m_initialized = true;
@@ -59,6 +64,7 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 
 	m_falco_policies.clear();
 	m_policy_names.clear();
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 	m_analyzer->infra_state()->clear_scope_cache();
 
 	m_print.PrintToString(policies, &tmp);
@@ -95,15 +101,20 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 		m_policy_names.insert(make_pair(policy.id(),policy.name()));
 		if(policy.type() == draiosproto::POLICY_FALCO)
 		{
-			m_falco_policies.emplace_back(this,
-						      m_configuration,
-						      policy,
-						      m_inspector,
-						      m_falco_engine,
-						      m_coclient);
+			m_falco_policies.push_back(make_unique<falco_security_policy>(this,
+										      m_configuration,
+										      policy,
+										      m_inspector,
+										      m_falco_engine,
+										      m_coclient));
 
 			g_log->debug("Loaded Falco Policy: "
-				     + m_falco_policies.back().to_string());
+				     + m_falco_policies.back()->to_string());
+
+			for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
+			{
+				m_evttypes[evttype] = m_evttypes[evttype] | m_falco_policies.back()->m_evttypes[evttype];
+			}
 		}
 
 	}
@@ -128,55 +139,53 @@ void security_mgr::process_event(sinsp_evt *evt)
 
 	uint64_t ts_ns = evt->get_ts();
 
-	// Possibly report the current set of events.
-	m_report_events_interval->run([this, ts_ns]()
+	m_check_periodic_tasks_interval->run([this, ts_ns]()
         {
-		report_events(ts_ns);
-	}, ts_ns);
+		// Possibly report the current set of events.
+		m_report_events_interval->run([this, ts_ns]()
+                {
+			report_events(ts_ns);
+		}, ts_ns);
 
-	// Possibly report counts of the number of throttled policy events.
-	m_report_throttled_events_interval->run([this, ts_ns]()
-        {
-		report_throttled_events(ts_ns);
-	}, ts_ns);
-
-	// Drive the coclient loop to pick up any async grpc responses
-	m_actions_poll_interval->run([this]()
-        {
-		m_coclient->next();
-	}, ts_ns);
-
-	m_metrics_report_interval->run([this]()
-        {
-		for(auto &policy : m_falco_policies)
+		// Possibly report counts of the number of throttled policy events.
+		m_report_throttled_events_interval->run([this, ts_ns]()
 		{
-			policy.log_metrics();
-			policy.reset_metrics();
-		}
-	}, ts_ns);
+			report_throttled_events(ts_ns);
+		}, ts_ns);
 
-	for(auto &fpolicy : m_falco_policies)
-	{
-		draiosproto::policy_event *event = NULL;
+		// Drive the coclient loop to pick up any async grpc responses
+		m_actions_poll_interval->run([this]()
+                {
+			m_coclient->next();
+		}, ts_ns);
 
-		// Check to see if this policy has any outstanding
-		// actions that are now complete. If so, send the
-		// policy event messages for each.
-		fpolicy.check_outstanding_actions(ts_ns);
-
-		if((event = fpolicy.process_event(evt)) != NULL)
+		m_metrics_report_interval->run([this]()
 		{
-			g_log->debug("Event matched falco policy: " + fpolicy.name());
-
-			// Perform the actions associated with the
-			// policy. The actions will add their action
-			// results to the policy event as they complete.
-			if(fpolicy.perform_actions(evt, event))
+			for(auto &policy : m_falco_policies)
 			{
-				g_log->debug("perform_actions() returned true, not testing later policies");
+				policy->log_metrics();
+				policy->reset_metrics();
+			}
+			g_log->information("Events skipped at security_mgr level: " + to_string(m_skipped_evts));
+		}, ts_ns);
+	}, ts_ns);
+
+	// If no policy cares about this event type, return
+	// immediately.
+	if(m_evttypes[evt->get_type()])
+	{
+		for(auto &fpolicy : m_falco_policies)
+		{
+			if(fpolicy->process_event(evt))
+			{
+				g_log->debug("match_event() returned true, not testing later policies");
 				break;
 			}
 		}
+	}
+	else
+	{
+		m_skipped_evts++;
 	}
 
 	m_policies_lock.unlock();

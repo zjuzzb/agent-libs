@@ -16,7 +16,8 @@ security_policy::security_policy(security_mgr *mgr,
 	: m_mgr(mgr),
 	  m_configuration(configuration),
 	  m_policy(policy),
-	  m_coclient(coclient)
+	  m_coclient(coclient),
+	  m_has_outstanding_actions(false)
 {
 	m_print.SetSingleLineMode(true);
 	m_metrics.reset();
@@ -24,6 +25,34 @@ security_policy::security_policy(security_mgr *mgr,
 
 security_policy::~security_policy()
 {
+}
+
+bool security_policy::process_event(sinsp_evt *evt)
+{
+	draiosproto::policy_event *event;
+
+	if(!m_policy.enabled())
+	{
+		m_metrics.incr(evt_metrics::EVM_POLICY_DISABLED);
+		return false;
+	}
+
+	if(m_evttypes[evt->get_type()] &&
+	   (event = match_event(evt)) != NULL)
+	{
+		g_log->debug("Event matched policy: " + name());
+
+		// Perform the actions associated with the
+		// policy. The actions will add their action
+		// results to the policy event as they complete.
+		if(perform_actions(evt, event))
+		{
+			g_log->debug("perform_actions() returned true, not testing later policies");
+			return true;
+		}
+	}
+
+	return false;
 }
 
 std::string security_policy::to_string()
@@ -59,6 +88,14 @@ bool security_policy::has_action(const draiosproto::action_type &atype)
 	}
 
 	return false;
+}
+
+void security_policy::note_action_complete(actions_state &astate)
+{
+	if(--astate.m_num_remaining_actions == 0)
+	{
+		m_has_outstanding_actions = true;
+	}
 }
 
 draiosproto::action_result *security_policy::has_action_result(draiosproto::policy_event *evt,
@@ -113,7 +150,8 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 				result->set_successful(false);
 				result->set_errmsg("Could not perform docker command: " + res->errstr());
 			}
-			astate.m_num_remaining_actions--;
+
+			note_action_complete(astate);
 
 			string tmp;
 			m_print.PrintToString(*result, &tmp);
@@ -156,7 +194,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 				astate.m_send_now = true;
 			}
 
-			astate.m_num_remaining_actions--;
+			note_action_complete(astate);
 
 			m_print.PrintToString(*result, &tmp);
 			g_log->debug(string("Capture action result: ") + tmp);
@@ -176,22 +214,31 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 		}
 	}
 
+	if(astate.m_num_remaining_actions == 0)
+	{
+		m_has_outstanding_actions = true;
+	}
+
 	return true;
 }
 
 
 void security_policy::check_outstanding_actions(uint64_t ts_ns)
 {
-	list<actions_state>::iterator i = m_outstanding_actions.begin();
-	while(i != m_outstanding_actions.end())
+	if (!m_has_outstanding_actions)
 	{
-		if(i->m_num_remaining_actions == 0)
+		return;
+	}
+
+	auto no_outstanding_actions = [ts_ns, this] (actions_state &act)
+	{
+		if(act.m_num_remaining_actions == 0)
 		{
-			bool accepted = m_mgr->accept_policy_event(ts_ns, i->m_event, i->m_send_now);
+			bool accepted = m_mgr->accept_policy_event(ts_ns, act.m_event, act.m_send_now);
 
 			const draiosproto::action_result *aresult;
 
-			if((aresult = has_action_result(i->m_event.get(), draiosproto::ACTION_CAPTURE)) &&
+			if((aresult = has_action_result(act.m_event.get(), draiosproto::ACTION_CAPTURE)) &&
 			   aresult->successful())
 			{
 				string token = aresult->token();
@@ -219,14 +266,18 @@ void security_policy::check_outstanding_actions(uint64_t ts_ns)
 					}
 				}
 			}
+			return true;
+		}
 
-			m_outstanding_actions.erase(i++);
-		}
-		else
-		{
-			i++;
-		}
-	}
+		return false;
+	};
+
+	m_outstanding_actions.erase(remove_if(m_outstanding_actions.begin(),
+					      m_outstanding_actions.end(),
+					      no_outstanding_actions),
+				    m_outstanding_actions.end());
+
+	m_has_outstanding_actions = false;
 }
 
 bool security_policy::match_scope(sinsp_evt *evt)
@@ -281,37 +332,48 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 	m_falco_engine->enable_rule_by_tag(m_tags, true, m_policy.name());
 
 	m_ruleset_id = m_falco_engine->find_ruleset_id(m_policy.name());
+
+	m_falco_engine->evttypes_for_ruleset(m_evttypes, m_policy.name());
 }
 
 falco_security_policy::~falco_security_policy()
 {
 }
 
-draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
+bool falco_security_policy::check_conditions(sinsp_evt *evt)
 {
-	if(!m_policy.enabled())
-	{
-		m_metrics.incr(evt_metrics::EVM_POLICY_DISABLED);
-		return NULL;
-	}
-
 	if(!m_falco_engine)
 	{
 		m_metrics.incr(evt_metrics::EVM_NO_FALCO_ENGINE);
-		return NULL;
+		return false;
 	}
 
 	if((evt->get_info_flags() & EF_DROP_FALCO) != 0)
 	{
 		m_metrics.incr(evt_metrics::EVM_EF_DROP_FALCO);
-		return NULL;
+		return false;
 	}
 
 	if (m_policy.scope_predicates().size() > 0 && !match_scope(evt))
 	{
 		m_metrics.incr(evt_metrics::EVM_SCOPE_MISS);
+		return false;
+	}
+
+	return true;
+}
+
+draiosproto::policy_event *falco_security_policy::match_event(sinsp_evt *evt)
+{
+	if(!check_conditions(evt))
+	{
 		return NULL;
 	}
+
+	// Check to see if this policy has any outstanding
+	// actions that are now complete. If so, send the
+	// policy event messages for each.
+	check_outstanding_actions(evt->get_ts());
 
 	try {
 		unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, m_ruleset_id);
@@ -338,7 +400,7 @@ draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
 
 			m_metrics.incr(evt_metrics::EVM_MATCHED);
 			event->set_sinsp_events_dropped(m_mgr->analyzer()->recent_sinsp_events_dropped());
-      return event;
+			return event;
 		}
 	}
 	catch (falco_exception& e)

@@ -19,7 +19,7 @@
 
 extern sinsp_evttables g_infotables;
 
-sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events)
+sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_file_id = 0;
@@ -27,14 +27,9 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_
 	m_cf = NULL;
 	m_disabled = false;
 	m_switches_to_go = 0;
-	m_sysdig_sid = 0;
 	m_saturation_inactivity_start_time = 0;
 	m_delayed_switch_states_needed = false;
 	m_delayed_switch_states_ready = false;
-
-#if defined(HAS_CAPTURE)
-	m_capture_dragent_events = capture_dragent_events;
-#endif
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize,
@@ -382,16 +377,12 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 
 sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter,
 						      uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-						      bool track_job, Poco::Mutex *membuf_mtx)
+						      Poco::Mutex *membuf_mtx)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
 
 	sinsp_memory_dumper_job* job = new sinsp_memory_dumper_job();
-	if(track_job)
-	{
-		m_jobs.push_back(job);
-	}
 
 	job->m_start_time =
 		delta_time_past_ns != 0? ts - delta_time_past_ns : 0;
@@ -458,12 +449,6 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	}
 
 	return job;
-}
-
-void sinsp_memory_dumper::remove_job(sinsp_memory_dumper_job* job)
-{
-	m_jobs.erase(std::remove(m_jobs.begin(), m_jobs.end(), job), m_jobs.end());
-	delete job;
 }
 
 void sinsp_memory_dumper::switch_states(uint64_t ts)

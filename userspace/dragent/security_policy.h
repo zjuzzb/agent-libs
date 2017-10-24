@@ -7,7 +7,7 @@
 // This class is virtual void and is the base class for falco_policy.
 
 #include <memory>
-#include <list>
+#include <vector>
 #include <algorithm>
 
 #include <google/protobuf/text_format.h>
@@ -28,10 +28,18 @@ public:
 			std::shared_ptr<coclient> &coclient);
 	virtual ~security_policy();
 
+
+	// Match the event against this policy and if there's a match,
+	// perform any configured actions for the event.
+	//
+	// Returns true if later policies should continue to process
+	// the event, false otherwise.
+	bool process_event(sinsp_evt *evt);
+
 	// Try to match the sinsp event against this policy. If the
 	// policy matches, returns a policy_event message with details
 	// on the event. Returns NULL otherwise.
-	virtual draiosproto::policy_event *process_event(sinsp_evt *evt) = 0;
+	virtual draiosproto::policy_event *match_event(sinsp_evt *evt) = 0;
 
 	// Perform the actions for this policy, using the information
 	// from the given event. Any action results will be added to
@@ -58,6 +66,8 @@ public:
 
 	void reset_metrics();
 
+	// The event types for which this policy must run.
+	std::vector<bool> m_evttypes;
 protected:
 
 	// Return whether or not this policy has an action of the
@@ -95,6 +105,9 @@ protected:
 		// all actions are complete.
 		bool m_send_now;
 	};
+
+	// Note that an action has completed.
+	void note_action_complete(actions_state &astate);
 
 	class evt_metrics
 	{
@@ -149,7 +162,7 @@ protected:
 
 	evt_metrics m_metrics;
 
-	std::list<actions_state> m_outstanding_actions;
+	std::vector<actions_state> m_outstanding_actions;
 
 	google::protobuf::TextFormat::Printer m_print;
 
@@ -157,6 +170,7 @@ protected:
 	dragent_configuration *m_configuration;
 	draiosproto::policy m_policy;
 	std::shared_ptr<coclient> m_coclient;
+	bool m_has_outstanding_actions;
 };
 
 class SINSP_PUBLIC falco_security_policy : public security_policy
@@ -171,12 +185,14 @@ public:
 
 	virtual ~falco_security_policy();
 
-	draiosproto::policy_event *process_event(sinsp_evt *evt);
+	draiosproto::policy_event *match_event(sinsp_evt *evt);
 
 	// Return a string representation of this rule.
 	virtual std::string to_string();
 
 private:
+
+	bool check_conditions(sinsp_evt *evt);
 
 	std::string m_rule_filter;
 	std::set<std::string> m_tags;
