@@ -5,6 +5,7 @@
 #include <cmath>
 
 #define UNLIKELY(_x_)	__builtin_expect(!!(_x_), 0)
+#define SERIALIZE_SCALE	1000
 
 percentile::percentile(const std::set<double>& pctls, double eps)
 {
@@ -139,26 +140,25 @@ void percentile::serialize(draiosproto::counter_percentile_data *pdata) const
 {
 	flush();
 	if (m_num_samples) {
+		auto scale = SERIALIZE_SCALE;
 		auto &samples = m_digest->processed();
-		pdata->set_min(samples.front().mean());
-		pdata->set_max(samples.back().mean());
-		pdata->set_compression(m_digest->compression());
+		pdata->set_scale(scale);
 		pdata->set_num_samples(samples.size());
-		double prev_mean = 0;
+		pdata->set_min(scale * m_digest->min());
+		pdata->set_max(scale * m_digest->max());
+		uint64_t prev_mean = 0;
 		for (auto &s : samples) {
-			pdata->add_means(s.mean() - prev_mean);
+			auto curr_mean = scale * s.mean();
+			pdata->add_means(curr_mean - prev_mean);
 			pdata->add_weights(s.weight());
-			prev_mean = s.mean();
+			prev_mean = curr_mean;
 		}
 	}
 }
 
 void percentile::deserialize(const draiosproto::counter_percentile_data *pdata)
 {
-	std::vector<double> percentiles;
-	destroy(&percentiles);
-	init(percentiles, 1.0/pdata->compression());
-	alloc_tdigest_if_needed();
+	double scale = pdata->scale();
 
 	// validate the counts
 	if ((int)(pdata->num_samples()) != pdata->means_size()) {
@@ -172,27 +172,22 @@ void percentile::deserialize(const draiosproto::counter_percentile_data *pdata)
 				+ std::to_string(pdata->weights_size()));
 	}
 
+	std::vector<double> percentiles;
+	destroy(&percentiles);
+	init(percentiles);
+	m_digest = std::unique_ptr<tdigest::TDigest>(
+				new tdigest::TDigest(
+						1/m_eps, // compression
+						3/m_eps, // bufferSize
+						0, // size (default)
+						pdata->min()/scale,
+						pdata->max()/scale));
+
 	// ingest the samples
 	double curr_mean = 0;
 	for (uint32_t ndx = 0; ndx < pdata->num_samples(); ++ndx) {
-		curr_mean += pdata->means(ndx);
+		curr_mean += pdata->means(ndx)/scale;
 		m_digest->add(curr_mean, pdata->weights(ndx));
 		m_num_samples++;
-	}
-
-	// validate the min and max sample values
-	if (m_num_samples) {
-		flush();
-		auto &samples = m_digest->processed();
-		if (pdata->min() != samples.front().mean()) {
-			throw sinsp_exception("percentiles::deserialize: Mismatch. min: "
-					+ std::to_string(pdata->min()) + " sample: "
-					+ std::to_string(samples.front().mean()));
-		}
-		if (pdata->max() != samples.back().mean()) {
-			throw sinsp_exception("percentiles::deserialize: Mismatch. max: "
-					+ std::to_string(pdata->max()) + " sample: "
-					+ std::to_string(samples.back().mean()));
-		}
 	}
 }
