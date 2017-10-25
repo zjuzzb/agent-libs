@@ -4,6 +4,7 @@
 
 # stdlib
 import logging
+import math
 
 # 3rd party
 import requests
@@ -62,10 +63,14 @@ class Prometheus(AgentCheck):
                 for sample in family.samples:
                     if max_metrics and num >= max_metrics:
                         break
-                    (name, tags, value) = sample
-                    if tags and max_tags and len(tags) > max_tags:
-                        tags = {k: tags[k] for k in tags.keys()[:max_tags]}
-                    tags = ['{}:{}'.format(k,v) for k,v in tags.iteritems()]
+                    (name, stags, value) = sample
+                    # convert the dictionary of tags into a list of '<name>:<val>' items
+                    # also exclude 'quantile' as a key as it isn't a tag
+                    tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k != 'quantile']
+
+                    # trim the number of tags to 'max_tags'
+                    n_tags = max_tags if max_tags != None else len(tags)
+                    tags = tags[:n_tags]
     
                     # First handle summary
                     # Unused, see above
@@ -77,17 +82,26 @@ class Prometheus(AgentCheck):
                         else:
                             if family.type == 'histogram':
                                 continue
-                            elif 'quantile' in tags:
-                                quantile = int(float(tags['quantile']) * 100)
-                                # logging.debug('prom: Adding quantile gauge %s.%d' %(name, quantile))
-                                self.gauge('%s.%dpercentile' % (name, quantile),
-                                           value,
+                            elif 'quantile' in stags:
+                                quantile = int(float(stags['quantile']) * 100)
+                                qname = '%s.%dpercentile' % (name, quantile)
+                                # logging.debug('prom: Adding quantile gauge %s' %(qname))
+                                self.gauge(qname,
+                                           value if not math.isnan(value) else 0,
                                            tags)
                                 num += 1
+                                continue
     
-                        if parse_sum != None and parse_count > 0:
-                            logging.debug('prom: Adding gauge-avg %s' %(self.avg_metric_name(name)))
-                            self.gauge(self.avg_metric_name(name), parse_sum/parse_count, tags)
+                        if parse_sum != None and parse_count != None:
+                            logging.debug('prom: Adding gauge-avg %s%s' %(self.avg_metric_name(name), repr(tags)))
+                            self.gauge(self.avg_metric_name(name),
+                                       parse_sum/parse_count if parse_count else 0,
+                                       tags)
+                            # reset refs to sum and count samples in order to
+                            # have them point to other segments within the same
+                            # family
+                            parse_sum = None
+                            parse_count = None
                             num += 1
                     elif family.type == 'counter':
                         # logging.debug('prom: adding counter with name %s' %(name))

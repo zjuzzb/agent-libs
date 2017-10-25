@@ -386,6 +386,32 @@ class PosixQueue:
         if hasattr(self, "queue") and self.queue:
             self.close()
 
+def prepare_prom_check(pc, port):
+    # print "port:", port
+    path = pc.get("path", "/metrics");
+    if len(path) > 0 and path[0] != '/':
+        path = "/" + path
+    newconf = {"url": "http://localhost:" + str(port) + path}
+    if pc.get("max_metrics") != None:
+        newconf["max_metrics"] = pc["max_metrics"]
+    if pc.get("max_tags") != None:
+        newconf["max_tags"] = pc["max_tags"]
+    newcheck = {
+        "check_module": "prometheus",
+        "log_errors": pc.get("log_errors", True),
+        "interval": pc.get("interval", 1),
+        "conf": newconf,
+        "name": "prometheus." + str(port)
+    }
+    newproc = {
+        "check": newcheck,
+        "pid": pc["pid"],
+        "ports": [port],
+        "vpid": pc["vpid"],
+        "conf_vals": {}
+    }
+    return newcheck, newproc
+
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
@@ -498,29 +524,7 @@ class Application:
         # Create app_checks for prometheus
         for pc in promchecks:
             for port in pc["ports"]:
-                # print "port:", port
-                path = pc.get("path", "/metrics");
-                if len(path) > 0 and path[0] != '/':
-                    path = "/" + path
-                newconf = {"url": "http://localhost:" + str(port) + path}
-                if pc.get("max_metrics"):
-                    newconf["max_metrics"] = pc["max_metrics"]
-                if pc.get("max_tags"):
-                    newconf["max_tags"] = pc["max_tags"]
-                newcheck = {
-                    "check_module": "prometheus",
-                    "log_errors": pc.get("log_errors", True),
-                    "interval": pc.get("interval", 1),
-                    "conf": newconf,
-                    "name": "prometheus." + str(port)
-                }
-                newproc = {
-                    "check": newcheck,
-                    "pid": pc["pid"],
-                    "ports": [port],
-                    "vpid": pc["vpid"],
-                    "conf_vals": {}
-                }
+                newcheck, newproc = prepare_prom_check(pc, port)
                 pidname = (newproc["pid"],newcheck["name"])
                 ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc) 
                 if ran:
@@ -582,8 +586,11 @@ class Application:
                     "ports": [int(sys.argv[5]), ] if len(sys.argv) >= 6 else [],
                     "conf_vals": ast.literal_eval(sys.argv[6]) if len(sys.argv) >= 7 else {}
                 }
+                if sys.argv[2] == "prometheus":
+                    check_conf, proc_data = prepare_prom_check(proc_data["conf_vals"], int(sys.argv[5]))
+                else:
+                    check_conf = self.config.check_conf_by_name(proc_data["check"])
                 logging.info("Run AppCheck for %s", proc_data)
-                check_conf = self.config.check_conf_by_name(proc_data["check"])
                 if check_conf is None:
                     print "Check conf not found"
                     sys.exit(1)
