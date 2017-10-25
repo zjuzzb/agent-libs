@@ -99,17 +99,14 @@ class Prometheus(AgentCheck):
                                 dcnt = parse_count - prev.get("count")
                                 if dcnt > 0:
                                     val = (parse_sum - prev.get("sum")) / dcnt
-                                elif dcnt == 0:
-                                    val = prev.get("val")
-                                else:
+                                elif dcnt < 0:
                                     logging.info('prom: Descending count for %s%s' %(name, repr(tags)))
-                            if val == None:
-                                val = parse_sum/parse_count if parse_count else 0
-                            if math.isnan(val):
-                                val = 0
-                            # logging.debug('prom: Adding gauge(diff-avg) %s%s' %(name, repr(tags)))
-                            self.gauge(name, val, tags)
-                            self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count, "val":val }
+                            if val != None and not math.isnan(val):
+                                # logging.debug('prom: Adding diff-avg %s%s = %s' %(name, repr(tags), str(val)))
+                                self.gauge(name+".avg", val, tags)
+
+                            self.rate(name+".rate", parse_count, tags)
+                            self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count }
                             # reset refs to sum and count samples in order to
                             # have them point to other segments within the same
                             # family
