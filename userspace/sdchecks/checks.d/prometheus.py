@@ -86,6 +86,12 @@ class Prometheus(AgentCheck):
                         if parse_sum != None and parse_count != None:
                             prev = self.metric_history.get(name+str(tags), None) 
                             val = None
+                            # The average value over our sample period is:
+                            # val = (sum - prev_sum) / (count - prev_count)
+                            # We can only find the current average if we have
+                            # a previous sample and the count has increased
+                            # Otherwise we can't send the current average,
+                            # but we'll still send the count (as a rate)
                             if prev and prev.get("sum") != None and prev.get("count") != None:
                                 dcnt = parse_count - prev.get("count")
                                 if dcnt > 0:
@@ -96,7 +102,7 @@ class Prometheus(AgentCheck):
                                 # logging.debug('prom: Adding diff-avg %s%s = %s' %(name, repr(tags), str(val)))
                                 self.gauge(name+".avg", val, tags)
 
-                            self.rate(name+".rate", parse_count, tags)
+                            self.rate(name+".count", parse_count, tags)
                             self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count }
                             # reset refs to sum and count samples in order to
                             # have them point to other segments within the same
