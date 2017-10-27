@@ -683,36 +683,119 @@ return "";
 #endif
 }
 
+/*
+ * We were using the value reported by memory.usage_in_bytes as the amount of
+ * memory in use by a cgroup or container. However, usage_in_bytes is a fuzz
+ * value as per kernel-src/Documentation. An accurate value is a combination of
+ * rss+cache from the memory.stat entry of the cgroup.
+ */
 int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_memory_cgroup)
 {
-	int64_t ret = -1;
-	if(m_is_live_capture)
-	{
-		if(!m_memory_cgroup_dir)
-		{
+    if (!m_is_live_capture) {
+        return -1;
+    }
+
+    if (!m_memory_cgroup_dir) {
 			lookup_memory_cgroup_dir();
 		}
-		if(m_memory_cgroup_dir && !m_memory_cgroup_dir->empty())
-		{
-			// Using scap_get_host_root() is not necessary here because
-			// m_memory_cgroup_dir is taken from /etc/mtab
-			char filename[SCAP_MAX_PATH_SIZE];
-			snprintf(filename, sizeof(filename),
-					 "%s/%s/memory.usage_in_bytes",
-					 m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
-			ifstream used_memory_f(filename);
-			try
-			{
-				used_memory_f >> ret;
-			}
-			catch (const exception& ex)
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Exception of read cgroup_used_memory: %s", ex.what());
-				ret = -1;
-			}
-		}
-	}
-	return ret;
+
+    if (!m_memory_cgroup_dir || m_memory_cgroup_dir->empty()) {
+        return -1;
+    }
+
+    return read_cgroup_used_memory_vmrss(*m_memory_cgroup_dir,
+                                         container_memory_cgroup);
+}
+
+/*
+ * This function calculates VmRss which is what we use to determine mem usage
+ * of a process.
+ *
+ * This function must only be called from read_cgroup_used_memory().
+ *
+ * In proc(5), VmRss is defined as the following:
+ *              * VmRSS: Resident set size.  Note that the value here is the sum
+ *                of RssAnon, RssFile, and RssShmem.
+ *
+ *              * RssAnon:  Size  of  resident  anonymous  memory.  (since Linux
+ *                4.5).
+ *
+ *              * RssFile: Size of resident file mappings.  (since Linux 4.5).
+ *
+ *              * RssShmem: Size of resident shared memory  (includes  System  V
+ *                shared  memory,  mappings  from tmpfs(5), and shared anonymous
+ *                mappings).  (since Linux 4.5).
+ *
+ * For a cgroup, this translates to the following formula:
+ *      memory_stat.rss + memory_stat.cache - memory_stat.inactive_file
+ */
+int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
+                                        const string &memory_cgroup_dir,
+                                        const string &container_memory_cgroup)
+{
+    const unordered_set<string> stat_set = { "cache", "rss", "inactive_file" };
+    int64_t stat_val_cache = -1, stat_val_rss = -1, stat_val_inactive_file = -1;
+    int64_t ret;
+
+    // Using scap_get_host_root() is not necessary here because
+    // m_memory_cgroup_dir is taken from /etc/mtab
+    char mem_stat_filename[SCAP_MAX_PATH_SIZE];
+    snprintf(mem_stat_filename, sizeof(mem_stat_filename),"%s/%s/memory.stat",
+             memory_cgroup_dir.c_str(), container_memory_cgroup.c_str());
+    ifstream fp(mem_stat_filename);
+    string line;
+    unsigned find_count = 0;
+    while (getline(fp, line)) {
+        if (!line.size()) {
+            continue;
+        }
+        StringTokenizer line_tokens(line, " ", StringTokenizer::TOK_TRIM |
+                                               StringTokenizer::TOK_IGNORE_EMPTY);
+        if (line_tokens.count() < 2) {
+            continue;
+        }
+
+        if (stat_set.find(line_tokens[0]) == stat_set.end()) {
+            continue;
+        }
+
+        try {
+            if (stat_val_cache == -1 && line_tokens[0] == "cache") {
+                stat_val_cache = stoi(line_tokens[1]);
+                ++find_count;
+            } else if (stat_val_rss == -1 && line_tokens[0] == "rss") {
+                stat_val_rss = stoi(line_tokens[1]);
+                ++find_count;
+            } else if (stat_val_inactive_file == -1 &&
+                       line_tokens[0] == "inactive_file") {
+                stat_val_inactive_file = stoi(line_tokens[1]);
+                ++find_count;
+            }
+        } catch (const exception &e) {
+            g_logger.log(string(__func__) + ": Unable to convert value of stat " +
+                         line_tokens[0] + " = " + line_tokens[1] + ": " + e.what(),
+                         sinsp_logger::SEV_ERROR);
+            return -1;
+        }
+
+        if (stat_set.size() == find_count) {
+            break;
+        }
+    }
+
+    if (stat_set.size() != find_count) {
+        return -1;
+    }
+
+    ret = stat_val_rss + stat_val_cache - stat_val_inactive_file;
+    if (ret < 0) {
+        g_logger.format(sinsp_logger::SEV_ERROR, "%s: Calculation failed with values "
+                        "%llu, %llu, %llu from source %s", __func__, stat_val_cache,
+                        stat_val_rss, stat_val_inactive_file, mem_stat_filename);
+        return -1;
+    }
+
+    return ret;
 }
 
 void sinsp_procfs_parser::lookup_memory_cgroup_dir()
