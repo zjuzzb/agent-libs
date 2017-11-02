@@ -1066,6 +1066,26 @@ events:
 # End of events section
 
 # percentiles: [50, 95, 99]
+group_percentiles:
+  enabled: false
+
+  # Filtering containers for which percentile data should be sent to the collector.
+  # Data for only containers matching an include rule will be sent.
+  process_filter:
+    #- include:
+    #    container.image: prom/prometheus
+    #- include:
+    #    container.name: sysdig-agent
+    #- include:
+    #    <env_tag>: prod
+    - include:
+        container.label.io.percentiles: "true"
+    - exclude:
+        container.label.io.percentiles: "false"
+    - include:
+        kubernetes.pod.annotation.percentiles.io: true
+    - exclude:
+        kubernetes.pod.annotation.percentiles.io: false
 
 known_ports:
   - 902 # VMware 
