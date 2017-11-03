@@ -73,13 +73,11 @@ class Prometheus(AgentCheck):
                         else:
                             if family.type == 'histogram':
                                 continue
-                            elif 'quantile' in stags:
+                            elif ('quantile' in stags) and (not math.isnan(value)):
                                 quantile = int(float(stags['quantile']) * 100)
                                 qname = '%s.%dpercentile' % (name, quantile)
                                 # logging.debug('prom: Adding quantile gauge %s' %(qname))
-                                self.gauge(qname,
-                                           value if not math.isnan(value) else 0,
-                                           tags)
+                                self.gauge(qname, value, tags)
                                 num += 1
                                 continue
     
@@ -110,14 +108,14 @@ class Prometheus(AgentCheck):
                             parse_sum = None
                             parse_count = None
                             num += 1
-                    elif family.type == 'counter':
+                    elif (family.type == 'counter') and (not math.isnan(value)):
                         # logging.debug('prom: adding counter with name %s' %(name))
-                        self.rate(name, value if not math.isnan(value) else 0, tags)
+                        self.rate(name, value, tags)
                         num += 1
-                    else:
+                    elif not math.isnan(value):
                         # Could be a gauge or untyped value, which we treat as a gauge for now
                         # logging.debug('prom: adding gauge with name %s' %(name))
-                        self.gauge(name, value if not math.isnan(value) else 0, tags)
+                        self.gauge(name, value, tags)
                         num += 1
         # text_string_to_metric_families() generator can raise exceptions
         # for parse values. Treat them all as failures and don't retry.
