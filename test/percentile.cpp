@@ -1,4 +1,6 @@
 #include <gtest.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/io/gzip_stream.h>
 #include "percentile.h"
 #include "draios.pb.h"
 
@@ -260,9 +262,12 @@ TEST(percentile, serialization)
 		EXPECT_EQ(p1_map.size(), p2_map.size());
 		auto it1 = p1_map.cbegin();
 		auto it2 = p2_map.cbegin();
+		auto abs_error = 0.001;
 		for (; it1 != p1_map.cend(); ++it1, ++it2) {
 			EXPECT_EQ(it1->first, it2->first);
-			EXPECT_DOUBLE_EQ(it1->second, it2->second);
+			// ideally the percentiles should match, but will be off
+			// as we scale the sample.mean while serializing
+			EXPECT_NEAR(it1->second, it2->second, abs_error);
 		}
 	};
 
@@ -278,4 +283,57 @@ TEST(percentile, serialization)
 		complex.add(random());
 	}
 	test_serialization(complex);
+}
+
+TEST(percentile, serialized_size)
+{
+	std::set<double> pctls = {99};
+	std::pair<size_t, size_t> raw_sizes, comp_sizes;
+
+	raw_sizes.first = comp_sizes.first = std::numeric_limits<size_t>::max();
+
+	auto test_serialization = [&raw_sizes, &comp_sizes] (percentile &p1, size_t n_raw_samples) {
+		draiosproto::counter_percentile_data data;
+		p1.serialize(&data);
+
+		//std::cout << "#raw_samples: " << n_raw_samples << " #samples: " << data.num_samples()
+		//          << " Min: " << data.min() << " Max: " << data.max() << std::endl;
+
+		std::string sdata;
+		google::protobuf::io::StringOutputStream sout(&sdata);
+		if (data.SerializeToZeroCopyStream(&sout)) {
+			//std::cout << "Size of raw serialized data: " << sdata.size() << std::endl;
+			raw_sizes.first = std::min(raw_sizes.first, sdata.size());
+			raw_sizes.second = std::max(raw_sizes.second, sdata.size());
+		}
+
+		std::string gz_sdata;
+		google::protobuf::io::StringOutputStream gz_sout(&gz_sdata);
+		google::protobuf::io::GzipOutputStream::Options opts;
+		google::protobuf::io::GzipOutputStream gz_out(&gz_sout, opts);
+		if (data.SerializeToZeroCopyStream(&gz_out) &&
+		    gz_out.Close()) {
+			//std::cout << "Size of compressed serialized data: " << gz_sdata.size() << std::endl;
+			comp_sizes.first = std::min(comp_sizes.first, gz_sdata.size());
+			comp_sizes.second = std::max(comp_sizes.second, gz_sdata.size());
+		}
+	};
+
+	// test with lot of samples
+	percentile complex(pctls);
+	srandom(time(0));
+	size_t i = 0;
+	for (auto j = 0; i < 100000; i++) {
+		complex.add(random());
+		if (i%(int)(std::pow(8, j)) == 0) {
+			test_serialization(complex, i+1);
+			j++;
+		}
+	}
+	test_serialization(complex, i);
+
+	std::cout << "Raw sizes - min: " << raw_sizes.first
+	          << " max: " << raw_sizes.second << std::endl;
+	std::cout << "Compressed sizes - min: " << comp_sizes.first
+	          << " max: " << comp_sizes.second << std::endl;
 }

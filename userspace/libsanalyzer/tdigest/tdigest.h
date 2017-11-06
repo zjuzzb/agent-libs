@@ -187,11 +187,16 @@ class TDigest {
    * @param compression Compression factor.
    * @param bufferSize  Number of temporary centroids
    * @param size        Size of main buffer
+   * @param min         Value of smallest sample
+   * @param max         Value of greatest sample
    */
-  TDigest(Value compression, Index unmergedSize, Index mergedSize)
+  TDigest(Value compression, Index unmergedSize, Index mergedSize,
+          Value min = std::numeric_limits<Value>::max(),
+          Value max = std::numeric_limits<Value>::min())
       : compression_(compression),
         maxProcessed_(processedSize(mergedSize, compression)),
-        maxUnprocessed_(unprocessedSize(unmergedSize, compression)) {
+        maxUnprocessed_(unprocessedSize(unmergedSize, compression)),
+        min_(min), max_(max) {
     processed_.reserve(maxProcessed_);
     unprocessed_.reserve(maxUnprocessed_ + 1);
   }
@@ -217,6 +222,8 @@ class TDigest {
 
   // member accessors and misc.
   Value compression() const { return compression_; }
+  Value min() const { return min_; }
+  Value max() const { return max_; }
 
   const std::vector<Centroid>& processed() const { return processed_; }
 

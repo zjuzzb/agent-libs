@@ -15,7 +15,7 @@ public:
 	typedef std::map<int, double> p_map_type;
 
 	percentile() = delete;
-	percentile(const std::set<double>& pctls, double eps = .01);
+	percentile(const std::set<double>& pctls, double eps = .02);
 	~percentile();
 
 	percentile(const percentile& other);
@@ -81,7 +81,7 @@ public:
 	void deserialize(const draiosproto::counter_percentile_data *pdata);
 
 private:
-	inline void init(const std::vector<double> &percentiles, double eps = 0.1);
+	inline void init(const std::vector<double> &percentiles, double eps = 0.02);
 	inline void copy(const percentile& other);
 	inline void destroy(std::vector<double>* percentiles = nullptr);
 	void alloc_tdigest_if_needed(void);
