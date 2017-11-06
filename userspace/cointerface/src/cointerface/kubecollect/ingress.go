@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -63,7 +64,7 @@ func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) 
 var ingressInf cache.SharedInformer
 
 func AddIngressParents(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
-	if CompatibilityMap["ingress"] {
+	if compatibilityMap["ingress"] {
 		for _, obj := range ingressInf.GetStore().List() {
 			ingress := obj.(*v1beta1.Ingress)
 			if ingress.GetNamespace() != service.GetNamespace() {
@@ -91,7 +92,7 @@ func AddIngressParents(parents *[]*draiosproto.CongroupUid, service *v1.Service)
 }
 
 func AddIngressChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["ingress"] {
+	if compatibilityMap["ingress"] {
 		for _, obj := range ingressInf.GetStore().List() {
 			ingress := obj.(*v1beta1.Ingress)
 			if ingress.GetNamespace() == namespaceName {
@@ -103,14 +104,19 @@ func AddIngressChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 	}
 }
 
-func StartIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ingresses", v1meta.NamespaceAll, fields.Everything())
 	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, RsyncInterval)
-	go ingressInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		ingressInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchIngress()")
 
 	ingressInf.AddEventHandler(
@@ -135,6 +141,4 @@ func WatchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfor
 			},
 		},
 	)
-
-	return ingressInf
 }

@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -64,7 +65,7 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 var namespaceInf cache.SharedInformer
 
 func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
-	if CompatibilityMap["namespaces"] {
+	if compatibilityMap["namespaces"] {
 		// Check first if (inf.HasSynced() == true) ??
 		for _, obj := range namespaceInf.GetStore().List() {
 			nsObj := obj.(*v1.Namespace)
@@ -79,14 +80,19 @@ func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
 	}
 }
 
-func StartNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
 	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, RsyncInterval)
-	go namespaceInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		namespaceInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchNamespaces()")
 
 	namespaceInf.AddEventHandler(

@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	"reflect"
 	log "github.com/cihub/seelog"
@@ -128,7 +129,7 @@ func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service)
 }
 
 func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if CompatibilityMap["services"] {
+	if compatibilityMap["services"] {
 		for _, obj := range serviceInf.GetStore().List() {
 			service := obj.(*v1.Service)
 			//log.Debugf("AddNSParents: %v", nsObj.GetName())
@@ -152,7 +153,7 @@ func AddServiceChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 }
 
 func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, namespaceName string, serviceName string) {
-	if CompatibilityMap["services"] {
+	if compatibilityMap["services"] {
 		for _, obj := range serviceInf.GetStore().List() {
 			service := obj.(*v1.Service)
 			if service.GetNamespace() != namespaceName {
@@ -168,14 +169,19 @@ func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, nam
 	}
 }
 
-func StartServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Services", v1meta.NamespaceAll, fields.Everything())
 	serviceInf = cache.NewSharedInformer(lw, &v1.Service{}, RsyncInterval)
-	go serviceInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		serviceInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchServices()")
 
 	serviceInf.AddEventHandler(
