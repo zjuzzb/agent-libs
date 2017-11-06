@@ -41,7 +41,7 @@ public:
 			m_notification_pid(0),
 			m_defer_send(false),
 			m_start_ns(0),
-			m_send_initial_keepalive(false),
+			m_send_initial_keepalive(true),
 			m_delete_file_when_done(true),
 			m_send_file(true),
 			m_dumper(NULL)

@@ -19,13 +19,11 @@ from sdchecks import AppCheckDontRetryException
 class Prometheus(AgentCheck):
 
     DEFAULT_TIMEOUT = 5
-    
-    def avg_metric_name(self, name):
-        if name.endswith('_count'):
-            return name[:-len('_count')] + '_avg'
-        else:
-            return name[:-len('_sum')] + '_avg'
-        
+
+    def __init__(self, name, init_config, agentConfig, instances=None):
+        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
+        self.metric_history = {}
+
     def check(self, instance):
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
@@ -51,19 +49,12 @@ class Prometheus(AgentCheck):
                 if max_metrics and num >= max_metrics:
                     break
 
-                # Histogram and summary reported by prometheus just give us
-                # accumulated values.
-                # The average value over that timespan is not a good
-                # representation of the current state.
-                # Disabling histogram and summary for now until we
-                # add support in agent and/or backend
-                if family.type == 'histogram' or family.type == 'summary':
-                    continue
+                name = family.name
     
                 for sample in family.samples:
                     if max_metrics and num >= max_metrics:
                         break
-                    (name, stags, value) = sample
+                    (sname, stags, value) = sample
                     # convert the dictionary of tags into a list of '<name>:<val>' items
                     # also exclude 'quantile' as a key as it isn't a tag
                     tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k != 'quantile']
@@ -75,39 +66,53 @@ class Prometheus(AgentCheck):
                     # First handle summary
                     # Unused, see above
                     if family.type == 'histogram' or family.type == 'summary':
-                        if name.endswith('_sum'):
+                        if sname == name + '_sum':
                             parse_sum = value
-                        elif name.endswith('_count'):
+                        elif sname == name + '_count':
                             parse_count = value
                         else:
                             if family.type == 'histogram':
                                 continue
-                            elif 'quantile' in stags:
+                            elif ('quantile' in stags) and (not math.isnan(value)):
                                 quantile = int(float(stags['quantile']) * 100)
                                 qname = '%s.%dpercentile' % (name, quantile)
                                 # logging.debug('prom: Adding quantile gauge %s' %(qname))
-                                self.gauge(qname,
-                                           value if not math.isnan(value) else 0,
-                                           tags)
+                                self.gauge(qname, value, tags)
                                 num += 1
                                 continue
     
                         if parse_sum != None and parse_count != None:
-                            logging.debug('prom: Adding gauge-avg %s%s' %(self.avg_metric_name(name), repr(tags)))
-                            self.gauge(self.avg_metric_name(name),
-                                       parse_sum/parse_count if parse_count else 0,
-                                       tags)
+                            prev = self.metric_history.get(name+str(tags), None) 
+                            val = None
+                            # The average value over our sample period is:
+                            # val = (sum - prev_sum) / (count - prev_count)
+                            # We can only find the current average if we have
+                            # a previous sample and the count has increased
+                            # Otherwise we can't send the current average,
+                            # but we'll still send the count (as a rate)
+                            if prev and prev.get("sum") != None and prev.get("count") != None:
+                                dcnt = parse_count - prev.get("count")
+                                if dcnt > 0:
+                                    val = (parse_sum - prev.get("sum")) / dcnt
+                                elif dcnt < 0:
+                                    logging.info('prom: Descending count for %s%s' %(name, repr(tags)))
+                            if val != None and not math.isnan(val):
+                                # logging.debug('prom: Adding diff-avg %s%s = %s' %(name, repr(tags), str(val)))
+                                self.gauge(name+".avg", val, tags)
+
+                            self.rate(name+".count", parse_count, tags)
+                            self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count }
                             # reset refs to sum and count samples in order to
                             # have them point to other segments within the same
                             # family
                             parse_sum = None
                             parse_count = None
                             num += 1
-                    elif family.type == 'counter':
+                    elif (family.type == 'counter') and (not math.isnan(value)):
                         # logging.debug('prom: adding counter with name %s' %(name))
                         self.rate(name, value, tags)
                         num += 1
-                    else:
+                    elif not math.isnan(value):
                         # Could be a gauge or untyped value, which we treat as a gauge for now
                         # logging.debug('prom: adding gauge with name %s' %(name))
                         self.gauge(name, value, tags)
