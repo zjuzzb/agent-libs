@@ -311,6 +311,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 }
 
 func startServer(sock string) int {
+	log.Tracef("Starting cointerface server, grpc version %s", grpc.Version)
 
 	// Try to remove any existing socket
 	_, err := os.Stat(sock)
