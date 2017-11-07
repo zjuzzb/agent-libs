@@ -696,15 +696,14 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
     }
 
     if (!m_memory_cgroup_dir) {
-			lookup_memory_cgroup_dir();
-		}
+            lookup_memory_cgroup_dir();
+        }
 
     if (!m_memory_cgroup_dir || m_memory_cgroup_dir->empty()) {
         return -1;
     }
 
-    return read_cgroup_used_memory_vmrss(*m_memory_cgroup_dir,
-                                         container_memory_cgroup);
+    return read_cgroup_used_memory_vmrss(container_memory_cgroup);
 }
 
 /*
@@ -728,74 +727,70 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
  *
  * For a cgroup, this translates to the following formula:
  *      memory_stat.rss + memory_stat.cache - memory_stat.inactive_file
+ *
+ * NOTE: This function MUST only be called from read_cgroup_used_memory().
  */
 int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
-                                        const string &memory_cgroup_dir,
                                         const string &container_memory_cgroup)
 {
-    const unordered_set<string> stat_set = { "cache", "rss", "inactive_file" };
     int64_t stat_val_cache = -1, stat_val_rss = -1, stat_val_inactive_file = -1;
-    int64_t ret;
+    unsigned stat_find_count = 0;
+    const unsigned num_stats = 3;
 
     // Using scap_get_host_root() is not necessary here because
     // m_memory_cgroup_dir is taken from /etc/mtab
     char mem_stat_filename[SCAP_MAX_PATH_SIZE];
     snprintf(mem_stat_filename, sizeof(mem_stat_filename),"%s/%s/memory.stat",
-             memory_cgroup_dir.c_str(), container_memory_cgroup.c_str());
-    ifstream fp(mem_stat_filename);
-    string line;
-    unsigned find_count = 0;
-    while (getline(fp, line)) {
-        if (!line.size()) {
-            continue;
-        }
-        StringTokenizer line_tokens(line, " ", StringTokenizer::TOK_TRIM |
-                                               StringTokenizer::TOK_IGNORE_EMPTY);
-        if (line_tokens.count() < 2) {
-            continue;
-        }
+             m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
 
-        if (stat_set.find(line_tokens[0]) == stat_set.end()) {
-            continue;
-        }
+    FILE *fp = fopen(mem_stat_filename, "r");
+    if (fp == NULL) {
+        g_logger.log(string(__func__) + ": Unable to open file " + mem_stat_filename +
+                     ": errno: " + strerror(errno), sinsp_logger::SEV_ERROR);
+        return -1;
+    }
 
-        try {
-            if (stat_val_cache == -1 && line_tokens[0] == "cache") {
-                stat_val_cache = stoi(line_tokens[1]);
-                ++find_count;
-            } else if (stat_val_rss == -1 && line_tokens[0] == "rss") {
-                stat_val_rss = stoi(line_tokens[1]);
-                ++find_count;
-            } else if (stat_val_inactive_file == -1 &&
-                       line_tokens[0] == "inactive_file") {
-                stat_val_inactive_file = stoi(line_tokens[1]);
-                ++find_count;
-            }
-        } catch (const exception &e) {
-            g_logger.log(string(__func__) + ": Unable to convert value of stat " +
-                         line_tokens[0] + " = " + line_tokens[1] + ": " + e.what(),
-                         sinsp_logger::SEV_ERROR);
+    char fp_line[128] = { 0 };
+    while(fgets(fp_line, sizeof(fp_line), fp) != NULL) {
+        char stat_val_str[64] = { 0 };
+        int64_t stat_val = -1;
+        if (sscanf(fp_line, "%63s %" PRId64, stat_val_str, &stat_val) != 2) {
+            g_logger.log(string(__func__) + ": Unable to parse line '" + fp_line + "'" +
+                         " from file " + mem_stat_filename, sinsp_logger::SEV_ERROR);
             return -1;
         }
 
-        if (stat_set.size() == find_count) {
+        if (stat_val_cache == -1 && strcmp(stat_val_str, "cache") == 0) {
+            stat_val_cache = stat_val;
+            ++stat_find_count;
+        } else if (stat_val_rss == -1 && strcmp(stat_val_str, "rss") == 0) {
+            stat_val_rss = stat_val;
+            ++stat_find_count;
+        } else if (stat_val_inactive_file == -1 &&
+                   strcmp(stat_val_str, "inactive_file") == 0) {
+            stat_val_inactive_file = stat_val;
+            ++stat_find_count;
+        }
+
+        if (num_stats == stat_find_count) {
             break;
         }
     }
 
-    if (stat_set.size() != find_count) {
+    if (num_stats != stat_find_count) {
         return -1;
     }
 
-    ret = stat_val_rss + stat_val_cache - stat_val_inactive_file;
-    if (ret < 0) {
+    int64_t ret_val = stat_val_rss + stat_val_cache - stat_val_inactive_file;
+    if (ret_val < 0) {
         g_logger.format(sinsp_logger::SEV_ERROR, "%s: Calculation failed with values "
-                        "%llu, %llu, %llu from source %s", __func__, stat_val_cache,
-                        stat_val_rss, stat_val_inactive_file, mem_stat_filename);
+                        "%" PRId64 ", %" PRId64 ", %" PRId64 " from file %s", __func__,
+                        stat_val_cache, stat_val_rss, stat_val_inactive_file,
+                        mem_stat_filename);
         return -1;
     }
 
-    return ret;
+    return ret_val;
 }
 
 void sinsp_procfs_parser::lookup_memory_cgroup_dir()

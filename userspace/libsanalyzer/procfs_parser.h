@@ -111,8 +111,7 @@ private:
 	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
 
     // Current implementation for read_cgroup_used_memory()
-    int64_t read_cgroup_used_memory_vmrss(const string &memory_cgroup_dir,
-                                          const string &container_memory_cgroup);
+    int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
 
 	mount_points_limits::sptr_t m_mount_points;
 
