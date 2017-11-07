@@ -1,32 +1,18 @@
-# Opensuse needs more s390x repos, but we can only seem to find factory or tumbleweed versions
+# Opensuse needs more s390x repos, but we can only seem to find factory or tumbleweed versionshttp://download.opensuse.org/distribution/leap/42.2/repo/oss/ ud
 # http://download.opensuse.org/ports/zsystems/tumbleweed/
-#FROM opensuse/s390x
-#FROM s390x/opensuse:leap
-FROM suse/sles12
+#FROM opensuse/s390x:tumbleweed
+FROM s390x/opensuse
+#FROM suse/sles12sp2
 
-# Sles12 needs a bunch of repos supplied by linuxone host marist.edu
-# Ugh, docker replaces /etc/hosts for every container
-#RUN [ "/bin/bash", "-c", "echo 148.100.42.9 lxslsmt.marist.edui lxslsmt >> /etc/hosts" ]
-#RUN [ "/bin/bash", "-c", "cat /etc/hosts"]
-# docker 17.04 apparently has an --add-host option.
-# Not sure if we want to require 17.04, using hardcoded IPs for now.
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Containers/12/s390x/product?credentials=SMT-http_lxslsmt" "SLE-Module-Containers12-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Containers/12/s390x/product_source?credentials=SMT-http_lxslsmt" "SLE-Module-Containers12-Source-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-Module-Containers/12/s390x/update?credentials=SMT-http_lxslsmt" "SLE-Module-Containers12-Updates"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Toolchain/12/s390x/product?credentials=SMT-http_lxslsmt" "SLE-Module-Toolchain12-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-Module-Toolchain/12/s390x/update?credentials=SMT-http_lxslsmt" "SLE-Module-Toolchain12-Updates"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-Module-Web-Scripting/12/s390x/product?credentials=SMT-http_lxslsmt" "SLE-Module-Web-Scripting12-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-Module-Web-Scripting/12/s390x/update?credentials=SMT-http_lxslsmt" "SLE-Module-Web-Scripting12-Updates"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SDK/12-SP1/s390x/product?credentials=SMT-http_lxslsmt" "SLE-SDK12-SP1-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SDK/12-SP1/s390x/product_source?credentials=SMT-http_lxslsmt" "SLE-SDK12-SP1-Source-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-SDK/12-SP1/s390x/update?credentials=SMT-http_lxslsmt" "SLE-SDK12-SP1-Updates"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SERVER/12-SP1/s390x/product?credentials=SMT-http_lxslsmt" "SLES12-SP1-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Products/SLE-SERVER/12-SP1/s390x/product_source?credentials=SMT-http_lxslsmt" "SLES12-SP1-Source-Pool"
-RUN zypper addrepo "http://148.100.42.9/repo/SUSE/Updates/SLE-SERVER/12-SP1/s390x/update?credentials=SMT-http_lxslsmt" "SLES12-SP1-Updates"
-RUN zypper addrepo "http://download.opensuse.org/repositories/openSUSE:/Backports:/SLE-12-SP1/standard/" "openSUSE_Backports_SLE-12-SP1"
-RUN zypper addrepo "http://download.opensuse.org/repositories/openSUSE:/Backports:/SLE-12/standard/" "openSUSE_Backports_SLE-12"
+#Host is running a webserver to provide needed packages
+RUN zypper ar -G http://127.0.0.1/repo local && \
+    zypper ar -G http://download.opensuse.org/repositories/Virtualization:containers/openSUSE_Tumbleweed/Virtualization:containers.repo && \
+    zypper refresh
 
-RUN zypper -n --gpg-auto-import-keys ref -s
+#Needed for compatibility issues
+RUN zypper in -y --oldpackage libdbus-1-3=1.8.16-19.1 && \
+    zypper in -y --oldpackage libncurses5=5-9-40.124
+
 RUN zypper -n install \
         createrepo \
         expect \
@@ -37,7 +23,7 @@ RUN zypper -n install \
 	glibc-32bit \
 	glibc-devel-32bit \
         git \
-        glibc-static \
+        glibc-devel-static \
 	java-1_7_0-openjdk \
 	java-1_7_0-openjdk-devel \
         make \
@@ -53,6 +39,8 @@ RUN zypper -n install \
 	readline-devel \
 	gettext-tools \
 	docker
+
+RUN zypper rr local
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/
