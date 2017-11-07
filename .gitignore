@@ -86,3 +86,6 @@ userspace/sdjagent/target
 #CodeLite
 .codelite
 .directory
+
+# dep cache
+userspace/cointerface/pkg/
