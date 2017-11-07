@@ -696,8 +696,8 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
     }
 
     if (!m_memory_cgroup_dir) {
-            lookup_memory_cgroup_dir();
-        }
+        lookup_memory_cgroup_dir();
+    }
 
     if (!m_memory_cgroup_dir || m_memory_cgroup_dir->empty()) {
         return -1;
