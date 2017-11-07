@@ -757,6 +757,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
         if (sscanf(fp_line, "%63s %" PRId64, stat_val_str, &stat_val) != 2) {
             g_logger.log(string(__func__) + ": Unable to parse line '" + fp_line + "'" +
                          " from file " + mem_stat_filename, sinsp_logger::SEV_ERROR);
+            fclose(fp);
             return -1;
         }
 
@@ -776,6 +777,8 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
             break;
         }
     }
+
+    fclose(fp);
 
     if (num_stats != stat_find_count) {
         return -1;
