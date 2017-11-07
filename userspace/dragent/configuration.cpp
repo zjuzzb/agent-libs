@@ -8,7 +8,6 @@
 #include "Poco/File.h"
 #include <netdb.h>
 
-#include "json_error_log.h"
 #include "logger.h"
 #include "uri.h"
 
@@ -207,7 +206,6 @@ dragent_configuration::dragent_configuration()
 	m_cpu_usage_max_sr_threshold = 0.0;
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
-	m_json_parse_errors_logfile = "";
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
@@ -613,7 +611,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
 	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
-	m_json_parse_errors_logfile = m_config->get_scalar<string>("json_parse_errors_logfile", "");
 #ifdef _DEBUG
 	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", false);
 #else
@@ -982,11 +979,6 @@ void dragent_configuration::print_configuration()
 	g_log->information("ui.hidden_processes: " + m_hidden_processes);
 	g_log->information("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
 	g_log->information("protobuf_print: " + bool_as_text(m_print_protobuf));
-	if(m_json_parse_errors_logfile != "")
-	{
-		g_log->information("Will log json parse errors to; " + m_json_parse_errors_logfile);
-		g_json_error_log.set_json_parse_errors_file(m_json_parse_errors_logfile);
-	}
 	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
 	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
 	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
