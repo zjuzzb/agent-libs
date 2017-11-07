@@ -746,7 +746,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
     FILE *fp = fopen(mem_stat_filename, "r");
     if (fp == NULL) {
         g_logger.log(string(__func__) + ": Unable to open file " + mem_stat_filename +
-                     ": errno: " + strerror(errno), sinsp_logger::SEV_ERROR);
+                     ": errno: " + strerror(errno), sinsp_logger::SEV_DEBUG);
         return -1;
     }
 
