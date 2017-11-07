@@ -1,7 +1,7 @@
 package kubecollect
 
 import (
-	"draiosproto"
+	"cointerface/draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
 	"reflect"

@@ -2,7 +2,7 @@ package main
 
 import (
 	"cointerface/kubecollect"
-	"draiosproto"
+	"cointerface/draiosproto"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/client"
@@ -14,7 +14,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sdc_internal"
+	"cointerface/sdc_internal"
 	"sync"
 	"time"
 )
