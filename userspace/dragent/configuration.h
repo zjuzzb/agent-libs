@@ -553,6 +553,7 @@ public:
 	string m_hidden_processes;
 	bool m_autoupdate_enabled;
 	bool m_print_protobuf;
+	string m_json_parse_errors_logfile;
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
