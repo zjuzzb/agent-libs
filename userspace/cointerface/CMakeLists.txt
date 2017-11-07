@@ -19,8 +19,8 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-ge
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
-        COMMAND env GOPATH=${GOPATH} go fmt cointerface
-        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
+        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt cointerface
+        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
         WORKING_DIRECTORY ${CMAKE_CURRENT_LISTDIR_DIR}
 	DEPENDS 
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go

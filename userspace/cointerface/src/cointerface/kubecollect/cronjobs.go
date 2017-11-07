@@ -3,7 +3,7 @@ package kubecollect
 import (
 	// "os"
 	// "encoding/json"
-	"draiosproto"
+	"cointerface/draiosproto"
 	"context"
 	"github.com/gogo/protobuf/proto"
 	kubeclient "k8s.io/client-go/kubernetes"

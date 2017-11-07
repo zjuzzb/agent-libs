@@ -6,7 +6,7 @@ import (
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/rest"
-	"draiosproto"
+	"cointerface/draiosproto"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
