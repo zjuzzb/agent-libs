@@ -80,11 +80,13 @@ struct filter_rule {
 };
 
 class conf {
+	static const uint32_t default_check_interval_s = 60;
 public:
 	explicit conf(std::string context_str):
 		m_context(std::move(context_str)),
 		m_enabled(false),
-		m_k8s_get_config(true)
+		m_k8s_get_config(true),
+		m_check_interval(default_check_interval_s)
 	{}
 
 	void set_enabled(bool val) { m_enabled = val; }
@@ -93,18 +95,23 @@ public:
 	void set_k8s_get_config(bool val) { m_k8s_get_config = val; }
 	bool k8s_get_config() const { return m_k8s_get_config; }
 
+	void set_check_interval(uint32_t val) { m_check_interval = val; }
+	uint32_t check_interval() const { return m_check_interval; }
+
 	void set_rules(std::vector<filter_rule> rules) { m_rules = std::move(rules); }
 	const std::vector<filter_rule>& rules() const { return m_rules; }
 
-protected:
 	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
 	           const sinsp_container_info *container, infrastructure_state *is,
 			   std::function<bool (const filter_rule &rule)> on_match = nullptr) const;
+
+	static uint32_t default_check_interval() { return default_check_interval_s; }
 
 protected:
 	std::string m_context;
 	bool m_enabled;
 	bool m_k8s_get_config;
+	uint32_t m_check_interval;
 	std::vector<filter_rule> m_rules;
 };
 } // namespace proc_filter

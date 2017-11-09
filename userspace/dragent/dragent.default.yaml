@@ -1068,16 +1068,11 @@ events:
 # percentiles: [50, 95, 99]
 group_percentiles:
   enabled: false
+  check_interval: 60
 
   # Filtering containers for which percentile data should be sent to the collector.
   # Data for only containers matching an include rule will be sent.
   process_filter:
-    #- include:
-    #    container.image: prom/prometheus
-    #- include:
-    #    container.name: sysdig-agent
-    #- include:
-    #    <env_tag>: prod
     - include:
         container.label.io.percentiles: "true"
     - exclude:

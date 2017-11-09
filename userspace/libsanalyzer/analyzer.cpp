@@ -69,6 +69,15 @@ using namespace google::protobuf::io;
 #include "tracer_emitter.h"
 #include "metric_limits.h"
 
+namespace {
+template<typename T>
+void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
+{
+	metrics.set_percentiles(pctls);
+	metrics.set_serialize_pctl_data(true);
+}
+};
+
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
@@ -236,14 +245,14 @@ void sinsp_analyzer::set_percentiles()
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	if(pctls.size())
 	{
-		m_host_transaction_counters.set_percentiles(pctls);
-		m_host_metrics.set_percentiles(pctls);
+		init_host_level_percentiles(m_host_transaction_counters, pctls);
+		init_host_level_percentiles(m_host_metrics, pctls);
 		if(m_host_metrics.m_protostate)
 		{
-			m_host_metrics.m_protostate->set_percentiles(pctls);
+			init_host_level_percentiles(*(m_host_metrics.m_protostate), pctls);
 		}
-		m_host_req_metrics.set_percentiles(pctls);
-		m_io_net.set_percentiles(pctls);
+		init_host_level_percentiles(m_host_req_metrics, pctls);
+		init_host_level_percentiles(m_io_net, pctls);
 	}
 }
 
@@ -3016,6 +3025,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				if(pctls.size())
 				{
 					conn.m_transaction_metrics.set_percentiles(pctls);
+					conn.m_transaction_metrics.set_serialize_pctl_data(true);
 				}
 			}
 			else
@@ -5787,6 +5797,19 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		return;
 	}
 
+	// check if we need to serialize percentile data for this container
+	auto conf = get_configuration_read_only()->get_group_pctl_conf();
+	if (conf && conf->enabled() &&
+	    it_analyzer->second.time_for_serialize_pctl_data_check()) {
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+			"Doing percentile data serialization check for container=%s(%s) pid=%ld",
+			container_id.c_str(), it->second.m_name.c_str(), tinfo->m_pid);
+
+		it_analyzer->second.set_serialize_pctl_data(
+				conf->match(tinfo, tinfo, &(it->second), infra_state()),
+				conf->check_interval()*2);
+	}
+
 	draiosproto::container* container = m_metrics->add_containers();
 
 	container->set_id(it->second.m_id);
@@ -6605,6 +6628,7 @@ analyzer_container_state::analyzer_container_state()
 	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
+	m_serialize_pctl_data_expiration = 0;
 }
 
 void analyzer_container_state::clear()

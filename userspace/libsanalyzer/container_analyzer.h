@@ -17,8 +17,28 @@ public:
 	void set_percentiles(const std::set<double>& percentiles)
 	{
 		m_metrics.set_percentiles(percentiles);
+		m_metrics.m_protostate->set_percentiles(percentiles);
 		m_req_metrics.set_percentiles(percentiles);
 		m_transaction_counters.set_percentiles(percentiles);
+	}
+
+	void set_serialize_pctl_data(bool val, uint32_t expiration_count)
+	{
+		m_serialize_pctl_data_expiration = expiration_count;
+		m_metrics.set_serialize_pctl_data(val);
+		m_metrics.m_protostate->set_serialize_pctl_data(val);
+		m_req_metrics.set_serialize_pctl_data(val);
+		m_transaction_counters.set_serialize_pctl_data(val);
+	}
+
+	bool time_for_serialize_pctl_data_check()
+	{
+		if (m_serialize_pctl_data_expiration == 0) {
+			return true;
+		} else {
+			--m_serialize_pctl_data_expiration;
+			return false;
+		}
 	}
 
 	// Used to get network stats from /proc/<pid>/net/dev
@@ -26,4 +46,7 @@ public:
 	uint64_t m_last_bytes_out;
 
 	void clear();
+
+private:
+	uint32_t m_serialize_pctl_data_expiration;
 };

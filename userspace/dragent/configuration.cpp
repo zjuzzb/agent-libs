@@ -569,6 +569,14 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 
 	add_percentiles();
+	if (! m_percentiles.empty()) {
+		m_group_pctl_conf.reset(new proc_filter::conf("Group Percentiles"));
+		m_group_pctl_conf->set_enabled(m_config->get_scalar<bool>("group_percentiles", "enabled", false));
+		m_group_pctl_conf->set_k8s_get_config(m_config->get_scalar<bool>("group_percentiles", "get_kubernetes_config", true));
+		m_group_pctl_conf->set_check_interval(m_config->get_scalar<uint32_t>("group_percentiles", "check_interval", proc_filter::conf::default_check_interval()));
+		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
+	}
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -1009,6 +1017,13 @@ void dragent_configuration::print_configuration()
 		for(const auto& p : m_percentiles) { os << p << ','; }
 		os.seekp(-1, os.cur); os << ']';
 		g_log->information("Percentiles: " + os.str());
+		g_log->information("Group Percentiles: " + bool_as_text(m_group_pctl_conf->enabled()));
+		if (m_group_pctl_conf->enabled()) {
+			g_log->information("  Get k8s config: " + bool_as_text(m_group_pctl_conf->k8s_get_config()));
+			g_log->information("  Check interval: " + NumberFormatter::format(m_group_pctl_conf->check_interval()));
+		}
+	} else {
+		g_log->information("Percentiles: " + bool_as_text(false));
 	}
 	if(m_ignored_percentiles.size())
 	{
