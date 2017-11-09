@@ -169,6 +169,14 @@ public:
 		}
 	}
 
+	void add_times(const sinsp_request_details& other)
+	{
+		m_time_tot += other.m_time_tot;
+		if (m_percentile && other.m_percentile) {
+			m_percentile->merge(other.m_percentile.get());
+		}
+	}
+
 	uint64_t get_time_tot() const
 	{
 		return m_time_tot;
@@ -221,7 +229,6 @@ public:
 	//
 	inline static void update(T* entry, sinsp_partial_transaction* tr, int64_t time_delta, bool is_failure, const std::set<double>& percentiles)
 	{
-		entry->set_percentiles(percentiles);
 		if(entry->m_ncalls == 0)
 		{
 			entry->m_ncalls = 1;
@@ -233,6 +240,7 @@ public:
 			{
 				entry->m_nerrors = 0;
 			}
+			entry->set_percentiles(percentiles);
 			entry->add_time(time_delta);
 			entry->m_time_max = time_delta;
 			entry->m_bytes_in = tr->m_prev_bytes_in;
@@ -286,7 +294,7 @@ public:
 			{
 				entry->m_ncalls += uit->second.m_ncalls;
 				entry->m_nerrors += uit->second.m_nerrors;
-				entry->add_time(uit->second.get_time_tot());
+				entry->add_times(uit->second);
 				entry->m_bytes_in += uit->second.m_bytes_in;
 				entry->m_bytes_out += uit->second.m_bytes_out;
 				
