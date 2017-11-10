@@ -1948,7 +1948,7 @@ TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
 	EXPECT_EQ(0, callnum);
 }
 
-TEST_F(sys_call_test, get_n_tracepoint_hit_counts)
+TEST_F(sys_call_test, DISABLED_get_n_tracepoint_hit_counts)
 {
 	static const int SYSCALL_COUNT = 1000000;
 	int callnum = 0;
