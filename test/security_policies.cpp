@@ -46,7 +46,6 @@ protected:
 		// reading of responses, we need a bigger than normal
 		// queue length.
 		m_queue = new protocol_queue(1000);
-		m_policy_events = new synchronized_policy_events(100);
 
 		// dragent_configuration::init() takes an app, but I
 		// don't see it used anywhere.
@@ -60,6 +59,7 @@ protected:
 		m_configuration.m_autodrop_enabled = false;
 		m_configuration.m_security_policies_file = "./resources/security_policies_message.txt";
 		m_configuration.m_security_throttled_report_interval_ns = 1000000000;
+		m_configuration.m_security_report_interval_ns = 15000000000;
 
 		// The (global) logger only needs to be set up once
 		if(!g_log)
@@ -79,7 +79,8 @@ protected:
 		}
 
 		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);
-		m_sinsp_worker = new sinsp_worker(&m_configuration, m_queue, &m_enable_autodrop, m_policy_events, m_capture_job_handler);
+		m_internal_metrics = make_shared<internal_metrics>();
+		m_sinsp_worker = new sinsp_worker(&m_configuration, m_internal_metrics, m_queue, &m_enable_autodrop, m_capture_job_handler);
 		m_sinsp_worker->init();
 		m_capture_job_handler->init(m_sinsp_worker->get_inspector());
 
@@ -98,51 +99,25 @@ protected:
 		delete m_sinsp_worker;
 		delete m_capture_job_handler;
 		delete m_queue;
-		delete m_policy_events;
 	}
-
-	// Wait for the next message of the provided type
-	void queue_fetch(uint8_t messagetype, std::shared_ptr<protocol_queue_item> &item)
-	{
-		// The capture_job_handler may send a variety of messages
-		// (e.g. metrics, dump responses, etc). so try up to
-		// 50 times to get a message of the type we want.
-		for(uint32_t attempts = 0; attempts < 50; attempts++)
-		{
-			ASSERT_TRUE(m_queue->get(&item, 5000));
-
-			dragent_protocol_header *hdr = (dragent_protocol_header*) item->buffer.data();
-
-			g_log->debug("Got message type=" + to_string(hdr->messagetype));
-
-			if(hdr->messagetype != messagetype)
-			{
-				continue;
-			}
-
-			return;
-		}
-
-		FAIL() << "Did not receive message with type " << to_string(messagetype) << " after 50 attempts";
-	}
-
 
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
+	internal_metrics::sptr_t m_internal_metrics;
 	sinsp_worker *m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration m_configuration;
 	protocol_queue *m_queue;
 	atomic<bool> m_enable_autodrop;
-	synchronized_policy_events *m_policy_events;
 	security_policy_error_handler m_error_handler;
 };
 
 TEST_F(security_policies_test, events_flood)
 {
 	std::shared_ptr<protocol_queue_item> item;
+	dragent_protocol_header *hdr;
 
-	// Repeatedly try to read /etc/shadow. This will result in a flood of policy events.
+	// Repeatedly try to read /etc/sample-sensitive-file.txt. This will result in a flood of policy events.
 
 	// What we want to see is the following:
 	//  - 1 policy event message, containing all the policy events that make it through the token bucket.
@@ -151,7 +126,11 @@ TEST_F(security_policies_test, events_flood)
 	//  - The total count of events across both messages should equal the number of reads we did.
 	//  - There should be a steady stream of metrics events without any big delays.
 
-	queue_fetch(draiosproto::METRICS, item);
+	// Wait for an initial metrics message. This indicates that
+	// the background threads have all started.
+	ASSERT_TRUE(m_queue->get(&item, 5000));
+	hdr = (dragent_protocol_header*) item->buffer.data();
+	ASSERT_EQ(hdr->messagetype, draiosproto::message_type::METRICS);
 
 	g_log->debug("Reading /etc/sample-sensitive-file.txt 1000 times");
 	for(uint32_t i = 0; i < 1000; i++)
@@ -162,9 +141,10 @@ TEST_F(security_policies_test, events_flood)
 		Poco::Thread::sleep(10);
 	}
 
-	// Sleep 2 seconds. This ensures that the final throttled
-	// policy events message was sent.
-	Poco::Thread::sleep(2000);
+	// Sleep 10 seconds. This ensures that the final throttled
+	// policy events message and single policy events message was
+	// sent.
+	Poco::Thread::sleep(10000);
 
 	uint64_t last_metrics_ts = 0;
 	int32_t policy_event_count = 0;
@@ -181,8 +161,9 @@ TEST_F(security_policies_test, events_flood)
 		uint32_t size;
 		draiosproto::metrics metrics;
 		draiosproto::throttled_policy_events tpe;
+		draiosproto::policy_events pe;
 
-		dragent_protocol_header *hdr = (dragent_protocol_header*) item->buffer.data();
+		hdr = (dragent_protocol_header*) item->buffer.data();
 		buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header));
 		size = ntohl(hdr->len) - sizeof(dragent_protocol_header);
 
@@ -214,19 +195,17 @@ TEST_F(security_policies_test, events_flood)
 
 			break;
 
+		case draiosproto::message_type::POLICY_EVENTS:
+			g_log->debug("Read policy event with " + to_string(pe.events_size()) + " events");
+			policy_event_count++;
+			ASSERT_TRUE(dragent_protocol::buffer_to_protobuf(buf, size, &pe));
+			event_count += pe.events_size();
+
+			break;
+
 		default:
 			FAIL() << "Received unknown message " << hdr->messagetype;
 		}
-	}
-
-	// Now read all events from m_policy_events.
-	draiosproto::policy_events pe;
-
-	while (m_policy_events->get(pe))
-	{
-		g_log->debug("Read policy event with " + to_string(pe.events_size()) + " events");
-		policy_event_count++;
-		event_count += pe.events_size();
 	}
 
 	g_log->debug("Num metrics messages:"  + to_string(metrics_count));

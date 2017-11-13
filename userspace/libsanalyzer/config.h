@@ -97,8 +97,8 @@ public:
 	const string & get_k8s_ssl_ca_certificate() const;
 	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
 	bool get_k8s_ssl_verify_certificate() const;
-	void set_k8s_timeout_ms(int k8s_timeout_ms);
-	int get_k8s_timeout_ms() const;
+	void set_k8s_timeout_s(uint64_t k8s_timeout_s);
+	uint64_t get_k8s_timeout_s() const;
 	void set_k8s_simulate_delegation(bool k8s_simulate_delegation);
 	bool get_k8s_simulate_delegation() const;
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
@@ -107,6 +107,8 @@ public:
 	const string & get_k8s_bt_auth_token() const;
 	void set_k8s_extensions(const std::set<std::string>& k8s_extensions);
 	const std::set<std::string>& get_k8s_extensions() const;
+	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
+	const std::string& get_k8s_cluster_name() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
 	string get_mesos_state_uri() const;
@@ -127,6 +129,8 @@ public:
 	const mesos::credentials_t& get_marathon_credentials() const;
 	void set_marathon_credentials(const mesos::credentials_t& creds);
 	const mesos::credentials_t& get_dcos_enterprise_credentials() const;
+	void set_marathon_skip_labels(std::set<std::string> &labels);
+	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
@@ -165,10 +169,21 @@ public:
 	void set_percentiles(const std::set<double>&);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
+	bool get_security_enabled() const;
+	void set_security_enabled(bool enabled);
 	bool get_cointerface_enabled() const;
 	void set_cointerface_enabled(bool enabled);
+	bool get_detect_stress_tools() const;
+	void set_detect_stress_tools(bool enabled);
 	bool get_swarm_enabled() const;
 	void set_swarm_enabled(bool enabled);
+	uint64_t get_security_baseline_report_interval_ns() const;
+	void set_security_baseline_report_interval_ns(uint64_t report_interval);
+
+	const pair<long, unsigned>& get_tracepoint_hits_threshold() const;
+	void set_tracepoint_hits_threshold(long, unsigned);
+	const pair<double, unsigned>& get_cpu_max_sr_threshold() const;
+	void set_cpu_max_sr_threshold(double, unsigned);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -209,11 +224,12 @@ private:
 	string m_k8s_ssl_key_password;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
-	int m_k8s_timeout_ms;
+	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
+	std::string m_k8s_cluster_name;
 
 	std::set<double> m_percentiles;
 
@@ -229,6 +245,7 @@ private:
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
+	std::set<std::string> m_marathon_skip_labels;
 
 	bool m_curl_debug;
 
@@ -253,8 +270,15 @@ private:
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
 
+	bool m_detect_stress_tools;
+	bool m_security_enabled;
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
+
+	uint64_t m_security_baseline_report_interval_ns;
+
+	pair<long, unsigned> m_tracepoint_hits_threshold;
+	pair<double, unsigned> m_cpu_max_sr_threshold;
 };
 
 #endif // HAS_ANALYZER

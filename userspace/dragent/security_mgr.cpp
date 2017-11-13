@@ -14,9 +14,9 @@ security_mgr::security_mgr()
 	: m_initialized(false),
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
+	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL)
-
 {
 	m_print.SetSingleLineMode(true);
 }
@@ -27,19 +27,28 @@ security_mgr::~security_mgr()
 
 void security_mgr::init(sinsp *inspector,
 			sinsp_data_handler *sinsp_handler,
+			sinsp_analyzer *analyzer,
 			capture_job_handler *capture_job_handler,
 			dragent_configuration *configuration)
 
 {
 	m_inspector = inspector;
 	m_sinsp_handler = sinsp_handler;
+	m_analyzer = analyzer;
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
+
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
 
 	m_actions_poll_interval = make_unique<run_on_interval>(m_configuration->m_actions_poll_interval_ns);
+
+	m_metrics_report_interval = make_unique<run_on_interval>(m_configuration->m_metrics_report_interval_ns);
+
+	// Only check the above every second
+	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
 	m_coclient = make_shared<coclient>();
 	m_initialized = true;
@@ -52,10 +61,11 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 	string tmp;
 
 	m_falco_engine = NULL;
-	m_falco_events = NULL;
 
 	m_falco_policies.clear();
 	m_policy_names.clear();
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_analyzer->infra_state()->clear_scope_cache();
 
 	m_print.PrintToString(policies, &tmp);
 
@@ -84,9 +94,6 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 				return false;
 			}
 		}
-
-		m_falco_events = make_shared<falco_events>();
-		m_falco_events->init(m_inspector, m_configuration->m_machine_id);
 	}
 
 	for(auto &policy : policies.policy_list())
@@ -94,16 +101,20 @@ bool security_mgr::load(const draiosproto::policies &policies, std::string &errs
 		m_policy_names.insert(make_pair(policy.id(),policy.name()));
 		if(policy.type() == draiosproto::POLICY_FALCO)
 		{
-			m_falco_policies.emplace_back(this,
-						      m_configuration,
-						      policy,
-						      m_inspector,
-						      m_falco_engine,
-						      m_falco_events,
-						      m_coclient);
+			m_falco_policies.push_back(make_unique<falco_security_policy>(this,
+										      m_configuration,
+										      policy,
+										      m_inspector,
+										      m_falco_engine,
+										      m_coclient));
 
 			g_log->debug("Loaded Falco Policy: "
-				     + m_falco_policies.back().to_string());
+				     + m_falco_policies.back()->to_string());
+
+			for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
+			{
+				m_evttypes[evttype] = m_evttypes[evttype] | m_falco_policies.back()->m_evttypes[evttype];
+			}
 		}
 
 	}
@@ -128,86 +139,144 @@ void security_mgr::process_event(sinsp_evt *evt)
 
 	uint64_t ts_ns = evt->get_ts();
 
-	// Possibly report the current set of events.
-	m_report_events_interval->run([this, ts_ns]()
+	m_check_periodic_tasks_interval->run([this, ts_ns]()
         {
-		report_events(ts_ns);
-	}, ts_ns);
+		// Possibly report the current set of events.
+		m_report_events_interval->run([this, ts_ns]()
+                {
+			report_events(ts_ns);
+		}, ts_ns);
 
-	// Possibly report counts of the number of throttled policy events.
-	m_report_throttled_events_interval->run([this, ts_ns]()
-        {
-		report_throttled_events(ts_ns);
-	}, ts_ns);
-
-	// Drive the coclient loop to pick up any async grpc responses
-	m_actions_poll_interval->run([this]()
-        {
-		m_coclient->next();
-	}, ts_ns);
-
-	for(auto &fpolicy : m_falco_policies)
-	{
-		draiosproto::policy_event *event = NULL;
-
-		// Check to see if this policy has any outstanding
-		// actions that are now complete. If so, send the
-		// policy event messages for each.
-		fpolicy.check_outstanding_actions(ts_ns);
-
-		if((event = fpolicy.process_event(evt)) != NULL)
+		// Possibly report counts of the number of throttled policy events.
+		m_report_throttled_events_interval->run([this, ts_ns]()
 		{
-			g_log->debug("Event matched falco policy: " + fpolicy.name());
+			report_throttled_events(ts_ns);
+		}, ts_ns);
 
-			// Perform the actions associated with the
-			// policy. The actions will add their action
-			// results to the policy event as they complete.
-			if(fpolicy.perform_actions(evt, event))
+		// Drive the coclient loop to pick up any async grpc responses
+		m_actions_poll_interval->run([this]()
+                {
+			m_coclient->next();
+		}, ts_ns);
+
+		m_metrics_report_interval->run([this]()
+		{
+			for(auto &policy : m_falco_policies)
 			{
-				g_log->debug("perform_actions() returned true, not testing later policies");
+				policy->log_metrics();
+				policy->reset_metrics();
+			}
+			g_log->information("Events skipped at security_mgr level: " + to_string(m_skipped_evts));
+		}, ts_ns);
+	}, ts_ns);
+
+	// If no policy cares about this event type, return
+	// immediately.
+	if(m_evttypes[evt->get_type()])
+	{
+		for(auto &fpolicy : m_falco_policies)
+		{
+			if(fpolicy->process_event(evt))
+			{
+				g_log->debug("match_event() returned true, not testing later policies");
 				break;
 			}
 		}
+	}
+	else
+	{
+		m_skipped_evts++;
 	}
 
 	m_policies_lock.unlock();
 }
 
 bool security_mgr::start_capture(uint64_t ts_ns,
+				 const string &policy,
 				 const string &token, const string &filter,
 				 uint64_t before_event_ns, uint64_t after_event_ns,
 				 bool apply_scope, std::string &container_id,
+				 uint64_t pid,
 				 std::string &errstr)
 {
 	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
 		std::make_shared<capture_job_handler::dump_job_request>();
 
+	job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 	job_request->m_token = token;
 
-	job_request->m_filter = filter;
+	job_request->m_start_details->m_filter = filter;
 
 	if(apply_scope && container_id != "")
 	{
 		// Limit the capture to the container where the event occurred.
-		if(!job_request->m_filter.empty())
+		if(!job_request->m_start_details->m_filter.empty())
 		{
-			job_request->m_filter += " and ";
+			job_request->m_start_details->m_filter += " and ";
 		}
 
-		job_request->m_filter += "container.id=" + container_id;
+		job_request->m_start_details->m_filter += "container.id=" + container_id;
 	}
 
-	job_request->m_duration_ns = after_event_ns;
-	job_request->m_past_duration_ns = before_event_ns;
-	job_request->m_start_ns = ts_ns;
+	job_request->m_start_details->m_duration_ns = after_event_ns;
+	job_request->m_start_details->m_past_duration_ns = before_event_ns;
+	job_request->m_start_details->m_start_ns = ts_ns;
+	job_request->m_start_details->m_notification_desc = policy;
+	job_request->m_start_details->m_notification_pid = pid;
+	job_request->m_start_details->m_defer_send = true;
 
 	// Note: Not enforcing any maximum size.
 	return m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr);
 }
 
-void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
+void security_mgr::start_sending_capture(const string &token)
 {
+	string errstr;
+
+	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
+		std::make_shared<capture_job_handler::dump_job_request>();
+
+	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_SEND_START;
+	job_request->m_token = token;
+
+	if (!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
+	{
+		g_log->error("security_mgr::start_sending_capture could not start sending capture token=" + token + "(" + errstr + "). Trying to stop capture.");
+		stop_capture(token);
+	}
+}
+
+void security_mgr::stop_capture(const string &token)
+{
+	string errstr;
+
+	std::shared_ptr<capture_job_handler::dump_job_request> stop_request =
+		std::make_shared<capture_job_handler::dump_job_request>();
+
+	stop_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
+	stop_request->m_token = token;
+
+	if (!m_capture_job_handler->queue_job_request(m_inspector, stop_request, errstr))
+	{
+		g_log->critical("security_mgr::start_sending_capture could not stop capture token=" + token + "(" + errstr + ")");
+
+		// This will result in a capture that runs to
+		// completion but is never sent, and a file on
+		// disk that is never cleaned up.
+	}
+}
+
+sinsp_analyzer *security_mgr::analyzer()
+{
+	return m_analyzer;
+}
+
+bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
+{
+	bool accepted = true;
+
 	// Find the matching token bucket, creating it if necessary
 
 	rate_limit_scope_t scope(event->container_id(), event->policy_id());
@@ -256,6 +325,8 @@ void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 	}
 	else
 	{
+		accepted = false;
+
 		string policy_name = "N/A";
 		auto it = m_policy_names.find(event->policy_id());
 		if(it != m_policy_names.end())
@@ -279,6 +350,8 @@ void security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 			     + ", container=" + event->container_id()
 			     + ", tcount=" + NumberFormatter::format(it2->second));
 	}
+
+	return accepted;
 }
 
 

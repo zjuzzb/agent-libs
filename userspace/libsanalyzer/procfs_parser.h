@@ -82,6 +82,8 @@ public:
 	// in the presence of steal time
 	double get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies);
 
+	long get_process_rss_bytes(uint64_t pid);
+
 	// returns the stolen percentage of total cpu usage
 	uint64_t global_steal_pct();
 
@@ -107,6 +109,9 @@ private:
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
 
 	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
+
+    // Current implementation for read_cgroup_used_memory()
+    int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
 
 	mount_points_limits::sptr_t m_mount_points;
 

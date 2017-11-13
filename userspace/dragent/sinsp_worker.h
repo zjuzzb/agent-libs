@@ -9,10 +9,10 @@
 #include "configuration.h"
 #include "sinsp_data_handler.h"
 #include "subprocesses_logger.h"
+#include "internal_metrics.h"
 
 #include "capture_job_handler.h"
 #include "security_mgr.h"
-#include "security_messages.h"
 
 class captureinfo
 {
@@ -31,9 +31,9 @@ class sinsp_worker : public Runnable
 {
 public:
 	sinsp_worker(dragent_configuration* configuration,
+		     internal_metrics::sptr_t im,
 		     protocol_queue* queue,
 		     atomic<bool> *enable_autodrop,
-		     synchronized_policy_events *events,
 		     capture_job_handler *handler);
 	~sinsp_worker();
 
@@ -95,12 +95,14 @@ public:
 	}
 
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
+	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
 
 private:
 	void init();
 	void process_job_requests();
 	void check_autodrop(uint64_t ts_ns);
-	void init_falco();
+
+	void get_internal_metrics();
 
 	static const string m_name;
 
@@ -117,11 +119,12 @@ private:
 	capture_job_handler *m_capture_job_handler;
 	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;
-	volatile uint64_t m_last_loop_ns;
-	volatile pthread_t m_pthread_id;
+	std::atomic<uint64_t> m_last_loop_ns;
+	std::atomic<pthread_t> m_pthread_id;
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
+	uint64_t m_last_mode_switch_time;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
 	static const uint64_t IFLIST_REFRESH_TIMEOUT_NS = 10*60*ONE_SECOND_IN_NS;
@@ -129,6 +132,7 @@ private:
 	aws_metadata_refresher m_aws_metadata_refresher;
 
 	user_event_queue::ptr_t m_user_event_queue;
+	internal_metrics::sptr_t m_internal_metrics;
 
 	friend class dragent_app;
 	friend class memdump_test;

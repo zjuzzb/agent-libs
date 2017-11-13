@@ -1,0 +1,25 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: never-ready
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: never-ready
+    spec:
+      containers:
+        - name: failer
+          image: luca3m/failer
+          imagePullPolicy: Always
+          livenessProbe:
+            exec:
+              command: [ "cat", "/healthyy" ]
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            exec:
+              command: [ "cat", "/healthyy" ]
+            initialDelaySeconds: 5
+            periodSeconds: 30

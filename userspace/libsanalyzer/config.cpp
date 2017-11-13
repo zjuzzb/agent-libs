@@ -4,7 +4,9 @@
 
 #ifdef HAS_ANALYZER
 
-sinsp_configuration::sinsp_configuration()
+sinsp_configuration::sinsp_configuration():
+	m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
+	m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS)
 {
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
 	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;
@@ -33,6 +35,8 @@ sinsp_configuration::sinsp_configuration()
 	m_command_lines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
 	m_capture_dragent_events = false;
+	m_detect_stress_tools = false;
+	m_security_enabled = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
 }
@@ -487,14 +491,14 @@ bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
 	return m_k8s_ssl_verify_certificate;
 }
 
-void sinsp_configuration::set_k8s_timeout_ms(int k8s_timeout_ms)
+void sinsp_configuration::set_k8s_timeout_s(uint64_t k8s_timeout_s)
 {
-	m_k8s_timeout_ms = k8s_timeout_ms;
+	m_k8s_timeout_s = k8s_timeout_s;
 }
 
-int sinsp_configuration::get_k8s_timeout_ms() const
+uint64_t sinsp_configuration::get_k8s_timeout_s() const
 {
-	return m_k8s_timeout_ms;
+	return m_k8s_timeout_s;
 }
 
 void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
@@ -535,6 +539,16 @@ void sinsp_configuration::set_k8s_extensions(const std::set<std::string>& k8s_ex
 const std::set<std::string>& sinsp_configuration::get_k8s_extensions() const
 {
 	return m_k8s_extensions;
+}
+
+void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_name)
+{
+	m_k8s_cluster_name = k8s_cluster_name;
+}
+
+const std::string& sinsp_configuration::get_k8s_cluster_name() const
+{
+	return m_k8s_cluster_name;
 }
 
 unsigned sinsp_configuration::get_statsd_limit() const
@@ -704,6 +718,16 @@ void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentia
 	m_dcos_enterprise_credentials = creds;
 }
 
+void sinsp_configuration::set_marathon_skip_labels(std::set<std::string> &labels)
+{
+	m_marathon_skip_labels = labels;
+}
+
+const std::set<std::string> & sinsp_configuration::get_marathon_skip_labels() const
+{
+	return m_marathon_skip_labels;
+}
+
 bool sinsp_configuration::get_curl_debug() const
 {
 	return m_curl_debug;
@@ -824,6 +848,16 @@ void sinsp_configuration::set_app_checks_limit(unsigned value)
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
 }
 
+bool sinsp_configuration::get_security_enabled() const
+{
+	return m_security_enabled;
+}
+
+void sinsp_configuration::set_security_enabled(bool val)
+{
+	m_security_enabled = val;
+}
+
 bool sinsp_configuration::get_cointerface_enabled() const
 {
 	return m_cointerface_enabled;
@@ -832,6 +866,16 @@ bool sinsp_configuration::get_cointerface_enabled() const
 void sinsp_configuration::set_cointerface_enabled(bool val)
 {
 	m_cointerface_enabled = val;
+}
+
+bool sinsp_configuration::get_detect_stress_tools() const
+{
+	return m_detect_stress_tools;
+}
+
+void sinsp_configuration::set_detect_stress_tools(bool val)
+{
+	m_detect_stress_tools = val;
 }
 
 bool sinsp_configuration::get_swarm_enabled() const
@@ -843,4 +887,35 @@ void sinsp_configuration::set_swarm_enabled(bool val)
 {
 	m_swarm_enabled = val;
 }
+
+uint64_t sinsp_configuration::get_security_baseline_report_interval_ns() const
+{
+	return m_security_baseline_report_interval_ns;
+}
+
+void sinsp_configuration::set_security_baseline_report_interval_ns(uint64_t report_interval)
+{
+	m_security_baseline_report_interval_ns = report_interval;
+}
+
+const pair<long, unsigned>& sinsp_configuration::get_tracepoint_hits_threshold() const
+{
+	return m_tracepoint_hits_threshold;
+}
+
+void sinsp_configuration::set_tracepoint_hits_threshold(long threshold, unsigned ntimes)
+{
+	m_tracepoint_hits_threshold = make_pair(threshold, ntimes);
+}
+
+const pair<double, unsigned>& sinsp_configuration::get_cpu_max_sr_threshold() const
+{
+	return m_cpu_max_sr_threshold;
+}
+
+void sinsp_configuration::set_cpu_max_sr_threshold(double threshold, unsigned ntimes)
+{
+	m_cpu_max_sr_threshold = make_pair(threshold, ntimes);
+}
+
 #endif // HAS_ANALYZER

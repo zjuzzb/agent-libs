@@ -1,5 +1,10 @@
 #include "logger.h"
 #include <sys/statvfs.h>
+#include "configuration.h"
+#include "capture_job_handler.h"
+
+using namespace Poco;
+using Poco::Message;
 
 dragent_logger* g_log = NULL;
 
@@ -8,6 +13,7 @@ dragent_logger::dragent_logger(Logger* file_log, Logger* console_log, Logger* ev
 	m_console_log(console_log),
 	m_event_log(event_log)
 {
+	m_capture_job_handler = NULL;
 }
 
 void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_burst)
@@ -21,11 +27,15 @@ void dragent_logger::init_user_events_throttling(uint64_t rate, uint64_t max_bur
 
 void dragent_logger::log(const string& str, uint32_t sev)
 {
-	Poco::Message m("dragent_logger", str, (Message::Priority) sev);
+	Message m("dragent_logger", str, (Message::Priority) sev);
 	m_file_log->log(m);
 	if(m_console_log != NULL)
 	{
 		m_console_log->log(m);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify((Message::Priority) sev);
 	}
 }
 
@@ -45,6 +55,10 @@ void dragent_logger::debug(const string& str)
 	{
 		m_console_log->debug(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_DEBUG);
+	}
 }
 
 void dragent_logger::information(const string& str)
@@ -53,6 +67,10 @@ void dragent_logger::information(const string& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->information(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_INFORMATION);
 	}
 }
 
@@ -72,6 +90,10 @@ void dragent_logger::warning(const string& str)
 	{
 		m_console_log->warning(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_WARNING);
+	}
 }
 
 void dragent_logger::error(const string& str)
@@ -80,6 +102,10 @@ void dragent_logger::error(const string& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->error(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_ERROR);
 	}
 }
 
@@ -117,6 +143,10 @@ void dragent_logger::debug(string&& str)
 	{
 		m_console_log->debug(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_DEBUG);
+	}
 }
 
 void dragent_logger::information(string&& str)
@@ -125,6 +155,10 @@ void dragent_logger::information(string&& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->information(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_INFORMATION);
 	}
 }
 
@@ -144,6 +178,10 @@ void dragent_logger::warning(string&& str)
 	{
 		m_console_log->warning(str);
 	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_WARNING);
+	}
 }
 
 void dragent_logger::error(string&& str)
@@ -152,6 +190,10 @@ void dragent_logger::error(string&& str)
 	if(m_console_log != NULL)
 	{
 		m_console_log->error(str);
+	}
+	if(m_internal_metrics)
+	{
+		m_internal_metrics->notify(Message::Priority::PRIO_ERROR);
 	}
 }
 
@@ -372,8 +414,31 @@ void dragent_logger::sinsp_logger_callback(string&& str, uint32_t sev)
 	case sinsp_logger::SEV_EVT_DEBUG:
 		g_log->debug_event(std::move(str));
 		break;
+
+	// Memdumper logs
+	case sinsp_logger::SEV_EVT_MDUMP:
+		g_log->write_to_memdump(str);
+		break;
 	default:
 		ASSERT(false);
+	}
+}
+
+void dragent_logger::write_to_memdump(string msg)
+{
+	try
+	{
+		yaml_configuration yaml(msg);
+		string name = yaml.get_scalar<string>("name");
+		string desc = yaml.get_scalar<string>("description", "");
+		string scope = yaml.get_scalar<string>("scope", "");
+		std::unordered_map<std::string, std::string> tags = yaml.get_merged_map<string>("tags");
+
+		m_capture_job_handler->push_infra_event(sinsp_utils::get_current_time_ns(), 0, "docker", name, desc, scope);
+	}
+	catch(YAML::ParserException& ex)
+	{
+		return;
 	}
 }
 

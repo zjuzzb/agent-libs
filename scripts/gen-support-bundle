@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tool to collect log files for Sysdig Cloud Agent
+# Tool to collect log files for Sysdig Agent
 # www.sysdig.com
 #
 # (c) 2017 Sysdig Inc.

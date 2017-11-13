@@ -144,7 +144,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 #define FILENAME1 FILENAME "1"
 #define FILENAME2 FILENAME "2"
 
-TEST_F(sys_call_test, fs_link)
+TEST_F(sys_call_test, DISABLED_fs_link)
 {
 	int callnum = 0;
 	char bcwd[1024];
@@ -1523,7 +1523,7 @@ TEST_F(sys_call_test, fs_sendfile64)
 #endif
 
 #ifdef __x86_64__
-TEST_F(sys_call_test32, fs_pread)
+TEST_F(sys_call_test32, DISABLED_fs_pread)
 {
 	proc_started_filter test_started_filter;
 	int callnum = 0;

@@ -54,6 +54,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		sdc_internal::ping *ping;
 		sdc_internal::docker_command *docker_command;
 		sdc_internal::swarm_state_command *sscmd;
+		sdc_internal::orchestrator_events_stream_command *orchestrator_events_stream_command;
 
 	case sdc_internal::PING:
 		// Start the rpc call and have the pong reader read the response when
@@ -92,7 +93,15 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 						       &call->status, (void*)call);
 
 		break;
+	case sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND:
+		call->is_streaming = true;
 
+		orchestrator_events_stream_command = static_cast<sdc_internal::orchestrator_events_stream_command *>(request_msg);
+		call->orchestrator_events_reader = m_stub->AsyncPerformOrchestratorEventsStream(&call->ctx, *orchestrator_events_stream_command, &m_cq, (void *)call);
+
+		call->response_msg = make_unique<draiosproto::congroup_update_event>();
+
+		break;
 	default:
 		g_logger.log("Unknown message type " + to_string(msg_type), sinsp_logger::SEV_ERROR);
 		break;
@@ -128,9 +137,49 @@ void coclient::next(uint32_t wait_ms)
 	}
 
 	if(!updates_ok) {
-		g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
+		if(call->is_streaming) {
+			glogf(sinsp_logger::SEV_WARNING,
+			      "cointerface streaming RPC (%s) returned error", 
+			      sdc_internal::cointerface_message_type_Name(call->msg_type).c_str());
+			g_logger.log("cointerface streaming RPC returned error", sinsp_logger::SEV_WARNING);
+			call->response_cb(false, nullptr);
+		} else {
+			glogf(sinsp_logger::SEV_ERROR,
+			      "cointerface RPC (%s) could not be scheduled successfully",
+			      sdc_internal::cointerface_message_type_Name(call->msg_type).c_str());
+			g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
+			delete call;
+		}
 		return;
+	}
+
+
+	if (call->is_streaming) {
+		//
+		// Server-streaming RPC errors are detected by
+		// updates_ok, so we can now assume that the
+		// call was successful
+		//
+		call->status = grpc::Status::OK;
+		switch(call->msg_type) {
+		case(sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND):
+			call->orchestrator_events_reader->Read(static_cast<draiosproto::congroup_update_event *>(call->response_msg.get()), (void *)call);
+			break;
+		default:
+			g_logger.log("Unknown streaming message type " + to_string(call->msg_type) + ", can't read response", sinsp_logger::SEV_ERROR);
+			break;
+		}
+		//
+		// The first response notify us that the server
+		// is ready to send messages. If it's the case,
+		// there's nothing else to do
+		//
+		if(!call->is_server_ready) {
+			call->is_server_ready = true;
+			g_logger.log("RPC streaming server connected and ready to send messages.", sinsp_logger::SEV_DEBUG);
+			return;
+		}
 	}
 
 	if(call->status.ok()) {
@@ -145,7 +194,7 @@ void coclient::next(uint32_t wait_ms)
 
 	call->response_cb(call->status.ok(), call->response_msg.get());
 
-	delete call;
+	if (!call->is_streaming) delete call;
 }
 
 void coclient::set_domain_sock(std::string &domain_sock)
@@ -193,4 +242,10 @@ void coclient::get_swarm_state(response_cb_t response_cb)
 
 	sdc_internal::swarm_state_command cmd;
 	prepare(&cmd, sdc_internal::SWARM_STATE_COMMAND, response_cb);
+}
+
+void coclient::get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd,
+										response_cb_t response_cb)
+{
+	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND, response_cb);
 }

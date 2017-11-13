@@ -183,13 +183,19 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // Falco baseline emit interval
 //
-#define FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
+#define DEFAULT_FALCOBL_DUMP_DELTA_NS (60LL * 15LL * 1000000000)
 
 //
 // Time after which we should try to reenable the falco baseliner after
 // we disable it for mperformance reasons.
 //
 #define FALCOBL_DISABLE_TIME (60LL * 30LL * 1000000000)
+
+//
+// Max number of dropped events(because of full ring buffer).
+// After that, the baseline is disabled.
+//
+#define FALCOBL_MAX_DROPS_FULLBUF 64
 
 //
 // Time after which we should try to reenable the falco baseliner after
@@ -217,6 +223,7 @@ static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
+static const unsigned PROM_METRICS_HARD_LIMIT = 1000;
 static const unsigned APP_METRICS_HARD_LIMIT = 1000;
 static const unsigned JMX_METRICS_HARD_LIMIT = 3000;
 static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;
@@ -232,6 +239,8 @@ static const uint64_t CMDLINE_UPDATE_INTERVAL_S =
 5*60; // 5 minutes
 #endif
 
+static const uint32_t APP_METRICS_EXPIRATION_TIMEOUT_S = 60;
+
 static const unsigned LISTENING_PORT_SCAN_FDLIMIT = 200;
 static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 #define MESOS_RETRY_ON_ERRORS_TIMEOUT_NS (10 * ONE_SECOND_IN_NS)
@@ -239,3 +248,10 @@ static const uint64_t MESOS_STATE_REFRESH_INTERVAL_S = 10;
 
 #define SWARM_POLL_INTERVAL (10 * ONE_SECOND_IN_NS)
 #define SWARM_POLL_FAIL_INTERVAL (300 * ONE_SECOND_IN_NS)
+
+#define MIN_NODRIVER_SWITCH_TIME (3 * 60 * ONE_SECOND_IN_NS)
+#define ORCHESTRATOR_EVENTS_POLL_INTERVAL (ONE_SECOND_IN_NS / 500)
+
+static const long N_TRACEPOINT_HITS_THRESHOLD = 2000000;
+static const double CPU_MAX_SR_THRESHOLD = 20.0;
+static const unsigned SWITCHER_NSECONDS = 5;

@@ -6,6 +6,15 @@ option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
+message counter_percentile_data {
+    required uint32 scale = 1; // scale factor for min, max and means
+    required uint32 num_samples = 2;
+    required uint64 min = 3; // minimum of all the samples
+    required uint64 max = 4; // maximum of all the samples
+    repeated uint64 means = 5 [packed=true]; // the first value is the actual sample, the rest are relative diff compared to previous sample
+    repeated uint32 weights = 6 [packed=true]; // weight of corresponding sample
+}
+
 message counter_percentile {
     optional uint32 percentile = 1;
     optional uint32 value = 2;
@@ -16,6 +25,8 @@ message counter_time {
     required uint64 time_ns = 2;
     optional uint32 time_percentage = 3;
     repeated counter_percentile percentile = 8;
+    reserved 9; // tag used by previous format of counter_percentile_data
+    optional counter_percentile_data percentile_data = 10;
 }
 
 message counter_time_bidirectional {
@@ -25,6 +36,9 @@ message counter_time_bidirectional {
     required uint64 time_ns_out = 4;
     repeated counter_percentile percentile_in = 10;
     repeated counter_percentile percentile_out = 11;
+    reserved 12, 13; // tags used by previous format of counter_percentile_data
+    optional counter_percentile_data percentile_in_data = 14;
+    optional counter_percentile_data percentile_out_data = 15;
 }
 
 message counter_bytes {
@@ -49,6 +63,9 @@ message counter_time_bytes {
     optional uint32 time_percentage_other = 12;
     repeated counter_percentile percentile_in = 26;
     repeated counter_percentile percentile_out = 27;
+    reserved 28, 29; // tags used by previous format of counter_percentile_data
+    optional counter_percentile_data percentile_in_data = 30;
+    optional counter_percentile_data percentile_out_data = 31;
 }
 
 message time_categories {
@@ -110,6 +127,15 @@ message resource_categories {
     optional uint32 swap_memory_available_kb = 30;  // swapped memory available (as kb).
     optional uint64 count_processes = 31;  // total processes
     optional uint64 proc_start_count = 32; // started processes
+    optional uint64 jmx_sent = 33;
+    optional uint64 jmx_total = 34;
+    optional uint64 statsd_sent = 35;
+    optional uint64 statsd_total = 36;
+    optional uint64 app_checks_sent = 37;
+    optional uint64 app_checks_total = 38;
+    optional uint64 threads_count = 39; // number of threads
+    optional uint64 prometheus_sent = 40;
+    optional uint64 prometheus_total = 41;
 }
 
 message connection_categories {
@@ -155,6 +181,8 @@ message counter_proto_entry {
     required uint64 bytes_out = 5;
     required uint32 nerrors = 6;
     repeated counter_percentile percentile = 13;
+    reserved 14; // tag used by previous format of counter_percentile_data
+    optional counter_percentile_data percentile_data = 15;
 }
 
 //
@@ -353,6 +381,8 @@ message statsd_metric {
     optional double max = 7;
     optional double count = 8;
     repeated counter_percentile percentile = 12;
+    reserved 13; // tag used by previous format of counter_percentile_data
+    optional counter_percentile_data percentile_data = 14;
 }
 
 message statsd_info {
@@ -409,6 +439,7 @@ message proto_info {
     optional java_info java = 5; // These are not protocols but as backend is structured is better to save here these info
     optional statsd_info statsd = 6;
     optional app_info app = 7;
+    optional app_info prometheus = 9;
 }
 
 message network_by_port {
@@ -492,7 +523,7 @@ message process {
 // info for a program, i.e. a collection of processes with the same name and the same creator.
 //
 message program {
-    required process procinfo = 1; // Inofrmation about this program
+    required process procinfo = 1; // Information about this program
     repeated uint64 pids = 2; // The list of processes that are part of this program
 }
 
@@ -544,6 +575,7 @@ enum message_type {
     POLICIES = 13;
     POLICY_EVENTS = 14;
     THROTTLED_POLICY_EVENTS = 15;
+    ORCHESTRATOR_EVENTS = 16;
 }
 
 //
@@ -614,6 +646,48 @@ message container {
     optional string mesos_task_id = 23;
     optional string image_id = 24;
     repeated command_details commands = 25; // List of commands executed in this container during the sample.
+}
+
+//
+// ORCHESTRATOR METADATA
+//
+message congroup_uid {
+    optional string kind = 1;
+    optional string id = 2;
+}
+
+message congroup_net_port {
+    required uint32 port = 1;
+    required uint32 target_port = 2;
+    optional string protocol = 3;
+    optional uint32 node_port = 4;
+    optional uint32 published_port = 5; // swarm_port
+}
+
+message container_group {
+    optional congroup_uid uid = 1;
+    map<string, string> tags = 3;
+    map<string, string> internal_tags = 10;
+    repeated string ip_addresses = 5;
+    repeated congroup_net_port ports = 6;
+    repeated app_metric metrics = 7;
+    repeated congroup_uid children = 8;
+    repeated congroup_uid parents = 9;
+}
+
+enum congroup_event_type {
+    ADDED = 1;
+    REMOVED = 2;
+    UPDATED = 3;
+}
+
+message congroup_update_event {
+    required congroup_event_type type = 1;
+    required container_group object = 3;
+}
+
+message orchestrator_events {
+    repeated congroup_update_event events = 1;
 }
 
 //
@@ -805,16 +879,24 @@ message swarm_node {
 }
 
 message swarm_state {
-    // Every node in the cluster will send the cluster_id
-    // it can be used if we'll hit duplicate ip addresses
-    // in the cluster
-    optional string cluster_id = 1;
     // This values will be filled only
     // by swarm manager nodes
     repeated swarm_service services = 2;
     repeated swarm_node nodes = 3;
     repeated swarm_task tasks = 4;
     optional bool quorum = 5;
+    // Every node in the cluster will send its node_id
+    // it can be used if we'll hit duplicate ip addresses
+    optional string node_id = 7;
+}
+
+message orchestrator_state_t {
+    repeated container_group groups = 1;
+    // This is the UID of default namespace
+    optional string cluster_id = 2;
+    // This is a *likely* unique identifier set by customer or automatically
+    // scraped by AWS, GCP and so on
+    optional string cluster_name = 3;
 }
 
 // ENTRY POINT MESSAGE
@@ -843,12 +925,15 @@ message metrics {
     optional proto_info protos = 20; // Information about protocols that have been decoded
     repeated container containers = 22;
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
+    optional orchestrator_state_t orchestrator_state = 34;
+    optional orchestrator_state_t global_orchestrator_state = 32;
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
     optional falco_baseline falcobl = 27; // baseline information for falco
     optional swarm_state swarm = 29;
     repeated uint32 config_percentiles = 30;  // configured percentiles
+    optional statsd_info internal_metrics = 31;
 }
 
 message dump_request_start {
@@ -1009,10 +1094,32 @@ enum policy_type {
     POLICY_MANUAL =3;
 }
 
+enum scope_operator {
+    EQ = 1;
+    NOT_EQ = 2;
+    IN_SET = 3;
+    NOT_IN_SET = 4;
+    CONTAINS = 5;
+    NOT_CONTAINS = 6;
+    STARTS_WITH = 7;
+}
+
+message scope_predicate {
+    required string key = 1;
+    // multiple values when using IN/NOT_IN, otherwise single
+    repeated string values = 2;
+    required scope_operator op = 3;
+}
+
 message policy {
     required uint64 id = 1;
     required string name = 2;
     required policy_type type = 3;
+
+    required bool host_scope = 9;
+    required bool container_scope = 10;
+    // all scope_predicates must match against the entity
+    repeated scope_predicate scope_predicates = 11;
 
     // when type=POLICY_BASELINE
     optional baseline_detail baseline_details = 4;
@@ -1081,6 +1188,10 @@ message policy_event {
     optional manual_event_detail manual_details = 6;
 
     repeated action_result action_results = 7;
+
+    // If true, there were inspector events dropped recently, which
+    // might have affected the details in this policy event.
+    optional bool sinsp_events_dropped = 8;
 }
 
 message policy_events {
@@ -1113,6 +1224,8 @@ enum error_type {
      ERR_CONN_LIMIT = 1;
      ERR_INVALID_CUSTOMER_KEY = 2;
      ERR_DUPLICATE_AGENT = 3;
+     ERR_SERVER_BUSY = 4;
+     ERR_PROTO_MISMATCH = 5;
 }
 
 message error_message {

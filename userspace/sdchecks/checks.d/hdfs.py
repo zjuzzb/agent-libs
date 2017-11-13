@@ -1,3 +1,10 @@
+# (C) Datadog, Inc. 2013-2016
+# (C)  Dan Crosta <dcrosta@late.am> 2013
+# (C) Sysdig, Inc. 2016-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
+
 # 3rd party
 import snakebite.client
 import snakebite.version
@@ -21,7 +28,11 @@ DEFAULT_PORT = 8020
 
 
 class HDFSCheck(AgentCheck):
-    """Report on free space and space used in HDFS.
+    """
+    Report on free space and space used in HDFS.
+    DEPRECATED:
+    This check is deprecated and will be removed in a future version of the agent
+    Please use the `hdfs_namenode` and `hdfs_datanode` checks instead
     """
 
     def get_client(self, instance):
@@ -64,6 +75,10 @@ class HDFSCheck(AgentCheck):
                 return snakebite.client.HAClient(nodes)
 
     def check(self, instance):
+        self.log.info('The "hdfs" check is deprecated and will be removed '
+                     'in a future version of the agent. Please use the "hdfs_namenode" '
+                     'and "hdfs_datanode" checks instead')
+
         if 'namenode' not in instance and 'namenodes' not in instance:
             raise ValueError('Missing key \'namenode\' in HDFSCheck config')
 

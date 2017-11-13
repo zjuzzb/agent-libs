@@ -162,19 +162,23 @@ public:
 	inline void dump(sinsp_evt* evt)
 	{
 		if(m_state == ST_INPROGRESS)
-		{
+		{		
 			if(evt->m_pevt->ts > m_end_time)
 			{
 				m_state = ST_DONE_OK;
 				return;
 			}
 
-			if(m_filter != NULL && m_filter->run(evt) == false)
+			if(m_filter != NULL)
 			{
-				if(evt->get_type() != PPME_NOTIFICATION_E)
-				{
-					return;
-				}
+				m_filter->run(evt);
+			}
+
+			bool do_drop;
+			(void) evt->get_dump_flags(&do_drop);
+			if(do_drop)
+			{
+				return;
 			}
 
 			m_n_events++;
@@ -207,7 +211,7 @@ public:
 class sinsp_memory_dumper
 {
 public:
-	sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events);
+	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
 	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
 	void close();
@@ -217,10 +221,8 @@ public:
 	// the filter to the events in the memory buffer. If track_job
 	// is true, also create internal state to track this memory
 	// dumper job going forward.
-	// Returns an object containing details on what occurred. If
-	// track_job is false, the caller should delete this
-	// object. Otherwise, the caller should pass it to remove_job
-	// later.
+	// Returns an object containing details on what occurred.
+	// The caller should delete this object.
 	//
 	// If membuf_mtx is non-NULL, lock the mutex before the job has
 	// fully read the memory buffer, to guarantee that
@@ -230,9 +232,8 @@ public:
 
 	sinsp_memory_dumper_job* add_job(uint64_t ts, string filename, string filter,
 					 uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-					 bool track_job, Poco::Mutex *membuf_mtx);
+					 Poco::Mutex *membuf_mtx);
 
-	void remove_job(sinsp_memory_dumper_job* job);
 	inline void process_event(sinsp_evt *evt)
 	{
 		//
@@ -251,6 +252,13 @@ public:
 			if(m_delayed_switch_states_ready)
 			{
 				switch_states(evt->get_ts());
+
+				// If after switching, memdump is
+				// disabled, just return.
+				if(m_disabled)
+				{
+					return;
+				}
 			}
 			else
 			{
@@ -261,50 +269,43 @@ public:
 
 		try
 		{
-#if defined(HAS_CAPTURE)
-			if(!m_capture_dragent_events)
-			{
-				//
-				// The custom notification events emitted by the memdumper have inspector = NULL
-				//
-				if(evt->m_pevt->type != PPME_NOTIFICATION_E)
-				{
-					sinsp_threadinfo* tinfo = evt->get_thread_info();
-					if(tinfo &&	tinfo->m_pid == m_sysdig_pid)
-					{
-						return;
-					}
-				}
-			}
-#endif
-
 			(*m_active_state)->dump(evt);
 
 			// If we've written at least m_bsize bytes to the active state, switch states.
 			if((*m_active_state)->m_dumper->next_write_position() >= (*m_active_state)->m_bufsize)
 			{
 				switch_states(evt->get_ts());
-			}
 
-			for(auto it = m_jobs.begin(); it != m_jobs.end(); ++it)
-			{
-				(*it)->dump(evt);
+				// If after switching, memdump is
+				// disabled, just return.
+				if(m_disabled)
+				{
+					return;
+				}
 			}
 		}
 		catch(sinsp_exception e)
 		{
 			ASSERT(evt != NULL);
 			switch_states(evt->get_ts());
+
+			// If after switching, memdump is
+			// disabled, just return.
+			if(m_disabled)
+			{
+				return;
+			}
+
 			{
 				Poco::ScopedLock<Poco::FastMutex> lck((*m_active_state)->m_dumper_mtx);
 				(*m_active_state)->m_dumper->dump(evt);
 			}
 		}
 	}
-	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
-	inline vector<sinsp_memory_dumper_job*>* get_jobs()
+
+	inline bool is_enabled()
 	{
-		return &m_jobs;
+		return !m_disabled;
 	}
 
 private:
@@ -324,25 +325,19 @@ private:
 	FILE* m_f;
 	FILE* m_cf;
 	bool m_disabled;
-	sinsp_evt m_notification_evt;
-	uint8_t m_notification_scap_evt_storage[4096];
-	scap_evt* m_notification_scap_evt;
 	uint32_t m_switches_to_go;
 	uint32_t m_cur_dump_size;
 	uint32_t m_max_disk_size;
 	uint64_t m_bsize;
 	uint64_t m_saturation_inactivity_pause_ns;
 	uint64_t m_saturation_inactivity_start_time;
-	vector<sinsp_memory_dumper_job*> m_jobs;
 
 	atomic<bool> m_delayed_switch_states_needed;
 	atomic<bool> m_delayed_switch_states_ready;
 	uint64_t m_delayed_switch_states_missed_events;
 
-#if defined(HAS_CAPTURE)
-	bool m_capture_dragent_events;
-	int64_t m_sysdig_pid;
-#endif
 	// Mutex that protects access to the list of states
 	Poco::FastMutex m_state_mtx;
+
+	char m_errbuf[256];
 };

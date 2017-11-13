@@ -12,9 +12,9 @@
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
+			   internal_metrics::sptr_t im,
 			   protocol_queue* queue,
 			   atomic<bool> *enable_autodrop,
-			   synchronized_policy_events *policy_events,
 			   capture_job_handler *capture_job_handler):
 	m_job_requests_interval(1000000000),
 	m_initialized(false),
@@ -26,14 +26,16 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_analyzer(NULL),
 	m_security_mgr(NULL),
 	m_capture_job_handler(capture_job_handler),
-	m_sinsp_handler(configuration, queue, policy_events),
+	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
 	m_next_iflist_refresh_ns(0),
-	m_aws_metadata_refresher(configuration)
+	m_aws_metadata_refresher(configuration),
+	m_internal_metrics(im)
 {
+	m_last_mode_switch_time = 0;
 }
 
 sinsp_worker::~sinsp_worker()
@@ -67,6 +69,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
+	m_analyzer->set_internal_metrics(m_internal_metrics);
+
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
 		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling, m_configuration->m_jmx_limit);
@@ -80,6 +84,7 @@ void sinsp_worker::init()
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_inspector->set_debug_mode(true);
+	m_inspector->set_internal_events_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
 
 	//
@@ -164,7 +169,7 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
 
-	m_analyzer->get_configuration()->set_k8s_timeout_ms(m_configuration->m_k8s_timeout_ms);
+	m_analyzer->get_configuration()->set_k8s_timeout_s(m_configuration->m_k8s_timeout_s);
 
 	m_analyzer->get_configuration()->set_k8s_simulate_delegation(m_configuration->m_k8s_simulate_delegation);
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
@@ -173,7 +178,11 @@ void sinsp_worker::init()
 	{
 		m_analyzer->get_configuration()->set_k8s_extensions(m_configuration->m_k8s_extensions);
 	}
-
+	if(m_configuration->m_use_new_k8s)
+	{
+		m_analyzer->set_use_new_k8s(m_configuration->m_use_new_k8s);
+	}
+	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
 	//
 	// mesos
 	//
@@ -195,6 +204,11 @@ void sinsp_worker::init()
 	}
 	m_analyzer->get_configuration()->set_marathon_follow_leader(m_configuration->m_marathon_follow_leader);
 	m_analyzer->get_configuration()->set_dcos_enterprise_credentials(m_configuration->m_dcos_enterprise_credentials);
+
+	if(m_configuration->m_marathon_skip_labels.size())
+	{
+		m_analyzer->get_configuration()->set_marathon_skip_labels(m_configuration->m_marathon_skip_labels);
+	}
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
@@ -227,6 +241,16 @@ void sinsp_worker::init()
 	{
 		g_log->information("Drop lower threshold=" + NumberFormatter::format(m_configuration->m_drop_lower_threshold));
 		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_threshold);
+	}
+
+	if(m_configuration->m_tracepoint_hits_threshold > 0)
+	{
+		m_analyzer->get_configuration()->set_tracepoint_hits_threshold(m_configuration->m_tracepoint_hits_threshold, m_configuration->m_tracepoint_hits_ntimes);
+	}
+
+	if(m_configuration->m_cpu_usage_max_sr_threshold > 0)
+	{
+		m_analyzer->get_configuration()->set_cpu_max_sr_threshold(m_configuration->m_cpu_usage_max_sr_threshold, m_configuration->m_cpu_usage_max_sr_ntimes);
 	}
 
 	if(m_configuration->m_host_custom_name != "")
@@ -301,8 +325,14 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
 
+	m_analyzer->get_configuration()->set_security_enabled(m_configuration->m_security_enabled);
 	m_analyzer->get_configuration()->set_cointerface_enabled(m_configuration->m_cointerface_enabled);
 	m_analyzer->get_configuration()->set_swarm_enabled(m_configuration->m_swarm_enabled);
+	m_analyzer->get_configuration()->set_security_baseline_report_interval_ns(m_configuration->m_security_baseline_report_interval_ns);
+
+	stress_tool_matcher::set_comm_list(m_configuration->m_stress_tools);
+
+	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
 
 	//
 	// Load the chisels
@@ -325,6 +355,7 @@ void sinsp_worker::init()
 		m_security_mgr = new security_mgr();
 		m_security_mgr->init(m_inspector,
 				     &m_sinsp_handler,
+				     m_analyzer,
 				     m_capture_job_handler,
 				     m_configuration);
 
@@ -356,7 +387,7 @@ void sinsp_worker::init()
 	{
 		m_inspector->open(m_configuration->m_input_filename);
 	}
-	else if (m_configuration->m_mode == dragent_mode_t::NODRIVER)
+	else if(m_configuration->m_mode == dragent_mode_t::NODRIVER)
 	{
 		m_inspector->open_nodriver();
 		// Change these values so the inactive thread pruning
@@ -364,9 +395,23 @@ void sinsp_worker::init()
 		m_inspector->m_thread_timeout_ns = 0;
 		m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
 	}
+	else if (m_configuration->m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
+		m_inspector->open("");
+		m_inspector->set_simpledriver_mode();
+		m_analyzer->set_simpledriver_mode();
+	}
 	else
 	{
+		m_analyzer->get_configuration()->set_detect_stress_tools(m_configuration->m_detect_stress_tools);
+
 		m_inspector->open("");
+
+		if(m_configuration->m_snaplen != 0)
+		{
+			m_inspector->set_snaplen(m_configuration->m_snaplen);
+		}
 	}
 
 	if(m_configuration->m_subsampling_ratio != 1)
@@ -389,6 +434,7 @@ void sinsp_worker::init()
 	{
 		m_analyzer->set_app_checks(m_configuration->m_app_checks);
 	}
+
 	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
 	m_analyzer->set_container_patterns(m_configuration->m_container_patterns);
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
@@ -396,8 +442,6 @@ void sinsp_worker::init()
 	m_analyzer->set_user_event_queue(m_user_event_queue);
 
 	m_analyzer->set_emit_tracers(m_configuration->m_emit_tracers);
-
-	init_falco();
 }
 
 void sinsp_worker::run()
@@ -423,11 +467,6 @@ void sinsp_worker::run()
 			break;
 		}
 
-		if(m_configuration->m_reset_falco_engine)
-		{
-			init_falco();
-		}
-
 		res = m_inspector->next(&ev);
 
 		if(res == SCAP_TIMEOUT)
@@ -445,6 +484,53 @@ void sinsp_worker::run()
 			throw sinsp_exception(m_inspector->getlasterr().c_str());
 		}
 
+		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
+		{
+			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
+			{
+				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
+																 "Agent switch to nodriver",
+																 "Agent switched to nodriver mode due to high overhead",
+																 event_scope("host.mac", m_configuration->m_machine_id_prefix + m_configuration->m_machine_id),
+																 { {"source", "agent"}},
+																 4));
+				m_last_mode_switch_time = ev->get_ts();
+
+				m_inspector->close();
+				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER;
+				m_analyzer->set_sampling_ratio(1);
+
+				m_inspector->open_nodriver();
+				// Change these values so the inactive thread pruning
+				// runs more often
+				m_inspector->m_thread_timeout_ns = 0;
+				m_inspector->m_inactive_thread_scan_time_ns = NODRIVER_PROCLIST_REFRESH_INTERVAL_NS;
+
+				continue;
+			}
+			else
+			{
+				static bool full_mode_event_sent = false;
+				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
+				{
+					// TODO: investigate if we can void agent restart and just reopen the inspector
+					throw sinsp_exception("restarting agent to restore normal operation mode");
+				}
+				else if(!full_mode_event_sent && ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME - 2*ONE_SECOND_IN_NS)
+				{
+					// Since we restart the agent to apply the switch back, we have to send the event
+					// few seconds before doing it otherwise there can be chances that it's not sent at all
+					full_mode_event_sent = true;
+					g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
+																	 "Agent restore full mode",
+																	 "Agent restarting to restore full operation mode",
+																	 event_scope("host.mac", m_configuration->m_machine_id_prefix + m_configuration->m_machine_id),
+																	 { {"source", "agent"}},
+																	 4));
+				}
+			}
+		}
+
 		//
 		// Update the time
 		//
@@ -452,7 +538,7 @@ void sinsp_worker::run()
 		m_last_loop_ns = ts;
 
 		m_job_requests_interval.run([this]()
-                {
+		{
 			process_job_requests();
 		}, ts);
 
@@ -497,7 +583,7 @@ void sinsp_worker::run()
 void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
 {
 	g_log->information(m_name + ": scheduling job request type=" +
-			   (job_request->m_request_type == capture_job_handler::dump_job_request::JOB_START ? "start" : "stop") +
+			   capture_job_handler::dump_job_request::request_type_str(job_request->m_request_type) +
 			    ", token= " + job_request->m_token);
 
 	if(!m_dump_job_requests.put(job_request))
@@ -525,19 +611,9 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	}
 }
 
-void sinsp_worker::init_falco()
+void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
 {
-	if(m_configuration->m_enable_falco_engine)
-	{
-		m_analyzer->disable_falco();
-		m_analyzer->enable_falco(m_configuration->m_falco_default_rules_filename,
-					 m_configuration->m_falco_auto_rules_filename,
-					 m_configuration->m_falco_rules_filename,
-					 m_configuration->m_falco_engine_disabled_rule_patterns,
-					 m_configuration->m_falco_engine_sampling_multiplier);
-	}
-
-	m_configuration->m_reset_falco_engine = false;
+	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
 }
 
 // Receive job requests and pass them along to the capture job
@@ -550,17 +626,19 @@ void sinsp_worker::process_job_requests()
 
 	if(dragent_configuration::m_signal_dump)
 	{
-		g_log->information("Received SIGUSR1, starting dump");
 		dragent_configuration::m_signal_dump = false;
+		g_log->information("Received SIGUSR1, starting dump");
 
 		std::shared_ptr<capture_job_handler::dump_job_request> job_request
 			= make_shared<capture_job_handler::dump_job_request>();
 
+		job_request->m_start_details = make_unique<capture_job_handler::start_job_details>();
+
 		job_request->m_request_type = capture_job_handler::dump_job_request::JOB_START;
 		job_request->m_token = string("dump").append(NumberFormatter::format(time(NULL)));
-		job_request->m_duration_ns = 20000000000LL;
-		job_request->m_delete_file_when_done = false;
-		job_request->m_send_file = false;
+		job_request->m_start_details->m_duration_ns = 20000000000LL;
+		job_request->m_start_details->m_delete_file_when_done = false;
+		job_request->m_start_details->m_send_file = false;
 
 		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
 		{

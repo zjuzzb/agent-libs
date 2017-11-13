@@ -14,9 +14,12 @@
 #endif
 #include <memdumper.h>
 
+#include <sys/mman.h>
+#include <fcntl.h>
+
 extern sinsp_evttables g_infotables;
 
-sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_events)
+sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 {
 	m_inspector = inspector;
 	m_file_id = 0;
@@ -27,14 +30,6 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector, bool capture_dragent_
 	m_saturation_inactivity_start_time = 0;
 	m_delayed_switch_states_needed = false;
 	m_delayed_switch_states_ready = false;
-
-#if defined(HAS_CAPTURE)
-	m_capture_dragent_events = capture_dragent_events;
-	if(!capture_dragent_events)
-	{
-		m_sysdig_pid = m_inspector->m_sysdig_pid;
-	}
-#endif
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize,
@@ -45,6 +40,41 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 		bufsize,
 		max_disk_size,
 		saturation_inactivity_pause_ns);
+
+	// Try to allocate a shared memory region of this size
+	// immediately. If we can't, log an error and disable
+	// memdumper. (The memdumper itself allocates memory
+	// across several memory regions but in aggregate the
+	// amount is the same).
+	string name = "/dragent-mem-test";
+	string err = "Could not allocate " + to_string(bufsize) + " bytes of shared memory for memdump: %s. Disabling memdump";
+	shm_unlink(name.c_str());
+
+	int shm_fd = shm_open(name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
+	if(shm_fd == -1)
+	{
+		glogf(sinsp_logger::SEV_ERROR, err.c_str(), strerror_r(errno, m_errbuf, sizeof(m_errbuf)));
+		m_disabled = true;
+	}
+	else
+	{
+		int rc;
+
+		// Make sure the file is fully allocated and
+		// actually uses all the size.
+		if ((rc = posix_fallocate(shm_fd, 0, bufsize)) != 0)
+		{
+			glogf(sinsp_logger::SEV_ERROR, err.c_str(), strerror_r(rc, m_errbuf, sizeof(m_errbuf)));
+			m_disabled = true;
+		}
+		::close(shm_fd);
+		shm_unlink(name.c_str());
+	}
+
+	if(m_disabled)
+	{
+		return;
+	}
 
 	m_max_disk_size = max_disk_size;
 	m_saturation_inactivity_pause_ns = saturation_inactivity_pause_ns;
@@ -108,15 +138,6 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	}
 */
 	m_f = NULL;
-
-	//
-	// Initialize the notification event
-	//
-	m_notification_scap_evt = (scap_evt*)m_notification_scap_evt_storage;
-	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
-	m_notification_evt.m_poriginal_evt = NULL;
-	m_notification_evt.m_pevt = m_notification_scap_evt;
-	m_notification_evt.m_inspector = m_inspector;
 }
 
 sinsp_memory_dumper::~sinsp_memory_dumper()
@@ -238,21 +259,11 @@ bool sinsp_memory_dumper::read_membuf_using_inspector(sinsp &inspector,
 			continue;
 		}
 
-		if(job->m_dumper == NULL)
-		{
-			job->m_dumper = new sinsp_dumper(&inspector);
-			try
-			{
-				job->m_dumper->open(job->m_filename, false, true);
-			}
-			catch(exception &e)
-			{
-				job->m_lasterr = "inspector could not open dump file " + job->m_filename + ". inspector_err=" + inspector.getlasterr() + " e=" + e.what();
-				job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
-				return false;
-			}
-		}
-
+		// Not using sinsp_memory_dumper_job::dump() here,
+		// because we know the start/stop time are within
+		// range, have given the inspector a filter, and the
+		// inspector has determined whether or not the event
+		// qualifies.
 		job->m_n_events++;
 		job->m_dumper->dump(ev);
 	}
@@ -278,6 +289,7 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 
 	sinsp inspector;
 	inspector.set_hostname_and_port_resolution_mode(false);
+	inspector.set_internal_events_mode(true);
 
 	// Open the shared memory segment again so we can read from
 	// the beginning.
@@ -307,8 +319,24 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 
 	if(job->m_filterstr != "")
 	{
-		string flt = "(" + job->m_filterstr + ") or evt.type=notification";
-		inspector.set_filter(flt);
+		inspector.set_filter(job->m_filterstr);
+	}
+
+	if(job->m_dumper == NULL)
+	{
+		job->m_dumper = new sinsp_dumper(&inspector);
+		try
+		{
+			job->m_dumper->open(job->m_filename, false, true);
+		}
+		catch(exception &e)
+		{
+			job->m_lasterr = "inspector could not open dump file " + job->m_filename + ". inspector_err=" + inspector.getlasterr() + " e=" + e.what();
+			job->m_state = sinsp_memory_dumper_job::ST_DONE_ERROR;
+			inspector.close();
+			::close(fd);
+			return;
+		}
 	}
 
 	if (!read_membuf_using_inspector(inspector, state, job))
@@ -349,16 +377,12 @@ void sinsp_memory_dumper::apply_job_filter(const shared_ptr<sinsp_memory_dumper_
 
 sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filename, string filter,
 						      uint64_t delta_time_past_ns, uint64_t delta_time_future_ns,
-						      bool track_job, Poco::Mutex *membuf_mtx)
+						      Poco::Mutex *membuf_mtx)
 {
 	struct timeval tm;
 	gettimeofday(&tm, NULL);
 
 	sinsp_memory_dumper_job* job = new sinsp_memory_dumper_job();
-	if(track_job)
-	{
-		m_jobs.push_back(job);
-	}
 
 	job->m_start_time =
 		delta_time_past_ns != 0? ts - delta_time_past_ns : 0;
@@ -425,12 +449,6 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	}
 
 	return job;
-}
-
-void sinsp_memory_dumper::remove_job(sinsp_memory_dumper_job* job)
-{
-	m_jobs.erase(std::remove(m_jobs.begin(), m_jobs.end(), job), m_jobs.end());
-	delete job;
 }
 
 void sinsp_memory_dumper::switch_states(uint64_t ts)
@@ -521,28 +539,4 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 		m_disabled = true;
 		return;
 	}
-}
-
-void sinsp_memory_dumper::push_notification(uint64_t ts, uint64_t tid, string id, string description)
-{
-	m_notification_scap_evt->ts = ts;
-	m_notification_scap_evt->tid = tid;
-
-	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
-	uint16_t idlen = id.length() + 1;
-	uint16_t desclen = description.length() + 1;
-	lens[0] = idlen;
-	lens[1] = desclen;
-
-	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4),
-		id.c_str(),
-		idlen);
-
-	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4 + idlen),
-		description.c_str(),
-		desclen);
-
-	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
-
-	process_event(&m_notification_evt);
 }

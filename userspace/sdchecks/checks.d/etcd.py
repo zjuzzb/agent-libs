@@ -1,3 +1,9 @@
+# (C) Datadog, Inc. 2015-2016
+# (C) Cory G Watson <gphat@keen.io> 2014-2015
+# (C) Sysdig, Inc. 2016-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 # 3rd party
 import requests
 
@@ -61,6 +67,8 @@ class Etcd(AgentCheck):
         'maximum': 'etcd.leader.latency.max',
         'standardDeviation': 'etcd.leader.latency.stddev',
     }
+
+    NEEDED_NS = ( 'net', 'mnt', )
 
     def check(self, instance):
         if 'url' not in instance:
@@ -166,6 +174,11 @@ class Etcd(AgentCheck):
             # If there's a timeout
             self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
                                message="Timeout when hitting %s" % url,
+                               tags=["url:{0}".format(url)])
+            raise
+        except Exception as e:
+            self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
+                               message="Error hitting %s. Error: %s" % (url, e.message),
                                tags=["url:{0}".format(url)])
             raise
 

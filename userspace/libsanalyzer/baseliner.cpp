@@ -249,17 +249,19 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 					switch(fdinfo->m_type)
 					{
 					case SCAP_FD_FILE:
+					case SCAP_FD_FILE_V2:
 					{
 						//
 						// Add the entry to the file table
 						//
-						np->m_files.add(fdinfo->m_name, fdinfo->m_openflags, true, cdelta);
+						file_category category = blfiletable::flags2filecategory(UNCATEGORIZED, fdinfo->m_openflags);
+						np->m_files.add(fdinfo->m_name, category, cdelta);
 
 						//
 						// Add the entry to the directory tables
 						//
 						string sdir = blfiletable::file_to_dir(fdinfo->m_name);
-						np->m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
+						np->m_dirs.add(sdir, category, cdelta);
 
 						break;
 					}
@@ -269,7 +271,8 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 						// Add the entry to the directory tables
 						//
 						string sdir = fdinfo->m_name + '/';
-						np->m_dirs.add(sdir, fdinfo->m_openflags, true, cdelta);
+						file_category category = blfiletable::flags2filecategory(UNCATEGORIZED, fdinfo->m_openflags);
+						np->m_dirs.add(sdir, category, cdelta);
 
 						break;
 					}
@@ -752,7 +755,11 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 {
 	blprogram* pinfo;
 
-	if(tinfo->m_blprogram != NULL)
+	if(tinfo == NULL)
+	{
+		return NULL;
+	}
+	else if(tinfo->m_blprogram != NULL)
 	{
 		pinfo = tinfo->m_blprogram;
 	}
@@ -783,6 +790,20 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	sinsp_evt_param *parinfo;
+	file_category cat = file_category::NONE;
+	int64_t fd;
+
+	//
+	// Check the return value. We only care about successful opened files
+	//
+	parinfo = evt->get_param(0);
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+	fd = *(int64_t *)parinfo->m_val;
+	if(fd < 0)
+	{
+		cat = file_category::FAILED_OPS;
+	}
 
 	blprogram* pinfo = get_program(tinfo);
 	if(pinfo == NULL)
@@ -803,18 +824,20 @@ void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 	}
 
 	//
+	// Compute the right file category
+	//
+	cat = blfiletable::flags2filecategory(cat, openflags);
+
+	//
 	// Add the entry to the file table
 	//
-	pinfo->m_files.add(name, openflags, false, 
-		evt->get_ts() - clone_ts);
+	pinfo->m_files.add(name, cat, evt->get_ts() - clone_ts);
 
 	//
 	// Add the entry to the directory tables
 	//
 	string sdir = blfiletable::file_to_dir(name);
-
-	pinfo->m_dirs.add(sdir, openflags, false,
-		evt->get_ts() - clone_ts);
+	pinfo->m_dirs.add(sdir, cat, evt->get_ts() - clone_ts);
 }
 
 void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
@@ -1058,6 +1081,7 @@ void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 
 	switch(fd_type)
 	{
+	case SCAP_FD_FILE_V2:
 	case SCAP_FD_FILE:
 	case SCAP_FD_DIRECTORY:
 		if(category == EC_IO_READ)

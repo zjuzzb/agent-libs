@@ -6,16 +6,14 @@
 #include "logger.h"
 
 sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
-				       protocol_queue* queue,
-				       synchronized_policy_events *policy_events) :
+				       protocol_queue* queue) :
 	m_configuration(configuration),
 	m_queue(queue),
-	m_policy_events(policy_events),
 	m_last_loop_ns(0)
 {
 }
 
-void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
+void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
 {
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
@@ -40,6 +38,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
 		+ NumberFormatter::format(ts_ns / 1000000000)
 		+ ", len=" + NumberFormatter::format(buffer->buffer.size())
 		+ ", ne=" + NumberFormatter::format(nevts)
+                + ", de=" + NumberFormatter::format(num_drop_events)
  		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct, 2)
 		+ ", fp=" + NumberFormatter::format(flush_cpu_pct, 2)
  		+ ", sr=" + NumberFormatter::format(sampling_ratio)
@@ -58,9 +57,24 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 		g_log->information(string("Security Events:") + events->DebugString());
 	}
 
-	if(!m_policy_events->put(*events))
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::POLICY_EVENTS,
+		*events,
+		m_configuration->m_compression_enabled);
+
+	if(!buffer)
 	{
-		g_log->information("Policy events buffer full, discarding");
+		g_log->error("NULL converting message to buffer");
+		return;
+	}
+
+	g_log->information("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
+			   + ", ne=" + NumberFormatter::format(events->events_size()));
+
+	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
+	{
+		g_log->information("Queue full, discarding sample");
 	}
 }
 

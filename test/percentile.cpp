@@ -1,5 +1,13 @@
 #include <gtest.h>
+#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
+#include <google/protobuf/io/gzip_stream.h>
 #include "percentile.h"
+#include "draios.pb.h"
+
+extern "C"
+{
+	#include "cm_quantile.h"
+}
 
 using namespace std;
 
@@ -20,7 +28,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
-	EXPECT_DOUBLE_EQ(p_it->second, 5.);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
 
 	percentile pc(p);
 	EXPECT_EQ(pc.sample_count(), 8);
@@ -28,7 +36,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
-	EXPECT_DOUBLE_EQ(p_it->second, 5.);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
 
 	pctls = {85};
 	percentile p1(pctls);
@@ -38,7 +46,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 85);
-	EXPECT_DOUBLE_EQ(p_it->second, 9.);
+	EXPECT_DOUBLE_EQ(p_it->second, 9.5);
 
 	pc = p1;
 	EXPECT_EQ(pc.sample_count(), 20);
@@ -46,7 +54,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 85);
-	EXPECT_DOUBLE_EQ(p_it->second, 9.);
+	EXPECT_DOUBLE_EQ(p_it->second, 9.5);
 
 	pctls = {50};
 	percentile p2(pctls);
@@ -56,7 +64,7 @@ TEST(percentile, integers)
 	EXPECT_EQ(pctl_map.size(), 1);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first,50);
-	EXPECT_FLOAT_EQ(p_it->second, 3.);
+	EXPECT_FLOAT_EQ(p_it->second, 4.);
 
 	pctls = {50,75,85,95};
 	percentile p3(pctls);
@@ -69,10 +77,10 @@ TEST(percentile, integers)
 	EXPECT_FLOAT_EQ(p_it->second, 5.);
 	++p_it;
 	EXPECT_EQ(p_it->first, 75);
-	EXPECT_FLOAT_EQ(p_it->second, 9.);
+	EXPECT_FLOAT_EQ(p_it->second, 9.5);
 	++p_it;
 	EXPECT_EQ(p_it->first, 85);
-	EXPECT_FLOAT_EQ(p_it->second, 11.);
+	EXPECT_FLOAT_EQ(p_it->second, 10.5);
 	++p_it;
 	EXPECT_EQ(p_it->first, 95);
 	EXPECT_FLOAT_EQ(p_it->second, 11.);
@@ -95,7 +103,7 @@ TEST(percentile, doubles)
 	EXPECT_EQ(pctl_map.size(), 1);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
-	EXPECT_DOUBLE_EQ(p_it->second, 5.3);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.205);
 }
 
 TEST(percentile, randoms)
@@ -174,4 +182,158 @@ TEST(percentile, random)
 	val = pctl_map[99];
 	EXPECT_GE(val, 2126008810 - 21474836);
 	EXPECT_LE(val, 2126008810 + 21474836);
+}
+
+TEST(percentile, merge)
+{
+	std::set<double> pctls = {25};
+	percentile p(pctls);
+	p.add(5);
+	p.add(3);
+	p.add(8);
+	p.add(7);
+	p.add(11);
+	p.add(9);
+	p.add(15);
+	p.add(13);
+	EXPECT_EQ(p.sample_count(), 8);
+	percentile::p_map_type pctl_map = p.percentiles();
+	EXPECT_EQ(pctl_map.size(), 1);
+	auto p_it = pctl_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+
+	// test merging to an empty percentile store
+	percentile pmerge(pctls);
+	EXPECT_EQ(pmerge.sample_count(), 0);
+	pmerge.merge(&p);
+	EXPECT_EQ(pmerge.sample_count(), p.sample_count());
+	auto pmerge_map = pmerge.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+
+	// test merging to non-empty percentile store
+	pmerge.merge(&p);
+	EXPECT_EQ(pmerge.sample_count(), 2 * p.sample_count());
+	pmerge_map = pmerge.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+
+	// test merging 2 empty percentile stores
+	percentile pempty1(pctls);
+	percentile pempty2(pctls);
+	pempty1.merge(&pempty2);
+	EXPECT_EQ(pempty1.sample_count(), 0);
+	pmerge_map = pempty1.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 0);
+
+	// test merging an empty percentile store
+	pmerge.merge(&pempty2);
+	EXPECT_EQ(pmerge.sample_count(), 2 * p.sample_count());
+	pmerge_map = pmerge.percentiles();
+	EXPECT_EQ(pmerge_map.size(), 1);
+	p_it = pmerge_map.begin();
+	EXPECT_EQ(p_it->first, 25);
+	EXPECT_DOUBLE_EQ(p_it->second, 6.);
+}
+
+TEST(percentile, serialization)
+{
+	std::set<double> pctls = {25, 50, 75, 85, 95, 99};
+
+	auto test_serialization = [&pctls] (percentile &p1) {
+		auto p1_map = p1.percentiles();
+
+		draiosproto::counter_percentile_data data;
+		p1.serialize(&data);
+
+		percentile p2(pctls);
+		p2.deserialize(&data);
+		auto p2_map = p2.percentiles();
+
+		// compare the percentiles computed
+		EXPECT_EQ(p1_map.size(), p2_map.size());
+		auto it1 = p1_map.cbegin();
+		auto it2 = p2_map.cbegin();
+		auto abs_error = 0.001;
+		for (; it1 != p1_map.cend(); ++it1, ++it2) {
+			EXPECT_EQ(it1->first, it2->first);
+			// ideally the percentiles should match, but will be off
+			// as we scale the sample.mean while serializing
+			EXPECT_NEAR(it1->second, it2->second, abs_error);
+		}
+	};
+
+	// test with few samples
+	percentile simple(pctls);
+	simple.copy(std::vector<int>({4,4,5,5,5,5,6,6,6,7,7,7,8,8,9,9,9,10,10,10}));
+	test_serialization(simple);
+
+	// test with lot of samples
+	percentile complex(pctls);
+	srandom(time(0));
+	for (int i=0; i < 100000; i++) {
+		complex.add(random());
+	}
+	test_serialization(complex);
+}
+
+TEST(percentile, serialized_size)
+{
+	std::set<double> pctls = {99};
+	std::pair<size_t, size_t> raw_sizes, comp_sizes;
+
+	raw_sizes.first = comp_sizes.first = std::numeric_limits<size_t>::max();
+
+	auto test_serialization = [&raw_sizes, &comp_sizes] (percentile &p1, size_t n_raw_samples) {
+		draiosproto::counter_percentile_data data;
+		p1.serialize(&data);
+
+		//std::cout << "#raw_samples: " << n_raw_samples << " #samples: " << data.num_samples()
+		//          << " Min: " << data.min() << " Max: " << data.max() << std::endl;
+
+		std::string sdata;
+		google::protobuf::io::StringOutputStream sout(&sdata);
+		if (data.SerializeToZeroCopyStream(&sout)) {
+			//std::cout << "Size of raw serialized data: " << sdata.size() << std::endl;
+			raw_sizes.first = std::min(raw_sizes.first, sdata.size());
+			raw_sizes.second = std::max(raw_sizes.second, sdata.size());
+		}
+
+		std::string gz_sdata;
+		google::protobuf::io::StringOutputStream gz_sout(&gz_sdata);
+		google::protobuf::io::GzipOutputStream::Options opts;
+		google::protobuf::io::GzipOutputStream gz_out(&gz_sout, opts);
+		if (data.SerializeToZeroCopyStream(&gz_out) &&
+		    gz_out.Close()) {
+			//std::cout << "Size of compressed serialized data: " << gz_sdata.size() << std::endl;
+			comp_sizes.first = std::min(comp_sizes.first, gz_sdata.size());
+			comp_sizes.second = std::max(comp_sizes.second, gz_sdata.size());
+		}
+	};
+
+	// test with lot of samples
+	percentile complex(pctls);
+	srandom(time(0));
+	size_t i = 0;
+	for (auto j = 0; i < 100000; i++) {
+		complex.add(random());
+		if (i%(int)(std::pow(8, j)) == 0) {
+			test_serialization(complex, i+1);
+			j++;
+		}
+	}
+	test_serialization(complex, i);
+
+	std::cout << "Raw sizes - min: " << raw_sizes.first
+	          << " max: " << raw_sizes.second << std::endl;
+	std::cout << "Compressed sizes - min: " << comp_sizes.first
+	          << " max: " << comp_sizes.second << std::endl;
 }

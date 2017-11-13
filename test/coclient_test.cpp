@@ -151,7 +151,7 @@ static bool check_docker_service()
 	return true;
 }
 
-TEST_F(coclient_test, perform_ping)
+TEST_F(coclient_test, DISABLED_perform_ping)
 {
 	int64_t token = 828271;
 	bool callback_performed = false;
@@ -169,8 +169,9 @@ TEST_F(coclient_test, perform_ping)
 		callback_performed = true;
 
 		EXPECT_TRUE(successful);
-
-		EXPECT_EQ(token, pong->token());
+		if (successful) {
+			EXPECT_EQ(token, pong->token());
+		}
 	};
 
 	m_coclient.ping(token, callback);
@@ -184,7 +185,7 @@ TEST_F(coclient_test, perform_ping)
 	EXPECT_TRUE(callback_performed) << "Did not receive pong message after 10 seconds";
 }
 
-TEST_F(coclient_test, docker_pause)
+TEST_F(coclient_test, DISABLED_docker_pause)
 {
 	if (!check_docker_service())
 	{
@@ -194,7 +195,7 @@ TEST_F(coclient_test, docker_pause)
 	test_docker_cmd(sdc_internal::PAUSE);
 }
 
-TEST_F(coclient_test, docker_stop)
+TEST_F(coclient_test, DISABLED_docker_stop)
 {
 	if (!check_docker_service())
 	{

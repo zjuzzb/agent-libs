@@ -1,7 +1,11 @@
 #include "percentile.h"
 #include "sinsp_int.h"
+#include "draios.pb.h"
 #include <cstring>
 #include <cmath>
+
+#define UNLIKELY(_x_)	__builtin_expect(!!(_x_), 0)
+#define SERIALIZE_SCALE	1000
 
 percentile::percentile(const std::set<double>& pctls, double eps)
 {
@@ -24,7 +28,7 @@ percentile::percentile(const std::set<double>& pctls, double eps)
 						}
 						return ret;
 					});
-	init(&percentiles[0], percentiles.size(), eps);
+	init(percentiles, eps);
 }
 
 percentile::~percentile()
@@ -34,16 +38,16 @@ percentile::~percentile()
 
 percentile::percentile(const percentile& other)
 {
-	init(other.m_cm.quantiles, other.m_cm.num_quantiles, other.m_cm.eps);
+	init(other.m_percentiles, other.m_eps);
 	copy(other);
 }
 
-percentile& percentile::operator=(percentile other)
+percentile& percentile::operator=(const percentile &other)
 {
 	if(this != &other)
 	{
 		destroy();
-		init(other.m_cm.quantiles, other.m_cm.num_quantiles, other.m_cm.eps);
+		init(other.m_percentiles, other.m_eps);
 		copy(other);
 	}
 	return *this;
@@ -52,28 +56,27 @@ percentile& percentile::operator=(percentile other)
 void percentile::copy(const percentile& other)
 {
 	other.flush();
-	cm_sample* sample = other.m_cm.samples;
-	while(sample)
-	{
-		if(0 != cm_add_sample(&m_cm, sample->value))
-		{
-			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(sample->value));
-		}
-		sample = sample->next;
-		++m_num_samples;
+	m_num_samples += other.m_num_samples;
+	if (other.m_num_samples) {
+		alloc_tdigest_if_needed();
+		m_digest->merge(other.m_digest.get());
 	}
 }
 
-void percentile::init(double* percentiles, size_t size, double eps)
+void percentile::alloc_tdigest_if_needed(void)
 {
-	if(!size || 0 != init_cm_quantile(eps, percentiles, size, &m_cm))
-	{
-		std::ostringstream os;
-		os << '[';
-		for(size_t i = 0; i < size; ++i) { os << percentiles[i] << ','; }
-		os << ']';
-		throw sinsp_exception("Percentiles: Invalid percentiles specified: " + os.str());
+	if (UNLIKELY(m_digest == nullptr)) {
+		// the default factor for unprocessed/buffered samples is 5, but 3
+		// gets us comparable results with smaller memory foot print
+		m_digest = std::unique_ptr<tdigest::TDigest>(
+						new tdigest::TDigest(1/m_eps, 3/m_eps));
 	}
+}
+
+void percentile::init(const std::vector<double> &percentiles, double eps)
+{
+	m_percentiles = percentiles;
+	m_eps = eps;
 	m_num_samples = 0;
 }
 
@@ -81,61 +84,32 @@ void percentile::destroy(std::vector<double>* percentiles)
 {
 	if(percentiles)
 	{
-		*percentiles = get_percentiles();
+		*percentiles = m_percentiles;
 	}
 
-	if(0 != destroy_cm_quantile(&m_cm))
-	{
-		if(percentiles)
-		{
-			throw sinsp_exception("Percentiles: Error destroying statsite quantile.");
-		}
-		else
-		{
-			g_logger.log("Percentiles: Error destroying statsite quantile.", sinsp_logger::SEV_ERROR);
-		}
-	}
-	std::memset(&m_cm, 0, sizeof(m_cm));
+	m_digest.reset();
+	m_eps = 0;
+	m_percentiles.clear();
 	m_num_samples = 0;
 }
 
 std::vector<double> percentile::get_percentiles() const
 {
-	std::vector<double> percentiles(m_cm.quantiles, m_cm.quantiles + m_cm.num_quantiles);
-	return percentiles;
-}
-
-std::vector<double> percentile::get_samples() const
-{
-	std::vector<double> samples;
-	cm_sample* sample = m_cm.samples;
-	while(sample)
-	{
-		samples.push_back(sample->value);
-		sample = sample->next;
-	}
-	return samples;
+	return m_percentiles;
 }
 
 void percentile::reset()
 {
-	if(sample_count())
-	{
-		double eps = m_cm.eps;
-		std::vector<double> percentiles;
-		destroy(&percentiles);
-		init(&percentiles[0], percentiles.size(), eps);
+	if (m_digest) {
+		m_digest->clear();
+		m_num_samples = 0;
 	}
 }
 
 void percentile::flush() const
 {
-	if(m_num_samples)
-	{
-		if(0 != cm_flush(const_cast<cm_quantile*>(&m_cm)))
-		{
-			throw sinsp_exception("Percentiles error while flushing.");
-		}
+	if (m_digest) {
+		m_digest->compress();
 	}
 }
 
@@ -143,9 +117,8 @@ percentile::p_map_type percentile::percentiles()
 {
 	flush();
 	p_map_type pm;
-	for(uint32_t i = 0; i < m_cm.num_quantiles; ++i)
-	{
-		pm[round(m_cm.quantiles[i] * 100.)] = cm_query(&m_cm, m_cm.quantiles[i]);
+	for (auto q : m_percentiles) {
+		pm[round(q * 100.)] = (m_num_samples) ? m_digest->quantile(q) : 0;
 	}
 	return pm;
 }
@@ -153,10 +126,68 @@ percentile::p_map_type percentile::percentiles()
 void percentile::dump_samples()
 {
 	std::cout << "Dumping " << m_num_samples << " samples" << std::endl;
-	cm_sample* sample = m_cm.samples;
-	while(sample)
-	{
-		std::cout << "value=" << sample->value << ", width=" << sample->width << ", delta=" << sample->delta << std::endl;
-		sample = sample->next;
+	if (m_digest) {
+		for (auto &c : m_digest->processed()) {
+			std::cout << "value=" << c.mean() << ", weight=" << c.weight() << std::endl;
+		}
+		for (auto &c : m_digest->unprocessed()) {
+			std::cout << "value=" << c.mean() << ", weight=" << c.weight() << std::endl;
+		}
+	}
+}
+
+void percentile::serialize(draiosproto::counter_percentile_data *pdata) const
+{
+	flush();
+	if (m_num_samples) {
+		auto scale = SERIALIZE_SCALE;
+		auto &samples = m_digest->processed();
+		pdata->set_scale(scale);
+		pdata->set_num_samples(samples.size());
+		pdata->set_min(scale * m_digest->min());
+		pdata->set_max(scale * m_digest->max());
+		uint64_t prev_mean = 0;
+		for (auto &s : samples) {
+			auto curr_mean = scale * s.mean();
+			pdata->add_means(curr_mean - prev_mean);
+			pdata->add_weights(s.weight());
+			prev_mean = curr_mean;
+		}
+	}
+}
+
+void percentile::deserialize(const draiosproto::counter_percentile_data *pdata)
+{
+	double scale = pdata->scale();
+
+	// validate the counts
+	if ((int)(pdata->num_samples()) != pdata->means_size()) {
+		throw sinsp_exception("percentiles::deserialize: Invalid counts. #samples: "
+				+ std::to_string(pdata->num_samples()) + " #means: "
+				+ std::to_string(pdata->means_size()));
+	}
+	if (pdata->means_size() != pdata->weights_size()) {
+		throw sinsp_exception("percentiles::deserialize: Invalid counts. #means: "
+				+ std::to_string(pdata->means_size()) + " #weights: "
+				+ std::to_string(pdata->weights_size()));
+	}
+
+	std::vector<double> percentiles;
+	destroy(&percentiles);
+	init(percentiles);
+	m_digest = std::unique_ptr<tdigest::TDigest>(
+				new tdigest::TDigest(
+						1/m_eps, // compression
+						3/m_eps, // bufferSize
+						0, // size (default)
+						pdata->min()/scale,
+						pdata->max()/scale));
+
+	// ingest the samples
+	double curr_mean = 0;
+	for (uint32_t ndx = 0; ndx < pdata->num_samples(); ++ndx) {
+		curr_mean += pdata->means(ndx)/scale;
+		m_digest->add(curr_mean, pdata->weights(ndx));
+		m_num_samples++;
 	}
 }

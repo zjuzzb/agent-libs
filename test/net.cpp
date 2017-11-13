@@ -521,7 +521,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 
 class analyzer_callback: public analyzer_callback_interface
 {
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
+	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
 	{
 		printf("ciao\n");
 	}
@@ -764,7 +764,7 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 	EXPECT_EQ(500, top_ncalls);
 }
 
-TEST(sinsp_procfs_parser, test_read_network_interfaces_stats)
+TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 {
 	sinsp_procfs_parser parser(1, 1024, true);
 

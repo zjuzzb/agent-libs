@@ -1,0 +1,8 @@
+FROM debian:unstable AS build
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential && rm -rf /var/lib/apt/lists/*
+ADD main.c /
+RUN gcc -O3 main.c -lrt -static -o posix-queue-cli && strip posix-queue-cli
+FROM debian:unstable
+RUN apt-get update && apt-get install -y --no-install-recommends strace && rm -rf /var/lib/apt/lists/*
+COPY --from=build /posix-queue-cli /
+ENTRYPOINT [ "strace", "-e", "mq_open,mq_timedreceive,mq_timedsend,close", "/posix-queue-cli" ]

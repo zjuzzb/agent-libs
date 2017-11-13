@@ -3,6 +3,7 @@
 //
 
 #include "app_checks.h"
+#include "prometheus.h"
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "analyzer_thread.h"
@@ -96,6 +97,7 @@ Json::Value app_check::to_json() const
 		ret["interval"] = m_interval;
 	}
 	ret["log_errors"] = m_log_errors;
+	ret["retry"] = m_retry;
 	return ret;
 }
 bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
@@ -126,6 +128,11 @@ bool YAML::convert<app_check>::decode(const YAML::Node &node, app_check &rhs)
 	if(log_errors_node.IsScalar())
 	{
 		rhs.m_log_errors = log_errors_node.as<bool>();
+	}
+	auto retry_node = node["retry"];
+	if(retry_node.IsScalar())
+	{
+		rhs.m_retry = retry_node.as<bool>();
 	}
 
 	auto pattern_node = node["pattern"];
@@ -212,13 +219,22 @@ app_checks_proxy::app_checks_proxy():
 {
 }
 
-void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes)
+void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes, const vector<prom_process>& prom_procs, const prometheus_conf &prom_conf)
 {
-	Json::Value command = Json::Value(Json::arrayValue);
+	Json::Value procs = Json::Value(Json::arrayValue);
 	for(const auto& p : processes)
 	{
-		command.append(p.to_json());
+		procs.append(p.to_json());
 	}
+	Json::Value promps = Json::Value(Json::arrayValue);
+	for(const auto& p : prom_procs)
+	{
+		promps.append(p.to_json(prom_conf));
+	}
+
+	Json::Value command;
+	command["processes"] = procs;
+	command["prometheus"] = promps;
 	string data = m_json_writer.write(command);
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Send to sdchecks: %s", data.c_str());
 	m_outqueue.send(data);
@@ -233,18 +249,30 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 		if(!msg.empty())
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %lu bytes", msg.size());
-			//g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from sdchecks: %s", msg.c_str());
 			Json::Value response_obj;
 			if(m_json_reader.parse(msg, response_obj, false))
 			{
-				for(const auto& process : response_obj)
-				{
-					app_check_data data(process, ml);
-					// only add if there are metrics or services
-					if(data.metrics().size() || data.services().size())
+				auto proc_metrics = [](Json::Value obj, app_check_data::check_type t, metric_limits::cref_sptr_t ml, metric_map_t &ret) {
+					for(const auto& process : obj)
 					{
-						ret[data.pid()][data.name()] = move(data);
+						app_check_data data(process, ml);
+						// only add if there are metrics or services
+						if(data.metrics().size() || data.services().size() || data.total_metrics())
+						{
+							data.set_type(t);
+							ret[data.pid()][data.name()] = move(data);
+						}
 					}
+				};
+				if (response_obj.isMember("processes"))
+				{
+					auto resp_obj = response_obj["processes"];
+					proc_metrics(resp_obj, app_check_data::check_type::APPCHECK, ml, ret);
+				}
+				if (response_obj.isMember("prometheus"))
+				{
+					auto resp_obj = response_obj["prometheus"];
+					proc_metrics(resp_obj, app_check_data::check_type::PROMETHEUS, ml, ret);
 				}
 			}
 			else
@@ -263,7 +291,8 @@ app_checks_proxy::metric_map_t app_checks_proxy::read_metrics(metric_limits::cre
 
 app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_t ml):
 	m_pid(obj["pid"].asInt()),
-	m_expiration_ts(obj["expiration_ts"].asUInt64())
+	m_expiration_ts(obj["expiration_ts"].asUInt64()),
+	m_total_metrics(0)
 {
 	if(obj.isMember("display_name"))
 	{
@@ -289,6 +318,7 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 					metric_limits::log(m[0].asString(), "app_check", true, metric_limits::log_enabled(), " ");
 					m_metrics.emplace_back(m);
 				}
+				++m_total_metrics;
 			}
 		}
 	}
@@ -314,15 +344,18 @@ app_check_data::app_check_data(const Json::Value &obj, metric_limits::cref_sptr_
 					metric_limits::log(s["check"].asString(), "app_check", true, metric_limits::log_enabled(), " ");
 					m_service_checks.emplace_back(s);
 				}
+				++m_total_metrics;
 			}
 		}
 	}
 }
 
-void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
+unsigned app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const
 {
+	unsigned emitted_metrics = 0;
+
 	bool ml_log = metric_limits::log_enabled();
-	if(limit == 0 && !ml_log) { return; }
+	if(limit == 0 && !ml_log) { return emitted_metrics; }
 	// Right now process name is not used by backend
 	//proto->set_process_name(m_process_name);
 	for(const auto& m : m_metrics)
@@ -335,12 +368,12 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 			continue;
 		}
 		m.to_protobuf(proto->add_metrics());
-		if((--limit == 0) && !ml_log) { return; }
+		emitted_metrics++;
+		if((--limit == 0) && !ml_log) { return emitted_metrics; }
 	}
-	/*
-	 * Right now service checks are not supported by the backend
-	 * we are sending them as 1/0 metrics
-	 */
+
+	// Right now service checks are not supported by the backend
+	// we are sending them as 1/0 metrics
 	for(const auto& s : m_service_checks)
 	{
 		ASSERT(((limit == 0) && ml_log) || (limit != 0));
@@ -351,9 +384,13 @@ void app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& limit, 
 			continue;
 		}
 		s.to_protobuf_as_metric(proto->add_metrics());
-		if((--limit == 0) && !ml_log) { return; }
+		emitted_metrics++;
+		if((--limit == 0) && !ml_log) { return emitted_metrics; }
 	}
+
+	return emitted_metrics;
 }
+
 
 app_metric::app_metric(const Json::Value &obj):
 	m_name(obj[0].asString()),

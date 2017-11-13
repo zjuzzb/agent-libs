@@ -2,14 +2,12 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-extern "C"
-{
-	#include "cm_quantile.h"
-}
+#include "tdigest/tdigest.h"
 
-//
-// statsite wrapper http://statsite.github.io/statsite/
-//
+// fwd declarations
+namespace draiosproto {
+class counter_percentile_data;
+};
 
 class percentile
 {
@@ -17,19 +15,17 @@ public:
 	typedef std::map<int, double> p_map_type;
 
 	percentile() = delete;
-	percentile(const std::set<double>& pctls, double eps = .01);
+	percentile(const std::set<double>& pctls, double eps = .02);
 	~percentile();
 
 	percentile(const percentile& other);
-	percentile& operator=(percentile other);
+	percentile& operator=(const percentile &other);
 
 	template <typename T>
 	void add(T val)
 	{
-		if(0 != cm_add_sample(&m_cm, val))
-		{
-			throw sinsp_exception("Percentiles error while adding value: " + std::to_string(val));
-		}
+		alloc_tdigest_if_needed();
+		m_digest->add(val);
 		++m_num_samples;
 	}
 
@@ -37,30 +33,27 @@ public:
 	void copy(const std::vector<T>& val)
 	{
 		reset();
-		insert(val);
+		for(auto &v: val) {
+			add(v);
+		}
 	}
 
-	template <typename T>
-	void insert(const std::vector<T>& val)
+	void merge(const percentile *other)
 	{
-		if(val.size())
-		{
-			for(const auto& v : val) { add(v); }
+		if (other->sample_count()) {
+			alloc_tdigest_if_needed();
+			m_digest->merge(other->m_digest.get());
+			m_num_samples += other->sample_count();
 		}
 	}
 
 	p_map_type percentiles();
 
-	template <typename P, typename C>
-	void to_protobuf(P* proto, C* (P::*add_func)())
+	template <typename P, typename C1, typename C2>
+	void to_protobuf(P* proto, C1* (P::*add_pctl)(), C2* (P::*data)())
 	{
-		p_map_type pm = percentiles();
-		for(const auto& p : pm)
-		{
-			C* cp = (proto->*add_func)();
-			cp->set_percentile(p.first);
-			cp->set_value(p.second);
-		}
+		to_protobuf(percentiles(), proto, add_pctl);
+		//serialize((proto->*data)());
 		reset();
 	}
 
@@ -76,24 +69,25 @@ public:
 	}
 
 	void reset();
-	std::vector<double> get_percentiles() const;
-	std::vector<double> get_samples() const;
-	uint32_t sample_count() const;
+	inline std::vector<double> get_percentiles() const;
+	uint32_t sample_count() const
+	{
+		return m_num_samples;
+	}
 
 	void dump_samples();
-	void flush() const;
+	inline void flush() const;
+	void serialize(draiosproto::counter_percentile_data *pdata) const;
+	void deserialize(const draiosproto::counter_percentile_data *pdata);
 
 private:
-	void init(double* percentiles, size_t size, double eps = 0.1);
-	void copy(const percentile& other);
-	void destroy(std::vector<double>* percentiles = nullptr);
+	inline void init(const std::vector<double> &percentiles, double eps = 0.02);
+	inline void copy(const percentile& other);
+	inline void destroy(std::vector<double>* percentiles = nullptr);
+	void alloc_tdigest_if_needed(void);
 
-	cm_quantile m_cm = {0};
-	 // cm_quantile::num_samples is not a reliable source of information
+	std::vector<double> m_percentiles;
+	double m_eps;
+	std::unique_ptr<tdigest::TDigest> m_digest;
 	size_t m_num_samples = 0;
 };
-
-inline uint32_t percentile::sample_count() const
-{
-	return m_num_samples;
-}

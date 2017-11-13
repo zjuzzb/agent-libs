@@ -65,9 +65,8 @@ set(LYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/lyaml-release-v6.0/target/lib/lua/5.1/
 set(LIBYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/libyaml-0.1.4/target/lib/libyaml.a")
 set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${DRAIOS_BIN_PREFIX}/share")
+set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent)
-set(FALCO_ETC_DIR "${DRAIOS_BIN_PREFIX}/etc")
-set(FALCO_RULES_DEST_FILENAME "falco_rules.default.yaml")
 add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
@@ -95,7 +94,7 @@ install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
       
 set(CPACK_PACKAGE_NAME "draios")
 set(CPACK_PACKAGE_VENDOR "Sysdig Inc.")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sysdig Cloud Agent")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Sysdig Agent")
 set(CPACK_PACKAGE_VERSION "${AGENT_VERSION}")
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/description.txt")

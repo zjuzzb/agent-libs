@@ -11,12 +11,15 @@
 #include "statsite_proxy.h"
 #include <atomic>
 #include "app_checks.h"
+#include "prometheus.h"
 #include <unordered_set>
 #include "sinsp_curl.h"
 #include "user_event.h"
 #include "k8s_api_handler.h"
 #include "procfs_parser.h"
 #include "coclient.h"
+#include "infrastructure_state.h"
+#include "internal_metrics.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -24,7 +27,7 @@
 class analyzer_callback_interface
 {
 public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
+	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_cpt, uint64_t analyzer_flush_duration_ns) = 0;
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -49,8 +52,6 @@ class k8s_delegator;
 class mesos;
 class docker;
 class uri;
-class falco_engine;
-class falco_events;
 class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
@@ -175,10 +176,38 @@ private:
 class sinsp_curl;
 class uri;
 
+class stress_tool_matcher
+{
+public:
+	stress_tool_matcher()
+	{
+		//m_comm_list.push_back("dd");
+		//
+		// XXX Populate this with the list of stress tools to match
+		//
+	}
+
+	bool match(string comm)
+	{
+		for(auto it = m_comm_list.begin(); it != m_comm_list.end(); ++it)
+		{
+			if(*it == comm)
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	static void set_comm_list(const vector<string>& comms);
+private:
+	static vector<string> m_comm_list;
+};
+
 //
 // The main analyzer class
 //
-
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
@@ -191,6 +220,15 @@ public:
 		DF_TIMEOUT,
 		DF_EOF,
 	};
+
+	enum mode_switch_state
+	{
+		MSR_NONE = 0,
+		MSR_SWITCHED_TO_NODRIVER = 1,
+		MSR_REQUEST_NODRIVER = 2,
+		MSR_REQUEST_REGULAR = 3,
+	};
+
 	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	sinsp_analyzer(sinsp* inspector);
 	~sinsp_analyzer();
@@ -297,16 +335,14 @@ public:
 			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
 			{
 				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
-				if(m_configuration->get_excess_metrics_log())
-				{
-					m_metric_limits->enable_logging();
-				}
+			}
+			if(m_configuration->get_excess_metrics_log())
+			{
+				metric_limits::enable_logging();
 			}
 			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
 			checked = true;
 		}
-
-		m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 	}
 
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
@@ -366,6 +402,18 @@ public:
 		if(!m_app_checks.empty())
 		{
 			check_metric_limits();
+			if (!m_app_proxy)
+			{
+				m_app_proxy = make_unique<app_checks_proxy>();
+			}
+		}
+	}
+
+	void set_prometheus_conf(const prometheus_conf& pconf)
+	{
+		m_prom_conf = pconf;
+		if (m_prom_conf.enabled() && !m_app_proxy)
+		{
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
@@ -388,18 +436,34 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
-	void enable_falco(const string &default_rules_filename,
-			  const string &auto_rules_filename,
-			  const string &rules_filename,
-			  std::set<std::string> &disabled_rule_patterns,
-			  double sampling_multiplier);
-
-	void disable_falco();
+	void set_simpledriver_mode()
+	{
+		m_simpledriver_enabled = true;
+	}
 
 	void set_emit_tracers(bool enabled);
+	void set_internal_metrics(internal_metrics::sptr_t im);
 
 	void set_percentiles();
 	void emit_percentiles_config();
+
+	infrastructure_state *infra_state();
+
+	void set_use_new_k8s(bool v)
+	{
+		m_use_new_k8s = v;
+	}
+
+	bool recent_sinsp_events_dropped()
+	{
+		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
+	}
+
+	//
+	// Test tool detection state
+	//
+	mode_switch_state m_mode_switch_state;
+	stress_tool_matcher m_stress_tool_matcher;
 
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
@@ -407,8 +471,12 @@ VISIBILITY_PRIVATE
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
 	void chisels_do_timeout(sinsp_evt* ev);
-	template<class Iterator>
-	void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	void filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	void filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	template<class Iterator>	
+	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
@@ -445,8 +513,9 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_top_files();
+	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 	vector<string> emit_containers(const progtable_by_container_t& active_containers);
-	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, int64_t pid);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -461,12 +530,15 @@ VISIBILITY_PRIVATE
 #endif
 	void emit_chisel_metrics();
 	void emit_user_events();
+	void match_prom_checks(sinsp_threadinfo *tinfo,
+			       sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs);
 	void match_checks_list(sinsp_threadinfo *tinfo,
 			       sinsp_threadinfo *mtinfo,
 			       const vector<app_check> &checks,
 				   vector<app_process> &app_checks_processes,
 			       const char *location);
-
+	vector<long> get_n_tracepoint_diff();
+	
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
@@ -476,6 +548,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_time;
+	uint64_t m_serialize_prev_sample_num_drop_events;
 
 	sinsp_analyzer_parsers* m_parser;
 	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go
@@ -539,8 +612,11 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
+
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
+
+	bool m_simpledriver_enabled;
 
 	//
 	// The scheduler analyzer
@@ -598,6 +674,9 @@ VISIBILITY_PRIVATE
 	uint32_t m_sampling_ratio;
 	uint32_t m_new_sampling_ratio;
 	uint64_t m_last_dropmode_switch_time;
+	vector<long> m_last_total_evts_by_cpu;
+	threshold_filter<long> m_total_evts_switcher;
+	threshold_filter<double> m_very_high_cpu_switcher;
 	uint32_t m_seconds_above_thresholds;
 	uint32_t m_seconds_below_thresholds;
 	double m_my_cpuload;
@@ -611,6 +690,8 @@ VISIBILITY_PRIVATE
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 
+	infrastructure_state* m_infrastructure_state = NULL;
+
 	//
 	// Chisel-generated metrics infrastructure
 	//
@@ -621,20 +702,33 @@ VISIBILITY_PRIVATE
 #ifndef _WIN32
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
+	// indexed by pid
 	unordered_map<int, java_process> m_jmx_metrics;
+	// sent and total jmx metrics indexed by container (empty string if host)
+	unordered_map<string, tuple<unsigned, unsigned>> m_jmx_metrics_by_containers;
+
 	unique_ptr<statsite_proxy> m_statsite_proxy;
 	unique_ptr<posix_queue> m_statsite_forwader_queue;
-	unordered_map<string, vector<statsd_metric>> m_statsd_metrics;
+	// indexed by container id (empty string if host), stores metrics and their total size
+	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> m_statsd_metrics;
+	// sent and total app checks indexed by container (empty string if host)
+	unordered_map<string, tuple<unsigned, unsigned>> m_app_checks_by_containers;
+	unordered_map<string, tuple<unsigned, unsigned>> m_prometheus_by_containers;
 
 	atomic<bool> m_statsd_capture_localhost;
+
 	vector<app_check> m_app_checks;
 	unique_ptr<app_checks_proxy> m_app_proxy;
 	decltype(m_app_proxy->read_metrics()) m_app_metrics;
+
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
+
+	prometheus_conf m_prom_conf;
 #endif
 
 	unique_ptr<k8s> m_k8s;
+	bool m_use_new_k8s;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
 #ifndef _WIN32
 	sinsp_ssl::ptr_t          m_k8s_ssl;
@@ -679,13 +773,12 @@ VISIBILITY_PRIVATE
 	self_cputime_analyzer m_cputime_analyzer;
 #endif
 
-	unique_ptr<falco_engine> m_falco_engine;
-	unique_ptr<falco_events> m_falco_events;
-
 	metric_limits::sptr_t m_metric_limits;
 	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;
+
+	internal_metrics::sptr_t m_internal_metrics;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 

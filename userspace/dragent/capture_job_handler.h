@@ -29,41 +29,85 @@ class capture_job_handler : public Runnable
 {
 	friend class capture_job;
 public:
-	class dump_job_request
+
+	class start_job_details
 	{
 	public:
-		enum request_type {
-			JOB_START,
-			JOB_STOP
-		};
-
-		dump_job_request():
+		start_job_details():
 			m_duration_ns(0),
 			m_max_size(0),
 			m_past_duration_ns(0),
 			m_past_size(0),
+			m_notification_pid(0),
+			m_defer_send(false),
 			m_start_ns(0),
+			m_send_initial_keepalive(true),
 			m_delete_file_when_done(true),
 			m_send_file(true),
 			m_dumper(NULL)
 		{
 		}
 
-		request_type m_request_type;
-		string m_token;
 		uint64_t m_duration_ns;
 		uint64_t m_max_size;
 		uint64_t m_past_duration_ns;
 		uint64_t m_past_size;
+		std::string m_notification_desc;
+		uint64_t m_notification_pid;
+
+		// If true, none of the capture file will be sent
+		// until a later JOB_SEND_START message is
+		// received.
+		bool m_defer_send;
 
 		// Start the capture as close as possible to this
 		// time. If 0 will use current time.
 		uint64_t m_start_ns;
 
+		// If true, send a keepalive message immediately.
+		bool m_send_initial_keepalive;
+
 		string m_filter;
 		bool m_delete_file_when_done;
 		bool m_send_file;
 		sinsp_dumper *m_dumper;
+	};
+
+	class dump_job_request
+	{
+	public:
+		enum request_type {
+			JOB_START,
+			JOB_STOP,
+			JOB_SEND_START
+		};
+
+		static string request_type_str(request_type &type)
+		{
+			switch(type)
+			{
+			case JOB_START :
+				return string("start");
+				break;
+			case JOB_STOP :
+				return string("stop");
+				break;
+			case JOB_SEND_START :
+				return string("send_start");
+				break;
+			default:
+				return string("unknown");
+				break;
+			}
+		}
+
+		dump_job_request() {};
+
+		string m_token;
+		request_type m_request_type;
+
+		// Only valid when type == JOB_START
+		unique_ptr<start_job_details> m_start_details;
 	};
 
 	capture_job_handler(dragent_configuration *configuration,
@@ -112,10 +156,22 @@ public:
 
 	void send_error(const string& token, const string& error);
 
+	// Inject a notification event into the event stream (at least
+	// the part that's visible by capture jobs). This will make
+	// sure it's present in the memdump buffer and any active
+	// capture jobs. It will not be handled by the analyzer or
+	// sinsp_worker.
+	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
+	void push_infra_event(uint64_t ts, uint64_t tid, string source, string name, string description, string scope);
+
 	int64_t m_sysdig_pid;
 
 	// Mutex that protects access to the end of the active memdump buffer
 	Poco::Mutex m_membuf_mtx;
+	std::unique_ptr<sinsp_memory_dumper> m_memdumper;
+
+	// Only used in unit tests to force a faster shutdown.
+	bool m_force_cleanup = false;
 
 private:
 	// Clean up all jobs
@@ -124,7 +180,8 @@ private:
 	static const string m_name;
 
 	void process_job_requests();
-	void start_job(const dump_job_request& request);
+	void start_job(string &token,
+		       const start_job_details& request);
 
 	void add_job(std::shared_ptr<capture_job> &job);
 
@@ -142,6 +199,7 @@ private:
 	static const uint64_t default_max_chunk_size;
 	static const uint64_t m_keepalive_interval_ns;
 
+	pid_t m_sysdig_sid;
 	run_on_interval m_log_stats_interval;
 
 	// The sinsp_worker's inspector. Only used to compile filters when creating jobs.
@@ -151,7 +209,6 @@ private:
 	atomic<bool> *m_enable_autodrop;
 	uint64_t m_max_chunk_size;
 	blocking_queue<std::shared_ptr<dump_job_request>> m_dump_job_requests;
-	std::unique_ptr<sinsp_memory_dumper> m_memdumper;
 
 	// Mutex that protects access to the list of jobs
 	Poco::RWLock m_jobs_lock;
@@ -160,5 +217,9 @@ private:
 	token_bucket m_sysdig_captures_tb;
 	atomic<uint64_t> m_last_job_check_ns;
 	atomic<uint64_t> m_last_event_ns;
+
+	sinsp_evt m_notification_evt;
+	uint8_t m_notification_scap_evt_storage[4096];
+	scap_evt* m_notification_scap_evt;
 };
 

@@ -11,68 +11,126 @@ using namespace std;
 
 security_policy::security_policy(security_mgr *mgr,
 				 dragent_configuration *configuration,
-				 uint64_t id,
-				 const std::string &name,
-				 const google::protobuf::RepeatedPtrField<draiosproto::action> &actions,
-				 shared_ptr<coclient> &coclient,
-				 bool enabled)
+				 const draiosproto::policy &policy,
+				 shared_ptr<coclient> &coclient)
 	: m_mgr(mgr),
 	  m_configuration(configuration),
-	  m_id(id),
-	  m_name(name),
-	  m_enabled(enabled),
-	  m_coclient(coclient)
+	  m_policy(policy),
+	  m_coclient(coclient),
+	  m_has_outstanding_actions(false)
 {
 	m_print.SetSingleLineMode(true);
-
-	for(auto &action : actions)
-	{
-		m_actions.push_back(action);
-	}
+	m_metrics.reset();
 }
 
 security_policy::~security_policy()
 {
 }
 
-std::string &security_policy::to_string()
+bool security_policy::process_event(sinsp_evt *evt)
 {
-	m_str = m_name + " [" + std::to_string(m_id) + "] actions=";
+	draiosproto::policy_event *event;
 
-	for(auto it = m_actions.begin(); it != m_actions.end(); it++)
+	if(!m_policy.enabled())
 	{
-		string tmp;
-
-		m_str += (it == m_actions.begin() ? "" : ",");
-		m_print.PrintToString(*it, &tmp);
-		m_str += tmp;
+		m_metrics.incr(evt_metrics::EVM_POLICY_DISABLED);
+		return false;
 	}
 
-	m_str += " enabled=" + std::to_string(m_enabled);
+	if(m_evttypes[evt->get_type()] &&
+	   (event = match_event(evt)) != NULL)
+	{
+		g_log->debug("Event matched policy: " + name());
 
-	return m_str;
+		// Perform the actions associated with the
+		// policy. The actions will add their action
+		// results to the policy event as they complete.
+		if(perform_actions(evt, event))
+		{
+			g_log->debug("perform_actions() returned true, not testing later policies");
+			return true;
+		}
+	}
+
+	return false;
 }
 
-std::string &security_policy::name()
+std::string security_policy::to_string()
 {
-	return m_name;
+	string tmp;
+	m_print.PrintToString(m_policy, &tmp);
+	return tmp;
 }
+
+const std::string &security_policy::name()
+{
+	return m_policy.name();
+}
+
+void security_policy::log_metrics()
+{
+	g_log->debug("Policy event counts: (" + name() + "): " + m_metrics.to_string());
+}
+
+void security_policy::reset_metrics()
+{
+	m_metrics.reset();
+}
+
+bool security_policy::has_action(const draiosproto::action_type &atype)
+{
+	for(auto &action : m_policy.actions())
+	{
+		if(action.type() == atype)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void security_policy::note_action_complete(actions_state &astate)
+{
+	if(--astate.m_num_remaining_actions == 0)
+	{
+		m_has_outstanding_actions = true;
+	}
+}
+
+draiosproto::action_result *security_policy::has_action_result(draiosproto::policy_event *evt,
+							       const draiosproto::action_type &atype)
+{
+	for(int i=0; i<evt->action_results_size(); i++)
+	{
+		draiosproto::action_result *aresult = evt->mutable_action_results(i);
+		if(aresult->type() == atype)
+		{
+			return aresult;
+		}
+	}
+
+	return NULL;
+}
+
 
 bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event *event)
 {
-	m_outstanding_actions.emplace_back(event, m_actions.size());
+	m_outstanding_actions.emplace_back(event, m_policy.actions().size());
 	actions_state &astate = m_outstanding_actions.back();
 
 	sinsp_threadinfo *tinfo = evt->get_thread_info();
 	sinsp_container_info container_info;
 	string container_id;
+	uint64_t pid = 0;
 
 	if(tinfo)
 	{
 		container_id = tinfo->m_container_id;
+		pid = tinfo->m_pid;
 	}
 
-	for(auto &action : m_actions)
+	for(auto &action : m_policy.actions())
 	{
 		draiosproto::action_result *result = astate.m_event->add_action_results();
 		result->set_type(action.type());
@@ -92,7 +150,8 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 				result->set_successful(false);
 				result->set_errmsg("Could not perform docker command: " + res->errstr());
 			}
-			astate.m_num_remaining_actions--;
+
+			note_action_complete(astate);
 
 			string tmp;
 			m_print.PrintToString(*result, &tmp);
@@ -105,7 +164,6 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 
 		switch(action.type())
 		{
-			// XXX/mstemm, technically, I need to start this only after the truly asynch actions have completed, to ensure the policy event message is sent before any sinsp capture chunk messages.
 		case draiosproto::ACTION_CAPTURE:
 
 			result->set_token(Poco::UUIDGenerator().createRandom().toString());
@@ -115,12 +173,14 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 			}
 
 			if(!m_mgr->start_capture(evt->get_ts(),
+						 m_policy.name(),
 						 result->token(),
 						 (action.capture().has_filter() ? action.capture().filter() : ""),
 						 action.capture().before_event_ns(),
 						 action.capture().after_event_ns(),
 						 apply_scope,
 						 container_id,
+						 pid,
 						 errstr))
 			{
 				result->set_successful(false);
@@ -134,7 +194,7 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 				astate.m_send_now = true;
 			}
 
-			astate.m_num_remaining_actions--;
+			note_action_complete(astate);
 
 			m_print.PrintToString(*result, &tmp);
 			g_log->debug(string("Capture action result: ") + tmp);
@@ -154,25 +214,86 @@ bool security_policy::perform_actions(sinsp_evt *evt, draiosproto::policy_event 
 		}
 	}
 
+	if(astate.m_num_remaining_actions == 0)
+	{
+		m_has_outstanding_actions = true;
+	}
+
 	return true;
 }
 
 
 void security_policy::check_outstanding_actions(uint64_t ts_ns)
 {
-	list<actions_state>::iterator i = m_outstanding_actions.begin();
-	while(i != m_outstanding_actions.end())
+	if (!m_has_outstanding_actions)
 	{
-		if(i->m_num_remaining_actions == 0)
-		{
-			m_mgr->accept_policy_event(ts_ns, i->m_event, i->m_send_now);
-			m_outstanding_actions.erase(i++);
-		}
-		else
-		{
-			i++;
-		}
+		return;
 	}
+
+	auto no_outstanding_actions = [ts_ns, this] (actions_state &act)
+	{
+		if(act.m_num_remaining_actions == 0)
+		{
+			bool accepted = m_mgr->accept_policy_event(ts_ns, act.m_event, act.m_send_now);
+
+			const draiosproto::action_result *aresult;
+
+			if((aresult = has_action_result(act.m_event.get(), draiosproto::ACTION_CAPTURE)) &&
+			   aresult->successful())
+			{
+				string token = aresult->token();
+
+				if(token.empty())
+				{
+					g_log->error("Could not find capture token for policy event that had capture action?");
+				}
+				else
+				{
+					if(accepted)
+					{
+						// If one of the actions was a capture, when
+						// we scheduled the capture we deferred
+						// actually sending the capture data. Start
+						// sending the data now.
+						m_mgr->start_sending_capture(token);
+					}
+					else
+					{
+						// The policy event was throttled, so we
+						// should stop the capture without sending
+						// anything.
+						m_mgr->stop_capture(token);
+					}
+				}
+			}
+			return true;
+		}
+
+		return false;
+	};
+
+	m_outstanding_actions.erase(remove_if(m_outstanding_actions.begin(),
+					      m_outstanding_actions.end(),
+					      no_outstanding_actions),
+				    m_outstanding_actions.end());
+
+	m_has_outstanding_actions = false;
+}
+
+bool security_policy::match_scope(sinsp_evt *evt)
+{
+	sinsp_threadinfo *tinfo = evt->get_thread_info();
+	std::string container_id = (tinfo ? tinfo->m_container_id : "");
+	sinsp_analyzer *analyzer = m_mgr->analyzer();
+	std::string machine_id = analyzer->get_configuration_read_only()->get_machine_id();
+
+	if(!m_policy.container_scope() && !m_policy.host_scope()) {
+		// This should never occur. Err on the side of allowing the policy to run.
+		g_log->error("Impossible scope with host/container_scope == false. Allowing policy anyway.");
+		return true;
+	}
+
+	return analyzer->infra_state()->match_scope(container_id, machine_id, m_policy);
 }
 
 falco_security_policy::falco_security_policy(security_mgr *mgr,
@@ -180,17 +301,12 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 					     const draiosproto::policy &policy,
 					     sinsp *inspector,
 					     shared_ptr<falco_engine> &falco_engine,
-					     shared_ptr<falco_events> &falco_events,
 					     shared_ptr<coclient> &coclient)
 	: security_policy(mgr,
 			  configuration,
-			  policy.id(),
-			  policy.name(),
-			  policy.actions(),
-			  coclient,
-			  policy.enabled()),
+			  policy,
+			  coclient),
 	  m_falco_engine(falco_engine),
-	  m_falco_events(falco_events),
 	  m_formatters(inspector)
 {
 
@@ -200,12 +316,12 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 	string all_rules = ".*";
 
 	// We *only* want those rules selected by name/tags, so first disable all rules.
-	m_falco_engine->enable_rule(all_rules, false, m_name);
+	m_falco_engine->enable_rule(all_rules, false, m_policy.name());
 
 	if(policy.falco_details().rule_filter().has_name())
 	{
 		m_rule_filter = policy.falco_details().rule_filter().name();
-		m_falco_engine->enable_rule(m_rule_filter, true, m_name);
+		m_falco_engine->enable_rule(m_rule_filter, true, m_policy.name());
 	}
 
 	for(auto tag : policy.falco_details().rule_filter().tags())
@@ -213,60 +329,90 @@ falco_security_policy::falco_security_policy(security_mgr *mgr,
 		m_tags.insert(tag);
 	}
 
-	m_falco_engine->enable_rule_by_tag(m_tags, true, m_name);
+	m_falco_engine->enable_rule_by_tag(m_tags, true, m_policy.name());
 
-	m_ruleset_id = m_falco_engine->find_ruleset_id(m_name);
+	m_ruleset_id = m_falco_engine->find_ruleset_id(m_policy.name());
+
+	m_falco_engine->evttypes_for_ruleset(m_evttypes, m_policy.name());
 }
 
 falco_security_policy::~falco_security_policy()
 {
 }
 
-draiosproto::policy_event *falco_security_policy::process_event(sinsp_evt *evt)
+bool falco_security_policy::check_conditions(sinsp_evt *evt)
 {
-	if(m_enabled && m_falco_engine && ((evt->get_info_flags() & EF_DROP_FALCO) == 0))
+	if(!m_falco_engine)
 	{
-		try {
-			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, m_ruleset_id);
-			if(res)
-			{
-				draiosproto::policy_event *event = new draiosproto::policy_event();
-				draiosproto::falco_event_detail *fdetail = event->mutable_falco_details();
-				string output;
-				sinsp_threadinfo *tinfo = evt->get_thread_info();
-
-				g_log->debug("Event matched falco policy: rule=" + res->rule);
-
-				if(m_falco_events && m_configuration->m_security_send_monitor_events)
-				{
-					m_falco_events->generate_user_event(res);
-				}
-
-				event->set_timestamp_ns(evt->get_ts());
-				event->set_policy_id(m_id);
-				if(tinfo && !tinfo->m_container_id.empty())
-				{
-					event->set_container_id(tinfo->m_container_id);
-				}
-
-				fdetail->set_rule(res->rule);
-
-				m_formatters.tostring(evt, res->format, &output);
-				fdetail->set_output(output);
-
-				return event;
-			}
-		}
-		catch (falco_exception& e)
-		{
-			g_log->error("Error processing event against falco engine: " + string(e.what()));
-		}
+		m_metrics.incr(evt_metrics::EVM_NO_FALCO_ENGINE);
+		return false;
 	}
 
+	if((evt->get_info_flags() & EF_DROP_FALCO) != 0)
+	{
+		m_metrics.incr(evt_metrics::EVM_EF_DROP_FALCO);
+		return false;
+	}
+
+	if (m_policy.scope_predicates().size() > 0 && !match_scope(evt))
+	{
+		m_metrics.incr(evt_metrics::EVM_SCOPE_MISS);
+		return false;
+	}
+
+	return true;
+}
+
+draiosproto::policy_event *falco_security_policy::match_event(sinsp_evt *evt)
+{
+	if(!check_conditions(evt))
+	{
+		return NULL;
+	}
+
+	// Check to see if this policy has any outstanding
+	// actions that are now complete. If so, send the
+	// policy event messages for each.
+	check_outstanding_actions(evt->get_ts());
+
+	try {
+		unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, m_ruleset_id);
+		if(res)
+		{
+			draiosproto::policy_event *event = new draiosproto::policy_event();
+			draiosproto::falco_event_detail *fdetail = event->mutable_falco_details();
+			sinsp_threadinfo *tinfo = evt->get_thread_info();
+			string output;
+
+			g_log->debug("Event matched falco policy: rule=" + res->rule);
+
+			event->set_timestamp_ns(evt->get_ts());
+			event->set_policy_id(m_policy.id());
+			if(tinfo && !tinfo->m_container_id.empty())
+			{
+				event->set_container_id(tinfo->m_container_id);
+			}
+
+			fdetail->set_rule(res->rule);
+
+			m_formatters.tostring(evt, res->format, &output);
+			fdetail->set_output(output);
+
+			m_metrics.incr(evt_metrics::EVM_MATCHED);
+			event->set_sinsp_events_dropped(m_mgr->analyzer()->recent_sinsp_events_dropped());
+			return event;
+		}
+	}
+	catch (falco_exception& e)
+	{
+		g_log->error("Error processing event against falco engine: " + string(e.what()));
+	}
+
+	m_metrics.incr(evt_metrics::EVM_FALCO_MISS);
 	return NULL;
 }
 
-std::string &falco_security_policy::to_string()
+std::string falco_security_policy::to_string()
 {
 	string tmp;
 

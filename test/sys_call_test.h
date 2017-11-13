@@ -22,6 +22,7 @@ typedef list<Poco::ProcessHandle> process_handles_t;
 typedef list<proc> process_list_t;
 bool ends_with(std::string const &s, std::string const &ending);
 void run_processes(process_list_t & processes);
+void wait_for_message(Poco::Pipe & pipe, const char *msg);
 void wait_for_process_start(Poco::Pipe & pipe);
 void wait_for_all(process_handles_t & handles);
 uint32_t parse_ipv4_addr(const char *dotted_notation);

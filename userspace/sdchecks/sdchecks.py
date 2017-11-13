@@ -27,6 +27,7 @@ from sysdig_tracers import Tracer
 import yaml
 import simplejson as json
 import posix_ipc
+from requests.exceptions import ConnectionError
 
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
@@ -89,6 +90,9 @@ class YamlConfig:
 class AppCheckException(Exception):
     pass
 
+class AppCheckDontRetryException(AppCheckException):
+    pass
+
 def _load_check_module(name, module_name, directory):
     try:
         return imp.load_source('checksd_%s' % name, os.path.join(directory, module_name + ".py"))
@@ -134,9 +138,35 @@ def get_check_class(check_name, LOADED_CHECKS={}):
         LOADED_CHECKS[check_name] = check_class
         return check_class
 
+def detect_root(mntns):
+    # When running inside a chroot jail (ex, rkt fly pod)
+    # by running setns(mntns) the process escapes the jail
+    # since setns will reset the root
+    #
+    # We need to know which is our root to proper go back to it
+    # To do this we are using this trick:
+    # 1. setns(mymntns)
+    # 2. read /proc/<parent_pid>/root link
+    # 3. chroot inside the jail
+    # Assuming that our parent will still be in the jail
+    ret = setns(mntns)
+    if ret != 0:
+        logging.error("Error while calling setns")
+        sys.exit(1)
+    try:
+        root = os.readlink("/proc/%d/root" % os.getppid())
+        if root != "/":
+            os.chroot(root)
+            os.chdir("/")
+        return root
+    except OSError as ex:
+        logging.error("Error while setting root: %s" % str(ex))
+        sys.exit(1)
+
 class AppCheckInstance:
     try:
         MYMNT = os.open("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT, os.O_RDONLY)
+        MYROOT = detect_root(MYMNT)
         MYMNT_INODE = os.stat("%s/proc/self/ns/mnt" % SYSDIG_HOST_ROOT).st_ino
         MYNET = os.open("%s/proc/self/ns/net" % SYSDIG_HOST_ROOT, os.O_RDONLY)
         MYUTS = os.open("%s/proc/self/ns/uts" % SYSDIG_HOST_ROOT, os.O_RDONLY)
@@ -163,6 +193,7 @@ class AppCheckInstance:
         self.conf_vals = proc_data["conf_vals"]
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
+        self.retry = _is_affirmative(check.get("retry", True))
 
         try:
             check_module = check["check_module"]
@@ -213,6 +244,11 @@ class AppCheckInstance:
                     if ret != 0:
                         raise OSError("Cannot setns to pid: %d" % self.pid)
             self.check_instance.check(self.instance_conf)
+        except AppCheckDontRetryException as ex:
+            logging.info("Skip retries for Prometheus error: %s", str(ex))
+            self.retry = False
+            saved_ex = ex
+
         except Exception as ex: # Raised from check run
             traceback_message = traceback.format_exc()
             saved_ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
@@ -222,6 +258,13 @@ class AppCheckInstance:
             if self.is_on_another_container:
                 setns(self.MYNET)
                 setns(self.MYMNT)
+                if self.MYROOT != "/":
+                    try:
+                        os.chroot(self.MYROOT)
+                        os.chdir("/")
+                    except OSError as ex:
+                        logging.error("Error while setting root: %s" % str(ex))
+                        sys.exit(1)
                 setns(self.MYUTS)
             # We don't need them, but this method clears them so we avoid memory growing
             self.check_instance.get_events()
@@ -232,18 +275,26 @@ class AppCheckInstance:
 
     def _expand_template(self, value, proc_data, conf_vals):
         try:
+            logging.debug("Expanding template: %s" % repr(value))
             ret = ""
             lastpos = 0
-            for token in re.finditer(self.TOKEN_PATTERN, value):
-                ret += value[lastpos:token.start()]
-                lastpos = token.end()
-                token_key = value[token.start()+1:token.end()-1]
+            for token_pos in re.finditer(self.TOKEN_PATTERN, value):
+                ret += value[lastpos:token_pos.start()]
+                lastpos = token_pos.end()
+                token = value[token_pos.start()+1:token_pos.end()-1]
+                found_in, token_val = "", ""
                 # First try to replace templated values from conf_vals
-                if token_key in conf_vals:
-                    ret += str(conf_vals[token_key])
+                if token in conf_vals:
+                    token_val, found_in = str(conf_vals[token]), "conf_vals"
+                elif token in self.AGENT_CONFIG:
+                    # try from agent config
+                    token_val, found_in = str(self.AGENT_CONFIG[token]), "agent_config"
                 else:
                     # Then try from the per-process data. It will throw an exception if not found.
-                    ret += str(self.PROC_DATA_FROM_TOKEN[token_key](proc_data))
+                    token_val, found_in = str(self.PROC_DATA_FROM_TOKEN[token](proc_data)), "proc_data"
+                logging.debug("Resolved token: %s to value: %s found in %s" %
+                              (token, token_val, found_in))
+                ret += token_val
             ret += value[lastpos:len(value)]
             if ret.isdigit():
                 ret = int(ret)
@@ -335,6 +386,32 @@ class PosixQueue:
         if hasattr(self, "queue") and self.queue:
             self.close()
 
+def prepare_prom_check(pc, port):
+    # print "port:", port
+    path = pc.get("path", "/metrics");
+    if len(path) > 0 and path[0] != '/':
+        path = "/" + path
+    newconf = {"url": "http://localhost:" + str(port) + path}
+    if pc.get("max_metrics") != None:
+        newconf["max_metrics"] = pc["max_metrics"]
+    if pc.get("max_tags") != None:
+        newconf["max_tags"] = pc["max_tags"]
+    newcheck = {
+        "check_module": "prometheus",
+        "log_errors": pc.get("log_errors", True),
+        "interval": pc.get("interval", 1),
+        "conf": newconf,
+        "name": "prometheus." + str(port)
+    }
+    newproc = {
+        "check": newcheck,
+        "pid": pc["pid"],
+        "ports": [port],
+        "vpid": pc["vpid"],
+        "conf_vals": {}
+    }
+    return newcheck, newproc
+
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
@@ -371,10 +448,72 @@ class Application:
             if not key in self.last_request_pidnames:
                 del self.known_instances[key]
 
+    def run_check(self, response_body, pidname, check, conf, trc):
+        self.last_request_pidnames.add(pidname)
+        log_errors = _is_affirmative(check.get("log_errors", True))
+
+        try:
+            check_instance = self.known_instances[pidname]
+            if check_instance.proc_data != conf:
+                # The configuration for this check has changed. Remove it
+                # and try to access it again, which triggers the KeyError
+                # and lets the exception handler recreate the AppCheckInstance.
+                logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
+                              conf["check"].get("name", "N/A"),
+                              str(check_instance.proc_data), str(conf))
+                del self.known_instances[pidname]
+                check_instance = self.known_instances[pidname]
+
+        except KeyError:
+            if pidname in self.blacklisted_pidnames:
+                logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
+                return False, 0
+            logging.debug("Requested check %s", repr(check))
+
+            try:
+                check_instance = AppCheckInstance(check, conf)
+            except AppCheckException as ex:
+                if log_errors:
+                    logging.error("Exception on creating check %s: %s", check["name"], ex)
+                self.blacklisted_pidnames.add(pidname)
+                return False, 0
+            self.known_instances[pidname] = check_instance
+
+        if pidname in self.blacklisted_pidnames and not check_instance.retry:
+            logging.debug("Not retrying appcheck " + check_instance.name)
+            return False, 0
+
+        trc2 = trc.span(check_instance.name)
+        trc2.start(trc2.tag, args={"check_name": check_instance.name,
+            "pid":str(check_instance.pid),
+            "other_container":str(check_instance.is_on_another_container)})
+        metrics, service_checks, ex = check_instance.run()
+        # print "check", check_instance.name, "pid", check_instance.pid, "metrics", metrics, "exceptions", type(ex), ":", ex
+        nm = len(metrics) if metrics else 0
+        trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
+
+        if ex and pidname not in self.blacklisted_pidnames:
+            if log_errors:
+                logging.error("Exception on running check %s: %s", check_instance.name, ex)
+            self.blacklisted_pidnames.add(pidname)
+
+        expiration_ts = datetime.now() + check_instance.interval
+        response_body.append({"pid": pidname[0],
+                              "display_name": check_instance.name,
+                              "metrics": metrics,
+                              "service_checks": service_checks,
+                              "expiration_ts": int(expiration_ts.strftime("%s"))})
+        return True, nm
+
     def handle_command(self, command_s):
-        response_body = []
+        appcheck_resp = []
+        promcheck_resp = []
         #print "Received command: %s" % command_s
-        processes = json.loads(command_s)
+        command = json.loads(command_s)
+        #processes = json.loads(command_s)
+        processes = command["processes"]
+        promchecks = command["prometheus"]
+        #print promchecks
         self.last_request_pidnames.clear()
         trc = Tracer()
         trc.start("checks")
@@ -382,64 +521,31 @@ class Application:
         numrun = 0
         nummetrics = 0
 
+        # Create app_checks for prometheus
+        for pc in promchecks:
+            for port in pc["ports"]:
+                newcheck, newproc = prepare_prom_check(pc, port)
+                pidname = (newproc["pid"],newcheck["name"])
+                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc) 
+                if ran:
+                    numrun += 1
+                nummetrics += nm
+
         for p in processes:
             numchecks += 1
             check = p["check"]
             pidname = (p["pid"],check["name"])
-            self.last_request_pidnames.add(pidname)
-            log_errors = _is_affirmative(check.get("log_errors", True))
-
-            try:
-                check_instance = self.known_instances[pidname]
-                if check_instance.proc_data != p:
-
-                    # The configuration for this check has changed. Remove it
-                    # and try to access it again, which triggers the KeyError
-                    # and lets the exception handler recreate the AppCheckInstance.
-                    logging.debug("Recreating check %s as definition has changed from \"%s\" to \"%s\"",
-                                  p["check"].get("name", "N/A"),
-                                  str(check_instance.proc_data), str(p))
-                    del self.known_instances[pidname]
-                    check_instance = self.known_instances[pidname]
-
-            except KeyError:
-                if pidname in self.blacklisted_pidnames:
-                    logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
-                    continue
-                logging.debug("Requested check %s", repr(check))
-
-                try:
-                    check_instance = AppCheckInstance(check, p)
-                except AppCheckException as ex:
-                    if log_errors:
-                        logging.error("Exception on creating check %s: %s", check["name"], ex)
-                    self.blacklisted_pidnames.add(pidname)
-                    continue
-                self.known_instances[pidname] = check_instance
-
-            trc2 = trc.span(check_instance.name)
-            trc2.start(trc2.tag, args={"check_name": check_instance.name,
-                "pid":str(check_instance.pid),
-                "other_container":str(check_instance.is_on_another_container)})
-            metrics, service_checks, ex = check_instance.run()
-            numrun += 1
-            nm = len(metrics) if metrics else 0
-            trc2.stop(args={"metrics": nm, "exception": "yes" if ex else "no"})
+            ran, nm = self.run_check(appcheck_resp, pidname, check, p, trc)
+            if ran:
+                numrun += 1
             nummetrics += nm
 
-            if ex and pidname not in self.blacklisted_pidnames:
-                if log_errors:
-                    logging.error("Exception on running check %s: %s", check_instance.name, ex)
-                self.blacklisted_pidnames.add(pidname)
-
-            expiration_ts = datetime.now() + check_instance.interval
-            response_body.append({"pid": pidname[0],
-                                  "display_name": check_instance.name,
-                                  "metrics": metrics,
-                                  "service_checks": service_checks,
-                                  "expiration_ts": int(expiration_ts.strftime("%s"))})
         trc.stop(args={"total_metrics": nummetrics, "checks_run": numrun,
             "checks_total": numchecks})
+        response_body = {
+            "processes": appcheck_resp,
+            "prometheus": promcheck_resp
+        }
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
         self.outqueue.send(response_s)
@@ -480,8 +586,11 @@ class Application:
                     "ports": [int(sys.argv[5]), ] if len(sys.argv) >= 6 else [],
                     "conf_vals": ast.literal_eval(sys.argv[6]) if len(sys.argv) >= 7 else {}
                 }
+                if sys.argv[2] == "prometheus":
+                    check_conf, proc_data = prepare_prom_check(proc_data["conf_vals"], int(sys.argv[5]))
+                else:
+                    check_conf = self.config.check_conf_by_name(proc_data["check"])
                 logging.info("Run AppCheck for %s", proc_data)
-                check_conf = self.config.check_conf_by_name(proc_data["check"])
                 if check_conf is None:
                     print "Check conf not found"
                     sys.exit(1)

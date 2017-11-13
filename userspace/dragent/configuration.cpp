@@ -8,8 +8,7 @@
 #include "Poco/File.h"
 #include <netdb.h>
 
-#include "falco_engine.h"
-
+#include "json_error_log.h"
 #include "logger.h"
 #include "uri.h"
 
@@ -19,10 +18,10 @@
 using namespace Poco;
 using namespace Poco::Net;
 
-volatile bool dragent_configuration::m_signal_dump = false;
-volatile bool dragent_configuration::m_terminate = false;
-volatile bool dragent_configuration::m_send_log_report = false;
-volatile bool dragent_configuration::m_config_update = false;
+std::atomic<bool> dragent_configuration::m_signal_dump(false);
+std::atomic<bool> dragent_configuration::m_terminate(false);
+std::atomic<bool> dragent_configuration::m_send_log_report(false);
+std::atomic<bool> dragent_configuration::m_config_update(false);
 
 static std::string bool_as_text(bool b)
 {
@@ -136,7 +135,7 @@ public:
 		: dragent_auto_configuration("dragent.auto.yaml",
 					     config_directory,
 					     "#\n"
-					     "# WARNING: Sysdig Cloud Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
+					     "# WARNING: Sysdig Agent auto configuration, don't edit. Please use \"dragent.yaml\" instead\n"
 					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
 					     "#\n"),
 		  m_forbidden_keys { "auto_config", "customerid", "collector", "collector_port",
@@ -183,54 +182,6 @@ private:
 	const vector<string> m_forbidden_keys;
 };
 
-class falco_rules_auto_configuration
-	: public dragent_auto_configuration
-{
-public:
-	falco_rules_auto_configuration(const std::string &config_directory)
-		: dragent_auto_configuration("falco_rules.auto.yaml",
-					     config_directory,
-					     "#\n"
-					     "# WARNING: Falco Engine auto configuration, don't edit. Please use \"falco_rules.yaml\" instead\n"
-					     "#          To disable it, put \"auto_config: false\" on \"dragent.yaml\" and then delete this file.\n"
-					     "#\n")
-	{
-	};
-
-	~falco_rules_auto_configuration()
-	{
-	};
-
-	bool validate(const string &config_data, string &errstr)
-	{
-		falco_engine eng;
-		sinsp *inspector = new sinsp();
-		bool verbose = false;
-		bool all_events = false;
-
-		eng.set_inspector(inspector);
-
-		try {
-			eng.load_rules(config_data, verbose, all_events);
-		}
-		catch (falco_exception &e)
-		{
-			errstr = string(e.what());
-			delete(inspector);
-			return false;
-		}
-		delete(inspector);
-		return true;
-	}
-
-	void apply(dragent_configuration &config)
-	{
-		g_log->information("New auto falco rules file applied");
-		config.m_reset_falco_engine = true;
-	}
-};
-
-
 dragent_configuration::dragent_configuration()
 {
 	m_server_port = 0;
@@ -252,8 +203,11 @@ dragent_configuration::dragent_configuration()
 	m_memdump_size = 0;
 	m_drop_upper_threshold = 0;
 	m_drop_lower_threshold = 0;
+	m_tracepoint_hits_threshold = 0;
+	m_cpu_usage_max_sr_threshold = 0.0;
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
+	m_json_parse_errors_logfile = "";
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
@@ -282,15 +236,12 @@ dragent_configuration::dragent_configuration()
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
 	m_auto_config = true;
-	m_enable_falco_engine = false;
-	m_falco_fallback_default_rules_filename = "/opt/draios/etc/falco_rules.default.yaml";
-	m_falco_engine_sampling_multiplier = 0;
-	m_reset_falco_engine = false;
 	m_security_enabled = false;
 	m_security_policies_file = "";
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
+	m_metrics_report_interval_ns = 60000000000;
 	m_security_send_monitor_events = false;
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
@@ -299,8 +250,11 @@ dragent_configuration::dragent_configuration()
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
 	m_app_checks_limit = 300;
+	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
+	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
+	m_snaplen = 0;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -647,6 +601,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
 
+	m_tracepoint_hits_threshold = m_config->get_scalar<long>("tracepoint_hits_threshold", 0);
+	m_tracepoint_hits_ntimes = m_config->get_scalar<unsigned>("tracepoint_hits_seconds", 5);
+	m_cpu_usage_max_sr_threshold = m_config->get_scalar<double>("cpu_usage_max_sr_threshold", 0.0);
+	m_cpu_usage_max_sr_ntimes = m_config->get_scalar<unsigned>("cpu_usage_max_sr_seconds", 5);
+
 	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
 	m_host_tags = m_config->get_scalar<string>("tags", "");
 	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
@@ -654,6 +613,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_hidden_processes = m_config->get_scalar<string>("ui", "hidden_processes", "");
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
 	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
+	m_json_parse_errors_logfile = m_config->get_scalar<string>("json_parse_errors_logfile", "");
 #ifdef _DEBUG
 	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", false);
 #else
@@ -713,6 +673,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
+
 	// Filter out disabled checks
 	unordered_set<string> disabled_checks;
 	for(const auto& item : m_app_checks)
@@ -726,6 +687,18 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	{
 		return disabled_checks.find(item.name()) != disabled_checks.end();
 	}), m_app_checks.end());
+
+	// Prometheus
+	m_prom_conf.m_enabled = m_config->get_scalar<bool>("prometheus", "enabled", false);
+    m_prom_conf.m_log_errors = m_config->get_scalar<bool>("prometheus", "log_errors", false);
+    m_prom_conf.m_interval = m_config->get_scalar<int>("prometheus", "interval", -1);
+	m_prom_conf.m_k8s_get_config = m_config->get_scalar<bool>("prometheus", "get_kubernetes_config", true);
+    m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
+    m_prom_conf.m_max_metrics_per_proc = m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1);
+    m_prom_conf.m_max_tags_per_metric = m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1);
+	// m_prom_conf.m_port_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::port_filter_rule>>("prometheus", "port_filter");
+	m_prom_conf.m_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::filter_rule>>("prometheus", "process_filter");
+
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
 	auto python_binary_path = m_config->get_scalar<string>("python_binary", "");
@@ -795,8 +768,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_ssl_key_password = m_config->get_scalar<string>("k8s_ssl_key_password", "");
 	normalize_path(m_config->get_scalar<string>("k8s_ca_certificate", ""), m_k8s_ssl_ca_certificate);
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
-	m_k8s_timeout_ms = m_config->get_scalar<int>("k8s_timeout_ms", 10000);
+	m_k8s_timeout_s = m_config->get_scalar<uint64_t>("k8s_timeout_s", 60);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
+	// XXX publicly disabled until the feature is ready to GA
+	//     make sure to change print_configuration() when re-enabling
+	//m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", false);
+	m_use_new_k8s = m_config->get_scalar<bool>("dev_new_k8s", false);
+	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
@@ -868,24 +846,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_dcos_enterprise_credentials.first = m_config->get_scalar<std::string>("dcos_user", "");
 	m_dcos_enterprise_credentials.second = m_config->get_scalar<std::string>("dcos_password", "");
 
+	std::vector<std::string> default_skip_labels = {"DCOS_PACKAGE_METADATA", "DCOS_PACKAGE_COMMAND"};
+	auto marathon_skip_labels_v = m_config->get_merged_sequence<std::string>("marathon_skip_labels", default_skip_labels);
+	m_marathon_skip_labels = std::set<std::string>(marathon_skip_labels_v.begin(), marathon_skip_labels_v.end());
+
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
-	m_enable_falco_engine = m_config->get_scalar<bool>("falco_engine", "enabled", false);
-	m_falco_default_rules_filename = m_config->get_scalar<string>("falco_engine", "default_rules_filename",
-								      m_root_dir + "/etc/falco_rules.default.yaml");
-
-	m_falco_auto_rules_filename = Path(m_root_dir).append("etc").append("falco_rules.auto.yaml").toString();
-
-	m_supported_auto_configs[string("falco_rules.auto.yaml")] =
-		unique_ptr<dragent_auto_configuration>(new falco_rules_auto_configuration(Path(m_root_dir).append("etc").toString()));
-
-	m_falco_rules_filename = m_config->get_scalar<string>("falco_engine", "rules_filename",
-							      m_root_dir + "/etc/falco_rules.yaml");
-
-	m_falco_engine_disabled_rule_patterns = m_config->get_deep_merged_sequence<set<string>>("falco_engine", "disabled_rule_patterns");
-	m_falco_engine_sampling_multiplier = m_config->get_scalar<double>("falco_engine", "sampling_multiplier", 0);
-
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
@@ -897,23 +864,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
 	// 100 ms
 	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
+	m_metrics_report_interval_ns = m_config->get_scalar<uint64_t>("security" "metrics_report_interval_ns", 60000000000);
 
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
 	m_security_send_monitor_events = m_config->get_scalar<bool>("security", "send_monitor_events", false);
-
-	//
-	// If falco is enabled, check to see if the rules file exists and
-	// switch to a built-in default if it does not.
-	//
-	if(m_enable_falco_engine)
-	{
-		File rules_file(m_falco_default_rules_filename);
-		if(!rules_file.exists())
-		{
-			m_falco_default_rules_filename = m_falco_fallback_default_rules_filename;
-		}
-	}
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -939,6 +894,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		// our dropping mechanism can't help in this mode
 		m_autodrop_enabled = false;
 	}
+	else if(mode_s == "simpledriver")
+	{
+		m_mode = dragent_mode_t::SIMPLEDRIVER;
+		// disabling features that don't work in this mode
+		m_enable_falco_engine = false;
+		m_falco_baselining_enabled = false;
+	}
 
 	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
 	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
@@ -959,8 +921,14 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
+	m_stress_tools = m_config->get_merged_sequence<string>("perf_sensitive_programs");
+	m_detect_stress_tools = !m_stress_tools.empty();
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
+
+	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);
+
+	m_snaplen = m_config->get_scalar<unsigned>("snaplen", 0);
 }
 
 void dragent_configuration::print_configuration()
@@ -988,10 +956,12 @@ void dragent_configuration::print_configuration()
 	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
 	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
 	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
+	g_log->information("falcobaseline.report_interval: " + NumberFormatter::format(m_security_baseline_report_interval_ns));
 	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
+	g_log->information("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
 	string ancestors;
-	for(auto s : m_command_lines_valid_ancestors) 
+	for(auto s : m_command_lines_valid_ancestors)
 	{
 		ancestors.append(s + " ");
 	}
@@ -1000,6 +970,14 @@ void dragent_configuration::print_configuration()
 	g_log->information("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	g_log->information("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
+	if(m_tracepoint_hits_threshold > 0)
+	{
+		g_log->information("tracepoint_hits_threshold: " + NumberFormatter::format(m_tracepoint_hits_threshold) + " seconds=" + NumberFormatter::format(m_tracepoint_hits_ntimes));
+	}
+	if(m_cpu_usage_max_sr_threshold > 0)
+	{
+		g_log->information("cpu_usage_max_sr_threshold: " + NumberFormatter::format(m_cpu_usage_max_sr_threshold) + " seconds=" + NumberFormatter::format(m_cpu_usage_max_sr_ntimes));
+	}
 	g_log->information("ui.customname: " + m_host_custom_name);
 	g_log->information("tags: " + m_host_tags);
 	g_log->information("ui.custommap: " + m_host_custom_map);
@@ -1007,6 +985,11 @@ void dragent_configuration::print_configuration()
 	g_log->information("ui.hidden_processes: " + m_hidden_processes);
 	g_log->information("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
 	g_log->information("protobuf_print: " + bool_as_text(m_print_protobuf));
+	if(m_json_parse_errors_logfile != "")
+	{
+		g_log->information("Will log json parse errors to; " + m_json_parse_errors_logfile);
+		g_json_error_log.set_json_parse_errors_file(m_json_parse_errors_logfile);
+	}
 	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
 	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
 	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
@@ -1069,7 +1052,7 @@ void dragent_configuration::print_configuration()
 		g_log->log(log_entry.second, log_entry.first);
 	}
 	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
-	g_log->information("K8S connection timeout [ms]: " + std::to_string(m_k8s_timeout_ms));
+	g_log->information("K8S connection timeout [sec]: " + std::to_string(m_k8s_timeout_s));
 
 	if (!m_k8s_api_server.empty())
 	{
@@ -1128,6 +1111,16 @@ void dragent_configuration::print_configuration()
 		}
 		g_log->information("K8S extensions:" + os.str());
 	}
+	if(m_use_new_k8s)
+	{
+		// XXX temp change until new_k8s GAs
+		//g_log->information("Use new K8s integration");
+		g_log->information("DEVELOPER - Use new K8s integration");
+	}
+	if(!m_k8s_cluster_name.empty())
+	{
+		g_log->information("K8s cluster name: " + m_k8s_cluster_name);
+	}
 	if(!m_blacklisted_ports.empty())
 	{
 		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
@@ -1173,19 +1166,6 @@ void dragent_configuration::print_configuration()
 		g_log->information("DC/OS Enterprise credentials provided.");
 	}
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
-	g_log->information("Falco engine enabled: " + bool_as_text(m_enable_falco_engine));
-	if(m_enable_falco_engine)
-	{
-		g_log->information("Falco engine default rules file: " + m_falco_default_rules_filename);
-		g_log->information("Falco engine auto rules file: " + m_falco_auto_rules_filename);
-		g_log->information("Falco engine rules file: " + m_falco_rules_filename);
-		g_log->information("Falco disabled rule patterns: ");
-		for(auto pattern : m_falco_engine_disabled_rule_patterns)
-		{
-			g_log->information("  " + pattern);
-		}
-		g_log->information("Falco engine sampling multiplier: " + NumberFormatter::format(m_falco_engine_sampling_multiplier));
-	}
 
 	if(m_security_enabled)
 	{
@@ -1199,10 +1179,18 @@ void dragent_configuration::print_configuration()
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
 		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
 		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
+		g_log->information("Security Metrics Report Interval (ms)" + NumberFormatter::format(m_metrics_report_interval_ns / 1000000));
 
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
+
+		// Note that this agent has secure enabled by adding to the host tags
+		if(m_host_tags != "")
+		{
+			m_host_tags += ",";
+		}
+		m_host_tags += "sysdig_secure.enabled:true";
 	}
 
 
@@ -1238,9 +1226,14 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Emitting sysdig tracers enabled");
 	}
+
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
-		g_log->information("Running in nodriver mode, Falco and Sysdig Captures will not work");
+		g_log->information("Running in nodriver mode, Security and Sysdig Captures will not work");
+	}
+	else if(m_mode == dragent_mode_t::SIMPLEDRIVER)
+	{
+		g_log->information("Running in simple driver mode, Security and Sysdig Captures will not work");
 	}
 
 	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||
@@ -1279,6 +1272,8 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Metrics cache disabled");
 	}
+
+	g_log->information("snaplen: " + to_string(m_snaplen));
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
@@ -1352,7 +1347,6 @@ bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 		g_log->error(string("getrusage") + strerror(errno));
 		return false;
 	}
-
 	*memory = usage.ru_maxrss / 1024;
 	return true;
 }
@@ -1401,9 +1395,9 @@ void dragent_configuration::write_statsite_configuration()
 		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
 				"[statsite]\nbind_address = 127.0.0.1\n";
 
-	auto tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
+	uint16_t tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_statsd_port;
-	auto flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
+	uint16_t flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
 	// convert our loglevel to statsite one
 	// our levels: trace, debug, info, notice, warning, error, critical, fatal

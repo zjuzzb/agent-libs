@@ -69,8 +69,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	case PPME_SYSCALL_EXECVE_15_X:
 	case PPME_SYSCALL_EXECVE_16_X:
 	case PPME_SYSCALL_EXECVE_17_X:
-		parse_execve_exit(evt);
-		return true;
+	case PPME_SYSCALL_EXECVE_18_X:
+		return parse_execve_exit(evt);
 	case PPME_DROP_E:
 		if(!m_last_drop_was_enter)
 		{
@@ -221,12 +221,12 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	}
 }
 
-void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
+bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 {
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	if(tinfo == NULL)
 	{
-		return;
+		return true;
 	}
 
 	//
@@ -239,7 +239,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	if(res < 0)
 	{
-		return;
+		return true;
 	}
 
 	thread_analyzer_info* tainfo = evt->m_tinfo->m_ainfo;
@@ -248,11 +248,27 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
 	
 	//
+	// Detect if this is a stress tool and in that case request to go in nodriver mode
+	//
+	if(m_analyzer->m_configuration->get_detect_stress_tools())
+	{
+		if(m_analyzer->m_stress_tool_matcher.match(tinfo->m_comm))
+		{
+			if(!m_analyzer->m_inspector->is_nodriver())
+			{
+				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
+			}
+
+			return true;
+		}
+	}
+
+	//
 	// If command line capture is disabled, we stop here
 	//
 	if(!sinsp_conf->get_command_lines_capture_enabled())
 	{
-		return;
+		return true;
 	}
 
 	//
@@ -342,7 +358,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	if(!mode_ok && !valid_ancestor && !container_exec)
 	{
-		return;
+		return true;
 	}
 
 	//
@@ -401,7 +417,7 @@ void sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 
 	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);
 
-	return;
+	return true;
 }
 
 void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)

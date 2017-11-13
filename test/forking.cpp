@@ -311,7 +311,7 @@ TEST_F(sys_call_test, forking_process_expired)
 	EXPECT_TRUE(sleep_caught);
 }
 
-TEST_F(sys_call_test, forking_execve)
+TEST_F(sys_call_test, DISABLED_forking_execve)
 {
 	int callnum = 0;
 	int ptid;	// parent tid
@@ -375,7 +375,7 @@ TEST_F(sys_call_test, forking_execve)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		sinsp_evt* e = param.m_evt;
-		if(e->get_type() == PPME_SYSCALL_EXECVE_17_E)
+		if(e->get_type() == PPME_SYSCALL_EXECVE_18_E || e->get_type() == PPME_SYSCALL_EXECVE_17_E)
 		{
 			//
 			// The child should exist
@@ -386,7 +386,7 @@ TEST_F(sys_call_test, forking_execve)
 			EXPECT_NE((uint64_t) 0, ti->m_vmrss_kb);
 			callnum++;
 		}
-		else if(e->get_type() == PPME_SYSCALL_EXECVE_17_X)
+		else if(e->get_type() == PPME_SYSCALL_EXECVE_18_X || e->get_type() == PPME_SYSCALL_EXECVE_17_X)
 		{
 			if(callnum == 1)
 			{

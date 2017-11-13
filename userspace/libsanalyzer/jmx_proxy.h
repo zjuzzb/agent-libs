@@ -50,7 +50,7 @@ public:
 		return m_name;
 	}
 
-	inline size_t attribute_count()
+	inline size_t attribute_count() const
 	{
 		return m_attributes.size();
 	}
@@ -62,9 +62,15 @@ public:
 
 	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const;
 
+	unsigned total_metrics() const
+	{
+		return m_total_metrics;
+	}
+
 private:
 	string m_name;
 	attribute_list_t m_attributes;
+	unsigned m_total_metrics;
 	friend class java_process;
 };
 
@@ -86,12 +92,18 @@ public:
 	}
 
 	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const;
+	
+	unsigned total_metrics() const
+	{
+		return m_total_metrics;
+	}
 
 private:
 	java_process(const Json::Value&, metric_limits::cref_sptr_t ml);
 	int m_pid;
 	string m_name;
 	list<java_bean> m_beans;
+	unsigned m_total_metrics;
 	friend class jmx_proxy;
 };
 

@@ -122,6 +122,32 @@ public:
 	}
 
 	/**
+	* Will retrieve first found arbitrarily deeply nested sequence
+	* into an STL container T. Also supports scalars;
+	* if found entity is scalar, a container with a
+	* single member is returned.
+	*/
+	template<typename T, typename... Args>
+	T get_first_deep_sequence(Args... args)
+	{
+		T ret;
+		try
+		{
+			for(const auto& root : m_roots)
+			{
+				get_sequence(ret, root, args...);
+				if (!ret.empty())
+					return ret;
+			}
+		}
+		catch (const YAML::BadConversion& ex)
+		{
+			m_errors.emplace_back(string("Config file error."));
+		}
+		return ret;
+	}
+
+	/**
 	* Will retrieve arbitrarily deeply nested sequence
 	* into an STL container T. Also supports scalars;
 	* if found entity is scalar, a container with a
@@ -270,6 +296,41 @@ public:
 			}
 		}
 		return ret;
+	}
+
+	template<typename T>
+	vector<T> get_merged_sequence(const string& key, vector<T> &default_value)
+	{
+		bool defined = false;
+		vector<T> ret;
+		for(const auto& root : m_roots)
+		{
+			auto node = root[key];
+			if(node.IsDefined())
+			{
+				defined = true;
+
+				for(const auto& item : node)
+				{
+					try
+					{
+						ret.push_back(item.as<T>());
+					}
+					catch (const YAML::BadConversion& ex)
+					{
+						m_errors.emplace_back(string("Config file error at key ") + key);
+					}
+				}
+			}
+		}
+		if(defined)
+		{
+			return ret;
+		}
+		else
+		{
+			return default_value;
+		}
 	}
 
 	/**
@@ -426,7 +487,8 @@ private:
 
 enum class dragent_mode_t {
 	STANDARD,
-	NODRIVER
+	NODRIVER,
+	SIMPLEDRIVER
 };
 
 class dragent_configuration
@@ -442,10 +504,10 @@ public:
 	bool load_error() const { return m_load_error; }
 
 	// Static so that the signal handler can reach it
-	static volatile bool m_signal_dump;
-	static volatile bool m_terminate;
-	static volatile bool m_send_log_report;
-	static volatile bool m_config_update;
+	static std::atomic<bool> m_signal_dump;
+	static std::atomic<bool> m_terminate;
+	static std::atomic<bool> m_send_log_report;
+	static std::atomic<bool> m_config_update;
 
 	Message::Priority m_min_console_priority;
 	Message::Priority m_min_file_priority;
@@ -473,10 +535,17 @@ public:
 	string m_dump_dir;
 	string m_input_filename;
 	uint64_t m_evtcnt;
+
+	// parameters used by cpu usage tuning
 	uint32_t m_subsampling_ratio;
 	bool m_autodrop_enabled;
 	uint32_t m_drop_upper_threshold;
 	uint32_t m_drop_lower_threshold;
+	long m_tracepoint_hits_threshold;
+	unsigned m_tracepoint_hits_ntimes;
+	double m_cpu_usage_max_sr_threshold;
+	unsigned m_cpu_usage_max_sr_ntimes;
+
 	string m_host_custom_name;
 	string m_host_tags;
 	string m_host_custom_map;
@@ -484,6 +553,7 @@ public:
 	string m_hidden_processes;
 	bool m_autoupdate_enabled;
 	bool m_print_protobuf;
+	string m_json_parse_errors_logfile;
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
@@ -525,6 +595,7 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+	prometheus_conf m_prom_conf;
 
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
@@ -537,12 +608,14 @@ public:
 	string m_k8s_ssl_key_password;
 	string m_k8s_ssl_ca_certificate;
 	bool m_k8s_ssl_verify_certificate;
-	int m_k8s_timeout_ms;
+	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
 	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
+	bool m_use_new_k8s;
 	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
+	std::string m_k8s_cluster_name;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
@@ -553,6 +626,7 @@ public:
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
+	std::set<std::string> m_marathon_skip_labels;
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
@@ -592,6 +666,7 @@ public:
 	uint64_t m_security_report_interval_ns;
 	uint64_t m_security_throttled_report_interval_ns;
 	uint64_t m_actions_poll_interval_ns;
+	uint64_t m_metrics_report_interval_ns;
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;
 	bool m_security_send_monitor_events;
@@ -599,13 +674,19 @@ public:
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
+	bool m_detect_stress_tools = false;
+	vector<string> m_stress_tools;
 
 	bool m_cointerface_enabled;
 	bool m_swarm_enabled;
 
+	uint64_t m_security_baseline_report_interval_ns;
+
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
+
+	unsigned m_snaplen;
 
 	bool java_present()
 	{

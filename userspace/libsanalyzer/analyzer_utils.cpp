@@ -1,6 +1,8 @@
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/resource.h>
+#include <dlfcn.h>
+#include <execinfo.h>
 #endif
 
 #include "sinsp.h"
@@ -284,6 +286,38 @@ bool should_drop2(sinsp_evt *evt, bool* switched)
 
 #endif /* SIMULATE_DROP_MODE */
 
+// returns process rss in kb and cpu in [% * 100]
+bool get_proc_mem_and_cpu(long& kb, int& cpu, std::string* err)
+{
+	static uint64_t prev_tot_time;
+	static uint64_t prev_cpu_time;
+	struct rusage usage;
+	uint64_t now = sinsp_utils::get_current_time_ns();
+	if(getrusage(RUSAGE_SELF, &usage) == -1)
+	{
+		if(err) { *err = strerror(errno); }
+		return false;
+	}
+	uint64_t cpu_time = (usage.ru_utime.tv_sec + usage.ru_stime.tv_sec) * ONE_SECOND_IN_NS +
+					(usage.ru_utime.tv_usec + usage.ru_stime.tv_usec) * 1000;
+	static int cpu_pct = -1;
+	if(prev_tot_time)
+	{
+		uint64_t tot_diff = now - prev_tot_time;
+		uint64_t tot_cpu = cpu_time - prev_cpu_time;
+		if(tot_diff)
+		{
+			cpu_pct = (int)round((((double)tot_cpu / tot_diff) * 100./*%*/ * 100./*scale*/) / sysconf(_SC_NPROCESSORS_ONLN));
+		}
+	}
+	prev_tot_time = now;
+	prev_cpu_time = cpu_time;
+
+	kb = usage.ru_maxrss;
+	cpu = cpu_pct;
+	return true;
+}
+
 void send_subprocess_heartbeat()
 {
 	struct rusage mem_usage;
@@ -340,3 +374,35 @@ int nsenter::open_ns_fd(int pid, const string& type)
 	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/%s", scap_get_host_root(), pid, type.c_str());
 	return open(filename, O_RDONLY);
 }
+
+
+template<>
+void threshold_filter<double>::log(double value)
+{
+	g_logger.format(sinsp_logger::SEV_WARNING, "%s above threshold curr=%.2f/%.2f %u:%u", m_desc, value, m_threshold, m_ntimes, m_ntimes_max);
+}
+
+template<>
+void threshold_filter<long>::log(long value)
+{
+	g_logger.format(sinsp_logger::SEV_WARNING, "%s above threshold curr=%ld/%ld %u:%u", m_desc, value, m_threshold, m_ntimes, m_ntimes_max);
+}
+
+#ifndef _WIN32
+thread_local void *exception_backtrace[1024];
+thread_local int exception_backtrace_size;
+extern "C" {
+	void __cxa_throw(void *ex, void *info, void (*dest)(void *))
+	{
+		static void (*const __throw_exc)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) = (void (*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+
+		exception_backtrace_size = backtrace(exception_backtrace, 1024);
+
+		if(!__throw_exc) {
+			g_logger.format(sinsp_logger::SEV_ERROR, "Unable to rethrow exception");
+			ASSERT(false);
+		}
+		__throw_exc(ex,info,dest);
+	}
+}
+#endif

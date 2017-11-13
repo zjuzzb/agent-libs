@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fail
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: fail
+    spec:
+      containers:
+      - name: failer
+        image: luca3m/failer
+        imagePullPolicy: Always

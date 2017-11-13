@@ -1,5 +1,5 @@
 #
-# WARNING: Sysdig Cloud Agent default configuration, don't edit. Please use "dragent.yaml" instead
+# WARNING: Sysdig Agent default configuration, don't edit. Please use "dragent.yaml" instead
 #
 jmx:
   default_beans:
@@ -554,6 +554,52 @@ jmx:
     elasticsearch:
       pattern: "elasticsearch"
 
+prometheus:
+  enabled: false
+  interval: 10
+  log_errors: true
+  max_metrics: 1000
+  max_metrics_per_process: 100
+  max_tags_per_metric: 20
+
+  # Filtering processes to scan. Processes not matching a rule will not
+  # be scanned
+  # If an include rule doesn't contain a port or port_filter in the conf
+  # section, we will scan all the ports that a matching process is listening to.
+  process_filter:
+    - exclude:
+        process.name: docker-proxy
+    - exclude:
+        container.image: sysdig/agent
+    # special rule to exclude processes matching configured prometheus appcheck
+    - exclude:
+        appcheck.match: prometheus
+    - include:
+        container.label.io.prometheus.scrape: "true"
+        conf:
+            # Custom path definition
+            # If the label doesn't exist we'll still use "/metrics"
+            path: "{container.label.io.prometheus.path}"
+
+            # Port definition
+            # - If the label exists, only scan the given port.
+            # - If it doesn't, use port_filter instead.
+            # - If there is no port_filter defined, skip this process
+            port: "{container.label.io.prometheus.port}"
+            port_filter:
+                - exclude: [9092,9200,9300]
+                - include: 9090-9500
+                - include: [9913,9984,24231,42004]
+    - exclude:
+        container.label.io.prometheus.scrape: "false"
+    - include:
+        kubernetes.pod.annotation.prometheus.io/scrape: true
+        conf:
+            path: "{kubernetes.pod.annotation.prometheus.io/path}"
+            port: "{kubernetes.pod.annotation.prometheus.io/port}"
+    - exclude:
+        kubernetes.pod.annotation.prometheus.io/scrape: false
+
 app_checks:
   - name: ceph
     interval: 30
@@ -768,6 +814,7 @@ app_checks:
       url: http://127.0.0.1:8098/stats
   - name: php-fpm
     check_module: php_fpm
+    retry: false
     pattern:
       exe: "php-fpm: master process"
   - name: varnish
@@ -797,7 +844,7 @@ app_checks:
 # k8s_ssl_key: k8s-cfg.key
 # k8s_ca_certificate: k8s-ca.crt
 # k8s_ssl_verify_certificate: true
-# k8s_timeout_ms: 30000
+# k8s_timeout_s: 120
 # k8s_bt_auth_token: k8s-token.tok
 # k8s_delegated_nodes: 2
 #
@@ -948,13 +995,14 @@ events:
       - Failed              # Container Image Pull, Create or Start Failed (warning)
       - InspectFailed       # Container Image Inspect Failed               (warning)
       - ErrImageNeverPull   # Container Image NeverPull Policy Violation   (warning)
-#      - BackOff             # Back Off Container Start or Image Pull       (warning)
+      - BackOff             # Back Off Container Start or Image Pull       (warning)
 #      - Created             # Container Created                            (information)
 #      - Started             # Container Started                            (information)
       - Killing             # Killing Container                            (information)
-#      - Unhealthy           # Container Unhealthy                          (warning)
+      - Unhealthy           # Container Unhealthy                          (warning)
 #      - FailedSync          # Pod Sync Failed                              (warning)
 #      - FailedValidation    # Failed Pod Configuration Validation          (warning)
+      - FailedScheduling
       - OutOfDisk           # Out of Disk                                  (information)
       - HostPortConflict    # Host/Port Conflict                           (warning)
     replicationController:
@@ -1118,6 +1166,7 @@ mounts_filter:
   - exclude: "overlay|*|/opt/stage2/*"
   - exclude: "/dev/mapper/cl-root*|*|/opt/stage2/*"
   - exclude: "*|*|/dev/termination-log*"
+  - exclude: "overlay|*|/var/lib/docker/overlay*/merged"
   - include: "*|*|*"
 mounts_limit_size: 15
 

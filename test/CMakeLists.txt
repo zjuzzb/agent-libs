@@ -34,12 +34,12 @@ add_executable(tests
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp
 	coclient_test.cpp
 	event_capture.cpp
-	falco_events_test.cpp
 	forking.cpp
 	fs.cpp
+	# infrastructure_state_test.cpp
 	memdump.cpp
-	tracers.cpp
 	metric_limits.cpp
+	internal_metrics.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp
@@ -53,6 +53,7 @@ add_executable(tests
 	tcp_client_server.cpp
 	tcp_client_server_ipv4_mapped.cpp
 	thread_state.cpp
+	tracers.cpp
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
@@ -62,7 +63,6 @@ add_executable(tests
 	${PROJECT_SOURCE_DIR}/userspace/dragent/configuration.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/logger.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/protocol.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/security_messages.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/security_mgr.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/security_policy.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_worker.cpp
@@ -79,6 +79,7 @@ target_link_libraries(tests
 	pthread
 	sanalyzer
 	draiosproto
+	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a

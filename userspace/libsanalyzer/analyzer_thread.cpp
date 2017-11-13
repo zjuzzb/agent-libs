@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <fnmatch.h>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -74,6 +75,7 @@ void sinsp_procinfo::clear()
 	m_fd_count = 0;
 	m_start_count = 0;
 	m_proc_count = 0;
+	m_threads_count = 0;
 }
 
 uint64_t sinsp_procinfo::get_tot_cputime()
@@ -110,7 +112,8 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_analyzer = inspector->m_analyzer;
 	m_tinfo = tinfo;
 	m_th_analysis_flags = AF_PARTIAL_METRIC;
-	m_app_checks_found.clear();
+	clear_found_app_checks();
+	clear_found_prom_check();
 	m_procinfo = NULL;
 	m_connection_queue_usage_pct = 0;
 	m_old_proc_jiffies = -1;
@@ -125,9 +128,17 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	m_last_cmdline_sync_ns = 0;
 	if(m_percentiles.size())
 	{
-		m_metrics.set_percentiles(m_percentiles);
-		m_transaction_metrics.set_percentiles(m_percentiles);
-		m_external_transaction_metrics.set_percentiles(m_percentiles);
+		// all the threads that belong to a process will share the
+		// same percentile store allocated for the main thread
+		auto main_thread = m_tinfo->get_main_thread();
+		auto mt_ainfo = (main_thread != nullptr) ? main_thread->m_ainfo : nullptr;
+		bool share_store = ((mt_ainfo != nullptr) && (this != mt_ainfo));
+		m_metrics.set_percentiles(m_percentiles,
+			share_store ? &(mt_ainfo->m_metrics) : nullptr);
+		m_transaction_metrics.set_percentiles(m_percentiles,
+			share_store ? &(mt_ainfo->m_transaction_metrics) : nullptr);
+		m_external_transaction_metrics.set_percentiles(m_percentiles,
+			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
 	}
 }
 
@@ -302,6 +313,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	{
 		m_procinfo->m_proc_count++;
 	}
+	++m_procinfo->m_threads_count;
 }
 
 void thread_analyzer_info::clear_all_metrics()
@@ -348,7 +360,8 @@ void thread_analyzer_info::clear_all_metrics()
 		m_main_thread_ainfo->m_protostate.clear();
 	}
 	m_called_execve = false;
-	m_app_checks_found.clear();
+	clear_found_app_checks();
+	clear_found_prom_check();
 }
 
 void thread_analyzer_info::clear_role_flags()
@@ -538,6 +551,16 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 		tr->m_prev_end_time, flags));
 }
 
+bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
+{
+	for (const auto& ac_found : m_app_checks_found)
+	{
+		if (!fnmatch(pattern.c_str(), ac_found.c_str(), FNM_EXTMATCH))
+			return true;
+	}
+	return false;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // analyzer_threadtable_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -620,6 +643,22 @@ bool threadinfo_cmp_transactions(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 
 	return (src->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count() > 
 		dst->m_ainfo->m_procinfo->m_proc_transaction_metrics.get_counter()->get_tot_count()); 
+}
+
+bool threadinfo_cmp_evtcnt(sinsp_threadinfo* src , sinsp_threadinfo* dst) 
+{ 
+	ASSERT(src->m_ainfo);
+	ASSERT(src->m_ainfo->m_procinfo);
+	ASSERT(dst->m_ainfo);
+	ASSERT(dst->m_ainfo->m_procinfo);
+
+	sinsp_counter_time tot;
+	src->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	uint64_t srctot = tot.m_count;
+	dst->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
+	uint64_t dsttot = tot.m_count;
+
+	return (srctot > dsttot); 
 }
 
 bool threadinfo_cmp_cpu_cs(sinsp_threadinfo* src , sinsp_threadinfo* dst)

@@ -1,3 +1,8 @@
+# (C) Datadog, Inc. 2010-2016
+# (C) Sysdig, Inc. 2015-2017
+# All rights reserved
+# Licensed under Simplified BSD License (see LICENSE)
+
 # 3p
 import simplejson as json
 
@@ -12,6 +17,7 @@ class PHPFPMCheck(AgentCheck):
     See http://www.php.net/manual/de/install.fpm.configuration.php#pm.status-path for more details
     """
 
+    NEEDED_NS = ( 'mnt', 'net')
     SERVICE_CHECK_NAME = 'php_fpm.can_ping'
 
     GAUGES = {
@@ -31,6 +37,7 @@ class PHPFPMCheck(AgentCheck):
         status_url = instance.get('status_url', '/status')
         ping_url = instance.get('ping_url', '/ping')
         ping_reply = instance.get('ping_reply')
+        unix_sock = instance.get('unix_sock')
 
         tags = instance.get('tags', [])
 
@@ -43,21 +50,24 @@ class PHPFPMCheck(AgentCheck):
         port = instance.get("port", 9000)
         if status_url is not None:
             try:
-                pool = self._process_status(status_url, host, port, tags)
+                pool = self._process_status(status_url, unix_sock, host, port, tags)
             except Exception as e:
                 status_exception = e
                 pass
 
         if ping_url is not None:
-            self._process_ping(ping_url, ping_reply, host, port, tags, pool)
+            self._process_ping(ping_url, ping_reply, unix_sock, host, port, tags, pool)
 
         # pylint doesn't understand that we are raising this only if it's here
         if status_exception is not None:
             raise status_exception  # pylint: disable=E0702
 
-    def _request_url(self, url, query, host, port):
+    def _request_url(self, url, query, unix_sock, host, port):
         # Example taken from: http://stackoverflow.com/questions/6801673/python-fastcgi-client
-        fcgi = fcgi_client.FCGIApp(host = host, port = port)
+        if unix_sock is None:
+            fcgi = fcgi_client.FCGIApp(host = host, port = port)
+        else:
+            fcgi = fcgi_client.FCGIApp(connect = unix_sock)
         env = {
            'SCRIPT_FILENAME': url,
            'QUERY_STRING': query,
@@ -65,7 +75,7 @@ class PHPFPMCheck(AgentCheck):
            'SCRIPT_NAME': url,
            'REQUEST_URI': url,
            'GATEWAY_INTERFACE': 'CGI/1.1',
-           'SERVER_SOFTWARE': 'Sysdig Cloud',
+           'SERVER_SOFTWARE': 'Sysdig Agent',
            'REDIRECT_STATUS': '200',
            'CONTENT_TYPE': '',
            'CONTENT_LENGTH': '0',
@@ -82,18 +92,18 @@ class PHPFPMCheck(AgentCheck):
         self.log.debug("php-fpm returned: %s" % repr(ret))
         return ret
 
-    def _process_status(self, status_url, host, port, tags):
+    def _process_status(self, status_url, unix_sock, host, port, tags):
         data = {}
         try:
             # TODO: adding the 'full' parameter gets you per-process detailed
             # informations, which could be nice to parse and output as metrics
-            code, headers, out, err = self._request_url(status_url, "json=true", host, port)
+            code, headers, out, err = self._request_url(status_url, "json=true", unix_sock, host, port)
             if code.startswith('200'):
                 data = json.loads(out)
             else:
                 raise Exception("Wrong response code from %s url" % status_url)
         except Exception as e:
-            self.log.error("Failed to get metrics from {0}.\nError {1}".format(status_url, e))
+            self.log.debug("Failed to get metrics from {0}.\nError {1}".format(status_url, e))
             raise
 
         pool_name = data.get('pool', 'default')
@@ -101,35 +111,35 @@ class PHPFPMCheck(AgentCheck):
 
         for key, mname in self.GAUGES.iteritems():
             if key not in data:
-                self.log.warn("Gauge metric {0} is missing from FPM status".format(key))
+                self.log.debug("Gauge metric {0} is missing from FPM status".format(key))
                 continue
             self.gauge(mname, int(data[key]), tags=metric_tags)
 
         for key, mname in self.MONOTONIC_COUNTS.iteritems():
             if key not in data:
-                self.log.warn("Counter metric {0} is missing from FPM status".format(key))
+                self.log.debug("Counter metric {0} is missing from FPM status".format(key))
                 continue
             self.monotonic_count(mname, int(data[key]), tags=metric_tags)
 
         # return pool, to tag the service check with it if we have one
         return pool_name
 
-    def _process_ping(self, ping_url, ping_reply, host, port, tags, pool_name):
+    def _process_ping(self, ping_url, ping_reply, unix_sock, host, port, tags, pool_name):
         if ping_reply is None:
             ping_reply = 'pong'
 
-        sc_tags = ["ping_url:{0}".format(ping_url)]
+        sc_tags = ["ping_url:{0}".format(ping_url)] + tags
 
         try:
             # TODO: adding the 'full' parameter gets you per-process detailed
             # informations, which could be nice to parse and output as metrics
-            code, headers, out, err = self._request_url(ping_url, "", host, port)
+            code, headers, out, err = self._request_url(ping_url, "", unix_sock, host, port)
             if not code.startswith('200'):
                 raise Exception("Wrong response code from %s url" % ping_url)
             if ping_reply not in out:
                 raise Exception("Received unexpected reply to ping {0}".format(out))
         except Exception as e:
-            self.log.error("Failed to ping FPM pool {0} on URL {1}."
+            self.log.debug("Failed to ping FPM pool {0} on URL {1}."
                            "\nError {2}".format(pool_name, ping_url, e))
             self.service_check(self.SERVICE_CHECK_NAME,
                                AgentCheck.CRITICAL, tags=sc_tags, message=str(e))

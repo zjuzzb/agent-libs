@@ -92,20 +92,29 @@ bool ends_with(std::string const &s, std::string const &ending)
 	}
 }
 
+void wait_for_message(Poco::Pipe &pipe, const char *msg)
+{
+	int mlen = strlen(msg);
+	char buf[mlen+1];
+	int readlen, nr;
+
+	for (readlen = nr = 0; readlen < mlen; readlen += nr)
+	{
+		nr = pipe.readBytes(buf+readlen, mlen-readlen);
+		if (nr < 1)
+			break;
+	}
+
+	if (readlen != mlen)
+	{
+		FAIL() << "Cannot read message, read=" << readlen;
+	}
+	ASSERT_EQ(0, strncmp((const char*)buf, msg, mlen)) << "Error waiting for message " << msg;
+}
+
 void wait_for_process_start(Poco::Pipe &pipe)
 {
-	auto start_s = "STARTED\n";
-	char buf[8];
-	// python writes the message on two write events
-	// the readBytes returns 7 bytes instead of 8
-	auto read = pipe.readBytes(buf, 8);
-	if (read == 7) {
-		pipe.readBytes(buf+read, 1);
-	} else if (read != 8)
-	{
-		FAIL() << "Cannot read STARTED message, read=";
-	}
-	ASSERT_EQ(0, strncmp((const char*)buf, (const char*)start_s, 8)) << "Error starting process";
+	wait_for_message(pipe, "STARTED\n");
 }
 
 void wait_for_all(process_handles_t &handles)
@@ -1286,7 +1295,9 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
+		return evt->get_type() == PPME_SYSCALL_EXECVE_18_E ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_18_X ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
 			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
 	};
 
@@ -1308,7 +1319,7 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 		uint16_t type = e->get_type();
 		auto tinfo = e->get_thread_info(true);
 		//printf("%s Type is %u\n", e->get_thread_info(true)->m_exe.c_str(), type);
-		if (type == PPME_SYSCALL_EXECVE_17_E)
+		if (type == PPME_SYSCALL_EXECVE_18_E || type == PPME_SYSCALL_EXECVE_17_E)
 		{
 			++callnum;
 			switch(callnum)
@@ -1327,7 +1338,7 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 				break;
 			}
 		}
-		else if ( type == PPME_SYSCALL_EXECVE_17_X)
+		else if ( type == PPME_SYSCALL_EXECVE_18_X || type == PPME_SYSCALL_EXECVE_17_X)
 		{
 			++callnum;
 			EXPECT_EQ("0", e->get_param_value_str("res", false));
@@ -1362,7 +1373,9 @@ TEST_F(sys_call_test32, failing_execve)
 	//
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
+		return evt->get_type() == PPME_SYSCALL_EXECVE_18_E ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_18_X ||
+			   evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
 			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
 	};
 
@@ -1385,7 +1398,7 @@ TEST_F(sys_call_test32, failing_execve)
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 		auto tinfo = e->get_thread_info(true);
-		if (type == PPME_SYSCALL_EXECVE_17_E)
+		if (type == PPME_SYSCALL_EXECVE_18_E || type == PPME_SYSCALL_EXECVE_17_E)
 		{
 			++callnum;
 			switch(callnum)
@@ -1405,9 +1418,11 @@ TEST_F(sys_call_test32, failing_execve)
 			case 9:
 				EXPECT_EQ(tinfo->m_comm, "execve32");
 				break;
+			default:
+				FAIL() << "Wrong execve entry callnum (" << callnum << ")";
 			}
 		}
-		else if ( type == PPME_SYSCALL_EXECVE_17_X)
+		else if ( type == PPME_SYSCALL_EXECVE_18_X || type == PPME_SYSCALL_EXECVE_17_X)
 		{
 			++callnum;
 
@@ -1439,6 +1454,8 @@ TEST_F(sys_call_test32, failing_execve)
 				EXPECT_EQ(comm, "execve32");
 				EXPECT_EQ(exe, "./fail");
 				break;
+			default:
+				FAIL() << "Wrong execve exit callnum (" << callnum << ")";
 			}
 		}
 	};
@@ -1887,3 +1904,97 @@ TEST_F(sys_call_test32, ppoll_timeout)
 	EXPECT_EQ(2, callnum);
 }
 #endif
+
+TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
+{
+	int callnum = 0;
+	vector<long> old_evts;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return false;
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto ncpu = inspector->get_machine_info()->num_cpus;
+		// just test the tracepoint hit
+		auto evts_vec = inspector->get_n_tracepoint_hit();
+		for(unsigned j = 0; j < ncpu; ++j)
+		{
+			EXPECT_GE(evts_vec[j], 0) << "cpu=" << j;
+		}
+		Poco::Thread::sleep(500);
+		auto evts_vec2 = inspector->get_n_tracepoint_hit();
+		for(unsigned j = 0; j < ncpu; ++j)
+		{
+			EXPECT_GE(evts_vec2[j], evts_vec[j]) << "cpu=" << j;
+		}
+		old_evts = evts_vec2;
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	// rerun again to check that counters are properly reset when userspace shutdowns
+	test = [&](sinsp* inspector)
+	{
+		// we can't compare by cpu because processes may be scheduled on other cpus
+		// let's just compare the whole sum for now
+		auto evts_vec = inspector->get_n_tracepoint_hit();
+		auto new_count = std::accumulate(evts_vec.begin(), evts_vec.end(), 0);
+		auto old_count = std::accumulate(old_evts.begin(), old_evts.end(), 0);
+		EXPECT_LT(new_count, old_count);
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(0, callnum);
+}
+
+TEST_F(sys_call_test, DISABLED_get_n_tracepoint_hit_counts)
+{
+	static const int SYSCALL_COUNT = 1000000;
+	int callnum = 0;
+	bool started = false;
+	vector<long> old_evts;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) &&
+				evt->get_type() == PPME_SYSCALL_CLOSE_X &&
+				evt->get_param_value_str("res", false) != "0";
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// Use close events as sentinels
+		close(-34);
+		for(int j = 0; j < SYSCALL_COUNT; ++j)
+		{
+			open("/tmp/ksdlajdklsa", 0);
+		}
+		close(-34);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		if(started)
+		{
+			auto new_evts = param.m_inspector->get_n_tracepoint_hit();
+			int sum = 0;
+			for(unsigned j = 0; j < old_evts.size(); ++j)
+			{
+				sum += (new_evts[j] - old_evts[j]);
+			}
+			// Sum should at least greater than syscall_count*2 since
+			// we generated those
+			EXPECT_GT(sum, SYSCALL_COUNT*2);
+		}
+		else
+		{
+			old_evts = param.m_inspector->get_n_tracepoint_hit();
+			started = true;
+		}
+		++callnum;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+	EXPECT_TRUE(started);
+}

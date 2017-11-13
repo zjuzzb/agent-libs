@@ -31,9 +31,11 @@ public:
 	// job_state actually contains the pointer this--we pass the
 	// SharedPointer to keep the chain of related std::shared_ptr
 	// objects intact.
-	bool start(sinsp *inspector, const capture_job_handler::dump_job_request &request,
+	bool start(sinsp *inspector, string &token,
+		   const capture_job_handler::start_job_details &details,
 		   string &errstr, std::shared_ptr<capture_job> &job_state);
 	void stop();
+	void send_start();
 	void flush(uint64_t ts, bool &throttled);
 
 	void process_event(sinsp_evt *evt);
@@ -68,6 +70,8 @@ private:
 	uint64_t m_past_size;
 	bool m_delete_file_when_done;
 	bool m_send_file;
+	bool m_defer_send;
+	string m_notification_desc;
 	string m_file;
 
 	// This is only modified in flush() or the destructor
@@ -111,6 +115,7 @@ capture_job::capture_job(capture_job_handler *handler,
 	  m_past_size(0),
 	  m_delete_file_when_done(true),
 	  m_send_file(true),
+	  m_defer_send(false),
 	  m_fp(NULL),
 	  m_file_size(0),
 	  m_n_events(0),
@@ -141,14 +146,15 @@ capture_job::~capture_job()
 	}
 }
 
-bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_request &request,
+bool capture_job::start(sinsp *inspector, string &token,
+			const capture_job_handler::start_job_details &details,
 			string &errstr, std::shared_ptr<capture_job> &job_state)
 {
-	if(!request.m_filter.empty())
+	if(!details.m_filter.empty())
 	{
 		try
 		{
-			sinsp_filter_compiler compiler(inspector, request.m_filter);
+			sinsp_filter_compiler compiler(inspector, details.m_filter);
 			m_filter = compiler.compile();
 		}
 		catch(sinsp_exception& e)
@@ -158,19 +164,21 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 		}
 	}
 
-	m_token = request.m_token;
-	m_file = m_configuration->m_dump_dir + request.m_token + ".scap";
-	m_duration_ns = request.m_duration_ns;
-	m_max_size = request.m_max_size;
-	m_past_duration_ns = request.m_past_duration_ns;
-	m_delete_file_when_done = request.m_delete_file_when_done;
-	m_send_file = request.m_send_file;
+	m_token = token;
+	m_file = m_configuration->m_dump_dir + token + ".scap";
+	m_duration_ns = details.m_duration_ns;
+	m_max_size = details.m_max_size;
+	m_past_duration_ns = details.m_past_duration_ns;
+	m_delete_file_when_done = details.m_delete_file_when_done;
+	m_send_file = details.m_send_file;
+	m_defer_send = details.m_defer_send;
+	m_notification_desc = details.m_notification_desc;
 
 	// If the start time is unspecified, it's set to the last
 	// event time, or if that fails the current time.
-	if(request.m_start_ns != 0)
+	if(details.m_start_ns != 0)
 	{
-		m_start_ns = request.m_start_ns;
+		m_start_ns = details.m_start_ns;
 	}
 	else
 	{
@@ -184,28 +192,37 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 		}
 	}
 
-	log_information(string("starting ") + (request.m_past_duration_ns == 0 ? "standard" : "memdump") +
+	log_information(string("starting ") + (details.m_past_duration_ns == 0 ? "standard" : "memdump") +
 			" file=" + m_file +
-			", filter='" + request.m_filter + "'");
+			", filter='" + details.m_filter + "'" +
+			", defer_send=" + (m_defer_send ? "true" : "false"));
 
-	if(request.m_past_duration_ns == 0)
+	if(details.m_past_duration_ns == 0)
 	{
-		m_dumper = request.m_dumper;
+		m_dumper = details.m_dumper;
 		m_dumper->open(m_file, true);
 
 		m_handler->add_job(job_state);
 	}
 	else
 	{
-		// We inject a notification to make it easier to identify the starting point
-		m_memdumper->push_notification(m_start_ns, m_handler->m_sysdig_pid, request.m_token, "starting capture job " + request.m_token);
+		// We inject a notification to make it easier to identify the starting point.
+		if(m_notification_desc.empty())
+		{
+			m_notification_desc = "starting capture job " + token;
+		}
+
+		m_handler->push_notification(m_start_ns,
+					     (details.m_notification_pid ? details.m_notification_pid : 0),
+					     token,
+					     details.m_notification_desc);
 
 		// This will create a file on disk that is the result
 		// of the applying the filter against the events held
 		// in memory. Afterward, it can be treated like a
 		// normal capture job.
-		sinsp_memory_dumper_job *memjob = m_memdumper->add_job(m_start_ns, m_file, request.m_filter,
-								       m_past_duration_ns, m_duration_ns, false, &(m_handler->m_membuf_mtx));
+		sinsp_memory_dumper_job *memjob = m_memdumper->add_job(m_start_ns, m_file, details.m_filter,
+								       m_past_duration_ns, m_duration_ns, &(m_handler->m_membuf_mtx));
 
 		if(memjob->m_state == sinsp_memory_dumper_job::ST_DONE_ERROR)
 		{
@@ -222,6 +239,11 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 		memjob->m_dumper = NULL;
 		delete memjob;
 
+		// Set the inspector of the dumper to the live
+		// inspector. This inspector is only used to hold
+		// things like error messages, but should be valid.
+		m_dumper->set_inspector(m_handler->m_inspector);
+
 		// Before releasing the memdumper lock, lock the list
 		// of jobs and add this job to the list. Otherwise
 		// there's a brief window where events could be
@@ -236,6 +258,16 @@ bool capture_job::start(sinsp *inspector, const capture_job_handler::dump_job_re
 	{
 		errstr = strerror(errno);
 		return false;
+	}
+
+	// If configured, send a keepalive message now.
+	if(details.m_send_initial_keepalive)
+	{
+		draiosproto::dump_response response;
+		m_handler->prepare_response(m_token, &response);
+		response.set_keep_alive(true);
+		log_debug("sending keepalive");
+		m_handler->queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
 	}
 
 	return true;
@@ -268,6 +300,15 @@ void capture_job::stop()
 	// Delete the dumper so any pending data is written to the file.
 	delete m_dumper;
 	m_dumper = NULL;
+}
+
+void capture_job::send_start()
+{
+	Poco::ScopedLock<Poco::Mutex> lck(m_mtx);
+
+	log_debug("send_start");
+
+	m_defer_send = false;
 }
 
 void capture_job::flush(uint64_t ts, bool &throttled)
@@ -306,7 +347,7 @@ void capture_job::flush(uint64_t ts, bool &throttled)
 	// remaining jobs are considered throttled
 	// until the next call to flush_jobs().
 	if((m_state == ST_INPROGRESS || m_state == ST_DONE_OK) &&
-	   m_send_file && !throttled)
+	   m_send_file && !m_defer_send && !throttled)
 	{
 		if (!send_dump_chunks(ts))
 		{
@@ -320,21 +361,6 @@ void capture_job::process_event(sinsp_evt *ev)
 	Poco::ScopedLock<Poco::Mutex> lck(m_mtx);
 
 	if(m_state != ST_INPROGRESS)
-	{
-		return;
-	}
-
-	//
-	// We don't want dragent to show up in captures
-	//
-	sinsp_threadinfo* tinfo = ev->get_thread_info();
-	uint16_t etype = ev->get_type();
-
-	if(!m_configuration->m_capture_dragent_events &&
-	   tinfo &&
-	   tinfo->m_pid == m_handler->m_sysdig_pid &&
-	   etype != PPME_SCHEDSWITCH_1_E &&
-	   etype != PPME_SCHEDSWITCH_6_E)
 	{
 		return;
 	}
@@ -361,12 +387,22 @@ void capture_job::process_event(sinsp_evt *ev)
 		return;
 	}
 
-	if(m_filter)
+	bool current_filtered_out = ev->m_filtered_out;
+	if(m_filter != NULL)
 	{
-		if(!m_filter->run(ev))
+		if (!m_filter->run(ev))
 		{
-			return;
+			ev->m_filtered_out = true;
 		}
+	}
+
+	bool do_drop;
+	(void) ev->get_dump_flags(&do_drop);
+	ev->m_filtered_out = current_filtered_out;
+
+	if(do_drop)
+	{
+		return;
 	}
 
 	m_dumper->dump(ev);
@@ -539,6 +575,7 @@ capture_job_handler::capture_job_handler(dragent_configuration *configuration,
 					 protocol_queue *queue,
 					 atomic<bool> *enable_autodrop)
 	: m_sysdig_pid(getpid()),
+	  m_sysdig_sid(0),
 	  m_log_stats_interval(10000000000),
 	  m_inspector(NULL),
 	  m_configuration(configuration),
@@ -571,9 +608,17 @@ void capture_job_handler::init(const sinsp *inspector)
 	if(m_configuration->m_memdump_enabled)
 	{
 		g_log->information(m_name + ": enabling memdump, size=" + to_string(m_configuration->m_memdump_size));
-		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector, m_configuration->m_capture_dragent_events);
+		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector);
 		m_memdumper->init(m_configuration->m_memdump_size, m_configuration->m_memdump_size, 300LL * 1000000000LL);
 	}
+
+	//
+	// Initialize the underlying scap notification event and set
+	// the inspector for the sinsp-level event. We'll fill in the
+	// rest of the sinsp-level event when we set the type.
+	//
+	m_notification_scap_evt = (scap_evt*)m_notification_scap_evt_storage;
+	m_notification_evt.m_inspector = m_inspector;
 }
 
 void capture_job_handler::run()
@@ -625,6 +670,24 @@ void capture_job_handler::process_event(sinsp_evt *ev)
 	m_last_event_ns = ev->get_ts();
 
 	//
+	// We don't want dragent to show up in captures
+	//
+
+	if(m_sysdig_sid == 0)
+	{
+		m_sysdig_sid = getsid(0);
+	}
+
+	sinsp_threadinfo* tinfo = ev->get_thread_info();
+
+	if(!m_configuration->m_capture_dragent_events &&
+	   tinfo &&
+	   tinfo->m_sid == m_sysdig_sid)
+	{
+		return;
+	}
+
+	//
 	// If required, dump the event in the memory circular buffer
 	//
 	if(m_configuration->m_memdump_enabled)
@@ -658,24 +721,31 @@ bool capture_job_handler::queue_job_request(sinsp *inspector, std::shared_ptr<du
 	}
 
 	g_log->information(m_name + ": scheduling job request type=" +
-			   (job_request->m_request_type == dump_job_request::JOB_START ? "start" : "stop") +
+			   dump_job_request::request_type_str(job_request->m_request_type) +
 			   ", token= " + job_request->m_token);
 
 	// If doing a traditional (i.e. not back-in-time) capture,
 	// create a sinsp_dumper tied to the provided inspector and
 	// include it in the job request.
-	if(job_request->m_request_type == dump_job_request::JOB_START &&
-	   job_request->m_past_duration_ns == 0)
+	if(job_request->m_request_type == dump_job_request::JOB_START)
 	{
-		job_request->m_dumper = new sinsp_dumper(inspector);
+		if(!job_request->m_start_details)
+		{
+			errstr = "no details provided for start job";
+			return false;
+		}
+		if (job_request->m_start_details->m_past_duration_ns == 0)
+		{
+			job_request->m_start_details->m_dumper = new sinsp_dumper(inspector);
+		}
 	}
 
 	if(!m_dump_job_requests.put(job_request))
 	{
-		if(job_request->m_dumper)
+		if(job_request->m_start_details && job_request->m_start_details->m_dumper)
 		{
-			delete job_request->m_dumper;
-			job_request->m_dumper = NULL;
+			delete job_request->m_start_details->m_dumper;
+			job_request->m_start_details->m_dumper = NULL;
 		}
 		errstr = "Capture job handler queue full";
 		return false;
@@ -686,7 +756,7 @@ bool capture_job_handler::queue_job_request(sinsp *inspector, std::shared_ptr<du
 
 void capture_job_handler::cleanup()
 {
-	g_log->information(m_name + ": cleaning up");
+	g_log->information(m_name + ": cleaning up, force=" + string(m_force_cleanup ? "yes" : "no"));
 
 	// Stop all jobs
 	{
@@ -702,14 +772,17 @@ void capture_job_handler::cleanup()
 	// Flush all state. Due to throttling, it's possible that this
 	// may take more than one attempt. We try up to 10 times
 	// before giving up.
-	uint32_t attempt = 0;
-
-	while(attempt < 10 && m_jobs.size() > 0)
+	if(!m_force_cleanup)
 	{
-		flush_jobs(m_last_job_check_ns);
-		cleanup_jobs(m_last_job_check_ns);
+		uint32_t attempt = 0;
 
-		Thread::sleep(200);
+		while(attempt < 10 && m_jobs.size() > 0)
+		{
+			flush_jobs(m_last_job_check_ns);
+			cleanup_jobs(m_last_job_check_ns);
+
+			Thread::sleep(200);
+		}
 	}
 
 	if(m_jobs.size() > 0)
@@ -727,12 +800,20 @@ void capture_job_handler::process_job_requests()
 	while(m_dump_job_requests.get(&request, 0))
 	{
 		g_log->debug(m_name + ": dequeued dump request type=" +
-			     (request->m_request_type == dump_job_request::JOB_START ? "start" : "stop") +
+			     dump_job_request::request_type_str(request->m_request_type) +
 			     " token=" + request->m_token);
 		switch(request->m_request_type)
 		{
 		case dump_job_request::JOB_START:
-			if(request->m_duration_ns == 0 && request->m_past_duration_ns == 0)
+
+			if(!request->m_start_details)
+			{
+				send_error(request->m_token, "no details provided for start job");
+				return;
+			}
+
+			if(request->m_start_details->m_duration_ns == 0 &&
+			   request->m_start_details->m_past_duration_ns == 0)
 			{
 				send_error(request->m_token, "either duration or past_duration must be nonzero");
 				return;
@@ -749,7 +830,7 @@ void capture_job_handler::process_job_requests()
 				return;
 			}
 
-			start_job(*request);
+			start_job(request->m_token, *(request->m_start_details));
 
 			break;
 		case dump_job_request::JOB_STOP:
@@ -775,13 +856,37 @@ void capture_job_handler::process_job_requests()
 
 				break;
 			}
+		case dump_job_request::JOB_SEND_START:
+			{
+				Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
+
+				bool found = false;
+
+				for (auto &job : m_jobs)
+				{
+					if(job->token() == request->m_token)
+					{
+						job->send_start();
+						found = true;
+						break;
+					}
+				}
+
+				if(!found)
+				{
+					g_log->error(m_name + ": can't find job " + request->m_token);
+				}
+
+				break;
+			}
 		default:
 			ASSERT(false);
 		}
 	}
 }
 
-void capture_job_handler::start_job(const dump_job_request& request)
+void capture_job_handler::start_job(string &token,
+				    const start_job_details& details)
 {
 	std::shared_ptr<capture_job> job_state = make_shared<capture_job>(this, m_configuration, m_memdumper.get(),
 									  m_keepalive_interval_ns, m_max_chunk_size);
@@ -789,13 +894,19 @@ void capture_job_handler::start_job(const dump_job_request& request)
 
 	if(m_configuration->m_sysdig_capture_enabled == false)
 	{
-		send_error(request.m_token, "Sysdig capture disabled from agent configuration file, not starting capture");
+		send_error(token, "Sysdig capture disabled from agent configuration file, not starting capture");
 		return;
 	}
 
-	if(request.m_past_duration_ns != 0 && !m_configuration->m_memdump_enabled)
+	if(this->m_inspector->is_nodriver())
 	{
-		send_error(request.m_token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
+		send_error(token, "Sysdig Agent in nodriver mode, captures not supported");
+		return;
+	}
+
+	if(details.m_past_duration_ns != 0 && (!m_configuration->m_memdump_enabled || !m_memdumper->is_enabled()))
+	{
+		send_error(token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
 		return;
 	}
 
@@ -807,10 +918,10 @@ void capture_job_handler::start_job(const dump_job_request& request)
 		*m_enable_autodrop = false;
 	}
 
-	if (!job_state->start(m_inspector, request, errstr, job_state))
+	if (!job_state->start(m_inspector, token, details, errstr, job_state))
 	{
-		g_log->error(m_name + ": could not start capture job " + request.m_token + ": " + errstr);
-		send_error(request.m_token, errstr);
+		g_log->error(m_name + ": could not start capture job " + token + ": " + errstr);
+		send_error(token, errstr);
 
 		if(m_jobs.size() == 0)
 		{
@@ -934,3 +1045,68 @@ void capture_job_handler::send_error(const string& token, const string& error)
 	queue_response(response, protocol_queue::BQ_PRIORITY_HIGH);
 }
 
+void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id, string description)
+{
+	m_notification_scap_evt->ts = ts;
+	m_notification_scap_evt->tid = tid;
+	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
+	m_notification_evt.init((uint8_t *) m_notification_scap_evt, 0);
+
+	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
+	uint16_t idlen = id.length() + 1;
+	uint16_t desclen = description.length() + 1;
+	lens[0] = idlen;
+	lens[1] = desclen;
+
+	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4),
+		id.c_str(),
+		idlen);
+
+	memcpy((m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr) + 4 + idlen),
+		description.c_str(),
+		desclen);
+
+	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
+
+	process_event(&m_notification_evt);
+}
+
+void capture_job_handler::push_infra_event(uint64_t ts, uint64_t tid, string source, string name, string description, string scope)
+{
+	uint32_t hdrlen = sizeof(struct ppm_evt_hdr) + 4 * 2;
+
+	m_notification_scap_evt->ts = ts;
+	m_notification_scap_evt->tid = tid;
+	m_notification_scap_evt->type = PPME_INFRASTRUCTURE_EVENT_E;
+	m_notification_evt.init((uint8_t *) m_notification_scap_evt, 0);
+
+	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
+	uint16_t sourcelen = source.length() + 1;
+	uint16_t namelen = name.length() + 1;
+	uint16_t desclen = description.length() + 1;
+	uint16_t scopelen = scope.length() + 1;
+	lens[0] = sourcelen;
+	lens[1] = namelen;
+	lens[2] = desclen;
+	lens[3] = scopelen;
+
+	memcpy((m_notification_scap_evt_storage + hdrlen),
+		source.c_str(),
+		sourcelen);
+
+	memcpy((m_notification_scap_evt_storage + hdrlen + sourcelen),
+		name.c_str(),
+		namelen);
+
+	memcpy((m_notification_scap_evt_storage + hdrlen + sourcelen + namelen),
+		description.c_str(),
+		desclen);
+
+	memcpy((m_notification_scap_evt_storage + hdrlen + sourcelen + namelen + desclen),
+		scope.c_str(),
+		scopelen);
+
+	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 * 2 + sourcelen + namelen + desclen + scopelen + 1;
+
+	process_event(&m_notification_evt);
+}

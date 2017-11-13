@@ -8,7 +8,10 @@
 #include "uri.h"
 #include "draios.pb.h"
 
-mesos_proto::mesos_proto(draiosproto::metrics& met, const mesos_state_t& state) : m_proto(*met.mutable_mesos()), m_state(state)
+mesos_proto::mesos_proto(draiosproto::metrics& met,
+			 const mesos_state_t& state,
+			 const std::set<std::string> &marathon_skip_labels)
+	: m_proto(*met.mutable_mesos()), m_state(state), m_marathon_skip_labels(marathon_skip_labels)
 {
 }
 
@@ -49,9 +52,12 @@ void mesos_proto::make_protobuf()
 
 			for(auto& lbl_pair : task_pair.second->get_labels())
 			{
-				auto label = task->mutable_common()->add_labels();
-				label->set_key(lbl_pair.first);
-				label->set_value(lbl_pair.second);
+				if(m_marathon_skip_labels.find(lbl_pair.first) == m_marathon_skip_labels.end())
+				{
+					auto label = task->mutable_common()->add_labels();
+					label->set_key(lbl_pair.first);
+					label->set_value(lbl_pair.second);
+				}
 			}
 		}
 	}
@@ -69,11 +75,11 @@ void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, drai
 {
 	for(const auto& group : groups)
 	{
-		to_group = to_group ? to_group->add_groups() : m_proto.add_groups();
-		to_group->set_id(group.first);
+		auto new_group = to_group ? to_group->add_groups() : m_proto.add_groups();
+		new_group->set_id(group.first);
 		for(const auto& app : group.second->get_apps())
 		{
-			draiosproto::marathon_app* a = to_group->add_apps();
+			draiosproto::marathon_app* a = new_group->add_apps();
 			a->set_id(app.first);
 			for(const auto& task : app.second->get_tasks())
 			{
@@ -84,7 +90,7 @@ void mesos_proto::extract_groups(const marathon_group::group_map_t& groups, drai
 		const marathon_group::group_map_t& g_groups = group.second->get_groups();
 		if(g_groups.size())
 		{
-			extract_groups(g_groups, to_group);
+			extract_groups(g_groups, new_group);
 		}
 	}
 }

@@ -7,7 +7,8 @@
 // This class is virtual void and is the base class for falco_policy.
 
 #include <memory>
-#include <list>
+#include <vector>
+#include <algorithm>
 
 #include <google/protobuf/text_format.h>
 
@@ -15,7 +16,6 @@
 #include "coclient.h"
 
 #include <falco_engine.h>
-#include <falco_events.h>
 
 class security_mgr;
 
@@ -24,17 +24,22 @@ class SINSP_PUBLIC security_policy
 public:
 	security_policy(security_mgr *mgr,
 			dragent_configuration *confguration,
-			uint64_t id,
-			const std::string &name,
-			const google::protobuf::RepeatedPtrField<draiosproto::action> &actions,
-			std::shared_ptr<coclient> &coclient,
-			bool enabled);
+			const draiosproto::policy &policy,
+			std::shared_ptr<coclient> &coclient);
 	virtual ~security_policy();
+
+
+	// Match the event against this policy and if there's a match,
+	// perform any configured actions for the event.
+	//
+	// Returns true if later policies should continue to process
+	// the event, false otherwise.
+	bool process_event(sinsp_evt *evt);
 
 	// Try to match the sinsp event against this policy. If the
 	// policy matches, returns a policy_event message with details
 	// on the event. Returns NULL otherwise.
-	virtual draiosproto::policy_event *process_event(sinsp_evt *evt) = 0;
+	virtual draiosproto::policy_event *match_event(sinsp_evt *evt) = 0;
 
 	// Perform the actions for this policy, using the information
 	// from the given event. Any action results will be added to
@@ -51,12 +56,30 @@ public:
 	void check_outstanding_actions(uint64_t ts_ns);
 
 	// Return a string representation of this rule.
-	virtual std::string &to_string();
+	virtual std::string to_string();
 
 	// Return the name of this policy.
-	std::string &name();
+	const std::string &name();
 
+	// Log info on the number of events handled by this policy and what happened.
+	void log_metrics();
+
+	void reset_metrics();
+
+	// The event types for which this policy must run.
+	std::vector<bool> m_evttypes;
 protected:
+
+	// Return whether or not this policy has an action of the
+	// specified type
+	bool has_action(const draiosproto::action_type &atype);
+
+	// Return whether or not this event has an action result of
+	// the specified type. Return a pointer to that action result
+	// or NULL.
+	draiosproto::action_result *has_action_result(draiosproto::policy_event *evt,
+						      const draiosproto::action_type &atype);
+
 	// Keeps track of any policy events and their outstanding
 	// actions. When all actions are complete, the policy will
 	// send the policy event message.
@@ -83,18 +106,71 @@ protected:
 		bool m_send_now;
 	};
 
-	std::list<actions_state> m_outstanding_actions;
+	// Note that an action has completed.
+	void note_action_complete(actions_state &astate);
+
+	class evt_metrics
+	{
+	public:
+		enum reason
+		{
+			EVM_MATCHED = 0,
+			EVM_POLICY_DISABLED,
+			EVM_NO_FALCO_ENGINE,
+			EVM_EF_DROP_FALCO,
+			EVM_SCOPE_MISS,
+			EVM_FALCO_MISS,
+			EVM_MAX
+		};
+
+		void incr(reason res)
+		{
+			m_metrics[res]++;
+		}
+
+		void reset()
+		{
+			std::fill_n(m_metrics, EVM_MAX, 0);
+		}
+
+		std::string to_string()
+		{
+			std::string str;
+
+			for(uint32_t i = 0; i < EVM_MAX; i++)
+			{
+				str += " " + m_metric_names[i] + "=" + std::to_string(m_metrics[i]);
+			}
+
+			return str;
+		}
+
+	private:
+		uint64_t m_metrics[EVM_MAX];
+		std::string m_metric_names[EVM_MAX]{
+			"matched",
+			"policy_disabled",
+			"no_falco_engine",
+			"ef_drop_falco",
+			"scope_miss",
+			"falco_miss"};
+	};
+
+	// Return whether or not the provided event matches this
+	// policy's scope.
+	bool match_scope(sinsp_evt *evt);
+
+	evt_metrics m_metrics;
+
+	std::vector<actions_state> m_outstanding_actions;
 
 	google::protobuf::TextFormat::Printer m_print;
 
 	security_mgr *m_mgr;
 	dragent_configuration *m_configuration;
-	uint64_t m_id;
-	std::string m_name;
-	list<draiosproto::action> m_actions;
-	bool m_enabled;
+	draiosproto::policy m_policy;
 	std::shared_ptr<coclient> m_coclient;
-	std::string m_str;
+	bool m_has_outstanding_actions;
 };
 
 class SINSP_PUBLIC falco_security_policy : public security_policy
@@ -105,22 +181,22 @@ public:
 			      const draiosproto::policy &policy,
 			      sinsp *inspector,
 			      shared_ptr<falco_engine> &falco_engine,
-			      shared_ptr<falco_events> &falco_events,
 			      std::shared_ptr<coclient> &coclient);
 
 	virtual ~falco_security_policy();
 
-	draiosproto::policy_event *process_event(sinsp_evt *evt);
+	draiosproto::policy_event *match_event(sinsp_evt *evt);
 
 	// Return a string representation of this rule.
-	virtual std::string &to_string();
+	virtual std::string to_string();
 
 private:
+
+	bool check_conditions(sinsp_evt *evt);
 
 	std::string m_rule_filter;
 	std::set<std::string> m_tags;
 	shared_ptr<falco_engine> m_falco_engine;
-	shared_ptr<falco_events> m_falco_events;
 	sinsp_evt_formatter_cache m_formatters;
 	std::string m_fstr;
 

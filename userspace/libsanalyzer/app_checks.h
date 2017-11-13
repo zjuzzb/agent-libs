@@ -20,6 +20,8 @@
 
 
 Json::Value yaml_to_json(const YAML::Node& node);
+class prometheus_conf;
+class prom_process;
 
 class app_check
 {
@@ -28,6 +30,7 @@ public:
 		m_port_pattern(0),
 		m_enabled(true),
 		m_log_errors(true),
+		m_retry(true),
 		m_interval(-1),
 		m_conf(Json::objectValue)
 	{}
@@ -61,6 +64,7 @@ private:
 	string m_check_module;
 	bool m_enabled;
 	bool m_log_errors;
+	bool m_retry;
 	int m_interval;
 	Json::Value m_conf;
 };
@@ -165,13 +169,30 @@ public:
 	typedef vector<app_metric> metrics_t;
 	typedef vector<app_service_check> services_t;
 
+	enum check_type
+	{
+		APPCHECK,
+		PROMETHEUS
+	};
+
 	// Added for unordered_map::operator[]
 	app_check_data():
 			m_pid(0),
-			m_expiration_ts(0)
+			m_expiration_ts(0),
+			m_total_metrics(0)
 	{};
 
 	explicit app_check_data(const Json::Value& obj, metric_limits::cref_sptr_t ml = nullptr);
+
+	check_type type() const
+	{
+		return m_type;
+	}
+
+	void set_type(const check_type t)
+	{
+		m_type = t;
+	}
 
 	int pid() const
 	{
@@ -183,7 +204,8 @@ public:
 		return m_expiration_ts;
 	}
 
-	void to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
+	unsigned to_protobuf(draiosproto::app_info *proto, uint16_t& limit, uint16_t max_limit) const;
+
 
 	const string& name() const
 	{
@@ -200,12 +222,19 @@ public:
 		return m_service_checks;
 	}
 
+	unsigned total_metrics() const
+	{
+		return m_total_metrics;
+	}
+
 private:
+	check_type m_type;
 	int m_pid;
 	string m_process_name;
 	metrics_t m_metrics;
 	services_t m_service_checks;
 	uint64_t m_expiration_ts;
+	unsigned m_total_metrics;
 };
 
 class app_checks_proxy
@@ -216,7 +245,9 @@ public:
 
 	app_checks_proxy();
 
-	void send_get_metrics_cmd(const vector<app_process>& processes);
+	// void send_get_metrics_cmd(const vector<app_process>& processes);
+	void send_get_metrics_cmd(const vector<app_process>& processes,
+		const vector<prom_process>& prom_procs, const prometheus_conf &conf);
 
 	metric_map_t read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 

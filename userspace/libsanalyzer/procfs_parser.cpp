@@ -442,13 +442,9 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 				std::string::size_type pos = line.find(')');
 				if((pos != std::string::npos) && (line.size() > pos + 1))
 				{
-					StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-					if(st.count() >= 13)
+					unsigned long utime = 0, stime = 0;
+					if(sscanf(line.c_str()+pos+1, "%*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %lu %lu", &utime, &stime) > 0)
 					{
-						unsigned long int utime = strtoul(st[11].c_str(), nullptr, 10);
-						if(utime == ULONG_MAX && errno == ERANGE) { ASSERT(false); return res; }
-						unsigned long int stime = strtoul(st[12].c_str(), nullptr, 10);
-						if(stime == ULONG_MAX && errno == ERANGE) { ASSERT(false); return res; }
 						uint64_t proc = utime + stime;
 						if(*old_proc != (uint64_t)-1LL)
 						{
@@ -463,6 +459,39 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 			}
 		}
 	}
+	return res;
+}
+
+long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
+{
+	long res = -1;
+	string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
+
+	// we are looking for /proc/[PID]/stat entry [(24) rss %ld],
+	// see http://man7.org/linux/man-pages/man5/proc.5.html
+	// the important bit here is that [(2) comm %s] may contain spaces, so sscanf is not bullet-proof;
+	// we find the first closing paren (ie. skip the first two entries) and then extract desired values
+	// from the rest of the line. so, (24), after adjustment for shift and zero-base, translates to (21)
+	std::ifstream f(path);
+	std::string line;
+	if(std::getline(f, line))
+	{
+		if(line.size())
+		{
+			std::string::size_type pos = line.find(')');
+			if((pos != std::string::npos) && (line.size() > pos + 1))
+			{
+				StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+				if(st.count() >= 22)
+				{
+					res = strtol(st[21].c_str(), nullptr, 10);
+					if(res == LONG_MAX && errno == ERANGE) { ASSERT(false);}
+					return sysconf(_SC_PAGESIZE) * res;
+				}
+			}
+		}
+	}
+
 	return res;
 }
 
@@ -578,8 +607,8 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;
 		fs.type =  entry->mnt_type;
-		fs.available_bytes = blocksize * statfs.f_bavail; 
-		fs.size_bytes = blocksize * statfs.f_blocks; 
+		fs.available_bytes = blocksize * statfs.f_bavail;
+		fs.size_bytes = blocksize * statfs.f_blocks;
 		fs.used_bytes = blocksize * (statfs.f_blocks - statfs.f_bfree);
 		fs.total_inodes = statfs.f_files;
 		fs.used_inodes = statfs.f_files - statfs.f_ffree;
@@ -654,36 +683,117 @@ return "";
 #endif
 }
 
+/*
+ * We were using the value reported by memory.usage_in_bytes as the amount of
+ * memory in use by a cgroup or container. However, usage_in_bytes is a fuzz
+ * value as per kernel-src/Documentation. An accurate value is a combination of
+ * rss+cache from the memory.stat entry of the cgroup.
+ */
 int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_memory_cgroup)
 {
-	int64_t ret = -1;
-	if(m_is_live_capture)
-	{
-		if(!m_memory_cgroup_dir)
-		{
-			lookup_memory_cgroup_dir();
-		}
-		if(m_memory_cgroup_dir && !m_memory_cgroup_dir->empty())
-		{
-			// Using scap_get_host_root() is not necessary here because
-			// m_memory_cgroup_dir is taken from /etc/mtab
-			char filename[SCAP_MAX_PATH_SIZE];
-			snprintf(filename, sizeof(filename),
-					 "%s/%s/memory.usage_in_bytes",
-					 m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
-			ifstream used_memory_f(filename);
-			try
-			{
-				used_memory_f >> ret;
-			}
-			catch (const exception& ex)
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Exception of read cgroup_used_memory: %s", ex.what());
-				ret = -1;
-			}
-		}
-	}
-	return ret;
+    if (!m_is_live_capture) {
+        return -1;
+    }
+
+    if (!m_memory_cgroup_dir) {
+        lookup_memory_cgroup_dir();
+    }
+
+    if (!m_memory_cgroup_dir || m_memory_cgroup_dir->empty()) {
+        return -1;
+    }
+
+    return read_cgroup_used_memory_vmrss(container_memory_cgroup);
+}
+
+/*
+ * This function calculates VmRss which is what we use to determine mem usage
+ * of a process.
+ *
+ * This function must only be called from read_cgroup_used_memory().
+ *
+ * In proc(5), VmRss is defined as the following:
+ *              * VmRSS: Resident set size.  Note that the value here is the sum
+ *                of RssAnon, RssFile, and RssShmem.
+ *
+ *              * RssAnon:  Size  of  resident  anonymous  memory.  (since Linux
+ *                4.5).
+ *
+ *              * RssFile: Size of resident file mappings.  (since Linux 4.5).
+ *
+ *              * RssShmem: Size of resident shared memory  (includes  System  V
+ *                shared  memory,  mappings  from tmpfs(5), and shared anonymous
+ *                mappings).  (since Linux 4.5).
+ *
+ * For a cgroup, this translates to the following formula:
+ *      memory_stat.rss + memory_stat.cache - memory_stat.inactive_file
+ *
+ * NOTE: This function MUST only be called from read_cgroup_used_memory().
+ */
+int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
+                                        const string &container_memory_cgroup)
+{
+    int64_t stat_val_cache = -1, stat_val_rss = -1, stat_val_inactive_file = -1;
+    unsigned stat_find_count = 0;
+    const unsigned num_stats = 3;
+
+    // Using scap_get_host_root() is not necessary here because
+    // m_memory_cgroup_dir is taken from /etc/mtab
+    char mem_stat_filename[SCAP_MAX_PATH_SIZE];
+    snprintf(mem_stat_filename, sizeof(mem_stat_filename),"%s/%s/memory.stat",
+             m_memory_cgroup_dir->c_str(), container_memory_cgroup.c_str());
+
+    FILE *fp = fopen(mem_stat_filename, "r");
+    if (fp == NULL) {
+        g_logger.log(string(__func__) + ": Unable to open file " + mem_stat_filename +
+                     ": errno: " + strerror(errno), sinsp_logger::SEV_DEBUG);
+        return -1;
+    }
+
+    char fp_line[128] = { 0 };
+    while(fgets(fp_line, sizeof(fp_line), fp) != NULL) {
+        char stat_val_str[64] = { 0 };
+        int64_t stat_val = -1;
+        if (sscanf(fp_line, "%63s %" PRId64, stat_val_str, &stat_val) != 2) {
+            g_logger.log(string(__func__) + ": Unable to parse line '" + fp_line + "'" +
+                         " from file " + mem_stat_filename, sinsp_logger::SEV_ERROR);
+            fclose(fp);
+            return -1;
+        }
+
+        if (stat_val_cache == -1 && strcmp(stat_val_str, "cache") == 0) {
+            stat_val_cache = stat_val;
+            ++stat_find_count;
+        } else if (stat_val_rss == -1 && strcmp(stat_val_str, "rss") == 0) {
+            stat_val_rss = stat_val;
+            ++stat_find_count;
+        } else if (stat_val_inactive_file == -1 &&
+                   strcmp(stat_val_str, "inactive_file") == 0) {
+            stat_val_inactive_file = stat_val;
+            ++stat_find_count;
+        }
+
+        if (num_stats == stat_find_count) {
+            break;
+        }
+    }
+
+    fclose(fp);
+
+    if (num_stats != stat_find_count) {
+        return -1;
+    }
+
+    int64_t ret_val = stat_val_rss + stat_val_cache - stat_val_inactive_file;
+    if (ret_val < 0) {
+        g_logger.format(sinsp_logger::SEV_ERROR, "%s: Calculation failed with values "
+                        "%" PRId64 ", %" PRId64 ", %" PRId64 " from file %s", __func__,
+                        stat_val_cache, stat_val_rss, stat_val_inactive_file,
+                        mem_stat_filename);
+        return -1;
+    }
+
+    return ret_val;
 }
 
 void sinsp_procfs_parser::lookup_memory_cgroup_dir()
@@ -1027,10 +1137,50 @@ int mounted_fs_reader::run()
 	{
 		home_fd = open_ns_fd(pid);
 	}
+
 	if(home_fd <= 0)
 	{
 		return DONT_RESTART_EXIT;
 	}
+
+	// The procedure of traversing containers and their mounted file systems (the loop below) requires changing
+	// namespace (and perhaps the root directory) of the agent/mounted_fs_reader to the one of a container. When examining
+	// of a mounted file system is over, a step back to the home namespace and it's root directory is performed.
+	// Executing `setns` to the home namespace together with `chroot` to the original root directory and then `chdir` is
+	// sufficient in most cases to switch back.
+	// However, there are situations like in case of Rkt containers when this is not good enough to break the root jail
+	// (made by Rkt). To force jail break, there is an initial `setns` to the home namespace (which resets the root
+	// directory) and then subsequent calls to `chroot` and `chdir` to set the real root directory. Since the purpose of
+	// this trick is not obvious, it should be considered for refactoring in the future.
+
+	if (setns(home_fd, CLONE_NEWNS) != 0)
+	{
+		g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	};
+
+	char root_dir[PATH_MAX];
+	string root_dir_link = "/proc/" + to_string(getppid()) + "/root";
+	ssize_t root_dir_sz = readlink(root_dir_link.c_str(), root_dir, PATH_MAX - 1);
+	if (root_dir_sz <= 0)
+	{
+		g_logger.log("Cannot read root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+	else
+		root_dir[root_dir_sz] = '\0';
+
+	if (chroot(root_dir) < 0)
+	{
+		g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+	if (chdir("/") < 0)
+	{
+		g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+		return ERROR_EXIT;
+	}
+
 	while(true)
 	{
 		// Send heartbeat
@@ -1048,6 +1198,7 @@ int mounted_fs_reader::run()
 				{
 					// Go to container mnt ns
 					auto changed = change_ns(container_proto.pid());
+
 					if(changed)
 					{
 						try
@@ -1085,7 +1236,7 @@ int mounted_fs_reader::run()
 						}
 						catch (const sinsp_exception& ex)
 						{
-							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s", container_proto.id().c_str(), container_proto.pid(), ex.what());
+							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s, vpid=%d", container_proto.id().c_str(), container_proto.pid(), ex.what(), container_proto.vpid());
 						}
 						// Back home
 						if(setns(home_fd, CLONE_NEWNS) != 0)
@@ -1093,6 +1244,17 @@ int mounted_fs_reader::run()
 							g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
 							return ERROR_EXIT;
 						};
+
+						if (chroot(root_dir) < 0)
+						{
+							g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						}
+						if (chdir("/") < 0)
+						{
+							g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+							return ERROR_EXIT;
+						}
 					}
 				}
 				auto response_s = response_proto.SerializeAsString();

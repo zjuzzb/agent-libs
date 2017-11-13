@@ -54,7 +54,6 @@ userspace/libscap/Release
 userspace/libscap/tests/*/*.sln
 *.scap
 *~
-core*
 driver/.tmp_versions/
 driver/Module.symvers
 driver/modules.order
@@ -87,3 +86,6 @@ userspace/sdjagent/target
 #CodeLite
 .codelite
 .directory
+
+# dep cache
+userspace/cointerface/pkg/

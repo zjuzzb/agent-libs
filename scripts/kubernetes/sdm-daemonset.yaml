@@ -1,0 +1,70 @@
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: sysdig-agent
+  labels:
+    app: sysdig-agent
+spec:
+  template:
+    metadata:
+      labels:
+        name: sysdig-agent
+    spec:
+      volumes:
+      - name: docker-sock
+        hostPath:
+         path: /var/run/docker.sock
+      - name: dev-vol
+        hostPath:
+         path: /dev
+      - name: proc-vol
+        hostPath:
+         path: /proc
+      - name: boot-vol
+        hostPath:
+         path: /boot
+      - name: modules-vol
+        hostPath:
+         path: /lib/modules
+      - name: usr-vol
+        hostPath:
+          path: /usr
+      - name: dshm
+        emptyDir:
+          medium: Memory
+      hostNetwork: true
+      hostPID: true
+      containers:
+      - name: sysdig-agent
+        image: sysdig/agent:dev
+        imagePullPolicy: Always
+        securityContext:
+         privileged: true
+        env:
+        - name: ACCESS_KEY
+          value: e64a1780-5bbd-4083-8ce1-418c2bb0a356
+        - name: COLLECTOR
+          value: collector-staging.sysdigcloud.com
+        - name: ADDITIONAL_CONF
+          value: "app_checks_enabled: false\nsecurity: { enabled: true}\nnew_k8s: true"
+        volumeMounts:
+        - mountPath: /host/var/run/docker.sock
+          name: docker-sock
+          readOnly: false
+        - mountPath: /host/dev
+          name: dev-vol
+          readOnly: false
+        - mountPath: /host/proc
+          name: proc-vol
+          readOnly: true
+        - mountPath: /host/boot
+          name: boot-vol
+          readOnly: true
+        - mountPath: /host/lib/modules
+          name: modules-vol
+          readOnly: true
+        - mountPath: /host/usr
+          name: usr-vol
+          readOnly: true
+        - mountPath: /dev/shm
+          name: dshm

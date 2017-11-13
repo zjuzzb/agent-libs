@@ -265,31 +265,43 @@ TEST_F(sys_call_test, analyzer_fdstats)
 
 				it = files_stat->find("/tmp/nonexistent");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
-				EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
-				EXPECT_EQ((uint64_t) 1, it->second.m_errors);
-				EXPECT_EQ((uint64_t) 0, it->second.m_open_count);
+				if (it != files_stat->end())
+				{
+					EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
+					EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
+					EXPECT_EQ((uint64_t) 1, it->second.m_errors);
+					EXPECT_EQ((uint64_t) 0, it->second.m_open_count);
+				}
 
 				it = files_stat->find("/tmp/testfile_opencount");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
-				EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
-				EXPECT_EQ((uint64_t) 0, it->second.m_errors);
-				EXPECT_EQ((uint64_t) 10, it->second.m_open_count);
+				if (it != files_stat->end())
+				{
+					EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
+					EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
+					EXPECT_EQ((uint64_t) 0, it->second.m_errors);
+					EXPECT_EQ((uint64_t) 10, it->second.m_open_count);
+				}
 
 				it = files_stat->find("/tmp/testfile_rdwr");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_NE((uint64_t) 0, it->second.m_time_ns);
-				EXPECT_EQ(10 * sizeof("token1"), it->second.m_bytes);
-				EXPECT_EQ((uint64_t) 0, it->second.m_errors);
-				EXPECT_EQ((uint64_t) 2, it->second.m_open_count);
+				if (it != files_stat->end())
+				{
+					EXPECT_NE((uint64_t) 0, it->second.m_time_ns);
+					EXPECT_EQ(10 * sizeof("token1"), it->second.m_bytes);
+					EXPECT_EQ((uint64_t) 0, it->second.m_errors);
+					EXPECT_EQ((uint64_t) 2, it->second.m_open_count);
+				}
 
 				it = files_stat->find("/tmp/testfile_rdonly");
 				EXPECT_NE(files_stat->end(), it);
-				EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
-				EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
-				EXPECT_EQ((uint64_t) 1, it->second.m_errors);
-				EXPECT_EQ((uint64_t) 1, it->second.m_open_count);
+				if (it != files_stat->end())
+				{
+					EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
+					EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
+					EXPECT_EQ((uint64_t) 1, it->second.m_errors);
+					EXPECT_EQ((uint64_t) 1, it->second.m_open_count);
+				}
 			}
 		}
 	};
