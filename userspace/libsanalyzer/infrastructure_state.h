@@ -24,7 +24,9 @@ public:
 
 	void init(sinsp *inspector, const std::string& machine_id);
 
-	void subscribe_to_k8s(const string& url, uint64_t timeout_s);
+	void subscribe_to_k8s(string url, string ca_cert,
+			      string client_cert, string client_key,
+			      uint64_t timeout_s);
 
 	bool subscribed();
 
@@ -104,6 +106,9 @@ private:
 	coclient m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;
 	string m_k8s_url;
+	string m_k8s_ca_cert;
+	string m_k8s_client_cert;
+	string m_k8s_client_key;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
 	mutable std::string m_k8s_cached_cluster_id;

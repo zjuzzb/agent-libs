@@ -11,7 +11,6 @@
 #include <grpc++/grpc++.h>
 #include <google/protobuf/text_format.h>
 
-#include "sdc_internal.pb.h"
 #include "sdc_internal.grpc.pb.h"
 
 // This generally follows the example at

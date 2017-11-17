@@ -128,14 +128,19 @@ void infrastructure_state::init(sinsp *inspector, const std::string& machine_id)
 
 infrastructure_state::~infrastructure_state(){}
 
-void infrastructure_state::subscribe_to_k8s(const string& url, uint64_t timeout_s)
+void infrastructure_state::subscribe_to_k8s(string url, string ca_cert,
+					    string client_cert, string client_key,
+					    uint64_t timeout_s)
 {
 	ASSERT(!m_k8s_connected);
 
 	glogf(sinsp_logger::SEV_INFO,
 	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, reconnect interval: %d sec",
 	      url.c_str(), timeout_s);
-	m_k8s_url = url;
+	m_k8s_url = std::move(url);
+	m_k8s_ca_cert = std::move(ca_cert);
+	m_k8s_client_cert = std::move(client_cert);
+	m_k8s_client_key = std::move(client_key);
 	m_k8s_connect_interval.interval(timeout_s * ONE_SECOND_IN_NS);
 
 	connect_to_k8s();
@@ -158,6 +163,9 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			      "infra_state: Connect to k8s orchestrator events.");
 			sdc_internal::orchestrator_events_stream_command cmd;
 			cmd.set_url(m_k8s_url);
+			cmd.set_ca_cert(m_k8s_ca_cert);
+			cmd.set_client_cert(m_k8s_client_cert);
+			cmd.set_client_key(m_k8s_client_key);
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
