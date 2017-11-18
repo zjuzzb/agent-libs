@@ -238,6 +238,7 @@ public:
 	// Used just by nodriver mode
 	sinsp_proc_file_stats m_file_io_stats;
 	bool m_root_refreshed;
+	bool m_scraped_mesos;
 
 	main_thread_analyzer_info* main_thread_ainfo()
 	{

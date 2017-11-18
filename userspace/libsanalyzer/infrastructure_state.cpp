@@ -234,7 +234,44 @@ std::unique_ptr<draiosproto::container_group> infrastructure_state::get(uid_t ui
 	return res;
 }
 
-bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited)
+bool infrastructure_state::add(uid_t key)
+{
+	if (has(key))
+		return false;
+
+	m_state[key] = make_unique<draiosproto::container_group>();
+	m_state[key]->mutable_uid()->set_kind(key.first);
+	m_state[key]->mutable_uid()->set_id(key.second);
+
+	return true;
+}
+
+bool infrastructure_state::add_child_link(uid_t key, uid_t ckey)
+{
+	if(!has(key) || has_link(m_state[key]->children(), ckey))
+		return false;
+
+	draiosproto::congroup_uid *child = m_state[key]->mutable_children()->Add();
+	child->set_kind(ckey.first);
+	child->set_id(ckey.second);
+
+	return true;
+}
+
+bool infrastructure_state::add_parent_link(uid_t key, uid_t pkey)
+{
+	if(!has(key) || has_link(m_state[key]->parents(), pkey))
+		return false;
+
+	draiosproto::congroup_uid *parent = m_state[key]->mutable_parents()->Add();
+	parent->set_kind(pkey.first);
+	parent->set_id(pkey.second);
+
+	return true;
+}
+
+
+bool infrastructure_state::find_tag(const uid_t uid, const string tag, string &value, std::unordered_set<uid_t> &visited)
 {
 	if (!has(uid) || (visited.find(uid) != visited.end())) {
 		return false;
@@ -267,6 +304,237 @@ bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::u
 	}
 
 	return false;
+}
+
+bool infrastructure_state::is_mesos_label(const std::string &lbl)
+{
+	static const std::string mesos = "mesos";
+	static const std::string marathon = "marathon";
+
+	return !lbl.compare(0, mesos.size(), mesos) || !lbl.compare(0, marathon.size(), marathon);
+}
+
+void infrastructure_state::get_mesos_labels(const uid_t uid,
+	google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels,
+	std::unordered_set<uid_t> *visited)
+{
+	if (!visited)
+	{
+		std::unordered_set<uid_t> newvis;
+		get_mesos_labels(uid, labels, &newvis);
+		return;
+	}
+	if (!has(uid) || (visited->find(uid) != visited->end())) {
+		return;
+	}
+	visited->emplace(uid);
+
+	auto *cg = m_state[uid].get();
+
+	if (!cg) {	// Shouldn't happen
+		return;
+	}
+	for (const auto &tag : cg->internal_tags())
+	{
+		if (is_mesos_label(tag.first))
+		{
+			auto lbl = labels->Add();
+			lbl->set_key(tag.first);
+			lbl->set_value(tag.second);
+		}
+	}
+
+	for(const auto &p_uid : cg->parents()) {
+		// Only look at lowest marathon group level
+		if ((uid.first == "marathon_group") && p_uid.kind() == "marathon_group")
+			continue;
+
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+		get_mesos_labels(pkey, labels, visited);
+	}
+}
+
+void infrastructure_state::add_marathon_group(const std::string &group,
+	const std::string &parent, const std::string &child, bool child_is_app)
+{
+	uid_t key = make_pair("marathon_group", group);
+
+	add(key);
+	(*m_state[key]->mutable_internal_tags())["marathon.group.name"] = group;
+	if (!parent.empty())
+	{
+		add_parent_link(key, make_pair("marathon_group", parent));
+	}
+	if (!child.empty())
+	{
+		add_child_link(key, make_pair(child_is_app ? "marathon_app" : "marathon_group", child));
+	}
+}
+
+void infrastructure_state::link_marathon_groups(const vector<std::string> &names, std::string &group)
+{
+	// Don't add the last name as that is the marathon app
+	for (size_t ni = 0; ni < names.size() - 1; ni++)
+	{
+		add_marathon_group(names[ni], (ni > 0) ? names[ni-1] : "", names[ni+1], ni >= (names.size() - 2) );
+	}
+	if (names.size() > 1)
+	{
+		group = names[names.size()-2];
+	}
+}
+
+static vector<std::string> pathtovec(const std::string &str, char sep, std::string *mesostaskname)
+{
+	vector<std::string> names;
+
+	size_t last = 0, i = 0;
+	while ((i = str.find(sep, last)) != string::npos)
+	{
+		if ((i - last) > 0)
+		{
+			names.emplace_back(str.substr(0, i));
+			if (mesostaskname)
+			{
+				*mesostaskname = str.substr(last, i-last) + (mesostaskname->empty() ? "" : ("." + *mesostaskname));
+			}
+		}
+		last = i+1;
+	}
+	if (last < str.size())
+	{
+		names.emplace_back(str);
+		if (mesostaskname)
+		{
+			*mesostaskname = str.substr(last, str.size()-last) + (mesostaskname->empty() ? "" : ("." + *mesostaskname));
+		}
+	}
+
+	return names;
+}
+
+static bool getenvval(std::string &out, const vector<std::string> &env, const std::string &key)
+{
+	for(const auto& env_var : env)
+	{
+		if((env_var.size() > key.size()) && !env_var.compare(0, key.size(), key) && (env_var[key.size()] == '='))
+		{
+			out = env_var.substr(key.size()+1);
+			return true;
+		}
+	}
+	return false;
+}
+
+void infrastructure_state::scrape_mesos_env(const std::string &container_id, const vector<std::string> &env)
+{
+	static const std::string mar_app_id = "MARATHON_APP_ID";
+	static const std::string mar_app_labels = "MARATHON_APP_LABELS";
+	static const std::string mar_app_label = "MARATHON_APP_LABEL_";
+	static const std::string mes_task_id = "MESOS_TASK_ID";
+
+	// For now only scrape if we find "MARATHON_APP_ID" in env
+	string app_id;
+	if (!getenvval(app_id, env, mar_app_id) || app_id.empty())
+		return;
+
+	string mesostaskname;
+	vector<std::string> gvec = pathtovec(app_id, '/', &mesostaskname);
+
+	glogf(sinsp_logger::SEV_TRACE, "scrape_mesos: Found app_id %s, mesos taskname: %s", app_id.c_str(), mesostaskname.c_str());
+
+	auto idx = app_id.find_last_of("/");
+	string appname = ((idx != string::npos) && (idx < app_id.size()-1)) ? app_id.substr(idx+1) : app_id;
+	uid_t appkey = make_pair("marathon_app", app_id);
+
+	// Create marathon group(s) and app
+	// If we have the app we should already have the group hierarchy as well
+	if (!has(appkey))
+	{
+		add(appkey);
+		(*m_state[appkey]->mutable_internal_tags())["marathon.app.name"] = appname;
+
+		string group;
+		link_marathon_groups(gvec, group);
+
+		if (!group.empty())
+		{
+			add_parent_link(appkey, make_pair("marathon_group", group));
+		}
+	}
+
+	string taskid;
+	uid_t mtidkey;
+	if (getenvval(taskid, env, mes_task_id) && !taskid.empty())
+	{
+		mtidkey = make_pair("mesos_task_id", taskid);
+		add(mtidkey);
+		(*m_state[mtidkey]->mutable_internal_tags())["mesos.task.id"] = taskid;
+
+		if (!mesostaskname.empty())
+		{
+			uid_t mtnamekey = make_pair("mesos_task_name", mesostaskname);
+			add(mtnamekey);
+			(*m_state[mtnamekey]->mutable_internal_tags())["mesos.task.name"] = mesostaskname;
+			add_parent_link(mtidkey, mtnamekey);
+			add_child_link(mtnamekey, mtidkey);
+		}
+	}
+
+	if (!container_id.empty())
+	{
+		// Set container as child of marathon_app and mesos_task_id
+		uid_t ckey = make_pair("container", container_id);
+		add(ckey);
+		add_child_link(appkey, ckey);
+		add_parent_link(ckey, appkey);
+		if (!taskid.empty())
+		{
+			add_child_link(mtidkey, ckey);
+			add_parent_link(ckey, mtidkey);
+		}
+	}
+
+	// Adding labels as tags
+	for (const string& enstr : env)
+	{
+		size_t eq;
+		if ((enstr.size() > mar_app_label.size()) &&
+			!enstr.compare(0, mar_app_label.size(), mar_app_label) &&
+			((eq = enstr.find('=', mar_app_label.size())) != string::npos) &&
+			(eq > mar_app_label.size()))
+		{
+			string label = enstr.substr(mar_app_label.size(), eq - mar_app_label.size());
+			std::transform(label.begin(), label.end(), label.begin(), ::tolower);
+			string marlabel = "marathon.app.label." + label;
+			string meslabel = "mesos.task.label." + label;
+			string value = enstr.substr(eq+1);
+			if (!label.empty() && !value.empty())
+			{
+				auto *tagmap = m_state[appkey]->mutable_internal_tags();
+				if (tagmap->find(marlabel) == tagmap->end())
+				{
+					glogf(sinsp_logger::SEV_TRACE, "scrape_mesos: Adding tag %s=%s to <%s,%s>", marlabel.c_str(), value.c_str(), appkey.first.c_str(), appkey.second.c_str());
+					(*tagmap)[marlabel] = value;
+				}
+				else if ((*tagmap)[marlabel] != value)
+				{
+					glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Changing tag %s from %s to %s for <%s,%s>", marlabel.c_str(), (*tagmap)[marlabel].c_str(), value.c_str(), appkey.first.c_str(), appkey.second.c_str());
+					(*tagmap)[marlabel] = value;
+				}
+				if (tagmap->find(meslabel) == tagmap->end())
+				{
+					glogf(sinsp_logger::SEV_TRACE, "scrape_mesos: Adding tag %s=%s to <%s,%s>", meslabel.c_str(), value.c_str(), appkey.first.c_str(), appkey.second.c_str());
+					(*tagmap)[meslabel] = value;
+				}
+				else if ((*tagmap)[meslabel] != value)
+				{
+					glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Changing tag %s from %s to %s for <%s,%s>", meslabel.c_str(), (*tagmap)[meslabel].c_str(), value.c_str(), appkey.first.c_str(), appkey.second.c_str());
+					(*tagmap)[meslabel] = value;
+				}
+			}
+		}
+	}
 }
 
 void infrastructure_state::handle_event(const draiosproto::congroup_update_event *evt, bool overwrite)
