@@ -120,7 +120,8 @@ public:
 	enum class type_t
 	{
 		GAUGE = 1,
-		RATE
+		RATE,
+		BUCKETS,
 	};
 	explicit app_metric(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_metric* proto) const;
@@ -130,6 +131,7 @@ private:
 	double m_value;
 	type_t m_type;
 	map<string, string> m_tags;
+	map<string, uint64_t> m_buckets;
 };
 
 inline const std::string& app_metric::name() const

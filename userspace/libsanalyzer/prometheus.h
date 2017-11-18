@@ -29,7 +29,8 @@ public:
 		m_interval(-1),
 		m_max_metrics(PROM_METRICS_HARD_LIMIT),
 		m_max_metrics_per_proc(-1),
-		m_max_tags_per_metric(-1)
+		m_max_tags_per_metric(-1),
+		m_histograms(false)
 	{}
 
 	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
@@ -53,12 +54,16 @@ public:
 	int max_tags_per_metric() const { return m_max_tags_per_metric; }
 	void set_max_tags_per_metric(int val) { m_max_tags_per_metric = val; }
 
+	bool histograms() const { return m_histograms; }
+	void set_histograms(bool val) { m_histograms = val; }
+
 private:
 	bool m_log_errors;
 	int m_interval;
 	unsigned m_max_metrics;
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
+	bool m_histograms;
 };
 
 class prom_process

@@ -55,6 +55,7 @@ class Gauge(Metric):
         self.device_name = device_name
         self.last_sample_time = None
         self.timestamp = time()
+        self.metric_type = MetricTypes.GAUGE
 
     def sample(self, value, sample_rate, timestamp=None):
         self.value = value
@@ -71,7 +72,7 @@ class Gauge(Metric):
                 tags=self.tags,
                 hostname=self.hostname,
                 device_name=self.device_name,
-                metric_type=MetricTypes.GAUGE,
+                metric_type=self.metric_type,
                 interval=interval,
             )]
             self.value = None
@@ -104,6 +105,13 @@ class BucketGauge(Gauge):
 
         return []
 
+
+class Buckets(Gauge):
+    """ A metric that tracks histogram buckets. """
+
+    def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
+        super(Buckets, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        self.metric_type = MetricTypes.BUCKETS
 
 class Count(Metric):
     """ A metric that tracks a count. """
@@ -878,6 +886,7 @@ class MetricsAggregator(Aggregator):
             'ms': Histogram,
             's': Set,
             '_dd-r': Rate,
+            'b': Buckets,
         }
 
     def submit_metric(self, name, value, mtype, tags=None, hostname=None,
@@ -927,6 +936,9 @@ class MetricsAggregator(Aggregator):
 
     def set(self, name, value, tags=None, hostname=None, device_name=None):
         self.submit_metric(name, value, 's', tags, hostname, device_name)
+
+    def buckets(self, name, value, tags=None, hostname=None, device_name=None):
+        self.submit_metric(name, value, 'b', tags, hostname, device_name)
 
     def flush(self):
         timestamp = time()

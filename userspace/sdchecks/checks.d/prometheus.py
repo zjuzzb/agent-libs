@@ -24,6 +24,12 @@ class Prometheus(AgentCheck):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.metric_history = {}
 
+    def __dump_histogram__(self, keyvals, keys, desc):
+        logging.info('======== %s ========' % (desc))
+        for k in keys:
+            logging.info('[%s]: %s' % (repr(k), repr(keyvals[k])))
+        logging.info('======== %s ========' % (desc))
+
     def check(self, instance):
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
@@ -36,6 +42,7 @@ class Prometheus(AgentCheck):
         max_tags = instance.get('max_tags')
         if max_tags:
             max_tags = int(max_tags)
+        ret_histograms = instance.get("histograms", False)
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
@@ -50,19 +57,32 @@ class Prometheus(AgentCheck):
                     break
 
                 name = family.name
-    
+                hists = dict()
+
                 for sample in family.samples:
                     if max_metrics and num >= max_metrics:
                         break
                     (sname, stags, value) = sample
                     # convert the dictionary of tags into a list of '<name>:<val>' items
                     # also exclude 'quantile' as a key as it isn't a tag
-                    tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k != 'quantile']
+                    reserved_tags = []
+                    if family.type == 'summary':
+                        reserved_tags.append('quantile')
+                    elif family.type == 'histogram':
+                        reserved_tags.append('le')
+                    tags = ['{}:{}'.format(k,v) for k,v in stags.iteritems() if k not in reserved_tags]
 
                     # trim the number of tags to 'max_tags'
                     n_tags = max_tags if max_tags != None else len(tags)
                     tags = tags[:n_tags]
-    
+
+                    hist_entry = None
+                    if (family.type == 'histogram') and (ret_histograms != False):
+                        hkey = repr(tags)
+                        if hkey not in hists:
+                            hists[hkey] = {'tags':tags, 'buckets':dict()}
+                        hist_entry = hists.get(hkey)
+
                     # First handle summary
                     # Unused, see above
                     if family.type == 'histogram' or family.type == 'summary':
@@ -71,8 +91,15 @@ class Prometheus(AgentCheck):
                         elif sname == name + '_count':
                             parse_count = value
                         else:
-                            if family.type == 'histogram':
-                                continue
+                            if (family.type == 'histogram'):
+                                if (ret_histograms == False) or ('le' not in stags):
+                                    continue
+                                bkey = stags['le']
+                                if (bkey == '+Inf') or (type(eval(bkey)) in [type(int()), type(float())]):
+                                    bkey = float(bkey)
+                                else:
+                                    logging.error('prom: Unexpected bucket label type/val for %s{%s}' % (sname, stags))
+                                hist_entry['buckets'][bkey] = value
                             elif ('quantile' in stags) and (not math.isnan(value)):
                                 quantile = int(float(stags['quantile']) * 100)
                                 qname = '%s.%dpercentile' % (name, quantile)
@@ -117,6 +144,24 @@ class Prometheus(AgentCheck):
                         # logging.debug('prom: adding gauge with name %s' %(name))
                         self.gauge(name, value, tags)
                         num += 1
+
+                # process the histograms and submit the buckets
+                for k,v in hists.iteritems():
+                    logging.debug('prom: processing histogram for %s%s' % (name, k))
+                    bkeys = sorted(v['buckets'].iterkeys())
+
+                    #self.__dump_histogram__(v['buckets'], bkeys, 'pre-processing')
+
+                    # convert the histograms with cumulative counter to absolute counters
+                    if len(v['buckets']) > 1:
+                        for i in xrange(len(bkeys)-1, 0, -1):
+                            v['buckets'][bkeys[i]] -= v['buckets'][bkeys[i-1]]
+
+                    #self.__dump_histogram__(v['buckets'], bkeys, 'post-processing')
+
+                    self.buckets(name, v['buckets'], v['tags'])
+                    num += 1
+
         # text_string_to_metric_families() generator can raise exceptions
         # for parse values. Treat them all as failures and don't retry.
         except Exception as ex:

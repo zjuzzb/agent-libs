@@ -561,6 +561,7 @@ prometheus:
   max_metrics: 1000
   max_metrics_per_process: 100
   max_tags_per_metric: 20
+  histograms: false
 
   # Filtering processes to scan. Processes not matching a rule will not
   # be scanned

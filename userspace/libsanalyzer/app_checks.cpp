@@ -401,7 +401,6 @@ unsigned app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& lim
 
 app_metric::app_metric(const Json::Value &obj):
 	m_name(obj[0].asString()),
-	m_value(obj[2].asDouble()),
 	m_type(type_t::GAUGE)
 {
 	auto metadata = obj[3];
@@ -411,10 +410,24 @@ app_metric::app_metric(const Json::Value &obj):
 		if(type == "gauge")
 		{
 			m_type = type_t::GAUGE;
+			m_value = obj[2].asDouble();
 		}
 		else if(type == "rate")
 		{
 			m_type = type_t::RATE;
+			m_value = obj[2].asDouble();
+		} else if (type == "buckets") {
+			m_type = type_t::BUCKETS;
+			// obj[2] is a map of <label, count>
+			const auto &buckets(obj[2]);
+			const auto labels = buckets.getMemberNames();
+			for (auto &l: labels) {
+				m_buckets.emplace(l, buckets[l].asUInt64());
+			}
+		} else {
+			g_logger.format(sinsp_logger::SEV_ERROR, "[app_check] unknown metric type: %s",
+			                type.c_str());
+			m_value = obj[2].asDouble();
 		}
 	}
 	if(metadata.isMember("tags"))
@@ -438,8 +451,16 @@ app_metric::app_metric(const Json::Value &obj):
 void app_metric::to_protobuf(draiosproto::app_metric *proto) const
 {
 	proto->set_name(m_name);
-	proto->set_value(m_value);
 	proto->set_type(static_cast<draiosproto::app_metric_type>(m_type));
+	if (m_type != type_t::BUCKETS) {
+		proto->set_value(m_value);
+	} else {
+		for (auto &b: m_buckets) {
+			auto bucket = proto->add_buckets();
+			bucket->set_label(b.first);
+			bucket->set_count(b.second);
+		}
+	}
 	for(const auto& tag : m_tags)
 	{
 		auto tag_proto = proto->add_tags();
