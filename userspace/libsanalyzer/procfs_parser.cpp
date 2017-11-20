@@ -639,13 +639,16 @@ return res;
 		try
 		{
 			std::getline( cmdlineFile, strBuf, '\0' );
+			if(!strBuf.empty())
+			{
+				args.push_back(strBuf);
+			}
 		}
 		catch (const exception& ex)
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, "Error while read process_cmdline: %s", ex.what());
 			break;
 		}
-		args.push_back(strBuf);
 	}
 	return args;
 #endif

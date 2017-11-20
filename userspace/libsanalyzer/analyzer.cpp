@@ -1830,7 +1830,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread anyway
 		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
-		   m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
+			m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
+			m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
