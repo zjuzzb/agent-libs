@@ -381,6 +381,9 @@ void sinsp_analyzer::on_capture_start()
 				k8s_url = "";
 			}
 			m_infrastructure_state->subscribe_to_k8s(k8s_url,
+								 m_configuration->get_k8s_ssl_ca_certificate(),
+								 m_configuration->get_k8s_ssl_cert(),
+								 m_configuration->get_k8s_ssl_key(),
 								 m_configuration->get_k8s_timeout_s());
 			glogf("infrastructure state is now subscribed to k8s API server");
 		}
