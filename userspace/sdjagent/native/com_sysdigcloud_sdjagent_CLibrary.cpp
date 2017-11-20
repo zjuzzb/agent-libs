@@ -62,12 +62,14 @@ private:
 // Function imported from scap, to link scap it should be compiled with -fPIC and it's not
 const char* scap_get_host_root()
 {
-	const char* p = getenv("SYSDIG_HOST_ROOT");
-	if(!p)
-	{
-		p = "";
-	}
-	return p;
+	static const char* p = getenv("SYSDIG_HOST_ROOT");
+	static const auto str = (p) ? p : "";
+
+	// limit the length of the string to SCAP_MAX_PATH_SIZE defined in scap.h
+	static const size_t SCAP_MAX_PATH_SIZE = 1024;
+	static const std::string env_str(str, strnlen(str, SCAP_MAX_PATH_SIZE));
+
+	return env_str.c_str();
 }
 
 //
