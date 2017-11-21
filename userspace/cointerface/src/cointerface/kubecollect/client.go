@@ -5,7 +5,11 @@ import (
 	kubeclient "k8s.io/client-go/kubernetes"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/rest"
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/apimachinery/pkg/fields"
 	"cointerface/draiosproto"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
@@ -22,7 +26,7 @@ const RsyncInterval = 10 * time.Minute
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block
-func WatchCluster(ctx context.Context, url string, ca_cert string, client_cert string, client_key string) (<-chan draiosproto.CongroupUpdateEvent, error) {
+func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_cert string, client_key string) (<-chan draiosproto.CongroupUpdateEvent, error) {
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
 
@@ -69,6 +73,42 @@ func WatchCluster(ctx context.Context, url string, ca_cert string, client_cert s
 	// Caller is responsible for draining the chan
 	evtc := make(chan draiosproto.CongroupUpdateEvent)
 	var wg sync.WaitGroup
+
+	ctx, cancel := context.WithCancel(parentCtx)
+	// Start a routine to do a watch on namespaces
+	// to detect api server connection errors because
+	// SharedInformers don't surface errors
+	go func() {
+		defer cancel()
+		log.Debugf("Creating K8s watchdog thread")
+
+		client := kubeClient.CoreV1().RESTClient()
+		lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
+		watcher, err := lw.Watch(v1meta.ListOptions{})
+		if err != nil {
+			log.Errorf("K8s watchdog, error creating api server watchdog: %v", err)
+			return
+		}
+		defer watcher.Stop()
+
+		for {
+			select {
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					log.Warnf("K8s watchdog received a watch error")
+					return
+				}
+				if event.Type == watch.Error {
+					log.Errorf("K8s watchdog received watch error: %v",
+						apierrs.FromObject(event.Object))
+					return
+				}
+			case <-parentCtx.Done():
+				log.Infof("K8s watchdog, parent context cancelled")
+				return
+			}
+		}
+	}()
 
 	// The informers are responsible for Add()'ing to the wg
 	if compatibilityMap["namespaces"] {
