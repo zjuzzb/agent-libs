@@ -381,6 +381,9 @@ void sinsp_analyzer::on_capture_start()
 				k8s_url = "";
 			}
 			m_infrastructure_state->subscribe_to_k8s(k8s_url,
+								 m_configuration->get_k8s_ssl_ca_certificate(),
+								 m_configuration->get_k8s_ssl_cert(),
+								 m_configuration->get_k8s_ssl_key(),
 								 m_configuration->get_k8s_timeout_s());
 			glogf("infrastructure state is now subscribed to k8s API server");
 		}
@@ -1830,7 +1833,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread anyway
 		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
-		   m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
+			m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
+			m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())

@@ -81,6 +81,9 @@ message swarm_state_result {
 
 message orchestrator_events_stream_command {
     required string url = 1;
+    required string ca_cert = 2;
+    required string client_cert = 3;
+    required string client_key = 4;
 }
 
 service CoInterface {

@@ -20,10 +20,15 @@ if [[ "`uname -m`" == "s390x" ]]; then
 ./bootstrap-agent
 DOCKERFILE=Dockerfile.s390x
 else
+
+if [[ $1 == "container" ]]; then
+  export BUILD_DEB_ONLY=ON
+fi
+
 scl enable devtoolset-2 ./bootstrap-agent
 fi
 cd build/release
-if [[ $1 == "package" ]]; then
+if [[ $1 == "package" || $1 == "container" ]]; then
   make -j$MAKE_JOBS package
   cp /code/agent/docker/local/* /out
   cp *.deb *.rpm /out

@@ -129,10 +129,12 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	// TODO: refactor error messages
 	var kubeClient kubernetes.Interface
 
-	if cmd.Url != nil && *cmd.Url != "" {
+	if cmd.GetUrl() != "" {
 		log.Infof("Connecting to k8s server at %s", *cmd.Url)
 		var err error
-		kubeClient, err = kubecollect.CreateKubeClient(*cmd.Url)
+		kubeClient, err = kubecollect.CreateKubeClient(
+			cmd.GetUrl(), cmd.GetCaCert(),
+			cmd.GetClientCert(), cmd.GetClientKey())
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
 			return err

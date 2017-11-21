@@ -17,9 +17,18 @@ var CompatibilityMap map[string]bool
 
 const RsyncInterval = 10 * time.Minute
 
-func CreateKubeClient(apiserver string) (kubeClient kubeclient.Interface, err error) {
+func CreateKubeClient(apiserver string, ca_cert string, client_cert string, client_key string) (kubeClient kubeclient.Interface, err error) {
 	baseConfig := clientcmdapi.NewConfig()
-	configOverrides := &clientcmd.ConfigOverrides{ClusterInfo: clientcmdapi.Cluster{Server: apiserver}}
+	configOverrides := &clientcmd.ConfigOverrides{
+		ClusterInfo: clientcmdapi.Cluster{
+			Server: apiserver,
+			CertificateAuthority: ca_cert,
+		},
+		AuthInfo: clientcmdapi.AuthInfo{
+			ClientCertificate: client_cert,
+			ClientKey: client_key,
+		},
+	}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
 	config, err := kubeConfig.ClientConfig()
 	if err != nil {
