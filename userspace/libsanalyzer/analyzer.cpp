@@ -253,6 +253,11 @@ void sinsp_analyzer::set_percentiles()
 		}
 		init_host_level_percentiles(m_host_req_metrics, pctls);
 		init_host_level_percentiles(m_io_net, pctls);
+
+		auto conf = m_configuration->get_group_pctl_conf();
+		if (conf) {
+			m_containers_check_interval.interval(conf->check_interval() * ONE_SECOND_IN_NS);
+		}
 	}
 }
 
@@ -3024,8 +3029,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				const std::set<double>& pctls = m_configuration->get_percentiles();
 				if(pctls.size())
 				{
-					conn.m_transaction_metrics.set_percentiles(pctls);
-					conn.m_transaction_metrics.set_serialize_pctl_data(true);
+					init_host_level_percentiles(conn.m_transaction_metrics, pctls);
 				}
 			}
 			else
@@ -5571,6 +5575,35 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 	};
 
+	// enable/disable percentile data serialization for configured containers
+	const auto conf = get_configuration_read_only()->get_group_pctl_conf();
+	if (conf) {
+		m_containers_check_interval.run([this, &progtable_by_container, &conf]()
+			{
+				g_logger.format(sinsp_logger::SEV_INFO,
+						"Performing percentile data serialization check for containers");
+				const auto containers_info = m_inspector->m_container_manager.get_containers();
+				uint32_t n_matched = 0;
+				for (auto &it : m_containers) {
+					auto cinfo_it = containers_info->find(it.first);
+					if (cinfo_it == containers_info->end()) {
+						continue;
+					}
+					auto is_match =
+						((n_matched < conf->max_containers()) &&
+						conf->match(&(cinfo_it->second), infra_state()));
+					it.second.set_serialize_pctl_data(is_match);
+					if (is_match) {
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Percentile data serialization enabled for container: %s",
+							cinfo_it->second.m_name.c_str());
+						++n_matched;
+					}
+				}
+			},
+			m_prev_flush_time_ns);
+	}
+
 	vector<string> emitted_containers;
 	vector<string> containers_ids;
 	containers_ids.reserve(m_containers.size());
@@ -5778,6 +5811,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			}
 		}
 	}, m_prev_flush_time_ns);
+
 	return emitted_containers;
 }
 
@@ -5795,19 +5829,6 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	if(it_analyzer == m_containers.end())
 	{
 		return;
-	}
-
-	// check if we need to serialize percentile data for this container
-	auto conf = get_configuration_read_only()->get_group_pctl_conf();
-	if (conf && conf->enabled() &&
-	    it_analyzer->second.time_for_serialize_pctl_data_check()) {
-		g_logger.format(sinsp_logger::SEV_DEBUG,
-			"Doing percentile data serialization check for container=%s(%s) pid=%ld",
-			container_id.c_str(), it->second.m_name.c_str(), tinfo->m_pid);
-
-		it_analyzer->second.set_serialize_pctl_data(
-				conf->match(tinfo, tinfo, &(it->second), infra_state()),
-				conf->check_interval()*2);
 	}
 
 	draiosproto::container* container = m_metrics->add_containers();
@@ -6628,7 +6649,6 @@ analyzer_container_state::analyzer_container_state()
 	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
-	m_serialize_pctl_data_expiration = 0;
 }
 
 void analyzer_container_state::clear()

@@ -174,7 +174,6 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 {
 	if (!m_enabled)
 		return false;
-	auto start_ports = tinfo->m_ainfo->listening_ports();
 
 	infrastructure_state::uid_t c_uid;
 	if (container)
@@ -195,6 +194,12 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 			switch(cond.m_param_type) {
 			case filter_condition::param_type::port:
 			{
+				if (tinfo == nullptr) {
+					matchcond = false;
+					break;
+				}
+
+				auto start_ports = tinfo->m_ainfo->listening_ports();
 				auto ports = filter_ports(start_ports, cond.m_port_match);
 				if (!ports.empty()) {
 					reason << ports.size() << " ports match: " << *(ports.begin());
@@ -205,6 +210,10 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				break;
 			}
 			case filter_condition::param_type::process_name:
+				if (tinfo == nullptr) {
+					matchcond = false;
+					break;
+				}
 				matchcond = !fnmatch(cond.m_pattern.c_str(), tinfo->m_comm.c_str(), FNM_EXTMATCH);
 				if (matchcond) {
 					reason << "procname = " << cond.m_pattern;
@@ -212,6 +221,11 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				break;
 			case filter_condition::param_type::process_cmdline:
 			{
+				if (tinfo == nullptr) {
+					matchcond = false;
+					break;
+				}
+
 				// Should this match include exe and arguments?
 				if ((tinfo->m_exe.find(cond.m_pattern) == string::npos) &&
 					find_if(tinfo->m_args.begin(), tinfo->m_args.end(),
@@ -278,6 +292,11 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				break;
 			}
 			case filter_condition::param_type::app_check_match:
+				if (mtinfo == nullptr) {
+					matchcond = false;
+					break;
+				}
+
 				matchcond = mtinfo->m_ainfo->found_app_check_by_fnmatch(cond.m_pattern);
 				if (matchcond) {
 					reason << "app_check found for " << cond.m_pattern;
@@ -296,9 +315,15 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 			}
 		}
 		if (matchrule) {
-			g_logger.format(sinsp_logger::SEV_DEBUG,
-				"%s: Process with pid %d matches rule: %d: %s",
-				m_context.c_str(), (int)tinfo->m_pid, rn, reason.str().c_str());
+			if (tinfo != nullptr) {
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"%s: Process with pid %d matches rule: %d: %s",
+					m_context.c_str(), (int)tinfo->m_pid, rn, reason.str().c_str());
+			} else if (container != nullptr) {
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"%s: Container '%s' matches rule: %d: %s",
+					m_context.c_str(), container->m_name.c_str(), rn, reason.str().c_str());
+			}
 
 			auto ret = rule.m_include;
 			if (on_match) {

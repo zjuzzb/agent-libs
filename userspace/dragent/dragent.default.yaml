@@ -1069,18 +1069,19 @@ events:
 group_percentiles:
   enabled: false
   check_interval: 60
+  max_containers: 50
 
   # Filtering containers for which percentile data should be sent to the collector.
   # Data for only containers matching an include rule will be sent.
   process_filter:
     - include:
-        container.label.io.percentiles: "true"
+        container.label.com.sysdig.percentiles: "true"
     - exclude:
-        container.label.io.percentiles: "false"
+        container.label.com.sysdig.percentiles: "false"
     - include:
-        kubernetes.pod.annotation.percentiles.io: true
+        kubernetes.pod.annotation.sysdig.com/percentiles: true
     - exclude:
-        kubernetes.pod.annotation.percentiles.io: false
+        kubernetes.pod.annotation.sysdig.com/percentiles: false
 
 known_ports:
   - 902 # VMware 

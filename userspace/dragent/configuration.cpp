@@ -570,10 +570,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	add_percentiles();
 	if (! m_percentiles.empty()) {
-		m_group_pctl_conf.reset(new proc_filter::conf("Group Percentiles"));
-		m_group_pctl_conf->set_enabled(m_config->get_scalar<bool>("group_percentiles", "enabled", false));
-		m_group_pctl_conf->set_k8s_get_config(m_config->get_scalar<bool>("group_percentiles", "get_kubernetes_config", true));
-		m_group_pctl_conf->set_check_interval(m_config->get_scalar<uint32_t>("group_percentiles", "check_interval", proc_filter::conf::default_check_interval()));
+		m_group_pctl_conf.reset(new proc_filter::group_pctl_conf());
+		m_group_pctl_conf->set_enabled(m_config->get_scalar<bool>("group_percentiles", "enabled",
+			proc_filter::group_pctl_conf::enabled_default()));
+		m_group_pctl_conf->set_check_interval(m_config->get_scalar<uint32_t>("group_percentiles", "check_interval",
+			proc_filter::group_pctl_conf::check_interval_default()));
+		m_group_pctl_conf->set_max_containers(m_config->get_scalar<uint32_t>("group_percentiles", "max_containers",
+			proc_filter::group_pctl_conf::max_containers_default()));
 		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
 	}
 
@@ -700,7 +703,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.set_enabled(m_config->get_scalar<bool>("prometheus", "enabled", false));
 	m_prom_conf.set_log_errors(m_config->get_scalar<bool>("prometheus", "log_errors", false));
 	m_prom_conf.set_interval(m_config->get_scalar<int>("prometheus", "interval", -1));
-	m_prom_conf.set_k8s_get_config(m_config->get_scalar<bool>("prometheus", "get_kubernetes_config", true));
 	m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
 	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
@@ -1019,8 +1021,8 @@ void dragent_configuration::print_configuration()
 		g_log->information("Percentiles: " + os.str());
 		g_log->information("Group Percentiles: " + bool_as_text(m_group_pctl_conf->enabled()));
 		if (m_group_pctl_conf->enabled()) {
-			g_log->information("  Get k8s config: " + bool_as_text(m_group_pctl_conf->k8s_get_config()));
 			g_log->information("  Check interval: " + NumberFormatter::format(m_group_pctl_conf->check_interval()));
+			g_log->information("  Max containers: " + NumberFormatter::format(m_group_pctl_conf->max_containers()));
 		}
 	} else {
 		g_log->information("Percentiles: " + bool_as_text(false));

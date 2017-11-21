@@ -15,7 +15,7 @@ using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 
 // fwd declaration
 namespace proc_filter {
-class conf;
+class group_pctl_conf;
 };
 
 class SINSP_PUBLIC sinsp_configuration
@@ -171,8 +171,8 @@ public:
 	unsigned get_jmx_limit() const;
 	void set_jmx_limit(unsigned limit);
 	const std::set<double>& get_percentiles() const;
-	shared_ptr<proc_filter::conf> get_group_pctl_conf() const;
-	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::conf>);
+	shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
+	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
 	bool get_security_enabled() const;
@@ -238,7 +238,7 @@ private:
 	std::string m_k8s_cluster_name;
 
 	std::set<double> m_percentiles;
-	shared_ptr<proc_filter::conf> m_group_pctl_conf;
+	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 
 	unsigned m_statsd_limit;
 

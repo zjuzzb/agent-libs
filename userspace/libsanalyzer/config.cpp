@@ -834,13 +834,13 @@ const std::set<double>& sinsp_configuration::get_percentiles() const
 	return m_percentiles;
 }
 
-shared_ptr<proc_filter::conf> sinsp_configuration::get_group_pctl_conf() const
+shared_ptr<proc_filter::group_pctl_conf> sinsp_configuration::get_group_pctl_conf() const
 {
 	return m_group_pctl_conf;
 }
 
 void sinsp_configuration::set_percentiles(const std::set<double>& percentiles,
-		shared_ptr<proc_filter::conf> group_pctl_conf)
+		shared_ptr<proc_filter::group_pctl_conf> group_pctl_conf)
 {
 	m_percentiles = percentiles;
 	m_group_pctl_conf = group_pctl_conf;
