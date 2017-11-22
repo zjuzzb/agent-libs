@@ -1,3 +1,4 @@
+setuptools
 # checks.d/pgbouncer.py
 # Require libpq
 psycopg2==2.7.1
