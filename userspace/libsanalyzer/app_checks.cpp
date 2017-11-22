@@ -28,7 +28,14 @@ Json::Value yaml_to_json(const YAML::Node& yaml)
 			}
 			catch (const YAML::BadConversion& ex)
 			{
-				ret = yaml.as<string>();
+				try
+				{
+					ret = yaml.as<bool>();
+				}
+				catch (const YAML::BadConversion& ex)
+				{
+					ret = yaml.as<string>();
+				}
 			}
 		}
 		break;
