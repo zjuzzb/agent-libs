@@ -11,6 +11,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"regexp"
 	"net"
 	"os"
 	"os/signal"
@@ -125,6 +127,8 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
+
+	setErrorLogHandler()
 
 	// TODO: refactor error messages
 	var kubeClient kubernetes.Interface
@@ -310,6 +314,31 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	}
 
 	return nil
+}
+
+// The default logger for client-go errors logs them to stderr in a format
+// the C++ side can't parse, so intercept them and re-log them correctly
+func setErrorLogHandler() {
+	// Remove the leading filename + line number
+	// Example: "cointerface/kubecollect/pods.go:123: "
+	errRegex, err := regexp.Compile(`^cointerface/\S+\.go:\d+: `)
+	if err != nil {
+		log.Errorf("Unable to create error log regex: %v", err)
+		return
+	}
+
+	// We intentionally reassign ErrorHandlers so it both
+	// adds our handler and removes the existing handlers
+	runtime.ErrorHandlers = []func(error) {
+		func(err error) {
+			startIdx := 0
+			loc := errRegex.FindStringIndex(err.Error())
+			if loc != nil {
+				startIdx = loc[1]
+			}
+			log.Error(err.Error()[startIdx:])
+		},
+	}
 }
 
 func startServer(sock string) int {
