@@ -11,7 +11,7 @@
 namespace {
 
 string replace_tokens(const string src, const sinsp_container_info *container,
-		infrastructure_state *infra_state, infrastructure_state::uid_t c_uid)
+	const infrastructure_state &infra_state, infrastructure_state::uid_t c_uid)
 {
 	string ret;
 	size_t lpos = 0;
@@ -40,7 +40,7 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 		else
 		{
 			string value;
-			bool found = infra_state->find_tag(c_uid, token, value);
+			bool found = infra_state.find_tag(c_uid, token, value);
 			if (found)
 			{
 				ret += value;
@@ -56,7 +56,7 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 
 bool prometheus_conf::match(const sinsp_threadinfo *tinfo,
 		const sinsp_threadinfo *mtinfo, const sinsp_container_info *container,
-		infrastructure_state *infra_state,
+		const infrastructure_state &infra_state,
 		set<uint16_t> &out_ports, string &out_path) const
 {
 	return base::match(tinfo, mtinfo, container, infra_state,

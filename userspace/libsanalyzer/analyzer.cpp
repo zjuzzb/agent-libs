@@ -5591,7 +5591,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 					}
 					auto is_match =
 						((n_matched < conf->max_containers()) &&
-						conf->match(&(cinfo_it->second), infra_state()));
+						conf->match(&(cinfo_it->second), *infra_state()));
 					it.second.set_serialize_pctl_data(is_match);
 					if (is_match) {
 						g_logger.format(sinsp_logger::SEV_DEBUG,
@@ -6199,7 +6199,7 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 
 	set<uint16_t> ports;
 	string path;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, infra_state(), ports, path)) {
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path)) {
 		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
 		prom_procs.emplace_back(pp);
 

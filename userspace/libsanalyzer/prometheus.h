@@ -33,7 +33,8 @@ public:
 	{}
 
 	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
-		const sinsp_container_info *container, infrastructure_state *is, set<uint16_t> &ports, string &path) const;
+		const sinsp_container_info *container, const infrastructure_state &is,
+		set<uint16_t> &ports, string &path) const;
 
 	bool log_errors() const { return m_log_errors; }
 	void set_log_errors(bool val) { m_log_errors = val; }

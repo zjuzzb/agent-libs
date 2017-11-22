@@ -47,14 +47,14 @@ public:
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
-	bool find_tag(uid_t uid, string tag, string &value)
+	bool find_tag(uid_t uid, string tag, string &value) const
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
 	}
 
 	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
-	bool has(uid_t uid);
+	bool has(uid_t uid) const;
 	unsigned int size();
 
 	std::string get_k8s_cluster_name() const;
@@ -72,7 +72,7 @@ private:
 		google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
 		std::unordered_set<uid_t>& visited);
 
-	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited);
+	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
 						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 						std::unordered_set<uid_t> &visited_groups);

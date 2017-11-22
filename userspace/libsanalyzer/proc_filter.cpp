@@ -169,7 +169,7 @@ filter_condition::param2type(std::string pstr)
 }
 
 bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
-	const sinsp_container_info *container, infrastructure_state *infra_state,
+	const sinsp_container_info *container, const infrastructure_state &infra_state,
 	std::function<bool (const filter_rule &rule)> on_match) const
 {
 	if (!m_enabled)
@@ -280,7 +280,7 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 			case filter_condition::param_type::tag:
 			{
 				string val;
-				bool found = infra_state->find_tag(c_uid, cond.m_param, val);
+				bool found = infra_state.find_tag(c_uid, cond.m_param, val);
 				if(!found || fnmatch(cond.m_pattern.c_str(),
 					val.c_str(), FNM_EXTMATCH))
 				{
