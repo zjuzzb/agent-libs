@@ -8,6 +8,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/rest"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apimachinery/pkg/fields"
 	"cointerface/draiosproto"
@@ -17,6 +18,7 @@ import (
 	"time"
 	"golang.org/x/net/context"
 	"sync"
+	"regexp"
 )
 
 var compatibilityMap map[string]bool
@@ -27,6 +29,8 @@ const RsyncInterval = 10 * time.Minute
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block
 func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_cert string, client_key string) (<-chan draiosproto.CongroupUpdateEvent, error) {
+	setErrorLogHandler()
+
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
 
@@ -277,6 +281,31 @@ func createInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
 		return nil, err
 	}
 	return
+}
+
+// The default logger for client-go errors logs them to stderr in a format
+// the C++ side can't parse, so intercept them and re-log them correctly
+func setErrorLogHandler() {
+	// Remove the leading filename + line number
+	// Example: "cointerface/kubecollect/pods.go:123: "
+	errRegex, err := regexp.Compile(`^cointerface/\S+\.go:\d+: `)
+	if err != nil {
+		log.Errorf("Unable to create error log regex: %v", err)
+		return
+	}
+
+	// We intentionally reassign ErrorHandlers so it both
+	// adds our handler and removes the existing handlers
+	runtime.ErrorHandlers = []func(error) {
+		func(err error) {
+			startIdx := 0
+			loc := errRegex.FindStringIndex(err.Error())
+			if loc != nil {
+				startIdx = loc[1]
+			}
+			log.Error(err.Error()[startIdx:])
+		},
+	}
 }
 
 func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
