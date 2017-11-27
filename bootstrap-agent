@@ -81,7 +81,7 @@ if [ ! -d "$GRPC_DIR" ]; then
 	cd $GRPC_DIR
 	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
 	patch < grpc-1.1.4-Makefile.patch
-	PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR make grpc_cpp_plugin static_cxx static_c
+	PATH=$PROTOBUF_V3_DIR/target/bin:$PATH PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR make grpc_cpp_plugin static_cxx static_c
 fi
 
 POCO_VER=1.7.7
@@ -261,7 +261,7 @@ if [ ! -d "${PYTHON_DIR}" ]; then
 	wget $DEPENDENCIES_URL/Python-$PYTHON_VER.$PYTHON_EXT
 	tar xfz Python-$PYTHON_VER.$PYTHON_EXT
 	cd $PYTHON_DIR
-	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
 	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
 	make
 	make install
@@ -275,7 +275,7 @@ if [ ! -d "${PYTHON26_DIR}" ]; then
 	wget $DEPENDENCIES_URL/Python-$PYTHON26_VER.$PYTHON26_EXT
 	tar xfz Python-$PYTHON26_VER.$PYTHON26_EXT
 	cd $PYTHON26_DIR
-	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist
 	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
 	make
 	make install

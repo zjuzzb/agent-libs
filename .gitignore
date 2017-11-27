@@ -89,3 +89,5 @@ userspace/sdjagent/target
 
 # dep cache
 userspace/cointerface/pkg/
+
+.vscode
