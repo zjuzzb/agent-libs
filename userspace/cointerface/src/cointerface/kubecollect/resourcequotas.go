@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -43,7 +44,7 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 var resourceQuotaInf cache.SharedInformer
 
 func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["resourcequotas"] {
+	if compatibilityMap["resourcequotas"] {
 		for _, obj := range resourceQuotaInf.GetStore().List() {
 			resourceQuota := obj.(*v1.ResourceQuota)
 			if resourceQuota.GetNamespace() == namespaceName {
@@ -55,14 +56,19 @@ func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid,
 	}
 }
 
-func StartResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ResourceQuotas", v1meta.NamespaceAll, fields.Everything())
 	resourceQuotaInf = cache.NewSharedInformer(lw, &v1.ResourceQuota{}, RsyncInterval)
-	go resourceQuotaInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		resourceQuotaInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchResourceQuotas()")
 
 	resourceQuotaInf.AddEventHandler(
