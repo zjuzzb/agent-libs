@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -355,7 +356,7 @@ func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
-	if !CompatibilityMap["pods"] {
+	if !compatibilityMap["pods"] {
 		return 0
 	}
 
@@ -377,7 +378,7 @@ func resolveTargetPort(name string, selector labels.Selector, namespace string) 
 }
 
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
@@ -390,7 +391,7 @@ func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Select
 }
 
 func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName string) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			if pod.Spec.NodeName == nodeName {
@@ -403,7 +404,7 @@ func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName s
 }
 
 func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			if pod.GetNamespace() == namespaceName {
@@ -416,7 +417,7 @@ func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			for _, owner := range pod.GetOwnerReferences() {
@@ -430,15 +431,20 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 	}
 }
 
-func StartPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
 	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, RsyncInterval)
-	go podInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		podInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
+func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchPods()")
 
 	podInf.AddEventHandler(

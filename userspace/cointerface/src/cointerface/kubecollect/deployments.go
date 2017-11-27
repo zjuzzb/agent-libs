@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	"reflect"
 	log "github.com/cihub/seelog"
@@ -77,7 +78,7 @@ func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1
 }
 
 func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {
-	if CompatibilityMap["deployments"] {
+	if compatibilityMap["deployments"] {
 		for _, obj := range deploymentInf.GetStore().List() {
 			deployment := obj.(*v1beta1.Deployment)
 			selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
@@ -91,7 +92,7 @@ func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1bet
 }
 
 func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["deployments"] {
+	if compatibilityMap["deployments"] {
 		for _, obj := range deploymentInf.GetStore().List() {
 			deployment := obj.(*v1beta1.Deployment)
 			if deployment.GetNamespace() == namespaceName {
@@ -103,14 +104,19 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 }
 
-func StartDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Deployments", v1meta.NamespaceAll, fields.Everything())
 	deploymentInf = cache.NewSharedInformer(lw, &v1beta1.Deployment{}, RsyncInterval)
-	go deploymentInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		deploymentInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchDeployments()")
 
 	deploymentInf.AddEventHandler(

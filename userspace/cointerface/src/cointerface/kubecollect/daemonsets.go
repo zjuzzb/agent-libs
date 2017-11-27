@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -48,7 +49,7 @@ func addDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet *v1beta1.D
 }
 
 func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if CompatibilityMap["daemonsets"] {
+	if compatibilityMap["daemonsets"] {
 		for _, obj := range daemonSetInf.GetStore().List() {
 			daemonSet := obj.(*v1beta1.DaemonSet)
 			//log.Debugf("AddNSParents: %v", nsObj.GetName())
@@ -63,7 +64,7 @@ func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 }
 
 func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["daemonsets"] {
+	if compatibilityMap["daemonsets"] {
 		for _, obj := range daemonSetInf.GetStore().List() {
 			daemonSet := obj.(*v1beta1.DaemonSet)
 			if daemonSet.GetNamespace() == namespaceName {
@@ -75,14 +76,19 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 	}
 }
 
-func StartDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
 	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, RsyncInterval)
-	go daemonSetInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		daemonSetInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchDaemonSets()")
 
 	daemonSetInf.AddEventHandler(
