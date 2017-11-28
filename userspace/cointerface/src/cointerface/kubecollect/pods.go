@@ -298,10 +298,16 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 			waitingCount += 1
 		}
 	}
+	for _, c := range pod.Status.InitContainerStatuses {
+		restartCount += c.RestartCount
+		if c.State.Waiting != nil {
+			waitingCount += 1
+		}
+	}
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
-	appendMetricContainerResources(metrics, prefix, pod.Spec.Containers)
+	appendMetricContainerResources(metrics, prefix, pod)
 }
 
 func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
@@ -327,17 +333,41 @@ func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, co
 	}
 }
 
-func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, containers []v1.Container) {
+func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, pod *v1.Pod) {
 	podRequestsCpuCores := float64(0)
 	podLimitsCpuCores := float64(0)
 	podRequestsMemoryBytes := float64(0)
 	podLimitsMemoryBytes := float64(0)
-	for _, c := range containers {
+
+	// https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+	// Pod effective resources are the higher of the sum of all app containers
+	// or the highest init container value for that resource
+	for _, c := range pod.Spec.Containers {
 		podRequestsCpuCores += resourceVal(c.Resources.Requests, v1.ResourceCPU)
 		podLimitsCpuCores += resourceVal(c.Resources.Limits, v1.ResourceCPU)
 		podRequestsMemoryBytes += resourceVal(c.Resources.Requests, v1.ResourceMemory)
 		podLimitsMemoryBytes += resourceVal(c.Resources.Limits, v1.ResourceMemory)
 	}
+
+	for _, c := range pod.Spec.InitContainers {
+		initRequestsCpuCores := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		if initRequestsCpuCores > podRequestsCpuCores {
+			podRequestsCpuCores = initRequestsCpuCores
+		}
+		initLimitsCpuCores := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		if initLimitsCpuCores > podLimitsCpuCores {
+			podLimitsCpuCores = initLimitsCpuCores
+		}
+		initRequestsMemoryBytes := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		if initRequestsMemoryBytes > podRequestsMemoryBytes {
+			podRequestsMemoryBytes = initRequestsMemoryBytes
+		}
+		initLimitsMemoryBytes := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		if initLimitsMemoryBytes > podLimitsMemoryBytes {
+			podLimitsMemoryBytes = initLimitsMemoryBytes
+		}
+	}
+
 	AppendMetric(metrics, prefix+"resourceRequests.cpuCores", podRequestsCpuCores)
 	AppendMetric(metrics, prefix+"resourceLimits.cpuCores", podLimitsCpuCores)
 	AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", podRequestsMemoryBytes)
