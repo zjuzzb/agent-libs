@@ -4,6 +4,7 @@
 #include <dlfcn.h>
 #include <execinfo.h>
 #endif
+#include <cmath>
 
 #include "sinsp.h"
 #include "sinsp_int.h"

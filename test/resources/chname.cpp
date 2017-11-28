@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <string.h>
+#include <functional>
 
 void run()
 {
@@ -44,4 +45,3 @@ int main(int argc, char **argv)
   std::thread changer(binded_changer);
   run();
 }
-
