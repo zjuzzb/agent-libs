@@ -280,7 +280,9 @@ if [ ! -d "${PYTHON26_DIR}" ]; then
 	make
 	make install
 	wget $DEPENDENCIES_URL/get-pip.py
-	./target/bin/python get-pip.py
+	echo "setuptools==36.8.0" > pip-reqs.txt
+	echo "wheel==0.29.0" >> pip-reqs.txt
+	./target/bin/python get-pip.py --no-setuptools --no-wheel -r pip-reqs.txt
 fi
 
 if [ -z $STATSITE_VERSION ]; then
