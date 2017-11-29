@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"strings"
 	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
@@ -11,8 +12,8 @@ import (
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"strings"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var podInf cache.SharedInformer
@@ -25,18 +26,17 @@ func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eve
 	}
 }
 
-// We pass the ContainerStatus along with the pod since the caller
-// already has it, and it saves us a lookup. We use the status name
-// to get the corresponding Container aka the spec
-func newContainerEvent(pod *v1.Pod,
+// Append to both containerEvents and podChildren
+func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
+	podChildren *[]*draiosproto.CongroupUid,
 	cstat *v1.ContainerStatus,
+	podUID types.UID,
 	eventType draiosproto.CongroupEventType,
-	containerEvents *[]*draiosproto.CongroupUpdateEvent,
-	children *[]*draiosproto.CongroupUid) {
+) {
 
 	par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
 		Kind:proto.String("k8s_pod"),
-		Id:proto.String(string(pod.GetUID()))},
+		Id:proto.String(string(podUID))},
 	}
 
 	// Kubernetes reports containers in this format:
@@ -53,6 +53,7 @@ func newContainerEvent(pod *v1.Pod,
 		containerId = containerId[6:]
 	} else {
 		// unknown container type or ContainerID not available yet
+		log.Debugf("Unable to parse ContainerID: %v", containerId)
 		return
 	}
 
@@ -75,10 +76,78 @@ func newContainerEvent(pod *v1.Pod,
 		},
 	})
 
-	*children = append(*children, &draiosproto.CongroupUid {
+	*podChildren = append(*podChildren, &draiosproto.CongroupUid {
 		Kind:proto.String("container"),
 		Id:proto.String(containerId)},
 	)
+}
+
+// Append container events to contEvents slice and
+// the corresponding child links to podChildren
+func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
+	podChildren *[]*draiosproto.CongroupUid,
+	containers []v1.ContainerStatus,
+	oldContainers []v1.ContainerStatus,
+	podUID types.UID,
+	evtType draiosproto.CongroupEventType,
+) {
+	type cState int
+	const (
+		waiting cState = iota
+		running
+		terminated
+	)
+	getState := func(cs v1.ContainerState) cState {
+		if cs.Terminated != nil {
+			return terminated
+		} else if cs.Running != nil {
+			return running
+		}
+		// Waiting is the default if all three are nil
+		return waiting
+	}
+
+	for _, c := range containers {
+		state := getState(c.State)
+		if (state < running) {
+			continue
+		}
+
+		var oldState cState = waiting
+		for _, oldC := range oldContainers {
+			if oldC.Name == c.Name {
+				oldState = getState(oldC.State)
+				break;
+			}
+		}
+
+		newEvent := false
+		var newType draiosproto.CongroupEventType
+		switch state {
+		case running:
+			if oldState < running &&
+				(evtType == draiosproto.CongroupEventType_ADDED ||
+				evtType == draiosproto.CongroupEventType_UPDATED) {
+				newEvent, newType = true, draiosproto.CongroupEventType_ADDED
+			}
+		case terminated:
+			// Always send for REMOVED, and send on UPDATED if we
+			// notice a state transition. This results in sending
+			// two delete events if we catch the UPDATED transition,
+			// but the infra state code can handle double deletes
+			if evtType == draiosproto.CongroupEventType_REMOVED ||
+				(evtType == draiosproto.CongroupEventType_UPDATED &&
+				oldState == running) {
+				newEvent, newType = true, draiosproto.CongroupEventType_REMOVED
+			}
+		default:
+			log.Error("Unexpected state=%v while processing containers", state)
+		}
+
+		if newEvent {
+			newContainerEvent(contEvents, podChildren, &c, podUID, newType)
+		}
+	}
 }
 
 func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
@@ -214,55 +283,17 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	var containerEvents []*draiosproto.CongroupUpdateEvent
 	if setLinks {
 		var oldContainers []v1.ContainerStatus
+		var oldInitContainers []v1.ContainerStatus
 		if oldPod != nil {
-			for _, oldC := range oldPod.Status.ContainerStatuses {
-				if oldC.ContainerID != "" {
-					oldContainers = append(oldContainers, oldC)
-				}
-			}
+			oldContainers = oldPod.Status.ContainerStatuses
+			oldInitContainers = oldPod.Status.InitContainerStatuses
 		}
-
-		// Generate ADDED events for containers
-		// that are in the new pod but not oldPod,
-		for _, c := range pod.Status.ContainerStatuses {
-
-			if c.ContainerID == "" {
-				continue
-			}
-
-			found := false
-			for i := 0; i < len(oldContainers); i++ {
-				if oldContainers[i].ContainerID == c.ContainerID {
-					oldContainers[i] = oldContainers[len(oldContainers)-1]
-					oldContainers = oldContainers[:len(oldContainers)-1]
-					found = true
-					break
-				}
-			}
-			if found {
-				// Never fire UPDATED events for containers
-				// This means we can't do per-container stat updates
-				continue
-			}
-
-			var cEvtType draiosproto.CongroupEventType
-			if eventType == draiosproto.CongroupEventType_UPDATED {
-				cEvtType = draiosproto.CongroupEventType_ADDED
-			} else {
-				cEvtType = eventType
-			}
-			newContainerEvent(pod, &c, cEvtType,
-				&containerEvents, &children)
-		}
-
-		// Any remaining containers must have been deleted
-		for _, removedC := range oldContainers {
-			if removedC.ContainerID != "" {
-				newContainerEvent(pod, &removedC,
-					draiosproto.CongroupEventType_REMOVED,
-					&containerEvents, &children)
-			}
-		}
+		processContainers(&containerEvents, &children,
+			pod.Status.ContainerStatuses,
+			oldContainers, pod.GetUID(), eventType)
+		processContainers(&containerEvents, &children,
+			pod.Status.InitContainerStatuses,
+			oldInitContainers, pod.GetUID(), eventType)
 	}
 
 	var cg []*draiosproto.CongroupUpdateEvent
