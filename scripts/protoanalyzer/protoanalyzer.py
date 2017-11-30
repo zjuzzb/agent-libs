@@ -78,12 +78,12 @@ parser.add_argument("--filter", type=str, required=False, help="Native functions
 parser.add_argument("path", type=str, help="File to parse")
 args = parser.parse_args()
 
-def walk_protos(path, ext="dam"):
+def walk_protos(path, filter_f, ext="dam"):
   for root, dirs, files in os.walk(path, topdown=False):
     for name in files:
       if name.endswith(ext):
         fullpath = os.path.join(root, name)
-        analyze_proto(fullpath)
+        analyze_proto(fullpath, filter_f)
 
 kubernetes_delegated_nodes = set()
 running_containers = set()
@@ -92,6 +92,7 @@ containers_by_id = {}
 deployments = set()
 k8s_nodes = set()
 nodes = set()
+k8s_pods = set()
 
 def kubernetes_check(m):
   if "kubernetes" in m:
@@ -100,6 +101,7 @@ def kubernetes_check(m):
       for c in pod["container_ids"]:
         container_id = c[9:12+9]
         kubernetes_containers.add(container_id)
+      k8s_pods.add(pod["common"]["uid"])
     for deployment in m["kubernetes"]["deployments"]:
       deployments.add(deployment["common"]["name"])
     for node in m["kubernetes"]["nodes"]:
@@ -113,27 +115,56 @@ def kubernetes_check(m):
 def print_kubernetes_summary():
   print "Delegated: %s" % str(kubernetes_delegated_nodes)
   print "matching containers=%d" % len(running_containers.intersection(kubernetes_containers))
-  for cid in running_containers.intersection(kubernetes_containers):
-    print "name=%s" % containers_by_id[cid]
+  #for cid in running_containers.intersection(kubernetes_containers):
+  #  print "name=%s" % containers_by_id[cid]
+  print "running_containers=%d" % len(running_containers)
+  print "k8s_containers=%d" % len(kubernetes_containers)
+  print "k8s_pods=%d" % len(k8s_pods)
   print "only on k8s containers=%d" % len(kubernetes_containers.difference(running_containers))
   print "only running containers=%d" % len(running_containers.difference(kubernetes_containers))
-  for cid in running_containers.difference(kubernetes_containers):
-    print "name=%s" % containers_by_id[cid]
+  #for cid in running_containers.difference(kubernetes_containers):
+  #  print "name=%s" % containers_by_id[cid]
   print "deployments=%s" % str(deployments) 
   print "k8s_nodes=%d\n%s" % (len(k8s_nodes), str(k8s_nodes))
   print "nodes=%d\n%s" % (len(k8s_nodes), str(nodes))
 
+class MesosCheck(object):
+  def __init__(self):
+    self.masterSamplesWithMesos = 0
+    self.mesosMasters = set()
+    self.containers = set()
+    self.mesosTasks = set()
+    self.masterSamples = 0
+  def __call__(self, m):
+    if "mesos" in m:
+      mesos = m["mesos"]
+      for framework in mesos["frameworks"]:
+        for task in framework["tasks"]:
+          self.mesosTasks.add(task["common"]["uid"])
+      self.mesosMasters.add(m["machine_id"])
+      self.masterSamplesWithMesos += 1
+    if "containers" in m:
+      for c in m["containers"]:
+        self.containers.add(c["id"])
+    if m["machine_id"] in self.mesosMasters:
+      self.masterSamples += 1
+
+  def summary(self):
+    print "masters=%s" % str(self.mesosMasters)
+    print "masterSamples=%d masterSamplesWithMesos=%d" % (self.masterSamples, self.masterSamplesWithMesos )
+    print "containers=%d" % len(self.containers)
+    print "mesos_tasks=%d" % len(self.mesosTasks)
+
 def create_filter():
   if args.filter:
-    return globals()[args.filter]
+    return globals()[args.filter]()
   elif args.jq_filter:
     jq_filter = jq(args.jq_filter)
     return lambda m: jq_filter.transform(m, multiple_output=True)
   else:
     return lambda m: m
 
-def analyze_proto(path):
-  filter_f = create_filter()
+def analyze_proto(path, filter_f):
   if path.endswith("dam") or args.binary:
     with open(path, "rb") as f:
       f.seek(2)
@@ -169,11 +200,13 @@ else:
 # text files
 #
 def main():
+  filter_f = create_filter()
   if os.path.isdir(path):
-    walk_protos(path)
+    walk_protos(path, filter_f)
   else:
-    analyze_proto(path)
-  print_kubernetes_summary()
+    analyze_proto(path, filter_f)
+  filter_f.summary()
+  
 if __name__ == "__main__":
   try:
     main()

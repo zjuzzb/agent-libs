@@ -8,5 +8,5 @@ fi
 mkdir -p $CUSTOMERID
 for i in `seq 12`; do 
   echo "Connecting to collector-$i.."
-  scp -r production-collector-$i:/tmp/$CUSTOMERID/ $CUSTOMERID/$i
+  scp -C -r production-collector-$i:/tmp/$CUSTOMERID/ $CUSTOMERID/$i
 done
