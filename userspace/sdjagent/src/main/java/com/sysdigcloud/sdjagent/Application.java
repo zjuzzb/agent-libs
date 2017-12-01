@@ -250,7 +250,7 @@ public class Application {
             final String originalClassName = vm.getName();
             String matchedConfig = "none";
             for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
-                if (originalClassName.contains(config.getValue().getPattern())) {
+                if (originalClassName.toLowerCase().contains(config.getValue().getPattern().toLowerCase())) {
                     vm.setName(config.getKey());
                     matchedConfig = config.getKey();
                     vm.addQueries(config.getValue().getQueries());
