@@ -662,6 +662,7 @@ VISIBILITY_PRIVATE
 	//
 	unordered_map<string, analyzer_container_state> m_containers;
 	run_on_interval m_containers_cleaner_interval = {60*ONE_SECOND_IN_NS};
+	run_on_interval m_containers_check_interval = {60*ONE_SECOND_IN_NS};
 
 	vector<sinsp_threadinfo*> m_threads_to_remove;
 

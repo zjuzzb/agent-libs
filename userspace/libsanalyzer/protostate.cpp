@@ -74,7 +74,10 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 			status_code_entry = &(m_client_status_codes[pp->m_status_code]);
 		}
 		status_code_entry->m_ncalls += 1;
-		status_code_entry->set_percentiles(m_percentiles);
+
+		// we don't add any samples for status codes, hence no need for
+		// percentile store
+		//status_code_entry->set_percentiles(m_percentiles);
 	}
 }
 
@@ -198,6 +201,14 @@ void sinsp_protostate::set_percentiles(const std::set<double>& pctls)
 	m_mongodb.set_percentiles(pctls);
 }
 
+void sinsp_protostate::set_serialize_pctl_data(bool val)
+{
+	m_http.set_serialize_pctl_data(val);
+	m_mysql.set_serialize_pctl_data(val);
+	m_postgres.set_serialize_pctl_data(val);
+	m_mongodb.set_serialize_pctl_data(val);
+}
+
 void sinsp_protostate::add(sinsp_protostate* other)
 {
 	m_http.add(&(other->m_http));
@@ -234,13 +245,10 @@ void sinsp_http_state::url_table_to_protobuf(draiosproto::http_info* protobuf_ms
 			}
 
 			ud->set_url(uit->first);
-			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->mutable_counters()->set_time_tot(uit->second.get_time_tot() * sampling_ratio);
-			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
-			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
-			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
-			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
-			percentile_to_protobuf(ud->mutable_counters(), uit->second.get_percentiles());
+			uit->second.to_protobuf(ud->mutable_counters(), sampling_ratio,
+					[&] (const sinsp_request_details::percentile_ptr_t pct) {
+				percentile_to_protobuf(ud->mutable_counters(), pct);
+			});
 		}
 	}
 }
@@ -314,13 +322,10 @@ void sql_state::query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
 			}
 
 			ud->set_name(uit->first);
-			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->mutable_counters()->set_time_tot(uit->second.get_time_tot() * sampling_ratio);
-			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
-			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
-			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
-			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
-			percentile_to_protobuf(ud->mutable_counters(), uit->second.get_percentiles());
+			uit->second.to_protobuf(ud->mutable_counters(), sampling_ratio,
+					[&] (const sinsp_request_details::percentile_ptr_t pct) {
+				percentile_to_protobuf(ud->mutable_counters(), pct);
+			});
 		}
 	}
 }
@@ -350,13 +355,10 @@ void sql_state::query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg
 			}
 
 			ud->set_type((draiosproto::sql_statement_type) uit->first);
-			ud->mutable_counters()->set_ncalls(uit->second.m_ncalls * sampling_ratio);
-			ud->mutable_counters()->set_time_tot(uit->second.get_time_tot() * sampling_ratio);
-			ud->mutable_counters()->set_time_max(uit->second.m_time_max);
-			ud->mutable_counters()->set_bytes_in(uit->second.m_bytes_in * sampling_ratio);
-			ud->mutable_counters()->set_bytes_out(uit->second.m_bytes_out * sampling_ratio);
-			ud->mutable_counters()->set_nerrors(uit->second.m_nerrors * sampling_ratio);
-			percentile_to_protobuf(ud->mutable_counters(), uit->second.get_percentiles());
+			uit->second.to_protobuf(ud->mutable_counters(), sampling_ratio,
+					[&] (const sinsp_request_details::percentile_ptr_t pct) {
+				percentile_to_protobuf(ud->mutable_counters(), pct);
+			});
 		}
 	}
 }
@@ -486,7 +488,11 @@ void mongodb_state::collections_to_protobuf(unordered_map<string, sinsp_query_de
 		{
 			auto cd = get_cd();
 			cd->set_name(it->first);
-			it->second.to_protobuf(cd->mutable_counters(), sampling_ratio);
+			it->second.to_protobuf(cd->mutable_counters(), sampling_ratio,
+					[&] (const sinsp_request_details::percentile_ptr_t pct) {
+				percentile_to_protobuf(cd->mutable_counters(), pct);
+			});
+
 			j += 1;
 		}
 	}
@@ -503,7 +509,11 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 		{
 			ud = protobuf_msg->add_servers_ops();
 			ud->set_op((draiosproto::mongodb_op_type)it->first);
-			it->second.to_protobuf(ud->mutable_counters(), sampling_ratio);
+			it->second.to_protobuf(ud->mutable_counters(), sampling_ratio,
+					[&] (const sinsp_request_details::percentile_ptr_t pct) {
+				percentile_to_protobuf(ud->mutable_counters(), pct);
+			});
+
 		}
 	}
 
@@ -514,18 +524,24 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 		{
 			ud = protobuf_msg->add_client_ops();
 			ud->set_op((draiosproto::mongodb_op_type) it->first);
-			it->second.to_protobuf(ud->mutable_counters(), sampling_ratio);
+			it->second.to_protobuf(ud->mutable_counters(), sampling_ratio,
+					[&] (const sinsp_request_details::percentile_ptr_t pct) {
+				percentile_to_protobuf(ud->mutable_counters(), pct);
+			});
+
 		}
 	}
 
-	collections_to_protobuf(m_server_collections,[protobuf_msg]()
-	{
-		return protobuf_msg->add_server_collections();
-	}, sampling_ratio, limit);
-	collections_to_protobuf(m_client_collections,[protobuf_msg]()
-	{
-		return protobuf_msg->add_client_collections();
-	}, sampling_ratio, limit);
+	collections_to_protobuf(m_server_collections,
+		[protobuf_msg]() {
+			return protobuf_msg->add_server_collections();
+		},
+		sampling_ratio, limit);
+	collections_to_protobuf(m_client_collections,
+		[protobuf_msg]() {
+			return protobuf_msg->add_client_collections();
+		},
+		sampling_ratio, limit);
 }
 
 #endif // HAS_ANALYZER

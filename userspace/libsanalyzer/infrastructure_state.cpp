@@ -225,7 +225,7 @@ unsigned int infrastructure_state::size()
 	return m_state.size();
 }
 
-bool infrastructure_state::has(uid_t uid)
+bool infrastructure_state::has(uid_t uid) const
 {
 	return m_state.find(uid) != m_state.end();
 }
@@ -242,14 +242,14 @@ std::unique_ptr<draiosproto::container_group> infrastructure_state::get(uid_t ui
 	return res;
 }
 
-bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited)
+bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const
 {
 	if (!has(uid) || (visited.find(uid) != visited.end())) {
 		return false;
 	}
 	visited.emplace(uid);
 
-	auto *cg = m_state[uid].get();
+	auto *cg = m_state.find(uid)->second.get();
 	
 	if (!cg) {	// Shouldn't happen
 		return false;
