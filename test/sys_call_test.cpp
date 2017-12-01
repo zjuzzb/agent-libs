@@ -1997,3 +1997,39 @@ TEST_F(sys_call_test, DISABLED_get_n_tracepoint_hit_counts)
 	EXPECT_EQ(2, callnum);
 	EXPECT_TRUE(started);
 }
+
+TEST_F(sys_call_test, setns_test)
+{
+	int callnum = 0;
+	int fd;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) &&
+				( evt->get_type() == PPME_SYSCALL_SETNS_E ||
+					evt->get_type() == PPME_SYSCALL_SETNS_X );
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		fd = open("/proc/self/ns/net", O_RDONLY);
+		ASSERT_NE(0, fd);
+		ASSERT_EQ(0, setns(fd, CLONE_NEWNET));
+		ASSERT_EQ(0, close(fd));
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		switch(type)
+		{
+			case PPME_SYSCALL_SETNS_E:
+				EXPECT_EQ("<f>/proc/self/ns/net", e->get_param_value_str("fd"));
+				break;
+			case PPME_SYSCALL_SETNS_X:
+				EXPECT_EQ("0", e->get_param_value_str("res"));
+				break;
+		}
+		++callnum;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
