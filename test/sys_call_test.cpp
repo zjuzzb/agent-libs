@@ -2033,3 +2033,41 @@ TEST_F(sys_call_test, setns_test)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(2, callnum);
 }
+
+TEST_F(sys_call_test, unshare_)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		auto tinfo = evt->get_thread_info(true);
+		return tinfo->get_comm() == "tests" && ( evt->get_type() == PPME_SYSCALL_UNSHARE_E ||
+					evt->get_type() == PPME_SYSCALL_UNSHARE_X );
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto child = fork();
+		if(child == 0)
+		{
+			unshare(CLONE_NEWUTS);
+			exit(0);
+		}
+		waitpid(child, NULL, 0);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+		switch(type)
+		{
+			case PPME_SYSCALL_UNSHARE_E:
+				EXPECT_EQ("CLONE_NEWUTS", e->get_param_value_str("flags"));
+				break;
+			case PPME_SYSCALL_UNSHARE_X:
+				EXPECT_EQ("0", e->get_param_value_str("res"));
+				break;
+		}
+		++callnum;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
