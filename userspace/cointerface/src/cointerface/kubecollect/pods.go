@@ -141,7 +141,7 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 				newEvent, newType = true, draiosproto.CongroupEventType_REMOVED
 			}
 		default:
-			log.Error("Unexpected state=%v while processing containers", state)
+			log.Errorf("Unexpected state=%v while processing containers", state)
 		}
 
 		if newEvent {
@@ -161,23 +161,14 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
 		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
-	if in && lhs.Status.HostIP != rhs.Status.HostIP {
-		in = false
-	}
 	if in && lhs.Status.PodIP != rhs.Status.PodIP {
 		in = false
 	}
 
 	if in {
-		lRestartCount := uint32(0)
-		for _, c := range lhs.Status.ContainerStatuses {
-			lRestartCount += uint32(c.RestartCount)
-		}
-		rRestartCount := uint32(0)
-		for _, c := range rhs.Status.ContainerStatuses {
-			rRestartCount += uint32(c.RestartCount)
-		}
-		if lRestartCount != rRestartCount {
+		lRestarts, lWaiting := statusCounts(lhs.Status.ContainerStatuses)
+		rRestarts, rWaiting := statusCounts(rhs.Status.ContainerStatuses)
+		if (lRestarts != rRestarts) || (lWaiting != rWaiting) {
 			in = false
 		}
 	}
@@ -208,45 +199,59 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	}
 
 	if out {
-		lContainerCount := 0
-		rContainerCount := 0
-
-		for _, c := range lhs.Status.ContainerStatuses {
-			if c.ContainerID != "" {
-				lContainerCount++
+		type cState int
+		const (
+			waiting cState = iota
+			running
+			terminated
+		)
+		getState := func(cs v1.ContainerState) cState {
+			if cs.Terminated != nil {
+				return terminated
+			} else if cs.Running != nil {
+				return running
 			}
+			// Waiting is the default if all three are nil
+			return waiting
 		}
+
+		newState := make(map[string]cState)
+		oldState := make(map[string]cState)
+
+		// rhs is the new pod
 		for _, c := range rhs.Status.ContainerStatuses {
-			if c.ContainerID != "" {
-				rContainerCount++
-			}
+			newState[c.Name] = getState(c.State)
+		}
+		for _, c := range rhs.Status.InitContainerStatuses {
+			newState[c.Name] = getState(c.State)
+		}
+		// lhs is the old pod
+		for _, c := range lhs.Status.ContainerStatuses {
+			oldState[c.Name] = getState(c.State)
+		}
+		for _, c := range lhs.Status.InitContainerStatuses {
+			oldState[c.Name] = getState(c.State)
 		}
 
-		if lContainerCount != rContainerCount {
-			out = false
-		} else if out {
-			count := 0
-			for _, lC := range lhs.Status.ContainerStatuses {
-				if lC.ContainerID == "" {
-					continue
-				}
-				for _, rC := range rhs.Status.ContainerStatuses {
-					if rC.ContainerID == "" {
-						continue
-					}
-					if lC.ContainerID == rC.ContainerID {
-						count++
-						break
-					}
-				}
-			}
-			if count != len(lhs.Status.ContainerStatuses) {
+		for k, v := range newState {
+			val, ok := oldState[k]
+			if !ok || val != v {
 				out = false
 			}
 		}
 	}
 
 	return in, out
+}
+
+func statusCounts(containers []v1.ContainerStatus) (restarts, waiting int32) {
+	for _, c := range containers {
+		restarts += c.RestartCount
+		if c.State.Waiting != nil {
+			waiting += 1
+		}
+	}
+	return
 }
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
@@ -257,9 +262,6 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	inttags := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 
 	var ips []string
-	/*if pod.Status.HostIP != "" {
-		ips = append(ips, pod.Status.HostIP)
-	}*/
 	if pod.Status.PodIP != "" {
 		ips = append(ips, pod.Status.PodIP)
 	}
@@ -321,20 +323,11 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 
 	// Restart count is a legacy metric attributed to pods
 	// instead of the individual containers, so report it here
-	restartCount := int32(0)
-	waitingCount := int32(0)
-	for _, c := range pod.Status.ContainerStatuses {
-		restartCount += c.RestartCount
-		if c.State.Waiting != nil {
-			waitingCount += 1
-		}
-	}
-	for _, c := range pod.Status.InitContainerStatuses {
-		restartCount += c.RestartCount
-		if c.State.Waiting != nil {
-			waitingCount += 1
-		}
-	}
+	restartCount, waitingCount := statusCounts(pod.Status.ContainerStatuses)
+	initRestarts, initWaiting := statusCounts(pod.Status.InitContainerStatuses)
+	restartCount += initRestarts
+	waitingCount += initWaiting
+
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
