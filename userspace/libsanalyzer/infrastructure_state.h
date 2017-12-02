@@ -25,7 +25,9 @@ public:
 	void init(sinsp *inspector, const std::string& machine_id);
 	bool inited();
 
-	void subscribe_to_k8s(const string& url, uint64_t timeout_s);
+	void subscribe_to_k8s(string url, string ca_cert,
+			      string client_cert, string client_key,
+			      uint64_t timeout_s);
 
 	bool subscribed();
 
@@ -46,7 +48,7 @@ public:
 
 	void load_single_event(const draiosproto::congroup_update_event &evt, bool overwrite = false);
 
-	bool find_tag(const uid_t uid, const string tag, string &value)
+	bool find_tag(uid_t uid, string tag, string &value) const
 	{
 		std::unordered_set<uid_t> visited;
 		return find_tag(uid, tag, value, visited);
@@ -60,7 +62,7 @@ public:
 	static bool is_mesos_label(const std::string &lbl);
 
 	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
-	bool has(uid_t uid);
+	bool has(uid_t uid) const;
 	unsigned int size();
 
 	// These return true if the new entry has been added, false if it already existed
@@ -83,7 +85,7 @@ private:
 		google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
 		std::unordered_set<uid_t>& visited);
 
-	bool find_tag(const uid_t uid, const string tag, string &value, std::unordered_set<uid_t> &visited);
+	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
 						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
 						std::unordered_set<uid_t> &visited_groups);
@@ -117,6 +119,9 @@ private:
 	coclient m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;
 	string m_k8s_url;
+	string m_k8s_ca_cert;
+	string m_k8s_client_cert;
+	string m_k8s_client_key;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
 	mutable std::string m_k8s_cached_cluster_id;

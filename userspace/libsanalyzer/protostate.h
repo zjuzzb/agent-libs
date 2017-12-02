@@ -140,7 +140,9 @@ public:
 	{
 	}
 
-	inline void to_protobuf(draiosproto::counter_proto_entry* counters, uint32_t sampling_ratio) const
+	inline void to_protobuf(draiosproto::counter_proto_entry* counters,
+			uint32_t sampling_ratio,
+			std::function<void (const percentile_ptr_t)> pctl_to_protobuf) const
 	{
 		counters->set_ncalls(m_ncalls * sampling_ratio);
 		counters->set_time_tot(m_time_tot * sampling_ratio);
@@ -148,16 +150,7 @@ public:
 		counters->set_bytes_in(m_bytes_in * sampling_ratio);
 		counters->set_bytes_out(m_bytes_out * sampling_ratio);
 		counters->set_nerrors(m_nerrors * sampling_ratio);
-		// percentiles
-		typedef draiosproto::counter_proto_entry CTB;
-		typedef draiosproto::counter_percentile CP;
-		typedef draiosproto::counter_percentile_data CPD;
-		if(m_percentile && m_percentile->sample_count())
-		{
-			m_percentile->to_protobuf<CTB, CP, CPD>(counters,
-			                                        &CTB::add_percentile,
-			                                        &CTB::mutable_percentile_data);
-		}
+		pctl_to_protobuf(m_percentile);
 	}
 
 	void add_time(uint64_t time_delta)
@@ -418,6 +411,15 @@ public:
 class protocol_state
 {
 public:
+	protocol_state()
+		: m_serialize_pctl_data(false)
+	{}
+
+	void set_serialize_pctl_data(bool val)
+	{
+		m_serialize_pctl_data = val;
+	}
+
 	void set_percentiles(const std::set<double>& pctls)
 	{
 		m_percentiles = pctls;
@@ -437,12 +439,14 @@ public:
 		{
 			pct->to_protobuf<CTB, CP, CPD>(protoent,
 			                               &CTB::add_percentile,
+			                               (!m_serialize_pctl_data) ? nullptr :
 			                               &CTB::mutable_percentile_data);
 		}
 	}
 
 protected:
 	std::set<double> m_percentiles;
+	bool m_serialize_pctl_data;
 };
 
 class sql_state : public protocol_state
@@ -582,6 +586,7 @@ public:
 
 	void add(sinsp_protostate* other);
 	void set_percentiles(const std::set<double>& pctls);
+	void set_serialize_pctl_data(bool val);
 	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
 
 	sinsp_http_state m_http;

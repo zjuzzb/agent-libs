@@ -569,6 +569,17 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 
 	add_percentiles();
+	if (! m_percentiles.empty()) {
+		m_group_pctl_conf.reset(new proc_filter::group_pctl_conf());
+		m_group_pctl_conf->set_enabled(m_config->get_scalar<bool>("group_percentiles", "enabled",
+			proc_filter::group_pctl_conf::enabled_default()));
+		m_group_pctl_conf->set_check_interval(m_config->get_scalar<uint32_t>("group_percentiles", "check_interval",
+			proc_filter::group_pctl_conf::check_interval_default()));
+		m_group_pctl_conf->set_max_containers(m_config->get_scalar<uint32_t>("group_percentiles", "max_containers",
+			proc_filter::group_pctl_conf::max_containers_default()));
+		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
+	}
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -689,15 +700,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}), m_app_checks.end());
 
 	// Prometheus
-	m_prom_conf.m_enabled = m_config->get_scalar<bool>("prometheus", "enabled", false);
-    m_prom_conf.m_log_errors = m_config->get_scalar<bool>("prometheus", "log_errors", false);
-    m_prom_conf.m_interval = m_config->get_scalar<int>("prometheus", "interval", -1);
-	m_prom_conf.m_k8s_get_config = m_config->get_scalar<bool>("prometheus", "get_kubernetes_config", true);
-    m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
-    m_prom_conf.m_max_metrics_per_proc = m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1);
-    m_prom_conf.m_max_tags_per_metric = m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1);
-	// m_prom_conf.m_port_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::port_filter_rule>>("prometheus", "port_filter");
-	m_prom_conf.m_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::filter_rule>>("prometheus", "process_filter");
+	m_prom_conf.set_enabled(m_config->get_scalar<bool>("prometheus", "enabled", false));
+	m_prom_conf.set_log_errors(m_config->get_scalar<bool>("prometheus", "log_errors", false));
+	m_prom_conf.set_interval(m_config->get_scalar<int>("prometheus", "interval", -1));
+	m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
+	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
+	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
+	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
@@ -1010,6 +1019,13 @@ void dragent_configuration::print_configuration()
 		for(const auto& p : m_percentiles) { os << p << ','; }
 		os.seekp(-1, os.cur); os << ']';
 		g_log->information("Percentiles: " + os.str());
+		g_log->information("Group Percentiles: " + bool_as_text(m_group_pctl_conf->enabled()));
+		if (m_group_pctl_conf->enabled()) {
+			g_log->information("  Check interval: " + NumberFormatter::format(m_group_pctl_conf->check_interval()));
+			g_log->information("  Max containers: " + NumberFormatter::format(m_group_pctl_conf->max_containers()));
+		}
+	} else {
+		g_log->information("Percentiles: " + bool_as_text(false));
 	}
 	if(m_ignored_percentiles.size())
 	{
@@ -1044,6 +1060,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
+	g_log->information("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));

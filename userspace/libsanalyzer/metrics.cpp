@@ -36,16 +36,45 @@ std::shared_ptr<percentile> init_percentile(
 sinsp_counter_percentile::sinsp_counter_percentile(
 	const std::set<double>* percentiles,
 	const sinsp_counter_percentile *shared)
+	: m_serialize_pctl_data(false)
 {
 	m_percentile = init_percentile(percentiles, shared ? shared->m_percentile : nullptr);
+}
+
+void sinsp_counter_percentile::set_percentiles(
+	const std::set<double>& percentiles,
+	const sinsp_counter_percentile *shared)
+{
+	m_percentile = init_percentile(&percentiles, shared ? shared->m_percentile : nullptr);
+}
+
+void sinsp_counter_percentile::set_serialize_pctl_data(bool val)
+{
+	m_serialize_pctl_data = val;
 }
 
 sinsp_counter_percentile_in_out::sinsp_counter_percentile_in_out(
 	const std::set<double>* percentiles,
 	const sinsp_counter_percentile_in_out *shared)
+	: m_serialize_pctl_data(false)
 {
 	m_percentile_in  = init_percentile(percentiles, shared ? shared->m_percentile_in  : nullptr);
 	m_percentile_out = init_percentile(percentiles, shared ? shared->m_percentile_out : nullptr);
+}
+
+void sinsp_counter_percentile_in_out::set_percentiles(
+	const std::set<double>& percentiles,
+	const sinsp_counter_percentile_in_out *shared)
+{
+	m_percentile_in  = init_percentile(&percentiles,
+	                                   shared ? shared->m_percentile_in  : nullptr);
+	m_percentile_out = init_percentile(&percentiles,
+	                                   shared ? shared->m_percentile_out : nullptr);
+}
+
+void sinsp_counter_percentile_in_out::set_serialize_pctl_data(bool val)
+{
+	m_serialize_pctl_data = val;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -83,13 +112,6 @@ sinsp_counter_time& sinsp_counter_time::operator=(sinsp_counter_time &other)
 		}
 	}
 	return *this;
-}
-
-void sinsp_counter_time::set_percentiles(
-	const std::set<double>& percentiles,
-	const sinsp_counter_percentile *shared)
-{
-	m_percentile = init_percentile(&percentiles, shared ? shared->m_percentile : nullptr);
 }
 
 void sinsp_counter_time::add(uint32_t cnt_delta, uint64_t time_delta)
@@ -195,6 +217,7 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 	{
 		m_percentile->to_protobuf<CTB, CP, CPD>(protobuf_msg,
 		                                        &CTB::add_percentile,
+		                                        (!m_serialize_pctl_data) ? nullptr :
 		                                        &CTB::mutable_percentile_data);
 	}
 }
@@ -249,16 +272,6 @@ sinsp_counter_time_bidirectional& sinsp_counter_time_bidirectional::operator=(si
 		}
 	}
 	return *this;
-}
-
-void sinsp_counter_time_bidirectional::set_percentiles(
-	const std::set<double>& percentiles,
-	const sinsp_counter_percentile_in_out *shared)
-{
-	m_percentile_in  = init_percentile(&percentiles,
-	                                   shared ? shared->m_percentile_in  : nullptr);
-	m_percentile_out = init_percentile(&percentiles,
-	                                   shared ? shared->m_percentile_out : nullptr);
 }
 
 void sinsp_counter_time_bidirectional::add_in(uint32_t cnt_delta, uint64_t time_delta)
@@ -350,12 +363,14 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	{
 		m_percentile_in->to_protobuf<CTB, CP, CPD>(protobuf_msg,
 		                                           &CTB::add_percentile_in,
+		                                           (!m_serialize_pctl_data) ? nullptr :
 		                                           &CTB::mutable_percentile_in_data);
 	}
 	if(m_percentile_out && m_percentile_out->sample_count())
 	{
 		m_percentile_out->to_protobuf<CTB, CP, CPD>(protobuf_msg,
 		                                            &CTB::add_percentile_out,
+		                                            (!m_serialize_pctl_data) ? nullptr :
 		                                            &CTB::mutable_percentile_out_data);
 	}
 }
@@ -572,16 +587,6 @@ void sinsp_counter_time_bytes::clear()
 	}
 }
 
-void sinsp_counter_time_bytes::set_percentiles(
-	const std::set<double>& percentiles,
-	const sinsp_counter_percentile_in_out *shared)
-{
-	m_percentile_in  = init_percentile(&percentiles,
-	                                   shared ? shared->m_percentile_in  : nullptr);
-	m_percentile_out = init_percentile(&percentiles,
-	                                   shared ? shared->m_percentile_out : nullptr);
-}
-
 void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
 										   uint64_t tot_relevant_time_ns, uint32_t sampling_ratio)
 {
@@ -622,12 +627,14 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 	{
 		m_percentile_in->to_protobuf<CTB, CP, CPD>(protobuf_msg,
 		                                           &CTB::add_percentile_in,
+		                                           (!m_serialize_pctl_data) ? nullptr :
 		                                           &CTB::mutable_percentile_in_data);
 	}
 	if(m_percentile_out && m_percentile_out->sample_count())
 	{
 		m_percentile_out->to_protobuf<CTB, CP, CPD>(protobuf_msg,
 		                                            &CTB::add_percentile_out,
+		                                            (!m_serialize_pctl_data) ? nullptr :
 		                                            &CTB::mutable_percentile_out_data);
 	}
 }
@@ -771,6 +778,14 @@ void sinsp_counters::set_percentiles(const std::set<double>& percentiles,
 	m_tot_io_file.set_percentiles(percentiles, shared ? &(shared->m_tot_io_file) : nullptr);
 	m_tot_io_net.set_percentiles(percentiles, shared ? &(shared->m_tot_io_net) : nullptr);
 	m_percentiles = percentiles;
+}
+
+void sinsp_counters::set_serialize_pctl_data(bool val)
+{
+	m_io_file.set_serialize_pctl_data(val);
+	m_io_net.set_serialize_pctl_data(val);
+	m_tot_io_file.set_serialize_pctl_data(val);
+	m_tot_io_net.set_serialize_pctl_data(val);
 }
 
 void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uint32_t sampling_ratio)
@@ -918,6 +933,11 @@ void sinsp_transaction_counters::set_percentiles(
 {
 	m_counter.set_percentiles(percentiles, shared ? &(shared->m_counter) : nullptr);
 	m_has_percentiles = (percentiles.size() != 0);
+}
+
+void sinsp_transaction_counters::set_serialize_pctl_data(bool val)
+{
+	m_counter.set_serialize_pctl_data(val);
 }
 
 void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, 
@@ -1219,4 +1239,8 @@ void sinsp_host_metrics::set_percentiles(const std::set<double>& percentiles)
 	m_metrics.set_percentiles(percentiles);
 }
 
+void sinsp_host_metrics::set_serialize_pctl_data(bool val)
+{
+	m_metrics.set_serialize_pctl_data(val);
+}
 #endif // HAS_ANALYZER

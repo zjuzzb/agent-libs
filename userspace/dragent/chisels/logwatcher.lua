@@ -74,7 +74,8 @@ function on_init()
 
 	if metric_name == nil then
 		sanitized_term = string.gsub(term, "[^A-Za-z0-9]", "_")
-		metric_name = "logwatcher." .. filespattern .. "." .. sanitized_term
+		sanitized_filespattern = string.gsub(filespattern, "[^A-Za-z0-9]", "_")
+		metric_name = "logwatcher." .. sanitized_filespattern .. "." .. sanitized_term
 	end
 
 	local filter = "fd.type=" .. fdtype .. " and evt.is_io_write=true and fd.name contains " .. filespattern .. " and evt.buffer contains '" .. term .. "'"

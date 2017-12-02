@@ -136,14 +136,19 @@ bool infrastructure_state::inited()
 	return m_inspector != nullptr;
 }
 
-void infrastructure_state::subscribe_to_k8s(const string& url, uint64_t timeout_s)
+void infrastructure_state::subscribe_to_k8s(string url, string ca_cert,
+					    string client_cert, string client_key,
+					    uint64_t timeout_s)
 {
 	ASSERT(!m_k8s_connected);
 
 	glogf(sinsp_logger::SEV_INFO,
 	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, reconnect interval: %d sec",
 	      url.c_str(), timeout_s);
-	m_k8s_url = url;
+	m_k8s_url = std::move(url);
+	m_k8s_ca_cert = std::move(ca_cert);
+	m_k8s_client_cert = std::move(client_cert);
+	m_k8s_client_key = std::move(client_key);
 	m_k8s_connect_interval.interval(timeout_s * ONE_SECOND_IN_NS);
 
 	connect_to_k8s();
@@ -166,6 +171,9 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			      "infra_state: Connect to k8s orchestrator events.");
 			sdc_internal::orchestrator_events_stream_command cmd;
 			cmd.set_url(m_k8s_url);
+			cmd.set_ca_cert(m_k8s_ca_cert);
+			cmd.set_client_cert(m_k8s_client_cert);
+			cmd.set_client_key(m_k8s_client_key);
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
@@ -225,7 +233,7 @@ unsigned int infrastructure_state::size()
 	return m_state.size();
 }
 
-bool infrastructure_state::has(uid_t uid)
+bool infrastructure_state::has(uid_t uid) const
 {
 	return m_state.find(uid) != m_state.end();
 }
@@ -278,15 +286,14 @@ bool infrastructure_state::add_parent_link(uid_t key, uid_t pkey)
 	return true;
 }
 
-
-bool infrastructure_state::find_tag(const uid_t uid, const string tag, string &value, std::unordered_set<uid_t> &visited)
+bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const
 {
 	if (!has(uid) || (visited.find(uid) != visited.end())) {
 		return false;
 	}
 	visited.emplace(uid);
 
-	auto *cg = m_state[uid].get();
+	auto *cg = m_state.find(uid)->second.get();
 	
 	if (!cg) {	// Shouldn't happen
 		return false;

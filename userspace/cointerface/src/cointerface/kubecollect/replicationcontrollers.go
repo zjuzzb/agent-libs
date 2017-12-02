@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -49,7 +50,7 @@ func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 }
 
 func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if CompatibilityMap["replicationcontrollers"] {
+	if compatibilityMap["replicationcontrollers"] {
 		for _, obj := range replicationControllerInf.GetStore().List() {
 			replicationController := obj.(*v1.ReplicationController)
 			//log.Debugf("AddNSParents: %v", nsObj.GetName())
@@ -64,7 +65,7 @@ func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v
 }
 
 func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["replicationcontrollers"] 	{
+	if compatibilityMap["replicationcontrollers"] 	{
 		for _, obj := range replicationControllerInf.GetStore().List() {
 			replicationController := obj.(*v1.ReplicationController)
 			if replicationController.GetNamespace() == namespaceName {
@@ -76,14 +77,19 @@ func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.Cong
 	}
 }
 
-func StartReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
 	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, RsyncInterval)
-	go replicationControllerInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		replicationControllerInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchReplicationControllers()")
 
 	replicationControllerInf.AddEventHandler(

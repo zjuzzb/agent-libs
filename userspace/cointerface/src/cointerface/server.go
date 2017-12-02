@@ -2,7 +2,6 @@ package main
 
 import (
 	"cointerface/kubecollect"
-	"cointerface/draiosproto"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/client"
@@ -10,7 +9,6 @@ import (
 	"github.com/shirou/gopsutil/process"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"k8s.io/client-go/kubernetes"
 	"net"
 	"os"
 	"os/signal"
@@ -126,183 +124,44 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
 
-	// TODO: refactor error messages
-	var kubeClient kubernetes.Interface
-
-	if cmd.Url != nil && *cmd.Url != "" {
-		log.Infof("Connecting to k8s server at %s", *cmd.Url)
-		var err error
-		kubeClient, err = kubecollect.CreateKubeClient(*cmd.Url)
-		if err != nil {
-			log.Errorf("Cannot create k8s client: %s", err)
-			return err
-		}
-	} else {
-		log.Infof("Connecting to k8s server using inCluster config")
-		var err error
-		kubeClient, err = kubecollect.CreateInClusterKubeClient()
-		if err != nil {
-			log.Errorf("Cannot create k8s client: %s", err)
-			return err
-		}
-	}
-	log.Infof("Testing communication with server")
-	srvVersion, err := kubeClient.Discovery().ServerVersion()
+	ctx, ctxCancel := context.WithCancel(stream.Context())
+	// Don't defer ctxCancel() yet
+	evtc, err := kubecollect.WatchCluster(ctx,
+		cmd.GetUrl(), cmd.GetCaCert(),
+		cmd.GetClientCert(), cmd.GetClientKey())
 	if err != nil {
-		log.Errorf("K8s server not responding: %s", err)
+		ctxCancel()
 		return err
 	}
-	log.Infof("Communication with server successful: %v", srvVersion)
-
-	resources, err := kubeClient.Discovery().ServerResources()
-	if err != nil {
-		log.Errorf("K8s server returned error: %s", err)
-		return err
-	}
-
-	kubecollect.CompatibilityMap = make(map[string]bool)
-	for _, resourceList := range resources {
-		for _, resource := range resourceList.APIResources {
-			kubecollect.CompatibilityMap[resource.Name] = true
-			log.Debugf("K8s server has %s API support.", resource.Name)
-		}
-	}
-
-	// make sure we can cancel stuff later
-	ctx, cancel := context.WithCancel(stream.Context())
-	defer cancel()
-
-	// let's talk
-	evtc := make(chan draiosproto.CongroupUpdateEvent)
-	defer close(evtc)
-
-	// start watching some stuff
-	if kubecollect.CompatibilityMap["namespaces"] {
-		kubecollect.StartNamespacesSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have namespaces API support.")
-	}
-	if kubecollect.CompatibilityMap["deployments"] {
-		kubecollect.StartDeploymentsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have deployments API support.")
-	}
-	if kubecollect.CompatibilityMap["replicasets"] {
-		kubecollect.StartReplicaSetsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have replicasets API support.")
-	}
-	if kubecollect.CompatibilityMap["services"] {
-		kubecollect.StartServicesSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have services API support.")
-	}
-	if kubecollect.CompatibilityMap["ingress"] {
-		kubecollect.StartIngressSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have ingress API support.")
-	}
-	if kubecollect.CompatibilityMap["daemonsets"] {
-		kubecollect.StartDaemonSetsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have daemonsets API support.")
-	}
-	if kubecollect.CompatibilityMap["nodes"] {
-		kubecollect.StartNodesSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have nodes API support.")
-	}
-	if kubecollect.CompatibilityMap["jobs"] {
-		kubecollect.StartJobsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have jobs API support.")
-	}
-	if kubecollect.CompatibilityMap["cronjobs"] {
-		kubecollect.StartCronJobsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have cronjobs API support.")
-	}
-	if kubecollect.CompatibilityMap["replicationcontrollers"] {
-		kubecollect.StartReplicationControllersSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have replicationcontrollers API support.")
-	}
-	if kubecollect.CompatibilityMap["statefulsets"] {
-		kubecollect.StartStatefulSetsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have statefulsets API support.")
-	}
-	if kubecollect.CompatibilityMap["resourcequotas"] {
-		kubecollect.StartResourceQuotasSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have resourcequotas API support.")
-	}
-	if kubecollect.CompatibilityMap["pods"] {
-		kubecollect.StartPodsSInformer(ctx, kubeClient)
-	} else {
-		log.Warnf("K8s server doesn't have pods API support.")
-	}
-
-	if kubecollect.CompatibilityMap["namespaces"] {
-		kubecollect.WatchNamespaces(evtc)
-	}
-	if kubecollect.CompatibilityMap["deployments"] {
-		kubecollect.WatchDeployments(evtc)
-	}
-	if kubecollect.CompatibilityMap["replicasets"] {
-		kubecollect.WatchReplicaSets(evtc)
-	}
-	if kubecollect.CompatibilityMap["services"] {
-		kubecollect.WatchServices(evtc)
-	}
-	if kubecollect.CompatibilityMap["ingress"] {
-		kubecollect.WatchIngress(evtc)
-	}
-	if kubecollect.CompatibilityMap["daemonsets"] {
-		kubecollect.WatchDaemonSets(evtc)
-	}
-	if kubecollect.CompatibilityMap["nodes"] {
-		kubecollect.WatchNodes(evtc)
-	}
-	if kubecollect.CompatibilityMap["jobs"] {
-		kubecollect.WatchJobs(evtc)
-	}
-	if kubecollect.CompatibilityMap["cronjobs"] {
-		kubecollect.WatchCronJobs(evtc)
-	}
-	if kubecollect.CompatibilityMap["replicationcontrollers"] {
-		kubecollect.WatchReplicationControllers(evtc)
-	}
-	if kubecollect.CompatibilityMap["statefulsets"] {
-		kubecollect.WatchStatefulSets(evtc)
-	}
-	if kubecollect.CompatibilityMap["resourcequotas"] {
-		kubecollect.WatchResourceQuotas(evtc)
-	}
-	if kubecollect.CompatibilityMap["pods"] {
-		kubecollect.WatchPods(evtc)
-	}
-	/*watch, _ := kubeClient.CoreV1().Events("").Watch(metav1.ListOptions{})
-
-	go func() {
+	defer func() {
+		// After cancelling the context, drain incoming messages
+		// so all senders can unblock and exit their goroutines
+		ctxCancel()
 		select {
-		case evt := <-watch.ResultChan():
-			log.Infof("Received k8s event %v", evt)
+		case evt, ok := <-evtc:
+			if !ok {
+				break;
+			} else {
+				log.Debugf("Draining event for {%v:%v}",
+					evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId())
+			}
 		}
-	}()*/
+	}()
 
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
 	for {
 		select {
-		case evt := <-evtc:
-			if err := stream.Send(&evt); err != nil {
+		case evt, ok := <-evtc:
+			if !ok {
+				log.Debugf("[PerformOrchestratorEventsStream] event stream finished")
+				return nil
+			} else if err := stream.Send(&evt); err != nil {
 				log.Errorf("Stream response for {%v:%v} failed: %v",
 					evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId(), err)
-
-				// The C++ side will be out of sync, so
-				// kill the stream and force a full resync?
+				return err
 			}
 		case <-ctx.Done():
+			log.Debugf("[PerformOrchestratorEventsStream] context cancelled")
 			return nil
 		}
 	}

@@ -69,6 +69,15 @@ using namespace google::protobuf::io;
 #include "tracer_emitter.h"
 #include "metric_limits.h"
 
+namespace {
+template<typename T>
+void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
+{
+	metrics.set_percentiles(pctls);
+	metrics.set_serialize_pctl_data(true);
+}
+};
+
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
@@ -236,14 +245,19 @@ void sinsp_analyzer::set_percentiles()
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	if(pctls.size())
 	{
-		m_host_transaction_counters.set_percentiles(pctls);
-		m_host_metrics.set_percentiles(pctls);
+		init_host_level_percentiles(m_host_transaction_counters, pctls);
+		init_host_level_percentiles(m_host_metrics, pctls);
 		if(m_host_metrics.m_protostate)
 		{
-			m_host_metrics.m_protostate->set_percentiles(pctls);
+			init_host_level_percentiles(*(m_host_metrics.m_protostate), pctls);
 		}
-		m_host_req_metrics.set_percentiles(pctls);
-		m_io_net.set_percentiles(pctls);
+		init_host_level_percentiles(m_host_req_metrics, pctls);
+		init_host_level_percentiles(m_io_net, pctls);
+
+		auto conf = m_configuration->get_group_pctl_conf();
+		if (conf) {
+			m_containers_check_interval.interval(conf->check_interval() * ONE_SECOND_IN_NS);
+		}
 	}
 }
 
@@ -381,6 +395,9 @@ void sinsp_analyzer::on_capture_start()
 				k8s_url = "";
 			}
 			m_infrastructure_state->subscribe_to_k8s(k8s_url,
+								 m_configuration->get_k8s_ssl_ca_certificate(),
+								 m_configuration->get_k8s_ssl_cert(),
+								 m_configuration->get_k8s_ssl_key(),
 								 m_configuration->get_k8s_timeout_s());
 			glogf("infrastructure state is now subscribed to k8s API server");
 		}
@@ -1830,7 +1847,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread anyway
 		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
-		   m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
+			m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
+			m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
 			string proc_name = m_procfs_parser->read_process_name(main_tinfo->m_pid);
 			if(!proc_name.empty())
@@ -3011,7 +3029,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				const std::set<double>& pctls = m_configuration->get_percentiles();
 				if(pctls.size())
 				{
-					conn.m_transaction_metrics.set_percentiles(pctls);
+					init_host_level_percentiles(conn.m_transaction_metrics, pctls);
 				}
 			}
 			else
@@ -5557,6 +5575,35 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 		return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 	};
 
+	// enable/disable percentile data serialization for configured containers
+	const auto conf = get_configuration_read_only()->get_group_pctl_conf();
+	if (conf) {
+		m_containers_check_interval.run([this, &progtable_by_container, &conf]()
+			{
+				g_logger.format(sinsp_logger::SEV_INFO,
+						"Performing percentile data serialization check for containers");
+				const auto containers_info = m_inspector->m_container_manager.get_containers();
+				uint32_t n_matched = 0;
+				for (auto &it : m_containers) {
+					auto cinfo_it = containers_info->find(it.first);
+					if (cinfo_it == containers_info->end()) {
+						continue;
+					}
+					auto is_match =
+						((n_matched < conf->max_containers()) &&
+						conf->match(&(cinfo_it->second), *infra_state()));
+					it.second.set_serialize_pctl_data(is_match);
+					if (is_match) {
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Percentile data serialization enabled for container: %s",
+							cinfo_it->second.m_name.c_str());
+						++n_matched;
+					}
+				}
+			},
+			m_prev_flush_time_ns);
+	}
+
 	vector<string> emitted_containers;
 	vector<string> containers_ids;
 	containers_ids.reserve(m_containers.size());
@@ -5764,6 +5811,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			}
 		}
 	}, m_prev_flush_time_ns);
+
 	return emitted_containers;
 }
 
@@ -6153,7 +6201,7 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 
 	set<uint16_t> ports;
 	string path;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, infra_state(), ports, path)) {
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path)) {
 		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
 		prom_procs.emplace_back(pp);
 

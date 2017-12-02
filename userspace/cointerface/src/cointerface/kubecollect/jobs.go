@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -60,7 +61,7 @@ func addJobMetrics(metrics *[]*draiosproto.AppMetric, job *v1batch.Job) {
 }
 
 func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if CompatibilityMap["jobs"] {
+	if compatibilityMap["jobs"] {
 		for _, obj := range jobInf.GetStore().List() {
 			job := obj.(*v1batch.Job)
 			selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
@@ -74,7 +75,7 @@ func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 }
 
 func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["jobs"] {
+	if compatibilityMap["jobs"] {
 		for _, obj := range jobInf.GetStore().List() {
 			job := obj.(*v1batch.Job)
 			if job.GetNamespace() == namespaceName {
@@ -86,15 +87,20 @@ func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 	}
 }
 
-func StartJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
 	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, RsyncInterval)
-	go jobInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		jobInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
-	log.Debugf("In WatchReplicaSets()")
+func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+	log.Debugf("In WatchJobs()")
 
 	jobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{

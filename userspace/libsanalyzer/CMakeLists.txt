@@ -118,6 +118,7 @@ add_library(sanalyzer STATIC
 	jmx_proxy.cpp
 	statsite_proxy.cpp
 	app_checks.cpp
+        proc_filter.cpp
 	prometheus.cpp
 	posix_queue.cpp
 	coclient.cpp

@@ -218,7 +218,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_docker_event_filter(m_configuration->m_docker_event_filter);
 
 	// percentiles
-	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles);
+	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles,
+			m_configuration->m_group_pctl_conf);
 	m_analyzer->set_percentiles();
 
 	//

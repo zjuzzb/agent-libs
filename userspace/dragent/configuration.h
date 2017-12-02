@@ -685,6 +685,7 @@ public:
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
+	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 
 	unsigned m_snaplen;
 

@@ -168,7 +168,7 @@ TEST_F(sys_call_test, analyzer_procrename)
 			const auto& tinfo = thread_table->at(child_pid);
 			EXPECT_EQ("savonarola", tinfo.m_comm);
 			EXPECT_EQ("sysdig", tinfo.m_exe);
-			EXPECT_FALSE(tinfo.m_args.empty());
+			EXPECT_TRUE(tinfo.m_args.empty());
 		}
 	};
 
@@ -924,4 +924,88 @@ TEST_F(sys_call_test, transaction_merging11)
 	EXPECT_EQ((uint64_t)2, result.size());
 	EXPECT_EQ((uint64_t)10, result[0].m_stime);
 	EXPECT_EQ((uint64_t)25, result[0].m_etime);
+}
+
+TEST_F(sys_call_test, procname_refresh_lt_1s)
+{
+	int callnum = 0;
+	int child;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) &&
+			evt->get_type() == PPME_SYSCALL_CLOSE_X &&
+			evt->get_param_value_str("res", false) != "0";
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// Use close events as sentinels
+		child = fork();
+		if(child == 0)
+		{
+			auto ret = prctl(PR_SET_NAME, "changed");
+			EXPECT_EQ(0, ret);
+			sleep(5);
+			exit(0);
+		}
+		else
+		{
+			close(-34);
+			waitpid(child, NULL, 0);
+		}
+		sleep(2);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		auto parent = param.m_inspector->get_thread(getpid());
+		ASSERT_NE(nullptr, parent);
+		EXPECT_EQ(string("tests"), parent->m_comm) << "parent";
+		auto childt = param.m_inspector->get_thread(child);
+		ASSERT_NE(nullptr, childt);
+		EXPECT_EQ(string("tests"), childt->m_comm) << "child";
+		++callnum;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(1, callnum);
+}
+
+TEST_F(sys_call_test, procname_refresh_gt_1s)
+{
+	int callnum = 0;
+	int child;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) &&
+			evt->get_type() == PPME_SYSCALL_CLOSE_X &&
+			evt->get_param_value_str("res", false) != "0";
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// Use close events as sentinels
+		child = fork();
+		if(child == 0)
+		{
+			auto ret = prctl(PR_SET_NAME, "changed");
+			EXPECT_EQ(0, ret);
+			sleep(5);
+			exit(0);
+		}
+		else
+		{
+			sleep(2);
+			close(-34);
+			waitpid(child, NULL, 0);
+		}
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		auto parent = param.m_inspector->get_thread(getpid());
+		ASSERT_NE(nullptr, parent);
+		EXPECT_EQ(string("tests"), parent->m_comm) << "parent";
+		auto childt = param.m_inspector->get_thread(child);
+		ASSERT_NE(nullptr, childt);
+		EXPECT_EQ(string("changed"), childt->m_comm) << "child";
+		++callnum;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(1, callnum);
 }
