@@ -511,7 +511,6 @@ VISIBILITY_PRIVATE
 	void get_mesos_data();
 	void emit_mesos();
 	void reset_mesos(const std::string& errmsg = "");
-	void scrape_mesos_env(sinsp_threadinfo* tinfo);
 	void emit_docker_events();
 	void emit_top_files();
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);

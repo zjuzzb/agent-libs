@@ -23,6 +23,7 @@ public:
 	~infrastructure_state();
 
 	void init(sinsp *inspector, const std::string& machine_id);
+	bool inited();
 
 	void subscribe_to_k8s(const string& url, uint64_t timeout_s);
 
@@ -36,7 +37,7 @@ public:
 
 	void get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
 
-	void on_new_container(const sinsp_container_info& container_info);
+	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
 
 	void receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
@@ -54,7 +55,7 @@ public:
 	void add_marathon_group(const std::string &group, const std::string &parent,
 		const std::string &child, bool child_is_app);
 	void link_marathon_groups(const vector<std::string> &names, std::string &group);
-	void scrape_mesos_env(const std::string &c_id, const vector<std::string> &env);
+	void scrape_mesos_env(const std::string &c_id, sinsp_threadinfo *tinfo);
 	void get_mesos_labels(const uid_t uid, google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels, std::unordered_set<uid_t> *visited = nullptr);
 	static bool is_mesos_label(const std::string &lbl);
 
