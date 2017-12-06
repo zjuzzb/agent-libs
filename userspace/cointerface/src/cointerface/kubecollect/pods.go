@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"errors"
 	"strings"
 	"sync"
 	"github.com/gogo/protobuf/proto"
@@ -26,34 +27,15 @@ func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eve
 	}
 }
 
-// Append to both containerEvents and podChildren
+// Append ADDED/REMOVED events both containerEvents
 func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
-	podChildren *[]*draiosproto.CongroupUid,
 	cstat *v1.ContainerStatus,
 	podUID types.UID,
 	eventType draiosproto.CongroupEventType,
 ) {
-
-	par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
-		Kind:proto.String("k8s_pod"),
-		Id:proto.String(string(podUID))},
-	}
-
-	// Kubernetes reports containers in this format:
-	// docker://<fulldockercontainerid>
-	// rkt://<rktpodid>:<rktappname>
-	// We instead use
-	// <dockershortcontainerid>
-	// <rktpodid>:<rktappname>
-	// so here we are doing this conversion
-	containerId := cstat.ContainerID
-	if strings.HasPrefix(containerId, "docker://") {
-		containerId = containerId[9:21]
-	} else if strings.HasPrefix(containerId, "rkt://") {
-		containerId = containerId[6:]
-	} else {
-		// unknown container type or ContainerID not available yet
-		log.Debugf("Unable to parse ContainerID: %v", containerId)
+	containerID, err := parseContainerID(cstat.ContainerID)
+	if err != nil {
+		log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
 		return
 	}
 
@@ -65,25 +47,23 @@ func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 		Object: &draiosproto.ContainerGroup {
 			Uid: &draiosproto.CongroupUid {
 				Kind:proto.String("container"),
-				Id:proto.String(containerId),
+				Id:proto.String(containerID),
 			},
 			Tags: map[string]string{
 				"container.name"    : cstat.Name,
 				"container.image"   : cstat.Image,
 				"container.image.id": imageId,
 			},
-			Parents: par,
+			Parents: []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(podUID))},
+			},
 		},
 	})
-
-	*podChildren = append(*podChildren, &draiosproto.CongroupUid {
-		Kind:proto.String("container"),
-		Id:proto.String(containerId)},
-	)
 }
 
-// Append container events to contEvents slice and
-// the corresponding child links to podChildren
+// Append ADDED/REMOVED container events to contEvents and add
+// child links for all running containers to podChildren
 func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 	podChildren *[]*draiosproto.CongroupUid,
 	containers []v1.ContainerStatus,
@@ -111,6 +91,19 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 		state := getState(c.State)
 		if (state < running) {
 			continue
+		} else if (state == running) {
+			containerID, err := parseContainerID(c.ContainerID)
+			if err != nil {
+				log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
+				continue
+			}
+
+			// All running containers need to be added to the child list
+			// even if they don't have an ADDED or REMOVED event this time
+			*podChildren = append(*podChildren, &draiosproto.CongroupUid {
+				Kind:proto.String("container"),
+				Id:proto.String(containerID)},
+			)
 		}
 
 		var oldState cState = waiting
@@ -145,9 +138,40 @@ func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
 		}
 
 		if newEvent {
-			newContainerEvent(contEvents, podChildren, &c, podUID, newType)
+			newContainerEvent(contEvents, &c, podUID, newType)
 		}
 	}
+}
+
+func parseContainerID(containerID string) (string, error) {
+	var err error = nil
+
+	// Kubernetes reports containers in this format:
+	// docker://<fulldockercontainerid>
+	// rkt://<rktpodid>:<rktappname>
+	// We instead use
+	// <dockershortcontainerid>
+	// <rktpodid>:<rktappname>
+	// so here we are doing this conversion
+	if strings.HasPrefix(containerID, "docker://") {
+		if len(containerID) >= 21 {
+			containerID = containerID[9:21]
+		} else {
+			err = errors.New("ID too short for docker format")
+		}
+	} else if strings.HasPrefix(containerID, "rkt://") {
+		// XXX Will the parsed rkt id always
+		// be 12 char like for docker?
+		if len(containerID) >= 7 {
+			containerID = containerID[6:]
+		} else {
+			err = errors.New("ID too short for rkt format")
+		}
+	} else {
+		err = errors.New("Unknown containerID format")
+	}
+
+	return containerID, err
 }
 
 func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
