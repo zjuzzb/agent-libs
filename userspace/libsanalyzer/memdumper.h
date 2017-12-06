@@ -37,7 +37,9 @@ public:
 
 		if(shm_unlink(m_shm_name.c_str()) != 0)
 		{
-			throw sinsp_exception(string("unable to remove the shared memory region " + m_shm_name + " : ") + strerror(errno));
+			glogf(sinsp_logger::SEV_CRITICAL, "unable to remove the shared memory region %s: %s",
+			      m_shm_name.c_str(),
+			      strerror(errno));
 		}
 	}
 
@@ -162,7 +164,7 @@ public:
 	inline void dump(sinsp_evt* evt)
 	{
 		if(m_state == ST_INPROGRESS)
-		{		
+		{
 			if(evt->m_pevt->ts > m_end_time)
 			{
 				m_state = ST_DONE_OK;
