@@ -44,6 +44,7 @@
 #include "analyzer_fd.h"
 #include <sys/prctl.h>
 #include <signal.h>
+#include <thread>
 
 using namespace std;
 
@@ -1008,4 +1009,48 @@ TEST_F(sys_call_test, procname_refresh_gt_1s)
 	};
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(1, callnum);
+}
+
+/* test the ability to run multiple sinsp instances without crashes */
+TEST_F(sys_call_test, DISABLED_more_sinsp_instances)
+{
+	atomic<int> callnum(0);
+	static const int INSTANCES = 2;
+	static const int EVENTS = 400;
+	Poco::Event termination;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return true;
+	};
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		termination.wait();
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		if(callnum >= EVENTS)
+		{
+			termination.set();
+		}
+		else
+		{
+			++callnum;
+		}
+	};
+
+	vector<unique_ptr<thread>> threads;
+	for(int j = 0; j < INSTANCES; ++j)
+	{
+		threads.push_back(make_unique<thread>([&]
+			{
+				ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+			}
+		));
+	}
+	for(auto it = threads.begin(); it != threads.end(); ++it)
+	{
+		it->get()->join();
+	}
+	EXPECT_EQ(EVENTS, callnum);
 }
