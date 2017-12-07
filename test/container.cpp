@@ -119,7 +119,9 @@ TEST_F(sys_call_test, container_cgroups)
 static int clone_callback_3(void *arg)
 {
 	sleep(1);
-    return 0;
+	sleep(1);
+	sleep(1);
+	return 0;
 }
 
 TEST_F(sys_call_test, container_clone_nspid)
