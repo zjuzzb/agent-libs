@@ -857,3 +857,58 @@ TEST_F(sys_call_test, statsd_client_snaplen)
 
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
 }
+
+TEST_F(sys_call_test, statsd_client_no_snaplen)
+{
+	// Test if the driver correctly increase snaplen for statsd traffic
+	string payload = "soluta.necessitatibus.voluptatem.consequuntur.dignissimos.repudiandae.nostrum.lorem.ipsum:18|c";
+
+	//
+	// FILTER
+	//
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt) && ( evt->get_type() == PPME_SOCKET_SENDMSG_X || evt->get_type() == PPME_SOCKET_SENDTO_X);
+	};
+
+	//
+	// INITIALIZATION
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// sendto with addr
+		// Different port
+		udp_client client(0x0100007F, false, 8126);
+		client.m_payload = payload;
+		client.m_ignore_errors = true;
+		client.m_recv = false;
+		client.m_n_transactions = 1;
+		client.run();
+
+		// sendto without addr (connect)
+		client.m_use_connect = true;
+		client.run();
+
+		// sendmsg with addr
+		client.m_use_connect = false;
+		client.m_use_sendmsg = true;
+		client.run();
+
+		// sendmsg without addr
+		client.m_use_connect = true;
+		client.run();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	unsigned n = 0;
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		++n;
+		EXPECT_EQ(payload.substr(0, 80), e->get_param_value_str("data")) << "Failure on " << e->get_name() << " n=" << n;
+	};
+
+	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter);});
+}
