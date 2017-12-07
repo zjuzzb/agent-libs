@@ -223,45 +223,26 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	}
 
 	if out {
-		type cState int
-		const (
-			waiting cState = iota
-			running
-			terminated
-		)
-		getState := func(cs v1.ContainerState) cState {
-			if cs.Terminated != nil {
-				return terminated
-			} else if cs.Running != nil {
-				return running
-			}
-			// Waiting is the default if all three are nil
-			return waiting
+		// rhs is the new pod, lhs is the old pod
+		var children []*draiosproto.CongroupUid
+		var containerEvents []*draiosproto.CongroupUpdateEvent
+		processContainers(&containerEvents, &children,
+			rhs.Status.ContainerStatuses,
+			lhs.Status.ContainerStatuses,
+			rhs.GetUID(), draiosproto.CongroupEventType_UPDATED)
+		if len(containerEvents) > 0 {
+			out = false
 		}
-
-		newState := make(map[string]cState)
-		oldState := make(map[string]cState)
-
-		// rhs is the new pod
-		for _, c := range rhs.Status.ContainerStatuses {
-			newState[c.Name] = getState(c.State)
-		}
-		for _, c := range rhs.Status.InitContainerStatuses {
-			newState[c.Name] = getState(c.State)
-		}
-		// lhs is the old pod
-		for _, c := range lhs.Status.ContainerStatuses {
-			oldState[c.Name] = getState(c.State)
-		}
-		for _, c := range lhs.Status.InitContainerStatuses {
-			oldState[c.Name] = getState(c.State)
-		}
-
-		for k, v := range newState {
-			val, ok := oldState[k]
-			if !ok || val != v {
-				out = false
-			}
+	}
+	if out {
+		var children []*draiosproto.CongroupUid
+		var containerEvents []*draiosproto.CongroupUpdateEvent
+		processContainers(&containerEvents, &children,
+			rhs.Status.InitContainerStatuses,
+			lhs.Status.InitContainerStatuses,
+			rhs.GetUID(), draiosproto.CongroupEventType_UPDATED)
+		if len(containerEvents) > 0 {
+			out = false
 		}
 	}
 
