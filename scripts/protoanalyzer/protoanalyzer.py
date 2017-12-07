@@ -135,25 +135,35 @@ class MesosCheck(object):
     self.containers = set()
     self.mesosTasks = set()
     self.masterSamples = 0
+    self.runningMesosTasks = set()
+
   def __call__(self, m):
     if "mesos" in m:
       mesos = m["mesos"]
       for framework in mesos["frameworks"]:
-        for task in framework["tasks"]:
-          self.mesosTasks.add(task["common"]["uid"])
+        if "tasks" in framework:
+          for task in framework["tasks"]:
+            self.mesosTasks.add(task["common"]["uid"])
       self.mesosMasters.add(m["machine_id"])
       self.masterSamplesWithMesos += 1
     if "containers" in m:
       for c in m["containers"]:
         self.containers.add(c["id"])
+        if "mesos_task_id" in c:
+          self.runningMesosTasks.add(c["mesos_task_id"])
     if m["machine_id"] in self.mesosMasters:
       self.masterSamples += 1
+    return None
 
   def summary(self):
     print "masters=%s" % str(self.mesosMasters)
     print "masterSamples=%d masterSamplesWithMesos=%d" % (self.masterSamples, self.masterSamplesWithMesos )
     print "containers=%d" % len(self.containers)
     print "mesos_tasks=%d" % len(self.mesosTasks)
+    print "running_mesos_tasks=%d" % len(self.runningMesosTasks)
+    matching_mesos_tasks = self.runningMesosTasks.intersection(self.mesosTasks)
+    print "matching_mesos_tasks=%d" % len(matching_mesos_tasks)
+    print "Unmatching mesos_tasks=%s" % str(self.runningMesosTasks.difference(matching_mesos_tasks))
 
 def create_filter():
   if args.filter:
@@ -182,13 +192,20 @@ def analyze_proto(path, filter_f):
 
 def process_metrics(metrics, filter_f):
   ts = datetime.fromtimestamp(metrics.timestamp_ns/1000000000)
-  print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
-  metrics_d = protobuf_to_dict(metrics)
+  try:
+    metrics_d = protobuf_to_dict(metrics)
+  except UnicodeDecodeError:
+    print("Error processing sample %s:%s", metrics.timestamp_ns, metrics.machine_id)
+    return
   metrics_j = filter_f(metrics_d)
-  print(json.dumps(metrics_j, indent=2))
-  print("\n")
+  if metrics_j:
+    print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
+    print(json.dumps(metrics_j, indent=2))
+    print("\n")
+  else:
+    sys.stdout.write('.')
+    sys.stdout.flush()
 
- 
 print "Running with args: %s" % repr(args)
 
 if args.path == "last":
@@ -205,7 +222,9 @@ def main():
     walk_protos(path, filter_f)
   else:
     analyze_proto(path, filter_f)
-  filter_f.summary()
+  print("")
+  if hasattr(filter_f, "summary"):
+    filter_f.summary()
   
 if __name__ == "__main__":
   try:
