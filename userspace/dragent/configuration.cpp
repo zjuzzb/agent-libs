@@ -735,6 +735,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
+	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 200);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
 	for(auto p : known_server_ports)
@@ -1018,6 +1019,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
 	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
+	g_log->information("containers: labels max len: " + NumberFormatter::format(m_containers_labels_max_len) + " characters");
 	if(m_percentiles.size())
 	{
 		std::ostringstream os;

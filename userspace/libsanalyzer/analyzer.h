@@ -429,6 +429,11 @@ public:
 		m_container_patterns = patterns;
 	}
 
+	void set_containers_labels_max_len(const uint32_t len)
+	{
+		m_containers_labels_max_len = len;
+	}
+
 	void set_fs_usage_from_external_proc(bool value);
 
 	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
@@ -770,6 +775,7 @@ VISIBILITY_PRIVATE
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+	uint32_t m_containers_labels_max_len;
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif

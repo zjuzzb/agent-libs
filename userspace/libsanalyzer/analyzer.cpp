@@ -5935,18 +5935,33 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		const string &label_key = it_labels->first;
+		const string &label_val = it_labels->second;
+
 		// Filter out docker swarm and docker stack labels because that data
 		// should get sent in the swarm protobuf section by swarm managers
 		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
-		if(!it_labels->first.compare(0, swarmstr.size(), swarmstr) ||
-			!it_labels->first.compare(0, stackstr.size(), stackstr))
+		if(!label_key.compare(0, swarmstr.size(), swarmstr) ||
+		   !label_key.compare(0, stackstr.size(), stackstr))
 		{
 			continue;
 		}
-		draiosproto::container_label* label = container->add_labels();
 
-		label->set_key(it_labels->first);
-		label->set_value(it_labels->second);
+		// Limit length of label values based on config. Long labels are skipped
+		// instead of truncating to avoid producing overlapping labels.
+		if (label_val.length() > m_containers_labels_max_len)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "%s: Skipped label '%s' of "
+							"container %s[%s]: longer than max configured, %u > %u",
+							__func__, label_key.c_str(), it->second.m_name.c_str(),
+							container_id.c_str(), label_val.length(),
+							m_containers_labels_max_len);
+			continue;
+		}
+
+		draiosproto::container_label* label = container->add_labels();
+		label->set_key(label_key);
+		label->set_value(label_val);
 	}
 
 	container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);

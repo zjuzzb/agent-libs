@@ -592,6 +592,7 @@ public:
 	bool m_app_checks_enabled;
 	unsigned m_app_checks_limit;
 	uint32_t m_containers_limit;
+	uint32_t m_containers_labels_max_len;
 	vector<string> m_container_patterns;
 	ports_set m_known_server_ports;
 	vector<uint16_t> m_blacklisted_ports;
