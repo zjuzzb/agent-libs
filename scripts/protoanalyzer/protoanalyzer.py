@@ -17,6 +17,7 @@ import struct
 import socket
 import atexit
 from datetime import datetime
+from IPython import embed
 
 # this class parses text dumped protobuf from the agent
 # they can be enabled with "metricsfile: { location: metrics }"
@@ -94,6 +95,7 @@ k8s_nodes = set()
 nodes = set()
 k8s_pods = set()
 
+# TODO: needs to be refactored to a class like MesosCheck
 def kubernetes_check(m):
   if "kubernetes" in m:
     kubernetes_delegated_nodes.add( ( m["machine_id"], m["hostinfo"]["hostname"]))
@@ -136,14 +138,24 @@ class MesosCheck(object):
     self.mesosTasks = set()
     self.masterSamples = 0
     self.runningMesosTasks = set()
+    self.marathon_task_ids = set()
+    self.frameworks = {}
+    self.host_by_task = {}
 
   def __call__(self, m):
     if "mesos" in m:
       mesos = m["mesos"]
       for framework in mesos["frameworks"]:
+        name = framework["common"]["name"]
+        if not name in self.frameworks:
+          self.frameworks[name] = set()
         if "tasks" in framework:
           for task in framework["tasks"]:
             self.mesosTasks.add(task["common"]["uid"])
+            self.frameworks[name].add(task["common"]["uid"])
+      if "groups" in mesos:
+        for group in mesos['groups']:
+          self.parse_marathon_group(group)
       self.mesosMasters.add(m["machine_id"])
       self.masterSamplesWithMesos += 1
     if "containers" in m:
@@ -151,9 +163,21 @@ class MesosCheck(object):
         self.containers.add(c["id"])
         if "mesos_task_id" in c:
           self.runningMesosTasks.add(c["mesos_task_id"])
+          self.host_by_task[c["mesos_task_id"]] = m["hostinfo"]["hostname"]
+
     if m["machine_id"] in self.mesosMasters:
       self.masterSamples += 1
     return None
+  
+  def parse_marathon_group(self, group):
+    if "groups" in group:
+      for subgroup in group["groups"]:
+        self.parse_marathon_group(subgroup)
+    if "apps" in group:
+      for app in group["apps"]:
+        if "task_ids" in app:
+          for t in app["task_ids"]:
+            self.marathon_task_ids.add(t)
 
   def summary(self):
     print "masters=%s" % str(self.mesosMasters)
@@ -163,7 +187,18 @@ class MesosCheck(object):
     print "running_mesos_tasks=%d" % len(self.runningMesosTasks)
     matching_mesos_tasks = self.runningMesosTasks.intersection(self.mesosTasks)
     print "matching_mesos_tasks=%d" % len(matching_mesos_tasks)
+    matching_marathon_tasks = self.runningMesosTasks.intersection(self.marathon_task_ids)
+    print "matching_marathon_tasks=%d" % len(matching_marathon_tasks)
     print "Unmatching mesos_tasks=%s" % str(self.runningMesosTasks.difference(matching_mesos_tasks))
+    print "Unmatching marathon_tasks=%s" % str(self.runningMesosTasks.difference(matching_marathon_tasks))
+    frameworks = {k: len(v) for k, v in self.frameworks.items()}
+    print "tasks per framework %s" % str(frameworks)
+    host_no_marathon_matches = set()
+    for t in self.marathon_task_ids.difference(matching_marathon_tasks):
+      if t in self.host_by_task:
+        host_no_marathon_matches.add(self.host_by_task[t])
+    print "hosts with no matches = %s" % host_no_marathon_matches
+    embed()
 
 def create_filter():
   if args.filter:
