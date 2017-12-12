@@ -6056,8 +6056,19 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
-		while(!m_statsd_metrics.empty() && std::get<0>(m_statsd_metrics.begin()->second).at(0).timestamp() < look_for_ts)
-		{
+
+		while(!m_statsd_metrics.empty()) {
+			auto metrics = std::get<0>(m_statsd_metrics.begin()->second);
+			if(metrics.empty())
+			{
+				break;
+			}
+
+			if(metrics.at(0).timestamp() >= look_for_ts)
+			{
+				break;
+			}
+
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
 	}
