@@ -329,7 +329,8 @@ TEST_F(sys_call_test, container_docker)
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 		if(tinfo)
 		{
-			return !tinfo->m_container_id.empty();
+			return !tinfo->m_container_id.empty() &&
+				tinfo->m_exe != "docker-runc";
 		}
 
 		return false;
