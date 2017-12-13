@@ -232,7 +232,7 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	}
 
 	total = user + nice + system + idle + iowait + irq + softirq + steal;
-	work = user + nice + system + iowait + irq + softirq + steal;
+	work = user + nice + system + irq + softirq + steal;
 
 	if(m_old_total.size() <static_cast<vector<uint64_t>::size_type>(j + 1))
 	{
