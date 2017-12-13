@@ -178,7 +178,10 @@ TEST_F(sys_call_test, open_close)
 	int callnum = 0;
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return (0 == strcmp(evt->get_name(), "open") || 0 == strcmp(evt->get_name(), "close")) && m_tid_filter(evt);
+		return (0 == strcmp(evt->get_name(), "open") ||
+		        0 == strcmp(evt->get_name(), "openat") ||
+		        0 == strcmp(evt->get_name(), "close")
+			) && m_tid_filter(evt);
 	};
 	run_callback_t test = [](sinsp* inspector)
 	{
@@ -187,7 +190,9 @@ TEST_F(sys_call_test, open_close)
 	};
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		if (0 == strcmp(param.m_evt->get_name(),"open") && param.m_evt->get_direction() == SCAP_ED_OUT)
+		if ((0 == strcmp(param.m_evt->get_name(),"open") ||
+		     0 == strcmp(param.m_evt->get_name(), "openat")) &&
+		   param.m_evt->get_direction() == SCAP_ED_OUT)
 		{
 			EXPECT_EQ("<f>/tmp", param.m_evt->get_param_value_str("fd"));
 		}
@@ -202,7 +207,10 @@ TEST_F(sys_call_test, open_close_dropping)
 	int callnum = 0;
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return (0 == strcmp(evt->get_name(), "open") || 0 == strcmp(evt->get_name(), "close")) && m_tid_filter(evt);
+		return (0 == strcmp(evt->get_name(), "open") ||
+		        0 == strcmp(evt->get_name(), "openat") ||
+		        0 == strcmp(evt->get_name(), "close")
+			) && m_tid_filter(evt);
 	};
 	run_callback_t test = [](sinsp* inspector)
 	{
@@ -213,7 +221,9 @@ TEST_F(sys_call_test, open_close_dropping)
 	};
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		if (0 == strcmp(param.m_evt->get_name(),"open") && param.m_evt->get_direction() == SCAP_ED_OUT)
+		if ((0 == strcmp(param.m_evt->get_name(),"open") ||
+		     0 == strcmp(param.m_evt->get_name(), "openat")) &&
+		   param.m_evt->get_direction() == SCAP_ED_OUT)
 		{
 			EXPECT_EQ("<f>/tmp", param.m_evt->get_param_value_str("fd"));
 		}
