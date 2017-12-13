@@ -28,8 +28,6 @@
 
 #define SERVER_PORT     3555
 #define SERVER_PORT_STR "3555"
-#define PAYLOAD         "0123456789QWERTYUIOPASDFGHJKLZXCVBNM"
-#define BUFFER_LENGTH   sizeof(PAYLOAD)
 #define FALSE           0
 
 using namespace std;
@@ -173,13 +171,13 @@ public:
 
 			/* clntSock is connected to a client! */
 			wait_for_continue();
-			char echoBuffer[BUFFER_LENGTH];        /* Buffer for echo string */
+			char echoBuffer[1024];        /* Buffer for echo string */
 			int recvMsgSize;                    /* Size of received message */
 			for(j = 0; j < m_ntransactions; j++)
 			{
 				if(m_iot == SENDRECEIVE)
 				{
-					if((recvMsgSize = recv(clntSock, echoBuffer, BUFFER_LENGTH, 0)) < 0)
+					if((recvMsgSize = recv(clntSock, echoBuffer, sizeof(echoBuffer), 0)) < 0)
 					{
 #ifdef FAIL
 						FAIL() << "recv() failed";
@@ -198,7 +196,7 @@ public:
 				else if(m_iot == READWRITE ||
 						m_iot == READVWRITEV)
 				{
-					if((recvMsgSize = read(clntSock, echoBuffer, BUFFER_LENGTH)) < 0)
+					if((recvMsgSize = read(clntSock, echoBuffer, sizeof(echoBuffer))) < 0)
 					{
 #ifdef FAIL
 						FAIL() << "recv() failed";
@@ -292,12 +290,14 @@ class tcp_client
 public:
 	tcp_client(uint32_t server_ip_address,
 			   iotype iot,
+			   const string& payload = "0123456789QWERTYUIOPASDFGHJKLZXCVBNM",
 			   bool on_thread = false,
 			   uint32_t ntransactions = 1,
 			   bool exit_no_close = false)
 	{
 		m_server_ip_address = server_ip_address;
 		m_iot = iot;
+		m_payload = payload;
 		m_on_thread = on_thread;
 		m_ntransactions = ntransactions;
 		m_exit_no_close = exit_no_close;
@@ -307,8 +307,7 @@ public:
 	{
 		int sock;
 		struct sockaddr_in server_address;
-		char buffer[BUFFER_LENGTH];
-		int payload_length;
+		char buffer[m_payload.size() + 1];
 		int bytes_received;
 		uint32_t j;
 		int port = (m_exit_no_close)? SERVER_PORT + 1: SERVER_PORT;
@@ -340,14 +339,13 @@ public:
 		}
 		signal_ready();
 		wait_for_continue();
-		payload_length = strlen(PAYLOAD);          /* Determine input length */
 
 		for(j = 0; j < m_ntransactions; j++)
 		{
 			/* Send the string to the server */
 			if(m_iot == SENDRECEIVE)
 			{
-				if(send(sock, PAYLOAD, payload_length, 0) != payload_length)
+				if(send(sock, m_payload.c_str(), m_payload.length(), 0) != (ssize_t) m_payload.length())
 				{
 					close(sock);
 #ifdef FAIL
@@ -356,7 +354,7 @@ public:
 					return;
 				}
 
-				if((bytes_received = recv(sock, buffer, BUFFER_LENGTH - 1, 0)) <= 0)
+				if((bytes_received = recv(sock, buffer, m_payload.length(), 0)) <= 0)
 				{
 					close(sock);
 #ifdef FAIL
@@ -367,12 +365,12 @@ public:
 
 				buffer[bytes_received] = '\0';  /* Terminate the string! */
 #ifdef ASSERT_STREQ
-				ASSERT_STREQ(PAYLOAD, buffer);
+				ASSERT_STREQ(m_payload.c_str(), buffer);
 #endif
 			}
 			else if(m_iot == READWRITE)
 			{
-				if(write(sock, PAYLOAD, payload_length) != payload_length)
+				if(write(sock, m_payload.c_str(), m_payload.length()) != (ssize_t) m_payload.length())
 				{
 					close(sock);
 #ifdef FAIL
@@ -381,7 +379,7 @@ public:
 					return;
 				}
 
-				if((bytes_received = read(sock, buffer, BUFFER_LENGTH - 1)) <= 0)
+				if((bytes_received = read(sock, buffer, m_payload.length())) <= 0)
 				{
 					close(sock);
 #ifdef FAIL
@@ -392,31 +390,30 @@ public:
 
 				buffer[bytes_received] = '\0';  /* Terminate the string! */
 #ifdef ASSERT_STREQ
-				ASSERT_STREQ(PAYLOAD, buffer);
+				ASSERT_STREQ(m_payload.c_str(), buffer);
 #endif
 			}
 			else if(m_iot == READVWRITEV)
 			{
-				string ps(PAYLOAD);
 				int wv_count;
-				char msg1[BUFFER_LENGTH / 3 + 1];
-				char msg2[BUFFER_LENGTH / 3 + 1];
-				char msg3[BUFFER_LENGTH / 3 + 1];
+				char msg1[m_payload.length() / 3 + 1];
+				char msg2[m_payload.length() / 3 + 1];
+				char msg3[m_payload.length() / 3 + 1];
 				struct iovec wv[3];
 
-				memcpy(msg1, ps.substr(0, BUFFER_LENGTH / 3).c_str(), BUFFER_LENGTH / 3);
-				memcpy(msg2, ps.substr(BUFFER_LENGTH / 3, BUFFER_LENGTH * 2 / 3).c_str(), BUFFER_LENGTH / 3);
-				memcpy(msg3, ps.substr(BUFFER_LENGTH * 2 / 3, BUFFER_LENGTH).c_str(), BUFFER_LENGTH / 3);
+				memcpy(msg1, m_payload.substr(0, m_payload.length() / 3).c_str(), m_payload.length() / 3);
+				memcpy(msg2, m_payload.substr(m_payload.length() / 3, m_payload.length() * 2 / 3).c_str(), m_payload.length() / 3);
+				memcpy(msg3, m_payload.substr(m_payload.length() * 2 / 3, m_payload.length()).c_str(), m_payload.length() / 3);
 
 				wv[0].iov_base = msg1;
 				wv[1].iov_base = msg2;
 				wv[2].iov_base = msg3;
-				wv[0].iov_len  = BUFFER_LENGTH / 3;
-				wv[1].iov_len  = BUFFER_LENGTH / 3;
-				wv[2].iov_len  = BUFFER_LENGTH / 3;
+				wv[0].iov_len  = m_payload.length() / 3;
+				wv[1].iov_len  = m_payload.length() / 3;
+				wv[2].iov_len  = m_payload.length() / 3;
 				wv_count = 3;
 
-				if(writev(sock, wv, wv_count) != payload_length)
+				if(writev(sock, wv, wv_count) != (ssize_t) m_payload.length())
 				{
 					close(sock);
 #ifdef FAIL
@@ -481,4 +478,5 @@ private:
 	bool m_on_thread;
 	uint32_t m_ntransactions;
 	bool m_exit_no_close;
+	string m_payload;
 };

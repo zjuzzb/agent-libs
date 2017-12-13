@@ -76,7 +76,7 @@ void pread_pwrite(const vector<string>& args)
 
 	auto ret = write(fd, "ficafica", sizeof("ficafica") - 1);
 	assert(ret > 0);
-	
+
 	ret = pwrite(fd, "cazo", sizeof("cazo") - 1, 4);
 	assert(ret > 0);
 
@@ -88,7 +88,7 @@ void pread_pwrite(const vector<string>& args)
 	bool pwrite64_succeeded = bytes_sent > 0;
 
 	cout << (pwrite64_succeeded? 1 : 0) << endl;
-	
+
 	pread64(fd, buf, 32, 987654321);
 	close(fd);
 
@@ -116,7 +116,7 @@ void preadv_pwritev(const vector<string>& args)
 	struct iovec wv[3];
 	int rres;
 	auto fd = open(FILENAME, O_CREAT | O_WRONLY, S_IRWXU);
-	
+
 	write(fd, "123456789012345678901234567890", sizeof("ficafica") - 1);
 
 	wv[0].iov_base = msg1;
@@ -133,7 +133,7 @@ void preadv_pwritev(const vector<string>& args)
 	// code in the proper way
 	//
 	bool pwritev64_succeeded = bytes_sent > 0;
-	
+
 	cout << (pwritev64_succeeded? 1 : 0) << endl;
 
 	bytes_sent = pwritev(fd, wv, wv_count, 10);
@@ -222,9 +222,10 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 				tcp_client client(
 					inet_addr(args.at(0).c_str()),
 					iot,
-					str_to_bool(args.at(2)),
-					stoi(args.at(3)),
-					str_to_bool(args.at(4)));
+					args.at(2),
+					str_to_bool(args.at(3)),
+					stoi(args.at(4)),
+					str_to_bool(args.at(5)));
 				client.run();
 			}},
 			{ "tcp_server", [](const vector<string>& args) {
