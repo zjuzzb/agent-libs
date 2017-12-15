@@ -266,12 +266,18 @@ TEST(yaml_to_json, test_sequence)
 
 TEST(yaml_to_json, test_map)
 {
-	auto node = YAML::Load("{ test: \"http://localhost:{port}\", int: 3, f: 1.56 }");
+	auto node = YAML::Load("{ test: \"http://localhost:{port}\", int: 3, f: 1.56, bool1: true, bool2: false, bool3: True }");
 	auto json = yaml_to_json(node);
 	EXPECT_TRUE(json.isObject());
 	EXPECT_EQ("http://localhost:{port}", json["test"].asString());
 	EXPECT_EQ(3, json["int"].asInt());
 	EXPECT_EQ(1.56, json["f"].asDouble());
+	EXPECT_TRUE(json["bool1"].isBool());
+	EXPECT_TRUE(json["bool1"].asBool());
+	EXPECT_TRUE(json["bool2"].isBool());
+	EXPECT_FALSE(json["bool2"].asBool());
+	EXPECT_TRUE(json["bool3"].isBool());
+	EXPECT_TRUE(json["bool3"].asBool());
 }
 
 TEST(yaml_to_json, test_nested)
