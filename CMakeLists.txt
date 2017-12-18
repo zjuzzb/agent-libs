@@ -6,7 +6,7 @@ project(draios)
 # in lower CMakeLists.txt files.
 set(DRAIOS_OPENSSL_VERSION "1.0.2j")
 set(DRAIOS_PROTOBUF_VERSION "3.1.0")
-set(DRAIOS_ZLIB_VERSION "1.2.8")
+set(DRAIOS_ZLIB_VERSION "1.2.11")
 set(DRAIOS_POCO_VERSION "1.7.7-all")
 set(DRAIOS_LIBSSH_VERSION "0.7.3")
 set(DRAIOS_GTEST_VERSION "1.7.0")
@@ -49,8 +49,8 @@ set(PROBE_DEVICE_NAME "sysdigcloud")
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/driver ${PROJECT_BINARY_DIR}/driver)
 
-set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8")
-set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.8/libz.a")
+set(ZLIB_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11")
+set(ZLIB_LIB "${DRAIOS_DEPENDENCIES_DIR}/zlib-1.2.11/libz.a")
 add_custom_target(zlib)
 
 set(LUAJIT_INCLUDE "${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-2.0.3/src")

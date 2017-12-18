@@ -21,11 +21,11 @@ if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
 fi
 
-ZLIB_DIR=$DEPENDENCIES/zlib-1.2.8
+ZLIB_DIR=$DEPENDENCIES/zlib-1.2.11
 if [ ! -d "$ZLIB_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/zlib-1.2.8.tar.gz
-	tar -xzf zlib-1.2.8.tar.gz
+	wget $DEPENDENCIES_URL/zlib-1.2.11.tar.gz
+	tar -xzf zlib-1.2.11.tar.gz
 	cd $ZLIB_DIR
 	./configure
 	make
