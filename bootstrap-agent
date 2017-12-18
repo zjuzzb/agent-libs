@@ -84,17 +84,17 @@ fi
 # a "system" protobuf/openssl instead, using pkg-config. The Makefile
 # does require one small change to properly set LDFLAGS to the
 # protobuf lib path returned by pkg-config. Hence the patch.
-GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
+GRPC_DIR=$DEPENDENCIES/grpc-1.8.1
 if [ ! -d "$GRPC_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/grpc-1.1.4.tar.gz
-	tar -xzf grpc-1.1.4.tar.gz
-	rm -rf grpc-1.1.4/third_party/zlib
-	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	wget $DEPENDENCIES_URL/grpc-1.8.1.tar.gz
+	tar -xzf grpc-1.8.1.tar.gz
+	rm -rf grpc-1.8.1/third_party/zlib
+	ln -s $ZLIB_DIR grpc-1.8.1/third_party/zlib
 	cd $GRPC_DIR
 	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
 	patch < grpc-1.1.4-Makefile.patch
-	PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR make grpc_cpp_plugin static_cxx static_c
+	LDFLAGS=-static PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
 fi
 
 POCO_VER=1.7.7
