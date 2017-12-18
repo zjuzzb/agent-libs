@@ -4,7 +4,7 @@ project(draios)
 
 # Versions of all third-party libraries used. These may be referred to
 # in lower CMakeLists.txt files.
-set(DRAIOS_OPENSSL_VERSION "1.0.2j")
+set(DRAIOS_OPENSSL_VERSION "1.0.2n")
 set(DRAIOS_PROTOBUF_VERSION "3.5.0")
 set(DRAIOS_ZLIB_VERSION "1.2.11")
 set(DRAIOS_POCO_VERSION "1.7.7-all")

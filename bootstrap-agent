@@ -53,7 +53,7 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	make install
 fi
 
-OPENSSL_VER=1.0.2j
+OPENSSL_VER=1.0.2n
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
