@@ -311,11 +311,11 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
 fi
 
-POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.5
+POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.15
 if [ ! -d "${POSTGRES_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/postgresql-9.4.5.tar.bz2
-	tar xfj postgresql-9.4.5.tar.bz2
+	wget $DEPENDENCIES_URL/postgresql-9.4.15.tar.bz2
+	tar xfj postgresql-9.4.15.tar.bz2
 	cd $POSTGRES_DIR
 	./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
 	make
