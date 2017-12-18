@@ -267,7 +267,7 @@ if [ ! -d "${SCONS_DIR}" ]; then
 	tar xfz scons-2.3.4.tar.gz
 fi
 
-PYTHON_VER=2.7.10
+PYTHON_VER=2.7.14
 PYTHON_EXT=tgz
 PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
 if [ ! -d "${PYTHON_DIR}" ]; then
