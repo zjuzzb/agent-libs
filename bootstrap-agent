@@ -43,11 +43,11 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
-PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.1.0
+PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.5.0
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
-	tar -xzf protobuf-cpp-3.1.0.tar.gz
+	wget https://github.com/google/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz
+	tar -xzf protobuf-cpp-3.5.0.tar.gz
 	cd $PROTOBUF_V3_DIR
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	make install
