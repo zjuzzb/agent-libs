@@ -36099,43 +36099,43 @@
         <File Name="../dependencies/libssh-0.7.3/examples/examples_common.h"/>
       </VirtualDirectory>
     </VirtualDirectory>
-    <VirtualDirectory Name="libyaml-0.1.4">
+    <VirtualDirectory Name="libyaml-0.1.7">
       <VirtualDirectory Name="target">
         <VirtualDirectory Name="include">
-          <File Name="../dependencies/libyaml-0.1.4/target/include/yaml.h"/>
+          <File Name="../dependencies/libyaml-0.1.7/target/include/yaml.h"/>
         </VirtualDirectory>
       </VirtualDirectory>
       <VirtualDirectory Name="include">
-        <File Name="../dependencies/libyaml-0.1.4/include/yaml.h"/>
+        <File Name="../dependencies/libyaml-0.1.7/include/yaml.h"/>
       </VirtualDirectory>
       <VirtualDirectory Name="tests">
-        <File Name="../dependencies/libyaml-0.1.4/tests/test-version.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/run-dumper.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/example-reformatter.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/example-deconstructor.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/run-emitter.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/run-scanner.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/run-parser.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/run-loader.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/test-reader.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/example-reformatter-alt.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/tests/example-deconstructor-alt.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/test-version.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/run-dumper.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/example-reformatter.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/example-deconstructor.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/run-emitter.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/run-scanner.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/run-parser.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/run-loader.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/test-reader.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/example-reformatter-alt.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/tests/example-deconstructor-alt.c"/>
       </VirtualDirectory>
       <VirtualDirectory Name="src">
-        <File Name="../dependencies/libyaml-0.1.4/src/parser.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/dumper.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/writer.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/loader.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/emitter.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/scanner.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/reader.c"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/yaml_private.h"/>
-        <File Name="../dependencies/libyaml-0.1.4/src/api.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/parser.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/dumper.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/writer.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/loader.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/emitter.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/scanner.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/reader.c"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/yaml_private.h"/>
+        <File Name="../dependencies/libyaml-0.1.7/src/api.c"/>
       </VirtualDirectory>
       <VirtualDirectory Name="win32">
-        <File Name="../dependencies/libyaml-0.1.4/win32/config.h"/>
+        <File Name="../dependencies/libyaml-0.1.7/win32/config.h"/>
       </VirtualDirectory>
-      <File Name="../dependencies/libyaml-0.1.4/config.h"/>
+      <File Name="../dependencies/libyaml-0.1.7/config.h"/>
     </VirtualDirectory>
     <VirtualDirectory Name="openssl-1.0.2n">
       <VirtualDirectory Name="MacOS">

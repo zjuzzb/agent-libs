@@ -345,11 +345,11 @@ if [ ! -d "${LPEG_DIR}" ]; then
 	LUA_INCLUDE=${LUAJIT_DIR}/src "${ROOT_SOURCEDIR}/falco/scripts/build-lpeg.sh" "${LPEG_DIR}/target"
 fi
 
-LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.4
+LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.7
 if [ ! -d "${LIBYAML_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libyaml-0.1.4.tar.gz
-	tar -xzf libyaml-0.1.4.tar.gz
+	wget $DEPENDENCIES_URL/libyaml-0.1.7.tar.gz
+	tar -xzf libyaml-0.1.7.tar.gz
 	cd $LIBYAML_DIR
 	./bootstrap && ./configure --prefix=$LIBYAML_DIR/target
 	make
