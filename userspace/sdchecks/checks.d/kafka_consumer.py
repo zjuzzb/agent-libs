@@ -7,6 +7,7 @@
 import random
 from collections import defaultdict
 from time import time, sleep
+import ctypes
 
 # 3p
 from kafka.client import KafkaClient
@@ -20,6 +21,9 @@ from kazoo.exceptions import NoNodeError
 # project
 from checks import AgentCheck
 from config import _is_affirmative
+
+# Loading this now to ensure we have it before potential namespace change
+_LIBNSS = ctypes.CDLL('libnss_dns.so.2')
 
 # Kafka Errors
 KAFKA_NO_ERROR = KafkaErrors.NoError.errno
