@@ -24,7 +24,7 @@ import java.util.regex.Pattern;
 public class BeanData {
     private final ObjectName name;
     private final List<BeanAttributeData> attributes;
-    static private final Pattern TOKEN_PATTERN = Pattern.compile("\\{.+\\}");
+    static private final Pattern TOKEN_PATTERN = Pattern.compile("\\{[^}]+}");
 
     @SuppressWarnings("unused")
     public String getName() {
