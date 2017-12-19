@@ -3260,15 +3260,53 @@ void sinsp_analyzer::emit_full_connections()
 
 vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 {
+	static run_on_interval log_interval(300 * ONE_SECOND_IN_NS);
+
 	auto print_cpu_vec = [this](const vector<long>& v, stringstream& ss)
 	{
-		for(unsigned j = 0; j < m_machine_info->num_cpus; ++j)
+		for(unsigned j = 0; j < v.size(); ++j)
 		{
 			ss << " cpu[" << j << "]=" << v[j];
 		}
 	};
 
-	auto n_evts_by_cpu = m_inspector->get_n_tracepoint_hit();
+	vector<long> n_evts_by_cpu;
+	try
+	{
+		n_evts_by_cpu = m_inspector->get_n_tracepoint_hit();
+	}
+	catch(sinsp_exception e)
+	{
+		log_interval.run(
+			[&e]()
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR,
+						"Event count query failed: %s",
+						e.what());
+			});
+	}
+	catch(...)
+	{
+		log_interval.run(
+			[]()
+			{
+				g_logger.log("Event count query failed with an unknown error",
+					     sinsp_logger::SEV_ERROR);
+			});
+	}
+
+	if (n_evts_by_cpu.empty())
+	{
+		return n_evts_by_cpu;
+	}
+	else if (n_evts_by_cpu.size() != m_last_total_evts_by_cpu.size())
+	{
+		g_logger.log("Event count history mismatch, clearing history",
+			     sinsp_logger::SEV_ERROR);
+		m_last_total_evts_by_cpu = move(n_evts_by_cpu);
+		return vector<long>();
+	}
+
 	vector<long> evts_per_second_by_cpu(n_evts_by_cpu.size());
 	for(unsigned j=0; j < n_evts_by_cpu.size(); ++j)
 	{
@@ -3299,7 +3337,12 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 	if(m_inspector->is_live() && m_configuration->get_security_enabled() == false)
 	{
 		auto evts_per_second_by_cpu = get_n_tracepoint_diff();
-		auto max_evts_per_second = *max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
+		auto max_iter = max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
+		decltype(evts_per_second_by_cpu)::value_type max_evts_per_second = 0;
+		if (max_iter != evts_per_second_by_cpu.end())
+		{
+			max_evts_per_second = *max_iter;
+		}
 		m_total_evts_switcher.run_on_threshold(max_evts_per_second, [this]()
 		{
 			m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
