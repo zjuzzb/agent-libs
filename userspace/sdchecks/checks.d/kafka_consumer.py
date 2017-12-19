@@ -208,7 +208,7 @@ class KafkaCheck(AgentCheck):
             future.add_callback(cb, request, node_id, self.current_ts)
 
     def _ensure_ready_node(self, client, node_id):
-        if not node_id:
+        if node_id is None:
             raise Exception("node_id is None")
 
         attempts = 0
