@@ -7,9 +7,11 @@ add_library(draiosproto STATIC
 	${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc)
 
 target_link_libraries(draiosproto
-	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc++_unsecure.a
-        ${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a)
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.1.4/libs/opt/libgrpc_unsecure.a
+	${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a
+	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib/libprotobuf.a
+	pthread)
 
 set(PROTOC_CMDLINE LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib
                    ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/protoc

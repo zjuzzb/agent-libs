@@ -132,6 +132,7 @@ target_link_libraries(sanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/LuaJIT-${DRAIOS_LUAJIT_VERSION}/src/libluajit.a
 	${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a
+	${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a
 	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a

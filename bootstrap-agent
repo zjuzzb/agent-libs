@@ -66,6 +66,19 @@ if [ ! -d "$OPENSSL_DIR" ]; then
 	cd ..
 fi
 
+CARES_VER=1.13.0
+CARES_EXT=tar.gz
+CARES_DIR=$DEPENDENCIES/c-ares-$CARES_VER
+if [ ! -d "$CARES_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://c-ares.haxx.se/download/c-ares-$CARES_VER.$CARES_EXT
+	tar -xzf c-ares-$CARES_VER.$CARES_EXT
+	cd $CARES_DIR
+	./configure --prefix=$CARES_DIR/target
+	make install
+	cd ..
+fi
+
 # Normally, grpc wants to use its own protobuf library, which it
 # expects to get via git submmodules. It mostly has support for using
 # a "system" protobuf/openssl instead, using pkg-config. The Makefile
@@ -192,7 +205,8 @@ if [ ! -d "$CURL_DIR" ]; then
 		--without-librtmp     \
 		--without-winidn      \
 		--without-libidn      \
-		--without-nghttp2
+		--without-nghttp2     \
+		--enable-ares=$CARES_DIR/target
 	make
 fi
 
