@@ -441,6 +441,7 @@ void infrastructure_state::scrape_mesos_env(const std::string &container_id, sin
 
 	uid_t ckey = make_pair("container", container_id);
 	add(ckey);
+	(*m_state[ckey]->mutable_internal_tags())["mesos.framework.name"] = "marathon";
 	if (!groupname.empty())
 		(*m_state[ckey]->mutable_internal_tags())["marathon.group.name"] = groupname;
 	if (!appname.empty())
