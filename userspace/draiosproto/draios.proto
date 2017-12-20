@@ -641,6 +641,7 @@ message container {
     repeated container_port_mapping port_mappings = 18;
     optional proto_info protos = 19;
     repeated container_label labels = 20;
+    repeated container_label orchestrators_fallback_labels = 26;
     repeated mounted_fs mounts = 21;
     repeated network_by_port network_by_serverports = 22;
     optional string mesos_task_id = 23;

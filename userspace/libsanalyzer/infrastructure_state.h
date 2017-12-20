@@ -23,6 +23,7 @@ public:
 	~infrastructure_state();
 
 	void init(sinsp *inspector, const std::string& machine_id);
+	bool inited();
 
 	void subscribe_to_k8s(string url, string ca_cert,
 			      string client_cert, string client_key,
@@ -38,7 +39,7 @@ public:
 
 	void get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
 
-	void on_new_container(const sinsp_container_info& container_info);
+	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
 
 	void receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events);
@@ -53,9 +54,21 @@ public:
 		return find_tag(uid, tag, value, visited);
 	}
 
+	void add_marathon_group(const std::string &group, const std::string &parent,
+		const std::string &child, bool child_is_app);
+	void link_marathon_groups(const vector<std::string> &names, std::string &group);
+	void scrape_mesos_env(const std::string &c_id, sinsp_threadinfo *tinfo);
+	void get_mesos_labels(const uid_t uid, google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels, std::unordered_set<uid_t> *visited = nullptr);
+	static bool is_mesos_label(const std::string &lbl);
+
 	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
 	bool has(uid_t uid) const;
 	unsigned int size();
+
+	// These return true if the new entry has been added, false if it already existed
+	bool add(uid_t key);
+	bool add_child_link(uid_t key, uid_t child);
+	bool add_parent_link(uid_t key, uid_t parent);
 
 	std::string get_k8s_cluster_name() const;
 	// The UID of the default namespace is used as the cluster id

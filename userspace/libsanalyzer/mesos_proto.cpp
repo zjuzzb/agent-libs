@@ -30,6 +30,7 @@ void mesos_proto::make_protobuf()
 	std::string marathon_uri;
 	for (const auto& framework : m_state.get_frameworks())
 	{
+#if 0
 		if(framework.get_name() == mesos_framework::MARATHON_ROOT_NAME)
 		{
 			marathon_uri = m_state.get_marathon_uri();
@@ -41,6 +42,7 @@ void mesos_proto::make_protobuf()
 			}
 		}
 		else { marathon_uri.clear(); }
+#endif
 		draiosproto::mesos_framework* frameworks = m_proto.add_frameworks();
 		populate_component(framework, frameworks, marathon_uri);
 		for (auto& task_pair : framework.get_tasks())
