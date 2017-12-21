@@ -2413,7 +2413,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
 	tracer_emitter container_trc("emit_container", proc_trc);
-	auto emitted_containers = emit_containers(progtable_by_container);
+	auto emitted_containers = emit_containers(progtable_by_container, flshflags);
 
 	container_trc.stop();
 	bool progtable_needs_filtering = false;
@@ -5594,7 +5594,7 @@ private:
 	Extractor m_extractor;
 };
 
-vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& progtable_by_container)
+vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& progtable_by_container, sinsp_analyzer::flush_flags flshflags)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -5741,7 +5741,8 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = m_configuration->get_statsd_limit();
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit,
-									&emitted_containers, &total_cpu_shares, &progtable_by_container]
+	                                  &emitted_containers, &total_cpu_shares, &progtable_by_container,
+	                                  flshflags]
 			(const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
@@ -5752,7 +5753,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			// since we are getting containerids from that table
 			// same tinfo is used also to get memory cgroup path
 			auto tinfo = progtable_by_container.at(containerid).front();
-			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo);
+			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo, flshflags);
 			emitted_containers.emplace_back(containerid);
 			containers_ids.erase(containers_ids.begin());
 		}
@@ -5860,7 +5861,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 
 void
 sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares,
-							   sinsp_threadinfo* tinfo)
+							   sinsp_threadinfo* tinfo, sinsp_analyzer::flush_flags flshflags)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -5996,7 +5997,35 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
 	}
-	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+	auto cpuacct_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+									[](const pair<string, string>& cgroup)
+									{
+										return cgroup.first == "cpuacct";
+									});
+	if(cpuacct_cgroup_it != tinfo->m_cgroups.cend() && cpuacct_cgroup_it->second != "/")
+	{
+		/*
+		 * Only read cpuacct cgroup values when we really are going to emit them,
+		 * otherwise the read value gets lost and we underreport the CPU usage
+		 */
+		if (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
+			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second, &it_analyzer->second.m_last_cpu_time);
+			if(cgroup_cpuacct > 0)
+			{
+				/*
+				 * cgroup_cpuacct contains cgroup's consumed CPU time in nanoseconds.
+				 * Scale to range used on the wire (100% CPU == 10000)
+				 */
+				//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%lld, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct / 100000, it_analyzer->second.m_metrics.m_cpuload * 100);
+				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct / 100000);
+			}
+		}
+	}
+	else
+	{
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_pct=%.2f", container_id.c_str(), it_analyzer->second.m_metrics.m_cpuload * 100);
+		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+	}
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 
@@ -6709,6 +6738,7 @@ analyzer_container_state::analyzer_container_state()
 	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
+	m_last_cpu_time = 0;
 }
 
 void analyzer_container_state::clear()

@@ -33,6 +33,7 @@ public:
 	// Used to get network stats from /proc/<pid>/net/dev
 	uint64_t m_last_bytes_in;
 	uint64_t m_last_bytes_out;
+	int64_t m_last_cpu_time;
 
 	void clear();
 };

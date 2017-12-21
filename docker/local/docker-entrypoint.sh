@@ -12,6 +12,27 @@ function am_i_a_k8s_delegated_node(){
 	return 1
 }
 
+function mount_cgroup_subsys(){
+	requested_subsys=$1
+	subsys=$(awk -v subsys=$requested_subsys '
+$(NF-2) == "cgroup" {
+	sub(/(^|,)rw($|,)/, "", $NF)
+	if (!printed && $NF ~ "(^|,)" subsys "($|,)") {
+		print $NF
+		printed=1
+	}
+}
+
+END {
+	if (!printed) {
+		print subsys
+	}
+}' < /proc/self/mountinfo)
+	echo "* Mounting $requested_subsys cgroup fs (using subsys $subsys)"
+	mkdir -p $SYSDIG_HOST_ROOT/cgroup/$requested_subsys
+	mount -t cgroup -o $subsys,ro none $SYSDIG_HOST_ROOT/cgroup/$requested_subsys
+}
+
 echo "* Setting up /usr/src links from host"
 
 for i in $(ls $SYSDIG_HOST_ROOT/usr/src)
@@ -105,9 +126,8 @@ if [ ! -z "$RUN_MODE" ]; then
 	fi
 fi
 
-echo "* Mounting memory cgroup fs"
-mkdir -p $SYSDIG_HOST_ROOT/cgroup/memory
-mount -t cgroup -o memory,ro none $SYSDIG_HOST_ROOT/cgroup/memory
+mount_cgroup_subsys memory
+mount_cgroup_subsys cpuacct
 
 if [ $# -eq 0 ]; then
 	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader; then
