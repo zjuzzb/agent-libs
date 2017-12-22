@@ -9,7 +9,7 @@ To run this script you need to install vagrant first of all, then vagrant-aws pl
 ```
 $ export AWS_ID="<yourid>"
 $ export AWS_SECRET="<secret>"
-$ export AWS_SGS="<security_group_id>"
+$ export AWS_SGS="<security_group_id>"[,"<security_group_id>"]*
 $ export AWS_SUBNET="<subnet_id>"
 $ export PEM_PATH="path_to_testinfrastructure.pem"
 
