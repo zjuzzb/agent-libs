@@ -57,3 +57,8 @@ and launch one of them with:
 $ vagrant up coreos-alpha
 $ vagrant ssh coreos-alpha
 ```
+
+To Undeploy/Terminate the instance you are working on 
+
+```
+$ vagrant destroy -f *INSTANCE_NAME*
