@@ -128,10 +128,18 @@ void wait_for_all(process_handles_t &handles)
 
 tuple<Poco::ProcessHandle,Poco::Pipe*> start_process(proc* process)
 {
-	Poco::Pipe* pipe = new Poco::Pipe();
-	Poco::ProcessHandle handle = Poco::Process::launch(process->get_command(), process->get_arguments(), 0, pipe, 0);
-	wait_for_process_start(*pipe);
-	return make_tuple(handle,pipe);
+	auto child_proc = start_process_sync(process);
+	delete get<1>(child_proc);
+	return make_tuple(get<0>(child_proc), get<2>(child_proc));
+}
+
+tuple<Poco::ProcessHandle,Poco::Pipe*,Poco::Pipe*> start_process_sync(proc* process)
+{
+	Poco::Pipe* stdin_pipe = new Poco::Pipe();
+	Poco::Pipe* stdout_pipe = new Poco::Pipe();
+	Poco::ProcessHandle handle = Poco::Process::launch(process->get_command(), process->get_arguments(), stdin_pipe, stdout_pipe, 0);
+	wait_for_process_start(*stdout_pipe);
+	return make_tuple(handle,stdin_pipe,stdout_pipe);
 }
 
 void run_processes(process_list_t &processes)

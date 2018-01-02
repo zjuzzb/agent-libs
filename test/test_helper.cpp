@@ -249,6 +249,8 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 int main(int argc, char** argv)
 {
 	cout << "STARTED" << endl;
+	char s[32];
+	(void)read(0, s, sizeof s);
 	if(argc > 1)
 	{
 		vector<string> args;
