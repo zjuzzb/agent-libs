@@ -303,7 +303,12 @@ TEST_F(sys_call_test, poll_timeout)
 			// on how the tests are invoked
 			//
 			string fds = e->get_param_value_str("fds");
-			EXPECT_TRUE(fds == "0:f1 1:f4" || fds == "0:p1 1:p4");
+			EXPECT_TRUE(
+			            fds == "0:f1 1:f4" ||
+				    fds == "0:p1 1:f4" ||
+			            fds == "0:f1 1:p4" ||
+				    fds == "0:p1 1:p4"
+				    );
 			EXPECT_EQ("20", e->get_param_value_str("timeout"));
 			callnum++;
 		}
