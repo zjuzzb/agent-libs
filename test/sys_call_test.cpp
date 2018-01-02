@@ -1307,12 +1307,11 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 	//
 	// FILTER
 	//
+	sinsp_filter_compiler compiler(NULL, "evt.type=execve and proc.apid=" + to_string(getpid()));
+	unique_ptr<sinsp_filter> is_subprocess_execve(compiler.compile());
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_18_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_18_X ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
+		return is_subprocess_execve->run(evt);
 	};
 
 	//
@@ -1385,12 +1384,11 @@ TEST_F(sys_call_test32, failing_execve)
 	//
 	// FILTER
 	//
+	sinsp_filter_compiler compiler(NULL, "evt.type=execve and proc.apid=" + to_string(getpid()));
+	unique_ptr<sinsp_filter> is_subprocess_execve(compiler.compile());
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_18_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_18_X ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
+		return is_subprocess_execve->run(evt);
 	};
 
 	//
