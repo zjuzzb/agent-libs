@@ -244,7 +244,7 @@ public class MonitoredVM {
         }
     }
 
-    public List<Map<String, Object>> availableMetrics() throws IOException {
+    public List<Map<String, Object>> availableMetrics(boolean all) throws IOException {
         setNetworkNamespaceIfNeeded();
         if (connection == null) {
             Tracer trc = new Tracer("createConnection");
@@ -254,23 +254,36 @@ public class MonitoredVM {
         }
         final Set<ObjectName> allBeans = connection.getMbs().queryNames(null, null);
         final List<Map<String, Object>> availableMetrics = new ArrayList<Map<String, Object>>(allBeans.size());
-        final Set<String> acceptedTypes = new HashSet<String>();
-        acceptedTypes.add("int");
-        acceptedTypes.add("float");
-        acceptedTypes.add("double");
-        acceptedTypes.add("long");
-        acceptedTypes.add("java.lang.Double");
-        acceptedTypes.add("java.lang.Integer");
         for (final ObjectName bean : allBeans) {
             try {
                 final Map<String, Object> beanData = new HashMap<String, Object>();
                 beanData.put("query", bean.getCanonicalName());
                 final MBeanInfo beanInfo = connection.getMbs().getMBeanInfo(bean);
                 final MBeanAttributeInfo[] attributeInfos = beanInfo.getAttributes();
-                final List<String> attributes = new ArrayList<String>(attributeInfos.length);
+                final List<Object> attributes = new ArrayList<Object>(attributeInfos.length);
                 for(int j = 0; j < attributeInfos.length; ++j) {
-                    if (acceptedTypes.contains(attributeInfos[j].getType())) {
-                        attributes.add(attributeInfos[j].getName());
+                    final MBeanAttributeInfo attributeInfo = attributeInfos[j];
+
+                    if (all) {
+                        final Map<String, String> attributeData = new HashMap<String, String>();
+                        attributeData.put("name", attributeInfo.getName());
+                        attributeData.put("javaType", attributeInfo.getType());
+                        try {
+                            final String value = connection.getMbs().getAttribute(bean, attributeInfo.getName()).toString();
+                            attributeData.put("value", value.substring(0,100));
+                        } catch (Throwable e) {
+                        }
+                        attributes.add(attributeData);
+                    }
+                    else {
+                        try {
+                            final Object valueObj = connection.getMbs().getAttribute(bean, attributeInfo.getName());
+                            BeanData.parseValueAsDouble(valueObj);
+                            // The above function will throw if it's not able to convert the Object
+                            // to a number so the following line will not be executed
+                            attributes.add(attributeInfo.getName());
+                        } catch (Throwable e) {
+                        }
                     }
                 }
                 beanData.put("attributes", attributes);
