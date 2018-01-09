@@ -2,6 +2,7 @@ package main
 
 import (
 	"cointerface/kubecollect"
+	"cointerface/sdc_internal"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/client"
@@ -12,7 +13,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"cointerface/sdc_internal"
 	"sync"
 	"time"
 )
@@ -140,7 +140,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 		select {
 		case evt, ok := <-evtc:
 			if !ok {
-				break;
+				break
 			} else {
 				log.Debugf("Draining event for {%v:%v}",
 					evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId())
