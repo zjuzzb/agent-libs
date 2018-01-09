@@ -20,6 +20,7 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include <string.h>
+#include <sys/uio.h>
 
 #ifndef HELPER_32
 #include <gtest.h>

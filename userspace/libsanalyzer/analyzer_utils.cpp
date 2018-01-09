@@ -5,6 +5,7 @@
 #include <execinfo.h>
 #endif
 
+#include <math.h>
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "sinsp_errno.h"
