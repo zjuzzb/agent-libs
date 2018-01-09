@@ -76,7 +76,7 @@ function configure_rpm_repo {
 	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 
-	#aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
+	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
 	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
@@ -125,7 +125,7 @@ function configure_debian_repo {
 	cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
-	#aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
+	aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
 	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
@@ -164,7 +164,7 @@ function upload_binaries {
 	configure_rpm_repo
 	configure_debian_repo
 	configure_tgz_repo
-	#configure_installers
+	configure_installers
 }
 
 function trigger_docker_build {
