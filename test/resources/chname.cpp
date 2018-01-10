@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <string.h>
+#include <functional>
 
 void run()
 {

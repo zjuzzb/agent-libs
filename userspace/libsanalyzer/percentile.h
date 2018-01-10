@@ -53,7 +53,9 @@ public:
 	void to_protobuf(P* proto, C1* (P::*add_pctl)(), C2* (P::*data)())
 	{
 		to_protobuf(percentiles(), proto, add_pctl);
-		//serialize((proto->*data)());
+		if (data != nullptr) {
+			serialize((proto->*data)());
+		}
 		reset();
 	}
 

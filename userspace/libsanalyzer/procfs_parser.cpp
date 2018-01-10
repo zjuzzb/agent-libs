@@ -232,7 +232,7 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	}
 
 	total = user + nice + system + idle + iowait + irq + softirq + steal;
-	work = user + nice + system + iowait + irq + softirq + steal;
+	work = user + nice + system + irq + softirq + steal;
 
 	if(m_old_total.size() <static_cast<vector<uint64_t>::size_type>(j + 1))
 	{
@@ -799,17 +799,84 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
     return ret_val;
 }
 
-void sinsp_procfs_parser::lookup_memory_cgroup_dir()
+/*
+ * Get CPU usage from cpuacct cgroup subsystem
+ */
+int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup, int64_t *old_last_cpu_time)
 {
-	// Look for mount point of cgroup memory filesystem
+	if (!m_is_live_capture) {
+		return -1;
+	}
+
+	if (!m_cpuacct_cgroup_dir) {
+		lookup_cpuacct_cgroup_dir();
+	}
+
+	if (!m_cpuacct_cgroup_dir || m_cpuacct_cgroup_dir->empty()) {
+		return -1;
+	}
+
+	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, old_last_cpu_time);
+}
+
+int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
+                                        const string &container_cpuacct_cgroup, int64_t *old_last_cpu_time)
+{
+	// Using scap_get_host_root() is not necessary here because
+	// m_cpuacct_cgroup_dir is taken from /etc/mtab
+	char cpuacct_filename[SCAP_MAX_PATH_SIZE];
+	snprintf(cpuacct_filename, sizeof(cpuacct_filename), "%s/%s/cpuacct.usage",
+	         m_cpuacct_cgroup_dir->c_str(), container_cpuacct_cgroup.c_str());
+
+	FILE *fp = fopen(cpuacct_filename, "r");
+	if (fp == NULL) {
+		g_logger.log(string(__func__) + ": Unable to open file " + cpuacct_filename +
+		             ": errno: " + strerror(errno), sinsp_logger::SEV_DEBUG);
+		return -1;
+	}
+
+	char fp_line[128] = { 0 };
+	if(fgets(fp_line, sizeof(fp_line), fp) != NULL) {
+		int64_t stat_val = -1;
+		if (sscanf(fp_line, "%" PRId64, &stat_val) != 1) {
+			g_logger.log(string(__func__) + ": Unable to parse line '" + fp_line + "'" +
+			             " from file " + cpuacct_filename, sinsp_logger::SEV_ERROR);
+			fclose(fp);
+			return -1;
+		}
+
+		fclose(fp);
+
+		int64_t delta = stat_val - *old_last_cpu_time;
+		if (*old_last_cpu_time > 0)
+		{
+			*old_last_cpu_time = stat_val;
+			return delta;
+		}
+		else
+		{
+			*old_last_cpu_time = stat_val;
+			return 0;
+		}
+	}
+
+	fclose(fp);
+	return -1;
+}
+
+unique_ptr<string> sinsp_procfs_parser::lookup_cgroup_dir(const string& subsys)
+{
+	unique_ptr<string> cgroup_dir;
+
+	// Look for mount point of cgroup filesystem
 	// It should be already mounted on the host or by
 	// our docker-entrypoint.sh script
 	if(strcmp(scap_get_host_root(), "") != 0)
 	{
 		// We are inside our container, so we should use the directory
 		// mounted by it
-		auto memory_cgroup = string(scap_get_host_root()) + "/cgroup/memory";
-		m_memory_cgroup_dir = make_unique<string>(memory_cgroup);
+		auto cgroup = string(scap_get_host_root()) + "/cgroup/" + subsys;
+		cgroup_dir = make_unique<string>(cgroup);
 	}
 	else
 	{
@@ -818,26 +885,26 @@ void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 		while(entry != NULL)
 		{
 			if(strcmp(entry->mnt_type, "cgroup") == 0 &&
-			   hasmntopt(entry, "memory") != NULL)
+			   hasmntopt(entry, subsys.c_str()) != NULL)
 			{
-				m_memory_cgroup_dir = make_unique<string>(entry->mnt_dir);
+				cgroup_dir = make_unique<string>(entry->mnt_dir);
 				break;
 			}
 			entry = getmntent(fp);
 		}
 		endmntent(fp);
 	}
-	if(!m_memory_cgroup_dir)
+	if(!cgroup_dir)
 	{
-		g_logger.log("Cannot find memory cgroup dir", sinsp_logger::SEV_WARNING);
-		m_memory_cgroup_dir = make_unique<string>();
+		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot find %s cgroup dir", subsys.c_str());
+		return make_unique<string>();
 	}
 	else
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", m_memory_cgroup_dir->c_str());
+		g_logger.format(sinsp_logger::SEV_INFO, "Found %s cgroup dir: %s", subsys.c_str(), cgroup_dir->c_str());
+		return cgroup_dir;
 	}
 }
-
 
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 {

@@ -69,6 +69,15 @@ using namespace google::protobuf::io;
 #include "tracer_emitter.h"
 #include "metric_limits.h"
 
+namespace {
+template<typename T>
+void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
+{
+	metrics.set_percentiles(pctls);
+	metrics.set_serialize_pctl_data(true);
+}
+};
+
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
@@ -236,14 +245,19 @@ void sinsp_analyzer::set_percentiles()
 	const std::set<double>& pctls = m_configuration->get_percentiles();
 	if(pctls.size())
 	{
-		m_host_transaction_counters.set_percentiles(pctls);
-		m_host_metrics.set_percentiles(pctls);
+		init_host_level_percentiles(m_host_transaction_counters, pctls);
+		init_host_level_percentiles(m_host_metrics, pctls);
 		if(m_host_metrics.m_protostate)
 		{
-			m_host_metrics.m_protostate->set_percentiles(pctls);
+			init_host_level_percentiles(*(m_host_metrics.m_protostate), pctls);
 		}
-		m_host_req_metrics.set_percentiles(pctls);
-		m_io_net.set_percentiles(pctls);
+		init_host_level_percentiles(m_host_req_metrics, pctls);
+		init_host_level_percentiles(m_io_net, pctls);
+
+		auto conf = m_configuration->get_group_pctl_conf();
+		if (conf) {
+			m_containers_check_interval.interval(conf->check_interval() * ONE_SECOND_IN_NS);
+		}
 	}
 }
 
@@ -2399,7 +2413,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// Filter and emit containers, we do it now because when filtering processes we add
 	// at least one process for each container
 	tracer_emitter container_trc("emit_container", proc_trc);
-	auto emitted_containers = emit_containers(progtable_by_container);
+	auto emitted_containers = emit_containers(progtable_by_container, flshflags);
 
 	container_trc.stop();
 	bool progtable_needs_filtering = false;
@@ -3015,7 +3029,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				const std::set<double>& pctls = m_configuration->get_percentiles();
 				if(pctls.size())
 				{
-					conn.m_transaction_metrics.set_percentiles(pctls);
+					init_host_level_percentiles(conn.m_transaction_metrics, pctls);
 				}
 			}
 			else
@@ -3246,15 +3260,53 @@ void sinsp_analyzer::emit_full_connections()
 
 vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 {
+	static run_on_interval log_interval(300 * ONE_SECOND_IN_NS);
+
 	auto print_cpu_vec = [this](const vector<long>& v, stringstream& ss)
 	{
-		for(unsigned j = 0; j < m_machine_info->num_cpus; ++j)
+		for(unsigned j = 0; j < v.size(); ++j)
 		{
 			ss << " cpu[" << j << "]=" << v[j];
 		}
 	};
 
-	auto n_evts_by_cpu = m_inspector->get_n_tracepoint_hit();
+	vector<long> n_evts_by_cpu;
+	try
+	{
+		n_evts_by_cpu = m_inspector->get_n_tracepoint_hit();
+	}
+	catch(sinsp_exception e)
+	{
+		log_interval.run(
+			[&e]()
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR,
+						"Event count query failed: %s",
+						e.what());
+			});
+	}
+	catch(...)
+	{
+		log_interval.run(
+			[]()
+			{
+				g_logger.log("Event count query failed with an unknown error",
+					     sinsp_logger::SEV_ERROR);
+			});
+	}
+
+	if (n_evts_by_cpu.empty())
+	{
+		return n_evts_by_cpu;
+	}
+	else if (n_evts_by_cpu.size() != m_last_total_evts_by_cpu.size())
+	{
+		g_logger.log("Event count history mismatch, clearing history",
+			     sinsp_logger::SEV_ERROR);
+		m_last_total_evts_by_cpu = move(n_evts_by_cpu);
+		return vector<long>();
+	}
+
 	vector<long> evts_per_second_by_cpu(n_evts_by_cpu.size());
 	for(unsigned j=0; j < n_evts_by_cpu.size(); ++j)
 	{
@@ -3285,7 +3337,12 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flshflags, double threshold_metr
 	if(m_inspector->is_live() && m_configuration->get_security_enabled() == false)
 	{
 		auto evts_per_second_by_cpu = get_n_tracepoint_diff();
-		auto max_evts_per_second = *max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
+		auto max_iter = max_element(evts_per_second_by_cpu.begin(), evts_per_second_by_cpu.end());
+		decltype(evts_per_second_by_cpu)::value_type max_evts_per_second = 0;
+		if (max_iter != evts_per_second_by_cpu.end())
+		{
+			max_evts_per_second = *max_iter;
+		}
 		m_total_evts_switcher.run_on_threshold(max_evts_per_second, [this]()
 		{
 			m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
@@ -5537,7 +5594,7 @@ private:
 	Extractor m_extractor;
 };
 
-vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& progtable_by_container)
+vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& progtable_by_container, sinsp_analyzer::flush_flags flshflags)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -5560,6 +5617,35 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	{
 		return analyzer_state.m_req_metrics.m_io_net.get_tot_bytes();
 	};
+
+	// enable/disable percentile data serialization for configured containers
+	const auto conf = get_configuration_read_only()->get_group_pctl_conf();
+	if (conf) {
+		m_containers_check_interval.run([this, &progtable_by_container, &conf]()
+			{
+				g_logger.format(sinsp_logger::SEV_INFO,
+						"Performing percentile data serialization check for containers");
+				const auto containers_info = m_inspector->m_container_manager.get_containers();
+				uint32_t n_matched = 0;
+				for (auto &it : m_containers) {
+					auto cinfo_it = containers_info->find(it.first);
+					if (cinfo_it == containers_info->end()) {
+						continue;
+					}
+					auto is_match =
+						((n_matched < conf->max_containers()) &&
+						conf->match(&(cinfo_it->second), *infra_state()));
+					it.second.set_serialize_pctl_data(is_match);
+					if (is_match) {
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Percentile data serialization enabled for container: %s",
+							cinfo_it->second.m_name.c_str());
+						++n_matched;
+					}
+				}
+			},
+			m_prev_flush_time_ns);
+	}
 
 	vector<string> emitted_containers;
 	vector<string> containers_ids;
@@ -5655,7 +5741,8 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
 	unsigned statsd_limit = m_configuration->get_statsd_limit();
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit,
-									&emitted_containers, &total_cpu_shares, &progtable_by_container]
+	                                  &emitted_containers, &total_cpu_shares, &progtable_by_container,
+	                                  flshflags]
 			(const uint32_t containers_limit)
 	{
 		for(uint32_t j = 0; j < containers_limit && !containers_ids.empty(); ++j)
@@ -5666,7 +5753,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			// since we are getting containerids from that table
 			// same tinfo is used also to get memory cgroup path
 			auto tinfo = progtable_by_container.at(containerid).front();
-			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo);
+			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo, flshflags);
 			emitted_containers.emplace_back(containerid);
 			containers_ids.erase(containers_ids.begin());
 		}
@@ -5768,12 +5855,13 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			}
 		}
 	}, m_prev_flush_time_ns);
+
 	return emitted_containers;
 }
 
 void
 sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares,
-							   sinsp_threadinfo* tinfo)
+							   sinsp_threadinfo* tinfo, sinsp_analyzer::flush_flags flshflags)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -5830,6 +5918,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	if(!it->second.m_mesos_task_id.empty())
 	{
 		container->set_mesos_task_id(it->second.m_mesos_task_id);
+		auto uid = make_pair((string)"container", container_id);
+		m_infrastructure_state->get_mesos_labels(uid, container->mutable_orchestrators_fallback_labels());
 	}
 
 	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
@@ -5846,18 +5936,33 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		const string &label_key = it_labels->first;
+		const string &label_val = it_labels->second;
+
 		// Filter out docker swarm and docker stack labels because that data
 		// should get sent in the swarm protobuf section by swarm managers
 		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
-		if(!it_labels->first.compare(0, swarmstr.size(), swarmstr) ||
-			!it_labels->first.compare(0, stackstr.size(), stackstr))
+		if(!label_key.compare(0, swarmstr.size(), swarmstr) ||
+		   !label_key.compare(0, stackstr.size(), stackstr))
 		{
 			continue;
 		}
-		draiosproto::container_label* label = container->add_labels();
 
-		label->set_key(it_labels->first);
-		label->set_value(it_labels->second);
+		// Limit length of label values based on config. Long labels are skipped
+		// instead of truncating to avoid producing overlapping labels.
+		if (label_val.length() > m_containers_labels_max_len)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "%s: Skipped label '%s' of "
+							"container %s[%s]: longer than max configured, %u > %u",
+							__func__, label_key.c_str(), it->second.m_name.c_str(),
+							container_id.c_str(), label_val.length(),
+							m_containers_labels_max_len);
+			continue;
+		}
+
+		draiosproto::container_label* label = container->add_labels();
+		label->set_key(label_key);
+		label->set_value(label_val);
 	}
 
 	container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
@@ -5892,7 +5997,35 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
 	}
-	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+	auto cpuacct_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
+									[](const pair<string, string>& cgroup)
+									{
+										return cgroup.first == "cpuacct";
+									});
+	if(cpuacct_cgroup_it != tinfo->m_cgroups.cend() && cpuacct_cgroup_it->second != "/")
+	{
+		/*
+		 * Only read cpuacct cgroup values when we really are going to emit them,
+		 * otherwise the read value gets lost and we underreport the CPU usage
+		 */
+		if (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
+			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second, &it_analyzer->second.m_last_cpu_time);
+			if(cgroup_cpuacct > 0)
+			{
+				/*
+				 * cgroup_cpuacct contains cgroup's consumed CPU time in nanoseconds.
+				 * Scale to range used on the wire (100% CPU == 10000)
+				 */
+				//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%lld, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct / 100000, it_analyzer->second.m_metrics.m_cpuload * 100);
+				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct / 100000);
+			}
+		}
+	}
+	else
+	{
+		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_pct=%.2f", container_id.c_str(), it_analyzer->second.m_metrics.m_cpuload * 100);
+		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+	}
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 
@@ -6012,8 +6145,19 @@ void sinsp_analyzer::get_statsd()
 		{
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
-		while(!m_statsd_metrics.empty() && std::get<0>(m_statsd_metrics.begin()->second).at(0).timestamp() < look_for_ts)
-		{
+
+		while(!m_statsd_metrics.empty()) {
+			auto metrics = std::get<0>(m_statsd_metrics.begin()->second);
+			if(metrics.empty())
+			{
+				break;
+			}
+
+			if(metrics.at(0).timestamp() >= look_for_ts)
+			{
+				break;
+			}
+
 			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
 		}
 	}
@@ -6155,7 +6299,7 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 
 	set<uint16_t> ports;
 	string path;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, infra_state(), ports, path)) {
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path)) {
 		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
 		prom_procs.emplace_back(pp);
 
@@ -6605,6 +6749,7 @@ analyzer_container_state::analyzer_container_state()
 	m_connections_by_serverport = make_unique<decltype(m_connections_by_serverport)::element_type>();
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
+	m_last_cpu_time = 0;
 }
 
 void analyzer_container_state::clear()

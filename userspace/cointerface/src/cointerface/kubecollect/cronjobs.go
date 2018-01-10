@@ -5,6 +5,7 @@ import (
 	// "encoding/json"
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	kubeclient "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -50,7 +51,7 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 var cronJobInf cache.SharedInformer
 
 func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
-	if CompatibilityMap["cronjobs"] {
+	if compatibilityMap["cronjobs"] {
 		for _, item := range cronJobInf.GetStore().List() {
 			cronJob := item.(*v2alpha1.CronJob)
 			for _, activeJob := range cronJob.Status.Active {
@@ -65,7 +66,7 @@ func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
 }
 
 func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["cronjobs"] {
+	if compatibilityMap["cronjobs"] {
 		for _, obj := range cronJobInf.GetStore().List() {
 			cronJob := obj.(*v2alpha1.CronJob)
 			if cronJob.GetNamespace() == namespaceName {
@@ -77,14 +78,19 @@ func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 	}
 }
 
-func StartCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
 	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, RsyncInterval)
-	go cronJobInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		cronJobInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 
 	// fold, _ := os.Create("/tmp/cronjob_updates_old.json")
 	// fnew, _ := os.Create("/tmp/cronjob_updates_new.json")

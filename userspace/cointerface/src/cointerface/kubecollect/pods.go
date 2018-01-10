@@ -3,6 +3,9 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"errors"
+	"strings"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -10,8 +13,8 @@ import (
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"strings"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var podInf cache.SharedInformer
@@ -24,34 +27,15 @@ func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eve
 	}
 }
 
-// We pass the ContainerStatus along with the pod since the caller
-// already has it, and it saves us a lookup. We use the status name
-// to get the corresponding Container aka the spec
-func newContainerEvent(pod *v1.Pod,
+// Append ADDED/REMOVED events both containerEvents
+func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 	cstat *v1.ContainerStatus,
+	podUID types.UID,
 	eventType draiosproto.CongroupEventType,
-	containerEvents *[]*draiosproto.CongroupUpdateEvent,
-	children *[]*draiosproto.CongroupUid) {
-
-	par := []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
-		Kind:proto.String("k8s_pod"),
-		Id:proto.String(string(pod.GetUID()))},
-	}
-
-	// Kubernetes reports containers in this format:
-	// docker://<fulldockercontainerid>
-	// rkt://<rktpodid>:<rktappname>
-	// We instead use
-	// <dockershortcontainerid>
-	// <rktpodid>:<rktappname>
-	// so here we are doing this conversion
-	containerId := cstat.ContainerID
-	if strings.HasPrefix(containerId, "docker://") {
-		containerId = containerId[9:21]
-	} else if strings.HasPrefix(containerId, "rkt://") {
-		containerId = containerId[6:]
-	} else {
-		// unknown container type or ContainerID not available yet
+) {
+	containerID, err := parseContainerID(cstat.ContainerID)
+	if err != nil {
+		log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
 		return
 	}
 
@@ -63,21 +47,131 @@ func newContainerEvent(pod *v1.Pod,
 		Object: &draiosproto.ContainerGroup {
 			Uid: &draiosproto.CongroupUid {
 				Kind:proto.String("container"),
-				Id:proto.String(containerId),
+				Id:proto.String(containerID),
 			},
 			Tags: map[string]string{
 				"container.name"    : cstat.Name,
 				"container.image"   : cstat.Image,
 				"container.image.id": imageId,
 			},
-			Parents: par,
+			Parents: []*draiosproto.CongroupUid{&draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(podUID))},
+			},
 		},
 	})
+}
 
-	*children = append(*children, &draiosproto.CongroupUid {
-		Kind:proto.String("container"),
-		Id:proto.String(containerId)},
+// Append ADDED/REMOVED container events to contEvents and add
+// child links for all running containers to podChildren
+func processContainers(contEvents *[]*draiosproto.CongroupUpdateEvent,
+	podChildren *[]*draiosproto.CongroupUid,
+	containers []v1.ContainerStatus,
+	oldContainers []v1.ContainerStatus,
+	podUID types.UID,
+	evtType draiosproto.CongroupEventType,
+) {
+	type cState int
+	const (
+		waiting cState = iota
+		running
+		terminated
 	)
+	getState := func(cs v1.ContainerState) cState {
+		if cs.Terminated != nil {
+			return terminated
+		} else if cs.Running != nil {
+			return running
+		}
+		// Waiting is the default if all three are nil
+		return waiting
+	}
+
+	for _, c := range containers {
+		state := getState(c.State)
+		if (state < running) {
+			continue
+		} else if (state == running) {
+			containerID, err := parseContainerID(c.ContainerID)
+			if err != nil {
+				log.Debugf("Unable to parse ContainerID %v: %v", containerID, err)
+				continue
+			}
+
+			// All running containers need to be added to the child list
+			// even if they don't have an ADDED or REMOVED event this time
+			*podChildren = append(*podChildren, &draiosproto.CongroupUid {
+				Kind:proto.String("container"),
+				Id:proto.String(containerID)},
+			)
+		}
+
+		var oldState cState = waiting
+		for _, oldC := range oldContainers {
+			if oldC.Name == c.Name {
+				oldState = getState(oldC.State)
+				break;
+			}
+		}
+
+		newEvent := false
+		var newType draiosproto.CongroupEventType
+		switch state {
+		case running:
+			if oldState < running &&
+				(evtType == draiosproto.CongroupEventType_ADDED ||
+				evtType == draiosproto.CongroupEventType_UPDATED) {
+				newEvent, newType = true, draiosproto.CongroupEventType_ADDED
+			}
+		case terminated:
+			// Always send for REMOVED, and send on UPDATED if we
+			// notice a state transition. This results in sending
+			// two delete events if we catch the UPDATED transition,
+			// but the infra state code can handle double deletes
+			if evtType == draiosproto.CongroupEventType_REMOVED ||
+				(evtType == draiosproto.CongroupEventType_UPDATED &&
+				oldState == running) {
+				newEvent, newType = true, draiosproto.CongroupEventType_REMOVED
+			}
+		default:
+			log.Errorf("Unexpected state=%v while processing containers", state)
+		}
+
+		if newEvent {
+			newContainerEvent(contEvents, &c, podUID, newType)
+		}
+	}
+}
+
+func parseContainerID(containerID string) (string, error) {
+	var err error = nil
+
+	// Kubernetes reports containers in this format:
+	// docker://<fulldockercontainerid>
+	// rkt://<rktpodid>:<rktappname>
+	// We instead use
+	// <dockershortcontainerid>
+	// <rktpodid>:<rktappname>
+	// so here we are doing this conversion
+	if strings.HasPrefix(containerID, "docker://") {
+		if len(containerID) >= 21 {
+			containerID = containerID[9:21]
+		} else {
+			err = errors.New("ID too short for docker format")
+		}
+	} else if strings.HasPrefix(containerID, "rkt://") {
+		// XXX Will the parsed rkt id always
+		// be 12 char like for docker?
+		if len(containerID) >= 7 {
+			containerID = containerID[6:]
+		} else {
+			err = errors.New("ID too short for rkt format")
+		}
+	} else {
+		err = errors.New("Unknown containerID format")
+	}
+
+	return containerID, err
 }
 
 func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
@@ -91,23 +185,14 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
 		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
-	if in && lhs.Status.HostIP != rhs.Status.HostIP {
-		in = false
-	}
 	if in && lhs.Status.PodIP != rhs.Status.PodIP {
 		in = false
 	}
 
 	if in {
-		lRestartCount := uint32(0)
-		for _, c := range lhs.Status.ContainerStatuses {
-			lRestartCount += uint32(c.RestartCount)
-		}
-		rRestartCount := uint32(0)
-		for _, c := range rhs.Status.ContainerStatuses {
-			rRestartCount += uint32(c.RestartCount)
-		}
-		if lRestartCount != rRestartCount {
+		lRestarts, lWaiting := statusCounts(lhs.Status.ContainerStatuses)
+		rRestarts, rWaiting := statusCounts(rhs.Status.ContainerStatuses)
+		if (lRestarts != rRestarts) || (lWaiting != rWaiting) {
 			in = false
 		}
 	}
@@ -138,45 +223,40 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	}
 
 	if out {
-		lContainerCount := 0
-		rContainerCount := 0
-
-		for _, c := range lhs.Status.ContainerStatuses {
-			if c.ContainerID != "" {
-				lContainerCount++
-			}
-		}
-		for _, c := range rhs.Status.ContainerStatuses {
-			if c.ContainerID != "" {
-				rContainerCount++
-			}
-		}
-
-		if lContainerCount != rContainerCount {
+		// rhs is the new pod, lhs is the old pod
+		var children []*draiosproto.CongroupUid
+		var containerEvents []*draiosproto.CongroupUpdateEvent
+		processContainers(&containerEvents, &children,
+			rhs.Status.ContainerStatuses,
+			lhs.Status.ContainerStatuses,
+			rhs.GetUID(), draiosproto.CongroupEventType_UPDATED)
+		if len(containerEvents) > 0 {
 			out = false
-		} else if out {
-			count := 0
-			for _, lC := range lhs.Status.ContainerStatuses {
-				if lC.ContainerID == "" {
-					continue
-				}
-				for _, rC := range rhs.Status.ContainerStatuses {
-					if rC.ContainerID == "" {
-						continue
-					}
-					if lC.ContainerID == rC.ContainerID {
-						count++
-						break
-					}
-				}
-			}
-			if count != len(lhs.Status.ContainerStatuses) {
-				out = false
-			}
+		}
+	}
+	if out {
+		var children []*draiosproto.CongroupUid
+		var containerEvents []*draiosproto.CongroupUpdateEvent
+		processContainers(&containerEvents, &children,
+			rhs.Status.InitContainerStatuses,
+			lhs.Status.InitContainerStatuses,
+			rhs.GetUID(), draiosproto.CongroupEventType_UPDATED)
+		if len(containerEvents) > 0 {
+			out = false
 		}
 	}
 
 	return in, out
+}
+
+func statusCounts(containers []v1.ContainerStatus) (restarts, waiting int32) {
+	for _, c := range containers {
+		restarts += c.RestartCount
+		if c.State.Waiting != nil {
+			waiting += 1
+		}
+	}
+	return
 }
 
 func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool) ([]*draiosproto.CongroupUpdateEvent) {
@@ -187,9 +267,6 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	inttags := GetAnnotations(pod.ObjectMeta, "kubernetes.pod.")
 
 	var ips []string
-	/*if pod.Status.HostIP != "" {
-		ips = append(ips, pod.Status.HostIP)
-	}*/
 	if pod.Status.PodIP != "" {
 		ips = append(ips, pod.Status.PodIP)
 	}
@@ -213,55 +290,17 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 	var containerEvents []*draiosproto.CongroupUpdateEvent
 	if setLinks {
 		var oldContainers []v1.ContainerStatus
+		var oldInitContainers []v1.ContainerStatus
 		if oldPod != nil {
-			for _, oldC := range oldPod.Status.ContainerStatuses {
-				if oldC.ContainerID != "" {
-					oldContainers = append(oldContainers, oldC)
-				}
-			}
+			oldContainers = oldPod.Status.ContainerStatuses
+			oldInitContainers = oldPod.Status.InitContainerStatuses
 		}
-
-		// Generate ADDED events for containers
-		// that are in the new pod but not oldPod,
-		for _, c := range pod.Status.ContainerStatuses {
-
-			if c.ContainerID == "" {
-				continue
-			}
-
-			found := false
-			for i := 0; i < len(oldContainers); i++ {
-				if oldContainers[i].ContainerID == c.ContainerID {
-					oldContainers[i] = oldContainers[len(oldContainers)-1]
-					oldContainers = oldContainers[:len(oldContainers)-1]
-					found = true
-					break
-				}
-			}
-			if found {
-				// Never fire UPDATED events for containers
-				// This means we can't do per-container stat updates
-				continue
-			}
-
-			var cEvtType draiosproto.CongroupEventType
-			if eventType == draiosproto.CongroupEventType_UPDATED {
-				cEvtType = draiosproto.CongroupEventType_ADDED
-			} else {
-				cEvtType = eventType
-			}
-			newContainerEvent(pod, &c, cEvtType,
-				&containerEvents, &children)
-		}
-
-		// Any remaining containers must have been deleted
-		for _, removedC := range oldContainers {
-			if removedC.ContainerID != "" {
-				newContainerEvent(pod, &removedC,
-					draiosproto.CongroupEventType_REMOVED,
-					&containerEvents, &children)
-			}
-		}
+		processContainers(&containerEvents, &children,
+			pod.Status.ContainerStatuses,
+			oldContainers, pod.GetUID(), eventType)
+		processContainers(&containerEvents, &children,
+			pod.Status.InitContainerStatuses,
+			oldInitContainers, pod.GetUID(), eventType)
 	}
 
 	var cg []*draiosproto.CongroupUpdateEvent
@@ -289,18 +328,15 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 
 	// Restart count is a legacy metric attributed to pods
 	// instead of the individual containers, so report it here
-	restartCount := int32(0)
-	waitingCount := int32(0)
-	for _, c := range pod.Status.ContainerStatuses {
-		restartCount += c.RestartCount
-		if c.State.Waiting != nil {
-			waitingCount += 1
-		}
-	}
+	restartCount, waitingCount := statusCounts(pod.Status.ContainerStatuses)
+	initRestarts, initWaiting := statusCounts(pod.Status.InitContainerStatuses)
+	restartCount += initRestarts
+	waitingCount += initWaiting
+
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
-	appendMetricContainerResources(metrics, prefix, pod.Spec.Containers)
+	appendMetricContainerResources(metrics, prefix, pod)
 }
 
 func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
@@ -326,17 +362,41 @@ func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, co
 	}
 }
 
-func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, containers []v1.Container) {
+func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, pod *v1.Pod) {
 	podRequestsCpuCores := float64(0)
 	podLimitsCpuCores := float64(0)
 	podRequestsMemoryBytes := float64(0)
 	podLimitsMemoryBytes := float64(0)
-	for _, c := range containers {
+
+	// https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
+	// Pod effective resources are the higher of the sum of all app containers
+	// or the highest init container value for that resource
+	for _, c := range pod.Spec.Containers {
 		podRequestsCpuCores += resourceVal(c.Resources.Requests, v1.ResourceCPU)
 		podLimitsCpuCores += resourceVal(c.Resources.Limits, v1.ResourceCPU)
 		podRequestsMemoryBytes += resourceVal(c.Resources.Requests, v1.ResourceMemory)
 		podLimitsMemoryBytes += resourceVal(c.Resources.Limits, v1.ResourceMemory)
 	}
+
+	for _, c := range pod.Spec.InitContainers {
+		initRequestsCpuCores := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		if initRequestsCpuCores > podRequestsCpuCores {
+			podRequestsCpuCores = initRequestsCpuCores
+		}
+		initLimitsCpuCores := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		if initLimitsCpuCores > podLimitsCpuCores {
+			podLimitsCpuCores = initLimitsCpuCores
+		}
+		initRequestsMemoryBytes := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		if initRequestsMemoryBytes > podRequestsMemoryBytes {
+			podRequestsMemoryBytes = initRequestsMemoryBytes
+		}
+		initLimitsMemoryBytes := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		if initLimitsMemoryBytes > podLimitsMemoryBytes {
+			podLimitsMemoryBytes = initLimitsMemoryBytes
+		}
+	}
+
 	AppendMetric(metrics, prefix+"resourceRequests.cpuCores", podRequestsCpuCores)
 	AppendMetric(metrics, prefix+"resourceLimits.cpuCores", podLimitsCpuCores)
 	AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", podRequestsMemoryBytes)
@@ -355,7 +415,7 @@ func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
-	if !CompatibilityMap["pods"] {
+	if !compatibilityMap["pods"] {
 		return 0
 	}
 
@@ -377,7 +437,7 @@ func resolveTargetPort(name string, selector labels.Selector, namespace string) 
 }
 
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
@@ -390,7 +450,7 @@ func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Select
 }
 
 func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName string) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			if pod.Spec.NodeName == nodeName {
@@ -403,7 +463,7 @@ func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName s
 }
 
 func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			if pod.GetNamespace() == namespaceName {
@@ -416,7 +476,7 @@ func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
-	if CompatibilityMap["pods"] {
+	if compatibilityMap["pods"] {
 		for _, obj := range podInf.GetStore().List() {
 			pod := obj.(*v1.Pod)
 			for _, owner := range pod.GetOwnerReferences() {
@@ -430,15 +490,20 @@ func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1m
 	}
 }
 
-func StartPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
 	podInf = cache.NewSharedInformer(lw, &v1.Pod{}, RsyncInterval)
-	go podInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		podInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
+func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchPods()")
 
 	podInf.AddEventHandler(

@@ -4,6 +4,7 @@
 #include <sys/ioctl.h>
 #include <poll.h>
 #include <sys/mman.h>
+#include <numeric>
 
 #include "sys_call_test.h"
 #include <gtest.h>

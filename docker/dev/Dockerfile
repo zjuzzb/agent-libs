@@ -26,6 +26,8 @@ RUN echo "deb http://deb.debian.org/debian jessie main" > /etc/apt/sources.list.
 	gcc-6 \
 	gcc-5 \
 	gcc-4.9 \
+	libc6-dev \
+	libelf-dev \
 	libelf1 \
 	openjdk-8-jre-headless \
 	python bzip2 && rm -rf /var/lib/apt/lists/*

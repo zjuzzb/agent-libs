@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	"reflect"
 	log "github.com/cihub/seelog"
@@ -85,7 +86,7 @@ func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1
 }
 
 func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if CompatibilityMap["replicasets"] {
+	if compatibilityMap["replicasets"] {
 		for _, obj := range replicaSetInf.GetStore().List() {
 			replicaSet := obj.(*v1beta1.ReplicaSet)
 			//log.Debugf("AddNSParents: %v", nsObj.GetName())
@@ -99,7 +100,7 @@ func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 	}
 }
 func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, deployment *v1beta1.Deployment) {
-	if CompatibilityMap["replicasets"] {
+	if compatibilityMap["replicasets"] {
 		for _, obj := range replicaSetInf.GetStore().List() {
 			replicaSet := obj.(*v1beta1.ReplicaSet)
 			//log.Debugf("AddNSParents: %v", nsObj.GetName())
@@ -114,7 +115,7 @@ func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, deployment *v1b
 }
 
 func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["replicasets"] {
+	if compatibilityMap["replicasets"] {
 		for _, obj := range replicaSetInf.GetStore().List() {
 			replicaSet := obj.(*v1beta1.ReplicaSet)
 			if replicaSet.GetNamespace() == namespaceName {
@@ -126,14 +127,19 @@ func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 }
 
-func StartReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
 	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, RsyncInterval)
-	go replicaSetInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		replicaSetInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchReplicaSets()")
 
 	replicaSetInf.AddEventHandler(

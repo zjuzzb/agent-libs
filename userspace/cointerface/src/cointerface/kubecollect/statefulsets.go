@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -46,7 +47,7 @@ func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *v1bet
 }
 
 func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if CompatibilityMap["statefulsets"] {
+	if compatibilityMap["statefulsets"] {
 		for _, obj := range statefulSetInf.GetStore().List() {
 			statefulSet := obj.(*v1beta1.StatefulSet)
 			for _, owner := range pod.GetOwnerReferences() {
@@ -61,7 +62,7 @@ func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.P
 }
 
 func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
-	if CompatibilityMap["statefulsets"] {
+	if compatibilityMap["statefulsets"] {
 		for _, obj := range statefulSetInf.GetStore().List() {
 			statefulSet := obj.(*v1beta1.StatefulSet)
 			if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
@@ -74,7 +75,7 @@ func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, servi
 }
 
 func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if CompatibilityMap["statefulsets"] {
+	if compatibilityMap["statefulsets"] {
 		for _, obj := range statefulSetInf.GetStore().List() {
 			statefulSet := obj.(*v1beta1.StatefulSet)
 			if statefulSet.GetNamespace() == namespaceName {
@@ -86,14 +87,19 @@ func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, n
 	}
 }
 
-func StartStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.AppsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "StatefulSets", v1meta.NamespaceAll, fields.Everything())
 	statefulSetInf = cache.NewSharedInformer(lw, &v1beta1.StatefulSet{}, RsyncInterval)
-	go statefulSetInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		statefulSetInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchStatefulSets()")
 
 	statefulSetInf.AddEventHandler(

@@ -99,7 +99,8 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 }
 
 infrastructure_state::infrastructure_state(uint64_t refresh_interval)
-	: m_k8s_subscribed(false)
+	: m_inspector(nullptr)
+	, m_k8s_subscribed(false)
 	, m_k8s_connected(false)
 	, m_k8s_refresh_interval(refresh_interval)
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
@@ -120,13 +121,20 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval)
 	};
 }
 
+infrastructure_state::~infrastructure_state()
+{
+}
+
 void infrastructure_state::init(sinsp *inspector, const std::string& machine_id)
 {
 	m_inspector = inspector;
 	m_machine_id = machine_id;
 }
 
-infrastructure_state::~infrastructure_state(){}
+bool infrastructure_state::inited()
+{
+	return m_inspector != nullptr;
+}
 
 void infrastructure_state::subscribe_to_k8s(string url, string ca_cert,
 					    string client_cert, string client_key,
@@ -225,7 +233,7 @@ unsigned int infrastructure_state::size()
 	return m_state.size();
 }
 
-bool infrastructure_state::has(uid_t uid)
+bool infrastructure_state::has(uid_t uid) const
 {
 	return m_state.find(uid) != m_state.end();
 }
@@ -242,14 +250,50 @@ std::unique_ptr<draiosproto::container_group> infrastructure_state::get(uid_t ui
 	return res;
 }
 
-bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited)
+bool infrastructure_state::add(uid_t key)
+{
+	if (has(key))
+		return false;
+
+	m_state[key] = make_unique<draiosproto::container_group>();
+	m_state[key]->mutable_uid()->set_kind(key.first);
+	m_state[key]->mutable_uid()->set_id(key.second);
+
+	return true;
+}
+
+bool infrastructure_state::add_child_link(uid_t key, uid_t ckey)
+{
+	if(!has(key) || has_link(m_state[key]->children(), ckey))
+		return false;
+
+	draiosproto::congroup_uid *child = m_state[key]->mutable_children()->Add();
+	child->set_kind(ckey.first);
+	child->set_id(ckey.second);
+
+	return true;
+}
+
+bool infrastructure_state::add_parent_link(uid_t key, uid_t pkey)
+{
+	if(!has(key) || has_link(m_state[key]->parents(), pkey))
+		return false;
+
+	draiosproto::congroup_uid *parent = m_state[key]->mutable_parents()->Add();
+	parent->set_kind(pkey.first);
+	parent->set_id(pkey.second);
+
+	return true;
+}
+
+bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const
 {
 	if (!has(uid) || (visited.find(uid) != visited.end())) {
 		return false;
 	}
 	visited.emplace(uid);
 
-	auto *cg = m_state[uid].get();
+	auto *cg = m_state.find(uid)->second.get();
 	
 	if (!cg) {	// Shouldn't happen
 		return false;
@@ -275,6 +319,166 @@ bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::u
 	}
 
 	return false;
+}
+
+bool infrastructure_state::is_mesos_label(const std::string &lbl)
+{
+	static const std::string mesos = "mesos";
+	static const std::string marathon = "marathon";
+
+	return !lbl.compare(0, mesos.size(), mesos) || !lbl.compare(0, marathon.size(), marathon);
+}
+
+void infrastructure_state::get_mesos_labels(const uid_t uid,
+	google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels,
+	std::unordered_set<uid_t> *visited)
+{
+	if (!visited)
+	{
+		std::unordered_set<uid_t> newvis;
+		get_mesos_labels(uid, labels, &newvis);
+		return;
+	}
+	if (!has(uid) || (visited->find(uid) != visited->end())) {
+		return;
+	}
+	visited->emplace(uid);
+
+	auto *cg = m_state[uid].get();
+
+	if (!cg) {	// Shouldn't happen
+		return;
+	}
+	for (const auto &tag : cg->internal_tags())
+	{
+		if (is_mesos_label(tag.first))
+		{
+			auto lbl = labels->Add();
+			lbl->set_key(tag.first);
+			lbl->set_value(tag.second);
+		}
+	}
+
+	// Currently putting mesos labels only in the container
+#if 0
+	for(const auto &p_uid : cg->parents()) {
+		// Only look at lowest marathon group level
+		if ((uid.first == "marathon_group") && p_uid.kind() == "marathon_group")
+			continue;
+
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+		get_mesos_labels(pkey, labels, visited);
+	}
+#endif
+}
+
+static std::string pathtotaskname(const std::string path)
+{
+	std::string ret;
+
+	size_t last = 0, i = 0;
+	while ((i = path.find('/', last)) != string::npos)
+	{
+		if ((i - last) > 0)
+		{
+			ret = path.substr(last, i-last) + (ret.empty() ? "" : ("." + ret));
+		}
+		last = i+1;
+	}
+	if (last < path.size())
+	{
+		ret = path.substr(last, path.size()-last) + (ret.empty() ? "" : ("." + ret));
+	}
+
+	return ret;
+}
+
+static bool getanyenvval(std::string &out, const vector<std::string> &env, const vector<std::string> &keys)
+{
+	for(const auto& env_var : env)
+	{
+		for (const string key : keys)
+		{
+			if((env_var.size() > key.size()) && !env_var.compare(0, key.size(), key) && (env_var[key.size()] == '='))
+			{
+				out = env_var.substr(key.size()+1);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+static bool getenvval(std::string &out, const vector<std::string> &env, const std::string &key)
+{
+	const vector<std::string> keys = { key };
+	return getanyenvval(out, env, keys);
+}
+
+void infrastructure_state::scrape_mesos_env(const std::string &container_id, sinsp_threadinfo *tinfo)
+{
+	static const std::string mar_app_id = "MARATHON_APP_ID";
+	static const std::string mar_app_labels = "MARATHON_APP_LABELS";
+	static const std::string mar_app_label = "MARATHON_APP_LABEL_";
+	static const vector<std::string> mes_task_ids = { "MESOS_TASK_ID", "mesos_task_id", "MESOS_EXECUTOR_ID" };
+
+	if (!tinfo || container_id.empty())
+		return;
+
+	const vector<string>& env = tinfo->get_env();
+
+	// For now only scrape if we find "MARATHON_APP_ID" in env
+	string app_id;
+	if (!getenvval(app_id, env, mar_app_id) || app_id.empty())
+		return;
+
+	string mesostaskname = pathtotaskname(app_id);
+
+
+	auto idx = app_id.find_last_of("/");
+	string appname = ((idx != string::npos) && (idx < app_id.size()-1)) ? app_id.substr(idx+1) : app_id;
+	string groupname = (idx == string::npos) ? "/" : app_id.substr(0, idx ? idx : idx+1);
+
+	uid_t ckey = make_pair("container", container_id);
+	add(ckey);
+	(*m_state[ckey]->mutable_internal_tags())["mesos.framework.name"] = "marathon";
+	if (!groupname.empty())
+		(*m_state[ckey]->mutable_internal_tags())["marathon.group.name"] = groupname;
+	if (!appname.empty())
+		(*m_state[ckey]->mutable_internal_tags())["marathon.app.name"] = appname;
+	if (!mesostaskname.empty())
+		(*m_state[ckey]->mutable_internal_tags())["mesos.task.name"] = mesostaskname;
+
+	string taskid;
+	if (getanyenvval(taskid, env, mes_task_ids) && !taskid.empty())
+	{
+		(*m_state[ckey]->mutable_internal_tags())["mesos.task.id"] = taskid;
+	}
+
+	glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: found app_id %s:%s, mesos taskname: %s, taskid: %s", container_id.c_str(), groupname.c_str(), appname.c_str(), mesostaskname.c_str(), taskid.c_str());
+
+	// Adding labels as tags
+	for (const string& enstr : env)
+	{
+		size_t eq;
+		if ((enstr.size() > mar_app_label.size()) &&
+			!enstr.compare(0, mar_app_label.size(), mar_app_label) &&
+			((eq = enstr.find('=', mar_app_label.size())) != string::npos) &&
+			(eq > mar_app_label.size()))
+		{
+			string label = enstr.substr(mar_app_label.size(), eq - mar_app_label.size());
+			std::transform(label.begin(), label.end(), label.begin(), ::tolower);
+			string marlabel = "marathon.app.label." + label;
+			string meslabel = "mesos.task.label." + label;
+			string value = enstr.substr(eq+1);
+			if (!label.empty() && !value.empty())
+			{
+				auto *tagmap = m_state[ckey]->mutable_internal_tags();
+				(*tagmap)[marlabel] = value;
+				(*tagmap)[meslabel] = value;
+			}
+		}
+	}
 }
 
 void infrastructure_state::handle_event(const draiosproto::congroup_update_event *evt, bool overwrite)
@@ -734,7 +938,7 @@ void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiospr
 	}
 }
 
-void infrastructure_state::on_new_container(const sinsp_container_info& container_info)
+void infrastructure_state::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
 	if(container_info.m_name.find("k8s_POD") != std::string::npos) {
 		// filter out k8s internal container/s
@@ -761,6 +965,8 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 	}
 
 	handle_event(&evt, true);
+
+	scrape_mesos_env(container_info.m_id, tinfo);
 }
 
 void infrastructure_state::on_remove_container(const sinsp_container_info& container_info)
@@ -800,6 +1006,9 @@ void infrastructure_state::clear_scope_cache()
 
 void infrastructure_state::refresh_hosts_metadata()
 {
+	// Ensure we have m_inspector and m_machine_id
+	if (!inited())
+		return;
 	//
 	// Remove current hosts
 	//

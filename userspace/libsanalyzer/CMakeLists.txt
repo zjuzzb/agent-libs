@@ -109,6 +109,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/sinsp.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stats.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/stopwatch.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/token_bucket.cpp
 	tracer_emitter.cpp
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
@@ -118,6 +119,7 @@ add_library(sanalyzer STATIC
 	jmx_proxy.cpp
 	statsite_proxy.cpp
 	app_checks.cpp
+        proc_filter.cpp
 	prometheus.cpp
 	posix_queue.cpp
 	coclient.cpp

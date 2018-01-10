@@ -218,7 +218,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_docker_event_filter(m_configuration->m_docker_event_filter);
 
 	// percentiles
-	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles);
+	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles,
+			m_configuration->m_group_pctl_conf);
 	m_analyzer->set_percentiles();
 
 	//
@@ -437,6 +438,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_containers_limit(m_configuration->m_containers_limit);
 	m_analyzer->set_container_patterns(m_configuration->m_container_patterns);
+	m_analyzer->set_containers_labels_max_len(m_configuration->m_containers_labels_max_len);
 	m_next_iflist_refresh_ns = sinsp_utils::get_current_time_ns()+IFLIST_REFRESH_FIRST_TIMEOUT_NS;
 
 	m_analyzer->set_user_event_queue(m_user_event_queue);

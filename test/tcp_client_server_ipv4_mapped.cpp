@@ -20,6 +20,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/syscall.h>
+#include <sys/uio.h>
 
 using Poco::StringTokenizer;
 using Poco::NumberFormatter;

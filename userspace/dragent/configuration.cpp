@@ -208,6 +208,8 @@ dragent_configuration::dragent_configuration()
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
 	m_json_parse_errors_logfile = "";
+	m_json_parse_errors_events_rate = 0.00333; // One event per 5 minutes
+	m_json_parse_errors_events_max_burst = 10;
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
@@ -569,6 +571,17 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 
 	add_percentiles();
+	if (! m_percentiles.empty()) {
+		m_group_pctl_conf.reset(new proc_filter::group_pctl_conf());
+		m_group_pctl_conf->set_enabled(m_config->get_scalar<bool>("group_percentiles", "enabled",
+			proc_filter::group_pctl_conf::enabled_default()));
+		m_group_pctl_conf->set_check_interval(m_config->get_scalar<uint32_t>("group_percentiles", "check_interval",
+			proc_filter::group_pctl_conf::check_interval_default()));
+		m_group_pctl_conf->set_max_containers(m_config->get_scalar<uint32_t>("group_percentiles", "max_containers",
+			proc_filter::group_pctl_conf::max_containers_default()));
+		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
+	}
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -614,6 +627,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
 	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
 	m_json_parse_errors_logfile = m_config->get_scalar<string>("json_parse_errors_logfile", "");
+	m_json_parse_errors_events_rate = m_config->get_scalar<double>("json_parse_errors", "events_rate", 0.00333);
+	m_json_parse_errors_events_max_burst = m_config->get_scalar<uint32_t>("json_parse_errors", "events_max_burst", 10);
 #ifdef _DEBUG
 	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", false);
 #else
@@ -689,15 +704,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}), m_app_checks.end());
 
 	// Prometheus
-	m_prom_conf.m_enabled = m_config->get_scalar<bool>("prometheus", "enabled", false);
-    m_prom_conf.m_log_errors = m_config->get_scalar<bool>("prometheus", "log_errors", false);
-    m_prom_conf.m_interval = m_config->get_scalar<int>("prometheus", "interval", -1);
-	m_prom_conf.m_k8s_get_config = m_config->get_scalar<bool>("prometheus", "get_kubernetes_config", true);
-    m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
-    m_prom_conf.m_max_metrics_per_proc = m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1);
-    m_prom_conf.m_max_tags_per_metric = m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1);
-	// m_prom_conf.m_port_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::port_filter_rule>>("prometheus", "port_filter");
-	m_prom_conf.m_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::filter_rule>>("prometheus", "process_filter");
+	m_prom_conf.set_enabled(m_config->get_scalar<bool>("prometheus", "enabled", false));
+	m_prom_conf.set_log_errors(m_config->get_scalar<bool>("prometheus", "log_errors", false));
+	m_prom_conf.set_interval(m_config->get_scalar<int>("prometheus", "interval", -1));
+	m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
+	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
+	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
+	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
@@ -722,6 +735,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
+	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 200);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
 	for(auto p : known_server_ports)
@@ -990,6 +1004,8 @@ void dragent_configuration::print_configuration()
 		g_log->information("Will log json parse errors to; " + m_json_parse_errors_logfile);
 		g_json_error_log.set_json_parse_errors_file(m_json_parse_errors_logfile);
 	}
+	g_json_error_log.set_machine_id(m_machine_id_prefix + m_machine_id);
+	g_json_error_log.set_events_rate(m_json_parse_errors_events_rate, m_json_parse_errors_events_max_burst);
 	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
 	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
 	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
@@ -1003,6 +1019,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
 	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
+	g_log->information("containers: labels max len: " + NumberFormatter::format(m_containers_labels_max_len) + " characters");
 	if(m_percentiles.size())
 	{
 		std::ostringstream os;
@@ -1010,6 +1027,13 @@ void dragent_configuration::print_configuration()
 		for(const auto& p : m_percentiles) { os << p << ','; }
 		os.seekp(-1, os.cur); os << ']';
 		g_log->information("Percentiles: " + os.str());
+		g_log->information("Group Percentiles: " + bool_as_text(m_group_pctl_conf->enabled()));
+		if (m_group_pctl_conf->enabled()) {
+			g_log->information("  Check interval: " + NumberFormatter::format(m_group_pctl_conf->check_interval()));
+			g_log->information("  Max containers: " + NumberFormatter::format(m_group_pctl_conf->max_containers()));
+		}
+	} else {
+		g_log->information("Percentiles: " + bool_as_text(false));
 	}
 	if(m_ignored_percentiles.size())
 	{
@@ -1044,6 +1068,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
+	g_log->information("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));

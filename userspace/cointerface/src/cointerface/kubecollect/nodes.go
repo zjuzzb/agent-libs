@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
 	kubeclient "k8s.io/client-go/kubernetes"
@@ -94,7 +95,7 @@ func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, name string, c
 }
 
 func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
-	if CompatibilityMap["nodes"] {
+	if compatibilityMap["nodes"] {
 		for _, obj := range nodeInf.GetStore().List() {
 			node := obj.(*v1.Node)
 			if node.GetName() == nodeName {
@@ -106,14 +107,19 @@ func AddNodeParents(parents *[]*draiosproto.CongroupUid, nodeName string) {
 	}
 }
 
-func StartNodesSInformer(ctx context.Context, kubeClient kubeclient.Interface) {
+func startNodesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Nodes", v1meta.NamespaceAll, fields.Everything())
 	nodeInf = cache.NewSharedInformer(lw, &v1.Node{}, RsyncInterval)
-	go nodeInf.Run(ctx.Done())
+
+	wg.Add(1)
+	go func() {
+		nodeInf.Run(ctx.Done())
+		wg.Done()
+	}()
 }
 
-func WatchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
 	log.Debugf("In WatchNodes()")
 
 	nodeInf.AddEventHandler(

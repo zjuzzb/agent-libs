@@ -1,8 +1,9 @@
 package main
 
 import (
-	"context"
 	"cointerface/draiosproto"
+	"cointerface/sdc_internal"
+	"context"
 	"errors"
 	"fmt"
 	log "github.com/cihub/seelog"
@@ -10,7 +11,6 @@ import (
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/swarm"
 	"github.com/gogo/protobuf/proto"
-	"cointerface/sdc_internal"
 	"strings"
 )
 

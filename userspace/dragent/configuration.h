@@ -554,6 +554,8 @@ public:
 	bool m_autoupdate_enabled;
 	bool m_print_protobuf;
 	string m_json_parse_errors_logfile;
+	double m_json_parse_errors_events_rate;
+	uint32_t m_json_parse_errors_events_max_burst;
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
@@ -590,6 +592,7 @@ public:
 	bool m_app_checks_enabled;
 	unsigned m_app_checks_limit;
 	uint32_t m_containers_limit;
+	uint32_t m_containers_labels_max_len;
 	vector<string> m_container_patterns;
 	ports_set m_known_server_ports;
 	vector<uint16_t> m_blacklisted_ports;
@@ -685,6 +688,7 @@ public:
 	std::set<double> m_percentiles;
 	static const unsigned MAX_PERCENTILES = 4;
 	std::vector<double> m_ignored_percentiles;
+	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 
 	unsigned m_snaplen;
 

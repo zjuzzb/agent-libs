@@ -31,8 +31,9 @@ public class Application {
     public static final int MONITOR_DONT_RESTART_CODE = 17;
     private static final String HELP_TEXT = "Available commands:\n" +
             "getMetrics <pid> <vpid> - Get metrics from specified JVM, metrics are configure on dragent.yaml\n" +
-            "availableMetrics <pid> <vpid> - Print all available beans from specified JVM, " +
+            "availableMetrics <pid> <vpid> - Print all available metrics (i.e. beans that contains numeric attributes) from specified JVM, " +
                     "they are printed in a similar YAML to be easily copied to conf file\n" +
+            "allAvailableBeans <pid> <vpid> - Print all available beans from specified JVM (some of them can't be used as metrics)\n" +
             "queryMatches <query> <beanName> - Checks if a query matches a specific bean, returns yes or no\n";
     static {
         MAPPER.disable(SerializationFeature.FLUSH_AFTER_WRITE_VALUE);
@@ -97,7 +98,8 @@ public class Application {
                 vmInfo.put("address", vm.getAddress());
             }
             MAPPER.writeValue(System.out, vmInfo);
-        } else if (command.equals("availableMetrics") && args.length > 1) {
+        } else if ((command.equals("availableMetrics") || command.equals("allAvailableBeans")) && args.length > 1) {
+            boolean allBeans = command.equals("allAvailableBeans");
             final VMRequest request = new VMRequest(args);
             // not using buildMonitoredVM since here we don't need
             // to apply config
@@ -110,7 +112,7 @@ public class Application {
 
                 final Map<String, Object> vmInfo = new LinkedHashMap<String, Object>();
                 vmInfo.put("pattern", vm.getName());
-                vmInfo.put("beans", vm.availableMetrics());
+                vmInfo.put("beans", vm.availableMetrics(allBeans));
                 final String dump = yaml.dump(vmInfo);
                 System.out.println(dump);
             } else {
@@ -250,7 +252,7 @@ public class Application {
             final String originalClassName = vm.getName();
             String matchedConfig = "none";
             for (Map.Entry<String, Config.Process> config : processes.entrySet()) {
-                if (originalClassName.contains(config.getValue().getPattern())) {
+                if (originalClassName.toLowerCase().contains(config.getValue().getPattern().toLowerCase())) {
                     vm.setName(config.getKey());
                     matchedConfig = config.getKey();
                     vm.addQueries(config.getValue().getQueries());
