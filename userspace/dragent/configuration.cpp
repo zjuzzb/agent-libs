@@ -699,7 +699,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	// m_prom_conf.m_port_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::port_filter_rule>>("prometheus", "port_filter");
 	m_prom_conf.m_rules = m_config->get_first_deep_sequence<vector<prometheus_conf::filter_rule>>("prometheus", "process_filter");
 
-	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27"};
+	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
+										"/usr/bin/python2.6", "/usr/bin/python26"};
 	auto python_binary_path = m_config->get_scalar<string>("python_binary", "");
 	if(!python_binary_path.empty() && is_executable(python_binary_path))
 	{
