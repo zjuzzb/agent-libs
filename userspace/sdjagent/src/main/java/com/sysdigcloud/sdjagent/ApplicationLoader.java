@@ -6,7 +6,12 @@
 
 package com.sysdigcloud.sdjagent;
 
-
+/**
+ * This class has been created to avoid crashes on java < 7.
+ * Since we have some deps that are compiled for JVM 7, loading Application.class
+ * fails without us have any control on it. This class has a bare minimum set of dependencies,
+ * it's able to catch UnsupportedClassVersionError and exit nicely
+ */
 public class ApplicationLoader {
     public static final double MIN_JAVA_VERSION = 1.7;
 

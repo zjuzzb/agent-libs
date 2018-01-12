@@ -429,6 +429,11 @@ public:
 		m_container_patterns = patterns;
 	}
 
+	void set_containers_labels_max_len(const uint32_t len)
+	{
+		m_containers_labels_max_len = len;
+	}
+
 	void set_fs_usage_from_external_proc(bool value);
 
 	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
@@ -514,8 +519,8 @@ VISIBILITY_PRIVATE
 	void emit_docker_events();
 	void emit_top_files();
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
-	vector<string> emit_containers(const progtable_by_container_t& active_containers);
-	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo);
+	vector<string> emit_containers(const progtable_by_container_t& active_containers, sinsp_analyzer::flush_flags flshflags);
+	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo, sinsp_analyzer::flush_flags flshflags);
 	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
 	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
@@ -770,6 +775,7 @@ VISIBILITY_PRIVATE
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;
+	uint32_t m_containers_labels_max_len;
 #ifndef _WIN32
 	self_cputime_analyzer m_cputime_analyzer;
 #endif

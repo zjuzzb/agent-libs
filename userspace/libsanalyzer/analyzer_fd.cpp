@@ -1581,12 +1581,13 @@ void sinsp_analyzer_fd_listener::on_bind(sinsp_evt *evt)
 	}
 }
 
-void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& container_info)
+void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
 	ASSERT(m_analyzer->m_infrastructure_state != NULL);
 
-	if(m_sinsp_config->get_security_enabled()) {
-		m_analyzer->m_infrastructure_state->on_new_container(container_info);
+	if(m_analyzer->m_infrastructure_state)
+	{
+		m_analyzer->m_infrastructure_state->on_new_container(container_info, tinfo);
 	}
 
 	//
@@ -1605,7 +1606,8 @@ void sinsp_analyzer_fd_listener::on_remove_container(const sinsp_container_info&
 {
 	ASSERT(m_analyzer->m_infrastructure_state != NULL);
 
-	if(m_sinsp_config->get_security_enabled()) {
+	if(m_analyzer->m_infrastructure_state)
+	{
 		m_analyzer->m_infrastructure_state->on_remove_container(container_info);
 	}
 }

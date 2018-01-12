@@ -208,6 +208,8 @@ dragent_configuration::dragent_configuration()
 	m_autoupdate_enabled = true;
 	m_print_protobuf = false;
 	m_json_parse_errors_logfile = "";
+	m_json_parse_errors_events_rate = 0.00333; // One event per 5 minutes
+	m_json_parse_errors_events_max_burst = 10;
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
@@ -625,6 +627,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_autoupdate_enabled = m_config->get_scalar<bool>("autoupdate_enabled", true);
 	m_print_protobuf = m_config->get_scalar<bool>("protobuf_print", false);
 	m_json_parse_errors_logfile = m_config->get_scalar<string>("json_parse_errors_logfile", "");
+	m_json_parse_errors_events_rate = m_config->get_scalar<double>("json_parse_errors", "events_rate", 0.00333);
+	m_json_parse_errors_events_max_burst = m_config->get_scalar<uint32_t>("json_parse_errors", "events_max_burst", 10);
 #ifdef _DEBUG
 	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", false);
 #else
@@ -731,6 +735,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
+	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 200);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
 	for(auto p : known_server_ports)
@@ -999,6 +1004,8 @@ void dragent_configuration::print_configuration()
 		g_log->information("Will log json parse errors to; " + m_json_parse_errors_logfile);
 		g_json_error_log.set_json_parse_errors_file(m_json_parse_errors_logfile);
 	}
+	g_json_error_log.set_machine_id(m_machine_id_prefix + m_machine_id);
+	g_json_error_log.set_events_rate(m_json_parse_errors_events_rate, m_json_parse_errors_events_max_burst);
 	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
 	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
 	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
@@ -1012,6 +1019,7 @@ void dragent_configuration::print_configuration()
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
 	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
+	g_log->information("containers: labels max len: " + NumberFormatter::format(m_containers_labels_max_len) + " characters");
 	if(m_percentiles.size())
 	{
 		std::ostringstream os;

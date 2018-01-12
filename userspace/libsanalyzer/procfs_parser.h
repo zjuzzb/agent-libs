@@ -95,6 +95,7 @@ public:
 	vector<string> read_process_cmdline(uint64_t pid);
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
+	int64_t read_cgroup_used_cpu(const string& container_cpuacct_cgroup, int64_t *old_last_cpu_time);
 	pair<uint32_t, uint32_t> read_network_interfaces_stats();
 	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
 													 uint64_t *old_last_out_bytes);
@@ -104,6 +105,8 @@ public:
 private:
 	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 	void lookup_memory_cgroup_dir();
+	void lookup_cpuacct_cgroup_dir();
+	unique_ptr<string> lookup_cgroup_dir(const string& subsys);
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
@@ -112,6 +115,7 @@ private:
 
     // Current implementation for read_cgroup_used_memory()
     int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
+    int64_t read_cgroup_used_cpuacct_cpu_time(const string &container_memory_cgroup, int64_t *old_last_cpu_time);
 
 	mount_points_limits::sptr_t m_mount_points;
 
@@ -122,8 +126,9 @@ private:
 	uint64_t m_last_in_bytes;
 	uint64_t m_last_out_bytes;
 	// nullptr means that lookup have not yet take place
-	// "" means that it cannot find memory cgroup mount point
+	// "" means that it cannot find cgroup mount point
 	unique_ptr<string> m_memory_cgroup_dir;
+	unique_ptr<string> m_cpuacct_cgroup_dir;
 
 	vector<uint64_t> m_old_user;
 	vector<uint64_t> m_old_nice;
@@ -164,6 +169,16 @@ private:
 
 	friend class jiffies_t;
 };
+
+inline void sinsp_procfs_parser::lookup_memory_cgroup_dir()
+{
+	m_memory_cgroup_dir = lookup_cgroup_dir("memory");
+}
+
+inline void sinsp_procfs_parser::lookup_cpuacct_cgroup_dir()
+{
+	m_cpuacct_cgroup_dir = lookup_cgroup_dir("cpuacct");
+}
 
 inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)
 {
