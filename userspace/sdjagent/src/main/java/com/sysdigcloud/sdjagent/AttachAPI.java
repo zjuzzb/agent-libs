@@ -8,6 +8,7 @@ import sun.tools.attach.LinuxVirtualMachine;
 import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.NoClassDefFoundError;
 import java.util.Properties;
 import java.util.logging.Logger;
 
@@ -40,6 +41,8 @@ public class AttachAPI {
             LOGGER.warning("Cannot patch LinuxVirtualMachine, IllegalAccessException: " + e.getMessage());
         } catch (SecurityException e) {
             LOGGER.warning("Cannot patch LinuxVirtualMachine, SecurityException: " + e.getMessage());
+        } catch (NoClassDefFoundError e) {
+            LOGGER.fine("Cannot patch LinuxVirtualMachine, NoClassDefFoundError: " + e.getMessage());
         } catch (final UnsatisfiedLinkError e) {
             LOGGER.warning("Cannot patch LinuxVirtualMachine, UnsatisfiedLinkError: " + e.getMessage());
         } catch (final Exception e) {
