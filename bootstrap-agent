@@ -71,7 +71,7 @@ CARES_EXT=tar.gz
 CARES_DIR=$DEPENDENCIES/c-ares-$CARES_VER
 if [ ! -d "$CARES_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://c-ares.haxx.se/download/c-ares-$CARES_VER.$CARES_EXT
+	wget $DEPENDENCIES_URL/c-ares-$CARES_VER.$CARES_EXT
 	tar -xzf c-ares-$CARES_VER.$CARES_EXT
 	cd $CARES_DIR
 	./configure --prefix=$CARES_DIR/target
