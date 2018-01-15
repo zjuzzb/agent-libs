@@ -3,9 +3,11 @@ package com.sysdigcloud.sdjagent;
 import com.sun.tools.attach.AgentInitializationException;
 import com.sun.tools.attach.AgentLoadException;
 import com.sun.tools.attach.VirtualMachine;
+import sun.tools.attach.HotSpotVirtualMachine;
 import sun.tools.attach.LinuxVirtualMachine;
 
 import java.io.File;
+import java.io.InputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.NoClassDefFoundError;
@@ -61,10 +63,10 @@ public class AttachAPI {
         }
 
         // try to enable local JMX via jcmd command
-        //if (!loadManagementAgentViaJcmd(vm)) {
+        if (!loadManagementAgentViaJcmd(vm, pid)) {
         // load the management agent into the target VM
-        loadManagementAgentViaJar(vm);
-        //}
+            loadManagementAgentViaJar(vm);
+        }
 
         // get the connector address
         Properties agentProps = vm.getAgentProperties();
@@ -106,8 +108,8 @@ public class AttachAPI {
      * it may be useful in the future
      */
 
-    /* private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
-    private boolean loadManagementAgentViaJcmd(VirtualMachine vm) throws IOException {
+    private static final String ENABLE_LOCAL_AGENT_JCMD = "ManagementAgent.start_local";
+    private static boolean loadManagementAgentViaJcmd(VirtualMachine vm, int pid) throws IOException {
         if (vm instanceof HotSpotVirtualMachine) {
             HotSpotVirtualMachine hsvm = (HotSpotVirtualMachine) vm;
             InputStream in = null;
@@ -125,7 +127,7 @@ public class AttachAPI {
                 } while (n > 0);
                 return true;
             } catch (IOException ex) {
-                LOGGER.log(Level.INFO, "jcmd command \"" + ENABLE_LOCAL_AGENT_JCMD + "\" for PID " + pid + " failed", ex); // NOI18N
+                LOGGER.info("jcmd command \"" + ENABLE_LOCAL_AGENT_JCMD + "\" for PID " + pid + " failed: " + ex.getMessage()); // NOI18N
             } finally {
                 if (in != null) {
                     in.close();
@@ -133,5 +135,5 @@ public class AttachAPI {
             }
         }
         return false;
-    }*/
+    }
 }
