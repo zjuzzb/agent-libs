@@ -94,7 +94,7 @@ if [ ! -d "$GRPC_DIR" ]; then
 	cd $GRPC_DIR
 	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
 	patch < grpc-1.1.4-Makefile.patch
-	LDFLAGS=-static PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
+	HAS_SYSTEM_ZLIB=false LDFLAGS=-static PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
 fi
 
 POCO_VER=1.7.7
