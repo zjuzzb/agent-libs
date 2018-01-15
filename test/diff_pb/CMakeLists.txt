@@ -1,4 +1,4 @@
-include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.1.0/src)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.5.0/src)
 include_directories(${CMAKE_BINARY_DIR}/userspace/draiosproto)
 
 add_executable(diff_pb

@@ -21,11 +21,11 @@ if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
 fi
 
-ZLIB_DIR=$DEPENDENCIES/zlib-1.2.8
+ZLIB_DIR=$DEPENDENCIES/zlib-1.2.11
 if [ ! -d "$ZLIB_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/zlib-1.2.8.tar.gz
-	tar -xzf zlib-1.2.8.tar.gz
+	wget $DEPENDENCIES_URL/zlib-1.2.11.tar.gz
+	tar -xzf zlib-1.2.11.tar.gz
 	cd $ZLIB_DIR
 	./configure
 	make
@@ -43,17 +43,17 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
-PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.1.0
+PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.5.0
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://github.com/google/protobuf/releases/download/v3.1.0/protobuf-cpp-3.1.0.tar.gz
-	tar -xzf protobuf-cpp-3.1.0.tar.gz
+	wget https://github.com/google/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz
+	tar -xzf protobuf-cpp-3.5.0.tar.gz
 	cd $PROTOBUF_V3_DIR
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	make install
 fi
 
-OPENSSL_VER=1.0.2j
+OPENSSL_VER=1.0.2n
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER
 if [ ! -d "$OPENSSL_DIR" ]; then
@@ -66,22 +66,35 @@ if [ ! -d "$OPENSSL_DIR" ]; then
 	cd ..
 fi
 
+CARES_VER=1.13.0
+CARES_EXT=tar.gz
+CARES_DIR=$DEPENDENCIES/c-ares-$CARES_VER
+if [ ! -d "$CARES_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/c-ares-$CARES_VER.$CARES_EXT
+	tar -xzf c-ares-$CARES_VER.$CARES_EXT
+	cd $CARES_DIR
+	./configure --prefix=$CARES_DIR/target
+	make install
+	cd ..
+fi
+
 # Normally, grpc wants to use its own protobuf library, which it
 # expects to get via git submmodules. It mostly has support for using
 # a "system" protobuf/openssl instead, using pkg-config. The Makefile
 # does require one small change to properly set LDFLAGS to the
 # protobuf lib path returned by pkg-config. Hence the patch.
-GRPC_DIR=$DEPENDENCIES/grpc-1.1.4
+GRPC_DIR=$DEPENDENCIES/grpc-1.8.1
 if [ ! -d "$GRPC_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/grpc-1.1.4.tar.gz
-	tar -xzf grpc-1.1.4.tar.gz
-	rm -rf grpc-1.1.4/third_party/zlib
-	ln -s $ZLIB_DIR grpc-1.1.4/third_party/zlib
+	wget $DEPENDENCIES_URL/grpc-1.8.1.tar.gz
+	tar -xzf grpc-1.8.1.tar.gz
+	rm -rf grpc-1.8.1/third_party/zlib
+	ln -s $ZLIB_DIR grpc-1.8.1/third_party/zlib
 	cd $GRPC_DIR
 	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
 	patch < grpc-1.1.4-Makefile.patch
-	PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR make grpc_cpp_plugin static_cxx static_c
+	LDFLAGS=-static PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
 fi
 
 POCO_VER=1.7.7
@@ -151,7 +164,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	make
 fi
 
-CURL_NAME=curl-7.52.1
+CURL_NAME=curl-7.57.0
 CURL_EXT=tar.bz2
 CURL_DIR=$DEPENDENCIES/$CURL_NAME
 if [ ! -d "$CURL_DIR" ]; then
@@ -192,7 +205,8 @@ if [ ! -d "$CURL_DIR" ]; then
 		--without-librtmp     \
 		--without-winidn      \
 		--without-libidn      \
-		--without-nghttp2
+		--without-nghttp2     \
+		--enable-ares=$CARES_DIR/target
 	make
 fi
 
@@ -253,7 +267,7 @@ if [ ! -d "${SCONS_DIR}" ]; then
 	tar xfz scons-2.3.4.tar.gz
 fi
 
-PYTHON_VER=2.7.10
+PYTHON_VER=2.7.14
 PYTHON_EXT=tgz
 PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
 if [ ! -d "${PYTHON_DIR}" ]; then
@@ -297,11 +311,11 @@ if [ ! -d "${STATSITE_DIR}" ]; then
 	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
 fi
 
-POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.5
+POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.15
 if [ ! -d "${POSTGRES_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/postgresql-9.4.5.tar.bz2
-	tar xfj postgresql-9.4.5.tar.bz2
+	wget $DEPENDENCIES_URL/postgresql-9.4.15.tar.bz2
+	tar xfj postgresql-9.4.15.tar.bz2
 	cd $POSTGRES_DIR
 	./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
 	make
@@ -331,11 +345,11 @@ if [ ! -d "${LPEG_DIR}" ]; then
 	LUA_INCLUDE=${LUAJIT_DIR}/src "${ROOT_SOURCEDIR}/falco/scripts/build-lpeg.sh" "${LPEG_DIR}/target"
 fi
 
-LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.4
+LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.7
 if [ ! -d "${LIBYAML_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libyaml-0.1.4.tar.gz
-	tar -xzf libyaml-0.1.4.tar.gz
+	wget $DEPENDENCIES_URL/libyaml-0.1.7.tar.gz
+	tar -xzf libyaml-0.1.7.tar.gz
 	cd $LIBYAML_DIR
 	./bootstrap && ./configure --prefix=$LIBYAML_DIR/target
 	make
