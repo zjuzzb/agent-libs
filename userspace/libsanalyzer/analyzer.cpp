@@ -5918,9 +5918,9 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	if(!it->second.m_mesos_task_id.empty())
 	{
 		container->set_mesos_task_id(it->second.m_mesos_task_id);
-		auto uid = make_pair((string)"container", container_id);
-		m_infrastructure_state->get_mesos_labels(uid, container->mutable_orchestrators_fallback_labels());
 	}
+	auto uid = make_pair((string)"container", container_id);
+	m_infrastructure_state->get_orch_labels(uid, container->mutable_orchestrators_fallback_labels());
 
 	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
 		it_ports != it->second.m_port_mappings.end(); ++it_ports)

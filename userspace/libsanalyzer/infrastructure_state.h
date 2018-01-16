@@ -54,11 +54,8 @@ public:
 		return find_tag(uid, tag, value, visited);
 	}
 
-	void add_marathon_group(const std::string &group, const std::string &parent,
-		const std::string &child, bool child_is_app);
-	void link_marathon_groups(const vector<std::string> &names, std::string &group);
-	void scrape_mesos_env(const std::string &c_id, sinsp_threadinfo *tinfo);
-	void get_mesos_labels(const uid_t uid, google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels, std::unordered_set<uid_t> *visited = nullptr);
+	void scrape_mesos_env(const sinsp_container_info& container, sinsp_threadinfo *tinfo);
+	void get_orch_labels(const uid_t uid, google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels, std::unordered_set<uid_t> *visited = nullptr);
 	static bool is_mesos_label(const std::string &lbl);
 
 	std::unique_ptr<draiosproto::container_group> get(uid_t uid);
