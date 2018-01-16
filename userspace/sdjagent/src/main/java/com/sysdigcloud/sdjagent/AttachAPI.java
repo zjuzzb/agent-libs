@@ -9,6 +9,8 @@ import sun.tools.attach.LinuxVirtualMachine;
 import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.NoClassDefFoundError;
 import java.util.Properties;
@@ -55,11 +57,16 @@ public class AttachAPI {
     public static String loadManagementAgent(int pid) throws IOException {
         VirtualMachine vm;
         String vmId = String.valueOf(pid);
+        PrintStream oldStderr = System.err;
+        OutputStream devNull = new OutputStream() { @Override public void write(int b) { } };
 
         try {
+            System.setErr(new PrintStream(devNull));
             vm = VirtualMachine.attach(vmId);
         } catch (Throwable x) {
             throw new IOException(x);
+        } finally {
+            System.setErr(oldStderr);
         }
 
         // try to enable local JMX via jcmd command
