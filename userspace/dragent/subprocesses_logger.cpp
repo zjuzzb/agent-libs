@@ -145,7 +145,15 @@ void sdjagent_parser::operator()(const string& data)
 	}
 	else
 	{
-		g_log->error("sdjagent, " + data);
+		if (data.length() == subprocesses_logger::READ_BUFFER_SIZE)
+		{
+			// Likely, the message is longer than the read buffer and got chopped off
+			g_log->debug("sdjagent, " + data);
+		}
+		else
+		{
+			g_log->error("sdjagent, " + data);
+		}
 	}
 }
 
@@ -218,6 +226,8 @@ void sinsp_logger_parser::operator()(const string& s)
 	}
 }
 
+const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
+
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
 		m_configuration(configuration),
 		m_log_reporter(reporter),
@@ -266,7 +276,6 @@ void subprocesses_logger::run()
 				if(FD_ISSET(fileno(fds.first), &readset_w))
 				{
 					auto available_stream = fds.first;
-					static const auto READ_BUFFER_SIZE = 4096;
 					char buffer[READ_BUFFER_SIZE];
 					auto fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					while(fgets_res != NULL)
