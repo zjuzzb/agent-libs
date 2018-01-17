@@ -6009,14 +6009,15 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		 * otherwise the read value gets lost and we underreport the CPU usage
 		 */
 		if (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
-			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second, &it_analyzer->second.m_last_cpu_time);
+			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second,
+					&it_analyzer->second.m_prev_cpu_time, &it_analyzer->second.m_last_cpu_time);
 			if(cgroup_cpuacct > 0)
 			{
 				/*
 				 * cgroup_cpuacct contains cgroup's consumed CPU time in nanoseconds.
 				 * Scale to range used on the wire (100% CPU == 10000)
 				 */
-				//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%lld, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct / 100000, it_analyzer->second.m_metrics.m_cpuload * 100);
+				g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%lld, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct / 100000, it_analyzer->second.m_metrics.m_cpuload * 100);
 				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct / 100000);
 			}
 		}
@@ -6750,6 +6751,7 @@ analyzer_container_state::analyzer_container_state()
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
 	m_last_cpu_time = 0;
+	m_prev_cpu_time = -1;
 }
 
 void analyzer_container_state::clear()
