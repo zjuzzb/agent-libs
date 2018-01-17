@@ -3942,7 +3942,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				if(m_unix_connections->get_n_drops() != 0)
 				{
 					g_logger.format(sinsp_logger::SEV_ERROR,
-						"IPv4 table size:%d",
+						"unix table size:%d",
 						m_unix_connections->m_connections.size());
 
 					m_unix_connections->clear_n_drops();
