@@ -3855,7 +3855,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_swarmstate_interval.run([this]()
 					{
 						g_logger.format(sinsp_logger::SEV_DEBUG, "Sending Swarm State Command");
-						//  callback to be executed by coclient::next()
+						//  callback to be executed during coclient::process_queue()
 						coclient::response_cb_t callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 							m_metrics->mutable_swarm()->Clear();
 							if(successful)
@@ -3881,7 +3881,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 						m_coclient.get_swarm_state(callback);
 					});
 					// Read available responses
-					m_coclient.next();
+					m_coclient.process_queue();
 					ss_trc.stop();
 					tracer_emitter copy_trc("copy_swarm_state", f_trc);
 					// Copy from cached swarm state

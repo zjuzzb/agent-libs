@@ -38,6 +38,7 @@ public:
 	{
 		return m_outpipe_size;
 	}
+
 private:
 	// TODO: utility, can be moved outside if needed
 	static void enable_nonblocking(int fd);
@@ -128,6 +129,7 @@ public:
 		return m_pthread_id;
 	}
 
+	static const unsigned READ_BUFFER_SIZE;
 private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;

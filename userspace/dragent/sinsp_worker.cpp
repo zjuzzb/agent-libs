@@ -444,6 +444,8 @@ void sinsp_worker::init()
 	m_analyzer->set_user_event_queue(m_user_event_queue);
 
 	m_analyzer->set_emit_tracers(m_configuration->m_emit_tracers);
+
+	m_analyzer->set_coclient_max_loop_evts(m_configuration->m_coclient_max_loop_evts);
 }
 
 void sinsp_worker::run()
