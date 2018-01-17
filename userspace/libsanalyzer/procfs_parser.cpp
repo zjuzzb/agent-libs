@@ -851,6 +851,9 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 		fclose(fp);
 		int64_t prev = *prev_cpu_time;
 		int64_t last = *last_cpu_time;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct values: %" PRId64
+				" -> %" PRId64 " -> %" PRId64 " in file %s", __func__, prev, last, stat_val,
+				cpuacct_filename);
 
 		if (last < prev && prev <= stat_val)
 		{
