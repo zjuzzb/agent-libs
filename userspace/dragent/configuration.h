@@ -681,6 +681,7 @@ public:
 	vector<string> m_stress_tools;
 
 	bool m_cointerface_enabled;
+	uint32_t m_coclient_max_loop_evts = 100;
 	bool m_swarm_enabled;
 
 	uint64_t m_security_baseline_report_interval_ns;

@@ -55,8 +55,8 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coclient
 		cointerface)
 
 set(PROTOC_CMDLINE env PATH=${CMAKE_CURRENT_BINARY_DIR}/bin:$$PATH
-                   LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.1.0/target/lib
-                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.1.0/target/bin/protoc
+                   LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.5.0/target/lib
+                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.5.0/target/bin/protoc
                    -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go

@@ -191,7 +191,7 @@ void infrastructure_state::refresh(uint64_t ts)
 		ASSERT(m_k8s_subscribed);
 		m_k8s_refresh_interval.run([this]()
 		{
-			m_k8s_coclient.next();
+			m_k8s_coclient.process_queue();
 		}, ts);
 	} else if (m_k8s_subscribed) {
 		connect_to_k8s(ts);

@@ -459,6 +459,11 @@ public:
 		m_use_new_k8s = v;
 	}
 
+	void set_coclient_max_loop_evts(const uint32_t max_evts)
+	{
+		coclient::set_max_loop_evts(max_evts);
+	}
+
 	bool recent_sinsp_events_dropped()
 	{
 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);

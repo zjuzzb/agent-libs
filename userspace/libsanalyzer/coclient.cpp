@@ -11,6 +11,7 @@
 using namespace std;
 
 std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
+uint32_t coclient::m_max_loop_evts = 100;
 
 coclient::coclient():
 	m_domain_sock(default_domain_sock),
@@ -108,25 +109,36 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 	}
 }
 
-void coclient::next(uint32_t wait_ms)
+bool coclient::process_queue()
+{
+	uint32_t count = 0;
+	bool okay = true;
+	while (okay && count < m_max_loop_evts)
+	{
+		okay = next();
+		count++;
+	}
+	return okay;
+}
+
+bool coclient::next()
 {
 	void *tag;
 	bool updates_ok;
 	grpc::CompletionQueue::NextStatus status;
-	gpr_timespec deadline = gpr_time_from_millis(wait_ms, GPR_TIMESPAN);
 
-	status = m_cq.AsyncNext(&tag, &updates_ok, deadline);
+	status = m_cq.AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_REALTIME));
 
 	if(status == grpc::CompletionQueue::SHUTDOWN)
 	{
 		g_logger.log("cointerface process shut down, disconnecting", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
 		m_outstanding_swarm_state = false;
-		return;
+		return false;
 	}
 	else if(status == grpc::CompletionQueue::TIMEOUT)
 	{
-		return;
+		return false;
 	}
 
 	call_context *call = static_cast<call_context *>(tag);
@@ -151,7 +163,7 @@ void coclient::next(uint32_t wait_ms)
 			g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 			delete call;
 		}
-		return;
+		return true;
 	}
 
 
@@ -178,7 +190,7 @@ void coclient::next(uint32_t wait_ms)
 		if(!call->is_server_ready) {
 			call->is_server_ready = true;
 			g_logger.log("RPC streaming server connected and ready to send messages.", sinsp_logger::SEV_DEBUG);
-			return;
+			return true;
 		}
 	}
 
@@ -194,7 +206,12 @@ void coclient::next(uint32_t wait_ms)
 
 	call->response_cb(call->status.ok(), call->response_msg.get());
 
-	if (!call->is_streaming) delete call;
+	if (!call->is_streaming)
+	{
+		delete call;
+	}
+
+	return true;
 }
 
 void coclient::set_domain_sock(std::string &domain_sock)

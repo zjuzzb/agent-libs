@@ -37,6 +37,10 @@ public class ApplicationLoader {
         String version = System.getProperty("java.version");
         int pos = version.indexOf('.');
         pos = version.indexOf('.', pos+1);
+        int dash_pos = version.indexOf('-');
+        if (dash_pos != -1 && (pos == -1 || pos > dash_pos)) {
+            pos = dash_pos;
+        }
         return Double.parseDouble(version.substring (0, pos));
     }
 }

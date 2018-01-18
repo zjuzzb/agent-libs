@@ -802,7 +802,8 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
 /*
  * Get CPU usage from cpuacct cgroup subsystem
  */
-int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup, int64_t *old_last_cpu_time)
+int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup,
+		int64_t *prev_cpu_time, int64_t *last_cpu_time)
 {
 	if (!m_is_live_capture) {
 		return -1;
@@ -816,11 +817,13 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacc
 		return -1;
 	}
 
-	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, old_last_cpu_time);
+	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, prev_cpu_time, last_cpu_time);
 }
 
 int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
-                                        const string &container_cpuacct_cgroup, int64_t *old_last_cpu_time)
+                                        const string &container_cpuacct_cgroup,
+					int64_t *prev_cpu_time,
+					int64_t *last_cpu_time)
 {
 	// Using scap_get_host_root() is not necessary here because
 	// m_cpuacct_cgroup_dir is taken from /etc/mtab
@@ -846,16 +849,41 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 		}
 
 		fclose(fp);
+		int64_t prev = *prev_cpu_time;
+		int64_t last = *last_cpu_time;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct values: %" PRId64
+				" -> %" PRId64 " -> %" PRId64 " in file %s", __func__, prev, last, stat_val,
+				cpuacct_filename);
 
-		int64_t delta = stat_val - *old_last_cpu_time;
-		if (*old_last_cpu_time > 0)
+		if (last < prev && prev <= stat_val)
 		{
-			*old_last_cpu_time = stat_val;
-			return delta;
+			g_logger.format(sinsp_logger::SEV_WARNING, "%s: Dip in cpuacct values: %" PRId64
+					" -> %" PRId64 " -> %" PRId64 " in file %s, ignoring middle sample",
+					__func__, prev, last, stat_val, cpuacct_filename);
+			last = prev;
+		}
+
+		*prev_cpu_time = last;
+		*last_cpu_time = stat_val;
+
+		if (stat_val >= last)
+		{
+			if (prev >= 0)
+			{
+				return stat_val - last;
+			}
+			else
+			{
+				/* it's the first sample, return zero to avoid
+				   spurious peak */
+				return 0;
+			}
 		}
 		else
 		{
-			*old_last_cpu_time = stat_val;
+			g_logger.format(sinsp_logger::SEV_WARNING, "%s: cpuacct value %" PRId64
+					" lower than last %" PRId64 " in file %s, skipping sample",
+					__func__, stat_val, last, cpuacct_filename);
 			return 0;
 		}
 	}

@@ -938,6 +938,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_stress_tools = m_config->get_merged_sequence<string>("perf_sensitive_programs");
 	m_detect_stress_tools = !m_stress_tools.empty();
 	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
+	m_coclient_max_loop_evts = m_config->get_scalar<uint32_t>("coclient_max_loop_evts", m_coclient_max_loop_evts);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 
 	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);

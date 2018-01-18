@@ -785,7 +785,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		});
 
 		// Try to read any responses
-		m_coclient->next(10);
+		m_coclient->process_queue();
 	}
 
 	// We now have started all the subprocesses, so pass them to internal_metrics

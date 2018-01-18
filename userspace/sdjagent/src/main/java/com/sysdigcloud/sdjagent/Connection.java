@@ -1,9 +1,11 @@
 package com.sysdigcloud.sdjagent;
 
-import sun.rmi.transport.proxy.RMIDirectSocketFactory;
+import java.rmi.server.RMISocketFactory;
 
 import java.io.IOException;
 import java.io.InterruptedIOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
@@ -19,6 +21,29 @@ import javax.management.*;
 import javax.management.remote.JMXConnector;
 import javax.management.remote.JMXConnectorFactory;
 import javax.management.remote.JMXServiceURL;
+
+
+/**
+ * RMIDirectSocketFactory creates a direct socket connection to the
+ * specified port on the specified host.
+ *
+ * Copied from OpenJDK source to avoid issues after rename in Java 9
+ * (it's now called sun.rmi.transport.tcp.TCPDirectSocketFactory,
+ * which in turn fails on older JDK versions)
+ */
+class RMIDirectSocketFactory extends RMISocketFactory {
+
+    public Socket createSocket(String host, int port) throws IOException
+    {
+        return new Socket(host, port);
+    }
+
+    public ServerSocket createServerSocket(int port) throws IOException
+    {
+        return new ServerSocket(port);
+    }
+}
+
 
 public class Connection {
     private static final long CONNECTION_TIMEOUT = 10000;

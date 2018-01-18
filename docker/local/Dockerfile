@@ -17,6 +17,7 @@ RUN echo "deb http://deb.debian.org/debian jessie main" > /etc/apt/sources.list.
 # fix this before jessie packages start breaking
 #RUN echo "deb http://deb.debian.org/debian stretch main" > /etc/apt/sources.list.d/stretch.list \
  && apt-get update \
+ && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
 	curl \
