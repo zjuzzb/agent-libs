@@ -76,6 +76,10 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	wget https://github.com/google/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz
 	tar -xzf protobuf-cpp-3.5.0.tar.gz
 	cd $PROTOBUF_V3_DIR
+	if [[ "$ARCH" == "s390x" ]]; then
+	    wget $DEPENDENCIES_URL/protobuf-3.5.0-s390x.patch
+	    patch -p1 < protobuf-3.5.0-s390x.patch
+	fi
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	make install
 fi
