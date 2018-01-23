@@ -27,7 +27,7 @@ public:
 
 	~k8s_delegator();
 
-	bool is_delegated(bool trace = false);
+	bool is_delegated(bool trace = false, bool log_delegated = false);
 
 private:
 	static std::string EVENT_FILTER;

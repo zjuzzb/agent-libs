@@ -235,7 +235,7 @@ bool k8s_delegator::remove_node(time_t timestamp, const Json::Value& addrs)
 	return false;
 }
 
-bool k8s_delegator::is_delegated(bool trace)
+bool k8s_delegator::is_delegated(bool trace, bool log_delegated)
 {
 	refresh_ipv4_list(); // get current list of local IP addresses
 
@@ -272,7 +272,7 @@ bool k8s_delegator::is_delegated(bool trace)
 				delegated = true;
 			}
 		}
-		g_logger.log(os.str(), sinsp_logger::SEV_DEBUG);
+		g_logger.log(os.str(), log_delegated ? sinsp_logger::SEV_INFO : sinsp_logger::SEV_DEBUG);
 
 		++it;
 	}
@@ -364,7 +364,7 @@ bool k8s_delegator::handle_component(const Json::Value& json, const msg_data*)
 	if(added || deleted || taint_modified)
 	{
 		std::string d;
-		if(!is_delegated(true)) { d = "NOT "; }
+		if(!is_delegated(true, true)) { d = "NOT "; }
 		g_logger.log("This node is " + d + "delegated", sinsp_logger::SEV_INFO);
 	}
 
