@@ -627,7 +627,7 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 		}
 		else if(res != SCAP_SUCCESS && res != SCAP_TIMEOUT)
 		{
-			FAIL() << "Got unexpected error from inspector->next(): " << res;
+			FAIL() << "Got unexpected error from inspector->next(): " << res << ", last error: " << inspector->getlasterr();
 			break;
 		}
 
