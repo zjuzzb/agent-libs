@@ -138,13 +138,26 @@ void event_capture::capture()
 	m_capture_stopped.set();
 
 	// At this point there should be no consumers of the driver remaining.
+	// Wait up to 2 seconds for the refcount to settle
+	int ntries = 20;
 	uint32_t num_consumers = 0;
 
-	FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
-	ASSERT_TRUE(ref != NULL);
+	while (ntries-- > 0)
+	{
+		FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
+		ASSERT_TRUE(ref != NULL);
 
-	ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
+		ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
+		fclose(ref);
+
+		if (num_consumers == 0) {
+			break;
+		}
+		struct timespec ts = {
+			.tv_sec = 0,
+			.tv_nsec = 100000000
+		};
+		nanosleep(&ts, NULL);
+	}
 	ASSERT_EQ(num_consumers, 0);
-
-	fclose(ref);
 }

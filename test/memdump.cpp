@@ -444,7 +444,7 @@ protected:
 		std::unique_ptr<sinsp> inspector = make_unique<sinsp>();
 		set<string> found;
 		sinsp_evt_formatter open_name(inspector.get(), "%evt.arg.name");
-		string filter = string("evt.type=open and evt.dir=< and evt.is_open_read=true and fd.name startswith ")
+		string filter = string("evt.is_open_read=true and evt.arg.name startswith ")
 			+ memdump_test::test_filename_pat;
 
 		g_log->debug("Searching through trace file with tag=" + tag + " with filter " + filter);
@@ -627,7 +627,7 @@ TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)
 		}
 		else if(res != SCAP_SUCCESS && res != SCAP_TIMEOUT)
 		{
-			FAIL() << "Got unexpected error from inspector->next(): " << res;
+			FAIL() << "Got unexpected error from inspector->next(): " << res << ", last error: " << inspector->getlasterr();
 			break;
 		}
 

@@ -28,6 +28,7 @@ void wait_for_all(process_handles_t & handles);
 uint32_t parse_ipv4_addr(const char *dotted_notation);
 uint32_t get_server_address();
 tuple<Poco::ProcessHandle,Poco::Pipe*> start_process(proc* process);
+tuple<Poco::ProcessHandle,Poco::Pipe*,Poco::Pipe*> start_process_sync(proc* process);
 
 class proc_started_filter
 {

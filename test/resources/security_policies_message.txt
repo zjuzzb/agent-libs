@@ -13,5 +13,5 @@ policy_list {
   container_scope: false
 }
 falco_rules {
-  contents: "- rule: read_etc_file\n  desc: test program reading /etc/sample-sensitive-file.txt\n  condition: proc.name=tests and evt.type=open and evt.dir=< and fd.name=/etc/sample-sensitive-file.txt\n  output: tests read /etc/sample-sensitive-file.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING"
+  contents: "- rule: read_etc_file\n  desc: test program reading /etc/sample-sensitive-file.txt\n  condition: proc.name=tests and evt.type in (open,openat) and evt.is_open_read=true and evt.arg.name=/etc/sample-sensitive-file.txt\n  output: tests read /etc/sample-sensitive-file.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING"
 }

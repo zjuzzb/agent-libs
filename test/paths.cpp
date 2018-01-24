@@ -75,12 +75,20 @@ public:
 			{
 				m_callnum++;
 			}
+			else if(type == PPME_SYSCALL_OPENAT_E)
+			{
+				EXPECT_EQ(e->get_param_value_str("name", false), m_filename);
+				m_callnum++;
+			}
 
 			break;
 		case 1:
-			if(type == PPME_SYSCALL_OPEN_X)
+			if(type == PPME_SYSCALL_OPEN_X || type == PPME_SYSCALL_OPENAT_X)
 			{
-				EXPECT_EQ(e->get_param_value_str("name", false), m_filename);
+				if(type == PPME_SYSCALL_OPEN_X)
+				{
+					EXPECT_EQ(e->get_param_value_str("name", false), m_filename);
+				}
 				EXPECT_EQ(m_scwd, pinfo->get_cwd());
 				EXPECT_EQ(m_scat, e->get_param_value_str("fd"));
 				m_fd = NumberParser::parse(e->get_param_value_str("fd", false));

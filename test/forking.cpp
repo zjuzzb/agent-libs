@@ -974,6 +974,8 @@ TEST_F(sys_call_test, forking_clone_nocwd)
 
 TEST_F(sys_call_test, forking_main_thread_exit)
 {
+	int evtnum = 0;
+	int expected_openat_exit_evtnum = -1;
 	int callnum = 0;
 	int fd;
 	pid_t cpid;	// parent tid
@@ -1016,9 +1018,29 @@ TEST_F(sys_call_test, forking_main_thread_exit)
 
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
+		evtnum++;
 		if(param.m_evt->get_type() == PPME_SYSCALL_OPEN_X)
 		{
 			if(param.m_evt->get_param_value_str("name") == "/etc/passwd")
+			{
+				EXPECT_EQ("<f>/etc/passwd", param.m_evt->get_param_value_str("fd"));
+				fd = *(int64_t *)param.m_evt->get_param(0)->m_val;
+				++callnum;
+			}
+		}
+		else if(param.m_evt->get_type() == PPME_SYSCALL_OPENAT_E)
+		{
+			if(param.m_evt->get_param_value_str("name") == "/etc/passwd")
+			{
+				expected_openat_exit_evtnum = evtnum + 1;
+			}
+			// don't ++callnum here so we always get 3 calls, regardless of whether
+			// the code ends up calling open() (3 events captured) or openat()
+			// (4 events captured)
+		}
+		else if(param.m_evt->get_type() == PPME_SYSCALL_OPENAT_X)
+		{
+			if(evtnum == expected_openat_exit_evtnum)
 			{
 				EXPECT_EQ("<f>/etc/passwd", param.m_evt->get_param_value_str("fd"));
 				fd = *(int64_t *)param.m_evt->get_param(0)->m_val;
