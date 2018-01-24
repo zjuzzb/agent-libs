@@ -1935,6 +1935,7 @@ TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
 	};
 	run_callback_t test = [&](sinsp* inspector)
 	{
+		uint64_t t_finish = sinsp_utils::get_current_time_ns() + 500000000;
 		auto ncpu = inspector->get_machine_info()->num_cpus;
 		// just test the tracepoint hit
 		auto evts_vec = inspector->get_n_tracepoint_hit();
@@ -1942,7 +1943,10 @@ TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
 		{
 			EXPECT_GE(evts_vec[j], 0) << "cpu=" << j;
 		}
-		Poco::Thread::sleep(500);
+		while (sinsp_utils::get_current_time_ns() < t_finish)
+		{
+			tee(-1, -1, 0, 0);
+		}
 		auto evts_vec2 = inspector->get_n_tracepoint_hit();
 		for(unsigned j = 0; j < ncpu; ++j)
 		{
