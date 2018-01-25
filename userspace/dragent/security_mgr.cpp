@@ -156,7 +156,7 @@ void security_mgr::process_event(sinsp_evt *evt)
 		// Drive the coclient loop to pick up any async grpc responses
 		m_actions_poll_interval->run([this]()
                 {
-			m_coclient->next();
+			m_coclient->process_queue();
 		}, ts_ns);
 
 		m_metrics_report_interval->run([this]()

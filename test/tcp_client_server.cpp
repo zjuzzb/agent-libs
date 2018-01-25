@@ -100,9 +100,10 @@ void runtest(iotype iot,
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		auto server_handle = start_process(&server_proc);
+		auto server_handle = start_process_sync(&server_proc);
 		server_pid = get<0>(server_handle).id();
-		wait_for_message(*(get<1>(server_handle)), "SERVER UP\n");
+		delete get<1>(server_handle);
+		wait_for_message(*(get<2>(server_handle)), "SERVER UP\n");
 
 		auto client_handle = start_process(&test_proc);
 		client_pid = get<0>(client_handle).id();

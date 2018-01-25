@@ -329,7 +329,8 @@ TEST_F(sys_call_test, container_docker)
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 		if(tinfo)
 		{
-			return !tinfo->m_container_id.empty();
+			return !tinfo->m_container_id.empty() &&
+				tinfo->m_exe != "docker-runc";
 		}
 
 		return false;
@@ -659,14 +660,16 @@ TEST_F(sys_call_test, container_libvirt)
 		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
 		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
 
-		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer");
+		unsigned int lxc_id;
+		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer" ||
+		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) == 1);
 
 		sinsp_container_info container_info;
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
 		ASSERT_TRUE(found);
 
 		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LIBVIRT_LXC);
-		ASSERT_TRUE(container_info.m_name == "libvirt\\x2dcontainer");
+		ASSERT_TRUE(container_info.m_name == tinfo->m_container_id);
 		ASSERT_TRUE(container_info.m_image.empty());
 
 		done = true;

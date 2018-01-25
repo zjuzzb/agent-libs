@@ -192,7 +192,7 @@ void infrastructure_state::refresh(uint64_t ts)
 		ASSERT(m_k8s_subscribed);
 		m_k8s_refresh_interval.run([this]()
 		{
-			m_k8s_coclient.next();
+			m_k8s_coclient.process_queue();
 		}, ts);
 	} else if (m_k8s_subscribed) {
 		connect_to_k8s(ts);
@@ -390,7 +390,10 @@ void infrastructure_state::scrape_mesos_env(const sinsp_container_info& containe
 	static const vector<std::string> mes_task_ids = { "MESOS_TASK_ID", "mesos_task_id", "MESOS_EXECUTOR_ID" };
 
 	if (!tinfo || container.m_id.empty())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Missing thread or container id");
 		return;
+	}
 
 	// Try container environment first (currently only available for docker)
 	const vector<string>& env = container.get_env().empty() ? tinfo->get_env() : container.get_env();
@@ -398,7 +401,10 @@ void infrastructure_state::scrape_mesos_env(const sinsp_container_info& containe
 	// For now only scrape if we find "MARATHON_APP_ID" in env
 	string app_id;
 	if (!sinsp_utils::find_env(app_id, env, mar_app_id) || app_id.empty())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: no MARATHON_APP_ID found", container_id.c_str());
 		return;
+	}
 
 	string mesostaskname = pathtotaskname(app_id);
 

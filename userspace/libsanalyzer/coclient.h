@@ -38,8 +38,14 @@ public:
 
 	void get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd, response_cb_t response_cb);
 
-	// Check for any responses and call their callback functions.
-	void next(uint32_t wait_ms = 0);
+	// Read up to m_max_loop_evts from the rpc response queue
+	// Returns true unless we drain the queue or detect a shutdown
+	bool process_queue();
+
+	static void set_max_loop_evts(const uint32_t max_evts)
+	{
+		m_max_loop_evts = max_evts;
+	}
 
 	// Specify an alternate location for the domain socket. Useful
 	// for tests.
@@ -60,6 +66,10 @@ protected:
 
 	// Connect to the cointerface process
 	void connect();
+
+	// Check for any responses and call their callback functions.
+	// Returns true if there are possibly more events to read
+	bool next();
 
 	struct call_context {
 
@@ -98,4 +108,5 @@ protected:
 	std::string m_domain_sock;
 	static std::string default_domain_sock;
 	bool m_outstanding_swarm_state;
+	static uint32_t m_max_loop_evts;
 };

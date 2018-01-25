@@ -1,6 +1,5 @@
-FROM python:2-alpine
-WORKDIR /app
+FROM python:2
 ADD requirements.txt .
+ADD *.py ./
 RUN pip install -r requirements.txt
-ADD *.py .
-ENTRYPOINT [ "python", "protoanalyzer.py" ]
+ENTRYPOINT [ "python", "./protoanalyzer.py" ]

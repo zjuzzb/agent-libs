@@ -118,7 +118,7 @@ protected:
 		for(uint32_t i=0; !callback_performed && i < 500; i++)
 		{
 			Thread::sleep(100);
-			m_coclient.next();
+			m_coclient.process_queue();
 		}
 
 		EXPECT_TRUE(callback_performed) << "Did not receive docker command response message after 10 seconds";
@@ -175,7 +175,7 @@ TEST_F(coclient_test, DISABLED_perform_ping)
 	for(uint32_t i=0; !callback_performed && i < 100; i++)
 	{
 		Thread::sleep(100);
-		m_coclient.next();
+		m_coclient.process_queue();
 	}
 
 	EXPECT_TRUE(callback_performed) << "Did not receive pong message after 10 seconds";

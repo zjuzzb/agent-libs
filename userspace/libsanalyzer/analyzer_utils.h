@@ -353,3 +353,41 @@ private:
 	static unordered_map<string, int> m_home_ns;
 	string m_type;
 };
+
+
+class ratelimit {
+public:
+	ratelimit(): m_burst(1), m_hits(0), m_interval(60000000000), m_start_ns(0) { }
+	ratelimit(unsigned int burst): m_burst(burst), m_hits(0), m_interval(60000000000), m_start_ns(0) { }
+	ratelimit(unsigned int burst, uint64_t interval): m_burst(burst), m_hits(0), m_interval(interval), m_start_ns(0) { }
+	template<typename Callable>
+	inline void run(const Callable& c, uint64_t now = sinsp_utils::get_current_time_ns());
+
+private:
+	unsigned int m_burst;
+	unsigned int m_hits;
+	uint64_t m_interval;
+	uint64_t m_start_ns;
+};
+
+
+template<typename Callable>
+void ratelimit::run(const Callable& c, uint64_t now)
+{
+	if (!m_start_ns)
+	{
+		m_start_ns = now;
+	}
+
+	if (now > m_start_ns + m_interval)
+	{
+		m_start_ns = now;
+		m_hits = 0;
+	}
+
+	if (m_burst && m_burst > m_hits)
+	{
+		++m_hits;
+		c();
+	}
+}
