@@ -79,6 +79,8 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	if [[ "$ARCH" == "s390x" ]]; then
 	    wget $DEPENDENCIES_URL/protobuf-3.5.0-s390x.patch
 	    patch -p1 < protobuf-3.5.0-s390x.patch
+	    aclocal
+	    automake
 	fi
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	make install
