@@ -423,14 +423,20 @@ void infrastructure_state::scrape_mesos_env(const std::string &container_id, sin
 	static const vector<std::string> mes_task_ids = { "MESOS_TASK_ID", "mesos_task_id", "MESOS_EXECUTOR_ID" };
 
 	if (!tinfo || container_id.empty())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Missing thread or container id");
 		return;
+	}
 
 	const vector<string>& env = tinfo->get_env();
 
 	// For now only scrape if we find "MARATHON_APP_ID" in env
 	string app_id;
 	if (!getenvval(app_id, env, mar_app_id) || app_id.empty())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: no MARATHON_APP_ID found", container_id.c_str());
 		return;
+	}
 
 	string mesostaskname = pathtotaskname(app_id);
 
