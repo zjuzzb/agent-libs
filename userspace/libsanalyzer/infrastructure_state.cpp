@@ -402,7 +402,7 @@ void infrastructure_state::scrape_mesos_env(const sinsp_container_info& containe
 	string app_id;
 	if (!sinsp_utils::find_env(app_id, env, mar_app_id) || app_id.empty())
 	{
-		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: no MARATHON_APP_ID found", container_id.c_str());
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: no MARATHON_APP_ID found", container.m_id.c_str());
 		return;
 	}
 
