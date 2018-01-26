@@ -190,6 +190,38 @@ bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* li
 	return true;
 }
 
+
+//
+// There shouldn't be more than 100 ticks per second but ~103 is actually quite typical
+// Add a safety margin and ignore clearly bogus values
+//
+#define MAX_PERCPU_TICKS_PER_SEC 150
+static inline uint64_t get_cpu_delta(const char* label, uint64_t prev, uint64_t curr, const char* note)
+{
+	if (curr < prev)
+	{
+		static ratelimit r;
+		r.run([&] {
+			g_logger.format(sinsp_logger::SEV_WARNING,
+					"CPU %s time going backwards (%" PRId64 " -> %" PRId64 ")%s",
+					label, prev, curr, note ? note : "");
+			});
+		return 0;
+	}
+	else if (curr > prev + MAX_PERCPU_TICKS_PER_SEC)
+	{
+		static ratelimit r;
+		r.run([&] {
+			g_logger.format(sinsp_logger::SEV_WARNING,
+					"CPU %s time jump over %d ticks (%" PRId64 " -> %" PRId64 ")%s",
+					label, MAX_PERCPU_TICKS_PER_SEC, prev, curr, note ? note : "");
+			});
+		return MAX_PERCPU_TICKS_PER_SEC;
+	}
+	return curr - prev;
+}
+
+
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
@@ -231,11 +263,11 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 		return false;
 	}
 
-	total = user + nice + system + idle + iowait + irq + softirq + steal;
-	work = user + nice + system + irq + softirq + steal;
-
 	if(m_old_total.size() <static_cast<vector<uint64_t>::size_type>(j + 1))
 	{
+		total = user + nice + system + idle + iowait + irq + softirq + steal;
+		work = user + nice + system + irq + softirq + steal;
+
 		m_old_user.push_back(user);
 		m_old_nice.push_back(nice);
 		m_old_system.push_back(system);
@@ -249,16 +281,31 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	}
 	else
 	{
-		delta_user = user - m_old_user[j];
-		delta_nice = nice - m_old_nice[j];
-		delta_system = system - m_old_system[j];
-		delta_idle = idle - m_old_idle[j];
-		delta_iowait = iowait - m_old_iowait[j];
-		delta_irq = irq - m_old_irq[j];
-		delta_softirq = softirq - m_old_softirq[j];
-		delta_steal = steal - m_old_steal[j];
-		delta_work = work - m_old_work[j];
-		delta_total = total - m_old_total[j];
+		delta_user = get_cpu_delta("user", m_old_user[j], user, NULL);
+		delta_nice = get_cpu_delta("nice", m_old_nice[j], nice, NULL);
+		delta_system = get_cpu_delta("system", m_old_system[j], system, NULL);
+		delta_idle = get_cpu_delta("idle", m_old_idle[j], idle, NULL);
+		delta_iowait = get_cpu_delta("iowait", m_old_iowait[j], iowait, NULL);
+		delta_irq = get_cpu_delta("irq", m_old_irq[j], irq, NULL);
+		delta_softirq = get_cpu_delta("softirq", m_old_softirq[j], softirq, NULL);
+		delta_steal = get_cpu_delta("steal", m_old_steal[j], steal,
+			", please upgrade your kernel. See: https://0xstubs.org/debugging-a-flaky-cpu-steal-time-counter-on-a-paravirtualized-xen-guest/");
+
+		total = m_old_total[j] + delta_user + delta_nice + delta_system + delta_idle + delta_iowait + delta_irq + delta_softirq + delta_steal;
+		if (delta_steal != steal - m_old_steal[j] && total < 80)
+		{
+			static ratelimit r;
+			r.run([&] {
+				g_logger.format(sinsp_logger::SEV_WARNING,
+					"Total CPU time below 80%%, assigning the missing %d ticks to steal", 100 - total);
+				});
+			total = 100;
+			delta_steal += 100 - total;
+		}
+		work = m_old_work[j] + delta_user + delta_nice + delta_system + delta_irq + delta_softirq + delta_steal;
+
+		delta_work = get_cpu_delta("work", m_old_work[j], work, NULL);
+		delta_total = get_cpu_delta("total", m_old_total[j], total, NULL);
 
 		assign_jiffies(proc_stat->m_user, delta_user, delta_total);
 		assign_jiffies(proc_stat->m_nice, delta_nice, delta_total);

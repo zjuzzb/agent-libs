@@ -128,10 +128,18 @@ void wait_for_all(process_handles_t &handles)
 
 tuple<Poco::ProcessHandle,Poco::Pipe*> start_process(proc* process)
 {
-	Poco::Pipe* pipe = new Poco::Pipe();
-	Poco::ProcessHandle handle = Poco::Process::launch(process->get_command(), process->get_arguments(), 0, pipe, 0);
-	wait_for_process_start(*pipe);
-	return make_tuple(handle,pipe);
+	auto child_proc = start_process_sync(process);
+	delete get<1>(child_proc);
+	return make_tuple(get<0>(child_proc), get<2>(child_proc));
+}
+
+tuple<Poco::ProcessHandle,Poco::Pipe*,Poco::Pipe*> start_process_sync(proc* process)
+{
+	Poco::Pipe* stdin_pipe = new Poco::Pipe();
+	Poco::Pipe* stdout_pipe = new Poco::Pipe();
+	Poco::ProcessHandle handle = Poco::Process::launch(process->get_command(), process->get_arguments(), stdin_pipe, stdout_pipe, 0);
+	wait_for_process_start(*stdout_pipe);
+	return make_tuple(handle,stdin_pipe,stdout_pipe);
 }
 
 void run_processes(process_list_t &processes)
@@ -178,7 +186,10 @@ TEST_F(sys_call_test, open_close)
 	int callnum = 0;
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return (0 == strcmp(evt->get_name(), "open") || 0 == strcmp(evt->get_name(), "close")) && m_tid_filter(evt);
+		return (0 == strcmp(evt->get_name(), "open") ||
+		        0 == strcmp(evt->get_name(), "openat") ||
+		        0 == strcmp(evt->get_name(), "close")
+			) && m_tid_filter(evt);
 	};
 	run_callback_t test = [](sinsp* inspector)
 	{
@@ -187,7 +198,9 @@ TEST_F(sys_call_test, open_close)
 	};
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		if (0 == strcmp(param.m_evt->get_name(),"open") && param.m_evt->get_direction() == SCAP_ED_OUT)
+		if ((0 == strcmp(param.m_evt->get_name(),"open") ||
+		     0 == strcmp(param.m_evt->get_name(), "openat")) &&
+		   param.m_evt->get_direction() == SCAP_ED_OUT)
 		{
 			EXPECT_EQ("<f>/tmp", param.m_evt->get_param_value_str("fd"));
 		}
@@ -202,7 +215,10 @@ TEST_F(sys_call_test, open_close_dropping)
 	int callnum = 0;
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return (0 == strcmp(evt->get_name(), "open") || 0 == strcmp(evt->get_name(), "close")) && m_tid_filter(evt);
+		return (0 == strcmp(evt->get_name(), "open") ||
+		        0 == strcmp(evt->get_name(), "openat") ||
+		        0 == strcmp(evt->get_name(), "close")
+			) && m_tid_filter(evt);
 	};
 	run_callback_t test = [](sinsp* inspector)
 	{
@@ -213,7 +229,9 @@ TEST_F(sys_call_test, open_close_dropping)
 	};
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		if (0 == strcmp(param.m_evt->get_name(),"open") && param.m_evt->get_direction() == SCAP_ED_OUT)
+		if ((0 == strcmp(param.m_evt->get_name(),"open") ||
+		     0 == strcmp(param.m_evt->get_name(), "openat")) &&
+		   param.m_evt->get_direction() == SCAP_ED_OUT)
 		{
 			EXPECT_EQ("<f>/tmp", param.m_evt->get_param_value_str("fd"));
 		}
@@ -293,7 +311,12 @@ TEST_F(sys_call_test, poll_timeout)
 			// on how the tests are invoked
 			//
 			string fds = e->get_param_value_str("fds");
-			EXPECT_TRUE(fds == "0:f1 1:f4" || fds == "0:p1 1:p4");
+			EXPECT_TRUE(
+			            fds == "0:f1 1:f4" ||
+				    fds == "0:p1 1:f4" ||
+			            fds == "0:f1 1:p4" ||
+				    fds == "0:p1 1:p4"
+				    );
 			EXPECT_EQ("20", e->get_param_value_str("timeout"));
 			callnum++;
 		}
@@ -1294,12 +1317,11 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 	//
 	// FILTER
 	//
+	sinsp_filter_compiler compiler(NULL, "evt.type=execve and proc.apid=" + to_string(getpid()));
+	unique_ptr<sinsp_filter> is_subprocess_execve(compiler.compile());
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_18_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_18_X ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
+		return is_subprocess_execve->run(evt);
 	};
 
 	//
@@ -1372,12 +1394,11 @@ TEST_F(sys_call_test32, failing_execve)
 	//
 	// FILTER
 	//
+	sinsp_filter_compiler compiler(NULL, "evt.type=execve and proc.apid=" + to_string(getpid()));
+	unique_ptr<sinsp_filter> is_subprocess_execve(compiler.compile());
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		return evt->get_type() == PPME_SYSCALL_EXECVE_18_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_18_X ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_E ||
-			   evt->get_type() == PPME_SYSCALL_EXECVE_17_X;
+		return is_subprocess_execve->run(evt);
 	};
 
 	//
@@ -1916,6 +1937,7 @@ TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
 	};
 	run_callback_t test = [&](sinsp* inspector)
 	{
+		uint64_t t_finish = sinsp_utils::get_current_time_ns() + 500000000;
 		auto ncpu = inspector->get_machine_info()->num_cpus;
 		// just test the tracepoint hit
 		auto evts_vec = inspector->get_n_tracepoint_hit();
@@ -1923,7 +1945,10 @@ TEST_F(sys_call_test, get_n_tracepoint_hit_smoke)
 		{
 			EXPECT_GE(evts_vec[j], 0) << "cpu=" << j;
 		}
-		Poco::Thread::sleep(500);
+		while (sinsp_utils::get_current_time_ns() < t_finish)
+		{
+			tee(-1, -1, 0, 0);
+		}
 		auto evts_vec2 = inspector->get_n_tracepoint_hit();
 		for(unsigned j = 0; j < ncpu; ++j)
 		{

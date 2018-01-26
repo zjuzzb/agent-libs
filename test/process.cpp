@@ -554,6 +554,45 @@ TEST_F(sys_call_test, process_rlimit)
 
 			callnum++;
 		}
+		if(type == PPME_SYSCALL_PRLIMIT_E)
+		{
+			EXPECT_EQ((int64_t)PPM_RLIMIT_NOFILE, NumberParser::parse64(e->get_param_value_str("resource", false)));
+			callnum++;
+		}
+		if(type == PPME_SYSCALL_PRLIMIT_X)
+		{
+			int64_t res = NumberParser::parse64(e->get_param_value_str("res", false));
+			int64_t newcur = NumberParser::parse64(e->get_param_value_str("newcur", false));
+			int64_t newmax = NumberParser::parse64(e->get_param_value_str("newmax", false));
+			int64_t oldcur = NumberParser::parse64(e->get_param_value_str("oldcur", false));
+			int64_t oldmax = NumberParser::parse64(e->get_param_value_str("oldmax", false));
+			switch(callnum)
+			{
+				case 1:
+					EXPECT_GT(0, res);
+					break;
+				case 3:
+					EXPECT_EQ(0, res);
+					EXPECT_EQ(-1, newcur);
+					EXPECT_EQ(-1, newmax);
+					break;
+				case 5:
+					EXPECT_EQ(0, res);
+					EXPECT_EQ(500, newcur);
+					EXPECT_EQ(1000, newmax);
+					EXPECT_EQ(-1, oldcur);
+					EXPECT_EQ(-1, oldmax);
+					break;
+				case 7:
+					EXPECT_EQ(0, res);
+					EXPECT_EQ(-1, newcur);
+					EXPECT_EQ(-1, newmax);
+					EXPECT_EQ(500, oldcur);
+					EXPECT_EQ(1000, oldmax);
+					break;
+			}
+			callnum++;
+		}
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});

@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "infrastructure_state.h"
+#include "utils.h"
 
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
@@ -329,14 +330,14 @@ bool infrastructure_state::is_mesos_label(const std::string &lbl)
 	return !lbl.compare(0, mesos.size(), mesos) || !lbl.compare(0, marathon.size(), marathon);
 }
 
-void infrastructure_state::get_mesos_labels(const uid_t uid,
+void infrastructure_state::get_orch_labels(const uid_t uid,
 	google::protobuf::RepeatedPtrField<draiosproto::container_label>* labels,
 	std::unordered_set<uid_t> *visited)
 {
 	if (!visited)
 	{
 		std::unordered_set<uid_t> newvis;
-		get_mesos_labels(uid, labels, &newvis);
+		get_orch_labels(uid, labels, &newvis);
 		return;
 	}
 	if (!has(uid) || (visited->find(uid) != visited->end())) {
@@ -358,18 +359,6 @@ void infrastructure_state::get_mesos_labels(const uid_t uid,
 			lbl->set_value(tag.second);
 		}
 	}
-
-	// Currently putting mesos labels only in the container
-#if 0
-	for(const auto &p_uid : cg->parents()) {
-		// Only look at lowest marathon group level
-		if ((uid.first == "marathon_group") && p_uid.kind() == "marathon_group")
-			continue;
-
-		auto pkey = make_pair(p_uid.kind(), p_uid.id());
-		get_mesos_labels(pkey, labels, visited);
-	}
-#endif
 }
 
 static std::string pathtotaskname(const std::string path)
@@ -393,44 +382,29 @@ static std::string pathtotaskname(const std::string path)
 	return ret;
 }
 
-static bool getanyenvval(std::string &out, const vector<std::string> &env, const vector<std::string> &keys)
-{
-	for(const auto& env_var : env)
-	{
-		for (const string key : keys)
-		{
-			if((env_var.size() > key.size()) && !env_var.compare(0, key.size(), key) && (env_var[key.size()] == '='))
-			{
-				out = env_var.substr(key.size()+1);
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
-static bool getenvval(std::string &out, const vector<std::string> &env, const std::string &key)
-{
-	const vector<std::string> keys = { key };
-	return getanyenvval(out, env, keys);
-}
-
-void infrastructure_state::scrape_mesos_env(const std::string &container_id, sinsp_threadinfo *tinfo)
+void infrastructure_state::scrape_mesos_env(const sinsp_container_info& container, sinsp_threadinfo *tinfo)
 {
 	static const std::string mar_app_id = "MARATHON_APP_ID";
 	static const std::string mar_app_labels = "MARATHON_APP_LABELS";
 	static const std::string mar_app_label = "MARATHON_APP_LABEL_";
 	static const vector<std::string> mes_task_ids = { "MESOS_TASK_ID", "mesos_task_id", "MESOS_EXECUTOR_ID" };
 
-	if (!tinfo || container_id.empty())
+	if (!tinfo || container.m_id.empty())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Missing thread or container id");
 		return;
+	}
 
-	const vector<string>& env = tinfo->get_env();
+	// Try container environment first (currently only available for docker)
+	const vector<string>& env = container.get_env().empty() ? tinfo->get_env() : container.get_env();
 
 	// For now only scrape if we find "MARATHON_APP_ID" in env
 	string app_id;
-	if (!getenvval(app_id, env, mar_app_id) || app_id.empty())
+	if (!sinsp_utils::find_env(app_id, env, mar_app_id) || app_id.empty())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: no MARATHON_APP_ID found", container.m_id.c_str());
 		return;
+	}
 
 	string mesostaskname = pathtotaskname(app_id);
 
@@ -439,7 +413,7 @@ void infrastructure_state::scrape_mesos_env(const std::string &container_id, sin
 	string appname = ((idx != string::npos) && (idx < app_id.size()-1)) ? app_id.substr(idx+1) : app_id;
 	string groupname = (idx == string::npos) ? "/" : app_id.substr(0, idx ? idx : idx+1);
 
-	uid_t ckey = make_pair("container", container_id);
+	uid_t ckey = make_pair("container", container.m_id);
 	add(ckey);
 	(*m_state[ckey]->mutable_internal_tags())["mesos.framework.name"] = "marathon";
 	if (!groupname.empty())
@@ -450,12 +424,12 @@ void infrastructure_state::scrape_mesos_env(const std::string &container_id, sin
 		(*m_state[ckey]->mutable_internal_tags())["mesos.task.name"] = mesostaskname;
 
 	string taskid;
-	if (getanyenvval(taskid, env, mes_task_ids) && !taskid.empty())
+	if (sinsp_utils::find_first_env(taskid, env, mes_task_ids) && !taskid.empty())
 	{
 		(*m_state[ckey]->mutable_internal_tags())["mesos.task.id"] = taskid;
 	}
 
-	glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: found app_id %s:%s, mesos taskname: %s, taskid: %s", container_id.c_str(), groupname.c_str(), appname.c_str(), mesostaskname.c_str(), taskid.c_str());
+	glogf(sinsp_logger::SEV_DEBUG, "scrape_mesos: Container %s: found app_id %s:%s, mesos taskname: %s, taskid: %s", container.m_id.c_str(), groupname.c_str(), appname.c_str(), mesostaskname.c_str(), taskid.c_str());
 
 	// Adding labels as tags
 	for (const string& enstr : env)
@@ -966,7 +940,7 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 
 	handle_event(&evt, true);
 
-	scrape_mesos_env(container_info.m_id, tinfo);
+	scrape_mesos_env(container_info, tinfo);
 }
 
 void infrastructure_state::on_remove_container(const sinsp_container_info& container_info)

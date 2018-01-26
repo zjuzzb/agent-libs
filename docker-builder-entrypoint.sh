@@ -31,7 +31,10 @@ cd build/release
 if [[ $1 == "package" || $1 == "container" ]]; then
   make -j$MAKE_JOBS package
   cp /code/agent/docker/local/* /out
-  cp *.deb *.rpm /out
+  cp *.deb /out
+  if [[ $1 == "package" ]]; then
+	  cp *.rpm /out
+  fi
   cd /out
   docker build -t $AGENT_IMAGE -f $DOCKERFILE .
 elif [[ $1 == "install" ]]; then
