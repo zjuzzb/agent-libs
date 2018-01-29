@@ -95,7 +95,7 @@ public:
 	vector<string> read_process_cmdline(uint64_t pid);
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);
-	int64_t read_cgroup_used_cpu(const string& container_cpuacct_cgroup, int64_t *prev_cpu_time, int64_t *last_cpu_time);
+	double read_cgroup_used_cpu(const string& container_cpuacct_cgroup, int64_t *prev_cpu_time, int64_t *last_cpu_time);
 	pair<uint32_t, uint32_t> read_network_interfaces_stats();
 	pair<uint32_t, uint32_t> read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
 													 uint64_t *old_last_out_bytes);
@@ -115,7 +115,7 @@ private:
 
     // Current implementation for read_cgroup_used_memory()
     int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
-    int64_t read_cgroup_used_cpuacct_cpu_time(const string &container_memory_cgroup, int64_t *prev_cpu_time, int64_t *last_cpu_time);
+    double read_cgroup_used_cpuacct_cpu_time(const string &container_memory_cgroup, int64_t *prev_cpu_time, int64_t *last_cpu_time);
 
 	mount_points_limits::sptr_t m_mount_points;
 

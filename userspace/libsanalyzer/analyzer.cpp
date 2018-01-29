@@ -6013,12 +6013,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 					&it_analyzer->second.m_prev_cpu_time, &it_analyzer->second.m_last_cpu_time);
 			if(cgroup_cpuacct > 0)
 			{
-				/*
-				 * cgroup_cpuacct contains cgroup's consumed CPU time in nanoseconds.
-				 * Scale to range used on the wire (100% CPU == 10000)
-				 */
-				g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%lld, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct / 100000, it_analyzer->second.m_metrics.m_cpuload * 100);
-				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct / 100000);
+				// g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%.2f, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct * 100, it_analyzer->second.m_metrics.m_cpuload * 100);
+				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct * 100);
 			}
 		}
 	}
