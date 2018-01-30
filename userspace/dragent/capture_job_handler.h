@@ -73,6 +73,12 @@ public:
 		sinsp_dumper *m_dumper;
 	};
 
+	class stop_job_details
+	{
+	public:
+		bool m_remove_unsent_job;
+	};
+
 	class dump_job_request
 	{
 	public:
@@ -108,6 +114,9 @@ public:
 
 		// Only valid when type == JOB_START
 		unique_ptr<start_job_details> m_start_details;
+
+		// Only valid when type == JOB_STOP
+		unique_ptr<stop_job_details> m_stop_details;
 	};
 
 	capture_job_handler(dragent_configuration *configuration,

@@ -34,7 +34,7 @@ public:
 	bool start(sinsp *inspector, string &token,
 		   const capture_job_handler::start_job_details &details,
 		   string &errstr, std::shared_ptr<capture_job> &job_state);
-	void stop();
+	void stop(bool remove_unsent_job=false);
 	void send_start();
 	void flush(uint64_t ts, bool &throttled);
 
@@ -273,7 +273,7 @@ bool capture_job::start(sinsp *inspector, string &token,
 	return true;
 }
 
-void capture_job::stop()
+void capture_job::stop(bool remove_unsent_job)
 {
 	Poco::ScopedLock<Poco::Mutex> lck(m_mtx);
 
@@ -296,6 +296,14 @@ void capture_job::stop()
 	// a bunch of pending chunks
 	//
 	m_state = ST_DONE_OK;
+
+	// If defer_send is true, this means that this job was stopped
+	// before send_start() was called. In this case, we send
+	// nothing at all.
+	if(m_defer_send && remove_unsent_job)
+	{
+		m_send_file = false;
+	}
 
 	// Delete the dumper so any pending data is written to the file.
 	delete m_dumper;
@@ -843,7 +851,7 @@ void capture_job_handler::process_job_requests()
 				{
 					if(job->token() == request->m_token)
 					{
-						job->stop();
+						job->stop(request->m_stop_details->m_remove_unsent_job);
 						found = true;
 						break;
 					}

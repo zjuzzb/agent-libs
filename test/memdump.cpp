@@ -122,7 +122,7 @@ class memdump_test : public testing::Test
 {
 protected:
 
-	void SetUpCaptures(bool capture_dragent_events)
+	void SetUpCaptures(bool capture_dragent_events, uint32_t max_captures=10)
 	{
 		// With the 10k packet size and our relatively slow
 		// reading of responses, we need a bigger than normal
@@ -137,7 +137,7 @@ protected:
 		m_configuration.m_capture_dragent_events  = capture_dragent_events;
 		m_configuration.m_memdump_enabled = true;
 		m_configuration.m_security_enabled = false;
-		m_configuration.m_max_sysdig_captures = 10;
+		m_configuration.m_max_sysdig_captures = max_captures;
 		m_configuration.m_autodrop_enabled = false;
 
 		// The (global) logger only needs to be set up once
@@ -305,7 +305,8 @@ protected:
 												   before_ms, after_ms);
 
 		g_log->debug("Queuing job request tag=" + tag);
-		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
+		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr))
+			<< string("Could not queue job request: ") + errstr;
 
 		// Wait for the initial (keepalive) response to arrive
 		// from the queue. That way we know the capture has
@@ -316,6 +317,24 @@ protected:
 			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
 			ASSERT_EQ(response.keep_alive(), true);
 		}
+	}
+
+	void send_stop(const string &tag, bool remove_unsent_job)
+	{
+		string errstr;
+
+		std::shared_ptr<capture_job_handler::dump_job_request> req = std::make_shared<capture_job_handler::dump_job_request>();
+
+		req->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
+
+		req->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
+		req->m_token = make_token(tag);
+
+		req->m_stop_details->m_remove_unsent_job = remove_unsent_job;
+
+		g_log->debug("Queuing job request stop tag=" + tag);
+
+		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
 	}
 
 	void send_dump_start(const string &tag)
@@ -538,6 +557,15 @@ protected:
 	}
 };
 
+class memdump_max_one_capture_test : public memdump_test
+{
+protected:
+	virtual void SetUp()
+	{
+		SetUpCaptures(true, 1);
+	}
+};
+
 
 TEST_F(memdump_test, DISABLED_standard_dump)
 {
@@ -664,9 +692,46 @@ TEST_F(memdump_test, delayed_capture_start)
 	std::shared_ptr<protocol_queue_item> buf;
 	ASSERT_EQ(m_queue->get(&buf, 1000), false);
 
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, true));
+
 	// Tell the capture to start sending
 	send_dump_start("delayed");
 
 	// Verify that all of the capture was sent.
 	wait_dump_complete(set<string>{string("delayed")});
+}
+
+
+TEST_F(memdump_max_one_capture_test, stop_delayed_capture)
+{
+	// We start a capture, wait 10 seconds, and then stop it
+	// without ever sending a start_job message. The connection
+	// manager should not receive any capture chunks.
+	ASSERT_NO_FATAL_FAILURE({
+			send_dump_request("aborted", 1000, 3000,
+					  false,
+					  true,
+					  true);
+		});
+
+	send_stop("aborted", true);
+
+	// Poll waiting for the capture to finish. This ensures that
+	// it completes on its own and would otherwise get stuck
+	// waiting for job_start()
+	sleep(10);
+
+	// Verify that the connection manager has not received any
+	// capture chunks.
+	std::shared_ptr<protocol_queue_item> buf;
+	ASSERT_EQ(m_queue->get(&buf, 1000), false);
+
+	// Start another capture. This would only work if sending the
+	// stop above actually cleans up the capture.
+	ASSERT_NO_FATAL_FAILURE(perform_single_dump(false, true));
+
+	// At this point, /tmp/agent-dump-events.scap should exist and
+	// contain an open event for the after file, but not the before file.
+	ASSERT_NO_FATAL_FAILURE(read_trace("single", set<string>{string("after")}));
+
 }

@@ -255,8 +255,14 @@ void security_mgr::stop_capture(const string &token)
 	std::shared_ptr<capture_job_handler::dump_job_request> stop_request =
 		std::make_shared<capture_job_handler::dump_job_request>();
 
+	stop_request->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
+
 	stop_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
 	stop_request->m_token = token;
+
+	// Any call to security_mgr::stop_capture is for an aborted
+	// capture, in which case the capture should not be sent at all.
+	stop_request->m_stop_details->m_remove_unsent_job = true;
 
 	if (!m_capture_job_handler->queue_job_request(m_inspector, stop_request, errstr))
 	{
