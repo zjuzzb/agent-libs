@@ -154,9 +154,14 @@ function configure_installers {
 		sed -i s/_COMPONENT_/${COMPONENT}/g ${REPOSITORY_DIR}/install-${COMPONENT}
 	fi
 
-	sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
-	aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
-	aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
+	# Some jenkins jobs don't have permission to overwrite the
+	# install-script. Allow for them to skip this without failing
+	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS} == 'yes' ) ]]
+	then
+	    sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
+	    aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+	    aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
+	fi
 }
 
 function upload_binaries {
