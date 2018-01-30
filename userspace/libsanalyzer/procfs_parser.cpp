@@ -849,7 +849,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
 /*
  * Get CPU usage from cpuacct cgroup subsystem
  */
-int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup,
+double sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup,
 		int64_t *prev_cpu_time, int64_t *last_cpu_time)
 {
 	if (!m_is_live_capture) {
@@ -867,7 +867,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacc
 	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, prev_cpu_time, last_cpu_time);
 }
 
-int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
+double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
                                         const string &container_cpuacct_cgroup,
 					int64_t *prev_cpu_time,
 					int64_t *last_cpu_time)
@@ -886,6 +886,12 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 	}
 
 	char fp_line[128] = { 0 };
+	uint64_t delta_jiffies = m_global_jiffies.delta_total();
+	if (delta_jiffies > 110)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct scan %" PRId64 " ticks apart",
+				cpuacct_filename, delta_jiffies);
+	}
 	if(fgets(fp_line, sizeof(fp_line), fp) != NULL) {
 		int64_t stat_val = -1;
 		if (sscanf(fp_line, "%" PRId64, &stat_val) != 1) {
@@ -917,7 +923,13 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 		{
 			if (prev >= 0)
 			{
-				return stat_val - last;
+
+				/*
+				   without scaling, 1 full cpu of time would be 1e9 nsec / 100 ticks, i.e. 1e7
+				   scale down by 1e5 to get a floating point value in the range of 0-100.0 per cpu
+				*/
+				double cpu_usage = ((stat_val - last) / (delta_jiffies * 100000)) * m_ncpus;
+				return min(cpu_usage, 100.0 * m_ncpus);
 			}
 			else
 			{
