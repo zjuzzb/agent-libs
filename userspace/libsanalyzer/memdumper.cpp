@@ -111,6 +111,7 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 
 	// No reader right now
 	m_reader_state = m_states.rend();
+	m_reader_active = false;
 
 /*
 	//
@@ -409,6 +410,7 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 	{
 		Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 		m_reader_state = m_states.rbegin();
+		m_reader_active = true;
 	}
 
 	while(m_reader_state != m_states.rend())
@@ -419,6 +421,8 @@ sinsp_memory_dumper_job* sinsp_memory_dumper::add_job(uint64_t ts, string filena
 			m_reader_state++;
 		}
 	}
+
+	m_reader_active = false;
 
 	// It's possible (although unlikely) that while reading
 	// through the memory buffers it was necessary to create a
@@ -499,14 +503,14 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 		}
 	}
 
-	// If a reader is reading the last state, create a new state
+	// If a reader is going through the states, create a new state
 	// and put it at the front. However, never create more than 3
 	// states. If there are already 3 states, simply skip event
 	// processing until the reader has read all the states and
 	// brought the total down to 2.
 
 	// Otherwise, take the last state and put it at the front.
-	if(m_reader_state == m_states.rbegin())
+	if(m_reader_active)
 	{
 		if(m_states.size() < 3)
 		{
