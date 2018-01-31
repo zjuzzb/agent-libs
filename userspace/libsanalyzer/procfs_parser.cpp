@@ -928,7 +928,7 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 				   without scaling, 1 full cpu of time would be 1e9 nsec / 100 ticks, i.e. 1e7
 				   scale down by 1e5 to get a floating point value in the range of 0-100.0 per cpu
 				*/
-				double cpu_usage = ((stat_val - last) / (delta_jiffies * 100000)) * m_ncpus;
+				double cpu_usage = ((stat_val - last) / (delta_jiffies * 100000.0)) * m_ncpus;
 				return min(cpu_usage, 100.0 * m_ncpus);
 			}
 			else
