@@ -156,7 +156,7 @@ function configure_installers {
 
 	# Some jenkins jobs don't have permission to overwrite the
 	# install-script. Allow for them to skip this without failing
-	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS} == 'yes' ) ]]
+	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
 	then
 	    sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
 	    aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
