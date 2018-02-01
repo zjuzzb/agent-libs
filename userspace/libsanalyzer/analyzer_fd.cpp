@@ -1231,19 +1231,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		}
 
 		//
-		// Update the FD info with this tuple
-		//
-		if(family == PPM_AF_INET)
-		{
-			m_inspector->m_parser->set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
-		}
-		else
-		{
-			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, 
-				packed_data);
-		}
-
-		//
 		// Add the tuple to the connection table
 		//
 		string scomm = evt->m_tinfo->get_comm();
