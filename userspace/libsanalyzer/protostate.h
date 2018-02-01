@@ -136,6 +136,28 @@ public:
 		return *this;
 	}
 
+	sinsp_request_details& operator+=(const sinsp_request_details& other)
+	{
+		if(m_ncalls == 0)
+		{
+			*this = other;
+		}
+		else
+		{
+			m_ncalls += other.m_ncalls;
+			m_nerrors += other.m_nerrors;
+			add_times(other);
+			m_bytes_in += other.m_bytes_in;
+			m_bytes_out += other.m_bytes_out;
+
+			if(other.m_time_max > m_time_max)
+			{
+				m_time_max = other.m_time_max;
+			}
+		}
+		return *this;
+	}
+
 	~sinsp_request_details()
 	{
 	}
@@ -277,25 +299,8 @@ public:
 		//
 		for(uit = src->begin(); uit != src->end(); ++uit)
 		{
-			T* entry = &((*dst)[uit->first]);
-
-			if(entry->m_ncalls == 0)
-			{
-				*entry = uit->second;
-			}
-			else
-			{
-				entry->m_ncalls += uit->second.m_ncalls;
-				entry->m_nerrors += uit->second.m_nerrors;
-				entry->add_times(uit->second);
-				entry->m_bytes_in += uit->second.m_bytes_in;
-				entry->m_bytes_out += uit->second.m_bytes_out;
-				
-				if(uit->second.m_time_max > entry->m_time_max)
-				{
-					entry->m_time_max = uit->second.m_time_max;
-				}
-			}
+			T& entry = (*dst)[uit->first];
+			entry += uit->second;
 		}
 	}
 
@@ -539,6 +544,8 @@ public:
 		m_client_urls.clear();
 		m_server_status_codes.clear();
 		m_client_status_codes.clear();
+		m_server_totals = sinsp_url_details();
+		m_client_totals = sinsp_url_details();
 	}
 
 	bool has_data()
@@ -567,6 +574,8 @@ private:
 	unordered_map<string, sinsp_url_details> m_client_urls;
 	unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
 	unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
+	sinsp_url_details m_server_totals;
+	sinsp_url_details m_client_totals;
 };
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class

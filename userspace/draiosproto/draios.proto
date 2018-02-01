@@ -219,6 +219,8 @@ message http_info {
     repeated url_details client_urls = 2;
     repeated status_code_details client_status_codes = 3;
     repeated status_code_details server_status_codes = 4;
+    optional counter_proto_entry server_totals = 5;
+    optional counter_proto_entry client_totals = 6;
 }
 
 //

@@ -27,39 +27,30 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 	if(tr->m_protoparser->m_is_valid)
 	{
 		sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
+		auto url = truncate_str(pp->m_url, truncation_size);
+		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
 
 		//
 		// Update the URL table
 		//
-		sinsp_url_details* entry;
-
 		if(is_server)
 		{
-			if(m_server_urls.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_server_urls.size() <= MAX_THREAD_REQUEST_TABLE_SIZE || m_server_urls.count(url))
 			{
-				//
-				// Table limit reached
-				//
-				return;
+				auto entry = &(m_server_urls[url]);
+				request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
-
-			entry = &(m_server_urls[truncate_str(pp->m_url, truncation_size)]);
+			request_sorter<string, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
-			if(m_client_urls.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_client_urls.size() <= MAX_THREAD_REQUEST_TABLE_SIZE || m_client_urls.count(url))
 			{
-				//
-				// Table limit reached
-				//
-				return;
+				auto entry = &(m_client_urls[url]);
+				request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
-
-			entry = &(m_client_urls[truncate_str(pp->m_url, truncation_size)]);
+			request_sorter<string, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
-
-		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
-		request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 
 		//
 		// Update the status code table
@@ -179,6 +170,9 @@ inline void sinsp_http_state::add(sinsp_http_state* other)
 	request_sorter<string, sinsp_url_details>::merge_maps(&m_client_urls, &(other->m_client_urls));
 	request_sorter<uint32_t, sinsp_request_details>::merge_maps(&m_server_status_codes, &(other->m_server_status_codes));
 	request_sorter<uint32_t, sinsp_request_details>::merge_maps(&m_client_status_codes, &(other->m_client_status_codes));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
 }
 
 inline void sql_state::add(sql_state* other)
@@ -384,6 +378,27 @@ void sinsp_http_state::to_protobuf(draiosproto::http_info *protobuf_msg, uint32_
 	{
 		status_code_table_to_protobuf(protobuf_msg, &m_client_status_codes, false, sampling_ratio, limit);
 	}
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
 }
 
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit)
