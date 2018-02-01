@@ -240,6 +240,7 @@ dragent_configuration::dragent_configuration()
 	m_auto_config = true;
 	m_security_enabled = false;
 	m_security_policies_file = "";
+	m_security_baselines_file = "";
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
@@ -873,6 +874,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_security_enabled = m_config->get_scalar<bool>("security", "enabled", false);
 	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
+	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
 	// 1 second
 	m_security_report_interval_ns = m_config->get_scalar<uint64_t>("security" "report_interval", 1000000000);
 	// 10 seconds
@@ -1204,6 +1206,11 @@ void dragent_configuration::print_configuration()
 		if(m_security_policies_file != "")
 		{
 			g_log->information("Using security policies file: " + m_security_policies_file);
+		}
+
+		if(m_security_baselines_file != "")
+		{
+			g_log->information("Using security baselines file: " + m_security_baselines_file);
 		}
 
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));

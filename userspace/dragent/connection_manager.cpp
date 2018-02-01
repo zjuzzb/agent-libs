@@ -506,6 +506,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::BASELINES:
+				handle_baselines_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
@@ -761,6 +766,12 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 		return;
 	}
 
+	if(m_configuration->m_security_policies_file != "")
+	{
+		g_log->information("Security policies file configured in dragent.yaml, ignoring POLICIES message");
+		return;
+	}
+
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies))
 	{
 		g_log->error("Could not parse policies message");
@@ -791,4 +802,34 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 	}
 
 	m_sinsp_worker->receive_hosts_metadata(evts);
+}
+
+void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
+{
+	draiosproto::baselines baselines;
+	string errstr;
+
+	if(!m_configuration->m_security_enabled)
+	{
+		g_log->debug("Security disabled, ignoring BASELINES message");
+		return;
+	}
+
+	if(m_configuration->m_security_baselines_file != "")
+	{
+		g_log->information("Security baselines file configured in dragent.yaml, ignoring BASELINES message");
+		return;
+	}
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &baselines))
+	{
+		g_log->error("Could not parse baselines message");
+		return;
+	}
+
+	if (!m_sinsp_worker->load_baselines(baselines, errstr))
+	{
+		g_log->error("Could not load baselines message: " + errstr);
+		return;
+	}
 }

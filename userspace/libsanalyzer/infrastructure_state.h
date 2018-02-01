@@ -10,13 +10,16 @@
 #include "analyzer_utils.h"
 #include "coclient.h"
 
+typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
+
 class infrastructure_state
 {
 public:
 	// <kind, UID> strings
 	using uid_t = std::pair<std::string, std::string>;
 
-	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<uint64_t, bool>>;
+	// { host/container id : {scope hash : scope match result} }
+	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
 	infrastructure_state(uint64_t refresh_interval);
 
@@ -33,7 +36,7 @@ public:
 
 	void refresh(uint64_t ts);
 
-	bool match_scope(std::string &container_id, std::string &host_id, const draiosproto::policy &policy);
+	bool match_scope(uid_t &uid, const scope_predicates &predicates);
 
 	void state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
 
@@ -95,6 +98,9 @@ private:
 	void remove(infrastructure_state::uid_t& key);
 	bool has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid);
 
+	bool get_cached_result(std::string &entity_id, size_t h, bool *res);
+	void insert_cached_result(std::string &entity_id, size_t h, bool res);
+
 	void reset();
 
 	void debug_print();
@@ -107,11 +113,12 @@ private:
 	std::queue<draiosproto::congroup_update_event> m_host_events_queue;
 	std::mutex m_host_events_queue_mutex;
 
-	policy_cache_t m_container_p_cache;
-	policy_cache_t m_host_p_cache;
+	policy_cache_t m_policy_cache;
 
 	sinsp *m_inspector;
 	std::string m_machine_id;
+
+	std::hash<std::string> m_str_hash_f;
 
 	coclient m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;

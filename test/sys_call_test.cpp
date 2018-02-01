@@ -61,7 +61,7 @@ uint32_t get_server_address()
 		{
 			continue;
 		}
-		
+
 		if(0 == strcmp("lo",tempIfAddr->ifa_name))
 		{
 			continue;
@@ -316,14 +316,14 @@ TEST_F(sys_call_test, poll_timeout)
 				    fds == "0:p1 1:f4" ||
 			            fds == "0:f1 1:p4" ||
 				    fds == "0:p1 1:p4"
-				    );
+				    ) << "Value of fds is not one of expected values: " << fds;
 			EXPECT_EQ("20", e->get_param_value_str("timeout"));
 			callnum++;
 		}
 		else if(type == PPME_SYSCALL_POLL_X)
 		{
 			int64_t res = NumberParser::parse(e->get_param_value_str("res"));
-			
+
 			EXPECT_GT(res, 0);
 			EXPECT_LE(res, 2);
 
@@ -456,7 +456,7 @@ TEST_F(sys_call_test, shutdown)
 		if(type == PPME_SOCKET_SHUTDOWN_E)
 		{
 			EXPECT_EQ(NumberFormatter::format(sock), e->get_param_value_str("fd", false));
-			
+
 			if(callnum == 0)
 			{
 				EXPECT_EQ("0", e->get_param_value_str("how", false));
@@ -753,7 +753,7 @@ TEST_F(sys_call_test, mmap)
 				EXPECT_EQ((uint64_t) p, addr);
 #else
 				EXPECT_EQ(((uint32_t) p), addr);
-#endif				
+#endif
 				EXPECT_EQ("1003520", e->get_param_value_str("length"));
 				break;
 			}
@@ -812,7 +812,7 @@ TEST_F(sys_call_test, mmap)
 				}
 				else
 				{
-					EXPECT_EQ("0", e->get_param_value_str("pgoffset"));					
+					EXPECT_EQ("0", e->get_param_value_str("pgoffset"));
 				}
 				break;
 			case 5:
@@ -832,7 +832,7 @@ TEST_F(sys_call_test, mmap)
 				}
 				else
 				{
-					EXPECT_EQ("0", e->get_param_value_str("pgoffset"));					
+					EXPECT_EQ("0", e->get_param_value_str("pgoffset"));
 				}
 				break;
 			default:
@@ -909,7 +909,7 @@ TEST_F(sys_call_test, quotactl_ko)
 			switch(callnum)
 			{
 			case 1:
-				
+
 				printf("quotactl: on str: %s\n", e->get_param_value_str("cmd").c_str());
 				EXPECT_EQ("Q_QUOTAON", e->get_param_value_str("cmd"));
 				EXPECT_EQ("USRQUOTA", e->get_param_value_str("type"));
@@ -1280,7 +1280,7 @@ TEST_F(sys_call_test, ppoll_timeout)
 		else if(type == PPME_SYSCALL_PPOLL_X)
 		{
 			int64_t res = NumberParser::parse(e->get_param_value_str("res"));
-			
+
 			EXPECT_GT(res, 0);
 			EXPECT_LE(res, 2);
 
@@ -1768,7 +1768,7 @@ TEST_F(sys_call_test32, quotactl_ok)
 	{
 		auto handle = start_process(&helper_proc);
 		auto pipe = get<1>(handle);
-		
+
 		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_bhardlimit, sizeof(uint64_t)), (int)sizeof(uint64_t));
 		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_bsoftlimit, sizeof(uint64_t)), (int)sizeof(uint64_t));
 		EXPECT_EQ(pipe->readBytes(&mydqblk.dqb_curspace, sizeof(uint64_t)), (int)sizeof(uint64_t));
@@ -1898,7 +1898,7 @@ TEST_F(sys_call_test32, ppoll_timeout)
 		else if(type == PPME_SYSCALL_PPOLL_X)
 		{
 			int64_t res = NumberParser::parse(e->get_param_value_str("res"));
-			
+
 			EXPECT_GT(res, 0);
 			EXPECT_LE(res, 2);
 

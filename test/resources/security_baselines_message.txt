@@ -1,0 +1,203 @@
+baseline_list {
+  id: "uuid-here"
+  scope {
+    key: "container.image.name_no_digest"
+    value: "appropriate/nc"
+  }
+  matchlist_details {
+    process_details {
+      lists {
+        values: "nc"
+        values: "entrypoint.sh"
+	on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "proc.name"
+    }
+    fs_details {
+      lists {
+        fs_access_type: ACCESS_READ
+        values: "/usr/bin"
+        values: "/lib"
+        values: "/usr/lib"
+        values: "/usr/local/lib"
+        values: "/entrypoint.sh"
+	values: "/etc/ld-musl-x86_64.path"
+	on_match: EFFECT_ACCEPT
+      }
+      lists {
+        fs_access_type: ACCESS_WRITE
+        values: "/dev/null"
+	values: "/proc/1/attr/exec"
+	on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "fd.name"
+      output_field_keys: "proc.name"
+    }
+    syscall_details {
+      lists {
+        values: "accept"
+        values: "arch_prctl"
+        values: "bind"
+        values: "brk"
+        values: "capget"
+        values: "capset"
+        values: "chdir"
+        values: "clone"
+        values: "close"
+        values: "dup"
+        values: "epoll_create1"
+        values: "epoll_ctl"
+        values: "epoll_wait"
+        values: "execve"
+        values: "exit_group"
+        values: "fchdir"
+        values: "fchmodat"
+        values: "fchown"
+        values: "fchownat"
+        values: "fcntl"
+        values: "fstat"
+        values: "futex"
+        values: "getcwd"
+	values: "getdents64"
+        values: "getpid"
+        values: "getsockname"
+        values: "gettid"
+        values: "getppid"
+        values: "geteuid"
+        values: "getuid"
+        values: "ioctl"
+	values: "keyctl"
+        values: "listen"
+	values: "lstat"
+        values: "mkdirat"
+        values: "mknodat"
+        values: "mmap"
+        values: "mount"
+        values: "munmap"
+        values: "mprotect"
+        values: "open"
+        values: "openat"
+	values: "prctl"
+        values: "procexit"
+        values: "pselect6"
+        values: "pivot_root"
+        values: "read"
+        values: "readlinkat"
+        values: "recvfrom"
+        values: "rt_sigaction"
+        values: "rt_sigprocmask"
+	values: "sched_getaffinity"
+	values: "sched_yield"
+	values: "seccomp"
+        values: "sendfile"
+        values: "sendto"
+        values: "setgid"
+        values: "setpgid"
+        values: "setgroups"
+        values: "sethostname"
+        values: "setsid"
+        values: "setuid"
+        values: "setsockopt"
+        values: "set_robust_list"
+        values: "set_tid_address"
+        values: "signaldeliver"
+        values: "socket"
+        values: "stat"
+        values: "symlinkat"
+        values: "switch"
+	values: "umount"
+	values: "unlinkat"
+	values: "unshare"
+	values: "umask"
+	values: "wait4"
+	values: "write"
+	values: "writev"
+	values: "<unknown>"
+	on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "evt.type"
+      output_field_keys: "proc.name"
+      output_field_keys: "container.name"
+    }
+    listenport_details {
+      lists {
+        values: "9274"
+        on_match: EFFECT_ACCEPT
+        proto: PROTO_TCP
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "fd.sport"
+    }
+  }
+}
+baseline_list {
+  id: "uuid-2-here"
+  scope {
+    key: "container.image.name_no_digest"
+    value: "alpine"
+  }
+  matchlist_details {
+    process_details {
+      lists {
+        values: "sh"
+	values: "touch"
+	on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "proc.name"
+    }
+    fs_details {
+      lists {
+        fs_access_type: ACCESS_READ
+        values: "/"
+	on_match: EFFECT_ACCEPT
+      }
+      lists {
+        fs_access_type: ACCESS_WRITE
+        values: "/dev/tty"
+        values: "/root/.ash_history"
+        on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "fd.name"
+      output_field_keys: "proc.name"
+    }
+    syscall_details {
+      lists {
+	values: "execve"
+        on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "evt.type"
+    }
+  }
+}
+baseline_list {
+  id: "uuid-3-here"
+  scope {
+    key: "container.image.name_no_digest"
+    value: "alpine"
+  }
+  scope {
+    key: "container.name"
+    value: "container_name_that_should_never_match"
+  }
+  matchlist_details {
+    process_details {
+      on_default: EFFECT_DENY
+      output_field_keys: "proc.name"
+    }
+    fs_details {
+      on_default: EFFECT_DENY
+      output_field_keys: "fd.name"
+      output_field_keys: "proc.name"
+    }
+    syscall_details {
+      on_default: EFFECT_DENY
+      output_field_keys: "evt.type"
+    }
+  }
+}

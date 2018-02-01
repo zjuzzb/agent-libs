@@ -585,6 +585,7 @@ enum message_type {
     POLICY_EVENTS = 14;
     THROTTLED_POLICY_EVENTS = 15;
     ORCHESTRATOR_EVENTS = 16;
+    BASELINES = 17;
 }
 
 //
@@ -1082,11 +1083,69 @@ message action {
     optional capture_action capture = 4;
 }
 
-// XXX/mstemm fill these in
-message baseline_detail {
+message match_lists {
+    repeated match_list lists = 1;
+    required match_effect on_default = 2;
+    repeated string output_field_keys = 3;
 }
 
-message manual_detail {
+message matchlist_detail {
+    optional match_lists process_details = 1;
+    optional match_lists fs_details = 2;
+    optional match_lists syscall_details = 3;
+    optional match_lists container_details = 4;
+    optional match_lists listenport_details = 5;
+    optional inoutbound inbound_details = 6;
+    optional inoutbound outbound_details = 7;
+}
+
+message baseline {
+    required string id = 1;
+    repeated scope_value scope = 2;
+    required matchlist_detail matchlist_details = 3;
+}
+
+message baselines {
+    repeated baseline baseline_list = 1;
+}
+
+message baseline_detail {
+    repeated scope_indicator baselines_wanted = 1;
+    // These default to false
+    optional bool process_enabled = 2;
+    optional bool fs_read_only_enabled = 3;
+    optional bool fs_read_write_enabled = 4;
+    optional bool syscall_enabled = 5;
+    optional bool network_listening_enabled = 6;
+    optional bool network_inoutbound_enabled = 7;
+}
+
+message match_list {
+    repeated string values = 1;
+    required match_effect on_match = 2;
+
+    // When present, this match_lists is for filesystem items and
+    // determines whether the items should be read or read/write.
+    optional path_access_type fs_access_type = 3;
+
+    // When present, this match_lists is for network listening port
+    // items and determines whether the items are tcp or udp ports
+    optional net_proto proto = 4;
+}
+
+enum path_access_type {
+    ACCESS_READ = 1;
+    ACCESS_WRITE = 2;
+}
+
+enum net_proto {
+     PROTO_TCP = 1;
+     PROTO_UDP = 2;
+}
+
+message inoutbound {
+    required match_effect on_default = 1;
+    repeated string output_field_keys = 2;
 }
 
 message falco_rule_filter {
@@ -1096,12 +1155,19 @@ message falco_rule_filter {
 
 message falco_detail {
     required falco_rule_filter rule_filter = 1;
+    repeated string output_field_keys = 2;
 }
 
-enum policy_type {
+enum retired_policy_type {
     POLICY_BASELINE = 1;
     POLICY_FALCO = 2;
     POLICY_MANUAL =3;
+}
+
+enum match_effect {
+    EFFECT_ACCEPT = 1;
+    EFFECT_DENY = 2;
+    EFFECT_NEXT = 3;
 }
 
 enum scope_operator {
@@ -1114,6 +1180,24 @@ enum scope_operator {
     STARTS_WITH = 7;
 }
 
+// A scope indicator is a key only, without value
+// (container.image, or k8s.ns).
+message scope_indicator {
+    required string key = 1;
+}
+
+// A scope value is a pair key/value (container.image=mysql, or
+// k8s.ns=prod). Unlike predicate the key can only have 1 value, and
+// it is a statement about a scope instead of a test.
+message scope_value {
+    required string key = 1;
+    required string value = 2;
+}
+
+// A scope predicate contains both indicators and values
+// (container.image=mysql and k8s.ns=prod) as well as a match
+// operator. It is a test to apply to a given system event to see if
+// it matches.
 message scope_predicate {
     required string key = 1;
     // multiple values when using IN/NOT_IN, otherwise single
@@ -1124,21 +1208,18 @@ message scope_predicate {
 message policy {
     required uint64 id = 1;
     required string name = 2;
-    required policy_type type = 3;
+    // was required but not used anymore, so mark it optional and wait to retire until all Secure agents are upgraded.
+    // backend will still send it to not break the old required.
+    optional retired_policy_type retired_type = 3;
 
     required bool host_scope = 9;
     required bool container_scope = 10;
     // all scope_predicates must match against the entity
     repeated scope_predicate scope_predicates = 11;
 
-    // when type=POLICY_BASELINE
-    optional baseline_detail baseline_details = 4;
-
-    // when type=POLICY_FALCO
     optional falco_detail falco_details = 5;
-
-    // when type=POLICY_MANUAL
-    optional manual_detail manual_details = 6;
+    optional matchlist_detail matchlist_details = 16;
+    optional baseline_detail baseline_details = 17;
 
     repeated action actions = 7;
     required bool enabled = 8;
@@ -1156,16 +1237,54 @@ message policies {
     optional falco_rules_contents falco_rules = 2;
 }
 
-// XXX/mstemm fill these in
-message baseline_event_detail {
-}
-
-message manual_event_detail {
-}
-
 message falco_event_detail {
     required string rule = 1;
     required string output = 2;
+}
+
+message baseline_event_detail {
+    required string id = 1;
+}
+
+// The type as well as order of precedence of security
+// policies modules. If an event matches more than one of
+// these for a given policy, an earlier one will take
+// precedence over a later one.
+enum policy_type {
+    PTYPE_PROCESS = 1;
+    PTYPE_CONTAINER = 2;
+    PTYPE_FILESYSTEM = 3;
+    PTYPE_NETWORK = 4;
+    PTYPE_SYSCALL = 5;
+    PTYPE_FALCO = 6;
+}
+
+enum policy_subtype {
+    PSTYPE_NOSUBTYPE = 0;
+    PSTYPE_NETWORK_INBOUND = 1;
+    PSTYPE_NETWORK_OUTBOUND = 2;
+    PSTYPE_NETWORK_LISTENING = 3;
+    PSTYPE_FILESYSTEM_READ = 4;
+    PSTYPE_FILESYSTEM_READWRITE = 5;
+}
+
+message output_event_detail {
+    required policy_type output_type = 1;        // policy type triggered (falco, process, network...)
+    optional policy_subtype output_subtype = 2;  // policy subtype triggered (fs read, fs read/write,
+                                                 // network in/out/listening_port)
+    optional string output = 3;                  // human-readable string provided by agent
+    map<string,string> output_fields = 4;        // key-value map (string->string)
+                                                 // e.g. "container.image" -> "ubuntu"
+                                                 //      "proc.name"       -> "apache"
+                                                 //      "falco.rule"      -> "Write below binary dir"
+}
+
+message event_detail {
+    optional output_event_detail output_details = 1;
+    optional baseline_event_detail baseline_details = 2;
+    // If true, then this policy event was the result of an on_default
+    // action for some policy.
+    required bool on_default = 3;
 }
 
 message action_result {
@@ -1191,13 +1310,14 @@ message policy_event {
     required uint64 policy_id = 2;
     optional string container_id = 3;
 
-    // Which of these are present depends on the type of the policy
-    // referred to by policy_id.
-    optional baseline_event_detail baseline_details = 4;
+    // Only used for backwards compatibility. If a policy for this
+    // policy event has a falco_details section, the details will also
+    // be here.
     optional falco_event_detail falco_details = 5;
-    optional manual_event_detail manual_details = 6;
 
     repeated action_result action_results = 7;
+
+    optional event_detail event_details = 9;
 
     // If true, there were inspector events dropped recently, which
     // might have affected the details in this policy event.

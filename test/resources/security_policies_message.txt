@@ -1,10 +1,9 @@
 policy_list {
   id: 1
-  name: "Reading etc file"
-  type: POLICY_FALCO
+  name: "Reading sensitive file"
   falco_details {
     rule_filter {
-      name: "read_etc_file"
+      name: "read_sensitive_file"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -12,6 +11,539 @@ policy_list {
   host_scope: true
   container_scope: false
 }
+policy_list {
+  id: 2
+  name: "Don't read sensitive files below /tmp"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/sample-sensitive-file-1.txt"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_READ
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 3
+  name: "Don't write sensitive files below /tmp"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/sample-sensitive-file-3.txt"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_WRITE
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 4
+  name: "Don't let processes listen on tcp port 1234"
+  matchlist_details {
+    listenport_details {
+      lists {
+        values: "1234"
+        on_match: EFFECT_DENY
+        proto: PROTO_TCP
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.sport"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 5
+  name: "Don't let processes listen on udp port 12345"
+  matchlist_details {
+    listenport_details {
+      lists {
+        values: "12345"
+        on_match: EFFECT_DENY
+        proto: PROTO_UDP
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.sport"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 6
+  name: "Don't let processes quotactl()"
+  matchlist_details {
+    syscall_details {
+      lists {
+        values: "quotactl"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "evt.type"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 7
+  name: "Blacklist container busybox"
+  matchlist_details {
+    container_details {
+      lists {
+        values: "blacklist-image-name"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 8
+  name: "Blacklist process ls"
+  matchlist_details {
+    process_details {
+      lists {
+        values: "ls"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "proc.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 9
+  name: "Testing matchlist order"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/matchlist-order.txt"
+        on_match: EFFECT_ACCEPT
+        fs_access_type: ACCESS_WRITE
+      }
+      lists {
+        values: "/tmp/matchlist-order.txt"
+        values: "/tmp/matchlist-order-2.txt"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_READ
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 10
+  name: "Testing overall order - part 1/2"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/overall-order-1.txt"
+        values: "/tmp/overall-order-2.txt"
+        values: "/tmp/overall-order-3.txt"
+        on_match: EFFECT_ACCEPT
+        fs_access_type: ACCESS_READ
+      }
+      lists {
+        values: "/tmp/overall-order-1.txt"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_READ
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  falco_details {
+    rule_filter {
+      name: "read_overall_file"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 11
+  name: "Testing overall order - part 2/2"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/overall-order-2.txt"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_READ
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 12
+  name: "Testing filesystem prefixes"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/one"
+        values: "/tmp/two"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_READ
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+policy_list {
+  id: 13
+  name: "Baselining container image appropriate/nc"
+  baseline_details {
+    baselines_wanted {
+      key: "container.image.name_no_digest"
+    }
+    process_enabled: true
+    fs_read_only_enabled: true
+    fs_read_write_enabled: true
+    syscall_enabled: true
+    network_listening_enabled: true
+    network_inoutbound_enabled: true
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "container.image"
+    values: "appropriate/nc"
+    op: EQ
+  }
+}
+policy_list {
+  id: 14
+  name: "Test container prefixes (1)"
+  matchlist_details {
+    container_details {
+      lists {
+	values: "my.domain.name/"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 15
+  name: "Test container prefixes (2)"
+  matchlist_details {
+    container_details {
+      lists {
+	values: "my.other.domain.name:12345/"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 16
+  name: "Test container prefixes (3)"
+  matchlist_details {
+    container_details {
+      lists {
+	values: "my.third.domain.name/alpine"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 17
+  name: "Test container prefixes (4)"
+  matchlist_details {
+    container_details {
+      lists {
+        values: "my.third.domain.name/tutum/curl:alpine"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 18
+  name: "Test inbound/outbound (TCP/UDP)"
+  matchlist_details {
+    inbound_details {
+      on_default: EFFECT_DENY
+      output_field_keys: "proc.name"
+      output_field_keys: "evt.type"
+    }
+    outbound_details {
+      on_default: EFFECT_DENY
+      output_field_keys: "proc.name"
+      output_field_keys: "evt.type"
+    }
+    listenport_details {
+      lists {
+        values: "22222"
+        on_match: EFFECT_DENY
+        proto: PROTO_TCP
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.sport"
+      output_field_keys: "proc.name"
+      output_field_keys: "evt.type"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "container.image"
+    values: "curl:inout_test"
+    op: EQ
+  }
+}
+policy_list {
+  id: 19
+  name: "Testing filesystem root dir"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/allowed-file-below-root"
+        values: "/dev/null"
+	values: "/proc/1/attr/exec"
+        on_match: EFFECT_ACCEPT
+        fs_access_type: ACCESS_WRITE
+      }
+      lists {
+        values: "/"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_WRITE
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.name"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "container.image"
+    values: "busybox:test-root-writes"
+    op: EQ
+  }
+}
+policy_list {
+  id: 20
+  name: "Baselining container image alpine except for syscalls"
+  baseline_details {
+    baselines_wanted {
+      key: "container.image.name_no_digest"
+    }
+    process_enabled: true
+    fs_read_only_enabled: true
+    fs_read_write_enabled: true
+    syscall_enabled: false
+    network_listening_enabled: true
+    network_inoutbound_enabled: true
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "container.image"
+    values: "alpine"
+    op: EQ
+  }
+}
+policy_list {
+  id: 21
+  name: "Use-case policy - fs"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/mnt/"
+        values: "/etc/"
+	values: "/bin/"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_WRITE
+      }
+      lists {
+        values: "/home/"
+        values: "/tmp/"
+        values: "/dev/tty"
+	values: "/root/.ash_history"
+        on_match: EFFECT_ACCEPT
+        fs_access_type: ACCESS_WRITE
+      }
+      lists {
+        values: "/etc/hostname"
+	values: "/home/"
+        on_match: EFFECT_ACCEPT
+        fs_access_type: ACCESS_READ
+      }
+      lists {
+        values: "/etc/passwd"
+        values: "/etc/shadow"
+        on_match: EFFECT_DENY
+        fs_access_type: ACCESS_READ
+      }
+      on_default: EFFECT_DENY
+      output_field_keys: "fd.name"
+    }
+  }
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "container.image"
+    values: "busybox:fs_usecase"
+    op: EQ
+  }
+}
+policy_list {
+  id: 22
+  name: "container priority wrt match effect (no events)"
+  matchlist_details {
+    container_details {
+      lists {
+	values: "tutum/mycurl"
+        on_match: EFFECT_ACCEPT
+      }
+      lists {
+        values: "ubuntu"
+	values: "tutum/"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 23
+  name: "container priority wrt match effect (with events)"
+  matchlist_details {
+    container_details {
+      lists {
+        values: "ubuntu"
+	values: "tutum/"
+        on_match: EFFECT_DENY
+      }
+      lists {
+	values: "tutum/mycurl"
+        on_match: EFFECT_ACCEPT
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "container.image"
+    }
+  }
+  enabled: 1
+  host_scope: false
+  container_scope: true
+}
+policy_list {
+  id: 24
+  name: "Test overlapping syscall"
+  matchlist_details {
+    syscall_details {
+      lists {
+        values: "listen"
+        on_match: EFFECT_DENY
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "evt.type"
+    }
+    listenport_details {
+      lists {
+        values: "12345"
+        on_match: EFFECT_DENY
+        proto: PROTO_TCP
+      }
+      on_default: EFFECT_NEXT
+      output_field_keys: "fd.sport"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "container.image"
+    values: "curl:overlap_test"
+    op: EQ
+  }
+}
 falco_rules {
-  contents: "- rule: read_etc_file\n  desc: test program reading /etc/sample-sensitive-file.txt\n  condition: proc.name=tests and evt.type in (open,openat) and evt.is_open_read=true and evt.arg.name=/etc/sample-sensitive-file.txt\n  output: tests read /etc/sample-sensitive-file.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING"
+  contents: "- rule: read_sensitive_file\n  desc: test program reading /tmp/sample-sensitive-file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: tests read /tmp/sample-sensitive-file-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: read_overall_file\n  desc: test program reading /tmp/overall_file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/overall-order-3.txt)\n  output: tests read /tmp/overall-order-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n"
 }

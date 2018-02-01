@@ -666,6 +666,7 @@ public:
 
 	bool m_security_enabled;
 	string m_security_policies_file;
+	string m_security_baselines_file;
 	uint64_t m_security_report_interval_ns;
 	uint64_t m_security_throttled_report_interval_ns;
 	uint64_t m_actions_poll_interval_ns;

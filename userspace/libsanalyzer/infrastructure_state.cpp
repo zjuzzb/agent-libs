@@ -5,32 +5,27 @@
 
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
-bool get_cached_result(infrastructure_state::policy_cache_t &cache, std::string &id, uint64_t policy_id, bool *res)
+bool infrastructure_state::get_cached_result(std::string &entity_id, size_t h, bool *res)
 {
-	auto cached_results = cache.find(id);
-	if(cached_results != cache.end()) {
-		auto cached_result = cached_results->second.find(policy_id);
+	auto cached_results = m_policy_cache.find(entity_id);
+	if(cached_results != m_policy_cache.end()) {
+		auto cached_result = cached_results->second.find(h);
 		if (cached_result != cached_results->second.end()) {
-			//glogf(sinsp_logger::SEV_DEBUG, "Found cached result for id %s, policy id %llu --> %s", id.c_str(), policy_id, res?"true":"false");
 			*res = cached_result->second;
 			return true;
 		}
 	}
 
-	//glogf(sinsp_logger::SEV_DEBUG, "Cannot find cached result for id %s, policy id %llu", id.c_str(), policy_id);
-
 	return false;
 }
 
-void insert_cached_result(infrastructure_state::policy_cache_t &cache, std::string &id, uint64_t policy_id, bool res)
+void infrastructure_state::insert_cached_result(std::string &entity_id, size_t h, bool res)
 {
-	if(cache.find(id) == cache.end()) {
-		cache.emplace(id, std::unordered_map<uint64_t, bool>());
+	if(m_policy_cache.find(entity_id) == m_policy_cache.end()) {
+		m_policy_cache.emplace(entity_id, std::unordered_map<size_t, bool>());
 	}
 
-	cache[id].emplace(policy_id, res);
-
-	//glogf(sinsp_logger::SEV_DEBUG, "Cache result (%s) for id %s, policy id %llu", res?"true":"false", id.c_str(), policy_id);
+	m_policy_cache[entity_id].emplace(h, res);
 }
 
 bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
@@ -86,6 +81,13 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	for(auto i = preds.begin(); i != preds.end();) {
 		if(congroup->tags().find(i->key()) != congroup->tags().end()) {
 			if(!evaluate(*i, congroup->tags().at(i->key()))) {
+				preds.erase(i);
+				return false;
+			} else {
+				i = preds.erase(i);
+			}
+		} else if(congroup->internal_tags().find(i->key()) != congroup->internal_tags().end()) {
+			if(!evaluate(*i, congroup->internal_tags().at(i->key()))) {
 				preds.erase(i);
 				return false;
 			} else {
@@ -213,8 +215,7 @@ void infrastructure_state::refresh(uint64_t ts)
 
 void infrastructure_state::reset()
 {
-	m_container_p_cache.clear();
-	m_host_p_cache.clear();
+	m_policy_cache.clear();
 	m_orphans.clear();
 	m_state.clear();
 	m_k8s_cached_cluster_id.clear();
@@ -639,7 +640,7 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key)
 		//
 		// Delete all cached results for this container
 		//
-		m_container_p_cache.erase(m_state[key]->uid().id());
+		m_policy_cache.erase(m_state[key]->uid().id());
 	}
 
 	// Remove the group itself
@@ -701,34 +702,23 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	return true;
 }
 
-bool infrastructure_state::match_scope(std::string &container_id, std::string &host_id, const draiosproto::policy &policy)
+bool infrastructure_state::match_scope(uid_t &uid, const scope_predicates& predicates)
 {
-	// glogf(sinsp_logger::SEV_DEBUG, "Match policy scope with c_id: \"%s\", h_id: \"%s\", p_id: %llu, container_scope: %s, host_scope: %s",
-	// 	container_id.c_str(), host_id.c_str(), policy.id(), policy.container_scope()?"true":"false", policy.host_scope()?"true":"false");
-
 	bool result = true;
-	uid_t uid;
 
-	if((container_id.empty() && !policy.host_scope()) ||
-		(!container_id.empty() && !policy.container_scope())) {
-		// the policy isn't meant to be applied to this event
-		return false;
+	std::string preds_str;
+	for(int i=0; i < predicates.size(); i++)
+	{
+		preds_str += predicates[i].SerializeAsString();
 	}
+	size_t preds_hash = m_str_hash_f(preds_str);
 
-	if (!container_id.empty() && policy.container_scope()) {
-		uid = make_pair("container", container_id);
-	} else {
-		uid = make_pair("host", host_id);
-	}
-
-	policy_cache_t &cache = uid.first == "host" ? m_host_p_cache : m_container_p_cache;
-
-	if(policy.scope_predicates().empty()) {
+	if(predicates.empty()) {
 		// no predicates, we can safely return true immediately
 		result = true;
 	} else {
 
-		if(get_cached_result(cache, uid.second, policy.id(), &result)) {
+		if(get_cached_result(uid.second, preds_hash, &result)) {
 			return result;
 		}
 
@@ -736,7 +726,7 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 		if (pos == m_state.end())
 			return false;
 
-		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(policy.scope_predicates());
+		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(predicates);
 
 		if (uid.first == "host") {
 			result = evaluate_on(pos->second.get(), preds);
@@ -754,17 +744,17 @@ bool infrastructure_state::match_scope(std::string &container_id, std::string &h
 				}
 			}
 			if (i == preds.end()) {
-				glogf(sinsp_logger::SEV_DEBUG, "infra_state: The unmatched predicates are only !=, not in, not contains. Assume the metrics are not set in the current sub-infrastructure and apply the policy");
+				glogf(sinsp_logger::SEV_DEBUG, "infra_state: The unmatched predicates are only !=, not in, not contains. Assume the metrics are not set in the current sub-infrastructure and return true");
 				result = true;
 			} else {
 				result = false;
 			}
 		}
 
-		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Matching policy %llu, composed by %d predicates, against <%s,%s> ----> %s", policy.id(), policy.scope_predicates().size(), uid.first.c_str(), uid.second.c_str(), (result?"true":"false"));
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Matching scope with hash %lu, composed by %d predicates, against <%s,%s> ----> %s", preds_hash, predicates.size(), uid.first.c_str(), uid.second.c_str(), (result?"true":"false"));
 	}
 
-	insert_cached_result(cache, uid.second, policy.id(), result);
+	insert_cached_result(uid.second, preds_hash, result);
 
 	return result;
 }
@@ -928,6 +918,9 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 	(*cg->mutable_tags())["container.name"] = container_info.m_name;
 	(*cg->mutable_tags())["container.image"] = container_info.m_image;
 	(*cg->mutable_tags())["container.image.id"] = container_info.m_imageid.substr(0, 12);
+	// only needed for baseline MVP grouping key
+	size_t apos = container_info.m_image.find("@");
+	(*cg->mutable_internal_tags())["container.image.name_no_digest"] = apos != string::npos ? container_info.m_image.substr(0, apos) : container_info.m_image;
 	for (const auto &t : container_info.m_labels) {
 		(*cg->mutable_tags())["container.label." + t.first] = t.second;
 		if(m_k8s_subscribed && std::string(t.first) == "io.kubernetes.pod.uid") {
@@ -974,8 +967,7 @@ void infrastructure_state::receive_hosts_metadata(const google::protobuf::Repeat
 void infrastructure_state::clear_scope_cache()
 {
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Clear container/host scope cache because policies will be reloaded...");
-	m_container_p_cache.clear();
-	m_host_p_cache.clear();
+	m_policy_cache.clear();
 }
 
 void infrastructure_state::refresh_hosts_metadata()
@@ -1008,8 +1000,7 @@ void infrastructure_state::refresh_hosts_metadata()
 	//
 	// Delete all cached results for policy scopes
 	//
-	m_host_p_cache.clear();
-	m_container_p_cache.clear();
+	m_policy_cache.clear();
 
 	glogf(sinsp_logger::SEV_INFO, "infra_state: Adding %d hosts to infrastructure state", m_host_events_queue.size());
 

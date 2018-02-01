@@ -43,6 +43,7 @@ public:
 
 // Performs a role similar to sinsp_worker, but much simpler. Only
 // contains the inspector loop and capture job management.
+namespace {
 class test_sinsp_worker : public Runnable
 {
 public:
@@ -116,7 +117,7 @@ private:
 	capture_job_handler *m_capture_job_handler;
 	unique_ptr<sinsp> m_inspector;
 };
-
+}
 
 class memdump_test : public testing::Test
 {
@@ -567,7 +568,7 @@ protected:
 };
 
 
-TEST_F(memdump_test, DISABLED_standard_dump)
+TEST_F(memdump_test, standard_dump)
 {
 	// Set the dump chunk size to something very small so
 	// we get frequent dump_response messages.
