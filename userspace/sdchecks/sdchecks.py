@@ -396,6 +396,8 @@ def prepare_prom_check(pc, port):
         newconf["max_metrics"] = pc["max_metrics"]
     if pc.get("max_tags") != None:
         newconf["max_tags"] = pc["max_tags"]
+    if pc.get("histograms") != None:
+        newconf["histograms"] = pc["histograms"]
     newcheck = {
         "check_module": "prometheus",
         "log_errors": pc.get("log_errors", True),

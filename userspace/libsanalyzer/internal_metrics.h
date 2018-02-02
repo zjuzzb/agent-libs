@@ -5,6 +5,7 @@
 #include <string>
 #include <sstream>
 #include <memory>
+#include <list>
 #include <map>
 #include <atomic>
 #include <ctime>
@@ -115,6 +116,17 @@ public:
 	int64_t get_cointerface_cpu() const;
 	int64_t get_cointerface_memory() const;
 
+	// For other metrics sources e.g. security manager event
+	// counts, you can provide objects derived from this type and
+	// maintain the counts in that object.
+	class ext_source
+	{
+	public:
+		virtual void send_all(draiosproto::statsd_info *statsd_info) = 0;
+	};
+
+	void add_ext_source(ext_source *src);
+
 	// adds statsd-emulated metrics directly to protobuf
 	// returns false if statsd_info is null
 	bool send_all(draiosproto::statsd_info* statsd_info);
@@ -216,6 +228,7 @@ private:
 	};
 
 	analyzer m_analyzer;
+	std::list<ext_source *> m_ext_sources;
 	log m_log;
 };
 

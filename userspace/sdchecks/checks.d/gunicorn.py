@@ -42,7 +42,7 @@ class GUnicornCheck(AgentCheck):
         master_proc = self._get_master_proc_by_name(proc_name)
 
         # Fetch the worker procs and count their states.
-        worker_procs = master_proc.get_children()
+        worker_procs = master_proc.children()
         working, idle = self._count_workers(worker_procs)
 
         # if no workers are running, alert CRITICAL, otherwise OK
@@ -68,7 +68,7 @@ class GUnicornCheck(AgentCheck):
         for proc in worker_procs:
             # cpu time is the sum of user + system time.
             try:
-                cpu_time_by_pid[proc.pid] = sum(proc.get_cpu_times())
+                cpu_time_by_pid[proc.pid] = sum(proc.cpu_times())
             except psutil.NoSuchProcess:
                 self.warning('Process %s disappeared while scanning' % proc.name)
                 continue

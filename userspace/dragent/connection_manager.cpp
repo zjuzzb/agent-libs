@@ -506,6 +506,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::BASELINES:
+				handle_baselines_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			default:
 				g_log->error(m_name + ": Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
@@ -589,8 +594,16 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 	std::shared_ptr<capture_job_handler::dump_job_request> job_request =
 		make_shared<capture_job_handler::dump_job_request>();
 
+	job_request->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
+
 	job_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
 	job_request->m_token = request.token();
+
+	// For captures created by the connection manager,
+	// m_defer_send is never true, so there isn't any need to
+	// worry about stopping a deferred capture. But set this for
+	// completeness.
+	job_request->m_stop_details->m_remove_unsent_job = false;
 
 	// This could go directly to the capture handler as there's no
 	// need to add any state when stopping a job. However, still
@@ -753,6 +766,12 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 		return;
 	}
 
+	if(m_configuration->m_security_policies_file != "")
+	{
+		g_log->information("Security policies file configured in dragent.yaml, ignoring POLICIES message");
+		return;
+	}
+
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies))
 	{
 		g_log->error("Could not parse policies message");
@@ -783,4 +802,34 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 	}
 
 	m_sinsp_worker->receive_hosts_metadata(evts);
+}
+
+void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
+{
+	draiosproto::baselines baselines;
+	string errstr;
+
+	if(!m_configuration->m_security_enabled)
+	{
+		g_log->debug("Security disabled, ignoring BASELINES message");
+		return;
+	}
+
+	if(m_configuration->m_security_baselines_file != "")
+	{
+		g_log->information("Security baselines file configured in dragent.yaml, ignoring BASELINES message");
+		return;
+	}
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &baselines))
+	{
+		g_log->error("Could not parse baselines message");
+		return;
+	}
+
+	if (!m_sinsp_worker->load_baselines(baselines, errstr))
+	{
+		g_log->error("Could not load baselines message: " + errstr);
+		return;
+	}
 }

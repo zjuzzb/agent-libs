@@ -59,12 +59,14 @@ add_executable(tests
 	unix_udp_client_server.cpp
 	main.cpp
 	yaml_configuration.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/baseline_mgr.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/capture_job_handler.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/configuration.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/logger.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/protocol.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/security_mgr.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/security_policy.cpp
+	${PROJECT_SOURCE_DIR}/userspace/dragent/security_action.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_worker.cpp
 	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_data_handler.cpp
 	configuration_test.cpp
@@ -90,10 +92,16 @@ target_link_libraries(tests
 add_executable(test_helper
 		test_helper.cpp)
 
+execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
+
 if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 	add_executable(test_helper_32
 		test_helper.cpp)
-	set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+	if("${ARCH}" STREQUAL "s390x")
+		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m31" LINK_FLAGS "-m31")
+	else("${ARCH}" STREQUAL "s390x")
+		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
+	endif("${ARCH}" STREQUAL "s390x")
 	install(TARGETS test_helper_32
 		DESTINATION ${DRAIOS_BIN_PREFIX}/test/
 		COMPONENT tests)

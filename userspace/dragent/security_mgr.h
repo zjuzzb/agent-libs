@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
 #include <Poco/RWLock.h>
 
@@ -26,6 +27,9 @@
 #include "analyzer.h"
 #include "sinsp_data_handler.h"
 #include "security_policy.h"
+#include "security_action.h"
+#include "baseline_mgr.h"
+#include "internal_metrics.h"
 
 class SINSP_PUBLIC security_mgr
 {
@@ -37,11 +41,20 @@ public:
 		  sinsp_data_handler *sinsp_handler,
 		  sinsp_analyzer *analyzer,
 		  capture_job_handler *capture_job_handler,
-		  dragent_configuration *configuration);
+		  dragent_configuration *configuration,
+		  internal_metrics::sptr_t &metrics);
+
+	bool load_policies_file(const char *filename, std::string &errstr);
+
+	bool load_baselines_file(const char *filename, std::string &errstr);
 
 	// Returns true if loaded successfully, false otherwise. Sets
 	// errstr when returning false.
-	bool load(const draiosproto::policies &policies, std::string &errstr);
+	bool load_policies(const draiosproto::policies &policies, std::string &errstr);
+
+	// Load the baselines and update the policies accordingly. Sets
+	// errstr when returning false.
+	bool load_baselines(const draiosproto::baselines &baselines, std::string &errstr);
 
 	// Attempt to match the event agains the set of policies. If
 	// the event matches one or more policies, will perform the
@@ -77,7 +90,64 @@ public:
 
 	sinsp_analyzer *analyzer();
 
+	baseline_mgr &baseline_manager();
 private:
+
+	class metrics : public internal_metrics::ext_source
+        {
+	public:
+		enum reason
+		{
+			MET_MISS_EVTTYPE = 0,
+			MET_MAX
+		};
+
+		void incr(reason res)
+		{
+			m_metrics[res]++;
+		}
+
+		void reset()
+		{
+			std::fill_n(m_metrics, MET_MAX, 0);
+		}
+
+		std::string to_string()
+		{
+			std::string str;
+
+			for(uint32_t i = 0; i < MET_MAX; i++)
+			{
+				str += " " + m_metric_names[i] + "=" + std::to_string(m_metrics[i]);
+			}
+
+			return str;
+		}
+
+		virtual void send_all(draiosproto::statsd_info* statsd_info)
+		{
+			for(uint32_t i=0; i<MET_MAX; i++)
+			{
+				internal_metrics::write_metric(statsd_info,
+							       m_metric_names[i],
+							       draiosproto::STATSD_COUNT,
+							       m_metrics[i]);
+				m_metrics[i] = 0;
+			}
+		}
+	private:
+		std::string prefix;
+		uint64_t m_metrics[MET_MAX];
+		std::string m_metric_names[MET_MAX]{
+          			"security.miss.evttype"
+				};
+	};
+
+	draiosproto::policy_event * create_policy_event(sinsp_evt *evt,
+							security_policy *policy,
+							draiosproto::event_detail *details);
+
+	bool load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);
 
 	void check_periodic_tasks(uint64_t ts_ns);
 
@@ -90,6 +160,10 @@ private:
 
 	// Send counts of throttled policy events to the backend
 	void report_throttled_events(uint64_t ts_ns);
+
+	// The last policies/baselines we loaded
+	draiosproto::policies m_policies_msg;
+	draiosproto::baselines m_baselines_msg;
 
 	// Holds the token buckets that enforce rate limiting for
 	// policy events for a given policy + container.
@@ -104,7 +178,6 @@ private:
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
 
-	google::protobuf::TextFormat::Printer m_print;
 	bool m_initialized;
 	sinsp* m_inspector;
 	sinsp_data_handler *m_sinsp_handler;
@@ -114,11 +187,22 @@ private:
 
 	Poco::RWLock m_policies_lock;
 
-	shared_ptr<falco_engine> m_falco_engine;
+	baseline_mgr m_baseline_mgr;
 
-	std::vector<std::unique_ptr<falco_security_policy>> m_falco_policies;
+	security_actions m_actions;
+	falco_security_policies m_falco_policies;
+	readonly_fs_policies m_readonly_fs_policies;
+	readwrite_fs_policies m_readwrite_fs_policies;
+	net_inbound_policies m_net_inbound_policies;
+	net_outbound_policies m_net_outbound_policies;
+	tcp_listenport_policies m_tcp_listenport_policies;
+	udp_listenport_policies m_udp_listenport_policies;
+	syscall_policies m_syscall_policies;
+	container_policies m_container_policies;
+	process_policies m_process_policies;
+	std::list<security_policies *> m_security_policies;
 
-	std::map<uint64_t,std::string> m_policy_names;
+	std::map<uint64_t,std::shared_ptr<security_policy>> m_policies;
 
 	std::shared_ptr<coclient> m_coclient;
 
@@ -137,5 +221,7 @@ private:
 	// event types for all policies.
 	std::vector<bool> m_evttypes;
 
-	uint64_t m_skipped_evts;
+	uint64_t m_num_policies;
+
+	metrics m_metrics;
 };

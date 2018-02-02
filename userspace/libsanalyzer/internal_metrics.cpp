@@ -79,16 +79,21 @@ void internal_metrics::update_subprocess_metrics(sinsp_procfs_parser *procfs_par
 	}
 }
 
+void internal_metrics::add_ext_source(ext_source *src)
+{
+	m_ext_sources.push_back(src);
+}
+
 bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 {
 	bool ret = false;
 	if(statsd_info)
 	{
 		// log
-		write_metric(statsd_info, "dragent.log.err", draiosproto::STATSD_GAUGE, m_log.err);
-		write_metric(statsd_info, "dragent.log.warn", draiosproto::STATSD_GAUGE,  m_log.warn);
-		write_metric(statsd_info, "dragent.log.info", draiosproto::STATSD_GAUGE,  m_log.info);
-		write_metric(statsd_info, "dragent.log.debug", draiosproto::STATSD_GAUGE,  m_log.debug);
+		write_metric(statsd_info, "dragent.log.err", draiosproto::STATSD_COUNT, m_log.err);
+		write_metric(statsd_info, "dragent.log.warn", draiosproto::STATSD_COUNT,  m_log.warn);
+		write_metric(statsd_info, "dragent.log.info", draiosproto::STATSD_COUNT,  m_log.info);
+		write_metric(statsd_info, "dragent.log.debug", draiosproto::STATSD_COUNT,  m_log.debug);
 
 		// analyzer
 		write_metric(statsd_info, "dragent.analyzer.processes", draiosproto::STATSD_GAUGE,  m_analyzer.process_cnt);
@@ -120,6 +125,12 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.subproc.cointerface.memory.kb", draiosproto::STATSD_GAUGE,  m_analyzer.cointerface_memory);
 		write_metric(statsd_info, "dragent.subproc.statsite.forwarder.cpu.pct100", draiosproto::STATSD_GAUGE,  m_analyzer.statsite_forwarder_cpu);
 		write_metric(statsd_info, "dragent.subproc.statsite.forwarder.memory.kb", draiosproto::STATSD_GAUGE,  m_analyzer.statsite_forwarder_memory);
+
+		// external sources
+		for(auto &src : m_ext_sources)
+		{
+			src->send_all(statsd_info);
+		}
 		ret = true;
 	}
 

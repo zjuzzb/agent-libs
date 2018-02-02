@@ -1,0 +1,55 @@
+# Opensuse needs more s390x repos, but we can only seem to find factory or tumbleweed versionshttp://download.opensuse.org/distribution/leap/42.2/repo/oss/ ud
+# http://download.opensuse.org/ports/zsystems/tumbleweed/
+#FROM opensuse/s390x:tumbleweed
+FROM s390x/opensuse
+#FROM suse/sles12sp2
+
+#Host is running a webserver to provide needed packages
+RUN zypper ar -G http://127.0.0.1/repo local && \
+    zypper ar -G http://download.opensuse.org/repositories/Virtualization:containers/openSUSE_Tumbleweed/Virtualization:containers.repo && \
+    zypper refresh
+
+#Needed for compatibility issues
+RUN zypper in -y --oldpackage libdbus-1-3=1.8.16-19.1 && \
+    zypper in -y --oldpackage libncurses5=5-9-40.124
+
+RUN zypper -n install \
+        createrepo \
+        expect \
+        gcc \
+        gcc-c++ \
+	gcc-c++-32bit \
+	libstdc++-devel-32bit \
+	glibc-32bit \
+	glibc-devel-32bit \
+        git \
+        glibc-devel-static \
+	java-1_7_0-openjdk \
+	java-1_7_0-openjdk-devel \
+        make \
+        rpm-build \
+        unzip \
+        wget \
+        tar \
+        autoconf \
+        automake \
+        libtool \
+        glibc-devel \
+	libopenssl-devel \
+	readline-devel \
+	gettext-tools \
+	docker
+
+RUN zypper rr local
+
+RUN mkdir -p /code/agent
+ADD bootstrap-agent /code/agent/
+ADD patches /code/agent/patches
+RUN mkdir -p /code/falco/userspace/engine/lua
+ADD https://raw.githubusercontent.com/draios/falco/dev/scripts/build-lpeg.sh /code/falco/scripts/build-lpeg.sh
+RUN chmod +x /code/falco/scripts/build-lpeg.sh
+
+RUN cd /code/agent && ONLY_DEPS=true ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip
+ADD docker-builder-entrypoint.sh /
+VOLUME [ "/code/agent/build", "/out", "/root/.cache" ]
+ENTRYPOINT [ "/docker-builder-entrypoint.sh" ]

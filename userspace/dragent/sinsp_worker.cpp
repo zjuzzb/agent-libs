@@ -1,6 +1,3 @@
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-
 #include "sinsp_worker.h"
 
 #include "logger.h"
@@ -358,24 +355,26 @@ void sinsp_worker::init()
 				     &m_sinsp_handler,
 				     m_analyzer,
 				     m_capture_job_handler,
-				     m_configuration);
+				     m_configuration,
+				     m_internal_metrics);
 
 		if(m_configuration->m_security_policies_file != "")
 		{
 			string errstr;
-			draiosproto::policies policies;
 
-			int fd = open(m_configuration->m_security_policies_file.c_str(), O_RDONLY);
-			google::protobuf::io::FileInputStream fstream(fd);
-			if (!google::protobuf::TextFormat::Parse(&fstream, &policies)) {
-				throw sinsp_exception("Failed to parse policies file "
-						      + m_configuration->m_security_policies_file);
-			}
-			close(fd);
-
-			if(!m_security_mgr->load(policies, errstr))
+			if(!m_security_mgr->load_policies_file(m_configuration->m_security_policies_file.c_str(), errstr))
 			{
-				throw sinsp_exception("Could not load policies: " + errstr);
+				throw sinsp_exception("Could not load policies from file: " + errstr);
+			}
+		}
+
+		if(m_configuration->m_security_baselines_file != "")
+		{
+			string errstr;
+
+			if(!m_security_mgr->load_baselines_file(m_configuration->m_security_baselines_file.c_str(), errstr))
+			{
+				throw sinsp_exception("Could not load baselines from file: " + errstr);
 			}
 		}
 	}
@@ -606,7 +605,20 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 {
 	if(m_security_mgr)
 	{
-		return m_security_mgr->load(policies, errstr);
+		return m_security_mgr->load_policies(policies, errstr);
+	}
+	else
+	{
+		errstr = "No Security Manager object created";
+		return false;
+	}
+}
+
+bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string &errstr)
+{
+	if(m_security_mgr)
+	{
+		return m_security_mgr->load_baselines(baselines, errstr);
 	}
 	else
 	{

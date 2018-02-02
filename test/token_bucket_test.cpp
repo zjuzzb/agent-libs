@@ -18,10 +18,10 @@ TEST(token_bucket_test, all)
 
 	//
 	// Not being horribly strict here--wait 2 seconds and ensure
-	// that you can claim more than 1 token.
+	// that you can claim 1 token.
 	sleep(2);
 
-	for (uint32_t i=0; i<2; i++)
+	for (uint32_t i=0; i<1; i++)
 	{
 		ASSERT_TRUE(b.claim());
 	}

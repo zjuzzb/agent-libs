@@ -23,6 +23,7 @@ from requests.packages.urllib3.util import ssl_
 
 from requests.packages.urllib3.exceptions import (
     SecurityWarning,
+    InsecureRequestWarning,
 )
 from requests.packages.urllib3.packages.ssl_match_hostname import \
     match_hostname
@@ -214,6 +215,11 @@ class HTTPCheck(AgentCheck):
 
         service_checks = []
         try:
+            if ignore_ssl_warning:
+                requests.packages.urllib3.disable_warnings(SecurityWarning)
+                requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+                self.log.debug("Suppressing Security & InsecureRequest warnings because ignore_ssl_warning is set")
+
             parsed_uri = urlparse(addr)
             self.log.debug("Connecting to %s" % addr)
             if disable_ssl_validation and parsed_uri.scheme == "https" and not ignore_ssl_warning:

@@ -13,6 +13,10 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 {
 }
 
+sinsp_data_handler::~sinsp_data_handler()
+{
+}
+
 void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
 {
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();

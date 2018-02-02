@@ -240,6 +240,7 @@ dragent_configuration::dragent_configuration()
 	m_auto_config = true;
 	m_security_enabled = false;
 	m_security_policies_file = "";
+	m_security_baselines_file = "";
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
@@ -711,6 +712,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
+	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
 
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
@@ -872,6 +874,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_security_enabled = m_config->get_scalar<bool>("security", "enabled", false);
 	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
+	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
 	// 1 second
 	m_security_report_interval_ns = m_config->get_scalar<uint64_t>("security" "report_interval", 1000000000);
 	// 10 seconds
@@ -1070,6 +1073,9 @@ void dragent_configuration::print_configuration()
 	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 	g_log->information("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
+	if (m_prom_conf.enabled()) {
+		g_log->information("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));
+	}
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
@@ -1200,6 +1206,11 @@ void dragent_configuration::print_configuration()
 		if(m_security_policies_file != "")
 		{
 			g_log->information("Using security policies file: " + m_security_policies_file);
+		}
+
+		if(m_security_baselines_file != "")
+		{
+			g_log->information("Using security baselines file: " + m_security_baselines_file);
 		}
 
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));

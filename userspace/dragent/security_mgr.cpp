@@ -9,6 +9,15 @@ using namespace std;
 
 // XXX/mstemm TODO
 // - Is there a good way to immediately check the status of a sysdig capture that I can put in the action result?
+// - The currently event handling doesn't actually work with on
+// - default, where no policy matches. I think I need to have special
+// - case for when the hash table doesn't match anything.
+
+// Refactor TODO
+// - Double check for proper use of std:: namespace
+// - Double check for proper includes in all files
+// - Add unit tests
+// - Make sure all objects will gracefully fail if init() is not called
 
 security_mgr::security_mgr()
 	: m_initialized(false),
@@ -18,7 +27,11 @@ security_mgr::security_mgr()
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL)
 {
-	m_print.SetSingleLineMode(true);
+	m_security_policies = {&m_process_policies, &m_container_policies,
+			       &m_readonly_fs_policies, &m_readwrite_fs_policies,
+			       &m_net_inbound_policies, &m_net_outbound_policies,
+			       &m_tcp_listenport_policies, &m_udp_listenport_policies,
+			       &m_syscall_policies, &m_falco_policies};
 }
 
 security_mgr::~security_mgr()
@@ -29,7 +42,8 @@ void security_mgr::init(sinsp *inspector,
 			sinsp_data_handler *sinsp_handler,
 			sinsp_analyzer *analyzer,
 			capture_job_handler *capture_job_handler,
-			dragent_configuration *configuration)
+			dragent_configuration *configuration,
+			internal_metrics::sptr_t &metrics)
 
 {
 	m_inspector = inspector;
@@ -51,87 +65,150 @@ void security_mgr::init(sinsp *inspector,
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
 	m_coclient = make_shared<coclient>();
+
+	m_actions.init(this, m_coclient);
+	for (auto &spol : m_security_policies)
+	{
+		spol->init(this, m_configuration, m_inspector);
+		if(metrics)
+		{
+			spol->add_to_internal_metrics(metrics);
+		}
+	}
+
+	metrics->add_ext_source(&m_metrics);
 	m_initialized = true;
+
 }
 
-bool security_mgr::load(const draiosproto::policies &policies, std::string &errstr)
+bool security_mgr::load_policies_file(const char *filename, std::string &errstr)
+{
+	draiosproto::policies policies;
+
+	int fd = open(filename, O_RDONLY);
+	google::protobuf::io::FileInputStream fstream(fd);
+	if (!google::protobuf::TextFormat::Parse(&fstream, &policies)) {
+		errstr = string("Failed to parse policies file ")
+			+ filename;
+		close(fd);
+		return false;
+	}
+	close(fd);
+
+	return load_policies(policies, errstr);
+}
+
+
+bool security_mgr::load_baselines_file(const char *filename, std::string &errstr)
+{
+	draiosproto::baselines baselines;
+
+	int fd = open(filename, O_RDONLY);
+	google::protobuf::io::FileInputStream fstream(fd);
+	if (!google::protobuf::TextFormat::Parse(&fstream, &baselines)) {
+		errstr = string("Failed to parse baselines file ")
+			+ filename;
+		close(fd);
+		return false;
+	}
+	close(fd);
+
+	return load_baselines(baselines, errstr);
+}
+
+bool security_mgr::load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr)
 {
 	Poco::ScopedWriteRWLock lck(m_policies_lock);
 
+	google::protobuf::TextFormat::Printer print;
 	string tmp;
 
-	m_falco_engine = NULL;
+	print.SetSingleLineMode(true);
+	print.PrintToString(baselines, &tmp);
 
-	m_falco_policies.clear();
-	m_policy_names.clear();
-	m_evttypes.assign(PPM_EVENT_MAX+1, false);
-	m_analyzer->infra_state()->clear_scope_cache();
+	g_log->debug("Loading baselines message: " + tmp);
 
-	m_print.PrintToString(policies, &tmp);
+	if(m_analyzer)
+	{
+		m_analyzer->infra_state()->clear_scope_cache();
+	}
+
+	m_baseline_mgr.load(baselines, errstr);
+
+	print.PrintToString(policies, &tmp);
 
 	g_log->debug("Loading policies message: " + tmp);
 
-	// Load all falco rules files into the engine. We'll selectively
-	// enable them based on the contents of the policy.
-	if(policies.has_falco_rules())
+	for (auto &spol : m_security_policies)
 	{
-		bool verbose = false;
-		bool all_events = false;
+		spol->reset();
+	}
+	m_policies.clear();
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	if(m_analyzer)
+	{
+		m_analyzer->infra_state()->clear_scope_cache();
+	}
 
-		m_falco_engine = make_shared<falco_engine>();
-		m_falco_engine->set_inspector(m_inspector);
-		m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
-
-		for(auto &content : policies.falco_rules().contents())
-		{
-			try {
-				g_log->debug("Loading Falco Rules Content: " + content);
-				m_falco_engine->load_rules(content, verbose, all_events);
-			}
-			catch (falco_exception &e)
-			{
-				errstr = e.what();
-				return false;
-			}
-		}
+	if (!m_falco_policies.load_rules(policies, errstr))
+	{
+		return false;
 	}
 
 	for(auto &policy : policies.policy_list())
 	{
-		m_policy_names.insert(make_pair(policy.id(),policy.name()));
-		if(policy.type() == draiosproto::POLICY_FALCO)
+		std::shared_ptr<security_policy> spolicy = std::make_shared<security_policy>(policy);
+		m_policies.insert(make_pair(policy.id(), spolicy));
+
+		for (auto &spol : m_security_policies)
 		{
-			m_falco_policies.push_back(make_unique<falco_security_policy>(this,
-										      m_configuration,
-										      policy,
-										      m_inspector,
-										      m_falco_engine,
-										      m_coclient));
-
-			g_log->debug("Loaded Falco Policy: "
-				     + m_falco_policies.back()->to_string());
-
-			for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
-			{
-				m_evttypes[evttype] = m_evttypes[evttype] | m_falco_policies.back()->m_evttypes[evttype];
-			}
+			spol->add_policy(spolicy.get());
 		}
+	}
 
+	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
+	{
+		for (auto &spol : m_security_policies)
+		{
+			m_evttypes[evttype] = m_evttypes[evttype] | spol->m_evttypes[evttype];
+		}
 	}
 
 	// There must be falco rules content if there are any falco policies
-	if(m_falco_policies.size() > 0 && !policies.has_falco_rules())
+	if(m_falco_policies.num_loaded_policies() > 0 && !policies.has_falco_rules())
 	{
 		errstr = "One or more falco policies, but no falco ruleset";
 		return false;
 	}
 
+	string str = "Loaded policies:";
+	for (auto &spol : m_security_policies)
+	{
+		str += " " + spol->name() + "=" + to_string(spol->num_loaded_policies());
+	}
+
+	g_log->information(str);
+
 	return true;
+}
+
+bool security_mgr::load_baselines(const draiosproto::baselines &baselines, std::string &errstr)
+{
+ 	m_baselines_msg = baselines;
+
+	return load(m_policies_msg, m_baselines_msg, errstr);
+}
+
+bool security_mgr::load_policies(const draiosproto::policies &policies, std::string &errstr)
+{
+	m_policies_msg = policies;
+
+	return load(m_policies_msg, m_baselines_msg, errstr);
 }
 
 void security_mgr::process_event(sinsp_evt *evt)
 {
-	// Write lock acquired in load()
+	// Write lock acquired in load_*()
 	if(!m_initialized || !m_policies_lock.tryReadLock())
 	{
 		return;
@@ -161,31 +238,74 @@ void security_mgr::process_event(sinsp_evt *evt)
 
 		m_metrics_report_interval->run([this]()
 		{
-			for(auto &policy : m_falco_policies)
+			for (auto &spol : m_security_policies)
 			{
-				policy->log_metrics();
-				policy->reset_metrics();
+				spol->log_metrics();
+				spol->reset_metrics();
 			}
-			g_log->information("Events skipped at security_mgr level: " + to_string(m_skipped_evts));
+			g_log->information("Security_mgr metrics: " + m_metrics.to_string());
 		}, ts_ns);
+
 	}, ts_ns);
+
+	// Consider putting this in check_periodic_tasks above.
+	m_actions.check_outstanding_actions(evt->get_ts());
 
 	// If no policy cares about this event type, return
 	// immediately.
-	if(m_evttypes[evt->get_type()])
+	if(!m_evttypes[evt->get_type()])
 	{
-		for(auto &fpolicy : m_falco_policies)
-		{
-			if(fpolicy->process_event(evt))
-			{
-				g_log->debug("match_event() returned true, not testing later policies");
-				break;
-			}
-		}
+		m_metrics.incr(metrics::MET_MISS_EVTTYPE);
 	}
 	else
 	{
-		m_skipped_evts++;
+		std::vector<security_policies::match_result *> best_matches;
+		security_policies::match_result *match;
+
+		for (auto &spol : m_security_policies)
+		{
+			if(spol->m_evttypes[evt->get_type()] &&
+			   (match = spol->match_event(evt)) != NULL)
+			{
+				if(match->effect() != draiosproto::EFFECT_ACCEPT)
+				{
+					g_log->debug("Event matched " + spol->name() +
+						     " policy #" + to_string(match->policy()->id()) + " \"" + match->policy()->name() + "\"" +
+						     " details:\n" + match->detail()->DebugString() +
+						     "effect: " + draiosproto::match_effect_Name(match->effect()));
+				}
+
+				best_matches.push_back(match);
+			}
+		}
+
+		// Sort the matches by policy order.
+		std::sort(best_matches.begin(), best_matches.end(), security_policies::match_result::compare_ptr);
+
+		for(auto &match : best_matches)
+		{
+			if(match->effect() == draiosproto::EFFECT_ACCEPT)
+			{
+				g_log->trace("Taking ACCEPT action via policy: " + match->policy()->name());
+				break;
+			}
+			else if (match->effect() == draiosproto::EFFECT_DENY)
+			{
+				g_log->debug("Taking DENY action via policy: " + match->policy()->name());
+				draiosproto::policy_event *event = create_policy_event(evt, match->policy(), match->take_detail());
+
+				// Perform the actions associated with the
+				// policy. The actions will add their action
+				// results to the policy event as they complete.
+				m_actions.perform_actions(evt, match->policy(), event);
+				break;
+			}
+		}
+
+		for(auto &match : best_matches)
+		{
+			delete(match);
+		}
 	}
 
 	m_policies_lock.unlock();
@@ -255,8 +375,14 @@ void security_mgr::stop_capture(const string &token)
 	std::shared_ptr<capture_job_handler::dump_job_request> stop_request =
 		std::make_shared<capture_job_handler::dump_job_request>();
 
+	stop_request->m_stop_details = make_unique<capture_job_handler::stop_job_details>();
+
 	stop_request->m_request_type = capture_job_handler::dump_job_request::JOB_STOP;
 	stop_request->m_token = token;
+
+	// Any call to security_mgr::stop_capture is for an aborted
+	// capture, in which case the capture should not be sent at all.
+	stop_request->m_stop_details->m_remove_unsent_job = true;
 
 	if (!m_capture_job_handler->queue_job_request(m_inspector, stop_request, errstr))
 	{
@@ -273,6 +399,11 @@ sinsp_analyzer *security_mgr::analyzer()
 	return m_analyzer;
 }
 
+baseline_mgr &security_mgr::baseline_manager()
+{
+	return m_baseline_mgr;
+}
+
 bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
 {
 	bool accepted = true;
@@ -282,10 +413,10 @@ bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 	rate_limit_scope_t scope(event->container_id(), event->policy_id());
 
 	string policy_name = "N/A";
-	auto it2 = m_policy_names.find(event->policy_id());
-	if(it2 != m_policy_names.end())
+	auto it2 = m_policies.find(event->policy_id());
+	if(it2 != m_policies.end())
 	{
-		policy_name = it2->second;
+		policy_name = it2->second->name();
 	}
 
 	auto it = m_policy_rates.lower_bound(rate_limit_scope_t(scope));
@@ -328,10 +459,10 @@ bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 		accepted = false;
 
 		string policy_name = "N/A";
-		auto it = m_policy_names.find(event->policy_id());
-		if(it != m_policy_names.end())
+		auto it = m_policies.find(event->policy_id());
+		if(it != m_policies.end())
 		{
-			policy_name = it->second;
+			policy_name = it->second->name();
 		}
 
 		// Throttled. Increment the throttled count.
@@ -354,6 +485,38 @@ bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 	return accepted;
 }
 
+draiosproto::policy_event * security_mgr::create_policy_event(sinsp_evt *evt,
+							      security_policy *policy,
+							      draiosproto::event_detail *details)
+{
+	draiosproto::policy_event *event = new draiosproto::policy_event();
+	sinsp_threadinfo *tinfo = evt->get_thread_info();
+
+	event->set_timestamp_ns(evt->get_ts());
+	event->set_policy_id(policy->id());
+	if(tinfo && !tinfo->m_container_id.empty())
+	{
+		event->set_container_id(tinfo->m_container_id);
+	}
+
+	event->set_allocated_event_details(details);
+
+	// If the policy event comes from falco, copy the information
+	// to the falco_details section of the policy event. This is
+	// for backwards compatibility with older backend versions.
+	if(details->has_output_details() && details->output_details().output_type() == draiosproto::PTYPE_FALCO)
+	{
+		draiosproto::falco_event_detail *fdet = event->mutable_falco_details();
+		fdet->set_rule(details->output_details().output_fields().at("falco.rule"));
+		fdet->set_output(details->output_details().output());
+	}
+
+	if(m_analyzer)
+	{
+		event->set_sinsp_events_dropped(analyzer()->recent_sinsp_events_dropped());
+	}
+	return event;
+}
 
 void security_mgr::report_events(uint64_t ts_ns)
 {

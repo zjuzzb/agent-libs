@@ -21,6 +21,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(dragent
+	baseline_mgr.cpp
 	capture_job_handler.cpp
 	configuration.cpp 
 	connection_manager.cpp
@@ -31,6 +32,7 @@ add_executable(dragent
 	main.cpp
 	monitor.cpp
 	protocol.cpp
+	security_action.cpp
 	security_mgr.cpp
 	security_policy.cpp
 	sinsp_data_handler.cpp

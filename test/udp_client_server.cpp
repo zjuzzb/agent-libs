@@ -446,6 +446,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 				sinsp_fdinfo_t *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
+				ASSERT_TRUE(fdinfo);
 				EXPECT_EQ(server_ip_address, fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
@@ -501,6 +502,7 @@ TEST_F(sys_call_test, udp_client_server)
 
 				EXPECT_EQ(PAYLOAD, e->get_param_value_str("data"));
 				sinsp_fdinfo_t *fdinfo = e->get_thread_info(false)->get_fd(fd_server_socket);
+				ASSERT_TRUE(fdinfo);
 				EXPECT_EQ(server_ip_address, fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip);
 
 				state = 4;

@@ -96,6 +96,7 @@ public:
 
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
 	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
+	bool load_baselines(draiosproto::baselines &baselines, std::string &errstr);
 
 private:
 	void init();

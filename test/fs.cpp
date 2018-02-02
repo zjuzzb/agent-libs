@@ -503,7 +503,7 @@ TEST_F(sys_call_test, fs_openat)
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 
-		if(type == PPME_SYSCALL_OPENAT_E)
+		if(type == PPME_SYSCALL_OPENAT_E && param.m_evt->get_param_value_str("name") == FILENAME)
 		{
 			if(callnum == 0)
 			{
@@ -516,10 +516,8 @@ TEST_F(sys_call_test, fs_openat)
 				EXPECT_EQ(-100, NumberParser::parse(e->get_param_value_str("dirfd", false)));
 				callnum++;
 			}
-
-			EXPECT_EQ(FILENAME, e->get_param_value_str("name"));
 		}
-		else if(type == PPME_SYSCALL_OPENAT_X)
+		else if(type == PPME_SYSCALL_OPENAT_X && string("<f>") + cwd + FILENAME == e->get_param_value_str("fd"))
 		{
 			if(callnum == 1)
 			{
@@ -531,8 +529,6 @@ TEST_F(sys_call_test, fs_openat)
 				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("fd", false)));
 				callnum++;
 			}
-
-			EXPECT_EQ(string("<f>") + cwd + FILENAME, e->get_param_value_str("fd"));
 		}
 	};
 
@@ -1131,8 +1127,9 @@ TEST_F(sys_call_test, fs_fcntl)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		fd = open(FILENAME, O_CREAT | O_WRONLY, 0);
-		fd1 = fcntl(fd, F_DUPFD, 0);
-		fd2 = fcntl(fd, F_DUPFD_CLOEXEC, 0);
+		fd1 = fcntl(fd, F_DUPFD);
+		fd2 = fcntl(fd, F_DUPFD_CLOEXEC);
+		printf("fd: %d %d %d, errno: %d\n", fd, fd1, fd2, errno);
 
 		close(fd);
 		close(fd1);

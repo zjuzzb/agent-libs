@@ -9,6 +9,7 @@ fi
 
 AGENT_SOURCEDIR=$(dirname $SCRIPT)
 ROOT_SOURCEDIR=$AGENT_SOURCEDIR/..
+ARCH=$(uname -m)
 
 if [ -z "$WORKDIR" ]; then
 	WORKDIR=$AGENT_SOURCEDIR/..
@@ -43,12 +44,44 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
+if [[ "$ARCH" == "s390x" ]]; then
+GO_DIR=/usr/local/go
+if [ ! -d "$GO_DIR" ]; then
+	mkdir -p $GO_DIR
+	wget https://storage.googleapis.com/golang/go1.8.1.linux-s390x.tar.gz
+	tar -C $GO_DIR/.. -xzf go1.8.1.linux-s390x.tar.gz
+	ln -s $GO_DIR/bin/go /usr/local/bin
+	ln -s /usr/bin/gcc s390x-linux-gnu-gcc
+	rm go1.8.1.linux-s390x.tar.gz
+fi
+# SLES doesn't have dpkg but we need it for CPackDeb
+# Build it ourselves
+DPKG_VER=1.18.23
+DPKG_DIR=$DEPENDENCIES/dpkg-$DPKG_VER
+if [ ! -d "$DPKG_DIR" ]; then
+	cd $DEPENDENCIES
+	git clone https://anonscm.debian.org/git/dpkg/dpkg.git $DPKG_DIR
+	cd $DPKG_DIR
+	git checkout tags/$DPKG_VER
+	autoreconf -f -i
+	./configure
+	make
+	make install
+fi
+fi
+
 PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.5.0
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
 	wget https://github.com/google/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz
 	tar -xzf protobuf-cpp-3.5.0.tar.gz
 	cd $PROTOBUF_V3_DIR
+	if [[ "$ARCH" == "s390x" ]]; then
+	    wget $DEPENDENCIES_URL/protobuf-3.5.0-s390x.patch
+	    patch -p1 < protobuf-3.5.0-s390x.patch
+	    aclocal
+	    automake
+	fi
 	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
 	make install
 fi
@@ -91,6 +124,10 @@ if [ ! -d "$GRPC_DIR" ]; then
 	tar -xzf grpc-1.8.1.tar.gz
 	rm -rf grpc-1.8.1/third_party/zlib
 	ln -s $ZLIB_DIR grpc-1.8.1/third_party/zlib
+	if [[ "$ARCH" == "s390x" ]]; then
+		# Boringssl build fails on s390x, rely on openssl instead
+		rm -rf $GRPC_DIR/third_party/boringssl $GRPC_DIR/third_party/boringssl-with-bazel
+	fi
 	cd $GRPC_DIR
 	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
 	patch < grpc-1.1.4-Makefile.patch
@@ -155,6 +192,16 @@ if [ ! -d "$LIBSSH_DIR" ]; then
 	make -C include install
 fi
 
+if [[ "$ARCH" == "s390x" ]]; then
+LUAJIT_DIR=$DEPENDENCIES/lua-5.1.5
+if [ ! -d "$LUAJIT_DIR" ]; then
+	cd $DEPENDENCIES
+	wget https://www.lua.org/ftp/lua-5.1.5.tar.gz
+	tar -xzf lua-5.1.5.tar.gz
+	cd $LUAJIT_DIR
+	make linux
+fi
+else
 LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
 if [ ! -d "$LUAJIT_DIR" ]; then
 	cd $DEPENDENCIES
@@ -162,6 +209,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	tar -xzf LuaJIT-2.0.3.tar.gz
 	cd $LUAJIT_DIR
 	make
+fi
 fi
 
 CURL_NAME=curl-7.57.0
@@ -221,8 +269,11 @@ if [ ! -d "$B64_DIR" ]; then
 	make
 fi
 
+# On s390x we'll rely on Suse's jdk 1.7.0 for now
+if [[ "$ARCH" == "s390x" ]]; then
+JAVA_DIR=/usr/lib64/jvm/java-1.7.0-openjdk-1.7.0
+else
 JAVA_DIR=$DEPENDENCIES/jdk1.7.0_75
-ARCH=$(uname -m)
 if [ ! -d "$JAVA_DIR" ]; then
 	cd $DEPENDENCIES
 	if [[ $ARCH == "x86_64" ]]; then
@@ -232,6 +283,7 @@ if [ ! -d "$JAVA_DIR" ]; then
 	fi
 	wget $DEPENDENCIES_URL/$TARFILE
 	tar -xjf $TARFILE
+fi
 fi
 
 MAVEN_DIR=$DEPENDENCIES/apache-maven-3.2.5
@@ -362,7 +414,11 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	wget $DEPENDENCIES_URL/lyaml-release-v6.0.tar.gz
 	tar -xzf lyaml-release-v6.0.tar.gz
 	cd $LYAML_DIR
-	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${LUAJIT_DIR}/src/luajit
+	CONFLUA=${LUAJIT_DIR}/src/lua
+	if [ -e "${CONFLUA}jit" ]; then
+		CONFLUA="${CONFLUA}jit"
+	fi
+	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${CONFLUA}
 	make
 	make install
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/falco/userspace/engine/lua"
@@ -390,3 +446,4 @@ if [ -z "$ONLY_DEPS" ]; then
   cd $AGENT_BUILD_DIR/release
   $CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DPACKAGE_DEB_ONLY=$BUILD_DEB_ONLY $AGENT_SOURCEDIR
 fi
+

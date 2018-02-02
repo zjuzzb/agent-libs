@@ -109,6 +109,8 @@ TEST_F(sys_call_test, container_cgroups)
 			}
 
 			done = true;
+		} else {
+			printf("event type: %d != %d\n", param.m_evt->get_type(), PPME_SYSCALL_CLONE_20_X);
 		}
 	};
 
@@ -267,7 +269,11 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	system("docker kill ilovesysdig_docker > /dev/null 2>&1");
 	system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
 
+#ifdef __s390x__
+	if(system("docker run -d --name ilovesysdig_docker s390x/busybox ping -w 10 127.0.0.1") != 0)
+#else
 	if(system("docker run -d --name ilovesysdig_docker busybox ping -w 10 127.0.0.1") != 0)
+#endif
 	{
 		ASSERT_TRUE(false);
 	}
@@ -332,7 +338,8 @@ TEST_F(sys_call_test, container_docker)
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 		if(tinfo)
 		{
-			return !tinfo->m_container_id.empty();
+			return !tinfo->m_container_id.empty() &&
+				tinfo->m_exe != "docker-runc";
 		}
 
 		return false;
@@ -343,7 +350,11 @@ TEST_F(sys_call_test, container_docker)
 		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
 		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
 
+#ifdef __s390x__
+		if(system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
+#else
 		if(system("docker run -d --name ilovesysdig_docker busybox") != 0)
+#endif
 		{
 			ASSERT_TRUE(false);
 		}
@@ -369,7 +380,11 @@ TEST_F(sys_call_test, container_docker)
 
 		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info.m_type);
 		EXPECT_EQ("ilovesysdig_docker", container_info.m_name);
+#ifdef __s390x__
+		EXPECT_EQ("s390x/busybox", container_info.m_image);
+#else
 		EXPECT_EQ("busybox", container_info.m_image);
+#endif
 
 		done = true;
 	};
@@ -557,7 +572,11 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 		system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1");
 		system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1");
 
+#ifdef __s390x__
+		if(system("lxc-create -n ilovesysdig_lxc -t s390x/busybox") != 0)
+#else
 		if(system("lxc-create -n ilovesysdig_lxc -t busybox") != 0)
+#endif
 		{
 			ASSERT_TRUE(false);
 		}
@@ -662,14 +681,16 @@ TEST_F(sys_call_test, container_libvirt)
 		ASSERT_TRUE(tinfo->m_vtid != tinfo->m_tid);
 		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
 
-		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer");
+		unsigned int lxc_id;
+		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer" ||
+		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) == 1);
 
 		sinsp_container_info container_info;
 		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
 		ASSERT_TRUE(found);
 
 		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LIBVIRT_LXC);
-		ASSERT_TRUE(container_info.m_name == "libvirt\\x2dcontainer");
+		ASSERT_TRUE(container_info.m_name == tinfo->m_container_id);
 		ASSERT_TRUE(container_info.m_image.empty());
 
 		done = true;

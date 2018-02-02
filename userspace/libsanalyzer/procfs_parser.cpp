@@ -190,6 +190,38 @@ bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* li
 	return true;
 }
 
+
+//
+// There shouldn't be more than 100 ticks per second but ~103 is actually quite typical
+// Add a safety margin and ignore clearly bogus values
+//
+#define MAX_PERCPU_TICKS_PER_SEC 150
+static inline uint64_t get_cpu_delta(const char* label, uint64_t prev, uint64_t curr, const char* note)
+{
+	if (curr < prev)
+	{
+		static ratelimit r;
+		r.run([&] {
+			g_logger.format(sinsp_logger::SEV_WARNING,
+					"CPU %s time going backwards (%" PRId64 " -> %" PRId64 ")%s",
+					label, prev, curr, note ? note : "");
+			});
+		return 0;
+	}
+	else if (curr > prev + MAX_PERCPU_TICKS_PER_SEC)
+	{
+		static ratelimit r;
+		r.run([&] {
+			g_logger.format(sinsp_logger::SEV_WARNING,
+					"CPU %s time jump over %d ticks (%" PRId64 " -> %" PRId64 ")%s",
+					label, MAX_PERCPU_TICKS_PER_SEC, prev, curr, note ? note : "");
+			});
+		return MAX_PERCPU_TICKS_PER_SEC;
+	}
+	return curr - prev;
+}
+
+
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
@@ -231,11 +263,11 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 		return false;
 	}
 
-	total = user + nice + system + idle + iowait + irq + softirq + steal;
-	work = user + nice + system + irq + softirq + steal;
-
 	if(m_old_total.size() <static_cast<vector<uint64_t>::size_type>(j + 1))
 	{
+		total = user + nice + system + idle + iowait + irq + softirq + steal;
+		work = user + nice + system + irq + softirq + steal;
+
 		m_old_user.push_back(user);
 		m_old_nice.push_back(nice);
 		m_old_system.push_back(system);
@@ -249,16 +281,31 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 	}
 	else
 	{
-		delta_user = user - m_old_user[j];
-		delta_nice = nice - m_old_nice[j];
-		delta_system = system - m_old_system[j];
-		delta_idle = idle - m_old_idle[j];
-		delta_iowait = iowait - m_old_iowait[j];
-		delta_irq = irq - m_old_irq[j];
-		delta_softirq = softirq - m_old_softirq[j];
-		delta_steal = steal - m_old_steal[j];
-		delta_work = work - m_old_work[j];
-		delta_total = total - m_old_total[j];
+		delta_user = get_cpu_delta("user", m_old_user[j], user, NULL);
+		delta_nice = get_cpu_delta("nice", m_old_nice[j], nice, NULL);
+		delta_system = get_cpu_delta("system", m_old_system[j], system, NULL);
+		delta_idle = get_cpu_delta("idle", m_old_idle[j], idle, NULL);
+		delta_iowait = get_cpu_delta("iowait", m_old_iowait[j], iowait, NULL);
+		delta_irq = get_cpu_delta("irq", m_old_irq[j], irq, NULL);
+		delta_softirq = get_cpu_delta("softirq", m_old_softirq[j], softirq, NULL);
+		delta_steal = get_cpu_delta("steal", m_old_steal[j], steal,
+			", please upgrade your kernel. See: https://0xstubs.org/debugging-a-flaky-cpu-steal-time-counter-on-a-paravirtualized-xen-guest/");
+
+		total = m_old_total[j] + delta_user + delta_nice + delta_system + delta_idle + delta_iowait + delta_irq + delta_softirq + delta_steal;
+		if (delta_steal != steal - m_old_steal[j] && total < 80)
+		{
+			static ratelimit r;
+			r.run([&] {
+				g_logger.format(sinsp_logger::SEV_WARNING,
+					"Total CPU time below 80%%, assigning the missing %d ticks to steal", 100 - total);
+				});
+			total = 100;
+			delta_steal += 100 - total;
+		}
+		work = m_old_work[j] + delta_user + delta_nice + delta_system + delta_irq + delta_softirq + delta_steal;
+
+		delta_work = get_cpu_delta("work", m_old_work[j], work, NULL);
+		delta_total = get_cpu_delta("total", m_old_total[j], total, NULL);
 
 		assign_jiffies(proc_stat->m_user, delta_user, delta_total);
 		assign_jiffies(proc_stat->m_nice, delta_nice, delta_total);
@@ -802,7 +849,8 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
 /*
  * Get CPU usage from cpuacct cgroup subsystem
  */
-int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup, int64_t *old_last_cpu_time)
+double sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup,
+		int64_t *prev_cpu_time, int64_t *last_cpu_time)
 {
 	if (!m_is_live_capture) {
 		return -1;
@@ -816,11 +864,13 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacc
 		return -1;
 	}
 
-	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, old_last_cpu_time);
+	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, prev_cpu_time, last_cpu_time);
 }
 
-int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
-                                        const string &container_cpuacct_cgroup, int64_t *old_last_cpu_time)
+double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
+                                        const string &container_cpuacct_cgroup,
+					int64_t *prev_cpu_time,
+					int64_t *last_cpu_time)
 {
 	// Using scap_get_host_root() is not necessary here because
 	// m_cpuacct_cgroup_dir is taken from /etc/mtab
@@ -836,6 +886,12 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 	}
 
 	char fp_line[128] = { 0 };
+	uint64_t delta_jiffies = m_global_jiffies.delta_total();
+	if (delta_jiffies > 110)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct scan %" PRId64 " ticks apart",
+				cpuacct_filename, delta_jiffies);
+	}
 	if(fgets(fp_line, sizeof(fp_line), fp) != NULL) {
 		int64_t stat_val = -1;
 		if (sscanf(fp_line, "%" PRId64, &stat_val) != 1) {
@@ -846,16 +902,47 @@ int64_t sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 		}
 
 		fclose(fp);
+		int64_t prev = *prev_cpu_time;
+		int64_t last = *last_cpu_time;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct values: %" PRId64
+				" -> %" PRId64 " -> %" PRId64 " in file %s", __func__, prev, last, stat_val,
+				cpuacct_filename);
 
-		int64_t delta = stat_val - *old_last_cpu_time;
-		if (*old_last_cpu_time > 0)
+		if (last < prev && prev <= stat_val)
 		{
-			*old_last_cpu_time = stat_val;
-			return delta;
+			g_logger.format(sinsp_logger::SEV_WARNING, "%s: Dip in cpuacct values: %" PRId64
+					" -> %" PRId64 " -> %" PRId64 " in file %s, ignoring middle sample",
+					__func__, prev, last, stat_val, cpuacct_filename);
+			last = prev;
+		}
+
+		*prev_cpu_time = last;
+		*last_cpu_time = stat_val;
+
+		if (stat_val >= last)
+		{
+			if (prev >= 0)
+			{
+
+				/*
+				   without scaling, 1 full cpu of time would be 1e9 nsec / 100 ticks, i.e. 1e7
+				   scale down by 1e5 to get a floating point value in the range of 0-100.0 per cpu
+				*/
+				double cpu_usage = ((stat_val - last) / (delta_jiffies * 100000)) * m_ncpus;
+				return min(cpu_usage, 100.0 * m_ncpus);
+			}
+			else
+			{
+				/* it's the first sample, return zero to avoid
+				   spurious peak */
+				return 0;
+			}
 		}
 		else
 		{
-			*old_last_cpu_time = stat_val;
+			g_logger.format(sinsp_logger::SEV_WARNING, "%s: cpuacct value %" PRId64
+					" lower than last %" PRId64 " in file %s, skipping sample",
+					__func__, stat_val, last, cpuacct_filename);
 			return 0;
 		}
 	}

@@ -323,6 +323,7 @@ private:
 	memdump_state m_states;
 	memdump_state::iterator m_active_state;
 	memdump_state::const_reverse_iterator m_reader_state;
+	atomic<bool> m_reader_active;
 	uint32_t m_file_id;
 	FILE* m_f;
 	FILE* m_cf;

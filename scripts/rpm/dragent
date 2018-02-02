@@ -19,7 +19,8 @@
 ### END INIT INFO
 
 # Source function library.
-. /etc/rc.d/init.d/functions
+[ -e /etc/rc.d/init.d/functions ] && . /etc/rc.d/init.d/functions
+[ -e /etc/rc.status ] && . /etc/rc.status
 
 exec="/opt/draios/bin/dragent"
 prog="dragent"
@@ -31,11 +32,16 @@ lockfile=/var/lock/subsys/$prog
 pidfile="/var/run/dragent.pid"
 
 start() {
+    if hash daemon > /dev/null 2>&1; then
+        DAEMONIZE=daemon
+    elif hash startproc > /dev/null 2>&1; then
+        DAEMONIZE=startproc
+    fi
     [ -x $exec ] || exit 5
     # [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
     /sbin/modprobe sysdigcloud-probe || return $?
-    daemon $exec --daemon --dragentpid=$pidfile
+    ${DAEMONIZE} $exec --daemon --dragentpid=$pidfile
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
@@ -44,7 +50,7 @@ start() {
 
 stop() {
     echo -n $"Stopping $prog: "
-    killproc -p $pidfile
+    killproc -p $pidfile $exec
     retval=$?
     echo
     /sbin/rmmod sysdigcloud-probe

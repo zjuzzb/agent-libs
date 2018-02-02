@@ -11,19 +11,19 @@ void event_capture::capture()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector);
 	m_inspector->m_analyzer = m_analyzer;
-	
+
 	m_analyzer->set_configuration(m_configuration);
 
 	if(m_max_thread_table_size != 0)
 	{
 		m_inspector->m_max_thread_table_size = m_max_thread_table_size;
 	}
-	
+
 	if(m_thread_timeout_ns != 0)
 	{
 		m_inspector->m_thread_timeout_ns = m_thread_timeout_ns;
 	}
-	
+
 	if(m_inactive_thread_scan_time_ns != 0)
 	{
 		m_inspector->m_inactive_thread_scan_time_ns = m_inactive_thread_scan_time_ns;
@@ -98,11 +98,11 @@ void event_capture::capture()
 			m_capture_started.set();
 		}
 	}
-	
+
 	if(m_mode != SCAP_MODE_NODRIVER)
 	{
 		m_inspector->stop_capture();
-		
+
 		uint32_t n_timeouts = 0;
 		while(result && !::testing::Test::HasFatalFailure())
 		{
@@ -132,20 +132,32 @@ void event_capture::capture()
 			// just consume the events
 		}
 	}
-	
+
 	delete m_inspector;
 	delete m_analyzer;
 	m_capture_stopped.set();
 
 	// At this point there should be no consumers of the driver remaining.
+	// Wait up to 2 seconds for the refcount to settle
+	int ntries = 20;
 	uint32_t num_consumers = 0;
 
-	// FIXME: handle ebpf case
-	/*FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
-	ASSERT_TRUE(ref != NULL);
+	while (ntries-- > 0)
+	{
+		FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
+		ASSERT_TRUE(ref != NULL);
 
-	ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
+		ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
+		fclose(ref);
+
+		if (num_consumers == 0) {
+			break;
+		}
+		struct timespec ts = {
+			.tv_sec = 0,
+			.tv_nsec = 100000000
+		};
+		nanosleep(&ts, NULL);
+	}
 	ASSERT_EQ(num_consumers, 0);
-
-	fclose(ref);*/
 }

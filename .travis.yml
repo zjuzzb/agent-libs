@@ -23,8 +23,8 @@ install:
 before_script:
 # This builds and installs the package simply to allow dkms to build the driver. The make install step installs the unit tests to /opt/draios/test/tests where they can be run.
 script:
-    - docker run --rm -it --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:latest package
-    - docker run --rm -it --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:latest install
+    - travis_wait 30 ./agent/scripts/run_build_step.sh build docker run --rm -i --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:latest package
+    - travis_wait ./agent/scripts/run_build_step.sh install docker run --rm -i --name agent-install -e MAKE_JOBS=2 -v $PWD:/draios:ro -v /opt/draios:/opt/draios -v /draios/pkgs:/out -v /var/run/docker.sock:/var/run/docker.sock -v build:/code/agent/build -v pipcache:/root/.cache quay.io/sysdig/agent-builder:latest install
     - sudo dpkg -i /draios/pkgs/draios-0.1.1dev-x86_64-agent.deb
     - sudo /etc/init.d/dragent stop
     - sudo insmod /lib/modules/$(uname -r)/updates/dkms/sysdigcloud-probe.ko
