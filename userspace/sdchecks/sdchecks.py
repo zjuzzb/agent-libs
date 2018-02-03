@@ -27,7 +27,13 @@ from sysdig_tracers import Tracer
 import yaml
 import simplejson as json
 import posix_ipc
+
+import requests
 from requests.exceptions import ConnectionError
+from requests.packages.urllib3.exceptions import (
+    SecurityWarning,
+    InsecureRequestWarning
+)
 
 RLIMIT_MSGQUEUE = 12
 CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
@@ -342,6 +348,9 @@ class Config:
                 first = False
                 GLOBAL_PERCENTILES = config.get_histogram_percentiles(configstr)
 
+    def ignore_ssl_warnings(self):
+        return bool(self._yaml_config.get_single("app_checks_ignore_ssl_warnings"))
+
 class PosixQueueType:
     SEND = 0
     RECEIVE = 1
@@ -430,6 +439,10 @@ class Application:
 
         self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
         self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
+
+        if self.config.ignore_ssl_warnings():
+            requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+            requests.packages.urllib3.disable_warnings(SecurityWarning)
 
         # Blacklist works in two ways
         # 1. for pid+name where we cannot create an AppCheckInstance, skip them
