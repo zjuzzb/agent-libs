@@ -6010,7 +6010,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		 */
 		if (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
 			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second,
-					&it_analyzer->second.m_prev_cpu_time, &it_analyzer->second.m_last_cpu_time);
+					it_analyzer->second.m_last_cpuacct_cgroup, &it_analyzer->second.m_last_cpu_time);
 			if(cgroup_cpuacct > 0)
 			{
 				// g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%.2f, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct * 100, it_analyzer->second.m_metrics.m_cpuload * 100);
@@ -6747,7 +6747,7 @@ analyzer_container_state::analyzer_container_state()
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
 	m_last_cpu_time = 0;
-	m_prev_cpu_time = -1;
+	m_last_cpuacct_cgroup.clear();
 }
 
 void analyzer_container_state::clear()
