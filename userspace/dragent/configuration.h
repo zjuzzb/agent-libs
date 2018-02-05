@@ -646,7 +646,7 @@ public:
 	unsigned m_metrics_cache;
 	mount_points_filter_vec m_mounts_filter;
 	unsigned m_mounts_limit_size;
-
+	unsigned m_max_thread_table_size;
 	bool m_enable_coredump;
 	bool m_auto_config;
 	bool m_emit_tracers = false;
