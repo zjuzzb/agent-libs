@@ -1127,8 +1127,8 @@ TEST_F(sys_call_test, fs_fcntl)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		fd = open(FILENAME, O_CREAT | O_WRONLY, 0);
-		fd1 = fcntl(fd, F_DUPFD);
-		fd2 = fcntl(fd, F_DUPFD_CLOEXEC);
+		fd1 = fcntl(fd, F_DUPFD, 0);
+		fd2 = fcntl(fd, F_DUPFD_CLOEXEC, 0);
 		printf("fd: %d %d %d, errno: %d\n", fd, fd1, fd2, errno);
 
 		close(fd);
