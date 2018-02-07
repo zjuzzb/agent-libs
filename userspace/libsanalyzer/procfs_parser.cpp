@@ -850,7 +850,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
  * Get CPU usage from cpuacct cgroup subsystem
  */
 double sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup,
-		int64_t *prev_cpu_time, int64_t *last_cpu_time)
+		string& last_cpuacct_cgroup, int64_t *last_cpu_time)
 {
 	if (!m_is_live_capture) {
 		return -1;
@@ -864,12 +864,12 @@ double sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct
 		return -1;
 	}
 
-	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, prev_cpu_time, last_cpu_time);
+	return read_cgroup_used_cpuacct_cpu_time(container_cpuacct_cgroup, last_cpuacct_cgroup, last_cpu_time);
 }
 
 double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
                                         const string &container_cpuacct_cgroup,
-					int64_t *prev_cpu_time,
+					string& last_cpuacct_cgroup,
 					int64_t *last_cpu_time)
 {
 	// Using scap_get_host_root() is not necessary here because
@@ -902,41 +902,37 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 		}
 
 		fclose(fp);
-		int64_t prev = *prev_cpu_time;
 		int64_t last = *last_cpu_time;
 		g_logger.format(sinsp_logger::SEV_DEBUG, "%s: cpuacct values: %" PRId64
-				" -> %" PRId64 " -> %" PRId64 " in file %s", __func__, prev, last, stat_val,
+				" -> %" PRId64 " in file %s", __func__, last, stat_val,
 				cpuacct_filename);
 
-		if (last < prev && prev <= stat_val)
-		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "%s: Dip in cpuacct values: %" PRId64
-					" -> %" PRId64 " -> %" PRId64 " in file %s, ignoring middle sample",
-					__func__, prev, last, stat_val, cpuacct_filename);
-			last = prev;
-		}
-
-		*prev_cpu_time = last;
 		*last_cpu_time = stat_val;
+		if (container_cpuacct_cgroup != last_cpuacct_cgroup)
+		{
+			if (!last_cpuacct_cgroup.empty())
+			{
+				// the container moved between cpuacct cgroups (possibly e.g. during k8s container restart)
+				// don't report the delta as it's meaningless (we're subtracting values from two
+				// different cgroups)
+				g_logger.format(sinsp_logger::SEV_WARNING, "%s: detected cpuacct cgroup switch %s -> %s, skipping sample",
+						__func__, last_cpuacct_cgroup.c_str(), container_cpuacct_cgroup.c_str());
+			}
+			// else: it's the first time we're reading from this cgroup. Skip the sample silently.
+
+			// remember the cgroup for future reference
+			last_cpuacct_cgroup = container_cpuacct_cgroup;
+			return 0;
+		}
 
 		if (stat_val >= last)
 		{
-			if (prev >= 0)
-			{
-
-				/*
-				   without scaling, 1 full cpu of time would be 1e9 nsec / 100 ticks, i.e. 1e7
-				   scale down by 1e5 to get a floating point value in the range of 0-100.0 per cpu
-				*/
-				double cpu_usage = ((stat_val - last) / (delta_jiffies * 100000)) * m_ncpus;
-				return min(cpu_usage, 100.0 * m_ncpus);
-			}
-			else
-			{
-				/* it's the first sample, return zero to avoid
-				   spurious peak */
-				return 0;
-			}
+			/*
+			   without scaling, 1 full cpu of time would be 1e9 nsec / 100 ticks, i.e. 1e7
+			   scale down by 1e5 to get a floating point value in the range of 0-100.0 per cpu
+			*/
+			double cpu_usage = ((stat_val - last) / (delta_jiffies * 100000.0)) * m_ncpus;
+			return min(cpu_usage, 100.0 * m_ncpus);
 		}
 		else
 		{

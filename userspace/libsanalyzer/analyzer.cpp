@@ -5892,6 +5892,14 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		break;
 	case CT_MESOS:
 		container->set_type(draiosproto::MESOS);
+		// Sanity check the mesos task id. If it's trivially small, log a warning.
+		if(it->second.m_mesos_task_id.length() < 3)
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING,
+					"Suspicious mesos task id for container id '%s': '%s'",
+					container_id.c_str(),
+					it->second.m_mesos_task_id.c_str());
+		}
 		break;
 	case CT_RKT:
 		container->set_type(draiosproto::RKT);
@@ -5997,6 +6005,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
 	}
+
+	uint32_t res_cpu_pct = it_analyzer->second.m_metrics.m_cpuload * 100;
 	auto cpuacct_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
 									[](const pair<string, string>& cgroup)
 									{
@@ -6010,19 +6020,15 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		 */
 		if (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
 			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second,
-					&it_analyzer->second.m_prev_cpu_time, &it_analyzer->second.m_last_cpu_time);
+					it_analyzer->second.m_last_cpuacct_cgroup, &it_analyzer->second.m_last_cpu_time);
 			if(cgroup_cpuacct > 0)
 			{
 				// g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%.2f, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct * 100, it_analyzer->second.m_metrics.m_cpuload * 100);
-				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct * 100);
+				res_cpu_pct = cgroup_cpuacct * 100;
 			}
 		}
 	}
-	else
-	{
-		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_pct=%.2f", container_id.c_str(), it_analyzer->second.m_metrics.m_cpuload * 100);
-		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
-	}
+	container->mutable_resource_counters()->set_cpu_pct(res_cpu_pct);
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 
@@ -6747,7 +6753,7 @@ analyzer_container_state::analyzer_container_state()
 	m_last_bytes_in = 0;
 	m_last_bytes_out = 0;
 	m_last_cpu_time = 0;
-	m_prev_cpu_time = -1;
+	m_last_cpuacct_cgroup.clear();
 }
 
 void analyzer_container_state::clear()

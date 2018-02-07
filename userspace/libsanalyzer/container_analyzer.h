@@ -34,7 +34,7 @@ public:
 	uint64_t m_last_bytes_in;
 	uint64_t m_last_bytes_out;
 	int64_t m_last_cpu_time;
-	int64_t m_prev_cpu_time;
+	string m_last_cpuacct_cgroup;
 
 	void clear();
 };

@@ -84,6 +84,12 @@ void sinsp_worker::init()
 	m_inspector->set_internal_events_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
 
+	if(m_configuration->m_max_thread_table_size > 0)
+	{
+		g_log->information("Overriding sinsp thread table size to " + to_string(m_configuration->m_max_thread_table_size));
+		m_inspector->set_max_thread_table_size(m_configuration->m_max_thread_table_size);
+	}
+	
 	//
 	// Attach our transmit callback to the analyzer
 	//
