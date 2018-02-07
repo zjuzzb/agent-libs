@@ -5892,6 +5892,14 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		break;
 	case CT_MESOS:
 		container->set_type(draiosproto::MESOS);
+		// Sanity check the mesos task id. If it's trivially small, log a warning.
+		if(it->second.m_mesos_task_id.length() < 3)
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING,
+					"Suspicious mesos task id for container id '%s': '%s'",
+					container_id.c_str(),
+					it->second.m_mesos_task_id.c_str());
+		}
 		break;
 	case CT_RKT:
 		container->set_type(draiosproto::RKT);
