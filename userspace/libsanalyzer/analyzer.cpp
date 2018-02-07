@@ -5997,6 +5997,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->mutable_resource_counters()->set_fd_count(it_analyzer->second.m_metrics.m_fd_count);
 		container->mutable_resource_counters()->set_fd_usage_pct(it_analyzer->second.m_metrics.m_fd_usage_pct);
 	}
+
+	uint32_t res_cpu_pct = it_analyzer->second.m_metrics.m_cpuload * 100;
 	auto cpuacct_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
 									[](const pair<string, string>& cgroup)
 									{
@@ -6014,15 +6016,11 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			if(cgroup_cpuacct > 0)
 			{
 				// g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpuacct_pct=%.2f, cpu_pct=%.2f", container_id.c_str(), cgroup_cpuacct * 100, it_analyzer->second.m_metrics.m_cpuload * 100);
-				container->mutable_resource_counters()->set_cpu_pct(cgroup_cpuacct * 100);
+				res_cpu_pct = cgroup_cpuacct * 100;
 			}
 		}
 	}
-	else
-	{
-		//g_logger.format(sinsp_logger::SEV_DEBUG, "container=%s cpu_pct=%.2f", container_id.c_str(), it_analyzer->second.m_metrics.m_cpuload * 100);
-		container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
-	}
+	container->mutable_resource_counters()->set_cpu_pct(res_cpu_pct);
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
 
