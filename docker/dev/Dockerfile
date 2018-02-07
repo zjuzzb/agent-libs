@@ -20,6 +20,7 @@ RUN echo "deb http://deb.debian.org/debian jessie main" > /etc/apt/sources.list.
  && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
+	clang-7 \
 	curl \
 	gnupg2 \
 	ca-certificates \
@@ -30,6 +31,7 @@ RUN echo "deb http://deb.debian.org/debian jessie main" > /etc/apt/sources.list.
 	libc6-dev \
 	libelf-dev \
 	libelf1 \
+	llvm-7 \
 	openjdk-8-jre-headless \
 	python bzip2 && rm -rf /var/lib/apt/lists/*
 

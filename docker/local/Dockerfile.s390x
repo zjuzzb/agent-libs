@@ -16,6 +16,7 @@ RUN echo "deb http://httpredir.debian.org/debian jessie main" > /etc/apt/sources
  && apt-get update \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
+	clang-7 \
 	curl \
 	gnupg2 \
 	ca-certificates \
@@ -23,6 +24,7 @@ RUN echo "deb http://httpredir.debian.org/debian jessie main" > /etc/apt/sources
 	gcc-5 \
 	gcc-4.9 \
 	libelf1 \
+	llvm-7 \
 	openjdk-8-jre-headless \
 	python dkms && rm -rf /var/lib/apt/lists/*
 
