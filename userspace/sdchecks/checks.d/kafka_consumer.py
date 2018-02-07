@@ -200,7 +200,7 @@ class KafkaCheck(AgentCheck):
         return node_id
 
     def _make_req_async(self, client, request, node_id=None, cb=None):
-        if not node_id:
+        if node_id is None:
             node_id = self._get_random_node_id(client)
 
         future = client.send(node_id, request)
@@ -231,7 +231,7 @@ class KafkaCheck(AgentCheck):
                 raise future.exception
 
     def _make_blocking_req(self, client, request, node_id=None):
-        if not node_id:
+        if node_id is None:
             node_id = self._get_random_node_id(client)
 
         self._ensure_ready_node(client, node_id)
@@ -244,7 +244,7 @@ class KafkaCheck(AgentCheck):
         return response
 
     def _get_kafka_version(self, client, node_id=None):
-        if node_id:
+        if node_id is not None:
             return client.check_version(node_id=node_id)
 
         for broker in client.cluster.brokers():
