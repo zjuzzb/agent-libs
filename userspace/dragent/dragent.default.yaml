@@ -1183,7 +1183,9 @@ mounts_filter:
   - exclude: "overlay|*|/opt/stage2/*"
   - exclude: "/dev/mapper/cl-root*|*|/opt/stage2/*"
   - exclude: "*|*|/dev/termination-log*"
-  - exclude: "overlay|*|/var/lib/docker/overlay*/merged"
+  - include: "*|*|/var/lib/docker"
+  - exclude: "*|*|/var/lib/docker/*"
+  - exclude: "*|*|/var/lib/kubelet/pods/*"
   - include: "*|*|*"
 mounts_limit_size: 15
 
