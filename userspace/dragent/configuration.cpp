@@ -225,7 +225,6 @@ dragent_configuration::dragent_configuration()
 	m_protocols_truncation_size = 0;
 	m_remotefs_enabled = false;
 	m_agent_installed = true;
-	m_ssh_enabled = true;
 	m_sysdig_capture_enabled = true;
 	m_max_sysdig_captures = 1;
 	m_sysdig_capture_transmit_rate = 1024 * 1024;
@@ -679,7 +678,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		}
 	}
 	m_sdjagent_opts = m_config->get_scalar<string>("sdjagent_opts", "-Xmx256m");
-	m_ssh_enabled = m_config->get_scalar<bool>("ssh_enabled", true);
 	m_sysdig_capture_enabled = m_config->get_scalar<bool>("sysdig_capture_enabled", true);
 	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("sysdig capture", "max outstanding", 1);
 	m_sysdig_capture_transmit_rate = m_config->get_scalar<double>("sysdig capture", "transmit rate", 1024 * 1024);
@@ -1065,7 +1063,6 @@ void dragent_configuration::print_configuration()
 	if(m_sdjagent_enabled && getppid() == 1) {
 		g_log->warning("Sysdig Agent container has been launched without `--pid host` parameter, JMX metrics will not be available");
 	}
-	g_log->information("ssh.enabled: " + bool_as_text(m_ssh_enabled));
 	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
 	g_log->information("sysdig capture.max outstanding: " + NumberFormatter::format(m_max_sysdig_captures));
 	g_log->information("sysdig capture.transmit rate (bytes/sec): " + NumberFormatter::format(m_sysdig_capture_transmit_rate));

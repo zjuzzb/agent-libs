@@ -42,9 +42,6 @@ private:
 	void receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
-	void handle_ssh_open_channel(uint8_t* buf, uint32_t size);
-	void handle_ssh_data(uint8_t* buf, uint32_t size);
-	void handle_ssh_close_channel(uint8_t* buf, uint32_t size);
 	void handle_auto_update();
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
