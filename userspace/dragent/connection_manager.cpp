@@ -3,7 +3,6 @@
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
-#include "ssh_worker.h"
 #include "update_worker.h"
 #include "utils.h"
 
@@ -468,21 +467,6 @@ void connection_manager::receive_message()
 						m_buffer.begin() + sizeof(dragent_protocol_header),
 						header->len - sizeof(dragent_protocol_header));
 				break;
-			case draiosproto::message_type::SSH_OPEN_CHANNEL:
-				handle_ssh_open_channel(
-						m_buffer.begin() + sizeof(dragent_protocol_header),
-						header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::SSH_DATA:
-				handle_ssh_data(
-						m_buffer.begin() + sizeof(dragent_protocol_header),
-						header->len - sizeof(dragent_protocol_header));
-				break;
-			case draiosproto::message_type::SSH_CLOSE_CHANNEL:
-				handle_ssh_close_channel(
-						m_buffer.begin() + sizeof(dragent_protocol_header),
-						header->len - sizeof(dragent_protocol_header));
-				break;
 			case draiosproto::message_type::AUTO_UPDATE_REQUEST:
 				handle_auto_update();
 				break;
@@ -611,70 +595,6 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 	// stop message arriving at the capture handler before the
 	// start. (Unlikely, but just being safe).
 	m_sinsp_worker->queue_job_request(job_request);
-}
-
-void connection_manager::handle_ssh_open_channel(uint8_t* buf, uint32_t size)
-{
-	draiosproto::ssh_open_channel request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-	{
-		return;
-	}
-
-	ssh_settings settings;
-
-	if(request.has_user())
-	{
-		settings.m_user = request.user();
-	}
-
-	if(request.has_password())
-	{
-		settings.m_password = request.password();
-	}
-
-	if(request.has_key())
-	{
-		settings.m_key = request.key();
-	}
-
-	if(request.has_passphrase())
-	{
-		settings.m_passphrase = request.passphrase();
-	}
-
-	if(request.has_port())
-	{
-		settings.m_port = request.port();
-	}
-
-	ssh_worker* worker = new ssh_worker(m_configuration, m_queue, request.token(), settings);
-	ThreadPool::defaultPool().start(*worker, "ssh_worker");
-}
-
-void connection_manager::handle_ssh_data(uint8_t* buf, uint32_t size)
-{
-	draiosproto::ssh_data request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-	{
-		return;
-	}
-
-	if(request.has_data())
-	{
-		ssh_worker::request_input(request.token(), request.data());
-	}
-}
-
-void connection_manager::handle_ssh_close_channel(uint8_t* buf, uint32_t size)
-{
-	draiosproto::ssh_close_channel request;
-	if(!dragent_protocol::buffer_to_protobuf(buf, size, &request))
-	{
-		return;
-	}
-
-	ssh_worker::request_close(request.token());
 }
 
 void connection_manager::handle_auto_update()

@@ -574,9 +574,7 @@ enum message_type {
     DUMP_REQUEST_START = 2;
     DUMP_REQUEST_STOP = 4;
     DUMP_RESPONSE = 3;
-    SSH_OPEN_CHANNEL = 6;
-    SSH_CLOSE_CHANNEL = 7;
-    SSH_DATA = 8;
+    reserved 6 to 8;
     AUTO_UPDATE_REQUEST = 9;
     DIRTY_SHUTDOWN_REPORT = 10;
     CONFIG_DATA = 11;
@@ -979,35 +977,6 @@ message dump_response {
     optional uint64 final_size_bytes = 10; // Final size of the trace file
     optional string error = 5; // Dump errors
     required string token = 6; // The token associated with the request
-}
-
-message ssh_open_channel {
-    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-    required string machine_id = 2; // The unique ID of the machine that is sending this data
-    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required string token = 4; // The token associated with the request
-    required string user = 5;
-    optional string password = 6;
-    optional string key = 7;
-    optional string passphrase = 8;
-    optional uint32 port = 9;
-}
-
-message ssh_data {
-    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-    required string machine_id = 2; // The unique ID of the machine that is sending this data
-    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required string token = 4; // The token associated with the request
-    optional bytes data = 5; // Std input/output/error according to where this is sent from
-    optional string error = 6;
-    optional int32 exit_status = 7;
-}
-
-message ssh_close_channel {
-    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-    required string machine_id = 2; // The unique ID of the machine that is sending this data
-    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
-    required string token = 4; // The token associated with the request
 }
 
 message auto_update_request {

@@ -179,19 +179,6 @@ if [ ! -d "$CMAKE_DIR" ]; then
 	make
 fi
 
-LIBSSH_DIR=$DEPENDENCIES/libssh-0.7.3
-if [ ! -d "$LIBSSH_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/libssh-0.7.3.tar.xz
-	tar -xf libssh-0.7.3.tar.xz
-	cd $LIBSSH_DIR
-	mkdir build
-	cd build
-	OPENSSL_ROOT_DIR=$OPENSSL_DIR/target $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$LIBSSH_DIR/target -DZLIB_LIBRARY=$ZLIB_DIR -DZLIB_INCLUDE_DIR=$ZLIB_DIR -DWITH_STATIC_LIB=ON -DWITH_GSSAPI=OFF ..
-	make -C src install
-	make -C include install
-fi
-
 if [[ "$ARCH" == "s390x" ]]; then
 LUAJIT_DIR=$DEPENDENCIES/lua-5.1.5
 if [ ! -d "$LUAJIT_DIR" ]; then

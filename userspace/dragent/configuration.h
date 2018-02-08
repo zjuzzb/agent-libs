@@ -578,7 +578,6 @@ public:
 	string m_sdjagent_opts;
 	unsigned m_jmx_limit;
 	bool m_agent_installed;
-	bool m_ssh_enabled;
 	bool m_sysdig_capture_enabled;
 	uint32_t m_max_sysdig_captures;
 	double m_sysdig_capture_transmit_rate;
