@@ -47,5 +47,5 @@ RUN chmod +x /code/falco/scripts/build-lpeg.sh
 
 RUN cd /code/agent && ONLY_DEPS=true scl enable devtoolset-2 ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip
 ADD docker-builder-entrypoint.sh /
-VOLUME [ "/code/agent/build", "/out", "/root/.cache" ]
+VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
 ENTRYPOINT [ "/docker-builder-entrypoint.sh" ]
