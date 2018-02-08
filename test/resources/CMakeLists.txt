@@ -33,7 +33,6 @@ file(COPY fake_backend.cert
 		jmx_ok.json
 		jmx_segfault.json
 		jmx_wrong_object.json
-		security_policies_message.txt
 		statsite_output.txt
 		tcp_client.py
 		tcp_server.py
@@ -43,6 +42,14 @@ file(COPY fake_backend.cert
 		unix_client.py
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_policies_message.txt
+	${CMAKE_CURRENT_BINARY_DIR}/security_policies_message.txt
+	COPYONLY)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_baselines_message.txt
+	${CMAKE_CURRENT_BINARY_DIR}/security_baselines_message.txt
+	COPYONLY)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test

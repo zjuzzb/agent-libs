@@ -44,6 +44,7 @@ baseline_list {
         values: "capget"
         values: "capset"
         values: "chdir"
+	values: "clock_gettime"
         values: "clone"
         values: "close"
         values: "dup"
@@ -91,6 +92,7 @@ baseline_list {
 	values: "sched_getaffinity"
 	values: "sched_yield"
 	values: "seccomp"
+	values: "select"
         values: "sendfile"
         values: "sendto"
         values: "setgid"
@@ -159,6 +161,7 @@ baseline_list {
         fs_access_type: ACCESS_WRITE
         values: "/dev/tty"
         values: "/root/.ash_history"
+	values: "/proc/1/attr/exec"
         on_match: EFFECT_ACCEPT
       }
       on_default: EFFECT_DENY
