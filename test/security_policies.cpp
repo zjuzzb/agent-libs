@@ -58,6 +58,7 @@ public:
 		  m_mgr(mgr),
 		  m_inspector(inspector)
 	{
+		m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
 	}
 
 	~test_sinsp_worker()
@@ -517,6 +518,15 @@ protected:
 	}
 };
 
+static void create_tag(const char *tag, const char *image)
+{
+	std::string tag_cmd = string("docker tag ") + image + " " + tag + " > /dev/null 2>&1";
+	std::string remove_tag_cmd = string("(docker rmi ") + tag + " || true) > /dev/null 2>&1";
+
+	EXPECT_EQ(system(remove_tag_cmd.c_str()), 0);
+	EXPECT_EQ(system(tag_cmd.c_str()), 0);
+}
+
 static void kill_container(const char *name)
 {
 	std::string kill_cmd = string("(docker kill ") + name + " || true) > /dev/null 2>&1";
@@ -535,6 +545,12 @@ static void kill_image(const char *image)
 
 TEST_F(security_policies_test, readonly_fs_only)
 {
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
 	// Note that these file opens, that are read-only, should only
 	// match the readonly policy and not the readwrite policy.
 	int fd = open("/tmp/sample-sensitive-file-1.txt", O_RDONLY);
@@ -558,6 +574,12 @@ TEST_F(security_policies_test, readonly_fs_only)
 
 TEST_F(security_policies_test, readwrite_fs_only)
 {
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
 	// Note that these file opens, that are read-only, should only
 	// match the readonly policy and not the readwrite policy.
 	int fd = open("/tmp/sample-sensitive-file-1.txt", O_RDWR);
@@ -631,9 +653,9 @@ TEST_F(security_policies_test, fs_root_dir)
 	}
 
 	kill_container("fs-root-image");
-	EXPECT_EQ(system("docker tag busybox:latest busybox:test-root-writes > /dev/null 2>&1"), 0);
+	create_tag("busybox:test-root-writes", "busybox:latest");
 
-	if(system("docker run --rm -d --name fs-root-image busybox:test-root-writes sh -c 'touch /allowed-file-below-root && touch /not-allowed' > /dev/null 2>&1") != 0)
+	if(system("docker run --rm --name fs-root-image busybox:test-root-writes sh -c 'touch /allowed-file-below-root && touch /not-allowed' > /dev/null 2>&1") != 0)
 	{
 		ASSERT_TRUE(false);
 	}
@@ -794,10 +816,10 @@ TEST_F(security_policies_test, container_only)
 		return;
 	}
 
-	EXPECT_EQ(system("docker tag busybox:latest blacklist-image-name > /dev/null 2>&1"), 0);
+	create_tag("blacklist-image-name", "busybox:latest");
 	kill_container("blacklisted_image");
 
-	if(system("docker run --rm -d --name blacklisted_image blacklist-image-name > /dev/null 2>&1") != 0)
+	if(system("docker run --rm --name blacklisted_image blacklist-image-name > /dev/null 2>&1") != 0)
 	{
 		ASSERT_TRUE(false);
 	}
@@ -859,9 +881,15 @@ TEST_F(security_policies_test, falco_only)
 
 TEST_F(security_policies_test, baseline_only)
 {
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
 	kill_container("baseline-test");
 
-	ASSERT_EQ(system("docker run -d --name baseline-test --rm appropriate/nc nc -nl 9274 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc nc -nl 9274 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
@@ -879,9 +907,15 @@ TEST_F(security_policies_test, baseline_only)
 
 TEST_F(security_policies_test, baseline_deviate_port)
 {
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
 	kill_container("baseline-test");
 
-	ASSERT_EQ(system("docker run -d --name baseline-test --rm appropriate/nc nc -nl 8172 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc nc -nl 8172 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
@@ -896,9 +930,15 @@ TEST_F(security_policies_test, baseline_deviate_port)
 
 TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 {
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
 	kill_container("baseline-test");
 
-	ASSERT_EQ(system("docker run -d --name baseline-test --rm appropriate/nc cat /.dockerenv > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc cat /.dockerenv > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
@@ -930,38 +970,38 @@ TEST_F(security_policies_test, container_prefixes)
 	ASSERT_EQ(system("docker pull alpine:3.5 > /dev/null 2>&1"), 0);
 	ASSERT_EQ(system("docker pull tutum/curl:alpine > /dev/null 2>&1"), 0);
 
-	ASSERT_EQ(system("docker tag busybox:1.27.2 blacklist-image-name:0.0.1 > /dev/null 2>&1"), 0);
+	create_tag("blacklist-image-name:0.0.1", "busybox:1.27.2");
 
-	ASSERT_EQ(system("docker run --rm -d --name denyme blacklist-image-name:0.0.1 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name denyme blacklist-image-name:0.0.1 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	ASSERT_EQ(system("docker tag busybox:1.27.2 my.domain.name/busybox:1.27.2 > /dev/null 2>&1"), 0);
+	create_tag("my.domain.name/busybox:1.27.2", "busybox:1.27.2");
 
-	ASSERT_EQ(system("docker run --rm -d --name denyme my.domain.name/busybox:1.27.2 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name denyme my.domain.name/busybox:1.27.2 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
 	kill_image("my.domain.name/busybox:1.27.2");
 
-	ASSERT_EQ(system("docker tag alpine:3.5 my.other.domain.name:12345/alpine:3.5 > /dev/null 2>&1"), 0);
+	create_tag("my.other.domain.name:12345/alpine:3.5", "alpine:3.5");
 
-	ASSERT_EQ(system("docker run --rm -d --name denyme my.other.domain.name:12345/alpine:3.5 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name denyme my.other.domain.name:12345/alpine:3.5 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
 	kill_image("my.other.domain.name:12345/alpine:3.5");
 
-	ASSERT_EQ(system("docker tag alpine:3.5 my.third.domain.name/alpine:3.5 > /dev/null 2>&1"), 0);
+	create_tag("my.third.domain.name/alpine:3.5", "alpine:3.5");
 
-	ASSERT_EQ(system("docker run --rm -d --name denyme my.third.domain.name/alpine:3.5 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/alpine:3.5 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
 	kill_image("my.third.domain.name/alpine:3.5");
-	ASSERT_EQ(system("docker tag tutum/curl:alpine my.third.domain.name/tutum/curl:alpine > /dev/null 2>&1"), 0);
+	create_tag("my.third.domain.name/tutum/curl:alpine", "tutum/curl:alpine");
 
-	ASSERT_EQ(system("docker run --rm -d --name denyme my.third.domain.name/tutum/curl:alpine > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/tutum/curl:alpine > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
@@ -987,14 +1027,14 @@ TEST_F(security_policies_test, net_inbound_outbound_tcp)
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
 	kill_container("inout_test");
-	system("docker tag tutum/curl curl:inout_test > /dev/null 2>&1");
-	ASSERT_EQ(system("docker run -d --name inout_test --rm curl:inout_test bash -c '(nc -l -p 22222 -q0 &) && (curl http://127.0.0.1:22222/)' > /dev/null 2>&1"), 0);
+	create_tag("curl:inout_test", "tutum/curl");
+	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c '(nc -l -p 22222 -q0 &) && sleep 1 && (nc 127.0.0.1 22222)' > /dev/null 2>&1"), 0);
 
 	sleep(2);
 	kill_image("curl:inout_test");
 
 	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"}, {"proc.name", "nc"}, {"evt.type", "listen"}}},
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "curl"}, {"evt.type", "connect"}}},
+						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "nc"}, {"evt.type", "connect"}}},
 						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "nc"}, {"evt.type", "accept"}}}};
 	check_policy_events(expected);
 }
@@ -1010,8 +1050,8 @@ TEST_F(security_policies_test, net_inbound_outbound_udp)
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
 	kill_container("inout_test");
-	system("docker tag tutum/curl curl:inout_test > /dev/null 2>&1");
-	ASSERT_EQ(system("docker run -d --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; (ncserver -ul -p 22222 -q0 &) && (echo ping | nc -u localhost 22222 -w 1)' > /dev/null 2>&1"), 0);
+	create_tag("curl:inout_test", "tutum/curl");
+	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; (ncserver -ul -p 22222 -q0 &) && (echo ping | nc -u localhost 22222 -w 1)' > /dev/null 2>&1"), 0);
 
 	sleep(2);
 	kill_image("curl:inout_test");
@@ -1025,7 +1065,13 @@ TEST_F(security_policies_test, net_inbound_outbound_udp)
 
 TEST_F(security_policies_test, baseline_without_syscalls)
 {
-	ASSERT_EQ(system("docker run -d --name baseline-test --rm alpine touch /bin/test"), 0);
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return;
+	}
+
+	ASSERT_EQ(system("docker run --name baseline-test --rm alpine touch /bin/test"), 0);
 
 	sleep(2);
 
@@ -1046,9 +1092,9 @@ TEST_F(security_policies_test, fs_usecase)
 	}
 
 	kill_container("fs_usecase");
-	system("docker tag busybox:latest busybox:fs_usecase > /dev/null 2>&1");
+	create_tag("busybox:fs_usecase", "busybox:latest");
 
-	ASSERT_EQ(system("docker run --rm -d --name fs_usecase busybox:fs_usecase sh -c 'cat /etc/passwd /home/allowed /etc/hostname > /bin/not-allowed'"),0);
+	ASSERT_EQ(system("docker run --rm --name fs_usecase busybox:fs_usecase sh -c 'touch /home/allowed && cat /etc/passwd /home/allowed /etc/hostname > /bin/not-allowed'"),0);
 
 	sleep(2);
 
@@ -1070,8 +1116,8 @@ TEST_F(security_policies_test, image_name_priority)
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
 	kill_container("mycurl");
-	system("docker tag tutum/curl tutum/mycurl > /dev/null 2>&1");
-	ASSERT_EQ(system("docker run --rm -d --name mycurl tutum/mycurl"), 0);
+	create_tag("tutum/mycurl", "tutum/curl");
+	ASSERT_EQ(system("docker run --rm --name mycurl tutum/mycurl"), 0);
 
 	sleep(2);
 
@@ -1094,9 +1140,9 @@ TEST_F(security_policies_test, overlapping_syscall)
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
 	kill_container("overlap_test");
-	system("docker tag tutum/curl curl:overlap_test > /dev/null 2>&1");
+	create_tag("curl:overlap_test", "tutum/curl");
 
-	ASSERT_EQ(system("docker run --rm -d --name overlap_test curl:overlap_test nc -l -p 12345 -w1"),0);
+	ASSERT_EQ(system("docker run --rm --name overlap_test curl:overlap_test bash -c '(nc -l -p 12345 -q0 &) && sleep 1 && (nc 127.0.0.1 12345)'"),0);
 
 	sleep(2);
 

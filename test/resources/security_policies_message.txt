@@ -440,6 +440,7 @@ policy_list {
         values: "/tmp/"
         values: "/dev/tty"
 	values: "/root/.ash_history"
+	values: "/proc/"
         on_match: EFFECT_ACCEPT
         fs_access_type: ACCESS_WRITE
       }
