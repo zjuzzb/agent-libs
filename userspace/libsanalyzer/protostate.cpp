@@ -478,6 +478,9 @@ inline void mongodb_state::add(mongodb_state *other)
 
 	request_sorter<std::string, sinsp_query_details>::merge_maps(&m_server_collections, &(other->m_server_collections));
 	request_sorter<std::string, sinsp_query_details>::merge_maps(&m_client_collections, &(other->m_client_collections));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
 }
 
 inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_delta, bool is_server, uint32_t truncation_size)
@@ -502,6 +505,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 				collection_entry =&(m_server_collections[truncate_str(pp->m_collection, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
 			}
+			request_sorter<string, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
@@ -515,6 +519,7 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 				collection_entry =&(m_client_collections[truncate_str(pp->m_collection, truncation_size)]);
 				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
 			}
+			request_sorter<string, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
 	}
 }
@@ -584,6 +589,27 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 			return protobuf_msg->add_client_collections();
 		},
 		sampling_ratio, limit);
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
 }
 
 #endif // HAS_ANALYZER

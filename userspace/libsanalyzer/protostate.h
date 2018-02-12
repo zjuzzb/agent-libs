@@ -512,6 +512,8 @@ public:
 		m_client_ops.clear();
 		m_server_collections.clear();
 		m_client_collections.clear();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
 	}
 
 	void add(mongodb_state* other);
@@ -537,6 +539,8 @@ private:
 	unordered_map<uint32_t, sinsp_query_details> m_client_ops;
 	unordered_map<string, sinsp_query_details> m_server_collections;
 	unordered_map<string, sinsp_query_details> m_client_collections;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
 };
 
 class sinsp_http_state : public protocol_state
