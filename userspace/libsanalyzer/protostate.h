@@ -465,6 +465,8 @@ public:
 		m_client_query_types.clear();
 		m_server_tables.clear();
 		m_client_tables.clear();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
 	}
 
 	void add(sql_state* other);
@@ -497,6 +499,8 @@ private:
 	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
 	unordered_map<string, sinsp_query_details> m_server_tables;
 	unordered_map<string, sinsp_query_details> m_client_tables;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
 };
 
 class mongodb_state : public protocol_state
@@ -544,8 +548,8 @@ public:
 		m_client_urls.clear();
 		m_server_status_codes.clear();
 		m_client_status_codes.clear();
-		m_server_totals = sinsp_url_details();
-		m_client_totals = sinsp_url_details();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
 	}
 
 	bool has_data()
@@ -574,8 +578,8 @@ private:
 	unordered_map<string, sinsp_url_details> m_client_urls;
 	unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
 	unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
-	sinsp_url_details m_server_totals;
-	sinsp_url_details m_client_totals;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
 };
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class

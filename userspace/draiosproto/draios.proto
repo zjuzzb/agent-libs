@@ -266,6 +266,8 @@ message sql_info {
     repeated sql_query_type_details client_query_types = 4; // the top client-side query types (e.g. SELECT, INSERT...)
     repeated sql_entry_details server_tables = 5; // the top server-side queries
     repeated sql_entry_details client_tables = 6; // the top client-side queries
+    optional counter_proto_entry server_totals = 7;
+    optional counter_proto_entry client_totals = 8;
 }
 
 message mongodb_collection_details {

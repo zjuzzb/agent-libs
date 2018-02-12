@@ -115,6 +115,8 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 
 			type_entry = &(m_server_query_types[pp->m_query_parser.m_statement_type]);
 			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error, m_percentiles);
+
+			request_sorter<uint32_t, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
@@ -133,6 +135,8 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 
 			type_entry = &(m_client_query_types[pp->m_query_parser.m_statement_type]);
 			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error, m_percentiles);
+
+			request_sorter<uint32_t, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
 	}
 }
@@ -185,6 +189,9 @@ inline void sql_state::add(sql_state* other)
 
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_server_query_types, &(other->m_server_query_types));
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
 }
 
 void sinsp_protostate::set_percentiles(const std::set<double>& pctls)
@@ -441,6 +448,26 @@ void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampli
 		query_table_to_protobuf(protobuf_msg, &m_client_queries, false, sampling_ratio, true, limit);
 		query_table_to_protobuf(protobuf_msg, &m_client_tables, false, sampling_ratio, false, limit);
 		query_type_table_to_protobuf(protobuf_msg, &m_client_query_types, false, sampling_ratio, limit);
+	}
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
 	}
 }
 
