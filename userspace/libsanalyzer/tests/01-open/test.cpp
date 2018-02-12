@@ -489,7 +489,7 @@ int main(int argc, char **argv)
 		//
 		// Parse the args
 		//
-		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:np:qr:s:vw:W:")) != -1)
+		while((op = getopt(argc, argv, "Aac:C:d:e:f:jl:m:M:np:qr:s:t:vw:W:")) != -1)
 		{
 			switch (op)
 			{
@@ -506,6 +506,9 @@ int main(int argc, char **argv)
 				analyzer->add_chisel(ch);
 			}
 			break;
+			case 't':
+				g_inspector->set_max_thread_table_size(atoi(optarg));
+				break;
 			case 'C':
 #ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_customer_id(optarg);
