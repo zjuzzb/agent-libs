@@ -99,11 +99,16 @@ class sinsp_request_details
 public:
 	typedef std::shared_ptr<percentile> percentile_ptr_t;
 
-	sinsp_request_details()
+	sinsp_request_details():
+		m_ncalls(0),
+		m_nerrors(0),
+		m_time_max(0),
+		m_bytes_in(0),
+		m_bytes_out(0),
+		m_flags(SRF_NONE),
+		m_time_tot(0),
+		m_percentile(nullptr)
 	{
-		m_ncalls = 0;
-		m_flags = SRF_NONE;
-		m_time_max = 0;
 	}
 
 	sinsp_request_details(const sinsp_request_details& other):
