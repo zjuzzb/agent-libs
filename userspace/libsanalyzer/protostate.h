@@ -197,6 +197,11 @@ public:
 		}
 	}
 
+	uint64_t get_ncalls() const
+	{
+		return m_ncalls;
+	}
+
 	uint64_t get_time_tot() const
 	{
 		return m_time_tot;
