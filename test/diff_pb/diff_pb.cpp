@@ -101,6 +101,14 @@ int main(int argc, char **argv)
 	md.TreatAsMap(FindField(m1, "metrics.programs"),
 		      FindField(m1, "metrics.programs.pids"));
 
+	// Same as above, for network_by_serverports and ipv4connections
+	md.TreatAsMap(FindField(m1, "metrics.hostinfo.network_by_serverports"),
+		      FindField(m1, "metrics.hostinfo.network_by_serverports.port"));
+	md.TreatAsMap(FindField(m1, "metrics.containers.network_by_serverports"),
+		      FindField(m1, "metrics.containers.network_by_serverports.port"));
+	md.TreatAsMapWithMultipleFieldsAsKey(FindField(m1, "metrics.ipv4_connections"),
+					     {FindField(m1, "metrics.ipv4_connections.tuple"), FindField(m1, "metrics.ipv4_connections.spid"), FindField(m1, "metrics.ipv4_connections.dpid")});
+
 	for(const string& n: { "", ".containers"})
 	{
 		for(const string& t : { "client", "server"})
