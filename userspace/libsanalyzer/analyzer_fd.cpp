@@ -1192,42 +1192,21 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 	if((family == PPM_AF_INET || family == PPM_AF_INET6) &&
 			should_report_network(evt->m_fdinfo))
 	{
+		if(evt->m_fdinfo->is_udp_socket())
+		{
+			// Since UDP sockets don't generate traffic
+			// with connect, ignore them here. We'll
+			// handle the connection at the first read/write
+
+			goto blupdate;
+		}
+
 		//
 		// Mark this fd as a transaction
 		//
 		if(evt->m_fdinfo->m_usrstate == NULL)
 		{
 			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
-		}
-
-		//
-		// Lookup the connection
-		//
-		sinsp_connection* conn = m_analyzer->m_ipv4_connections->get_connection(
-			evt->m_fdinfo->m_sockinfo.m_ipv4info,
-			evt->get_ts());
-
-		//
-		// If a connection for this tuple is already there, drop it and replace it with a new one.
-		// Note that remove_connection just decreases the connection reference counter, since connections
-		// are destroyed by the analyzer at the end of the sample.
-		// Note that UDP sockets can have an arbitrary number of connects, and each new one overrides
-		// the previous one.
-		//
-		if(conn)
-		{
-			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
-			{
-				//
-				// There is a closed connection with the same key. We drop its content and reuse it.
-				// We also mark it as reused so that the analyzer is aware of it
-				//
-				conn->reset();
-				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
-				conn->m_refcount = 1;
-			}
-
-			m_analyzer->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info);
 		}
 
 		//
@@ -1264,6 +1243,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 #endif // HAS_UNIX_CONNECTIONS
 	}
 
+blupdate:
 	//
 	// Baseline update
 	//
