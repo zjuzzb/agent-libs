@@ -1403,13 +1403,13 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_ipv4_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
-		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, false);
+		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
 	}
 #ifdef HAS_UNIX_CONNECTIONS
 	else if(params->m_fdinfo->is_unix_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
-		params->m_inspector->m_analyzer->m_unix_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, false);
+		params->m_inspector->m_analyzer->m_unix_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_unixinfo);
 	}
 #endif
 }

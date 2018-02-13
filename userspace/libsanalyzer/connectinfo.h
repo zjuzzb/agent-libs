@@ -138,7 +138,7 @@ public:
 		m_n_drops = 0;
 	}
 	sinsp_connection* add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
-	void remove_connection(const TKey& key, bool now = true);
+	void remove_connection(const TKey& key);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
 
@@ -300,7 +300,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 };
 
 template<class TKey, class THash, class TCompare>
-void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key, bool now)
+void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
@@ -316,14 +316,7 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 
 		if(cit->second.m_refcount <= 0)
 		{
-			if(now)
-			{
-				m_connections.erase(cit);
-			}
-			else
-			{
-				cit->second.m_analysis_flags |= sinsp_connection::AF_CLOSED;
-			}
+			cit->second.m_analysis_flags |= sinsp_connection::AF_CLOSED;
 		}
 	}
 };
