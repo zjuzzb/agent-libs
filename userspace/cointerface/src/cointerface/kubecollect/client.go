@@ -17,6 +17,7 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 	"golang.org/x/net/context"
+	"strings"
 	"sync"
 	"regexp"
 )
@@ -70,7 +71,14 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			compatibilityMap[resource.Name] = true
-			log.Debugf("K8s server has %s API support.", resource.Name)
+			verbStr := ""
+			for _, verb := range resource.Verbs {
+				verbStr += verb
+				verbStr += ","
+			}
+			verbStr = strings.Trim(verbStr, ",")
+			log.Debugf("K8s API server supports %s/%s: %s",
+				resourceList.GroupVersion, resource.Name, verbStr)
 		}
 	}
 
