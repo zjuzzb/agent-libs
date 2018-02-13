@@ -1370,6 +1370,24 @@ inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* param
 void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 {
 	//
+	// If this socket was cloned and it's still present on the parent, don't do anything
+	//
+	if(params->m_fdinfo->is_cloned() && (params->m_fdinfo->is_ipv4_socket() || params->m_fdinfo->is_ipv6_socket()))
+	{
+		sinsp_threadinfo *ptinfo = params->m_tinfo->get_parent_thread();
+		if(ptinfo)
+		{
+			sinsp_fdinfo_t *pfdinfo = ptinfo->get_fd(params->m_fd);
+			if(pfdinfo &&
+			   pfdinfo->m_type == params->m_fdinfo->m_type &&
+			   pfdinfo->m_name == params->m_fdinfo->m_name)
+			{
+				return;
+			}
+		}
+	}
+
+	//
 	// If this fd has an active transaction transaction table, mark it as unititialized
 	//
 	if(params->m_fdinfo->is_transaction())
