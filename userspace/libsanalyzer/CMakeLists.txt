@@ -123,7 +123,11 @@ add_library(sanalyzer STATIC
 	prometheus.cpp
 	posix_queue.cpp
 	coclient.cpp
-	proc_config.h)
+	proc_config.h
+	filter_limits.cpp
+	mount_points_limits.cpp
+	label_limits.cpp
+	k8s_limits.cpp)
 
 add_dependencies(sanalyzer draiosproto)
 

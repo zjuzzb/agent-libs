@@ -2,7 +2,7 @@
 
 #include "posix_queue.h"
 #include "sdc_internal.pb.h"
-#include "metric_limits.h"
+#include "mount_points_limits.h"
 
 class mounted_fs
 {

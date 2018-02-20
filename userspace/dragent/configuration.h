@@ -641,8 +641,14 @@ public:
 	user_event_filter_t::ptr_t m_docker_event_filter;
 
 	bool m_excess_metric_log = false;
-	metrics_filter_vec m_metrics_filter;
+	filter_vec_t m_metrics_filter;
+	filter_vec_t m_k8s_filter;
+	uint16_t m_k8s_cache_size;
+	bool m_excess_k8s_log = false;
 	unsigned m_metrics_cache;
+	filter_vec_t m_labels_filter;
+	uint16_t m_labels_cache;
+	bool m_excess_labels_log = false;
 	mount_points_filter_vec m_mounts_filter;
 	unsigned m_mounts_limit_size;
 	unsigned m_max_thread_table_size;
@@ -721,6 +727,9 @@ private:
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
 	void add_percentiles();
+
+	void sanitize_limits(filter_vec_t& filters);
+
 
 	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
 	bool m_load_error;

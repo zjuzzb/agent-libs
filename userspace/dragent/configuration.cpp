@@ -342,6 +342,22 @@ void dragent_configuration::add_percentiles()
 	std::copy(pctls.begin(), pctls.end(), std::inserter(m_percentiles, m_percentiles.end()));
 }
 
+void dragent_configuration::sanitize_limits(filter_vec_t& filters)
+{
+	if(metric_limits::first_includes_all(filters))
+	{
+		filters.clear();
+	}
+	else // if first rule is "exclude all", that's all we need
+	{
+		metric_limits::optimize_exclude_all(filters);
+	}
+	if(filters.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	{
+		filters.erase(filters.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, filters.end());
+	}
+}
+
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
 {
 	if(!m_config) { return; }
@@ -920,21 +936,23 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
 	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
-	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
+	m_metrics_filter = m_config->get_merged_sequence<user_configured_filter>("metrics_filter");
 	// if first filter entry is empty or '*' and included, everything will be allowed, so it's pointless to have the filter list
-	if(metric_limits::first_includes_all(m_metrics_filter))
-	{
-		m_metrics_filter.clear();
-	}
-	else // if first rule is "exclude all", that's all we need
-	{
-		metric_limits::optimize_exclude_all(m_metrics_filter);
-	}
-	if(m_metrics_filter.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
-	{
-		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
-	}
-	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
+	sanitize_limits(m_metrics_filter);
+
+	// get label filters
+	m_labels_filter = m_config->get_merged_sequence<user_configured_filter>("container_labels_filter");
+	m_labels_cache = m_config->get_scalar<uint16_t>("container_labels_cache_size", 0u);
+	m_excess_labels_log = m_config->get_scalar("container_labels_excess_log", false);
+	sanitize_limits(m_labels_filter);
+
+	// K8s tags filter
+	m_k8s_filter = m_config->get_merged_sequence<user_configured_filter>("k8s_labels_filter");
+	m_k8s_cache_size = m_config->get_scalar<uint16_t>("k8s_labels_cache_size", 0u);
+	m_excess_k8s_log = m_config->get_scalar("k8s_labels_excess_log", false);
+	sanitize_limits(m_k8s_filter);
+
+	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
 	m_stress_tools = m_config->get_merged_sequence<string>("perf_sensitive_programs");
@@ -1287,7 +1305,7 @@ void dragent_configuration::print_configuration()
 	{
 		for(const auto& e : m_metrics_filter)
 		{
-			os << std::endl << (e.included() ? "include: " : "exclude: ") << *(e.filter());
+			os << std::endl << (e.included() ? "include: " : "exclude: ") << e.to_string();
 		}
 	}
 	g_log->information("Metrics filters:" + os.str());

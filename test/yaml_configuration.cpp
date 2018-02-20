@@ -293,18 +293,18 @@ TEST(yaml_to_json, test_nested)
 TEST(yaml_conf, metric_filter)
 {
 	yaml_configuration conf({"resources/test_filters.yaml"});
-	metrics_filter_vec mf = conf.get_merged_sequence<metrics_filter>("metrics_filter");
+	filter_vec_t mf = conf.get_merged_sequence<user_configured_filter>("metrics_filter");
 	EXPECT_EQ(11U, mf.size());
 	EXPECT_FALSE(metric_limits::first_includes_all(mf));
-	EXPECT_TRUE(mf[0].filter() && *mf[0].filter() == "redis.cpu.*");
-	EXPECT_TRUE(mf[1].filter() && *mf[1].filter() == "redis.mem.lua");
-	EXPECT_TRUE(mf[2].filter() && *mf[2].filter() == "redis.mem.*");
-	EXPECT_TRUE(mf[3].filter() && *mf[3].filter() == "ThreadCount");
-	EXPECT_TRUE(mf[4].filter() && *mf[4].filter() == "mesos.framework.cpu");
-	EXPECT_TRUE(mf[5].filter() && *mf[5].filter() == "mesos.fr*");
-	EXPECT_TRUE(mf[6].filter() && *mf[6].filter() == "test.*");
-	EXPECT_TRUE(mf[7].filter() && *mf[7].filter() == "test.*");
-	EXPECT_TRUE(mf[8].filter() && *mf[8].filter() == "haproxy.backend.*");
-	EXPECT_TRUE(mf[9].filter() && *mf[9].filter() == "haproxy.*");
-	EXPECT_TRUE(mf[10].filter() && *mf[10].filter() == "redis.*");
+	EXPECT_TRUE(mf[0].to_string() == "redis.cpu.*");
+	EXPECT_TRUE(mf[1].to_string() == "redis.mem.lua");
+	EXPECT_TRUE(mf[2].to_string() == "redis.mem.*");
+	EXPECT_TRUE(mf[3].to_string() == "ThreadCount");
+	EXPECT_TRUE(mf[4].to_string() == "mesos.framework.cpu");
+	EXPECT_TRUE(mf[5].to_string() == "mesos.fr*");
+	EXPECT_TRUE(mf[6].to_string() == "test.*");
+	EXPECT_TRUE(mf[7].to_string() == "test.*");
+	EXPECT_TRUE(mf[8].to_string() == "haproxy.backend.*");
+	EXPECT_TRUE(mf[9].to_string() == "haproxy.*");
+	EXPECT_TRUE(mf[10].to_string() == "redis.*");
 }

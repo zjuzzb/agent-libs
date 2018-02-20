@@ -68,6 +68,7 @@ using namespace google::protobuf::io;
 #include "proc_config.h"
 #include "tracer_emitter.h"
 #include "metric_limits.h"
+#include "label_limits.h"
 
 namespace {
 template<typename T>
@@ -82,7 +83,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
 	m_very_high_cpu_switcher("agent cpu usage with sr=128")
-{
+  {
 	m_initialized = false;
 	m_inspector = inspector;
 	m_n_flushes = 0;
@@ -3744,7 +3745,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		return;
 	}
 
-	metric_limits::enable_log();
+	user_configured_limits::check_log_required<metric_limits>();
 
 	for(j = 0; ; j++)
 	{
@@ -5944,6 +5945,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		std::string filter;
 		const string &label_key = it_labels->first;
 		const string &label_val = it_labels->second;
 
@@ -5952,6 +5954,13 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
 		if(!label_key.compare(0, swarmstr.size(), swarmstr) ||
 		   !label_key.compare(0, stackstr.size(), stackstr))
+		{
+			continue;
+		}
+
+		// Filter labels forbidden by config file
+		check_label_limits();
+		if(m_label_limits && !m_label_limits->allow(label_key, filter))
 		{
 			continue;
 		}
@@ -6712,6 +6721,13 @@ void sinsp_analyzer::set_fs_usage_from_external_proc(bool value)
 void sinsp_analyzer::set_emit_tracers(bool enabled)
 {
 	tracer_emitter::set_enabled(enabled);
+}
+
+void sinsp_analyzer::init_k8s_limits()
+{
+	m_infrastructure_state->init_k8s_limits(m_configuration->get_k8s_filter(),
+						m_configuration->get_excess_k8s_log(),
+						m_configuration->get_k8s_cache());
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

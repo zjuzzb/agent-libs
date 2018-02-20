@@ -39,6 +39,8 @@ add_executable(tests
 	# infrastructure_state_test.cpp
 	memdump.cpp
 	metric_limits.cpp
+	label_limits.cpp
+	k8s_limits.cpp
 	internal_metrics.cpp
 	net.cpp
 	paths.cpp

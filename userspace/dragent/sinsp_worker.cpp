@@ -62,11 +62,18 @@ void sinsp_worker::init()
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
 	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
+	m_analyzer->get_configuration()->set_labels_filter(m_configuration->m_labels_filter);
+	m_analyzer->get_configuration()->set_excess_labels_log(m_configuration->m_excess_labels_log);
+	m_analyzer->get_configuration()->set_labels_cache(m_configuration->m_labels_cache);
+	m_analyzer->get_configuration()->set_k8s_filter(m_configuration->m_k8s_filter);
+	m_analyzer->get_configuration()->set_excess_k8s_log(m_configuration->m_excess_k8s_log);
+	m_analyzer->get_configuration()->set_k8s_cache(m_configuration->m_k8s_cache_size);
 	m_analyzer->get_configuration()->set_mounts_filter(m_configuration->m_mounts_filter);
 	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
 	m_analyzer->set_internal_metrics(m_internal_metrics);
+	m_analyzer->init_k8s_limits();
 
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
@@ -89,7 +96,7 @@ void sinsp_worker::init()
 		g_log->information("Overriding sinsp thread table size to " + to_string(m_configuration->m_max_thread_table_size));
 		m_inspector->set_max_thread_table_size(m_configuration->m_max_thread_table_size);
 	}
-	
+
 	//
 	// Attach our transmit callback to the analyzer
 	//

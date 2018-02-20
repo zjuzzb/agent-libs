@@ -10,6 +10,7 @@
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
+#include <memory>
 #include "app_checks.h"
 #include "prometheus.h"
 #include <unordered_set>
@@ -326,23 +327,18 @@ public:
 #ifndef _WIN32
 	inline void check_metric_limits()
 	{
-		static bool checked = false;
-		if(!checked)
-		{
-			ASSERT(m_configuration);
-			const metrics_filter_vec& mf = m_configuration->get_metrics_filter();
-			ASSERT(!m_metric_limits);
-			if(!m_metric_limits && mf.size() && !metric_limits::first_includes_all(mf))
-			{
-				m_metric_limits.reset(new metric_limits(mf, m_configuration->get_metrics_cache()));
-			}
-			if(m_configuration->get_excess_metrics_log())
-			{
-				metric_limits::enable_logging();
-			}
-			ASSERT(m_metric_limits || !mf.size() || metric_limits::first_includes_all(mf));
-			checked = true;
-		}
+		check_limits(m_metric_limits,
+			     m_configuration->get_metrics_filter(),
+			     m_configuration->get_excess_metrics_log(),
+			     m_configuration->get_metrics_cache());
+	}
+
+	inline void check_label_limits()
+	{
+		check_limits(m_label_limits,
+			     m_configuration->get_labels_filter(),
+			     m_configuration->get_excess_labels_log(),
+			     m_configuration->get_labels_cache());
 	}
 
 	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
@@ -469,6 +465,7 @@ public:
 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
 	}
 
+	void init_k8s_limits();
 	//
 	// Test tool detection state
 	//
@@ -548,7 +545,29 @@ VISIBILITY_PRIVATE
 				   vector<app_process> &app_checks_processes,
 			       const char *location);
 	vector<long> get_n_tracepoint_diff();
-	
+
+	template<typename SMART_PTR_T, typename vect_t, typename... Args>
+	void check_limits(SMART_PTR_T&& ptr, const vect_t&& vec, bool log_enabled, Args&&... args)
+	{
+		using limits_sub_class_t = typename std::remove_reference<SMART_PTR_T>::type::element_type;
+		static bool checked = false;
+		if(!checked)
+		{
+			ASSERT(m_configuration);
+			ASSERT(!ptr);
+			if(!ptr && vec.size() && !metric_limits::first_includes_all(vec))
+			{
+				ptr.reset(new limits_sub_class_t(vec, std::forward<Args>(args)...));
+			}
+			if(log_enabled)
+			{
+				user_configured_limits::enable_logging<limits_sub_class_t>();
+			}
+			ASSERT(ptr || !vec.size() || limits_sub_class_t::first_includes_all(vec));
+			checked = true;
+		}
+	}
+
 	uint32_t m_n_flushes;
 	uint64_t m_prev_flushes_duration_ns;
 	double m_prev_flush_cpu_pct;
@@ -786,6 +805,7 @@ VISIBILITY_PRIVATE
 #endif
 
 	metric_limits::sptr_t m_metric_limits;
+	std::shared_ptr<label_limits> m_label_limits;
 	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;

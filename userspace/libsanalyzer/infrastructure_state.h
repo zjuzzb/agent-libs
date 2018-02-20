@@ -9,6 +9,7 @@
 #include "sinsp_signal.h"
 #include "analyzer_utils.h"
 #include "coclient.h"
+#include "k8s_limits.h"
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 
@@ -73,6 +74,7 @@ public:
 	std::string get_k8s_cluster_name() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
+	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
 
 private:
 
@@ -107,6 +109,8 @@ private:
 
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 
+	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
+
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 
@@ -128,6 +132,7 @@ private:
 	string m_k8s_client_key;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
+	k8s_limits m_k8s_limits;
 	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;

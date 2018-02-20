@@ -1189,3 +1189,20 @@ mounts_filter:
   - include: "*|*|*"
 mounts_limit_size: 15
 
+container_labels_filter:
+  - include: io.kubernetes.pod.name
+  - include: io.kubernetes.container.name
+  - include: io.kubernetes.pod.namespace
+  - include: "com.docker.ucp.version"
+  - exclude: "com.docker.ucp.*"
+  - exclude: "io.kubernetes.*"
+  - exclude: "annotation.io.kubernetes.*"
+  - include: "*"
+
+k8s_labels_filter:
+  - include: "kubernetes.node.label.kubernetes.io/hostname"
+  - exclude: "*.kubernetes.io/*"
+  - exclude: "*.pod-template-hash"
+  - exclude: "*.pod-template-generation"
+  - exclude: "*.controller-revision-hash"
+  - include: "*"

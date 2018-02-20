@@ -7,7 +7,7 @@
 TEST(metric_limits, filter)
 {
 	std::string filter;
-	metrics_filter_vec filters({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
+	filter_vec_t filters({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
 							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
 	metric_limits ml(filters, DEFAULT_CACHE_SIZE);
 	std::string metric("haproxy.frontend.bytes");
@@ -91,7 +91,7 @@ TEST(metric_limits, filter)
 	EXPECT_TRUE(ml.allow(metric, filter));
 	EXPECT_TRUE(filter.empty());
 
-	metrics_filter_vec filter2({{"haproxy.*", true}, {"haproxy.*", false}});
+	filter_vec_t filter2({{"haproxy.*", true}, {"haproxy.*", false}});
 	metric_limits ml2(filter2, DEFAULT_CACHE_SIZE);
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml2.has(metric));
@@ -120,7 +120,7 @@ TEST(metric_limits, filter)
 	EXPECT_TRUE(ml2.allow(metric, filter));
 	EXPECT_TRUE(filter.empty());
 
-	metrics_filter_vec filter3({{"haproxy.*", true}, {"*", false}});
+	filter_vec_t filter3({{"haproxy.*", true}, {"*", false}});
 	metric_limits ml3(filter3, DEFAULT_CACHE_SIZE);
 	metric = "haproxy.frontend.bytes";
 	EXPECT_FALSE(ml3.has(metric));
@@ -153,7 +153,7 @@ TEST(metric_limits, filter)
 TEST(metric_limits, cache)
 {
 	std::string filter;
-	metrics_filter_vec filters({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
+	filter_vec_t filters({{"haproxy.backend*", true}, {"test.*", true}, {"test2.*.?othin?", true},
 							   {"haproxy.*", false}, {"redis.*", false}, {"test.*", false}, {"test2.*.somethin?", false}});
 
 	metric_limits ml(filters, 3u, 2u);
@@ -297,7 +297,7 @@ TEST(metric_limits, cache)
 
 TEST(metric_limits, empty)
 {
-	metrics_filter_vec filters({{"", true}});
+	filter_vec_t filters({{"", true}});
 
 	try
 	{
@@ -313,7 +313,7 @@ TEST(metric_limits, empty)
 
 TEST(metric_limits, star1)
 {
-	metrics_filter_vec filters({{"*", true}});
+	filter_vec_t filters({{"*", true}});
 
 	try
 	{
@@ -329,7 +329,7 @@ TEST(metric_limits, star1)
 
 TEST(metric_limits, star2)
 {
-	metrics_filter_vec filters({{"*", true}, {"blah", true}});
+	filter_vec_t filters({{"*", true}, {"blah", true}});
 
 	try
 	{
@@ -345,16 +345,16 @@ TEST(metric_limits, star2)
 
 TEST(metric_limits, filter_vec)
 {
-	metrics_filter_vec filters({{"*", false}, {"blah", true}});
+	filter_vec_t filters({{"*", false}, {"blah", true}});
 	EXPECT_EQ(2u, filters.size());
 	metric_limits::optimize_exclude_all(filters);
 	EXPECT_EQ(1u, filters.size());
-	EXPECT_EQ(*filters[0].filter(), "*");
+	EXPECT_EQ(filters[0].to_string(), "*");
 	EXPECT_FALSE(filters[0].included());
 
 	filters = {{"*", true}, {"blah", true}};
 	EXPECT_TRUE(metric_limits::first_includes_all(filters));
-	EXPECT_EQ(*filters[0].filter(), "*");
+	EXPECT_EQ(filters[0].to_string(), "*");
 	EXPECT_TRUE(filters[0].included());
 
 	const unsigned CUSTOM_METRICS_FILTERS_HARD_LIMIT = 10;
@@ -374,7 +374,7 @@ TEST(metric_limits, filter_vec)
 TEST(metric_limits, projspec)
 {
 	std::string filter;
-	metrics_filter_vec filters({{"test.*", true}, {"test.*", false}, {"haproxy.backend.*", true}, {"haproxy.*", false}, {"redis.*", false}});
+	filter_vec_t filters({{"test.*", true}, {"test.*", false}, {"haproxy.backend.*", true}, {"haproxy.*", false}, {"redis.*", false}});
 	metric_limits ml(filters, DEFAULT_CACHE_SIZE);
 	EXPECT_FALSE(ml.has("haproxy.frontend.bytes"));
 	EXPECT_FALSE(ml.allow("haproxy.frontend.bytes", filter));
@@ -405,7 +405,7 @@ TEST(metric_limits, projspec)
 TEST(metric_limits, statsd)
 {
 	std::string filter;
-	metrics_filter_vec f({{"*1?", true}, {"*", false}});
+	filter_vec_t f({{"*1?", true}, {"*", false}});
 	metric_limits ml(f, DEFAULT_CACHE_SIZE);
 
 	EXPECT_TRUE(ml.allow("totam.sunt.consequatur.numquam.aperiam10", filter));

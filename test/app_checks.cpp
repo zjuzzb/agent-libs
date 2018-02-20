@@ -103,7 +103,7 @@ TEST_F(app_checks_proxy_f, filters)
 	app_check_data::services_t service_list = metrics[805].begin()->second.services();
 	EXPECT_TRUE(has(service_list, "redis.can_connect"));
 
-	metrics_filter_vec f({{"*", false}, {"*.can_connect", true}});
+	filter_vec_t f({{"*", false}, {"*.can_connect", true}});
 	metric_limits::sptr_t ml(new metric_limits(f));
 	use_json("app_checks_ok.json");
 	metrics = app_checks->read_metrics(ml);

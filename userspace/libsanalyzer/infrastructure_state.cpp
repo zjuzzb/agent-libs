@@ -183,6 +183,16 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		}, ts);
 }
 
+void infrastructure_state::init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size)
+{
+	m_k8s_limits.init(filters, cache_size);
+
+	if(log)
+	{
+		user_configured_limits::enable_logging<k8s_limits>();
+	}
+}
+
 bool infrastructure_state::subscribed()
 {
 	return m_k8s_subscribed; // || m_mesos_subscribed || ...
@@ -468,7 +478,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 		switch(evt->type()) {
 		case draiosproto::ADDED:
 			m_state[key] = make_unique<draiosproto::container_group>();
-			m_state[key]->CopyFrom(evt->object());
+			purge_tags_and_copy(key, evt->object());
 			connect(key);
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
@@ -490,7 +500,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				break;
 			}
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Overwrite container group <%s,%s>", kind.c_str(), id.c_str());
-			m_state[key]->CopyFrom(evt->object());
+			purge_tags_and_copy(key, evt->object());
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
 		case draiosproto::REMOVED:
@@ -504,7 +514,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will change relationships, remove the container group then connect it again");
 				remove(key);
 				m_state[key] = make_unique<draiosproto::container_group>();
-				m_state[key]->CopyFrom(evt->object());
+				purge_tags_and_copy(key, evt->object());
 				connect(key);
 			} else {
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will not change relationships, just update the metadata");
@@ -1172,4 +1182,13 @@ std::string infrastructure_state::get_k8s_cluster_id() const
 	}
 
 	return "";
+}
+
+
+void infrastructure_state::purge_tags_and_copy(uid_t key, const draiosproto::container_group& cg)
+{
+	ASSERT(m_state.find(key) != std::end(m_state));
+	m_state[key]->CopyFrom(cg);
+
+	m_k8s_limits.purge_tags(*m_state[key].get());
 }
