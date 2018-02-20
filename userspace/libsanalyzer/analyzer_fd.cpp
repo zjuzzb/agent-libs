@@ -1192,55 +1192,21 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 	if((family == PPM_AF_INET || family == PPM_AF_INET6) &&
 			should_report_network(evt->m_fdinfo))
 	{
+		if(evt->m_fdinfo->is_udp_socket())
+		{
+			// Since UDP sockets don't generate traffic
+			// with connect, ignore them here. We'll
+			// handle the connection at the first read/write
+
+			goto blupdate;
+		}
+
 		//
 		// Mark this fd as a transaction
 		//
 		if(evt->m_fdinfo->m_usrstate == NULL)
 		{
 			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
-		}
-
-		//
-		// Lookup the connection
-		//
-		sinsp_connection* conn = m_analyzer->m_ipv4_connections->get_connection(
-			evt->m_fdinfo->m_sockinfo.m_ipv4info,
-			evt->get_ts());
-
-		//
-		// If a connection for this tuple is already there, drop it and replace it with a new one.
-		// Note that remove_connection just decreases the connection reference counter, since connections
-		// are destroyed by the analyzer at the end of the sample.
-		// Note that UDP sockets can have an arbitrary number of connects, and each new one overrides
-		// the previous one.
-		//
-		if(conn)
-		{
-			if(conn->m_analysis_flags == sinsp_connection::AF_CLOSED)
-			{
-				//
-				// There is a closed connection with the same key. We drop its content and reuse it.
-				// We also mark it as reused so that the analyzer is aware of it
-				//
-				conn->reset();
-				conn->m_analysis_flags = sinsp_connection::AF_REUSED;
-				conn->m_refcount = 1;
-			}
-
-			m_analyzer->m_ipv4_connections->remove_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info);
-		}
-
-		//
-		// Update the FD info with this tuple
-		//
-		if(family == PPM_AF_INET)
-		{
-			m_inspector->m_parser->set_ipv4_addresses_and_ports(evt->m_fdinfo, packed_data);
-		}
-		else
-		{
-			m_inspector->m_parser->set_ipv4_mapped_ipv6_addresses_and_ports(evt->m_fdinfo, 
-				packed_data);
 		}
 
 		//
@@ -1277,6 +1243,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 #endif // HAS_UNIX_CONNECTIONS
 	}
 
+blupdate:
 	//
 	// Baseline update
 	//
@@ -1403,6 +1370,24 @@ inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* param
 void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 {
 	//
+	// If this socket was cloned and it's still present on the parent, don't do anything
+	//
+	if(params->m_fdinfo->is_cloned() && (params->m_fdinfo->is_ipv4_socket() || params->m_fdinfo->is_ipv6_socket()))
+	{
+		sinsp_threadinfo *ptinfo = params->m_tinfo->get_parent_thread();
+		if(ptinfo)
+		{
+			sinsp_fdinfo_t *pfdinfo = ptinfo->get_fd(params->m_fd);
+			if(pfdinfo &&
+			   pfdinfo->m_type == params->m_fdinfo->m_type &&
+			   pfdinfo->m_name == params->m_fdinfo->m_name)
+			{
+				return;
+			}
+		}
+	}
+
+	//
 	// If this fd has an active transaction transaction table, mark it as unititialized
 	//
 	if(params->m_fdinfo->is_transaction())
@@ -1418,13 +1403,13 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_ipv4_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
-		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, false);
+		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
 	}
 #ifdef HAS_UNIX_CONNECTIONS
 	else if(params->m_fdinfo->is_unix_socket() && 
 		!params->m_fdinfo->has_no_role())
 	{
-		params->m_inspector->m_analyzer->m_unix_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, false);
+		params->m_inspector->m_analyzer->m_unix_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_unixinfo);
 	}
 #endif
 }

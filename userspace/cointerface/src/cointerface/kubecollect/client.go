@@ -17,6 +17,7 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"time"
 	"golang.org/x/net/context"
+	"strings"
 	"sync"
 	"regexp"
 )
@@ -69,8 +70,20 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	compatibilityMap = make(map[string]bool)
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
+			verbStr := ""
+			for _, verb := range resource.Verbs {
+				verbStr += verb
+				verbStr += ","
+			}
+			verbStr = strings.Trim(verbStr, ",")
+			log.Debugf("K8s API server supports %s/%s: %s",
+				resourceList.GroupVersion, resource.Name, verbStr)
+
+			if resource.Name == "cronjobs" &&
+				resourceList.GroupVersion != "batch/v2alpha1" {
+				continue
+			}
 			compatibilityMap[resource.Name] = true
-			log.Debugf("K8s server has %s API support.", resource.Name)
 		}
 	}
 
@@ -158,7 +171,7 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	if compatibilityMap["cronjobs"] {
 		startCronJobsSInformer(ctx, kubeClient, &wg)
 	} else {
-		log.Warnf("K8s server doesn't have cronjobs API support.")
+		log.Warnf("K8s server doesn't have v2alpha1 cronjobs API support.")
 	}
 	if compatibilityMap["replicationcontrollers"] {
 		startReplicationControllersSInformer(ctx, kubeClient, &wg)
