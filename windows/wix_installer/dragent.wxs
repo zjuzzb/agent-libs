@@ -1,0 +1,87 @@
+<?xml version="1.0"?>
+<?define ProductVersion = "0.0.4"?> <!-- Change this when you update the product version -->
+<?define ProductUpgradeCode = "bad1ae0e-1cc0-4e92-a0bf-ceef740b73a3"?> <!-- Never change this -->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+	<Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" Name="Sysdig Agent" Manufacturer="Sysdig" Language="1033" Version="$(var.ProductVersion)">
+		<!-- 
+			General settings 
+		-->
+		<Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallPrivileges="elevated" InstallScope="perMachine"/>
+		<Media Id="1" Cabinet="product.cab" EmbedCab="yes" />
+		<Property Id="MSIUSEREALADMINDETECTION" Value="1" />
+
+		<!-- 
+			Service start/stop actions 
+		-->
+		<Property Id="CUSTOMERID" Value="xxxx" /> <!-- This will be overridden if the user specifies a customerid argument when running the msi -->
+		<Property Id="COLLECTOR" Value="xxxx" /> <!-- This will be overridden if the user specifies a customerid argument when running the msi -->
+		<CustomAction Id='InstallService' Directory='INSTALLDIR' Execute="deferred" ExeCommand='cmd.exe /c &quot;DragentService.exe -install customerid [CUSTOMERID] collector [COLLECTOR] &quot;' Impersonate= "no" Return='ignore'/>
+		<CustomAction Id='RemoveService' Directory='INSTALLDIR' Execute="deferred" ExeCommand='cmd.exe /c &quot;DragentService.exe -remove&quot;' Impersonate= "no" Return='ignore'/>
+
+		<InstallExecuteSequence>
+			<Custom Action="InstallService" Before="InstallFinalize">NOT Installed AND NOT REMOVE</Custom>
+		</InstallExecuteSequence>
+
+		<InstallExecuteSequence>
+			<Custom Action="RemoveService" After="InstallInitialize">Installed</Custom>
+		</InstallExecuteSequence>
+
+		<!-- 
+			Upgrades infrastructure 
+		-->
+		<Upgrade Id="$(var.ProductUpgradeCode)">
+			<UpgradeVersion Minimum="$(var.ProductVersion)" OnlyDetect="yes" Property="NEWERVERSIONDETECTED"/>
+			<UpgradeVersion Minimum="0.0.0" Maximum="$(var.ProductVersion)" IncludeMinimum="yes" IncludeMaximum="no" 
+								 Property="OLDERVERSIONBEINGUPGRADED"/>	  
+		</Upgrade>
+		<Condition Message="A newer version of this software is already installed.">NOT NEWERVERSIONDETECTED</Condition>		
+
+		<InstallExecuteSequence>
+			<RemoveExistingProducts After="InstallValidate"/>
+		</InstallExecuteSequence>
+
+		<!-- 
+			File Installation
+		-->
+		<Directory Id="TARGETDIR" Name="SourceDir">
+			<Directory Id="ProgramFilesFolder">
+				<Directory Id="INSTALLDIR" Name="Sysdig Agent">
+					<Component Id="ApplicationFiles" Guid="f11dc428-5bc6-4e4b-9929-157f2a4132a8">
+						<File Id="ApplicationFile1" Source="DragentService.exe"/>
+					</Component>
+				</Directory>
+			</Directory>
+
+			<Directory Id="CommonAppDataFolder">
+				<Directory Id="DATAINSTALLDIR" Name="Sysdig Agent">				
+					<Component Id="CERTFILES" Guid="d57577fd-c9f8-4b09-9aab-ad0aa0a76de4">
+						<File Id="CERTILE1" Source="root.cert"/>
+					</Component>
+					<Directory Id="BINDIR" Name="bin">
+						<Component Id="BINFILES" Guid="59bda772-ca9c-481a-8089-a83412584a12">
+							<File Id="BINFILE1" Source="bin\\dragent.exe"/>
+							<File Id="BINFILE2" Source="bin\\cyggcc_s-seh-1.dll"/>
+							<File Id="BINFILE3" Source="bin\\cygstdc++-6.dll"/>
+							<File Id="BINFILE4" Source="bin\\cygwin1.dll"/>
+							<File Id="BINFILE5" Source="bin\\dragent_win_hal.dll"/>
+							<!-- <File Id="BINFILE6" Source="bin\\statsite.ini"/> -->
+						</Component>
+					</Directory>
+					<Directory Id="ETCDIR" Name="etc">
+						<Component Id="ETCFILES" Guid="7186e719-705b-44a0-bda3-c34340d7c8d5">
+							<File Id="ETCFILE1" Source="etc\\dragent.yaml"/>
+							<File Id="ETCFILE2" Source="etc\\dragent.default.yaml"/>
+						</Component>
+					</Directory>
+				</Directory>
+			</Directory>
+		</Directory>
+
+		<Feature Id="DefaultFeature" Level="1">
+			<ComponentRef Id="ApplicationFiles"/>
+			<ComponentRef Id="CERTFILES"/>
+			<ComponentRef Id="BINFILES"/>
+			<ComponentRef Id="ETCFILES"/>
+		</Feature>
+	</Product>
+</Wix>

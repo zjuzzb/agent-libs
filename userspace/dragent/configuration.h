@@ -564,7 +564,9 @@ public:
 	uint64_t m_watchdog_sinsp_data_handler_timeout_s;
 	uint64_t m_watchdog_max_memory_usage_mb;
 	uint64_t m_watchdog_warn_memory_usage_mb;
+#ifndef CYGWING_AGENT
 	uint64_t m_watchdog_heap_profiling_interval_s;
+#endif
 	uint64_t m_dirty_shutdown_report_log_size_b;
 	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
 	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
@@ -597,7 +599,9 @@ public:
 	vector<uint16_t> m_blacklisted_ports;
 	vector<sinsp_chisel_details> m_chisel_details;
 	bool m_system_supports_containers;
+#ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
+#endif
 
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
@@ -625,10 +629,12 @@ public:
 	int m_mesos_timeout_ms;
 	bool m_mesos_follow_leader;
 	bool m_marathon_follow_leader;
+#ifndef CYGWING_AGENT
 	mesos::credentials_t m_mesos_credentials;
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
 	std::set<std::string> m_marathon_skip_labels;
+#endif
 
 	bool m_falco_baselining_enabled;
 	bool m_command_lines_capture_enabled;
@@ -706,7 +712,11 @@ public:
 
 	bool python_present()
 	{
+#ifndef CYGWING_AGENT		
 		return !m_python_binary.empty();
+#else
+		return false;
+#endif
 	}
 
 	void refresh_aws_metadata();

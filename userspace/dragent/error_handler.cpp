@@ -8,11 +8,13 @@
 volatile bool dragent_error_handler::m_exception = false;
 
 #ifndef _WIN32
+#ifndef CYGWING_AGENT
 #include <execinfo.h>
 extern "C" {
 	extern thread_local void *exception_backtrace[1024];
 	extern thread_local int exception_backtrace_size;
 }
+#endif
 #endif
 
 dragent_error_handler::dragent_error_handler()
@@ -28,6 +30,7 @@ void dragent_error_handler::exception(const Poco::Exception& exc)
 	
 void dragent_error_handler::exception(const std::exception& exc)
 {
+#ifndef CYGWING_AGENT
 #ifndef _WIN32
 	glogf(sinsp_logger::SEV_DEBUG, "error_handler: Catching exception %p. Printing backtrace...", &exc);
 	static const char s[] = "EXCEPTION BACKTRACE ----------------------";
@@ -41,6 +44,7 @@ void dragent_error_handler::exception(const std::exception& exc)
 	}
 	g_log->error(e);
 	free(bt_syms);
+#endif
 #endif
 	g_log->error(exc.what());
 

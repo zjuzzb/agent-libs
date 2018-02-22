@@ -1,3 +1,4 @@
+#ifndef CYGWING_AGENT
 #ifndef INFRASTRUCTURE_STATE_H
 #define INFRASTRUCTURE_STATE_H
 
@@ -139,3 +140,4 @@ private:
 };
 
 #endif // INFRASTRUCTURE_STATE_H
+#endif // CYGWING_AGENT

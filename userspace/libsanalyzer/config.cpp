@@ -26,9 +26,11 @@ sinsp_configuration::sinsp_configuration():
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
-	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
+#ifndef CYGWING_AGENT
+	m_k8s_autodetect = true;
 	m_mesos_autodetect = true;
+#endif
 	m_jmx_limit = 500;
 	m_app_checks_limit = 300;
 	m_memdump_size = 0;
@@ -412,6 +414,17 @@ const ports_set & sinsp_configuration::get_blacklisted_ports() const
 	return m_blacklisted_ports;
 }
 
+unsigned sinsp_configuration::get_statsd_limit() const
+{
+	return m_statsd_limit;
+}
+
+void sinsp_configuration::set_statsd_limit(unsigned value)
+{
+	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
+}
+
+#ifndef CYGWING_AGENT
 void sinsp_configuration::set_k8s_api_server(const string& k8s_api)
 {
 	m_k8s_api = k8s_api;
@@ -550,16 +563,6 @@ void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_na
 const std::string& sinsp_configuration::get_k8s_cluster_name() const
 {
 	return m_k8s_cluster_name;
-}
-
-unsigned sinsp_configuration::get_statsd_limit() const
-{
-	return m_statsd_limit;
-}
-
-void sinsp_configuration::set_statsd_limit(unsigned value)
-{
-	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
@@ -728,6 +731,7 @@ const std::set<std::string> & sinsp_configuration::get_marathon_skip_labels() co
 {
 	return m_marathon_skip_labels;
 }
+#endif // CYGWING_AGENT
 
 bool sinsp_configuration::get_curl_debug() const
 {

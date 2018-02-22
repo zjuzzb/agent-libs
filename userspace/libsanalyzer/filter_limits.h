@@ -236,6 +236,7 @@ private:
 	uint64_t m_purge_seconds;
 	std::string m_target_type_name;
 
+public:
 	template<typename DERIVED_CLASS>
 	struct log_flags
 	{
@@ -245,6 +246,7 @@ private:
 		static time_t m_running;
 	};
 
+private:
 	struct log_flags_ref
 	{
 		log_flags_ref(bool& log, bool& enable_log, time_t& last, time_t& running)

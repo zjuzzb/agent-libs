@@ -1,6 +1,7 @@
 //
 // k8s_delegator.cpp
 //
+#ifndef CYGWING_AGENT
 
 #include "k8s_delegator.h"
 #include "sinsp.h"
@@ -390,3 +391,4 @@ void k8s_delegator::handle_json(Json::Value&& root)
 
 	handle_component(root);
 }
+#endif // CYGWING_AGENT

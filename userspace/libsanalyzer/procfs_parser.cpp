@@ -23,9 +23,13 @@
 #include "analyzer_int.h"
 #include "procfs_parser.h"
 #include "Poco/StringTokenizer.h"
+#ifdef CYGWING_AGENT
+#include "dragent_win_hal_public.h"
+#endif
 
 using Poco::StringTokenizer;
 
+#ifndef CYGWING_AGENT
 const uint64_t sinsp_procfs_parser::jiffies_t::NO_JIFFIES = ~0;
 
 sinsp_procfs_parser::jiffies_t::jiffies_t(const sinsp_procfs_parser& procfs_parser):
@@ -44,15 +48,31 @@ void sinsp_procfs_parser::jiffies_t::set()
 	ASSERT(m_current_steal >= m_old_steal);
 	m_delta_steal = m_current_steal - m_old_steal;
 }
+#endif // CYGWING_AGENT
 
-sinsp_procfs_parser::sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture):
+#ifndef CYGWING_AGENT
+sinsp_procfs_parser::sinsp_procfs_parser(
+#else
+sinsp_procfs_parser::sinsp_procfs_parser(sinsp* inspector, 
+#endif
+	uint32_t ncpus, 
+	int64_t physical_memory_kb, bool is_live_capture):
 	m_ncpus(ncpus),
 	m_physical_memory_kb(physical_memory_kb),
 	m_is_live_capture(is_live_capture),
 	m_last_in_bytes(0),
-	m_last_out_bytes(0),
-	m_global_jiffies(*this)
+	m_last_out_bytes(0)
+#ifndef CYGWING_AGENT
+	, m_global_jiffies(*this)
+#endif
 {
+#ifdef CYGWING_AGENT
+	m_whhandle = inspector->get_wmi_handle();
+	if(m_whhandle == NULL)
+	{
+		throw sinsp_exception("sinsp_procfs_parser::sinsp_procfs_parser initialization error: m_whhandle=NULL");
+	} 
+#endif
 }
 
 void sinsp_procfs_parser::read_mount_points(mount_points_limits::sptr_t mount_points)
@@ -60,6 +80,7 @@ void sinsp_procfs_parser::read_mount_points(mount_points_limits::sptr_t mount_po
 	m_mount_points = mount_points;
 }
 
+#ifndef CYGWING_AGENT
 double sinsp_procfs_parser::get_global_cpu_jiffies(uint64_t* stolen) const
 {
 	char line[512] = {0};
@@ -109,9 +130,11 @@ double sinsp_procfs_parser::get_global_cpu_jiffies(uint64_t* stolen) const
 	if(stolen) { *stolen = steal; }
 	return user + nice + system + idle + iowait + irq + softirq + steal;
 }
+#endif // CYGWING_AGENT
 
 void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 {
+#ifndef CYGWING_AGENT
 	ASSERT(proc_stat);
 
 	char line[512];
@@ -171,8 +194,47 @@ void sinsp_procfs_parser::get_proc_stat(OUT sinsp_proc_stat* proc_stat)
 	}
 	fclose(f);
 	ASSERT(!proc_stat->m_loads.size() || proc_stat->m_loads.size() == m_ncpus);
+#else
+	proc_stat->m_user.clear();
+	proc_stat->m_nice.clear();
+	proc_stat->m_system.clear();
+	proc_stat->m_idle.clear();
+	proc_stat->m_iowait.clear();
+	proc_stat->m_irq.clear();
+	proc_stat->m_softirq.clear();
+	proc_stat->m_steal.clear();
+	proc_stat->m_loads.clear();
+	proc_stat->m_btime = 0;
+	proc_stat->m_uptime = 0;
+
+	wh_cpulist clist = wh_wmi_get_cpus(m_whhandle);
+	if(clist.m_result == 0)
+	{
+		return;
+	}
+
+	for(uint32_t j = 0; j < clist.m_count; j++)
+	{
+		proc_stat->m_user.push_back(clist.m_cpus[j].user * 100);
+		proc_stat->m_system.push_back(clist.m_cpus[j].system * 100);
+		proc_stat->m_idle.push_back(clist.m_cpus[j].idle * 100);
+		proc_stat->m_irq.push_back(clist.m_cpus[j].irq * 100);
+		proc_stat->m_softirq.push_back(clist.m_cpus[j].softirq * 100);
+		proc_stat->m_loads.push_back(clist.m_cpus[j].load * 100);
+	}
+
+	wh_os_times otimes = wh_wmi_get_os_times(m_whhandle);
+	if(otimes.m_result == 0)
+	{
+		return;
+	}
+
+	proc_stat->m_btime = otimes.m_boot_time_s_unix;
+	proc_stat->m_uptime = otimes.m_uptime_s_unix;
+#endif
 }
 
+#ifndef CYGWING_AGENT
 bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line)
 {
 	ASSERT(proc_stat);
@@ -331,9 +393,11 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 
 	return true;
 }
+#endif // CYGWING_AGENT
 
 void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap)
 {
+#ifndef CYGWING_AGENT
 	char line[512];
 	int64_t mem_free = 0;
 	int64_t mem_avail = 0;
@@ -448,10 +512,26 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		ASSERT(false);
 		*used_swap = 0;
 	}
+#else // CYGWING_AGENT
+	wh_meminfo minfo = wh_wmi_get_meminfo(m_whhandle);
+	if(minfo.m_result == 0)
+	{
+		throw sinsp_exception(string("error calling wh_wmi_get_mounts:") + wh_getlasterror(m_whhandle));
+	}
+
+	*used_memory = minfo.m_used_kb;
+	*free_memory = minfo.m_free_kb;
+	*avail_memory = minfo.m_free_kb;
+	*used_swap = minfo.used_swap_kb;
+	*total_swap = minfo.total_swap_kb;
+	*avail_swap = minfo.avail_swap_kb;
+	return;
+#endif // CYGWING_AGENT
 }
 
 uint64_t sinsp_procfs_parser::global_steal_pct()
 {
+#ifndef CYGWING_AGENT
 	uint64_t steal_pct = 0;
 	uint64_t global_steal_jiffies_delta = m_global_jiffies.delta_steal();
 	if(global_steal_jiffies_delta)
@@ -463,10 +543,18 @@ uint64_t sinsp_procfs_parser::global_steal_pct()
 		}
 	}
 	return steal_pct;
+#else // CYGWING_AGENT
+	//
+	// We assume windows is mostly run in the datacenter and therefore this is not relevant.
+	// We always return 0. 
+	//
+	return 0;
+#endif // CYGWING_AGENT
 }
 
 double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc)
 {
+#ifndef CYGWING_AGENT
 	if(!m_is_live_capture) { return -1; }
 	double res = -1;
 	uint64_t global_total_jiffies_delta = m_global_jiffies.delta_total();
@@ -507,10 +595,22 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 		}
 	}
 	return res;
+#else // CYGWING_AGENT
+	wh_proc_perf_info pinfo = wh_wmi_get_proc_perf_info(m_whhandle, pid);
+	if(pinfo.m_result != 0)
+	{
+		return pinfo.m_cpu_percent;
+	}
+	else
+	{
+		return 0;
+	}
+#endif // CYGWING_AGENT
 }
 
 long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
 {
+#ifndef CYGWING_AGENT
 	long res = -1;
 	string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
 
@@ -540,6 +640,17 @@ long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
 	}
 
 	return res;
+#else // CYGWING_AGENT
+	wh_proc_perf_info pinfo = wh_wmi_get_proc_perf_info(m_whhandle, pid);
+	if(pinfo.m_result != 0)
+	{
+		return pinfo.m_memory_bytes;
+	}
+	else
+	{
+		return 0;
+	}
+#endif // CYGWING_AGENT
 }
 
 //
@@ -547,6 +658,7 @@ long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
 //
 void sinsp_procfs_parser::get_tid_list(OUT set<uint64_t>* tids)
 {
+#ifndef CYGWING_AGENT
 #ifdef _WIN32
 return;
 #else
@@ -580,13 +692,22 @@ return;
 
 	closedir(dir_p);
 #endif // _WIN32
+#else // CYGWING_AGENT
+	//
+	// The data coming from this function should only be use to prune the tid
+	// list, which is not needed under windows since we are strictly nodriver and 
+	// nodriver lowers the sinsp pruning interval to 5 seconds, making this redundant.
+	//
+	tids->clear();
+#endif // CYGWING_AGENT
 }
 
 vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled,
 															const string& mtab)
 {
 	map<string, mounted_fs> mount_points;
-#ifndef _WIN32
+
+#if !defined(_WIN32) && !defined(CYGWING_AGENT)
 	FILE* fp = setmntent(mtab.c_str(), "r");
 	if(fp == NULL)
 	{
@@ -663,7 +784,34 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 	}
 
 	endmntent(fp);
-#endif
+#else // !defined(_WIN32) && !defined(CYGWING_AGENT)
+#ifdef CYGWING_AGENT
+	wh_mountlist mtable = wh_wmi_get_mounts(m_whhandle);
+	if(mtable.m_result == 0)
+	{
+		throw sinsp_exception(string("error calling wh_wmi_get_mounts:") + wh_getlasterror(m_whhandle));
+	}
+
+	m_mount_points->reset();
+
+	for(uint32_t j = 0; j < mtable.m_count; ++j)
+	{
+		wh_mounted_fs_info* wmi = &mtable.m_mounts[j];
+
+		mounted_fs fs;
+		fs.device = wmi->device;
+		fs.mount_dir = wmi->mount_dir;
+		fs.type =  wmi->type;
+		fs.available_bytes = wmi->available_bytes;
+		fs.size_bytes = wmi->size_bytes;
+		fs.used_bytes = wmi->used_bytes;
+		fs.total_inodes = 0;
+		fs.used_inodes = 0;
+
+		mount_points[fs.mount_dir] = move(fs);
+	}
+#endif // CYGWING_AGENT
+#endif // !defined(_WIN32) && !defined(CYGWING_AGENT)
 	vector<mounted_fs> ret;
 	for (auto& mp : mount_points)
 		ret.emplace_back(move(mp.second));
@@ -672,6 +820,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 
 vector<string> sinsp_procfs_parser::read_process_cmdline(uint64_t pid)
 {
+#ifndef CYGWING_AGENT
 #ifdef _WIN32
 vector<string> res;
 return res;
@@ -699,10 +848,18 @@ return res;
 	}
 	return args;
 #endif
+#else // CYGWING_AGENT
+	//
+	// This should never be called under Windows since Windows only supports nodriver mode.
+	//
+	ASSERT(false);
+	throw sinsp_exception("sinsp_procfs_parser::read_process_cmdline not implemented on Windows");
+#endif // CYGWING_AGENT
 }
 
 string sinsp_procfs_parser::read_process_name(uint64_t pid)
 {
+#ifndef CYGWING_AGENT
 #ifdef _WIN32
 return "";
 #else
@@ -731,6 +888,13 @@ return "";
 	}
 	return string(name);
 #endif
+#else // CYGWING_AGENT
+	//
+	// This should never be called under Windows since Windows only supports nodriver mode.
+	//
+	ASSERT(false);
+	throw sinsp_exception("sinsp_procfs_parser::read_process_name not implemented on Windows");
+#endif // CYGWING_AGENT
 }
 
 /*
@@ -741,6 +905,7 @@ return "";
  */
 int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_memory_cgroup)
 {
+#ifndef CYGWING_AGENT
     if (!m_is_live_capture) {
         return -1;
     }
@@ -754,6 +919,13 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
     }
 
     return read_cgroup_used_memory_vmrss(container_memory_cgroup);
+#else // CYGWING_AGENT
+	//
+	// This is not required on windows
+	//
+	ASSERT(false);
+	throw sinsp_exception("sinsp_procfs_parser::read_cgroup_used_memory not implemented on Windows");
+#endif // CYGWING_AGENT
 }
 
 /*
@@ -849,6 +1021,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
 /*
  * Get CPU usage from cpuacct cgroup subsystem
  */
+#ifndef CYGWING_AGENT
 double sinsp_procfs_parser::read_cgroup_used_cpu(const string &container_cpuacct_cgroup,
 		string& last_cpuacct_cgroup, int64_t *last_cpu_time)
 {
@@ -988,25 +1161,54 @@ unique_ptr<string> sinsp_procfs_parser::lookup_cgroup_dir(const string& subsys)
 		return cgroup_dir;
 	}
 }
+#endif // CYGWING_AGENT
 
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
 {
+#ifndef CYGWING_AGENT
 	char net_dev_path[100];
 	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/net/dev", scap_get_host_root());
 	static const vector<const char*> BAD_INTERFACE_NAMES = { "lo", "stf", "gif", "dummy", "vmnet", "docker", "veth"};
 	return read_net_dev(net_dev_path, &m_last_in_bytes, &m_last_out_bytes, BAD_INTERFACE_NAMES);
+#else // CYGWING_AGENT
+	wh_machine_bandwidth_info mi = wh_wmi_get_machine_net_totbytes(m_whhandle);
+	uint32_t deltain = mi.m_bytes_in - m_last_in_bytes;
+	uint32_t deltaout = mi.m_bytes_out - m_last_out_bytes;
+
+	if(m_last_in_bytes == 0 && m_last_out_bytes == 0)
+	{
+		m_last_in_bytes = mi.m_bytes_in;
+		m_last_out_bytes = mi.m_bytes_out;
+		return make_pair(0, 0);
+	}
+	else
+	{
+		m_last_in_bytes = mi.m_bytes_in;
+		m_last_out_bytes = mi.m_bytes_out;
+		return make_pair(deltain, deltaout);
+	}
+#endif // CYGWING_AGENT
 }
 
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_proc_network_stats(int64_t pid, uint64_t *old_last_in_bytes,
 																	  uint64_t *old_last_out_bytes)
 {
+#ifndef CYGWING_AGENT
 	char net_dev_path[100];
 	snprintf(net_dev_path, sizeof(net_dev_path), "%s/proc/%ld/net/dev", scap_get_host_root(), pid);
 	return read_net_dev(net_dev_path, old_last_in_bytes, old_last_out_bytes);
+#else // CYGWING_AGENT
+	//
+	// There is no way in windows to get per process network utilization.
+	//
+	pair<uint32_t, uint32_t> ret;
+	return ret;
+#endif // CYGWING_AGENT
 }
 
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names)
 {
+#ifndef CYGWING_AGENT
 	pair<uint32_t, uint32_t> ret;
 
 	if(!m_is_live_capture)
@@ -1065,10 +1267,18 @@ pair<uint32_t, uint32_t> sinsp_procfs_parser::read_net_dev(const string& path, u
 	*old_last_out_bytes = tot_out_bytes;
 
 	return ret;
+#else // CYGWING_AGENT
+	//
+	// This should never be called on Windows.
+	//
+	ASSERT(false);
+	throw sinsp_exception("sinsp_procfs_parser::read_net_dev not implemented on Windows");
+#endif // CYGWING_AGENT
 }
 
 sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid, sinsp_proc_file_stats *old)
 {
+#ifndef CYGWING_AGENT
 	char filepath[SCAP_MAX_PATH_SIZE];
 	snprintf(filepath, SCAP_MAX_PATH_SIZE, "%s/proc/%ld/io", scap_get_host_root(), pid);
 
@@ -1124,10 +1334,18 @@ sinsp_proc_file_stats sinsp_procfs_parser::read_proc_file_stats(int64_t pid, sin
 	*old = last;
 
 	return ret;
+#else // CYGWING_AGENT
+	//
+	// There is no way in windows to get per process file utilization.
+	//
+	sinsp_proc_file_stats ret;
+	return ret;
+#endif // CYGWING_AGENT
 }
 
 string sinsp_procfs_parser::read_proc_root(int64_t pid)
 {
+#ifndef CYGWING_AGENT
 	char path[SCAP_MAX_PATH_SIZE];
 	string root_link = string(scap_get_host_root()) + "/proc/" + to_string(pid) + "/root";
 	ssize_t len = readlink(root_link.c_str(), path, SCAP_MAX_PATH_SIZE - 1);
@@ -1141,6 +1359,9 @@ string sinsp_procfs_parser::read_proc_root(int64_t pid)
 		g_logger.log("Cannot read root link.", sinsp_logger::SEV_WARNING);
 		return "/";
 	}
+#else // CYGWING_AGENT
+	return "/";
+#endif // CYGWING_AGENT
 }
 
 mounted_fs::mounted_fs(const draiosproto::mounted_fs& proto):
@@ -1177,6 +1398,7 @@ mounted_fs_proxy::mounted_fs_proxy():
 
 unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
 {
+#ifndef CYGWING_AGENT
 	unordered_map<string, vector<mounted_fs>> fs_map;
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
@@ -1204,10 +1426,15 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 		}
 	}
 	return fs_map;
+#else
+	ASSERT(false);
+	throw sinsp_exception("mounted_fs_proxy::receive_mounted_fs_list not implemented on Windows");
+#endif
 }
 
 bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &containers)
 {
+#ifndef CYGWING_AGENT
 	sdc_internal::mounted_fs_request req;
 	for(const auto& item : containers)
 	{
@@ -1234,12 +1461,20 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 
 	auto req_s = req.SerializeAsString();
 	return m_output.send(req_s);
+#else
+	ASSERT(false);
+	throw sinsp_exception("mounted_fs_proxy::send_container_list not implemented on Windows");
+#endif
 }
 
-mounted_fs_reader::mounted_fs_reader(bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
+mounted_fs_reader::mounted_fs_reader(sinsp* inspector, bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
 	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
 	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
+#ifndef CYGWING_AGENT
 	m_procfs_parser(0, 0, true),
+#else
+	m_procfs_parser(inspector, 0, 0, true),
+#endif
 	m_remotefs(remotefs)
 {
 	g_logger.add_stderr_log();
@@ -1255,6 +1490,7 @@ int mounted_fs_reader::open_ns_fd(int pid)
 
 bool mounted_fs_reader::change_ns(int destpid)
 {
+#ifndef CYGWING_AGENT
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Set to ns pid %d", destpid);
 	// Go to container mnt ns
 	auto fd = open_ns_fd(destpid);
@@ -1271,10 +1507,15 @@ bool mounted_fs_reader::change_ns(int destpid)
 	}
 	close(fd);
 	return true;
+#else
+	ASSERT(false);
+	throw sinsp_exception("mounted_fs_reader::change_ns not implemented on Windows");
+#endif
 }
 
 int mounted_fs_reader::run()
 {
+#ifndef CYGWING_AGENT
 	auto pid = getpid();
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
@@ -1415,4 +1656,8 @@ int mounted_fs_reader::run()
 			}
 		}
 	}
+#else
+	ASSERT(false);
+	throw sinsp_exception("mounted_fs_reader::run not implemented on Windows");
+#endif
 }

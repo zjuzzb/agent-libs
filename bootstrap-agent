@@ -1,6 +1,10 @@
 #!/bin/bash
 set -exo pipefail
 
+if [ -z "$OS" ]; then
+	OS="NA"
+fi
+
 if [[ $(uname) == "Darwin" ]]; then
   SCRIPT=$(greadlink -f $0)
 else
@@ -22,11 +26,18 @@ if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
 fi
 
-ZLIB_DIR=$DEPENDENCIES/zlib-1.2.11
+if [ $OS != "Windows_NT" ]; then
+	ZLIB_VER=1.2.11
+else
+	ZLIB_VER=1.2.8
+fi
+
+ZLIB_DIR=$DEPENDENCIES/zlib-$ZLIB_VER
+
 if [ ! -d "$ZLIB_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/zlib-1.2.11.tar.gz
-	tar -xzf zlib-1.2.11.tar.gz
+	wget $DEPENDENCIES_URL/zlib-$ZLIB_VER.tar.gz
+	tar -xzf zlib-$ZLIB_VER.tar.gz
 	cd $ZLIB_DIR
 	./configure
 	make
@@ -112,26 +123,28 @@ if [ ! -d "$CARES_DIR" ]; then
 	cd ..
 fi
 
-# Normally, grpc wants to use its own protobuf library, which it
-# expects to get via git submmodules. It mostly has support for using
-# a "system" protobuf/openssl instead, using pkg-config. The Makefile
-# does require one small change to properly set LDFLAGS to the
-# protobuf lib path returned by pkg-config. Hence the patch.
-GRPC_DIR=$DEPENDENCIES/grpc-1.8.1
-if [ ! -d "$GRPC_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/grpc-1.8.1.tar.gz
-	tar -xzf grpc-1.8.1.tar.gz
-	rm -rf grpc-1.8.1/third_party/zlib
-	ln -s $ZLIB_DIR grpc-1.8.1/third_party/zlib
-	if [[ "$ARCH" == "s390x" ]]; then
-		# Boringssl build fails on s390x, rely on openssl instead
-		rm -rf $GRPC_DIR/third_party/boringssl $GRPC_DIR/third_party/boringssl-with-bazel
+if [ $OS != "Windows_NT" ]; then
+	# Normally, grpc wants to use its own protobuf library, which it
+	# expects to get via git submmodules. It mostly has support for using
+	# a "system" protobuf/openssl instead, using pkg-config. The Makefile
+	# does require one small change to properly set LDFLAGS to the
+	# protobuf lib path returned by pkg-config. Hence the patch.
+	GRPC_DIR=$DEPENDENCIES/grpc-1.8.1
+	if [ ! -d "$GRPC_DIR" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/grpc-1.8.1.tar.gz
+		tar -xzf grpc-1.8.1.tar.gz
+		rm -rf grpc-1.8.1/third_party/zlib
+		ln -s $ZLIB_DIR grpc-1.8.1/third_party/zlib
+		if [[ "$ARCH" == "s390x" ]]; then
+			# Boringssl build fails on s390x, rely on openssl instead
+			rm -rf $GRPC_DIR/third_party/boringssl $GRPC_DIR/third_party/boringssl-with-bazel
+		fi
+		cd $GRPC_DIR
+		wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
+		patch < grpc-1.1.4-Makefile.patch
+		HAS_SYSTEM_ZLIB=false LDFLAGS=-static PATH=$PROTOBUF_V3_DIR/target/bin:$PATH PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
 	fi
-	cd $GRPC_DIR
-	wget $DEPENDENCIES_URL/grpc-1.1.4-Makefile.patch
-	patch < grpc-1.1.4-Makefile.patch
-	HAS_SYSTEM_ZLIB=false LDFLAGS=-static PATH=$PATH:$PROTOBUF_V3_DIR/target/bin PKG_CONFIG_PATH=$OPENSSL_DIR:$PROTOBUF_V3_DIR:$CARES_DIR make grpc_cpp_plugin static_cxx static_c
 fi
 
 POCO_VER=1.7.7
@@ -151,16 +164,18 @@ if [ ! -d "$POCO_DIR" ]; then
 	cd ..
 fi
 
-GTEST_DIR=$DEPENDENCIES/gtest-1.7.0
-if [ ! -d "$GTEST_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/gtest-1.7.0.zip
-	unzip gtest-1.7.0.zip
-	cd $GTEST_DIR
-	g++ -Iinclude -c fused-src/gtest/gtest-all.cc -o gtest-all.o
-	g++ -Iinclude -c fused-src/gtest/gtest_main.cc -o gtest_main.o
-  	ar -rv libgtest.a gtest-all.o
-  	ar -rv libgtest_main.a gtest_main.o
+if [ $OS != "Windows_NT" ]; then
+	GTEST_DIR=$DEPENDENCIES/gtest-1.7.0
+	if [ ! -d "$GTEST_DIR" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/gtest-1.7.0.zip
+		unzip gtest-1.7.0.zip
+		cd $GTEST_DIR
+		g++ -Iinclude -c fused-src/gtest/gtest-all.cc -o gtest-all.o
+		g++ -Iinclude -c fused-src/gtest/gtest_main.cc -o gtest_main.o
+		ar -rv libgtest.a gtest-all.o
+		ar -rv libgtest_main.a gtest_main.o
+	fi
 fi
 
 if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
@@ -169,14 +184,16 @@ if [ ! -d "$DEPENDENCIES/simpleopt" ]; then
 	unzip simpleopt-3.6.zip
 fi
 
-CMAKE_DIR=$DEPENDENCIES/cmake-3.3.2
-if [ ! -d "$CMAKE_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/cmake-3.3.2.tar.gz
-	tar -xzf cmake-3.3.2.tar.gz
-	cd $CMAKE_DIR
-	./bootstrap
-	make
+if [ $OS != "Windows_NT" ]; then
+	CMAKE_DIR=$DEPENDENCIES/cmake-3.3.2
+	if [ ! -d "$CMAKE_DIR" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/cmake-3.3.2.tar.gz
+		tar -xzf cmake-3.3.2.tar.gz
+		cd $CMAKE_DIR
+		./bootstrap
+		make
+	fi
 fi
 
 if [[ "$ARCH" == "s390x" ]]; then
@@ -189,13 +206,23 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 	make linux
 fi
 else
-LUAJIT_DIR=$DEPENDENCIES/LuaJIT-2.0.3
+if [ $OS != "Windows_NT" ]; then
+	LUAJIT_NAME=LuaJIT-2.0.3
+else
+	LUAJIT_NAME=LuaJIT-2.0.5
+fi
+LUAJIT_DIR=$DEPENDENCIES/$LUAJIT_NAME
+
 if [ ! -d "$LUAJIT_DIR" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/LuaJIT-2.0.3.tar.gz
-	tar -xzf LuaJIT-2.0.3.tar.gz
+	wget $DEPENDENCIES_URL/$LUAJIT_NAME.tar.gz
+	tar -xzf $LUAJIT_NAME.tar.gz
 	cd $LUAJIT_DIR
-	make
+	if [ $OS != "Windows_NT" ]; then
+		make
+	else
+		make BUILDMODE=static
+	fi
 fi
 fi
 
@@ -257,27 +284,22 @@ if [ ! -d "$B64_DIR" ]; then
 fi
 
 # On s390x we'll rely on Suse's jdk 1.7.0 for now
-if [[ "$ARCH" == "s390x" ]]; then
-JAVA_DIR=/usr/lib64/jvm/java-1.7.0-openjdk-1.7.0
-else
-JAVA_DIR=$DEPENDENCIES/jdk1.7.0_75
-if [ ! -d "$JAVA_DIR" ]; then
-	cd $DEPENDENCIES
-	if [[ $ARCH == "x86_64" ]]; then
-		TARFILE=jdk-7u75-linux-x64.tar.bz2
+if [ $OS != "Windows_NT" ]; then
+	if [[ "$ARCH" == "s390x" ]]; then
+	JAVA_DIR=/usr/lib64/jvm/java-1.7.0-openjdk-1.7.0
 	else
-		TARFILE=jdk-7u75-linux-i586.tar.bz2
+	JAVA_DIR=$DEPENDENCIES/jdk1.7.0_75
+	if [ ! -d "$JAVA_DIR" ]; then
+		cd $DEPENDENCIES
+		if [[ $ARCH == "x86_64" ]]; then
+			TARFILE=jdk-7u75-linux-x64.tar.bz2
+		else
+			TARFILE=jdk-7u75-linux-i586.tar.bz2
+		fi
+		wget $DEPENDENCIES_URL/$TARFILE
+		tar -xjf $TARFILE
 	fi
-	wget $DEPENDENCIES_URL/$TARFILE
-	tar -xjf $TARFILE
-fi
-fi
-
-MAVEN_DIR=$DEPENDENCIES/apache-maven-3.2.5
-if [ ! -d "$MAVEN_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/apache-maven-3.2.5-bin.tar.gz
-	tar -xzf apache-maven-3.2.5-bin.tar.gz
+	fi
 fi
 
 BOOST_DIR=$DEPENDENCIES/boost_1_57_0
@@ -295,7 +317,11 @@ if [ ! -d "$YAMLCPP_DIR" ]; then
 	cd $YAMLCPP_DIR
 	mkdir build
 	cd build
-	BOOST_ROOT=$BOOST_DIR $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+	if [ $OS != "Windows_NT" ]; then
+		BOOST_ROOT=$BOOST_DIR $CMAKE_DIR/bin/cmake -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+	else
+		BOOST_ROOT=$BOOST_DIR /usr/bin/cmake -G"Unix Makefiles" -DCMAKE_INSTALL_PREFIX=$YAMLCPP_DIR/target -DYAML_CPP_BUILD_CONTRIB=OFF ..
+	fi
 	make install
 fi
 
@@ -306,72 +332,74 @@ if [ ! -d "${SCONS_DIR}" ]; then
 	tar xfz scons-2.3.4.tar.gz
 fi
 
-PYTHON_VER=2.7.14
-PYTHON_EXT=tgz
-PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
-if [ ! -d "${PYTHON_DIR}" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/Python-$PYTHON_VER.$PYTHON_EXT
-	tar xfz Python-$PYTHON_VER.$PYTHON_EXT
-	cd $PYTHON_DIR
-	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
-	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
-	make
-	make install
-fi
+if [ $OS != "Windows_NT" ]; then
+	PYTHON_VER=2.7.14
+	PYTHON_EXT=tgz
+	PYTHON_DIR=$DEPENDENCIES/Python-$PYTHON_VER
+	if [ ! -d "${PYTHON_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/Python-$PYTHON_VER.$PYTHON_EXT
+		tar xfz Python-$PYTHON_VER.$PYTHON_EXT
+		cd $PYTHON_DIR
+		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON_DIR/target --with-ensurepip=install --enable-unicode=ucs4
+		make
+		make install
+	fi
 
-PYTHON26_VER=2.6.9
-PYTHON26_EXT=tgz
-PYTHON26_DIR=$DEPENDENCIES/Python-$PYTHON26_VER
-if [ ! -d "${PYTHON26_DIR}" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/Python-$PYTHON26_VER.$PYTHON26_EXT
-	tar xfz Python-$PYTHON26_VER.$PYTHON26_EXT
-	cd $PYTHON26_DIR
-	echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
-	./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
-	make
-	make install
-	wget $DEPENDENCIES_URL/get-pip.py
-	echo "setuptools==36.8.0" > pip-reqs.txt
-	echo "wheel==0.29.0" >> pip-reqs.txt
-	./target/bin/python get-pip.py --no-setuptools --no-wheel -r pip-reqs.txt
-fi
+	PYTHON26_VER=2.6.9
+	PYTHON26_EXT=tgz
+	PYTHON26_DIR=$DEPENDENCIES/Python-$PYTHON26_VER
+	if [ ! -d "${PYTHON26_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/Python-$PYTHON26_VER.$PYTHON26_EXT
+		tar xfz Python-$PYTHON26_VER.$PYTHON26_EXT
+		cd $PYTHON26_DIR
+		echo "zlib zlibmodule.c -I${ZLIB_DIR}/ -L${ZLIB_DIR}/ -lz" >> Modules/Setup.dist 
+		./configure CPPFLAGS="-DUSE_SSL -I${OPENSSL_DIR}/target/include" LDFLAGS="-L${OPENSSL_DIR}/target/lib -Wl,-rpath=${OPENSSL_DIR}/target/lib" --prefix=$PYTHON26_DIR/target --enable-unicode=ucs4
+		make
+		make install
+		wget $DEPENDENCIES_URL/get-pip.py
+		echo "setuptools==36.8.0" > pip-reqs.txt
+		echo "wheel==0.29.0" >> pip-reqs.txt
+		./target/bin/python get-pip.py --no-setuptools --no-wheel -r pip-reqs.txt
+	fi
 
-if [ -z $STATSITE_VERSION ]; then
-  STATSITE_VERSION=0.7.0-sysdig5
-fi
-STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
-if [ ! -d "${STATSITE_DIR}" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/statsite-private-$STATSITE_VERSION.zip
-	unzip statsite-private-$STATSITE_VERSION.zip
-	cd $STATSITE_DIR
-	$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
-fi
+	if [ -z $STATSITE_VERSION ]; then
+	  STATSITE_VERSION=0.7.0-sysdig5
+	fi
+	STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
+	if [ ! -d "${STATSITE_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/statsite-private-$STATSITE_VERSION.zip
+		unzip statsite-private-$STATSITE_VERSION.zip
+		cd $STATSITE_DIR
+		$PYTHON_DIR/target/bin/python $SCONS_DIR/script/scons
+	fi
 
-POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.15
-if [ ! -d "${POSTGRES_DIR}" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/postgresql-9.4.15.tar.bz2
-	tar xfj postgresql-9.4.15.tar.bz2
-	cd $POSTGRES_DIR
-	./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
-	make
-	make -C src/bin install
-	make -C src/include install
-	make -C src/interfaces install
-fi
+	POSTGRES_DIR=$DEPENDENCIES/postgresql-9.4.15
+	if [ ! -d "${POSTGRES_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/postgresql-9.4.15.tar.bz2
+		tar xfj postgresql-9.4.15.tar.bz2
+		cd $POSTGRES_DIR
+		./configure --prefix=$POSTGRES_DIR/target --without-readline --without-zlib
+		make
+		make -C src/bin install
+		make -C src/include install
+		make -C src/interfaces install
+	fi
 
-GPERFTOOLS_DIR=$DEPENDENCIES/gperftools-2.5
-if [ ! -d "${GPERFTOOLS_DIR}" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/gperftools-2.5.tar.gz
-	tar xfz gperftools-2.5.tar.gz
-	cd $GPERFTOOLS_DIR
-	./configure --prefix=${GPERFTOOLS_DIR}/target --enable-emergency-malloc --disable-libunwind
-	make
-	make install
+	GPERFTOOLS_DIR=$DEPENDENCIES/gperftools-2.5
+	if [ ! -d "${GPERFTOOLS_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/gperftools-2.5.tar.gz
+		tar xfz gperftools-2.5.tar.gz
+		cd $GPERFTOOLS_DIR
+		./configure --prefix=${GPERFTOOLS_DIR}/target --enable-emergency-malloc --disable-libunwind
+		make
+		make install
+	fi
 fi
 
 # Falco Engine dependencies
@@ -411,6 +439,15 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/falco/userspace/engine/lua"
 fi
 
+if [ $OS == "Windows_NT" ]; then
+	WINHAL_DIR=$DEPENDENCIES/dragent-win-hal-1.0
+	if [ ! -d "${WINHAL_DIR}" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/dragent-win-hal-1.0.zip
+		unzip dragent-win-hal-1.0.zip
+	fi
+fi
+
 if [ -z "$AGENT_VERSION" ]; then
 	AGENT_VERSION="0.1.1dev"
 fi
@@ -420,17 +457,33 @@ if [ -z "$BUILD_DRIVER" ]; then
 fi
 
 if [ -z "$ONLY_DEPS" ]; then
-  AGENT_BUILD_DIR=$WORKDIR/agent/build
-  mkdir -p $AGENT_BUILD_DIR/debug
-  mkdir -p $AGENT_BUILD_DIR/release
+	AGENT_BUILD_DIR=$WORKDIR/agent/build
+	mkdir -p $AGENT_BUILD_DIR/debug
+	mkdir -p $AGENT_BUILD_DIR/release
 
-  if [ -z "$BUILD_DEB_ONLY" ]; then
-    BUILD_DEB_ONLY="OFF"
-  fi
+	if [ $OS != "Windows_NT" ]; then
+		if [ -z "$BUILD_DEB_ONLY" ]; then
+			BUILD_DEB_ONLY="OFF"
+		fi
 
-  cd $AGENT_BUILD_DIR/debug
-  $CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DPACKAGE_DEB_ONLY=$BUILD_DEB_ONLY $AGENT_SOURCEDIR
-  cd $AGENT_BUILD_DIR/release
-  $CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DPACKAGE_DEB_ONLY=$BUILD_DEB_ONLY $AGENT_SOURCEDIR
+		cd $AGENT_BUILD_DIR/debug
+		$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DPACKAGE_DEB_ONLY=$BUILD_DEB_ONLY $AGENT_SOURCEDIR
+		cd $AGENT_BUILD_DIR/release
+		$CMAKE_DIR/bin/cmake -DCMAKE_BUILD_TYPE=Release -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DPACKAGE_DEB_ONLY=$BUILD_DEB_ONLY $AGENT_SOURCEDIR
+	else
+		# In Windows, we don't build the cointerface protobufs, and therefore we just create
+		# two empty placeholder files here
+		mkdir -p $AGENT_BUILD_DIR/debug/userspace/draiosproto/
+		mkdir -p $AGENT_BUILD_DIR/release/userspace/draiosproto/
+		echo "" > $AGENT_BUILD_DIR/debug/userspace/draiosproto/sdc_internal.pb.cc
+		echo "" > $AGENT_BUILD_DIR/release/userspace/draiosproto/sdc_internal.pb.cc
+		echo "" > $AGENT_BUILD_DIR/debug/userspace/draiosproto/sdc_internal.grpc.pb.cc
+		echo "" > $AGENT_BUILD_DIR/release/userspace/draiosproto/sdc_internal.grpc.pb.cc
+
+		cd $AGENT_BUILD_DIR/debug
+		/usr/bin/cmake -G"Unix Makefiles" -DCYGWIN=TRUE -DCMAKE_BUILD_TYPE=Debug -DDRAGENT_WINHAL_DIR=$WINHAL_DIR -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
+		cd $AGENT_BUILD_DIR/release
+		/usr/bin/cmake -G"Unix Makefiles" -DCYGWIN=TRUE -DCMAKE_BUILD_TYPE=Release -DDRAGENT_WINHAL_DIR=$WINHAL_DIR -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} $AGENT_SOURCEDIR
+	fi
 fi
 

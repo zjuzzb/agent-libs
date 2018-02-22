@@ -3,6 +3,7 @@
 #include "infrastructure_state.h"
 #include "utils.h"
 
+#ifndef CYGWING_AGENT
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
 bool infrastructure_state::get_cached_result(std::string &entity_id, size_t h, bool *res)
@@ -1184,7 +1185,6 @@ std::string infrastructure_state::get_k8s_cluster_id() const
 	return "";
 }
 
-
 void infrastructure_state::purge_tags_and_copy(uid_t key, const draiosproto::container_group& cg)
 {
 	ASSERT(m_state.find(key) != std::end(m_state));
@@ -1192,3 +1192,4 @@ void infrastructure_state::purge_tags_and_copy(uid_t key, const draiosproto::con
 
 	m_k8s_limits.purge_tags(*m_state[key].get());
 }
+#endif // CYGWING_AGENT

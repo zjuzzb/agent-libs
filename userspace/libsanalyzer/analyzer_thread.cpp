@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <fnmatch.h>
+#include <cstring>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -553,11 +554,16 @@ void thread_analyzer_info::add_completed_client_transaction(sinsp_partial_transa
 
 bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
 {
+#ifndef CYGWING_AGENT
 	for (const auto& ac_found : m_app_checks_found)
 	{
 		if (!fnmatch(pattern.c_str(), ac_found.c_str(), FNM_EXTMATCH))
 			return true;
 	}
+#else
+	throw sinsp_exception("thread_analyzer_info::found_app_check_by_fnmatch not implemented on Windows");
+	ASSERT(false);
+#endif
 	return false;
 }
 

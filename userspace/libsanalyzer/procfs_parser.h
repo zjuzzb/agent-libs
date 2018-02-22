@@ -1,8 +1,12 @@
 #pragma once
 
 #include "posix_queue.h"
+#ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
+#endif
 #include "mount_points_limits.h"
+
+typedef struct wh_t wh_t;
 
 class mounted_fs
 {
@@ -65,7 +69,11 @@ struct sinsp_proc_file_stats {
 class sinsp_procfs_parser
 {
 public:
+#ifndef CYGWING_AGENT
 	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
+#else
+	sinsp_procfs_parser(sinsp* inspector, uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
+#endif	
 	void read_mount_points(mount_points_limits::sptr_t mount_points);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
@@ -73,7 +81,9 @@ public:
 	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled,
 										   const string& mtab="/etc/mtab");
 
+#ifndef CYGWING_AGENT
 	void set_global_cpu_jiffies();
+#endif
 
 	// must call set_global_cpu_jiffies() before calling this function
 	// note that, due to the non-atomic (loop) nature of process CPU times collection,
@@ -103,6 +113,7 @@ public:
 	string read_proc_root(int64_t pid);
 
 private:
+#ifndef CYGWING_AGENT
 	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 	void lookup_memory_cgroup_dir();
 	void lookup_cpuacct_cgroup_dir();
@@ -110,7 +121,7 @@ private:
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
-
+#endif
 	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
 
     // Current implementation for read_cgroup_used_memory()
@@ -141,6 +152,11 @@ private:
 	vector<uint64_t> m_old_work;
 	vector<uint64_t> m_old_total;
 
+#ifdef CYGWING_AGENT
+	wh_t* m_whhandle;
+#endif
+
+#ifndef CYGWING_AGENT
 	// utility class to deal with jiffie counters housekeeping
 	class jiffies_t
 	{
@@ -168,8 +184,10 @@ private:
 	jiffies_t m_global_jiffies;
 
 	friend class jiffies_t;
+#endif // CYGWING_AGENT
 };
 
+#ifndef CYGWING_AGENT
 inline void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 {
 	m_memory_cgroup_dir = lookup_cgroup_dir("memory");
@@ -185,7 +203,9 @@ inline void sinsp_procfs_parser::assign_jiffies(vector<double>& vec, uint64_t de
 	double val = (double)delta_jiffies * 100 / delta_tot_jiffies;
 	vec.push_back(std::min(val, 100.0));
 }
+#endif
 
+#ifndef CYGWING_AGENT
 inline void sinsp_procfs_parser::set_global_cpu_jiffies()
 {
 	m_global_jiffies.set();
@@ -205,6 +225,7 @@ inline void sinsp_procfs_parser::jiffies_t::set_current()
 {
 	m_current_total = m_procfs_parser.get_global_cpu_jiffies(&m_current_steal);
 }
+#endif // CYGWING_AGENT
 
 class mounted_fs_proxy
 {
@@ -220,7 +241,7 @@ private:
 class mounted_fs_reader
 {
 public:
-	mounted_fs_reader(bool remotefs, const mount_points_filter_vec& mount_points, unsigned mounts_limit_size);
+	mounted_fs_reader(sinsp* inspector, bool remotefs, const mount_points_filter_vec& mount_points, unsigned mounts_limit_size);
 	int run();
 private:
 	static const uint16_t ERROR_EXIT = 1;

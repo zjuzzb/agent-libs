@@ -1,3 +1,4 @@
+#ifndef CYGWING_AGENT
 #include <google/protobuf/text_format.h>
 
 #include "sinsp_worker.h"
@@ -589,3 +590,4 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 
 	m_policy_throttled_counts.clear();
 }
+#endif // CYGWING_AGENT

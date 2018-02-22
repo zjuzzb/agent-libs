@@ -16,10 +16,14 @@
 #include <unordered_set>
 #include "sinsp_curl.h"
 #include "user_event.h"
+#ifndef CYGWING_AGENT
 #include "k8s_api_handler.h"
+#endif
 #include "procfs_parser.h"
+#ifndef CYGWING_AGENT
 #include "coclient.h"
 #include "infrastructure_state.h"
+#endif
 #include "internal_metrics.h"
 
 //
@@ -48,10 +52,12 @@ class sinsp_counters;
 class sinsp_analyzer_parsers;
 class sinsp_chisel;
 class sinsp_chisel_details;
+#ifndef CYGWING_AGENT
 class k8s;
 class k8s_delegator;
 class mesos;
 class docker;
+#endif
 class uri;
 class sinsp_baseliner;
 class tracer_emitter;
@@ -405,6 +411,7 @@ public:
 		}
 	}
 
+#ifndef CYGWING_AGENT
 	void set_prometheus_conf(const prometheus_conf& pconf)
 	{
 		m_prom_conf = pconf;
@@ -413,6 +420,7 @@ public:
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
+#endif	
 #endif // _WIN32
 
 	void set_containers_limit(const uint32_t value)
@@ -448,6 +456,7 @@ public:
 	void set_percentiles();
 	void emit_percentiles_config();
 
+#ifndef CYGWING_AGENT
 	infrastructure_state *infra_state();
 
 	void set_use_new_k8s(bool v)
@@ -459,13 +468,16 @@ public:
 	{
 		coclient::set_max_loop_evts(max_evts);
 	}
+#endif
 
 	bool recent_sinsp_events_dropped()
 	{
 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
 	}
 
+#ifndef CYGWING_AGENT
 	void init_k8s_limits();
+#endif
 	//
 	// Test tool detection state
 	//
@@ -494,6 +506,7 @@ VISIBILITY_PRIVATE
 	void emit_full_connections();
 	string detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func);
 	void log_timed_error(time_t& last_attempt, const std::string& err);
+#ifndef CYGWING_AGENT
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
 	std::string get_k8s_api_server_proc(sinsp_threadinfo* main_tinfo);
@@ -509,6 +522,7 @@ VISIBILITY_PRIVATE
 	void emit_k8s();
 	void reset_k8s(time_t& last_attempt, const std::string& err);
 	uint32_t get_mesos_api_server_port(sinsp_threadinfo* main_tinfo);
+#endif
 	sinsp_threadinfo* get_main_thread_info(int64_t& tid);
 	std::string& detect_mesos(std::string& mesos_api_server, uint32_t port);
 	string detect_mesos(sinsp_threadinfo* main_tinfo = 0);
@@ -618,8 +632,10 @@ VISIBILITY_PRIVATE
 	//
 	// Checking Docker swarm state every 10 seconds
 	//
+#ifndef CYGWING_AGENT
 	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
 	coclient m_coclient;
+#endif
 
 	//
 	// The callback we invoke when a sample is ready
@@ -720,7 +736,9 @@ VISIBILITY_PRIVATE
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 
+#ifndef CYGWING_AGENT
 	infrastructure_state* m_infrastructure_state = NULL;
+#endif
 
 	//
 	// Chisel-generated metrics infrastructure
@@ -754,9 +772,12 @@ VISIBILITY_PRIVATE
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 
+#ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
+#endif	
 #endif
 
+#ifndef CYGWING_AGENT
 	unique_ptr<k8s> m_k8s;
 	bool m_use_new_k8s;
 	unique_ptr<k8s_delegator> m_k8s_delegator;
@@ -796,6 +817,7 @@ VISIBILITY_PRIVATE
 	bool m_has_docker;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
+#endif // CYGWING_AGENT
 
 	vector<string> m_container_patterns;
 	uint32_t m_containers_limit;

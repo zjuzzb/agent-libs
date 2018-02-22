@@ -13,8 +13,12 @@
 #include "logger.h"
 #include "monitor.h"
 #include "utils.h"
+#ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
 #include <grpc/support/log.h>
+#else
+#include "windows_helpers.h"
+#endif
 #include <sys/sysinfo.h>
 #include <sys/utsname.h>
 #include <procfs_parser.h>
@@ -40,6 +44,9 @@ static void g_usr2_signal_callback(int sig)
 dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
+#ifdef CYGWING_AGENT
+	m_windows_service_parent(false),
+#endif
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
 	m_internal_metrics(new internal_metrics()),
@@ -129,6 +136,13 @@ void dragent_app::defineOptions(OptionSet& options)
 		Option("version", "v", "display version")
 			.required(false)
 			.repeatable(false));
+
+#ifdef CYGWING_AGENT
+	options.addOption(
+		Option("serviceparent", "", "assume we are run by a windows service and listen to the service event.")
+			.required(false)
+			.repeatable(false));
+#endif
 }
 
 void dragent_app::handleOption(const std::string& name, const std::string& value)
@@ -175,6 +189,12 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	{
 		m_version_requested = true;
 	}
+#ifdef CYGWING_AGENT
+	else if(name == "serviceparent")
+	{
+		m_windows_service_parent = true;
+	}
+#endif
 }
 
 void dragent_app::displayHelp()
@@ -186,6 +206,7 @@ void dragent_app::displayHelp()
 	helpFormatter.format(std::cout);
 }
 
+#ifndef CYGWING_AGENT
 static void dragent_gpr_log(gpr_log_func_args *args)
 {
 	// If logging hasn't been set up yet, skip the message. Add an
@@ -216,6 +237,7 @@ static void dragent_gpr_log(gpr_log_func_args *args)
 		break;
 	}
 }
+#endif
 
 int dragent_app::main(const std::vector<std::string>& args)
 {
@@ -234,7 +256,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 	//
 	// Set up logging with grpc.
 	//
+#ifndef CYGWING_AGENT
 	gpr_set_log_function(dragent_gpr_log);
+#endif
 
 	//
 	// Make sure the agent never creates world-writable files
@@ -245,7 +269,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 	// Never move this further down!
 	// It's important that the pidfile gets created immediately!
 	//
+#ifndef CYGWING_AGENT
 	monitor monitor_process(m_pidfile);
+#else
+	monitor monitor_process(m_pidfile, m_windows_service_parent);
+#endif
 
 	m_configuration.init(this);
 #ifndef _WIN32
@@ -330,16 +358,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 			{
 				args[j++] = opt.c_str();
 			}
-			args[j++] = "-Djava.library.path=/opt/draios/lib";
+
+			args[j++] = (string("-Djava.library.path=") + m_configuration.m_root_dir + "/lib").c_str();
 			args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.readTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-jar";
-			File sdjagent_jar("/opt/draios/share/sdjagent.jar");
+			File sdjagent_jar(m_configuration.m_root_dir + "/share/sdjagent.jar");
+
 			if(sdjagent_jar.exists())
 			{
-				args[j++] = "/opt/draios/share/sdjagent.jar";
+				args[j++] = (m_configuration.m_root_dir + "/share/sdjagent.jar").c_str();
 			}
 			else
 			{
@@ -381,7 +411,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
 			{
-				execl("/opt/draios/bin/statsite", "statsite", "-f", "/opt/draios/etc/statsite.ini", (char*)NULL);
+				execl((m_configuration.m_root_dir + "/bin/statsite").c_str(), "statsite", "-f", 
+					(m_configuration.m_root_dir + "/etc/statsite.ini").c_str(), (char*)NULL);
 			}
 			else
 			{
@@ -449,28 +480,31 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			this->m_sdchecks_pipes->attach_child();
 
-			setenv("LD_LIBRARY_PATH", "/opt/draios/lib", 1);
+			setenv("LD_LIBRARY_PATH", (m_configuration.m_root_dir + "/lib").c_str(), 1);
+			execl(this->m_configuration.m_python_binary.c_str(), "python", (m_configuration.m_root_dir + "/bin/sdchecks").c_str(), NULL);
 
-			execl(this->m_configuration.m_python_binary.c_str(), "python", "/opt/draios/bin/sdchecks", NULL);
 			return (EXIT_FAILURE);
 		});
 		m_sinsp_worker.set_app_checks_enabled(true);
 	}
+#ifndef CYGWING_AGENT
 	if(m_configuration.m_system_supports_containers)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
 		state->set_name("mountedfs_reader");
-		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);		
 		monitor_process.emplace_process("mountedfs_reader", [this]()
 		{
 			m_mounted_fs_reader_pipe->attach_child();
-			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
-					       this->m_configuration.m_mounts_filter,
-					       this->m_configuration.m_mounts_limit_size);
+			mounted_fs_reader proc((sinsp*)m_sinsp_worker.get_inspector(), 
+						this->m_configuration.m_remotefs_enabled,
+						this->m_configuration.m_mounts_filter,
+						this->m_configuration.m_mounts_limit_size);
 			return proc.run();
 		});
 	}
+#endif
 	if(m_configuration.m_cointerface_enabled)
 	{
 		m_cointerface_pipes = make_unique<pipe_manager>();
@@ -482,7 +516,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			m_cointerface_pipes->attach_child_stdio();
 
-			execl("/opt/draios/bin/cointerface", "cointerface", (char *) NULL);
+			execl((m_configuration.m_root_dir + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
+
 			return (EXIT_FAILURE);
 		});
 	}
@@ -495,6 +530,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 				this->m_statsite_pipes.reset();
 				m_statsite_forwarder_pipe.reset();
 				this->m_cointerface_pipes.reset();
+#ifndef CYGWING_AGENT
 				for(const auto& queue : {"/sdc_app_checks_in", "/sdc_app_checks_out",
 									  "/sdc_mounted_fs_reader_out", "/sdc_mounted_fs_reader_in",
 									  "/sdc_sdjagent_out", "/sdc_sdjagent_in", "/sdc_statsite_forwarder_in"})
@@ -503,11 +539,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 				}
 
 				coclient::cleanup();
+#endif				
 			});
 	return monitor_process.run();
-#else
+#else // _WIN32
 	return sdagent_main();
-#endif
+#endif // _WIN32
 }
 
 int dragent_app::sdagent_main()
@@ -569,6 +606,7 @@ int dragent_app::sdagent_main()
 	{
 		check_for_clean_shutdown();
 
+#ifndef CYGWING_AGENT
 		if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
 		{
 			// Heap profiling needs TCMALLOC_SAMPLE_PARAMETER to be set to a non-zero value
@@ -585,6 +623,7 @@ int dragent_app::sdagent_main()
 				ASSERT(false);
 			}
 		}
+#endif
 	}
 
 	ExitCode exit_code;
@@ -619,15 +658,28 @@ int dragent_app::sdagent_main()
 			watchdog_check(uptime_s);
 		}
 
+#ifdef CYGWING_AGENT
+		if(m_windows_service_parent)
+		{
+			if(!m_windows_helpers.is_parent_service_running())
+			{
+				g_log->information("Windows service stopped");
+				dragent_configuration::m_terminate = true;
+				break;
+			}
+		}
+#endif
 		Thread::sleep(1000);
 		++uptime_s;
 	}
 
+#ifndef CYGWING_AGENT
 	if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
 	{
 		// Do a throttled dump in case we don't have anything recent
 		dump_heap_profile(uptime_s, true);
 	}
+#endif
 
 	if(dragent_error_handler::m_exception)
 	{
@@ -753,6 +805,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
+#ifndef CYGWING_AGENT
 	if(m_configuration.m_cointerface_enabled)
 	{
 		if(!m_coclient) {
@@ -787,6 +840,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		// Try to read any responses
 		m_coclient->process_queue();
 	}
+#endif // CYGWING_AGENT
 
 	// We now have started all the subprocesses, so pass them to internal_metrics
 	update_subprocesses();
@@ -798,6 +852,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
 #endif
 
+#ifndef CYGWING_AGENT
 		const bool heap_profiling = (m_configuration.m_watchdog_heap_profiling_interval_s > 0);
 		bool dump_heap = false;
 		bool throttle = true;
@@ -845,6 +900,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			ASSERT(heap_profiling);
 			dump_heap_profile(uptime_s, throttle);
 		}
+#endif
 	}
 	else
 	{
@@ -925,6 +981,7 @@ void dragent_app::update_subprocesses()
 	m_internal_metrics->set_subprocesses(subprocs);
 }
 
+#ifndef CYGWING_AGENT
 void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
 {
 	ASSERT(m_configuration.m_watchdog_heap_profiling_interval_s > 0);
@@ -954,6 +1011,7 @@ void dragent_app::dump_heap_profile(uint64_t uptime_s, bool throttle)
 	crash_handler::log_crashdump_message(heap_sample.c_str());
 	crash_handler::log_crashdump_message(separator);
 }
+#endif
 
 void dragent_app::check_for_clean_shutdown()
 {

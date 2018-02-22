@@ -20,6 +20,7 @@ bool mount_points_limits::allow(const std::string& device,
 				const std::string& fs_type,
 				const std::string& mount_dir)
 {
+#ifndef CYGWING_AGENT
 	auto filter_it = std::find_if(m_filters.begin(), m_filters.end(),
 			      [&](const user_configured_filter& f) -> bool {
 			      vector<string> patterns = sinsp_split(f.to_string(), '|');
@@ -33,6 +34,7 @@ bool mount_points_limits::allow(const std::string& device,
 		if (!filter_it->included())
 			return false;
 	}
+#endif
 
 	return true;
 }

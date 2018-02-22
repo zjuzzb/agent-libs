@@ -1,4 +1,5 @@
 #pragma once
+#ifndef CYGWING_AGENT
 #ifndef _WIN32
 
 #include <string>
@@ -82,3 +83,4 @@ private:
 };
 
 #endif // _WIN32
+#endif // CYGWING_AGENT

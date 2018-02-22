@@ -2,6 +2,7 @@
 // Alternatively, you can directly use the grpc async classes
 // directly. This wrapper might be a bit easier to use.
 
+#ifndef CYGWING_AGENT
 #pragma once
 
 #include <functional>
@@ -110,3 +111,4 @@ protected:
 	bool m_outstanding_swarm_state;
 	static uint32_t m_max_loop_evts;
 };
+#endif // CYGWING_AGENT

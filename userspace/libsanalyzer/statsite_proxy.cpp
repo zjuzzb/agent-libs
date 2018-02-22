@@ -1,6 +1,7 @@
 //
 // Created by Luca Marturana on 30/03/15.
 //
+
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "analyzer_int.h"
@@ -417,6 +418,7 @@ statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes, uint16
 
 int statsite_forwarder::run()
 {
+#ifndef CYGWING_AGENT
 	ErrorHandler::set(this);
 
 	g_logger.format(sinsp_logger::SEV_INFO, "Info Starting with pid=%d\n", getpid());
@@ -488,6 +490,10 @@ int statsite_forwarder::run()
 	}
 	reactor_thread.join();
 	return m_exitcode;
+#else // CYGWING_AGENT
+	ASSERT(false);
+	throw sinsp_exception("statsite_forwarder::run not implemented on Windows");
+#endif // CYGWING_AGENT
 }
 
 void statsite_forwarder::exception(const Poco::Exception& ex)

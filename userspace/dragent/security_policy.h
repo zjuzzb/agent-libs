@@ -1,5 +1,5 @@
+#ifndef CYGWING_AGENT
 #pragma once
-
 // A security policy represents a step in the security event
 // workflow. It contains a scope and a set of actions to perform if
 // the policy triggers.
@@ -856,3 +856,4 @@ private:
 		return policy->has_baseline_details() && policy->baseline_details().process_enabled();
 	}
 };
+#endif // CYGWING_AGENT

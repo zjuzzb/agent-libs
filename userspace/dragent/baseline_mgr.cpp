@@ -1,7 +1,7 @@
 #include "baseline_mgr.h"
-
 #include "infrastructure_state.h"
 
+#ifndef CYGWING_AGENT
 security_baseline::security_baseline(const draiosproto::baseline &baseline)
 	: draiosproto::baseline(baseline)
 {
@@ -141,3 +141,4 @@ std::vector<const security_baseline *> baseline_mgr::lookup(const security_polic
 
 	return bls;
 }
+#endif // CYGWING_AGENT

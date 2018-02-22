@@ -1,3 +1,4 @@
+#ifndef CYGWING_AGENT
 #include <string>
 #include <memory>
 
@@ -1743,3 +1744,4 @@ bool process_policies::add_matchlist_details(security_policy *policy,
 
 	return added;
 }
+#endif // CYGWING_AGENT

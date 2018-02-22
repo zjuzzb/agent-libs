@@ -10,7 +10,9 @@
 #include "user_event.h"
 #include "metric_limits.h"
 #include "label_limits.h"
+#ifndef CYGWING_AGENT
 #include "mesos.h"
+#endif
 
 using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 
@@ -87,6 +89,9 @@ public:
 	void set_blacklisted_ports(const vector<uint16_t> & v);
 	void set_blacklisted_ports(const ports_set & v);
 	const ports_set & get_blacklisted_ports() const;
+	unsigned get_statsd_limit() const;
+	void set_statsd_limit(unsigned value);
+#ifndef CYGWING_AGENT
 	void set_k8s_api_server(const string& k8s_api);
 	const string & get_k8s_api_server() const;
 	bool get_k8s_autodetect_enabled() const;
@@ -115,8 +120,6 @@ public:
 	const std::set<std::string>& get_k8s_extensions() const;
 	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
 	const std::string& get_k8s_cluster_name() const;
-	unsigned get_statsd_limit() const;
-	void set_statsd_limit(unsigned value);
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	string get_mesos_state_original_uri() const;
@@ -138,6 +141,7 @@ public:
 	void set_marathon_skip_labels(std::set<std::string> &labels);
 	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
+#endif // CYGWING_AGENT
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
@@ -235,6 +239,11 @@ private:
 	ports_set m_known_ports;
 	ports_set m_blacklisted_ports;
 
+	std::set<double> m_percentiles;
+	unsigned m_statsd_limit;
+	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
+
+#ifndef CYGWING_AGENT	
 	string m_k8s_api;
 	bool   m_k8s_autodetect;
 	string m_k8s_ssl_cert_type;
@@ -250,11 +259,6 @@ private:
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
 
-	std::set<double> m_percentiles;
-	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
-
-	unsigned m_statsd_limit;
-
 	string m_mesos_state_uri;
 	string m_mesos_state_original_uri;
 	mutable vector<string> m_marathon_uris;
@@ -266,6 +270,7 @@ private:
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
 	std::set<std::string> m_marathon_skip_labels;
+#endif // CYGWING_AGENT
 
 	bool m_curl_debug;
 

@@ -10,6 +10,7 @@
 
 using namespace std;
 
+#ifndef CYGWING_AGENT
 std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
 uint32_t coclient::m_max_loop_evts = 100;
 
@@ -266,3 +267,4 @@ void coclient::get_orchestrator_events(sdc_internal::orchestrator_events_stream_
 {
 	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND, response_cb);
 }
+#endif // CYGWING_AGENT
