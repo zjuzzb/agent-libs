@@ -9,6 +9,7 @@
 #include "sinsp_errno.h"
 #include "sinsp_signal.h"
 #include "analyzer_utils.h"
+#include "analyzer_settings.h"
 #include "coclient.h"
 #include "k8s_limits.h"
 
@@ -137,6 +138,24 @@ private:
 	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;
+
+	friend class new_k8s_delegator;
+};
+
+class new_k8s_delegator
+{
+public:
+	new_k8s_delegator() : m_prev_deleg(false), m_cached_deleg(false) { }
+
+	bool has_agent(infrastructure_state *, const infrastructure_state::uid_t uid, std::unordered_set<infrastructure_state::uid_t> *visited = nullptr);
+	bool is_delegated_now(infrastructure_state *, int num_delegated);
+	bool is_delegated(infrastructure_state *, int num_delegated, uint64_t);
+
+private:
+	bool m_prev_deleg;
+	bool m_cached_deleg;
+
+	run_on_interval m_delegation_interval = { K8S_DELEGATION_INTERVAL };
 };
 
 #endif // INFRASTRUCTURE_STATE_H

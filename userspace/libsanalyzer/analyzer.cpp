@@ -5464,6 +5464,26 @@ bool sinsp_analyzer::check_k8s_delegation()
 {
 	const std::string& k8s_uri = m_configuration->get_k8s_api_server();
 	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
+
+	if(m_use_new_k8s)
+	{
+		ASSERT(m_infrastructure_state);
+		if (!m_infrastructure_state || !m_infrastructure_state->subscribed())
+		{
+			return false;
+		}
+
+		if (!m_new_k8s_delegator) {
+			g_logger.log("Creating new K8s delegator object ...", sinsp_logger::SEV_INFO);
+			m_new_k8s_delegator.reset(new new_k8s_delegator());
+			if (!m_new_k8s_delegator) {
+				g_logger.log("Can't create new K8s delegator object.", sinsp_logger::SEV_ERROR);
+				return false;
+			}
+		}
+		return m_new_k8s_delegator->is_delegated(m_infrastructure_state, delegated_nodes, m_prev_flush_time_ns);
+	}
+
 	if(!k8s_uri.empty())
 	{
 		if(uri(k8s_uri).is_local() && !m_configuration->get_k8s_simulate_delegation())

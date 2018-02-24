@@ -836,6 +836,8 @@ VISIBILITY_PRIVATE
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 
+	unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
+
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
