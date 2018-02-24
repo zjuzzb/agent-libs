@@ -359,7 +359,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 				args[j++] = opt.c_str();
 			}
 
-			args[j++] = (string("-Djava.library.path=") + m_configuration.m_root_dir + "/lib").c_str();
+			const string java_library_path = string("-Djava.library.path=") + m_configuration.m_root_dir + "/lib";
+			args[j++] = java_library_path.c_str();
 			args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
