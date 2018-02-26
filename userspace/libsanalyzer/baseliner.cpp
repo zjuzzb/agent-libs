@@ -329,7 +329,58 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 						break;
 					}
 					case SCAP_FD_IPV6_SERVSOCK:
+						if(fdinfo->m_sockinfo.m_ipv6serverinfo.m_l4proto == SCAP_L4_TCP)
+						{
+							np->m_bound_ports.add_l_tcp(fdinfo->m_sockinfo.m_ipv6serverinfo.m_port, cdelta);
+						}
+						if(fdinfo->m_sockinfo.m_ipv6serverinfo.m_l4proto == SCAP_L4_UDP)
+						{
+							np->m_bound_ports.add_l_udp(fdinfo->m_sockinfo.m_ipv6serverinfo.m_port, cdelta);
+						}
+						break;
 					case SCAP_FD_IPV6_SOCK:
+						{
+							ipv6tuple tuple = fdinfo->m_sockinfo.m_ipv6info;
+
+							if(fdinfo->is_role_server())
+							{
+								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
+								{
+									np->m_server_ports.add_l_tcp(tuple.m_fields.m_dport, cdelta);
+									// TODO: add support for ipv6 addresses
+									// np->m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip, cdelta);
+									// np->m_c_subnet_endpoints.add_c_tcp(
+										// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), cdelta);
+								}
+								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
+								{
+									np->m_server_ports.add_l_udp(tuple.m_fields.m_dport, cdelta);
+									// TODO: add support for ipv6 addresses
+									// np->m_ip_endpoints.add_udp(tuple.m_fields.m_sip, cdelta);
+									// np->m_c_subnet_endpoints.add_udp(
+										// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip), cdelta);
+								}
+							}
+							else
+							{
+								if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
+								{
+									np->m_server_ports.add_r_tcp(tuple.m_fields.m_dport, cdelta);
+									// TODO: add support for ipv6 addresses
+									// np->m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip, cdelta);
+									// np->m_c_subnet_endpoints.add_s_tcp(
+										// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), cdelta);
+								}
+								else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
+								{
+									np->m_server_ports.add_r_udp(tuple.m_fields.m_dport, cdelta);
+									// TODO: add support for ipv6 addresses
+									// np->m_ip_endpoints.add_udp(tuple.m_fields.m_dip, cdelta);
+									// np->m_c_subnet_endpoints.add_udp(
+										// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip), cdelta);
+								}
+							}
+						}
 						break;
 					default:
 						break;
@@ -923,34 +974,33 @@ void sinsp_baseliner::on_connect(sinsp_evt *evt)
 	//       we don't need to check it
 	//
 	sinsp_fdinfo_t* fdinfo = evt->get_fd_info();
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	//
+	// Find the program entry
+	//
+	blprogram* pinfo = get_program(tinfo);
+	if(pinfo == NULL)
+	{
+		return;
+	}
+
+	sinsp_threadinfo* mt = tinfo->get_main_thread();
+	uint64_t clone_ts;
+
+	if(mt != NULL)
+	{
+		clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+	else
+	{
+		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+
+	uint64_t cdelta = evt->get_ts() - clone_ts;
 
 	if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 	{
-		sinsp_threadinfo* tinfo = evt->get_thread_info();
-
-		//
-		// Find the program entry
-		//
-		blprogram* pinfo = get_program(tinfo);
-		if(pinfo == NULL)
-		{
-			return;
-		}
-
-		sinsp_threadinfo* mt = tinfo->get_main_thread();
-		uint64_t clone_ts;
-
-		if(mt != NULL)
-		{
-			clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
-		}
-		else
-		{
-			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
-		}
-
-		uint64_t cdelta = evt->get_ts() - clone_ts;
-
 		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
 
 		if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
@@ -974,37 +1024,64 @@ void sinsp_baseliner::on_connect(sinsp_evt *evt)
 				cdelta);
 		}
 	}
+	else if(fdinfo->m_type == SCAP_FD_IPV6_SOCK)
+	{
+		ipv6tuple tuple = fdinfo->m_sockinfo.m_ipv6info;
+
+		if(tuple.m_fields.m_l4proto == SCAP_L4_TCP)
+		{
+			pinfo->m_server_ports.add_r_tcp(tuple.m_fields.m_dport,
+				cdelta);
+			// TODO: add ipv6 support
+			// pinfo->m_ip_endpoints.add_s_tcp(tuple.m_fields.m_dip,
+				// cdelta);
+			// pinfo->m_c_subnet_endpoints.add_s_tcp(
+				// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
+				// cdelta);
+		}
+		else if(tuple.m_fields.m_l4proto == SCAP_L4_UDP)
+		{
+			pinfo->m_server_ports.add_r_udp(tuple.m_fields.m_dport,
+				cdelta);
+			// TODO: add ipv6 support
+			// pinfo->m_ip_endpoints.add_udp(tuple.m_fields.m_dip,
+				// cdelta);
+			// pinfo->m_c_subnet_endpoints.add_udp(
+				// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_dip),
+				// cdelta);
+		}
+	}
 }
 
 void sinsp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 {
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	//
+	// Find the program entry
+	//
+	blprogram* pinfo = get_program(tinfo);
+	if(pinfo == NULL)
+	{
+		return;
+	}
+
+	sinsp_threadinfo* mt = tinfo->get_main_thread();
+	uint64_t clone_ts;
+
+	if(mt != NULL)
+	{
+		clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+	else
+	{
+		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+
+	uint64_t cdelta = evt->get_ts() - clone_ts;
+
 	if(fdinfo->m_type == SCAP_FD_IPV4_SOCK)
 	{
-		sinsp_threadinfo* tinfo = evt->get_thread_info();
-
-		//
-		// Find the program entry
-		//
-		blprogram* pinfo = get_program(tinfo);
-		if(pinfo == NULL)
-		{
-			return;
-		}
-
-		sinsp_threadinfo* mt = tinfo->get_main_thread();
-		uint64_t clone_ts;
-
-		if(mt != NULL)
-		{
-			clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
-		}
-		else
-		{
-			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
-		}
-
-		uint64_t cdelta = evt->get_ts() - clone_ts;
-
 		ipv4tuple tuple = fdinfo->m_sockinfo.m_ipv4info;
 		pinfo->m_server_ports.add_l_tcp(tuple.m_fields.m_dport,
 			cdelta);
@@ -1013,6 +1090,18 @@ void sinsp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 		pinfo->m_c_subnet_endpoints.add_c_tcp(
 			bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip),
 			cdelta);
+	}
+	else if(fdinfo->m_type == SCAP_FD_IPV6_SOCK)
+	{
+		ipv6tuple tuple = fdinfo->m_sockinfo.m_ipv6info;
+		pinfo->m_server_ports.add_l_tcp(tuple.m_fields.m_dport,
+			cdelta);
+		// TODO: add ipv6 support
+		// pinfo->m_ip_endpoints.add_c_tcp(tuple.m_fields.m_sip,
+			// cdelta);
+		// pinfo->m_c_subnet_endpoints.add_c_tcp(
+			// bl_ip_endpoint_table::c_subnet(tuple.m_fields.m_sip),
+			// cdelta);
 	}
 }
 
@@ -1023,37 +1112,43 @@ void sinsp_baseliner::on_bind(sinsp_evt *evt)
 	//       we don't need to check it
 	//
 	sinsp_fdinfo_t* fdinfo = evt->get_fd_info();
-	ipv4serverinfo tuple = fdinfo->m_sockinfo.m_ipv4serverinfo;
 
-	if(tuple.m_l4proto == SCAP_L4_TCP &&
-		fdinfo->m_type == SCAP_FD_IPV4_SOCK)
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+
+	//
+	// Find the program entry
+	//
+	blprogram* pinfo = get_program(tinfo);
+	if(pinfo == NULL)
 	{
-ASSERT(false); // Remove this assertion when this code is tested and validated
-		sinsp_threadinfo* tinfo = evt->get_thread_info();
+		return;
+	}
 
-		//
-		// Find the program entry
-		//
-		blprogram* pinfo = get_program(tinfo);
-		if(pinfo == NULL)
-		{
-			return;
-		}
+	sinsp_threadinfo* mt = tinfo->get_main_thread();
+	uint64_t clone_ts;
 
-		sinsp_threadinfo* mt = tinfo->get_main_thread();
-		uint64_t clone_ts;
+	if(mt != NULL)
+	{
+		clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+	else
+	{
+		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
 
-		if(mt != NULL)
-		{
-			clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
-		}
-		else
-		{
-			clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
-		}
-
+	ipv4serverinfo tuple = fdinfo->m_sockinfo.m_ipv4serverinfo;
+	ipv6serverinfo tuplev6 = fdinfo->m_sockinfo.m_ipv6serverinfo;
+	if(fdinfo->m_type == SCAP_FD_IPV4_SOCK &&
+			tuple.m_l4proto == SCAP_L4_TCP)
+	{
 		pinfo->m_bound_ports.add_l_tcp(tuple.m_port,
-				evt->get_ts() - clone_ts);
+					       evt->get_ts() - clone_ts);
+	}
+	else if(fdinfo->m_type == SCAP_FD_IPV6_SOCK &&
+			tuplev6.m_l4proto == SCAP_L4_TCP)
+	{
+		pinfo->m_bound_ports.add_l_tcp(tuple.m_port,
+					       evt->get_ts() - clone_ts);
 	}
 }
 
