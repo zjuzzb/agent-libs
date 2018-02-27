@@ -1,6 +1,7 @@
 package com.sysdigcloud.sdjagent;
 
 import com.fasterxml.jackson.annotation.JsonFilter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -11,8 +12,10 @@ import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
 
 import javax.management.ObjectName;
 import javax.management.openmbean.CompositeData;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
@@ -29,6 +32,11 @@ public class BeanData {
     @SuppressWarnings("unused")
     public String getName() {
         return name.getCanonicalName();
+    }
+
+    @JsonIgnore
+    public ObjectName getObjectName(){
+        return name;
     }
 
     @SuppressWarnings("unused")
@@ -70,6 +78,9 @@ public class BeanData {
         newAttribute.unit = attributeConf.getUnit();
         newAttribute.scale = attributeConf.getScale();
         newAttribute.type = attributeConf.getType();
+
+        Map<String,String> segmentBy = fillSegmentBy(attributeConf.getSegmentBy());
+        newAttribute.segmentBy.putAll(segmentBy);
         if (attribute_value instanceof CompositeData) {
             CompositeData compositeData = (CompositeData) attribute_value;
             for ( String key : compositeData.getCompositeType().keySet())
@@ -96,6 +107,17 @@ public class BeanData {
         if (newAttribute.hasData()) {
             attributes.add(newAttribute);
         }
+    }
+
+    private Map<String,String> fillSegmentBy(Map<String,String> segmentBy) {
+        Map<String,String> ret = new HashMap<String, String>();
+        for( Map.Entry<String,String> seg :  segmentBy.entrySet()) {
+            String property_name = seg.getValue();
+            String property_alias = seg.getKey();
+            String property_value = name.getKeyProperty(property_name);
+            ret.put(property_alias, property_value);
+        }
+        return ret;
     }
 
     // TODO: May be exported to an util class
@@ -151,15 +173,25 @@ public class BeanData {
         @SuppressWarnings("unused")
         private String alias;
 
+        private Map<String,String> segmentBy;
+
         private BeanAttributeData(String name, String alias) {
             this.name = name;
             this.alias = alias;
             this.subattributes = new LinkedList<BeanAttributeData>();
+            this.segmentBy = new HashMap<String, String>();
         }
 
         private BeanAttributeData(String name) {
             this.name = name;
             this.subattributes = new LinkedList<BeanAttributeData>();
+            this.segmentBy = new HashMap<String, String>();
+        }
+
+        @JsonProperty("segment_by")
+        @SuppressWarnings("unused")
+        private Map<String,String> getSegmentByJSON(){
+            return segmentBy;
         }
 
         @JsonProperty("unit")
@@ -221,6 +253,10 @@ public class BeanData {
                         writer.getName().equals("unit") ||
                         writer.getName().equals("scale") ||
                         writer.getName().equals("type")) {
+                    writer.serializeAsField(pojo, jgen, provider);
+                    return;
+                }
+                if (writer.getName().equals("segment_by") && !beanAttributeData.segmentBy.isEmpty()) {
                     writer.serializeAsField(pojo, jgen, provider);
                     return;
                 }

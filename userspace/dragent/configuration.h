@@ -275,7 +275,7 @@ public:
 	*  - cpu
 	*  - memory
 	*
-	* get_merged_sequence<string>("common_metrics)
+	* get_merged_sequence<string>("common_metrics")
 	*/
 	template<typename T>
 	vector<T> get_merged_sequence(const string& key)

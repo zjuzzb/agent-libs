@@ -553,7 +553,33 @@ jmx:
               alias: hbase.region.server.store.index.file.size
     elasticsearch:
       pattern: "elasticsearch"
-
+    solr:
+      pattern: "start.jar"
+      beans:
+        - query: "solr:name=requests,dom1=core,category=QUERY,*"
+          attributes:
+            - name: Count
+              type: counter
+              alias: solr.request.counter
+              segment_by:
+                - key: solr.collection
+                  value: dom2
+                - key: solr.shard
+                  value: dom3
+                - key: solr.replica
+                  value: dom4
+        - query: "solr:dom1=core,category=UPDATE,scope=/update,name=requestTimes,*"
+          attributes:
+            - name: Count
+              type: counter
+              alias: solr.update.request_time
+              segment_by:
+                - key: solr.collection
+                  value: dom2
+                - key: solr.shard
+                  value: dom3
+                - key: solr.replica
+                  value: dom4
 prometheus:
   enabled: false
   interval: 10

@@ -20,14 +20,14 @@ public class YamlConfig {
 
     public YamlConfig(List<String> paths) throws FileNotFoundException {
         roots = new ArrayList<Map<String, Object>>();
-        for(String path : paths) {
+        for (String path : paths) {
             File configFile = new File(path);
-            if(configFile.exists()) {
+            if (configFile.exists()) {
                 FileInputStream conf_file_stream = new FileInputStream(path);
                 try {
                     roots.add((Map<String, Object>) YAML.load(conf_file_stream));
                 } catch (Exception ex) {
-                    LOGGER.severe(String.format("Parsing error on config file: %s, using defaults", path));
+                    LOGGER.severe(String.format("Parsing error on config file %s, using defaults; %s", path, ex));
                 }
             } else {
                 LOGGER.fine(String.format("Config file %s does not exist", path));
@@ -36,14 +36,14 @@ public class YamlConfig {
     }
 
     public <T> T getSingle(String key, T default_value) {
-        for(Map<String, Object> root : roots) {
+        for (Map<String, Object> root : roots) {
             try {
-                T value =  (T) MAPPER.convertValue(getNodeValue(root, key), default_value.getClass());
-                if(value != null) {
+                T value = (T) MAPPER.convertValue(getNodeValue(root, key), default_value.getClass());
+                if (value != null) {
                     return value;
                 }
             } catch (IllegalArgumentException ex) {
-                LOGGER.severe(String.format("Config file error at %s", key));
+                LOGGER.severe(String.format("Config file error at %s: %s", key, ex));
             }
         }
         return default_value;
@@ -51,7 +51,7 @@ public class YamlConfig {
 
     public <T> List<T> getMergedSequence(String key, Class<T> classType) {
         List<T> ret = new ArrayList<T>();
-        for(Map<String, Object> root : roots) {
+        for (Map<String, Object> root : roots) {
             Object value = getNodeValue(root, key);
             if (value != null && value instanceof List) {
                 List<Object> values = (List<Object>) value;
@@ -59,7 +59,7 @@ public class YamlConfig {
                     try {
                         ret.add(MAPPER.convertValue(subvalue, classType));
                     } catch (Exception ex) {
-                        LOGGER.severe(String.format("Config file error at %d item of %s", values.lastIndexOf(subvalue), key));
+                        LOGGER.severe(String.format("Config file error at %d item of %s: %s", values.lastIndexOf(subvalue), key, ex));
                     }
                 }
             }
@@ -71,7 +71,7 @@ public class YamlConfig {
         Map<String, T> ret = new HashMap<String, T>();
         ListIterator<Map<String, Object>> iterator = roots.listIterator(roots.size());
 
-        while(iterator.hasPrevious()) {
+        while (iterator.hasPrevious()) {
             Map<String, Object> root = iterator.previous();
             Object value = getNodeValue(root, key);
             if (value != null && value instanceof Map) {
@@ -80,7 +80,7 @@ public class YamlConfig {
                     try {
                         ret.put(subvalue.getKey(), MAPPER.convertValue(subvalue.getValue(), classType));
                     } catch (Exception ex) {
-                        LOGGER.severe(String.format("Config file error at: %s.%s", key, subvalue.getKey()));
+                        LOGGER.severe(String.format("Config file error at %s.%s: %s", key, subvalue.getKey(), ex));
                     }
                 }
             }

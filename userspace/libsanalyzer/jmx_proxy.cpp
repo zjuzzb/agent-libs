@@ -48,6 +48,14 @@ java_bean_attribute::java_bean_attribute(const Json::Value& json):
 			m_subattributes.emplace_back(subattribute);
 		}
 	}
+
+	if(json.isMember("segment_by"))
+	{
+		for(auto member : json["segment_by"].getMemberNames())
+		{
+			m_segment_by[member] = json["segment_by"][member].asString();
+		}
+	}
 }
 
 void
@@ -69,6 +77,15 @@ java_bean_attribute::to_protobuf(draiosproto::jmx_attribute *attribute, unsigned
 	if(m_type > 0)
 	{
 		attribute->set_type(static_cast<draiosproto::jmx_metric_type>(m_type));
+	}
+	if(!m_segment_by.empty())
+	{
+		for(auto seg : m_segment_by)
+		{
+			auto new_segment_by = attribute->add_segment_by();
+			new_segment_by->set_key(seg.first);
+			new_segment_by->set_value(seg.second);
+		}
 	}
 	if (m_subattributes.empty())
 	{
@@ -194,25 +211,26 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 
 unsigned int java_bean::to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const
 {
+	unsigned emitted_attributes = 0;
 	if(proto_bean)
 	{
 		proto_bean->mutable_name()->assign(m_name);
-	}
-	unsigned emitted_attributes = 0;
-	for(auto it = m_attributes.cbegin(); it != m_attributes.cend(); ++it)
-	{
-		if(proto_bean && (limit > emitted_attributes))
+
+		for(auto it = m_attributes.cbegin(); it != m_attributes.cend(); ++it)
 		{
-			draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
-			it->to_protobuf(attribute_proto, sampling);
-			emitted_attributes += 1;
+			if(limit > emitted_attributes)
+			{
+				draiosproto::jmx_attribute* attribute_proto = proto_bean->add_attributes();
+				it->to_protobuf(attribute_proto, sampling);
+				emitted_attributes += 1;
+			}
+			else if(metric_limits::log_enabled())
+			{
+				g_logger.format(sinsp_logger::SEV_INFO, "[jmx] metric over limit (%s, %u max): %s (%s)",
+						limit_type.c_str(), max_limit, it->name().c_str(), it->alias().c_str());
+			}
+			else { break; }
 		}
-		else if(metric_limits::log_enabled())
-		{
-			g_logger.format(sinsp_logger::SEV_INFO, "[jmx] metric over limit (%s, %u max): %s (%s)",
-							limit_type.c_str(), max_limit, it->name().c_str(), it->alias().c_str());
-		}
-		else { break; }
 	}
 	return emitted_attributes;
 }
@@ -353,7 +371,7 @@ unordered_map<int, java_process> jmx_proxy::read_metrics(metric_limits::cref_spt
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "jmx_proxy::read_metrics eror: %s", ex.what());
+		g_logger.format(sinsp_logger::SEV_ERROR, "jmx_proxy::read_metrics error: %s", ex.what());
 	}
 	return processes;
 }
