@@ -1568,12 +1568,14 @@ void sinsp_analyzer_fd_listener::on_bind(sinsp_evt *evt)
 
 void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
+#ifndef CYGWING_AGENT
 	ASSERT(m_analyzer->m_infrastructure_state != NULL);
 
 	if(m_analyzer->m_infrastructure_state)
 	{
 		m_analyzer->m_infrastructure_state->on_new_container(container_info, tinfo);
 	}
+#endif
 
 	//
 	// Baseline update
@@ -1589,12 +1591,14 @@ void sinsp_analyzer_fd_listener::on_new_container(const sinsp_container_info& co
 
 void sinsp_analyzer_fd_listener::on_remove_container(const sinsp_container_info& container_info)
 {
+#ifndef CYGWING_AGENT
 	ASSERT(m_analyzer->m_infrastructure_state != NULL);
 
 	if(m_analyzer->m_infrastructure_state)
 	{
 		m_analyzer->m_infrastructure_state->on_remove_container(container_info);
 	}
+#endif	
 }
 
 void sinsp_analyzer_fd_listener::on_clone(sinsp_evt *evt, sinsp_threadinfo* newtinfo)

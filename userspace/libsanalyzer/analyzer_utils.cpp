@@ -2,9 +2,10 @@
 #include <unistd.h>
 #include <sys/resource.h>
 #include <dlfcn.h>
+#ifndef CYGWING_AGENT
 #include <execinfo.h>
 #endif
-#include <cmath>
+#endif
 
 #include <math.h>
 #include "sinsp.h"
@@ -329,6 +330,7 @@ void send_subprocess_heartbeat()
 	fflush(stderr);
 }
 
+#ifndef CYGWING_AGENT
 unordered_map<string, int> nsenter::m_home_ns;
 
 nsenter::nsenter(int pid, const string& type):
@@ -376,6 +378,7 @@ int nsenter::open_ns_fd(int pid, const string& type)
 	snprintf(filename, sizeof(filename), "%s/proc/%d/ns/%s", scap_get_host_root(), pid, type.c_str());
 	return open(filename, O_RDONLY);
 }
+#endif // CYGWING_AGENT
 
 
 template<>
@@ -391,6 +394,7 @@ void threshold_filter<long>::log(long value)
 }
 
 #ifndef _WIN32
+#ifndef CYGWING_AGENT
 thread_local void *exception_backtrace[1024];
 thread_local int exception_backtrace_size;
 extern "C" {
@@ -407,4 +411,5 @@ extern "C" {
 		__throw_exc(ex,info,dest);
 	}
 }
+#endif
 #endif

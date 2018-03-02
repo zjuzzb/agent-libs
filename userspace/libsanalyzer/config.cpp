@@ -26,9 +26,11 @@ sinsp_configuration::sinsp_configuration():
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
-	m_k8s_autodetect = true;
 	m_protocols_truncation_size = 512;
+#ifndef CYGWING_AGENT
+	m_k8s_autodetect = true;
 	m_mesos_autodetect = true;
+#endif
 	m_jmx_limit = 500;
 	m_app_checks_limit = 300;
 	m_memdump_size = 0;
@@ -412,6 +414,17 @@ const ports_set & sinsp_configuration::get_blacklisted_ports() const
 	return m_blacklisted_ports;
 }
 
+unsigned sinsp_configuration::get_statsd_limit() const
+{
+	return m_statsd_limit;
+}
+
+void sinsp_configuration::set_statsd_limit(unsigned value)
+{
+	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
+}
+
+#ifndef CYGWING_AGENT
 void sinsp_configuration::set_k8s_api_server(const string& k8s_api)
 {
 	m_k8s_api = k8s_api;
@@ -550,16 +563,6 @@ void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_na
 const std::string& sinsp_configuration::get_k8s_cluster_name() const
 {
 	return m_k8s_cluster_name;
-}
-
-unsigned sinsp_configuration::get_statsd_limit() const
-{
-	return m_statsd_limit;
-}
-
-void sinsp_configuration::set_statsd_limit(unsigned value)
-{
-	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
@@ -728,6 +731,7 @@ const std::set<std::string> & sinsp_configuration::get_marathon_skip_labels() co
 {
 	return m_marathon_skip_labels;
 }
+#endif // CYGWING_AGENT
 
 bool sinsp_configuration::get_curl_debug() const
 {
@@ -769,22 +773,62 @@ void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t eve
 	m_docker_event_filter = event_filter;
 }
 
-metrics_filter_vec sinsp_configuration::get_metrics_filter() const
+filter_vec_t sinsp_configuration::get_metrics_filter() const
 {
 	return m_metrics_filter;
 }
 
-void sinsp_configuration::set_metrics_filter(const metrics_filter_vec& metrics_filter)
+filter_vec_t sinsp_configuration::get_labels_filter() const
+{
+	return m_labels_filter;
+}
+
+void sinsp_configuration::set_labels_filter(const filter_vec_t& labels_filter)
+{
+	m_labels_filter = labels_filter;
+}
+
+void sinsp_configuration::set_metrics_filter(const filter_vec_t& metrics_filter)
 {
 	m_metrics_filter = metrics_filter;
 }
 
-metrics_filter_vec sinsp_configuration::get_mounts_filter() const
+filter_vec_t sinsp_configuration::get_mounts_filter() const
 {
 	return m_mounts_filter;
 }
 
-void sinsp_configuration::set_mounts_filter(const mount_points_filter_vec& mounts_filter)
+filter_vec_t sinsp_configuration::get_k8s_filter() const
+{
+	return m_k8s_filter;
+}
+
+void sinsp_configuration::set_k8s_filter(const filter_vec_t& k8s_filter)
+{
+	m_k8s_filter = k8s_filter;
+}
+
+bool sinsp_configuration::get_excess_k8s_log() const noexcept
+{
+	return m_excess_k8s_log;
+}
+
+void sinsp_configuration::set_excess_k8s_log(bool log) noexcept
+{
+	m_excess_k8s_log = log;
+}
+
+void sinsp_configuration::set_k8s_cache(uint16_t size) noexcept
+{
+	m_k8s_cache = size;
+}
+
+uint16_t sinsp_configuration::get_k8s_cache(void) const noexcept
+{
+	return  m_k8s_cache;
+}
+
+void sinsp_configuration::set_mounts_filter(const filter_vec_t& mounts_filter)
 {
 	m_mounts_filter = mounts_filter;
 }
@@ -804,9 +848,29 @@ bool sinsp_configuration::get_excess_metrics_log() const
 	return m_excess_metrics_log;
 }
 
+bool sinsp_configuration::get_excess_labels_log() const noexcept
+{
+	return m_excess_labels_log;
+}
+
+void sinsp_configuration::set_excess_labels_log(bool log) noexcept
+{
+	m_excess_labels_log = log;
+}
+
 void sinsp_configuration::set_excess_metrics_log(bool log)
 {
 	m_excess_metrics_log = log;
+}
+
+void sinsp_configuration::set_labels_cache(uint16_t size) noexcept
+{
+	m_labels_cache = size;
+}
+
+uint16_t sinsp_configuration::get_labels_cache(void) const noexcept
+{
+	return  m_labels_cache;
 }
 
 unsigned sinsp_configuration::get_metrics_cache() const

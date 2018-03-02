@@ -1,3 +1,4 @@
+#ifndef CYGWING_AGENT
 #include <string>
 #include <memory>
 
@@ -1526,8 +1527,7 @@ container_policies::container_policies()
 {
 	m_name = "containers";
 	m_evttypes[PPME_SYSCALL_EXECVE_18_X] = true;
-	// Enable once https://github.com/draios/sysdig/pull/1044 is merged.
-	//m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
+	m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
 }
 
 container_policies::~container_policies()
@@ -1665,8 +1665,7 @@ process_policies::process_policies()
 {
 	m_name = "processes";
 	m_evttypes[PPME_SYSCALL_EXECVE_18_X] = true;
-	// Enable once https://github.com/draios/sysdig/pull/1044 is merged.
-	//m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
+	m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
 }
 
 process_policies::~process_policies()
@@ -1743,3 +1742,4 @@ bool process_policies::add_matchlist_details(security_policy *policy,
 
 	return added;
 }
+#endif // CYGWING_AGENT

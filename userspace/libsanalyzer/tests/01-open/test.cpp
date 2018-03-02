@@ -706,7 +706,11 @@ int main(int argc, char **argv)
 			}
 			else
 			{
+#ifndef CYGWING_AGENT
 				g_inspector->open("");
+#else
+				g_inspector->open_nodriver();
+#endif
 			}
 
 			if(drop_ratio != 0)
@@ -761,12 +765,11 @@ int main(int argc, char **argv)
 				cinfo.m_nevts,
 				(double)cinfo.m_nevts / duration);
 		}
-/*
-		fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
-			cinfo.m_time / 1000000000,
-			cinfo.m_time % 1000000000,
-			(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
-*/
+
+		//fprintf(stderr, "Capture duration: %" PRIu64 ".%" PRIu64 ", %.2lf eps\n",
+		//	cinfo.m_time / 1000000000,
+		//	cinfo.m_time % 1000000000,
+		//	(double)cinfo.m_nevts * 1000000000 / cinfo.m_time);
 #ifdef GATHER_INTERNAL_STATS
 		if(get_stats)
 		{

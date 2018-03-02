@@ -1,3 +1,4 @@
+#ifndef CYGWING_AGENT
 #include <fnmatch.h>
 // #include "../dragent/configuration.h"
 #include "prometheus.h"
@@ -144,3 +145,4 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 
 	return ret;
 }
+#endif // CYGWING_AGENT

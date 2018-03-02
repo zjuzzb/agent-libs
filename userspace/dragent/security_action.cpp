@@ -5,6 +5,7 @@
 #include "coclient.h"
 
 #include "security_mgr.h"
+#ifndef CYGWING_AGENT
 #include "security_action.h"
 
 
@@ -216,8 +217,4 @@ void security_actions::check_outstanding_actions(uint64_t ts_ns)
 
 	m_has_outstanding_actions = false;
 }
-
-
-
-
-
+#endif // CYGWING_AGENT

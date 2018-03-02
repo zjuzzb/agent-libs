@@ -480,6 +480,7 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+#ifndef CYGWING_AGENT
 			case draiosproto::message_type::POLICIES:
 				handle_policies_message(
 					m_buffer.begin() + sizeof(dragent_protocol_header),
@@ -495,6 +496,7 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+#endif
 			default:
 				g_log->error(m_name + ": Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
@@ -675,6 +677,7 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 	}
 }
 
+#ifndef CYGWING_AGENT
 void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 {
 	draiosproto::policies policies;
@@ -704,7 +707,9 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 		return;
 	}
 }
+#endif	
 
+#ifndef CYGWING_AGENT
 void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 {
 	draiosproto::orchestrator_events evts;
@@ -723,7 +728,9 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 
 	m_sinsp_worker->receive_hosts_metadata(evts);
 }
+#endif
 
+#ifndef CYGWING_AGENT
 void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
 {
 	draiosproto::baselines baselines;
@@ -753,3 +760,4 @@ void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
 		return;
 	}
 }
+#endif

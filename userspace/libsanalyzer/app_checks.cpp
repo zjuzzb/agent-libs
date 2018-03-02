@@ -234,10 +234,12 @@ void app_checks_proxy::send_get_metrics_cmd(const vector<app_process> &processes
 		procs.append(p.to_json());
 	}
 	Json::Value promps = Json::Value(Json::arrayValue);
+#ifndef CYGWING_AGENT
 	for(const auto& p : prom_procs)
 	{
 		promps.append(p.to_json(prom_conf));
 	}
+#endif
 
 	Json::Value command;
 	command["processes"] = procs;

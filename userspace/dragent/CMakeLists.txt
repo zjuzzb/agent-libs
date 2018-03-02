@@ -19,7 +19,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 
 add_definitions( -DHAS_ANALYZER )
 
-add_executable(dragent
+list(APPEND targetfiles
 	baseline_mgr.cpp
 	capture_job_handler.cpp
 	configuration.cpp 
@@ -40,21 +40,48 @@ add_executable(dragent
 	subprocesses_logger.cpp
 	user_event_channel.cpp)
 
+if(CYGWIN)
+	list(APPEND targetfiles
+		windows_helpers.cpp)
+endif()
+	
+add_executable(dragent
+	${targetfiles})
+		
+if(CYGWIN)
+	set(POCO_LIB_DIR "bin")
+	set(POCO_LIB_PREFIX "cyg")
+else()
+	set(POCO_LIB_DIR "lib")
+	set(POCO_LIB_PREFIX "lib")
+endif()
+
 target_link_libraries(dragent
-	${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc.a
 	pthread
 	sanalyzer
 	draiosproto
 	falco_engine
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoUtil.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoCrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
-	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	rt
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+
+if(NOT CYGWIN)
+	target_link_libraries(dragent
+		${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+		${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+		${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc.a)
+else()
+	target_link_libraries(dragent
+		${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
+		/lib/w32api/libiphlpapi.a
+	)
+endif()
 
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
@@ -95,5 +122,41 @@ install(FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lu
 		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
 		DESTINATION ${DRAIOS_BIN_PREFIX}/share/chisels
 		COMPONENT agent)
+
+if(CYGWIN)
+install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/dragent_win_hal.dll
+	PERMISSIONS OWNER_EXECUTE OWNER_READ
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	COMPONENT agent)
+
+install(FILES /bin/cygstdc++-6.dll
+	PERMISSIONS OWNER_EXECUTE OWNER_READ
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	COMPONENT agent)
+
+install(FILES /bin/cyggcc_s-seh-1.dll
+	PERMISSIONS OWNER_EXECUTE OWNER_READ
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	COMPONENT agent)
+
+install(FILES /bin/cygwin1.dll
+	PERMISSIONS OWNER_EXECUTE OWNER_READ
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	COMPONENT agent)
+
+install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/DragentService.exe
+	PERMISSIONS OWNER_EXECUTE OWNER_READ
+	DESTINATION ${DRAIOS_BIN_PREFIX}
+	COMPONENT agent)
+	
+install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/dragent.wxs
+	DESTINATION ${DRAIOS_BIN_PREFIX}
+	COMPONENT agent)
+	
+install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/make_msi.sh
+	PERMISSIONS OWNER_EXECUTE OWNER_READ
+	DESTINATION ${DRAIOS_BIN_PREFIX}
+	COMPONENT agent)
+endif()
 
 configure_file(agent-config.h.in agent-config.h)

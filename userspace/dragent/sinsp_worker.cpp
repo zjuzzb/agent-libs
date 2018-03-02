@@ -21,7 +21,9 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_autodrop_currently_enabled(true),
 	m_inspector(NULL),
 	m_analyzer(NULL),
+#ifndef CYGWING_AGENT
 	m_security_mgr(NULL),
+#endif
 	m_capture_job_handler(capture_job_handler),
 	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
@@ -44,7 +46,9 @@ sinsp_worker::~sinsp_worker()
 	}
 
 	delete m_analyzer;
+#ifndef CYGWING_AGENT
 	delete m_security_mgr;
+#endif
 }
 
 void sinsp_worker::init()
@@ -62,11 +66,20 @@ void sinsp_worker::init()
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
 	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
+	m_analyzer->get_configuration()->set_labels_filter(m_configuration->m_labels_filter);
+	m_analyzer->get_configuration()->set_excess_labels_log(m_configuration->m_excess_labels_log);
+	m_analyzer->get_configuration()->set_labels_cache(m_configuration->m_labels_cache);
+	m_analyzer->get_configuration()->set_k8s_filter(m_configuration->m_k8s_filter);
+	m_analyzer->get_configuration()->set_excess_k8s_log(m_configuration->m_excess_k8s_log);
+	m_analyzer->get_configuration()->set_k8s_cache(m_configuration->m_k8s_cache_size);
 	m_analyzer->get_configuration()->set_mounts_filter(m_configuration->m_mounts_filter);
 	m_analyzer->get_configuration()->set_mounts_limit_size(m_configuration->m_mounts_limit_size);
 	m_analyzer->get_configuration()->set_excess_metrics_log(m_configuration->m_excess_metric_log);
 	m_analyzer->get_configuration()->set_metrics_cache(m_configuration->m_metrics_cache);
 	m_analyzer->set_internal_metrics(m_internal_metrics);
+#ifndef CYGWING_AGENT
+	m_analyzer->init_k8s_limits();
+#endif
 
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
@@ -89,7 +102,7 @@ void sinsp_worker::init()
 		g_log->information("Overriding sinsp thread table size to " + to_string(m_configuration->m_max_thread_table_size));
 		m_inspector->set_max_thread_table_size(m_configuration->m_max_thread_table_size);
 	}
-	
+
 	//
 	// Attach our transmit callback to the analyzer
 	//
@@ -133,6 +146,7 @@ void sinsp_worker::init()
 	//
 	// kubernetes
 	//
+#ifndef CYGWING_AGENT
 	if(!m_configuration->m_k8s_api_server.empty())
 	{
 		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
@@ -212,6 +226,7 @@ void sinsp_worker::init()
 	{
 		m_analyzer->get_configuration()->set_marathon_skip_labels(m_configuration->m_marathon_skip_labels);
 	}
+#endif // CYGWING_AGENT
 
 	// curl
 	m_analyzer->get_configuration()->set_curl_debug(m_configuration->m_curl_debug);
@@ -336,7 +351,9 @@ void sinsp_worker::init()
 
 	stress_tool_matcher::set_comm_list(m_configuration->m_stress_tools);
 
+#ifndef CYGWING_AGENT
 	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
+#endif
 
 	//
 	// Load the chisels
@@ -349,6 +366,7 @@ void sinsp_worker::init()
 
 	m_analyzer->initialize_chisels();
 
+#ifndef CYGWING_AGENT
 	if(m_configuration->m_security_enabled)
 	{
 		if(!m_configuration->m_cointerface_enabled)
@@ -384,6 +402,7 @@ void sinsp_worker::init()
 			}
 		}
 	}
+#endif // CYGWING_AGENT
 
 	//
 	// Start the capture with sinsp
@@ -450,7 +469,9 @@ void sinsp_worker::init()
 
 	m_analyzer->set_emit_tracers(m_configuration->m_emit_tracers);
 
+#ifndef CYGWING_AGENT
 	m_analyzer->set_coclient_max_loop_evts(m_configuration->m_coclient_max_loop_evts);
+#endif
 }
 
 void sinsp_worker::run()
@@ -572,11 +593,13 @@ void sinsp_worker::run()
 			m_aws_metadata_refresher.reset();
 		}
 
+#ifndef CYGWING_AGENT
 		// Possibly pass the event to the security manager
 		if(m_security_mgr)
 		{
 			m_security_mgr->process_event(ev);
 		}
+#endif
 
 		m_capture_job_handler->process_event(ev);
 
@@ -607,6 +630,7 @@ void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_j
 	}
 }
 
+#ifndef CYGWING_AGENT
 bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &errstr)
 {
 	if(m_security_mgr)
@@ -637,6 +661,7 @@ void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
 }
+#endif
 
 // Receive job requests and pass them along to the capture job
 // handler, adding a sinsp_dumper object associated with our

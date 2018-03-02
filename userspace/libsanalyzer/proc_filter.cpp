@@ -168,6 +168,7 @@ filter_condition::param2type(std::string pstr)
 	return param_type::none;
 }
 
+#ifndef CYGWING_AGENT
 bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	const sinsp_container_info *container, const infrastructure_state &infra_state,
 	std::function<bool (const filter_rule &rule)> on_match) const
@@ -335,6 +336,7 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	}
 	return false;
 }
+#endif // CYGWING_AGENT
 
 } // namespace proc_filter
 

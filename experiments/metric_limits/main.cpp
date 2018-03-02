@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 	{
 		fsz = strtoul(argv[3], 0, 10);
 	}
-	metrics_filter_vec f;
+	filter_vec_t f;
 	for(int i; i < fsz; ++i)
 	{
 		f.push_back({std::to_string(i).append("?xyz*123"), i % 2});

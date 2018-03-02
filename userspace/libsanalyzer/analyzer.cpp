@@ -13,7 +13,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <endian.h>
+#if defined(HAS_CAPTURE) && !defined(CYGWING_AGENT)
 #include <sys/syscall.h>
+#endif
 #include <sys/time.h>
 #include <sys/resource.h>
 #endif // _WIN32
@@ -48,6 +50,7 @@ using namespace google::protobuf::io;
 #include "analyzer_fd.h"
 #include "analyzer_parsers.h"
 #include "chisel.h"
+#ifndef CYGWING_AGENT
 #include "docker.h"
 #include "k8s.h"
 #include "k8s_delegator.h"
@@ -56,6 +59,10 @@ using namespace google::protobuf::io;
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
+#else // CYGWING_AGENT
+#include "dragent_win_hal_public.h"
+#include "proc_filter.h"
+#endif // CYGWING_AGENT
 #include "baseliner.h"
 #define BUFFERSIZE 512 // b64 needs this macro
 #include "b64/encode.h"
@@ -68,6 +75,7 @@ using namespace google::protobuf::io;
 #include "proc_config.h"
 #include "tracer_emitter.h"
 #include "metric_limits.h"
+#include "label_limits.h"
 
 namespace {
 template<typename T>
@@ -82,7 +90,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
 	m_very_high_cpu_switcher("agent cpu usage with sr=128")
-{
+  {
 	m_initialized = false;
 	m_inspector = inspector;
 	m_n_flushes = 0;
@@ -146,7 +154,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_parser = new sinsp_analyzer_parsers(this);
 
 	m_falco_baseliner = new sinsp_baseliner();
+#ifndef CYGWING_AGENT
 	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL);
+#endif
 
 	//
 	// Listeners
@@ -162,7 +172,9 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_jmx_sampling = 1;
 #endif
 
+#ifndef CYGWING_AGENT
 	m_use_new_k8s = false;
+#endif
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
@@ -170,17 +182,21 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	//
 	// Docker
 	//
+#ifndef CYGWING_AGENT
 	m_has_docker = Poco::File(docker::get_socket_file()).exists();
+#endif
 
 	//
 	// Chisels init
 	//
 	add_chisel_dirs();
 
+#ifndef CYGWING_AGENT
 	m_mesos_last_failure_ns = 0;
 	m_last_mesos_refresh = 0;
 
 	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
+#endif
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -225,10 +241,12 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_falco_baseliner;
 	}
 
+#ifndef CYGWING_AGENT	
 	if(m_infrastructure_state != NULL)
 	{
 		delete m_infrastructure_state;
 	}
+#endif
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -261,10 +279,12 @@ void sinsp_analyzer::set_percentiles()
 	}
 }
 
+#ifndef CYGWING_AGENT
 infrastructure_state *sinsp_analyzer::infra_state()
 {
 	return m_infrastructure_state;
 }
+#endif
 
 void sinsp_analyzer::on_capture_start()
 {
@@ -324,7 +344,11 @@ void sinsp_analyzer::on_capture_start()
 	m_total_evts_switcher.set_threshold(tracepoint_hits_threshold.first);
 	m_total_evts_switcher.set_ntimes_max(tracepoint_hits_threshold.second);
 
+#ifndef CYGWING_AGENT
 	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+#else
+	m_procfs_parser = new sinsp_procfs_parser(m_inspector, m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+#endif
 	m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 	m_procfs_parser->read_mount_points(m_mount_points);
 
@@ -380,6 +404,7 @@ void sinsp_analyzer::on_capture_start()
 		m_falco_baseliner->init(m_inspector);
 	}
 
+#ifndef CYGWING_AGENT
 	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
@@ -402,6 +427,7 @@ void sinsp_analyzer::on_capture_start()
 			glogf("infrastructure state is now subscribed to k8s API server");
 		}
 	}
+#endif	
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -536,6 +562,7 @@ void sinsp_analyzer::chisels_do_timeout(sinsp_evt* ev)
 	}
 }
 
+#ifndef CYGWING_AGENT
 class mesos_conf_vals : public app_process_conf_vals
 {
 public:
@@ -610,6 +637,7 @@ private:
 	string m_protocol;
 	string m_marathon_url;
 };
+#endif // CYGWING_AGENT
 
 sinsp_configuration* sinsp_analyzer::get_configuration()
 {
@@ -1171,6 +1199,28 @@ void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator prog
 	}
 }
 
+string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func)
+{
+	if(m_inspector && m_inspector->m_network_interfaces)
+	{
+		for (const auto& iface : *m_inspector->m_network_interfaces->get_ipv4_list())
+		{
+			std::string addr(protocol);
+			addr.append("://").append(iface.address()).append(1, ':').append(std::to_string(port));
+			if((this->*check_func)(addr))
+			{
+				return addr;
+			}
+		}
+	}
+	else
+	{
+		g_logger.log("Local server detection failed.", sinsp_logger::SEV_ERROR);
+	}
+	return "";
+}
+
+#ifndef CYGWING_AGENT
 bool sinsp_analyzer::check_k8s_server(string& addr)
 {
 	string path = "/api";
@@ -1249,27 +1299,6 @@ bool sinsp_analyzer::check_mesos_server(string& addr)
 		}
 	}
 	return false;
-}
-
-string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port, server_check_func_t check_func)
-{
-	if(m_inspector && m_inspector->m_network_interfaces)
-	{
-		for (const auto& iface : *m_inspector->m_network_interfaces->get_ipv4_list())
-		{
-			std::string addr(protocol);
-			addr.append("://").append(iface.address()).append(1, ':').append(std::to_string(port));
-			if((this->*check_func)(addr))
-			{
-				return addr;
-			}
-		}
-	}
-	else
-	{
-		g_logger.log("Local server detection failed.", sinsp_logger::SEV_ERROR);
-	}
-	return "";
 }
 
 void sinsp_analyzer::make_mesos(string&& json)
@@ -1671,6 +1700,7 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 	}
 	return mesos_api_server;
 }
+#endif // CYGWING_AGENT
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				    bool is_eof, sinsp_analyzer::flush_flags flshflags,
@@ -1698,8 +1728,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<app_process> app_checks_processes;
 	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
 	bool can_disable_nodriver = true;
+#ifndef CYGWING_AGENT
 	uint16_t prom_metrics_limit = m_prom_conf.max_metrics();
 	vector<prom_process> prom_procs;
+#endif
 
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
@@ -1789,6 +1821,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// Snapshot global CPU state
 	// (used as the reference value to calculate process CPU usages in the threadtable loop)
 	//
+#ifndef CYGWING_AGENT
 	if(!m_inspector->is_capture() &&
 	  (flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) &&
 	  !m_skip_proc_parsing)
@@ -1804,6 +1837,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	{
 		m_k8s_proc_detected = false;
 	}
+#endif
 
 	uint64_t process_count = 0;
 
@@ -1866,6 +1900,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			main_ainfo->m_last_cmdline_sync_ns = m_prev_flush_time_ns;
 		}
 
+#ifndef CYGWING_AGENT
 		if((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 &&
 			tinfo->is_main_thread() && !m_inspector->is_capture())
 		{
@@ -1902,6 +1937,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				}
 			}
 		}
+#endif
 
 		//
 		// Attribute the last pending event to this second
@@ -2012,6 +2048,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 						if(m_inspector->is_nodriver())
 						{
+#ifndef CYGWING_AGENT
 							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo->m_pid, &ainfo->m_file_io_stats);
 							ainfo->m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
 							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
@@ -2025,6 +2062,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 									can_disable_nodriver = false;
 								}
 							}
+#endif // CYGWING_AGENT							
 						}
 					}
 				}
@@ -2115,6 +2153,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				}
 				auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
 
+#ifndef CYGWING_AGENT
 				// Prometheus checks are done through the app proxy as well.
 				bool have_prometheus_metrics = false;
 				if (app_metrics_pid != m_app_metrics.end())
@@ -2135,6 +2174,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				{
 					match_prom_checks(tinfo, mtinfo, prom_procs);
 				}
+#endif // CYGWING_AGENT
 
 				for (auto& appcheck : app_checks)
 				{
@@ -2176,10 +2216,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		m_internal_metrics->set_container(m_containers.size());
 		m_internal_metrics->set_appcheck(app_checks_processes.size());
 		m_internal_metrics->set_javaproc(java_process_requests.size());
+#ifndef CYGWING_AGENT
 		m_internal_metrics->set_mesos_autodetect(m_configuration->get_mesos_autodetect_enabled());
+#endif
 		m_internal_metrics->update_subprocess_metrics(m_procfs_parser);
 	}
 
+#ifndef CYGWING_AGENT
 	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
 	{
 		k8s_been_here = true;
@@ -2187,6 +2230,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					 "K8s information may not be available.",
 					 sinsp_logger::SEV_INFO);
 	}
+#endif
 
 	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -2695,6 +2739,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							app_age_map.first.c_str(), -app_data.first);
 						sent = true;
 
+#ifndef CYGWING_AGENT
 						if (app_data.second->type() == app_check_data::check_type::PROMETHEUS)
 						{
 							sent_prometheus_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_prometheus(),
@@ -2702,6 +2747,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							total_prometheus_metrics += app_data.second->total_metrics();
 						}
 						else
+#endif
 						{
 							sent_app_checks_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_app(),
 								app_checks_limit, m_configuration->get_app_checks_limit());
@@ -2827,11 +2873,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		g_logger.format(sinsp_logger::SEV_WARNING, "App checks metrics limit (%u) reached",
 			m_configuration->get_app_checks_limit());
 	}
+#ifndef CYGWING_AGENT
 	if(prom_metrics_limit == 0)
 	{
 		g_logger.format(sinsp_logger::SEV_WARNING, "Prometheus metrics limit (%u) reached",
 			m_prom_conf.max_metrics());
 	}
+#endif
 
 #ifndef _WIN32
 	if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -2840,10 +2888,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			m_jmx_proxy->send_get_metrics(java_process_requests);
 		}
+#ifndef CYGWING_AGENT
 		if(m_app_proxy && (!app_checks_processes.empty() || !prom_procs.empty()))
 		{
 			m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
 		}
+#endif		
 	}
 #endif
 }
@@ -3744,7 +3794,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		return;
 	}
 
-	metric_limits::enable_log();
+	user_configured_limits::check_log_required<metric_limits>();
 
 	for(j = 0; ; j++)
 	{
@@ -3835,10 +3885,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Flush the scheduler analyzer
 			//
+#ifndef CYGWING_AGENT
 			if(m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
 			{
 				m_sched_analyzer2->flush(evt, m_prev_flush_time_ns, is_eof, flshflags);
 			}
+#endif
 
 			//
 			// Reset the protobuffer
@@ -3847,6 +3899,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
+#ifndef CYGWING_AGENT
 				// Only run every 10 seconds or 5 minutes
 				if (m_configuration->get_cointerface_enabled() &&
 					m_configuration->get_swarm_enabled())
@@ -3887,6 +3940,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					// Copy from cached swarm state
 					m_metrics->mutable_swarm()->CopyFrom(*m_docker_swarm_state);
 				}
+#endif
 
 				tracer_emitter gs_trc("get_statsd", f_trc);
 				get_statsd();
@@ -4062,6 +4116,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 								 ", st=" + to_string((long double) m_proc_stat.m_steal[k]) +
 								 ", ld=" + to_string((long double) m_proc_stat.m_loads[k]), sinsp_logger::SEV_DEBUG);
 				}
+
+#ifndef CYGWING_AGENT
 				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_proc_stat.m_loads[k] * 100));
 				m_metrics->mutable_hostinfo()->add_cpu_steal((uint32_t)(m_proc_stat.m_steal[k] * 100));
 				m_metrics->mutable_hostinfo()->add_cpu_idle((uint32_t)(m_proc_stat.m_idle[k] * 100));
@@ -4069,6 +4125,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->mutable_hostinfo()->add_nice_cpu((uint32_t)(m_proc_stat.m_nice[k] * 100));
 				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k] * 100));
 				m_metrics->mutable_hostinfo()->add_iowait_cpu((uint32_t)(m_proc_stat.m_iowait[k] * 100));
+#else
+				m_metrics->mutable_hostinfo()->add_cpu_loads((uint32_t)(m_proc_stat.m_loads[k]));
+				m_metrics->mutable_hostinfo()->add_cpu_idle((uint32_t)(m_proc_stat.m_idle[k]));
+				m_metrics->mutable_hostinfo()->add_user_cpu((uint32_t)(m_proc_stat.m_user[k]));
+				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k]));
+#endif				
 			}
 
 			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
@@ -4107,9 +4169,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// host info
 			//
+#ifndef CYGWING_AGENT
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_capacity_score((uint32_t)(m_host_metrics.get_capacity_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(m_host_metrics.get_stolen_score() * 100));
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_connection_queue_usage_pct(m_host_metrics.m_connection_queue_usage_pct);
+#endif
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_resident_memory_usage_kb((uint32_t)m_host_metrics.m_res_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_usage_kb((uint32_t)m_host_metrics.m_swap_memory_used_kb);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_swap_memory_total_kb((uint32_t)m_host_metrics.m_swap_memory_total_kb);
@@ -4149,6 +4213,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					it->to_protobuf(fs);
 				}
 			}
+#ifndef CYGWING_AGENT
 			//
 			// Executed commands
 			//
@@ -4193,6 +4258,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
 			emit_top_files();
+#endif // CYGWING_AGENT
 
 #ifndef _WIN32
 			// statsd metrics
@@ -4263,6 +4329,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Percentile configuration
 			//
 			emit_percentiles_config();
+
+#ifndef CYGWING_AGENT
 			misc_trc.stop();
 
 			//
@@ -4279,13 +4347,31 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->mutable_hostinfo()->set_transaction_processing_delay(m_host_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
 				m_metrics->mutable_hostinfo()->set_next_tiers_delay(m_host_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 			}
+#endif // CYGWING_AGENT
 
 			//
 			// Time splits
 			//
 			m_host_metrics.m_metrics.to_protobuf(m_metrics->mutable_hostinfo()->mutable_tcounters(), m_sampling_ratio);
+#ifdef CYGWING_AGENT
+			//
+			// On Windows, there's no I/O information by process, so we patch the I/O disk with
+			// data coming from WMI.
+			//
+			wh_machine_disk_bandwidth_info mdbres = wh_wmi_get_machine_disk_bandwidth(m_inspector->get_wmi_handle());
+			if(mdbres.m_result != 0)
+			{
+				auto host_io_disk = m_metrics->mutable_hostinfo()->mutable_tcounters()->mutable_io_file();
+				host_io_disk->set_bytes_in(mdbres.m_bytes_in);
+				host_io_disk->set_bytes_out(mdbres.m_bytes_out);
+				host_io_disk->set_count_in(mdbres.m_count_in);
+				host_io_disk->set_count_out(mdbres.m_count_out);
+			}
+#endif
 
+#ifndef CYGWING_AGENT
 			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
+#endif // CYGWING_AGENT
 
 			auto external_io_net = m_metrics->mutable_hostinfo()->mutable_external_io_net();
 			m_io_net.to_protobuf(external_io_net, 1, m_sampling_ratio);
@@ -4757,6 +4843,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		m_falco_baseliner->process_event(evt);
 	}
 
+#ifndef CYGWING_AGENT
 	if(m_infrastructure_state && (m_configuration->get_security_enabled() || m_infrastructure_state->subscribed()))
 	{
 		//
@@ -4764,6 +4851,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 		//
 		m_infrastructure_state->refresh(ts);
 	}
+#endif
 
 	//
 	// This is where normal event parsing starts.
@@ -5044,6 +5132,7 @@ void sinsp_analyzer::add_syscall_time(sinsp_counters* metrics,
 	}
 }
 
+#ifndef CYGWING_AGENT
 void sinsp_analyzer::get_k8s_data()
 {
 	if(m_k8s)
@@ -5375,6 +5464,26 @@ bool sinsp_analyzer::check_k8s_delegation()
 {
 	const std::string& k8s_uri = m_configuration->get_k8s_api_server();
 	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
+
+	if(m_use_new_k8s)
+	{
+		ASSERT(m_infrastructure_state);
+		if (!m_infrastructure_state || !m_infrastructure_state->subscribed())
+		{
+			return false;
+		}
+
+		if (!m_new_k8s_delegator) {
+			g_logger.log("Creating new K8s delegator object ...", sinsp_logger::SEV_INFO);
+			m_new_k8s_delegator.reset(new new_k8s_delegator());
+			if (!m_new_k8s_delegator) {
+				g_logger.log("Can't create new K8s delegator object.", sinsp_logger::SEV_ERROR);
+				return false;
+			}
+		}
+		return m_new_k8s_delegator->is_delegated(m_infrastructure_state, delegated_nodes, m_prev_flush_time_ns);
+	}
+
 	if(!k8s_uri.empty())
 	{
 		if(uri(k8s_uri).is_local() && !m_configuration->get_k8s_simulate_delegation())
@@ -5484,6 +5593,7 @@ void sinsp_analyzer::emit_docker_events()
 		m_docker.reset();
 	}
 }
+#endif // CYGWING_AGENT
 
 void sinsp_analyzer::emit_top_files()
 {
@@ -5619,6 +5729,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	};
 
 	// enable/disable percentile data serialization for configured containers
+#ifndef CYGWING_AGENT
 	const auto conf = get_configuration_read_only()->get_group_pctl_conf();
 	if (conf) {
 		m_containers_check_interval.run([this, &progtable_by_container, &conf]()
@@ -5646,6 +5757,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			},
 			m_prev_flush_time_ns);
 	}
+#endif // CYGWING_AGENT	
 
 	vector<string> emitted_containers;
 	vector<string> containers_ids;
@@ -5808,6 +5920,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	}
 	check_and_emit_containers(top_cpu_containers);
 
+#ifndef CYGWING_AGENT
 	if(m_use_new_k8s && m_infrastructure_state->subscribed())
 	{
 		std::string cluster_name =
@@ -5831,6 +5944,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			}
 		}
 	}
+#endif
 
 /*
 	g_logger.log("Found " + std::to_string(m_metrics->containers().size()) + " containers.", sinsp_logger::SEV_DEBUG);
@@ -5923,12 +6037,17 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->set_image_id(it->second.m_imageid.substr(0, 12));
 	}
 
+#ifndef CYGWING_AGENT
 	if(!it->second.m_mesos_task_id.empty())
 	{
 		container->set_mesos_task_id(it->second.m_mesos_task_id);
 	}
+#endif
+
 	auto uid = make_pair((string)"container", container_id);
+#ifndef CYGWING_AGENT
 	m_infrastructure_state->get_orch_labels(uid, container->mutable_orchestrators_fallback_labels());
+#endif
 
 	for(vector<sinsp_container_info::container_port_mapping>::const_iterator it_ports = it->second.m_port_mappings.begin();
 		it_ports != it->second.m_port_mappings.end(); ++it_ports)
@@ -5944,6 +6063,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	for(map<string, string>::const_iterator it_labels = it->second.m_labels.begin();
 		it_labels != it->second.m_labels.end(); ++it_labels)
 	{
+		std::string filter;
 		const string &label_key = it_labels->first;
 		const string &label_val = it_labels->second;
 
@@ -5952,6 +6072,13 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
 		if(!label_key.compare(0, swarmstr.size(), swarmstr) ||
 		   !label_key.compare(0, stackstr.size(), stackstr))
+		{
+			continue;
+		}
+
+		// Filter labels forbidden by config file
+		check_label_limits();
+		if(m_label_limits && !m_label_limits->allow(label_key, filter))
 		{
 			continue;
 		}
@@ -5973,10 +6100,14 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		label->set_value(label_val);
 	}
 
+#ifndef CYGWING_AGENT
 	container->mutable_resource_counters()->set_capacity_score(it_analyzer->second.m_metrics.get_capacity_score() * 100);
 	container->mutable_resource_counters()->set_stolen_capacity_score(it_analyzer->second.m_metrics.get_stolen_score() * 100);
 	container->mutable_resource_counters()->set_connection_queue_usage_pct(it_analyzer->second.m_metrics.m_connection_queue_usage_pct);
+#endif
 	uint32_t res_memory_kb = it_analyzer->second.m_metrics.m_res_memory_used_kb;
+
+#ifndef CYGWING_AGENT
 	auto memory_cgroup_it = find_if(tinfo->m_cgroups.cbegin(), tinfo->m_cgroups.cend(),
 									[](const pair<string, string>& cgroup)
 									{
@@ -5994,10 +6125,12 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			res_memory_kb = cgroup_memory / 1024;
 		}
 	}
+#endif
 	container->mutable_resource_counters()->set_resident_memory_usage_kb(res_memory_kb);
 	container->mutable_resource_counters()->set_swap_memory_usage_kb(it_analyzer->second.m_metrics.m_swap_memory_used_kb);
-	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	container->mutable_resource_counters()->set_minor_pagefaults(it_analyzer->second.m_metrics.m_pfminor);
+#ifndef CYGWING_AGENT
+	container->mutable_resource_counters()->set_major_pagefaults(it_analyzer->second.m_metrics.m_pfmajor);
 	it_analyzer->second.m_metrics.m_syscall_errors.to_protobuf(container->mutable_syscall_errors(), m_sampling_ratio);
 	if(!m_inspector->is_nodriver())
 	{
@@ -6029,8 +6162,13 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		}
 	}
 	container->mutable_resource_counters()->set_cpu_pct(res_cpu_pct);
+#else // CYGWING_AGENT
+	container->mutable_resource_counters()->set_cpu_pct(it_analyzer->second.m_metrics.m_cpuload * 100);
+#endif // CYGWING_AGENT
 	container->mutable_resource_counters()->set_count_processes(it_analyzer->second.m_metrics.get_process_count());
+#ifndef CYGWING_AGENT
 	container->mutable_resource_counters()->set_proc_start_count(it_analyzer->second.m_metrics.get_process_start_count());
+#endif
 
 	const auto cpu_shares = it->second.m_cpu_shares;
 	if(cpu_shares > 0)
@@ -6063,6 +6201,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	it_analyzer->second.m_metrics.m_metrics.to_protobuf(tcounters, m_sampling_ratio);
 	if(m_inspector->is_nodriver())
 	{
+#ifndef CYGWING_AGENT
 		// We need to patch network metrics reading from /proc
 		// since we don't have sysdig events in this case
 		auto io_net = tcounters->mutable_io_net();
@@ -6072,8 +6211,25 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 						net_bytes.first, net_bytes.second);
 		io_net->set_bytes_in(net_bytes.first);
 		io_net->set_bytes_out(net_bytes.second);
+
+#else
+		// In Windows we patch both network and file I/O
+		// metrics.
+		wh_docker_io_bytes dbytes = wh_docker_get_io_bytes(m_inspector->get_wmi_handle(), container_id.c_str());
+		if(dbytes.m_result != 0)
+		{
+			auto io_net = tcounters->mutable_io_net();
+			io_net->set_bytes_in(dbytes.m_net_bytes_in);
+			io_net->set_bytes_out(dbytes.m_net_bytes_out);
+
+			auto io_file = tcounters->mutable_io_file();
+			io_file->set_bytes_in(dbytes.m_file_bytes_in);
+			io_file->set_bytes_out(dbytes.m_file_bytes_out);
+		}
+#endif
 	}
 
+#ifndef CYGWING_AGENT
 	if(m_protocols_enabled)
 	{
 		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio, CONTAINERS_PROTOS_TOP_LIMIT);
@@ -6107,7 +6263,8 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->mutable_resource_counters()->set_statsd_sent(statsd_sent);
 		container->mutable_resource_counters()->set_statsd_total(statsd_total);
 	}
-#endif
+#endif // _WIN32
+#endif // CYGWING_AGENT
 	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
 	if(fs_list != m_mounted_fs_map.end())
 	{
@@ -6117,6 +6274,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 			it->to_protobuf(proto_fs);
 		}
 	}
+#ifndef CYGWING_AGENT
 	auto thread_count = it_analyzer->second.m_metrics.m_threads_count;
 	container->mutable_resource_counters()->set_threads_count(thread_count);
 
@@ -6129,6 +6287,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	{
 		emit_executed_commands(NULL, container, &(ecit->second));
 	}
+#endif	
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
 												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
@@ -6265,6 +6424,7 @@ void sinsp_analyzer::emit_user_events()
 				tags->set_value(p.second);
 			}
 		}
+#ifndef CYGWING_AGENT
 		if(m_k8s)
 		{
 			m_k8s->clear_events();
@@ -6273,6 +6433,7 @@ void sinsp_analyzer::emit_user_events()
 		{
 			m_docker->reset_event_counter();
 		}
+#endif		
 		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 		{
 			std::ostringstream ostr;
@@ -6286,6 +6447,7 @@ void sinsp_analyzer::emit_user_events()
 	}
 }
 
+#ifndef CYGWING_AGENT
 void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs)
 {
@@ -6309,6 +6471,7 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 		mtinfo->m_ainfo->set_found_prom_check();
 	}
 }
+#endif
 
 void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 				       sinsp_threadinfo *mtinfo,
@@ -6332,6 +6495,7 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 			// For mesos-master and mesos-slave app
 			// checks, override the built-in conf vals
 			// with the mesos-specific ones.
+#ifndef CYGWING_AGENT
 			if(check.module() == "mesos_master" || check.module() == "mesos_slave")
 			{
 				string auth_hostname = "localhost";
@@ -6399,6 +6563,7 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 
 				conf_vals = m_marathon_conf_vals;
 			}
+#endif // CYGWING_AGENT
 
 			app_checks_processes.emplace_back(check, tinfo);
 			mtinfo->m_ainfo->set_found_app_check(check);
@@ -6713,6 +6878,15 @@ void sinsp_analyzer::set_emit_tracers(bool enabled)
 {
 	tracer_emitter::set_enabled(enabled);
 }
+
+#ifndef CYGWING_AGENT
+void sinsp_analyzer::init_k8s_limits()
+{
+	m_infrastructure_state->init_k8s_limits(m_configuration->get_k8s_filter(),
+						m_configuration->get_excess_k8s_log(),
+						m_configuration->get_k8s_cache());
+}
+#endif
 
 uint64_t self_cputime_analyzer::read_cputime()
 {

@@ -2,8 +2,10 @@
 
 #include "main.h"
 
+#ifndef CYGWING_AGENT
 #ifndef _WIN32
 #include <sys/prctl.h>
+#endif
 #endif
 
 #include "coclient.h"
@@ -21,7 +23,11 @@
 #include <atomic>
 #include <memory>
 
+#ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
+#else
+#include "windows_helpers.h"
+#endif
 #include "draios.pb.h"
 #include "analyzer_utils.h"
 
@@ -111,6 +117,10 @@ private:
 
 	bool m_help_requested;
 	bool m_version_requested;
+#ifdef CYGWING_AGENT
+	windows_helpers m_windows_helpers;
+	bool m_windows_service_parent;
+#endif
 	string m_pidfile;
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
@@ -132,6 +142,8 @@ private:
 	subprocesses_logger m_subprocesses_logger;
 	unordered_map<string, watchdog_state> m_subprocesses_state;
 	uint64_t m_last_dump_s;
+#ifndef CYGWING_AGENT
 	std::unique_ptr<coclient> m_coclient;
 	run_on_interval m_cointerface_ping_interval = {5*ONE_SECOND_IN_NS};
+#endif
 };

@@ -170,7 +170,7 @@ TEST(statsite_proxy, filter)
 	ASSERT_TRUE(output_file != NULL);
 	statsite_proxy proxy(make_pair(input_fd, output_file));
 
-	metrics_filter_vec f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
+	filter_vec_t f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
 	metric_limits::sptr_t ml(new metric_limits(f));
 	auto ret = proxy.read_metrics(ml);
 	EXPECT_EQ(2U, ret.size());

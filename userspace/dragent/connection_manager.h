@@ -45,10 +45,12 @@ private:
 	void handle_auto_update();
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
+#ifndef CYGWING_AGENT
 	void handle_policies_message(uint8_t* buf, uint32_t size);
 	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
 	void handle_baselines_message(uint8_t* buf, uint32_t size);
 	void send_policy_events_messages(uint64_t ts_ns);
+#endif
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;

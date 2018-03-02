@@ -114,7 +114,7 @@ TEST(jmx_bean, test_filter)
 		  "\"url\" : \"org.neo4j/instance%3Dkernel%230%2Cname%3DPrimitive+count\""
 		"}", jv, true)
 	);
-	metrics_filter_vec f = {{"NumberOfRelationship*", true}, {"NumberOfProperty*", false}};
+	filter_vec_t f = {{"NumberOfRelationship*", true}, {"NumberOfProperty*", false}};
 	metric_limits::sptr_t ml(new metric_limits(f, 4u));
 	java_bean jb(jv, ml);
 	ASSERT_EQ(3u, jb.attributes().size());
@@ -125,7 +125,7 @@ TEST(jmx_bean, test_filter)
 	ASSERT_TRUE(ml->has("NumberOfRelationshipTypeIdsInUse"));
 }
 
-jmx_proxy::process_map_t run_filtering(unique_ptr<jmx_proxy>& jmx, const metrics_filter_vec& f)
+jmx_proxy::process_map_t run_filtering(unique_ptr<jmx_proxy>& jmx, const filter_vec_t& f)
 {
 	metric_limits::sptr_t ml(new metric_limits(f));
 	jmx_proxy::process_map_t metrics = jmx->read_metrics(ml);
@@ -194,7 +194,7 @@ TEST_F(jmx_proxy_f, test_filters)
 
 	// Rule 1.
 	// metric is included if neither name nor alias is found in the list
-	metrics_filter_vec f({{"some*", false}, {"thing.*", false}});
+	filter_vec_t f({{"some*", false}, {"thing.*", false}});
 	auto metrics = run_filtering(jmx, f);
 	//print_metrics(metrics);
 	EXPECT_EQ(2u, metrics.size());

@@ -3,6 +3,7 @@
 #include "infrastructure_state.h"
 #include "utils.h"
 
+#ifndef CYGWING_AGENT
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
 bool infrastructure_state::get_cached_result(std::string &entity_id, size_t h, bool *res)
@@ -181,6 +182,16 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
 		}, ts);
+}
+
+void infrastructure_state::init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size)
+{
+	m_k8s_limits.init(filters, cache_size);
+
+	if(log)
+	{
+		user_configured_limits::enable_logging<k8s_limits>();
+	}
 }
 
 bool infrastructure_state::subscribed()
@@ -468,7 +479,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 		switch(evt->type()) {
 		case draiosproto::ADDED:
 			m_state[key] = make_unique<draiosproto::container_group>();
-			m_state[key]->CopyFrom(evt->object());
+			purge_tags_and_copy(key, evt->object());
 			connect(key);
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
@@ -490,7 +501,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				break;
 			}
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Overwrite container group <%s,%s>", kind.c_str(), id.c_str());
-			m_state[key]->CopyFrom(evt->object());
+			purge_tags_and_copy(key, evt->object());
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
 			break;
 		case draiosproto::REMOVED:
@@ -504,7 +515,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will change relationships, remove the container group then connect it again");
 				remove(key);
 				m_state[key] = make_unique<draiosproto::container_group>();
-				m_state[key]->CopyFrom(evt->object());
+				purge_tags_and_copy(key, evt->object());
 				connect(key);
 			} else {
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will not change relationships, just update the metadata");
@@ -1173,3 +1184,191 @@ std::string infrastructure_state::get_k8s_cluster_id() const
 
 	return "";
 }
+
+void infrastructure_state::purge_tags_and_copy(uid_t key, const draiosproto::container_group& cg)
+{
+	ASSERT(m_state.find(key) != std::end(m_state));
+	m_state[key]->CopyFrom(cg);
+
+	m_k8s_limits.purge_tags(*m_state[key].get());
+}
+
+// Look for sysdig agent by pod name, container name or image, or daemonset
+// name or label
+bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastructure_state::uid_t uid, std::unordered_set<infrastructure_state::uid_t> *visited)
+{
+	const std::string agentname("sysdig-agent");
+	const std::string agentimage("sysdig/agent");
+
+	if (!visited)
+	{
+		std::unordered_set<infrastructure_state::uid_t> newvis;
+		return has_agent(state, uid, &newvis);
+	}
+	if (!state->has(uid) || (visited->find(uid) != visited->end())) {
+		return false;
+	}
+	visited->emplace(uid);
+
+	auto *cg = state->m_state.find(uid)->second.get();
+
+	if (!cg) {	// Shouldn't happen
+		return false;
+	}
+
+	if (uid.first == "k8s_pod")
+	{
+		// Don't bother looking further under a non-running pod
+		// If we can't find phase, assume it's running
+		auto phaseit = cg->tags().find("kubernetes.pod.label.status.phase");
+		if ((phaseit != cg->tags().end()) && (phaseit->second != "Running"))
+		{
+			glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Skipping agent check for non-running pod %s", uid.second.c_str());
+			return false;
+		}
+
+		auto tag = cg->tags().find("kubernetes.pod.label.name");
+		if ((tag != cg->tags().end()) && (tag->second == agentname))
+		{
+			glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Found sysdig-agent pod %s", uid.second.c_str());
+			return true;
+		}
+
+		// Look for parent daemonset with sysdig tags
+		for (const auto &parent : cg->parents())
+		{
+			if (parent.kind() != "k8s_daemonset")
+				continue;
+			auto pkey = make_pair(parent.kind(), parent.id());
+			if (!state->has(pkey))
+				break;
+			auto *pcg = state->m_state.find(pkey)->second.get();
+			if (!pcg) // Shouldn't happen
+				break;
+			auto ptag = pcg->tags().find("kubernetes.daemonSet.name");
+			auto ptag2 = pcg->tags().find("kubernetes.daemonSet.label.app");
+			if (((ptag != pcg->tags().end()) && ptag->second == agentname) ||
+				((ptag2 != pcg->tags().end()) && ptag2->second == agentname))
+			{
+				glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Found sysdig-agent pod %s from daemonset", uid.second.c_str());
+				return true;
+			}
+		}
+	}
+	else if (uid.first == "container")
+	{
+		auto tag = cg->tags().find("container.name");
+		if ((tag != cg->tags().end()) && (tag->second == agentname))
+		{
+			glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Found sysdig-agent container %s", uid.second.c_str());
+			return true;
+		}
+		tag = cg->tags().find("container.label.io.kubernetes.container.name");
+		if ((tag != cg->tags().end()) && (tag->second == agentname))
+		{
+			glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Found sysdig-agent container label in %s", uid.second.c_str());
+			return true;
+		}
+		tag = cg->tags().find("container.image");
+		if ((tag != cg->tags().end()) && !tag->second.compare(0, agentimage.size(), agentimage))
+		{
+			glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Found sysdig/agent container image in %s", uid.second.c_str());
+			return true;
+		}
+	}
+
+	for(const auto &c_uid : cg->children()) {
+		auto ckey = make_pair(c_uid.kind(), c_uid.id());
+
+		if (has_agent(state, ckey, visited))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+// Find out if our node is one of the delegated ones.
+// The first <n> nodes, sorted by uuid, that are running an agent are
+// considered delegated.
+bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_delegated)
+{
+	std::set<std::string> ip_addrs;
+	infrastructure_state::uid_t our_node;
+	std::map<infrastructure_state::uid_t, std::string> nodes;
+
+	if (!state->m_inspector || !state->m_inspector->get_ifaddr_list())
+	{
+		glogf(sinsp_logger::SEV_WARNING, "k8s_deleg: No IP addresses found");
+		return false;
+	}
+
+	for (const auto& iface : *state->m_inspector->get_ifaddr_list()->get_ipv4_list())
+	{
+		ip_addrs.emplace(iface.address());
+	}
+
+	for (const auto &i : state->m_state)
+	{
+		if (i.first.first != "k8s_node")
+			continue;
+
+		std::ostringstream os;
+		bool found_our_node = false;
+
+		auto cg = i.second.get();
+		auto tag = cg->tags().find("kubernetes.node.name");
+		if (tag != cg->tags().end())
+		{
+			os << "name: " << tag->second;
+		}
+
+		os << (os.str().empty() ? "" : " ") << "ips:";
+		for (auto ip : cg->ip_addresses())
+		{
+			os << " " << ip;
+			if (our_node.first.empty() && (ip_addrs.find(ip) != ip_addrs.end()))
+			{
+				glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: we are node %s:%s based on IP %s", i.first.first.c_str(), i.first.second.c_str(), ip.c_str());
+				our_node = i.first;
+				found_our_node = true;
+			}
+		}
+
+		if (found_our_node || has_agent(state, i.first))
+		{
+			nodes.emplace(i.first, os.str());
+		}
+	}
+
+	bool delegated = false;
+	int cnt = 0;
+	for (auto it = nodes.begin(); (cnt < num_delegated) &&
+		it != nodes.end(); it++, cnt++)
+	{
+		if (it->first == our_node)
+			delegated = true;
+		glogf(sinsp_logger::SEV_INFO, "k8s_deleg: delegated node %s id: %s%s",
+			it->second.c_str(), it->first.second.c_str(),
+			(it->first == our_node) ? " (this node)" : "");
+	}
+
+	return delegated;
+}
+
+// Cached version of is_delegated_now()
+bool new_k8s_delegator::is_delegated(infrastructure_state *state, int num_delegated, uint64_t now)
+{
+	m_delegation_interval.run([this, &state, &num_delegated]()
+	{
+		bool deleg = is_delegated_now(state, num_delegated);
+		// Only report as delegated if we're found to be delegated twice in a row.
+		glogf(sinsp_logger::SEV_INFO, "k8s_deleg: This node %s delegated", (deleg ? (m_prev_deleg ? "is" : "is not yet") : "is not"));
+
+		m_cached_deleg = m_prev_deleg && deleg;
+		m_prev_deleg = deleg;
+	}, now);
+	return m_cached_deleg;
+}
+#endif // CYGWING_AGENT

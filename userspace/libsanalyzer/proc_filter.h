@@ -94,9 +94,11 @@ public:
 	void set_rules(std::vector<filter_rule> rules) { m_rules = std::move(rules); }
 	const std::vector<filter_rule>& rules() const { return m_rules; }
 
+#ifndef CYGWING_AGENT
 	bool match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	           const sinsp_container_info *container, const infrastructure_state &is,
 			   std::function<bool (const filter_rule &rule)> on_match = nullptr) const;
+#endif
 
 protected:
 	std::string m_context;
@@ -125,10 +127,12 @@ public:
 	uint32_t max_containers() const { return m_max_containers; }
 	static uint32_t max_containers_default() { return default_max_containers; }
 
+#ifndef CYGWING_AGENT
 	bool match(const sinsp_container_info *container, const infrastructure_state &is) const
 	{
 		return base::match(nullptr, nullptr, container, is);
 	}
+#endif
 
 private:
 	uint32_t m_check_interval;

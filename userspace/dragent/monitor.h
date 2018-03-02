@@ -54,7 +54,11 @@ private:
 class monitor
 {
 public:
+#ifndef CYGWING_AGENT
 	monitor(string pidfile);
+#else
+	monitor(string pidfile, bool windows_service_parent);
+#endif
 	int run();
 
 	template<typename... Ts>
@@ -74,4 +78,7 @@ private:
 	function<void(void)> m_cleanup_function;
 	string m_pidfile;
 	vector<monitored_process> m_processes;
+#ifdef CYGWING_AGENT
+	bool m_windows_service_parent = true;
+#endif
 };

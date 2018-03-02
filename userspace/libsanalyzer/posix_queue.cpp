@@ -120,6 +120,7 @@ bool posix_queue::limits_set = false;
 
 bool posix_queue::set_queue_limits()
 {
+#ifndef CYGWING_AGENT
 	if(!limits_set)
 	{
 		struct rlimit r;
@@ -134,6 +135,11 @@ bool posix_queue::set_queue_limits()
 		limits_set = (res == 0);
 	}
 	return limits_set;
+#else // CYGWING_AGENT
+//	ASSERT(false);
+	g_logger.format(sinsp_logger::SEV_ERROR, "posix_queue::set_queue_limits must be implemented on Windows");
+//	throw sinsp_exception("posix_queue::set_queue_limits not implemented on Windows");
+#endif // CYGWING_AGENT
 }
 
 bool posix_queue::remove(const string &name)

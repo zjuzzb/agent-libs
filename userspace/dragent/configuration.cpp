@@ -11,6 +11,10 @@
 #include "json_error_log.h"
 #include "logger.h"
 #include "uri.h"
+#include "windows_helpers.h"
+#ifdef CYGWING_AGENT
+#include "proc_filter.h"
+#endif
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -217,7 +221,9 @@ dragent_configuration::dragent_configuration()
 	m_watchdog_sinsp_data_handler_timeout_s = 0;
 	m_watchdog_max_memory_usage_mb = 0;
 	m_watchdog_warn_memory_usage_mb = 0;
+#ifndef CYGWING_AGENT
 	m_watchdog_heap_profiling_interval_s = 0;
+#endif
 	m_dirty_shutdown_report_log_size_b = 0;
 	m_capture_dragent_events = false;
 	m_jmx_sampling = 1;
@@ -342,6 +348,22 @@ void dragent_configuration::add_percentiles()
 	std::copy(pctls.begin(), pctls.end(), std::inserter(m_percentiles, m_percentiles.end()));
 }
 
+void dragent_configuration::sanitize_limits(filter_vec_t& filters)
+{
+	if(metric_limits::first_includes_all(filters))
+	{
+		filters.clear();
+	}
+	else // if first rule is "exclude all", that's all we need
+	{
+		metric_limits::optimize_exclude_all(filters);
+	}
+	if(filters.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
+	{
+		filters.erase(filters.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, filters.end());
+	}
+}
+
 void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component)
 {
 	if(!m_config) { return; }
@@ -459,6 +481,12 @@ void dragent_configuration::configure_k8s_from_env()
 
 void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
+#ifdef CYGWING_AGENT
+	bool is_windows = true;
+#else
+	bool is_windows = false;
+#endif
+
 	refresh_machine_id();
 
 	File package_dir("/opt/draios");
@@ -471,10 +499,17 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 	else
 	{
+#ifndef CYGWING_AGENT
 		m_agent_installed = false;
 		m_root_dir = Path::current();
 		m_conf_file = Path(m_root_dir).append("dragent.yaml").toString();
 		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
+#else
+		m_agent_installed = true;
+		m_root_dir = windows_helpers::get_executable_parent_dir();
+		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
+		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
+#endif
 	}
 
 	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_root_dir).append("etc").toString()));
@@ -656,7 +691,9 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_config->add_warning("watchdog:warn_memory_usage_mb cannot be higher than watchdog:max_memory_usage_mb");
 		m_watchdog_warn_memory_usage_mb = m_watchdog_max_memory_usage_mb;
 	}
+#ifndef CYGWING_AGENT
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
+#endif
 	// Right now these two entries does not support merging between defaults and specified on config file
 	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 128U}});
 	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}, {"cointerface", 60U}});
@@ -682,10 +719,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("sysdig capture", "max outstanding", 1);
 	m_sysdig_capture_transmit_rate = m_config->get_scalar<double>("sysdig capture", "transmit rate", 1024 * 1024);
 	m_sysdig_capture_compression_level = m_config->get_scalar<int32_t>("sysdig capture", "compression level", Z_DEFAULT_COMPRESSION);
-	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", true);
+	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", !is_windows);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
-	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", true);
+	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", !is_windows);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
 
@@ -703,6 +740,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		return disabled_checks.find(item.name()) != disabled_checks.end();
 	}), m_app_checks.end());
 
+#ifndef CYGWING_AGENT
 	// Prometheus
 	m_prom_conf.set_enabled(m_config->get_scalar<bool>("prometheus", "enabled", false));
 	m_prom_conf.set_log_errors(m_config->get_scalar<bool>("prometheus", "log_errors", false));
@@ -712,6 +750,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
+#endif // CYGWING_AGENT
 
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",
 										"/usr/bin/python2.6", "/usr/bin/python26"};
@@ -732,7 +771,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		}
 	}
 
-	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", true);
+	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", !is_windows);
 	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
@@ -774,6 +813,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		}
 	}
 
+#ifndef CYGWING_AGENT
 	// K8s
 	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
 	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
@@ -864,7 +904,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	std::vector<std::string> default_skip_labels = {"DCOS_PACKAGE_METADATA", "DCOS_PACKAGE_COMMAND"};
 	auto marathon_skip_labels_v = m_config->get_merged_sequence<std::string>("marathon_skip_labels", default_skip_labels);
 	m_marathon_skip_labels = std::set<std::string>(marathon_skip_labels_v.begin(), marathon_skip_labels_v.end());
-
+#endif
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
@@ -899,7 +939,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_auto_config = m_config->get_scalar("auto_config", true);
 	m_emit_tracers = m_config->get_scalar("emit_tracers", true);
 
+#ifndef CYGWING_AGENT
 	auto mode_s = m_config->get_scalar<string>("run_mode", "standard");
+#else
+	auto mode_s = m_config->get_scalar<string>("run_mode", "nodriver");
+#endif
 	if(mode_s == "nodriver")
 	{
 		m_mode = dragent_mode_t::NODRIVER;
@@ -920,26 +964,28 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_excess_metric_log = m_config->get_scalar("metrics_excess_log", false);
 	m_metrics_cache = m_config->get_scalar<unsigned>("metrics_cache_size", 0u);
-	m_metrics_filter = m_config->get_merged_sequence<metrics_filter>("metrics_filter");
+	m_metrics_filter = m_config->get_merged_sequence<user_configured_filter>("metrics_filter");
 	// if first filter entry is empty or '*' and included, everything will be allowed, so it's pointless to have the filter list
-	if(metric_limits::first_includes_all(m_metrics_filter))
-	{
-		m_metrics_filter.clear();
-	}
-	else // if first rule is "exclude all", that's all we need
-	{
-		metric_limits::optimize_exclude_all(m_metrics_filter);
-	}
-	if(m_metrics_filter.size() > CUSTOM_METRICS_FILTERS_HARD_LIMIT)
-	{
-		m_metrics_filter.erase(m_metrics_filter.begin() + CUSTOM_METRICS_FILTERS_HARD_LIMIT, m_metrics_filter.end());
-	}
-	m_mounts_filter = m_config->get_merged_sequence<metrics_filter>("mounts_filter");
+	sanitize_limits(m_metrics_filter);
+
+	// get label filters
+	m_labels_filter = m_config->get_merged_sequence<user_configured_filter>("container_labels_filter");
+	m_labels_cache = m_config->get_scalar<uint16_t>("container_labels_cache_size", 0u);
+	m_excess_labels_log = m_config->get_scalar("container_labels_excess_log", false);
+	sanitize_limits(m_labels_filter);
+
+	// K8s tags filter
+	m_k8s_filter = m_config->get_merged_sequence<user_configured_filter>("k8s_labels_filter");
+	m_k8s_cache_size = m_config->get_scalar<uint16_t>("k8s_labels_cache_size", 0u);
+	m_excess_k8s_log = m_config->get_scalar("k8s_labels_excess_log", false);
+	sanitize_limits(m_k8s_filter);
+
+	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
 	m_stress_tools = m_config->get_merged_sequence<string>("perf_sensitive_programs");
 	m_detect_stress_tools = !m_stress_tools.empty();
-	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", true);
+	m_cointerface_enabled = m_config->get_scalar<bool>("cointerface_enabled", !is_windows);
 	m_coclient_max_loop_evts = m_config->get_scalar<uint32_t>("coclient_max_loop_evts", m_coclient_max_loop_evts);
 	m_swarm_enabled = m_config->get_scalar<bool>("swarm_enabled", true);
 
@@ -1017,7 +1063,9 @@ void dragent_configuration::print_configuration()
 	g_log->information("watchdog.sinsp_data_handler_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
 	g_log->information("watchdog.max_memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
 	g_log->information("watchdog.warn_memory_usage_mb: " + NumberFormatter::format(m_watchdog_warn_memory_usage_mb));
+#ifndef CYGWING_AGENT
 	g_log->information("watchdog.heap_profiling_interval_s: " + NumberFormatter::format(m_watchdog_heap_profiling_interval_s));
+#endif
 	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
 	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
 	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
@@ -1070,10 +1118,12 @@ void dragent_configuration::print_configuration()
 	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
 	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
+#ifndef CYGWING_AGENT
 	g_log->information("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
 	if (m_prom_conf.enabled()) {
 		g_log->information("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));
 	}
+#endif
 	g_log->information("python binary: " + m_python_binary);
 	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
@@ -1167,6 +1217,7 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Mesos state API server: " + m_mesos_state_uri);
 	}
+#ifndef CYGWING_AGENT
 	if(!m_marathon_uris.empty())
 	{
 		for(const auto& marathon_uri : m_marathon_uris)
@@ -1195,6 +1246,7 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("DC/OS Enterprise credentials provided.");
 	}
+#endif
 	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
 
 	if(m_security_enabled)
@@ -1287,7 +1339,7 @@ void dragent_configuration::print_configuration()
 	{
 		for(const auto& e : m_metrics_filter)
 		{
-			os << std::endl << (e.included() ? "include: " : "exclude: ") << *(e.filter());
+			os << std::endl << (e.included() ? "include: " : "exclude: ") << e.to_string();
 		}
 	}
 	g_log->information("Metrics filters:" + os.str());
@@ -1388,6 +1440,7 @@ bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 
 string dragent_configuration::get_distribution()
 {
+#ifndef CYGWING_AGENT
 	string s;
 
 	try
@@ -1422,6 +1475,9 @@ string dragent_configuration::get_distribution()
 
 	ASSERT(false);
 	return s;
+#else // CYGWING_AGENT
+	return "Windows - cygwin";
+#endif // CYGWING_AGENT
 }
 
 void dragent_configuration::write_statsite_configuration()
@@ -1470,7 +1526,8 @@ void dragent_configuration::write_statsite_configuration()
 		statsite_ini.append("quantiles = ").append(os.str());
 	}
 
-	string filename("/opt/draios/etc/statsite.ini");
+	string filename(m_root_dir + "/etc/statsite.ini");
+
 	if(!m_agent_installed)
 	{
 		filename = "statsite.ini";
@@ -1484,7 +1541,15 @@ void dragent_configuration::write_statsite_configuration()
 
 void dragent_configuration::refresh_machine_id()
 {
+#ifndef CYGWING_AGENT
 	m_machine_id = Environment::nodeId();
+#else
+	//
+	// NOTE: Environment::nodeId() is buggy in cygwin poco, and returns 
+	//       00:00:00:00:00:00. As a workaround we provide our own implementation.
+	//
+	m_machine_id = windows_helpers::get_machine_first_mac_address();
+#endif	
 }
 
 bool dragent_configuration::is_executable(const string &path)

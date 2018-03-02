@@ -4,7 +4,11 @@
 
 #include <sys/types.h>
 #include <sys/wait.h>
+#ifndef CYGWING_AGENT
 #include <sys/prctl.h>
+#else
+#include "windows_helpers.h"
+#endif
 #include "subprocesses_logger.h"
 #include <thread>
 #include <posix_queue.h>
@@ -48,13 +52,21 @@ static void delete_pid_file(const string& pidfile)
 
 int monitored_process::exec()
 {
+#ifndef CYGWING_AGENT
 	prctl(PR_SET_PDEATHSIG, SIGKILL);
+#endif
 	// TODO: may be useful rename process?
 	return m_exec();
 }
 
+#ifndef CYGWING_AGENT
 monitor::monitor(string pidfile):
 	m_pidfile(move(pidfile))
+#else
+monitor::monitor(string pidfile, bool windows_service_parent):
+	m_pidfile(move(pidfile)),
+	m_windows_service_parent(windows_service_parent)
+#endif
 {
 	create_pid_file(m_pidfile);
 }
@@ -132,7 +144,19 @@ int monitor::run()
 							}
 						}
 						m_cleanup_function();
+#ifndef CYGWING_AGENT
 						execl("/opt/draios/bin/dragent", "dragent", (char*)NULL);
+#else
+						string executable = windows_helpers::get_executable_parent_dir() + "/bin/dragent.exe";
+						if(m_windows_service_parent)
+						{
+							execl(executable.c_str(), "dragent", "--serviceparent", (char*)NULL);
+						}
+						else
+						{
+							execl(executable.c_str(), "dragent", (char*)NULL);
+						}
+#endif
 
 						delete_pid_file(m_pidfile);
 						exit(EXIT_FAILURE);

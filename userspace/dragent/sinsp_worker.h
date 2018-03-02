@@ -94,8 +94,10 @@ public:
 		m_user_event_queue = user_event_queue;
 	}
 
+#ifndef CYGWING_AGENT
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
 	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
+#endif
 	bool load_baselines(draiosproto::baselines &baselines, std::string &errstr);
 
 private:
@@ -116,7 +118,9 @@ private:
 	bool m_autodrop_currently_enabled;
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
+#ifndef CYGWING_AGENT
 	security_mgr *m_security_mgr;
+#endif
 	capture_job_handler *m_capture_job_handler;
 	sinsp_data_handler m_sinsp_handler;
 	blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>> m_dump_job_requests;

@@ -342,6 +342,7 @@ private:
 bool get_proc_mem_and_cpu(long& kb, int& cpu, std::string* err = nullptr);
 void send_subprocess_heartbeat();
 
+#ifndef CYGWING_AGENT
 class nsenter
 {
 public:
@@ -353,7 +354,7 @@ private:
 	static unordered_map<string, int> m_home_ns;
 	string m_type;
 };
-
+#endif // CYGWING_AGENT
 
 class ratelimit {
 public:

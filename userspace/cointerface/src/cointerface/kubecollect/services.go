@@ -93,6 +93,7 @@ func newServiceCongroup(service *v1.Service, setLinks bool) (*draiosproto.Contai
 }
 
 var serviceInf cache.SharedInformer
+var portmapMutex = &sync.Mutex{}
 var unresolvedPorts = map[types.UID]bool{}
 
 func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service) {
@@ -117,7 +118,9 @@ func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service)
 				if p == 0 {
 					log.Debugf("Marking k8s_service %v for port resolution",
 						service.GetName())
+					portmapMutex.Lock()
 					unresolvedPorts[service.GetUID()] = true
+					portmapMutex.Unlock()
 				}
 
 			}
@@ -197,9 +200,13 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfo
 				sameEntity, sameLinks := true, true
 				if oldService.GetResourceVersion() != newService.GetResourceVersion() {
 					sameEntity, sameLinks = serviceEquals(oldService, newService)
-				} else if unresolvedPorts[newService.GetUID()] {
-					sameEntity, sameLinks = false, false
-					delete(unresolvedPorts, newService.GetUID())
+				} else {
+					portmapMutex.Lock()
+					if unresolvedPorts[newService.GetUID()] {
+						sameEntity, sameLinks = false, false
+						delete(unresolvedPorts, newService.GetUID())
+					}
+					portmapMutex.Unlock()
 				}
 
 				if !sameEntity || !sameLinks {
@@ -210,7 +217,9 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfo
 			DeleteFunc: func(obj interface{}) {
 				oldService := obj.(*v1.Service)
 				// We may not have an unresolved port, but delete is still safe
+				portmapMutex.Lock()
 				delete(unresolvedPorts, oldService.GetUID())
+				portmapMutex.Unlock()
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{

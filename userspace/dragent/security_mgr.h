@@ -1,5 +1,5 @@
+#ifndef CYGWING_AGENT
 #pragma once
-
 // The security manager class is responsible for receiving the list of
 // policies from the backend, creating necessary objects to implement
 // the policies, and sending the stream of detected events to the
@@ -225,3 +225,4 @@ private:
 
 	metrics m_metrics;
 };
+#endif // CYGWING_AGENT

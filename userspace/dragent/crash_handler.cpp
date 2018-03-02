@@ -1,6 +1,8 @@
 #include "crash_handler.h"
 
+#ifndef CYGWING_AGENT
 #include <execinfo.h>
+#endif
 
 #include "logger.h"
 #include "sinsp_worker.h"
@@ -28,6 +30,7 @@ void crash_handler::run(int sig)
 			snprintf(line, sizeof(line), "Received signal %d\n", sig);
 			log_crashdump_message(fd, line);
 
+#ifndef CYGWING_AGENT
 			void *array[NUM_FRAMES];
 			int frames = backtrace(array, NUM_FRAMES);
 
@@ -35,6 +38,7 @@ void crash_handler::run(int sig)
 			log_crashdump_message(fd, line);
 
 			backtrace_symbols_fd(array, frames, fd);
+#endif
 
 			if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
 			{
@@ -47,7 +51,9 @@ void crash_handler::run(int sig)
 
 			close(fd);
 
+#ifndef CYGWING_AGENT
 			backtrace_symbols_fd(array, frames, 1);
+#endif
 		}
 		else
 		{
@@ -116,7 +122,9 @@ bool crash_handler::initialize()
 	}
 
 	void *array[NUM_FRAMES];
+#ifndef CYGWING_AGENT
 	backtrace(array, NUM_FRAMES);
+#endif
 
 	return true;
 }

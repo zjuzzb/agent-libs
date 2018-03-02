@@ -5,6 +5,7 @@
 
 #include <sinsp.h>
 
+#ifndef CYGWING_AGENT
 #include "security_policy.h"
 
 //
@@ -49,3 +50,4 @@ private:
 	// (grouping_name, baseline_name) -> baseline
 	std::map<std::pair<std::string, std::string>, std::unique_ptr<security_baseline>> m_baselines;
 };
+#endif // CYGWING_AGENT

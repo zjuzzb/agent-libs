@@ -1,6 +1,7 @@
 //
 // k8s_delegator.cpp
 //
+#ifndef CYGWING_AGENT
 
 #include "k8s_delegator.h"
 #include "sinsp.h"
@@ -60,9 +61,9 @@ k8s_delegator::~k8s_delegator()
 void k8s_delegator::refresh_ipv4_list()
 {
 	m_local_ip_addrs.clear();
-	if(m_inspector && m_inspector->m_network_interfaces)
+	if(m_inspector && m_inspector->get_ifaddr_list())
 	{
-		for (const auto& iface : *m_inspector->m_network_interfaces->get_ipv4_list())
+		for (const auto& iface : *m_inspector->get_ifaddr_list()->get_ipv4_list())
 		{
 			m_local_ip_addrs.emplace(iface.address());
 		}
@@ -390,3 +391,4 @@ void k8s_delegator::handle_json(Json::Value&& root)
 
 	handle_component(root);
 }
+#endif // CYGWING_AGENT

@@ -9,7 +9,10 @@
 
 #include "user_event.h"
 #include "metric_limits.h"
+#include "label_limits.h"
+#ifndef CYGWING_AGENT
 #include "mesos.h"
+#endif
 
 using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 
@@ -86,6 +89,9 @@ public:
 	void set_blacklisted_ports(const vector<uint16_t> & v);
 	void set_blacklisted_ports(const ports_set & v);
 	const ports_set & get_blacklisted_ports() const;
+	unsigned get_statsd_limit() const;
+	void set_statsd_limit(unsigned value);
+#ifndef CYGWING_AGENT
 	void set_k8s_api_server(const string& k8s_api);
 	const string & get_k8s_api_server() const;
 	bool get_k8s_autodetect_enabled() const;
@@ -114,8 +120,6 @@ public:
 	const std::set<std::string>& get_k8s_extensions() const;
 	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
 	const std::string& get_k8s_cluster_name() const;
-	unsigned get_statsd_limit() const;
-	void set_statsd_limit(unsigned value);
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	string get_mesos_state_original_uri() const;
@@ -137,24 +141,37 @@ public:
 	void set_marathon_skip_labels(std::set<std::string> &labels);
 	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
+#endif // CYGWING_AGENT
 	bool get_curl_debug() const;
 	void set_curl_debug(bool enabled);
 	uint32_t get_protocols_truncation_size() const;
 	void set_protocols_truncation_size(uint32_t truncation_size);
-    user_event_filter_t::ptr_t get_k8s_event_filter() const;
-    void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
-    user_event_filter_t::ptr_t get_docker_event_filter() const;
-    void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
-	metrics_filter_vec get_metrics_filter() const;
-	void set_metrics_filter(const metrics_filter_vec& event_filter);
-	mount_points_filter_vec get_mounts_filter() const;
-	void set_mounts_filter(const mount_points_filter_vec& mount_filter);
+	user_event_filter_t::ptr_t get_k8s_event_filter() const;
+	void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
+	user_event_filter_t::ptr_t get_docker_event_filter() const;
+	void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
+	filter_vec_t get_metrics_filter() const;
+	filter_vec_t get_labels_filter() const;
+	void set_metrics_filter(const filter_vec_t& event_filter);
+	void set_k8s_filter(const filter_vec_t& filter);
+	filter_vec_t get_k8s_filter(void) const;
+	filter_vec_t get_mounts_filter() const;
+	void set_labels_filter(const filter_vec_t& labels_filter);
+	void set_mounts_filter(const filter_vec_t& mount_filter);
 	unsigned get_mounts_limit_size() const;
 	void set_mounts_limit_size(unsigned mounts_limit_size);
 	bool get_excess_metrics_log() const;
-	void set_excess_metrics_log(bool log);
 	unsigned get_metrics_cache() const;
+	void set_excess_labels_log(bool log) noexcept;
+	bool get_excess_labels_log() const noexcept;
+	void set_labels_cache(uint16_t size) noexcept;
+	uint16_t get_labels_cache(void) const noexcept;
+	void set_excess_metrics_log(bool log);
 	void set_metrics_cache(unsigned sz);
+	void set_k8s_cache(uint16_t size) noexcept;
+	uint16_t get_k8s_cache() const noexcept;
+	void set_excess_k8s_log(bool) noexcept;
+	bool get_excess_k8s_log(void) const noexcept;
 	bool get_falco_baselining_enabled() const;
 	void set_falco_baselining_enabled(bool enabled);
 	bool get_command_lines_capture_enabled() const;
@@ -222,6 +239,11 @@ private:
 	ports_set m_known_ports;
 	ports_set m_blacklisted_ports;
 
+	std::set<double> m_percentiles;
+	unsigned m_statsd_limit;
+	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
+
+#ifndef CYGWING_AGENT	
 	string m_k8s_api;
 	bool   m_k8s_autodetect;
 	string m_k8s_ssl_cert_type;
@@ -237,11 +259,6 @@ private:
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
 
-	std::set<double> m_percentiles;
-	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
-
-	unsigned m_statsd_limit;
-
 	string m_mesos_state_uri;
 	string m_mesos_state_original_uri;
 	mutable vector<string> m_marathon_uris;
@@ -253,6 +270,7 @@ private:
 	mesos::credentials_t m_marathon_credentials;
 	mesos::credentials_t m_dcos_enterprise_credentials;
 	std::set<std::string> m_marathon_skip_labels;
+#endif // CYGWING_AGENT
 
 	bool m_curl_debug;
 
@@ -268,10 +286,18 @@ private:
 	std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
 
-	metrics_filter_vec m_metrics_filter;
+	filter_vec_t m_metrics_filter;
+	filter_vec_t m_labels_filter;
 	bool m_excess_metrics_log = false;
 	unsigned m_metrics_cache = 0;
-	mount_points_filter_vec m_mounts_filter;
+	bool m_excess_labels_log = false;
+	uint16_t m_labels_cache = 0;
+
+	filter_vec_t m_k8s_filter;
+	bool m_excess_k8s_log = false;
+	uint16_t m_k8s_cache = 0;
+
+	filter_vec_t m_mounts_filter;
 	unsigned m_mounts_limit_size;
 
 	unsigned m_jmx_limit;

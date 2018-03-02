@@ -109,7 +109,7 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 		bool metric_included = true;
 		bool allow_name = true, allow_alias = true;
 		int name_pos = 0, alias_pos = 0;
-		int nopos = metric_limits::ML_NO_FILTER_POSITION;
+		int nopos = metric_limits::NO_FILTER_POSITION;
 		std::string name_filter, alias_filter;
 
 		if(ml)
@@ -135,7 +135,7 @@ java_bean::java_bean(const Json::Value& json, metric_limits::cref_sptr_t ml):
 			{
 				allow_alias = ml->allow(a, alias_filter, &alias_pos);
 			}
-			nopos = metric_limits::ML_NO_FILTER_POSITION;
+			nopos = metric_limits::NO_FILTER_POSITION;
 			metric_included = ((alias_pos == nopos) && (name_pos == nopos)); // 1. (neither in the list)
 			if(!metric_included && ((name_pos) || (alias_pos))) // 2. (one or both found)
 			{

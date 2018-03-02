@@ -12,6 +12,11 @@ target_link_libraries(sinsp-open
 	draiosproto
 	pthread)
 
+if(CYGWIN)
+target_link_libraries(sinsp-open
+	/lib/w32api/libiphlpapi.a)
+endif()
+
 install(TARGETS sinsp-open 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT tests)
