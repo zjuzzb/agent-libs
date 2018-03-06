@@ -1195,8 +1195,13 @@ container_labels_filter:
   - include: io.kubernetes.pod.namespace
   - include: "com.docker.ucp.version"
   - exclude: "com.docker.ucp.*"
+  - exclude: "com.docker.swarm*"
+  - exclude: "com.docker.stack*"
   - exclude: "io.kubernetes.*"
+  - exclude: "io.openshift.*"
   - exclude: "annotation.io.kubernetes.*"
+  - exclude: "com.redhat.*"
+  - exclude: "io.k8s.*"
   - include: "*"
 
 k8s_labels_filter:
