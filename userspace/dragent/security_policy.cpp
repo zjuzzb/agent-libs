@@ -764,8 +764,9 @@ std::string net_inbound_policies::qualifies()
 {
 	return string("((evt.type = accept and evt.dir=<) or "
 		      " (evt.type in (recvfrom,recvmsg) and evt.dir=< and "
-		      "  fd.l4proto != tcp and fd.connected=false)) and "
+		      "  fd.l4proto != tcp and fd.connected=false and fd.name_changed=true)) and "
 		      "(fd.typechar = 4 or fd.typechar = 6) and "
+		      "(fd.ip != 0.0.0.0 and fd.net != 127.0.0.0/8) and "
 		      "(evt.rawres >= 0 or evt.res = EINPROGRESS)"
 		);
 }
@@ -877,8 +878,9 @@ std::string net_outbound_policies::qualifies()
 {
 	return string("((evt.type = connect and evt.dir=<) or "
 		      " (evt.type in (sendto,sendmsg) and evt.dir=< and "
-		      "  fd.l4proto != tcp and fd.connected=false)) and "
+		      "  fd.l4proto != tcp and fd.connected=false and fd.name_changed=true)) and "
 		      "(fd.typechar = 4 or fd.typechar = 6) and "
+		      "(fd.ip != 0.0.0.0 and fd.net != 127.0.0.0/8) and "
 		      "(evt.rawres >= 0 or evt.res = EINPROGRESS)"
 		);
 }
