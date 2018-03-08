@@ -948,7 +948,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			   diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
 			{
 				g_log->critical("watchdog: " + proc.first + " last activity " + NumberFormatter::format(diff) + " s ago");
-				to_kill = true;
+				// sdchecks implements the SIGHUP handler for handling stalls
+				if (proc.first == "sdchecks") {
+					kill(state.pid(), SIGHUP);
+					state.reset();
+				} else {
+					to_kill = true;
+				}
 			}
 			if(to_kill)
 			{

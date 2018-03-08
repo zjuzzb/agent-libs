@@ -174,13 +174,17 @@ int monitor::run()
 						continue;
 					}
 
-					// Notify main process to send log report
-					for(const auto& process : m_processes)
+					if(!WIFEXITED(status) || (WEXITSTATUS(status) != 
+											  DONT_SEND_LOG_REPORT_EXIT_CODE))
 					{
-						if(process.is_main())
+						// Notify main process to send log report
+						for(const auto& process : m_processes)
 						{
-							kill(process.pid(), SIGUSR2);
-							break;
+							if(process.is_main())
+							{
+								kill(process.pid(), SIGUSR2);
+								break;
+							}
 						}
 					}
 				}
