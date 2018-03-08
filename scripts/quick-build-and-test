@@ -6,6 +6,11 @@ MODE=$1
 
 rmmod sysdig-probe || true
 rmmod sysdigcloud-probe || true
+ACTIVE_MODS=$(lsmod | grep -c "sysdig.*_probe" || true)
+if [ ${ACTIVE_MODS} -gt 0 ]; then
+	echo "Unable to rmmod existing probe modules"
+	exit 1
+fi
 rm -rf agent/build || true
 rm -rf sysdig/build || true
 agent/bootstrap-agent
