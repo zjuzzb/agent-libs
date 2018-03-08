@@ -27,8 +27,13 @@ coclient::~coclient()
 
 void coclient::connect()
 {
-	m_stub = sdc_internal::CoInterface::NewStub(grpc::CreateChannel(string("unix:") + m_domain_sock,
-								grpc::InsecureChannelCredentials()));
+	// XXX - Using 1 channel per stub causes problems reconnecting if
+	// cointerface crashes.  Temporarily hack a shared channel with a
+	// function static, but clean it up in the pending coclient changes
+	static std::shared_ptr<grpc::Channel> shared_chan =
+		grpc::CreateChannel(string("unix:") + m_domain_sock,
+				    grpc::InsecureChannelCredentials());
+	m_stub = sdc_internal::CoInterface::NewStub(shared_chan);
 }
 
 void coclient::prepare(google::protobuf::Message *request_msg,
