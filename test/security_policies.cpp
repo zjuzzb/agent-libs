@@ -1028,7 +1028,7 @@ TEST_F(DISABLED_security_policies_test, net_inbound_outbound_tcp)
 
 	kill_container("inout_test");
 	create_tag("curl:inout_test", "tutum/curl");
-	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c '(nc -l -p 22222 -q0 &) && sleep 1 && (nc 127.0.0.1 22222)' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c '(timeout 5 nc -l -p 22222 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 22222)' > /dev/null 2>&1"), 0);
 
 	sleep(2);
 	kill_image("curl:inout_test");
@@ -1051,7 +1051,7 @@ TEST_F(DISABLED_security_policies_test, net_inbound_outbound_udp)
 
 	kill_container("inout_test");
 	create_tag("curl:inout_test", "tutum/curl");
-	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; (ncserver -ul -p 22222 -q0 &) && (echo ping | nc -u localhost 22222 -w 1)' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; (timeout 5 ncserver -ul -p 22222 -q0 &) && sleep 2 && (echo ping | timeout 5 nc -u $(hostname -I | cut -f 1 -d \" \") 22222 -w 1)' > /dev/null 2>&1"), 0);
 
 	sleep(2);
 	kill_image("curl:inout_test");
@@ -1142,7 +1142,7 @@ TEST_F(DISABLED_security_policies_test, overlapping_syscall)
 	kill_container("overlap_test");
 	create_tag("curl:overlap_test", "tutum/curl");
 
-	ASSERT_EQ(system("docker run --rm --name overlap_test curl:overlap_test bash -c '(nc -l -p 12345 -q0 &) && sleep 1 && (nc 127.0.0.1 12345)'"),0);
+	ASSERT_EQ(system("docker run --rm --name overlap_test curl:overlap_test bash -c '(timeout 5 nc -l -p 12345 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 12345)'"),0);
 
 	sleep(2);
 
