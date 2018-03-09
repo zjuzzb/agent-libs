@@ -5,10 +5,12 @@ metadata:
   labels:
     app: sysdig-agent
 spec:
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
       labels:
-        name: sysdig-agent
+        app: sysdig-agent
     spec:
       volumes:
       - name: docker-sock
@@ -32,6 +34,12 @@ spec:
       - name: dshm
         emptyDir:
           medium: Memory
+      - name: dragent-yaml
+        configMap:
+          name: sysdig-agent
+          items:
+            - key: dragent-yaml
+              path: dragent.yaml
       hostNetwork: true
       hostPID: true
       containers:
@@ -42,11 +50,16 @@ spec:
          privileged: true
         env:
         - name: ACCESS_KEY
-          value: e64a1780-5bbd-4083-8ce1-418c2bb0a356
-        - name: COLLECTOR
-          value: collector-staging.sysdigcloud.com
-        - name: ADDITIONAL_CONF
-          value: "app_checks_enabled: false\nsecurity: { enabled: true}\nnew_k8s: true"
+          value: 8c3a3eef-5f95-4937-bc72-f2bb9a48556a
+#        - name: ADDITIONAL_CONF
+#          value: "collector: localhost\ncollector_port: 30000\ndev_new_k8s: true"
+#        resources:
+#          requests:
+#            cpu: 100m
+#            memory: 512m
+#          limits:
+#            cpu: 200m
+#            memory: 512m
         volumeMounts:
         - mountPath: /host/var/run/docker.sock
           name: docker-sock
@@ -68,3 +81,6 @@ spec:
           readOnly: true
         - mountPath: /dev/shm
           name: dshm
+        - mountPath: /opt/draios/etc/dragent.yaml
+          name: dragent-yaml
+          subPath: dragent.yaml
