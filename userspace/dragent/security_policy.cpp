@@ -72,7 +72,7 @@ bool security_policy::match_scope(sinsp_evt *evt,
 		uid = make_pair("host", machine_id);
 	}
 
-	return analyzer->infra_state()->match_scope(uid, predicates);
+	return predicates.empty() || analyzer->infra_state()->match_scope(uid, predicates);
 }
 
 // This object owns event_detail but not the policy.
@@ -436,12 +436,11 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 			}
 			else
 			{
-				if (ruleset.first->scope_predicates().size() > 0 && !security_policy::match_scope(evt,
-														  m_mgr->analyzer(),
-														  ruleset.first->scope_predicates(),
-														  ruleset.first->host_scope(),
-														  ruleset.first->container_scope()))
-
+				if (!security_policy::match_scope(evt,
+								  m_mgr->analyzer(),
+								  ruleset.first->scope_predicates(),
+								  ruleset.first->host_scope(),
+								  ruleset.first->container_scope()))
 				{
 					m_metrics.incr(evt_metrics::EVM_MISS_SCOPE);
 				}
