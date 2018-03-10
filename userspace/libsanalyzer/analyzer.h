@@ -817,6 +817,7 @@ VISIBILITY_PRIVATE
 	bool m_has_docker;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
+	unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
 #endif // CYGWING_AGENT
 
 	vector<string> m_container_patterns;
@@ -835,8 +836,6 @@ VISIBILITY_PRIVATE
 	internal_metrics::sptr_t m_internal_metrics;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
-
-	unique_ptr<new_k8s_delegator> m_new_k8s_delegator;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
