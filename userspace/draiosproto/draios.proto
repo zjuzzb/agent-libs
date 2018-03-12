@@ -574,8 +574,7 @@ enum message_type {
     DUMP_REQUEST_START = 2;
     DUMP_REQUEST_STOP = 4;
     DUMP_RESPONSE = 3;
-    reserved 6 to 8;
-    AUTO_UPDATE_REQUEST = 9;
+    reserved 6 to 9;
     DIRTY_SHUTDOWN_REPORT = 10;
     CONFIG_DATA = 11;
     ERROR_MESSAGE = 12;
@@ -977,12 +976,6 @@ message dump_response {
     optional uint64 final_size_bytes = 10; // Final size of the trace file
     optional string error = 5; // Dump errors
     required string token = 6; // The token associated with the request
-}
-
-message auto_update_request {
-    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
-    required string machine_id = 2; // The unique ID of the machine that is sending this data
-    optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
 }
 
 message dirty_shutdown_report {

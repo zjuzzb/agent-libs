@@ -3,7 +3,6 @@
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
-#include "update_worker.h"
 #include "utils.h"
 
 #ifndef TCP_USER_TIMEOUT
@@ -467,9 +466,6 @@ void connection_manager::receive_message()
 						m_buffer.begin() + sizeof(dragent_protocol_header),
 						header->len - sizeof(dragent_protocol_header));
 				break;
-			case draiosproto::message_type::AUTO_UPDATE_REQUEST:
-				handle_auto_update();
-				break;
 			case draiosproto::message_type::CONFIG_DATA:
 				handle_config_data(
 						m_buffer.begin() + sizeof(dragent_protocol_header),
@@ -597,12 +593,6 @@ void connection_manager::handle_dump_request_stop(uint8_t* buf, uint32_t size)
 	// stop message arriving at the capture handler before the
 	// start. (Unlikely, but just being safe).
 	m_sinsp_worker->queue_job_request(job_request);
-}
-
-void connection_manager::handle_auto_update()
-{
-	update_worker* worker = new update_worker(m_configuration);
-	ThreadPool::defaultPool().start(*worker, "update_worker");
 }
 
 void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
