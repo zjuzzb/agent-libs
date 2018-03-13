@@ -25,33 +25,22 @@ void security_actions::init(security_mgr *mgr,
 	m_coclient = coclient;
 }
 
-void security_actions::perform_actions(sinsp_evt *evt,
-				       const security_policy *policy,
-				       draiosproto::policy_event *event)
+void security_actions::perform_docker_action(uint64_t ts_ns,
+					     sdc_internal::docker_cmd_type cmd,
+					     std::string &container_id,
+					     const draiosproto::action &action,
+					     draiosproto::action_result *result,
+					     shared_ptr<actions_state> astate)
 {
-	google::protobuf::TextFormat::Printer print;
-
-	m_outstanding_actions.emplace_back(event, policy->actions().size());
-	actions_state &astate = m_outstanding_actions.back();
-
-	sinsp_threadinfo *tinfo = evt->get_thread_info();
-	sinsp_container_info container_info;
-	string container_id;
-	uint64_t pid = 0;
-
-	if(tinfo)
+	if(container_id == "")
 	{
-		container_id = tinfo->m_container_id;
-		pid = tinfo->m_pid;
-	}
-
-	for(auto &action : policy->actions())
-	{
-		draiosproto::action_result *result = astate.m_event->add_action_results();
-		result->set_type(action.type());
+		// Docker actions against empty containers trivially succeed
 		result->set_successful(true);
-
-		coclient::response_cb_t callback = [result, &astate, this] (bool successful, google::protobuf::Message *response_msg)
+		note_action_complete(astate);
+	}
+	else
+	{
+		coclient::response_cb_t callback = [result, astate, this] (bool successful, google::protobuf::Message *response_msg)
 		{
 			google::protobuf::TextFormat::Printer print;
 
@@ -74,6 +63,53 @@ void security_actions::perform_actions(sinsp_evt *evt,
 			print.PrintToString(*result, &tmp);
 			g_log->debug(string("Docker cmd action result: ") + tmp);
 		};
+
+		if(m_active_docker_actions.find(container_id) != m_active_docker_actions.end())
+		{
+			std::string msg = "Skipping back-to-back docker action " +
+				std::to_string(action.type()) +
+				" for container " + container_id;
+
+			g_log->debug(msg);
+
+			result->set_successful(false);
+			result->set_errmsg("RPC Not successful");
+
+			note_action_complete(astate);
+		}
+		else
+		{
+			m_active_docker_actions.insert(pair<string,uint64_t>(container_id, ts_ns));
+			m_coclient->perform_docker_cmd(cmd, container_id, callback);
+		}
+	}
+}
+
+void security_actions::perform_actions(sinsp_evt *evt,
+				       const security_policy *policy,
+				       draiosproto::policy_event *event)
+{
+	google::protobuf::TextFormat::Printer print;
+
+	m_outstanding_actions.emplace_back(make_shared<actions_state>(event, policy->actions().size()));
+	shared_ptr<actions_state> astate = m_outstanding_actions.back();
+
+	sinsp_threadinfo *tinfo = evt->get_thread_info();
+	sinsp_container_info container_info;
+	string container_id;
+	uint64_t pid = 0;
+
+	if(tinfo)
+	{
+		container_id = tinfo->m_container_id;
+		pid = tinfo->m_pid;
+	}
+
+	for(auto &action : policy->actions())
+	{
+		draiosproto::action_result *result = astate->m_event->add_action_results();
+		result->set_type(action.type());
+		result->set_successful(true);
 
 		string tmp;
 		bool apply_scope = false;
@@ -108,7 +144,7 @@ void security_actions::perform_actions(sinsp_evt *evt,
 				// We had at least one capture action
 				// that was successful, so we must
 				// send the policy event immediately.
-				astate.m_send_now = true;
+				astate->m_send_now = true;
 			}
 
 			note_action_complete(astate);
@@ -118,10 +154,10 @@ void security_actions::perform_actions(sinsp_evt *evt,
 
 			break;
 		case draiosproto::ACTION_PAUSE:
-			m_coclient->perform_docker_cmd(sdc_internal::PAUSE, container_id, callback);
+			perform_docker_action(evt->get_ts(), sdc_internal::PAUSE, container_id, action, result, astate);
 			break;
 		case draiosproto::ACTION_STOP:
-			m_coclient->perform_docker_cmd(sdc_internal::STOP, container_id, callback);
+			perform_docker_action(evt->get_ts(), sdc_internal::STOP, container_id, action, result, astate);
 			break;
 		default:
 			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");
@@ -131,7 +167,7 @@ void security_actions::perform_actions(sinsp_evt *evt,
 		}
 	}
 
-	if(astate.m_num_remaining_actions == 0)
+	if(astate->m_num_remaining_actions == 0)
 	{
 		m_has_outstanding_actions = true;
 	}
@@ -153,9 +189,9 @@ draiosproto::action_result *security_actions::has_action_result(draiosproto::pol
 	return NULL;
 }
 
-void security_actions::note_action_complete(actions_state &astate)
+void security_actions::note_action_complete(const shared_ptr<actions_state> &astate)
 {
-	if(--astate.m_num_remaining_actions == 0)
+	if(--astate->m_num_remaining_actions == 0)
 	{
 		m_has_outstanding_actions = true;
 	}
@@ -168,15 +204,15 @@ void security_actions::check_outstanding_actions(uint64_t ts_ns)
 		return;
 	}
 
-	auto no_outstanding_actions = [ts_ns, this] (actions_state &act)
+	auto no_outstanding_actions = [ts_ns, this] (shared_ptr<actions_state> &act)
 	{
-		if(act.m_num_remaining_actions == 0)
+		if(act->m_num_remaining_actions == 0)
 		{
-			bool accepted = m_mgr->accept_policy_event(ts_ns, act.m_event, act.m_send_now);
+			m_mgr->send_policy_event(ts_ns, act->m_event, act->m_send_now);
 
 			const draiosproto::action_result *aresult;
 
-			if((aresult = has_action_result(act.m_event.get(), draiosproto::ACTION_CAPTURE)) &&
+			if((aresult = has_action_result(act->m_event.get(), draiosproto::ACTION_CAPTURE)) &&
 			   aresult->successful())
 			{
 				string token = aresult->token();
@@ -187,21 +223,11 @@ void security_actions::check_outstanding_actions(uint64_t ts_ns)
 				}
 				else
 				{
-					if(accepted)
-					{
-						// If one of the actions was a capture, when
-						// we scheduled the capture we deferred
-						// actually sending the capture data. Start
-						// sending the data now.
-						m_mgr->start_sending_capture(token);
-					}
-					else
-					{
-						// The policy event was throttled, so we
-						// should stop the capture without sending
-						// anything.
-						m_mgr->stop_capture(token);
-					}
+					// If one of the actions was a capture, when
+					// we scheduled the capture we deferred
+					// actually sending the capture data. Start
+					// sending the data now.
+					m_mgr->start_sending_capture(token);
 				}
 			}
 			return true;
@@ -216,5 +242,25 @@ void security_actions::check_outstanding_actions(uint64_t ts_ns)
 				    m_outstanding_actions.end());
 
 	m_has_outstanding_actions = false;
+}
+
+void security_actions::periodic_cleanup(uint64_t ts_ns)
+{
+	// This roughly correlates to the 30 second delay we have for
+	// docker stop actions, but the real goal is to avoid a flood
+	// of docker operations for a single container, so they don't
+	// need to be exactly the same.
+	for (auto it = m_active_docker_actions.begin(); it != m_active_docker_actions.end(); )
+	{
+		if(ts_ns > it->second && (ts_ns-it->second) > 30 * ONE_SECOND_IN_NS)
+		{
+			g_log->debug("Removing docker action for " + it->first);
+			m_active_docker_actions.erase(it++);
+		}
+		else
+		{
+			it++;
+		}
+	}
 }
 #endif // CYGWING_AGENT

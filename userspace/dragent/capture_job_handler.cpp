@@ -718,9 +718,11 @@ bool capture_job_handler::queue_job_request(sinsp *inspector, std::shared_ptr<du
 {
 	Poco::ScopedReadRWLock jobs_lck(m_jobs_lock);
 
-	// If there are more than m_max_sysdig_captures captures outstanding, return an error immediately.
+	// If the number of captures PLUS the number of capture job
+	// requests is greater than m_max_sysdig_captures, return an
+	// error immediately.
 	if(job_request->m_request_type == dump_job_request::JOB_START &&
-	   m_jobs.size() >= m_configuration->m_max_sysdig_captures)
+	   (m_jobs.size() + m_dump_job_requests.size()) >= m_configuration->m_max_sysdig_captures)
 	{
 		errstr = "maximum number of outstanding captures (" +
 			to_string(m_configuration->m_max_sysdig_captures) +
