@@ -35,7 +35,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 		//
 		if(is_server)
 		{
-			if(m_server_urls.size() <= MAX_THREAD_REQUEST_TABLE_SIZE || m_server_urls.count(url))
+			if(m_server_urls.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_urls.count(url))
 			{
 				auto entry = &(m_server_urls[url]);
 				request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
@@ -44,7 +44,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 		}
 		else
 		{
-			if(m_client_urls.size() <= MAX_THREAD_REQUEST_TABLE_SIZE || m_client_urls.count(url))
+			if(m_client_urls.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_urls.count(url))
 			{
 				auto entry = &(m_client_urls[url]);
 				request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
@@ -97,20 +97,24 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		sinsp_query_details* entry;
 		sinsp_query_details* type_entry;
 		char* tablename = pp->m_query_parser.m_table;
+		auto statement = truncate_str(pp->m_statement, truncation_size);
 
 		if(is_server)
 		{
-			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_queries.count(statement))
 			{
-				entry = &(m_server_queries[truncate_str(pp->m_statement, truncation_size)]);
+				entry = &(m_server_queries[statement]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
-			if(tablename != NULL &&
-				m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(tablename != NULL)
 			{
-				entry = &(m_server_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				auto trunc_table = truncate_str(pp->m_query_parser.m_table, truncation_size);
+				if (m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_tables.count(trunc_table))
+				{
+					entry = &(m_server_tables[trunc_table]);
+					request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
 
 			type_entry = &(m_server_query_types[pp->m_query_parser.m_statement_type]);
@@ -120,17 +124,20 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		}
 		else
 		{
-			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_queries.count(statement))
 			{
-				entry = &(m_client_queries[truncate_str(pp->m_statement, truncation_size)]);
+				entry = &(m_client_queries[statement]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
-			if(tablename != NULL &&
-				m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(tablename != NULL)
 			{
-				entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				auto trunc_table = truncate_str(pp->m_query_parser.m_table, truncation_size);
+				if(m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_tables.count(trunc_table))
+				{
+					entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
+					request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
 
 			type_entry = &(m_client_query_types[pp->m_query_parser.m_statement_type]);
@@ -495,30 +502,31 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 		bool is_error = (pp->m_error_code != 0);
 		if(is_server)
 		{
-			if(m_server_ops.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(pp->m_collection != NULL)
 			{
-				op_entry = &(m_server_ops[pp->m_opcode]);
-				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
+				auto collection = truncate_str(pp->m_collection, truncation_size);
+				if(m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_collections.count(collection))
+				{
+					collection_entry =&(m_server_collections[collection]);
+					request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
-			if(pp->m_collection != NULL && m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
-			{
-				collection_entry =&(m_server_collections[truncate_str(pp->m_collection, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
-			}
+			op_entry = &(m_server_ops[pp->m_opcode]);
+			request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
 			request_sorter<string, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
-			if(m_client_ops.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
-			{
-				op_entry = &(m_client_ops[pp->m_opcode]);
-				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
+			if(pp->m_collection != NULL) {
+				auto collection = truncate_str(pp->m_collection, truncation_size);
+				if(m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_collections.count(collection))
+				{
+					collection_entry =&(m_client_collections[collection]);
+					request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
-			if(pp->m_collection != NULL && m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
-			{
-				collection_entry =&(m_client_collections[truncate_str(pp->m_collection, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
-			}
+			op_entry = &(m_client_ops[pp->m_opcode]);
+			request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
 			request_sorter<string, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
 	}
