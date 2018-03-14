@@ -497,7 +497,7 @@ public:
 	dragent_configuration();
 
 	void init(Application* app, bool use_installed_dragent_yaml=true);
-	void print_configuration();
+	void print_configuration() const;
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
 	static string get_distribution();
@@ -616,7 +616,7 @@ public:
 	bool m_k8s_ssl_verify_certificate;
 	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
-	int m_k8s_delegated_nodes;
+	int m_k8s_delegated_nodes = 0;
 	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
 	bool m_use_new_k8s;
@@ -705,12 +705,12 @@ public:
 
 	unsigned m_snaplen;
 
-	bool java_present()
+	bool java_present() const
 	{
 		return !m_java_binary.empty();
 	}
 
-	bool python_present()
+	bool python_present() const
 	{
 #ifndef CYGWING_AGENT		
 		return !m_python_binary.empty();

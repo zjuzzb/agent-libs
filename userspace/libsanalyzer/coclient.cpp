@@ -160,13 +160,11 @@ bool coclient::next()
 			glogf(sinsp_logger::SEV_WARNING,
 			      "cointerface streaming RPC (%s) returned error", 
 			      sdc_internal::cointerface_message_type_Name(call->msg_type).c_str());
-			g_logger.log("cointerface streaming RPC returned error", sinsp_logger::SEV_WARNING);
 			call->response_cb(false, nullptr);
 		} else {
 			glogf(sinsp_logger::SEV_ERROR,
 			      "cointerface RPC (%s) could not be scheduled successfully",
 			      sdc_internal::cointerface_message_type_Name(call->msg_type).c_str());
-			g_logger.log("cointerface RPC could not be scheduled successfully", sinsp_logger::SEV_ERROR);
 			delete call;
 		}
 		return true;
