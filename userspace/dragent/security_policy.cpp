@@ -1293,67 +1293,72 @@ security_policies::match_result *matchlist_map_security_policies::match_event(si
 		return NULL;
 	}
 
-	uint8_t *val;
-	uint32_t len;
-	val = m_check->extract(evt, &len);
+	auto range = m_checks.equal_range(evt->get_type());
 
-	if(!val)
+	for(auto it = range.first; it != range.second; ++it)
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
-		return NULL;
-	}
+		uint8_t *val;
+		uint32_t len;
 
-	filter_value_t key(val, len);
-	filter_components_t components;
+		val = it->second->extract(evt, &len);
 
-	split_components(key, components);
-
-	for(auto &pair : m_index)
-	{
-		if(security_policy::match_scope(evt, m_mgr->analyzer(),
-						pair.first.preds,
-						pair.first.host_scope,
-						pair.first.container_scope))
-
+		if(!val)
 		{
-			// Any miss after this won't be due to scope
-			scope_miss = false;
+			m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
+			return NULL;
+		}
 
-			const match_result *best_match = NULL;
+		filter_value_t key(val, len);
+		filter_components_t components;
 
-			// Loop over the 3 prefix_map objects (for
-			// ACCEPT, DENY, NEXT). Find the best
-			// match_result that matches the path and
-			// return it.
-			for(auto &prefix_map : pair.second)
+		split_components(key, components);
+
+		for(auto &pair : m_index)
+		{
+			if(security_policy::match_scope(evt, m_mgr->analyzer(),
+							pair.first.preds,
+							pair.first.host_scope,
+							pair.first.container_scope))
 			{
-				const match_result *found = NULL;
-				if((found = prefix_map.match_components(components)) != NULL)
+				// Any miss after this won't be due to scope
+				scope_miss = false;
+
+				const match_result *best_match = NULL;
+
+				// Loop over the 3 prefix_map objects (for
+				// ACCEPT, DENY, NEXT). Find the best
+				// match_result that matches the path and
+				// return it.
+				for(auto &prefix_map : pair.second)
 				{
-					if(best_match == NULL ||
-					   match_result::compare_ptr(found, best_match))
+					const match_result *found = NULL;
+					if((found = prefix_map.match_components(components)) != NULL)
 					{
-						best_match = found;
+						if(best_match == NULL ||
+						   match_result::compare_ptr(found, best_match))
+						{
+							best_match = found;
+						}
 					}
 				}
+
+				if(!best_match)
+				{
+					continue;
+				}
+
+				match_result *match = new match_result(best_match->policy(),
+								       policies_type(),
+								       policies_subtype(),
+								       best_match->item(),
+								       new draiosproto::event_detail(),
+								       best_match->effect(),
+								       best_match->output_field_keys(),
+								       best_match->baseline_id());
+				set_match_details(*match, evt);
+
+				return match;
 			}
-
-			if(!best_match)
-			{
-				continue;
-			}
-
-			match_result *match = new match_result(best_match->policy(),
-							       policies_type(),
-							       policies_subtype(),
-							       best_match->item(),
-							       new draiosproto::event_detail(),
-							       best_match->effect(),
-							       best_match->output_field_keys(),
-							       best_match->baseline_id());
-			set_match_details(*match, evt);
-
-			return match;
 		}
 	}
 
@@ -1504,8 +1509,11 @@ void readonly_fs_policies::init(security_mgr *mgr,
 {
 	matchlist_map_security_policies::init(mgr, configuration, inspector);
 
-	m_check.reset(g_filterlist.new_filter_check_from_fldname("fd.name", m_inspector, true));
-	m_check->parse_field_name("fd.name", true, false);
+	std::shared_ptr<sinsp_filter_check> fdn;
+	fdn.reset(g_filterlist.new_filter_check_from_fldname("fd.name", m_inspector, true));
+	fdn->parse_field_name("fd.name", true, false);
+	m_checks.emplace(PPME_SYSCALL_OPEN_X, fdn);
+	m_checks.emplace(PPME_SYSCALL_OPENAT_X, fdn);
 }
 
 draiosproto::policy_type readonly_fs_policies::policies_type()
@@ -1586,8 +1594,11 @@ void container_policies::init(security_mgr *mgr,
 {
 	matchlist_security_policies::init(mgr, configuration, inspector);
 
-	m_check.reset(g_filterlist.new_filter_check_from_fldname("container.image", m_inspector, true));
-	m_check->parse_field_name("container.image", true, false);
+	std::shared_ptr<sinsp_filter_check> cim;
+	cim.reset(g_filterlist.new_filter_check_from_fldname("container.image", m_inspector, true));
+	cim->parse_field_name("container.image", true, false);
+	m_checks.emplace(PPME_SYSCALL_EXECVE_18_X, cim);
+	m_checks.emplace(PPME_SYSCALL_EXECVE_19_X, cim);
 }
 
 draiosproto::policy_type container_policies::policies_type()

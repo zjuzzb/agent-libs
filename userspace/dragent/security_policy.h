@@ -711,7 +711,7 @@ protected:
 
 	typedef path_prefix_map<security_policies::match_result> path_matchresult_search;
 
-	std::unique_ptr<sinsp_filter_check> m_check;
+	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_checks;
 
 	bool add_matchlist_details(security_policy *policy,
 				   const draiosproto::matchlist_detail &details,
