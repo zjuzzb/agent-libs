@@ -29,7 +29,7 @@ security_mgr::security_mgr()
 	  m_configuration(NULL)
 {
 	m_security_policies = {&m_process_policies, &m_container_policies,
-			       &m_readonly_fs_policies, &m_readwrite_fs_policies,
+			       &m_readonly_fs_policies, &m_readwrite_fs_policies, &m_nofd_readwrite_fs_policies,
 			       &m_net_inbound_policies, &m_net_outbound_policies,
 			       &m_tcp_listenport_policies, &m_udp_listenport_policies,
 			       &m_syscall_policies, &m_falco_policies};

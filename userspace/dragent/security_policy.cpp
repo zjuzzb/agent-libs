@@ -1576,6 +1576,79 @@ std::string readwrite_fs_policies::qualifies()
 	return string("evt.rawres > 0 and evt.is_open_write=true");
 }
 
+nofd_readwrite_fs_policies::nofd_readwrite_fs_policies()
+{
+	m_name = "files-readwrite-nofd";
+
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_evttypes[PPME_SYSCALL_MKDIR_2_X] = true;
+	m_evttypes[PPME_SYSCALL_MKDIRAT_X] = true;
+	m_evttypes[PPME_SYSCALL_RMDIR_2_X] = true;
+	m_evttypes[PPME_SYSCALL_RENAME_X] = true;
+	m_evttypes[PPME_SYSCALL_RENAMEAT_X] = true;
+	m_evttypes[PPME_SYSCALL_UNLINK_2_X] = true;
+	m_evttypes[PPME_SYSCALL_UNLINKAT_2_X] = true;
+}
+
+nofd_readwrite_fs_policies::~nofd_readwrite_fs_policies()
+{
+}
+
+void nofd_readwrite_fs_policies::init(security_mgr *mgr,
+				      dragent_configuration *configuration,
+				      sinsp *inspector)
+{
+	matchlist_map_security_policies::init(mgr, configuration, inspector);
+
+	std::shared_ptr<sinsp_filter_check> arg1, arg2, absp, absdst;
+	arg1.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[1]", m_inspector, true));
+	arg1->parse_field_name("evt.arg[1]", true, false);
+	arg2.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[2]", m_inspector, true));
+	arg2->parse_field_name("evt.arg[2]", true, false);
+	absp.reset(g_filterlist.new_filter_check_from_fldname("evt.abspath", m_inspector, false));
+	absp->parse_field_name("evt.abspath", true, false);
+	absdst.reset(g_filterlist.new_filter_check_from_fldname("evt.abspath.dst", m_inspector, false));
+	absdst->parse_field_name("evt.abspath.dst", true, false);
+
+	m_checks.emplace(PPME_SYSCALL_MKDIR_2_X, arg1);
+	m_checks.emplace(PPME_SYSCALL_RMDIR_2_X, arg1);
+	m_checks.emplace(PPME_SYSCALL_UNLINK_2_X, arg1);
+	m_checks.emplace(PPME_SYSCALL_RENAME_X, arg1);
+
+	m_checks.emplace(PPME_SYSCALL_MKDIRAT_X, absp);
+	m_checks.emplace(PPME_SYSCALL_UNLINKAT_2_X, absp);
+	m_checks.emplace(PPME_SYSCALL_RENAMEAT_X, absp);
+
+	m_checks.emplace(PPME_SYSCALL_RENAME_X, arg2);
+
+	m_checks.emplace(PPME_SYSCALL_RENAMEAT_X, absdst);
+}
+
+std::set<std::string> nofd_readwrite_fs_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+       switch(evt->get_type())
+       {
+       case PPME_SYSCALL_MKDIR_2_X:
+       case PPME_SYSCALL_RMDIR_2_X:
+       case PPME_SYSCALL_UNLINK_2_X:
+               return { "evt.type", "evt.arg[1]" };
+       case PPME_SYSCALL_RENAME_X:
+               return { "evt.type", "evt.arg[1]", "evt.arg[2]" };
+       case PPME_SYSCALL_MKDIRAT_X:
+       case PPME_SYSCALL_UNLINKAT_2_X:
+               return { "evt.type", "evt.abspath" };
+       case PPME_SYSCALL_RENAMEAT_X:
+               return { "evt.type", "evt.abspath", "evt.abspath.dst" };
+       default:
+               return { "evt.type" };
+       }
+}
+
+std::string nofd_readwrite_fs_policies::qualifies()
+{
+	return string("evt.rawres = 0");
+}
+
 container_policies::container_policies()
 {
 	m_name = "containers";

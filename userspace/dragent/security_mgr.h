@@ -198,6 +198,7 @@ private:
 	falco_security_policies m_falco_policies;
 	readonly_fs_policies m_readonly_fs_policies;
 	readwrite_fs_policies m_readwrite_fs_policies;
+	nofd_readwrite_fs_policies m_nofd_readwrite_fs_policies;
 	net_inbound_policies m_net_inbound_policies;
 	net_outbound_policies m_net_outbound_policies;
 	tcp_listenport_policies m_tcp_listenport_policies;

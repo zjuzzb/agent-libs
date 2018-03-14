@@ -72,6 +72,7 @@ protected:
 //       - matchlist_map_security_policies
 //          - readonly_fs_policies
 //             - readwrite_fs_policies
+//                - nofd_readwrite_fs_policies
 //          - container_policies
 //       - filtercheck_policies
 //          - net_inbound_policies
@@ -797,6 +798,23 @@ protected:
 	{
 		return policy->has_baseline_details() && policy->baseline_details().fs_read_write_enabled();
 	}
+
+	std::string qualifies();
+};
+
+class SINSP_PUBLIC nofd_readwrite_fs_policies : public readwrite_fs_policies
+{
+public:
+	nofd_readwrite_fs_policies();
+	virtual ~nofd_readwrite_fs_policies();
+
+	void init(security_mgr *mgr,
+		  dragent_configuration *configuration,
+		  sinsp *inspector);
+
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
+
+protected:
 
 	std::string qualifies();
 };
