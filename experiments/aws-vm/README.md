@@ -17,7 +17,12 @@ Optional:
 $ export AWS_PREFIX="<your initials>"
 ```
 
-Then, add the dummy box using any name you want:
+Then, add the aws plugin:
+```
+$ vagrant plugin install vagrant-aws
+...
+```
+and the dummy box, using any name you want:
 ```
 $ vagrant box add dummy https://github.com/mitchellh/vagrant-aws/raw/master/dummy.box
 ...
