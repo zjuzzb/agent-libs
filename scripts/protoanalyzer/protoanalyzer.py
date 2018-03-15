@@ -81,6 +81,7 @@ args = parser.parse_args()
 
 def walk_protos(path, filter_f, ext="dam"):
   for root, dirs, files in os.walk(path, topdown=False):
+    files.sort()
     for name in files:
       if name.endswith(ext):
         fullpath = os.path.join(root, name)
