@@ -47,6 +47,11 @@
 *.vspx
 *.psess
 
+# Generated files #
+###################
+cointerface/draiosproto
+cointerface/sdc_internal
+
 # misc #
 ######################
 userspace/libscap/Debug

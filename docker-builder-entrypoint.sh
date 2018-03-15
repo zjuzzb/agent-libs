@@ -10,7 +10,7 @@ if [[ -z $AGENT_IMAGE ]]; then
   AGENT_IMAGE="agent:latest"
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build /draios/agent/ /code/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude="cointerface/draiosproto" --exclude="cointerface/sdc_internal" /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='driver/Makefile' --exclude='driver/driver_config.h' /draios/sysdig/ /code/sysdig/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --filter='P userspace/engine/lua/lyaml*' /draios/falco/ /code/falco/
 cd /code/agent
