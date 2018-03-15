@@ -1,5 +1,6 @@
 baseline_list {
   id: "uuid-here"
+  hash: "hash-here"
   scope {
     key: "container.image.name_no_digest"
     value: "appropriate/nc"
@@ -137,6 +138,7 @@ baseline_list {
 }
 baseline_list {
   id: "uuid-2-here"
+  hash: "hash-2-here"
   scope {
     key: "container.image.name_no_digest"
     value: "alpine"
@@ -180,6 +182,7 @@ baseline_list {
 }
 baseline_list {
   id: "uuid-3-here"
+  hash: "hash-3-here"
   scope {
     key: "container.image.name_no_digest"
     value: "alpine"

@@ -1063,8 +1063,9 @@ message matchlist_detail {
 
 message baseline {
     required string id = 1;
-    repeated scope_value scope = 2;
-    required matchlist_detail matchlist_details = 3;
+    required string hash = 2;
+    repeated scope_value scope = 3;
+    required matchlist_detail matchlist_details = 4;
 }
 
 message baselines {
