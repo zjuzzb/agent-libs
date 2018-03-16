@@ -6,7 +6,6 @@
 #include "Poco/Net/HTTPResponse.h"
 #include "Poco/StreamCopier.h"
 #include "Poco/File.h"
-#include <netdb.h>
 
 #include "json_error_log.h"
 #include "logger.h"
@@ -960,7 +959,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	{
 		write_statsite_configuration();
 	}
-	parse_services_file();
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
 	m_emit_tracers = m_config->get_scalar("emit_tracers", true);
@@ -1557,17 +1555,6 @@ bool dragent_configuration::is_executable(const string &path)
 {
 	File file(path);
 	return file.exists() && file.canExecute();
-}
-
-void dragent_configuration::parse_services_file()
-{
-	auto service = getservent();
-	while(service != NULL)
-	{
-		m_known_server_ports.set(ntohs(service->s_port));
-		service = getservent();
-	}
-	endservent();
 }
 
 int dragent_configuration::save_auto_config(const string &config_filename,
