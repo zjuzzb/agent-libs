@@ -1,28 +1,30 @@
-set(GOPATH "${CMAKE_CURRENT_BINARY_DIR}:${CMAKE_CURRENT_SOURCE_DIR}")
+set(BASE_GOPATH "${DRAIOS_DEPENDENCIES_DIR}/go")
+set(GOPATH "${BASE_GOPATH}:${CMAKE_CURRENT_SOURCE_DIR}")
+set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
 
-add_custom_target(go_get_gogo DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt
-                   COMMAND mkdir -p ${CMAKE_CURRENT_BINARY_DIR}/src
-                   COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/protoc-gen-gofast
-                   COMMAND env GOPATH=${GOPATH} go get -u github.com/gogo/protobuf/proto
-                   COMMAND env GOPATH=${GOPATH} go get -u google.golang.org/grpc
-                   COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/gogo-go-get-complete.txt)
+# Create golang package directories for the generated go files
+set(PROTO_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface")
+file(MAKE_DIRECTORY ${PROTO_OUT_DIR}/draiosproto)
+file(MAKE_DIRECTORY ${PROTO_OUT_DIR}/sdc_internal)
 
-add_custom_target(go_get_cointerface_coclient
-                  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt
-                   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-                           ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
-#                   COMMAND env GOPATH=${GOPATH} go get cointerface
-                   COMMAND env GOPATH=${GOPATH} go get coclient
-                   COMMAND touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface-coclient-go-get-complete.txt)
+add_custom_target(generate_proto ALL
+  DEPENDS ${PROTO_OUT_DIR}/draiosproto/draios.pb.go
+          ${PROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go)
+add_custom_command(OUTPUT ${PROTO_OUT_DIR}/draiosproto/draios.pb.go
+                          ${PROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go
+        COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${PROTO_OUT_DIR}" go generate cointerface
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/generate.go
+		)
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
-        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt cointerface
-        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LISTDIR_DIR}
-	DEPENDS 
+#        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt cointerface
+        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	DEPENDS generate_proto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
@@ -37,47 +39,10 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
-                ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-                ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go)
-
-add_custom_target(coclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/coclient)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coclient
-        COMMAND env GOPATH=${GOPATH} go fmt coclient
-        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/coclient" coclient
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	DEPENDS go_get_cointerface_coclient
-	        ${CMAKE_CURRENT_SOURCE_DIR}/src/coclient/coclient.go
-                ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-                ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
-		cointerface)
-
-set(PROTOC_CMDLINE env PATH=${CMAKE_CURRENT_BINARY_DIR}/bin:$$PATH
-                   LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.5.0/target/lib
-                   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-3.5.0/target/bin/protoc
-                   -I ${PROJECT_SOURCE_DIR}/userspace/draiosproto)
-
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/src/sdc_internal/sdc_internal.pb.go
-	DEPENDS go_get_gogo
-	COMMENT "Building sdc_internal.pb.go from .proto files"
-	DEPENDS ${PROJECT_SOURCE_DIR}/userspace/draiosproto/sdc_internal.proto ${PROJECT_SOURCE_DIR}/userspace/draiosproto/draios.proto
-	COMMAND mkdir -p ./sdc_internal
-	COMMAND ${PROTOC_CMDLINE}
-	        --gofast_out=plugins=grpc,Mdraios.proto=draiosproto:./sdc_internal
-		${PROJECT_SOURCE_DIR}/userspace/draiosproto/sdc_internal.proto
-		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/src)
-
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/src/draiosproto/draios.pb.go
-	DEPENDS go_get_gogo
-	COMMENT "Building draiosproto.pb.go from .proto files"
-	DEPENDS ${PROJECT_SOURCE_DIR}/userspace/draiosproto/draios.proto
-	COMMAND mkdir -p ./draiosproto
-	COMMAND ${PROTOC_CMDLINE}
-	        --gofast_out=plugins=grpc:./draiosproto
-                ${PROJECT_SOURCE_DIR}/userspace/draiosproto/draios.proto
-	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/src)
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
+    )
 
 # Note that we don't package the client. That's only for testing
 # purposes.

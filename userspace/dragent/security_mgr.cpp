@@ -232,9 +232,10 @@ void security_mgr::process_event(sinsp_evt *evt)
 		}, ts_ns);
 
 		// Drive the coclient loop to pick up any async grpc responses
-		m_actions_poll_interval->run([this]()
+		m_actions_poll_interval->run([this, ts_ns]()
                 {
 			m_coclient->process_queue();
+			m_actions.periodic_cleanup(ts_ns);
 		}, ts_ns);
 
 		m_metrics_report_interval->run([this]()
@@ -292,13 +293,28 @@ void security_mgr::process_event(sinsp_evt *evt)
 			}
 			else if (match->effect() == draiosproto::EFFECT_DENY)
 			{
-				g_log->debug("Taking DENY action via policy: " + match->policy()->name());
-				draiosproto::policy_event *event = create_policy_event(evt, match->policy(), match->take_detail());
+				sinsp_threadinfo *tinfo = evt->get_thread_info();
+				std::string container_id;
+				if(tinfo && !tinfo->m_container_id.empty())
+				{
+					container_id=tinfo->m_container_id;
+				}
 
-				// Perform the actions associated with the
-				// policy. The actions will add their action
-				// results to the policy event as they complete.
-				m_actions.perform_actions(evt, match->policy(), event);
+				g_log->debug("Taking DENY action via policy: " + match->policy()->name());
+
+				if(throttle_policy_event(evt->get_ts(), container_id, match->policy()->id()))
+				{
+					draiosproto::policy_event *event = create_policy_event(evt->get_ts(),
+											       container_id,
+											       match->policy()->id(),
+											       match->take_detail());
+
+					// Not throttled--perform the actions associated
+					// with the policy. The actions will add their action
+					// results to the policy event as they complete.
+					m_actions.perform_actions(evt, match->policy(), event);
+				}
+
 				break;
 			}
 		}
@@ -405,16 +421,36 @@ baseline_mgr &security_mgr::baseline_manager()
 	return m_baseline_mgr;
 }
 
-bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
+void security_mgr::send_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now)
+{
+	// Not throttled, queue the policy event or send
+	// immediately.
+	if(send_now)
+	{
+		draiosproto::policy_events events;
+		events.set_machine_id(m_configuration->m_machine_id);
+		events.set_customer_id(m_configuration->m_customer_id);
+		draiosproto::policy_event *new_event = events.add_events();
+		new_event->MergeFrom(*event);
+		report_events_now(ts_ns, events);
+	}
+	else
+	{
+		draiosproto::policy_event *new_event = m_events.add_events();
+		new_event->MergeFrom(*event);
+	}
+}
+
+bool security_mgr::throttle_policy_event(uint64_t ts_ns, std::string &container_id, uint64_t policy_id)
 {
 	bool accepted = true;
 
 	// Find the matching token bucket, creating it if necessary
 
-	rate_limit_scope_t scope(event->container_id(), event->policy_id());
+	rate_limit_scope_t scope(container_id, policy_id);
 
 	string policy_name = "N/A";
-	auto it2 = m_policies.find(event->policy_id());
+	auto it2 = m_policies.find(policy_id);
 	if(it2 != m_policies.end())
 	{
 		policy_name = it2->second->name();
@@ -429,30 +465,13 @@ bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 		it->second.init(m_configuration->m_policy_events_rate, m_configuration->m_policy_events_max_burst, ts_ns);
 
 		g_log->debug("security_mgr::accept_policy_event creating new token bucket for policy=" + policy_name
-			     + ", container=" + event->container_id());
+			     + ", container=" + container_id);
 	}
 
 	if(it->second.claim(1, ts_ns))
 	{
-		// Not throttled, queue the policy event or send
-		// immediately.
-		if(send_now)
-		{
-			draiosproto::policy_events events;
-			events.set_machine_id(m_configuration->m_machine_id);
-			events.set_customer_id(m_configuration->m_customer_id);
-			draiosproto::policy_event *new_event = events.add_events();
-			new_event->MergeFrom(*event);
-			report_events_now(ts_ns, events);
-		}
-		else
-		{
-			draiosproto::policy_event *new_event = m_events.add_events();
-			new_event->MergeFrom(*event);
-		}
-
 		g_log->debug("security_mgr::accept_policy_event allowing policy=" + policy_name
-			     + ", container=" + event->container_id()
+			     + ", container=" + container_id
 			     + ", tokens=" + NumberFormatter::format(it->second.get_tokens()));
 	}
 	else
@@ -460,7 +479,7 @@ bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 		accepted = false;
 
 		string policy_name = "N/A";
-		auto it = m_policies.find(event->policy_id());
+		auto it = m_policies.find(policy_id);
 		if(it != m_policies.end())
 		{
 			policy_name = it->second->name();
@@ -479,25 +498,25 @@ bool security_mgr::accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::p
 		it2->second = it2->second + 1;
 
 		g_log->debug("security_mgr::accept_policy_event throttling policy=" + policy_name
-			     + ", container=" + event->container_id()
+			     + ", container=" + container_id
 			     + ", tcount=" + NumberFormatter::format(it2->second));
 	}
 
 	return accepted;
 }
 
-draiosproto::policy_event * security_mgr::create_policy_event(sinsp_evt *evt,
-							      security_policy *policy,
+draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,
+							      std::string &container_id,
+							      uint64_t policy_id,
 							      draiosproto::event_detail *details)
 {
 	draiosproto::policy_event *event = new draiosproto::policy_event();
-	sinsp_threadinfo *tinfo = evt->get_thread_info();
 
-	event->set_timestamp_ns(evt->get_ts());
-	event->set_policy_id(policy->id());
-	if(tinfo && !tinfo->m_container_id.empty())
+	event->set_timestamp_ns(ts_ns);
+	event->set_policy_id(policy_id);
+	if(!container_id.empty())
 	{
-		event->set_container_id(tinfo->m_container_id);
+		event->set_container_id(container_id);
 	}
 
 	event->set_allocated_event_details(details);

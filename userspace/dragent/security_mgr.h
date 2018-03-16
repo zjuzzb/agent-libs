@@ -61,17 +61,11 @@ public:
 	// necessary actions and send agent events.
 	void process_event(sinsp_evt *evt);
 
-	// Accept the provided policy event. This method enforces any
-	// rate limits that apply for the given (policy, container)
-	// tuple and adds the event to the pending events list (or
-	// reports it immediately, depending on send_now).
+	// Send the provided policy event, either adding the event to
+	// the pending events list or reporting it immediately,
+	// depending on send_now).
 	//
-	// Returns true if the policy event was fully
-	// accepted. Returns false if the policy event was throttled,
-	// meaning that it will be added to the periodic throttled
-	// events message instead of being sent as a complete policy
-	// event.
-	bool accept_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now);
+	void send_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::policy_event> &event, bool send_now);
 
 	// Start a sysdig capture. Returns true on success, false (and
 	// fills in errstr) if the capture couldn't be started.
@@ -143,8 +137,19 @@ private:
 				};
 	};
 
-	draiosproto::policy_event * create_policy_event(sinsp_evt *evt,
-							security_policy *policy,
+	// Potentially throttle the provided policy event. This method
+	// enforces any rate limits that apply for the given (policy,
+	// container) tuple.
+	//
+	// Returns true if the policy event was *not* throttled.
+	// Returns false if the policy event was throttled,
+	// meaning that it will be added to the periodic throttled
+	// events message. In this case, the event should be discarded.
+        bool throttle_policy_event(uint64_t ts_ns, std::string &container_id, uint64_t policy_id);
+
+	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
+							std::string &container_id,
+							uint64_t policy_id,
 							draiosproto::event_detail *details);
 
 	bool load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);

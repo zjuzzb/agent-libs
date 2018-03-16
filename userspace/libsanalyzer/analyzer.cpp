@@ -6067,15 +6067,6 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		const string &label_key = it_labels->first;
 		const string &label_val = it_labels->second;
 
-		// Filter out docker swarm and docker stack labels because that data
-		// should get sent in the swarm protobuf section by swarm managers
-		const std::string swarmstr("com.docker.swarm"),stackstr("com.docker.stack");
-		if(!label_key.compare(0, swarmstr.size(), swarmstr) ||
-		   !label_key.compare(0, stackstr.size(), stackstr))
-		{
-			continue;
-		}
-
 		// Filter labels forbidden by config file
 		check_label_limits();
 		if(m_label_limits && !m_label_limits->allow(label_key, filter))

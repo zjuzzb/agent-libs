@@ -655,6 +655,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_cpu_usage_max_sr_ntimes = m_config->get_scalar<unsigned>("cpu_usage_max_sr_seconds", 5);
 
 	m_host_custom_name = m_config->get_scalar<string>("ui", "customname", "");
+	// m_security_enabled may add a tag so make sure to set m_host_tags first
 	m_host_tags = m_config->get_scalar<string>("tags", "");
 	m_host_custom_map = m_config->get_scalar<string>("ui", "custommap", "");
 	m_host_hidden = m_config->get_scalar<bool>("ui", "is_hidden", false);
@@ -719,6 +720,14 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_max_sysdig_captures = m_config->get_scalar<uint32_t>("sysdig capture", "max outstanding", 1);
 	m_sysdig_capture_transmit_rate = m_config->get_scalar<double>("sysdig capture", "transmit rate", 1024 * 1024);
 	m_sysdig_capture_compression_level = m_config->get_scalar<int32_t>("sysdig capture", "compression level", Z_DEFAULT_COMPRESSION);
+	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||
+	   m_sysdig_capture_compression_level > Z_BEST_COMPRESSION)
+	{
+		g_log->warning("Invalid compression level "
+			       + std::to_string(m_sysdig_capture_compression_level)
+			       + ". Setting to " + std::to_string(Z_DEFAULT_COMPRESSION) + ".");
+		m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
+	}
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", !is_windows);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
@@ -775,7 +784,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
-	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 200);
+	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 50);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
 	for(auto p : known_server_ports)
@@ -825,10 +834,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
 	m_k8s_timeout_s = m_config->get_scalar<uint64_t>("k8s_timeout_s", 60);
 	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
-	// XXX publicly disabled until the feature is ready to GA
-	//     make sure to change print_configuration() when re-enabling
-	//m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", false);
+	// new_k8s takes precedence over dev_new_k8s but still turn it on
+	// if all they specify is "dev_new_k8s: true"
 	m_use_new_k8s = m_config->get_scalar<bool>("dev_new_k8s", false);
+	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", m_use_new_k8s);
 	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 
 	//////////////////////////////////////////////////////////////////////////////////////////
@@ -877,6 +886,14 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	{
 		m_k8s_autodetect = false;
 	}
+	if(m_k8s_delegated_nodes && !m_k8s_simulate_delegation &&
+	   !m_k8s_api_server.empty() && uri(m_k8s_api_server).is_local())
+	{
+		m_k8s_delegated_nodes = 0;
+		g_logger.log("K8s API server is local, k8s_delegated_nodes (" +
+			     std::to_string(m_k8s_delegated_nodes) + ") ignored.",
+			     sinsp_logger::SEV_WARNING);
+	}
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 	// End K8s
@@ -912,6 +929,15 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
 	m_security_enabled = m_config->get_scalar<bool>("security", "enabled", false);
+	if (m_security_enabled) {
+		// Note that this agent has secure enabled by adding to the host tags
+		// Must be done after we set m_host_tags so it doesn't get overwritten
+		if(m_host_tags != "")
+		{
+			m_host_tags += ",";
+		}
+		m_host_tags += "sysdig_secure.enabled:true";
+	}
 	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
 	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
 	// 1 second
@@ -994,7 +1020,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_snaplen = m_config->get_scalar<unsigned>("snaplen", 0);
 }
 
-void dragent_configuration::print_configuration()
+void dragent_configuration::print_configuration() const
 {
 	g_log->information("Distribution: " + get_distribution());
 	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
@@ -1137,18 +1163,12 @@ void dragent_configuration::print_configuration()
 	if (!m_k8s_api_server.empty())
 	{
 		g_log->information("K8S API server: " + uri(m_k8s_api_server).to_string(false));
-		if(m_k8s_delegated_nodes && uri(m_k8s_api_server).is_local() && !m_k8s_simulate_delegation)
-		{
-			m_k8s_delegated_nodes = 0;
-			g_logger.log("K8s API server is local, k8s_delegated_nodes (" +
-						 std::to_string(m_k8s_delegated_nodes) + ") ignored.", sinsp_logger::SEV_WARNING);
-		}
 	}
-	if(m_k8s_simulate_delegation)
+	if (m_k8s_simulate_delegation)
 	{
 		g_log->warning("!!! K8S delegation simulation enabled (non-production setting) !!!");
 	}
-	if(m_k8s_delegated_nodes)
+	if (m_k8s_delegated_nodes)
 	{
 		g_log->information("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
 	}
@@ -1193,9 +1213,7 @@ void dragent_configuration::print_configuration()
 	}
 	if(m_use_new_k8s)
 	{
-		// XXX temp change until new_k8s GAs
-		//g_log->information("Use new K8s integration");
-		g_log->information("DEVELOPER - Use new K8s integration");
+		g_log->information("Use new K8s integration");
 	}
 	if(!m_k8s_cluster_name.empty())
 	{
@@ -1271,13 +1289,6 @@ void dragent_configuration::print_configuration()
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
-
-		// Note that this agent has secure enabled by adding to the host tags
-		if(m_host_tags != "")
-		{
-			m_host_tags += ",";
-		}
-		m_host_tags += "sysdig_secure.enabled:true";
 	}
 
 
@@ -1322,16 +1333,6 @@ void dragent_configuration::print_configuration()
 	{
 		g_log->information("Running in simple driver mode, Security and Sysdig Captures will not work");
 	}
-
-	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||
-	   m_sysdig_capture_compression_level > Z_BEST_COMPRESSION)
-	{
-		g_log->warning("Invalid compression level "
-			       + std::to_string(m_sysdig_capture_compression_level)
-			       + ". Setting to " + std::to_string(Z_DEFAULT_COMPRESSION) + ".");
-		m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
-	}
-
 
 	g_log->information("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));
 	std::ostringstream os;

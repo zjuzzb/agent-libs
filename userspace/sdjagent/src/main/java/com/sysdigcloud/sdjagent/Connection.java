@@ -13,7 +13,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -136,11 +138,8 @@ public class Connection {
 
     public void closeConnector() {
         if (connector != null) {
-            try {
-                connector.close();
-            } catch (IOException e) {
-                // ignore
-            }
+            Disconnector.submit(connector);
+            connector = null;
         }
     }
 
@@ -162,6 +161,39 @@ public class Connection {
             Thread t = Executors.defaultThreadFactory().newThread(r);
             t.setDaemon(true);
             return t;
+        }
+    }
+
+    private static class CoreTimeoutThreadPoolExecutor extends ThreadPoolExecutor {
+        private static final int POOL_SIZE = 10;
+        private static final int THREAD_KEEPALIVE = 10;
+        private static final int QUEUE_SIZE = 100;
+
+        CoreTimeoutThreadPoolExecutor() {
+            super(POOL_SIZE, POOL_SIZE, THREAD_KEEPALIVE, TimeUnit.SECONDS, new ArrayBlockingQueue<Runnable>(QUEUE_SIZE));
+            allowCoreThreadTimeOut(true);
+        }
+    }
+
+    private static class Disconnector {
+        private static final ThreadPoolExecutor disconnectExecutor = new CoreTimeoutThreadPoolExecutor();
+
+        static void submit(final JMXConnector connector) {
+            try{
+                disconnectExecutor.execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            connector.close();
+                        } catch (IOException e) {
+                            // ignore
+                        }
+                    }
+                });
+            } catch (RejectedExecutionException e) {
+                LOGGER.severe("JMX disconnection overload, terminating process");
+                System.exit(1);
+            }
         }
     }
 }

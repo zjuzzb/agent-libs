@@ -22,7 +22,7 @@ add_definitions( -DHAS_ANALYZER )
 list(APPEND targetfiles
 	baseline_mgr.cpp
 	capture_job_handler.cpp
-	configuration.cpp 
+	configuration.cpp
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp
@@ -36,7 +36,6 @@ list(APPEND targetfiles
 	security_policy.cpp
 	sinsp_data_handler.cpp
 	sinsp_worker.cpp
-	update_worker.cpp
 	subprocesses_logger.cpp
 	user_event_channel.cpp)
 
@@ -44,10 +43,10 @@ if(CYGWIN)
 	list(APPEND targetfiles
 		windows_helpers.cpp)
 endif()
-	
+
 add_executable(dragent
 	${targetfiles})
-		
+
 if(CYGWIN)
 	set(POCO_LIB_DIR "bin")
 	set(POCO_LIB_PREFIX "cyg")
@@ -102,11 +101,11 @@ file(COPY ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
 		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
 		DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/chisels)
 
-install(TARGETS dragent 
+install(TARGETS dragent
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
 
-install(FILES root.cert 
+install(FILES root.cert
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
 
@@ -148,11 +147,11 @@ install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/DragentService.exe
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
-	
+
 install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/dragent.wxs
 	DESTINATION ${DRAIOS_BIN_PREFIX}
 	COMPONENT agent)
-	
+
 install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/make_msi.sh
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${DRAIOS_BIN_PREFIX}

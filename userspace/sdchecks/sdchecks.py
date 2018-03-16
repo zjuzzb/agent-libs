@@ -40,6 +40,9 @@ CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
 CUSTOM_CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.custom.d"
 GLOBAL_PERCENTILES = []
 
+DONT_SEND_LOG_REPORT = 19
+SIGHUP_HANDLER_EXIT_CODE = DONT_SEND_LOG_REPORT
+
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
 except KeyError:
@@ -47,6 +50,20 @@ except KeyError:
 
 _LIBC = ctypes.CDLL('libc.so.6', use_errno=True)
 __NR_setns = 308
+
+# This handler is triggered when sdchecks has stalled
+def sighup_handler(signum, frame):
+    logging.warning("Received signal %d, dumping stack and exiting with code %d" %
+                    (signum, SIGHUP_HANDLER_EXIT_CODE))
+    # Extracting stack so that it can be dumped using logging
+    for filename, linenumber, funcname, line in traceback.extract_stack(frame):
+        if line:
+            logging.warning("File: \"%s\", line %d, in %s -> %s" %
+                            (filename, linenumber, funcname, line))
+        else:
+            logging.warning("File: \"%s\", line %d, in %s" %
+                            (filename, linenumber, funcname))
+    os._exit(SIGHUP_HANDLER_EXIT_CODE) 
 
 def setns(fd):
     if hasattr(_LIBC, "setns"):
@@ -623,4 +640,5 @@ class Application:
         else:
             # In this mode register our usr1 handler to print stack trace (useful for debugging)
             signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+            signal.signal(signal.SIGHUP, sighup_handler)
             self.main_loop()

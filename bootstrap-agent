@@ -97,6 +97,33 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	make install
 fi
 
+export GOPATH=$DEPENDENCIES/go
+if [ ! -d "$GOPATH" ]; then
+	mkdir $GOPATH
+fi
+
+GOGO_PROTOBUF_VER=v0.4
+GOGO_PROTOBUF_PATH=github.com/gogo/protobuf/protoc-gen-gofast
+GOGO_PROTOBUF_DIR=$GOPATH/src/$GOGO_PROTOBUF_PATH
+GOGO_PROTOBUF_BIN=$GOPATH/bin/protoc-gen-gofast
+if [ ! -d "$GOGO_PROTOBUF_DIR" ]; then
+	# download but don't install yet
+	go get -u -d $GOGO_PROTOBUF_PATH
+fi
+cd $GOGO_PROTOBUF_DIR
+# There's no easy way to go get a specific version or install from a
+# vendored dep, so this hack makes sure we install the correct version
+GIT_VER=$(git describe --tags)
+if [ "$GIT_VER" != "$GOGO_PROTOBUF_VER" ]; then
+	go clean -i $GOGO_PROTOBUF_PATH
+	git checkout master
+	go get -u -d $GOGO_PROTOBUF_PATH
+	git checkout tags/$GOGO_PROTOBUF_VER
+fi
+if [ ! -f "$GOGO_PROTOBUF_BIN" ]; then
+	go install $GOGO_PROTOBUF_PATH
+fi
+
 OPENSSL_VER=1.0.2n
 OPENSSL_EXT=tar.gz
 OPENSSL_DIR=$DEPENDENCIES/openssl-$OPENSSL_VER

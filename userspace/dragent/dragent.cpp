@@ -850,7 +850,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
 #if _DEBUG
-		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
+		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
 #endif
 
 #ifndef CYGWING_AGENT
@@ -870,7 +870,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if(memory > m_configuration.m_watchdog_max_memory_usage_mb)
 		{
 			char line[128];
-			snprintf(line, sizeof(line), "watchdog: Fatal memory usage, %" PRId64 " MB\n", memory);
+			snprintf(line, sizeof(line), "watchdog: Fatal memory usage, %" PRId64 " MiB\n", memory);
 			crash_handler::log_crashdump_message(line);
 
 			if(m_sinsp_worker.get_last_loop_ns())
@@ -889,7 +889,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 		else if(memory > m_configuration.m_watchdog_warn_memory_usage_mb)
 		{
-			g_log->notice("watchdog: memory usage " + NumberFormatter::format(memory) + " MB");
+			g_log->notice("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
 			if(heap_profiling)
 			{
 				dump_heap = true;
@@ -926,12 +926,12 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		auto& state = proc.second;
 		if(state.valid())
 		{
-			g_log->debug("valid subprocess: " + proc.first + ", " + to_string(state.memory_used()) + " kb");
+			g_log->debug("valid subprocess: " + proc.first + ", " + to_string(state.memory_used()) + " KiB");
 			bool to_kill = false;
 			if(m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.find(proc.first) != m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.end() &&
 			   state.memory_used()/1024 > m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
 			{
-				g_log->critical("watchdog: " + proc.first + " using " + to_string(state.memory_used()) + " of memory, killing");
+				g_log->critical("watchdog: " + proc.first + " using " + to_string(state.memory_used()/1024) + "MiB of memory, killing");
 				to_kill = true;
 			}
 			uint64_t last_loop_s = state.last_loop_s();
@@ -948,7 +948,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			   diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
 			{
 				g_log->critical("watchdog: " + proc.first + " last activity " + NumberFormatter::format(diff) + " s ago");
-				to_kill = true;
+				// sdchecks implements the SIGHUP handler for handling stalls
+				if (proc.first == "sdchecks") {
+					kill(state.pid(), SIGHUP);
+					state.reset();
+				} else {
+					to_kill = true;
+				}
 			}
 			if(to_kill)
 			{

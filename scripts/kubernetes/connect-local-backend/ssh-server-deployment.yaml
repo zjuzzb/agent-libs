@@ -1,0 +1,43 @@
+kind: Deployment
+apiVersion: extensions/v1beta1
+metadata:
+  name: ssh-server
+  labels:
+    app: ssh-server
+spec:
+  replicas: 1
+  # selector identifies the set of Pods that this
+  # replication controller is responsible for managing
+  selector:
+    matchLabels:
+     app: ssh-server
+  template:
+    spec:
+      volumes:
+      - name: authorized-keys
+        secret:
+          secretName: authorized-keys
+      containers:
+        - name: ssh-server
+          image: luca3m/ssh-server
+          ports:
+          - containerPort: 22
+            name: ssh
+          - containerPort: 6666
+            name: collector
+          volumeMounts:
+          - mountPath: /root/.ssh
+            name: authorized-keys
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 512Mi
+    metadata:
+      labels:
+        # Important: these labels need to match the selector above
+        # The api server enforces this constraint.
+        app: ssh-server
+        provides: collector

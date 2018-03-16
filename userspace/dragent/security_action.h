@@ -27,6 +27,9 @@ public:
 	// complete. If they are, pass the policy event to the security mgr.
 	void check_outstanding_actions(uint64_t ts_ns);
 
+	// Garbage collect the active docker actions
+	void periodic_cleanup(uint64_t ts_ns);
+
 protected:
 	// Keeps track of any policy events and their outstanding
 	// actions. When all actions are complete, the policy will
@@ -61,9 +64,21 @@ protected:
 						      const draiosproto::action_type &atype);
 
 	// Note that an action has completed.
-	void note_action_complete(actions_state &astate);
+	void note_action_complete(const std::shared_ptr<actions_state> &astate);
 
-	std::vector<actions_state> m_outstanding_actions;
+	void perform_docker_action(uint64_t ts_ns,
+				   sdc_internal::docker_cmd_type cmd,
+				   std::string &container_id,
+				   const draiosproto::action &action,
+				   draiosproto::action_result *result,
+				   std::shared_ptr<actions_state> astate);
+
+	std::vector<std::shared_ptr<actions_state>> m_outstanding_actions;
+
+	// Ensures that only a single docker action (of any type) can
+	// be performed on a container at once
+	std::map<string,uint64_t> m_active_docker_actions;
+
 	security_mgr *m_mgr;
 	bool m_has_outstanding_actions;
 	std::shared_ptr<coclient> m_coclient;
