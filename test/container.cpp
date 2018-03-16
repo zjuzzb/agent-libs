@@ -123,6 +123,8 @@ static int clone_callback_3(void *arg)
 	sleep(1);
 	sleep(1);
 	sleep(1);
+	sleep(1);
+	sleep(1);
 	return 0;
 }
 
