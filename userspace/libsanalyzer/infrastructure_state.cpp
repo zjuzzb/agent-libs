@@ -941,6 +941,14 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Adding parent <k8s_pod,%s> to container %s", t.second.c_str(), container_info.m_id.c_str());
 		}
 	}
+	uid_t h_pkey = make_pair("host", m_machine_id);
+	if(has(h_pkey))
+	{
+		auto p = cg->mutable_parents()->Add();
+		p->set_kind(h_pkey.first);
+		p->set_id(h_pkey.second);
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Adding parent <host,%s> to container %s", m_machine_id.c_str(), container_info.m_id.c_str());
+	}
 
 	handle_event(&evt, true);
 
