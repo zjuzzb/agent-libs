@@ -18,14 +18,13 @@ import socket
 import atexit
 from datetime import datetime
 from IPython import embed
+import hashlib
 
 # this class parses text dumped protobuf from the agent
 # they can be enabled with "metricsfile: { location: metrics }"
 # on dragent.yaml
 # it works if the agent is still running and will report data
 # continously using `tail -f`
-# TODO: it needs improvements tobe able to parse protobufs coming
-#       from protoparser
 class MetricsFile(object):
   def __init__(self, path, tail=False):
     if tail:
@@ -76,12 +75,19 @@ parser.add_argument("--binary", dest="binary", required=False, default=False, ac
 parser.add_argument("--reorder", dest="reorder", required=False, default=False, action="store_true", help="reorder metrics by timestamp")
 parser.add_argument("--jq-filter", type=str, required=False, help="JQ filter to use")
 parser.add_argument("--filter", type=str, required=False, help="Native functions available")
+parser.add_argument("--filter-args", type=str, required=False, default="", help="Native functions args")
 parser.add_argument("path", type=str, help="File to parse")
 args = parser.parse_args()
 
+def print_ts_header(ts):
+  print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
+
 def walk_protos(path, filter_f, ext="dam"):
   for root, dirs, files in os.walk(path, topdown=False):
-    files.sort()
+    if args.reorder:
+      # dumb way to reorder timestamps, assuming the file format is
+      # <timestamp>.dam
+      files.sort()
     for name in files:
       if name.endswith(ext):
         fullpath = os.path.join(root, name)
@@ -127,12 +133,12 @@ def print_kubernetes_summary():
   print "only running containers=%d" % len(running_containers.difference(kubernetes_containers))
   #for cid in running_containers.difference(kubernetes_containers):
   #  print "name=%s" % containers_by_id[cid]
-  print "deployments=%s" % str(deployments) 
+  print "deployments=%s" % str(deployments)
   print "k8s_nodes=%d\n%s" % (len(k8s_nodes), str(k8s_nodes))
   print "nodes=%d\n%s" % (len(k8s_nodes), str(nodes))
 
 class MesosCheck(object):
-  def __init__(self):
+  def __init__(self, args):
     self.masterSamplesWithMesos = 0
     self.mesosMasters = set()
     self.containers = set()
@@ -169,7 +175,7 @@ class MesosCheck(object):
     if m["machine_id"] in self.mesosMasters:
       self.masterSamples += 1
     return None
-  
+
   def parse_marathon_group(self, group):
     if "groups" in group:
       for subgroup in group["groups"]:
@@ -201,9 +207,71 @@ class MesosCheck(object):
     print "hosts with no matches = %s" % host_no_marathon_matches
     embed()
 
+class FollowContainer(object):
+  def __init__(self, args):
+    self.container_to_follow = args
+    self.print_header = True
+
+  def __call__(self, m):
+    for c in m["containers"]:
+      if c["id"] == self.container_to_follow:
+        print "Present"
+    for p in m["programs"]:
+      details = p["procinfo"]["details"]
+      if "container_id" in details:
+        if details["container_id"] == self.container_to_follow:
+          print "Present on processes"
+          break
+
+class ContainerProcessChecker(object):
+
+  def __init__(self, args):
+    self.containers = {}
+    self.container_processes = {}
+    self.processes_no_containers = set()
+    self.print_header = True
+
+  def __call__(self, m):
+    containers = {}
+    container_processes = {}
+    processes_no_containers = set()
+    if not "containers" in m:
+      return
+    for c in m["containers"]:
+      containers[c["id"]] = c["name"]
+    for p in m["programs"]:
+      details = p["procinfo"]["details"]
+      if "container_id" in details:
+        container_processes[details["container_id"]] = details["comm"]
+      else:
+        processes_no_containers.add(hashlib.md5(str(details)+str(p["pids"])).hexdigest())
+
+    # Print current sample
+    print "%d total processes" % len(m["programs"])
+    self._print_status(containers, container_processes, processes_no_containers)
+
+    # Aggregate data
+    self.containers.update(containers)
+    self.container_processes.update(container_processes)
+    self.processes_no_containers = self.processes_no_containers.union(processes_no_containers)
+
+  def _print_status(self, containers, container_processes, processes_no_containers):
+    container_set = set(containers.keys())
+    processes_set = set(container_processes.keys())
+    print "\n%d Containers without processes:" % len(container_set.difference(processes_set))
+    for c in container_set.difference(processes_set):
+      print "%s:%s" % (c, containers[c])
+    print "\n%d Processes without containers:" % len(processes_set.difference(container_set))
+    for c in processes_set.difference(container_set):
+      print "%s:%s" % (c, container_processes[c])
+    print "\nProcesses out of containers: %d" % len(processes_no_containers)
+
+  def summary(self):
+    self._print_status(self.containers, self.container_processes, self.processes_no_containers)
+
 def create_filter():
   if args.filter:
-    return globals()[args.filter]()
+    return globals()[args.filter](args.filter_args)
   elif args.jq_filter:
     jq_filter = jq(args.jq_filter)
     return lambda m: jq_filter.transform(m, multiple_output=True)
@@ -235,12 +303,15 @@ def process_metrics(metrics, filter_f):
     return
   metrics_j = filter_f(metrics_d)
   if metrics_j:
-    print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
+    print_ts_header(ts)
     print(json.dumps(metrics_j, indent=2))
     print("\n")
   else:
-    sys.stdout.write('.')
-    sys.stdout.flush()
+    if hasattr(filter_f, "print_header") and filter_f.print_header:
+      print_ts_header(ts)
+    else:
+      sys.stdout.write('.')
+      sys.stdout.flush()
 
 print "Running with args: %s" % repr(args)
 
@@ -261,7 +332,7 @@ def main():
   print("")
   if hasattr(filter_f, "summary"):
     filter_f.summary()
-  
+
 if __name__ == "__main__":
   try:
     main()
