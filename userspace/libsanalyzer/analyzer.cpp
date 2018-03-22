@@ -4135,27 +4135,27 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
 
-			double loadavg[3] = {0};
-			if(getloadavg(loadavg, 3) != -1)
+			if(!m_inspector->is_capture())
 			{
-				if(!m_inspector->is_capture())
+				double loadavg[3] = {0};
+				if(getloadavg(loadavg, 3) != -1)
 				{
 					m_metrics->mutable_hostinfo()->set_system_load_1(loadavg[0] * 100);
 					m_metrics->mutable_hostinfo()->set_system_load_5(loadavg[1] * 100);
 					m_metrics->mutable_hostinfo()->set_system_load_15(loadavg[2] * 100);
 				}
-			}
-			else
-			{
-				g_logger.log("Could not obtain load averages", sinsp_logger::SEV_WARNING);
-			}
-
-			m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
+				else
+				{
+					g_logger.log("Could not obtain load averages", sinsp_logger::SEV_WARNING);
+				}
+				
+				m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
 								 &m_host_metrics.m_res_memory_free_kb,
 								 &m_host_metrics.m_res_memory_avail_kb,
 								 &m_host_metrics.m_swap_memory_used_kb,
 								 &m_host_metrics.m_swap_memory_total_kb,
 								 &m_host_metrics.m_swap_memory_avail_kb);
+			}
 
 			if(m_protocols_enabled)
 			{
