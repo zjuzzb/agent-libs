@@ -52,65 +52,73 @@ func addReplicationControllerMetrics(metrics *[]*draiosproto.AppMetric, replicat
 }
 
 func AddReplicationControllerParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if compatibilityMap["replicationcontrollers"] {
-		for _, obj := range replicationControllerInf.GetStore().List() {
-			replicationController := obj.(*v1.ReplicationController)
-			//log.Debugf("AddNSParents: %v", nsObj.GetName())
-			selector := labels.Set(replicationController.Spec.Selector).AsSelector()
-			if pod.GetNamespace() == replicationController.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_replicationcontroller"),
-					Id:proto.String(string(replicationController.GetUID()))})
-			}
+	if !resourceReady("replicationcontrollers") {
+		return
+	}
+
+	for _, obj := range replicationControllerInf.GetStore().List() {
+		replicationController := obj.(*v1.ReplicationController)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		selector := labels.Set(replicationController.Spec.Selector).AsSelector()
+		if pod.GetNamespace() == replicationController.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicationcontroller"),
+				Id:proto.String(string(replicationController.GetUID()))})
 		}
 	}
 }
 
 func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["replicationcontrollers"] 	{
-		for _, obj := range replicationControllerInf.GetStore().List() {
-			replicationController := obj.(*v1.ReplicationController)
-			if replicationController.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
+	if !resourceReady("replicationcontrollers") {
+		return
+	}
+
+	for _, obj := range replicationControllerInf.GetStore().List() {
+		replicationController := obj.(*v1.ReplicationController)
+		if replicationController.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_replicationcontroller"),
-					Id:proto.String(string(replicationController.GetUID()))})
-			}
+				Id:proto.String(string(replicationController.GetUID()))})
 		}
 	}
 }
 
 func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
-	if compatibilityMap["replicationcontrollers"] {
-		for _, obj := range replicationControllerInf.GetStore().List() {
-			rc := obj.(*v1.ReplicationController)
-			if (rc.GetNamespace() == namespace) &&
-				(rc.GetName() == name) {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_replicationcontroller"),
-					Id:proto.String(string(rc.GetUID()))})
-			}
+	if !resourceReady("replicationcontrollers") {
+		return
+	}
+
+	for _, obj := range replicationControllerInf.GetStore().List() {
+		rc := obj.(*v1.ReplicationController)
+		if (rc.GetNamespace() == namespace) &&
+			(rc.GetName() == name) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicationcontroller"),
+				Id:proto.String(string(rc.GetUID()))})
 		}
 	}
 }
 
-func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
 	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchReplicationControllers(evtc)
 		replicationControllerInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchReplicationControllers()")
 
 	replicationControllerInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("replicationcontrollers")
 				//log.Debugf("AddFunc dumping ReplicationController: %v", obj.(*v1.ReplicationController))
 				evtc <- replicationControllerEvent(obj.(*v1.ReplicationController),
 					draiosproto.CongroupEventType_ADDED.Enum())
@@ -132,6 +140,4 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) ca
 			},
 		},
 	)
-
-	return replicationControllerInf
 }

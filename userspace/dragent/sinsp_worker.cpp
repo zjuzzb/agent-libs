@@ -355,6 +355,13 @@ void sinsp_worker::init()
 	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
 #endif
 
+	m_analyzer->get_configuration()->set_orch_queue_len(m_configuration->m_orch_queue_len);
+	m_analyzer->get_configuration()->set_orch_gc(m_configuration->m_orch_gc);
+	m_analyzer->get_configuration()->set_orch_inf_wait_time_s(m_configuration->m_orch_inf_wait_time_s);
+	m_analyzer->get_configuration()->set_orch_tick_interval_ms(m_configuration->m_orch_tick_interval_ms);
+	m_analyzer->get_configuration()->set_orch_low_ticks_needed(m_configuration->m_orch_low_ticks_needed);
+	m_analyzer->get_configuration()->set_orch_low_evt_threshold(m_configuration->m_orch_low_evt_threshold);
+
 	//
 	// Load the chisels
 	//

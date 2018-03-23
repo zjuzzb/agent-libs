@@ -132,21 +132,23 @@ func addServicePorts(ports *[]*draiosproto.CongroupNetPort, service *v1.Service)
 }
 
 func AddServiceParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if compatibilityMap["services"] {
-		for _, obj := range serviceInf.GetStore().List() {
-			service := obj.(*v1.Service)
-			//log.Debugf("AddNSParents: %v", nsObj.GetName())
+	if !resourceReady("services") {
+		return
+	}
 
-			if len(service.Spec.Selector) == 0 {
-				continue
-			}
+	for _, obj := range serviceInf.GetStore().List() {
+		service := obj.(*v1.Service)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
 
-			selector, _ := serviceSelector(service)
-			if pod.GetNamespace() == service.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_service"),
-					Id:proto.String(string(service.GetUID()))})
-			}
+		if len(service.Spec.Selector) == 0 {
+			continue
+		}
+
+		selector, _ := serviceSelector(service)
+		if pod.GetNamespace() == service.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_service"),
+				Id:proto.String(string(service.GetUID()))})
 		}
 	}
 }
@@ -156,40 +158,44 @@ func AddServiceChildrenFromNamespace(children *[]*draiosproto.CongroupUid, names
 }
 
 func AddServiceChildrenFromServiceName(children *[]*draiosproto.CongroupUid, namespaceName string, serviceName string) {
-	if compatibilityMap["services"] {
-		for _, obj := range serviceInf.GetStore().List() {
-			service := obj.(*v1.Service)
-			if service.GetNamespace() != namespaceName {
-				continue
-			}
+	if !resourceReady("services") {
+		return
+	}
 
-			if "" == serviceName || service.GetName() == serviceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_service"),
-					Id:proto.String(string(service.GetUID()))})
-			}
+	for _, obj := range serviceInf.GetStore().List() {
+		service := obj.(*v1.Service)
+		if service.GetNamespace() != namespaceName {
+			continue
+		}
+
+		if "" == serviceName || service.GetName() == serviceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_service"),
+				Id:proto.String(string(service.GetUID()))})
 		}
 	}
 }
 
-func startServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startServicesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Services", v1meta.NamespaceAll, fields.Everything())
 	serviceInf = cache.NewSharedInformer(lw, &v1.Service{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchServices(evtc)
 		serviceInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchServices()")
 
 	serviceInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("services")
 				evtc <- serviceEvent(obj.(*v1.Service),
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 			},
@@ -231,6 +237,4 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfo
 			},
 		},
 	)
-
-	return serviceInf
 }

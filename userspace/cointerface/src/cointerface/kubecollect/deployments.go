@@ -79,64 +79,72 @@ func addDeploymentMetrics(metrics *[]*draiosproto.AppMetric, deployment *v1beta1
 }
 
 func AddDeploymentParents(parents *[]*draiosproto.CongroupUid, replicaSet *v1beta1.ReplicaSet) {
-	if compatibilityMap["deployments"] {
-		for _, obj := range deploymentInf.GetStore().List() {
-			deployment := obj.(*v1beta1.Deployment)
-			selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
-			if replicaSet.GetNamespace() == deployment.GetNamespace() && selector.Matches(labels.Set(replicaSet.GetLabels())) {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_deployment"),
-					Id:proto.String(string(deployment.GetUID()))})
-			}
+	if !resourceReady("deployments") {
+		return
+	}
+
+	for _, obj := range deploymentInf.GetStore().List() {
+		deployment := obj.(*v1beta1.Deployment)
+		selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
+		if replicaSet.GetNamespace() == deployment.GetNamespace() && selector.Matches(labels.Set(replicaSet.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_deployment"),
+				Id:proto.String(string(deployment.GetUID()))})
 		}
 	}
 }
 
 func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["deployments"] {
-		for _, obj := range deploymentInf.GetStore().List() {
-			deployment := obj.(*v1beta1.Deployment)
-			if deployment.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_deployment"),
-					Id:proto.String(string(deployment.GetUID()))})
-			}
+	if !resourceReady("deployments") {
+		return
+	}
+
+	for _, obj := range deploymentInf.GetStore().List() {
+		deployment := obj.(*v1beta1.Deployment)
+		if deployment.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_deployment"),
+				Id:proto.String(string(deployment.GetUID()))})
 		}
 	}
 }
 
 func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
-	if compatibilityMap["deployments"] {
-		for _, obj := range deploymentInf.GetStore().List() {
-			deployment := obj.(*v1beta1.Deployment)
-			if (deployment.GetNamespace() == namespace) &&
-				(deployment.GetName() == name) {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_deployment"),
-					Id:proto.String(string(deployment.GetUID()))})
-			}
+	if !resourceReady("deployments") {
+		return
+	}
+
+	for _, obj := range deploymentInf.GetStore().List() {
+		deployment := obj.(*v1beta1.Deployment)
+		if (deployment.GetNamespace() == namespace) &&
+			(deployment.GetName() == name) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_deployment"),
+				Id:proto.String(string(deployment.GetUID()))})
 		}
 	}
 }
 
-func startDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startDeploymentsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "Deployments", v1meta.NamespaceAll, fields.Everything())
 	deploymentInf = cache.NewSharedInformer(lw, &v1beta1.Deployment{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchDeployments(evtc)
 		deploymentInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchDeployments()")
 
 	deploymentInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("deployments")
 				evtc <- deploymentEvent(obj.(*v1beta1.Deployment),
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 			},
@@ -164,6 +172,4 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedI
 			},
 		},
 	)
-
-	return deploymentInf
 }

@@ -207,6 +207,19 @@ public:
 	void set_tracepoint_hits_threshold(long, unsigned);
 	const pair<double, unsigned>& get_cpu_max_sr_threshold() const;
 	void set_cpu_max_sr_threshold(double, unsigned);
+
+	uint32_t get_orch_queue_len() const;
+	void set_orch_queue_len(uint32_t queue_len);
+	int32_t get_orch_gc() const;
+	void set_orch_gc(int32_t gc);
+	uint32_t get_orch_inf_wait_time_s() const;
+	void set_orch_inf_wait_time_s(uint32_t inf_wait_time_s);
+	uint32_t get_orch_tick_interval_ms() const;
+	void set_orch_tick_interval_ms(uint32_t tick_interval_ms);
+	uint32_t get_orch_low_ticks_needed() const;
+	void set_orch_low_ticks_needed(uint32_t low_ticks_needed);
+	uint32_t get_orch_low_evt_threshold() const;
+	void set_orch_low_evt_threshold(uint32_t low_evt_threshold);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -312,6 +325,13 @@ private:
 
 	pair<long, unsigned> m_tracepoint_hits_threshold;
 	pair<double, unsigned> m_cpu_max_sr_threshold;
+
+	uint32_t m_orch_queue_len;
+	int32_t m_orch_gc;
+	uint32_t m_orch_inf_wait_time_s;
+	uint32_t m_orch_tick_interval_ms;
+	uint32_t m_orch_low_ticks_needed;
+	uint32_t m_orch_low_evt_threshold;
 };
 
 #endif // HAS_ANALYZER

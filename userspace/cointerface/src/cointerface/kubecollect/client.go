@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/apimachinery/pkg/fields"
 	"cointerface/draiosproto"
+	"cointerface/sdc_internal"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -20,31 +21,40 @@ import (
 	"strings"
 	"sync"
 	"regexp"
+	"runtime/debug"
 )
 
-var compatibilityMap map[string]bool
+// XXX make these into one map and/or remove them if
+// HasSynced checking works instead of using receiveMap
+var compatibilityMap map[string]bool // no concurrent access, no lock
+var startedMap map[string]bool
+var startedMutex sync.RWMutex
+var receiveMap map[string]bool
+var receiveMutex sync.RWMutex
 var prometheus_enabled bool
 
 const RsyncInterval = 10 * time.Minute
 
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
-// until the channel is closed, otherwise the component goroutines may block
-func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_cert string, client_key string, prom_enabled bool) (<-chan draiosproto.CongroupUpdateEvent, error) {
+// until the channel is closed, otherwise the component goroutines may block.
+// The empty struct chan notifies the caller that the initial event fetch
+// is complete by closing the chan.
+func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan draiosproto.CongroupUpdateEvent, <-chan struct{}, error) {
 	setErrorLogHandler()
-	prometheus_enabled = prom_enabled
+	prometheus_enabled = opts.GetPrometheus()
 
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
 
-	if url != "" {
-		log.Infof("Connecting to k8s server at %s", url)
+	if opts.GetUrl() != "" {
+		log.Infof("Connecting to k8s server at %s", opts.GetUrl())
 		var err error
-		kubeClient, err = createKubeClient(url, ca_cert,
-			client_cert, client_key)
+		kubeClient, err = createKubeClient(opts.GetUrl(), opts.GetCaCert(),
+			opts.GetClientCert(), opts.GetClientKey())
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		log.Infof("Connecting to k8s server using inCluster config")
@@ -52,24 +62,28 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 		kubeClient, err = createInClusterKubeClient()
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	log.Infof("Testing communication with server")
 	srvVersion, err := kubeClient.Discovery().ServerVersion()
 	if err != nil {
 		log.Errorf("K8s server not responding: %s", err)
-		return nil, err
+		return nil, nil, err
 	}
 	log.Infof("Communication with server successful: %v", srvVersion)
 
 	resources, err := kubeClient.Discovery().ServerResources()
 	if err != nil {
 		log.Errorf("K8s server returned error: %s", err)
-		return nil, err
+		return nil, nil, err
 	}
 
+	// Reset all globals
+	// XXX better yet, make them not package globals
 	compatibilityMap = make(map[string]bool)
+	startedMap = make(map[string]bool)
+	receiveMap = make(map[string]bool)
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			verbStr := ""
@@ -90,167 +104,162 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	}
 
 	// Caller is responsible for draining the chan
-	evtc := make(chan draiosproto.CongroupUpdateEvent)
-	var wg sync.WaitGroup
+	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
 
 	ctx, cancel := context.WithCancel(parentCtx)
 	// Start a routine to do a watch on namespaces
 	// to detect api server connection errors because
 	// SharedInformers don't surface errors
-	go func() {
-		defer cancel()
-		log.Debugf("Creating K8s watchdog thread")
+	go startWatchdog(parentCtx, cancel, kubeClient)
 
-		client := kubeClient.CoreV1().RESTClient()
-		lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
-		watcher, err := lw.Watch(v1meta.ListOptions{})
-		if err != nil {
-			log.Errorf("K8s watchdog, error creating api server watchdog: %v", err)
-			return
-		}
-		defer watcher.Stop()
+	fetchDone := make(chan struct{})
+	var wg sync.WaitGroup
+	// Start informers in a separate routine so we can return the
+	// evt chan and let the caller start reading/draining events
+	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts)
 
-		for {
-			select {
-			case event, ok := <-watcher.ResultChan():
-				if !ok {
-					log.Warnf("K8s watchdog received a watch error")
-					return
-				}
-				if event.Type == watch.Error {
-					log.Errorf("K8s watchdog received watch error: %v",
-						apierrs.FromObject(event.Object))
-					return
-				}
-			case <-parentCtx.Done():
-				log.Infof("K8s watchdog, parent context cancelled")
-				return
-			}
+	return evtc, fetchDone, nil
+}
+
+func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeClient kubeclient.Interface) {
+	log.Debugf("Creating K8s watchdog thread")
+
+	doCancel := true
+	defer func() {
+		if doCancel {
+			cancel()
 		}
 	}()
 
-	// The informers are responsible for Add()'ing to the wg
-	if compatibilityMap["namespaces"] {
-		startNamespacesSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have namespaces API support.")
+	client := kubeClient.CoreV1().RESTClient()
+	// We don't care about what we watch, so limit to a single namespace
+	fSelector, _ := fields.ParseSelector("metadata.name=default")
+	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fSelector)
+	watcher, err := lw.Watch(v1meta.ListOptions{})
+	if err != nil {
+		log.Errorf("K8s watchdog, error creating api server watchdog: %v", err)
+		return
 	}
-	if compatibilityMap["deployments"] {
-		startDeploymentsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have deployments API support.")
-	}
-	if compatibilityMap["replicasets"] {
-		startReplicaSetsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have replicasets API support.")
-	}
-	if compatibilityMap["services"] {
-		startServicesSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have services API support.")
-	}
-	if compatibilityMap["ingress"] {
-		startIngressSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have ingress API support.")
-	}
-	if compatibilityMap["daemonsets"] {
-		startDaemonSetsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have daemonsets API support.")
-	}
-	if compatibilityMap["nodes"] {
-		startNodesSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have nodes API support.")
-	}
-	if compatibilityMap["jobs"] {
-		startJobsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have jobs API support.")
-	}
-	if compatibilityMap["cronjobs"] {
-		startCronJobsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have v2alpha1 cronjobs API support.")
-	}
-	if compatibilityMap["replicationcontrollers"] {
-		startReplicationControllersSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have replicationcontrollers API support.")
-	}
-	if compatibilityMap["statefulsets"] {
-		startStatefulSetsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have statefulsets API support.")
-	}
-	if compatibilityMap["horizontalpodautoscalers"] {
-		startHorizontalPodAutoscalersSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have horizontalpodautoscalers API support.")
-	}
-	if compatibilityMap["resourcequotas"] {
-		startResourceQuotasSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have resourcequotas API support.")
-	}
-	if compatibilityMap["pods"] {
-		startPodsSInformer(ctx, kubeClient, &wg)
-	} else {
-		log.Warnf("K8s server doesn't have pods API support.")
-	}
+	defer watcher.Stop()
 
-	if compatibilityMap["namespaces"] {
-		watchNamespaces(evtc)
-	}
-	if compatibilityMap["deployments"] {
-		watchDeployments(evtc)
-	}
-	if compatibilityMap["replicasets"] {
-		watchReplicaSets(evtc)
-	}
-	if compatibilityMap["services"] {
-		watchServices(evtc)
-	}
-	if compatibilityMap["ingress"] {
-		watchIngress(evtc)
-	}
-	if compatibilityMap["daemonsets"] {
-		watchDaemonSets(evtc)
-	}
-	if compatibilityMap["nodes"] {
-		watchNodes(evtc)
-	}
-	if compatibilityMap["jobs"] {
-		watchJobs(evtc)
-	}
-	if compatibilityMap["cronjobs"] {
-		watchCronJobs(evtc)
-	}
-	if compatibilityMap["replicationcontrollers"] {
-		watchReplicationControllers(evtc)
-	}
-	if compatibilityMap["statefulsets"] {
-		watchStatefulSets(evtc)
-	}
-	if compatibilityMap["horizontalpodautoscalers"] {
-		watchHorizontalPodAutoscalers(evtc)
-	}
-	if compatibilityMap["resourcequotas"] {
-		watchResourceQuotas(evtc)
-	}
-	if compatibilityMap["pods"] {
-		watchPods(evtc)
-	}
-	/*watch, _ := kubeClient.CoreV1().Events("").Watch(metav1.ListOptions{})
-
-	go func() {
+	for {
 		select {
-		case evt := <-watch.ResultChan():
-			log.Infof("Received k8s event %v", evt)
+		case event, ok := <-watcher.ResultChan():
+			if !ok {
+				// The API server can timeout the watch during normal,
+				// operation, so launch a new watchdog connection
+				log.Debugf("K8s watchdog received a watch timeout, restarting")
+				doCancel = false
+				go startWatchdog(parentCtx, cancel, kubeClient)
+				return
+			}
+			if event.Type == watch.Error {
+				log.Errorf("K8s watchdog received watch error: %v",
+					apierrs.FromObject(event.Object))
+				return
+			}
+		case <-parentCtx.Done():
+			log.Infof("K8s watchdog, parent context cancelled")
+			return
 		}
-	}()*/
+	}
+}
+
+func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+	for resource, ok := range compatibilityMap {
+		if !ok {
+			continue
+		}
+		log.Debugf("Checking kubecollect support for %v", resource)
+
+		// The informers are responsible for Add()'ing to the wg
+		infStarted := true
+		switch resource {
+		case "cronjobs":
+			startCronJobsSInformer(ctx, kubeClient, wg, evtc)
+		case "daemonsets":
+			startDaemonSetsSInformer(ctx, kubeClient, wg, evtc)
+		case "deployments":
+			startDeploymentsSInformer(ctx, kubeClient, wg, evtc)
+		case "horizontalpodautoscalers":
+			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, evtc)
+		case "ingress":
+			startIngressSInformer(ctx, kubeClient, wg, evtc)
+		case "jobs":
+			startJobsSInformer(ctx, kubeClient, wg, evtc)
+		case "namespaces":
+			startNamespacesSInformer(ctx, kubeClient, wg, evtc)
+		case "nodes":
+			startNodesSInformer(ctx, kubeClient, wg, evtc)
+		case "pods":
+			startPodsSInformer(ctx, kubeClient, wg, evtc)
+		case "replicasets":
+			startReplicaSetsSInformer(ctx, kubeClient, wg, evtc)
+		case "replicationcontrollers":
+			startReplicationControllersSInformer(ctx, kubeClient, wg, evtc)
+		case "resourcequotas":
+			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
+		case "services":
+			startServicesSInformer(ctx, kubeClient, wg, evtc)
+		case "statefulsets":
+			startStatefulSetsSInformer(ctx, kubeClient, wg, evtc)
+		default:
+			log.Debugf("No kubecollect support for %v", resource)
+			infStarted = false
+		}
+
+		if infStarted {
+			// assume it's still startup if len(evtc) > threshold
+			totalWaitTime := time.Duration(opts.GetStartupInfWaitTimeS()) * time.Second
+			tickInterval := time.Duration(opts.GetStartupTickIntervalMs()) * time.Millisecond
+			lowTicksNeeded := int(opts.GetStartupLowTicksNeeded())
+			evtcThreshold := int(opts.GetStartupLowEvtThreshold())
+			ticksBelowThreshold := 0
+
+			ticker := time.NewTicker(tickInterval)
+			defer ticker.Stop()
+			tickerStart := time.Now()
+			for {
+				var lastTick time.Time
+				evtcLen := 0
+				select {
+				case lastTick = <-ticker.C:
+					evtcLen = len(evtc)
+				}
+
+				// XXX should use resourceReady()
+				if receivedEvent(resource) && evtcLen <= evtcThreshold {
+					ticksBelowThreshold++
+				} else {
+					ticksBelowThreshold = 0
+				}
+				log.Tracef("Got a tick, evtcLen: %v, ticksBelowThreshold: %v",
+					evtcLen, ticksBelowThreshold)
+
+				if ticksBelowThreshold >= lowTicksNeeded {
+					break
+				}
+
+				if lastTick.Sub(tickerStart) >= totalWaitTime {
+					if receivedEvent(resource) {
+						log.Warnf("High activity during initial fetch of %v objects",
+							resource)
+					}
+					break
+				}
+			}
+
+			log.Infof("Started %v informer", resource)
+			log.Debug("Calling debug.FreeOSMemory()")
+			debug.FreeOSMemory()
+
+			startedMutex.Lock()
+			startedMap[resource] = true
+			startedMutex.Unlock()
+		}
+	}
+
+	close(fetchDone)
 
 	// In a separate goroutine, wait for the informers and
 	// close evtc once they're done to notify the caller
@@ -259,8 +268,59 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 		log.Infof("All informers have exited, closing the events channel")
 		close(evtc)
 	}()
+}
 
-	return evtc, nil
+func eventReceived(resource string) {
+	receiveMutex.Lock()
+	receiveMap[resource] = true
+	receiveMutex.Unlock()
+}
+
+func receivedEvent(resource string) bool {
+	receiveMutex.RLock()
+	ret := receiveMap[resource]
+	receiveMutex.RUnlock()
+	return ret
+}
+
+func resourceReady(resource string) bool {
+	startedMutex.RLock()
+	ret := startedMap[resource]
+	startedMutex.RUnlock()
+	return ret
+
+/*
+	switch resource {
+	case "cronjobs":
+		return cronJobInf != nil && cronJobInf.HasSynced()
+	case "daemonsets":
+		return daemonSetInf != nil && daemonSetInf.HasSynced()
+	case "deployments":
+		return deploymentInf != nil && deploymentInf.HasSynced()
+	case "ingress":
+		return ingressInf != nil && ingressInf.HasSynced()
+	case "jobs":
+		return jobInf != nil && jobInf.HasSynced()
+	case "namespaces":
+		return namespaceInf != nil && namespaceInf.HasSynced()
+	case "nodes":
+		return nodeInf != nil && nodeInf.HasSynced()
+	case "pods":
+		return podInf != nil && podInf.HasSynced()
+	case "replicasets":
+		return replicaSetInf != nil && replicaSetInf.HasSynced()
+	case "replicationcontrollers":
+		return replicationControllerInf != nil && replicationControllerInf.HasSynced()
+	case "resourcequotas":
+		return resourceQuotaInf != nil && resourceQuotaInf.HasSynced()
+	case "services":
+		return serviceInf != nil && serviceInf.HasSynced()
+	case "statefulsets":
+		return statefulSetInf != nil && statefulSetInf.HasSynced()
+	default:
+		return false
+	}
+*/
 }
 
 func createKubeClient(apiserver string, ca_cert string, client_cert string, client_key string) (kubeClient kubeclient.Interface, err error) {
@@ -278,13 +338,13 @@ func createKubeClient(apiserver string, ca_cert string, client_cert string, clie
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
 	config, err := kubeConfig.ClientConfig()
 	if err != nil {
-		log.Infof("HelloPods error: can't create config")
+		log.Errorf("kubecollect can't create config")
 		return nil, err
 	}
 
 	kubeClient, err = kubeclient.NewForConfig(config)
 	if err != nil {
-		log.Infof("HelloPods error: NewForConfig fails")
+		log.Errorf("kubecollect NewForConfig fails")
 		return nil, err
 	}
 

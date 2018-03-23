@@ -990,4 +990,58 @@ void sinsp_configuration::set_cpu_max_sr_threshold(double threshold, unsigned nt
 	m_cpu_max_sr_threshold = make_pair(threshold, ntimes);
 }
 
+uint32_t sinsp_configuration::get_orch_queue_len() const
+{
+	return m_orch_queue_len;
+}
+void sinsp_configuration::set_orch_queue_len(uint32_t queue_len)
+{
+	m_orch_queue_len = queue_len;
+}
+
+int32_t sinsp_configuration::get_orch_gc() const
+{
+	return m_orch_gc;
+}
+void sinsp_configuration::set_orch_gc(int32_t gc)
+{
+	m_orch_gc = gc;
+}
+
+uint32_t sinsp_configuration::get_orch_inf_wait_time_s() const
+{
+	return m_orch_inf_wait_time_s;
+}
+void sinsp_configuration::set_orch_inf_wait_time_s(uint32_t inf_wait_time_s)
+{
+	m_orch_inf_wait_time_s = inf_wait_time_s;
+}
+
+uint32_t sinsp_configuration::get_orch_tick_interval_ms() const
+{
+	return m_orch_tick_interval_ms;
+}
+void sinsp_configuration::set_orch_tick_interval_ms(uint32_t tick_interval_ms)
+{
+	m_orch_tick_interval_ms = tick_interval_ms;
+}
+
+uint32_t sinsp_configuration::get_orch_low_ticks_needed() const
+{
+	return m_orch_low_ticks_needed;
+}
+void sinsp_configuration::set_orch_low_ticks_needed(uint32_t low_ticks_needed)
+{
+	m_orch_low_ticks_needed = low_ticks_needed;
+}
+
+uint32_t sinsp_configuration::get_orch_low_evt_threshold() const
+{
+	return m_orch_low_evt_threshold;
+}
+void sinsp_configuration::set_orch_low_evt_threshold(uint32_t low_evt_threshold)
+{
+	m_orch_low_evt_threshold = low_evt_threshold;
+}
+
 #endif // HAS_ANALYZER

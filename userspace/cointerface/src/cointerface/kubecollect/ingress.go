@@ -64,25 +64,27 @@ func newIngressCongroup(ingress *v1beta1.Ingress) (*draiosproto.ContainerGroup) 
 var ingressInf cache.SharedInformer
 
 func AddIngressParents(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
-	if compatibilityMap["ingress"] {
-		for _, obj := range ingressInf.GetStore().List() {
-			ingress := obj.(*v1beta1.Ingress)
-			if ingress.GetNamespace() != service.GetNamespace() {
-				continue
-			}
-			if backend := ingress.Spec.Backend; backend != nil && backend.ServiceName == service.GetName(){
-				*parents = append(*parents, &draiosproto.CongroupUid{
+	if !resourceReady("ingress") {
+		return
+	}
+
+	for _, obj := range ingressInf.GetStore().List() {
+		ingress := obj.(*v1beta1.Ingress)
+		if ingress.GetNamespace() != service.GetNamespace() {
+			continue
+		}
+		if backend := ingress.Spec.Backend; backend != nil && backend.ServiceName == service.GetName(){
+			*parents = append(*parents, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_ingress"),
-					Id:proto.String(string(ingress.GetUID()))})
-			} else {
-				for _, rule := range ingress.Spec.Rules {
-					if http := rule.HTTP ; http != nil {
-						for _, path := range http.Paths {
-							if path.Backend.ServiceName == service.GetName() {
-								*parents = append(*parents, &draiosproto.CongroupUid{
-									Kind:proto.String("k8s_ingress"),
-									Id:proto.String(string(ingress.GetUID()))})
-							}
+				Id:proto.String(string(ingress.GetUID()))})
+		} else {
+			for _, rule := range ingress.Spec.Rules {
+				if http := rule.HTTP ; http != nil {
+					for _, path := range http.Paths {
+						if path.Backend.ServiceName == service.GetName() {
+							*parents = append(*parents, &draiosproto.CongroupUid{
+								Kind:proto.String("k8s_ingress"),
+								Id:proto.String(string(ingress.GetUID()))})
 						}
 					}
 				}
@@ -92,25 +94,28 @@ func AddIngressParents(parents *[]*draiosproto.CongroupUid, service *v1.Service)
 }
 
 func AddIngressChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["ingress"] {
-		for _, obj := range ingressInf.GetStore().List() {
-			ingress := obj.(*v1beta1.Ingress)
-			if ingress.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_ingress"),
-					Id:proto.String(string(ingress.GetUID()))})
-			}
+	if !resourceReady("ingress") {
+		return
+	}
+
+	for _, obj := range ingressInf.GetStore().List() {
+		ingress := obj.(*v1beta1.Ingress)
+		if ingress.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_ingress"),
+				Id:proto.String(string(ingress.GetUID()))})
 		}
 	}
 }
 
-func startIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startIngressSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ingresses", v1meta.NamespaceAll, fields.Everything())
 	ingressInf = cache.NewSharedInformer(lw, &v1beta1.Ingress{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchIngress(evtc)
 		ingressInf.Run(ctx.Done())
 		wg.Done()
 	}()
@@ -122,6 +127,7 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	ingressInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("ingress")
 				evtc <- ingressEvent(obj.(*v1beta1.Ingress),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},

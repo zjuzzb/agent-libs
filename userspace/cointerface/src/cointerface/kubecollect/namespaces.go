@@ -66,39 +66,42 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 var namespaceInf cache.SharedInformer
 
 func AddNSParents(parents *[]*draiosproto.CongroupUid, ns string) {
-	if compatibilityMap["namespaces"] {
-		// Check first if (inf.HasSynced() == true) ??
-		for _, obj := range namespaceInf.GetStore().List() {
-			nsObj := obj.(*v1.Namespace)
-			//log.Debugf("AddNSParents: %v", nsObj.GetName())
-			if ns == nsObj.GetName() {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_namespace"),
-					Id:proto.String(string(nsObj.GetUID()))})
-				return
-			}
+	if !resourceReady("namespaces") {
+		return
+	}
+
+	for _, obj := range namespaceInf.GetStore().List() {
+		nsObj := obj.(*v1.Namespace)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		if ns == nsObj.GetName() {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_namespace"),
+				Id:proto.String(string(nsObj.GetUID()))})
+			return
 		}
 	}
 }
 
-func startNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startNamespacesSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fields.Everything())
 	namespaceInf = cache.NewSharedInformer(lw, &v1.Namespace{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchNamespaces(evtc)
 		namespaceInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchNamespaces()")
 
 	namespaceInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("namespaces")
 				//log.Debugf("AddFunc dumping namespace: %v", obj.(*v1.Namespace))
 				evtc <- nsEvent(obj.(*v1.Namespace),
 					draiosproto.CongroupEventType_ADDED.Enum())
@@ -126,8 +129,4 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedIn
 			},
 		},
 	)
-
-	//store := inf.GetStore()
-	//return &store
-	return namespaceInf
 }

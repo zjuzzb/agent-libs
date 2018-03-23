@@ -415,7 +415,7 @@ func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
 }
 
 func resolveTargetPort(name string, selector labels.Selector, namespace string) uint32 {
-	if !compatibilityMap["pods"] {
+	if !resourceReady("pods") {
 		return 0
 	}
 
@@ -437,36 +437,59 @@ func resolveTargetPort(name string, selector labels.Selector, namespace string) 
 }
 
 func AddPodChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, namespace string) {
-	if compatibilityMap["pods"] {
-		for _, obj := range podInf.GetStore().List() {
-			pod := obj.(*v1.Pod)
-			if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_pod"),
-					Id:proto.String(string(pod.GetUID()))})
-			}
+	if !resourceReady("pods") {
+		return
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if pod.GetNamespace() == namespace && selector.Matches(labels.Set(pod.GetLabels())) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
 		}
 	}
 }
 
 func AddPodChildrenFromNodeName(children *[]*draiosproto.CongroupUid, nodeName string) {
-	if compatibilityMap["pods"] {
-		for _, obj := range podInf.GetStore().List() {
-			pod := obj.(*v1.Pod)
-			if pod.Spec.NodeName == nodeName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_pod"),
-					Id:proto.String(string(pod.GetUID()))})
-			}
+	if !resourceReady("pods") {
+		return
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if pod.Spec.NodeName == nodeName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
 		}
 	}
 }
 
 func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["pods"] {
-		for _, obj := range podInf.GetStore().List() {
-			pod := obj.(*v1.Pod)
-			if pod.GetNamespace() == namespaceName {
+	if !resourceReady("pods") {
+		return
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		if pod.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_pod"),
+				Id:proto.String(string(pod.GetUID()))})
+		}
+	}
+}
+
+func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
+	if !resourceReady("pods") {
+		return
+	}
+
+	for _, obj := range podInf.GetStore().List() {
+		pod := obj.(*v1.Pod)
+		for _, owner := range pod.GetOwnerReferences() {
+			if owner.UID == parent.GetUID() {
 				*children = append(*children, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_pod"),
 					Id:proto.String(string(pod.GetUID()))})
@@ -475,22 +498,7 @@ func AddPodChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 	}
 }
 
-func AddPodChildrenFromOwnerRef(children *[]*draiosproto.CongroupUid, parent v1meta.ObjectMeta) {
-	if compatibilityMap["pods"] {
-		for _, obj := range podInf.GetStore().List() {
-			pod := obj.(*v1.Pod)
-			for _, owner := range pod.GetOwnerReferences() {
-				if owner.UID == parent.GetUID() {
-					*children = append(*children, &draiosproto.CongroupUid{
-						Kind:proto.String("k8s_pod"),
-						Id:proto.String(string(pod.GetUID()))})
-				}
-			}
-		}
-	}
-}
-
-func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	fSelector, _ := fields.ParseSelector("status.phase!=Failed,status.phase!=Unknown,status.phase!=Succeeded") // they don't support or operator...
 	lw := cache.NewListWatchFromClient(client, "pods", v1meta.NamespaceAll, fSelector)
@@ -498,6 +506,7 @@ func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg
 
 	wg.Add(1)
 	go func() {
+		watchPods(evtc)
 		podInf.Run(ctx.Done())
 		wg.Done()
 	}()
@@ -509,6 +518,7 @@ func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	podInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("pods")
 				newPod := obj.(*v1.Pod)
 				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil, true)
 			},

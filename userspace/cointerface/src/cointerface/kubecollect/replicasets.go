@@ -87,79 +87,90 @@ func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1
 }
 
 func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if compatibilityMap["replicasets"] {
-		for _, obj := range replicaSetInf.GetStore().List() {
-			replicaSet := obj.(*v1beta1.ReplicaSet)
-			//log.Debugf("AddNSParents: %v", nsObj.GetName())
-			selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
-			if pod.GetNamespace() == replicaSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_replicaset"),
+	if !resourceReady("replicasets") {
+		return
+	}
+
+	for _, obj := range replicaSetInf.GetStore().List() {
+		replicaSet := obj.(*v1beta1.ReplicaSet)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
+		if pod.GetNamespace() == replicaSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicaset"),
 					Id:proto.String(string(replicaSet.GetUID()))})
-			}
 		}
 	}
 }
+
 func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, deployment *v1beta1.Deployment) {
-	if compatibilityMap["replicasets"] {
-		for _, obj := range replicaSetInf.GetStore().List() {
-			replicaSet := obj.(*v1beta1.ReplicaSet)
-			//log.Debugf("AddNSParents: %v", nsObj.GetName())
-			selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
-			if replicaSet.GetNamespace() == deployment.GetNamespace() && selector.Matches(labels.Set(replicaSet.GetLabels())) {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_replicaset"),
-					Id:proto.String(string(replicaSet.GetUID()))})
-			}
+	if !resourceReady("replicasets") {
+		return
+	}
+
+	for _, obj := range replicaSetInf.GetStore().List() {
+		replicaSet := obj.(*v1beta1.ReplicaSet)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
+		if replicaSet.GetNamespace() == deployment.GetNamespace() && selector.Matches(labels.Set(replicaSet.GetLabels())) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicaset"),
+				Id:proto.String(string(replicaSet.GetUID()))})
 		}
 	}
 }
 
 func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["replicasets"] {
-		for _, obj := range replicaSetInf.GetStore().List() {
-			replicaSet := obj.(*v1beta1.ReplicaSet)
-			if replicaSet.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_replicaset"),
-					Id:proto.String(string(replicaSet.GetUID()))})
-			}
+	if !resourceReady("replicasets") {
+		return
+	}
+
+	for _, obj := range replicaSetInf.GetStore().List() {
+		replicaSet := obj.(*v1beta1.ReplicaSet)
+		if replicaSet.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicaset"),
+				Id:proto.String(string(replicaSet.GetUID()))})
 		}
 	}
 }
 
 func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
-	if compatibilityMap["replicasets"] {
-		for _, obj := range replicaSetInf.GetStore().List() {
-			rs := obj.(*v1beta1.ReplicaSet)
-			if (rs.GetNamespace() == namespace) &&
-				(rs.GetName() == name) {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_replicaset"),
-					Id:proto.String(string(rs.GetUID()))})
-			}
+	if !resourceReady("replicasets") {
+		return
+	}
+
+	for _, obj := range replicaSetInf.GetStore().List() {
+		rs := obj.(*v1beta1.ReplicaSet)
+		if (rs.GetNamespace() == namespace) &&
+			(rs.GetName() == name) {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_replicaset"),
+				Id:proto.String(string(rs.GetUID()))})
 		}
 	}
 }
 
-func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
 	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchReplicaSets(evtc)
 		replicaSetInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchReplicaSets()")
 
 	replicaSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("replicasets")
 				evtc <- replicaSetEvent(obj.(*v1beta1.ReplicaSet),
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 			},
@@ -187,6 +198,4 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedI
 			},
 		},
 	)
-
-	return replicaSetInf
 }
