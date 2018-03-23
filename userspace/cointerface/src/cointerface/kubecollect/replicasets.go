@@ -71,6 +71,7 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 		AddDeploymentParents(&ret.Parents, replicaSet)
 		selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
 		AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName() )
 	}
 	return ret
 }

@@ -57,6 +57,7 @@ func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*drai
 	if setLinks {
 		AddNSParents(&ret.Parents, deployment.GetNamespace())
 		AddReplicaSetChildren(&ret.Children, deployment)
+		AddHorizontalPodAutoscalerParents(&ret.Parents, deployment.GetNamespace(), deployment.APIVersion, deployment.Kind, deployment.GetName() )
 	}
 	return ret
 }
@@ -96,6 +97,20 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 		for _, obj := range deploymentInf.GetStore().List() {
 			deployment := obj.(*v1beta1.Deployment)
 			if deployment.GetNamespace() == namespaceName {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_deployment"),
+					Id:proto.String(string(deployment.GetUID()))})
+			}
+		}
+	}
+}
+
+func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, name string) {
+	if compatibilityMap["deployments"] {
+		for _, obj := range deploymentInf.GetStore().List() {
+			deployment := obj.(*v1beta1.Deployment)
+			if deployment.GetName() == name {
+				log.Debugf("Found Deployment child: %s", name)
 				*children = append(*children, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_deployment"),
 					Id:proto.String(string(deployment.GetUID()))})

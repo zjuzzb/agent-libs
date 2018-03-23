@@ -183,6 +183,11 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	} else {
 		log.Warnf("K8s server doesn't have statefulsets API support.")
 	}
+	if compatibilityMap["horizontalpodautoscalers"] {
+		startHorizontalPodAutoscalersSInformer(ctx, kubeClient, &wg)
+	} else {
+		log.Warnf("K8s server doesn't have horizontalpodautoscalers API support.")
+	}
 	if compatibilityMap["resourcequotas"] {
 		startResourceQuotasSInformer(ctx, kubeClient, &wg)
 	} else {
@@ -226,6 +231,9 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	}
 	if compatibilityMap["statefulsets"] {
 		watchStatefulSets(evtc)
+	}
+	if compatibilityMap["horizontalpodautoscalers"] {
+		watchHorizontalPodAutoscalers(evtc)
 	}
 	if compatibilityMap["resourcequotas"] {
 		watchResourceQuotas(evtc)

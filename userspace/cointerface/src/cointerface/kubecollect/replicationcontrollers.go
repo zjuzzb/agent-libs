@@ -35,6 +35,8 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
 	AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
+	AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName() )
+
 	return ret
 }
 
