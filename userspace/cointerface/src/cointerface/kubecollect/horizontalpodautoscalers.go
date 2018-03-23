@@ -35,12 +35,11 @@ func newHorizontalPodAutoscalerCongroup(hpa *v1as.HorizontalPodAutoscaler) (*dra
 	AddNSParents(&ret.Parents, hpa.GetNamespace())
 	AddPodChildrenFromOwnerRef(&ret.Children, hpa.ObjectMeta)
 	if (hpa.Spec.ScaleTargetRef.Kind == "Deployment") {
-		// TODO: Add namespace
-		AddDeploymentChildrenByName(&ret.Children, hpa.Spec.ScaleTargetRef.Name)
+		AddDeploymentChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
 	} else if (hpa.Spec.ScaleTargetRef.Kind == "ReplicationController") {
-		// TODO
+		AddReplicationControllerChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
 	} else if (hpa.Spec.ScaleTargetRef.Kind == "ReplicaSet") {
-		// TODO
+		AddReplicaSetChildrenByName(&ret.Children, hpa.GetNamespace(), hpa.Spec.ScaleTargetRef.Name)
 	}
 
 	return ret

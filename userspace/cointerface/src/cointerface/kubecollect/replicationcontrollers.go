@@ -79,6 +79,20 @@ func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.Cong
 	}
 }
 
+func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
+	if compatibilityMap["replicationcontrollers"] {
+		for _, obj := range replicationControllerInf.GetStore().List() {
+			rc := obj.(*v1.ReplicationController)
+			if (rc.GetNamespace() == namespace) &&
+				(rc.GetName() == name) {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_replicationcontroller"),
+					Id:proto.String(string(rc.GetUID()))})
+			}
+		}
+	}
+}
+
 func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())

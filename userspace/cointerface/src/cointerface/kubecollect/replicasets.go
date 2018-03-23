@@ -128,6 +128,20 @@ func AddReplicaSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 }
 
+func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
+	if compatibilityMap["replicasets"] {
+		for _, obj := range replicaSetInf.GetStore().List() {
+			rs := obj.(*v1beta1.ReplicaSet)
+			if (rs.GetNamespace() == namespace) &&
+				(rs.GetName() == name) {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_replicaset"),
+					Id:proto.String(string(rs.GetUID()))})
+			}
+		}
+	}
+}
+
 func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())

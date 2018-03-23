@@ -105,12 +105,12 @@ func AddDeploymentChildrenFromNamespace(children *[]*draiosproto.CongroupUid, na
 	}
 }
 
-func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, name string) {
+func AddDeploymentChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
 	if compatibilityMap["deployments"] {
 		for _, obj := range deploymentInf.GetStore().List() {
 			deployment := obj.(*v1beta1.Deployment)
-			if deployment.GetName() == name {
-				log.Debugf("Found Deployment child: %s", name)
+			if (deployment.GetNamespace() == namespace) &&
+				(deployment.GetName() == name) {
 				*children = append(*children, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_deployment"),
 					Id:proto.String(string(deployment.GetUID()))})
