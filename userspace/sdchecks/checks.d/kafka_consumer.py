@@ -461,7 +461,7 @@ class KafkaCheck(AgentCheck):
                         try:
                             consumer_offset = int(zk_conn.get(zk_path)[0])
                             key = (consumer_group, topic, partition)
-                            zk_consumer_offsets[key] = consumer_offset
+                            zk_consumer_offsets[key] = consumer_offset if consumer_offset >= 0 else 0
                         except NoNodeError:
                             self.log.info('No zookeeper node at %s', zk_path)
                         except Exception:
@@ -496,7 +496,7 @@ class KafkaCheck(AgentCheck):
                 for (topic, partition), offset in offsets.iteritems():
                     topics[topic].update([partition])
                     key = (consumer_group, topic, partition)
-                    consumer_offsets[key] = offset
+                    consumer_offsets[key] = offset if offset >= 0 else 0
             except Exception:
                 self.log.exception('Could not read consumer offsets from kafka.')
 
