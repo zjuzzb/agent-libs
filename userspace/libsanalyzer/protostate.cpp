@@ -27,39 +27,30 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 	if(tr->m_protoparser->m_is_valid)
 	{
 		sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
+		auto url = truncate_str(pp->m_url, truncation_size);
+		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
 
 		//
 		// Update the URL table
 		//
-		sinsp_url_details* entry;
-
 		if(is_server)
 		{
-			if(m_server_urls.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_server_urls.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_urls.count(url))
 			{
-				//
-				// Table limit reached
-				//
-				return;
+				auto entry = &(m_server_urls[url]);
+				request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
-
-			entry = &(m_server_urls[truncate_str(pp->m_url, truncation_size)]);
+			request_sorter<string, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
-			if(m_client_urls.size() > MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_client_urls.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_urls.count(url))
 			{
-				//
-				// Table limit reached
-				//
-				return;
+				auto entry = &(m_client_urls[url]);
+				request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
-
-			entry = &(m_client_urls[truncate_str(pp->m_url, truncation_size)]);
+			request_sorter<string, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
-
-		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
-		request_sorter<string, sinsp_url_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 
 		//
 		// Update the status code table
@@ -106,42 +97,53 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		sinsp_query_details* entry;
 		sinsp_query_details* type_entry;
 		char* tablename = pp->m_query_parser.m_table;
+		auto statement = truncate_str(pp->m_statement, truncation_size);
 
 		if(is_server)
 		{
-			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_server_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_queries.count(statement))
 			{
-				entry = &(m_server_queries[truncate_str(pp->m_statement, truncation_size)]);
+				entry = &(m_server_queries[statement]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
-			if(tablename != NULL &&
-				m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(tablename != NULL)
 			{
-				entry = &(m_server_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				auto trunc_table = truncate_str(pp->m_query_parser.m_table, truncation_size);
+				if (m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_tables.count(trunc_table))
+				{
+					entry = &(m_server_tables[trunc_table]);
+					request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
 
 			type_entry = &(m_server_query_types[pp->m_query_parser.m_statement_type]);
 			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error, m_percentiles);
+
+			request_sorter<uint32_t, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
-			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(m_client_queries.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_queries.count(statement))
 			{
-				entry = &(m_client_queries[truncate_str(pp->m_statement, truncation_size)]);
+				entry = &(m_client_queries[statement]);
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
-			if(tablename != NULL &&
-				m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(tablename != NULL)
 			{
-				entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				auto trunc_table = truncate_str(pp->m_query_parser.m_table, truncation_size);
+				if(m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_tables.count(trunc_table))
+				{
+					entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
+					request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
 
 			type_entry = &(m_client_query_types[pp->m_query_parser.m_statement_type]);
 			request_sorter<uint32_t, sinsp_query_details>::update(type_entry, tr, time_delta, is_error, m_percentiles);
+
+			request_sorter<uint32_t, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
 	}
 }
@@ -179,6 +181,9 @@ inline void sinsp_http_state::add(sinsp_http_state* other)
 	request_sorter<string, sinsp_url_details>::merge_maps(&m_client_urls, &(other->m_client_urls));
 	request_sorter<uint32_t, sinsp_request_details>::merge_maps(&m_server_status_codes, &(other->m_server_status_codes));
 	request_sorter<uint32_t, sinsp_request_details>::merge_maps(&m_client_status_codes, &(other->m_client_status_codes));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
 }
 
 inline void sql_state::add(sql_state* other)
@@ -191,6 +196,9 @@ inline void sql_state::add(sql_state* other)
 
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_server_query_types, &(other->m_server_query_types));
 	request_sorter<uint32_t, sinsp_query_details>::merge_maps(&m_client_query_types, &(other->m_client_query_types));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
 }
 
 void sinsp_protostate::set_percentiles(const std::set<double>& pctls)
@@ -384,6 +392,27 @@ void sinsp_http_state::to_protobuf(draiosproto::http_info *protobuf_msg, uint32_
 	{
 		status_code_table_to_protobuf(protobuf_msg, &m_client_status_codes, false, sampling_ratio, limit);
 	}
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
 }
 
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit)
@@ -427,6 +456,26 @@ void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampli
 		query_table_to_protobuf(protobuf_msg, &m_client_tables, false, sampling_ratio, false, limit);
 		query_type_table_to_protobuf(protobuf_msg, &m_client_query_types, false, sampling_ratio, limit);
 	}
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
 }
 
 inline void mongodb_state::add(mongodb_state *other)
@@ -436,6 +485,9 @@ inline void mongodb_state::add(mongodb_state *other)
 
 	request_sorter<std::string, sinsp_query_details>::merge_maps(&m_server_collections, &(other->m_server_collections));
 	request_sorter<std::string, sinsp_query_details>::merge_maps(&m_client_collections, &(other->m_client_collections));
+
+	m_server_totals += other->m_server_totals;
+	m_client_totals += other->m_client_totals;
 }
 
 inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_delta, bool is_server, uint32_t truncation_size)
@@ -450,29 +502,32 @@ inline void mongodb_state::update(sinsp_partial_transaction *tr, uint64_t time_d
 		bool is_error = (pp->m_error_code != 0);
 		if(is_server)
 		{
-			if(m_server_ops.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
+			if(pp->m_collection != NULL)
 			{
-				op_entry = &(m_server_ops[pp->m_opcode]);
-				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
+				auto collection = truncate_str(pp->m_collection, truncation_size);
+				if(m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_collections.count(collection))
+				{
+					collection_entry =&(m_server_collections[collection]);
+					request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
-			if(pp->m_collection != NULL && m_server_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
-			{
-				collection_entry =&(m_server_collections[truncate_str(pp->m_collection, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
-			}
+			op_entry = &(m_server_ops[pp->m_opcode]);
+			request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
+			request_sorter<string, sinsp_request_details>::update(&m_server_totals, tr, time_delta, is_error, m_percentiles);
 		}
 		else
 		{
-			if(m_client_ops.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
-			{
-				op_entry = &(m_client_ops[pp->m_opcode]);
-				request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
+			if(pp->m_collection != NULL) {
+				auto collection = truncate_str(pp->m_collection, truncation_size);
+				if(m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_collections.count(collection))
+				{
+					collection_entry =&(m_client_collections[collection]);
+					request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
+				}
 			}
-			if(pp->m_collection != NULL && m_client_collections.size() < MAX_THREAD_REQUEST_TABLE_SIZE)
-			{
-				collection_entry =&(m_client_collections[truncate_str(pp->m_collection, truncation_size)]);
-				request_sorter<string, sinsp_query_details>::update(collection_entry, tr, time_delta, is_error, m_percentiles);
-			}
+			op_entry = &(m_client_ops[pp->m_opcode]);
+			request_sorter<uint32_t, sinsp_query_details>::update(op_entry, tr, time_delta, is_error, m_percentiles);
+			request_sorter<string, sinsp_request_details>::update(&m_client_totals, tr, time_delta, is_error, m_percentiles);
 		}
 	}
 }
@@ -542,6 +597,27 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 			return protobuf_msg->add_client_collections();
 		},
 		sampling_ratio, limit);
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.to_protobuf(totals, sampling_ratio,
+				[&] (const sinsp_request_details::percentile_ptr_t pct) {
+			percentile_to_protobuf(totals, pct);
+		});
+	}
+
 }
 
 #endif // HAS_ANALYZER

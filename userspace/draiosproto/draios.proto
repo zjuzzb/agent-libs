@@ -219,6 +219,8 @@ message http_info {
     repeated url_details client_urls = 2;
     repeated status_code_details client_status_codes = 3;
     repeated status_code_details server_status_codes = 4;
+    optional counter_proto_entry server_totals = 5;
+    optional counter_proto_entry client_totals = 6;
 }
 
 //
@@ -264,6 +266,8 @@ message sql_info {
     repeated sql_query_type_details client_query_types = 4; // the top client-side query types (e.g. SELECT, INSERT...)
     repeated sql_entry_details server_tables = 5; // the top server-side queries
     repeated sql_entry_details client_tables = 6; // the top client-side queries
+    optional counter_proto_entry server_totals = 7;
+    optional counter_proto_entry client_totals = 8;
 }
 
 message mongodb_collection_details {
@@ -299,6 +303,8 @@ message mongodb_info {
     repeated mongodb_op_type_details client_ops = 2;
     repeated mongodb_collection_details server_collections = 3;
     repeated mongodb_collection_details client_collections = 4;
+    optional counter_proto_entry server_totals = 5;
+    optional counter_proto_entry client_totals = 6;
 }
 
 enum unit {

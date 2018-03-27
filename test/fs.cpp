@@ -109,19 +109,19 @@ TEST_F(sys_call_test, fs_creat_ulink)
 				callnum++;
 			}
 		}
-		else if(type == PPME_SYSCALL_UNLINK_E)
+		else if(type == PPME_SYSCALL_UNLINK_2_E)
 		{
 			if(callnum == 2 || callnum == 4)
 			{
-				EXPECT_EQ(FILENAME, e->get_param_value_str("path", false));
-				EXPECT_EQ(cwd + FILENAME, e->get_param_value_str("path"));
 				callnum++;
 			}
 		}
-		else if(type == PPME_SYSCALL_UNLINK_X)
+		else if(type == PPME_SYSCALL_UNLINK_2_X)
 		{
 			if(callnum == 3)
 			{
+				EXPECT_EQ(FILENAME, e->get_param_value_str("path", false));
+				EXPECT_EQ(cwd + FILENAME, e->get_param_value_str("path"));
 				EXPECT_LE(0, NumberParser::parse(e->get_param_value_str("res", false)));
 				callnum++;
 			}

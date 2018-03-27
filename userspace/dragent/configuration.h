@@ -732,7 +732,6 @@ public:
 private:
 	inline static bool is_executable(const string& path);
 	void write_statsite_configuration();
-	void parse_services_file();
 	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();

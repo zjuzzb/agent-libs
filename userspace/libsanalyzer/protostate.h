@@ -99,11 +99,16 @@ class sinsp_request_details
 public:
 	typedef std::shared_ptr<percentile> percentile_ptr_t;
 
-	sinsp_request_details()
+	sinsp_request_details():
+		m_ncalls(0),
+		m_nerrors(0),
+		m_time_max(0),
+		m_bytes_in(0),
+		m_bytes_out(0),
+		m_flags(SRF_NONE),
+		m_time_tot(0),
+		m_percentile(nullptr)
 	{
-		m_ncalls = 0;
-		m_flags = SRF_NONE;
-		m_time_max = 0;
 	}
 
 	sinsp_request_details(const sinsp_request_details& other):
@@ -132,6 +137,28 @@ public:
 			m_time_tot = other.m_time_tot;
 			// since we already have a disposable copy here, it's ok to just move it
 			m_percentile = other.m_percentile;
+		}
+		return *this;
+	}
+
+	sinsp_request_details& operator+=(const sinsp_request_details& other)
+	{
+		if(m_ncalls == 0)
+		{
+			*this = other;
+		}
+		else
+		{
+			m_ncalls += other.m_ncalls;
+			m_nerrors += other.m_nerrors;
+			add_times(other);
+			m_bytes_in += other.m_bytes_in;
+			m_bytes_out += other.m_bytes_out;
+
+			if(other.m_time_max > m_time_max)
+			{
+				m_time_max = other.m_time_max;
+			}
 		}
 		return *this;
 	}
@@ -168,6 +195,11 @@ public:
 		if (m_percentile && other.m_percentile) {
 			m_percentile->merge(other.m_percentile.get());
 		}
+	}
+
+	uint64_t get_ncalls() const
+	{
+		return m_ncalls;
 	}
 
 	uint64_t get_time_tot() const
@@ -277,25 +309,8 @@ public:
 		//
 		for(uit = src->begin(); uit != src->end(); ++uit)
 		{
-			T* entry = &((*dst)[uit->first]);
-
-			if(entry->m_ncalls == 0)
-			{
-				*entry = uit->second;
-			}
-			else
-			{
-				entry->m_ncalls += uit->second.m_ncalls;
-				entry->m_nerrors += uit->second.m_nerrors;
-				entry->add_times(uit->second);
-				entry->m_bytes_in += uit->second.m_bytes_in;
-				entry->m_bytes_out += uit->second.m_bytes_out;
-				
-				if(uit->second.m_time_max > entry->m_time_max)
-				{
-					entry->m_time_max = uit->second.m_time_max;
-				}
-			}
+			T& entry = (*dst)[uit->first];
+			entry += uit->second;
 		}
 	}
 
@@ -460,6 +475,8 @@ public:
 		m_client_query_types.clear();
 		m_server_tables.clear();
 		m_client_tables.clear();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
 	}
 
 	void add(sql_state* other);
@@ -492,6 +509,8 @@ private:
 	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
 	unordered_map<string, sinsp_query_details> m_server_tables;
 	unordered_map<string, sinsp_query_details> m_client_tables;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
 };
 
 class mongodb_state : public protocol_state
@@ -503,6 +522,8 @@ public:
 		m_client_ops.clear();
 		m_server_collections.clear();
 		m_client_collections.clear();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
 	}
 
 	void add(mongodb_state* other);
@@ -528,6 +549,8 @@ private:
 	unordered_map<uint32_t, sinsp_query_details> m_client_ops;
 	unordered_map<string, sinsp_query_details> m_server_collections;
 	unordered_map<string, sinsp_query_details> m_client_collections;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
 };
 
 class sinsp_http_state : public protocol_state
@@ -539,6 +562,8 @@ public:
 		m_client_urls.clear();
 		m_server_status_codes.clear();
 		m_client_status_codes.clear();
+		m_server_totals = sinsp_request_details();
+		m_client_totals = sinsp_request_details();
 	}
 
 	bool has_data()
@@ -567,6 +592,8 @@ private:
 	unordered_map<string, sinsp_url_details> m_client_urls;
 	unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
 	unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
+	sinsp_request_details m_server_totals;
+	sinsp_request_details m_client_totals;
 };
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class

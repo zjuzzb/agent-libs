@@ -251,7 +251,10 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 		}
 		else if((buf[0] >= 0x14 && buf[0] <= 0x18) && // First byte matches TLS frame type
 				 buf[1] == 3 && // Matches TLS major version
-				(buf[2] >= 0 && buf[2] <= 3)) // Matched TLS minor version
+				(buf[2] >= 0 && buf[2] <= 3) && // Matches TLS minor version 
+				// Besides detecting that it's TLS, we check if port belongs
+				// to well-known client/server protocol port
+				m_sinsp_config->get_known_ports().test(serverport)) 
 		{
 			trinfo->m_protoparser = new sinsp_tls_parser();
 			return sinsp_partial_transaction::TYPE_TLS;
