@@ -1399,7 +1399,7 @@ matchlist_map_security_policies::path_matchresult_search &matchlist_map_security
 	{
 		if(pair.first == preds)
 		{
-			return pair.second[effect];
+			return pair.second[(uint32_t) effect-1];
 		}
 	}
 
