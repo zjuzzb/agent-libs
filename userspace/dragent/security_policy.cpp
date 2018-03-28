@@ -1340,8 +1340,7 @@ security_policies::match_result *matchlist_map_security_policies::match_event(si
 
 			if(!best_match)
 			{
-				// Might happen if a given container was named but didn't actually match the scope
-				return min_default_match(evt, scope_miss);
+				continue;
 			}
 
 			match_result *match = new match_result(best_match->policy(),
