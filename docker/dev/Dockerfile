@@ -16,6 +16,7 @@ RUN apt-get update \
  && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
+	bc \
 	clang-7 \
 	curl \
 	gnupg2 \
