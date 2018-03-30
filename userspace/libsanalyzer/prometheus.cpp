@@ -58,7 +58,7 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 bool prometheus_conf::match(const sinsp_threadinfo *tinfo,
 		const sinsp_threadinfo *mtinfo, const sinsp_container_info *container,
 		const infrastructure_state &infra_state,
-		set<uint16_t> &out_ports, string &out_path) const
+		set<uint16_t> &out_ports, string &out_path, map<string, string> &out_opts) const
 {
 	return base::match(tinfo, mtinfo, container, infra_state,
 		[&](const proc_filter::filter_rule &rule) -> bool
@@ -115,6 +115,7 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo,
 						replace_tokens(rule.m_config.m_path, container, infra_state, c_uid) :
 						rule.m_config.m_path;
 			}
+			out_opts = rule.m_config.m_options;
 			return true;
 		});
 }
@@ -142,6 +143,14 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 	{
 		ret["ports"].append(Json::UInt(port));
 	}
+
+	Json::Value opts;
+	for (auto option : m_options)
+	{
+		opts[option.first] = option.second;
+	}
+	if (!opts.empty())
+		ret["options"] = opts;
 
 	return ret;
 }

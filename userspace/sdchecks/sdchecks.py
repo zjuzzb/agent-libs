@@ -414,16 +414,20 @@ class PosixQueue:
 
 def prepare_prom_check(pc, port):
     # print "port:", port
+    options = pc.get("options")
+    use_https = _is_affirmative(options.get("use_https", False) if options else False)
     path = pc.get("path", "/metrics");
     if len(path) > 0 and path[0] != '/':
         path = "/" + path
-    newconf = {"url": "http://localhost:" + str(port) + path}
+    newconf = {"url": ("https" if use_https else "http") + "://localhost:" + str(port) + path}
     if pc.get("max_metrics") != None:
         newconf["max_metrics"] = pc["max_metrics"]
     if pc.get("max_tags") != None:
         newconf["max_tags"] = pc["max_tags"]
     if pc.get("histograms") != None:
         newconf["histograms"] = pc["histograms"]
+    if options and options.get("ssl_verify") != None:
+        newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
     newcheck = {
         "check_module": "prometheus",
         "log_errors": pc.get("log_errors", True),
