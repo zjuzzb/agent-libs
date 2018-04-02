@@ -1302,9 +1302,16 @@ bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastruct
 // considered delegated.
 bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_delegated)
 {
+	class NodeData {
+	public:
+		NodeData(const std::string& id, const std::string& ips)
+			: m_uuid(id), m_ips(ips) { }
+		std::string m_uuid;
+		std::string m_ips;
+	};
 	std::set<std::string> ip_addrs;
-	infrastructure_state::uid_t our_node;
-	std::map<infrastructure_state::uid_t, std::string> nodes;
+	std::string our_node;
+	std::map<std::string, NodeData> nodes;
 
 	if (!state->m_inspector || !state->m_inspector->get_ifaddr_list())
 	{
@@ -1325,28 +1332,34 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 		std::ostringstream os;
 		bool found_our_node = false;
 
+		std::string name;
 		auto cg = i.second.get();
 		auto tag = cg->tags().find("kubernetes.node.name");
 		if (tag != cg->tags().end())
 		{
-			os << "name: " << tag->second;
+			name = tag->second;
+		}
+		else
+		{
+			glogf(sinsp_logger::SEV_INFO, "k8s_deleg: No node name found for UUID %s", i.first.second.c_str());
+			// Use UUID instead
+			name = i.first.second;
 		}
 
-		os << (os.str().empty() ? "" : " ") << "ips:";
 		for (auto ip : cg->ip_addresses())
 		{
-			os << " " << ip;
-			if (our_node.first.empty() && (ip_addrs.find(ip) != ip_addrs.end()))
+			os << (os.str().empty() ? "" : " ") << ip;
+			if (our_node.empty() && (ip_addrs.find(ip) != ip_addrs.end()))
 			{
-				glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: we are node %s:%s based on IP %s", i.first.first.c_str(), i.first.second.c_str(), ip.c_str());
-				our_node = i.first;
+				glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: we are node %s:%s (%s) based on IP %s", i.first.first.c_str(), i.first.second.c_str(), name.c_str(), ip.c_str());
+				our_node = i.first.second;
 				found_our_node = true;
 			}
 		}
 
 		if (found_our_node || has_agent(state, i.first))
 		{
-			nodes.emplace(i.first, os.str());
+			nodes.emplace(std::move(name), NodeData(i.first.second, os.str()));
 		}
 	}
 
@@ -1355,11 +1368,11 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 	for (auto it = nodes.begin(); (cnt < num_delegated) &&
 		it != nodes.end(); it++, cnt++)
 	{
-		if (it->first == our_node)
+		if (it->second.m_uuid == our_node)
 			delegated = true;
-		glogf(sinsp_logger::SEV_INFO, "k8s_deleg: delegated node %s id: %s%s",
-			it->second.c_str(), it->first.second.c_str(),
-			(it->first == our_node) ? " (this node)" : "");
+		glogf(sinsp_logger::SEV_INFO, "k8s_deleg: delegated node %s ips: %s id: %s%s",
+			it->first.c_str(), it->second.m_ips.c_str(), it->second.m_uuid.c_str(),
+			(it->second.m_uuid == our_node) ? " (this node)" : "");
 	}
 
 	return delegated;
