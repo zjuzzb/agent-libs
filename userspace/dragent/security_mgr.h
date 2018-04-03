@@ -227,6 +227,10 @@ private:
 	// event types for all policies.
 	std::vector<bool> m_evttypes;
 
+	// This can be used to filter out events before matching
+	// against policies
+	std::unique_ptr<sinsp_filter> m_qualifies;
+
 	uint64_t m_num_policies;
 
 	metrics m_metrics;

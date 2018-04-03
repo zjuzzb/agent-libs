@@ -55,6 +55,9 @@ void security_mgr::init(sinsp *inspector,
 
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 
+	sinsp_filter_compiler compiler(inspector, "container.type = docker and proc.name startswith \"runc:[\"");
+	m_qualifies.reset(compiler.compile());
+
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
 
@@ -259,7 +262,7 @@ void security_mgr::process_event(sinsp_evt *evt)
 	{
 		m_metrics.incr(metrics::MET_MISS_EVTTYPE);
 	}
-	else
+	else if(!m_qualifies->run(evt))
 	{
 		std::vector<security_policies::match_result *> best_matches;
 		security_policies::match_result *match;
