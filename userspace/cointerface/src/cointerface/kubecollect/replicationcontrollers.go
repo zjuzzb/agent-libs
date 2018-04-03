@@ -35,6 +35,8 @@ func newReplicationControllerCongroup(replicationController *v1.ReplicationContr
 	AddNSParents(&ret.Parents, replicationController.GetNamespace())
 	selector := labels.Set(replicationController.Spec.Selector).AsSelector()
 	AddPodChildren(&ret.Children, selector, replicationController.GetNamespace())
+	AddHorizontalPodAutoscalerParents(&ret.Parents, replicationController.GetNamespace(), replicationController.APIVersion, replicationController.Kind, replicationController.GetName() )
+
 	return ret
 }
 
@@ -72,6 +74,20 @@ func AddReplicationControllerChildrenFromNamespace(children *[]*draiosproto.Cong
 				*children = append(*children, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_replicationcontroller"),
 					Id:proto.String(string(replicationController.GetUID()))})
+			}
+		}
+	}
+}
+
+func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid, namespace string, name string) {
+	if compatibilityMap["replicationcontrollers"] {
+		for _, obj := range replicationControllerInf.GetStore().List() {
+			rc := obj.(*v1.ReplicationController)
+			if (rc.GetNamespace() == namespace) &&
+				(rc.GetName() == name) {
+				*children = append(*children, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_replicationcontroller"),
+					Id:proto.String(string(rc.GetUID()))})
 			}
 		}
 	}
