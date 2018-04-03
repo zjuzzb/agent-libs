@@ -36,7 +36,7 @@ public:
 
 	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
 		const sinsp_container_info *container, const infrastructure_state &is,
-		set<uint16_t> &ports, string &path) const;
+		set<uint16_t> &ports, string &path, map<string, string> &opts) const;
 
 	bool log_errors() const { return m_log_errors; }
 	void set_log_errors(bool val) { m_log_errors = val; }
@@ -70,8 +70,8 @@ private:
 class prom_process
 {
 public:
-	explicit prom_process(string name, int pid, int vpid, const set<uint16_t> &ports, string path) :
-		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path) { }
+	explicit prom_process(string name, int pid, int vpid, const set<uint16_t> &ports, string path, const map<string, string> &options) :
+		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path), m_options(options) { }
 
 	Json::Value to_json(const prometheus_conf &conf) const;
 private:
@@ -80,6 +80,7 @@ private:
 	int m_vpid;
 	set<uint16_t> m_ports;
 	string m_path;
+	map<string, string> m_options;
 };
 
 #endif // _WIN32

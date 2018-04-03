@@ -6455,8 +6455,9 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 
 	set<uint16_t> ports;
 	string path;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path)) {
-		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
+	map<string, string> options;
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path, options)) {
+		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path, options);
 		prom_procs.emplace_back(pp);
 
 		mtinfo->m_ainfo->set_found_prom_check();

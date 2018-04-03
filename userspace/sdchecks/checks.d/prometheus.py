@@ -46,8 +46,9 @@ class Prometheus(AgentCheck):
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
+        ssl_verify = instance.get('ssl_verify', False)
 
-        metrics = self.get_prometheus_metrics(query_url, timeout, "prometheus")
+        metrics = self.get_prometheus_metrics(query_url, timeout, ssl_verify, "prometheus")
         num = 0
         try:
             for family in metrics:
@@ -167,9 +168,9 @@ class Prometheus(AgentCheck):
         except Exception as ex:
             raise AppCheckDontRetryException(ex)
 
-    def get_prometheus_metrics(self, url, timeout, name):
+    def get_prometheus_metrics(self, url, timeout, ssl_verify, name):
         try:
-            r = requests.get(url, timeout=timeout)
+            r = requests.get(url, timeout=timeout, verify=ssl_verify)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout
