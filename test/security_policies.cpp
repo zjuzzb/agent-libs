@@ -21,6 +21,8 @@
 #include <protocol.h>
 
 #include <sys/stat.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -827,7 +829,10 @@ TEST_F(DISABLED_security_policies_test, container_only)
 		return;
 	}
 
-	create_tag("blacklist-image-name", "busybox:latest");
+	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
+	kill_image("blacklist-image-name");
+
+	create_tag("blacklist-image-name", "busybox:1.27.2");
 	kill_container("blacklisted_image");
 
 	if(system("docker run --rm --name blacklisted_image blacklist-image-name > /dev/null 2>&1") != 0)
@@ -1192,6 +1197,48 @@ TEST_F(DISABLED_security_policies_test, overlapping_syscall)
 	std::vector<expected_policy_event> expected = {{24,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sip", "0.0.0.0"}, {"fd.sport", "12345"}, {"fd.l4proto", "tcp"}}}};
 						       //{23,draiosproto::policy_type::PTYPE_SYSCALL,{{"evt.type", "listen"}}}
 	check_policy_events(expected);
+};
+
+TEST_F(DISABLED_security_policies_test, nofd_operations)
+{
+	DIR *dirp;
+
+	mkdir("/tmp/test_nofd_ops/", 0777);
+	dirp = opendir("/tmp/test_nofd_ops/");
+
+	mkdirat(dirfd(dirp), "./one", 0777);
+	mkdirat(dirfd(dirp), "./two", 0777);
+
+	unlinkat(dirfd(dirp), "./one", AT_REMOVEDIR);
+	renameat(dirfd(dirp), "./two", dirfd(dirp), "./three");
+
+	rename("/tmp/test_nofd_ops/three", "/tmp/test_nofd_ops/four");
+
+	system("touch /tmp/test_nofd_ops/file");
+	unlink("/tmp/test_nofd_ops/file");
+
+	closedir(dirp);
+
+	rmdir("/tmp/test_nofd_ops/four");
+	rmdir("/tmp/test_nofd_ops");
+
+	std::vector<expected_policy_event> expected = {{25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/"}, {"evt.type", "mkdir"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "mkdirat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.type", "mkdirat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "unlinkat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.abspath.dst", "/tmp/test_nofd_ops/three"}, {"evt.type", "renameat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/three"}, {"evt.arg[2]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rename"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/test_nofd_ops/file"}, {"evt.type", "open"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/file"}, {"evt.type", "unlink"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rmdir"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops"}, {"evt.type", "rmdir"}}}};
+	check_policy_events(expected);
+
+	std::map<string,expected_internal_metric> metrics = {{"security.files-readwrite.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+							     {"security.files-readwrite-nofd.match.deny", {expected_internal_metric::CMP_EQ, 9}},
+							     {"security.files-readwrite.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+							     {"security.files-readwrite.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	check_expected_internal_metrics(metrics);
 };
 
 TEST_F(DISABLED_security_policies_test_delayed_reports, events_flood)
