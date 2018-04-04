@@ -695,7 +695,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 #endif
 	// Right now these two entries does not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 128U}});
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
 	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}, {"cointerface", 60U}});
 
 	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);
