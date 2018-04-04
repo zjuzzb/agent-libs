@@ -406,12 +406,14 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 	int64_t swap_total = 0;
 	int64_t swap_free = 0;
 	int64_t swap_cached = 0;
+	int64_t slab_reclaimable = 0;
 	int64_t tmp = 0;
 
 	ASSERT(used_memory);
 	ASSERT(used_swap);
 	ASSERT(total_swap);
 	*used_memory = -1;
+	*avail_memory = -1;
 	*used_swap = -1;
 	*total_swap = -1;
 	*avail_swap = -1;
@@ -463,6 +465,10 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		{
 			swap_cached = tmp;
 		}
+		else if(sscanf(line, "SReclaimable: %" PRId64, &tmp) == 1)
+		{
+			slab_reclaimable = tmp;
+		}
 	}
 
 	fclose(f);
@@ -476,6 +482,7 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 
 	if(!mem_avail && mem_free > 0 && cached > 0)
 	{
+		// NOTE: `free` sets mem_avail to mem_free and does not include cached
 		mem_avail = mem_free + cached;
 	}
 	*avail_memory = mem_avail;
@@ -485,6 +492,11 @@ void sinsp_procfs_parser::get_global_mem_usage_kb(int64_t* used_memory, int64_t*
 		*avail_memory = 0;
 	}
 
+	if(slab_reclaimable > 0)
+	{
+		// `free` accounts for slab_reclaimable as part of cached
+		cached += slab_reclaimable;
+	}
 	*used_memory = m_physical_memory_kb - mem_free - buffers - cached;
 	if(*used_memory < 0)
 	{
