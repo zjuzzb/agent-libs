@@ -145,7 +145,7 @@ std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
 	return os;
 }
 
-class DISABLED_security_policies_test : public testing::Test
+class security_policies_test : public testing::Test
 {
 protected:
 
@@ -511,7 +511,7 @@ protected:
 	security_policy_error_handler m_error_handler;
 };
 
-class DISABLED_security_policies_test_delayed_reports : public DISABLED_security_policies_test
+class security_policies_test_delayed_reports : public security_policies_test
 {
 protected:
 
@@ -556,7 +556,7 @@ static void kill_image(const char *image)
 	EXPECT_EQ(system(rmi_cmd.c_str()), 0);
 }
 
-TEST_F(DISABLED_security_policies_test, readonly_fs_only)
+TEST_F(security_policies_test, readonly_fs_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -585,7 +585,7 @@ TEST_F(DISABLED_security_policies_test, readonly_fs_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, readwrite_fs_only)
+TEST_F(security_policies_test, readwrite_fs_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -613,7 +613,7 @@ TEST_F(DISABLED_security_policies_test, readwrite_fs_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, mixed_r_rw)
+TEST_F(security_policies_test, mixed_r_rw)
 {
 	// Try to open /tmp/matchlist-order.txt and
 	// /tmp/matchlist-order-2 read-only. The first list only
@@ -631,7 +631,7 @@ TEST_F(DISABLED_security_policies_test, mixed_r_rw)
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, fs_prefixes)
+TEST_F(security_policies_test, fs_prefixes)
 {
 	int fd = open("/tmp/one", O_RDONLY);
 	close(fd);
@@ -657,7 +657,7 @@ TEST_F(DISABLED_security_policies_test, fs_prefixes)
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, fs_root_dir)
+TEST_F(security_policies_test, fs_root_dir)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -683,7 +683,7 @@ TEST_F(DISABLED_security_policies_test, fs_root_dir)
 
 
 
-TEST_F(DISABLED_security_policies_test, tcp_listenport_only)
+TEST_F(security_policies_test, tcp_listenport_only)
 {
 	int rc;
 	int sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -714,7 +714,7 @@ TEST_F(DISABLED_security_policies_test, tcp_listenport_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, udp_listenport_only)
+TEST_F(security_policies_test, udp_listenport_only)
 {
 	int rc;
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -750,7 +750,7 @@ TEST_F(DISABLED_security_policies_test, udp_listenport_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, matchlist_order)
+TEST_F(security_policies_test, matchlist_order)
 {
 	// Try to open /tmp/matchlist-order.txt for reading and
 	// /tmp/matchlist-order-2 read-write. The first list for the
@@ -777,7 +777,7 @@ TEST_F(DISABLED_security_policies_test, matchlist_order)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, overall_order)
+TEST_F(security_policies_test, overall_order)
 {
 	// Try to open /tmp/overall-order-{123}.txt for reading. An
 	// initial policy accepts all 3, but each file is also listed
@@ -805,7 +805,7 @@ TEST_F(DISABLED_security_policies_test, overall_order)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, syscall_only)
+TEST_F(security_policies_test, syscall_only)
 {
 	// It doesn't matter that the quotactl fails, just that it attempts
 	struct dqblk quota;
@@ -821,7 +821,7 @@ TEST_F(DISABLED_security_policies_test, syscall_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, container_only)
+TEST_F(security_policies_test, container_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -856,7 +856,7 @@ TEST_F(DISABLED_security_policies_test, container_only)
 	check_expected_internal_metrics(metrics);
 }
 
-TEST_F(DISABLED_security_policies_test, process_only)
+TEST_F(security_policies_test, process_only)
 {
 	ASSERT_EQ(system("ls > /dev/null 2>&1"), 0);
 
@@ -870,7 +870,7 @@ TEST_F(DISABLED_security_policies_test, process_only)
 	check_expected_internal_metrics(metrics);
 }
 
-TEST_F(DISABLED_security_policies_test, falco_only)
+TEST_F(security_policies_test, falco_only)
 {
 	int fd = open("/tmp/sample-sensitive-file-2.txt", O_RDONLY);
 	close(fd);
@@ -898,7 +898,7 @@ TEST_F(DISABLED_security_policies_test, falco_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, baseline_only)
+TEST_F(security_policies_test, baseline_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -924,7 +924,7 @@ TEST_F(DISABLED_security_policies_test, baseline_only)
 	ASSERT_TRUE((msg == NULL));
 }
 
-TEST_F(DISABLED_security_policies_test, baseline_deviate_port)
+TEST_F(security_policies_test, baseline_deviate_port)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -947,7 +947,7 @@ TEST_F(DISABLED_security_policies_test, baseline_deviate_port)
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, baseline_deviate_cat_dockerenv)
+TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -972,7 +972,7 @@ TEST_F(DISABLED_security_policies_test, baseline_deviate_cat_dockerenv)
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, container_prefixes)
+TEST_F(security_policies_test, container_prefixes)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1044,7 +1044,7 @@ TEST_F(DISABLED_security_policies_test, container_prefixes)
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, net_inbound_outbound_tcp)
+TEST_F(security_policies_test, net_inbound_outbound_tcp)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1075,7 +1075,7 @@ TEST_F(DISABLED_security_policies_test, net_inbound_outbound_tcp)
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, net_inbound_outbound_udp)
+TEST_F(security_policies_test, net_inbound_outbound_udp)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1105,7 +1105,7 @@ TEST_F(DISABLED_security_policies_test, net_inbound_outbound_udp)
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, baseline_without_syscalls)
+TEST_F(security_policies_test, baseline_without_syscalls)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1125,7 +1125,7 @@ TEST_F(DISABLED_security_policies_test, baseline_without_syscalls)
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, fs_usecase)
+TEST_F(security_policies_test, fs_usecase)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1147,7 +1147,7 @@ TEST_F(DISABLED_security_policies_test, fs_usecase)
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, image_name_priority)
+TEST_F(security_policies_test, image_name_priority)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1173,7 +1173,7 @@ TEST_F(DISABLED_security_policies_test, image_name_priority)
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, overlapping_syscall)
+TEST_F(security_policies_test, overlapping_syscall)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1199,7 +1199,7 @@ TEST_F(DISABLED_security_policies_test, overlapping_syscall)
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, nofd_operations)
+TEST_F(security_policies_test, nofd_operations)
 {
 	DIR *dirp;
 
@@ -1241,7 +1241,7 @@ TEST_F(DISABLED_security_policies_test, nofd_operations)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test_delayed_reports, events_flood)
+TEST_F(security_policies_test_delayed_reports, events_flood)
 {
 	shared_ptr<protocol_queue_item> item;
 
