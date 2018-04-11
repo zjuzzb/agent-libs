@@ -129,10 +129,12 @@ infrastructure_state::~infrastructure_state()
 {
 }
 
-void infrastructure_state::init(sinsp *inspector, const std::string& machine_id)
+void infrastructure_state::init(sinsp *inspector, const std::string& machine_id,
+	bool prom_enabled)
 {
 	m_inspector = inspector;
 	m_machine_id = machine_id;
+	m_prom_enabled = prom_enabled;
 }
 
 bool infrastructure_state::inited()
@@ -178,6 +180,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_ca_cert(m_k8s_ca_cert);
 			cmd.set_client_cert(m_k8s_client_cert);
 			cmd.set_client_key(m_k8s_client_key);
+			cmd.set_prometheus(m_prom_enabled);
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);

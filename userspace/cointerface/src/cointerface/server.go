@@ -128,7 +128,7 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	// Don't defer ctxCancel() yet
 	evtc, err := kubecollect.WatchCluster(ctx,
 		cmd.GetUrl(), cmd.GetCaCert(),
-		cmd.GetClientCert(), cmd.GetClientKey())
+		cmd.GetClientCert(), cmd.GetClientKey(), cmd.GetPrometheus())
 	if err != nil {
 		ctxCancel()
 		return err

@@ -28,7 +28,7 @@ public:
 
 	~infrastructure_state();
 
-	void init(sinsp *inspector, const std::string& machine_id);
+	void init(sinsp *inspector, const std::string& machine_id, bool prom_on);
 	bool inited();
 
 	void subscribe_to_k8s(string url, string ca_cert,
@@ -123,6 +123,7 @@ private:
 
 	sinsp *m_inspector;
 	std::string m_machine_id;
+	bool m_prom_enabled;
 
 	std::hash<std::string> m_str_hash_f;
 

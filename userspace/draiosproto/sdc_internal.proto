@@ -84,6 +84,7 @@ message orchestrator_events_stream_command {
     required string ca_cert = 2;
     required string client_cert = 3;
     required string client_key = 4;
+    optional bool prometheus = 5;
 }
 
 service CoInterface {

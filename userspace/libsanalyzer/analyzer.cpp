@@ -408,7 +408,7 @@ void sinsp_analyzer::on_capture_start()
 	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
-		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
+		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id(), m_prom_conf.enabled());
 
 		// K8s url to use
 		string k8s_url = m_configuration->get_k8s_api_server();
