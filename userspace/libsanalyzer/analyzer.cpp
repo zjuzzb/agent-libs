@@ -3921,7 +3921,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 								}
-								if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
+								else if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
 								{
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll recovered, changing interval back to %lds\n", SWARM_POLL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_INTERVAL);
