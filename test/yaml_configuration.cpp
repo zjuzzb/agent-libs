@@ -16,9 +16,20 @@ TEST(yaml_conf, get_scalar)
 	EXPECT_EQ(true, conf.get_scalar<bool>("mybool", false));
 	EXPECT_EQ(6666, conf.get_scalar<int>("server", "port", 0));
 	EXPECT_EQ("collector-staging.sysdigcloud.com", conf.get_scalar<string>("server", "address", ""));
+	EXPECT_EQ(40, conf.get_scalar<int>("mynested", "secondkey", "subkey", -1));
 
 	yaml_configuration conf2({"resources/test2.yaml", "resources/test.default.yaml"});
 	EXPECT_EQ("myvaluedefault", conf2.get_scalar<string>("mykey", ""));
+}
+
+TEST(yaml_conf, get_first_deep_map)
+{
+	yaml_configuration conf({"resources/test.yaml", "resources/test.default.yaml"});
+	auto deep = conf.get_first_deep_map<int>("mydeepnested", "key");
+	EXPECT_EQ(41, deep["firstkey"]);
+	EXPECT_EQ(87, deep["secondkey"]);
+	auto empty = conf.get_first_deep_map<int>("mynestedempty");
+	EXPECT_TRUE(empty.empty());
 }
 
 TEST(yaml_conf, get_merged_map)

@@ -764,6 +764,20 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
+
+	// custom container engines
+	try {
+		m_custom_container.set_enabled(m_config->get_scalar<bool>("custom_container", "enabled", false));
+		m_custom_container.set_cgroup_match(m_config->get_scalar<string>("custom_container", "match", "cgroup", ""));
+		m_custom_container.set_environ_match(m_config->get_first_deep_map<string>("custom_container", "match", "environ"));
+		m_custom_container.set_id_pattern(m_config->get_scalar<string>("custom_container", "id", ""));
+		m_custom_container.set_name_pattern(m_config->get_scalar<string>("custom_container", "name", ""));
+		m_custom_container.set_image_pattern(m_config->get_scalar<string>("custom_container", "image", ""));
+		m_custom_container.set_label_pattern(m_config->get_first_deep_map<string>("custom_container", "labels"));
+	} catch (const Poco::RuntimeException& e) {
+		throw sinsp_exception("config file error inside key custom_containers: " + e.message());
+	}
+
 #endif // CYGWING_AGENT
 
 	vector<string> default_pythons = { "/usr/bin/python2.7", "/usr/bin/python27", "/usr/bin/python2",

@@ -1571,7 +1571,7 @@ void sinsp_analyzer_fd_listener::on_bind(sinsp_evt *evt)
 
 bool sinsp_analyzer_fd_listener::on_resolve_container(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info)
 {
-	return false;
+	return m_analyzer->m_custom_container.resolve(manager, tinfo, query_os_for_missing_info);
 }
 
 void sinsp_analyzer_fd_listener::on_clone(sinsp_evt *evt, sinsp_threadinfo* newtinfo)

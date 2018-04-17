@@ -356,6 +356,7 @@ void sinsp_worker::init()
 
 #ifndef CYGWING_AGENT
 	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
+	m_analyzer->set_custom_container_conf(move(m_configuration->m_custom_container));
 #endif
 
 	m_analyzer->get_configuration()->set_orch_queue_len(m_configuration->m_orch_queue_len);

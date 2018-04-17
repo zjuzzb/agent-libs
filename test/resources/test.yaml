@@ -4,6 +4,10 @@ mynested:
     subkey: 78
   secondkey:
     subkey: 40
+mydeepnested:
+  key:
+    firstkey: 41
+    secondkey: 87
 myarray:
   - 1
   - 6
