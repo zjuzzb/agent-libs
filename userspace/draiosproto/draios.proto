@@ -202,7 +202,7 @@ message url_details {
     //   t for TRACE
     //   c for CONNECT
     //
-    required string url = 1; 
+    required string url = 1;
     required counter_proto_entry counters = 2;
 }
 
@@ -459,7 +459,7 @@ message proto_info {
 
 message network_by_port {
     required uint32 port = 1;
-    required connection_categories counters = 2; 
+    required connection_categories counters = 2;
 }
 
 //
@@ -958,10 +958,10 @@ message dump_request_start {
     optional string filters = 5; // Dump filters
     optional uint64 max_size = 7; // Max size
     required string token = 6; // The token associated with the request
-    optional uint64 past_duration_ns = 8; // The duration before the current time to capture. 
-                                          // This works only if the agent has been configured with rotational capture 
+    optional uint64 past_duration_ns = 8; // The duration before the current time to capture.
+                                          // This works only if the agent has been configured with rotational capture
     optional uint64 past_size = 9; // The number of bytes already in the event circular buffer to capture.
-                                   // This works only if the agent has been configured with rotational capture 
+                                   // This works only if the agent has been configured with rotational capture
 }
 
 message dump_request_stop {

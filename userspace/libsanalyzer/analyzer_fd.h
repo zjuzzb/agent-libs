@@ -72,8 +72,7 @@ public:
 	void on_bind(sinsp_evt *evt);
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
-
-	bool patch_network_role(sinsp_threadinfo* ptinfo, 
+	bool patch_network_role(sinsp_threadinfo* ptinfo,
 		sinsp_fdinfo_t* pfdinfo,
 		bool incoming);
 
@@ -84,7 +83,7 @@ private:
 	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
 	void flush_transaction(erase_fd_params* params);
 
-	sinsp* m_inspector; 
+	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
 	sinsp_proto_detector m_proto_detector;
 	sinsp_configuration* m_sinsp_config;
