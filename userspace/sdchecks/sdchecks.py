@@ -63,7 +63,7 @@ def sighup_handler(signum, frame):
         else:
             logging.warning("File: \"%s\", line %d, in %s" %
                             (filename, linenumber, funcname))
-    os._exit(SIGHUP_HANDLER_EXIT_CODE) 
+    os._exit(SIGHUP_HANDLER_EXIT_CODE)
 
 def setns(fd):
     if hasattr(_LIBC, "setns"):
@@ -329,6 +329,7 @@ class Config:
     def __init__(self):
         etcdir = "/opt/draios/etc"
         self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
+                                        os.path.join(etcdir, "/kubernetes/config/dragent.yaml"),
                                         os.path.join(etcdir, "dragent.auto.yaml"),
                                         os.path.join(etcdir, "dragent.default.yaml")])
 
@@ -562,7 +563,7 @@ class Application:
             for port in pc["ports"]:
                 newcheck, newproc = prepare_prom_check(pc, port)
                 pidname = (newproc["pid"],newcheck["name"])
-                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc) 
+                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc)
                 if ran:
                     numrun += 1
                 nummetrics += nm

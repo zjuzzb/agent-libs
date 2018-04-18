@@ -26,6 +26,22 @@
 
 using namespace std;
 
+// local helper functions
+namespace {
+string compute_sha1_digest(SHA1Engine &engine, const string &path)
+{
+	engine.reset();
+	ifstream fs(path);
+	char readbuf[4096];
+	while(fs.good()) {
+		fs.read(readbuf, sizeof(readbuf));
+		engine.update(readbuf, fs.gcount());
+	}
+	return DigestEngine::digestToHex(engine.digest());
+}
+
+};
+
 static void g_signal_callback(int sig)
 {
 	dragent_configuration::m_terminate = true;
@@ -412,7 +428,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
 			{
-				execl((m_configuration.m_root_dir + "/bin/statsite").c_str(), "statsite", "-f", 
+				execl((m_configuration.m_root_dir + "/bin/statsite").c_str(), "statsite", "-f",
 					(m_configuration.m_root_dir + "/etc/statsite.ini").c_str(), (char*)NULL);
 			}
 			else
@@ -494,11 +510,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
 		state->set_name("mountedfs_reader");
-		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);		
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
 		monitor_process.emplace_process("mountedfs_reader", [this]()
 		{
 			m_mounted_fs_reader_pipe->attach_child();
-			mounted_fs_reader proc((sinsp*)m_sinsp_worker.get_inspector(), 
+			mounted_fs_reader proc((sinsp*)m_sinsp_worker.get_inspector(),
 						this->m_configuration.m_remotefs_enabled,
 						this->m_configuration.m_mounts_filter,
 						this->m_configuration.m_mounts_limit_size);
@@ -540,7 +556,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 				}
 
 				coclient::cleanup();
-#endif				
+#endif
 			});
 	return monitor_process.run();
 #else // _WIN32
@@ -670,6 +686,11 @@ int dragent_app::sdagent_main()
 			}
 		}
 #endif
+		if ((m_configuration.m_monitor_files_freq_sec > 0) &&
+		    (uptime_s % m_configuration.m_monitor_files_freq_sec == 0)) {
+			monitor_files(uptime_s);
+		}
+
 		Thread::sleep(1000);
 		++uptime_s;
 	}
@@ -1111,4 +1132,62 @@ void dragent_app::initialize_logging()
 					   m_configuration.m_user_max_burst_events);
 
 	g_log->set_internal_metrics(m_internal_metrics);
+}
+
+void dragent_app::monitor_files(uint64_t uptime_s)
+{
+	static SHA1Engine engine;
+	bool detected_change = false;
+
+	// init the file states when called for the first time
+	if (uptime_s == 0) {
+		m_monitored_files.reserve(m_configuration.m_monitor_files.size());
+		for (auto const &path : m_configuration.m_monitor_files) {
+			std::string digest = "";
+			struct stat f_stat;
+			if (stat(path.c_str(), &f_stat) == 0) {
+				digest = compute_sha1_digest(engine, path);
+			} else {
+				// if the file doesn't exist, still add an entry with
+				// mtime of zero.
+				f_stat.st_mtime = 0;
+			}
+
+			m_monitored_files.emplace_back(path, f_stat.st_mtime, digest);
+		}
+	} else {
+		// iterate through files that need to be monitored and detect
+		// changes to them by first checking for change in mtime and then
+		// for changes in contents. if either has changed, update the
+		// values in the state.
+		for (auto &state : m_monitored_files) {
+			struct stat f_stat;
+			bool file_exists = stat(state.m_path.c_str(), &f_stat) == 0;
+			if (file_exists && (f_stat.st_mtime != state.m_mod_time)) {
+				g_log->debug("Modification time changed for file: " + state.m_path);
+				state.m_mod_time = f_stat.st_mtime;
+
+				// check modification of contents of the file
+				auto new_digest = compute_sha1_digest(engine, state.m_path);
+				if(new_digest != state.m_digest)
+				{
+					g_log->information("Detected changes to file: " + state.m_path);
+					state.m_digest = new_digest;
+					detected_change = true;
+				}
+			}
+			else if (! file_exists && (state.m_mod_time != 0))
+			{
+				g_log->warning("Detected removal of file: " + state.m_path);
+				detected_change = true;
+			}
+		}
+	}
+
+	// exit on detecting changes to files chosen to be monitored and
+	// trigger restart of all related processes
+	if (detected_change) {
+		dragent_configuration::m_terminate = true;
+		dragent_configuration::m_config_update = true;
+	}
 }

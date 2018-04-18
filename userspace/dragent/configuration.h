@@ -705,6 +705,9 @@ public:
 
 	unsigned m_snaplen;
 
+	uint16_t m_monitor_files_freq_sec = 0;
+	std::set<std::string> m_monitor_files;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();
@@ -712,7 +715,7 @@ public:
 
 	bool python_present() const
 	{
-#ifndef CYGWING_AGENT		
+#ifndef CYGWING_AGENT
 		return !m_python_binary.empty();
 #else
 		return false;

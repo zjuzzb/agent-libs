@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
-import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,6 +29,7 @@ public class Config {
     public Config() throws FileNotFoundException {
         List<String> configFiles = new ArrayList<String>();
         configFiles.add(ETCDIR + "/dragent.yaml");
+        configFiles.add(ETCDIR + "/kubernetes/config/dragent.yaml");
         configFiles.add(ETCDIR + "/dragent.auto.yaml");
         configFiles.add(ETCDIR + "/dragent.default.yaml");
 
@@ -72,7 +72,7 @@ public class Config {
         @SuppressWarnings("unused")
         private Process(@JsonProperty("pattern") String pattern, @JsonProperty("beans") List<BeanQuery> queries) {
             this.pattern = pattern;
-            
+
             this.queries = new ArrayList<BeanQuery>();
             if (queries != null) {
                 this.queries.addAll(queries);

@@ -114,6 +114,7 @@ private:
 	Logger* make_event_channel();
 	void send_internal_metrics(pid_t pid, const std::string& name);
 	void update_subprocesses();
+	void monitor_files(uint64_t uptime_s);
 
 	bool m_help_requested;
 	bool m_version_requested;
@@ -146,4 +147,16 @@ private:
 	std::unique_ptr<coclient> m_coclient;
 	run_on_interval m_cointerface_ping_interval = {5*ONE_SECOND_IN_NS};
 #endif
+
+	struct monitor_file_state {
+		monitor_file_state(std::string const &path,
+		                   time_t &mod_time,
+		                   std::string const &digest):
+			m_path(path), m_mod_time(mod_time), m_digest(digest) {}
+
+		std::string m_path;
+		time_t m_mod_time;
+		std::string m_digest;
+	};
+	std::vector<monitor_file_state> m_monitored_files;
 };
