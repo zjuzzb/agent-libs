@@ -44,6 +44,9 @@ func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *v1bet
 	prefix := "kubernetes.statefulset."
 	AppendMetricPtrInt32(metrics, prefix+"replicas", statefulSet.Spec.Replicas)
 	AppendMetricInt32(metrics, prefix+"status.replicas", statefulSet.Status.Replicas)
+	AppendMetricInt32(metrics, prefix+"status.replicas.current", statefulSet.Status.CurrentReplicas)
+	AppendMetricInt32(metrics, prefix+"status.replicas.ready", statefulSet.Status.ReadyReplicas)
+	AppendMetricInt32(metrics, prefix+"status.replicas.updated", statefulSet.Status.UpdatedReplicas)
 }
 
 func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {

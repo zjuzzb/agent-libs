@@ -513,13 +513,14 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_root_dir).append("etc").toString()));
 
+	const string kubernetes_dragent_yaml = m_root_dir + "/etc/kubernetes/config/dragent.yaml";
 	if(m_auto_config)
 	{
-		m_config.reset(new yaml_configuration({ m_conf_file, autocfg->config_path(), m_defaults_conf_file }));
+		m_config.reset(new yaml_configuration({ m_conf_file, kubernetes_dragent_yaml, autocfg->config_path(), m_defaults_conf_file }));
 	}
 	else
 	{
-		m_config.reset(new yaml_configuration({ m_conf_file, m_defaults_conf_file }));
+		m_config.reset(new yaml_configuration({ m_conf_file, kubernetes_dragent_yaml, m_defaults_conf_file }));
 	}
 	// The yaml_configuration catches exceptions so m_config will always be
 	// a valid pointer, but set m_load_error so dragent will see the error
@@ -539,6 +540,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 
+	ifstream kubernetes_access_key(m_root_dir + "/etc/kubernetes/secrets/access-key");
+	if(kubernetes_access_key.good())
+	{
+		kubernetes_access_key >> m_customer_id;
+	}
 	if(m_customer_id.empty())
 	{
 		m_customer_id = m_config->get_scalar<string>("customerid", "");
@@ -695,7 +701,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 #endif
 	// Right now these two entries does not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 128U}});
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
 	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", {{"sdchecks", 60U }, {"sdjagent", 60U}, {"mountedfs_reader", 60U}, {"statsite_forwarder", 60U}, {"cointerface", 60U}});
 
 	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);
@@ -1016,6 +1022,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_baseline_report_interval_ns = m_config->get_scalar<uint64_t>("falcobaseline", "report_interval", DEFAULT_FALCOBL_DUMP_DELTA_NS);
 
 	m_snaplen = m_config->get_scalar<unsigned>("snaplen", 0);
+	m_monitor_files_freq_sec =
+		m_config->get_scalar<unsigned>("monitor_files", "check_frequency_s", 0);
+	m_monitor_files =
+		m_config->get_deep_merged_sequence<set<string>>("monitor_files", "files");
 }
 
 void dragent_configuration::print_configuration() const
@@ -1360,6 +1370,14 @@ void dragent_configuration::print_configuration() const
 	}
 
 	g_log->information("snaplen: " + to_string(m_snaplen));
+	g_log->information("Monitor file frequency: " +
+	                   std::to_string(m_monitor_files_freq_sec) + " seconds");
+	if (! m_monitor_files.empty()) {
+		g_log->information("Files to monitor:");
+	}
+	for (auto const& path : m_monitor_files) {
+		g_log->information("   " + path);
+	}
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
@@ -1544,11 +1562,11 @@ void dragent_configuration::refresh_machine_id()
 	m_machine_id = Environment::nodeId();
 #else
 	//
-	// NOTE: Environment::nodeId() is buggy in cygwin poco, and returns 
+	// NOTE: Environment::nodeId() is buggy in cygwin poco, and returns
 	//       00:00:00:00:00:00. As a workaround we provide our own implementation.
 	//
 	m_machine_id = windows_helpers::get_machine_first_mac_address();
-#endif	
+#endif
 }
 
 bool dragent_configuration::is_executable(const string &path)

@@ -241,7 +241,7 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_falco_baseliner;
 	}
 
-#ifndef CYGWING_AGENT	
+#ifndef CYGWING_AGENT
 	if(m_infrastructure_state != NULL)
 	{
 		delete m_infrastructure_state;
@@ -293,7 +293,7 @@ void sinsp_analyzer::on_capture_start()
 	if(m_procfs_parser != NULL)
 	{
 		//
-		// Note, we can get here if we switch from regular to nodriver and vice 
+		// Note, we can get here if we switch from regular to nodriver and vice
 		// versa. In that case, sinsp is opened and closed and as a consequence
 		// on_capture_start is called again. It's fine, because the analyzer
 		// keeps running in the meantime.
@@ -408,7 +408,7 @@ void sinsp_analyzer::on_capture_start()
 	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
-		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id());
+		m_infrastructure_state->init(m_inspector, m_configuration->get_machine_id(), m_prom_conf.enabled());
 
 		// K8s url to use
 		string k8s_url = m_configuration->get_k8s_api_server();
@@ -427,7 +427,7 @@ void sinsp_analyzer::on_capture_start()
 			glogf("infrastructure state is now subscribed to k8s API server");
 		}
 	}
-#endif	
+#endif
 }
 
 void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
@@ -2062,7 +2062,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 									can_disable_nodriver = false;
 								}
 							}
-#endif // CYGWING_AGENT							
+#endif // CYGWING_AGENT
 						}
 					}
 				}
@@ -2706,7 +2706,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				unsigned total_prometheus_metrics = 0;
 				// Map of app_check data by app-check name and how long the
 				// metrics have been expired to ensure we serve the most recent
-				// metrics available 
+				// metrics available
 				map<string, map<int, const app_check_data *>> app_data_to_send;
 				for(auto pid: procinfo->m_program_pids)
 				{
@@ -2893,7 +2893,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
 		}
-#endif		
+#endif
 	}
 #endif
 }
@@ -3921,7 +3921,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll returned error: %s, changing interval to %lds\n", res->errstr().c_str(), SWARM_POLL_FAIL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_FAIL_INTERVAL);
 								}
-								if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
+								else if (m_swarmstate_interval.interval() > SWARM_POLL_INTERVAL)
 								{
 									g_logger.format(sinsp_logger::SEV_DEBUG, "Swarm state poll recovered, changing interval back to %lds\n", SWARM_POLL_INTERVAL / ONE_SECOND_IN_NS);
 									m_swarmstate_interval.interval(SWARM_POLL_INTERVAL);
@@ -4130,7 +4130,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				m_metrics->mutable_hostinfo()->add_cpu_idle((uint32_t)(m_proc_stat.m_idle[k]));
 				m_metrics->mutable_hostinfo()->add_user_cpu((uint32_t)(m_proc_stat.m_user[k]));
 				m_metrics->mutable_hostinfo()->add_system_cpu((uint32_t)(m_proc_stat.m_system[k]));
-#endif				
+#endif
 			}
 
 			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
@@ -4148,7 +4148,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					g_logger.log("Could not obtain load averages", sinsp_logger::SEV_WARNING);
 				}
-				
+
 				m_procfs_parser->get_global_mem_usage_kb(&m_host_metrics.m_res_memory_used_kb,
 								 &m_host_metrics.m_res_memory_free_kb,
 								 &m_host_metrics.m_res_memory_avail_kb,
@@ -5757,7 +5757,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			},
 			m_prev_flush_time_ns);
 	}
-#endif // CYGWING_AGENT	
+#endif // CYGWING_AGENT
 
 	vector<string> emitted_containers;
 	vector<string> containers_ids;
@@ -6278,7 +6278,7 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	{
 		emit_executed_commands(NULL, container, &(ecit->second));
 	}
-#endif	
+#endif
 
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
 												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
@@ -6424,7 +6424,7 @@ void sinsp_analyzer::emit_user_events()
 		{
 			m_docker->reset_event_counter();
 		}
-#endif		
+#endif
 		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 		{
 			std::ostringstream ostr;
@@ -6455,8 +6455,9 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 
 	set<uint16_t> ports;
 	string path;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path)) {
-		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path);
+	map<string, string> options;
+	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path, options)) {
+		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path, options);
 		prom_procs.emplace_back(pp);
 
 		mtinfo->m_ainfo->set_found_prom_check();

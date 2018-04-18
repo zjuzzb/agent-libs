@@ -23,14 +23,16 @@ import (
 )
 
 var compatibilityMap map[string]bool
+var prometheus_enabled bool
 
 const RsyncInterval = 10 * time.Minute
 
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block
-func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_cert string, client_key string) (<-chan draiosproto.CongroupUpdateEvent, error) {
+func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_cert string, client_key string, prom_enabled bool) (<-chan draiosproto.CongroupUpdateEvent, error) {
 	setErrorLogHandler()
+	prometheus_enabled = prom_enabled
 
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
@@ -183,6 +185,11 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	} else {
 		log.Warnf("K8s server doesn't have statefulsets API support.")
 	}
+	if compatibilityMap["horizontalpodautoscalers"] {
+		startHorizontalPodAutoscalersSInformer(ctx, kubeClient, &wg)
+	} else {
+		log.Warnf("K8s server doesn't have horizontalpodautoscalers API support.")
+	}
 	if compatibilityMap["resourcequotas"] {
 		startResourceQuotasSInformer(ctx, kubeClient, &wg)
 	} else {
@@ -226,6 +233,9 @@ func WatchCluster(parentCtx context.Context, url string, ca_cert string, client_
 	}
 	if compatibilityMap["statefulsets"] {
 		watchStatefulSets(evtc)
+	}
+	if compatibilityMap["horizontalpodautoscalers"] {
+		watchHorizontalPodAutoscalers(evtc)
 	}
 	if compatibilityMap["resourcequotas"] {
 		watchResourceQuotas(evtc)
@@ -331,11 +341,18 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 }
 
 func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
+	if !prometheus_enabled {
+		return nil
+	}
 	tags := make(map[string]string)
 	for k, v := range obj.GetAnnotations() {
-		tags[prefix+"annotation." + k] = v
+		if strings.Contains(k, "prometheus") {
+			tags[prefix+"annotation." + k] = v
+		}
 	}
-	tags[prefix+"name"] = obj.GetName()
+	if len(tags) == 0 {
+		return nil
+	}
 	return tags
 }
 

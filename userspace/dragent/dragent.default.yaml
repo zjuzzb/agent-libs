@@ -1184,3 +1184,11 @@ k8s_labels_filter:
   - exclude: "*.pod-template-generation"
   - exclude: "*.controller-revision-hash"
   - include: "*"
+
+# configuration files to monitor for updates
+monitor_files:
+  check_frequency_s: 5
+  files:
+    - /opt/draios/etc/dragent.yaml
+    - /opt/draios/etc/kubernetes/config/dragent.yaml
+    - /opt/draios/etc/kubernetes/secrets/access-key

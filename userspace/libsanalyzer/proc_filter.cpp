@@ -427,6 +427,11 @@ bool convert<proc_filter::rule_config>::decode(const Node &node,
 			}
 			rhs.m_port_subst = contains_token(rhs.m_port);
 		}
+		else if (conf_line->second.IsScalar())
+		{
+			// Allow arbitrary config options to pass to sdchecks
+			rhs.m_options[conf_line->first.as<string>()] = conf_line->second.as<string>();
+		}
 	}
 	return true;
 }

@@ -96,3 +96,6 @@ userspace/sdjagent/target
 userspace/cointerface/pkg/
 
 .vscode
+# vagrant stuff
+.vagrant
+experiments/aws-vm/cloud_images.json

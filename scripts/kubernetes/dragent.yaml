@@ -1,3 +1,0 @@
-dev_new_k8s: true
-k8s_cluster_name: luca
-log: { file_priority: debug }

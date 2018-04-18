@@ -188,7 +188,22 @@ void security_policies::set_match_details(match_result &match, sinsp_evt *evt)
 	}
 	match.detail()->set_on_default(false);
 
-	for(auto ofk: match.output_field_keys())
+	std::set<std::string> ofks = { "proc.name", "proc.cmdline" };
+	std::set<std::string> default_ofks = default_output_fields_keys(evt);
+	ofks.insert(default_ofks.begin(), default_ofks.end());
+
+	//
+	// ATM the fields requested from the backend are ignored.
+	// Whenever we give users the ability to add "additional"
+	// fields in the policy configuration we just have to
+	// decomment the following code
+	//
+	// for(auto ofk: match.output_field_keys())
+	// {
+	// 	ofks.insert(ofk);
+	// }
+
+	for(const auto &ofk: ofks)
 	{
 		if(ofk != "falco.rule")
 		{
@@ -357,6 +372,12 @@ draiosproto::policy_type falco_security_policies::policies_type()
 draiosproto::policy_subtype falco_security_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_NOSUBTYPE;
+}
+
+std::set<std::string> falco_security_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	// falco policies handle this internally
+	return {};
 }
 
 bool falco_security_policies::load_rules(const draiosproto::policies &policies, string &errstr)
@@ -725,6 +746,7 @@ security_policies::match_result *filtercheck_policies::match_event(sinsp_evt *ev
 net_inbound_policies::net_inbound_policies()
 {
 	m_name = "network-inbound";
+
 	m_evttypes[PPME_SOCKET_ACCEPT_X] = true;
 	m_evttypes[PPME_SOCKET_ACCEPT4_X] = true;
 	m_evttypes[PPME_SOCKET_ACCEPT_5_X] = true;
@@ -757,6 +779,11 @@ draiosproto::policy_type net_inbound_policies::policies_type()
 draiosproto::policy_subtype net_inbound_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_NETWORK_INBOUND;
+}
+
+std::set<std::string> net_inbound_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	return { "fd.l4proto", "fd.cip", "fd.cport", "fd.sip", "fd.sport" };
 }
 
 std::string net_inbound_policies::qualifies()
@@ -887,6 +914,7 @@ std::string net_outbound_policies::qualifies()
 tcp_listenport_policies::tcp_listenport_policies()
 {
 	m_name = "listenports-tcp";
+
 	m_evttypes[PPME_SOCKET_LISTEN_E] = true;
 
 	m_proto = draiosproto::PROTO_TCP;
@@ -914,6 +942,11 @@ draiosproto::policy_type tcp_listenport_policies::policies_type()
 draiosproto::policy_subtype tcp_listenport_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_NETWORK_LISTENING;
+}
+
+std::set<std::string> tcp_listenport_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	return { "fd.l4proto", "fd.sip", "fd.sport" };
 }
 
 std::string tcp_listenport_policies::qualifies()
@@ -1000,6 +1033,7 @@ std::string udp_listenport_policies::qualifies()
 syscall_policies::syscall_policies()
 {
 	m_name = "syscalls";
+
 	for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
 	{
 		if(PPME_IS_ENTER(j))
@@ -1066,6 +1100,11 @@ draiosproto::policy_type syscall_policies::policies_type()
 draiosproto::policy_subtype syscall_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_NOSUBTYPE;
+}
+
+std::set<std::string> syscall_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	return { "evt.type" };
 }
 
 bool syscall_policies::add_matchlist_details(security_policy *policy,
@@ -1254,68 +1293,72 @@ security_policies::match_result *matchlist_map_security_policies::match_event(si
 		return NULL;
 	}
 
-	uint8_t *val;
-	uint32_t len;
-	val = m_check->extract(evt, &len);
+	auto range = m_checks.equal_range(evt->get_type());
 
-	if(!val)
+	for(auto it = range.first; it != range.second; ++it)
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
-		return NULL;
-	}
+		uint8_t *val;
+		uint32_t len;
 
-	filter_value_t key(val, len);
-	filter_components_t components;
+		val = it->second->extract(evt, &len);
 
-	split_components(key, components);
-
-	for(auto &pair : m_index)
-	{
-		if(security_policy::match_scope(evt, m_mgr->analyzer(),
-						pair.first.preds,
-						pair.first.host_scope,
-						pair.first.container_scope))
-
+		if(!val)
 		{
-			// Any miss after this won't be due to scope
-			scope_miss = false;
+			m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
+			return NULL;
+		}
 
-			const match_result *best_match = NULL;
+		filter_value_t key(val, len);
+		filter_components_t components;
 
-			// Loop over the 3 prefix_map objects (for
-			// ACCEPT, DENY, NEXT). Find the best
-			// match_result that matches the path and
-			// return it.
-			for(auto &prefix_map : pair.second)
+		split_components(key, components);
+
+		for(auto &pair : m_index)
+		{
+			if(security_policy::match_scope(evt, m_mgr->analyzer(),
+							pair.first.preds,
+							pair.first.host_scope,
+							pair.first.container_scope))
 			{
-				const match_result *found = NULL;
-				if((found = prefix_map.match_components(components)) != NULL)
+				// Any miss after this won't be due to scope
+				scope_miss = false;
+
+				const match_result *best_match = NULL;
+
+				// Loop over the 3 prefix_map objects (for
+				// ACCEPT, DENY, NEXT). Find the best
+				// match_result that matches the path and
+				// return it.
+				for(auto &prefix_map : pair.second)
 				{
-					if(best_match == NULL ||
-					   match_result::compare_ptr(found, best_match))
+					const match_result *found = NULL;
+					if((found = prefix_map.match_components(components)) != NULL)
 					{
-						best_match = found;
+						if(best_match == NULL ||
+						   match_result::compare_ptr(found, best_match))
+						{
+							best_match = found;
+						}
 					}
 				}
+
+				if(!best_match)
+				{
+					continue;
+				}
+
+				match_result *match = new match_result(best_match->policy(),
+								       policies_type(),
+								       policies_subtype(),
+								       best_match->item(),
+								       new draiosproto::event_detail(),
+								       best_match->effect(),
+								       best_match->output_field_keys(),
+								       best_match->baseline_id());
+				set_match_details(*match, evt);
+
+				return match;
 			}
-
-			if(!best_match)
-			{
-				// Might happen if a given container was named but didn't actually match the scope
-				return min_default_match(evt, scope_miss);
-			}
-
-			match_result *match = new match_result(best_match->policy(),
-							       policies_type(),
-							       policies_subtype(),
-							       best_match->item(),
-							       new draiosproto::event_detail(),
-							       best_match->effect(),
-							       best_match->output_field_keys(),
-							       best_match->baseline_id());
-			set_match_details(*match, evt);
-
-			return match;
 		}
 	}
 
@@ -1361,7 +1404,7 @@ matchlist_map_security_policies::path_matchresult_search &matchlist_map_security
 	{
 		if(pair.first == preds)
 		{
-			return pair.second[effect];
+			return pair.second[(uint32_t) effect-1];
 		}
 	}
 
@@ -1449,6 +1492,7 @@ bool matchlist_map_security_policies::match_list_relevant(const draiosproto::mat
 readonly_fs_policies::readonly_fs_policies()
 {
 	m_name = "files-readonly";
+
 	m_evttypes[PPME_SYSCALL_OPEN_X] = true;
 	m_evttypes[PPME_SYSCALL_OPENAT_X] = true;
 
@@ -1465,8 +1509,11 @@ void readonly_fs_policies::init(security_mgr *mgr,
 {
 	matchlist_map_security_policies::init(mgr, configuration, inspector);
 
-	m_check.reset(g_filterlist.new_filter_check_from_fldname("fd.name", m_inspector, true));
-	m_check->parse_field_name("fd.name", true, false);
+	std::shared_ptr<sinsp_filter_check> fdn;
+	fdn.reset(g_filterlist.new_filter_check_from_fldname("fd.name", m_inspector, true));
+	fdn->parse_field_name("fd.name", true, false);
+	m_checks.emplace(PPME_SYSCALL_OPEN_X, fdn);
+	m_checks.emplace(PPME_SYSCALL_OPENAT_X, fdn);
 }
 
 draiosproto::policy_type readonly_fs_policies::policies_type()
@@ -1477,6 +1524,11 @@ draiosproto::policy_type readonly_fs_policies::policies_type()
 draiosproto::policy_subtype readonly_fs_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_FILESYSTEM_READ;
+}
+
+std::set<std::string> readonly_fs_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	return { "evt.type", "fd.name" };
 }
 
 std::string readonly_fs_policies::qualifies()
@@ -1524,9 +1576,83 @@ std::string readwrite_fs_policies::qualifies()
 	return string("evt.rawres > 0 and evt.is_open_write=true");
 }
 
+nofd_readwrite_fs_policies::nofd_readwrite_fs_policies()
+{
+	m_name = "files-readwrite-nofd";
+
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_evttypes[PPME_SYSCALL_MKDIR_2_X] = true;
+	m_evttypes[PPME_SYSCALL_MKDIRAT_X] = true;
+	m_evttypes[PPME_SYSCALL_RMDIR_2_X] = true;
+	m_evttypes[PPME_SYSCALL_RENAME_X] = true;
+	m_evttypes[PPME_SYSCALL_RENAMEAT_X] = true;
+	m_evttypes[PPME_SYSCALL_UNLINK_2_X] = true;
+	m_evttypes[PPME_SYSCALL_UNLINKAT_2_X] = true;
+}
+
+nofd_readwrite_fs_policies::~nofd_readwrite_fs_policies()
+{
+}
+
+void nofd_readwrite_fs_policies::init(security_mgr *mgr,
+				      dragent_configuration *configuration,
+				      sinsp *inspector)
+{
+	matchlist_map_security_policies::init(mgr, configuration, inspector);
+
+	std::shared_ptr<sinsp_filter_check> arg1, arg2, absp, absdst;
+	arg1.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[1]", m_inspector, true));
+	arg1->parse_field_name("evt.arg[1]", true, false);
+	arg2.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[2]", m_inspector, true));
+	arg2->parse_field_name("evt.arg[2]", true, false);
+	absp.reset(g_filterlist.new_filter_check_from_fldname("evt.abspath", m_inspector, false));
+	absp->parse_field_name("evt.abspath", true, false);
+	absdst.reset(g_filterlist.new_filter_check_from_fldname("evt.abspath.dst", m_inspector, false));
+	absdst->parse_field_name("evt.abspath.dst", true, false);
+
+	m_checks.emplace(PPME_SYSCALL_MKDIR_2_X, arg1);
+	m_checks.emplace(PPME_SYSCALL_RMDIR_2_X, arg1);
+	m_checks.emplace(PPME_SYSCALL_UNLINK_2_X, arg1);
+	m_checks.emplace(PPME_SYSCALL_RENAME_X, arg1);
+
+	m_checks.emplace(PPME_SYSCALL_MKDIRAT_X, absp);
+	m_checks.emplace(PPME_SYSCALL_UNLINKAT_2_X, absp);
+	m_checks.emplace(PPME_SYSCALL_RENAMEAT_X, absp);
+
+	m_checks.emplace(PPME_SYSCALL_RENAME_X, arg2);
+
+	m_checks.emplace(PPME_SYSCALL_RENAMEAT_X, absdst);
+}
+
+std::set<std::string> nofd_readwrite_fs_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+       switch(evt->get_type())
+       {
+       case PPME_SYSCALL_MKDIR_2_X:
+       case PPME_SYSCALL_RMDIR_2_X:
+       case PPME_SYSCALL_UNLINK_2_X:
+               return { "evt.type", "evt.arg[1]" };
+       case PPME_SYSCALL_RENAME_X:
+               return { "evt.type", "evt.arg[1]", "evt.arg[2]" };
+       case PPME_SYSCALL_MKDIRAT_X:
+       case PPME_SYSCALL_UNLINKAT_2_X:
+               return { "evt.type", "evt.abspath" };
+       case PPME_SYSCALL_RENAMEAT_X:
+               return { "evt.type", "evt.abspath", "evt.abspath.dst" };
+       default:
+               return { "evt.type" };
+       }
+}
+
+std::string nofd_readwrite_fs_policies::qualifies()
+{
+	return string("evt.rawres = 0");
+}
+
 container_policies::container_policies()
 {
 	m_name = "containers";
+
 	m_evttypes[PPME_SYSCALL_EXECVE_18_X] = true;
 	m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
 }
@@ -1541,8 +1667,11 @@ void container_policies::init(security_mgr *mgr,
 {
 	matchlist_security_policies::init(mgr, configuration, inspector);
 
-	m_check.reset(g_filterlist.new_filter_check_from_fldname("container.image", m_inspector, true));
-	m_check->parse_field_name("container.image", true, false);
+	std::shared_ptr<sinsp_filter_check> cim;
+	cim.reset(g_filterlist.new_filter_check_from_fldname("container.image", m_inspector, true));
+	cim->parse_field_name("container.image", true, false);
+	m_checks.emplace(PPME_SYSCALL_EXECVE_18_X, cim);
+	m_checks.emplace(PPME_SYSCALL_EXECVE_19_X, cim);
 }
 
 draiosproto::policy_type container_policies::policies_type()
@@ -1553,6 +1682,11 @@ draiosproto::policy_type container_policies::policies_type()
 draiosproto::policy_subtype container_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_NOSUBTYPE;
+}
+
+std::set<std::string> container_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	return { "container.id", "container.name", "container.image", "container.image.id" };
 }
 
 std::string container_policies::qualifies()
@@ -1665,6 +1799,7 @@ const draiosproto::match_lists &container_policies::get_match_lists(const draios
 process_policies::process_policies()
 {
 	m_name = "processes";
+
 	m_evttypes[PPME_SYSCALL_EXECVE_18_X] = true;
 	m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
 }
@@ -1691,6 +1826,11 @@ draiosproto::policy_type process_policies::policies_type()
 draiosproto::policy_subtype process_policies::policies_subtype()
 {
 	return draiosproto::PSTYPE_NOSUBTYPE;
+}
+
+std::set<std::string> process_policies::default_output_fields_keys(sinsp_evt *evt)
+{
+	return { "proc.name" };
 }
 
 bool process_policies::add_matchlist_details(security_policy *policy,

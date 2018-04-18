@@ -63,7 +63,7 @@ def sighup_handler(signum, frame):
         else:
             logging.warning("File: \"%s\", line %d, in %s" %
                             (filename, linenumber, funcname))
-    os._exit(SIGHUP_HANDLER_EXIT_CODE) 
+    os._exit(SIGHUP_HANDLER_EXIT_CODE)
 
 def setns(fd):
     if hasattr(_LIBC, "setns"):
@@ -329,6 +329,7 @@ class Config:
     def __init__(self):
         etcdir = "/opt/draios/etc"
         self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
+                                        os.path.join(etcdir, "/kubernetes/config/dragent.yaml"),
                                         os.path.join(etcdir, "dragent.auto.yaml"),
                                         os.path.join(etcdir, "dragent.default.yaml")])
 
@@ -414,16 +415,20 @@ class PosixQueue:
 
 def prepare_prom_check(pc, port):
     # print "port:", port
+    options = pc.get("options")
+    use_https = _is_affirmative(options.get("use_https", False) if options else False)
     path = pc.get("path", "/metrics");
     if len(path) > 0 and path[0] != '/':
         path = "/" + path
-    newconf = {"url": "http://localhost:" + str(port) + path}
+    newconf = {"url": ("https" if use_https else "http") + "://localhost:" + str(port) + path}
     if pc.get("max_metrics") != None:
         newconf["max_metrics"] = pc["max_metrics"]
     if pc.get("max_tags") != None:
         newconf["max_tags"] = pc["max_tags"]
     if pc.get("histograms") != None:
         newconf["histograms"] = pc["histograms"]
+    if options and options.get("ssl_verify") != None:
+        newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
     newcheck = {
         "check_module": "prometheus",
         "log_errors": pc.get("log_errors", True),
@@ -558,7 +563,7 @@ class Application:
             for port in pc["ports"]:
                 newcheck, newproc = prepare_prom_check(pc, port)
                 pidname = (newproc["pid"],newcheck["name"])
-                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc) 
+                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc)
                 if ran:
                     numrun += 1
                 nummetrics += nm

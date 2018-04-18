@@ -213,6 +213,29 @@ void ppoll_timeout(const vector<string>& args)
 	ppoll(ufds, 2, &timeout, &sigs);
 }
 
+void pgid_test(const vector<string>& args)
+{
+	int pgid = atoi(args[0].c_str());
+
+	// Change back to child's process group
+	int rc = setpgid(getpid(), pgid);
+	if(rc != 0)
+	{
+		fprintf(stderr, "Can't call setpgid(): %s\n", strerror(errno));
+		return;
+	}
+
+	// Now exec echo -n, which just acts as a way for the execve
+	// parser to pick up the new pgid.
+	char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+	char *const exenv[] = {nullptr};
+	if ((rc = execve("/bin/echo", exargs, exenv)) != 0)
+	{
+		fprintf(stderr, "Can't exec \"/bin/echo -n\": %s\n", strerror(errno));
+		return;
+	}
+}
+
 const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "proc_mgmt", proc_mgmt},
 			{ "mmap_test", mmap_test},
@@ -243,15 +266,13 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "preadv_pwritev", preadv_pwritev},
 			{ "quotactl_ko", quotactl_ko},
 			{ "quotactl_ok", quotactl_ok},
-			{ "ppoll_timeout", ppoll_timeout}
+			{ "ppoll_timeout", ppoll_timeout},
+			{ "pgid_test", pgid_test}
 	};
 
 // Helper to test ia32 emulation on 64bit
 int main(int argc, char** argv)
 {
-	cout << "STARTED" << endl;
-	char s[32];
-	(void)read(0, s, sizeof s);
 	if(argc > 1)
 	{
 		vector<string> args;
@@ -261,6 +282,16 @@ int main(int argc, char** argv)
 		}
 		auto cmd = args.front();
 		args.erase(args.begin());
+
+		// the pgid test doesn't need to wait for anything. It
+		// is execve()d directly and not through
+		// start_process().
+		if(cmd != "pgid_test")
+		{
+			cout << "STARTED" << endl;
+			char s[32];
+			(void)read(0, s, sizeof s);
+		}
 		func_map.at(cmd)(args);
 	}
 	return 0;

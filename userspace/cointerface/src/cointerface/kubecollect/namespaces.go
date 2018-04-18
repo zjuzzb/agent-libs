@@ -57,6 +57,7 @@ func newNSCongroup(ns *v1.Namespace, eventType *draiosproto.CongroupEventType) (
 		AddResourceQuotaChildrenFromNamespace(&ret.Children, ns.GetName())
 		AddStatefulSetChildrenFromNamespace(&ret.Children, ns.GetName())
 		AddIngressChildrenFromNamespace(&ret.Children, ns.GetName())
+		AddHorizontalPodAutoscalerChildrenFromNamespace(&ret.Children, ns.GetName())
 	}
 
 	return ret

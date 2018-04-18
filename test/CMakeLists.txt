@@ -45,6 +45,7 @@ add_executable(tests
 	net.cpp
 	paths.cpp
 	pipe.cpp
+	pgid.cpp
 	prefix_search_test.cpp
 	process.cpp
 	percentile.cpp

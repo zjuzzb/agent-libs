@@ -42,6 +42,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
     )
 
 # Note that we don't package the client. That's only for testing

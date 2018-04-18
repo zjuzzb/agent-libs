@@ -72,6 +72,7 @@ protected:
 //       - matchlist_map_security_policies
 //          - readonly_fs_policies
 //             - readwrite_fs_policies
+//                - nofd_readwrite_fs_policies
 //          - container_policies
 //       - filtercheck_policies
 //          - net_inbound_policies
@@ -228,6 +229,8 @@ public:
 	// Return the policies subtype that this class implements.
 	virtual draiosproto::policy_subtype policies_subtype() = 0;
 
+	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
+	
 	// Given an event, match against the set of policies. Returns
 	// the policy that matches the event, if any. If multiple
 	// policies match the event, returns the one with the lowest
@@ -388,6 +391,7 @@ public:
 	void reset();
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 	bool load_rules(const draiosproto::policies &policies, std::string &errstr);
 
@@ -421,6 +425,7 @@ public:
 	virtual void reset();
 	virtual draiosproto::policy_type policies_type() = 0;
 	virtual draiosproto::policy_subtype policies_subtype() = 0;
+	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
 	virtual match_result *match_event(sinsp_evt *evt) = 0;
 
@@ -482,6 +487,7 @@ public:
 	void reset();
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 	match_result *match_event(sinsp_evt *evt);
 
@@ -538,6 +544,7 @@ public:
 	void reset();
 	virtual draiosproto::policy_type policies_type() = 0;
 	virtual draiosproto::policy_subtype policies_subtype() = 0;
+	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
 	match_result *match_event(sinsp_evt *evt);
 
@@ -581,6 +588,7 @@ public:
 	void reset();
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 	match_result *match_event(sinsp_evt *evt);
 
@@ -627,6 +635,7 @@ public:
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 protected:
 	bool add_matchlist_details(security_policy *policy,
@@ -671,6 +680,7 @@ public:
 	void reset();
 	virtual draiosproto::policy_type policies_type() = 0;
 	virtual draiosproto::policy_subtype policies_subtype() = 0;
+	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
 	match_result *match_event(sinsp_evt *evt);
 
@@ -702,7 +712,7 @@ protected:
 
 	typedef path_prefix_map<security_policies::match_result> path_matchresult_search;
 
-	std::unique_ptr<sinsp_filter_check> m_check;
+	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_checks;
 
 	bool add_matchlist_details(security_policy *policy,
 				   const draiosproto::matchlist_detail &details,
@@ -755,6 +765,7 @@ public:
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 protected:
 
@@ -791,6 +802,23 @@ protected:
 	std::string qualifies();
 };
 
+class SINSP_PUBLIC nofd_readwrite_fs_policies : public readwrite_fs_policies
+{
+public:
+	nofd_readwrite_fs_policies();
+	virtual ~nofd_readwrite_fs_policies();
+
+	void init(security_mgr *mgr,
+		  dragent_configuration *configuration,
+		  sinsp *inspector);
+
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
+
+protected:
+
+	std::string qualifies();
+};
+
 // Slight abuse to use a namespace really from the sysdig repo
 namespace path_prefix_map_ut
 {
@@ -814,6 +842,7 @@ public:
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 protected:
 
@@ -843,6 +872,7 @@ public:
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
+	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 private:
 	bool add_matchlist_details(security_policy *policy,

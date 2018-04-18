@@ -22,7 +22,6 @@ policy_list {
         fs_access_type: ACCESS_READ
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -41,7 +40,6 @@ policy_list {
         fs_access_type: ACCESS_WRITE
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -60,7 +58,6 @@ policy_list {
         proto: PROTO_TCP
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.sport"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -79,7 +76,6 @@ policy_list {
         proto: PROTO_UDP
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.sport"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -97,7 +93,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "evt.type"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -115,7 +110,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -133,7 +127,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "proc.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -158,7 +151,6 @@ policy_list {
         fs_access_type: ACCESS_READ
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -184,7 +176,6 @@ policy_list {
         fs_access_type: ACCESS_READ
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   falco_details {
@@ -208,7 +199,6 @@ policy_list {
         fs_access_type: ACCESS_READ
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -228,7 +218,6 @@ policy_list {
         fs_access_type: ACCESS_READ
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -270,7 +259,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -288,7 +276,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -306,7 +293,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -324,7 +310,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -338,12 +323,10 @@ policy_list {
   matchlist_details {
     inbound_details {
       on_default: EFFECT_DENY
-      output_field_keys: "proc.name"
       output_field_keys: "evt.type"
     }
     outbound_details {
       on_default: EFFECT_DENY
-      output_field_keys: "proc.name"
       output_field_keys: "evt.type"
     }
     listenport_details {
@@ -353,8 +336,6 @@ policy_list {
         proto: PROTO_TCP
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.sport"
-      output_field_keys: "proc.name"
       output_field_keys: "evt.type"
     }
   }
@@ -386,7 +367,6 @@ policy_list {
         fs_access_type: ACCESS_WRITE
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.name"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -457,7 +437,6 @@ policy_list {
         fs_access_type: ACCESS_READ
       }
       on_default: EFFECT_DENY
-      output_field_keys: "fd.name"
     }
   }
   enabled: 1
@@ -484,7 +463,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   enabled: 1
@@ -506,7 +484,6 @@ policy_list {
         on_match: EFFECT_ACCEPT
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "container.image"
     }
   }
   enabled: 1
@@ -523,7 +500,6 @@ policy_list {
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "evt.type"
     }
     listenport_details {
       lists {
@@ -532,7 +508,6 @@ policy_list {
         proto: PROTO_TCP
       }
       on_default: EFFECT_NEXT
-      output_field_keys: "fd.sport"
     }
   }
   # Empty list of actions. Means do nothing and prevent other policies from doing anything
@@ -544,6 +519,24 @@ policy_list {
     values: "curl:overlap_test"
     op: EQ
   }
+}
+policy_list {
+  id: 25
+  name: "fs operations without fd"
+  matchlist_details {
+    fs_details {
+      lists {
+        values: "/tmp/test_nofd_ops/"
+	on_match: EFFECT_DENY
+        fs_access_type: ACCESS_WRITE
+      }
+      on_default: EFFECT_NEXT
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
 }
 falco_rules {
   contents: "- rule: read_sensitive_file\n  desc: test program reading /tmp/sample-sensitive-file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: tests read /tmp/sample-sensitive-file-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: read_overall_file\n  desc: test program reading /tmp/overall_file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/overall-order-3.txt)\n  output: tests read /tmp/overall-order-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n"

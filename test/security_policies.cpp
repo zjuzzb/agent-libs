@@ -21,6 +21,8 @@
 #include <protocol.h>
 
 #include <sys/stat.h>
+#include <dirent.h>
+#include <fcntl.h>
 
 using namespace std;
 
@@ -112,10 +114,21 @@ private:
 };
 }
 
-bool maps_equal (map<string,string> &lhs, map<string,string> &rhs) {
-	return lhs.size() == rhs.size()
-		&& std::equal(lhs.begin(), lhs.end(),
-			      rhs.begin());
+bool check_output_fields(map<string,string> &received, map<string,string> &expected)
+{
+	// the following fields *may* be unknown in the unit tests, so if they aren't in the expected set
+	// they are removed before the check
+	std::set<string> unknowns = {"container.id", "proc.name", "proc.cmdline", "fd.cip", "fd.sip", "fd.cport"};
+	for(const auto &u : unknowns)
+	{
+		if(expected.find(u) == expected.end())
+		{
+			received.erase(u);
+		}
+	}
+	return received.size() == expected.size()
+		&& std::equal(received.begin(), received.end(),
+			      expected.begin());
 }
 
 std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
@@ -132,7 +145,7 @@ std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
 	return os;
 }
 
-class DISABLED_security_policies_test : public testing::Test
+class security_policies_test : public testing::Test
 {
 protected:
 
@@ -335,7 +348,7 @@ protected:
 				{
 					if(evt.policy_id() == expected[i].policy_id &&
 					   details.output_type() == expected[i].output_type &&
-					   maps_equal(evt_output_fields, expected[i].output_fields))
+					   check_output_fields(evt_output_fields, expected[i].output_fields))
 					{
 						bool has_bl_details = evt.event_details().has_baseline_details();
 						string bl_id = has_bl_details ? evt.event_details().baseline_details().id() : "";
@@ -498,7 +511,7 @@ protected:
 	security_policy_error_handler m_error_handler;
 };
 
-class DISABLED_security_policies_test_delayed_reports : public DISABLED_security_policies_test
+class security_policies_test_delayed_reports : public security_policies_test
 {
 protected:
 
@@ -543,7 +556,7 @@ static void kill_image(const char *image)
 	EXPECT_EQ(system(rmi_cmd.c_str()), 0);
 }
 
-TEST_F(DISABLED_security_policies_test, readonly_fs_only)
+TEST_F(security_policies_test, readonly_fs_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -562,7 +575,7 @@ TEST_F(DISABLED_security_policies_test, readonly_fs_only)
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{2,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-1.txt"}}}};
+	std::vector<expected_policy_event> expected = {{2,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-1.txt"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.files-readonly.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -572,7 +585,7 @@ TEST_F(DISABLED_security_policies_test, readonly_fs_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, readwrite_fs_only)
+TEST_F(security_policies_test, readwrite_fs_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -590,7 +603,7 @@ TEST_F(DISABLED_security_policies_test, readwrite_fs_only)
 
 	ASSERT_EQ(system("docker run --rm busybox:latest sh -c 'touch /tmp/sample-sensitive-file-3.txt || true' > /dev/null 2>&1"), 0);
 
-	std::vector<expected_policy_event> expected = {{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"}}}};
+	std::vector<expected_policy_event> expected = {{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.files-readwrite.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -600,7 +613,7 @@ TEST_F(DISABLED_security_policies_test, readwrite_fs_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, mixed_r_rw)
+TEST_F(security_policies_test, mixed_r_rw)
 {
 	// Try to open /tmp/matchlist-order.txt and
 	// /tmp/matchlist-order-2 read-only. The first list only
@@ -613,12 +626,12 @@ TEST_F(DISABLED_security_policies_test, mixed_r_rw)
 	fd = open("/tmp/matchlist-order-2.txt", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{9,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/matchlist-order.txt"}}},
-						       {9,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/matchlist-order-2.txt"}}}};
+	std::vector<expected_policy_event> expected = {{9,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/matchlist-order.txt"}, {"evt.type", "open"}}},
+						       {9,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/matchlist-order-2.txt"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, fs_prefixes)
+TEST_F(security_policies_test, fs_prefixes)
 {
 	int fd = open("/tmp/one", O_RDONLY);
 	close(fd);
@@ -635,16 +648,16 @@ TEST_F(DISABLED_security_policies_test, fs_prefixes)
 	fd = open("/tmp/two/three", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two/three"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two"}}},
-						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two/three"}}}};
+	std::vector<expected_policy_event> expected = {{12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one"}, {"evt.type", "open"}}},
+						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two"}, {"evt.type", "open"}}},
+						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/one/two/three"}, {"evt.type", "open"}}},
+						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two"}, {"evt.type", "open"}}},
+						       {12,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/two/three"}, {"evt.type", "open"}}}};
 
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, fs_root_dir)
+TEST_F(security_policies_test, fs_root_dir)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -664,13 +677,13 @@ TEST_F(DISABLED_security_policies_test, fs_root_dir)
 
 	kill_image("busybox:test-root-writes");
 
-	std::vector<expected_policy_event> expected = {{19,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/not-allowed"}}}};
+	std::vector<expected_policy_event> expected = {{19,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/not-allowed"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
 };
 
 
 
-TEST_F(DISABLED_security_policies_test, tcp_listenport_only)
+TEST_F(security_policies_test, tcp_listenport_only)
 {
 	int rc;
 	int sock = socket(PF_INET, SOCK_STREAM, 0);
@@ -690,7 +703,7 @@ TEST_F(DISABLED_security_policies_test, tcp_listenport_only)
 
 	close(sock);
 
-	std::vector<expected_policy_event> expected = {{4,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "1234"}}}};
+	std::vector<expected_policy_event> expected = {{4,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "1234"}, {"fd.sip", "127.0.0.1"}, {"fd.l4proto", "tcp"}}}};
 
 	check_policy_events(expected);
 
@@ -701,7 +714,7 @@ TEST_F(DISABLED_security_policies_test, tcp_listenport_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, udp_listenport_only)
+TEST_F(security_policies_test, udp_listenport_only)
 {
 	int rc;
 	int sock = socket(PF_INET, SOCK_DGRAM, 0);
@@ -727,7 +740,7 @@ TEST_F(DISABLED_security_policies_test, udp_listenport_only)
 
 	close(sock);
 
-	std::vector<expected_policy_event> expected = {{5,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "12345"}}}};
+	std::vector<expected_policy_event> expected = {{5,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "12345"}, {"fd.sip", "127.0.0.1"}, {"fd.l4proto", "udp"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.listenports-udp.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -737,7 +750,7 @@ TEST_F(DISABLED_security_policies_test, udp_listenport_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, matchlist_order)
+TEST_F(security_policies_test, matchlist_order)
 {
 	// Try to open /tmp/matchlist-order.txt for reading and
 	// /tmp/matchlist-order-2 read-write. The first list for the
@@ -751,7 +764,7 @@ TEST_F(DISABLED_security_policies_test, matchlist_order)
 	fd = open("/tmp/matchlist-order-2.txt", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{9,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/matchlist-order-2.txt"}}}};
+	std::vector<expected_policy_event> expected = {{9,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/matchlist-order-2.txt"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.files-readonly.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -764,7 +777,7 @@ TEST_F(DISABLED_security_policies_test, matchlist_order)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, overall_order)
+TEST_F(security_policies_test, overall_order)
 {
 	// Try to open /tmp/overall-order-{123}.txt for reading. An
 	// initial policy accepts all 3, but each file is also listed
@@ -792,7 +805,7 @@ TEST_F(DISABLED_security_policies_test, overall_order)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, syscall_only)
+TEST_F(security_policies_test, syscall_only)
 {
 	// It doesn't matter that the quotactl fails, just that it attempts
 	struct dqblk quota;
@@ -808,7 +821,7 @@ TEST_F(DISABLED_security_policies_test, syscall_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, container_only)
+TEST_F(security_policies_test, container_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -816,7 +829,10 @@ TEST_F(DISABLED_security_policies_test, container_only)
 		return;
 	}
 
-	create_tag("blacklist-image-name", "busybox:latest");
+	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
+	kill_image("blacklist-image-name");
+
+	create_tag("blacklist-image-name", "busybox:1.27.2");
 	kill_container("blacklisted_image");
 
 	if(system("docker run --rm --name blacklisted_image blacklist-image-name > /dev/null 2>&1") != 0)
@@ -828,7 +844,9 @@ TEST_F(DISABLED_security_policies_test, container_only)
 
 	kill_image("blacklist-image-name");
 
-	std::vector<expected_policy_event> expected = {{7,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name"}}}};
+	std::vector<expected_policy_event> expected = {{7,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name"},
+												     {"container.name", "blacklisted_image"},
+												     {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.containers.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -838,11 +856,11 @@ TEST_F(DISABLED_security_policies_test, container_only)
 	check_expected_internal_metrics(metrics);
 }
 
-TEST_F(DISABLED_security_policies_test, process_only)
+TEST_F(security_policies_test, process_only)
 {
 	ASSERT_EQ(system("ls > /dev/null 2>&1"), 0);
 
-	std::vector<expected_policy_event> expected = {{8,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "ls"}}}};
+	std::vector<expected_policy_event> expected = {{8,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "ls"}, {"proc.cmdline", "ls "}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.processes.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -852,7 +870,7 @@ TEST_F(DISABLED_security_policies_test, process_only)
 	check_expected_internal_metrics(metrics);
 }
 
-TEST_F(DISABLED_security_policies_test, falco_only)
+TEST_F(security_policies_test, falco_only)
 {
 	int fd = open("/tmp/sample-sensitive-file-2.txt", O_RDONLY);
 	close(fd);
@@ -862,12 +880,13 @@ TEST_F(DISABLED_security_policies_test, falco_only)
 	get_policy_evts_msg(pe);
 	ASSERT_EQ(pe->events_size(), 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 1);
-	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 5);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/sample-sensitive-file-2.txt");
 	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("user.name") > 0);
 	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
 	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.pname") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
 
 	string prefix = "tests read /tmp/sample-sensitive-file-*.txt";
 	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
@@ -879,7 +898,7 @@ TEST_F(DISABLED_security_policies_test, falco_only)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(DISABLED_security_policies_test, baseline_only)
+TEST_F(security_policies_test, baseline_only)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -905,7 +924,7 @@ TEST_F(DISABLED_security_policies_test, baseline_only)
 	ASSERT_TRUE((msg == NULL));
 }
 
-TEST_F(DISABLED_security_policies_test, baseline_deviate_port)
+TEST_F(security_policies_test, baseline_deviate_port)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -923,12 +942,12 @@ TEST_F(DISABLED_security_policies_test, baseline_deviate_port)
 
 	// The only policy event should denote the different listening
 	// port
-	std::vector<expected_policy_event> expected = {{13,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "8172"}}, "uuid-here"}};
+	std::vector<expected_policy_event> expected = {{13,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "8172"}, {"fd.sip", "0.0.0.0"}, {"fd.l4proto", "tcp"}}, "uuid-here"}};
 
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, baseline_deviate_cat_dockerenv)
+TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -948,12 +967,12 @@ TEST_F(DISABLED_security_policies_test, baseline_deviate_cat_dockerenv)
 	//  - a process event for invoking cat
 	//  - a filesystem event for the read of '/.dockerenv'
 	std::vector<expected_policy_event> expected = {{13,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "cat"}}, "uuid-here"},
-						       {13,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/.dockerenv"},{"proc.name", "cat"}}, "uuid-here"}};
+						       {13,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/.dockerenv"}, {"evt.type", "open"}, {"proc.name", "cat"}}, "uuid-here"}};
 
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, container_prefixes)
+TEST_F(security_policies_test, container_prefixes)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1007,16 +1026,25 @@ TEST_F(DISABLED_security_policies_test, container_prefixes)
 
 	kill_image("my.third.domain.name/tutum/curl:alpine");
 
-	std::vector<expected_policy_event> expected = {{7,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name:0.0.1"}}},
-						       {14,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.domain.name/busybox:1.27.2"}}},
-						       {15,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.other.domain.name:12345/alpine:3.5"}}},
-						       {16,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/alpine:3.5"}}},
-						       {17,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/tutum/curl:alpine"}}}};
-
+	std::vector<expected_policy_event> expected = {{07,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name:0.0.1"},
+												      {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
+												      {"container.name", "denyme"}}},
+						       {14,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.domain.name/busybox:1.27.2"},
+												      {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
+												      {"container.name", "denyme"}}},
+						       {15,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.other.domain.name:12345/alpine:3.5"},
+												      {"container.image.id", "6c6084ed97e5851b5d216b20ed1852301278584c3c6aff915272b231593f6f98"},
+												      {"container.name", "denyme"}}},
+						       {16,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/alpine:3.5"},
+												      {"container.image.id", "6c6084ed97e5851b5d216b20ed1852301278584c3c6aff915272b231593f6f98"},
+												      {"container.name", "denyme"}}},
+						       {17,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/tutum/curl:alpine"},
+												      {"container.image.id", "b91cd13456bbd3d65f00d0a0be24c95b802ad1f9cd0dc2b8889c4c7fbb599fef"},
+												      {"container.name", "denyme"}}}};
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, net_inbound_outbound_tcp)
+TEST_F(security_policies_test, net_inbound_outbound_tcp)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1033,13 +1061,21 @@ TEST_F(DISABLED_security_policies_test, net_inbound_outbound_tcp)
 	sleep(2);
 	kill_image("curl:inout_test");
 
-	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"}, {"proc.name", "nc"}, {"evt.type", "listen"}}},
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "nc"}, {"evt.type", "connect"}}},
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "nc"}, {"evt.type", "accept"}}}};
+	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+												    {"fd.sip", "0.0.0.0"},
+												    {"fd.l4proto", "tcp"},
+												    {"proc.name", "nc"}}}, // listen
+						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+												    {"fd.l4proto", "tcp"},
+												    {"proc.name", "nc"}}}, // connect
+						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+												    {"fd.l4proto", "tcp"},
+												    {"proc.name", "nc"}}}  // accept
+	};
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, net_inbound_outbound_udp)
+TEST_F(security_policies_test, net_inbound_outbound_udp)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1056,14 +1092,20 @@ TEST_F(DISABLED_security_policies_test, net_inbound_outbound_udp)
 	sleep(2);
 	kill_image("curl:inout_test");
 
-	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "nc"}, {"evt.type", "connect"}}},
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "ncserver"}, {"evt.type", "recvfrom"}}},
-						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"proc.name", "ncserver"}, {"evt.type", "connect"}}} // <-- netcat-related, shouldn't happen normally
+	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+												    {"proc.name", "nc"},
+												    {"fd.l4proto", "udp"}}}, // connect
+						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+												    {"proc.name", "ncserver"},
+												    {"fd.l4proto", "udp"}}}, // recvfrom
+						       {18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
+												    {"proc.name", "ncserver"},
+												    {"fd.l4proto", "udp"}}}  // connect, used internally during libc getaddrinfo to lookup the local address via getsockname
 	};
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, baseline_without_syscalls)
+TEST_F(security_policies_test, baseline_without_syscalls)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1079,11 +1121,11 @@ TEST_F(DISABLED_security_policies_test, baseline_without_syscalls)
 	// about the syscall made by touch even if they
 	// aren't in the baseline whitelist
 	// Filesystem is instead enforced by the baseline
-	std::vector<expected_policy_event> expected = {{20,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/test"},{"proc.name", "touch"}}, "uuid-2-here"}};
+	std::vector<expected_policy_event> expected = {{20,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/test"},{"proc.name", "touch"}, {"evt.type", "open"}}, "uuid-2-here"}};
 	check_policy_events(expected);
 }
 
-TEST_F(DISABLED_security_policies_test, fs_usecase)
+TEST_F(security_policies_test, fs_usecase)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1100,12 +1142,12 @@ TEST_F(DISABLED_security_policies_test, fs_usecase)
 
 	kill_image("busybox:fs_usecase");
 
-	std::vector<expected_policy_event> expected = {{21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/etc/passwd"}}},
-						       {21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/not-allowed"}}}};
+	std::vector<expected_policy_event> expected = {{21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/etc/passwd"}, {"evt.type", "open"}}},
+						       {21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/not-allowed"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, image_name_priority)
+TEST_F(security_policies_test, image_name_priority)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1113,10 +1155,10 @@ TEST_F(DISABLED_security_policies_test, image_name_priority)
 		return;
 	}
 
-	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker pull tutum/curl:alpine > /dev/null 2>&1"), 0);
 
 	kill_container("mycurl");
-	create_tag("tutum/mycurl", "tutum/curl");
+	create_tag("tutum/mycurl", "tutum/curl:alpine");
 	ASSERT_EQ(system("docker run --rm --name mycurl tutum/mycurl"), 0);
 
 	sleep(2);
@@ -1125,11 +1167,13 @@ TEST_F(DISABLED_security_policies_test, image_name_priority)
 
 	// between policies 22 and 23 only the latter will trigger
 	// because the order of the policy matchlists it's different
-	std::vector<expected_policy_event> expected = {{23,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "tutum/mycurl"}}}};
+	std::vector<expected_policy_event> expected = {{23,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "tutum/mycurl"},
+												      {"container.name", "mycurl"},
+												      {"container.image.id", "b91cd13456bbd3d65f00d0a0be24c95b802ad1f9cd0dc2b8889c4c7fbb599fef"}}}};
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test, overlapping_syscall)
+TEST_F(security_policies_test, overlapping_syscall)
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
@@ -1150,12 +1194,54 @@ TEST_F(DISABLED_security_policies_test, overlapping_syscall)
 
 	// Policy 23 match both for syscalls and network, but network
 	// take precedence (rule type order is hard-coded by us)
-	std::vector<expected_policy_event> expected = {{24,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "12345"}}}};
+	std::vector<expected_policy_event> expected = {{24,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sip", "0.0.0.0"}, {"fd.sport", "12345"}, {"fd.l4proto", "tcp"}}}};
 						       //{23,draiosproto::policy_type::PTYPE_SYSCALL,{{"evt.type", "listen"}}}
 	check_policy_events(expected);
 };
 
-TEST_F(DISABLED_security_policies_test_delayed_reports, events_flood)
+TEST_F(security_policies_test, nofd_operations)
+{
+	DIR *dirp;
+
+	mkdir("/tmp/test_nofd_ops/", 0777);
+	dirp = opendir("/tmp/test_nofd_ops/");
+
+	mkdirat(dirfd(dirp), "./one", 0777);
+	mkdirat(dirfd(dirp), "./two", 0777);
+
+	unlinkat(dirfd(dirp), "./one", AT_REMOVEDIR);
+	renameat(dirfd(dirp), "./two", dirfd(dirp), "./three");
+
+	rename("/tmp/test_nofd_ops/three", "/tmp/test_nofd_ops/four");
+
+	system("touch /tmp/test_nofd_ops/file");
+	unlink("/tmp/test_nofd_ops/file");
+
+	closedir(dirp);
+
+	rmdir("/tmp/test_nofd_ops/four");
+	rmdir("/tmp/test_nofd_ops");
+
+	std::vector<expected_policy_event> expected = {{25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/"}, {"evt.type", "mkdir"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "mkdirat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.type", "mkdirat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/one"}, {"evt.type", "unlinkat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.abspath", "/tmp/test_nofd_ops/two"}, {"evt.abspath.dst", "/tmp/test_nofd_ops/three"}, {"evt.type", "renameat"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/three"}, {"evt.arg[2]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rename"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/test_nofd_ops/file"}, {"evt.type", "open"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/file"}, {"evt.type", "unlink"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops/four"}, {"evt.type", "rmdir"}}},
+						       {25,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"evt.arg[1]", "/tmp/test_nofd_ops"}, {"evt.type", "rmdir"}}}};
+	check_policy_events(expected);
+
+	std::map<string,expected_internal_metric> metrics = {{"security.files-readwrite.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+							     {"security.files-readwrite-nofd.match.deny", {expected_internal_metric::CMP_EQ, 9}},
+							     {"security.files-readwrite.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+							     {"security.files-readwrite.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	check_expected_internal_metrics(metrics);
+};
+
+TEST_F(security_policies_test_delayed_reports, events_flood)
 {
 	shared_ptr<protocol_queue_item> item;
 

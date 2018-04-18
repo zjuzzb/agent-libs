@@ -198,6 +198,7 @@ private:
 	falco_security_policies m_falco_policies;
 	readonly_fs_policies m_readonly_fs_policies;
 	readwrite_fs_policies m_readwrite_fs_policies;
+	nofd_readwrite_fs_policies m_nofd_readwrite_fs_policies;
 	net_inbound_policies m_net_inbound_policies;
 	net_outbound_policies m_net_outbound_policies;
 	tcp_listenport_policies m_tcp_listenport_policies;
@@ -225,6 +226,10 @@ private:
 	// The event types that are relevant. It's the union of all
 	// event types for all policies.
 	std::vector<bool> m_evttypes;
+
+	// This can be used to filter out events before matching
+	// against policies
+	std::unique_ptr<sinsp_filter> m_qualifies;
 
 	uint64_t m_num_policies;
 
