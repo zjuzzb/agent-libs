@@ -531,6 +531,24 @@ protected:
 	}
 };
 
+static bool check_docker()
+{
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		printf("Docker not running, skipping test\n");
+		return false;
+	}
+
+	// We depend on docker versions >= 1.10
+	if(system("docker --version | grep -qE \"Docker version 1.[56789].\"") == 0)
+	{
+		printf("Docker version too old, skipping test\n");
+		return false;
+	}
+
+	return true;
+}
+
 static void create_tag(const char *tag, const char *image)
 {
 	std::string tag_cmd = string("docker tag ") + image + " " + tag + " > /dev/null 2>&1";
@@ -558,9 +576,8 @@ static void kill_image(const char *image)
 
 TEST_F(security_policies_test, readonly_fs_only)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -587,9 +604,8 @@ TEST_F(security_policies_test, readonly_fs_only)
 
 TEST_F(security_policies_test, readwrite_fs_only)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -659,9 +675,8 @@ TEST_F(security_policies_test, fs_prefixes)
 
 TEST_F(security_policies_test, fs_root_dir)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -823,9 +838,8 @@ TEST_F(security_policies_test, syscall_only)
 
 TEST_F(security_policies_test, container_only)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -900,9 +914,8 @@ TEST_F(security_policies_test, falco_only)
 
 TEST_F(security_policies_test, baseline_only)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -926,9 +939,8 @@ TEST_F(security_policies_test, baseline_only)
 
 TEST_F(security_policies_test, baseline_deviate_port)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -949,9 +961,8 @@ TEST_F(security_policies_test, baseline_deviate_port)
 
 TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -974,9 +985,8 @@ TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 
 TEST_F(security_policies_test, container_prefixes)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -1046,9 +1056,8 @@ TEST_F(security_policies_test, container_prefixes)
 
 TEST_F(security_policies_test, net_inbound_outbound_tcp)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -1077,9 +1086,8 @@ TEST_F(security_policies_test, net_inbound_outbound_tcp)
 
 TEST_F(security_policies_test, net_inbound_outbound_udp)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -1107,9 +1115,8 @@ TEST_F(security_policies_test, net_inbound_outbound_udp)
 
 TEST_F(security_policies_test, baseline_without_syscalls)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -1127,9 +1134,8 @@ TEST_F(security_policies_test, baseline_without_syscalls)
 
 TEST_F(security_policies_test, fs_usecase)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -1149,9 +1155,8 @@ TEST_F(security_policies_test, fs_usecase)
 
 TEST_F(security_policies_test, image_name_priority)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
@@ -1175,9 +1180,8 @@ TEST_F(security_policies_test, image_name_priority)
 
 TEST_F(security_policies_test, overlapping_syscall)
 {
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!check_docker())
 	{
-		printf("Docker not running, skipping test\n");
 		return;
 	}
 
