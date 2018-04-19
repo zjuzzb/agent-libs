@@ -628,6 +628,11 @@ prometheus:
         kubernetes.pod.annotation.prometheus.io/scrape: false
 
 app_checks:
+  - name: solr
+    check_module: solr
+    pattern:
+      port: 8983
+      comm: java
   - name: ceph
     interval: 30
     pattern:
