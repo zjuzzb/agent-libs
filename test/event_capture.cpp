@@ -137,27 +137,30 @@ void event_capture::capture()
 	delete m_analyzer;
 	m_capture_stopped.set();
 
-	// At this point there should be no consumers of the driver remaining.
-	// Wait up to 2 seconds for the refcount to settle
-	int ntries = 20;
-	uint32_t num_consumers = 0;
-
-	while (ntries-- > 0)
+	if (getenv("SYSDIG_BPF_PROBE") == NULL)
 	{
-		FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
-		ASSERT_TRUE(ref != NULL);
+		// At this point there should be no consumers of the driver remaining.
+		// Wait up to 2 seconds for the refcount to settle
+		int ntries = 20;
+		uint32_t num_consumers = 0;
 
-		ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
-		fclose(ref);
+		while (ntries-- > 0)
+		{
+			FILE *ref = fopen("/sys/module/sysdigcloud_probe/refcnt", "r");
+			ASSERT_TRUE(ref != NULL);
 
-		if (num_consumers == 0) {
-			break;
+			ASSERT_EQ(fscanf(ref, "%u", &num_consumers), 1);
+			fclose(ref);
+
+			if (num_consumers == 0) {
+				break;
+			}
+			struct timespec ts = {
+				.tv_sec = 0,
+				.tv_nsec = 100000000
+			};
+			nanosleep(&ts, NULL);
 		}
-		struct timespec ts = {
-			.tv_sec = 0,
-			.tv_nsec = 100000000
-		};
-		nanosleep(&ts, NULL);
+		ASSERT_EQ(num_consumers, 0);
 	}
-	ASSERT_EQ(num_consumers, 0);
 }
