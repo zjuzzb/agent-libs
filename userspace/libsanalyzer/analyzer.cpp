@@ -2753,7 +2753,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 								g_logger.log("Starting export of Prometheus metrics",
 									sinsp_logger::SEV_INFO);
 								const auto metrics = app_data.second->metrics();
-								ASSERT(!metrics->empty());
+								ASSERT(!metrics.empty());
 								const string &metricname = metrics[0].name();
 								g_logger.format(sinsp_logger::SEV_DEBUG,
 									"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
