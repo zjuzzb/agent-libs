@@ -1708,7 +1708,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
 	threadinfo_map_iterator_t it;
-	set<uint64_t> proctids;
 	auto prog_hasher = [](sinsp_threadinfo* tinfo)
 	{
 		return tinfo->get_main_thread()->m_program_hash;
@@ -1801,16 +1800,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		}
 
 		m_ipv4_connections->clear_n_drops();
-	}
-
-	//
-	// Run the periodic /proc scan and use it to prune the process table
-	//
-	if(m_inspector->is_live() && m_n_flushes % PROC_BASED_THREAD_PRUNING_INTERVAL ==
-		(PROC_BASED_THREAD_PRUNING_INTERVAL - 1))
-	{
-		tracer_emitter pp_trc("proc_tids", proc_trc);
-		m_procfs_parser->get_tid_list(&proctids);
 	}
 
 	//
@@ -2079,10 +2068,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			m_threads_to_remove.push_back(tinfo);
 		}
 
-		if(proctids.size() != 0 && proctids.find(tinfo->m_pid) == proctids.end())
-		{
-			tinfo->m_flags |= PPM_CL_CLOSED;
-		}
 		//
 		// Add this thread's counters to the process ones...
 		//

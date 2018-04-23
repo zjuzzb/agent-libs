@@ -665,55 +665,6 @@ long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
 #endif // CYGWING_AGENT
 }
 
-//
-// Scan a directory containing multiple processes under /proc
-//
-void sinsp_procfs_parser::get_tid_list(OUT set<uint64_t>* tids)
-{
-#ifndef CYGWING_AGENT
-#ifdef _WIN32
-return;
-#else
-	DIR *dir_p;
-	struct dirent *dir_entry_p;
-	uint64_t tid;
-
-	tid = 0;
-	char filename[SCAP_MAX_PATH_SIZE];
-	sprintf(filename, "%s/proc", scap_get_host_root());
-	dir_p = opendir(filename);
-
-	if(dir_p == NULL)
-	{
-		throw sinsp_exception("error opening the /proc directory");
-	}
-
-	while((dir_entry_p = readdir(dir_p)) != NULL)
-	{
-		if(strspn(dir_entry_p->d_name, "0123456789") != strlen(dir_entry_p->d_name))
-		{
-			continue;
-		}
-
-		//
-		// Gather the process TID, which is the directory name
-		//
-		tid = atoi(dir_entry_p->d_name);
-		tids->insert(tid);
-	}
-
-	closedir(dir_p);
-#endif // _WIN32
-#else // CYGWING_AGENT
-	//
-	// The data coming from this function should only be use to prune the tid
-	// list, which is not needed under windows since we are strictly nodriver and 
-	// nodriver lowers the sinsp pruning interval to 5 seconds, making this redundant.
-	//
-	tids->clear();
-#endif // CYGWING_AGENT
-}
-
 vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled,
 															const string& mtab)
 {
