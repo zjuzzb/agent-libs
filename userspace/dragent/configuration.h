@@ -714,6 +714,8 @@ public:
 	uint32_t m_orch_tick_interval_ms;
 	uint32_t m_orch_low_ticks_needed;
 	uint32_t m_orch_low_evt_threshold;
+	int m_max_n_proc_lookups;
+	int m_max_n_proc_socket_lookups;
 
 	bool java_present() const
 	{

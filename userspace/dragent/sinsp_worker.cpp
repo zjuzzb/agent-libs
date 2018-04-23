@@ -103,6 +103,9 @@ void sinsp_worker::init()
 		m_inspector->set_max_thread_table_size(m_configuration->m_max_thread_table_size);
 	}
 
+	m_inspector->m_max_n_proc_lookups = m_configuration->m_max_n_proc_lookups;
+	m_inspector->m_max_n_proc_socket_lookups = m_configuration->m_max_n_proc_socket_lookups;
+
 	//
 	// Attach our transmit callback to the analyzer
 	//

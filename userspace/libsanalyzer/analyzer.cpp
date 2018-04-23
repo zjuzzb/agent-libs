@@ -145,10 +145,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_die = false;
 	m_run_chisels = false;
 
-
-	inspector->m_max_n_proc_lookups = 5;
-	inspector->m_max_n_proc_socket_lookups = 3;
-
 	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
