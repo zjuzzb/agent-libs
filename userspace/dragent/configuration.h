@@ -708,6 +708,13 @@ public:
 	uint16_t m_monitor_files_freq_sec = 0;
 	std::set<std::string> m_monitor_files;
 
+	uint32_t m_orch_queue_len;
+	int32_t m_orch_gc;
+	uint32_t m_orch_inf_wait_time_s;
+	uint32_t m_orch_tick_interval_ms;
+	uint32_t m_orch_low_ticks_needed;
+	uint32_t m_orch_low_evt_threshold;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

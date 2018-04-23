@@ -2742,8 +2742,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #ifndef CYGWING_AGENT
 						if (app_data.second->type() == app_check_data::check_type::PROMETHEUS)
 						{
-							sent_prometheus_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_prometheus(),
+							static bool logged_metric = false;
+							unsigned metric_count;
+							metric_count = app_data.second->to_protobuf(
+								proc->mutable_protos()->mutable_prometheus(),
 								prom_metrics_limit, m_prom_conf.max_metrics());
+							sent_prometheus_metrics += metric_count;
+							if (!logged_metric && metric_count)
+							{
+								g_logger.log("Starting export of Prometheus metrics",
+									sinsp_logger::SEV_INFO);
+								const auto metrics = app_data.second->metrics();
+								ASSERT(!metrics.empty());
+								const string &metricname = metrics[0].name();
+								g_logger.format(sinsp_logger::SEV_DEBUG,
+									"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
+									app_data.second->pid(), metric_count, metricname.c_str());
+								logged_metric = true;
+							}
 							total_prometheus_metrics += app_data.second->total_metrics();
 						}
 						else

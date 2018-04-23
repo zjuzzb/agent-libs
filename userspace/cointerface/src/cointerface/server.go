@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"runtime/debug"
 	"sync"
 	"time"
 )
@@ -123,16 +124,33 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
+	log.Debugf("[PerformOrchestratorEventsStream] using options: %v", cmd)
+
+	// Golang's default garbage collection allows for a lot of bloat,
+	// so we set a more aggressive garbage collection because the initial
+	// list of all k8s components can cause memory to balloon. After startup
+	// is complete, set it back to the original value to keep CPU low.
+	//
+	// This changes the garbage collection value for the entire process.
+	// It's possible that another RPC could alter these GC values, so do lots
+	// of checking and complain loudly if the values aren't what we expect.
+	initGC := int(cmd.GetStartupGc())
+	origGC := setGC(initGC)
+	// Other RPCs, including earlier orch calls, could have bloated
+	// memory usage, so run the GC before we start our initial fetch
+	log.Debug("Calling debug.FreeOSMemory()")
+	debug.FreeOSMemory()
 
 	ctx, ctxCancel := context.WithCancel(stream.Context())
 	// Don't defer ctxCancel() yet
-	evtc, err := kubecollect.WatchCluster(ctx,
-		cmd.GetUrl(), cmd.GetCaCert(),
-		cmd.GetClientCert(), cmd.GetClientKey(), cmd.GetPrometheus())
+	evtc, fetchDone, err := kubecollect.WatchCluster(ctx, cmd)
 	if err != nil {
 		ctxCancel()
+		cleanupGC(origGC, initGC)
 		return err
 	}
+
+	rpcDone := make(chan struct{})
 	defer func() {
 		// After cancelling the context, drain incoming messages
 		// so all senders can unblock and exit their goroutines
@@ -146,6 +164,22 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 					evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId())
 			}
 		}
+		// Close after draining in case this gets invoked while
+		// we're draining events during the initial fetch
+		close(rpcDone)
+	}()
+
+	// Reset the GC settings after the initial fetch
+	// completes or the RPC exits
+	go func() {
+		select {
+		case <-fetchDone:
+			log.Info("Orch events initial fetch complete")
+		case <-rpcDone:
+			log.Debug("Orch events RPC exiting")
+		}
+
+		cleanupGC(origGC, initGC)
 	}()
 
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
@@ -167,6 +201,33 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	}
 
 	return nil
+}
+
+// The GC helpers only support PerformOrchestratorEventsStream currently
+// Using them with another RPC could lead to races in changing/restoring
+func setGC(newGC int) int {
+	prevGC := debug.SetGCPercent(newGC)
+	log.Debugf("Orch events RPC, setting GC to %v (was %v)",
+		newGC, prevGC)
+
+	const defaultGC = 100
+	if prevGC != defaultGC {
+		log.Warnf("Starting orch events RPC, orig GC was %v instead of %v",
+			prevGC, defaultGC)
+	}
+
+	return prevGC
+}
+
+func cleanupGC(origGC int, initGC int) {
+	prevGC := setGC(origGC)
+	if prevGC != initGC {
+		log.Errorf("Cleaning up orch events RPC, GC val was %v, expected %v",
+			prevGC, initGC)
+	}
+
+	log.Debug("Calling debug.FreeOSMemory()")
+	debug.FreeOSMemory()
 }
 
 func startServer(sock string) int {

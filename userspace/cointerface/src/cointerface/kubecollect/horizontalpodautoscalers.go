@@ -54,54 +54,60 @@ func addHorizontalPodAutoscalerMetrics(metrics *[]*draiosproto.AppMetric, horizo
 }
 
 func AddHorizontalPodAutoscalerParents(parents *[]*draiosproto.CongroupUid, namespace string, apiversion string, kind string, name string) {
-	if compatibilityMap["horizontalpodautoscalers"] {
-		for _, obj := range horizontalPodAutoscalerInf.GetStore().List() {
-			hpa := obj.(*v1as.HorizontalPodAutoscaler)
-			if hpa.GetNamespace() == namespace &&
-				hpa.Spec.ScaleTargetRef.APIVersion == apiversion &&
-				hpa.Spec.ScaleTargetRef.Kind == kind &&
-				hpa.Spec.ScaleTargetRef.Name == name {
-					// log.Debugf("Found HPA parents: hpa:%s -> %s:%s",
-					// 	hpa.GetName(), kind, name)
-					*parents = append(*parents, &draiosproto.CongroupUid{
-						Kind:proto.String("k8s_hpa"),
-						Id:proto.String(string(hpa.GetUID()))})
-			}
+	if !resourceReady("horizontalpodautoscalers") {
+		return
+	}
+
+	for _, obj := range horizontalPodAutoscalerInf.GetStore().List() {
+		hpa := obj.(*v1as.HorizontalPodAutoscaler)
+		if hpa.GetNamespace() == namespace &&
+			hpa.Spec.ScaleTargetRef.APIVersion == apiversion &&
+			hpa.Spec.ScaleTargetRef.Kind == kind &&
+			hpa.Spec.ScaleTargetRef.Name == name {
+			// log.Debugf("Found HPA parents: hpa:%s -> %s:%s",
+			// 	hpa.GetName(), kind, name)
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_hpa"),
+				Id:proto.String(string(hpa.GetUID()))})
 		}
 	}
 }
 
 func AddHorizontalPodAutoscalerChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["horizontalpodautoscalers"] {
-		for _, obj := range horizontalPodAutoscalerInf.GetStore().List() {
-			horizontalPodAutoscaler := obj.(*v1as.HorizontalPodAutoscaler)
-			if horizontalPodAutoscaler.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_hpa"),
-					Id:proto.String(string(horizontalPodAutoscaler.GetUID()))})
-			}
+	if !resourceReady("horizontalpodautoscalers") {
+		return
+	}
+
+	for _, obj := range horizontalPodAutoscalerInf.GetStore().List() {
+		horizontalPodAutoscaler := obj.(*v1as.HorizontalPodAutoscaler)
+		if horizontalPodAutoscaler.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_hpa"),
+				Id:proto.String(string(horizontalPodAutoscaler.GetUID()))})
 		}
 	}
 }
 
-func startHorizontalPodAutoscalersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startHorizontalPodAutoscalersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.AutoscalingV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "HorizontalPodAutoscalers", v1meta.NamespaceAll, fields.Everything())
 	horizontalPodAutoscalerInf = cache.NewSharedInformer(lw, &v1as.HorizontalPodAutoscaler{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchHorizontalPodAutoscalers(evtc)
 		horizontalPodAutoscalerInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchHorizontalPodAutoscalers()")
 
 	horizontalPodAutoscalerInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("horizontalpodautoscalers")
 				//log.Debugf("AddFunc dumping HorizontalPodAutoscaler: %v", obj.(*v1as.HorizontalPodAutoscaler))
 				evtc <- horizontalPodAutoscalerEvent(obj.(*v1as.HorizontalPodAutoscaler),
 					draiosproto.CongroupEventType_ADDED.Enum())
@@ -123,6 +129,4 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 			},
 		},
 	)
-
-	return horizontalPodAutoscalerInf
 }

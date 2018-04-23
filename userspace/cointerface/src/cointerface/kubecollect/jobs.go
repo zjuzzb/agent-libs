@@ -61,50 +61,56 @@ func addJobMetrics(metrics *[]*draiosproto.AppMetric, job *v1batch.Job) {
 }
 
 func AddJobParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if compatibilityMap["jobs"] {
-		for _, obj := range jobInf.GetStore().List() {
-			job := obj.(*v1batch.Job)
-			selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
-			if pod.GetNamespace() == job.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_job"),
-					Id:proto.String(string(job.GetUID()))})
-			}
+	if !resourceReady("jobs") {
+		return
+	}
+
+	for _, obj := range jobInf.GetStore().List() {
+		job := obj.(*v1batch.Job)
+		selector, _ := v1meta.LabelSelectorAsSelector(job.Spec.Selector)
+		if pod.GetNamespace() == job.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_job"),
+				Id:proto.String(string(job.GetUID()))})
 		}
 	}
 }
 
 func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["jobs"] {
-		for _, obj := range jobInf.GetStore().List() {
-			job := obj.(*v1batch.Job)
-			if job.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_job"),
-					Id:proto.String(string(job.GetUID()))})
-			}
+	if !resourceReady("jobs") {
+		return
+	}
+
+	for _, obj := range jobInf.GetStore().List() {
+		job := obj.(*v1batch.Job)
+		if job.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_job"),
+				Id:proto.String(string(job.GetUID()))})
 		}
 	}
 }
 
-func startJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())
 	jobInf = cache.NewSharedInformer(lw, &v1batch.Job{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchJobs(evtc)
 		jobInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchJobs()")
 
 	jobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("jobs")
 				evtc <- jobEvent(obj.(*v1batch.Job),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
@@ -125,6 +131,4 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer
 			},
 		},
 	)
-
-	return jobInf
 }

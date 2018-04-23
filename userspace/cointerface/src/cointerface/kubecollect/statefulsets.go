@@ -50,25 +50,14 @@ func addStatefulSetMetrics(metrics *[]*draiosproto.AppMetric, statefulSet *v1bet
 }
 
 func AddStatefulSetParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if compatibilityMap["statefulsets"] {
-		for _, obj := range statefulSetInf.GetStore().List() {
-			statefulSet := obj.(*v1beta1.StatefulSet)
-			for _, owner := range pod.GetOwnerReferences() {
-				if owner.UID == statefulSet.GetUID() {
-					*parents = append(*parents, &draiosproto.CongroupUid{
-						Kind:proto.String("k8s_statefulset"),
-						Id:proto.String(string(statefulSet.GetUID()))})
-				}
-			}
-		}
+	if !resourceReady("statefulsets") {
+		return
 	}
-}
 
-func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
-	if compatibilityMap["statefulsets"] {
-		for _, obj := range statefulSetInf.GetStore().List() {
-			statefulSet := obj.(*v1beta1.StatefulSet)
-			if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
+	for _, obj := range statefulSetInf.GetStore().List() {
+		statefulSet := obj.(*v1beta1.StatefulSet)
+		for _, owner := range pod.GetOwnerReferences() {
+			if owner.UID == statefulSet.GetUID() {
 				*parents = append(*parents, &draiosproto.CongroupUid{
 					Kind:proto.String("k8s_statefulset"),
 					Id:proto.String(string(statefulSet.GetUID()))})
@@ -77,37 +66,56 @@ func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, servi
 	}
 }
 
-func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["statefulsets"] {
-		for _, obj := range statefulSetInf.GetStore().List() {
-			statefulSet := obj.(*v1beta1.StatefulSet)
-			if statefulSet.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_statefulset"),
-					Id:proto.String(string(statefulSet.GetUID()))})
-			}
+func AddStatefulSetParentsFromService(parents *[]*draiosproto.CongroupUid, service *v1.Service) {
+	if !resourceReady("statefulsets") {
+		return
+	}
+
+	for _, obj := range statefulSetInf.GetStore().List() {
+		statefulSet := obj.(*v1beta1.StatefulSet)
+		if service.GetNamespace() == statefulSet.GetNamespace() && service.GetName() == statefulSet.Spec.ServiceName {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_statefulset"),
+				Id:proto.String(string(statefulSet.GetUID()))})
 		}
 	}
 }
 
-func startStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func AddStatefulSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
+	if !resourceReady("statefulsets") {
+		return
+	}
+
+	for _, obj := range statefulSetInf.GetStore().List() {
+		statefulSet := obj.(*v1beta1.StatefulSet)
+		if statefulSet.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_statefulset"),
+				Id:proto.String(string(statefulSet.GetUID()))})
+		}
+	}
+}
+
+func startStatefulSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.AppsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "StatefulSets", v1meta.NamespaceAll, fields.Everything())
 	statefulSetInf = cache.NewSharedInformer(lw, &v1beta1.StatefulSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchStatefulSets(evtc)
 		statefulSetInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchStatefulSets()")
 
 	statefulSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("statefulsets")
 				//log.Debugf("AddFunc dumping StatefulSet: %v", obj.(*v1beta1.StatefulSet))
 				evtc <- statefulSetEvent(obj.(*v1beta1.StatefulSet),
 					draiosproto.CongroupEventType_ADDED.Enum())
@@ -129,6 +137,4 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.Shared
 			},
 		},
 	)
-
-	return statefulSetInf
 }

@@ -1026,6 +1026,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_config->get_scalar<unsigned>("monitor_files", "check_frequency_s", 0);
 	m_monitor_files =
 		m_config->get_deep_merged_sequence<set<string>>("monitor_files", "files");
+
+	m_orch_queue_len = m_config->get_scalar<uint32_t>("orch_queue_len", 10000);
+	m_orch_gc = m_config->get_scalar<int32_t>("orch_gc", 10);
+	m_orch_inf_wait_time_s = m_config->get_scalar<uint32_t>("orch_inf_wait_time_s", 5);
+	m_orch_tick_interval_ms = m_config->get_scalar<uint32_t>("orch_tick_interval_ms", 100);
+	m_orch_low_ticks_needed = m_config->get_scalar<uint32_t>("orch_low_ticks_needed", 10);
+	m_orch_low_evt_threshold = m_config->get_scalar<uint32_t>("orch_low_evt_threshold", 50);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1378,6 +1385,13 @@ void dragent_configuration::print_configuration() const
 	for (auto const& path : m_monitor_files) {
 		g_log->information("   " + path);
 	}
+
+	g_log->information("Orch events queue len: " + to_string(m_orch_queue_len));
+	g_log->information("Orch events GC percent: " + to_string(m_orch_gc));
+	g_log->information("Orch events informer wait time (s): " + to_string(m_orch_inf_wait_time_s));
+	g_log->information("Orch events tick interval (ms): " + to_string(m_orch_tick_interval_ms));
+	g_log->information("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
+	g_log->information("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

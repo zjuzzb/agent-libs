@@ -51,46 +51,51 @@ func newCronJobConGroup(cronjob *v2alpha1.CronJob) (*draiosproto.ContainerGroup)
 var cronJobInf cache.SharedInformer
 
 func AddCronJobParent(parents *[]*draiosproto.CongroupUid, job *v1batch.Job) {
-	if compatibilityMap["cronjobs"] {
-		for _, item := range cronJobInf.GetStore().List() {
-			cronJob := item.(*v2alpha1.CronJob)
-			for _, activeJob := range cronJob.Status.Active {
-				if activeJob.UID == job.GetUID() {
-					*parents = append(*parents, &draiosproto.CongroupUid{
-						Kind:proto.String("k8s_cronjob"),
-						Id:proto.String(string(cronJob.UID))})
-				}
+	if !resourceReady("cronjobs") {
+		return
+	}
+
+	for _, item := range cronJobInf.GetStore().List() {
+		cronJob := item.(*v2alpha1.CronJob)
+		for _, activeJob := range cronJob.Status.Active {
+			if activeJob.UID == job.GetUID() {
+				*parents = append(*parents, &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_cronjob"),
+					Id:proto.String(string(cronJob.UID))})
 			}
 		}
 	}
 }
 
 func AddCronJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["cronjobs"] {
-		for _, obj := range cronJobInf.GetStore().List() {
-			cronJob := obj.(*v2alpha1.CronJob)
-			if cronJob.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_cronjob"),
-					Id:proto.String(string(cronJob.GetUID()))})
-			}
+	if !resourceReady("cronjobs") {
+		return
+	}
+
+	for _, obj := range cronJobInf.GetStore().List() {
+		cronJob := obj.(*v2alpha1.CronJob)
+		if cronJob.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_cronjob"),
+				Id:proto.String(string(cronJob.GetUID()))})
 		}
 	}
 }
 
-func startCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startCronJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.BatchV2alpha1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "cronjobs", v1meta.NamespaceAll, fields.Everything())
 	cronJobInf = cache.NewSharedInformer(lw, &v2alpha1.CronJob{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchCronJobs(evtc)
 		cronJobInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 	// fold, _ := os.Create("/tmp/cronjob_updates_old.json")
 	// fnew, _ := os.Create("/tmp/cronjob_updates_new.json")
@@ -98,6 +103,7 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfo
 	cronJobInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("cronjobs")
 				evtc <- cronJobEvent(obj.(*v2alpha1.CronJob),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
@@ -124,6 +130,4 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInfo
 			},
 		},
 	)
-
-	return cronJobInf
 }

@@ -49,51 +49,57 @@ func addDaemonSetMetrics(metrics *[]*draiosproto.AppMetric, daemonSet *v1beta1.D
 }
 
 func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
-	if compatibilityMap["daemonsets"] {
-		for _, obj := range daemonSetInf.GetStore().List() {
-			daemonSet := obj.(*v1beta1.DaemonSet)
-			//log.Debugf("AddNSParents: %v", nsObj.GetName())
-			selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
-			if pod.GetNamespace() == daemonSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
-				*parents = append(*parents, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_daemonset"),
-					Id:proto.String(string(daemonSet.GetUID()))})
-			}
+	if !resourceReady("daemonsets") {
+		return
+	}
+
+	for _, obj := range daemonSetInf.GetStore().List() {
+		daemonSet := obj.(*v1beta1.DaemonSet)
+		//log.Debugf("AddNSParents: %v", nsObj.GetName())
+		selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
+		if pod.GetNamespace() == daemonSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_daemonset"),
+				Id:proto.String(string(daemonSet.GetUID()))})
 		}
 	}
 }
 
 func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["daemonsets"] {
-		for _, obj := range daemonSetInf.GetStore().List() {
-			daemonSet := obj.(*v1beta1.DaemonSet)
-			if daemonSet.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_daemonset"),
-					Id:proto.String(string(daemonSet.GetUID()))})
-			}
+	if !resourceReady("daemonsets") {
+		return
+	}
+
+	for _, obj := range daemonSetInf.GetStore().List() {
+		daemonSet := obj.(*v1beta1.DaemonSet)
+		if daemonSet.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_daemonset"),
+				Id:proto.String(string(daemonSet.GetUID()))})
 		}
 	}
 }
 
-func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
 	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchDaemonSets(evtc)
 		daemonSetInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchDaemonSets()")
 
 	daemonSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("daemonsets")
 				//log.Debugf("AddFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
 				evtc <- daemonSetEvent(obj.(*v1beta1.DaemonSet),
 					draiosproto.CongroupEventType_ADDED.Enum())
@@ -115,6 +121,4 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedIn
 			},
 		},
 	)
-
-	return daemonSetInf
 }

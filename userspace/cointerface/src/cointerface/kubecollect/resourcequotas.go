@@ -44,36 +44,40 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 var resourceQuotaInf cache.SharedInformer
 
 func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
-	if compatibilityMap["resourcequotas"] {
-		for _, obj := range resourceQuotaInf.GetStore().List() {
-			resourceQuota := obj.(*v1.ResourceQuota)
-			if resourceQuota.GetNamespace() == namespaceName {
-				*children = append(*children, &draiosproto.CongroupUid{
-					Kind:proto.String("k8s_resourcequota"),
-					Id:proto.String(string(resourceQuota.GetUID()))})
-			}
+	if !resourceReady("resourcequotas") {
+		return
+	}
+
+	for _, obj := range resourceQuotaInf.GetStore().List() {
+		resourceQuota := obj.(*v1.ResourceQuota)
+		if resourceQuota.GetNamespace() == namespaceName {
+			*children = append(*children, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_resourcequota"),
+				Id:proto.String(string(resourceQuota.GetUID()))})
 		}
 	}
 }
 
-func startResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup) {
+func startResourceQuotasSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ResourceQuotas", v1meta.NamespaceAll, fields.Everything())
 	resourceQuotaInf = cache.NewSharedInformer(lw, &v1.ResourceQuota{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
+		watchResourceQuotas(evtc)
 		resourceQuotaInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) cache.SharedInformer {
+func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchResourceQuotas()")
 
 	resourceQuotaInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
+				eventReceived("resourcequotas")
 				//log.Debugf("AddFunc dumping ResourceQuota: %v", obj.(*v1.ResourceQuota))
 				evtc <- resourceQuotaEvent(obj.(*v1.ResourceQuota),
 					draiosproto.CongroupEventType_ADDED.Enum())
@@ -95,6 +99,4 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) cache.Shar
 			},
 		},
 	)
-
-	return resourceQuotaInf
 }

@@ -2,6 +2,7 @@
 
 #include "infrastructure_state.h"
 #include "utils.h"
+#include "analyzer.h"
 
 #ifndef CYGWING_AGENT
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
@@ -181,6 +182,12 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_client_cert(m_k8s_client_cert);
 			cmd.set_client_key(m_k8s_client_key);
 			cmd.set_prometheus(m_prom_enabled);
+			cmd.set_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_queue_len());
+			cmd.set_startup_gc(m_inspector->m_analyzer->m_configuration->get_orch_gc());
+			cmd.set_startup_inf_wait_time_s(m_inspector->m_analyzer->m_configuration->get_orch_inf_wait_time_s());
+			cmd.set_startup_tick_interval_ms(m_inspector->m_analyzer->m_configuration->get_orch_tick_interval_ms());
+			cmd.set_startup_low_ticks_needed(m_inspector->m_analyzer->m_configuration->get_orch_low_ticks_needed());
+			cmd.set_startup_low_evt_threshold(m_inspector->m_analyzer->m_configuration->get_orch_low_evt_threshold());
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
