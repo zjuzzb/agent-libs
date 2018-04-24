@@ -556,29 +556,44 @@ jmx:
     solr:
       pattern: "start.jar"
       beans:
-        - query: "solr:name=requests,dom1=core,category=QUERY,*"
+        - query: "solr:dom1=core,category=QUERY,scope=/select,name=requestTimes,*"
           attributes:
-            - name: Count
-              type: counter
-              alias: solr.request.counter
+            - name: Mean
+              type: gauge
+              unit: ms
+              alias: solr.select_time
               segment_by:
-                - key: solr.collection
+                - key: solr.jmx.collection
                   value: dom2
-                - key: solr.shard
+                - key: solr.jmx.shard
                   value: dom3
-                - key: solr.replica
+                - key: solr.jmx.replica
                   value: dom4
         - query: "solr:dom1=core,category=UPDATE,scope=/update,name=requestTimes,*"
           attributes:
-            - name: Count
-              type: counter
-              alias: solr.update.request_time
+            - name: Mean
+              type: gauge
+              unit: ms
+              alias: solr.update_time
               segment_by:
-                - key: solr.collection
+                - key: solr.jmx.collection
                   value: dom2
-                - key: solr.shard
+                - key: solr.jmx.shard
                   value: dom3
-                - key: solr.replica
+                - key: solr.jmx.replica
+                  value: dom4
+        - query: "solr:dom1=core,category=INDEX,name=sizeInBytes,*"
+          attributes:
+            - name: Value
+              type: gauge
+              alias: solr.index_size
+              unit: B
+              segment_by:
+                - key: solr.jmx.collection
+                  value: dom2
+                - key: solr.jmx.shard
+                  value: dom3
+                - key: solr.jmx.replica
                   value: dom4
 prometheus:
   enabled: false
