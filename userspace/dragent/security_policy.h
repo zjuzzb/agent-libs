@@ -468,7 +468,7 @@ protected:
 	// While adding a smart policy, this method is used to check
 	// if policy have requested to enforce baseline for this
 	// policy type
-	virtual inline bool is_baseline_requested(security_policy *policy) = 0;
+	virtual bool is_baseline_requested(security_policy *policy) = 0;
 
 	std::vector<scoped_match_result> m_default_matches;
 	uint64_t m_num_loaded_policies;
@@ -498,7 +498,7 @@ private:
 				   std::string baseline_id,
 				   const scope_predicates &baseline_predicates);
 
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		return policy->has_baseline_details() && policy->baseline_details().syscall_enabled();
 	}
@@ -556,7 +556,7 @@ protected:
 					   std::string baseline_id,
 					   const scope_predicates &baseline_predicates) = 0;
 
-	virtual inline bool is_baseline_requested(security_policy *policy) = 0;
+	virtual bool is_baseline_requested(security_policy *policy) = 0;
 
 	// Allocate storage for the filter value specified by val/len
 	// and return a filter_value using that allocated storage.
@@ -599,7 +599,7 @@ protected:
 				   std::string baseline_id,
 				   const scope_predicates &baseline_predicates);
 
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		return policy->has_baseline_details() && policy->baseline_details().network_inoutbound_enabled();
 	}
@@ -644,7 +644,7 @@ protected:
 				   std::string baseline_id,
 				   const scope_predicates &baseline_predicates);
 
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		return policy->has_baseline_details() && policy->baseline_details().network_listening_enabled();
 	}
@@ -720,7 +720,7 @@ protected:
 				   std::string baseline_id,
 				   const scope_predicates &baseline_predicates);
 
-	virtual inline bool is_baseline_requested(security_policy *policy) = 0;
+	virtual bool is_baseline_requested(security_policy *policy) = 0;
 
 	std::list<std::string> m_vals;
 
@@ -769,7 +769,7 @@ public:
 
 protected:
 
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		return policy->has_baseline_details() && policy->baseline_details().fs_read_only_enabled();
 	}
@@ -794,7 +794,7 @@ public:
 	draiosproto::policy_subtype policies_subtype();
 
 protected:
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		return policy->has_baseline_details() && policy->baseline_details().fs_read_write_enabled();
 	}
@@ -846,7 +846,7 @@ public:
 
 protected:
 
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		// at least for V1, baselines don't have information about container images
 		// since are solely created based on a single container image
@@ -881,7 +881,7 @@ private:
 				   std::string baseline_id,
 				   const scope_predicates &baseline_predicates);
 
-	inline bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(security_policy *policy)
 	{
 		return policy->has_baseline_details() && policy->baseline_details().process_enabled();
 	}
