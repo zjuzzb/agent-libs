@@ -1044,4 +1044,13 @@ void sinsp_configuration::set_orch_low_evt_threshold(uint32_t low_evt_threshold)
 	m_orch_low_evt_threshold = low_evt_threshold;
 }
 
+bool sinsp_configuration::get_orch_filter_empty() const
+{
+	return m_orch_filter_empty;
+}
+void sinsp_configuration::set_orch_filter_empty(bool filter_empty)
+{
+	m_orch_filter_empty = filter_empty;
+}
+
 #endif // HAS_ANALYZER

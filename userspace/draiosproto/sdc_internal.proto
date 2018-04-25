@@ -91,6 +91,7 @@ message orchestrator_events_stream_command {
     required uint32 startup_tick_interval_ms = 9;
     required uint32 startup_low_ticks_needed = 10;
     required uint32 startup_low_evt_threshold = 11;
+    required bool filter_empty = 12;
 }
 
 service CoInterface {
