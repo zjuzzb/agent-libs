@@ -1582,7 +1582,11 @@ void dragent_configuration::refresh_machine_id()
 	// NOTE: Environment::nodeId() is buggy in cygwin poco, and returns
 	//       00:00:00:00:00:00. As a workaround we provide our own implementation.
 	//
-	m_machine_id = windows_helpers::get_machine_first_mac_address();
+	m_machine_id = windows_helpers::get_machine_uid();
+	if(m_machine_id == "")
+	{
+		throw sinsp_exception("cannot gather machine ID");
+	}
 #endif
 }
 

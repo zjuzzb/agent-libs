@@ -1,10 +1,10 @@
 #include <algorithm>
 
+#ifndef CYGWING_AGENT
 #include "infrastructure_state.h"
 #include "utils.h"
 #include "analyzer.h"
 
-#ifndef CYGWING_AGENT
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
 bool infrastructure_state::get_cached_result(std::string &entity_id, size_t h, bool *res)
