@@ -433,6 +433,10 @@ func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 }
 
 func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
+	if !prometheus_enabled {
+		return true
+	}
+
 	left := lhs.GetAnnotations()
 	right := rhs.GetAnnotations()
 	if (len(left) != len(right)) {
