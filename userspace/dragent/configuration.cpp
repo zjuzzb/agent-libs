@@ -1033,6 +1033,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_orch_tick_interval_ms = m_config->get_scalar<uint32_t>("orch_tick_interval_ms", 100);
 	m_orch_low_ticks_needed = m_config->get_scalar<uint32_t>("orch_low_ticks_needed", 10);
 	m_orch_low_evt_threshold = m_config->get_scalar<uint32_t>("orch_low_evt_threshold", 50);
+	m_orch_filter_empty = m_config->get_scalar<bool>("orch_filter_empty", true);
+
 	m_max_n_proc_lookups = m_config->get_scalar<int>("max_n_proc_lookups", 5);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int>("max_n_proc_socket_lookups", 3);
 }
@@ -1394,6 +1396,8 @@ void dragent_configuration::print_configuration() const
 	g_log->information("Orch events tick interval (ms): " + to_string(m_orch_tick_interval_ms));
 	g_log->information("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
 	g_log->information("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
+	g_log->information("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
+
 	g_log->information("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
 
 	// Dump warnings+errors after the main config so they're more visible

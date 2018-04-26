@@ -220,7 +220,10 @@ func setGC(newGC int) int {
 }
 
 func cleanupGC(origGC int, initGC int) {
-	prevGC := setGC(origGC)
+	prevGC := debug.SetGCPercent(origGC)
+	log.Debugf("Orch events RPC, setting GC to %v (was %v)",
+		origGC, prevGC)
+
 	if prevGC != initGC {
 		log.Errorf("Cleaning up orch events RPC, GC val was %v, expected %v",
 			prevGC, initGC)

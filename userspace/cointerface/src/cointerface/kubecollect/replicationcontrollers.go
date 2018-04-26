@@ -99,44 +99,95 @@ func AddReplicationControllerChildrenByName(children *[]*draiosproto.CongroupUid
 	}
 }
 
-func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func startReplicationControllersSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	client := kubeClient.CoreV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicationControllers", v1meta.NamespaceAll, fields.Everything())
 	replicationControllerInf = cache.NewSharedInformer(lw, &v1.ReplicationController{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
-		watchReplicationControllers(evtc)
+		watchReplicationControllers(evtc, filterEmpty)
 		replicationControllerInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
+func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	log.Debugf("In WatchReplicationControllers()")
 
 	replicationControllerInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("replicationcontrollers")
-				//log.Debugf("AddFunc dumping ReplicationController: %v", obj.(*v1.ReplicationController))
-				evtc <- replicationControllerEvent(obj.(*v1.ReplicationController),
+
+				rc := obj.(*v1.ReplicationController)
+				if filterEmpty && rc.Spec.Replicas != nil && *rc.Spec.Replicas == 0 {
+					return
+				}
+
+				evtc <- replicationControllerEvent(rc,
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldReplicationController := oldObj.(*v1.ReplicationController)
-				newReplicationController := newObj.(*v1.ReplicationController)
-				if oldReplicationController.GetResourceVersion() != newReplicationController.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping ReplicationController oldReplicationController %v", oldReplicationController)
-					//log.Debugf("UpdateFunc dumping ReplicationController newReplicationController %v", newReplicationController)
-					evtc <- replicationControllerEvent(newReplicationController,
+				oldRC := oldObj.(*v1.ReplicationController)
+				newRC := newObj.(*v1.ReplicationController)
+				if oldRC.GetResourceVersion() == newRC.GetResourceVersion() {
+					return
+				}
+
+				// 1 is default if Spec.Replicas is nil
+				var newReplicas int32 = 1
+				if newRC.Spec.Replicas != nil {
+					newReplicas = *newRC.Spec.Replicas
+				}
+				var oldReplicas int32 = 1
+				if oldRC.Spec.Replicas != nil {
+					oldReplicas = *oldRC.Spec.Replicas
+				}
+
+				if filterEmpty && oldReplicas == 0 && newReplicas == 0 {
+					return
+				} else if filterEmpty && oldReplicas == 0 && newReplicas > 0 {
+					evtc <- replicationControllerEvent(newRC,
+						draiosproto.CongroupEventType_ADDED.Enum())
+					return
+				} else if filterEmpty && oldReplicas > 0 && newReplicas == 0 {
+					evtc <- draiosproto.CongroupUpdateEvent {
+						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+						Object: &draiosproto.ContainerGroup{
+							Uid: &draiosproto.CongroupUid{
+								Kind:proto.String("k8s_replicationcontroller"),
+								Id:proto.String(string(newRC.GetUID()))},
+						},
+					}
+					return
+				} else {
+					// XXX add equals check like other resources
+					/*
+					sameEntity, sameLinks := replicationControllerEquals(oldRC, newRC)
+					if !sameEntity || !sameLinks {
+						evtc <- replicationControllerEvent(newRC,
+							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
+					}
+					*/
+					evtc <- replicationControllerEvent(newRC,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ReplicationController: %v", obj.(*v1.ReplicationController))
-				evtc <- replicationControllerEvent(obj.(*v1.ReplicationController),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				rc := obj.(*v1.ReplicationController)
+				if filterEmpty && rc.Spec.Replicas != nil && *rc.Spec.Replicas == 0 {
+					return
+				}
+
+				evtc <- draiosproto.CongroupUpdateEvent {
+					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+					Object: &draiosproto.ContainerGroup{
+						Uid: &draiosproto.CongroupUid{
+							Kind:proto.String("k8s_replicationcontroller"),
+							Id:proto.String(string(rc.GetUID()))},
+					},
+				}
 			},
 		},
 	)
