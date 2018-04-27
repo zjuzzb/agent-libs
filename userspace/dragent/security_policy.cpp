@@ -1107,6 +1107,11 @@ std::set<std::string> syscall_policies::default_output_fields_keys(sinsp_evt *ev
 	return { "evt.type" };
 }
 
+bool syscall_policies::event_qualifies(sinsp_evt *evt)
+{
+	return evt->falco_consider();
+}
+
 bool syscall_policies::add_matchlist_details(security_policy *policy,
 					     const draiosproto::matchlist_detail &details,
 					     const scope_predicates &predicates,
@@ -1129,6 +1134,11 @@ bool syscall_policies::add_matchlist_details(security_policy *policy,
 				{
 					for (auto evtnum : it->second)
 					{
+						if(!sinsp::falco_consider_evtnum(evtnum))
+						{
+							continue;
+						}
+
 						// Insert into the list for this event
 						// number in policy order order. That
 						// way we can just traverse the list
@@ -1156,21 +1166,23 @@ bool syscall_policies::add_matchlist_details(security_policy *policy,
 
 				if(it2 != m_syscallnums.end())
 				{
-					scoped_match_result res(predicates,
-								policy,
-								policies_type(),
-								policies_subtype(),
-								item,
-								NULL,
-								match_list.on_match(),
-								details.syscall_details().output_field_keys(),
-								baseline_id,
-								baseline_predicates);
-					m_syscall_index[it2->second].insert(std::upper_bound(m_syscall_index[it2->second].begin(),
-											     m_syscall_index[it2->second].end(),
-											     res,
-											     security_policies::match_result::compare),
-									    res);
+					if(sinsp::falco_consider_syscallid(it2->second)) {
+						scoped_match_result res(predicates,
+									policy,
+									policies_type(),
+									policies_subtype(),
+									item,
+									NULL,
+									match_list.on_match(),
+									details.syscall_details().output_field_keys(),
+									baseline_id,
+									baseline_predicates);
+						m_syscall_index[it2->second].insert(std::upper_bound(m_syscall_index[it2->second].begin(),
+												     m_syscall_index[it2->second].end(),
+												     res,
+												     security_policies::match_result::compare),
+										    res);
+					}
 				}
 			}
 		}
@@ -1199,6 +1211,11 @@ security_policies::match_result *syscall_policies::match_event(sinsp_evt *evt)
 	match_result *best_match = NULL;
 	bool scope_miss = false;
 	uint16_t etype = evt->get_type();
+
+	if(!event_qualifies(evt))
+	{
+		return NULL;
+	}
 
 	if(etype == PPME_GENERIC_E || etype == PPME_GENERIC_X)
 	{

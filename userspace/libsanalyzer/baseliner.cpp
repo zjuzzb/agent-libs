@@ -1317,5 +1317,8 @@ void sinsp_baseliner::process_event(sinsp_evt *evt)
 		evid = evt->get_type();
 	}
 
+	// Note that every syscall is included in the baseline
+	// fingerprint. Within the agent, many syscalls are removed
+	// from consideration when actually enforcing the baseline.
 	pinfo->m_syscalls.add(evid, 0);
 }

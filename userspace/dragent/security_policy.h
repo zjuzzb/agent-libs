@@ -264,7 +264,7 @@ protected:
 	virtual std::string qualifies();
 
 	// Match a sinsp_event against the expression in qualifies_exp().
-	bool event_qualifies(sinsp_evt *evt);
+	virtual bool event_qualifies(sinsp_evt *evt);
 
 	std::string m_name;
 
@@ -492,6 +492,9 @@ public:
 	match_result *match_event(sinsp_evt *evt);
 
 private:
+
+	virtual bool event_qualifies(sinsp_evt *evt);
+
 	bool add_matchlist_details(security_policy *policy,
 				   const draiosproto::matchlist_detail &details,
 				   const scope_predicates &predicates,
