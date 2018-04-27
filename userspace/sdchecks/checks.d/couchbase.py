@@ -1,6 +1,6 @@
-# (C) Datadog, Inc. 2013-2016
+# (C) Datadog, Inc. 2013-2017
 # (C) Justin Slattery <Justin.Slattery@fzysqr.com> 2013
-# (C) Sysdig, Inc. 2017
+# (C) Sysdig, Inc. 2018
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
@@ -13,12 +13,15 @@ import requests
 # project
 from checks import AgentCheck
 from util import headers
+from utils.subprocess_output import get_subprocess_output
 
 # Constants
 COUCHBASE_STATS_PATH = '/pools/default'
 COUCHBASE_TASKS_PATH = '/pools/default/tasks'
 COUCHBASE_VITALS_PATH = '/admin/vitals'
 DEFAULT_TIMEOUT = 10
+CBSTATS_PATH = '/opt/couchbase/bin/cbstats'
+CBSTATS_PORT = 11210
 
 
 class Couchbase(AgentCheck):
@@ -26,6 +29,7 @@ class Couchbase(AgentCheck):
     http://docs.couchbase.com/couchbase-manual-2.0/#using-the-rest-api
     """
     SERVICE_CHECK_NAME = 'couchbase.can_connect'
+    NEEDED_NS = ('mnt', 'net')
 
     # Selected metrics to send amongst all the bucket stats, after name normalization
     BUCKET_STATS = set([
@@ -248,7 +252,7 @@ class Couchbase(AgentCheck):
 
     seconds_value_pattern = re.compile('(\d+(\.\d+)?)(\D*s)', re.UNICODE)
 
-    def _create_metrics(self, data, tags=None):
+    def _create_metrics(self, data, instance, tags=None):
         storage_totals = data['stats']['storageTotals']
         for key, storage_type in storage_totals.items():
             for metric_name, val in storage_type.items():
@@ -265,6 +269,8 @@ class Couchbase(AgentCheck):
                         metric_tags = list(tags)
                         metric_tags.append('bucket:%s' % bucket_name)
                         self.gauge(full_metric_name, val[0], tags=metric_tags, device_name=bucket_name)
+            # Collects ep_io_* metrics
+            self._collect_ep_io_metrics(instance, bucket_name, tags)
 
         for node_name, node_stats in data['nodes'].items():
             for metric_name, val in node_stats['interestingStats'].items():
@@ -337,7 +343,7 @@ class Couchbase(AgentCheck):
             tags = list(set(tags))
         tags.append('instance:%s' % server)
         data = self.get_data(server, instance)
-        self._create_metrics(data, tags=list(set(tags)))
+        self._create_metrics(data, instance, tags=list(set(tags)))
 
     def get_data(self, server, instance):
         # The dictionary to be returned.
@@ -470,3 +476,53 @@ class Couchbase(AgentCheck):
             unit = 'us'
 
         return float(val)/self.TO_SECONDS[unit]
+
+    def run_cbstats(self, instance, cmd_args):
+        """
+        This will execute cbstats command
+        :param instance: Instance app check
+        :param cmd_args: Arguments for cbstats
+        :return:
+            output - command output
+            err - error message if error occurred
+            code - status code of command
+        """
+        cbstats = instance.get('cbstats', {})
+        path = cbstats.get('path', CBSTATS_PATH)
+        port = cbstats.get('port', CBSTATS_PORT)
+        exec_cmd = '%s localhost:%s' % (path, port, )
+        if 'user' in instance and 'password' in instance:
+            exec_cmd = "%s -u %s -p %s" % (exec_cmd, instance['user'], instance['password'])
+        args = " ".join(cmd_args)
+        exec_cmd = "%s %s" % (exec_cmd, args)
+        output, err, code = get_subprocess_output([exec_cmd], self.log, shell=True)
+        return output, err, code
+
+    def _collect_ep_io_metrics(self, instance, bucket_name, tags):
+        """
+        This will collect ep_io* metrics using cbstats cmd
+        :param instance: it contains all require configuration (Instance app check)
+        :param bucket_name: Name of bucket
+        :param tags: List of values used to filter metric(Segment by)
+        :return: None
+        """
+        cmd_args = ['-b', bucket_name, 'all']
+        cbstats = instance.get('cbstats', {})
+        path = cbstats.get('path', None)
+        output, err, code = self.run_cbstats(instance, cmd_args)
+        if err and code != 0:
+            if path:
+                self.log.error("Error while executing cbstats(%s) for bucket %s: %s:%d",
+                               path, bucket_name, repr(err), code)
+            else:
+                self.log.debug("Error while executing cbstats(%s) for bucket %s: %s:%d",
+                               CBSTATS_PATH, bucket_name, repr(err), code)
+        else:
+            bucket_stats = output.split('\n')
+            for metric_data in bucket_stats:
+                if "ep_io" in metric_data and ":" in metric_data:
+                    norm_metric_name, value = metric_data.split(':')
+                    full_metric_name = '.'.join(['couchbase', 'by_bucket', norm_metric_name.strip()])
+                    metric_tags = list(tags)
+                    metric_tags.append('bucket:%s' % bucket_name)
+                    self.gauge(full_metric_name, int(value.strip()), tags=metric_tags, device_name=bucket_name)
