@@ -79,44 +79,44 @@ TEST_F(sys_call_test, process_signalfd_kill)
 				sigset_t mask;
 
 				/* We will handle SIGTERM and SIGINT. */
-				sigemptyset (&mask);
-				sigaddset (&mask, SIGTERM);
-				sigaddset (&mask, SIGINT);
+				sigemptyset(&mask);
+				sigaddset(&mask, SIGTERM);
+				sigaddset(&mask, SIGINT);
 
-				/* Block the signals thet we handle using signalfd(), so they don't
+				/* Block the signals that we handle using signalfd(), so they don't
 				 * cause signal handlers or default signal actions to execute. */
-				if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
+				if(sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
 				{
 					FAIL();
 				}
 
 				/* Create a file descriptor from which we will read the signals. */
-				sfd = signalfd (-1, &mask, 0);
-				if (sfd < 0)
+				sfd = signalfd(-1, &mask, 0);
+				if(sfd < 0)
 				{
 					FAIL();
 				}
 
-				while (true)
+				while(true)
 				{
-					/** The buffor for read(), this structure contains information
+					/** The buffer for read(), this structure contains information
 					 * about the signal we've read. */
 					struct signalfd_siginfo si;
 
 					ssize_t res;
 
-					res = read (sfd, &si, sizeof(si));
+					res = read(sfd, &si, sizeof(si));
 
-					if (res < 0)
+					if(res < 0)
 					{
 						FAIL();
 					}
-					if (res != sizeof(si))
+					if(res != sizeof(si))
 					{
 						FAIL();
 					}
 
-					if (si.ssi_signo == SIGTERM)
+					if(si.ssi_signo == SIGTERM)
 					{
 						continue;
 					}
@@ -179,7 +179,11 @@ TEST_F(sys_call_test, process_signalfd_kill)
 
 		if(type == PPME_SYSCALL_SIGNALFD_E)
 		{
+#ifdef __x86_64__
+			EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+#else
 			EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("fd", false)));
+#endif
 			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("mask")));
 			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("flags")));
 			callnum++;
