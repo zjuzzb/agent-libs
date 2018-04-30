@@ -773,6 +773,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_custom_container.set_name_pattern(m_config->get_scalar<string>("custom_container", "name", ""));
 		m_custom_container.set_image_pattern(m_config->get_scalar<string>("custom_container", "image", ""));
 		m_custom_container.set_label_pattern(m_config->get_first_deep_map<string>("custom_container", "labels"));
+		m_custom_container.set_max(m_config->get_scalar<int>("custom_container", "limit", 50));
 		m_custom_container.set_enabled(m_config->get_scalar<bool>("custom_container", "enabled", false));
 	} catch (const Poco::RuntimeException& e) {
 		throw sinsp_exception("config file error inside key custom_containers: " + e.message());

@@ -171,6 +171,17 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		return true;
 	}
 
+	if (m_num >= m_max)
+	{
+		if (!m_limit_logged)
+		{
+			g_logger.format(sinsp_logger::SEV_WARNING, "Custom container limit exceeded, ignoring new container %s of pid %lu", tinfo->m_container_id.c_str(), tinfo->m_tid);
+			m_limit_logged = true;
+		}
+		return false;
+	}
+	m_limit_logged = false;
+
 	if (m_name_pattern.empty())
 	{
 		container_info.m_name = container_info.m_id;
