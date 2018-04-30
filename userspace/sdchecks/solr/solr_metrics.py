@@ -22,7 +22,13 @@ class SolrMetrics(object):
         LIVE_NODES = 1,
         SHARDS = 2,
         REPLICA = 3,
-        DOCUMENT_COUNT =4
+        DOCUMENT_COUNT = 4,
+        BROWSE_RPS = 5,
+        SELECT_RPS = 6,
+        GET_RPS = 7,
+        QUERY_RPS = 8,
+        UPDATE_RPS = 9,
+        INDEX_SIZE = 10
 
     class Endpoint(Enum):
         LIVE_NODES = 1
@@ -33,6 +39,7 @@ class SolrMetrics(object):
         NODE = 6
         CORES_INFO = 7
         VERSION = 8
+        STATS = 9
 
     URL = {
         Endpoint.LIVE_NODES: "/solr/admin/collections?action=clusterstatus&wt=json",
@@ -41,19 +48,19 @@ class SolrMetrics(object):
         Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json"
     }
 
-    class returnValue:
+    class Metric:
         def __init__(self, name, value, tags):
             self.name = name
             self.value = value
             self.tags = tags
 
-        def get_value(self):
+        def getValue(self):
             return self.value
 
-        def get_tags(self):
+        def getTags(self):
             return self.tags
 
-        def get_name(self):
+        def getName(self):
             return self.name
 
     def __init__(self, version, instance):
@@ -63,30 +70,33 @@ class SolrMetrics(object):
         self.host = instance["host"]
 
     def check(self):
+        allRps, coresStatisticJson = self._getAllRps()
         ret = [
-            self._get_live_nodes(),
-            self._get_shards(),
-            self._get_replica(),
-            self._get_document_count()
+            self._getLiveNodes(),
+            self._getShards(),
+            self._getReplica(),
+            self._getDocumentCount(),
+            allRps,
+            self._getIndexSize(coresStatisticJson)
         ]
         return ret
 
-    def get_major_number_version(self):
+    def getMajorNumberVersion(self):
         return int(self.version[0:1])
 
     @staticmethod
-    def format_url(host, port, handler):
+    def formatUrl(host, port, handler):
         ret = "http://" + host + ":" + str(port) + handler
         return ret
 
     @staticmethod
-    def get_url(host, ports, handler):
+    def getUrl(host, ports, handler):
         found = False
         for port in ports:
             try:
                 if found is True:
                     break
-                url = SolrMetrics.format_url(host, port, handler)
+                url = SolrMetrics.formatUrl(host, port, handler)
                 data = urllib2.urlopen(url)
                 obj = json.load(data)
                 found = True
@@ -97,76 +107,76 @@ class SolrMetrics(object):
         else:
             return {}
 
-    def _get_url(self, handler):
-        return SolrMetrics.get_url(self.host, self.ports, handler)
+    def _getUrl(self, handler):
+        return SolrMetrics.getUrl(self.host, self.ports, handler)
 
-    def _get_live_nodes(self):
+    def _getLiveNodes(self):
         ret = []
-        obj = self._get_url(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
 
         if len(obj) > 0:
             try:
-                ret.append(self.returnValue(self.METRIC_NAME_ENUM.LIVE_NODES, len(obj["cluster"]["live_nodes"]), None))
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, len(obj["cluster"]["live_nodes"]), None))
             except KeyError:
                 pass
         return ret
 
-    def _get_shards(self):
+    def _getShards(self):
         ret = []
-        obj = self._get_url(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
         if len(obj) > 0:
             for collection in obj["cluster"]["collections"]:
-                num_shards = len(obj["cluster"]["collections"][collection]["shards"])
+                numShards = len(obj["cluster"]["collections"][collection]["shards"])
                 assert isinstance(collection, object)
                 tag = [self.TAG_NAME[self.Tag.COLLECTION] % collection]
-                ret.append(self.returnValue(self.METRIC_NAME_ENUM.SHARDS, num_shards, tag))
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS, numShards, tag))
         return ret
 
 
-    def _get_replica(self):
-        class replica_per_node:
+    def _getReplica(self):
+        class replicaPerNode:
             pass
 
         ret = []
-        obj = self._get_url(SolrMetrics.URL[SolrMetrics.Endpoint.REPLICA])
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.REPLICA])
         if len(obj) > 0:
             for collection in obj["cluster"]["collections"]:
                 for shard in obj["cluster"]["collections"][collection]["shards"]:
-                    replica_per_node_map = {}
+                    replicaPerNodeMap = {}
                     for replica in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
                         if obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["state"] == "active":
-                            node_name = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
-                            if replica_per_node_map.has_key(node_name):
-                                replica_per_node_map[node_name].len = replica_per_node_map[node_name].len + 1
+                            nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
+                            if replicaPerNodeMap.has_key(nodeName):
+                                replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
                             else:
-                                new_entry = replica_per_node()
-                                new_entry.len = 1
-                                new_entry.name = node_name
-                                new_entry.collection = collection
-                                new_entry.shard = shard
-                                replica_per_node_map[node_name] = new_entry
-                    for node_name in replica_per_node_map:
+                                newEntry = replicaPerNode()
+                                newEntry.len = 1
+                                newEntry.name = nodeName
+                                newEntry.collection = collection
+                                newEntry.shard = shard
+                                replicaPerNodeMap[nodeName] = newEntry
+                    for nodeName in replicaPerNodeMap:
                         tags = [
-                            self.TAG_NAME[self.Tag.NODE] % node_name,
-                            self.TAG_NAME[self.Tag.COLLECTION] % replica_per_node_map[node_name].collection,
-                            self.TAG_NAME[self.Tag.SHARD] % replica_per_node_map[node_name].shard
+                            self.TAG_NAME[self.Tag.NODE] % nodeName,
+                            self.TAG_NAME[self.Tag.COLLECTION] % replicaPerNodeMap[nodeName].collection,
+                            self.TAG_NAME[self.Tag.SHARD] % replicaPerNodeMap[nodeName].shard
                         ]
-                        ret.append(self.returnValue(self.METRIC_NAME_ENUM.REPLICA, replica_per_node_map[node_name].len, tags))
+                        ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
         return ret
 
-    def _get_document_count(self):
+    def _getDocumentCount(self):
         ret = []
-        obj = self._get_url(SolrMetrics.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
         if len(obj) > 0:
             for replica_alias in obj["status"]:
                 collection = obj["status"][replica_alias]["cloud"]["collection"]
                 shard = obj["status"][replica_alias]["cloud"]["shard"]
                 replica = obj["status"][replica_alias]["cloud"]["replica"]
-                num_docs = obj["status"][replica_alias]["index"]["numDocs"]
+                numDocs = obj["status"][replica_alias]["index"]["numDocs"]
                 tags = [
                     self.TAG_NAME[self.Tag.COLLECTION] % collection,
                     self.TAG_NAME[self.Tag.SHARD] % shard,
                     self.TAG_NAME[self.Tag.REPLICA] % replica
                 ]
-                ret.append(self.returnValue(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, num_docs, tags))
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret

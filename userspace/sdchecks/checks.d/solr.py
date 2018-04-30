@@ -17,7 +17,13 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.LIVE_NODES : "solr.live_nodes",
         SolrMetrics.METRIC_NAME_ENUM.SHARDS: "solr.shards",
         SolrMetrics.METRIC_NAME_ENUM.REPLICA: "solr.replica",
-        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT: "solr.document_count"
+        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT: "solr.document_count",
+        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS: "solr.browse.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.SELECT_RPS: "solr.select.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.GET_RPS: "solr.get.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS: "solr.query.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS: "solr.update.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE: "solr.index_size"
     }
 
     # Source
@@ -29,7 +35,7 @@ class Solr(AgentCheck):
         self.version = None
 
     def check(self, instance):
-        self._get_solr_version(instance)
+        self._getSolrVersion(instance)
 
         if int(self.version[0:1]) == 5:
             self.sMetric = Solr5(self.version, instance)
@@ -38,14 +44,14 @@ class Solr(AgentCheck):
 
         ret = self.sMetric.check()
 
-        for metric_list in ret:
-            if metric_list is not None:
-                for metric in metric_list:
-                    self.gauge(self.METRIC_NAME_MAP[metric.get_name()], metric.get_value(), metric.get_tags())
+        for metricList in ret:
+            if metricList is not None:
+                for metric in metricList:
+                    self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
 
-    def _get_solr_version(self, instance):
+    def _getSolrVersion(self, instance):
         if self.version == None:
-            obj = SolrMetrics.get_url(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+            obj = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
             if len(obj) > 0:
                 self.version = obj["lucene"]["solr-spec-version"]
                 assert int(self.version[0:1]) >= 4
