@@ -623,6 +623,7 @@ enum container_type {
     LIBVIRT_LXC = 3;
     MESOS = 4;
     RKT = 5;
+    CUSTOM = 6;
 }
 
 message container_port_mapping {
