@@ -73,7 +73,7 @@ protected:
 
 class subst_template {
 public:
-	subst_template() : m_valid(true)
+	subst_template()
 	{
 	}
 
@@ -81,8 +81,6 @@ public:
 	{
 		parse(pattern);
 	}
-
-	bool valid() const { return m_valid; }
 
 	void render(std::string& out, const render_context& ctx) const
 	{
@@ -92,10 +90,14 @@ public:
 		}
 	}
 
+	bool empty() const
+	{
+		return m_tokens.empty();
+	}
+
 protected:
 	void parse(const std::string& pattern);
 
-	bool m_valid = false;
 	std::vector<subst_token> m_tokens;
 };
 

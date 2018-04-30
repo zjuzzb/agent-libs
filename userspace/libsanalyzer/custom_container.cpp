@@ -47,7 +47,6 @@ void custom_container::subst_template::parse(const string& pattern)
 
 		pos = end_tag + 1;
 	}
-	m_valid = true;
 }
 
 bool custom_container::resolver::match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx)
@@ -132,11 +131,24 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		return true;
 	}
 
-	try {
-		m_name_pattern.render(container_info.m_name, render_ctx);
-	} catch (const Poco::RuntimeException& e) {
-		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container name due to error in configuration: %s", e.message().c_str());
-		m_name_pattern = custom_container::subst_template("");
+	if (m_name_pattern.empty())
+	{
+		container_info.m_name = container_info.m_id;
+	}
+	else
+	{
+		try {
+			m_name_pattern.render(container_info.m_name, render_ctx);
+			if (container_info.m_name.empty())
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING, "Custom container of pid %lu returned an empty name, assuming it's not a match", tinfo->m_tid);
+				return false;
+			}
+		} catch (const Poco::RuntimeException& e) {
+			g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container name due to error in configuration: %s", e.message().c_str());
+			m_name_pattern = custom_container::subst_template();
+			container_info.m_name = container_info.m_id;
+		}
 	}
 
 	try {
