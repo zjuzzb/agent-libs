@@ -7,6 +7,39 @@
 
 using namespace std;
 
+void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
+{
+	if (m_capture_id < 0)
+	{
+		out.append(m_var_name);
+		return;
+	}
+
+	const auto it = ctx.find(m_var_name);
+	if (it == ctx.end())
+	{
+		if (m_var_name != "cgroup" && m_capture_id == 0)
+		{
+			for (const auto& env_it : env)
+			{
+				auto pos = env_it.find(m_var_name + '=');
+				if (pos != 0)
+				{
+					continue;
+				}
+				auto value = env_it.substr(m_var_name.length()+1, std::string::npos);
+				out.append(value);
+				return;
+			}
+			// no matching env var, substitute an empty string
+			return;
+		}
+		throw Poco::RuntimeException("Could not find match named " + m_var_name + ", if this is not a typo, please add it to custom_containers.environ_match");
+	}
+
+	it->second.render(out, m_capture_id);
+}
+
 void custom_container::subst_template::parse(const string& pattern)
 {
 	size_t pos = 0;
@@ -117,8 +150,10 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		return false;
 	}
 
+	auto env = tinfo->get_env();
+
 	try {
-		m_id_pattern.render(container_info.m_id, render_ctx);
+		m_id_pattern.render(container_info.m_id, render_ctx, env);
 	} catch (const Poco::RuntimeException& e) {
 		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container support due to error in configuration: %s", e.message().c_str());
 		set_enabled(false);
@@ -143,7 +178,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	else
 	{
 		try {
-			m_name_pattern.render(container_info.m_name, render_ctx);
+			m_name_pattern.render(container_info.m_name, render_ctx, env);
 			if (container_info.m_name.empty())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "Custom container of pid %lu returned an empty name, assuming it's not a match", tinfo->m_tid);
@@ -157,7 +192,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	}
 
 	try {
-		m_image_pattern.render(container_info.m_image, render_ctx);
+		m_image_pattern.render(container_info.m_image, render_ctx, env);
 	} catch (const Poco::RuntimeException& e) {
 		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container image due to error in configuration: %s", e.message().c_str());
 		m_image_pattern = custom_container::subst_template();
@@ -169,7 +204,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		try {
 			string s;
-			it->second.render(s, render_ctx);
+			it->second.render(s, render_ctx, env);
 			if (!s.empty())
 			{
 				container_info.m_labels.emplace(it->first, move(s));

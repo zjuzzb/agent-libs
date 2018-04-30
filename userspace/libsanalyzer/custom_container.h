@@ -48,22 +48,7 @@ public:
 	{
 	}
 
-	void render(std::string& out, const render_context& ctx) const
-	{
-		if (m_capture_id < 0)
-		{
-			out.append(m_var_name);
-			return;
-		}
-
-		const auto it = ctx.find(m_var_name);
-		if (it == ctx.end())
-		{
-			throw Poco::RuntimeException("Could not find match named " + m_var_name + ", if this is not a typo, please add it to custom_containers.environ_match");
-		}
-
-		it->second.render(out, m_capture_id);
-	}
+	void render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const;
 
 protected:
 	std::string m_var_name;
@@ -82,11 +67,11 @@ public:
 		parse(pattern);
 	}
 
-	void render(std::string& out, const render_context& ctx) const
+	void render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
 	{
 		for (const auto& tok: m_tokens)
 		{
-			tok.render(out, ctx);
+			tok.render(out, ctx, env);
 		}
 	}
 
