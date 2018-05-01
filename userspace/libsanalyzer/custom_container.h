@@ -54,6 +54,12 @@ public:
 
 	void render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const;
 
+	bool operator==(const subst_token& other) const
+	{
+		return m_capture_id == other.m_capture_id &&
+			m_var_name == other.m_var_name;
+	}
+
 protected:
 	std::string m_var_name;
 	int m_capture_id = 0; // -1 means use var_name itself as expansion
@@ -82,6 +88,12 @@ public:
 	bool empty() const
 	{
 		return m_tokens.empty();
+	}
+
+VISIBILITY_PRIVATE
+	const std::vector<subst_token>& get_tokens() const
+	{
+		return m_tokens;
 	}
 
 protected:

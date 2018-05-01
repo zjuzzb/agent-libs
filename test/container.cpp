@@ -395,6 +395,299 @@ TEST_F(sys_call_test, container_docker)
 	ASSERT_TRUE(done);
 }
 
+TEST_F(sys_call_test, container_custom)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container"});
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_custom_env_match)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container"});
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+			{ "CUSTOM_CONTAINER_NAME",  "custom_(.*)" },
+		});
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_custom_env_match_last)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container"});
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+			{ "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
+		});
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_custom_env_match_all)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container"});
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+			{ "CUSTOM_CONTAINER_NAME",  "custom_(.*)" },
+			{ "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" }
+		});
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_custom_env_match_flipped)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container"});
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+			{ "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
+			{ "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
+		});
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
 TEST_F(sys_call_test, container_rkt_after)
 {
 	bool done = false;
