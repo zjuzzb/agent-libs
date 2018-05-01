@@ -49,6 +49,7 @@ void custom_container::subst_template::parse(const string& pattern)
 	while (pos < pattern.length())
 	{
 		size_t start_tag = pattern.find('<', pos);
+
 		if (start_tag > pos || start_tag == string::npos)
 		{
 			// a static string, outside <> markers
@@ -116,6 +117,7 @@ bool custom_container::resolver::match_cgroup(sinsp_threadinfo* tinfo, render_co
 	{
 		return true;
 	}
+
 	for(const auto& it : tinfo->m_cgroups)
 	{
 		string cgroup = it.second;
@@ -227,6 +229,18 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
 	clean_label(container_info.m_id);
 
+	if (m_config_test && tinfo->is_main_thread())
+	{
+		string cmd = tinfo->m_comm;
+
+		for (const auto& arg : tinfo->m_args)
+		{
+			cmd += " " + arg;
+		}
+
+		m_dump[container_info.m_id]["processes"][tinfo->m_tid] = cmd;
+	}
+
 	tinfo->m_container_id = container_info.m_id;
 	if (manager->container_exists(container_info.m_id))
 	{
@@ -271,7 +285,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	} catch (const Poco::RuntimeException& e) {
 		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container image due to error in configuration: %s", e.message().c_str());
 		m_image_pattern = custom_container::subst_template();
-		container_info.m_image = container_info.m_id;
+		container_info.m_image = "";
 	}
 
 	auto it = m_label_patterns.begin();
@@ -293,7 +307,45 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		++it;
 	}
 
+	if (m_config_test)
+	{
+		m_dump[container_info.m_id]["name"] = container_info.m_name;;
+		if (!container_info.m_image.empty())
+		{
+			m_dump[container_info.m_id]["image"] = container_info.m_image;
+		}
+		if (!container_info.m_labels.empty())
+		{
+			m_dump[container_info.m_id]["labels"] = container_info.m_labels;
+		}
+	}
+
 	manager->add_container(container_info, tinfo);
 	manager->notify_new_container(container_info);
 	return true;
+}
+
+void custom_container::resolver::dump_container_table()
+{
+	YAML::Emitter out;
+	out << YAML::BeginMap;
+	out << YAML::Key << "custom_containers";
+	out << YAML::Value << YAML::BeginMap;
+
+	for (const auto& it : m_dump)
+	{
+		out << YAML::Key << it.first;
+		out << YAML::Value << YAML::BeginMap;
+
+		if (it.second["name"]) out << YAML::Key << "name" << YAML::Value << it.second["name"];
+		if (it.second["image"]) out << YAML::Key << "image" << YAML::Value << it.second["image"];
+		if (it.second["labels"]) out << YAML::Key << "labels" << YAML::Value << it.second["labels"];
+		if (it.second["processes"]) out << YAML::Key << "processes" << YAML::Value << it.second["processes"];
+
+		out << YAML::EndMap;
+	}
+
+	out << YAML::EndMap;
+	out << YAML::EndMap;
+	cerr << out.c_str() << '\n';
 }

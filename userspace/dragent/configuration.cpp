@@ -197,6 +197,7 @@ dragent_configuration::dragent_configuration()
 	m_min_console_priority = (Message::Priority) -1;
 	m_min_event_priority = (Message::Priority) -1;
 	m_evtcnt = 0;
+	m_config_test = false;
 	m_subsampling_ratio = 1;
 	m_autodrop_enabled = false;
 	m_falco_baselining_enabled = false;

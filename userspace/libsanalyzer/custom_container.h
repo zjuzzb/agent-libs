@@ -197,11 +197,19 @@ public:
 		m_max_id_length = max;
 	}
 
+	void set_config_test(bool config_test)
+	{
+		m_config_test = config_test;
+	}
+
 	bool resolve(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info);
+
+	void dump_container_table();
 
 protected:
 	bool m_enabled = false;
 	bool m_limit_logged = false;
+	bool m_config_test = false;
 	int m_num = 0;
 	int m_max = 0;
 	int m_max_id_length = 0;
@@ -219,6 +227,8 @@ protected:
 	void clean_label(std::string& val);
 
 	match m_hostname;
+
+	YAML::Node m_dump;
 };
 
 

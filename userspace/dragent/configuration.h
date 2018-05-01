@@ -600,6 +600,7 @@ public:
 	string m_dump_dir;
 	string m_input_filename;
 	uint64_t m_evtcnt;
+	bool m_config_test;
 
 	// parameters used by cpu usage tuning
 	uint32_t m_subsampling_ratio;

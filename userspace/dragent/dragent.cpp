@@ -101,6 +101,11 @@ void dragent_app::defineOptions(OptionSet& options)
 			.repeatable(false));
 
 	options.addOption(
+		Option("configtest", "t", "test config file and exit.")
+			.required(false)
+			.repeatable(false));
+
+	options.addOption(
 		Option("consolepriority", "", "min priority of the log messages that go on console. Can be 'error', 'warning', 'info' or 'debug'.")
 			.required(false)
 			.repeatable(false)
@@ -184,6 +189,15 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	else if(name == "evtcount")
 	{
 		m_configuration.m_evtcnt = NumberParser::parse64(value);
+	}
+	else if(name == "configtest")
+	{
+		m_configuration.m_cointerface_enabled = false;
+		m_configuration.m_system_supports_containers = false;
+		m_configuration.m_app_checks_enabled = false;
+		m_configuration.m_statsd_enabled = false;
+		m_configuration.m_sdjagent_enabled = false;
+		m_configuration.m_config_test = true;
 	}
 	else if(name == "customerid")
 	{
@@ -611,8 +625,11 @@ int dragent_app::sdagent_main()
 
 	ExitCode exit_code;
 
-	ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
-	ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+	if (!m_configuration.m_config_test)
+	{
+		ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
+		ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+	}
 	try {
 		m_sinsp_worker.init();
 	}

@@ -489,6 +489,13 @@ public:
 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
 	}
 
+	void dump_config_test()
+	{
+#ifndef CYGWING_AGENT
+		m_custom_container.dump_container_table();
+#endif
+	}
+
 #ifndef CYGWING_AGENT
 	void init_k8s_limits();
 #endif
