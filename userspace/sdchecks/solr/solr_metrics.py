@@ -12,10 +12,10 @@ class SolrMetrics(object):
         REPLICA = 4
 
     TAG_NAME = {
-        Tag.COLLECTION: "solr.collection:%s",
-        Tag.REPLICA: "solr.replica:%s",
-        Tag.NODE: "solr.node:%s",
-        Tag.SHARD: "solr.shard:%s"
+        Tag.COLLECTION: "solr.tag.collection:%s",
+        Tag.REPLICA: "solr.tag.replica:%s",
+        Tag.NODE: "solr.tag.node:%s",
+        Tag.SHARD: "solr.tag.shard:%s"
     }
 
     class METRIC_NAME_ENUM(Enum):
