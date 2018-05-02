@@ -114,6 +114,13 @@ class Solr5(SolrMetrics):
             self.TAG_NAME[self.Tag.SHARD] % shard,
             self.TAG_NAME[self.Tag.REPLICA] % replica
         ]
-        sizeInBytes, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")
-        ret = self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE, int(sizeInBytes), tags)
+        size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")
+        if unit == "KB":
+            sizeInBytes = float(size) * 1000
+        elif unit == "MB":
+            sizeInBytes = float(size) * 1000000
+        else:
+            sizeInBytes = float(size)
+
+        ret = self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE, sizeInBytes, tags)
         return ret
