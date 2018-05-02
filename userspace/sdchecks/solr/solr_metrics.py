@@ -28,7 +28,12 @@ class SolrMetrics(object):
         GET_RPS = 7,
         QUERY_RPS = 8,
         UPDATE_RPS = 9,
-        INDEX_SIZE = 10
+        INDEX_SIZE = 10,
+        BROWSE_RT = 11,
+        SELECT_RT = 12,
+        GET_RT = 13,
+        QUERY_RT = 14,
+        UPDATE_RT = 15
 
     class Endpoint(Enum):
         LIVE_NODES = 1
@@ -70,7 +75,7 @@ class SolrMetrics(object):
         self.host = instance["host"]
 
     def check(self):
-        allRps, coresStatisticJson = self._getAllRps()
+        allRps, coresStatisticJson = self._getAllRpsAndRequestTime()
         ret = [
             self._getLiveNodes(),
             self._getShards(),

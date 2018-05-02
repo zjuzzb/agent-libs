@@ -48,7 +48,7 @@ class Solr5(SolrMetrics):
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret
 
-    def _getAllRps(self):
+    def _getAllRpsAndRequestTime(self):
         ret = []
         coresStatistic = self._getStats()
         for coreStat in coresStatistic:
@@ -59,7 +59,7 @@ class Solr5(SolrMetrics):
                 self.TAG_NAME[self.Tag.SHARD] % shard,
                 self.TAG_NAME[self.Tag.REPLICA] % replica
             ]
-            all_rps = self._getFromCoreRps(coreStat.data)
+            all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
                 ret.append(self.Metric(rps.metricName, rps.value, tags))
         return ret, coresStatistic
@@ -88,7 +88,7 @@ class Solr5(SolrMetrics):
     def _getSingleCoreStats(self, url):
         return self._getUrl(url)
 
-    def _getFromCoreRps(self, obj):
+    def _getFromCoreRpsAndRequestTime(self, obj):
         arr = []
 
         # in solr 5, a map has been implemented as an array in which
@@ -102,10 +102,19 @@ class Solr5(SolrMetrics):
         arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.GET_RPS, "/get", queryHandlerObj))
         arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS, "/query", queryHandlerObj))
         arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS, "/update", queryHandlerObj))
+
+        arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT, "/browse", queryHandlerObj))
+        arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.SELECT_RT, "/select", queryHandlerObj))
+        arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.GET_RT, "/get", queryHandlerObj))
+        arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_RT, "/query", queryHandlerObj))
+        arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT, "/update", queryHandlerObj))
         return arr
 
     def _getSingleRps(self, metricEnumValue, keyString, queryHandlerObj):
         return self.RpsMetric(metricEnumValue, queryHandlerObj[keyString]["stats"]["avgRequestsPerSecond"])
+
+    def _getSingleRequestTime(self, metricEnumValue, keyString, queryHandlerObj):
+        return self.RpsMetric(metricEnumValue, float(queryHandlerObj[keyString]["stats"]["avgTimePerRequest"]))
 
     def _getFromCoreIndexSize(self, coreStatistic ):
         collection, shard, replica = split(coreStatistic.coreName, "_")

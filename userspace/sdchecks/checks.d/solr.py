@@ -23,6 +23,11 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.GET_RPS: "solr.get.request_per_second",
         SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS: "solr.query.request_per_second",
         SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS: "solr.update.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT: "solr.browse.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.SELECT_RT: "solr.select.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.GET_RT: "solr.get.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.QUERY_RT: "solr.query.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT: "solr.update.request_time",
         SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE: "solr.index_size"
     }
 
