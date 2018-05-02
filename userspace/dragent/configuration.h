@@ -716,8 +716,8 @@ public:
 	uint32_t m_orch_low_evt_threshold;
 	bool m_orch_filter_empty;
 
-	int m_max_n_proc_lookups;
-	int m_max_n_proc_socket_lookups;
+	int32_t m_max_n_proc_lookups;
+	int32_t m_max_n_proc_socket_lookups;
 
 	bool java_present() const
 	{
