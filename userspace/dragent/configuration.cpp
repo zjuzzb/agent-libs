@@ -767,13 +767,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	// custom container engines
 	try {
-		m_custom_container.set_enabled(m_config->get_scalar<bool>("custom_container", "enabled", false));
 		m_custom_container.set_cgroup_match(m_config->get_scalar<string>("custom_container", "match", "cgroup", ""));
 		m_custom_container.set_environ_match(m_config->get_first_deep_map<string>("custom_container", "match", "environ"));
 		m_custom_container.set_id_pattern(m_config->get_scalar<string>("custom_container", "id", ""));
 		m_custom_container.set_name_pattern(m_config->get_scalar<string>("custom_container", "name", ""));
 		m_custom_container.set_image_pattern(m_config->get_scalar<string>("custom_container", "image", ""));
 		m_custom_container.set_label_pattern(m_config->get_first_deep_map<string>("custom_container", "labels"));
+		m_custom_container.set_enabled(m_config->get_scalar<bool>("custom_container", "enabled", false));
 	} catch (const Poco::RuntimeException& e) {
 		throw sinsp_exception("config file error inside key custom_containers: " + e.message());
 	}

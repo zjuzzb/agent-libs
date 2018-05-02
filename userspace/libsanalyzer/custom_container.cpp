@@ -124,6 +124,11 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		set_enabled(false);
 		return false;
 	}
+	if (container_info.m_id.empty())
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
+		return false;
+	}
 
 	tinfo->m_container_id = container_info.m_id;
 	if (manager->container_exists(container_info.m_id))

@@ -105,6 +105,10 @@ class resolver {
 public:
 	void set_enabled(bool enabled)
 	{
+		if (enabled && m_id_pattern.empty())
+		{
+			throw Poco::RuntimeException("Custom containers enabled without custom_containers.id template set");
+		}
 		m_enabled = enabled;
 	}
 
