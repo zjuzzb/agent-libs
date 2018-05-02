@@ -76,7 +76,7 @@ class Solr5(SolrMetrics):
         ret = []
         self._getCores()
         for core in self.cores:
-            element = CoreStat
+            element = CoreStat()
             element.coreName = core
             element.data = self._getSingleCoreStats(self._generateUrl(core))
             ret.append(element)
