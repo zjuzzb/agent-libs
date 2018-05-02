@@ -553,48 +553,6 @@ jmx:
               alias: hbase.region.server.store.index.file.size
     elasticsearch:
       pattern: "elasticsearch"
-    solr:
-      pattern: "start.jar"
-      beans:
-        - query: "solr:dom1=core,category=QUERY,scope=/select,name=requestTimes,*"
-          attributes:
-            - name: Mean
-              type: gauge
-              unit: ms
-              alias: solr.select_time
-              segment_by:
-                - key: solr.jmx.collection
-                  value: dom2
-                - key: solr.jmx.shard
-                  value: dom3
-                - key: solr.jmx.replica
-                  value: dom4
-        - query: "solr:dom1=core,category=UPDATE,scope=/update,name=requestTimes,*"
-          attributes:
-            - name: Mean
-              type: gauge
-              unit: ms
-              alias: solr.update_time
-              segment_by:
-                - key: solr.jmx.collection
-                  value: dom2
-                - key: solr.jmx.shard
-                  value: dom3
-                - key: solr.jmx.replica
-                  value: dom4
-        - query: "solr:dom1=core,category=INDEX,name=sizeInBytes,*"
-          attributes:
-            - name: Value
-              type: gauge
-              alias: solr.index_size
-              unit: B
-              segment_by:
-                - key: solr.jmx.collection
-                  value: dom2
-                - key: solr.jmx.shard
-                  value: dom3
-                - key: solr.jmx.replica
-                  value: dom4
 prometheus:
   enabled: false
   interval: 10
