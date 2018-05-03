@@ -43,8 +43,7 @@ class Solr5(SolrMetrics):
                     numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
                     tags = [
                         self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                        self.TAG_NAME[self.Tag.SHARD] % shard,
-                        self.TAG_NAME[self.Tag.REPLICA] % replica
+                        self.TAG_NAME[self.Tag.CORE] % replicaAlias
                     ]
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret
@@ -57,8 +56,7 @@ class Solr5(SolrMetrics):
             collection, shard, replica = split(coreStat.coreName, "_")
             tags = [
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.SHARD] % shard,
-                self.TAG_NAME[self.Tag.REPLICA] % replica
+                self.TAG_NAME[self.Tag.CORE] % coreStat.coreName
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
@@ -121,8 +119,7 @@ class Solr5(SolrMetrics):
         collection, shard, replica = split(coreStatistic.coreName, "_")
         tags = [
             self.TAG_NAME[self.Tag.COLLECTION] % collection,
-            self.TAG_NAME[self.Tag.SHARD] % shard,
-            self.TAG_NAME[self.Tag.REPLICA] % replica
+            self.TAG_NAME[self.Tag.CORE] % coreStatistic.coreName
         ]
         size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")
         if unit == "KB":
