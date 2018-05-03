@@ -166,6 +166,8 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 }
 
 func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+	filterEmpty := opts.GetFilterEmpty()
+
 	for resource, ok := range compatibilityMap {
 		if !ok {
 			continue
@@ -194,9 +196,9 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 		case "pods":
 			startPodsSInformer(ctx, kubeClient, wg, evtc)
 		case "replicasets":
-			startReplicaSetsSInformer(ctx, kubeClient, wg, evtc)
+			startReplicaSetsSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
 		case "replicationcontrollers":
-			startReplicationControllersSInformer(ctx, kubeClient, wg, evtc)
+			startReplicationControllersSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
 		case "resourcequotas":
 			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
 		case "services":
@@ -431,6 +433,10 @@ func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 }
 
 func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
+	if !prometheus_enabled {
+		return true
+	}
+
 	left := lhs.GetAnnotations()
 	right := rhs.GetAnnotations()
 	if (len(left) != len(right)) {

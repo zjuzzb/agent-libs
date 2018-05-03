@@ -97,11 +97,6 @@ public:
 	// returns the stolen percentage of total cpu usage
 	uint64_t global_steal_pct();
 
-	//
-	// Scans /proc lightly to retrieve just the list of processes that are alive
-	//
-	void get_tid_list(OUT set<uint64_t>* tids);
-
 	vector<string> read_process_cmdline(uint64_t pid);
 	string read_process_name(uint64_t pid);
 	int64_t read_cgroup_used_memory(const string& container_memory_cgroup);

@@ -32,7 +32,7 @@ def get_subprocess_output(command, log, shell=False, stdin=None):
         err = stderr_f.read()
         if err:
             log.debug("Error while running {0} : {1}".format(" ".join(command),
-                                                             err))
+                                                             repr(err)))
 
         stdout_f.seek(0)
         output = stdout_f.read()

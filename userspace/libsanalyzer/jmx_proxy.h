@@ -37,6 +37,7 @@ private:
 	uint16_t m_scale;
 	uint16_t m_type;
 	subattribute_list_t m_subattributes;
+	std::map<std::string, std::string> m_segment_by;
 };
 
 class java_bean {
@@ -92,7 +93,7 @@ public:
 	}
 
 	unsigned int to_protobuf(draiosproto::java_info *protobuf, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const;
-	
+
 	unsigned total_metrics() const
 	{
 		return m_total_metrics;

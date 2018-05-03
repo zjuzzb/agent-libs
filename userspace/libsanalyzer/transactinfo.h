@@ -5,6 +5,10 @@
 #include <stack>
 #include <stdexcept>
 
+#ifdef CYGWING_AGENT
+#define SINSP_PUBLIC
+#endif
+
 class copyexcept : public std::runtime_error {
 public:
     copyexcept(const string& message) 

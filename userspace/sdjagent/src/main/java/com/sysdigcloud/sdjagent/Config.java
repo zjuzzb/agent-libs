@@ -3,6 +3,7 @@ package com.sysdigcloud.sdjagent;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import javax.management.MalformedObjectNameException;
@@ -92,11 +93,14 @@ public class Config {
         private ObjectName objectName;
         private BeanAttribute[] attributes;
 
-        @JsonCreator
-        @SuppressWarnings("unused")
-        private BeanQuery(@JsonProperty("query") String query, @JsonProperty("attributes") BeanAttribute[] attributes) throws
-                MalformedObjectNameException {
+        @JsonSetter("query")
+        public void setQuery(String query) throws
+                MalformedObjectNameException{
             this.objectName = new ObjectName(query);
+        }
+
+        @JsonSetter("attributes")
+        public void setAttributes(BeanAttribute[] attributes){
             this.attributes = attributes;
         }
 
@@ -235,6 +239,7 @@ public class Config {
         private Unit unit;
         private Scale scale;
         private String alias;
+        private Map<String,String> segmentBy;
 
         @JsonCreator
         @SuppressWarnings("unused")
@@ -242,6 +247,7 @@ public class Config {
             this.type = Type.gauge;
             this.unit = Unit.NONE;
             this.scale = Scale.NONE;
+            this.segmentBy = new HashMap<String, String>();
             if(data.isTextual()) {
                 this.name = data.textValue();
             } else if (data.isObject()) {
@@ -264,6 +270,14 @@ public class Config {
 
                 if (data.has("alias")) {
                     this.alias = data.get("alias").textValue();
+                }
+
+                if(data.has("segment_by")){
+                    final JsonNode seg = data.get("segment_by");
+
+                    for(JsonNode el : seg){
+                        segmentBy.put(el.get("key").asText(), el.get("value").asText());
+                    }
                 }
             }
         }
@@ -288,6 +302,10 @@ public class Config {
 
         public String getAlias() {
             return alias;
+        }
+
+        public Map<String,String> getSegmentBy(){
+            return segmentBy;
         }
     }
 }

@@ -151,48 +151,88 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 	}
 }
 
-func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
 	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
-		watchReplicaSets(evtc)
+		watchReplicaSets(evtc, filterEmpty)
 		replicaSetInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
+func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
 	log.Debugf("In WatchReplicaSets()")
 
 	replicaSetInf.AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("replicasets")
-				evtc <- replicaSetEvent(obj.(*v1beta1.ReplicaSet),
+
+				rs := obj.(*v1beta1.ReplicaSet)
+				if filterEmpty && rs.Spec.Replicas != nil && *rs.Spec.Replicas == 0 {
+					return
+				}
+
+				evtc <- replicaSetEvent(rs,
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldReplicaSet := oldObj.(*v1beta1.ReplicaSet)
-				newReplicaSet := newObj.(*v1beta1.ReplicaSet)
-				if oldReplicaSet.GetResourceVersion() != newReplicaSet.GetResourceVersion() {
-					sameEntity, sameLinks := replicaSetEquals(oldReplicaSet, newReplicaSet)
+				oldRS := oldObj.(*v1beta1.ReplicaSet)
+				newRS := newObj.(*v1beta1.ReplicaSet)
+				if oldRS.GetResourceVersion() == newRS.GetResourceVersion() {
+					return
+				}
+
+				// 1 is default if Spec.Replicas is nil
+				var newReplicas int32 = 1
+				if newRS.Spec.Replicas != nil {
+					newReplicas = *newRS.Spec.Replicas
+				}
+				var oldReplicas int32 = 1
+				if oldRS.Spec.Replicas != nil {
+					oldReplicas = *oldRS.Spec.Replicas
+				}
+
+				if filterEmpty && oldReplicas == 0 && newReplicas == 0 {
+					return
+				} else if filterEmpty && oldReplicas == 0 && newReplicas > 0 {
+					evtc <- replicaSetEvent(newRS,
+						draiosproto.CongroupEventType_ADDED.Enum(), true)
+					return
+				} else if filterEmpty && oldReplicas > 0 && newReplicas == 0 {
+					evtc <- draiosproto.CongroupUpdateEvent {
+						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
+						Object: &draiosproto.ContainerGroup{
+							Uid: &draiosproto.CongroupUid{
+								Kind:proto.String("k8s_replicaset"),
+								Id:proto.String(string(newRS.GetUID()))},
+						},
+					}
+					return
+				} else {
+					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
 					if !sameEntity || !sameLinks {
-						evtc <- replicaSetEvent(newReplicaSet,
+						evtc <- replicaSetEvent(newRS,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
 					}
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldReplicaSet := obj.(*v1beta1.ReplicaSet)
+				rs := obj.(*v1beta1.ReplicaSet)
+				if filterEmpty && rs.Spec.Replicas != nil && *rs.Spec.Replicas == 0 {
+					return
+				}
+
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
 						Uid: &draiosproto.CongroupUid{
 							Kind:proto.String("k8s_replicaset"),
-							Id:proto.String(string(oldReplicaSet.GetUID()))},
+							Id:proto.String(string(rs.GetUID()))},
 					},
 				}
 			},

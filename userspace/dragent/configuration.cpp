@@ -789,7 +789,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
-	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 50);
+	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 100);
 	m_container_patterns = m_config->get_scalar<vector<string>>("containers", "include", {});
 	auto known_server_ports = m_config->get_merged_sequence<uint16_t>("known_ports");
 	for(auto p : known_server_ports)
@@ -1033,6 +1033,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_orch_tick_interval_ms = m_config->get_scalar<uint32_t>("orch_tick_interval_ms", 100);
 	m_orch_low_ticks_needed = m_config->get_scalar<uint32_t>("orch_low_ticks_needed", 10);
 	m_orch_low_evt_threshold = m_config->get_scalar<uint32_t>("orch_low_evt_threshold", 50);
+	m_orch_filter_empty = m_config->get_scalar<bool>("orch_filter_empty", true);
+
+	m_max_n_proc_lookups = m_config->get_scalar<int>("max_n_proc_lookups", 5);
+	m_max_n_proc_socket_lookups = m_config->get_scalar<int>("max_n_proc_socket_lookups", 3);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1392,6 +1396,9 @@ void dragent_configuration::print_configuration() const
 	g_log->information("Orch events tick interval (ms): " + to_string(m_orch_tick_interval_ms));
 	g_log->information("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
 	g_log->information("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
+	g_log->information("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
+
+	g_log->information("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
@@ -1579,7 +1586,11 @@ void dragent_configuration::refresh_machine_id()
 	// NOTE: Environment::nodeId() is buggy in cygwin poco, and returns
 	//       00:00:00:00:00:00. As a workaround we provide our own implementation.
 	//
-	m_machine_id = windows_helpers::get_machine_first_mac_address();
+	m_machine_id = windows_helpers::get_machine_uid();
+	if(m_machine_id == "")
+	{
+		throw sinsp_exception("cannot gather machine ID");
+	}
 #endif
 }
 

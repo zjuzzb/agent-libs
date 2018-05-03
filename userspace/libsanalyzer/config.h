@@ -220,6 +220,8 @@ public:
 	void set_orch_low_ticks_needed(uint32_t low_ticks_needed);
 	uint32_t get_orch_low_evt_threshold() const;
 	void set_orch_low_evt_threshold(uint32_t low_evt_threshold);
+	bool get_orch_filter_empty() const;
+	void set_orch_filter_empty(bool filter_empty);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -332,6 +334,7 @@ private:
 	uint32_t m_orch_tick_interval_ms;
 	uint32_t m_orch_low_ticks_needed;
 	uint32_t m_orch_low_evt_threshold;
+	bool m_orch_filter_empty;
 };
 
 #endif // HAS_ANALYZER

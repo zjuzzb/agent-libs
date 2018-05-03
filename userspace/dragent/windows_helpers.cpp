@@ -9,6 +9,7 @@ using namespace std;
 #include "Poco/File.h"
 #include "Poco/Path.h"
 #include "windows_helpers.h"
+
 using namespace Poco;
 
 string windows_helpers::get_machine_first_mac_address()
@@ -23,7 +24,7 @@ string windows_helpers::get_machine_first_mac_address()
         return "00:00:00:00:00:00";
     }
 
-    // Make an initial call to GetAdaptersInfo to get the necessary size into the dwBufLen     variable
+    // Make an initial call to GetAdaptersInfo to get the necessary size into the dwBufLen variable
     if(GetAdaptersInfo(AdapterInfo, &dwBufLen) == ERROR_BUFFER_OVERFLOW) 
     {
         free(AdapterInfo);
@@ -96,4 +97,27 @@ bool windows_helpers::is_parent_service_running()
 	}
 
 	return false;
+}
+
+string windows_helpers::get_machine_uid()
+{
+	HKEY hKey;
+	LONG lRes = RegOpenKeyEx(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\", 0, KEY_READ, &hKey);
+
+	if(lRes != ERROR_SUCCESS)
+	{
+		return "";
+	}
+
+	CHAR szBuffer[512];
+	DWORD dwBufferSize = sizeof(szBuffer);
+	ULONG nError;
+	nError = RegQueryValueEx(hKey, "ProductId", 0, NULL, (LPBYTE)szBuffer, &dwBufferSize);
+	RegCloseKey(hKey);
+	if(nError != ERROR_SUCCESS)
+	{
+		return "";
+	}
+
+	return szBuffer;
 }

@@ -349,6 +349,10 @@ message jmx_attribute {
     optional unit unit = 8;
     optional scale scale = 9;
     repeated jmx_attribute subattributes = 3;
+    // segment_by is a key-value pair
+    // let's use statsd_tag that is an already defined
+    // structure
+    repeated statsd_tag segment_by = 10;
 }
 
 message jmx_bean {

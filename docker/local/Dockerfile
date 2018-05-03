@@ -33,7 +33,12 @@ RUN apt-get update \
 
 # Since our base Debian image ships with GCC 7 which breaks older kernels, revert the
 # default to gcc-5.
-RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc
+# Older distributions of Debian use hardcoded versions of gcc in the kernel Makefile. We
+# pretend to have them by creating symlinks to our default gcc.
+# 4.9 is required for Debian Jessie+backports and 4.8 is required for Debian Jessie.
+RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc \
+ && ln -s /usr/bin/gcc /usr/bin/gcc-4.9 \
+ && ln -s /usr/bin/gcc /usr/bin/gcc-4.8
 
 RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
