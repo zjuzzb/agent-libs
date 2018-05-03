@@ -1,6 +1,10 @@
 import json
 import urllib2
+from urlparse import urlparse
+
 from enum import Enum
+
+from utils.network import Network
 
 
 class SolrMetrics(object):
@@ -33,7 +37,8 @@ class SolrMetrics(object):
         SELECT_RT = 12,
         GET_RT = 13,
         QUERY_RT = 14,
-        UPDATE_RT = 15
+        UPDATE_RT = 15,
+        TOTAL_NUMBER_OF_SHARDS = 16
 
     class Endpoint(Enum):
         LIVE_NODES = 1
@@ -73,8 +78,13 @@ class SolrMetrics(object):
         self.instance = instance
         self.ports = instance["ports"]
         self.host = instance["host"]
+        self.network = Network()
+        self.localCores = set()
+        self._findLocalCores()
 
     def check(self):
+        # This should be run just once in a while
+        self._findLocalCores()
         allRps, coresStatisticJson = self._getAllRpsAndRequestTime()
         ret = [
             self._getLiveNodes(),
@@ -121,20 +131,34 @@ class SolrMetrics(object):
 
         if len(obj) > 0:
             try:
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, len(obj["cluster"]["live_nodes"]), None))
+                # Count just this local node
+                live_nodes = 0
+                for node in obj["cluster"]["live_nodes"]:
+                    nodeIp = node[0:node.find(":")]
+                    if self.network.ipIsLocalHostOrDockerContainer(nodeIp):
+                        live_nodes = live_nodes + 1
+                    ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, None))
             except KeyError:
                 pass
         return ret
 
     def _getShards(self):
+        # There is no way to send just the localhost shards number
+        # Any shard lives in many hosts (differently from replica that lives just in a single host)
+        # and so it is impossible to choose which host must count the shard
+        # This metric must be intended as Shard Per Collection and MUST NOT be Summed  in the Monitor
+        # Separately, the total number of shards is calculated. Also this metric MUST NOT be summed
         ret = []
         obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
         if len(obj) > 0:
+            totalNumberOfShards = 0
             for collection in obj["cluster"]["collections"]:
                 numShards = len(obj["cluster"]["collections"][collection]["shards"])
                 assert isinstance(collection, object)
                 tag = [self.TAG_NAME[self.Tag.COLLECTION] % collection]
+                totalNumberOfShards = totalNumberOfShards + numShards
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS, numShards, tag))
+            ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, None))
         return ret
 
 
@@ -151,15 +175,17 @@ class SolrMetrics(object):
                     for replica in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
                         if obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["state"] == "active":
                             nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
-                            if replicaPerNodeMap.has_key(nodeName):
-                                replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
-                            else:
-                                newEntry = replicaPerNode()
-                                newEntry.len = 1
-                                newEntry.name = nodeName
-                                newEntry.collection = collection
-                                newEntry.shard = shard
-                                replicaPerNodeMap[nodeName] = newEntry
+                            coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["core"]
+                            if coreAlias in self.localCores:
+                                if replicaPerNodeMap.has_key(nodeName):
+                                    replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
+                                else:
+                                    newEntry = replicaPerNode()
+                                    newEntry.len = 1
+                                    newEntry.name = nodeName
+                                    newEntry.collection = collection
+                                    newEntry.shard = shard
+                                    replicaPerNodeMap[nodeName] = newEntry
                     for nodeName in replicaPerNodeMap:
                         tags = [
                             self.TAG_NAME[self.Tag.NODE] % nodeName,
@@ -185,3 +211,14 @@ class SolrMetrics(object):
                 ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret
+
+    def _findLocalCores(self):
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
+        if len(obj) > 0:
+            for collection in obj["cluster"]["collections"]:
+                for shard in obj["cluster"]["collections"][collection]["shards"]:
+                    for core_node in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
+                        base_url = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"]
+                        ip_address = urlparse(base_url).hostname
+                        if self.network.ipIsLocalHostOrDockerContainer(ip_address):
+                            self.localCores.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"])

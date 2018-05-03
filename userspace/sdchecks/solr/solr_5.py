@@ -34,18 +34,19 @@ class Solr5(SolrMetrics):
         obj = self._getUrl(self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
         if len(obj) > 0:
             for replicaAlias in obj["status"]:
-                splitted = replicaAlias.split("_")
-                collection = splitted[0]
-                shard = splitted[1]
-                replica = splitted[2]
+                if replicaAlias in self.localCores:
+                    splitted = replicaAlias.split("_")
+                    collection = splitted[0]
+                    shard = splitted[1]
+                    replica = splitted[2]
 
-                numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
-                tags = [
-                    self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                    self.TAG_NAME[self.Tag.SHARD] % shard,
-                    self.TAG_NAME[self.Tag.REPLICA] % replica
-                ]
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
+                    numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
+                    tags = [
+                        self.TAG_NAME[self.Tag.COLLECTION] % collection,
+                        self.TAG_NAME[self.Tag.SHARD] % shard,
+                        self.TAG_NAME[self.Tag.REPLICA] % replica
+                    ]
+                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret
 
     def _getAllRpsAndRequestTime(self):
