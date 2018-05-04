@@ -375,6 +375,14 @@ class KafkaCheck(AgentCheck):
 
             consumer_group_tags = ['topic:%s' % topic, 'partition:%s' % partition,
                 'consumer_group:%s' % consumer_group] + tags
+
+            if consumer_offset < 0:
+                # consumer offset -1 means that there's been no consumer activity for the retention period
+                # report both offset and lag as 0
+                self.gauge('kafka.consumer_offset', 0, tags=consumer_group_tags)
+                self.gauge('kafka.consumer_lag', 0, tags=consumer_group_tags)
+                continue
+
             self.gauge('kafka.consumer_offset', consumer_offset, tags=consumer_group_tags)
 
             consumer_lag = highwater_offsets[(topic, partition)] - consumer_offset
@@ -461,7 +469,7 @@ class KafkaCheck(AgentCheck):
                         try:
                             consumer_offset = int(zk_conn.get(zk_path)[0])
                             key = (consumer_group, topic, partition)
-                            zk_consumer_offsets[key] = consumer_offset if consumer_offset >= 0 else 0
+                            zk_consumer_offsets[key] = consumer_offset
                         except NoNodeError:
                             self.log.info('No zookeeper node at %s', zk_path)
                         except Exception:
@@ -496,7 +504,7 @@ class KafkaCheck(AgentCheck):
                 for (topic, partition), offset in offsets.iteritems():
                     topics[topic].update([partition])
                     key = (consumer_group, topic, partition)
-                    consumer_offsets[key] = offset if offset >= 0 else 0
+                    consumer_offsets[key] = offset
             except Exception:
                 self.log.exception('Could not read consumer offsets from kafka.')
 
