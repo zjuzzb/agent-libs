@@ -2731,15 +2731,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							sent_prometheus_metrics += metric_count;
 							if (!logged_metric && metric_count)
 							{
-								g_logger.log("Starting export of Prometheus metrics",
-									sinsp_logger::SEV_INFO);
 								const auto metrics = app_data.second->metrics();
-								ASSERT(!metrics.empty());
-								const string &metricname = metrics[0].name();
-								g_logger.format(sinsp_logger::SEV_DEBUG,
-									"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
-									app_data.second->pid(), metric_count, metricname.c_str());
-								logged_metric = true;
+								// app_check_data::to_protobuf() returns the total number of metrics
+								// and service checks, so it's possible for metrics() to be empty
+								// even when metric_count is not zero.
+								// We May want to add some logging of service checks in case we don't have metrics
+								if (!metrics.empty())
+								{
+									g_logger.log("Starting export of Prometheus metrics",
+										sinsp_logger::SEV_INFO);
+									const string &metricname = metrics[0].name();
+									g_logger.format(sinsp_logger::SEV_DEBUG,
+										"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
+										app_data.second->pid(), metric_count, metricname.c_str());
+									logged_metric = true;
+								}
 							}
 							total_prometheus_metrics += app_data.second->total_metrics();
 						}
