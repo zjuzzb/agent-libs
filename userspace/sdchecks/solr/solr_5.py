@@ -22,32 +22,34 @@ class Solr5(SolrMetrics):
         SolrMetrics.__init__(self, version, instance)
         self.cores = set()
 
-    def _getCores(self):
-        obj = self._getUrl(self.URL[SolrMetrics.Endpoint.CORES_INFO])
-        if len(obj) > 0:
-            for name in obj["status"]:
-                self.cores.add(name)
+    def _getClusterCores(self):
+        for baseUrl in self.localEndpoints:
+            obj = self._getUrlWithBase(baseUrl, self.URL[SolrMetrics.Endpoint.CORES_INFO])
+            if len(obj) > 0:
+                for name in obj["status"]:
+                    self.cores.add(name)
 
 
     def _getDocumentCount(self):
         ret = []
-        obj = self._getUrl(self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
-        if len(obj) > 0:
-            for replicaAlias in obj["status"]:
-                if replicaAlias in self.localCores:
-                    splitted = replicaAlias.split("_")
-                    collection = splitted[0]
-                    shard = splitted[1]
-                    replica = splitted[2]
+        for baseUrl in self.localEndpoints:
+            obj = self._getUrlWithBase(baseUrl, self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
+            if len(obj) > 0:
+                for replicaAlias in obj["status"]:
+                    if replicaAlias in self.localCores:
+                        splitted = replicaAlias.split("_")
+                        collection = splitted[0]
+                        shard = splitted[1]
+                        replica = splitted[2]
 
-                    numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
-                    tags = [
-                        self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                        self.TAG_NAME[self.Tag.SHARD] % shard,
-                        self.TAG_NAME[self.Tag.REPLICA] % replica,
-                        self.TAG_NAME[self.Tag.CORE] % replicaAlias
-                    ]
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
+                        numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
+                        tags = [
+                            self.TAG_NAME[self.Tag.COLLECTION] % collection,
+                            self.TAG_NAME[self.Tag.SHARD] % shard,
+                            self.TAG_NAME[self.Tag.REPLICA] % replica,
+                            self.TAG_NAME[self.Tag.CORE] % replicaAlias
+                        ]
+                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret
 
     def _getAllRpsAndRequestTime(self):
@@ -65,10 +67,11 @@ class Solr5(SolrMetrics):
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
                 ret.append(self.Metric(rps.metricName, rps.value, tags))
-        return ret, coresStatistic
+        return ret
 
-    def _getIndexSize(self, coresStatisticJson):
+    def _getIndexSize(self):
         ret = []
+        coresStatisticJson = self._getStats()
         for coreStatistic in coresStatisticJson:
             ret.append(self._getFromCoreIndexSize(coreStatistic))
         return ret
@@ -77,7 +80,7 @@ class Solr5(SolrMetrics):
         class CoreStat:
             pass
         ret = []
-        self._getCores()
+        self._getClusterCores()
         for core in self.cores:
             element = CoreStat()
             element.coreName = core

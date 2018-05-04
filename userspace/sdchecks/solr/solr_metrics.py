@@ -84,19 +84,20 @@ class SolrMetrics(object):
         self.host = instance["host"]
         self.network = Network()
         self.localCores = set()
+        self.localEndpoints = set()
         self._findLocalCores()
 
     def check(self):
         # This should be run just once in a while
         self._findLocalCores()
-        allRps, coresStatisticJson = self._getAllRpsAndRequestTime()
+        allRps = self._getAllRpsAndRequestTime()
         ret = [
             self._getLiveNodes(),
             self._getShards(),
             self._getReplica(),
             self._getDocumentCount(),
             allRps,
-            self._getIndexSize(coresStatisticJson)
+            self._getIndexSize()
         ]
         return ret
 
@@ -128,6 +129,18 @@ class SolrMetrics(object):
 
     def _getUrl(self, handler):
         return SolrMetrics.getUrl(self.host, self.ports, handler)
+
+    def _getUrlWithBase(self, baseUrl, handler):
+        url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
+        try:
+            data = urllib2.urlopen(url)
+            obj = json.load(data)
+        except:
+            return {}
+
+        return obj
+
+
 
     def _getLiveNodes(self):
         ret = []
@@ -249,3 +262,4 @@ class SolrMetrics(object):
                         ip_address = urlparse(base_url).hostname
                         if self.network.ipIsLocalHostOrDockerContainer(ip_address):
                             self.localCores.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"])
+                            self.localEndpoints.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"])
