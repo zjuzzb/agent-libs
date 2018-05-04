@@ -14,16 +14,12 @@ class SolrMetrics(object):
         SHARD = 2
         NODE = 3
         REPLICA = 4
-        CORE = 5
-        COLLECTION_AND_SHARD = 6
 
     TAG_NAME = {
         Tag.COLLECTION: "solr.tag.collection:%s",
         Tag.REPLICA: "solr.tag.replica:%s",
         Tag.NODE: "solr.tag.node:%s",
-        Tag.SHARD: "solr.tag.shard:%s",
-        Tag.CORE: "solr.tag.core:%s",
-        Tag.COLLECTION_AND_SHARD: "solr.tag.collection_and_shard:%s"
+        Tag.SHARD: "solr.tag.shard:%s"
     }
 
     class METRIC_NAME_ENUM(Enum):
@@ -191,10 +187,10 @@ class SolrMetrics(object):
                                     newEntry.shard = shard
                                     replicaPerNodeMap[nodeName] = newEntry
                     for nodeName in replicaPerNodeMap:
-                        collection_and_shard = str("%s_%s").format(replicaPerNodeMap[nodeName].collection, replicaPerNodeMap[nodeName].shard)
                         tags = [
                             self.TAG_NAME[self.Tag.NODE] % nodeName,
-                            self.TAG_NAME[self.Tag.COLLECTION_AND_SHARD] % collection_and_shard,
+                            self.TAG_NAME[self.Tag.COLLECTION] % replicaPerNodeMap[nodeName].collection,
+                            self.TAG_NAME[self.Tag.SHARD] % replicaPerNodeMap[nodeName].shard
                         ]
                         ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
         return ret
@@ -210,7 +206,8 @@ class SolrMetrics(object):
                 numDocs = obj["status"][replica_alias]["index"]["numDocs"]
                 tags = [
                     self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                    self.TAG_NAME[self.Tag.CORE] % replica_alias,
+                    self.TAG_NAME[self.Tag.SHARD] % shard,
+                    self.TAG_NAME[self.Tag.REPLICA] % replica
                 ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         return ret
