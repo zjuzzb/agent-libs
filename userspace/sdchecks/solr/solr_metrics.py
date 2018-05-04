@@ -148,16 +148,38 @@ class SolrMetrics(object):
         # and so it is impossible to choose which host must count the shard
         # This metric must be intended as Shard Per Collection and MUST NOT be Summed  in the Monitor
         # Separately, the total number of shards is calculated. Also this metric MUST NOT be summed
+        class ShardPerNode:
+            pass
+
         ret = []
         obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
         if len(obj) > 0:
+            shardPerNodeMap = {}
             totalNumberOfShards = 0
             for collection in obj["cluster"]["collections"]:
-                numShards = len(obj["cluster"]["collections"][collection]["shards"])
-                assert isinstance(collection, object)
-                tag = [self.TAG_NAME[self.Tag.COLLECTION] % collection]
-                totalNumberOfShards = totalNumberOfShards + numShards
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS, numShards, tag))
+                for shard in obj["cluster"]["collections"][collection]["shards"]:
+                    totalNumberOfShards = totalNumberOfShards + 1
+                    for replica in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
+                        nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
+                        key = str("{}_{}_{}").format(shard, collection, nodeName)
+                        if shardPerNodeMap.has_key(key):
+                            shardPerNodeMap[key].count = shardPerNodeMap[key].count + 1
+                        else:
+                            newShard = ShardPerNode()
+                            newShard.key = key
+                            newShard.name = shard
+                            newShard.collection = collection
+                            newShard.node = nodeName
+                            newShard.count = 1
+                            shardPerNodeMap[key] = newShard
+
+            for shard in shardPerNodeMap:
+                tag = [
+                    self.TAG_NAME[self.Tag.COLLECTION] % shardPerNodeMap[shard].collection,
+                    self.TAG_NAME[self.Tag.NODE] % shardPerNodeMap[shard].node
+                ]
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS, shardPerNodeMap[shard].count, tag))
+
             ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, None))
         return ret
 
