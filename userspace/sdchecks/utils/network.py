@@ -6,6 +6,7 @@ class Network:
         self.addresses = set()
         self.dockerIfaces = {}
         self.interfaces = netifaces.interfaces()
+        self.addresses.add('127.0.1.1')
         #collect all the hosts ip addresses
         for interface in self.interfaces:
             try:
