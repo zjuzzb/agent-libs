@@ -148,13 +148,8 @@ class SolrMetrics(object):
 
         if len(obj) > 0:
             try:
-                # Count just this local node
-                live_nodes = 0
-                for node in obj["cluster"]["live_nodes"]:
-                    nodeIp = node[0:node.find(":")]
-                    if self.network.ipIsLocalHostOrDockerContainer(nodeIp):
-                        live_nodes = live_nodes + 1
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, None))
+                live_nodes = len(obj["cluster"]["live_nodes"])
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, None))
             except KeyError:
                 pass
         return ret
