@@ -29,7 +29,8 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.QUERY_RT: "solr.query.request_time",
         SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT: "solr.update.request_time",
         SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE: "solr.index_size",
-        SolrMetrics.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS: "solr.total_shards"
+        SolrMetrics.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS: "solr.total_shards",
+        SolrMetrics.METRIC_NAME_ENUM.SHARDS_PER_COLLECTION: "solr.shards_per_collection"
     }
 
     # Source

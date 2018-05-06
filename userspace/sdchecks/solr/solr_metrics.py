@@ -44,6 +44,7 @@ class SolrMetrics(object):
         QUERY_RT = 14,
         UPDATE_RT = 15,
         TOTAL_NUMBER_OF_SHARDS = 16
+        SHARDS_PER_COLLECTION = 17
 
     class Endpoint(Enum):
         LIVE_NODES = 1
@@ -170,33 +171,21 @@ class SolrMetrics(object):
         if len(obj) > 0:
             shardPerNodeMap = {}
             totalNumberOfShards = 0
+            shardsPerCollection = {}
             for collection in obj["cluster"]["collections"]:
-                for shard in obj["cluster"]["collections"][collection]["shards"]:
-                    totalNumberOfShards = totalNumberOfShards + 1
-                    for replica in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
-                        nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
-                        key = str("{}_{}_{}").format(shard, collection, nodeName)
-                        if shardPerNodeMap.has_key(key):
-                            shardPerNodeMap[key].count = shardPerNodeMap[key].count + 1
-                        else:
-                            newShard = ShardPerNode()
-                            newShard.key = key
-                            newShard.name = shard
-                            newShard.collection = collection
-                            newShard.node = nodeName
-                            newShard.count = 1
-                            shardPerNodeMap[key] = newShard
+                collectionLength = len(obj["cluster"]["collections"][collection]["shards"])
+                shardsPerCollection[collection] = collectionLength
+                totalNumberOfShards = totalNumberOfShards + collectionLength
 
-            for shard in shardPerNodeMap:
+            for collection in shardsPerCollection:
+                self.log.debug(("detected {} shards for collection {}").format(shardsPerCollection[collection], collection))
                 tag = [
-                    self.TAG_NAME[self.Tag.COLLECTION] % shardPerNodeMap[shard].collection,
-                    self.TAG_NAME[self.Tag.NODE] % shardPerNodeMap[shard].node
+                    self.TAG_NAME[self.Tag.COLLECTION] % collection
                 ]
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS, shardPerNodeMap[shard].count, tag))
-                self.log.debug(("detected {} shards with tags {}").format(shardPerNodeMap[shard].count, tag))
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS_PER_COLLECTION, shardsPerCollection[collection], tag))
 
+            self.log.debug(("detected {} total numbe of shards").format(totalNumberOfShards))
             ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, None))
-            self.log.debug(("detected {} total number of").format(totalNumberOfShards))
         return ret
 
 
