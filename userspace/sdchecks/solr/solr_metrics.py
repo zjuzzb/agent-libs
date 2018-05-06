@@ -152,6 +152,7 @@ class SolrMetrics(object):
         if len(obj) > 0:
             try:
                 live_nodes = len(obj["cluster"]["live_nodes"])
+                self.log.debug(("detected {} live nodes").format(live_nodes))
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, None))
             except KeyError:
                 pass
