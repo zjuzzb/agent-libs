@@ -24,7 +24,7 @@ class SolrMetrics(object):
         Tag.NODE: "solr.tag.node:%s",
         Tag.SHARD: "solr.tag.shard:%s",
         Tag.CORE: "solr.tag.core:%s",
-        Tag.COLLECTION_AND_SHARD: "solr.tag.collection_and_shard:%s"
+        Tag.COLLECTION_AND_SHARD: "solr.tag.shard:%s"
     }
 
     class METRIC_NAME_ENUM(Enum):
