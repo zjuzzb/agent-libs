@@ -1196,3 +1196,6 @@ monitor_files:
     - /opt/draios/etc/dragent.yaml
     - /opt/draios/etc/kubernetes/config/dragent.yaml
     - /opt/draios/etc/kubernetes/secrets/access-key
+
+log:
+  file_priority: debug

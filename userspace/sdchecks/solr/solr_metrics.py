@@ -1,4 +1,5 @@
 import json
+import logging
 import urllib2
 from urlparse import urlparse
 
@@ -85,11 +86,12 @@ class SolrMetrics(object):
         self.network = Network()
         self.localCores = set()
         self.localEndpoints = set()
-        self._findLocalCores()
+        self.log = logging.getLogger(__name__)
 
     def check(self):
         # This should be run just once in a while
         self._findLocalCores()
+        self.log.debug(str("start checking solr host {} , ports:").format(self.host, self.ports))
         allRps = self._getAllRpsAndRequestTime()
         ret = [
             self._getLiveNodes(),
@@ -191,8 +193,10 @@ class SolrMetrics(object):
                     self.TAG_NAME[self.Tag.NODE] % shardPerNodeMap[shard].node
                 ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS, shardPerNodeMap[shard].count, tag))
+                self.log.debug(("detected {} shards with tags {}").format(shardPerNodeMap[shard].count, tag))
 
             ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, None))
+            self.log.debug(("detected {} total number of").format(totalNumberOfShards))
         return ret
 
 
@@ -220,6 +224,8 @@ class SolrMetrics(object):
                                     newEntry.collection = collection
                                     newEntry.shard = shard
                                     replicaPerNodeMap[nodeName] = newEntry
+                            else:
+                                self.log.debug(str("skipping core {} because it is not local").format(coreAlias))
                     for nodeName in replicaPerNodeMap:
                         collection_and_shard = str("{}_{}").format(replicaPerNodeMap[nodeName].collection, replicaPerNodeMap[nodeName].shard)
                         tags = [
@@ -227,6 +233,7 @@ class SolrMetrics(object):
                             self.TAG_NAME[self.Tag.COLLECTION_AND_SHARD] % collection_and_shard,
                         ]
                         ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
+                        self.log.debug(("detected {} replica wit tags {}").format(replicaPerNodeMap[nodeName].len, tags))
         return ret
 
     def _getDocumentCount(self):
@@ -258,3 +265,5 @@ class SolrMetrics(object):
                         if self.network.ipIsLocalHostOrDockerContainer(ip_address):
                             self.localCores.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"])
                             self.localEndpoints.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"])
+        self.log.debug(str("detected {} local cores: {}").format(len(self.localCores), self.localCores))
+        self.log.debug(str("detected {} local nodes: {}").format(len(self.localEndpoints), self.localEndpoints))

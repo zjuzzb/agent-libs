@@ -22,7 +22,7 @@ class Solr5(SolrMetrics):
         SolrMetrics.__init__(self, version, instance)
         self.cores = set()
 
-    def _getClusterCores(self):
+    def _getLocalCores(self):
         for baseUrl in self.localEndpoints:
             obj = self._getUrlWithBase(baseUrl, self.URL[SolrMetrics.Endpoint.CORES_INFO])
             if len(obj) > 0:
@@ -35,6 +35,7 @@ class Solr5(SolrMetrics):
         for baseUrl in self.localEndpoints:
             obj = self._getUrlWithBase(baseUrl, self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
             if len(obj) > 0:
+                totalDocumentsInNode = 0
                 for replicaAlias in obj["status"]:
                     if replicaAlias in self.localCores:
                         splitted = replicaAlias.split("_")
@@ -43,6 +44,7 @@ class Solr5(SolrMetrics):
                         replica = splitted[2]
 
                         numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
+                        totalDocumentsInNode = totalDocumentsInNode + numDocs
                         tags = [
                             self.TAG_NAME[self.Tag.COLLECTION] % collection,
                             self.TAG_NAME[self.Tag.SHARD] % shard,
@@ -50,11 +52,13 @@ class Solr5(SolrMetrics):
                             self.TAG_NAME[self.Tag.CORE] % replicaAlias
                         ]
                         ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
+                self.log.debug(str("found {} documents in local node {}").format(totalDocumentsInNode, baseUrl))
         return ret
 
     def _getAllRpsAndRequestTime(self):
         ret = []
         coresStatistic = self._getStats()
+        self.log.debug(str("fetching statistics for {} local cores").format(len(coresStatistic)))
         for coreStat in coresStatistic:
             # create tags here
             collection, shard, replica = split(coreStat.coreName, "_")
@@ -72,6 +76,7 @@ class Solr5(SolrMetrics):
     def _getIndexSize(self):
         ret = []
         coresStatisticJson = self._getStats()
+        self.log.debug(str("fetching index memory size for {} local cores").format(len(coresStatisticJson)))
         for coreStatistic in coresStatisticJson:
             ret.append(self._getFromCoreIndexSize(coreStatistic))
         return ret
@@ -80,7 +85,7 @@ class Solr5(SolrMetrics):
         class CoreStat:
             pass
         ret = []
-        self._getClusterCores()
+        self._getLocalCores()
         for core in self.cores:
             element = CoreStat()
             element.coreName = core
