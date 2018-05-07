@@ -136,21 +136,21 @@ class Solr5(SolrMetrics):
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_RT, "/query", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT, "/update", queryHandlerObj))
         except Exception as e:
-            self.log.error(("could not get statistic from local cores: {}").format(e))
+            self.log.debug(("could not get statistic from local cores: {}").format(e))
         return arr
 
     def _getSingleRps(self, metricEnumValue, keyString, queryHandlerObj):
         try:
             return self.RpsMetric(metricEnumValue, queryHandlerObj[keyString]["stats"]["avgRequestsPerSecond"])
         except Exception as e:
-            self.log.error(("could not get rps {} {}: {}").format(metricEnumValue, keyString. e))
+            self.log.debug(("could not get rps {} {}: {}").format(metricEnumValue, keyString, e))
             return self.RpsMetric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0)
 
     def _getSingleRequestTime(self, metricEnumValue, keyString, queryHandlerObj):
         try:
             return self.RpsMetric(metricEnumValue, float(queryHandlerObj[keyString]["stats"]["avgTimePerRequest"]))
         except Exception as e:
-            self.log.error(("could not get request time {} {}: {}").format(metricEnumValue, keyString.e))
+            self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
             return self.RpsMetric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0)
 
     def _getFromCoreIndexSize(self, coreStatistic ):
