@@ -159,8 +159,6 @@ class Solr5(SolrMetrics):
         collection, shard, replica = split(coreStatistic.coreName, "_")
         tags = [
             self.TAG_NAME[self.Tag.COLLECTION] % collection,
-            self.TAG_NAME[self.Tag.SHARD] % shard,
-            self.TAG_NAME[self.Tag.REPLICA] % replica,
             self.TAG_NAME[self.Tag.CORE] % coreStatistic.coreName
         ]
         try:
