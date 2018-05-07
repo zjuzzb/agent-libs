@@ -455,13 +455,12 @@ public:
 		return m_roots;
 	}
 
-private:
-
 	void add_error(const std::string& err)
 	{
 		m_errors.emplace_back(err);
 	}
 
+private:
 	// no-op needed to compile and terminate recursion
 	template <typename T>
 	static void get_sequence(T&, const YAML::Node&)
