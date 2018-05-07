@@ -33,6 +33,7 @@ add_executable(tests
 	container.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp
 	coclient_test.cpp
+	emit_tracers.cpp
 	event_capture.cpp
 	forking.cpp
 	fs.cpp
