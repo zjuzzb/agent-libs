@@ -16,7 +16,7 @@ class Solr(AgentCheck):
     METRIC_NAME_MAP = {
         SolrMetrics.METRIC_NAME_ENUM.NONE: "solr.unknown",
         SolrMetrics.METRIC_NAME_ENUM.LIVE_NODES: "solr.live_nodes",
-        SolrMetrics.METRIC_NAME_ENUM.REPLICA: "solr.replica_count",
+        SolrMetrics.METRIC_NAME_ENUM.REPLICA: "solr.core_count",
         SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT: "solr.document_count",
         SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_SHARD: "solr.document_count_per_shard",
         SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS: "solr.browse.request_per_second",
