@@ -18,6 +18,7 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.LIVE_NODES: "solr.live_nodes",
         SolrMetrics.METRIC_NAME_ENUM.REPLICA: "solr.replica_count",
         SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT: "solr.document_count",
+        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_SHARD: "solr.document_count_per_shard",
         SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS: "solr.browse.request_per_second",
         SolrMetrics.METRIC_NAME_ENUM.SELECT_RPS: "solr.select.request_per_second",
         SolrMetrics.METRIC_NAME_ENUM.GET_RPS: "solr.get.request_per_second",
@@ -54,7 +55,8 @@ class Solr(AgentCheck):
         for metricList in ret:
             if metricList is not None:
                 for metric in metricList:
-                    self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
+                    if metric is not None and metric.getName() != SolrMetrics.METRIC_NAME_ENUM.NONE:
+                        self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
 
     def _getSolrVersion(self, instance):
         if self.version == None:

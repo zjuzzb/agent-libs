@@ -13,6 +13,17 @@ class Solr5(SolrMetrics):
         SolrMetrics.Endpoint.STATS: "/solr/%s/admin/mbeans?stats=true&wt=json"
     }
 
+    class ShardDocumentCount:
+        def __init__(self, collection, shard):
+            self.collection = collection
+            self.shard = shard
+
+        def __hash__(self):
+            return str("{}{}").format(self.collection, self.shard).__hash__()
+
+        def __eq__(self, other):
+            return (self.collection == other.collection) and (self.shard == other.shard)
+
     class RpsMetric:
         def __init__(self, metricName, value):
             self.metricName = metricName
@@ -35,31 +46,31 @@ class Solr5(SolrMetrics):
 
     def _getDocumentCount(self):
         ret = []
-        for baseUrl in self.localEndpoints:
-            try:
-                obj = self._getUrlWithBase(baseUrl, self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
-                if len(obj) > 0:
-                    totalDocumentsInNode = 0
-                    for replicaAlias in obj["status"]:
-                        if replicaAlias in self.localCores:
-                            splitted = replicaAlias.split("_")
-                            collection = splitted[0]
-                            shard = splitted[1]
-                            replica = splitted[2]
+        liveNedes = self._getLiveNodesEndpoint()
+        shardDocumentCountMap = set()
+        for node in liveNedes:
+            self._getNodeDocumentCount(node, shardDocumentCountMap)
 
-                            numDocs = obj["status"][replicaAlias]["index"]["numDocs"]
-                            totalDocumentsInNode = totalDocumentsInNode + numDocs
-                            tags = [
-                                self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                                self.TAG_NAME[self.Tag.SHARD] % shard,
-                                self.TAG_NAME[self.Tag.REPLICA] % replica,
-                                self.TAG_NAME[self.Tag.CORE] % replicaAlias
-                            ]
-                            ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
-                    self.log.debug(str("found {} documents in local node {}").format(totalDocumentsInNode, baseUrl))
-            except Exception as e:
-                self.log.error(("could not get document count for endpoint {}: {}").format(baseUrl, e))
+        total = 0
+        for entry in shardDocumentCountMap:
+            tags = [
+                SolrMetrics.TAG_NAME[self.Tag.SHARD] % ("{}_{}").format(entry.collection, entry.shard)
+            ]
+            total = total + entry.value
+            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_SHARD, entry.value, tags))
+        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total, None))
         return ret
+
+    def _getNodeDocumentCount(self, node, shardDocumentCountMap):
+        endpoint = str("http://{}").format(node.replace("_", "/"))
+        obj = self._getUrlWithBase(endpoint, self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
+        if len(obj) > 0:
+            for core in obj["status"]:
+                collection, shard, replica = core.split("_")
+                entry = self.ShardDocumentCount(collection, shard)
+                if entry not in shardDocumentCountMap:
+                    entry.value = obj["status"][core]["index"]["numDocs"]
+                    shardDocumentCountMap.add(entry)
 
     def _getAllRpsAndRequestTime(self):
         ret = []

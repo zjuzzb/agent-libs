@@ -45,6 +45,7 @@ class SolrMetrics(object):
         UPDATE_RT = 15,
         TOTAL_NUMBER_OF_SHARDS = 16
         SHARDS_PER_COLLECTION = 17
+        DOCUMENT_COUNT_PER_SHARD = 18
         NONE = 100
 
     class Endpoint(Enum):
@@ -150,7 +151,17 @@ class SolrMetrics(object):
 
         return obj
 
+    def _getLiveNodesEndpoint(self):
+        ret = []
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
 
+        if len(obj) > 0:
+            try:
+                for node in obj["cluster"]["live_nodes"]:
+                    ret.append(node)
+            except KeyError:
+                pass
+        return ret
 
     def _getLiveNodes(self):
         ret = []
