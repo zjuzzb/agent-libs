@@ -194,6 +194,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		g_logger.format(sinsp_logger::SEV_WARNING, "Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
 		return false;
 	}
+	container_info.m_id = container_info.m_id.substr(0, m_max_id_length);
 	clean_label(container_info.m_id);
 
 	tinfo->m_container_id = container_info.m_id;

@@ -442,6 +442,7 @@ TEST_F(sys_call_test, container_custom)
 		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
 		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
 		res.set_max(50);
+		res.set_max_id_length(50);
 		res.set_enabled(true);
 		inspector->m_analyzer->set_custom_container_conf(move(res));
 	};

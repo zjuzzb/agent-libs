@@ -3,6 +3,10 @@
 #define CUSTOM_CONTAINER_HARD_LIMIT 150
 #endif
 
+#ifndef CUSTOM_CONTAINER_ID_LENGTH_LIMIT
+#define CUSTOM_CONTAINER_ID_LENGTH_LIMIT 100
+#endif
+
 #ifndef _WIN32
 
 #include <string>
@@ -182,6 +186,15 @@ public:
 		m_max = max;
 	}
 
+	void set_max_id_length(int max)
+	{
+		if (max >= CUSTOM_CONTAINER_ID_LENGTH_LIMIT)
+		{
+			max = CUSTOM_CONTAINER_ID_LENGTH_LIMIT;
+		}
+		m_max_id_length = max;
+	}
+
 	bool resolve(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info);
 
 protected:
@@ -189,6 +202,7 @@ protected:
 	bool m_limit_logged = false;
 	int m_num = 0;
 	int m_max = 0;
+	int m_max_id_length = 0;
 	std::unique_ptr<Poco::RegularExpression> m_cgroup_match;
 	std::unordered_map<std::string, std::unique_ptr<Poco::RegularExpression>> m_environ_match;
 
