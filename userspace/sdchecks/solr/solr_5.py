@@ -81,8 +81,6 @@ class Solr5(SolrMetrics):
             collection, shard, replica = split(coreStat.coreName, "_")
             tags = [
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.SHARD] % shard,
-                self.TAG_NAME[self.Tag.REPLICA] % replica,
                 self.TAG_NAME[self.Tag.CORE] % coreStat.coreName
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
