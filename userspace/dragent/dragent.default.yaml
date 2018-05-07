@@ -603,6 +603,7 @@ prometheus:
 app_checks:
   - name: solr
     check_module: solr
+    interval: 30
     pattern:
       port: 8983
       comm: java
