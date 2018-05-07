@@ -40,6 +40,11 @@ RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.9 \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.8
 
+RUN rm -rf /usr/bin/clang \
+ && rm -rf /usr/bin/llc \
+ && ln -s /usr/bin/clang-7 /usr/bin/clang \
+ && ln -s /usr/bin/llc-7 /usr/bin/llc
+
 RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
 ADD draios-${AGENT_VERSION}-x86_64-agent.deb /

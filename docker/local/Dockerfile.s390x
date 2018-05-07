@@ -40,6 +40,11 @@ RUN rm -rf /usr/bin/gcc \
  && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.7 \
  && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.6
 
+RUN rm -rf /usr/bin/clang \
+ && rm -rf /usr/bin/llc \
+ && ln -s /usr/bin/clang-7 /usr/bin/clang \
+ && ln -s /usr/bin/llc-7 /usr/bin/llc
+
 RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
 ADD draios-${AGENT_VERSION}-s390x-agent.deb /
