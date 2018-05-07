@@ -200,6 +200,7 @@ protected:
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ_tree(sinsp_threadinfo* tinfo, render_context& render_ctx);
+	void clean_label(std::string& val);
 };
 
 

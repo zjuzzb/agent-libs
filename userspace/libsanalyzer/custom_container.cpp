@@ -156,6 +156,19 @@ bool custom_container::resolver::match_environ_tree(sinsp_threadinfo* tinfo, ren
 	return found;
 }
 
+void custom_container::resolver::clean_label(std::string& val)
+{
+	const std::string whitelist = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:._";
+	for (auto c = val.begin(); c != val.end(); ++c)
+	{
+		if (whitelist.find(*c) == std::string::npos)
+		{
+			*c = '_';
+		}
+	}
+}
+
+
 bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info)
 {
 	sinsp_container_info container_info;
@@ -181,6 +194,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 		g_logger.format(sinsp_logger::SEV_WARNING, "Got empty container id for process %lu, possibly a configuration error", tinfo->m_tid);
 		return false;
 	}
+	clean_label(container_info.m_id);
 
 	tinfo->m_container_id = container_info.m_id;
 	if (manager->container_exists(container_info.m_id))
@@ -212,6 +226,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 				g_logger.format(sinsp_logger::SEV_WARNING, "Custom container of pid %lu returned an empty name, assuming it's not a match", tinfo->m_tid);
 				return false;
 			}
+			clean_label(container_info.m_name);
 		} catch (const Poco::RuntimeException& e) {
 			g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container name due to error in configuration: %s", e.message().c_str());
 			m_name_pattern = custom_container::subst_template();
@@ -221,6 +236,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 
 	try {
 		m_image_pattern.render(container_info.m_image, render_ctx, env);
+		clean_label(container_info.m_image);
 	} catch (const Poco::RuntimeException& e) {
 		g_logger.format(sinsp_logger::SEV_WARNING, "Disabling custom container image due to error in configuration: %s", e.message().c_str());
 		m_image_pattern = custom_container::subst_template();
@@ -235,6 +251,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 			it->second.render(s, render_ctx, env);
 			if (!s.empty())
 			{
+				clean_label(s);
 				container_info.m_labels.emplace(it->first, move(s));
 			}
 		} catch (const Poco::RuntimeException& e) {
