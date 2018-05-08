@@ -76,7 +76,7 @@ public class MonitoredVM {
         String data = null;
         final String sdjagentPath = String.format("%s/tmp/sdjagent.jar", request.getRoot());
         LOGGER.fine(String.format("Copying sdjagent jar to %s", sdjagentPath));
-        if (CLibrary.copyToContainer("/opt/draios/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
+        if (CLibrary.copyToContainer(Prefix.getInstallPrefix() + "/share/sdjagent.jar", request.getPid(), sdjagentPath)) {
             final String[] command = {"java", "-Dsdjagent.loadjnilibrary=false", "-jar", "/tmp/sdjagent.jar", "getVMHandle", String.valueOf(request.getVpid())};
             // Using /proc/<pid>/exe because sometimes java command is not on PATH
             final String javaExe = String.format("/proc/%d/exe", request.getVpid());

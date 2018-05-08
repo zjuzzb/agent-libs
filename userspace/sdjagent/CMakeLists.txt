@@ -19,11 +19,12 @@ if(Java_Development_FOUND)
                     src/main/java/com/sysdigcloud/sdjagent/LogJsonFormatter.java
                     src/main/java/com/sysdigcloud/sdjagent/MonitoredVM.java
                     src/main/java/com/sysdigcloud/sdjagent/PosixQueue.java
+                    src/main/java/com/sysdigcloud/sdjagent/Prefix.java
                     src/main/java/com/sysdigcloud/sdjagent/VMRequest.java
                     src/main/java/com/sysdigcloud/sdjagent/YamlConfig.java
                     pom.xml)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/java/sdjagent-1.0-jar-with-dependencies.jar
-            DESTINATION ${DRAIOS_BIN_PREFIX}/share RENAME sdjagent.jar
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share RENAME sdjagent.jar
             COMPONENT agent)
 endif()
 if(JNI_FOUND)
@@ -37,6 +38,6 @@ if(JNI_FOUND)
             native/jni_utils.h)
     target_link_libraries(sdjagentjni ${JAVA_JVM_LIBRARY} rt)
     install (TARGETS sdjagentjni
-             DESTINATION ${DRAIOS_BIN_PREFIX}/lib
+             DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
              COMPONENT agent)
 endif()

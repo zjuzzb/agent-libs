@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 public class Config {
     private YamlConfig yamlConfig;
     private static final Logger LOGGER = Logger.getLogger(Config.class.getName());
-    private static final String ETCDIR = "/opt/draios/etc";
+    private static final String ETCDIR = Prefix.getInstallPrefix() + "/etc";
 
     private List<BeanQuery> defaultBeanQueries;
     private Map<String, Process> processes;
