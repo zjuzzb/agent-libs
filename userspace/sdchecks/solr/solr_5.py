@@ -54,7 +54,6 @@ class Solr5(SolrMetrics):
         total = 0
         for entry in shardDocumentCountMap:
             tags = [
-                SolrMetrics.TAG_NAME[self.Tag.COLLECTION] % entry.collection,
                 SolrMetrics.TAG_NAME[self.Tag.SHARD] % ("{}_{}").format(entry.collection, entry.shard)
             ]
             total = total + entry.value
