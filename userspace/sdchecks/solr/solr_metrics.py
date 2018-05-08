@@ -203,7 +203,7 @@ class SolrMetrics(object):
                     ]
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS_PER_COLLECTION, shardsPerCollection[collection], tag))
 
-                self.log.debug(("detected {} total numbe of shards").format(totalNumberOfShards))
+                self.log.debug(("detected {} total number of shards").format(totalNumberOfShards))
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, None))
         except Exception as e:
             self.log.error(("Got Error while fetching shards: {}").format(e))
@@ -244,7 +244,7 @@ class SolrMetrics(object):
                                 self.TAG_NAME[self.Tag.COLLECTION_AND_SHARD] % collection_and_shard,
                             ]
                             ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
-                            self.log.debug(("detected {} replica wit tags {}").format(replicaPerNodeMap[nodeName].len, tags))
+                            self.log.debug(("detected {} replica with tags {}").format(replicaPerNodeMap[nodeName].len, tags))
         except Exception as e:
             self.log.error(("Got Error while fetching replica: {}").format(e))
 

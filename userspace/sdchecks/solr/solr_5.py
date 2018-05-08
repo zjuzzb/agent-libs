@@ -77,6 +77,7 @@ class Solr5(SolrMetrics):
         coresStatistic = self._getStats()
         self.log.debug(str("fetching statistics for {} local cores").format(len(coresStatistic)))
         for coreStat in coresStatistic:
+            self.log.debug(str("fetching statistics for local core: {}").format(coreStat.coreName))
             # create tags here
             collection, shard, replica = split(coreStat.coreName, "_")
             tags = [
