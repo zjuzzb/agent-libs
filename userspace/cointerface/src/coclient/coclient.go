@@ -11,6 +11,7 @@ import (
 	"os"
 	"sdc_internal"
 	"time"
+        "install_prefix"
 )
 
 func usage() {
@@ -89,7 +90,12 @@ func performPing(client sdc_internal.CoInterfaceClient, token int64) int {
 
 func mymain() int {
 	flag.Usage = usage
-	sockPtr := flag.String("sock", "/opt/draios/run/cointerface.sock", "domain socket for messages")
+	prefix, err := GetInstallPrefix()
+	if err != nil {
+		log.Errorf("Could not determine installation directory: %s", *sockPtr, err)
+		return 1
+	}
+	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
 	msgPtr := flag.String("msg", "ping", "Message to send to cointerface")
 	tokenPtr := flag.Int64("token", 0, "Token to include in ping message")
 	dockerCmdPtr := flag.String("docker_cmd", "", "docker operation to perform on container")

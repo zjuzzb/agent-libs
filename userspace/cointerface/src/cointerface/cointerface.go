@@ -13,6 +13,7 @@ import (
 	"fmt"
 	log "github.com/cihub/seelog"
 	"os"
+        "install_prefix"
 )
 
 func usage() {
@@ -92,7 +93,12 @@ func initLogging(useJson bool) {
 
 func mymain() int {
 	flag.Usage = usage
-	sockPtr := flag.String("sock", "/opt/draios/run/cointerface.sock", "domain socket for messages")
+	prefix, err := install_prefix.GetInstallPrefix()
+	if err != nil {
+		log.Errorf("Could not determine installation directory: %s", err)
+		return 1
+	}
+	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
 	useJson := flag.Bool("use_json", true, "log using json")
 	modulesDir := flag.String("modules_dir", "/opt/draios/lib/comp_modules", "compliance modules directory")
 
