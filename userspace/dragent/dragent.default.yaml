@@ -1188,6 +1188,6 @@ k8s_labels_filter:
 monitor_files:
   check_frequency_s: 5
   files:
-    - /opt/draios/etc/dragent.yaml
-    - /opt/draios/etc/kubernetes/config/dragent.yaml
-    - /opt/draios/etc/kubernetes/secrets/access-key
+    - etc/dragent.yaml
+    - etc/kubernetes/config/dragent.yaml
+    - etc/kubernetes/secrets/access-key

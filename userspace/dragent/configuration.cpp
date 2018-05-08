@@ -1102,8 +1102,15 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_snaplen = m_config->get_scalar<unsigned>("snaplen", 0);
 	m_monitor_files_freq_sec =
 		m_config->get_scalar<unsigned>("monitor_files", "check_frequency_s", 0);
-	m_monitor_files =
-		m_config->get_deep_merged_sequence<set<string>>("monitor_files", "files");
+	auto monitor_files = m_config->get_deep_merged_sequence<vector<string>>("monitor_files", "files");
+	for (auto& file : monitor_files)
+	{
+		if (file.find('/') != 0)
+		{
+			file = m_root_dir + '/' + file;
+		}
+		m_monitor_files.insert(file);
+	}
 
 	m_orch_queue_len = m_config->get_scalar<uint32_t>("orch_queue_len", 10000);
 	m_orch_gc = m_config->get_scalar<int32_t>("orch_gc", 10);
