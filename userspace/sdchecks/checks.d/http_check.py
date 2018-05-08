@@ -130,12 +130,12 @@ class WeakCiphersAdapter(HTTPAdapter):
                                                   maxsize=maxsize, block=block, strict=True, **pool_kwargs)
 
 
-def get_ca_certs_path():
+def get_ca_certs_path(install_prefix):
     """
     Get a path to the trusted certificates of the system
     """
     CA_CERTS = [
-        '/opt/draios/root.cert',
+        install_prefix + '/root.cert',
         '/etc/ssl/certs/ca-certificates.crt',
     ]
 
@@ -153,7 +153,7 @@ class HTTPCheck(AgentCheck):
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
-        self.ca_certs = init_config.get('ca_certs', get_ca_certs_path())
+        self.ca_certs = init_config.get('ca_certs', get_ca_certs_path(agentConfig['install_prefix']))
 
 
     def _load_conf(self, instance):

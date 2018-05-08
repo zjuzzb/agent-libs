@@ -36,8 +36,9 @@ from requests.packages.urllib3.exceptions import (
 )
 
 RLIMIT_MSGQUEUE = 12
-CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.d"
-CUSTOM_CHECKS_DIRECTORY = "/opt/draios/lib/python/checks.custom.d"
+# %s will be replaced by the install prefix
+CHECKS_DIRECTORY = "%s/lib/python/checks.d"
+CUSTOM_CHECKS_DIRECTORY = "%s/lib/python/checks.custom.d"
 GLOBAL_PERCENTILES = []
 
 DONT_SEND_LOG_REPORT = 19
@@ -125,12 +126,12 @@ def _load_check_module(name, module_name, directory):
         traceback_message = traceback.format_exc().strip().replace("\n", " -> ")
         raise AppCheckException('Unable to import check module %s.py from %s: %s' % (module_name, directory, traceback_message))
 
-def _load_check_class(check_module_name):
+def _load_check_class(check_module_name, install_prefix):
     try:
-        check_module = _load_check_module(check_module_name, check_module_name, CUSTOM_CHECKS_DIRECTORY)
+        check_module = _load_check_module(check_module_name, check_module_name, CUSTOM_CHECKS_DIRECTORY % install_prefix)
     except IOError:
         try:
-            check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY)
+            check_module = _load_check_module(check_module_name, check_module_name, CHECKS_DIRECTORY % install_prefix)
         except IOError as ex:
             raise AppCheckException('Unable to find AgentCheck class for %s reason=%s' % (check_module_name, str(ex)))
 
@@ -153,11 +154,11 @@ def _load_check_class(check_module_name):
 
 # LOADED_CHECKS acts as a static store for
 # check classes already loaded
-def get_check_class(check_name, LOADED_CHECKS={}):
+def get_check_class(check_name, install_prefix, LOADED_CHECKS={}):
     try:
         return LOADED_CHECKS[check_name]
     except KeyError:
-        check_class = _load_check_class(check_name)
+        check_class = _load_check_class(check_name, install_prefix)
         LOADED_CHECKS[check_name] = check_class
         return check_class
 
@@ -209,7 +210,7 @@ class AppCheckInstance:
         "port": lambda p: p["ports"][0],
         "port.high": lambda p: p["ports"][-1],
     }
-    def __init__(self, check, proc_data):
+    def __init__(self, check, proc_data, install_prefix):
         self.name = check["name"]
         self.pid = proc_data["pid"]
         self.vpid = proc_data["vpid"]
@@ -217,13 +218,15 @@ class AppCheckInstance:
         self.interval = timedelta(seconds=check.get("interval", 1))
         self.proc_data = proc_data
         self.retry = _is_affirmative(check.get("retry", True))
+        self.install_prefix = install_prefix
 
         try:
             check_module = check["check_module"]
         except KeyError:
             check_module = self.name
         self.AGENT_CONFIG["histogram_percentiles"] = GLOBAL_PERCENTILES
-        self.check_instance = get_check_class(check_module)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
+        self.AGENT_CONFIG["install_prefix"] = install_prefix
+        self.check_instance = get_check_class(check_module, self.install_prefix)(self.name, self.INIT_CONFIG, self.AGENT_CONFIG)
 
         if self.CONTAINER_SUPPORT:
             mnt_ns_path = build_ns_path(self.pid, "mnt")
@@ -329,8 +332,9 @@ class AppCheckInstance:
             raise AppCheckException("Cannot expand template for %s, proc_data %s, and conf_vals %s: %s" % (value, repr(proc_data), repr(conf_vals), ex))
 
 class Config:
-    def __init__(self):
-        etcdir = "/opt/draios/etc"
+    def __init__(self, install_prefix):
+	self.install_prefix = install_prefix
+        etcdir = install_prefix + "/etc"
         self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
                                         os.path.join(etcdir, "/kubernetes/config/dragent.yaml"),
                                         os.path.join(etcdir, "dragent.auto.yaml"),
@@ -451,8 +455,8 @@ def prepare_prom_check(pc, port):
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, install_prefix):
+        self.config = Config(install_prefix)
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
         # logging.debug("Check config: %s", repr(self.config.checks))
         # requests generates too noise on information level
@@ -511,7 +515,7 @@ class Application:
             logging.debug("Requested check %s", repr(check))
 
             try:
-                check_instance = AppCheckInstance(check, conf)
+                check_instance = AppCheckInstance(check, conf, self.config.install_prefix)
             except AppCheckException as ex:
                 if log_errors:
                     logging.error("Exception on creating check %s: %s", check["name"], ex)
