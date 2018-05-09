@@ -45,21 +45,29 @@ class Solr5(SolrMetrics):
 
 
     def _getDocumentCount(self):
+        # This metric arrives from all the hosts, so it cannot be
+        # summed. Therefore the total number of documents cannot be
+        # obtained summing the single collection's documents. We need 2 different metrics
         ret = []
-        liveNedes = self._getLiveNodesEndpoint()
-        shardDocumentCountMap = set()
-        for node in liveNedes:
-            self._getNodeDocumentCount(node, shardDocumentCountMap)
-
-        total = 0
-        for entry in shardDocumentCountMap:
-            tags = [
-                SolrMetrics.TAG_NAME[self.Tag.SHARD] % ("{}_{}").format(entry.collection, entry.shard)
+        total_document = 0
+        for collection in self._getCollections():
+            count = self._getCollectionDocumentCount(collection)
+            total_document = total_document + count
+            tag = [
+                SolrMetrics.TAG_NAME[self.Tag.COLLECTION] % collection
             ]
-            total = total + entry.value
-            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_SHARD, entry.value, tags))
-        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total, None))
+            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_COLLECTION, count, tag))
+        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total_document, None))
         return ret
+
+    def _getCollectionDocumentCount(self, collection):
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.COLLECTION_DOCUMENT_COUNT] % collection)
+        if len(obj) > 0:
+            try:
+                return obj["response"]["numFound"]
+            except Exception:
+                self.log.debug("unable to find %s number of documents" % collection)
+                return 0
 
     def _getNodeDocumentCount(self, node, shardDocumentCountMap):
         endpoint = str("http://{}").format(node.replace("_", "/"))

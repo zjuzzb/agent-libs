@@ -45,7 +45,7 @@ class SolrMetrics(object):
         UPDATE_RT = 15,
         TOTAL_NUMBER_OF_SHARDS = 16
         SHARDS_PER_COLLECTION = 17
-        DOCUMENT_COUNT_PER_SHARD = 18
+        DOCUMENT_COUNT_PER_COLLECTION = 18
         NONE = 100
 
     class Endpoint(Enum):
@@ -58,12 +58,15 @@ class SolrMetrics(object):
         CORES_INFO = 7
         VERSION = 8
         STATS = 9
+        COLLECTION_DOCUMENT_COUNT = 11
 
     URL = {
         Endpoint.LIVE_NODES: "/solr/admin/collections?action=clusterstatus&wt=json",
         Endpoint.SHARDS: "/solr/admin/collections?action=clusterstatus&wt=json",
         Endpoint.REPLICA: "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json"
+        Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json",
+        Endpoint.COLLECTION: "/solr/admin/collections?action=clusterstatus&wt=json",
+        Endpoint.COLLECTION_DOCUMENT_COUNT: "/solr/%s/select?indent=on&q=*:*&rows=0&start=0&wt=json"
     }
 
     class Metric:
@@ -291,3 +294,12 @@ class SolrMetrics(object):
 
         self.log.debug(str("detected {} local cores: {}").format(len(self.localCores), self.localCores))
         self.log.debug(str("detected {} local nodes: {}").format(len(self.localEndpoints), self.localEndpoints))
+
+    def _getCollections(self):
+        ret = []
+        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.COLLECTION])
+        if len(obj) > 0:
+            for collection in obj["cluster"]["collections"]:
+                ret.append(collection)
+        return ret
+
