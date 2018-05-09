@@ -179,11 +179,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 
 		if(type == PPME_SYSCALL_SIGNALFD_E)
 		{
-#ifdef __x86_64__
-			EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
-#else
 			EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("fd", false)));
-#endif
 			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("mask")));
 			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("flags")));
 			callnum++;
