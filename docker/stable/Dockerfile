@@ -16,6 +16,8 @@ RUN apt-get update \
  && apt-get upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
+	bc \
+	clang-7 \
 	curl \
 	gnupg2 \
 	ca-certificates \
@@ -25,6 +27,7 @@ RUN apt-get update \
 	libc6-dev \
 	libelf-dev \
 	libelf1 \
+	llvm-7 \
 	openjdk-8-jre-headless \
 	python bzip2 && rm -rf /var/lib/apt/lists/*
 
@@ -36,6 +39,11 @@ RUN apt-get update \
 RUN rm -rf /usr/bin/gcc && ln -s /usr/bin/gcc-5 /usr/bin/gcc \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.9 \
  && ln -s /usr/bin/gcc /usr/bin/gcc-4.8
+
+RUN rm -rf /usr/bin/clang \
+ && rm -rf /usr/bin/llc \
+ && ln -s /usr/bin/clang-7 /usr/bin/clang \
+ && ln -s /usr/bin/llc-7 /usr/bin/llc
 
 RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add - \
  && curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$SYSDIG_REPOSITORY/deb/draios.list \

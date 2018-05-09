@@ -56,7 +56,7 @@ using Poco::NullOutputStream;
 #define N_CONNECTIONS 2
 #define N_REQS_PER_CONNECTION 10
 
-/* 
+/*
  * error - wrapper for perror
  */
 void error(char *msg) {
@@ -100,20 +100,20 @@ TEST_F(sys_call_test, net_web_requests)
 			sockfd = socket(AF_INET, SOCK_STREAM, 0);
 			if (sockfd < 0)
 			{
-				error((char*)"ERROR opening socket");				
+				error((char*)"ERROR opening socket");
 			}
 
 			// build the server's Internet address
 			bzero((char *) &serveraddr, sizeof(serveraddr));
 			serveraddr.sin_family = AF_INET;
-			bcopy((char *)server->h_addr, 
+			bcopy((char *)server->h_addr,
 			  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
 			serveraddr.sin_port = htons(portno);
 
 			// create a connection with the server
 			if(connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
 			{
-				error((char*)"ERROR connecting");				
+				error((char*)"ERROR connecting");
 			}
 
 			for(k = 0; k < N_REQS_PER_CONNECTION; k++)
@@ -124,7 +124,7 @@ TEST_F(sys_call_test, net_web_requests)
 				n = write(sockfd, reqstr.c_str(), reqstr.length());
 				if (n < 0)
 				{
-					error((char*)"ERROR writing to socket");				
+					error((char*)"ERROR writing to socket");
 				}
 
 				// get the server's reply
@@ -136,12 +136,12 @@ TEST_F(sys_call_test, net_web_requests)
 					{
 						break;
 					}
-					if(n < 0) 
+					if(n < 0)
 					{
 						error((char*)"ERROR reading from socket");
-					}					
+					}
 				}
-				//printf("Echo from server: %s", reqbody);				
+				//printf("Echo from server: %s", reqbody);
 			}
 
 			close(sockfd);
@@ -155,7 +155,7 @@ TEST_F(sys_call_test, net_web_requests)
 	// OUTPUT VALIDATION
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
-	{		
+	{
 		sinsp_evt *evt = param.m_evt;
 
 		if(evt->get_type() == PPME_GENERIC_E)
@@ -163,7 +163,7 @@ TEST_F(sys_call_test, net_web_requests)
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin();
 					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
@@ -264,7 +264,7 @@ TEST_F(sys_call_test, net_ssl_requests)
 			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_max_counter()->m_count_in);
 			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_in);
 
-			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_counter()->m_count_out);
+			EXPECT_EQ((uint64_t) 2, transaction_metrics.get_counter()->m_count_out);
 			EXPECT_NE((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_out);
 			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_max_counter()->m_count_out);
 			EXPECT_NE((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_out);
@@ -334,39 +334,39 @@ TEST_F(sys_call_test, net_double_udp_connect)
 		sockfd = socket(2, 2, 0);
 		if (sockfd < 0)
 		{
-			error((char*)"ERROR opening socket");				
+			error((char*)"ERROR opening socket");
 		}
 
 		// build the server's Internet address
 		bzero((char *) &serveraddr, sizeof(serveraddr));
 		serveraddr.sin_family = AF_INET;
-		bcopy((char *)server->h_addr, 
+		bcopy((char *)server->h_addr,
 		  (char *)&serveraddr.sin_addr.s_addr, server->h_length);
 		serveraddr.sin_port = 0;
 
 		// create a connection with google
 		if(connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
 		{
-			error((char*)"ERROR connecting");				
+			error((char*)"ERROR connecting");
 		}
 
 		// create a SECOND connection with google
 		if(connect(sockfd, (struct sockaddr*)&serveraddr, sizeof(serveraddr)) < 0)
 		{
-			error((char*)"ERROR connecting");				
+			error((char*)"ERROR connecting");
 		}
 
 		// build the server's Internet address
 		bzero((char *) &serveraddr1, sizeof(serveraddr1));
 		serveraddr1.sin_family = AF_INET;
-		bcopy((char *)server1->h_addr, 
+		bcopy((char *)server1->h_addr,
 		  (char *)&serveraddr1.sin_addr.s_addr, server1->h_length);
 		serveraddr1.sin_port = htons(portno);
 
 		// create a connection with yahoo
 		if(connect(sockfd, (struct sockaddr*)&serveraddr1, sizeof(serveraddr1)) < 0)
 		{
-			error((char*)"ERROR connecting");				
+			error((char*)"ERROR connecting");
 		}
 
 		//
@@ -378,7 +378,7 @@ TEST_F(sys_call_test, net_double_udp_connect)
 		n = write(sockfd, reqstr.c_str(), reqstr.length());
 		if (n < 0)
 		{
-			error((char*)"ERROR writing to socket");				
+			error((char*)"ERROR writing to socket");
 		}
 
 		//
@@ -396,7 +396,7 @@ TEST_F(sys_call_test, net_double_udp_connect)
 	// OUTPUT VALIDATION
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
-	{		
+	{
 		sinsp_evt *evt = param.m_evt;
 
 		if(evt->get_type() == PPME_GENERIC_E)
@@ -404,7 +404,7 @@ TEST_F(sys_call_test, net_double_udp_connect)
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin();
 					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					if(cit->second.m_stid == mytid && cit->first.m_fields.m_dport == 80)
@@ -448,7 +448,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 		try
 		{
 			HTTPStreamFactory::registerFactory();
-			
+
 			NullOutputStream ostr;
 
 			URI uri("http://www.google.com");
@@ -486,7 +486,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	// OUTPUT VALIDATION
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
-	{		
+	{
 		sinsp_evt *evt = param.m_evt;
 
 		if(evt->get_type() == PPME_GENERIC_E)
@@ -494,7 +494,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin();
 					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					nconns++;
@@ -552,7 +552,7 @@ TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 		try
 		{
 			HTTPStreamFactory::registerFactory();
-			
+
 			NullOutputStream ostr;
 
 			URI uri1("http://www.google.com");
@@ -584,8 +584,8 @@ TEST_F(sys_call_test, DISABLED_net_connection_aggregation)
 	// OUTPUT VALIDATION
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
-	{		
-return;		
+	{
+return;
 		sinsp_evt *evt = param.m_evt;
 
 		if(evt->get_type() == PPME_GENERIC_E)
@@ -593,7 +593,7 @@ return;
 			if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 			{
 				unordered_map<ipv4tuple, sinsp_connection, ip4t_hash, ip4t_cmp>::iterator cit;
-				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin(); 
+				for(cit = param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.begin();
 					cit != param.m_inspector->m_analyzer->m_ipv4_connections->m_connections.end(); ++cit)
 				{
 					nconns++;

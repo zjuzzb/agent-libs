@@ -16,6 +16,8 @@ RUN echo "deb http://httpredir.debian.org/debian jessie main" > /etc/apt/sources
  && apt-get update \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
+	bc \
+	clang-7 \
 	curl \
 	gnupg2 \
 	ca-certificates \
@@ -23,6 +25,7 @@ RUN echo "deb http://httpredir.debian.org/debian jessie main" > /etc/apt/sources
 	gcc-5 \
 	gcc-4.9 \
 	libelf1 \
+	llvm-7 \
 	openjdk-8-jre-headless \
 	python dkms && rm -rf /var/lib/apt/lists/*
 
@@ -36,6 +39,11 @@ RUN rm -rf /usr/bin/gcc \
  && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.8 \
  && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.7 \
  && ln -s /usr/bin/gcc-4.9 /usr/bin/gcc-4.6
+
+RUN rm -rf /usr/bin/clang \
+ && rm -rf /usr/bin/llc \
+ && ln -s /usr/bin/clang-7 /usr/bin/clang \
+ && ln -s /usr/bin/llc-7 /usr/bin/llc
 
 RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 

@@ -188,7 +188,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 		{
 			FAIL();
 		}
-		
+
 		if(linkat(dirfd, FILENAME, dirfd, FILENAME2, 0) != 0)
 		{
 			FAIL();
@@ -244,11 +244,11 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 			if(callnum == 2)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("olddir", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("olddir"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("olddir"));
 				EXPECT_EQ(FILENAME, e->get_param_value_str("oldpath"));
 
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("newdir", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("newdir"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("newdir"));
 				EXPECT_EQ(FILENAME2, e->get_param_value_str("newpath"));
 
 				callnum++;
@@ -267,7 +267,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 			if(callnum == 4)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));
 				EXPECT_EQ(FILENAME, e->get_param_value_str("name"));
 
 				callnum++;
@@ -275,7 +275,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 			else if(callnum == 6)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));
 				EXPECT_EQ(FILENAME, e->get_param_value_str("name"));
 
 				callnum++;
@@ -283,7 +283,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 			else if(callnum == 8)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));
 				EXPECT_EQ(FILENAME1, e->get_param_value_str("name"));
 
 				callnum++;
@@ -291,7 +291,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 			else if(callnum == 10)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));				
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));
 				EXPECT_EQ(FILENAME2, e->get_param_value_str("name"));
 
 				callnum++;
@@ -344,7 +344,7 @@ TEST_F(sys_call_test, fs_mkdir_rmdir)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		mkdir(UNEXISTENT_DIRNAME, 0);
-		
+
 		if(mkdir(DIRNAME, 0) != 0)
 		{
 			FAIL();
@@ -466,7 +466,7 @@ TEST_F(sys_call_test, fs_openat)
 		{
 			FAIL();
 		}
-		
+
 		//
 		// Generate a pagefault to make sure openat_enter doesn't
 		// get dropped because FILENAME is not available in memory
@@ -508,7 +508,7 @@ TEST_F(sys_call_test, fs_openat)
 			if(callnum == 0)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));			
+				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));
 				callnum++;
 			}
 			else if(callnum == 2)
@@ -526,7 +526,7 @@ TEST_F(sys_call_test, fs_openat)
 			}
 			else if(callnum == 3)
 			{
-				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("fd", false)));				
+				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("fd", false)));
 				callnum++;
 			}
 		}
@@ -735,7 +735,7 @@ TEST_F(sys_call_test, fs_readv)
 		wv[1].iov_len  = strlen(msg2);
 		wv[2].iov_len  = strlen(msg3);
 		wv_count = 3;
-		
+
 		bytes_sent = writev(fd, wv, wv_count);
 		if(bytes_sent <= 0)
 		{
@@ -854,7 +854,7 @@ TEST_F(sys_call_test, fs_preadv)
 		// code in the proper way
 		//
 		pwritev64_succeeded = bytes_sent > 0;
-		
+
 		bytes_sent = pwritev(fd, wv, wv_count, 10);
 		if(bytes_sent <= 0)
 		{
@@ -904,7 +904,7 @@ TEST_F(sys_call_test, fs_preadv)
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
 				EXPECT_EQ(10, NumberParser::parse(e->get_param_value_str("pos")));
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("size")));
-				callnum++;				
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_PWRITEV_X)
@@ -927,7 +927,7 @@ TEST_F(sys_call_test, fs_preadv)
 			{
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("res", false)));
 				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
-				callnum++;				
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_PREADV_E)
@@ -942,7 +942,7 @@ TEST_F(sys_call_test, fs_preadv)
 			{
 				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("fd", false)));
 				EXPECT_EQ(10, NumberParser::parse64(e->get_param_value_str("pos")));
-				callnum++;				
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_PREADV_X)
@@ -1030,17 +1030,17 @@ TEST_F(sys_call_test, fs_dup)
 			else if(callnum == 2)
 			{
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
-				callnum++;				
+				callnum++;
 			}
 			else if(callnum == 4)
 			{
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
-				callnum++;				
+				callnum++;
 			}
 			else if(callnum == 6)
 			{
 				EXPECT_EQ(fd3, NumberParser::parse(e->get_param_value_str("fd", false)));
-				callnum++;				
+				callnum++;
 			}
 			else if(callnum == 8)
 			{
@@ -1049,12 +1049,12 @@ TEST_F(sys_call_test, fs_dup)
 #else
 				EXPECT_EQ("-1", e->get_param_value_str("fd", false));
 #endif
-				callnum++;				
+				callnum++;
 			}
 			else if(callnum == 10)
 			{
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
-				callnum++;				
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_DUP_X)
@@ -1092,7 +1092,7 @@ TEST_F(sys_call_test, fs_dup)
 			else if(callnum == 11)
 			{
 				EXPECT_EQ(fd6, NumberParser::parse(e->get_param_value_str("res", false)));
-				callnum++;				
+				callnum++;
 			}
 		}
 
@@ -1127,8 +1127,8 @@ TEST_F(sys_call_test, fs_fcntl)
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		fd = open(FILENAME, O_CREAT | O_WRONLY, 0);
-		fd1 = fcntl(fd, F_DUPFD);
-		fd2 = fcntl(fd, F_DUPFD_CLOEXEC);
+		fd1 = fcntl(fd, F_DUPFD, 0);
+		fd2 = fcntl(fd, F_DUPFD_CLOEXEC, 0);
 		printf("fd: %d %d %d, errno: %d\n", fd, fd1, fd2, errno);
 
 		close(fd);
@@ -1720,7 +1720,7 @@ TEST_F(sys_call_test32, fs_preadv)
 				EXPECT_EQ(fd, NumberParser::parse(e->get_param_value_str("fd", false)));
 				EXPECT_EQ(10, NumberParser::parse(e->get_param_value_str("pos")));
 				EXPECT_EQ(15, NumberParser::parse(e->get_param_value_str("size")));
-				callnum++;				
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_PWRITEV_X)
@@ -1735,7 +1735,7 @@ TEST_F(sys_call_test32, fs_preadv)
 			{
 				pwrite2_res = NumberParser::parse(e->get_param_value_str("res", false));
 				EXPECT_EQ("aaaaabbbbbccccc", e->get_param_value_str("data"));
-				callnum++;			
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_PREADV_E)
@@ -1750,7 +1750,7 @@ TEST_F(sys_call_test32, fs_preadv)
 			{
 				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("fd", false)));
 				EXPECT_EQ(10, NumberParser::parse64(e->get_param_value_str("pos")));
-				callnum++;				
+				callnum++;
 			}
 		}
 		else if(type == PPME_SYSCALL_PREADV_X)

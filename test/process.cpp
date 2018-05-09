@@ -77,54 +77,54 @@ TEST_F(sys_call_test, process_signalfd_kill)
 				// CHILD PROCESS
 				//
 				sigset_t mask;
-			 
+
 				/* We will handle SIGTERM and SIGINT. */
-				sigemptyset (&mask);
-				sigaddset (&mask, SIGTERM);
-				sigaddset (&mask, SIGINT);
-			 
-				/* Block the signals thet we handle using signalfd(), so they don't
+				sigemptyset(&mask);
+				sigaddset(&mask, SIGTERM);
+				sigaddset(&mask, SIGINT);
+
+				/* Block the signals that we handle using signalfd(), so they don't
 				 * cause signal handlers or default signal actions to execute. */
-				if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) 
-				{
-					FAIL();
-				}
-			 
-				/* Create a file descriptor from which we will read the signals. */
-				sfd = signalfd (-1, &mask, 0);
-				if (sfd < 0) 
+				if(sigprocmask(SIG_BLOCK, &mask, NULL) < 0)
 				{
 					FAIL();
 				}
 
-				while (true) 
-				{			 
-					/** The buffor for read(), this structure contains information
+				/* Create a file descriptor from which we will read the signals. */
+				sfd = signalfd(-1, &mask, 0);
+				if(sfd < 0)
+				{
+					FAIL();
+				}
+
+				while(true)
+				{
+					/** The buffer for read(), this structure contains information
 					 * about the signal we've read. */
 					struct signalfd_siginfo si;
-			 
+
 					ssize_t res;
-			 
-					res = read (sfd, &si, sizeof(si));
-			 
-					if (res < 0) 
+
+					res = read(sfd, &si, sizeof(si));
+
+					if(res < 0)
 					{
 						FAIL();
 					}
-					if (res != sizeof(si)) 
+					if(res != sizeof(si))
 					{
 						FAIL();
 					}
-			 
-					if (si.ssi_signo == SIGTERM)
+
+					if(si.ssi_signo == SIGTERM)
 					{
 						continue;
 					}
-					else if (si.ssi_signo == SIGINT) 
-					{			 
+					else if (si.ssi_signo == SIGINT)
+					{
 						break;
 					}
-					else 
+					else
 					{
 						FAIL();
 					}
@@ -134,7 +134,7 @@ TEST_F(sys_call_test, process_signalfd_kill)
 				close (sfd);
 
 				sleep(1);
-			 
+
 				//
 				// Remember to use _exit or the test system will get fucked!!
 				//
@@ -179,7 +179,11 @@ TEST_F(sys_call_test, process_signalfd_kill)
 
 		if(type == PPME_SYSCALL_SIGNALFD_E)
 		{
+#ifdef __x86_64__
+			EXPECT_EQ("4294967295", e->get_param_value_str("fd", false));
+#else
 			EXPECT_EQ(-1, NumberParser::parse(e->get_param_value_str("fd", false)));
+#endif
 			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("mask")));
 			EXPECT_EQ(0, NumberParser::parse(e->get_param_value_str("flags")));
 			callnum++;
@@ -317,7 +321,7 @@ TEST_F(sys_call_test, process_inotify)
 		fd = inotify_init();
 
 		/*checking for error*/
-		if ( fd < 0 ) 
+		if ( fd < 0 )
 		{
 			FAIL();
 		}
@@ -331,11 +335,11 @@ TEST_F(sys_call_test, process_inotify)
 		//
 		// read to determine the event changes
 		//
-		length = read( fd, buffer, EVENT_BUF_LEN ); 
-		if ( length < 0 ) 
+		length = read( fd, buffer, EVENT_BUF_LEN );
+		if ( length < 0 )
 		{
 			FAIL();
-		}  
+		}
 
 		//
 		// removing the watch
@@ -385,7 +389,7 @@ TEST_F(sys_call_test, process_inotify)
 TEST(procinfo, process_not_existent)
 {
 	sinsp inspector;
-	
+
 	inspector.open(1000);
 
 	//
@@ -422,7 +426,7 @@ TEST(procinfo, process_not_existent)
 }
 
 //
-// This test is compiled in release mode only because in debug mode it would 
+// This test is compiled in release mode only because in debug mode it would
 // cause a million of assertions to fire
 //
 //#ifndef _DEBUG
@@ -454,7 +458,7 @@ TEST_F(sys_call_test, process_thread_table_limit)
 	// OUTPUT VALIDATION
 	//
 	captured_event_callback_t callback = [&](const callback_param& param)
-	{		
+	{
 		sinsp_evt *evt = param.m_evt;
 
 		if(evt->get_type() == PPME_GENERIC_E)
@@ -497,12 +501,13 @@ TEST_F(sys_call_test, process_rlimit)
 	{
 		struct rlimit rl;
 
-		getrlimit(RLIMIT_NOFILE, (struct rlimit*)33);
-		getrlimit(RLIMIT_NOFILE, &rl);
+		// Called directly because libc likes prlimit()
+		syscall(SYS_getrlimit, RLIMIT_NOFILE, (struct rlimit*)33);
+		syscall(SYS_getrlimit, RLIMIT_NOFILE, &rl);
 		rl.rlim_cur = 500;
 		rl.rlim_max = 1000;
-		setrlimit(RLIMIT_NOFILE, &rl);
-		getrlimit(RLIMIT_NOFILE, &rl);
+		syscall(SYS_setrlimit, RLIMIT_NOFILE, &rl);
+		syscall(SYS_getrlimit, RLIMIT_NOFILE, &rl);
 	};
 
 	//
@@ -600,7 +605,6 @@ TEST_F(sys_call_test, process_rlimit)
 	EXPECT_EQ(8, callnum);
 }
 
-#if 0
 TEST_F(sys_call_test, process_prlimit)
 {
 	int callnum = 0;
@@ -651,23 +655,23 @@ TEST_F(sys_call_test, process_prlimit)
 			if(callnum == 1)
 			{
 				EXPECT_EQ((int64_t)-1, NumberParser::parse64(e->get_param_value_str("newcur", false)));
-				//EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("newmax", false)));
+				EXPECT_EQ((int64_t)-1, NumberParser::parse64(e->get_param_value_str("newmax", false)));
 				EXPECT_EQ((int64_t)orirl.rlim_cur, NumberParser::parse64(e->get_param_value_str("oldcur", false)));
-				//EXPECT_EQ((int64_t)orirl.rlim_max, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
+				EXPECT_EQ((int64_t)orirl.rlim_max, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
 			}
 			else if(callnum == 3)
 			{
 				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("newcur", false)));
-				//EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("newmax", false)));
+				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("newmax", false)));
 				EXPECT_EQ((int64_t)orirl.rlim_cur, NumberParser::parse64(e->get_param_value_str("oldcur", false)));
-				//EXPECT_EQ((int64_t)orirl.rlim_max, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
+				EXPECT_EQ((int64_t)orirl.rlim_max, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
 			}
 			else if(callnum == 5)
 			{
 				EXPECT_EQ((int64_t)-1, NumberParser::parse64(e->get_param_value_str("newcur", false)));
-				//EXPECT_EQ((int64_t)0, NumberParser::parse64(e->get_param_value_str("newmax", false)));
+				EXPECT_EQ((int64_t)-1, NumberParser::parse64(e->get_param_value_str("newmax", false)));
 				EXPECT_EQ((int64_t)500, NumberParser::parse64(e->get_param_value_str("oldcur", false)));
-				//EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
+				EXPECT_EQ((int64_t)1000, NumberParser::parse64(e->get_param_value_str("oldmax", false)));
 			}
 
 			callnum++;
@@ -683,7 +687,6 @@ TEST_F(sys_call_test, process_prlimit)
 
 	EXPECT_EQ(6, callnum);
 }
-#endif
 
 TEST_F(sys_call_test, procfs_cpuload)
 {
@@ -757,7 +760,7 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	pparser.set_global_cpu_jiffies();
 	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
 	EXPECT_EQ((double)-1, load);
-	
+
 	sleep(1);
 
 	for(j = 20; j > 10; j--)
@@ -863,7 +866,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 	uint32_t num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
- 
+
 	std::vector<std::shared_ptr<Poco::Thread>> pts;
 	std::vector<std::shared_ptr<loadthread>> lts;
 	std::vector<std::shared_ptr<Poco::RunnableAdapter<loadthread>>> rs;
@@ -993,7 +996,7 @@ TEST_F(sys_call_test, process_scap_proc_get)
 
 				scap_proc = scap_proc_get(param.m_inspector->m_h, 0, false);
 				EXPECT_EQ(NULL, (void*)scap_proc);
-				
+
 				int64_t tid = e->get_tid();
 				scap_proc = scap_proc_get(param.m_inspector->m_h, tid, false);
 				EXPECT_NE((void*)NULL, (void*)scap_proc);
@@ -1214,7 +1217,7 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 					tcpu = *(uint64_t*)parinfo->m_val;
 
 					uint64_t delta = tcpu - lastcpu1;
- 
+
 					printf("%d:%d)%d:%d)%d >> %d\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta);
 
 					if(callnum > 2)
@@ -1281,7 +1284,7 @@ TEST_F(sys_call_test, program_child_with_threads)
 			// CHILD PROCESS
 			//
 			cctid = fork();
-	
+
 			if(cctid == 0)
 			{
 				//
@@ -1402,21 +1405,21 @@ TEST_F(sys_call_test, nested_program_childs)
 			// CHILD PROCESS
 			//
 			cctid = fork();
-	
+
 			if(cctid == 0)
 			{
 				//
 				// CHILD PROCESS
 				//
 				cctid1 = fork();
-		
+
 				if(cctid1 == 0)
 				{
 					//
 					// CHILD PROCESS
 					//
 					cctid2 = fork();
-					
+
 					if(cctid2 == 0)
 					{
 						_exit(0);
@@ -1464,7 +1467,7 @@ TEST_F(sys_call_test, nested_program_childs)
 
 			sinsp_threadinfo* ptinfo = tinfo->m_ainfo->get_main_program_thread();
 			EXPECT_EQ(getpid(), ptinfo->m_tid);
-		}		
+		}
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});

@@ -83,28 +83,29 @@ TEST_F(sys_call_test, container_cgroups)
 				ASSERT_TRUE(sinsp_tinfo.m_cgroups.size() > 0);
 			}
 
-			//
-			// This tests that the cgroups in /proc/PID/cgroup are always a subset of the ones that came through clone(), checking
-			// the matching. This happens because the kernel by default hides some
-			//
-			map<string, string> cgroups1;
+			map<string, string> cgroups_kernel;
 			for(uint32_t j = 0; j < tinfo->m_cgroups.size(); ++j)
 			{
-				cgroups1.insert(pair<string, string>(tinfo->m_cgroups[j].first, tinfo->m_cgroups[j].second));
+				cgroups_kernel.insert(pair<string, string>(tinfo->m_cgroups[j].first, tinfo->m_cgroups[j].second));
 			}
 
-			map<string, string> cgroups2;
+			map<string, string> cgroups_proc;
 			for(uint32_t j = 0; j < sinsp_tinfo.m_cgroups.size(); ++j)
 			{
-				cgroups2.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first, sinsp_tinfo.m_cgroups[j].second));
+				cgroups_proc.insert(pair<string, string>(sinsp_tinfo.m_cgroups[j].first, sinsp_tinfo.m_cgroups[j].second));
 			}
-			ASSERT_GE(cgroups1.size(), cgroups2.size());
-			for(map<string, string>::iterator it2 = cgroups2.begin(); it2 != cgroups2.end(); ++it2)
+
+			ASSERT_TRUE(cgroups_kernel.size() > 0);
+			ASSERT_TRUE(cgroups_proc.size() > 0);
+
+			for(auto& it_proc : cgroups_proc)
 			{
-				map<string, string>::iterator it1 = cgroups1.find(it2->first);
-				ASSERT_NE(it1, cgroups1.end()) << it2->first << " not found on cgroups1";
-				EXPECT_EQ(it1->first, it2->first);
-				EXPECT_EQ(it1->second, it2->second);
+				auto it_kernel = cgroups_kernel.find(it_proc.first);
+				if(it_kernel != cgroups_kernel.end())
+				{
+					EXPECT_EQ(it_kernel->first, it_proc.first);
+					EXPECT_EQ(it_kernel->second, it_proc.second);
+				}
 			}
 
 			done = true;
@@ -120,7 +121,11 @@ TEST_F(sys_call_test, container_cgroups)
 static int clone_callback_3(void *arg)
 {
 	sleep(1);
-    return 0;
+	sleep(1);
+	sleep(1);
+	sleep(1);
+	sleep(1);
+	return 0;
 }
 
 TEST_F(sys_call_test, container_clone_nspid)

@@ -15,7 +15,7 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         git \
         glibc-static \
         make \
-	pkg-config \
+        pkg-config \
         rpm-build \
         unzip \
         wget \
@@ -25,7 +25,8 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         libtool && \
     yum -y install \
         glibc-devel.i686 \
-        devtoolset-2-libstdc++-devel.i686 && \
+        devtoolset-2-libstdc++-devel.i686 \
+        devtoolset-2-elfutils-libelf-devel && \
     yum clean all
 RUN curl -o docker.tgz https://get.docker.com/builds/Linux/x86_64/docker-1.11.0.tgz && \
     tar xfz docker.tgz docker/docker && \
@@ -46,5 +47,5 @@ RUN chmod +x /code/falco/scripts/build-lpeg.sh
 
 RUN cd /code/agent && ONLY_DEPS=true scl enable devtoolset-2 ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip
 ADD docker-builder-entrypoint.sh /
-VOLUME [ "/code/agent/build", "/out", "/root/.cache" ]
+VOLUME [ "/code/agent/build", "/code/sysdig/build", "/out", "/root/.cache" ]
 ENTRYPOINT [ "/docker-builder-entrypoint.sh" ]

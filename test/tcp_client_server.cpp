@@ -32,7 +32,11 @@ using Poco::NumberParser;
 #include "analyzer_thread.h"
 #include "tcp_client_server.h"
 
+static const string default_payload = "0123456789QWERTYUIOPASDFGHJKLZXCVBNM";
+static const string http_payload = "GET / 0123456789QWERTYUIOPASDFGHJKLZXCVBNM0123456789QWERTYUIOPASDFGHJKLZXCVBNM0123456789QWERTYUIOPASDFGHJKLZXCVBNM0123456789QWERTYUIOPASDFGHJKLZXCVBNM0123456789QWERTYUIOPASDFGHJKLZXCVBNM0123456789QWERTYUIOPASDFGHJKLZXCVBNO";
+
 void runtest(iotype iot,
+			 const string& payload = default_payload,
 			 bool use_shutdown = false,
 			 bool use_accept4 = false,
 			 uint32_t ntransactions = 1,
@@ -73,6 +77,7 @@ void runtest(iotype iot,
 	int ctid;
 	proc test_proc(helper_exe, {"tcp_client", server_address,
 							iot_s.c_str(),
+							payload,
 							stringify_bool(false), ntransactions_s,
 							stringify_bool(exit_no_close)});
 	//
@@ -293,32 +298,11 @@ void runtest(iotype iot,
 				EXPECT_EQ("NULL", evt->get_param_value_str("tuple"));
 			}
 
-			EXPECT_EQ(PAYLOAD, evt->get_param_value_str("data"));
+			EXPECT_EQ(payload, evt->get_param_value_str("data"));
 
 			log_param(param);
 			callnum++;
 		}
-		/*else if(evt->get_type() == PPME_SYSCALL_READV_X)
-		{
-			string ds = evt->get_param_value_str("data");
-			//ds = ds.substr(0, BUFFER_LENGTH / 3);
-
-			EXPECT_EQ(ds, evt->get_param_value_str("data"));
-
-			log_param(param);
-			callnum++;
-		}
-		else if(evt->get_type() == PPME_SYSCALL_WRITEV_X ||
-				evt->get_type() == PPME_SYSCALL_WRITE_X)
-		{
-			string ds = evt->get_param_value_str("data");
-			//ds = ds.substr(0, BUFFER_LENGTH / 3);
-
-			EXPECT_EQ(ds, evt->get_param_value_str("data"));
-
-			log_param(param);
-			callnum++;
-		}*/
 
 		if((PPME_SYSCALL_CLOSE_X == evt->get_type() || PPME_SOCKET_SHUTDOWN_X == evt->get_type()) && 0 == state && evt->get_tid() == server_pid)
 		{
@@ -343,11 +327,11 @@ void runtest(iotype iot,
 				if(NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 				{
 					sinsp_threadinfo* ti = param.m_inspector->get_thread(server_pid, false, true);
-					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
+					ASSERT_EQ((uint32_t) payload.length() * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
 					ASSERT_EQ((uint32_t)(ntransactions * 2 + 2), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
 
 					ti = param.m_inspector->get_thread(ctid, false, true);
-					ASSERT_EQ((uint32_t)(BUFFER_LENGTH - 1) * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
+					ASSERT_EQ((uint32_t) payload.length() * ntransactions * 2, (ti->m_ainfo->m_metrics.m_io_net.m_bytes_in + ti->m_ainfo->m_metrics.m_io_net.m_bytes_out));
 					ASSERT_EQ((uint32_t)(ntransactions * 2 + 1), (ti->m_ainfo->m_metrics.m_io_net.m_count_in + ti->m_ainfo->m_metrics.m_io_net.m_count_out + ti->m_ainfo->m_metrics.m_io_net.m_count_other));
 					//printf("****%d\n", (int)ti->m_ainfo->m_metrics.m_io_net.m_count);
 					//printf("****%d\n", (int)ti->m_ainfo->m_metrics.m_io_net.m_bytes);
@@ -392,22 +376,37 @@ TEST_F(sys_call_test, tcp_client_server_readv_writev)
 
 TEST_F(sys_call_test, tcp_client_server_shutdown)
 {
-	runtest(SENDRECEIVE,true);
+	runtest(SENDRECEIVE, default_payload, true);
 }
 
 TEST_F(sys_call_test, tcp_client_server_accept4)
 {
-	runtest(SENDRECEIVE, false, true);
+	runtest(SENDRECEIVE, default_payload, false, true);
 }
 
 TEST_F(sys_call_test, tcp_client_server_multiple)
 {
-	runtest(SENDRECEIVE, false, false, 10);
+	runtest(SENDRECEIVE, default_payload, false, false, 10);
 }
 
 TEST_F(sys_call_test, tcp_client_server_noclose)
 {
-	runtest(SENDRECEIVE, false, false, 1, true);
+	runtest(SENDRECEIVE, default_payload, false, false, 1, true);
+}
+
+TEST_F(sys_call_test, tcp_client_server_http_snaplen)
+{
+	runtest(SENDRECEIVE, http_payload);
+}
+
+TEST_F(sys_call_test, tcp_client_server_read_write_http_snaplen)
+{
+	runtest(READWRITE, http_payload);
+}
+
+TEST_F(sys_call_test, tcp_client_server_readv_writev_http_snaplen)
+{
+	runtest(READVWRITEV, http_payload);
 }
 
 TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
@@ -416,7 +415,7 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 	Poco::Thread client_thread;
 	tcp_server server(SENDRECEIVE, true);
 	uint32_t server_ip_address = get_server_address();
-	tcp_client client(server_ip_address,SENDRECEIVE,true);
+	tcp_client client(server_ip_address, SENDRECEIVE, default_payload, true);
 
 	Poco::RunnableAdapter<tcp_server> server_runnable(server, &tcp_server::run);
 	Poco::RunnableAdapter<tcp_client> client_runnable(client, &tcp_client::run);
@@ -483,36 +482,36 @@ TEST_F(sys_call_test, tcp_client_server_with_connection_before_capturing_starts)
 			 bool ia32_mode = false) */
 TEST_F(sys_call_test32, tcp_client_server)
 {
-	runtest(SENDRECEIVE, false, false, 1, false, true);
+	runtest(SENDRECEIVE, default_payload, false, false, 1, false, true);
 }
 
 TEST_F(sys_call_test32, tcp_client_server_read_write)
 {
-	runtest(READWRITE, false, false, 1, false, true);
+	runtest(READWRITE, default_payload, false, false, 1, false, true);
 }
 
 TEST_F(sys_call_test32, tcp_client_server_readv_writev)
 {
-	runtest(READVWRITEV, false, false, 1, false, true);
+	runtest(READVWRITEV, default_payload, false, false, 1, false, true);
 }
 
 TEST_F(sys_call_test32, tcp_client_server_shutdown)
 {
-	runtest(SENDRECEIVE,true, false, 1, false, true);
+	runtest(SENDRECEIVE, default_payload, true, false, 1, false, true);
 }
 
 TEST_F(sys_call_test32, tcp_client_server_accept4)
 {
-	runtest(SENDRECEIVE, false, true, 1, false, true);
+	runtest(SENDRECEIVE, default_payload, false, true, 1, false, true);
 }
 
 TEST_F(sys_call_test32, tcp_client_server_multiple)
 {
-	runtest(SENDRECEIVE, false, false, 10, false, true);
+	runtest(SENDRECEIVE, default_payload, false, false, 10, false, true);
 }
 
 TEST_F(sys_call_test32, tcp_client_server_noclose)
 {
-	runtest(SENDRECEIVE, false, false, 1, true, true);
+	runtest(SENDRECEIVE, default_payload, false, false, 1, true, true);
 }
 #endif

@@ -36,7 +36,7 @@ void sinsp_analyzer_parsers::on_capture_start()
 }
 
 //
-// This is similar to sinsp_parser::process_event, but it's for draios-only event 
+// This is similar to sinsp_parser::process_event, but it's for draios-only event
 // processing. Returns false if process_event() should return immediately.
 //
 bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
@@ -122,7 +122,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
 {
 	//
-	// Extract the request queue length 
+	// Extract the request queue length
 	//
 	sinsp_evt_param *parinfo = evt->get_param(2);
 	ASSERT(parinfo->m_len == sizeof(uint8_t));
@@ -140,7 +140,7 @@ void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
 	}
 
 	//
-	// If this comes after a wait, reset the last wait time, since we don't count 
+	// If this comes after a wait, reset the last wait time, since we don't count
 	// time waiting for an accept as I/O time
 	//
 	evt->m_tinfo->m_ainfo->m_last_wait_duration_ns = 0;
@@ -160,7 +160,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 	if(etype != evt->m_tinfo->m_lastevent_type + 1)
 	{
 		//
-		// Packet drop. Previuos event didn't have a chance to 
+		// Packet drop. Previuos event didn't have a chance to
 		//
 		return;
 	}
@@ -188,7 +188,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 		if(tinfo->is_lastevent_data_valid() && evt->m_tinfo->m_lastevent_data)
 		{
 			//
-			// We categorize this based on the next I/O operation only if the number of 
+			// We categorize this based on the next I/O operation only if the number of
 			// FDs that were waited for is 1
 			//
 			if(retval == 0)
@@ -247,7 +247,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	tainfo->m_called_execve = true;
 
 	const sinsp_configuration* sinsp_conf = m_analyzer->get_configuration_read_only();
-	
+
 	//
 	// Detect if this is a stress tool and in that case request to go in nodriver mode
 	//
@@ -282,7 +282,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	bool valid_ancestor = false;
 	bool found_container_init = false;
 
-	sinsp_threadinfo::visitor_func_t visitor = 
+	sinsp_threadinfo::visitor_func_t visitor =
 		[sinsp_conf, &login_shell_id, &shell_dist, &cur_dist,
 		 &valid_ancestor, &found_container_init] (sinsp_threadinfo *ptinfo)
 	{

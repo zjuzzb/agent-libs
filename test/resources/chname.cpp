@@ -45,4 +45,3 @@ int main(int argc, char **argv)
   std::thread changer(binded_changer);
   run();
 }
-
