@@ -2,3 +2,4 @@ protobuf==3.5.1
 jq
 protobuf_to_dict
 simplejson
+ipython
