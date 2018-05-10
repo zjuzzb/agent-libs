@@ -31,18 +31,6 @@ class Solr5(SolrMetrics):
 
     def __init__(self, version, instance):
         SolrMetrics.__init__(self, version, instance)
-        self.cores = set()
-
-    def _getLocalCores(self):
-        for baseUrl in self.localEndpoints:
-            try:
-                obj = self._getUrlWithBase(baseUrl, self.URL[SolrMetrics.Endpoint.CORES_INFO])
-                if len(obj) > 0:
-                    for name in obj["status"]:
-                        self.cores.add(name)
-            except Exception as e:
-                self.log.error(("could not get cores for endpoint {}: {}").format(baseUrl, e))
-
 
     def _getDocumentCount(self):
         # This metric arrives from all the hosts, so it cannot be
@@ -85,12 +73,13 @@ class Solr5(SolrMetrics):
         coresStatistic = self._getStats()
         self.log.debug(str("fetching statistics for {} local cores").format(len(coresStatistic)))
         for coreStat in coresStatistic:
-            self.log.debug(str("fetching statistics for local core: {}").format(coreStat.coreName))
+            self.log.debug(str("fetching statistics for local core: {}").format(coreStat.core.name))
             # create tags here
-            collection, shard, replica = split(coreStat.coreName, "_")
+            collection = coreStat.core.collection
+            coreName = coreStat.core.name
             tags = [
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.CORE] % coreStat.coreName
+                self.TAG_NAME[self.Tag.CORE] % coreName
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
@@ -109,11 +98,10 @@ class Solr5(SolrMetrics):
         class CoreStat:
             pass
         ret = []
-        self._getLocalCores()
-        for core in self.cores:
+        for core in self.localCores:
             element = CoreStat()
-            element.coreName = core
-            element.data = self._getSingleCoreStats(self._generateUrl(core))
+            element.core = core
+            element.data = self._getSingleCoreStats(self._generateUrl(core.name))
             ret.append(element)
         return ret
 
@@ -162,11 +150,10 @@ class Solr5(SolrMetrics):
             self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
             return self.RpsMetric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0)
 
-    def _getFromCoreIndexSize(self, coreStatistic ):
-        collection, shard, replica = split(coreStatistic.coreName, "_")
+    def _getFromCoreIndexSize(self, coreStatistic):
         tags = [
-            self.TAG_NAME[self.Tag.COLLECTION] % collection,
-            self.TAG_NAME[self.Tag.CORE] % coreStatistic.coreName
+            self.TAG_NAME[self.Tag.COLLECTION] % coreStatistic.core.collection,
+            self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name
         ]
         try:
             size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")

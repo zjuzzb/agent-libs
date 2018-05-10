@@ -90,6 +90,20 @@ class SolrMetrics(object):
         def __str__(self):
             return ("(name:{}, value: {}. tags: {})").format(self.name, self.value, self.tags)
 
+    class Core:
+        def __init__(self, name, shard, collection, base_url):
+            self.name = name
+            self.shard = shard
+            self.collection = collection
+            self.base_url = base_url
+
+        def __hash__(self):
+            return ("{}{}{}{}").format(self.name, self.shard, self.collection, self.base_url).__hash__()
+
+        def __eq__(self, other):
+            return self.name == other.name and self.shard == other.shard and self.collection == other.collection and self.base_url == other.base_url
+
+
     def __init__(self, version, instance):
         self.version = version
         self.instance = instance
@@ -102,7 +116,7 @@ class SolrMetrics(object):
 
     def check(self):
         # This should be run just once in a while
-        self._findLocalCores()
+        self._retrieveLocalEndpointsAndCores()
         self.log.debug(str("start checking solr host {} , ports:").format(self.host, self.ports))
         allRps = self._getAllRpsAndRequestTime()
         ret = [
@@ -231,7 +245,9 @@ class SolrMetrics(object):
                             if obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["state"] == "active":
                                 nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
                                 coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["core"]
-                                if coreAlias in self.localCores:
+                                baseUrl = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["base_url"]
+                                thisCore = self.Core(coreAlias, shard, collection, baseUrl)
+                                if thisCore in self.localCores:
                                     if replicaPerNodeMap.has_key(nodeName):
                                         replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
                                     else:
@@ -277,7 +293,7 @@ class SolrMetrics(object):
             self.log.error(("Got Error while fetching documetn count: {}").format(e))
         return ret
 
-    def _findLocalCores(self):
+    def _retrieveLocalEndpointsAndCores(self):
         obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
         if len(obj) > 0:
             try:
@@ -287,7 +303,8 @@ class SolrMetrics(object):
                             base_url = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"]
                             ip_address = urlparse(base_url).hostname
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
-                                self.localCores.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"])
+                                coreName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
+                                self.localCores.add(self.Core(coreName, shard, collection, base_url))
                                 self.localEndpoints.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"])
             except Exception as e:
                 self.log.error(("Got Error while fetching local core: {}").format(e))
