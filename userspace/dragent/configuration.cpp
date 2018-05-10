@@ -1035,8 +1035,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_orch_low_evt_threshold = m_config->get_scalar<uint32_t>("orch_low_evt_threshold", 50);
 	m_orch_filter_empty = m_config->get_scalar<bool>("orch_filter_empty", true);
 
-	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 5);
-	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 3);
+	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
+	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
 }
 
 void dragent_configuration::print_configuration() const
