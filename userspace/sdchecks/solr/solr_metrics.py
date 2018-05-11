@@ -264,6 +264,7 @@ class SolrMetrics(object):
                             tags = [
                                 self.TAG_NAME[self.Tag.NODE] % nodeName,
                                 self.TAG_NAME[self.Tag.COLLECTION_AND_SHARD] % collection_and_shard,
+                                self.TAG_NAME[self.Tag.COLLECTION] % collection
                             ]
                             ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
                             self.log.debug(("detected {} replica with tags {}").format(replicaPerNodeMap[nodeName].len, tags))
