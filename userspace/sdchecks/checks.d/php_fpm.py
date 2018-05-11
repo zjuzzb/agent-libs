@@ -119,7 +119,7 @@ class PHPFPMCheck(AgentCheck):
             if key not in data:
                 self.log.debug("Counter metric {0} is missing from FPM status".format(key))
                 continue
-            self.monotonic_count(mname, int(data[key]), tags=metric_tags)
+            self.rate(mname, int(data[key]), tags=metric_tags)
 
         # return pool, to tag the service check with it if we have one
         return pool_name
