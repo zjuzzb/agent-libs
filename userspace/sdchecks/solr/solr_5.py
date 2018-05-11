@@ -42,10 +42,12 @@ class Solr5(SolrMetrics):
             count = self._getCollectionDocumentCount(collection)
             total_document = total_document + count
             tag = [
-                SolrMetrics.TAG_NAME[self.Tag.COLLECTION] % collection
+                SolrMetrics.TAG_NAME[self.Tag.COLLECTION] % collection,
+                SolrMetrics.TAG_NAME[self.Tag.PORT] % self.port
             ]
             ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_COLLECTION, count, tag))
-        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total_document, None))
+        portTag = self.TAG_NAME[self.Tag.PORT] % self.port
+        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total_document, [portTag]))
         return ret
 
     def _getCollectionDocumentCount(self, collection):
@@ -79,7 +81,8 @@ class Solr5(SolrMetrics):
             coreName = coreStat.core.name
             tags = [
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.CORE] % coreName
+                self.TAG_NAME[self.Tag.CORE] % coreName,
+                self.TAG_NAME[self.Tag.PORT] % self.port
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
@@ -153,7 +156,8 @@ class Solr5(SolrMetrics):
     def _getFromCoreIndexSize(self, coreStatistic):
         tags = [
             self.TAG_NAME[self.Tag.COLLECTION] % coreStatistic.core.collection,
-            self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name
+            self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name,
+            self.TAG_NAME[self.Tag.PORT] % self.port
         ]
         try:
             size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")

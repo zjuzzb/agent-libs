@@ -17,6 +17,7 @@ class SolrMetrics(object):
         REPLICA = 4
         CORE = 5
         COLLECTION_AND_SHARD = 6
+        PORT = 7
 
     TAG_NAME = {
         Tag.COLLECTION: "solr.tag.collection:%s",
@@ -24,7 +25,8 @@ class SolrMetrics(object):
         Tag.NODE: "solr.tag.node:%s",
         Tag.SHARD: "solr.tag.shard:%s",
         Tag.CORE: "solr.tag.core:%s",
-        Tag.COLLECTION_AND_SHARD: "solr.tag.shard:%s"
+        Tag.COLLECTION_AND_SHARD: "solr.tag.shard:%s",
+        Tag.PORT: "solr.tag.port:%s"
     }
 
     class METRIC_NAME_ENUM(Enum):
@@ -108,6 +110,7 @@ class SolrMetrics(object):
         self.version = version
         self.instance = instance
         self.ports = instance["ports"]
+        self.port = 0
         self.host = instance["host"]
         self.network = Network()
         self.localCores = set()
@@ -140,6 +143,7 @@ class SolrMetrics(object):
     @staticmethod
     def getUrl(host, ports, handler):
         found = False
+        foundPort = 0
         for port in ports:
             try:
                 if found is True:
@@ -148,15 +152,17 @@ class SolrMetrics(object):
                 data = urllib2.urlopen(url)
                 obj = json.load(data)
                 found = True
+                foundPort = port
             except:
                 found = False
         if found is True:
-            return obj
+            return [obj, foundPort]
         else:
-            return {}
+            return [{}, 0]
 
     def _getUrl(self, handler):
-        return SolrMetrics.getUrl(self.host, self.ports, handler)
+        obj, self.port = SolrMetrics.getUrl(self.host, self.ports, handler)
+        return obj
 
     def _getUrlWithBase(self, baseUrl, handler):
         url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
@@ -189,7 +195,8 @@ class SolrMetrics(object):
                 live_nodes = len(obj["cluster"]["live_nodes"])
                 self.log.debug(("detected {} live nodes").format(live_nodes))
                 tags = [
-                    self.TAG_NAME[self.Tag.COLLECTION][0:-2]  # unset
+                    self.TAG_NAME[self.Tag.COLLECTION][0:-2],  # set
+                    self.TAG_NAME[self.Tag.PORT] % self.port
                 ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, tags))
             except KeyError:
@@ -219,12 +226,14 @@ class SolrMetrics(object):
                 for collection in shardsPerCollection:
                     self.log.debug(("detected {} shards for collection {}").format(shardsPerCollection[collection], collection))
                     tag = [
-                        self.TAG_NAME[self.Tag.COLLECTION] % collection
+                        self.TAG_NAME[self.Tag.COLLECTION] % collection,
+                        self.TAG_NAME[self.Tag.PORT] % self.port
                     ]
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS_PER_COLLECTION, shardsPerCollection[collection], tag))
 
                 self.log.debug(("detected {} total number of shards").format(totalNumberOfShards))
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, None))
+                portTag = self.TAG_NAME[self.Tag.PORT] % self.port
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, [portTag]))
         except Exception as e:
             self.log.error(("Got Error while fetching shards: {}").format(e))
         return ret
@@ -264,7 +273,8 @@ class SolrMetrics(object):
                             tags = [
                                 self.TAG_NAME[self.Tag.NODE] % nodeName,
                                 self.TAG_NAME[self.Tag.COLLECTION_AND_SHARD] % collection_and_shard,
-                                self.TAG_NAME[self.Tag.COLLECTION] % collection
+                                self.TAG_NAME[self.Tag.COLLECTION] % collection,
+                                self.TAG_NAME[self.Tag.PORT] % self.port
                             ]
                             ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
                             self.log.debug(("detected {} replica with tags {}").format(replicaPerNodeMap[nodeName].len, tags))
@@ -288,6 +298,7 @@ class SolrMetrics(object):
                         self.TAG_NAME[self.Tag.SHARD] % shard,
                         self.TAG_NAME[self.Tag.REPLICA] % replica,
                         self.TAG_NAME[self.Tag.CORE] % replica_alias,
+                        self.TAG_NAME[self.Tag.PORT] % self.port
                     ]
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         except Exception as e:

@@ -60,7 +60,7 @@ class Solr(AgentCheck):
 
     def _getSolrVersion(self, instance):
         if self.version == None:
-            obj = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+            obj, port = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
             if len(obj) > 0:
                 self.version = obj["lucene"]["solr-spec-version"]
                 assert int(self.version[0:1]) >= 4
