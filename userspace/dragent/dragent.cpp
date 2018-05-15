@@ -458,41 +458,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
 		auto state = &m_subprocesses_state["sdchecks"];
 		state->set_name("sdchecks");
-		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), [](const string& line)
-		{
-			auto parsed_log = sinsp_split(line, ':');
-			// TODO: switch to json logging to avoid parsing issues
-			// using this project for example: https://github.com/madzak/python-json-logger
-			if(parsed_log.size() >= 3 &&
-				!parsed_log.at(0).empty() &&
-				isdigit(parsed_log.at(0).at(0)))
-			{
-				auto level = parsed_log.at(1);
-				auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
-				for(auto it = parsed_log.begin()+3; it < parsed_log.end(); ++it)
-				{
-					message += ":" + *it;
-				}
-				if(level == "DEBUG")
-				{
-					g_log->debug(message);
-				}
-				else if(level == "INFO")
-				{
-					g_log->information(message);
-				}
-				else if(level == "WARNING")
-				{
-					g_log->warning(message);
-				}
-				else
-				{
-					g_log->error(message);
-				}
-			} else {
-				g_log->error("sdchecks, " + line);
-			}
-		}, state);
+		m_subprocesses_logger.add_logfd(m_sdchecks_pipes->get_file(), sdchecks_parser(), state);
 		monitor_process.emplace_process("sdchecks", [this]()
 		{
 			this->m_sdchecks_pipes->attach_child();

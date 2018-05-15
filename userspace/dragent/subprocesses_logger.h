@@ -108,6 +108,16 @@ private:
 	string m_prefix;
 };
 
+class sdchecks_parser
+{
+public:
+	sdchecks_parser();
+	void operator()(const string&);
+private:
+	string m_last_pid_str;
+	uint32_t m_last_sev;
+};
+
 class subprocesses_logger : public Runnable
 {
 public:

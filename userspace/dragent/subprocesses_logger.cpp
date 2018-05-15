@@ -198,6 +198,54 @@ void cointerface_parser::operator()(const string& data)
 	}
 }
 
+sdchecks_parser::sdchecks_parser()
+	: m_last_pid_str("0")
+	, m_last_sev(Poco::Message::Priority::PRIO_ERROR)
+{
+}
+
+void sdchecks_parser::operator()(const string& line)
+{
+	auto parsed_log = sinsp_split(line, ':');
+	// TODO: switch to json logging to avoid parsing issues
+	// using this project for example: https://github.com/madzak/python-json-logger
+	if(parsed_log.size() >= 3 &&
+		!parsed_log.at(0).empty() &&
+		isdigit(parsed_log.at(0).at(0)))
+	{
+		auto level = parsed_log.at(1);
+		auto message = "sdchecks[" + parsed_log.at(0) + "] " + parsed_log.at(2);
+		m_last_pid_str = parsed_log.at(0);
+
+		for(auto it = parsed_log.begin()+3; it < parsed_log.end(); ++it)
+		{
+			message += ":" + *it;
+		}
+		if(level == "DEBUG")
+		{
+			m_last_sev = Poco::Message::Priority::PRIO_DEBUG;
+		}
+		else if(level == "INFO")
+		{
+			m_last_sev = Poco::Message::Priority::PRIO_INFORMATION;
+		}
+		else if(level == "WARNING")
+		{
+			m_last_sev = Poco::Message::Priority::PRIO_WARNING;
+		}
+		else
+		{
+			m_last_sev = Poco::Message::Priority::PRIO_ERROR;
+		}
+		g_log->log(message, m_last_sev);
+	}
+	else
+	{
+		// Assuming continuation from previous log
+		g_log->log("sdchecks[" + m_last_pid_str + "] " + line, m_last_sev);
+	}
+}
+
 sinsp_logger_parser::sinsp_logger_parser(const string& procname):
 	m_prefix(procname + ": ")
 {
