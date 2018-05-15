@@ -9,6 +9,7 @@ Collects database-wide metrics and optionally per-relation metrics, custom metri
 """
 # stdlib
 import socket
+import copy
 
 # 3rd party
 try:
@@ -45,7 +46,10 @@ class PostgreSql(AgentCheck):
     SOURCE_TYPE_NAME = 'postgresql'
     RATE = AgentCheck.rate
     GAUGE = AgentCheck.gauge
-    MONOTONIC = AgentCheck.monotonic_count
+    # MONOTONIC = AgentCheck.monotonic_count
+    # Agent doesn't support monotonic count metric type
+    # Using rate instead
+    MONOTONIC = AgentCheck.rate
     SERVICE_CHECK_NAME = 'postgres.can_connect'
 
     # turning columns into tags
@@ -640,6 +644,7 @@ SELECT s.schemaname,
         # Pre-processed cached custom_metrics
         if key in self.custom_metrics:
             return self.custom_metrics[key]
+        custom_metrics = copy.deepcopy(custom_metrics)
 
         # Otherwise pre-process custom metrics and verify definition
         required_parameters = ("descriptors", "metrics", "query", "relation")
