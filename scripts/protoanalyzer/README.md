@@ -16,4 +16,4 @@
         
 # TODO
 
-Install protobuf-to-dict from the code of this [PR}(https://github.com/benhodgson/protobuf-to-dict/pull/18) to make `infrastructure_state` protobuf sections parsable by protoanalyzer
+Install protobuf-to-dict from the code of this [PR](https://github.com/benhodgson/protobuf-to-dict/pull/18) to make `infrastructure_state` protobuf sections parsable by protoanalyzer
