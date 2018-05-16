@@ -3766,6 +3766,9 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	falco_trc.stop();
 }
 
+#define HIGH_EVT_THRESHOLD 300*1000
+#define HIGH_SINGLE_EVT_THRESHOLD 100*1000
+
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
 	tracer_emitter f_trc("analyzer_flush");
@@ -4137,6 +4140,31 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			m_metrics->mutable_hostinfo()->set_uptime(m_proc_stat.m_uptime);
+
+			// Log host syscall count
+			auto top_calls = m_host_metrics.m_syscall_count.top_calls(5);
+			auto sev = sinsp_logger::SEV_DEBUG;
+			if (flshflags == DF_FORCE_FLUSH ||
+			    flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT ||
+			    m_host_metrics.m_syscall_count.total_calls() > HIGH_EVT_THRESHOLD ||
+			    (top_calls.crbegin() != top_calls.crend() &&
+			     top_calls.crbegin()->first > HIGH_SINGLE_EVT_THRESHOLD))
+			{
+				sev = sinsp_logger::SEV_INFO;
+			}
+			std::ostringstream call_log;
+			call_log << "Top calls";
+			if (flshflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			{
+				call_log << " while sampling";
+			}
+			call_log << " (" << m_host_metrics.m_syscall_count.total_calls() << " total)";
+			for (auto iter = top_calls.crbegin(); iter != top_calls.crend(); iter++)
+			{
+				call_log << ", " << m_inspector->get_event_info_tables()->m_event_info[iter->second].name
+					 << "(" << iter->second << "):" << iter->first;
+			}
+			g_logger.log(call_log.str(), sev);
 
 			if(!m_inspector->is_capture())
 			{
@@ -4740,6 +4768,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flshflags)
 	{
 		ts = evt->get_ts();
 		etype = evt->get_type();
+		m_host_metrics.m_syscall_count.add(etype);
 
 		if(m_parser->process_event(evt) == false)
 		{

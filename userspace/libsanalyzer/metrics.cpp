@@ -1110,6 +1110,43 @@ void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* prot
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// sinsp_syscall_counters implementation
+///////////////////////////////////////////////////////////////////////////////
+void sinsp_syscall_counters::clear()
+{
+	m_calls.fill(0);
+	m_total_calls = 0;
+}
+
+std::map<uint64_t, uint16_t> sinsp_syscall_counters::top_calls(uint16_t count) const
+{
+	std::map<uint64_t, uint16_t> top_calls;
+
+	for (uint16_t type = 0; type < m_calls.max_size(); type++)
+	{
+		auto cnt = m_calls[type];
+		auto output_type = type * 2;
+
+		if (cnt == 0)
+		{
+			continue;
+		}
+		else if (top_calls.size() < count)
+		{
+			top_calls[cnt] = output_type;
+			continue;
+		}
+		else if (cnt > top_calls.cbegin()->first)
+		{
+			top_calls.erase(top_calls.begin());
+			top_calls[cnt] = output_type;
+		}
+	}
+
+	return top_calls;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // sinsp_host_metrics implementation
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_host_metrics::sinsp_host_metrics()
@@ -1128,6 +1165,7 @@ void sinsp_host_metrics::clear()
 	m_metrics.clear();
 	m_connection_queue_usage_pct = 0;
 	m_fd_usage_pct = 0;
+	m_syscall_count.clear();
 	m_syscall_errors.clear();
 	m_tot_capacity_score = -1;
 	m_tot_stolen_capacity_score = -1;
@@ -1243,4 +1281,5 @@ void sinsp_host_metrics::set_serialize_pctl_data(bool val)
 {
 	m_metrics.set_serialize_pctl_data(val);
 }
+
 #endif // HAS_ANALYZER

@@ -348,6 +348,34 @@ public:
 };
 
 //
+// Count of all syscalls that have been processed
+//
+class sinsp_syscall_counters
+{
+public:
+	void add(uint16_t type)
+	{
+		if (type >= PPM_EVENT_MAX)
+		{
+			ASSERT(false);
+			return;
+		}
+
+		m_calls[type/2]++;
+		m_total_calls++;
+	}
+	void clear();
+	// Map from num calls to event type
+	std::map<uint64_t, uint16_t> top_calls(uint16_t count) const;
+	uint64_t total_calls() const { return m_total_calls; }
+
+private:
+	// Put enter+exit events in the same bucket
+	std::array<uint64_t, PPM_EVENT_MAX/2> m_calls = {};
+	uint64_t m_total_calls = 0;
+};
+
+//
 // Various metrics coming from processes, aggregated at the host level
 //
 class SINSP_PUBLIC sinsp_host_metrics
@@ -368,6 +396,7 @@ public:
 	sinsp_counters m_metrics; 
 	uint32_t m_connection_queue_usage_pct;
 	uint32_t m_fd_usage_pct;
+	sinsp_syscall_counters m_syscall_count;
 	sinsp_error_counters m_syscall_errors;
 	uint64_t m_pfmajor;
 	uint64_t m_pfminor;
