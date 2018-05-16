@@ -6,7 +6,7 @@ if [ ! -z $2 ]; then
 fi
 
 mkdir -p $CUSTOMERID
-for i in `seq 12`; do 
+for i in `seq 20`; do 
   echo "Connecting to collector-$i.."
   scp -C -r production-collector-$i:/tmp/$CUSTOMERID/ $CUSTOMERID/$i
 done
