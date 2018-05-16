@@ -1467,6 +1467,75 @@ TEST_F(sys_call_test32, execve_ia32_emulation)
 	EXPECT_EQ(8, callnum);
 }
 
+TEST_F(sys_call_test, failing_execve)
+{
+	int callnum = 0;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	const char *eargv[] = { "/non/existent",
+				"arg0",
+				"arg1",
+				"",
+				"arg3",
+				NULL
+	};
+
+	const char *eenvp[] = { "env0",
+				"env1",
+				"",
+				"env3",
+				NULL
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+
+		int ret = execve(eargv[0],
+				 (char * const *) eargv,
+				 (char * const *) eenvp);
+		ASSERT_TRUE(ret < 0);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt *e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_EXECVE_19_E ||
+		   type == PPME_SYSCALL_EXECVE_18_E)
+		{
+			++callnum;
+
+			string filename = e->get_param_value_str("filename");
+			EXPECT_EQ(filename, eargv[0]);
+		}
+		else if (type == PPME_SYSCALL_EXECVE_19_X ||
+			 type == PPME_SYSCALL_EXECVE_18_X)
+		{
+			++callnum;
+
+			string res = e->get_param_value_str("res");
+			EXPECT_EQ(res, "ENOENT");
+
+			string exe = e->get_param_value_str("exe");
+			EXPECT_EQ(exe, eargv[0]);
+
+			string args = e->get_param_value_str("args");
+			EXPECT_EQ(args, "arg0.arg1..arg3.");
+
+			string env = e->get_param_value_str("env");
+			EXPECT_EQ(env, "env0.env1..env3.");
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
+
 TEST_F(sys_call_test32, failing_execve)
 {
 	int callnum = 0;
