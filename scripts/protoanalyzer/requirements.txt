@@ -1,6 +1,6 @@
 protobuf==3.5.1
 jq
 # protobuf_to_dict
-https://github.com/luca3m/protobuf-to-dict
+git://github.com/luca3m/protobuf-to-dict
 simplejson
 ipython
