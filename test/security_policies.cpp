@@ -1245,7 +1245,7 @@ TEST_F(security_policies_test, nofd_operations)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test_delayed_reports, events_flood)
+TEST_F(security_policies_test_delayed_reports, DISABLED_events_flood)
 {
 	shared_ptr<protocol_queue_item> item;
 
