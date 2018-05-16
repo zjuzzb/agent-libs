@@ -2486,9 +2486,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			vector<sinsp_threadinfo*> containers_for_mounted_fs;
 			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
 			{
-				sinsp_container_info container_info;
-				m_inspector->m_container_manager.get_container(it->first, &container_info);
-				if(container_info.m_name.find("k8s_POD") == std::string::npos)
+				const sinsp_container_info *container_info =
+					m_inspector->m_container_manager.get_container(it->first);
+				if(container_info && container_info->m_name.find("k8s_POD") == std::string::npos)
 				{
 					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
 					{
@@ -5771,18 +5771,19 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	for(const auto& item : progtable_by_container)
 	{
 		const auto& container_id = item.first;
-		sinsp_container_info container_info;
-		if(m_inspector->m_container_manager.get_container(container_id, &container_info))
+		const sinsp_container_info *container_info =
+			m_inspector->m_container_manager.get_container(container_id);
+		if(container_info)
 		{
 
-			if(container_info.m_name.find("k8s_POD") == std::string::npos)
+			if(container_info->m_name.find("k8s_POD") == std::string::npos)
 			{
 				if((m_container_patterns.empty() ||
 					std::find_if(m_container_patterns.begin(), m_container_patterns.end(),
 								 [&container_info](const string& pattern)
 								 {
-									 return container_info.m_name.find(pattern) != string::npos ||
-											container_info.m_image.find(pattern) != string::npos;
+									 return container_info->m_name.find(pattern) != string::npos ||
+											container_info->m_image.find(pattern) != string::npos;
 								 }) != m_container_patterns.end())
 						)
 				{
@@ -5806,7 +5807,7 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 				// because usually if --cpu-shares flag is not set, it is meant for troubleshooting
 				// containers with few cpu usage or system containers
 				// with a default of 1024 given by the kernel, they pollute a lot the calculation
-				total_cpu_shares += container_info.m_cpu_shares;
+				total_cpu_shares += container_info->m_cpu_shares;
 			}
 		}
 	}
@@ -6452,14 +6453,13 @@ void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
 	if (!m_prom_conf.enabled() || mtinfo->m_ainfo->found_prom_check())
 		return;
 
-	sinsp_container_info container;
-	bool got_cont = m_inspector->m_container_manager.get_container(
-		tinfo->m_container_id, &container);
+	const sinsp_container_info *container =
+		m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
 	set<uint16_t> ports;
 	string path;
 	map<string, string> options;
-	if (m_prom_conf.match(tinfo, mtinfo, got_cont ? &container : NULL, *infra_state(), ports, path, options)) {
+	if (m_prom_conf.match(tinfo, mtinfo, container, *infra_state(), ports, path, options)) {
 		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path, options);
 		prom_procs.emplace_back(pp);
 

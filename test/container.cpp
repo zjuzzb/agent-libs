@@ -376,16 +376,16 @@ TEST_F(sys_call_test, container_docker)
 
 		ASSERT_TRUE(tinfo->m_container_id.length() == 12);
 
-		sinsp_container_info container_info;
-		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
-		ASSERT_TRUE(found);
+		const sinsp_container_info *container_info =
+		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_TRUE(container_info != NULL);
 
-		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info.m_type);
-		EXPECT_EQ("ilovesysdig_docker", container_info.m_name);
+		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info->m_type);
+		EXPECT_EQ("ilovesysdig_docker", container_info->m_name);
 #ifdef __s390x__
-		EXPECT_EQ("s390x/busybox", container_info.m_image);
+		EXPECT_EQ("s390x/busybox", container_info->m_image);
 #else
-		EXPECT_EQ("busybox", container_info.m_image);
+		EXPECT_EQ("busybox", container_info->m_image);
 #endif
 
 		done = true;
@@ -455,13 +455,13 @@ TEST_F(sys_call_test, container_rkt_after)
 
 		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
-		sinsp_container_info container_info;
-		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
-		ASSERT_TRUE(found);
+		const sinsp_container_info *container_info =
+		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_TRUE(container_info != NULL);
 
-		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info.m_type);
-		EXPECT_EQ("myrkt", container_info.m_name);
-		EXPECT_EQ("registry-1.docker.io/library/busybox:latest", container_info.m_image);
+		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info->m_type);
+		EXPECT_EQ("myrkt", container_info->m_name);
+		EXPECT_EQ("registry-1.docker.io/library/busybox:latest", container_info->m_image);
 
 		done = true;
 	};
@@ -533,13 +533,13 @@ TEST_F(sys_call_test, container_rkt_before)
 
 		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
-		sinsp_container_info container_info;
-		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
-		ASSERT_TRUE(found);
+		const sinsp_container_info *container_info =
+		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_TRUE(container_info != NULL);
 
-		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info.m_type);
-		EXPECT_EQ("myrkt", container_info.m_name);
-		EXPECT_EQ("registry-1.docker.io/library/busybox:latest", container_info.m_image);
+		EXPECT_EQ(sinsp_container_type::CT_RKT, container_info->m_type);
+		EXPECT_EQ("myrkt", container_info->m_name);
+		EXPECT_EQ("registry-1.docker.io/library/busybox:latest", container_info->m_image);
 
 		done = true;
 	};
@@ -603,13 +603,13 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 
 		ASSERT_TRUE(tinfo->m_container_id == "ilovesysdig_lxc");
 
-		sinsp_container_info container_info;
-		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
-		ASSERT_TRUE(found);
+		const sinsp_container_info *container_info =
+		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_TRUE(container_info != NULL);
 
-		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LXC);
-		ASSERT_TRUE(container_info.m_name == "ilovesysdig_lxc");
-		ASSERT_TRUE(container_info.m_image.empty());
+		ASSERT_TRUE(container_info->m_type == sinsp_container_type::CT_LXC);
+		ASSERT_TRUE(container_info->m_name == "ilovesysdig_lxc");
+		ASSERT_TRUE(container_info->m_image.empty());
 
 		done = true;
 	};
@@ -687,13 +687,13 @@ TEST_F(sys_call_test, container_libvirt)
 		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer" ||
 		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) == 1);
 
-		sinsp_container_info container_info;
-		bool found = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id, &container_info);
-		ASSERT_TRUE(found);
+		const sinsp_container_info *container_info =
+		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_TRUE(container_info != NULL);
 
-		ASSERT_TRUE(container_info.m_type == sinsp_container_type::CT_LIBVIRT_LXC);
-		ASSERT_TRUE(container_info.m_name == tinfo->m_container_id);
-		ASSERT_TRUE(container_info.m_image.empty());
+		ASSERT_TRUE(container_info->m_type == sinsp_container_type::CT_LIBVIRT_LXC);
+		ASSERT_TRUE(container_info->m_name == tinfo->m_container_id);
+		ASSERT_TRUE(container_info->m_image.empty());
 
 		done = true;
 	};

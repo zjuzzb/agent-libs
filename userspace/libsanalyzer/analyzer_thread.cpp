@@ -522,11 +522,11 @@ const proc_config& thread_analyzer_info::get_proc_config()
 		// 2. As last chance, use the Env coming from Docker
 		if(conf.empty() && !m_tinfo->m_container_id.empty())
 		{
-			sinsp_container_info container_info;
-			auto found = m_inspector->m_container_manager.get_container(m_tinfo->m_container_id, &container_info);
-			if(found)
+			const sinsp_container_info *container_info =
+				m_inspector->m_container_manager.get_container(m_tinfo->m_container_id);
+			if(container_info)
 			{
-				conf = container_info.m_sysdig_agent_conf;
+				conf = container_info->m_sysdig_agent_conf;
 			}
 		}
 
