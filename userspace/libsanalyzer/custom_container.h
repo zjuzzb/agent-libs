@@ -108,6 +108,8 @@ protected:
 
 class resolver {
 public:
+	resolver();
+
 	void set_enabled(bool enabled)
 	{
 		if (enabled && m_id_pattern.empty())
@@ -215,6 +217,8 @@ protected:
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ_tree(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	void clean_label(std::string& val);
+
+	match m_hostname;
 };
 
 

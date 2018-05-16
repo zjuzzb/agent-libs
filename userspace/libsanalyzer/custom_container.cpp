@@ -5,6 +5,8 @@
 
 #include <Poco/Exception.h>
 
+#include <sys/utsname.h>
+
 using namespace std;
 
 void custom_container::subst_token::render(std::string& out, const render_context& ctx, const std::vector<std::string>& env) const
@@ -80,6 +82,32 @@ void custom_container::subst_template::parse(const string& pattern)
 
 		pos = end_tag + 1;
 	}
+}
+
+custom_container::resolver::resolver()
+{
+	struct utsname nodename;
+	const char *hostname;
+	if (uname(&nodename) == 0)
+	{
+		hostname = nodename.nodename;
+	}
+	else
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot get hostname: %s", strerror(errno));
+		hostname = "localhost";
+	}
+	const char *dot = strchr(hostname, '.');
+	size_t len = strlen(hostname);
+	size_t shortname_len = dot ? dot - hostname :  len;
+
+	m_hostname = custom_container::match{
+		.m_str = hostname,
+		.m_matches = {
+			{0, len},
+			{0, shortname_len}
+		}
+	};
 }
 
 bool custom_container::resolver::match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx)
@@ -179,6 +207,8 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	{
 		return false;
 	}
+
+	render_ctx.emplace("hostname", m_hostname);
 
 	auto env = tinfo->get_env();
 
