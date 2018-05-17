@@ -241,6 +241,86 @@ TEST_F(sys_call_test, open_close_dropping)
 	EXPECT_EQ(4, callnum);
 }
 
+TEST_F(sys_call_test, fcntl_getfd)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return 0 == strcmp(evt->get_name(), "fcntl") && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		fcntl(0, F_GETFL);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
+
+TEST_F(sys_call_test, fcntl_getfd_dropping)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return 0 == strcmp(evt->get_name(), "fcntl") && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		inspector->start_dropping_mode(1);
+		fcntl(0, F_GETFL);
+		inspector->stop_dropping_mode();
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(0, callnum);
+}
+
+TEST_F(sys_call_test, bind_error)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return 0 == strcmp(evt->get_name(), "bind") && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		bind(0, NULL, 0);
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(2, callnum);
+}
+
+TEST_F(sys_call_test, bind_error_dropping)
+{
+	int callnum = 0;
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return 0 == strcmp(evt->get_name(), "bind") && m_tid_filter(evt);
+	};
+	run_callback_t test = [](sinsp* inspector)
+	{
+		inspector->start_dropping_mode(1);
+		bind(0, NULL, 0);
+		inspector->stop_dropping_mode();
+	};
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		callnum++;
+	};
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(1, callnum);
+}
+
 TEST_F(sys_call_test, close_badfd)
 {
 	int callnum = 0;
