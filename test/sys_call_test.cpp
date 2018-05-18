@@ -1491,6 +1491,12 @@ TEST_F(sys_call_test, failing_execve)
 				NULL
 	};
 
+	//
+	// Touch the memory so it won't generate a PF in the driver
+	//
+	printf("%s %s %s %s %s\n", eargv[0], eargv[1], eargv[2], eargv[3], eargv[4]);
+	printf("%s %s %s %s\n", eenvp[0], eenvp[1], eenvp[2], eenvp[3]);
+
 	run_callback_t test = [&](sinsp* inspector)
 	{
 
