@@ -24,8 +24,10 @@ from checks import AgentCheck
 
 GAUGE = "gauge"
 RATE = "rate"
-COUNT = "count"
-MONOTONIC = "monotonic_count"
+# Agent doesn't support monotonic count and count metric type
+# Using rate instead
+COUNT = "rate"
+MONOTONIC = "rate"
 
 # Vars found in "SHOW STATUS;"
 STATUS_VARS = {
