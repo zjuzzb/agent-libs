@@ -403,6 +403,17 @@ class MongoDb(AgentCheck):
         10: ('REMOVED', 'Removed'),
     }
 
+    """
+    Memory usage metrics are documented at
+    https://docs.mongodb.com/manual/reference/command/serverStatus/
+    """
+    METRIC_VALUES_IN_MB = [
+        "mem.mapped",
+        "mem.mappedWithJournal",
+        "mem.resident",
+        "mem.virtual",
+    ]
+
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
 
@@ -415,6 +426,22 @@ class MongoDb(AgentCheck):
         self.collection_metrics_names = []
         for (key, value) in self.COLLECTION_METRICS.iteritems():
             self.collection_metrics_names.append(key.split('.')[1])
+
+    @staticmethod
+    def convert_into_bytes(num, unit):
+        KB = float(1024)
+        sizes = {"B": 1, "KB": KB, "MB": int(KB ** 2), "GB": int(KB ** 3), "TB": int(KB ** 4)}
+        try:
+            int(num)
+        except Exception:
+            raise
+        unit_value = sizes.get(unit, None)
+
+        if unit_value:
+            num = num * unit_value
+        else:
+            raise Exception("Unit '%s' is not supported" % unit)
+        return num
 
     def get_library_versions(self):
         return {"pymongo": pymongo.version}
@@ -864,6 +891,10 @@ class MongoDb(AgentCheck):
                 raise TypeError(
                     u"{0} value is a {1}, it should be an int, a float or a long instead."
                     .format(metric_name, type(value)))
+
+            # Converting memory values into bytes
+            if metric_name in self.METRIC_VALUES_IN_MB:
+                value = self.convert_into_bytes(value, 'MB')
 
             # Submit the metric
             submit_method, metric_name_alias = self._resolve_metric(metric_name, metrics_to_collect)
