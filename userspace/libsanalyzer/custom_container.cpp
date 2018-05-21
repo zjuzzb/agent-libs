@@ -138,6 +138,23 @@ bool custom_container::resolver::match_environ(sinsp_threadinfo* tinfo, render_c
 	return true;
 }
 
+bool custom_container::resolver::match_environ_tree(sinsp_threadinfo* tinfo, render_context& render_ctx)
+{
+	bool found = false;
+	sinsp_threadinfo::visitor_func_t visitor = [&] (sinsp_threadinfo *ptinfo)
+	{
+		// match_environ returns true on match. this closure flips this to
+		// false meaning stop iterating
+		found = match_environ(ptinfo, render_ctx);
+		return !found;
+	};
+
+	if (visitor(tinfo))
+	{
+		tinfo->traverse_parent_state(visitor);
+	}
+	return found;
+}
 
 bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info)
 {
@@ -145,7 +162,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	render_context render_ctx;
 	container_info.m_type = CT_CUSTOM;
 
-	if (!m_enabled || !match_cgroup(tinfo, render_ctx) || !match_environ(tinfo, render_ctx))
+	if (!m_enabled || !match_cgroup(tinfo, render_ctx) || !match_environ_tree(tinfo, render_ctx))
 	{
 		return false;
 	}
