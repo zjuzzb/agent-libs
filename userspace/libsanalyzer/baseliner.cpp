@@ -150,7 +150,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 		it != inspector->m_thread_manager->m_threadtable.end();
 		++it)
 	{
-		sinsp_threadinfo* tinfo = &it->second;
+		sinsp_threadinfo* tinfo = it->second.get();
 
 		tinfo->m_blprogram = NULL;
 
@@ -398,7 +398,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 		it != inspector->m_thread_manager->m_threadtable.end();
 		++it)
 	{
-		sinsp_threadinfo* tinfo = &it->second;
+		sinsp_threadinfo* tinfo = it->second.get();
 
 		if(tinfo->is_main_thread())
 		{

@@ -167,9 +167,9 @@ TEST_F(sys_call_test, analyzer_procrename)
 			auto* thread_table = param.m_inspector->m_thread_manager->get_threads();
 			ASSERT_NE(thread_table->end(), thread_table->find(child_pid));
 			const auto& tinfo = thread_table->at(child_pid);
-			EXPECT_EQ("savonarola", tinfo.m_comm);
-			EXPECT_EQ("sysdig", tinfo.m_exe);
-			EXPECT_TRUE(tinfo.m_args.empty());
+			EXPECT_EQ("savonarola", tinfo->m_comm);
+			EXPECT_EQ("sysdig", tinfo->m_exe);
+			EXPECT_TRUE(tinfo->m_args.empty());
 		}
 	};
 

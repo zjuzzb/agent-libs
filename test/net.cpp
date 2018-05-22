@@ -253,9 +253,9 @@ TEST_F(sys_call_test, net_ssl_requests)
 			transaction_metrics.clear();
 			for(auto it = threadtable->begin(); it != threadtable->end(); ++it)
 			{
-				if(it->second.m_comm == "curl")
+				if(it->second->m_comm == "curl")
 				{
-					transaction_metrics.add(&it->second.m_ainfo->m_transaction_metrics);
+					transaction_metrics.add(&it->second->m_ainfo->m_transaction_metrics);
 				}
 			}
 

@@ -1658,7 +1658,7 @@ sinsp_threadinfo* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 		auto it = m_inspector->m_thread_manager->m_threadtable.find(tid);
 		if(it != m_inspector->m_thread_manager->m_threadtable.end())
 		{
-			return it->second.get_main_thread();
+			return it->second->get_main_thread();
 		}
 		else
 		{
@@ -1841,7 +1841,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
-		sinsp_threadinfo* tinfo = &it->second;
+		sinsp_threadinfo* tinfo = it->second.get();
 		thread_analyzer_info* ainfo = tinfo->m_ainfo;
 		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
@@ -6649,11 +6649,11 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
 		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
 	{
-		if(!it->second.is_main_thread())
+		if(!it->second->is_main_thread())
 		{
 			continue;
 		}
-		auto ainfo = it->second.m_ainfo->main_thread_ainfo();
+		auto ainfo = it->second->m_ainfo->main_thread_ainfo();
 
 		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{
@@ -6672,12 +6672,12 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 		if(do_complete_report)
 		{
 			len =  snprintf(reportbuf + pos, reportbuflen - pos,
-				"    tid: %d comm: %s nfds:%d\n", (int)it->first, it->second.m_comm.c_str(), (int)it->second.m_fdtable.size());
+				"    tid: %d comm: %s nfds:%d\n", (int)it->first, it->second->m_comm.c_str(), (int)it->second->m_fdtable.size());
 			MR_UPDATE_POS;
 		}
 
-		for(auto fdit = it->second.m_fdtable.m_table.begin();
-			fdit != it->second.m_fdtable.m_table.end(); ++fdit)
+		for(auto fdit = it->second->m_fdtable.m_table.begin();
+			fdit != it->second->m_fdtable.m_table.end(); ++fdit)
 		{
 			nfds++;
 
