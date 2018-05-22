@@ -29,7 +29,7 @@ MAX_DETAILED_QUEUES = 200
 MAX_DETAILED_NODES = 100
 # Post an event in the stream when the number of queues or nodes to
 # collect is above 90% of the limit:
-ALERT_THRESHOLD = 0.9
+LOGGING_INTERVAL = 300  # in secs
 EXCHANGE_ATTRIBUTES = [
     # Path, Name, Operation
     ('message_stats/ack', 'messages.ack.count', float),
@@ -145,8 +145,10 @@ class RabbitMQ(AgentCheck):
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
-        self.already_alerted = []
         self.cached_vhosts = {} # this is used to send CRITICAL rabbitmq.aliveness check if the server goes down
+        self.logging_interval = {"%s_start_time" % EXCHANGE_TYPE: time.time(),
+                                 "%s_start_time" % QUEUE_TYPE: time.time(),
+                                 "%s_start_time" % NODE_TYPE: time.time()}
 
     def _get_config(self, instance):
         # make sure 'rabbitmq_api_url' is present and get parameters
@@ -372,15 +374,15 @@ class RabbitMQ(AgentCheck):
         # a list of queues/nodes is specified. We process only those
         data = self._filter_list(data, explicit_filters, regex_filters, object_type, instance.get("tag_families", False))
 
-        # if no filters are specified, check everything according to the limits
-        if len(data) > ALERT_THRESHOLD * max_detailed:
-            # Post a message on the dogweb stream to warn
-            self.alert(base_url, max_detailed, len(data), object_type, custom_tags)
-
         if len(data) > max_detailed:
             # Display a warning in the info page
-            self.warning(
-                "Too many items to fetch. You must choose the %s you are interested in by editing the dragent.yaml configuration file or get in touch with support@sysdig.com" % object_type)
+            diff_time = time.time() - self.logging_interval.get('%s_start_time' % object_type)
+            if diff_time > instance.get('logging_interval', LOGGING_INTERVAL):
+                self.logging_interval['%s_start_time' % object_type] = time.time()
+                self.log.info(
+                    "rabbitmq: Too many {0} ({1}) to fetch and maximum limit is {2}. You must choose the {0} "
+                    "you are interested in by editing the dragent.yaml configuration file".format(
+                        object_type, len(data), max_detailed))
 
         for data_line in data[:max_detailed]:
             # We truncate the list if it's above the limit
@@ -460,33 +462,6 @@ class RabbitMQ(AgentCheck):
 
         for conn_state, nb_conn in connection_states.iteritems():
             self.gauge('rabbitmq.connections.state', nb_conn, tags=['%s_conn_state:%s' % (TAG_PREFIX, conn_state)] + custom_tags)
-
-    def alert(self, base_url, max_detailed, size, object_type, custom_tags):
-        key = "%s%s" % (base_url, object_type)
-        if key in self.already_alerted:
-            # We have already posted an event
-            return
-
-        self.already_alerted.append(key)
-
-        title = "RabbitMQ integration is approaching the limit on the number of %s that can be collected from on %s" % (
-            object_type, self.hostname)
-        msg = """%s %s are present. The limit is %s.
-        Please get in touch with support@sysdig.com to increase the limit.""" % (size, object_type, max_detailed)
-
-        event = {
-            "timestamp": int(time.time()),
-            "event_type": EVENT_TYPE,
-            "msg_title": title,
-            "msg_text": msg,
-            "alert_type": 'warning',
-            "source_type_name": SOURCE_TYPE_NAME,
-            "host": self.hostname,
-            "tags": ["base_url:%s" % base_url, "host:%s" % self.hostname] + custom_tags,
-            "event_object": "rabbitmq.limit.%s" % object_type,
-        }
-
-        self.event(event)
 
     def _limit_vhosts(self, instance):
         """
