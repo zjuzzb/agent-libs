@@ -14,7 +14,9 @@ from checks import AgentCheck, CheckException
 
 class MesosMaster(AgentCheck):
     GAUGE = AgentCheck.gauge
-    MONOTONIC_COUNT = AgentCheck.monotonic_count
+    # Agent doesn't support monotonic count metric type
+    # Using rate instead
+    MONOTONIC_COUNT = AgentCheck.rate
     SERVICE_CHECK_NAME = "mesos_master.can_connect"
     service_check_needed = True
 
