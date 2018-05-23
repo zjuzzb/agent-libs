@@ -32,7 +32,7 @@ sinsp_configuration::sinsp_configuration():
 	m_mesos_autodetect = true;
 #endif
 	m_jmx_limit = 500;
-	m_app_checks_limit = 300;
+	m_app_checks_limit = 500;
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = false;

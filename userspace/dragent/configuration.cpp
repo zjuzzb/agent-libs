@@ -256,7 +256,7 @@ dragent_configuration::dragent_configuration()
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
-	m_app_checks_limit = 300;
+	m_app_checks_limit = 500;
 	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
 	m_swarm_enabled = true;
@@ -786,7 +786,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 
 	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", !is_windows);
-	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 300);
+	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 500);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
 	m_containers_labels_max_len = m_config->get_scalar<uint32_t>("containers", "labels_max_len", 100);
