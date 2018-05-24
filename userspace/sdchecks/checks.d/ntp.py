@@ -1,3 +1,6 @@
+# stdlib
+import os
+
 # 3p
 import ntplib
 
@@ -6,6 +9,8 @@ from checks import AgentCheck
 from utils.ntp import get_ntp_args, set_user_ntp_settings
 
 DEFAULT_OFFSET_THRESHOLD = 60  # in seconds
+SERVICES_FILE_PATH = '/etc/services'
+DEFAULT_PORT = 123
 
 
 class NtpCheck(AgentCheck):
@@ -23,6 +28,11 @@ class NtpCheck(AgentCheck):
         set_user_ntp_settings(dict(instance))
 
         req_args = get_ntp_args()
+
+        # check for services file
+        if not os.path.exists(SERVICES_FILE_PATH):
+            port = instance.get('port', DEFAULT_PORT)
+            req_args['port'] = port
 
         self.log.debug("Using ntp host: {0}".format(req_args['host']))
 
