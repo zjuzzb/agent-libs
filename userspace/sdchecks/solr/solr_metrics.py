@@ -1,6 +1,8 @@
 import json
 import logging
 import urllib2
+import socket
+
 from urlparse import urlparse
 
 from enum import Enum
@@ -313,7 +315,8 @@ class SolrMetrics(object):
                     for shard in obj["cluster"]["collections"][collection]["shards"]:
                         for core_node in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
                             base_url = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"]
-                            ip_address = urlparse(base_url).hostname
+                            hostname_from_url = urlparse(base_url).hostname
+                            ip_address = socket.gethostbyname(hostname_from_url)
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
                                 coreName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
                                 self.localCores.add(self.Core(coreName, shard, collection, base_url))
