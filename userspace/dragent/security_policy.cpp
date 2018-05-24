@@ -151,10 +151,9 @@ void security_policies::init(security_mgr *mgr,
 
 	m_formatters = make_unique<sinsp_evt_formatter_cache>(inspector);
 
-	sinsp_filter_compiler compiler(inspector, qualifies());
-
 	if(qualifies() != "")
 	{
+		sinsp_filter_compiler compiler(inspector, qualifies());
 		m_qualifies.reset(compiler.compile());
 	}
 

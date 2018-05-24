@@ -168,6 +168,7 @@ protected:
 		m_configuration.m_autodrop_enabled = false;
 		m_configuration.m_security_policies_file = "./resources/security_policies_message.txt";
 		m_configuration.m_security_baselines_file = "./resources/security_baselines_message.txt";
+		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		if(delayed_reports)
 		{
 			m_configuration.m_security_throttled_report_interval_ns = 1000000000;
@@ -903,6 +904,34 @@ TEST_F(security_policies_test, falco_only)
 	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
 
 	string prefix = "tests read /tmp/sample-sensitive-file-*.txt";
+	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
+
+	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+};
+
+TEST_F(security_policies_test, falco_no_evttype)
+{
+	int fd = open("/tmp/banned-file.txt", O_RDONLY);
+	close(fd);
+
+	// Not using check_policy_events for this, as it is checking keys only
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() >= 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 26);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "anything_for_banned_file");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/banned-file.txt");
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("user.name") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.pname") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
+
+	string prefix = "some operation related to /tmp/banned-file.txt";
 	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},

@@ -96,6 +96,15 @@ private:
 			MET_MAX
 		};
 
+		metrics()
+		{
+			memset(m_metrics, 0, sizeof(m_metrics));
+		}
+
+		virtual ~metrics()
+		{
+		}
+
 		void incr(reason res)
 		{
 			m_metrics[res]++;

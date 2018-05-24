@@ -538,6 +538,19 @@ policy_list {
   host_scope: true
   container_scope: false
 }
+policy_list {
+  id: 26
+  name: "falco rule without event type"
+  falco_details {
+    rule_filter {
+      name: "anything_for_banned_file"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
 falco_rules {
-  contents: "- rule: read_sensitive_file\n  desc: test program reading /tmp/sample-sensitive-file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: tests read /tmp/sample-sensitive-file-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: read_overall_file\n  desc: test program reading /tmp/overall_file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/overall-order-3.txt)\n  output: tests read /tmp/overall-order-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n"
+  contents: "- rule: read_sensitive_file\n  desc: test program reading /tmp/sample-sensitive-file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: tests read /tmp/sample-sensitive-file-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: read_overall_file\n  desc: test program reading /tmp/overall_file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/overall-order-3.txt)\n  output: tests read /tmp/overall-order-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: anything_for_banned_file\n  desc: any operation related to a banned file\n  condition: proc.name in (tests,memcheck-amd64-) and fd.name=/tmp/banned-file.txt\n  output: some operation related to /tmp/banned-file.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: INFO\n  warn_evttypes: false"
 }

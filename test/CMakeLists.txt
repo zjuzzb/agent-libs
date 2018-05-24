@@ -35,6 +35,7 @@ add_executable(tests
 	coclient_test.cpp
 	emit_tracers.cpp
 	event_capture.cpp
+	evttype_filter.cpp
 	forking.cpp
 	fs.cpp
 	# infrastructure_state_test.cpp
