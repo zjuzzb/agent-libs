@@ -231,12 +231,16 @@ class RabbitMQ(AgentCheck):
                 limit_vhosts = vhosts
 
             # Generate metrics from the status API.
-            self.get_stats(instance, base_url, EXCHANGE_TYPE, max_detailed[EXCHANGE_TYPE], specified[EXCHANGE_TYPE],
-                           limit_vhosts, custom_tags, auth=auth, ssl_verify=ssl_verify)
-            self.get_stats(instance, base_url, QUEUE_TYPE, max_detailed[QUEUE_TYPE], specified[QUEUE_TYPE],
-                           limit_vhosts, custom_tags, auth=auth, ssl_verify=ssl_verify)
-            self.get_stats(instance, base_url, NODE_TYPE, max_detailed[NODE_TYPE], specified[NODE_TYPE],
-                           limit_vhosts, custom_tags, auth=auth, ssl_verify=ssl_verify)
+            # If max_detailed_<entity_type> is set to 0 turning off metrics
+            if max_detailed[EXCHANGE_TYPE] > 0:
+                self.get_stats(instance, base_url, EXCHANGE_TYPE, max_detailed[EXCHANGE_TYPE], specified[EXCHANGE_TYPE],
+                               limit_vhosts, custom_tags, auth=auth, ssl_verify=ssl_verify)
+            if max_detailed[QUEUE_TYPE] > 0:
+                self.get_stats(instance, base_url, QUEUE_TYPE, max_detailed[QUEUE_TYPE], specified[QUEUE_TYPE],
+                               limit_vhosts, custom_tags, auth=auth, ssl_verify=ssl_verify)
+            if max_detailed[NODE_TYPE] > 0:
+                self.get_stats(instance, base_url, NODE_TYPE, max_detailed[NODE_TYPE], specified[NODE_TYPE],
+                               limit_vhosts, custom_tags, auth=auth, ssl_verify=ssl_verify)
 
             self.get_connections_stat(instance, base_url, CONNECTION_TYPE, vhosts, limit_vhosts, custom_tags,
                            auth=auth, ssl_verify=ssl_verify)
