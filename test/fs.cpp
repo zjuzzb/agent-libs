@@ -1617,6 +1617,140 @@ TEST_F(sys_call_test, large_read_write)
 	EXPECT_EQ(4, callnum);
 }
 
+TEST_F(sys_call_test, large_readv_writev)
+{
+	const int buf_size = PPM_MAX_ARG_SIZE * 10;
+	const int chunks = 10;
+
+	char buf[buf_size];
+	int callnum = 0;
+	int fd;
+
+	srandom(42);
+
+	for(int j = 0; j < buf_size; ++j)
+	{
+		buf[j] = random();
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		inspector->set_snaplen(RW_MAX_SNAPLEN);
+
+		fd = creat(FILENAME, S_IRWXU);
+		if(fd < 0)
+		{
+			FAIL();
+		}
+
+		struct iovec iovs[chunks];
+		int chunk_size = buf_size / chunks;
+
+		int off = 0;
+		for(int j = 0; j < chunks; ++j)
+		{
+			iovs[j].iov_base = buf + off;
+			iovs[j].iov_len = chunk_size;
+
+			off += chunk_size;
+		}
+
+		int res = writev(fd, iovs, chunks);
+		EXPECT_EQ(res, (int) sizeof(buf));
+
+		close(fd);
+
+		int fd = open(FILENAME, O_RDONLY);
+		if(fd < 0)
+		{
+			FAIL();
+		}
+
+		res = readv(fd, iovs, chunks);
+		EXPECT_EQ(res, (int) sizeof(buf));
+
+		close(fd);
+
+		unlink(FILENAME);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		const int max_kmod_buf = getpagesize() - sizeof(struct iovec) * chunks - 1;
+
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_WRITEV_E)
+		{
+			if(NumberParser::parse(e->get_param_value_str("fd", false)) == fd)
+			{
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_WRITEV_X)
+		{
+			if(callnum == 1)
+			{
+				const sinsp_evt_param *p = e->get_param_value_raw("data");
+
+				if(scap_get_bpf_probe_from_env() == NULL)
+				{
+					//
+					// The driver doesn't have the correct behavior for accumulating
+					// readv/writev, and it uses a single page as a temporary storage area
+					//
+					EXPECT_EQ(p->m_len, max_kmod_buf);
+					EXPECT_EQ(0, memcmp(buf, p->m_val, max_kmod_buf));
+				}
+				else
+				{
+					EXPECT_EQ(p->m_len, RW_MAX_SNAPLEN);
+					EXPECT_EQ(0, memcmp(buf, p->m_val, RW_MAX_SNAPLEN));
+				}
+
+				callnum++;
+			}
+		}
+		if(type == PPME_SYSCALL_READV_E)
+		{
+			if(callnum == 2)
+			{
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_READV_X)
+		{
+			if(callnum == 3)
+			{
+				const sinsp_evt_param *p = e->get_param_value_raw("data");
+
+				if(scap_get_bpf_probe_from_env() == NULL)
+				{
+					EXPECT_EQ(p->m_len, max_kmod_buf);
+					EXPECT_EQ(0, memcmp(buf, p->m_val, max_kmod_buf));
+				}
+				else
+				{
+					EXPECT_EQ(p->m_len, RW_MAX_SNAPLEN);
+					EXPECT_EQ(0, memcmp(buf, p->m_val, RW_MAX_SNAPLEN));
+				}
+
+				callnum++;
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(4, callnum);
+}
+
 #ifdef __x86_64__
 TEST_F(sys_call_test32, DISABLED_fs_pread)
 {
