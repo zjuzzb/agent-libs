@@ -77,7 +77,8 @@ class Solr5(SolrMetrics):
             coreAlias = coreStat.core.alias
             tags = [
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.CORE] % ("{}.{}").format(coreName, coreAlias),
+                self.TAG_NAME[self.Tag.CORE] % coreName,
+                self.TAG_NAME[self.Tag.CORE_ALIAS] % coreAlias,
                 self.TAG_NAME[self.Tag.PORT] % coreStat.core.getPort()
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)

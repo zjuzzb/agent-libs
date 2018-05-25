@@ -20,6 +20,7 @@ class SolrMetrics(object):
         CORE = 5
         COLLECTION_AND_SHARD = 6
         PORT = 7
+        CORE_ALIAS = 8
 
     TAG_NAME = {
         Tag.COLLECTION: "solr.tag.collection:%s",
@@ -27,6 +28,7 @@ class SolrMetrics(object):
         Tag.NODE: "solr.tag.node:%s",
         Tag.SHARD: "solr.tag.shard:%s",
         Tag.CORE: "solr.tag.core:%s",
+        Tag.CORE_ALIAS: "solr.tag.core_alias:%s",
         Tag.COLLECTION_AND_SHARD: "solr.tag.shard:%s",
         Tag.PORT: "solr.tag.port:%s"
     }
