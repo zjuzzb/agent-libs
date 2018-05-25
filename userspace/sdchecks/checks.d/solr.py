@@ -56,7 +56,10 @@ class Solr(AgentCheck):
             if metricList is not None:
                 for metric in metricList:
                     if metric is not None and metric.getName() != SolrMetrics.METRIC_NAME_ENUM.NONE:
-                        self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
+                        if metric.getType() == SolrMetrics.Metric.MetricType.gauge:
+                            self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
+                        elif metric.getType() == SolrMetrics.Metric.MetricType.rate:
+                            self.rate(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
 
     def _getSolrVersion(self, instance):
         if self.version == None:

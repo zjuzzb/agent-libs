@@ -74,10 +74,18 @@ class SolrMetrics(object):
     }
 
     class Metric:
-        def __init__(self, name, value, tags):
+
+        class MetricType(Enum):
+            gauge = 1
+            counter = 2
+            rate = 3
+
+        def __init__(self, name, value, tags, metricType = MetricType.gauge):
             self.name = name
             self.value = value
             self.tags = tags
+            self.metricType = metricType
+
 
         def getValue(self):
             return self.value
@@ -87,6 +95,9 @@ class SolrMetrics(object):
 
         def getName(self):
             return self.name
+
+        def getType(self):
+            return self.metricType
 
         def __repr__(self):
             return ("(name:{}, value: {}. tags: {})").format(self.name, self.value, self.tags)

@@ -24,11 +24,6 @@ class Solr5(SolrMetrics):
         def __eq__(self, other):
             return (self.collection == other.collection) and (self.shard == other.shard)
 
-    class RpsMetric:
-        def __init__(self, metricName, value):
-            self.metricName = metricName
-            self.value = value
-
     def __init__(self, version, instance):
         SolrMetrics.__init__(self, version, instance)
 
@@ -87,7 +82,8 @@ class Solr5(SolrMetrics):
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
-                ret.append(self.Metric(rps.metricName, rps.value, tags))
+                rps.tags = tags
+                ret.append(rps)
         return ret
 
     def _getIndexSize(self):
@@ -142,17 +138,21 @@ class Solr5(SolrMetrics):
 
     def _getSingleRps(self, metricEnumValue, keyString, queryHandlerObj):
         try:
-            return self.RpsMetric(metricEnumValue, queryHandlerObj[keyString]["stats"]["avgRequestsPerSecond"])
+            ret =  SolrMetrics.Metric(metricEnumValue, queryHandlerObj[keyString]["stats"]["requests"], None, None)
+            ret.metricType = SolrMetrics.Metric.MetricType.rate
+            return ret
         except Exception as e:
             self.log.debug(("could not get rps {} {}: {}").format(metricEnumValue, keyString, e))
-            return self.RpsMetric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0)
+            return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
 
     def _getSingleRequestTime(self, metricEnumValue, keyString, queryHandlerObj):
         try:
-            return self.RpsMetric(metricEnumValue, float(queryHandlerObj[keyString]["stats"]["avgTimePerRequest"]))
+            ret = self.Metric(metricEnumValue, float(queryHandlerObj[keyString]["stats"]["avgTimePerRequest"]), None, None)
+            ret.metricType = SolrMetrics.Metric.MetricType.gauge
+            return ret
         except Exception as e:
             self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
-            return self.RpsMetric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0)
+            return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
 
     def _getFromCoreIndexSize(self, coreStatistic):
         tags = [
