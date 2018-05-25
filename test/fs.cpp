@@ -1751,6 +1751,70 @@ TEST_F(sys_call_test, large_readv_writev)
 	EXPECT_EQ(4, callnum);
 }
 
+TEST_F(sys_call_test, large_open)
+{
+	const int buf_size = PPM_MAX_ARG_SIZE * 10;
+
+	int callnum = 0;
+
+	srandom(42);
+
+	string buf;
+	while(buf.length() < buf_size)
+	{
+		buf.append(Poco::NumberFormatter::format(random()));
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		int fd = syscall(SYS_open, buf.c_str(), O_RDONLY);
+		EXPECT_EQ(fd, -1);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_OPEN_E)
+		{
+			callnum++;
+		}
+		else if(type == PPME_SYSCALL_OPEN_X)
+		{
+			const sinsp_evt_param *p = e->get_param_value_raw("name");
+
+			EXPECT_EQ(p->m_len, PPM_MAX_ARG_SIZE);
+			EXPECT_EQ(buf.substr(0, PPM_MAX_ARG_SIZE - 1), string(p->m_val));
+
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	if(scap_get_bpf_probe_from_env() == NULL)
+	{
+		//
+		// The kernel module has a bug and currently
+		// completely discard a string that is longer than
+		// the maximum parameter size, instead of properly
+		// truncating it. Will fix it at some point using
+		// a strlcpy-like.
+		//
+		EXPECT_EQ(1, callnum);
+	}
+	else
+	{
+		EXPECT_EQ(2, callnum);
+	}
+}
+
 #ifdef __x86_64__
 TEST_F(sys_call_test32, DISABLED_fs_pread)
 {
