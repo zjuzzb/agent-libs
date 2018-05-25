@@ -75,14 +75,15 @@ class Solr5(SolrMetrics):
         coresStatistic = self._getStats()
         self.log.debug(str("fetching statistics for {} local cores").format(len(coresStatistic)))
         for coreStat in coresStatistic:
-            self.log.debug(str("fetching statistics for local core: {}").format(coreStat.core.name))
+            self.log.debug(str("fetching statistics for local core: {}.{}").format(coreStat.core.name, coreStat.core.alias))
             # create tags here
             collection = coreStat.core.collection
             coreName = coreStat.core.name
+            coreAlias = coreStat.core.alias
             tags = [
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.CORE] % coreName,
-                self.TAG_NAME[self.Tag.PORT] % self.port
+                self.TAG_NAME[self.Tag.CORE] % ("{}.{}").format(coreName, coreAlias),
+                self.TAG_NAME[self.Tag.PORT] % coreStat.core.getPort()
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
@@ -104,7 +105,7 @@ class Solr5(SolrMetrics):
         for core in self.localCores:
             element = CoreStat()
             element.core = core
-            element.data = self._getSingleCoreStats(self._generateUrl(core.name))
+            element.data = self._getSingleCoreStats(self._generateUrl(core.alias))
             ret.append(element)
         return ret
 
@@ -136,7 +137,7 @@ class Solr5(SolrMetrics):
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_RT, "/query", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT, "/update", queryHandlerObj))
         except Exception as e:
-            self.log.debug(("could not get statistic from local cores: {}").format(e))
+            self.log.debug(("could not get statistic from local core: {}").format(e))
         return arr
 
     def _getSingleRps(self, metricEnumValue, keyString, queryHandlerObj):

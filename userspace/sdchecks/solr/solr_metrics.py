@@ -95,17 +95,22 @@ class SolrMetrics(object):
             return ("(name:{}, value: {}. tags: {})").format(self.name, self.value, self.tags)
 
     class Core:
-        def __init__(self, name, shard, collection, base_url):
+        def __init__(self, name, alias, shard, collection, base_url, port):
             self.name = name
+            self.alias = alias
             self.shard = shard
             self.collection = collection
             self.base_url = base_url
+            self.port = port
 
         def __hash__(self):
-            return ("{}{}{}{}").format(self.name, self.shard, self.collection, self.base_url).__hash__()
+            return ("{}{}{}{}{}").format(self.name, self.alias, self.shard, self.collection, self.base_url).__hash__()
 
         def __eq__(self, other):
-            return self.name == other.name and self.shard == other.shard and self.collection == other.collection and self.base_url == other.base_url
+            return self.name == other.name and self.alias == other.alias and self.shard == other.shard and self.collection == other.collection and self.base_url == other.base_url
+
+        def getPort(self):
+            return self.port
 
 
     def __init__(self, version, instance):
@@ -257,7 +262,7 @@ class SolrMetrics(object):
                                 nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
                                 coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["core"]
                                 baseUrl = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["base_url"]
-                                thisCore = self.Core(coreAlias, shard, collection, baseUrl)
+                                thisCore = self.Core(replica, coreAlias, shard, collection, baseUrl, urlparse(baseUrl).port)
                                 if thisCore in self.localCores:
                                     if replicaPerNodeMap.has_key(nodeName):
                                         replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
@@ -269,7 +274,7 @@ class SolrMetrics(object):
                                         newEntry.shard = shard
                                         replicaPerNodeMap[nodeName] = newEntry
                                 else:
-                                    self.log.debug(str("skipping core {} because it is not local").format(coreAlias))
+                                    self.log.debug(str("skipping core {}.{} because it is not local").format(replica, coreAlias))
                         for nodeName in replicaPerNodeMap:
                             collection_and_shard = str("{}_{}").format(replicaPerNodeMap[nodeName].collection, replicaPerNodeMap[nodeName].shard)
                             tags = [
@@ -315,11 +320,13 @@ class SolrMetrics(object):
                     for shard in obj["cluster"]["collections"][collection]["shards"]:
                         for core_node in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
                             base_url = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"]
-                            hostname_from_url = urlparse(base_url).hostname
+                            parsedUrl = urlparse(base_url)
+                            hostname_from_url = parsedUrl.hostname
+                            port_from_url = parsedUrl.port
                             ip_address = socket.gethostbyname(hostname_from_url)
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
-                                coreName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
-                                self.localCores.add(self.Core(coreName, shard, collection, base_url))
+                                coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
+                                self.localCores.add(self.Core(core_node, coreAlias, shard, collection, base_url, port_from_url))
                                 self.localEndpoints.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"])
             except Exception as e:
                 self.log.error(("Got Error while fetching local core: {}").format(e))
