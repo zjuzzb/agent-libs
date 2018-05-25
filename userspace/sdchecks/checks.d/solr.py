@@ -30,8 +30,8 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.QUERY_RT: "solr.query.request_time",
         SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT: "solr.update.request_time",
         SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE: "solr.index_size",
-        SolrMetrics.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS: "solr.shard_count",
-        SolrMetrics.METRIC_NAME_ENUM.SHARDS_PER_COLLECTION: "solr.shards_per_collection"
+        SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT: "solr.host.shard_count",
+        SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT: "solr.collection.shard_count"
     }
 
     # Source
@@ -43,13 +43,14 @@ class Solr(AgentCheck):
         self.version = None
 
     def check(self, instance):
-        self._getSolrVersion(instance)
+#         self._getSolrVersion(instance)
+# 
+#         if int(self.version[0:1]) == 5:
+#             self.sMetric = Solr5(self.version, instance)
+#         else:
+#             pass
 
-        if int(self.version[0:1]) == 5:
-            self.sMetric = Solr5(self.version, instance)
-        else:
-            pass
-
+        self.sMetric = Solr5(self.version, instance)
         ret = self.sMetric.check()
 
         for metricList in ret:

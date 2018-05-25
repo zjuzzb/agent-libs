@@ -47,8 +47,8 @@ class SolrMetrics(object):
         GET_RT = 13,
         QUERY_RT = 14,
         UPDATE_RT = 15,
-        TOTAL_NUMBER_OF_SHARDS = 16
-        SHARDS_PER_COLLECTION = 17
+        HOST_SHARD_COUNT = 16
+        COLLECTION_SHARD_COUNT = 17
         DOCUMENT_COUNT_PER_COLLECTION = 18
         NONE = 100
 
@@ -142,11 +142,12 @@ class SolrMetrics(object):
         allRps = self._getAllRpsAndRequestTime()
         ret = [
             self._getLiveNodes(),
-            self._getShards(),
             self._getReplica(),
             self._getDocumentCount(),
             allRps,
             self._getIndexSize()
+            self._getCollectionShardCount(),
+            self._getHostShardCount()
         ]
         return ret
 
@@ -221,41 +222,51 @@ class SolrMetrics(object):
                 pass
         return ret
 
-    def _getShards(self):
-        # There is no way to send just the localhost shards number
-        # Any shard lives in many hosts (differently from replica that lives just in a single host)
-        # and so it is impossible to choose which host must count the shard
-        # This metric must be intended as Shard Per Collection and MUST NOT be Summed  in the Monitor
-        # Separately, the total number of shards is calculated. Also this metric MUST NOT be summed
-        class ShardPerNode:
-            pass
-
+    def _getCollectionShardCount(self):
         ret = []
         try:
-            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
-            if len(obj) > 0:
-                totalNumberOfShards = 0
-                shardsPerCollection = {}
-                for collection in obj["cluster"]["collections"]:
-                    collectionLength = len(obj["cluster"]["collections"][collection]["shards"])
-                    shardsPerCollection[collection] = collectionLength
-                    totalNumberOfShards = totalNumberOfShards + collectionLength
+            # obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
+            with open('/opt/draios/cores.json') as f:
+                obj = json.load(f)
+            if len(obj) == 0:
+                return ret
 
-                for collection in shardsPerCollection:
-                    self.log.debug(("detected {} shards for collection {}").format(shardsPerCollection[collection], collection))
-                    tag = [
-                        self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                        self.TAG_NAME[self.Tag.PORT] % self.port
-                    ]
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.SHARDS_PER_COLLECTION, shardsPerCollection[collection], tag))
-
-                self.log.debug(("detected {} total number of shards").format(totalNumberOfShards))
-                portTag = self.TAG_NAME[self.Tag.PORT] % self.port
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.TOTAL_NUMBER_OF_SHARDS, totalNumberOfShards, [portTag]))
+            for collection in obj["cluster"]["collections"]:
+                shards_per_collection = len(obj["cluster"]["collections"][collection]["shards"])
+                tags = [ self.TAG_NAME[self.Tag.COLLECTION] % collection ]
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT, shards_per_collection, tags))
         except Exception as e:
-            self.log.error(("Got Error while fetching shards: {}").format(e))
+            self.log.error(("Got Error while fetching collection shard count: {}").format(e))
         return ret
 
+    def _getHostShardCount(self):
+        ret = []
+        try:
+            # obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
+            with open('/opt/draios/cores.json') as f:
+                obj = json.load(f)
+            if len(obj) == 0:
+                return ret
+
+            for collection in obj["cluster"]["collections"]:
+                shards_per_host = 0
+                shards = obj["cluster"]["collections"][collection]["shards"]
+
+                for shard in shards.values():
+                    for replica in shard["replicas"].values():
+                        base_url = replica["base_url"]
+                        node_name = urlparse(base_url).hostname
+                        node_ip_address = socket.gethostbyname(node_name)
+                        if self.network.ipIsLocalHostOrDockerContainer(node_ip_address):
+                            # found a replica that is local to this host
+                            shards_per_host = shards_per_host + 1
+                            break
+
+                tags = [ self.TAG_NAME[self.Tag.COLLECTION] % collection ]
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.HOST_SHARD_COUNT, shards_per_host, tags))
+        except Exception as e:
+            self.log.error(("Got Error while fetching host shard count: {}").format(e))
+        return ret
 
     def _getReplica(self):
         class replicaPerNode:
