@@ -1640,6 +1640,146 @@ TEST_F(sys_call_test32, failing_execve)
 	EXPECT_EQ(10, callnum);
 }
 
+TEST_F(sys_call_test, large_execve)
+{
+	const int buf_size = 100 * 1024;
+	const int driver_truncation_size = getpagesize();
+	const string non_existing_binary = "/non/existent";
+	const string existing_binary = "/bin/true";
+
+	int ctid;
+	int callnum = 0;
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_tid() == ctid;
+	};
+
+	srandom(42);
+
+	string buf;
+	while(buf.length() < buf_size)
+	{
+		buf.append(Poco::NumberFormatter::format(random()));
+	}
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		ctid = fork();
+
+		if(ctid < 0)
+		{
+			FAIL();
+		}
+
+		if(ctid == 0)
+		{
+			{
+				const char *eargv[] = { non_existing_binary.c_str(),
+							buf.c_str(),
+							NULL };
+
+				const char *eenvp[] = { buf.c_str(),
+							NULL };
+
+				int ret = execve(eargv[0],
+						 (char * const *) eargv,
+						 (char * const *) eenvp);
+				ASSERT_TRUE(ret < 0);
+			}
+
+			{
+				const char *eargv[] = { existing_binary.c_str(),
+							buf.c_str(),
+							NULL };
+
+				const char *eenvp[] = { buf.c_str(),
+							NULL };
+
+				int ret = execve(eargv[0],
+						 (char * const *) eargv,
+						 (char * const *) eenvp);
+				ASSERT_TRUE(ret == 0);
+			}
+		}
+		else
+		{
+			wait(NULL);
+			sleep(1);
+		}
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt *e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_EXECVE_19_E ||
+		   type == PPME_SYSCALL_EXECVE_18_E)
+		{
+			++callnum;
+
+			string filename = e->get_param_value_str("filename");
+
+			if(callnum == 1)
+			{
+				EXPECT_EQ(filename, non_existing_binary);
+			}
+			else if(callnum == 3)
+			{
+				EXPECT_EQ(filename, existing_binary);
+			}
+			else
+			{
+				FAIL();
+			}
+		}
+		else if (type == PPME_SYSCALL_EXECVE_19_X ||
+			 type == PPME_SYSCALL_EXECVE_18_X)
+		{
+			++callnum;
+
+			string exe = e->get_param_value_str("exe");
+			string args = e->get_param_value_str("args");
+			string env = e->get_param_value_str("env");
+
+			if(callnum == 2)
+			{
+				if(scap_get_bpf_probe_from_env() == NULL)
+				{
+					//
+					// The driver doesn't have the correct behavior
+					// for failed execves, it discards arguments
+					// instead of truncating them if they're too big
+					//
+					EXPECT_EQ(exe, "");
+					EXPECT_EQ(args, "");
+					EXPECT_EQ(env, "");
+				}
+				else
+				{
+					EXPECT_EQ(exe, non_existing_binary.c_str());
+					EXPECT_EQ(args, buf.substr(0, driver_truncation_size - non_existing_binary.length() - 2) + ".");
+					EXPECT_EQ(env, buf.substr(0, driver_truncation_size - 1) + ".");
+				}
+			}
+			else if(callnum == 4)
+			{
+				EXPECT_EQ(exe, existing_binary);
+				EXPECT_EQ(args, buf.substr(0, driver_truncation_size - existing_binary.length() - 2) + ".");
+				EXPECT_EQ(env, buf.substr(0, driver_truncation_size - 1) + ".");
+			}
+			else
+			{
+				FAIL();
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	EXPECT_EQ(4, callnum);
+}
+
 TEST_F(sys_call_test32, mmap)
 {
 	int callnum = 0;
