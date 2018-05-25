@@ -1518,6 +1518,105 @@ TEST_F(sys_call_test, fs_sendfile64)
 }
 #endif
 
+TEST_F(sys_call_test, large_read_write)
+{
+	const int buf_size = PPM_MAX_ARG_SIZE * 10;
+
+	char buf[buf_size];
+	int callnum = 0;
+	int fd;
+
+	srandom(42);
+
+	for(int j = 0; j < buf_size; ++j)
+	{
+		buf[j] = random();
+	}
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return m_tid_filter(evt);
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		inspector->set_snaplen(RW_MAX_SNAPLEN);
+
+		fd = creat(FILENAME, S_IRWXU);
+		if(fd < 0)
+		{
+			FAIL();
+		}
+
+		int res = write(fd, buf, sizeof(buf));
+		EXPECT_EQ(res, (int) sizeof(buf));
+
+		close(fd);
+
+		fd = open(FILENAME, O_RDONLY);
+		if(fd < 0)
+		{
+			FAIL();
+		}
+
+		res = read(fd, buf, sizeof(buf));
+		EXPECT_EQ(res, (int) sizeof(buf));
+
+		close(fd);
+
+		unlink(FILENAME);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_evt* e = param.m_evt;
+		uint16_t type = e->get_type();
+
+		if(type == PPME_SYSCALL_WRITE_E)
+		{
+			if(NumberParser::parse(e->get_param_value_str("fd", false)) == fd)
+			{
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_WRITE_X)
+		{
+			if(callnum == 1)
+			{
+				const sinsp_evt_param *p = e->get_param_value_raw("data");
+
+				EXPECT_EQ(p->m_len, RW_MAX_SNAPLEN);
+				EXPECT_EQ(0, memcmp(buf, p->m_val, RW_MAX_SNAPLEN));
+
+				callnum++;
+			}
+		}
+		if(type == PPME_SYSCALL_READ_E)
+		{
+			if(callnum == 2)
+			{
+				callnum++;
+			}
+		}
+		else if(type == PPME_SYSCALL_READ_X)
+		{
+			if(callnum == 3)
+			{
+				const sinsp_evt_param *p = e->get_param_value_raw("data");
+
+				EXPECT_EQ(p->m_len, RW_MAX_SNAPLEN);
+				EXPECT_EQ(0, memcmp(buf, p->m_val, RW_MAX_SNAPLEN));
+
+				callnum++;
+			}
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+
+	EXPECT_EQ(4, callnum);
+}
+
 #ifdef __x86_64__
 TEST_F(sys_call_test32, DISABLED_fs_pread)
 {
