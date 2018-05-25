@@ -137,7 +137,7 @@ void event_capture::capture()
 	delete m_analyzer;
 	m_capture_stopped.set();
 
-	if (getenv("SYSDIG_BPF_PROBE") == NULL)
+	if(scap_get_bpf_probe_from_env() == NULL)
 	{
 		// At this point there should be no consumers of the driver remaining.
 		// Wait up to 2 seconds for the refcount to settle
