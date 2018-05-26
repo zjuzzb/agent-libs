@@ -43,14 +43,13 @@ class Solr(AgentCheck):
         self.version = None
 
     def check(self, instance):
-#         self._getSolrVersion(instance)
-# 
-#         if int(self.version[0:1]) == 5:
-#             self.sMetric = Solr5(self.version, instance)
-#         else:
-#             pass
+        self._getSolrVersion(instance)
 
-        self.sMetric = Solr5(self.version, instance)
+        if int(self.version[0:1]) == 5:
+            self.sMetric = Solr5(self.version, instance)
+        else:
+            pass
+
         ret = self.sMetric.check()
 
         for metricList in ret:
