@@ -15,22 +15,14 @@ class SolrMetrics(object):
     class Tag(Enum):
         COLLECTION = 1
         SHARD = 2
-        NODE = 3
-        REPLICA = 4
-        CORE = 5
-        COLLECTION_AND_SHARD = 6
-        PORT = 7
-        CORE_ALIAS = 8
+        CORE = 3
+        CORE_ALIAS = 4
 
     TAG_NAME = {
         Tag.COLLECTION: "solr.tag.collection:%s",
-        Tag.REPLICA: "solr.tag.replica:%s",
-        Tag.NODE: "solr.tag.node:%s",
         Tag.SHARD: "solr.tag.shard:%s",
         Tag.CORE: "solr.tag.core:%s",
         Tag.CORE_ALIAS: "solr.tag.core_alias:%s",
-        Tag.COLLECTION_AND_SHARD: "solr.tag.shard:%s",
-        Tag.PORT: "solr.tag.port:%s"
     }
 
     class METRIC_NAME_ENUM(Enum):
@@ -141,13 +133,12 @@ class SolrMetrics(object):
         # This should be run just once in a while
         self._retrieveLocalEndpointsAndCores()
         self.log.debug(str("start checking solr host {} , ports:").format(self.host, self.ports))
-        allRps = self._getAllRpsAndRequestTime()
         ret = [
             self._getLiveNodes(),
             self._getReplica(),
             self._getDocumentCount(),
-            allRps,
-            self._getIndexSize()
+            self._getAllRpsAndRequestTime(),
+            self._getIndexSize(),
             self._getCollectionShardCount(),
             self._getHostShardCount()
         ]
@@ -217,7 +208,6 @@ class SolrMetrics(object):
                 self.log.debug(("detected {} live nodes").format(live_nodes))
                 tags = [
                     self.TAG_NAME[self.Tag.COLLECTION][0:-2],  # set
-                    self.TAG_NAME[self.Tag.PORT] % self.port
                 ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, tags))
             except KeyError:
@@ -227,9 +217,7 @@ class SolrMetrics(object):
     def _getCollectionShardCount(self):
         ret = []
         try:
-            # obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
-            with open('/opt/draios/cores.json') as f:
-                obj = json.load(f)
+            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
             if len(obj) == 0:
                 return ret
 
@@ -244,9 +232,7 @@ class SolrMetrics(object):
     def _getHostShardCount(self):
         ret = []
         try:
-            # obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
-            with open('/opt/draios/cores.json') as f:
-                obj = json.load(f)
+            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
             if len(obj) == 0:
                 return ret
 
@@ -278,15 +264,16 @@ class SolrMetrics(object):
         try:
             obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.REPLICA])
             if len(obj) > 0:
-                for collection in obj["cluster"]["collections"]:
-                    for shard in obj["cluster"]["collections"][collection]["shards"]:
+                for collectionName, collection in obj["cluster"]["collections"].iteritems():
+                    for shardName, shard in collection["shards"].iteritems():
                         replicaPerNodeMap = {}
-                        for replica in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
-                            if obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["state"] == "active":
-                                nodeName = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["node_name"]
-                                coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["core"]
-                                baseUrl = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][replica]["base_url"]
-                                thisCore = self.Core(replica, coreAlias, shard, collection, baseUrl, urlparse(baseUrl).port)
+                        # replicaName is an internal Solr representation
+                        for replicaName, replica in shard["replicas"].iteritems():
+                            if replica["state"] == "active":
+                                nodeName = replica["node_name"]
+                                coreName = replica["core"]
+                                baseUrl = replica["base_url"]
+                                thisCore = self.Core(coreName, replicaName, shardName, collectionName, baseUrl, urlparse(baseUrl).port)
                                 if thisCore in self.localCores:
                                     if replicaPerNodeMap.has_key(nodeName):
                                         replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
@@ -294,18 +281,14 @@ class SolrMetrics(object):
                                         newEntry = replicaPerNode()
                                         newEntry.len = 1
                                         newEntry.name = nodeName
-                                        newEntry.collection = collection
-                                        newEntry.shard = shard
+                                        newEntry.collection = collectionName
+                                        newEntry.shard = shardName
                                         replicaPerNodeMap[nodeName] = newEntry
                                 else:
-                                    self.log.debug(str("skipping core {}.{} because it is not local").format(replica, coreAlias))
+                                    self.log.debug(str("skipping core {}.{} because it is not local").format(replicaName, coreName))
                         for nodeName in replicaPerNodeMap:
-                            collection_and_shard = str("{}_{}").format(replicaPerNodeMap[nodeName].collection, replicaPerNodeMap[nodeName].shard)
                             tags = [
-                                self.TAG_NAME[self.Tag.NODE] % nodeName,
-                                self.TAG_NAME[self.Tag.COLLECTION_AND_SHARD] % collection_and_shard,
-                                self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                                self.TAG_NAME[self.Tag.PORT] % self.port
+                                self.TAG_NAME[self.Tag.COLLECTION] % collectionName,
                             ]
                             ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
                             self.log.debug(("detected {} replica with tags {}").format(replicaPerNodeMap[nodeName].len, tags))
@@ -327,9 +310,7 @@ class SolrMetrics(object):
                     tags = [
                         self.TAG_NAME[self.Tag.COLLECTION] % collection,
                         self.TAG_NAME[self.Tag.SHARD] % shard,
-                        self.TAG_NAME[self.Tag.REPLICA] % replica,
                         self.TAG_NAME[self.Tag.CORE] % replica_alias,
-                        self.TAG_NAME[self.Tag.PORT] % self.port
                     ]
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         except Exception as e:
@@ -340,18 +321,18 @@ class SolrMetrics(object):
         obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
         if len(obj) > 0:
             try:
-                for collection in obj["cluster"]["collections"]:
-                    for shard in obj["cluster"]["collections"][collection]["shards"]:
-                        for core_node in obj["cluster"]["collections"][collection]["shards"][shard]["replicas"]:
-                            base_url = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"]
+                for collectionName, collection in obj["cluster"]["collections"].iteritems():
+                    for shardName, shard in collection["shards"].iteritems():
+                        for replicaName, replica in shard["replicas"].iteritems():
+                            base_url = replica["base_url"]
                             parsedUrl = urlparse(base_url)
                             hostname_from_url = parsedUrl.hostname
                             port_from_url = parsedUrl.port
                             ip_address = socket.gethostbyname(hostname_from_url)
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
-                                coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
-                                self.localCores.add(self.Core(core_node, coreAlias, shard, collection, base_url, port_from_url))
-                                self.localEndpoints.add(obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["base_url"])
+                                coreName = replica["core"]
+                                self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url))
+                                self.localEndpoints.add(replica["base_url"])
             except Exception as e:
                 self.log.error(("Got Error while fetching local core: {}").format(e))
 

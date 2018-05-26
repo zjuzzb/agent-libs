@@ -38,11 +38,9 @@ class Solr5(SolrMetrics):
             total_document = total_document + count
             tag = [
                 SolrMetrics.TAG_NAME[self.Tag.COLLECTION] % collection,
-                SolrMetrics.TAG_NAME[self.Tag.PORT] % self.port
             ]
             ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_COLLECTION, count, tag))
-        portTag = self.TAG_NAME[self.Tag.PORT] % self.port
-        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total_document, [portTag]))
+        ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT, total_document, []))
         return ret
 
     def _getCollectionDocumentCount(self, collection):
@@ -79,7 +77,6 @@ class Solr5(SolrMetrics):
                 self.TAG_NAME[self.Tag.COLLECTION] % collection,
                 self.TAG_NAME[self.Tag.CORE] % coreName,
                 self.TAG_NAME[self.Tag.CORE_ALIAS] % coreAlias,
-                self.TAG_NAME[self.Tag.PORT] % coreStat.core.getPort()
             ]
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
@@ -102,7 +99,7 @@ class Solr5(SolrMetrics):
         for core in self.localCores:
             element = CoreStat()
             element.core = core
-            element.data = self._getSingleCoreStats(self._generateUrl(core.alias))
+            element.data = self._getSingleCoreStats(self._generateUrl(core.name))
             ret.append(element)
         return ret
 
@@ -159,7 +156,6 @@ class Solr5(SolrMetrics):
         tags = [
             self.TAG_NAME[self.Tag.COLLECTION] % coreStatistic.core.collection,
             self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name,
-            self.TAG_NAME[self.Tag.PORT] % self.port
         ]
         try:
             size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")
@@ -174,7 +170,7 @@ class Solr5(SolrMetrics):
 
             ret = self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE, sizeInBytes, tags)
         except Exception as e:
-            self.log.error(("error getting index size for core {}: {}").format(coreStatistic.coreName, e))
+            self.log.error(("error getting index size for core {}: {}").format(coreStatistic.core.name, e))
             ret = self.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None)
 
         return ret
