@@ -129,6 +129,7 @@ class SolrMetrics(object):
         self.localCores = set()
         self.localLeaderCores = set()
         self.localEndpoints = set()
+        self.collectionByCore = dict()
         self.log = logging.getLogger(__name__)
 
     def check(self):
@@ -314,8 +315,7 @@ class SolrMetrics(object):
                 for replica_alias in obj["status"]:
                     if replica_alias not in self.localLeaderCores:
                         continue
-                    cloud = obj["status"][replica_alias].get("cloud", dict())
-                    collection = cloud.get("collection", None)
+                    collection = self.collectionByCore.get(replica_alias, None)
                     # collection = obj["status"][replica_alias]["cloud"]["collection"]
                     # shard = obj["status"][replica_alias]["cloud"]["shard"]
                     # replica = obj["status"][replica_alias]["cloud"]["replica"]
@@ -364,11 +364,11 @@ class SolrMetrics(object):
                             ip_address = socket.gethostbyname(hostname_from_url)
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
                                 coreName = replica["core"]
-                                coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
-                                leader = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node].get("leader", False)
+                                leader = replica.get("leader", False)
                                 if bool(leader):
                                     self.localLeaderCores.add(coreAlias)
-                                self.localCores.add(self.Core(coreNamw, replicaName, shardName, collectionName, base_url, port_from_url, leader))
+                                self.collectionByCore[coreAlias] = collection
+                                self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url, leader))
                                 self.localEndpoints.add(replica["base_url"])
             except Exception as e:
                 self.log.error(("Got Error while fetching local core: {}").format(e))
