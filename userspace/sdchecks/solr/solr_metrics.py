@@ -100,13 +100,14 @@ class SolrMetrics(object):
             return ("(name:{}, value: {}. tags: {})").format(self.name, self.value, self.tags)
 
     class Core:
-        def __init__(self, name, alias, shard, collection, base_url, port):
+        def __init__(self, name, alias, shard, collection, base_url, port, leader = None):
             self.name = name
             self.alias = alias
             self.shard = shard
             self.collection = collection
             self.base_url = base_url
             self.port = port
+            self.leader = leader
 
         def __hash__(self):
             return ("{}{}{}{}{}").format(self.name, self.alias, self.shard, self.collection, self.base_url).__hash__()
@@ -126,6 +127,7 @@ class SolrMetrics(object):
         self.host = instance["host"]
         self.network = Network()
         self.localCores = set()
+        self.localLeaderCores = set()
         self.localEndpoints = set()
         self.log = logging.getLogger(__name__)
 
@@ -136,11 +138,11 @@ class SolrMetrics(object):
         ret = [
             self._getLiveNodes(),
             self._getReplica(),
-            self._getDocumentCount(),
+            self._getLocalDocumentCount(),
             self._getAllRpsAndRequestTime(),
             self._getIndexSize(),
             self._getCollectionShardCount(),
-            self._getHostShardCount()
+            self._getHostShardCount(),
         ]
         return ret
 
@@ -297,6 +299,37 @@ class SolrMetrics(object):
 
         return ret
 
+    def _getLocalDocumentCount(self):
+        ret = []
+        for base in self.localEndpoints:
+            mets = self._getCoreDocumentCount(base)
+            ret.extend(mets)
+        return ret
+
+    def _getCoreDocumentCount(self, base):
+        ret = []
+        try:
+            obj = self._getUrlWithBase(base, SolrMetrics.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
+            if len(obj) > 0:
+                for replica_alias in obj["status"]:
+                    if replica_alias not in self.localLeaderCores:
+                        continue
+                    cloud = obj["status"][replica_alias].get("cloud", dict())
+                    collection = cloud.get("collection", None)
+                    # collection = obj["status"][replica_alias]["cloud"]["collection"]
+                    # shard = obj["status"][replica_alias]["cloud"]["shard"]
+                    # replica = obj["status"][replica_alias]["cloud"]["replica"]
+                    numDocs = obj["status"][replica_alias]["index"]["numDocs"]
+                    tags = [
+                        self.TAG_NAME[self.Tag.CORE] % replica_alias
+                    ]
+                    if collection is not None:
+                        tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collection)
+                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
+        except Exception as e:
+            self.log.error(("Got Error while fetching core document count: {}").format(e))
+        return ret
+
     def _getDocumentCount(self):
         ret = []
         try:
@@ -331,7 +364,11 @@ class SolrMetrics(object):
                             ip_address = socket.gethostbyname(hostname_from_url)
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
                                 coreName = replica["core"]
-                                self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url))
+                                coreAlias = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node]["core"]
+                                leader = obj["cluster"]["collections"][collection]["shards"][shard]["replicas"][core_node].get("leader", False)
+                                if bool(leader):
+                                    self.localLeaderCores.add(coreAlias)
+                                self.localCores.add(self.Core(coreNamw, replicaName, shardName, collectionName, base_url, port_from_url, leader))
                                 self.localEndpoints.add(replica["base_url"])
             except Exception as e:
                 self.log.error(("Got Error while fetching local core: {}").format(e))
