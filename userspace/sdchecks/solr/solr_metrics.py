@@ -189,30 +189,21 @@ class SolrMetrics(object):
 
         return obj
 
-    def _getLiveNodesEndpoint(self):
-        ret = []
-        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
-
-        if len(obj) > 0:
-            try:
-                for node in obj["cluster"]["live_nodes"]:
-                    ret.append(node)
-            except KeyError:
-                pass
-        return ret
-
     def _getLiveNodes(self):
         ret = []
         obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
 
         if len(obj) > 0:
             try:
-                live_nodes = len(obj["cluster"]["live_nodes"])
-                self.log.debug(("detected {} live nodes").format(live_nodes))
-                tags = [
-                    self.TAG_NAME[self.Tag.COLLECTION][0:-2],  # set
-                ]
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_nodes, tags))
+                live_node_count = 0
+                for live_node in obj["cluster"]["live_nodes"]:
+                    hostname = live_node.split(':')[0]
+                    ip_address = socket.gethostbyname(hostname)
+                    if self.network.ipIsLocalHostOrDockerContainer(ip_address):
+                        live_node_count += 1
+
+                ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_node_count, None))
+                self.log.debug(("detected {} live local nodes").format(live_node_count))
             except KeyError:
                 pass
         return ret
@@ -305,15 +296,12 @@ class SolrMetrics(object):
                     if replica_alias not in self.localLeaderCores:
                         continue
                     collection = self.collectionByCore.get(replica_alias, None)
-                    # collection = obj["status"][replica_alias]["cloud"]["collection"]
-                    # shard = obj["status"][replica_alias]["cloud"]["shard"]
-                    # replica = obj["status"][replica_alias]["cloud"]["replica"]
                     numDocs = obj["status"][replica_alias]["index"]["numDocs"]
                     tags = [
                         self.TAG_NAME[self.Tag.CORE] % replica_alias
                     ]
                     if collection is not None:
-                        tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collection)
+                        tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collectionName)
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         except Exception as e:
             self.log.error(("Got Error while fetching core document count: {}").format(e))
