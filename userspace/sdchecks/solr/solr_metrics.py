@@ -41,8 +41,13 @@ class SolrMetrics(object):
         GET_RT = 13,
         QUERY_RT = 14,
         UPDATE_RT = 15,
-        HOST_SHARD_COUNT = 16
-        COLLECTION_SHARD_COUNT = 17
+        HOST_SHARD_COUNT = 16,
+        COLLECTION_SHARD_COUNT = 17,
+        UPDATEHANDLER_ADDS = 18,
+        UPDATEHANDLER_DELETES_BY_ID = 19,
+        UPDATEHANDLER_DELETES_BY_QUERY = 20,
+        UPDATEHANDLER_COMMITS = 21,
+        UPDATEHANDLER_AUTOCOMMITS = 22,
         NONE = 100
 
     class Endpoint(Enum):
@@ -57,11 +62,11 @@ class SolrMetrics(object):
         STATS = 9
 
     URL = {
-        Endpoint.LIVE_NODES: "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.SHARDS: "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.REPLICA: "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json",
-        Endpoint.COLLECTION: "/solr/admin/collections?action=clusterstatus&wt=json",
+        Endpoint.LIVE_NODES:        "/solr/admin/collections?action=clusterstatus&wt=json",
+        Endpoint.SHARDS:            "/solr/admin/collections?action=clusterstatus&wt=json",
+        Endpoint.REPLICA:           "/solr/admin/collections?action=clusterstatus&wt=json",
+        Endpoint.DOCUMENT_COUNT:    "/solr/admin/cores?wt=json",
+        Endpoint.COLLECTION:        "/solr/admin/collections?action=clusterstatus&wt=json",
     }
 
     class Metric:

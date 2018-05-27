@@ -30,7 +30,12 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT:                         "solr.update.request_time",
         SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE:                        "solr.index_size",
         SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT:                  "solr.host.shard_count",
-        SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT:            "solr.collection.shard_count"
+        SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT:            "solr.collection.shard_count",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS:                "solr.updatehandler.adds",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID:       "solr.updatehandler.deletes_by_id",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY:    "solr.updatehandler.deletes_by_query",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS:             "solr.updatehandler.commits",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS:         "solr.updatehandler.autocommits",
     }
 
     # Source

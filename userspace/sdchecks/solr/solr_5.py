@@ -53,10 +53,16 @@ class Solr5(SolrMetrics):
                 self.TAG_NAME[self.Tag.CORE] % coreName,
                 self.TAG_NAME[self.Tag.CORE_ALIAS] % coreAlias,
             ]
+
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
             for rps in all_rps:
                 rps.tags = tags
                 ret.append(rps)
+
+            updateHandlerStats = self._getUpdateHandlerStats(coreStat.data)
+            for uhs in updateHandlerStats:
+                uhs.tags = tags
+                ret.append(uhs)
         return ret
 
     def _getIndexSize(self):
@@ -126,6 +132,43 @@ class Solr5(SolrMetrics):
         except Exception as e:
             self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
             return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
+
+    # The cumulative_* counts can either increase or decrease and are maintained for the lifetime of
+    # Solr. For example, cumulative_adds is incremented when an "add" command is executed and
+    # decremented when "rollback" is executed.
+    #
+    # adds and deletes are point in time values between commits and should be monotonic
+    def _getUpdateHandlerStats(self, obj):
+        ret = []
+        try:
+            beans = obj["solr-mbeans"]
+            assert beans[4] == "UPDATEHANDLER"
+            stats = beans[5]
+
+            metric_adds = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS, long(stats["updateHandler"]["stats"]["adds"]), None, None)
+            metric_adds.metricType = SolrMetrics.Metric.MetricType.gauge
+            ret.append(metric_adds)
+
+            metric_del_id = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID, long(stats["updateHandler"]["stats"]["deletesById"]), None, None)
+            metric_del_id.metricType = SolrMetrics.Metric.MetricType.gauge
+            ret.append(metric_del_id)
+
+            metric_del_q = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, long(stats["updateHandler"]["stats"]["deletesByQuery"]), None, None)
+            metric_del_q.metricType = SolrMetrics.Metric.MetricType.gauge
+            ret.append(metric_del_q)
+
+            metric_commit = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS, long(stats["updateHandler"]["stats"]["commits"]), None, None)
+            metric_commit.metricType = SolrMetrics.Metric.MetricType.rate
+            ret.append(metric_commit)
+
+            metric_acommit = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS, long(stats["updateHandler"]["stats"]["autocommits"]), None, None)
+            metric_acommit.metricType = SolrMetrics.Metric.MetricType.rate
+            ret.append(metric_acommit)
+
+            return ret
+        except Exception as e:
+            self.log.error(("unable to get updatehandler stats: {}").format(e))
+            return ret
 
     def _getFromCoreIndexSize(self, coreStatistic):
         tags = [
