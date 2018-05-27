@@ -268,9 +268,8 @@ class SolrMetrics(object):
             obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.REPLICA])
             if len(obj) > 0:
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
+                    replicaCount = 0
                     for shardName, shard in collection["shards"].iteritems():
-                        replicaPerNodeMap = {}
-                        # replicaName is an internal Solr representation
                         for replicaName, replica in shard["replicas"].iteritems():
                             if replica["state"] == "active":
                                 nodeName = replica["node_name"]
@@ -278,23 +277,13 @@ class SolrMetrics(object):
                                 baseUrl = replica["base_url"]
                                 thisCore = self.Core(coreName, replicaName, shardName, collectionName, baseUrl, urlparse(baseUrl).port)
                                 if thisCore in self.localCores:
-                                    if replicaPerNodeMap.has_key(nodeName):
-                                        replicaPerNodeMap[nodeName].len = replicaPerNodeMap[nodeName].len + 1
-                                    else:
-                                        newEntry = replicaPerNode()
-                                        newEntry.len = 1
-                                        newEntry.name = nodeName
-                                        newEntry.collection = collectionName
-                                        newEntry.shard = shardName
-                                        replicaPerNodeMap[nodeName] = newEntry
-                                else:
-                                    self.log.debug(str("skipping core {}.{} because it is not local").format(replicaName, coreName))
-                        for nodeName in replicaPerNodeMap:
-                            tags = [
-                                self.TAG_NAME[self.Tag.COLLECTION] % collectionName,
-                            ]
-                            ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaPerNodeMap[nodeName].len, tags))
-                            self.log.debug(("detected {} replica with tags {}").format(replicaPerNodeMap[nodeName].len, tags))
+                                    replicaCount += 1
+                    if replicaCount > 0:
+                        tags = [
+                            self.TAG_NAME[self.Tag.COLLECTION] % collectionName,
+                        ]
+                        ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaCount, tags))
+                        self.log.debug(("detected {} replica with tags {}").format(replicaCount, tags))
         except Exception as e:
             self.log.error(("Got Error while fetching replica: {}").format(e))
 
