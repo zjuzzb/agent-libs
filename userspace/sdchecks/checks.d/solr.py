@@ -14,24 +14,23 @@ class Solr(AgentCheck):
     """
 
     METRIC_NAME_MAP = {
-        SolrMetrics.METRIC_NAME_ENUM.NONE: "solr.unknown",
-        SolrMetrics.METRIC_NAME_ENUM.LIVE_NODES: "solr.live_nodes",
-        SolrMetrics.METRIC_NAME_ENUM.REPLICA: "solr.core_count",
-        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT: "solr.document_count",
-        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_PER_COLLECTION: "solr.document_count_per_collection",
-        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS: "solr.browse.request_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.SELECT_RPS: "solr.select.request_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.GET_RPS: "solr.get.request_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS: "solr.query.request_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS: "solr.update.request_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT: "solr.browse.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.SELECT_RT: "solr.select.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.GET_RT: "solr.get.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.QUERY_RT: "solr.query.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT: "solr.update.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE: "solr.index_size",
-        SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT: "solr.host.shard_count",
-        SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT: "solr.collection.shard_count"
+        SolrMetrics.METRIC_NAME_ENUM.NONE:                              "solr.unknown",
+        SolrMetrics.METRIC_NAME_ENUM.LIVE_NODES:                        "solr.live_nodes",
+        SolrMetrics.METRIC_NAME_ENUM.REPLICA:                           "solr.core_count",
+        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT:                    "solr.document_count",
+        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS:                        "solr.browse.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.SELECT_RPS:                        "solr.select.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.GET_RPS:                           "solr.get.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS:                         "solr.query.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS:                        "solr.update.request_per_second",
+        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT:                         "solr.browse.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.SELECT_RT:                         "solr.select.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.GET_RT:                            "solr.get.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.QUERY_RT:                          "solr.query.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT:                         "solr.update.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE:                        "solr.index_size",
+        SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT:                  "solr.host.shard_count",
+        SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT:            "solr.collection.shard_count"
     }
 
     # Source

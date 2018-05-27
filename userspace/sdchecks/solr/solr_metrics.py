@@ -43,7 +43,6 @@ class SolrMetrics(object):
         UPDATE_RT = 15,
         HOST_SHARD_COUNT = 16
         COLLECTION_SHARD_COUNT = 17
-        DOCUMENT_COUNT_PER_COLLECTION = 18
         NONE = 100
 
     class Endpoint(Enum):
@@ -56,7 +55,6 @@ class SolrMetrics(object):
         CORES_INFO = 7
         VERSION = 8
         STATS = 9
-        COLLECTION_DOCUMENT_COUNT = 11
 
     URL = {
         Endpoint.LIVE_NODES: "/solr/admin/collections?action=clusterstatus&wt=json",
@@ -64,7 +62,6 @@ class SolrMetrics(object):
         Endpoint.REPLICA: "/solr/admin/collections?action=clusterstatus&wt=json",
         Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json",
         Endpoint.COLLECTION: "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.COLLECTION_DOCUMENT_COUNT: "/solr/%s/select?indent=on&q=*:*&rows=0&start=0&wt=json"
     }
 
     class Metric:
@@ -295,36 +292,16 @@ class SolrMetrics(object):
                 for replica_alias in obj["status"]:
                     if replica_alias not in self.localLeaderCores:
                         continue
-                    collection = self.collectionByCore.get(replica_alias, None)
+                    collectionName = self.collectionByCore.get(replica_alias, None)
                     numDocs = obj["status"][replica_alias]["index"]["numDocs"]
                     tags = [
                         self.TAG_NAME[self.Tag.CORE] % replica_alias
                     ]
-                    if collection is not None:
+                    if collectionName is not None:
                         tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collectionName)
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
         except Exception as e:
             self.log.error(("Got Error while fetching core document count: {}").format(e))
-        return ret
-
-    def _getDocumentCount(self):
-        ret = []
-        try:
-            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
-            if len(obj) > 0:
-                for replica_alias in obj["status"]:
-                    collection = obj["status"][replica_alias]["cloud"]["collection"]
-                    shard = obj["status"][replica_alias]["cloud"]["shard"]
-                    replica = obj["status"][replica_alias]["cloud"]["replica"]
-                    numDocs = obj["status"][replica_alias]["index"]["numDocs"]
-                    tags = [
-                        self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                        self.TAG_NAME[self.Tag.SHARD] % shard,
-                        self.TAG_NAME[self.Tag.CORE] % replica_alias,
-                    ]
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
-        except Exception as e:
-            self.log.error(("Got Error while fetching documetn count: {}").format(e))
         return ret
 
     def _retrieveLocalEndpointsAndCores(self):
@@ -344,7 +321,7 @@ class SolrMetrics(object):
                                 leader = replica.get("leader", False)
                                 if bool(leader):
                                     self.localLeaderCores.add(coreName)
-                                self.collectionByCore[coreName] = collection
+                                self.collectionByCore[coreName] = collectionName
                                 self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url))
                                 self.localEndpoints.add(replica["base_url"])
             except Exception as e:
