@@ -143,7 +143,7 @@ class SolrMetrics(object):
             self._getAllRpsAndRequestTime(),
             self._getIndexSize(),
             self._getCollectionShardCount(),
-            self._getHostShardCount(),
+            self._getHostShardCount()
         ]
         return ret
 
@@ -366,9 +366,9 @@ class SolrMetrics(object):
                                 coreName = replica["core"]
                                 leader = replica.get("leader", False)
                                 if bool(leader):
-                                    self.localLeaderCores.add(coreAlias)
-                                self.collectionByCore[coreAlias] = collection
-                                self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url, leader))
+                                    self.localLeaderCores.add(coreName)
+                                self.collectionByCore[coreName] = collection
+                                self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url))
                                 self.localEndpoints.add(replica["base_url"])
             except Exception as e:
                 self.log.error(("Got Error while fetching local core: {}").format(e))
