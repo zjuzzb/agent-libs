@@ -170,30 +170,27 @@ class Solr5(SolrMetrics):
             assert beans[4] == "UPDATEHANDLER"
             stats = beans[5]
 
-            metric_adds = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS, long(stats["updateHandler"]["stats"]["adds"]), None, None)
-            metric_adds.metricType = SolrMetrics.Metric.MetricType.gauge
-            ret.append(metric_adds)
+            adds = long(stats["updateHandler"]["stats"]["adds"])
+            deletesById = long(stats["updateHandler"]["stats"]["deletesById"])
+            deletesByQuery = long(stats["updateHandler"]["stats"]["deletesByQuery"])
+            commits = long(stats["updateHandler"]["stats"]["commits"])
+            autocommits = long(stats["updateHandler"]["stats"]["autocommits"])
 
-            metric_del_id = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID, long(stats["updateHandler"]["stats"]["deletesById"]), None, None)
-            metric_del_id.metricType = SolrMetrics.Metric.MetricType.gauge
-            ret.append(metric_del_id)
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS, adds, None, None))
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID, deletesById, None, None))
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, deletesByQuery, None, None))
 
-            metric_del_q = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, long(stats["updateHandler"]["stats"]["deletesByQuery"]), None, None)
-            metric_del_q.metricType = SolrMetrics.Metric.MetricType.gauge
-            ret.append(metric_del_q)
+            metric_commits = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS, commits, None, None)
+            metric_commits.metricType = SolrMetrics.Metric.MetricType.rate
 
-            metric_commit = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS, long(stats["updateHandler"]["stats"]["commits"]), None, None)
-            metric_commit.metricType = SolrMetrics.Metric.MetricType.rate
-            ret.append(metric_commit)
+            metric_autocommits = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS, autocommits, None, None)
+            metric_autocommits.metricType = SolrMetrics.Metric.MetricType.rate
 
-            metric_acommit = SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS, long(stats["updateHandler"]["stats"]["autocommits"]), None, None)
-            metric_acommit.metricType = SolrMetrics.Metric.MetricType.rate
-            ret.append(metric_acommit)
-
-            return ret
+            ret.append(metric_commits)
+            ret.append(metric_autocommits)
         except Exception as e:
             self.log.error(("unable to get updatehandler stats: {}").format(e))
-            return ret
+        return ret
 
     def _getFromCoreIndexSize(self, coreStatistic):
         tags = [

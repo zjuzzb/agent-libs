@@ -286,7 +286,6 @@ class SolrMetrics(object):
                         self.log.debug(("detected {} replica with tags {}").format(replicaCount, tags))
         except Exception as e:
             self.log.error(("Got Error while fetching replica: {}").format(e))
-
         return ret
 
     def _getLocalDocumentCount(self):
