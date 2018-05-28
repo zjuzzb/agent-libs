@@ -13,6 +13,11 @@ class Solr5(SolrMetrics):
         SolrMetrics.Endpoint.STATS: "/solr/%s/admin/mbeans?stats=true&wt=json"
     }
 
+    class PrevStat:
+        def __init__(self, reqs, time):
+            self.reqs = reqs
+            self.time = time
+
     class ShardDocumentCount:
         def __init__(self, collection, shard):
             self.collection = collection
@@ -26,6 +31,7 @@ class Solr5(SolrMetrics):
 
     def __init__(self, version, instance):
         SolrMetrics.__init__(self, version, instance)
+        self.prevStats = dict()
 
     def _getNodeDocumentCount(self, node, shardDocumentCountMap):
         endpoint = str("http://{}").format(node.replace("_", "/"))
@@ -54,7 +60,8 @@ class Solr5(SolrMetrics):
                 self.TAG_NAME[self.Tag.CORE_ALIAS] % coreAlias,
             ]
 
-            all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data)
+            all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data, tags)
+            # Should just add the tags in getfromCoreRpsAndRequestTime()
             for rps in all_rps:
                 rps.tags = tags
                 ret.append(rps)
@@ -90,7 +97,7 @@ class Solr5(SolrMetrics):
     def _getSingleCoreStats(self, url):
         return self._getUrl(url)
 
-    def _getFromCoreRpsAndRequestTime(self, obj):
+    def _getFromCoreRpsAndRequestTime(self, obj, tags):
         arr = []
 
         # in solr 5, a map has been implemented as an array in which
@@ -111,6 +118,12 @@ class Solr5(SolrMetrics):
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.GET_RT, "/get", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_RT, "/query", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT, "/update", queryHandlerObj))
+
+            arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.BROWSE_CRT, "/browse", queryHandlerObj, tags))
+            arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.SELECT_CRT, "/select", queryHandlerObj, tags))
+            arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.GET_CRT, "/get", queryHandlerObj, tags))
+            arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_CRT, "/query", queryHandlerObj, tags))
+            arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_CRT, "/update", queryHandlerObj, tags))
         except Exception as e:
             self.log.debug(("could not get statistic from local core: {}").format(e))
         return arr
@@ -132,6 +145,29 @@ class Solr5(SolrMetrics):
         except Exception as e:
             self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
             return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
+
+    def _getSingleCurrentRequestTime(self, metricEnumValue, keyString, queryHandlerObj, tags):
+        ret = []
+        try:
+            reqs = int(queryHandlerObj[keyString]["stats"]["requests"])
+            tottime = float(queryHandlerObj[keyString]["stats"]["totalTime"])
+        except Exception as e:
+            self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
+
+        key = tuple(tags) + (("type:%s" % keyString), )
+        prevStats = self.prevStats.get(key, None)
+        if prevStats is not None:
+            dreqs = reqs - prevStats.reqs
+            dtime = tottime - prevStats.time
+            if dreqs > 0 and dtime > 0:
+                ret.append(self.Metric(metricEnumValue, float(dtime / dreqs), tags, SolrMetrics.Metric.MetricType.gauge))
+            elif dreqs < 0 or dtime < 0:
+                self.log.debug("inconsistent request count or total time, resetting stored stats for {}".format(key))
+        else:
+            self.log.debug("Previous req stats not found for {}".format(key))
+
+        self.prevStats[key] = self.PrevStat(reqs, tottime)
+        return ret
 
     # The cumulative_* counts can either increase or decrease and are maintained for the lifetime of
     # Solr. For example, cumulative_adds is incremented when an "add" command is executed and

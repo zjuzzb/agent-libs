@@ -3,7 +3,7 @@ import urllib2
 from enum import Enum
 from sets import Set
 
-from checks import AgentCheck
+from checks import AgentCheck, CheckException
 from solr.solr_metrics import SolrMetrics
 from solr.solr_5 import Solr5
 
@@ -28,6 +28,11 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.GET_RT:                            "solr.get.request_time",
         SolrMetrics.METRIC_NAME_ENUM.QUERY_RT:                          "solr.query.request_time",
         SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT:                         "solr.update.request_time",
+        SolrMetrics.METRIC_NAME_ENUM.BROWSE_CRT:                         "solr.browse.current_request_time",
+        SolrMetrics.METRIC_NAME_ENUM.SELECT_CRT:                         "solr.select.current_request_time",
+        SolrMetrics.METRIC_NAME_ENUM.GET_CRT:                            "solr.get.current_request_time",
+        SolrMetrics.METRIC_NAME_ENUM.QUERY_CRT:                          "solr.query.current_request_time",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATE_CRT:                         "solr.update.current_request_time",
         SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE:                        "solr.index_size",
         SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT:                  "solr.host.shard_count",
         SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT:            "solr.collection.shard_count",
@@ -45,14 +50,16 @@ class Solr(AgentCheck):
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.version = None
+        self.sMetric = None
 
     def check(self, instance):
-        self._getSolrVersion(instance)
+        if self.sMetric is None:
+            self._getSolrVersion(instance)
 
-        if int(self.version[0:1]) == 5:
-            self.sMetric = Solr5(self.version, instance)
-        else:
-            pass
+            if self.version is not None and int(self.version[0:1]) == 5:
+                self.sMetric = Solr5(self.version, instance)
+            else:
+                raise CheckException("Solr version {} not yet supported".format(self.version[0:1]))
 
         ret = self.sMetric.check()
 
