@@ -30,29 +30,31 @@ class SolrMetrics(object):
         SHARDS = 2,
         REPLICA = 3,
         DOCUMENT_COUNT = 4,
-        BROWSE_RPS = 5,
-        SELECT_RPS = 6,
-        GET_RPS = 7,
-        QUERY_RPS = 8,
-        UPDATE_RPS = 9,
-        INDEX_SIZE = 10,
-        BROWSE_RT = 11,
-        SELECT_RT = 12,
-        GET_RT = 13,
-        QUERY_RT = 14,
-        UPDATE_RT = 15,
-        HOST_SHARD_COUNT = 16,
-        COLLECTION_SHARD_COUNT = 17,
-        UPDATEHANDLER_ADDS = 18,
-        UPDATEHANDLER_DELETES_BY_ID = 19,
-        UPDATEHANDLER_DELETES_BY_QUERY = 20,
-        UPDATEHANDLER_COMMITS = 21,
-        UPDATEHANDLER_AUTOCOMMITS = 22,
-        BROWSE_CRT = 23,
-        SELECT_CRT = 24,
-        GET_CRT = 25,
-        QUERY_CRT = 26,
-        UPDATE_CRT = 27,
+        DOCUMENT_COUNT_MAX = 5,
+        DOCUMENT_COUNT_DELETED = 6,
+        BROWSE_RPS = 7,
+        SELECT_RPS = 8,
+        GET_RPS = 9,
+        QUERY_RPS = 10,
+        UPDATE_RPS = 11,
+        INDEX_SIZE = 12,
+        BROWSE_RT = 13,
+        SELECT_RT = 14,
+        GET_RT = 15,
+        QUERY_RT = 16,
+        UPDATE_RT = 17,
+        HOST_SHARD_COUNT = 18,
+        COLLECTION_SHARD_COUNT = 19,
+        UPDATEHANDLER_ADDS = 20,
+        UPDATEHANDLER_DELETES_BY_ID = 21,
+        UPDATEHANDLER_DELETES_BY_QUERY = 22,
+        UPDATEHANDLER_COMMITS = 23,
+        UPDATEHANDLER_AUTOCOMMITS = 24,
+        BROWSE_CRT = 25,
+        SELECT_CRT = 26,
+        GET_CRT = 27,
+        QUERY_CRT = 28,
+        UPDATE_CRT = 29,
         NONE = 100
 
     class Endpoint(Enum):
@@ -302,14 +304,22 @@ class SolrMetrics(object):
                 for replica_alias in obj["status"]:
                     if replica_alias not in self.localLeaderCores:
                         continue
+
                     collectionName = self.collectionByCore.get(replica_alias, None)
+
                     numDocs = obj["status"][replica_alias]["index"]["numDocs"]
+                    maxDoc = obj["status"][replica_alias]["index"]["maxDoc"]
+                    deletedDocs = obj["status"][replica_alias]["index"]["deletedDocs"]
+
                     tags = [
                         self.TAG_NAME[self.Tag.CORE] % replica_alias
                     ]
                     if collectionName is not None:
                         tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collectionName)
+
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
+                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX, maxDoc, tags))
+                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_DELETED, deletedDocs, tags))
         except Exception as e:
             self.log.error(("Got Error while fetching core document count: {}").format(e))
         return ret

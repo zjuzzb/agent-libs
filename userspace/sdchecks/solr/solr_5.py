@@ -33,17 +33,6 @@ class Solr5(SolrMetrics):
         SolrMetrics.__init__(self, version, instance)
         self.prevStats = dict()
 
-    def _getNodeDocumentCount(self, node, shardDocumentCountMap):
-        endpoint = str("http://{}").format(node.replace("_", "/"))
-        obj = self._getUrlWithBase(endpoint, self.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
-        if len(obj) > 0:
-            for core in obj["status"]:
-                collection, shard, replica = core.split("_")
-                entry = self.ShardDocumentCount(collection, shard)
-                if entry not in shardDocumentCountMap:
-                    entry.value = obj["status"][core]["index"]["numDocs"]
-                    shardDocumentCountMap.add(entry)
-
     def _getAllRpsAndRequestTime(self):
         ret = []
         coresStatistic = self._getStats()
