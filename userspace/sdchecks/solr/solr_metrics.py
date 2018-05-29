@@ -54,6 +54,17 @@ class SolrMetrics(object):
         GET_CRT = 26,
         QUERY_CRT = 27,
         UPDATE_CRT = 28,
+
+        BROWSE_RPST = 29,
+        SELECT_RPST = 30,
+        GET_RPST = 31,
+        QUERY_RPST = 32,
+        UPDATE_RPST = 33,
+        BROWSE_RTT = 34,
+        SELECT_RTT = 35,
+        GET_RTT = 36,
+        QUERY_RTT = 37,
+        UPDATE_RTT = 38,
         NONE = 100
 
     class Endpoint(Enum):

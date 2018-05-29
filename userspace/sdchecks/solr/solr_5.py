@@ -99,12 +99,23 @@ class Solr5(SolrMetrics):
             arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.GET_RPS, "/get", queryHandlerObj))
             arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS, "/query", queryHandlerObj))
             arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS, "/update", queryHandlerObj))
+            arr.append(self._getSingleRpsTotal(SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPST, "/browse", queryHandlerObj))
+            arr.append(self._getSingleRpsTotal(SolrMetrics.METRIC_NAME_ENUM.SELECT_RPST, "/select", queryHandlerObj))
+            arr.append(self._getSingleRpsTotal(SolrMetrics.METRIC_NAME_ENUM.GET_RPST, "/get", queryHandlerObj))
+            arr.append(self._getSingleRpsTotal(SolrMetrics.METRIC_NAME_ENUM.QUERY_RPST, "/query", queryHandlerObj))
+            arr.append(self._getSingleRpsTotal(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPST, "/update", queryHandlerObj))
 
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT, "/browse", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.SELECT_RT, "/select", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.GET_RT, "/get", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_RT, "/query", queryHandlerObj))
             arr.append(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT, "/update", queryHandlerObj))
+
+            arr.append(self._getSingleRequestTimeTotal(SolrMetrics.METRIC_NAME_ENUM.BROWSE_RTT, "/browse", queryHandlerObj))
+            arr.append(self._getSingleRequestTimeTotal(SolrMetrics.METRIC_NAME_ENUM.SELECT_RTT, "/select", queryHandlerObj))
+            arr.append(self._getSingleRequestTimeTotal(SolrMetrics.METRIC_NAME_ENUM.GET_RTT, "/get", queryHandlerObj))
+            arr.append(self._getSingleRequestTimeTotal(SolrMetrics.METRIC_NAME_ENUM.QUERY_RTT, "/query", queryHandlerObj))
+            arr.append(self._getSingleRequestTimeTotal(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RTT, "/update", queryHandlerObj))
 
             arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.BROWSE_CRT, "/browse", queryHandlerObj, tags))
             arr.extend(self._getSingleCurrentRequestTime(SolrMetrics.METRIC_NAME_ENUM.SELECT_CRT, "/select", queryHandlerObj, tags))
@@ -124,9 +135,27 @@ class Solr5(SolrMetrics):
             self.log.debug(("could not get rps {} {}: {}").format(metricEnumValue, keyString, e))
             return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
 
+    def _getSingleRpsTotal(self, metricEnumValue, keyString, queryHandlerObj):
+        try:
+            ret =  SolrMetrics.Metric(metricEnumValue, queryHandlerObj[keyString]["stats"]["requests"], None, None)
+            ret.metricType = SolrMetrics.Metric.MetricType.gauge
+            return ret
+        except Exception as e:
+            self.log.debug(("could not get rps {} {}: {}").format(metricEnumValue, keyString, e))
+            return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
+
     def _getSingleRequestTime(self, metricEnumValue, keyString, queryHandlerObj):
         try:
             ret = self.Metric(metricEnumValue, float(queryHandlerObj[keyString]["stats"]["avgTimePerRequest"]), None, None)
+            ret.metricType = SolrMetrics.Metric.MetricType.gauge
+            return ret
+        except Exception as e:
+            self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
+            return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
+
+    def _getSingleRequestTimeTotal(self, metricEnumValue, keyString, queryHandlerObj):
+        try:
+            ret = self.Metric(metricEnumValue, float(queryHandlerObj[keyString]["stats"]["totalTime"]), None, None)
             ret.metricType = SolrMetrics.Metric.MetricType.gauge
             return ret
         except Exception as e:
@@ -150,6 +179,8 @@ class Solr5(SolrMetrics):
                 ret.append(self.Metric(metricEnumValue, float(dtime / dreqs), tags, SolrMetrics.Metric.MetricType.gauge))
             elif dreqs < 0 or dtime < 0:
                 self.log.debug("inconsistent request count or total time, resetting stored stats for {}".format(key))
+            elif dreqs != 0 or dtime != 0:
+                self.log.warning("solr: request time/count inconsistent: {}/{} for {}".format(dtime, dreqs, key))
         else:
             self.log.debug("Previous req stats not found for {}".format(key))
 
