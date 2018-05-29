@@ -49,12 +49,11 @@ class SolrMetrics(object):
         UPDATEHANDLER_DELETES_BY_ID = 21,
         UPDATEHANDLER_DELETES_BY_QUERY = 22,
         UPDATEHANDLER_COMMITS = 23,
-        UPDATEHANDLER_AUTOCOMMITS = 24,
-        BROWSE_CRT = 25,
-        SELECT_CRT = 26,
-        GET_CRT = 27,
-        QUERY_CRT = 28,
-        UPDATE_CRT = 29,
+        BROWSE_CRT = 24,
+        SELECT_CRT = 25,
+        GET_CRT = 26,
+        QUERY_CRT = 27,
+        UPDATE_CRT = 28,
         NONE = 100
 
     class Endpoint(Enum):
