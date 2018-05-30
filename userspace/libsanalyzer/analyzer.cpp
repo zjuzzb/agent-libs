@@ -2557,10 +2557,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
 				(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 			{
-				proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
-				proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
-				for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
-					arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
+				auto main_thread = tinfo->get_main_thread();
+				if (!main_thread)
+				{
+					g_logger.format(sinsp_logger::SEV_CRITICAL, "thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
+					continue;
+				}
+
+				proc->mutable_details()->set_comm(main_thread->m_comm);
+				proc->mutable_details()->set_exe(main_thread->m_exe);
+				for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
+					arg_it != main_thread->m_args.end(); ++arg_it)
 				{
 					if(*arg_it != "")
 					{
@@ -2576,9 +2583,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					}
 				}
 
-				if(!tinfo->get_main_thread()->m_container_id.empty())
+				if(!main_thread->m_container_id.empty())
 				{
-					proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
+					proc->mutable_details()->set_container_id(main_thread->m_container_id);
 				}
 
 				tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
