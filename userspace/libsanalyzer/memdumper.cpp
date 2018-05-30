@@ -459,7 +459,7 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 {
 	Poco::ScopedLock<Poco::FastMutex> lck(m_state_mtx);
 
-	glogf(sinsp_logger::SEV_DEBUG, "memdumper: switching memory buffer states");
+	glogf(sinsp_logger::SEV_INFO, "memdumper: switching memory buffer states");
 
 	// If a delayed switch was needed, it's no longer needed. Log
 	// an error with the number of missed events.
