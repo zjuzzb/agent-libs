@@ -19,10 +19,10 @@ class SolrMetrics(object):
         CORE_ALIAS = 4
 
     TAG_NAME = {
-        Tag.COLLECTION: "solr.tag.collection:%s",
-        Tag.SHARD: "solr.tag.shard:%s",
-        Tag.CORE: "solr.tag.core:%s",
-        Tag.CORE_ALIAS: "solr.tag.core_alias:%s",
+        Tag.COLLECTION: "solr.collection.name:%s",
+        Tag.SHARD: "solr.shard.name:%s",
+        Tag.CORE: "solr.core.name:%s",
+        Tag.CORE_ALIAS: "solr.core.alias:%s",
     }
 
     class METRIC_NAME_ENUM(Enum):
@@ -49,11 +49,6 @@ class SolrMetrics(object):
         UPDATEHANDLER_DELETES_BY_ID = 21,
         UPDATEHANDLER_DELETES_BY_QUERY = 22,
         UPDATEHANDLER_COMMITS = 23,
-        BROWSE_CRT = 24,
-        SELECT_CRT = 25,
-        GET_CRT = 26,
-        QUERY_CRT = 27,
-        UPDATE_CRT = 28,
         NONE = 100
 
     class Endpoint(Enum):
