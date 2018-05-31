@@ -74,15 +74,12 @@ class Solr5(SolrMetrics):
         for core in self.localCores:
             element = CoreStat()
             element.core = core
-            element.data = self._getSingleCoreStats(self._generateUrl(core.name))
+            element.data = self._getSingleCoreStats(core.base_url, core.name)
             ret.append(element)
         return ret
 
-    def _generateUrl(self, core):
-        return self.URL[SolrMetrics.Endpoint.STATS] % core
-
-    def _getSingleCoreStats(self, url):
-        return self._getUrl(url)
+    def _getSingleCoreStats(self, base, corename):
+        return self._getUrlWithBase(base, self.URL[SolrMetrics.Endpoint.STATS] % corename)
 
     def _getFromCoreRpsAndRequestTime(self, obj, tags):
         arr = []
