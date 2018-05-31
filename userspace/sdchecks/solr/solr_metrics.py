@@ -325,6 +325,9 @@ class SolrMetrics(object):
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
                     for shardName, shard in collection["shards"].iteritems():
                         for replicaName, replica in shard["replicas"].iteritems():
+                            if replica["state"] != "active":
+                                self.log.debug(("Skipping core {}:{} in state down on node {}").format(collectionName, replicaName, replica["base_url"]))
+                                continue
                             base_url = replica["base_url"]
                             parsedUrl = urlparse(base_url)
                             hostname_from_url = parsedUrl.hostname
