@@ -33,6 +33,29 @@ func nodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
 		return false
 	}
 
+	// Anything used in addNodeMetrics() needs to be checked here
+	if oldNode.Spec.Unschedulable != oldNode.Spec.Unschedulable {
+		return false
+	}
+
+	if !equalResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) ||
+		!equalResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) {
+		return false
+	}
+
+	if len(oldNode.Status.Conditions) != len(newNode.Status.Conditions) {
+		return false
+	}
+
+	for _, oldCond := range oldNode.Status.Conditions {
+		for _, newCond := range newNode.Status.Conditions {
+			if oldCond.Type == newCond.Type &&
+				oldCond.Status != newCond.Status {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 

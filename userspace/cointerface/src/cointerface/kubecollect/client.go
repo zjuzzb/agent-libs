@@ -450,6 +450,21 @@ func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 	return true
 }
 
+func equalResourceList(lhs v1.ResourceList, rhs v1.ResourceList) bool {
+	if len(lhs) != len(rhs) {
+		return false
+	}
+
+	for k, lhsVal := range lhs {
+		rhsVal, ok := rhs[k]
+		if !ok || rhsVal != lhsVal {
+			return false
+		}
+	}
+
+	return true
+}
+
 func AppendMetric(metrics *[]*draiosproto.AppMetric, name string, val float64) {
 	*metrics = append(*metrics, &draiosproto.AppMetric{
 		Name:proto.String(name),
