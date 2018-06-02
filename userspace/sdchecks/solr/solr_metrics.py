@@ -4,9 +4,7 @@ import urllib2
 import socket
 
 from urlparse import urlparse
-
 from enum import Enum
-
 from utils.network import Network
 
 
@@ -83,7 +81,6 @@ class SolrMetrics(object):
             self.tags = tags
             self.metricType = metricType
 
-
         def getValue(self):
             return self.value
 
@@ -121,7 +118,6 @@ class SolrMetrics(object):
         def getPort(self):
             return self.port
 
-
     def __init__(self, version, instance):
         self.version = version
         self.instance = instance
@@ -136,9 +132,13 @@ class SolrMetrics(object):
         self.log = logging.getLogger(__name__)
 
     def check(self):
-        # This should be run just once in a while
+        self.localCores = set()
+        self.localLeaderCores = set()
+        self.localEndpoints = set()
+        self.collectionByCore = dict()
+
+        self.log.debug(str("solr: Start metrics collection: host {}, port {}, ports {}").format(self.host, self.port, self.ports))
         self._retrieveLocalEndpointsAndCores()
-        self.log.debug(str("start checking solr host {} , ports:").format(self.host, self.ports))
         ret = [
             self._getLiveNodes(),
             self._getReplica(),
@@ -148,6 +148,7 @@ class SolrMetrics(object):
             self._getCollectionShardCount(),
             self._getHostShardCount()
         ]
+        self.log.debug(str("solr: End metrics collection"))
         return ret
 
     def getMajorNumberVersion(self):
@@ -223,7 +224,7 @@ class SolrMetrics(object):
                 tags = [ self.TAG_NAME[self.Tag.COLLECTION] % collection ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT, shards_per_collection, tags))
         except Exception as e:
-            self.log.error(("Got Error while fetching collection shard count: {}").format(e))
+            self.log.error(("Error while fetching collection shard count: {}").format(e))
         return ret
 
     def _getHostShardCount(self):
@@ -250,7 +251,7 @@ class SolrMetrics(object):
                 tags = [ self.TAG_NAME[self.Tag.COLLECTION] % collection ]
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.HOST_SHARD_COUNT, shards_per_host, tags))
         except Exception as e:
-            self.log.error(("Got Error while fetching host shard count: {}").format(e))
+            self.log.error(("Error while fetching host shard count: {}").format(e))
         return ret
 
     def _getReplica(self):
@@ -264,12 +265,12 @@ class SolrMetrics(object):
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
                     replicaCount = 0
                     for shardName, shard in collection["shards"].iteritems():
-                        for replicaName, replica in shard["replicas"].iteritems():
+                        for coreAlias, replica in shard["replicas"].iteritems():
                             if replica["state"] == "active":
                                 nodeName = replica["node_name"]
                                 coreName = replica["core"]
                                 baseUrl = replica["base_url"]
-                                thisCore = self.Core(coreName, replicaName, shardName, collectionName, baseUrl, urlparse(baseUrl).port)
+                                thisCore = self.Core(coreName, coreAlias, shardName, collectionName, baseUrl, urlparse(baseUrl).port)
                                 if thisCore in self.localCores:
                                     replicaCount += 1
                     if replicaCount > 0:
@@ -279,7 +280,7 @@ class SolrMetrics(object):
                         ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaCount, tags))
                         self.log.debug(("detected {} replica with tags {}").format(replicaCount, tags))
         except Exception as e:
-            self.log.error(("Got Error while fetching replica: {}").format(e))
+            self.log.error(("Error while fetching replica: {}").format(e))
 
         return ret
 
@@ -315,7 +316,7 @@ class SolrMetrics(object):
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX, maxDoc, tags))
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_DELETED, deletedDocs, tags))
         except Exception as e:
-            self.log.error(("Got Error while fetching core document count: {}").format(e))
+            self.log.error(("Error while fetching core document count: {}").format(e))
         return ret
 
     def _retrieveLocalEndpointsAndCores(self):
@@ -324,9 +325,9 @@ class SolrMetrics(object):
             try:
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
                     for shardName, shard in collection["shards"].iteritems():
-                        for replicaName, replica in shard["replicas"].iteritems():
+                        for coreAlias, replica in shard["replicas"].iteritems():
                             if replica["state"] != "active":
-                                self.log.debug(("Skipping core {}:{} in state down on node {}").format(collectionName, replicaName, replica["base_url"]))
+                                self.log.debug(("Skipping core {}_{}_{} in state {} on node {}").format(collectionName, shardName, coreAlias, replica["state"], replica["base_url"]))
                                 continue
                             base_url = replica["base_url"]
                             parsedUrl = urlparse(base_url)
@@ -335,17 +336,17 @@ class SolrMetrics(object):
                             ip_address = socket.gethostbyname(hostname_from_url)
                             if self.network.ipIsLocalHostOrDockerContainer(ip_address):
                                 coreName = replica["core"]
+
                                 leader = replica.get("leader", False)
                                 if bool(leader):
                                     self.localLeaderCores.add(coreName)
-                                self.collectionByCore[coreName] = collectionName
-                                self.localCores.add(self.Core(coreName, replicaName, shardName, collectionName, base_url, port_from_url))
-                                self.localEndpoints.add(replica["base_url"])
-            except Exception as e:
-                self.log.error(("Got Error while fetching local core: {}").format(e))
 
-        self.log.debug(str("detected {} local cores: {}").format(len(self.localCores), self.localCores))
-        self.log.debug(str("detected {} local nodes: {}").format(len(self.localEndpoints), self.localEndpoints))
+                                self.collectionByCore[coreName] = collectionName
+                                self.localCores.add(self.Core(coreName, coreAlias, shardName, collectionName, base_url, port_from_url))
+                                self.localEndpoints.add(base_url)
+                                self.log.debug(str("detected local core {}:{} on node {}").format(coreName, coreAlias, base_url))
+            except Exception as e:
+                self.log.error(("Error while attempting to fetch local cores: {}").format(e))
 
     def _getCollections(self):
         ret = []

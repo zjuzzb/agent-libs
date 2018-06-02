@@ -4,9 +4,7 @@ from enum import Enum
 
 from solr.solr_metrics import SolrMetrics
 
-
 class Solr5(SolrMetrics):
-
     URL = {
         SolrMetrics.Endpoint.CORES_INFO: "/solr/admin/cores?wt=json",
         SolrMetrics.Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json",
@@ -17,17 +15,6 @@ class Solr5(SolrMetrics):
         def __init__(self, val, time):
             self.val = val
             self.time = time
-
-    class ShardDocumentCount:
-        def __init__(self, collection, shard):
-            self.collection = collection
-            self.shard = shard
-
-        def __hash__(self):
-            return str("{}{}").format(self.collection, self.shard).__hash__()
-
-        def __eq__(self, other):
-            return (self.collection == other.collection) and (self.shard == other.shard)
 
     def __init__(self, version, instance):
         SolrMetrics.__init__(self, version, instance)
