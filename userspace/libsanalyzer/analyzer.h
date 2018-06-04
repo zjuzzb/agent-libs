@@ -735,6 +735,7 @@ VISIBILITY_PRIVATE
 	sinsp_baseliner* m_falco_baseliner = NULL;
 	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
+	uint64_t m_last_buffer_drops = 0;
 
 #ifndef CYGWING_AGENT
 	infrastructure_state* m_infrastructure_state = NULL;

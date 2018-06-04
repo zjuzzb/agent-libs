@@ -4623,11 +4623,12 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		//
 		scap_stats st;
 		m_inspector->get_capture_stats(&st);
-		if(st.n_drops_buffer > FALCOBL_MAX_DROPS_FULLBUF)
+		if(st.n_drops_buffer > (m_last_buffer_drops + FALCOBL_MAX_DROPS_FULLBUF))
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
 			m_do_baseline_calculation = false;
 			m_falco_baseliner->clear_tables();
+			m_last_buffer_drops = st.n_drops_buffer;
 		}
 	}
 }
