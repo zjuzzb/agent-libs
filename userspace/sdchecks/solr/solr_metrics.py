@@ -47,6 +47,7 @@ class SolrMetrics(object):
         UPDATEHANDLER_DELETES_BY_ID = 21,
         UPDATEHANDLER_DELETES_BY_QUERY = 22,
         UPDATEHANDLER_COMMITS = 23,
+        UPDATEHANDLER_AUTOCOMMITS = 24,
         NONE = 100
 
     class Endpoint(Enum):

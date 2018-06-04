@@ -159,6 +159,7 @@ class Solr5(SolrMetrics):
             ret.append(self._getSingleUpdateHandlerCount(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, "cumulative_deletesByQuery", stats, tags))
 
             ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS, long(stats["updateHandler"]["stats"]["commits"]), tags, SolrMetrics.Metric.MetricType.rate))
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS, long(stats["updateHandler"]["stats"]["autocommits"]), tags, SolrMetrics.Metric.MetricType.rate))
         except Exception as e:
             self.log.debug(("unable to get updatehandler stats: {}").format(e))
         return ret

@@ -37,6 +37,7 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID:       "solr.updatehandler.deletes_by_id",
         SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY:    "solr.updatehandler.deletes_by_query",
         SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS:             "solr.updatehandler.commits",
+        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS:         "solr.updatehandler.autocommits",
     }
 
     # Source
