@@ -146,13 +146,8 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 	//
 	// Go through the thread list and identify the main threads
 	//
-	for(auto it = inspector->m_thread_manager->m_threadtable.begin();
-		it != inspector->m_thread_manager->m_threadtable.end();
-		++it)
-	{
-		sinsp_threadinfo* tinfo = &it->second;
-
-		tinfo->m_blprogram = NULL;
+	inspector->m_thread_manager->m_threadtable.loop([&] (sinsp_threadinfo& tinfo) {
+		tinfo.m_blprogram = NULL;
 
 #ifdef AVOID_FDS_FROM_THREAD_TABLE
 		//
@@ -161,7 +156,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 		//
 		if(time != 0)
 		{
-			sinsp_fdtable* fdt = tinfo->get_fd_table();
+			sinsp_fdtable* fdt = tinfo.get_fd_table();
 
 			if(fdt != NULL)
 			{
@@ -178,16 +173,17 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 		//
 		// Add main threads and their FDs to the program table.
 		//
-		if(tinfo->is_main_thread())
+		if(tinfo.is_main_thread())
 		{
 			blprogram* np;
 
-			auto it = m_progtable.find(tinfo->m_program_hash_falco);
+			auto it = m_progtable.find(tinfo.m_program_hash_falco);
 			if(it == m_progtable.end())
 			{
 				if(m_progtable.size() >= BL_MAX_PROG_TABLE_SIZE)
 				{
-					return;
+					// break out of threadtable loop
+					return false;
 				}
 
 				np = new blprogram();
@@ -195,7 +191,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 				np->m_dirs.m_regular_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 				np->m_dirs.m_startup_table.m_max_table_size = BL_MAX_DIRS_TABLE_SIZE;
 
-				m_progtable[tinfo->m_program_hash_falco] = np;
+				m_progtable[tinfo.m_program_hash_falco] = np;
 			}
 			else
 			{
@@ -205,17 +201,17 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 			//
 			// Copy the basic thread info
 			//
-			np->m_comm = tinfo->m_comm;
-			np->m_exe = tinfo->m_exe;
-			if(tinfo->m_comm == "java")
+			np->m_comm = tinfo.m_comm;
+			np->m_exe = tinfo.m_exe;
+			if(tinfo.m_comm == "java")
 			{
-				np->m_pids.push_back(tinfo->m_pid);
+				np->m_pids.push_back(tinfo.m_pid);
 			}
-			//np->m_args = tinfo->m_args;
-			//np->m_env = tinfo->m_env;
-			np->m_container_id = tinfo->m_container_id;
-			np->m_user_id = tinfo->m_uid;
-			np->m_comm = tinfo->m_comm;
+			//np->m_args = tinfo.m_args;
+			//np->m_env = tinfo.m_env;
+			np->m_container_id = tinfo.m_container_id;
+			np->m_user_id = tinfo.m_uid;
+			np->m_comm = tinfo.m_comm;
 
 			//
 			// Calculate the delta from program creation.
@@ -226,19 +222,20 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 			if(time != 0)
 			{
-				uint64_t clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : inspector->m_firstevent_ts;
+				uint64_t clone_ts = (tinfo.m_clone_ts != 0)? tinfo.m_clone_ts : inspector->m_firstevent_ts;
 				cdelta = time - clone_ts;
 			}
 
 			if(skip_fds)
 			{
-				continue;
+				// next loop
+				return true;
 			}
 
 			//
 			// Process the FD table
 			//
-			sinsp_fdtable* fdt = tinfo->get_fd_table();
+			sinsp_fdtable* fdt = tinfo.get_fd_table();
 
 			if(fdt != NULL)
 			{
@@ -388,24 +385,23 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 				}
 			}
 		}
-	}
+		// next loop
+		return true;
+	});
 
 	//
 	// In this second pass, we go over the thread table and add all of the main processes
 	// to their prarents' executed program list
 	//
-	for(auto it = inspector->m_thread_manager->m_threadtable.begin();
-		it != inspector->m_thread_manager->m_threadtable.end();
-		++it)
-	{
-		sinsp_threadinfo* tinfo = &it->second;
-
-		if(tinfo->is_main_thread())
+	// XXX: is this just tinfo.traverse_parent_state() in disguise?
+	// XXX: O(n^2), worst case
+	inspector->m_thread_manager->m_threadtable.loop([&] (sinsp_threadinfo& tinfo) {
+		if(tinfo.is_main_thread())
 		{
-			auto ptinfo = tinfo->get_parent_thread();
+			auto ptinfo = tinfo.get_parent_thread();
 			if(ptinfo == NULL)
 			{
-				continue;
+				return false;
 			}
 
 			auto itp = m_progtable.find(ptinfo->m_program_hash_falco);
@@ -417,14 +413,15 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 				if(time != 0)
 				{
-					clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : inspector->m_firstevent_ts;
+					clone_ts = (tinfo.m_clone_ts != 0)? tinfo.m_clone_ts : inspector->m_firstevent_ts;
 					cdelta = time - clone_ts;
 				}
 
-				itp->second->m_executed_programs.add(tinfo->m_comm, cdelta);
+				itp->second->m_executed_programs.add(tinfo.m_comm, cdelta);
 			}
 		}
-	}
+		return true;
+	});
 
 }
 

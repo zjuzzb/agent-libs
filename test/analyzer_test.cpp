@@ -165,11 +165,11 @@ TEST_F(sys_call_test, analyzer_procrename)
 		if(e->get_type() == PPME_SYSCALL_GETUID_X)
 		{
 			auto* thread_table = param.m_inspector->m_thread_manager->get_threads();
-			ASSERT_NE(thread_table->end(), thread_table->find(child_pid));
-			const auto& tinfo = thread_table->at(child_pid);
-			EXPECT_EQ("savonarola", tinfo.m_comm);
-			EXPECT_EQ("sysdig", tinfo.m_exe);
-			EXPECT_TRUE(tinfo.m_args.empty());
+			ASSERT_NE(nullptr, thread_table->get(child_pid));
+			const auto* tinfo = thread_table->get(child_pid);
+			EXPECT_EQ("savonarola", tinfo->m_comm);
+			EXPECT_EQ("sysdig", tinfo->m_exe);
+			EXPECT_TRUE(tinfo->m_args.empty());
 		}
 	};
 

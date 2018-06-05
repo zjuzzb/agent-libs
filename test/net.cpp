@@ -251,13 +251,13 @@ TEST_F(sys_call_test, net_ssl_requests)
 			auto threadtable = param.m_inspector->m_thread_manager->get_threads();
 			sinsp_transaction_counters transaction_metrics;
 			transaction_metrics.clear();
-			for(auto it = threadtable->begin(); it != threadtable->end(); ++it)
-			{
-				if(it->second.m_comm == "curl")
+			threadtable->loop([&] (sinsp_threadinfo& tinfo) {
+				if(tinfo.m_comm == "curl")
 				{
-					transaction_metrics.add(&it->second.m_ainfo->m_transaction_metrics);
+					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
 				}
-			}
+				return true;
+			});
 
 			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_counter()->m_count_in);
 			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_in);

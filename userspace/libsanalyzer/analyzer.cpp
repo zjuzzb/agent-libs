@@ -1655,10 +1655,10 @@ sinsp_threadinfo* sinsp_analyzer::get_main_thread_info(int64_t& tid)
 {
 	if(tid != -1)
 	{
-		auto it = m_inspector->m_thread_manager->m_threadtable.find(tid);
-		if(it != m_inspector->m_thread_manager->m_threadtable.end())
+		sinsp_threadinfo* tinfo = m_inspector->m_thread_manager->m_threadtable.get(tid);
+		if (tinfo != nullptr)
 		{
-			return it->second.get_main_thread();
+			return tinfo->get_main_thread();
 		}
 		else
 		{
@@ -1707,7 +1707,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
-	threadinfo_map_iterator_t it;
 	auto prog_hasher = [](sinsp_threadinfo* tinfo)
 	{
 		return tinfo->get_main_thread()->m_program_hash;
@@ -1838,24 +1837,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// and aggregate them into processes
 	///////////////////////////////////////////////////////////////////////////
 	tracer_emitter am_trc("aggregate_metrics", proc_trc);
-	for(it = m_inspector->m_thread_manager->m_threadtable.begin();
-		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
-		sinsp_threadinfo* tinfo = &it->second;
-		thread_analyzer_info* ainfo = tinfo->m_ainfo;
-		sinsp_threadinfo* main_tinfo = tinfo->get_main_thread();
+	m_inspector->m_thread_manager->m_threadtable.loop([&] (sinsp_threadinfo& tinfo) {
+		thread_analyzer_info* ainfo = tinfo.m_ainfo;
+		sinsp_threadinfo* main_tinfo = tinfo.get_main_thread();
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 		analyzer_container_state* container = NULL;
 
-		if(tinfo->is_main_thread())
+		if(tinfo.is_main_thread())
 		{
 			++process_count;
 		}
 
 		// xxx/nags : why not do this once for the main_thread?
-		if(!tinfo->m_container_id.empty())
+		if(!tinfo.m_container_id.empty())
 		{
-			container = &m_containers[tinfo->m_container_id];
+			container = &m_containers[tinfo.m_container_id];
 			const std::set<double>& pctls = m_configuration->get_percentiles();
 			if(pctls.size())
 			{
@@ -1865,7 +1861,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		// We need to reread cmdline only in live mode, with nodriver mode
 		// proc is reread anyway
-		if(m_inspector->is_live() && (tinfo->m_flags & PPM_CL_CLOSED) == 0 &&
+		if(m_inspector->is_live() && (tinfo.m_flags & PPM_CL_CLOSED) == 0 &&
 			m_prev_flush_time_ns - main_tinfo->m_clone_ts > ONE_SECOND_IN_NS &&
 			m_prev_flush_time_ns - main_ainfo->m_last_cmdline_sync_ns > CMDLINE_UPDATE_INTERVAL_S*ONE_SECOND_IN_NS)
 		{
@@ -1887,7 +1883,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 #ifndef CYGWING_AGENT
 		if((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 &&
-			tinfo->is_main_thread() && !m_inspector->is_capture())
+			tinfo.is_main_thread() && !m_inspector->is_capture())
 		{
 			if(!m_k8s_proc_detected)
 			{
@@ -1929,19 +1925,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		//
 		if(m_prev_flush_time_ns != 0)
 		{
-			delta = m_prev_flush_time_ns - tinfo->m_lastevent_ts;
+			delta = m_prev_flush_time_ns - tinfo.m_lastevent_ts;
 
 			if(delta > (int64_t)sample_duration)
 			{
-				delta = (tinfo->m_lastevent_ts / sample_duration * sample_duration + sample_duration) -
-					tinfo->m_lastevent_ts;
+				delta = (tinfo.m_lastevent_ts / sample_duration * sample_duration + sample_duration) -
+					tinfo.m_lastevent_ts;
 			}
 
-			tinfo->m_lastevent_ts = m_prev_flush_time_ns;
+			tinfo.m_lastevent_ts = m_prev_flush_time_ns;
 
-			if(PPME_IS_ENTER(tinfo->m_lastevent_type))
+			if(PPME_IS_ENTER(tinfo.m_lastevent_type))
 			{
-				cat = &tinfo->m_lastevent_category;
+				cat = &tinfo.m_lastevent_category;
 			}
 			else
 			{
@@ -2000,22 +1996,22 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
-			if(tinfo->is_main_thread())
+			if(tinfo.is_main_thread())
 			{
 				if(!m_inspector->is_capture())
 				{
 					//
 					// It's pointless to try to get the CPU load if the process has been closed
 					//
-					if((tinfo->m_flags & PPM_CL_CLOSED) == 0)
+					if((tinfo.m_flags & PPM_CL_CLOSED) == 0)
 					{
 						if(!m_skip_proc_parsing)
 						{
-							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo->m_pid, &ainfo->m_old_proc_jiffies);
+							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo.m_pid, &ainfo->m_old_proc_jiffies);
 						}
 
 #if defined(HAS_CAPTURE)
-						if(it->first == m_inspector->m_sysdig_pid)
+						if(tinfo.m_tid == m_inspector->m_sysdig_pid)
 						{
 							m_my_cpuload = ainfo->m_cpuload;
 							uint64_t steal_pct = m_procfs_parser->global_steal_pct();
@@ -2034,7 +2030,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						if(m_inspector->is_nodriver())
 						{
 #ifndef CYGWING_AGENT
-							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo->m_pid, &ainfo->m_file_io_stats);
+							auto file_io_stats = m_procfs_parser->read_proc_file_stats(tinfo.m_pid, &ainfo->m_file_io_stats);
 							ainfo->m_metrics.m_io_file.m_bytes_in = file_io_stats.m_read_bytes;
 							ainfo->m_metrics.m_io_file.m_bytes_out = file_io_stats.m_write_bytes;
 							ainfo->m_metrics.m_io_file.m_count_in = file_io_stats.m_syscr;
@@ -2042,7 +2038,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 							if(m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER)
 							{
-								if(m_stress_tool_matcher.match(tinfo->m_comm))
+								if(m_stress_tool_matcher.match(tinfo.m_comm))
 								{
 									can_disable_nodriver = false;
 								}
@@ -2054,10 +2050,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 		}
 
-		if(tinfo->m_flags & PPM_CL_CLOSED &&
+		if(tinfo.m_flags & PPM_CL_CLOSED &&
 				!(evt != NULL &&
 				  (evt->get_type() == PPME_PROCEXIT_E || evt->get_type() == PPME_PROCEXIT_1_E)
-				  && evt->m_tinfo == tinfo))
+				  && evt->m_tinfo == &tinfo))
 		{
 			//
 			// Yes, remove the thread from the table, but NOT if the event currently under processing is
@@ -2065,15 +2061,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			// Note: we clear the metrics no matter what because m_thread_manager->remove_thread might
 			//       not actually remove the thread if it has childs.
 			//
-			m_threads_to_remove.push_back(tinfo);
+			m_threads_to_remove.push_back(&tinfo);
 		}
 
 		//
 		// Add this thread's counters to the process ones...
 		//
-		ASSERT(tinfo->m_program_hash != 0);
+		ASSERT(tinfo.m_program_hash != 0);
 
-		auto emplaced = progtable.emplace(tinfo);
+		auto emplaced = progtable.emplace(&tinfo);
 		auto mtinfo = *emplaced.first;
 		// Use first found thread of a program to collect all metrics
 		if(emplaced.second)
@@ -2100,18 +2096,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			ainfo->clear_all_metrics();
 		}
 #ifndef _WIN32
-		if(tinfo->is_main_thread() && !(tinfo->m_flags & PPM_CL_CLOSED) &&
-		   (m_next_flush_time_ns - tinfo->m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
-				tinfo->m_vpid > 0)
+		if(tinfo.is_main_thread() && !(tinfo.m_flags & PPM_CL_CLOSED) &&
+		   (m_next_flush_time_ns - tinfo.m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
+				tinfo.m_vpid > 0)
 		{
-			if(m_jmx_proxy && tinfo->get_comm() == "java")
+			if(m_jmx_proxy && tinfo.get_comm() == "java")
 			{
-				if (!tinfo->m_ainfo->m_root_refreshed)
+				if (!tinfo.m_ainfo->m_root_refreshed)
 				{
-					tinfo->m_ainfo->m_root_refreshed = true;
-					tinfo->m_root = m_procfs_parser->read_proc_root(tinfo->m_pid);
+					tinfo.m_ainfo->m_root_refreshed = true;
+					tinfo.m_root = m_procfs_parser->read_proc_root(tinfo.m_pid);
 				}
-				java_process_requests.emplace_back(tinfo);
+				java_process_requests.emplace_back(&tinfo);
 			}
 
 			// May happen that for processes like apache with mpm_prefork there are hundred of
@@ -2127,12 +2123,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				const auto& custom_checks = mtinfo->m_ainfo->get_proc_config().app_checks();
 				vector<app_process> app_checks;
 
-				match_checks_list(tinfo, mtinfo, custom_checks, app_checks, "env");
+				match_checks_list(&tinfo, mtinfo, custom_checks, app_checks, "env");
 				// Ignore the global list if we found custom checks
 				if (app_checks.empty()) {
-					match_checks_list(tinfo, mtinfo, m_app_checks, app_checks, "global list");
+					match_checks_list(&tinfo, mtinfo, m_app_checks, app_checks, "global list");
 				}
-				auto app_metrics_pid = m_app_metrics.find(tinfo->m_pid);
+				auto app_metrics_pid = m_app_metrics.find(tinfo.m_pid);
 
 #ifndef CYGWING_AGENT
 				// Prometheus checks are done through the app proxy as well.
@@ -2153,7 +2149,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				// a rule may be specified for finding an app_checks match
 				if (!have_prometheus_metrics)
 				{
-					match_prom_checks(tinfo, mtinfo, prom_procs);
+					match_prom_checks(&tinfo, mtinfo, prom_procs);
 				}
 #endif // CYGWING_AGENT
 
@@ -2171,7 +2167,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						// running the check again
 						g_logger.format(sinsp_logger::SEV_DEBUG,
 							"App metrics for %d,%s are still good",
-							tinfo->m_pid, appcheck.name().c_str());
+							tinfo.m_pid, appcheck.name().c_str());
 					}
 					else
 					{
@@ -2181,7 +2177,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 		}
 #endif
-	}
+		return true;
+	});
 	am_trc.stop();
 
 	if(m_inspector->is_nodriver() && m_mode_switch_state == sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER && can_disable_nodriver)
@@ -2560,10 +2557,17 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
 				(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
 			{
-				proc->mutable_details()->set_comm(tinfo->get_main_thread()->m_comm);
-				proc->mutable_details()->set_exe(tinfo->get_main_thread()->m_exe);
-				for(vector<string>::const_iterator arg_it = tinfo->get_main_thread()->m_args.begin();
-					arg_it != tinfo->get_main_thread()->m_args.end(); ++arg_it)
+				auto main_thread = tinfo->get_main_thread();
+				if (!main_thread)
+				{
+					g_logger.format(sinsp_logger::SEV_CRITICAL, "thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
+					continue;
+				}
+
+				proc->mutable_details()->set_comm(main_thread->m_comm);
+				proc->mutable_details()->set_exe(main_thread->m_exe);
+				for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
+					arg_it != main_thread->m_args.end(); ++arg_it)
 				{
 					if(*arg_it != "")
 					{
@@ -2579,9 +2583,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					}
 				}
 
-				if(!tinfo->get_main_thread()->m_container_id.empty())
+				if(!main_thread->m_container_id.empty())
 				{
-					proc->mutable_details()->set_container_id(tinfo->get_main_thread()->m_container_id);
+					proc->mutable_details()->set_container_id(main_thread->m_container_id);
 				}
 
 				tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
@@ -6607,7 +6611,22 @@ void sinsp_analyzer::match_checks_list(sinsp_threadinfo *tinfo,
 	}
 }
 
-#define MR_UPDATE_POS { if(len == -1) return -1; pos += len;}
+#define REPORT(args...) do {\
+	len = snprintf(reportbuf+pos, reportbuflen-pos, args); \
+	if (len == -1) {\
+		return -1; \
+	}\
+	pos += len;\
+} while(0)
+
+#define LOOP_REPORT(args...) do {\
+	len = snprintf(reportbuf+pos, reportbuflen-pos, args); \
+	if (len == -1) {\
+		pos = -1; \
+		return false; \
+	}\
+	pos += len;\
+} while(0)
 
 int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t reportbuflen, bool do_complete_report)
 {
@@ -6639,21 +6658,15 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 	uint32_t nqueuedtransactions_client_capacity = 0;
 	uint32_t nqueuedtransactions_server_capacity = 0;
 
-	len = snprintf(reportbuf + pos, reportbuflen - pos,
-		"threads: %d\n", (int)m_inspector->m_thread_manager->m_threadtable.size());
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"connections: %d\n", (int)m_ipv4_connections->size());
-	MR_UPDATE_POS;
+	REPORT("threads: %d\n", (int)m_inspector->m_thread_manager->m_threadtable.size());
+	REPORT("connections: %d\n", (int)m_ipv4_connections->size());
 
-	for(auto it = m_inspector->m_thread_manager->m_threadtable.begin();
-		it != m_inspector->m_thread_manager->m_threadtable.end(); ++it)
-	{
-		if(!it->second.is_main_thread())
+	m_inspector->m_thread_manager->m_threadtable.loop([&] (sinsp_threadinfo& tinfo) {
+		if(!tinfo.is_main_thread())
 		{
-			continue;
+			return true;
 		}
-		auto ainfo = it->second.m_ainfo->main_thread_ainfo();
+		auto ainfo = tinfo.m_ainfo->main_thread_ainfo();
 
 		for(uint32_t j = 0; j < ainfo->m_server_transactions_per_cpu.size(); j++)
 		{
@@ -6671,13 +6684,11 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 
 		if(do_complete_report)
 		{
-			len =  snprintf(reportbuf + pos, reportbuflen - pos,
-				"    tid: %d comm: %s nfds:%d\n", (int)it->first, it->second.m_comm.c_str(), (int)it->second.m_fdtable.size());
-			MR_UPDATE_POS;
+			LOOP_REPORT("    tid: %d comm: %s nfds:%d\n", (int)tinfo.m_tid, tinfo.m_comm.c_str(), (int)tinfo.m_fdtable.size());
 		}
 
-		for(auto fdit = it->second.m_fdtable.m_table.begin();
-			fdit != it->second.m_fdtable.m_table.end(); ++fdit)
+		for(auto fdit = tinfo.m_fdtable.m_table.begin();
+			fdit != tinfo.m_fdtable.m_table.end(); ++fdit)
 		{
 			nfds++;
 
@@ -6765,85 +6776,41 @@ int32_t sinsp_analyzer::generate_memory_report(OUT char* reportbuf, uint32_t rep
 				}
 			}
 		}
+		return true;
+	});
+
+	// check error from the loop above
+	if (pos < 0)
+	{
+		return pos;
 	}
 
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"FDs: %d\n", (int)nfds);
-	MR_UPDATE_POS;
+	REPORT("FDs: %d\n", (int)nfds);
+	REPORT("  ipv4: %d\n", (int)nfds_ipv4);
+	REPORT("  ipv6: %d\n", (int)nfds_ipv6);
+	REPORT("  dir: %d\n", (int)nfds_dir);
+	REPORT("  ipv4s: %d\n", (int)nfds_ipv4s);
+	REPORT("  ipv6s: %d\n", (int)nfds_ipv6s);
+	REPORT("  fifo: %d\n", (int)nfds_fifo);
+	REPORT("  unix: %d\n", (int)nfds_unix);
+	REPORT("  event: %d\n", (int)nfds_event);
+	REPORT("  file: %d\n", (int)nfds_file);
+	REPORT("  unknown: %d\n", (int)nfds_unknown);
+	REPORT("  unsupported: %d\n", (int)nfds_unsupported);
+	REPORT("  signal: %d\n", (int)nfds_signal);
+	REPORT("  evtpoll: %d\n", (int)nfds_evtpoll);
+	REPORT("  inotify: %d\n", (int)nfds_inotify);
+	REPORT("  timerfd: %d\n", (int)nfds_timerfd);
 
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  ipv4: %d\n", (int)nfds_ipv4);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  ipv6: %d\n", (int)nfds_ipv6);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  dir: %d\n", (int)nfds_dir);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  ipv4s: %d\n", (int)nfds_ipv4s);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  ipv6s: %d\n", (int)nfds_ipv6s);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  fifo: %d\n", (int)nfds_fifo);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  unix: %d\n", (int)nfds_unix);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  event: %d\n", (int)nfds_event);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  file: %d\n", (int)nfds_file);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  unknown: %d\n", (int)nfds_unknown);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  unsupported: %d\n", (int)nfds_unsupported);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  signal: %d\n", (int)nfds_signal);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  evtpoll: %d\n", (int)nfds_evtpoll);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  inotify: %d\n", (int)nfds_inotify);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  timerfd: %d\n", (int)nfds_timerfd);
-	MR_UPDATE_POS;
-
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"transactions: %d\n", (int)ntransactions);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  http: %d\n", (int)ntransactions_http);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  mysql: %d\n", (int)ntransactions_mysql);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  postgres: %d\n", (int)ntransactions_postgres);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  mongodb: %d\n", (int)ntransactions_mongodb);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  queued client: %d\n", (int)nqueuedtransactions_client);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  queued server: %d\n", (int)nqueuedtransactions_server);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  queue client capacity: %d\n", (int)nqueuedtransactions_client_capacity);
-	MR_UPDATE_POS;
-	len =  snprintf(reportbuf + pos, reportbuflen - pos,
-		"  queue server capacity: %d\n", (int)nqueuedtransactions_server_capacity);
-	MR_UPDATE_POS;
+	REPORT("transactions: %d\n", (int)ntransactions);
+	REPORT("  http: %d\n", (int)ntransactions_http);
+	REPORT("  mysql: %d\n", (int)ntransactions_mysql);
+	REPORT("  postgres: %d\n", (int)ntransactions_postgres);
+	REPORT("  mongodb: %d\n", (int)ntransactions_mongodb);
+	REPORT("  queued client: %d\n", (int)nqueuedtransactions_client);
+	REPORT("  queued server: %d\n", (int)nqueuedtransactions_server);
+	REPORT("  queue client capacity: %d\n", (int)nqueuedtransactions_client_capacity);
+	REPORT("  queue server capacity: %d\n", (int)nqueuedtransactions_server_capacity);
 
 	//fprintf(stdout, "%s", reportbuf);
 	return pos;
