@@ -297,21 +297,22 @@ class SolrMetrics(object):
         try:
             obj = self._getUrlWithBase(base, SolrMetrics.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
             if len(obj) > 0:
-                for replica_alias in obj["status"]:
-                    if replica_alias not in self.localLeaderCores:
-                        continue
-
-                    collectionName = self.collectionByCore.get(replica_alias, None)
-
-                    numDocs = obj["status"][replica_alias]["index"]["numDocs"]
-                    maxDoc = obj["status"][replica_alias]["index"]["maxDoc"]
-                    deletedDocs = obj["status"][replica_alias]["index"]["deletedDocs"]
-
+                for core_name in obj["status"]:
                     tags = [
-                        self.TAG_NAME[self.Tag.CORE] % replica_alias
+                        self.TAG_NAME[self.Tag.CORE] % core_name
                     ]
+                    collectionName = self.collectionByCore.get(core_name, None)
                     if collectionName is not None:
                         tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collectionName)
+
+                    if core_name not in self.localLeaderCores:
+                        # Report 0 for non-leader cores so that the number panel in the host specific dashboard has data to show
+                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, 0, tags))
+                        continue
+
+                    numDocs = obj["status"][core_name]["index"]["numDocs"]
+                    maxDoc = obj["status"][core_name]["index"]["maxDoc"]
+                    deletedDocs = obj["status"][core_name]["index"]["deletedDocs"]
 
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
                     ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX, maxDoc, tags))
