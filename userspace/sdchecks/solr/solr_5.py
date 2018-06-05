@@ -127,25 +127,6 @@ class Solr5(SolrMetrics):
         self.prevStats[key] = self.PrevStat(reqs, tottime)
         return ret
 
-    def _getSingleUpdateHandlerCount(self, metricEnumValue, keyString, obj, tags):
-        try:
-            ret = None
-            val = long(obj["updateHandler"]["stats"][keyString])
-            key = tuple(tags) + (("updateHandler:%s" % keyString), )
-            prev_stat = self.prevStats.get(key, None)
-
-            if prev_stat is not None:
-                d_val = val - prev_stat.val
-                if d_val < 0:
-                    self.log.debug(("Stat {} decreased from {} to {}, tags {}, reporting as 0").format(metricEnumValue, prev_stat.val, val, tags))
-                    d_val = 0
-                ret = SolrMetrics.Metric(metricEnumValue, long(d_val), tags, SolrMetrics.Metric.MetricType.gauge)
-
-            self.prevStats[key] = self.PrevStat(val, 0)
-        except Exception as e:
-            self.log.error(("unable to get {} from {} in updateHandler stats: {}").format(metricEnumValue, keyString, e))
-        return ret
-
     def _getUpdateHandlerStats(self, obj, tags):
         ret = []
         try:
@@ -153,11 +134,9 @@ class Solr5(SolrMetrics):
             assert beans[4] == "UPDATEHANDLER"
             stats = beans[5]
 
-            # Get the following counts. These are not monotonic so need to handle rate becoming less than 0.
-            ret.append(self._getSingleUpdateHandlerCount(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS, "cumulative_adds", stats, tags))
-            ret.append(self._getSingleUpdateHandlerCount(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID, "cumulative_deletesById", stats, tags))
-            ret.append(self._getSingleUpdateHandlerCount(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, "cumulative_deletesByQuery", stats, tags))
-
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS, long(stats["updateHandler"]["stats"]["cumulative_adds"]), tags, SolrMetrics.Metric.MetricType.rate))
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID, long(stats["updateHandler"]["stats"]["cumulative_deletesById"]), tags, SolrMetrics.Metric.MetricType.rate))
+            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, long(stats["updateHandler"]["stats"]["cumulative_deletesByQuery"]), tags, SolrMetrics.Metric.MetricType.rate))
             ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS, long(stats["updateHandler"]["stats"]["commits"]), tags, SolrMetrics.Metric.MetricType.rate))
             ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS, long(stats["updateHandler"]["stats"]["autocommits"]), tags, SolrMetrics.Metric.MetricType.rate))
         except Exception as e:
