@@ -224,6 +224,10 @@ SELECT schemaname, count(*) FROM
         """.format(table_count_limit=TABLE_COUNT_LIMIT)
     }
 
+    REPLICATION_METRICS_10 = {
+        'CASE WHEN pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() THEN 0 ELSE GREATEST (0, EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp())) END': ('postgresql.replication_delay', GAUGE),
+    }
+
     REPLICATION_METRICS_9_1 = {
         'CASE WHEN pg_last_xlog_receive_location() = pg_last_xlog_replay_location() THEN 0 ELSE GREATEST (0, EXTRACT (EPOCH FROM now() - pg_last_xact_replay_timestamp())) END': ('postgresql.replication_delay', GAUGE),
     }
@@ -337,7 +341,7 @@ SELECT s.schemaname,
             cursor.execute('SHOW SERVER_VERSION;')
             result = cursor.fetchone()
             try:
-                version = map(int, result[0].split('.'))
+                version = map(int, result[0].split(' ')[0].split('.'))
             except Exception:
                 version = result[0]
             self.versions[key] = version
@@ -357,6 +361,9 @@ SELECT s.schemaname,
 
     def _is_9_2_or_above(self, key, db):
         return self._is_above(key, db, [9,2,0])
+
+    def _is_10_or_above(self, key, db):
+        return self._is_above(key, db, [10,0,0])
 
     def _get_instance_metrics(self, key, db, database_size_metrics):
         """Use either COMMON_METRICS or COMMON_METRICS + NEWER_92_METRICS
@@ -423,7 +430,11 @@ SELECT s.schemaname,
         Uses a dictionnary to save the result for each instance
         """
         metrics = self.replication_metrics.get(key)
-        if self._is_9_1_or_above(key, db) and metrics is None:
+
+        if self._is_10_or_above(key, db) and metrics is None:
+            self.replication_metrics[key] = dict(self.REPLICATION_METRICS_10)
+            metrics = self.replication_metrics.get(key)
+        elif self._is_9_1_or_above(key, db) and metrics is None:
             self.replication_metrics[key] = dict(self.REPLICATION_METRICS_9_1)
             if self._is_9_2_or_above(key, db):
                 self.replication_metrics[key].update(self.REPLICATION_METRICS_9_2)
