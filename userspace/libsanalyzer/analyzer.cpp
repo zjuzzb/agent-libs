@@ -2560,7 +2560,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				auto main_thread = tinfo->get_main_thread();
 				if (!main_thread)
 				{
-					g_logger.format(sinsp_logger::SEV_CRITICAL, "thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
+					g_logger.format(sinsp_logger::SEV_WARNING, "Thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
 					continue;
 				}
 
