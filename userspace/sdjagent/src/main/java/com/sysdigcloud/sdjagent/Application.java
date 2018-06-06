@@ -157,7 +157,8 @@ public class Application {
             System.err.flush();
             String cmd_data = inqueue.receive(1);
             if(cmd_data != null) {
-                LOGGER.fine(String.format("Received command: %s", cmd_data));
+                // LOGGER.fine(String.format("Received command: %s", cmd_data));
+                LOGGER.fine(String.format("Received command of size %d bytes", cmd_data.length()));
                 Map<String, Object> cmd_obj = MAPPER.readValue(cmd_data, Map.class);
                 List<VMRequest> requestedVMs = new ArrayList<VMRequest>();
                 if (cmd_obj.get("command").equals("getMetrics"))
@@ -195,9 +196,10 @@ public class Application {
             if (!activePids.contains(pid)) {
                 Tracer trcVm = trcClean.span("virtualMachine");
                 trcVm.enter(new ArrayList<NameValue>(Arrays.asList(new NameValue("pid", Integer.toString(pid.intValue())))));
-                LOGGER.info(String.format("Removing cached entry for pid: %d", pid.intValue()));
                 // Cleanup resources on MonitoredVM before removing it
                 MonitoredVM vm = vms.get(pid);
+                LOGGER.info(String.format("Removing cached entry for pid: %d, name: %s, available: %s",
+                                          pid.intValue(), vm.getName(), vm.isAvailable()));
                 vm.cleanUp();
                 trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", vm.getName()))));
                 vmsIt.remove();

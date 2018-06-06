@@ -291,11 +291,14 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// do a gross filtering and let sdjagent parse them
 	// otherwise we can move the whole parsing here
 	Json::Value args_json(Json::arrayValue);
+	string args;
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
-		if(arg.find("-D") == 0 && arg.find("jmx") != string::npos && arg.size() < MAX_ARG_SIZE)
+		if((arg.find("-D") == 0 && arg.find("jmx") != string::npos && arg.size() < MAX_ARG_SIZE) ||
+		   (arg.find("UsePerfData") != string::npos))
 		{
 			args_json.append(arg);
+			args += arg + " ";
 		}
 	}
 	// Last non empty arg is usually the main class
@@ -311,10 +314,15 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 			}) == it->end())
 		{
 			args_json.append(*it);
+			args += *it;
 			break;
 		}
 	}
 	ret["args"] = args_json;
+
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Adding process for JMX getMetrics command: "
+					"pid: %" PRIu64 " vpid: %" PRIu64 " root: %s args: %s", tinfo->m_pid,
+					tinfo->m_vpid, tinfo->m_root.c_str(), args.c_str());
 	return ret;
 }
 
@@ -323,13 +331,20 @@ void jmx_proxy::send_get_metrics(const vector<sinsp_threadinfo*>& processes)
 	Json::Value command_obj;
 	command_obj["command"] = "getMetrics";
 	Json::Value body(Json::arrayValue);
+
+	g_logger.log("Generating JMX getMetrics command", sinsp_logger::SEV_DEBUG);
+	unsigned tinfo_count = 0;
 	for(auto tinfo : processes)
 	{
-		body.append(tinfo_to_json(tinfo));
+		Json::Value tinfo_json = tinfo_to_json(tinfo);
+		body.append(tinfo_json);
+		++tinfo_count;
 	}
 	command_obj["body"] = body;
 	string command_data = m_json_writer.write(command_obj);
-	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending get metric command to JMX: %s", command_data.c_str());
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Sending JMX getMetrics command for %u "
+					"processes, command size %u bytes", tinfo_count, command_data.size());
+
 	m_outqueue.send(command_data);
 }
 

@@ -65,7 +65,7 @@ public class MonitoredVM {
         } else {
             retrieveVMInfoFromHost(request);
         }
-        if(!this.available) {
+        if(!this.available && (request.getArgs().length > 0)) {
             // This way is faster but it's more error prone
             // so keep it as last chance
             retrieveVMInfoFromArgs(request);
@@ -126,13 +126,14 @@ public class MonitoredVM {
                 if (uid_error == 0 && gid_error == 0) {
                     LOGGER.fine(String.format("Change uid and gid to %d:%d", idInfo[0], idInfo[1]));
                 } else {
-                    LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d", idInfo[0], idInfo[1],
-                            uid_error, gid_error));
+                    LOGGER.warning(String.format("Cannot change uid and gid to %d:%d, errors: %d:%d (pid=%d vpid=%d root=%s args=%s)",
+                                   idInfo[0], idInfo[1], uid_error, gid_error, request.getPid(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
                 }
                 uidChanged = true;
             } catch (IOException ex)
             {
-                LOGGER.warning(String.format("Cannot read uid:gid data from process with pid %d: %s", pid, ex.getMessage()));
+                LOGGER.warning(String.format("Cannot read uid:gid data from process %d: %s (vpid=%d root=%s args=%s)",
+                               pid, ex.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
             }
         }
 
@@ -145,7 +146,8 @@ public class MonitoredVM {
             jvmstat.detach();
             available = true;
         } catch (MonitorException e) {
-            LOGGER.warning(String.format("JvmstatVM cannot attach to %d: %s", this.pid, e.getMessage()));
+            LOGGER.warning(String.format("JvmstatVM cannot attach to process %d: %s (vpid=%d root=%s args=%s)",
+                           this.pid, e.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
             return;
         }
 
@@ -157,7 +159,8 @@ public class MonitoredVM {
                 this.address = AttachAPI.loadManagementAgent(request.getPid());
             } catch (IOException e)
             {
-                LOGGER.warning(String.format("Cannot load agent on process %d: %s", this.pid, e.getMessage()));
+                LOGGER.warning(String.format("Cannot load agent on process %d: %s (vpid=%d root=%s args=%s)",
+                               this.pid, e.getMessage(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
             }
         }
 
@@ -169,7 +172,8 @@ public class MonitoredVM {
             if (uid_error == 0 && gid_error == 0) {
                 LOGGER.fine("Restore uid and gid");
             } else {
-                LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d", uid_error, gid_error));
+                LOGGER.severe(String.format("Cannot restore uid and gid, errors: %d:%d (pid=%d vpid=%d root=%s args=%s)",
+                              uid_error, gid_error, request.getPid(), request.getVpid(), request.getRoot(), Arrays.toString(request.getArgs())));
             }
         }
     }
@@ -205,6 +209,9 @@ public class MonitoredVM {
             this.address = String.format("service:jmx:rmi:///jndi/rmi://%s:%d/jmxrmi", hostname, port);
             this.available = true;
         }
+
+        LOGGER.info(String.format("JVM pid=%d vpid=%d info from args: hostname=%s port=%d authenticate=%s name=%s (args=%s)",
+                                  request.getPid(), request.getVpid(), hostname, port, authenticate, this.name, Arrays.toString(request.getArgs())));
     }
 
     public boolean isAvailable() {
