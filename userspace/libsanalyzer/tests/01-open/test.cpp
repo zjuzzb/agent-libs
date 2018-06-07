@@ -96,7 +96,15 @@ void export_draios_metrics(int fd, draios::metrics* metrics)
 class sample_collector: public analyzer_callback_interface
 {
 public:
-	void sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
+	void sinsp_analyzer_data_ready(uint64_t ts_ns,
+				       uint64_t nevts,
+				       uint64_t num_drop_events,
+				       draiosproto::metrics* metrics,
+				       uint32_t sampling_ratio,
+				       double analyzer_cpu_pct,
+				       double flush_cpu_pct,
+				       uint64_t analyzer_flush_duration_ns,
+				       uint64_t num_suppressed_threads)
 	{
 //		int a = 0;
 		//sinsp_sample_header* hdr = (sinsp_sample_header*)buffer;

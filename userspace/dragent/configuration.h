@@ -685,6 +685,7 @@ public:
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;
 	bool m_security_send_monitor_events;
+	vector<string> m_suppressed_comms;
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;

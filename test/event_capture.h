@@ -21,8 +21,15 @@ public:
 	sinsp *m_inspector;
 };
 
+typedef function<void (sinsp *inspector)> before_open_t;
+typedef function<void (sinsp *inspector)> before_close_t;
 typedef function<bool (sinsp_evt *evt) > event_filter_t;
 typedef function<void (const callback_param &param) > captured_event_callback_t;
+
+// Returns true/false to indicate whether the capture should continue
+// or stop
+typedef function<bool () > capture_continue_t;
+
 typedef function<void (sinsp* inspector) > run_callback_t;
 
 class event_capture
@@ -44,6 +51,15 @@ public:
 	void wait_for_capture_stop()
 	{
 		m_capture_stopped.wait();
+	}
+
+	static void do_nothing(sinsp *inspector)
+	{
+	}
+
+	static bool always_continue()
+	{
+		return true;
 	}
 
 	static void run(run_callback_t run_function,
@@ -72,30 +88,39 @@ public:
 		{
 			return true;
 		};
+
 		sinsp_configuration configuration;
 		run(run_function, captured_event_callback, no_filter, configuration, NULL, 0, 0, 0, SCAP_MODE_NODRIVER);
 	}
 
 	static void run(
-	    run_callback_t run_function,
-	    captured_event_callback_t captured_event_callback,
-	    event_filter_t filter,
-	    const sinsp_configuration& configuration,
-	    analyzer_callback_interface* analyzer_callback = NULL,
-    	uint32_t max_thread_table_size = 0,
+		run_callback_t run_function,
+		captured_event_callback_t captured_event_callback,
+		event_filter_t filter,
+		const sinsp_configuration& configuration,
+		analyzer_callback_interface* analyzer_callback = NULL,
+		uint32_t max_thread_table_size = 0,
 		uint64_t thread_timeout_ns = 0,
 		uint64_t inactive_thread_scan_time_ns = 0,
-		scap_mode_t mode = SCAP_MODE_LIVE)
+		scap_mode_t mode = SCAP_MODE_LIVE,
+		before_open_t before_open = event_capture::do_nothing,
+		before_close_t before_close = event_capture::do_nothing,
+		capture_continue_t capture_continue = event_capture::always_continue,
+		uint64_t max_timeouts = 3)
 	{
 		event_capture capturing;
 		capturing.m_mode = mode;
 		capturing.m_captured_event_callback = captured_event_callback;
+		capturing.m_before_open = before_open;
+		capturing.m_before_close = before_close;
+		capturing.m_capture_continue = capture_continue;
 		capturing.m_filter = filter;
 		capturing.m_configuration = configuration;
 		capturing.m_analyzer_callback = analyzer_callback;
 		capturing.m_max_thread_table_size = max_thread_table_size;
 		capturing.m_thread_timeout_ns = thread_timeout_ns;
 		capturing.m_inactive_thread_scan_time_ns = inactive_thread_scan_time_ns;
+		capturing.m_max_timeouts = max_timeouts;
 
 		Poco::RunnableAdapter<event_capture> runnable(capturing, &event_capture::capture);
 		Poco::Thread thread;
@@ -163,6 +188,10 @@ private:
 				res = false;
 			}
 		}
+		if(!m_capture_continue())
+		{
+			return false;
+		}
 		if(!res || ::testing::Test::HasNonfatalFailure())
 		{
 			cerr << "failed on event " << event->get_num() << endl;
@@ -175,6 +204,9 @@ private:
 	bool m_stopped;
 	event_filter_t m_filter;
 	captured_event_callback_t m_captured_event_callback;
+	before_open_t m_before_open;
+	before_close_t m_before_close;
+	capture_continue_t m_capture_continue;
 	sinsp_configuration m_configuration;
 	uint32_t m_max_thread_table_size;
 	uint64_t m_thread_timeout_ns;
@@ -187,6 +219,7 @@ private:
 	sinsp_analyzer* m_analyzer;
 	analyzer_callback_interface* m_analyzer_callback;
 	scap_mode_t m_mode;
+	uint64_t m_max_timeouts;
 };
 
 

@@ -27,6 +27,7 @@ sinsp_configuration::sinsp_configuration():
 	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
 	m_protocols_truncation_size = 512;
+	m_mounts_limit_size = 15u;
 #ifndef CYGWING_AGENT
 	m_k8s_autodetect = true;
 	m_mesos_autodetect = true;

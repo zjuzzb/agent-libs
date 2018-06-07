@@ -415,6 +415,11 @@ void sinsp_worker::init()
 	}
 #endif // CYGWING_AGENT
 
+	for(const auto &comm : m_configuration->m_suppressed_comms)
+	{
+		m_inspector->suppress_events_comm(comm);
+	}
+
 	//
 	// Start the capture with sinsp
 	//

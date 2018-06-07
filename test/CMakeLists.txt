@@ -77,6 +77,7 @@ add_executable(tests
 	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_data_handler.cpp
 	configuration_test.cpp
 	statsd.cpp
+	suppress_events.cpp
 	jmx_proxy.cpp
 	token_bucket_test.cpp
 	user_event.cpp
@@ -96,7 +97,10 @@ target_link_libraries(tests
 	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a)
 
 add_executable(test_helper
-		test_helper.cpp)
+	test_helper.cpp)
+
+target_link_libraries(test_helper
+	pthread)
 
 execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 
@@ -111,6 +115,8 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 	install(TARGETS test_helper_32
 		DESTINATION ${DRAIOS_BIN_PREFIX}/test/
 		COMPONENT tests)
+	target_link_libraries(test_helper_32
+		pthread)
 endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
 
@@ -122,6 +128,15 @@ install(DIRECTORY
 
 install(TARGETS test_helper
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+	COMPONENT tests)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_helper.sh
+	${CMAKE_CURRENT_BINARY_DIR}/test_helper.sh
+	COPYONLY)
+
+install(FILES test_helper.sh
+	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+	PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
 	COMPONENT tests)
 
 install(TARGETS tests 

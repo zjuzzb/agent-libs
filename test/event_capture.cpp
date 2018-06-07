@@ -37,6 +37,9 @@ void event_capture::capture()
 	}
 
 	m_param.m_inspector = m_inspector;
+
+	m_before_open(m_inspector);
+
 	try
 	{
 		if(m_mode == SCAP_MODE_NODRIVER)
@@ -111,7 +114,7 @@ void event_capture::capture()
 			{
 				n_timeouts++;
 
-				if(n_timeouts < 3)
+				if(n_timeouts < m_max_timeouts)
 				{
 					continue;
 				}
@@ -132,6 +135,8 @@ void event_capture::capture()
 			// just consume the events
 		}
 	}
+
+	m_before_close(m_inspector);
 
 	delete m_inspector;
 	delete m_analyzer;

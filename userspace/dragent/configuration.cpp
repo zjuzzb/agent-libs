@@ -956,6 +956,11 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
 	m_security_send_monitor_events = m_config->get_scalar<bool>("security", "send_monitor_events", false);
+	auto suppressed_comms = m_config->get_merged_sequence<string>("skip_events_by_process");
+	for(auto &comm : suppressed_comms)
+	{
+		m_suppressed_comms.push_back(comm);
+	}
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -1310,6 +1315,18 @@ void dragent_configuration::print_configuration() const
 		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
 	}
 
+	if(m_suppressed_comms.size() > 0)
+	{
+		g_log->information("Will ignore all events for the following processes:");
+		for(auto &comm : m_suppressed_comms)
+		{
+			g_log->information("  " + comm);
+		}
+	}
+	else
+	{
+		g_log->information("Will not ignore any events by process name");
+	}
 
 	if(m_k8s_event_filter)
 	{

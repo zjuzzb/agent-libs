@@ -845,7 +845,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			}
 		}
 		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, num_drop_events, m_metrics, m_sampling_ratio, m_my_cpuload,
-							     m_prev_flush_cpu_pct, m_prev_flushes_duration_ns);
+							     m_prev_flush_cpu_pct, m_prev_flushes_duration_ns, st.n_tids_suppressed);
 
 		m_prev_flushes_duration_ns = 0;
 	}
@@ -862,11 +862,13 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_configuration->get_compress_metrics());
 
 		g_logger.format(sinsp_logger::SEV_INFO,
-			"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", de=%" PRIu64 ", c=%.2lf, sr=%" PRIu32,
-			ts / 100000000,
-			buflen, nevts, num_drop_events,
-			m_my_cpuload,
-			m_sampling_ratio);
+				"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", de=%" PRIu64 ", c=%.2lf, sr=%" PRIu32 ", st=%" PRIu64,
+				ts / 100000000,
+				buflen, nevts, num_drop_events,
+				m_my_cpuload,
+				m_sampling_ratio,
+				st.n_tids_suppressed
+			);
 
 		if(!buf)
 		{

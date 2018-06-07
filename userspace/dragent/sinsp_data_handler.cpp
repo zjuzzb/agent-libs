@@ -17,7 +17,15 @@ sinsp_data_handler::~sinsp_data_handler()
 {
 }
 
-void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevts, uint64_t num_drop_events, draiosproto::metrics* metrics, uint32_t sampling_ratio, double analyzer_cpu_pct, double flush_cpu_pct, uint64_t analyzer_flush_duration_ns)
+void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
+						   uint64_t nevts,
+						   uint64_t num_drop_events,
+						   draiosproto::metrics* metrics,
+						   uint32_t sampling_ratio,
+						   double analyzer_cpu_pct,
+						   double flush_cpu_pct,
+						   uint64_t analyzer_flush_duration_ns,
+						   uint64_t num_suppressed_threads)
 {
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
@@ -46,6 +54,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns, uint64_t nevt
  		+ ", c=" + NumberFormatter::format(analyzer_cpu_pct, 2)
 		+ ", fp=" + NumberFormatter::format(flush_cpu_pct, 2)
  		+ ", sr=" + NumberFormatter::format(sampling_ratio)
+ 		+ ", st=" + NumberFormatter::format(num_suppressed_threads)
  		+ ", fl=" + NumberFormatter::format(analyzer_flush_duration_ns / 1000000));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))

@@ -9,6 +9,7 @@
 #include <vector>
 #include <functional>
 #include <unordered_map>
+#include <thread>
 #include <sstream>
 #include <sys/mman.h>
 #include <sys/socket.h>
@@ -275,24 +276,51 @@ int main(int argc, char** argv)
 {
 	if(argc > 1)
 	{
+		bool threaded = false;
+
+		// The first argument might be "threaded", meaning
+		// that the test should be performed in a spawned
+		// thread.
+		int j = 1;
+
+		if(strcmp(argv[j], "threaded")==0)
+		{
+			threaded=true;
+			j++;
+		}
+
 		vector<string> args;
-		for(int j = 1; j < argc; ++j)
+		for(; j < argc; ++j)
 		{
 			args.emplace_back(argv[j]);
 		}
 		auto cmd = args.front();
 		args.erase(args.begin());
 
-		// the pgid test doesn't need to wait for anything. It
-		// is execve()d directly and not through
-		// start_process().
-		if(cmd != "pgid_test")
+		auto do_work = [&]()
 		{
-			cout << "STARTED" << endl;
-			char s[32];
-			(void)read(0, s, sizeof s);
+			// the pgid test doesn't need to wait for anything. It
+			// is execve()d directly and not through
+			// start_process().
+			if(cmd != "pgid_test")
+			{
+				cout << "STARTED" << endl;
+				char s[32];
+				(void)read(0, s, sizeof s);
+			}
+			func_map.at(cmd)(args);
+		};
+
+		if(threaded)
+		{
+			std::thread t(do_work);
+
+			t.join();
 		}
-		func_map.at(cmd)(args);
+		else
+		{
+			do_work();
+		}
 	}
 	return 0;
 }
