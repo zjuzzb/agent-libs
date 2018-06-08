@@ -58,16 +58,24 @@ class Solr(AgentCheck):
             else:
                 raise CheckException("Solr version {} not yet supported".format(self.version[0:1]))
 
+        confTags = instance.get('tags', [])
+
         ret = self.sMetric.check()
 
         for metricList in ret:
             if metricList is not None:
                 for metric in metricList:
                     if metric is not None and metric.getName() != SolrMetrics.METRIC_NAME_ENUM.NONE:
+                        tags = metric.getTags()
+                        if tags is not None:
+                            tags.extend(confTags)
+                        else:
+                            tags = confTags
+
                         if metric.getType() == SolrMetrics.Metric.MetricType.gauge:
-                            self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
+                            self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), tags)
                         elif metric.getType() == SolrMetrics.Metric.MetricType.rate:
-                            self.rate(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), metric.getTags())
+                            self.rate(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), tags)
 
     def _getSolrVersion(self, instance):
         if self.version == None:
