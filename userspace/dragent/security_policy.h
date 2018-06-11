@@ -1,11 +1,5 @@
 #ifndef CYGWING_AGENT
 #pragma once
-// A security policy represents a step in the security event
-// workflow. It contains a scope and a set of actions to perform if
-// the policy triggers.
-//
-// This class is virtual void and is the base class for falco_policy.
-
 #include <string>
 #include <memory>
 #include <vector>
@@ -23,16 +17,14 @@
 
 #include <falco_engine.h>
 
-class security_mgr;
+class security_baseline;
+
+typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 
 //
 // Simple wrapper around draiosproto::policy that adds an order that
 // reflects its position compared to other policies and a few
 // convienence methods.
-//
-
-typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
-
 class SINSP_PUBLIC security_policy : public draiosproto::policy
 {
 public:
@@ -48,13 +40,103 @@ public:
 
 	bool has_action(const draiosproto::action_type &atype);
 
-	static bool match_scope(sinsp_evt *evt, sinsp_analyzer *analyzer,
-				const ::scope_predicates &predicates,
-				bool host_scope, bool container_scope);
+	bool match_scope(std::string container_id, sinsp_analyzer *analyzer) const;
 
 protected:
 	uint64_t m_order;
 	static uint64_t m_next_order;
+};
+
+class security_evt_metrics : public internal_metrics::ext_source
+{
+public:
+	security_evt_metrics()
+	{
+	}
+
+	virtual ~security_evt_metrics()
+	{
+	}
+
+	void init(std::string &prefix, bool include_falco)
+	{
+		m_prefix = prefix;
+		m_include_falco = include_falco;
+	}
+
+	inline std::string &get_prefix()
+	{
+		return m_prefix;
+	}
+
+	enum reason
+	{
+		EVM_MATCH_ACCEPT = 0,
+		EVM_MATCH_DENY,
+		EVM_MATCH_NEXT,
+		EVM_MISS_NO_FALCO_ENGINE,
+		EVM_MISS_EF_DROP_FALCO,
+		EVM_MISS_FALCO_EVTTYPE,
+		EVM_MISS_QUAL,
+		EVM_MISS_CONDS,
+		EVM_MAX
+	};
+
+	void incr(reason res)
+	{
+		m_metrics[res]++;
+	}
+
+	void reset()
+	{
+		std::fill_n(m_metrics, EVM_MAX, 0);
+	}
+
+	std::string to_string()
+	{
+		std::string str;
+
+		for(uint32_t i = 0; i < EVM_MAX; i++)
+		{
+			str += " " + m_prefix + "." +
+				m_metric_names[i] + "=" +
+				std::to_string(m_metrics[i]);
+		}
+
+		return str;
+	}
+
+	virtual void send_all(draiosproto::statsd_info* statsd_info)
+	{
+		for(uint32_t i=0; i<EVM_MAX; i++)
+		{
+			if((i == EVM_MISS_NO_FALCO_ENGINE ||
+			    i == EVM_MISS_EF_DROP_FALCO ||
+			    i == EVM_MISS_FALCO_EVTTYPE) &&
+			   !m_include_falco)
+			{
+				continue;
+			}
+			internal_metrics::write_metric(statsd_info,
+						       std::string("security.") + m_prefix + "." + m_metric_names[i],
+						       draiosproto::STATSD_COUNT,
+						       m_metrics[i]);
+			m_metrics[i] = 0;
+		}
+	}
+private:
+	std::string m_prefix;
+	bool m_include_falco;
+	uint64_t m_metrics[EVM_MAX];
+	std::string m_metric_names[EVM_MAX]{
+			"match.accept",
+			"match.deny",
+			"match.next",
+			"miss.no_falco_engine",
+			"miss.ef_drop_falco",
+			"miss.falco_evttype",
+			"miss.qual",
+			"miss.conds"};
 };
 
 //
@@ -107,8 +189,8 @@ public:
 		//      matched the event.
 		// baseline_id: If present, the id of the baseline that
 		//              caused this match.
-
-		match_result(security_policy *policy,
+		match_result();
+		match_result(const security_policy *policy,
 			     draiosproto::policy_type policies_type,
 			     draiosproto::policy_subtype policies_subtype,
 			     uint32_t item,
@@ -121,7 +203,7 @@ public:
 		static bool compare(const match_result &a, const match_result &b);
 		static bool compare_ptr(const match_result *a, const match_result *b);
 
-		security_policy *policy() const
+		const security_policy *policy() const
 		{
 			return m_policy;
 		}
@@ -170,7 +252,7 @@ public:
 		}
 
 	private:
-		security_policy *m_policy;
+		const security_policy *m_policy;
 		draiosproto::policy_type m_policies_type;
 		draiosproto::policy_subtype m_policies_subtype;
 		uint32_t m_item;
@@ -182,45 +264,14 @@ public:
 
 	typedef std::list<match_result> match_result_list;
 
-	// A scoped_match_result is just like a match_result but also
-	// contains a scope_predicates value. It can be used internal
-	// to subclasses to keep track of match_results that should
-	// only be considered valid in a specific scope contetxt.
-	class scoped_match_result : public match_result
-        {
-	public:
-		scoped_match_result(const scope_predicates &predicates,
-				    security_policy *policy,
-				    draiosproto::policy_type policies_type,
-				    draiosproto::policy_subtype policies_subtype,
-				    uint32_t item,
-				    draiosproto::event_detail *detail,
-				    draiosproto::match_effect effect,
-				    const google::protobuf::RepeatedPtrField<std::string> &ofk,
-				    const std::string &baseline_id = "",
-				    const scope_predicates &baseline_predicates = scope_predicates());
-
-		virtual ~scoped_match_result();
-
-		// Return whether or not this match result matches the
-		// scope of the provided event.
-                bool match_scope(sinsp_evt *evt, sinsp_analyzer *analyzer) const;
-
-	private:
-
-		scope_predicates m_predicates;
-	};
-
-	typedef std::list<scoped_match_result> scoped_match_result_list;
-
 	security_policies();
 	virtual ~security_policies();
 
-	virtual void init(security_mgr *mgr,
-			   dragent_configuration *configuration,
-			   sinsp *inspector);
+	virtual void init(dragent_configuration *configuration,
+			  sinsp *inspector,
+			  std::shared_ptr<security_evt_metrics> metrics);
 
-        virtual void add_policy(security_policy *policy) = 0;
+        virtual void add_policy(const security_policy &policy, std::shared_ptr<security_baseline> baseline) = 0;
 	virtual void reset() = 0;
 
 	// Return the policies type that this class implements.
@@ -238,19 +289,12 @@ public:
 	virtual match_result *match_event(sinsp_evt *evt) = 0;
 
 	// Return the number of policies loaded by this object.
-	virtual uint64_t num_loaded_policies() = 0;
+	uint64_t num_loaded_policies();
 
 	std::string &name();
 
 	// Fill the requested information about the policy event
 	void set_match_details(match_result &match, sinsp_evt *evt);
-
-	// Log info on the number of events handled by this policy and what happened.
-	void log_metrics();
-
-	void reset_metrics();
-
-	void add_to_internal_metrics(internal_metrics::sptr_t &metrics);
 
 	// The event types for which this policy must run.
 	std::vector<bool> m_evttypes;
@@ -268,101 +312,10 @@ protected:
 
 	std::string m_name;
 
-	class evt_metrics : public internal_metrics::ext_source
-	{
-	public:
-	        evt_metrics()
-		{
-		}
+	uint64_t m_num_loaded_policies;
 
-		virtual ~evt_metrics()
-		{
-		}
+	std::shared_ptr<security_evt_metrics> m_metrics;
 
-		void init(std::string &prefix, bool include_falco)
-		{
-			m_prefix = prefix;
-			m_include_falco = include_falco;
-		}
-
-		enum reason
-		{
-			EVM_MATCH_ACCEPT = 0,
-			EVM_MATCH_DENY,
-			EVM_MATCH_NEXT,
-			EVM_MISS_NO_FALCO_ENGINE,
-			EVM_MISS_EF_DROP_FALCO,
-			EVM_MISS_FALCO_EVTTYPE,
-			EVM_MISS_SCOPE,
-			EVM_MISS_QUAL,
-			EVM_MISS_CONDS,
-			EVM_MISS_DEFAULT_SCOPE,
-			EVM_MAX
-		};
-
-		void incr(reason res)
-		{
-			m_metrics[res]++;
-		}
-
-		void reset()
-		{
-			std::fill_n(m_metrics, EVM_MAX, 0);
-		}
-
-		std::string to_string()
-		{
-			std::string str;
-
-			for(uint32_t i = 0; i < EVM_MAX; i++)
-			{
-				str += " " + m_prefix + "." +
-					m_metric_names[i] + "=" +
-					std::to_string(m_metrics[i]);
-			}
-
-			return str;
-		}
-
-		virtual void send_all(draiosproto::statsd_info* statsd_info)
-		{
-			for(uint32_t i=0; i<EVM_MAX; i++)
-			{
-				if((i == EVM_MISS_NO_FALCO_ENGINE ||
-				    i == EVM_MISS_EF_DROP_FALCO ||
-				    i == EVM_MISS_FALCO_EVTTYPE) &&
-				   !m_include_falco)
-				{
-					continue;
-				}
-				internal_metrics::write_metric(statsd_info,
-							       std::string("security.") + m_prefix + "." + m_metric_names[i],
-							       draiosproto::STATSD_COUNT,
-							       m_metrics[i]);
-				m_metrics[i] = 0;
-			}
-		}
-	private:
-		std::string m_prefix;
-		bool m_include_falco;
-		uint64_t m_metrics[EVM_MAX];
-		std::string m_metric_names[EVM_MAX]{
-			        "match.accept",
-				"match.deny",
-				"match.next",
-				"miss.no_falco_engine",
-				"miss.ef_drop_falco",
-				"miss.falco_evttype",
-				"miss.scope",
-				"miss.qual",
-				"miss.conds",
-				"miss.default.scope"};
-
-	};
-
-	evt_metrics m_metrics;
-
-	security_mgr *m_mgr;
 	dragent_configuration *m_configuration;
 	sinsp *m_inspector;
 
@@ -383,29 +336,27 @@ public:
 	falco_security_policies();
 	virtual ~falco_security_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
-	void add_policy(security_policy *policy);
+	void add_policy(const security_policy &policy, std::shared_ptr<security_baseline> baseline);
 	void reset();
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
-	bool load_rules(const draiosproto::policies &policies, std::string &errstr);
-
 	match_result *match_event(sinsp_evt *evt);
 
-	uint64_t num_loaded_policies();
+	void set_engine(std::shared_ptr<falco_engine> falco_engine);
 
 private:
 
 	bool check_conditions(sinsp_evt *evt);
 
-	unique_ptr<falco_engine> m_falco_engine;
+	std::shared_ptr<falco_engine> m_falco_engine;
 
-	std::map<security_policy *, uint16_t> m_rulesets;
+	std::map<const security_policy *, uint16_t> m_rulesets;
 };
 
 // Policies that work on matchlists are derived from this (abstract)
@@ -416,11 +367,11 @@ public:
 	matchlist_security_policies();
 	virtual ~matchlist_security_policies();
 
-	virtual void init(security_mgr *mgr,
-			  dragent_configuration *configuration,
-			  sinsp *inspector);
+	virtual void init(dragent_configuration *configuration,
+			  sinsp *inspector,
+			  std::shared_ptr<security_evt_metrics> metrics);
 
-	void add_policy(security_policy *policy);
+	void add_policy(const security_policy &policy, std::shared_ptr<security_baseline> baseline);
 
 	virtual void reset();
 	virtual draiosproto::policy_type policies_type() = 0;
@@ -433,16 +384,12 @@ public:
 	// event does *not* match the items specified by its matchlist
 	// contents.
 	//
-	void add_default_match_result(scoped_match_result &res);
+	void add_default_match_result(match_result &res);
 
-	// Return the best "default" match result from all those added
-	// above. This also ensures that the scope of the event
-	// matches the scope of the default. This memory is allocated
-	// and must be freed by the caller (or passed to something
-	// that will free it)
-	match_result *min_default_match(sinsp_evt *evt, bool scope_miss);
-
-	uint64_t num_loaded_policies();
+	// Return the filled "default" match result
+	// This memory is allocated and must be freed by the
+	// caller (or passed to something that will free it)
+	match_result *min_default_match(sinsp_evt *evt);
 
 protected:
 
@@ -450,28 +397,20 @@ protected:
 	// something slightly lower, loading a policy and associated
 	// matchlist_details object.
 	//
-	// predicates qualifies the entries in details so they only
-	// match in the context of the provided scope predicates. (If
-	// the entries in details should match regardless of scope,
-	// provide a scope_predicates message with no entries).
-	//
 	// baseline_id contains the id of the baseline from which this
 	// matchlist comes from. Empty otherwise.
 	//
 	// Returns true if anything was loaded, false otherwise.
-	virtual bool add_matchlist_details(security_policy *policy,
+	virtual bool add_matchlist_details(const security_policy &policy,
 					   const draiosproto::matchlist_detail &details,
-					   const scope_predicates &predicates,
-					   std::string baseline_id = "",
-					   const scope_predicates &baseline_predicates = scope_predicates()) = 0;
+					   std::string baseline_id = "") = 0;
 
 	// While adding a smart policy, this method is used to check
 	// if policy have requested to enforce baseline for this
 	// policy type
-	virtual bool is_baseline_requested(security_policy *policy) = 0;
+	virtual bool is_baseline_requested(const security_policy &policy) = 0;
 
-	std::vector<scoped_match_result> m_default_matches;
-	uint64_t m_num_loaded_policies;
+	match_result m_default_match;
 };
 
 class SINSP_PUBLIC syscall_policies : public matchlist_security_policies
@@ -480,9 +419,9 @@ public:
 	syscall_policies();
 	virtual ~syscall_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	void reset();
 	draiosproto::policy_type policies_type();
@@ -495,25 +434,23 @@ private:
 
 	virtual bool event_qualifies(sinsp_evt *evt);
 
-	bool add_matchlist_details(security_policy *policy,
+	bool add_matchlist_details(const security_policy &policy,
 				   const draiosproto::matchlist_detail &details,
-				   const scope_predicates &predicates,
-				   std::string baseline_id,
-				   const scope_predicates &baseline_predicates);
+				   std::string baseline_id);
 
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
-		return policy->has_baseline_details() && policy->baseline_details().syscall_enabled();
+		return policy.has_baseline_details() && policy.baseline_details().syscall_enabled();
 	}
 
 	// Entry i in the vector is those policies that named event type i.
-	std::vector<security_policies::scoped_match_result_list> m_event_index;
+	std::vector<security_policies::match_result_list> m_event_index;
 
 	// Maps from event name to list of ppm event numbers
 	std::map<std::string,std::list<uint32_t>> m_evtnums;
 
 	// Entry i in the vector is those policies that named syscall type i.
-	std::vector<security_policies::scoped_match_result_list> m_syscall_index;
+	std::vector<security_policies::match_result_list> m_syscall_index;
 
 	// Maps from syscall name to syscall number
 	std::map<std::string,uint32_t> m_syscallnums;
@@ -540,9 +477,9 @@ public:
 	filtercheck_policies();
 	virtual ~filtercheck_policies();
 
-	virtual void init(security_mgr *mgr,
-			  dragent_configuration *configuration,
-			  sinsp *inspector);
+	virtual void init(dragent_configuration *configuration,
+			  sinsp *inspector,
+			  std::shared_ptr<security_evt_metrics> metrics);
 
 	void reset();
 	virtual draiosproto::policy_type policies_type() = 0;
@@ -553,13 +490,11 @@ public:
 
 protected:
 
-	virtual bool add_matchlist_details(security_policy *policy,
+	virtual bool add_matchlist_details(const security_policy &policy,
 					   const draiosproto::matchlist_detail &details,
-					   const scope_predicates &predicates,
-					   std::string baseline_id,
-					   const scope_predicates &baseline_predicates) = 0;
+					   std::string baseline_id) = 0;
 
-	virtual bool is_baseline_requested(security_policy *policy) = 0;
+	virtual bool is_baseline_requested(const security_policy &policy) = 0;
 
 	// Allocate storage for the filter value specified by val/len
 	// and return a filter_value using that allocated storage.
@@ -575,7 +510,7 @@ protected:
 	// Maps from filtercheck value to match result. The policy and
 	// match effect are filled in the result, but not the event
 	// details.
-	std::unordered_multimap<filter_value_t, security_policies::scoped_match_result, g_hash_membuf, g_equal_to_membuf> m_index;
+	std::unordered_multimap<filter_value_t, security_policies::match_result, g_hash_membuf, g_equal_to_membuf> m_index;
 };
 
 class SINSP_PUBLIC net_inbound_policies : public matchlist_security_policies
@@ -584,9 +519,9 @@ public:
 	net_inbound_policies();
 	virtual ~net_inbound_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	void reset();
 	draiosproto::policy_type policies_type();
@@ -596,20 +531,18 @@ public:
 	match_result *match_event(sinsp_evt *evt);
 
 protected:
-	bool add_matchlist_details(security_policy *policy,
+	bool add_matchlist_details(const security_policy &policy,
 				   const draiosproto::matchlist_detail &details,
-				   const scope_predicates &predicates,
-				   std::string baseline_id,
-				   const scope_predicates &baseline_predicates);
+				   std::string baseline_id);
 
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
-		return policy->has_baseline_details() && policy->baseline_details().network_inoutbound_enabled();
+		return policy.has_baseline_details() && policy.baseline_details().network_inoutbound_enabled();
 	}
 
 	std::string qualifies();
 
-	security_policies::scoped_match_result_list m_index;
+	security_policies::match_result_list m_index;
 };
 
 class SINSP_PUBLIC net_outbound_policies : public net_inbound_policies
@@ -632,24 +565,22 @@ public:
 	tcp_listenport_policies();
 	virtual ~tcp_listenport_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 protected:
-	bool add_matchlist_details(security_policy *policy,
+	bool add_matchlist_details(const security_policy &policy,
 				   const draiosproto::matchlist_detail &details,
-				   const scope_predicates &predicates,
-				   std::string baseline_id,
-				   const scope_predicates &baseline_predicates);
+				   std::string baseline_id);
 
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
-		return policy->has_baseline_details() && policy->baseline_details().network_listening_enabled();
+		return policy.has_baseline_details() && policy.baseline_details().network_listening_enabled();
 	}
 
 	std::string qualifies();
@@ -676,9 +607,9 @@ public:
 	matchlist_map_security_policies();
 	virtual ~matchlist_map_security_policies();
 
-	virtual void init(security_mgr *mgr,
-			  dragent_configuration *configuration,
-			  sinsp *inspector);
+	virtual void init(dragent_configuration *configuration,
+			  sinsp *inspector,
+			  std::shared_ptr<security_evt_metrics> metrics);
 
 	void reset();
 	virtual draiosproto::policy_type policies_type() = 0;
@@ -686,28 +617,6 @@ public:
 	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
 	match_result *match_event(sinsp_evt *evt);
-
-	struct index_predicates
-	{
-		index_predicates(scope_predicates p,
-				 scope_predicates bl_p,
-				 bool h_s,
-				 bool c_s)
-			: preds(p),
-			  host_scope(h_s),
-			  container_scope(c_s)
-		{
-			if(bl_p.size() > 0)
-			{
-				preds.MergeFrom(bl_p);
-			}
-		}
-
-		scope_predicates preds;
-		bool host_scope;
-		bool container_scope;
-	};
-	typedef struct index_predicates index_predicates_t;
 
 protected:
 
@@ -717,13 +626,11 @@ protected:
 
 	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_checks;
 
-	bool add_matchlist_details(security_policy *policy,
+	bool add_matchlist_details(const security_policy &policy,
 				   const draiosproto::matchlist_detail &details,
-				   const scope_predicates &predicates,
-				   std::string baseline_id,
-				   const scope_predicates &baseline_predicates);
+				   std::string baseline_id);
 
-	virtual bool is_baseline_requested(security_policy *policy) = 0;
+	virtual bool is_baseline_requested(const security_policy &policy) = 0;
 
 	std::list<std::string> m_vals;
 
@@ -741,19 +648,7 @@ protected:
 	// Return whether or not the items in the given match list should be considered.
 	virtual bool match_list_relevant(const draiosproto::match_list &list);
 
-	// The set of paths are segregated across a number of different scopes.
-	// Each scope has its own path_prefix_map.
-
-	std::list<std::pair<index_predicates_t,std::vector<path_matchresult_search>>> m_index;
-
-	// Given a scope, find the matching path_prefix_map to use,
-	// creating it if necessary.
-	path_matchresult_search &find_prefix_map(draiosproto::match_effect effect,
-						 const scope_predicates &predicates,
-						 const scope_predicates &baseline_predicates,
-						 bool host_scope,
-						 bool container_scope);
-
+	std::vector<path_matchresult_search> m_index;
 };
 
 class SINSP_PUBLIC readonly_fs_policies : public matchlist_map_security_policies
@@ -762,9 +657,9 @@ public:
 	readonly_fs_policies();
 	virtual ~readonly_fs_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
@@ -772,9 +667,9 @@ public:
 
 protected:
 
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
-		return policy->has_baseline_details() && policy->baseline_details().fs_read_only_enabled();
+		return policy.has_baseline_details() && policy.baseline_details().fs_read_only_enabled();
 	}
 
 	std::string qualifies();
@@ -797,9 +692,9 @@ public:
 	draiosproto::policy_subtype policies_subtype();
 
 protected:
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
-		return policy->has_baseline_details() && policy->baseline_details().fs_read_write_enabled();
+		return policy.has_baseline_details() && policy.baseline_details().fs_read_write_enabled();
 	}
 
 	std::string qualifies();
@@ -811,9 +706,9 @@ public:
 	nofd_readwrite_fs_policies();
 	virtual ~nofd_readwrite_fs_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
@@ -839,9 +734,9 @@ public:
 	container_policies();
 	virtual ~container_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
@@ -849,7 +744,7 @@ public:
 
 protected:
 
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
 		// at least for V1, baselines don't have information about container images
 		// since are solely created based on a single container image
@@ -869,24 +764,22 @@ public:
 	process_policies();
 	virtual ~process_policies();
 
-	void init(security_mgr *mgr,
-		  dragent_configuration *configuration,
-		  sinsp *inspector);
+	void init(dragent_configuration *configuration,
+		  sinsp *inspector,
+		  std::shared_ptr<security_evt_metrics> metrics);
 
 	draiosproto::policy_type policies_type();
 	draiosproto::policy_subtype policies_subtype();
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 private:
-	bool add_matchlist_details(security_policy *policy,
+	bool add_matchlist_details(const security_policy &policy,
 				   const draiosproto::matchlist_detail &details,
-				   const scope_predicates &predicates,
-				   std::string baseline_id,
-				   const scope_predicates &baseline_predicates);
+				   std::string baseline_id);
 
-	bool is_baseline_requested(security_policy *policy)
+	bool is_baseline_requested(const security_policy &policy)
 	{
-		return policy->has_baseline_details() && policy->baseline_details().process_enabled();
+		return policy.has_baseline_details() && policy.baseline_details().process_enabled();
 	}
 };
 #endif // CYGWING_AGENT

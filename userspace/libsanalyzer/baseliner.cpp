@@ -67,6 +67,9 @@ void sinsp_baseliner::init(sinsp* inspector)
 	m_procparser_thread = NULL;
 #endif
 	m_inspector = inspector;
+	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
+		on_new_container(container_info, tinfo);
+	});
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
 #ifndef HAS_ANALYZER
@@ -1149,7 +1152,7 @@ void sinsp_baseliner::on_bind(sinsp_evt *evt)
 	}
 }
 
-void sinsp_baseliner::on_new_container(const sinsp_container_info& container_info)
+void sinsp_baseliner::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
 	m_container_table[container_info.m_id] = blcontainer(container_info.m_name, 
 		container_info.m_image, 

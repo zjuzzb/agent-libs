@@ -28,11 +28,16 @@ security_mgr::security_mgr()
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL)
 {
-	m_security_policies = {&m_process_policies, &m_container_policies,
-			       &m_readonly_fs_policies, &m_readwrite_fs_policies, &m_nofd_readwrite_fs_policies,
-			       &m_net_inbound_policies, &m_net_outbound_policies,
-			       &m_tcp_listenport_policies, &m_udp_listenport_policies,
-			       &m_syscall_policies, &m_falco_policies};
+	m_security_evt_metrics = {make_shared<security_evt_metrics>(m_process_metrics), make_shared<security_evt_metrics>(m_container_metrics),
+				  make_shared<security_evt_metrics>(m_readonly_fs_metrics),
+				  make_shared<security_evt_metrics>(m_readwrite_fs_metrics),
+				  make_shared<security_evt_metrics>(m_nofd_readwrite_fs_metrics),
+				  make_shared<security_evt_metrics>(m_net_inbound_metrics), make_shared<security_evt_metrics>(m_net_outbound_metrics),
+				  make_shared<security_evt_metrics>(m_tcp_listenport_metrics), make_shared<security_evt_metrics>(m_udp_listenport_metrics),
+				  make_shared<security_evt_metrics>(m_syscall_metrics), make_shared<security_evt_metrics>(m_falco_metrics)};
+	scope_info sinfo;
+	security_policies_group dummy(sinfo, m_inspector, m_configuration);
+	dummy.init_metrics(m_security_evt_metrics);
 }
 
 security_mgr::~security_mgr()
@@ -53,10 +58,14 @@ void security_mgr::init(sinsp *inspector,
 	m_capture_job_handler = capture_job_handler;
 	m_configuration = configuration;
 
-	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
+		on_new_container(container_info, tinfo);
+	});
+	m_inspector->m_container_manager.subscribe_on_remove_container([this](const sinsp_container_info &container_info) {
+		on_remove_container(container_info);
+	});
 
-	sinsp_filter_compiler compiler(inspector, "proc.name startswith \"runc:[\" and container.type = docker");
-	m_qualifies.reset(compiler.compile());
+	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
@@ -71,16 +80,15 @@ void security_mgr::init(sinsp *inspector,
 	m_coclient = make_shared<coclient>();
 
 	m_actions.init(this, m_coclient);
-	for (auto &spol : m_security_policies)
-	{
-		spol->init(this, m_configuration, m_inspector);
-		if(metrics)
-		{
-			spol->add_to_internal_metrics(metrics);
-		}
-	}
 
+	for(auto &metric : m_security_evt_metrics)
+	{
+		metric->reset();
+		metrics->add_ext_source(metric.get());
+	}
+	m_metrics.reset();
 	metrics->add_ext_source(&m_metrics);
+
 	m_initialized = true;
 
 }
@@ -120,6 +128,41 @@ bool security_mgr::load_baselines_file(const char *filename, std::string &errstr
 	return load_baselines(baselines, errstr);
 }
 
+void security_mgr::load_policy(const security_policy &spolicy, std::list<std::string> &ids)
+{
+	scope_info sinfo = { spolicy.scope_predicates(), spolicy.container_scope(), spolicy.host_scope() };
+	std::shared_ptr<security_policies_group> grp;
+
+	for (const auto &id : ids)
+	{
+		if(spolicy.match_scope(id, m_analyzer))
+		{
+			std::shared_ptr<security_baseline> baseline = {};
+			if(!id.empty() && spolicy.has_baseline_details())
+			{
+				// smart policy
+				baseline = m_baseline_mgr.lookup(id, m_analyzer->infra_state(), spolicy);
+				if(!baseline)
+				{
+					// no baseline found for this container, skipping
+					continue;
+				}
+
+				sinfo.preds.MergeFrom(baseline->predicates());
+			}
+			else
+			{
+				// manual policy, sinfo is already correct
+			}
+
+			// get/create the policies group and add the policy
+			grp = get_policies_group_of(sinfo);
+			grp->add_policy(spolicy, baseline);
+			m_security_policies[id].emplace(grp);
+		}
+	}
+}
+
 bool security_mgr::load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr)
 {
 	Poco::ScopedWriteRWLock lck(m_policies_lock);
@@ -143,10 +186,50 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 
 	g_log->debug("Loading policies message: " + tmp);
 
-	for (auto &spol : m_security_policies)
+	for(auto &policy : policies.policy_list())
 	{
-		spol->reset();
+		// There must be falco rules content if there are any falco policies
+		if(policy.has_falco_details() && policy.enabled())
+		{
+			if(!policies.has_falco_rules())
+			{
+				errstr = "One or more falco policies, but no falco ruleset";
+				return false;
+			}
+			else
+			{
+				break;
+			}
+		}
 	}
+
+	m_falco_engine = make_shared<falco_engine>();
+	m_falco_engine->set_inspector(m_inspector);
+	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
+
+	// Load all falco rules files into the engine. We'll selectively
+	// enable them based on the contents of the policies.
+	if(policies.has_falco_rules())
+	{
+		bool verbose = false;
+		bool all_events = false;
+
+		for(auto &content : policies.falco_rules().contents())
+		{
+			g_log->debug("Loading falco rules content: " + content);
+
+			try {
+				g_log->debug("Loading Falco Rules Content: " + content);
+				m_falco_engine->load_rules(content, verbose, all_events);
+			}
+			catch (falco_exception &e)
+			{
+				errstr = e.what();
+				return false;
+			}
+		}
+	}
+
 	m_policies.clear();
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
 	if(m_analyzer)
@@ -154,44 +237,55 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		m_analyzer->infra_state()->clear_scope_cache();
 	}
 
-	if (!m_falco_policies.load_rules(policies, errstr))
-	{
-		return false;
-	}
+	m_security_policies.clear();
+	m_policies_groups.clear();
 
+	std::list<std::string> ids{
+		"" // tinfo.m_container_id is empty for host events
+	};
+	const unordered_map<string, sinsp_container_info> &containers = *m_inspector->m_container_manager.get_containers();
+	for (const auto &c : containers)
+	{
+		ids.push_back(c.first);
+	}
 	for(auto &policy : policies.policy_list())
 	{
 		std::shared_ptr<security_policy> spolicy = std::make_shared<security_policy>(policy);
 		m_policies.insert(make_pair(policy.id(), spolicy));
 
-		for (auto &spol : m_security_policies)
-		{
-			spol->add_policy(spolicy.get());
-		}
+		load_policy(*spolicy.get(), ids);
 	}
 
 	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
 	{
-		for (auto &spol : m_security_policies)
+		for(const auto &group: m_policies_groups)
 		{
-			m_evttypes[evttype] = m_evttypes[evttype] | spol->m_evttypes[evttype];
+			m_evttypes[evttype] = m_evttypes[evttype] | group->m_evttypes[evttype];
 		}
 	}
 
-	// There must be falco rules content if there are any falco policies
-	if(m_falco_policies.num_loaded_policies() > 0 && !policies.has_falco_rules())
+	if(!m_policies_groups.empty())
 	{
-		errstr = "One or more falco policies, but no falco ruleset";
-		return false;
+		g_log->information(to_string(m_policies_groups.size()) + " policies groups loaded");
+		if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+		{
+			for (const auto &group : m_policies_groups)
+			{
+				g_log->debug(group->to_string());
+			}
+			g_log->debug("splitted between " + to_string(m_security_policies.size()) + " entities as follows:");
+			for (const auto &it : m_security_policies)
+			{
+				string str = "  " + (it.first.empty() ? "host" : it.first) + ": { ";
+				for(const auto &group: it.second)
+				{
+					str += group->to_string() + ", ";
+				}
+				str = str.substr(0, str.size() - 2) + " }";
+				g_log->debug(str);
+			}
+		}
 	}
-
-	string str = "Loaded policies:";
-	for (auto &spol : m_security_policies)
-	{
-		str += " " + spol->name() + "=" + to_string(spol->num_loaded_policies());
-	}
-
-	g_log->information(str);
 
 	return true;
 }
@@ -208,6 +302,42 @@ bool security_mgr::load_policies(const draiosproto::policies &policies, std::str
 	m_policies_msg = policies;
 
 	return load(m_policies_msg, m_baselines_msg, errstr);
+}
+
+bool security_mgr::event_qualifies(sinsp_evt *evt)
+{
+	// if this event is from a docker container and the process name starts with
+	// runc, filter it out since behaviors from those processes cannot really
+	// be considered neither host nor container events.
+
+	// The checks are intentionally ordered from the fastest to the slowest,
+	// so we first check if the process is runc and if we have a container event,
+	// and only if that's true we check if it's a docker container event.
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	if(tinfo == NULL)
+	{
+		return true;
+	}
+
+	if(tinfo->m_container_id.empty() || strncmp(tinfo->get_comm().c_str(), "runc:[", 6) != 0)
+	{
+		return true;
+	}
+
+	const sinsp_container_info *container_info = m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+	if(!container_info)
+	{
+		return true;
+	}
+
+	if(container_info->m_type == sinsp_container_type::CT_DOCKER)
+	{
+		return false;
+	}
+
+	// ...
+
+	return true;
 }
 
 void security_mgr::process_event(sinsp_evt *evt)
@@ -243,12 +373,13 @@ void security_mgr::process_event(sinsp_evt *evt)
 
 		m_metrics_report_interval->run([this]()
 		{
-			for (auto &spol : m_security_policies)
+			for(auto &metric : m_security_evt_metrics)
 			{
-				spol->log_metrics();
-				spol->reset_metrics();
+				g_log->debug("Policy event counts: (" + metric->get_prefix() + "): " + metric->to_string());
+				metric->reset();
 			}
 			g_log->information("Security_mgr metrics: " + m_metrics.to_string());
+			m_metrics.reset();
 		}, ts_ns);
 
 	}, ts_ns);
@@ -256,26 +387,33 @@ void security_mgr::process_event(sinsp_evt *evt)
 	// Consider putting this in check_periodic_tasks above.
 	m_actions.check_outstanding_actions(evt->get_ts());
 
+	sinsp_threadinfo *tinfo = evt->get_thread_info();
 	// If no policy cares about this event type, return
 	// immediately.
 	if(!m_evttypes[evt->get_type()])
 	{
 		m_metrics.incr(metrics::MET_MISS_EVTTYPE);
 	}
-	else if(!m_qualifies->run(evt))
+	else if(!event_qualifies(evt))
+	{
+		m_metrics.incr(metrics::MET_MISS_QUAL);
+	}
+	else if(!tinfo)
+	{
+		m_metrics.incr(metrics::MET_MISS_TINFO);
+	}
+	else
 	{
 		std::vector<security_policies::match_result *> best_matches;
 		security_policies::match_result *match;
 
-		for (auto &spol : m_security_policies)
+		for (const auto &group : m_security_policies[tinfo->m_container_id])
 		{
-			if(spol->m_evttypes[evt->get_type()] &&
-			   (match = spol->match_event(evt)) != NULL)
+			if(group->m_evttypes[evt->get_type()] && (match = group->match_event(evt)) != NULL)
 			{
 				if(match->effect() != draiosproto::EFFECT_ACCEPT)
 				{
-					g_log->debug("Event matched " + spol->name() +
-						     " policy #" + to_string(match->policy()->id()) + " \"" + match->policy()->name() + "\"" +
+					g_log->debug("Event matched policy #" + to_string(match->policy()->id()) + " \"" + match->policy()->name() + "\"" +
 						     " details:\n" + match->detail()->DebugString() +
 						     "effect: " + draiosproto::match_effect_Name(match->effect()));
 				}
@@ -612,4 +750,47 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 
 	m_policy_throttled_counts.clear();
 }
+
+void security_mgr::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
+{
+	string errstr;
+
+	std::list<std::string> ids{container_info.m_id};
+	for(const auto &it : m_policies)
+	{
+		load_policy(*it.second.get(), ids);
+	}
+
+	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
+	{
+		for(const auto &group: m_policies_groups)
+		{
+			m_evttypes[evttype] = m_evttypes[evttype] | group->m_evttypes[evttype];
+		}
+	}
+}
+
+void security_mgr::on_remove_container(const sinsp_container_info& container_info)
+{
+	// TODO if needed
+	// since we are resetting everything every time we load the policies
+}
+
+std::shared_ptr<security_mgr::security_policies_group> security_mgr::get_policies_group_of(scope_info &sinfo)
+{
+	for(const auto &group : m_policies_groups)
+	{
+		if(group->m_scope_info == sinfo)
+		{
+			return group;
+		}
+	}
+
+	std::shared_ptr<security_policies_group> grp = make_shared<security_policies_group>(sinfo, m_inspector, m_configuration);
+	grp->init(m_falco_engine, m_security_evt_metrics);
+
+	m_policies_groups.emplace_back(grp);
+
+	return grp;
+};
 #endif // CYGWING_AGENT

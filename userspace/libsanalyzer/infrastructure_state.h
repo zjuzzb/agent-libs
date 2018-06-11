@@ -24,11 +24,11 @@ public:
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
-	infrastructure_state(uint64_t refresh_interval);
+	infrastructure_state(uint64_t refresh_interval, sinsp *inspector);
 
 	~infrastructure_state();
 
-	void init(sinsp *inspector, const std::string& machine_id, bool prom_on);
+	void init(const std::string& machine_id, bool prom_on);
 	bool inited();
 
 	void subscribe_to_k8s(string url, string ca_cert,

@@ -103,8 +103,8 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	return true;
 }
 
-infrastructure_state::infrastructure_state(uint64_t refresh_interval)
-	: m_inspector(nullptr)
+infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* inspector)
+	: m_inspector(inspector)
 	, m_k8s_subscribed(false)
 	, m_k8s_connected(false)
 	, m_k8s_refresh_interval(refresh_interval)
@@ -124,16 +124,20 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval)
 			reset();
 		}
 	};
+	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
+		on_new_container(container_info, tinfo);
+	});
+	m_inspector->m_container_manager.subscribe_on_remove_container([this](const sinsp_container_info &container_info) {
+		on_remove_container(container_info);
+	});
 }
 
 infrastructure_state::~infrastructure_state()
 {
 }
 
-void infrastructure_state::init(sinsp *inspector, const std::string& machine_id,
-	bool prom_enabled)
+void infrastructure_state::init(const std::string& machine_id, bool prom_enabled)
 {
-	m_inspector = inspector;
 	m_machine_id = machine_id;
 	m_prom_enabled = prom_enabled;
 }

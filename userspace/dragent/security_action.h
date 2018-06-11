@@ -3,6 +3,9 @@
 // Responsible for managing actions that result from policies matching
 // events.
 
+#include "security_policy.h"
+class security_mgr;
+
 class SINSP_PUBLIC security_actions
 {
 public:

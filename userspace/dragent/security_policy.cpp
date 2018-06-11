@@ -37,28 +37,20 @@ bool security_policy::has_action(const draiosproto::action_type &atype)
 	return false;
 }
 
-bool security_policy::match_scope(sinsp_evt *evt,
-				  sinsp_analyzer *analyzer,
-				  const ::scope_predicates &predicates,
-				  bool host_scope,
-				  bool container_scope)
+bool security_policy::match_scope(std::string container_id, sinsp_analyzer *analyzer) const
 {
 	if(!analyzer)
 	{
 		return true;
 	}
 
-	sinsp_threadinfo *tinfo = evt->get_thread_info();
-	std::string container_id = (tinfo ? tinfo->m_container_id : "");
-	std::string machine_id = analyzer->get_configuration_read_only()->get_machine_id();
-
-	if(!container_scope && !host_scope) {
+	if(!container_scope() && !host_scope()) {
 		// This should never occur. Err on the side of allowing the policy to run.
 		g_log->error("Impossible scope with host/container_scope == false. Allowing policy anyway.");
 		return true;
 	}
 
-	if((container_id.empty() && !host_scope) || (!container_id.empty() && !container_scope)) {
+	if((container_id.empty() && !host_scope()) || (!container_id.empty() && !container_scope())) {
 		// This policy isn't meant to be applied to this event
 		return false;
 	}
@@ -69,14 +61,19 @@ bool security_policy::match_scope(sinsp_evt *evt,
 		uid = make_pair("container", container_id);
 	} else
 	{
-		uid = make_pair("host", machine_id);
+		uid = make_pair("host", analyzer->get_configuration_read_only()->get_machine_id());
 	}
 
-	return predicates.empty() || analyzer->infra_state()->match_scope(uid, predicates);
+	return scope_predicates().empty() || analyzer->infra_state()->match_scope(uid, scope_predicates());
 }
 
 // This object owns event_detail but not the policy.
-security_policies::match_result::match_result(security_policy *policy,
+security_policies::match_result::match_result()
+{
+	m_policy = NULL;
+	m_detail = NULL;
+}
+security_policies::match_result::match_result(const security_policy *policy,
 					      draiosproto::policy_type policies_type,
 					      draiosproto::policy_subtype policies_subtype,
 					      uint32_t item,
@@ -97,7 +94,10 @@ security_policies::match_result::match_result(security_policy *policy,
 
 security_policies::match_result::~match_result()
 {
-	delete m_detail;
+	if(m_detail)
+	{
+		delete m_detail;
+	}
 }
 
 bool security_policies::match_result::compare(const match_result &a, const match_result &b)
@@ -132,22 +132,22 @@ bool security_policies::match_result::compare_ptr(const match_result *a, const m
 }
 
 security_policies::security_policies()
+	: m_num_loaded_policies(0)
 {
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
-	m_metrics.reset();
 }
 
 security_policies::~security_policies()
 {
 }
 
-void security_policies::init(security_mgr *mgr,
-			     dragent_configuration *configuration,
-			     sinsp *inspector)
+void security_policies::init(dragent_configuration *configuration,
+			     sinsp *inspector,
+			     std::shared_ptr<security_evt_metrics> metrics)
 {
-	m_mgr = mgr;
 	m_configuration = configuration;
 	m_inspector = inspector;
+	m_metrics = metrics;
 
 	m_formatters = make_unique<sinsp_evt_formatter_cache>(inspector);
 
@@ -156,8 +156,6 @@ void security_policies::init(security_mgr *mgr,
 		sinsp_filter_compiler compiler(inspector, qualifies());
 		m_qualifies.reset(compiler.compile());
 	}
-
-	m_metrics.init(name(), (name() == "falco"));
 }
 
 std::string &security_policies::name()
@@ -165,19 +163,24 @@ std::string &security_policies::name()
 	return m_name;
 }
 
+uint64_t security_policies::num_loaded_policies()
+{
+	return m_num_loaded_policies;
+}
+
 void security_policies::set_match_details(match_result &match, sinsp_evt *evt)
 {
 	if(match.effect() == draiosproto::EFFECT_ACCEPT)
 	{
-		m_metrics.incr(evt_metrics::EVM_MATCH_ACCEPT);
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_ACCEPT);
 	}
 	else if(match.effect() == draiosproto::EFFECT_DENY)
 	{
-		m_metrics.incr(evt_metrics::EVM_MATCH_DENY);
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_DENY);
 	}
 	else if(match.effect() == draiosproto::EFFECT_NEXT)
 	{
-		m_metrics.incr(evt_metrics::EVM_MATCH_NEXT);
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_NEXT);
 	}
 
 	match.detail()->mutable_output_details()->set_output_type(match.policies_type());
@@ -219,59 +222,6 @@ void security_policies::set_match_details(match_result &match, sinsp_evt *evt)
 	}
 }
 
-void security_policies::log_metrics()
-{
-	g_log->debug("Policy event counts: (" + name() + "): " + m_metrics.to_string());
-}
-
-void security_policies::reset_metrics()
-{
-	m_metrics.reset();
-}
-
-void security_policies::add_to_internal_metrics(internal_metrics::sptr_t &metrics)
-{
-	metrics->add_ext_source(&m_metrics);
-}
-
-security_policies::scoped_match_result::scoped_match_result(const scope_predicates &predicates,
-							    security_policy *policy,
-							    draiosproto::policy_type policies_type,
-							    draiosproto::policy_subtype policies_subtype,
-							    uint32_t item,
-							    draiosproto::event_detail *detail,
-							    draiosproto::match_effect effect,
-							    const google::protobuf::RepeatedPtrField<std::string> &ofk,
-							    const std::string &baseline_id,
-							    const scope_predicates &baseline_predicates)
-	: security_policies::match_result(policy,
-					  policies_type,
-					  policies_subtype,
-					  item,
-					  detail,
-					  effect,
-					  ofk,
-					  baseline_id),
-	m_predicates(predicates)
-{
-	if(baseline_predicates.size() > 0) {
-		m_predicates.MergeFrom(baseline_predicates);
-	}
-}
-
-security_policies::scoped_match_result::~scoped_match_result()
-{
-}
-
-bool security_policies::scoped_match_result::match_scope(sinsp_evt *evt, sinsp_analyzer *analyzer) const
-{
-
-	return security_policy::match_scope(evt, analyzer,
-					    m_predicates,
-					    policy()->host_scope(),
-					    policy()->container_scope());
-}
-
 std::string security_policies::qualifies()
 {
 	return string("");
@@ -281,7 +231,7 @@ bool security_policies::event_qualifies(sinsp_evt *evt)
 {
 	if(m_qualifies && !m_qualifies->run(evt))
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_QUAL);
+		m_metrics->incr(security_evt_metrics::EVM_MISS_QUAL);
 		return false;
 	}
 
@@ -310,40 +260,47 @@ falco_security_policies::~falco_security_policies()
 {
 }
 
-void falco_security_policies::init(security_mgr *mgr,
-				   dragent_configuration *configuration,
-				   sinsp *inspector)
+void falco_security_policies::init(dragent_configuration *configuration,
+				   sinsp *inspector,
+				   std::shared_ptr<security_evt_metrics> metrics)
 {
-	security_policies::init(mgr, configuration, inspector);
+	security_policies::init(configuration, inspector, metrics);
 }
 
-void falco_security_policies::add_policy(security_policy *policy)
+void falco_security_policies::set_engine(std::shared_ptr<falco_engine> falco_engine)
 {
-	if(m_falco_engine && policy->has_falco_details() && policy->enabled())
+	m_falco_engine = falco_engine;
+}
+
+void falco_security_policies::add_policy(const security_policy &policy, std::shared_ptr<security_baseline> baseline)
+{
+	if(m_falco_engine && policy.has_falco_details() && policy.enabled())
 	{
 		// Use the name to create a ruleset. We'll use this
 		// ruleset to run only the subset of rules we're
 		// interested in.
 		string all_rules = ".*";
-		string ruleset = policy->name();
+		string ruleset = policy.name();
+
+		// TODO: if this ruleset is already present, don't do again this initialization
 
 		// We *only* want those rules selected by name/tags, so first disable all rules.
 		m_falco_engine->enable_rule(all_rules, false, ruleset);
 
-		if(policy->falco_details().rule_filter().has_name())
+		if(policy.falco_details().rule_filter().has_name())
 		{
-			m_falco_engine->enable_rule(policy->falco_details().rule_filter().name(), true, ruleset);
+			m_falco_engine->enable_rule(policy.falco_details().rule_filter().name(), true, ruleset);
 		}
 
 		std::set<string> tags;
-		for(auto tag : policy->falco_details().rule_filter().tags())
+		for(auto tag : policy.falco_details().rule_filter().tags())
 		{
 			tags.insert(tag);
 		}
 
 		m_falco_engine->enable_rule_by_tag(tags, true, ruleset);
 
-		m_rulesets.insert(pair<security_policy *,uint16_t>(policy, m_falco_engine->find_ruleset_id(ruleset)));
+		m_rulesets.insert(pair<const security_policy *,uint16_t>(&policy, m_falco_engine->find_ruleset_id(ruleset)));
 
 		// Update m_evttypes with all the evttypes used by this ruleset
 		vector<bool> evttypes;
@@ -353,6 +310,8 @@ void falco_security_policies::add_policy(security_policy *policy)
 		{
 			m_evttypes[evttype] = m_evttypes[evttype] | evttypes[evttype];
 		}
+
+		m_num_loaded_policies++;
 	}
 }
 
@@ -360,7 +319,6 @@ void falco_security_policies::reset()
 {
 	m_evttypes.clear();
 	m_rulesets.clear();
-	m_falco_engine = NULL;
 }
 
 draiosproto::policy_type falco_security_policies::policies_type()
@@ -379,57 +337,23 @@ std::set<std::string> falco_security_policies::default_output_fields_keys(sinsp_
 	return {};
 }
 
-bool falco_security_policies::load_rules(const draiosproto::policies &policies, string &errstr)
-{
-	reset();
-
-	m_falco_engine = make_unique<falco_engine>();
-	m_falco_engine->set_inspector(m_inspector);
-	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
-
-	// Load all falco rules files into the engine. We'll selectively
-	// enable them based on the contents of the policy.
-	if(policies.has_falco_rules())
-	{
-		bool verbose = false;
-		bool all_events = false;
-
-		for(auto &content : policies.falco_rules().contents())
-		{
-			g_log->debug("Loading falco rules content: " + content);
-
-			try {
-				g_log->debug("Loading Falco Rules Content: " + content);
-				m_falco_engine->load_rules(content, verbose, all_events);
-			}
-			catch (falco_exception &e)
-			{
-				errstr = e.what();
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
 bool falco_security_policies::check_conditions(sinsp_evt *evt)
 {
 	if(!m_evttypes[evt->get_type()])
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_FALCO_EVTTYPE);
+		m_metrics->incr(security_evt_metrics::EVM_MISS_FALCO_EVTTYPE);
 		return false;
 	}
 
 	if(!m_falco_engine)
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_NO_FALCO_ENGINE);
+		m_metrics->incr(security_evt_metrics::EVM_MISS_NO_FALCO_ENGINE);
 		return false;
 	}
 
 	if((evt->get_info_flags() & EF_DROP_FALCO) != 0)
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_EF_DROP_FALCO);
+		m_metrics->incr(security_evt_metrics::EVM_MISS_EF_DROP_FALCO);
 		return false;
 	}
 
@@ -452,51 +376,39 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 
 			if(!res)
 			{
-				m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
+				m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
 			}
 			else
 			{
-				if (!security_policy::match_scope(evt,
-								  m_mgr->analyzer(),
-								  ruleset.first->scope_predicates(),
-								  ruleset.first->host_scope(),
-								  ruleset.first->container_scope()))
-				{
-					m_metrics.incr(evt_metrics::EVM_MISS_SCOPE);
-				}
-				else
-				{
+				g_log->debug("Event matched falco policy: rule=" + res->rule);
 
-					g_log->debug("Event matched falco policy: rule=" + res->rule);
-
-					// This ruleset had a match. We keep
-					// it only if its order is less than
-					// the current best policy.
-					if(!match || ruleset.first->order() < match->policy()->order())
+				// This ruleset had a match. We keep
+				// it only if its order is less than
+				// the current best policy.
+				if(!match || ruleset.first->order() < match->policy()->order())
+				{
+					if(match)
 					{
-						if(match)
-						{
-							delete match;
-						}
-
-						// We don't need to worry about which rule matched in a given ruleset--falco handles that internally.
-						match = new match_result(ruleset.first,
-									 policies_type(), policies_subtype(), 0,
-									 new draiosproto::event_detail(), draiosproto::EFFECT_DENY,
-									 ruleset.first->falco_details().output_field_keys());
-
-						string output;
-						m_formatters->tostring(evt, res->format, &output);
-						match->detail()->mutable_output_details()->set_output(output);
-						(*match->detail()->mutable_output_details()->mutable_output_fields())["falco.rule"] = res->rule;
-						map<string,string> rule_output_fields;
-						m_formatters->resolve_tokens(evt, res->format, rule_output_fields);
-						for(const auto &rof : rule_output_fields)
-						{
-							(*match->detail()->mutable_output_details()->mutable_output_fields())[rof.first] = rof.second;
-						}
-						set_match_details(*match, evt);
+						delete match;
 					}
+
+					// We don't need to worry about which rule matched in a given ruleset--falco handles that internally.
+					match = new match_result(ruleset.first,
+								 policies_type(), policies_subtype(), 0,
+								 new draiosproto::event_detail(), draiosproto::EFFECT_DENY,
+								 ruleset.first->falco_details().output_field_keys());
+
+					string output;
+					m_formatters->tostring(evt, res->format, &output);
+					match->detail()->mutable_output_details()->set_output(output);
+					(*match->detail()->mutable_output_details()->mutable_output_fields())["falco.rule"] = res->rule;
+					map<string,string> rule_output_fields;
+					m_formatters->resolve_tokens(evt, res->format, rule_output_fields);
+					for(const auto &rof : rule_output_fields)
+					{
+						(*match->detail()->mutable_output_details()->mutable_output_fields())[rof.first] = rof.second;
+					}
+					set_match_details(*match, evt);
 				}
 			}
 		}
@@ -509,13 +421,7 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 	return match;
 }
 
-uint64_t falco_security_policies::num_loaded_policies()
-{
-	return m_rulesets.size();
-}
-
 matchlist_security_policies::matchlist_security_policies()
-	: m_num_loaded_policies(0)
 {
 }
 
@@ -524,35 +430,24 @@ matchlist_security_policies::~matchlist_security_policies()
 
 }
 
-void matchlist_security_policies::init(security_mgr *mgr,
-				       dragent_configuration *configuration,
-				       sinsp *inspector)
+void matchlist_security_policies::init(dragent_configuration *configuration,
+				       sinsp *inspector,
+				       std::shared_ptr<security_evt_metrics> metrics)
 {
-	security_policies::init(mgr, configuration, inspector);
+	security_policies::init(configuration, inspector, metrics);
 }
 
-uint64_t matchlist_security_policies::num_loaded_policies()
-{
-	return m_num_loaded_policies;
-}
-
-void matchlist_security_policies::add_policy(security_policy *policy)
+void matchlist_security_policies::add_policy(const security_policy &policy, std::shared_ptr<security_baseline> baseline)
 {
 	bool added = false;
 
-	if(policy->has_baseline_details())
+	if(policy.has_matchlist_details())
 	{
-		for(auto &baseline : m_mgr->baseline_manager().lookup(*policy))
-		{
-			if(is_baseline_requested(policy)) {
-				added |= add_matchlist_details(policy, baseline->matchlist_details(), policy->scope_predicates(), baseline->id(), baseline->predicates());
-			}
-		}
+		added |= add_matchlist_details(policy, policy.matchlist_details());
 	}
 
-	if(policy->has_matchlist_details())
-	{
-		added |= add_matchlist_details(policy, policy->matchlist_details(), policy->scope_predicates());
+	if(baseline && is_baseline_requested(policy)) {
+		added |= add_matchlist_details(policy, baseline->matchlist_details(), baseline->id());
 	}
 
 	if(added)
@@ -563,75 +458,52 @@ void matchlist_security_policies::add_policy(security_policy *policy)
 
 void matchlist_security_policies::reset()
 {
-	m_default_matches.clear();
-	m_num_loaded_policies = 0;
 }
 
-void matchlist_security_policies::add_default_match_result(scoped_match_result &res)
+void matchlist_security_policies::add_default_match_result(match_result &res)
 {
-	// This keeps the default matches ordered by policy order/matchlist type.
-	auto it = lower_bound(m_default_matches.begin(),
-			      m_default_matches.end(),
-			      res,
-			      match_result::compare);
-
-	// Note: shallow copy. Assuming detail is NULL or can be
-	// shallowly copied.
-	m_default_matches.emplace(it, scoped_match_result(res));
+	// This keeps the minimum non-NEXT default match result
+	if(res.effect() != draiosproto::EFFECT_NEXT)
+	{
+		if(!m_default_match.policy() || match_result::compare(res, m_default_match) < 0)
+		{
+			// Note: shallow copy. Assuming detail is NULL or can be
+			// shallowly copied.
+			m_default_match = res;
+		}
+	}
 }
 
-security_policies::match_result * matchlist_security_policies::min_default_match(sinsp_evt *evt, bool scope_miss)
+security_policies::match_result * matchlist_security_policies::min_default_match(sinsp_evt *evt)
 {
 	match_result *match = NULL;
-	bool default_scope_miss = false;
 
-	// Note why the event didn't match any of the policies
-	if(scope_miss)
-	{
-		m_metrics.incr(evt_metrics::EVM_MISS_SCOPE);
-	}
-	else
-	{
-		m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
-	}
+	m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
 
-	for (auto &it : m_default_matches)
+	if(m_default_match.policy())
 	{
-		if(!it.match_scope(evt, m_mgr->analyzer()))
+		match = new match_result(m_default_match.policy(),
+					 policies_type(),
+					 policies_subtype(),
+					 m_default_match.item(),
+					 new draiosproto::event_detail(),
+					 m_default_match.effect(),
+					 m_default_match.output_field_keys(),
+					 m_default_match.baseline_id());
+
+		set_match_details(*match, evt);
+		match->detail()->set_on_default(true);
+
+		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 		{
-			default_scope_miss = true;
-		}
-		else
-		{
-			if(it.effect() != draiosproto::EFFECT_NEXT)
-			{
-				match = new match_result(it.policy(),
-							 policies_type(),
-							 policies_subtype(),
-							 it.item(),
-							 new draiosproto::event_detail(),
-							 it.effect(),
-							 it.output_field_keys(), it.baseline_id());
-
-				set_match_details(*match, evt);
-				match->detail()->set_on_default(true);
-
-				g_log->trace("Event matched default effect of " + name() +
-					     " policy: " + match->policy()->name() +
-					     " details: " + match->detail()->DebugString() +
-					     " effect: " + draiosproto::match_effect_Name(match->effect()));
-
-				return match;
-			}
+			g_log->trace("Event matched default effect of " + name() +
+				     " policy: " + match->policy()->name() +
+				     " details: " + match->detail()->DebugString() +
+				     " effect: " + draiosproto::match_effect_Name(match->effect()));
 		}
 	}
 
-	if(default_scope_miss)
-	{
-		m_metrics.incr(evt_metrics::EVM_MISS_DEFAULT_SCOPE);
-	}
-
-	return NULL;
+	return match;
 }
 
 filtercheck_policies::filtercheck_policies()
@@ -643,11 +515,11 @@ filtercheck_policies::~filtercheck_policies()
 
 }
 
-void filtercheck_policies::init(security_mgr *mgr,
-				       dragent_configuration *configuration,
-				       sinsp *inspector)
+void filtercheck_policies::init(dragent_configuration *configuration,
+				sinsp *inspector,
+				std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_security_policies::init(mgr, configuration, inspector);
+	matchlist_security_policies::init(configuration, inspector, metrics);
 }
 
 void filtercheck_policies::reset()
@@ -679,7 +551,7 @@ security_policies::match_result *filtercheck_policies::match_event(sinsp_evt *ev
 
 	if(!val)
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
+		m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
 		return NULL;
 	}
 
@@ -689,55 +561,26 @@ security_policies::match_result *filtercheck_policies::match_event(sinsp_evt *ev
 
 	if(matches.first == matches.second)
 	{
-		bool scope_miss = false;
-		return min_default_match(evt, scope_miss);
+		return min_default_match(evt);
 	}
 
-	auto comp = [evt, this] (const std::pair<filter_value_t, security_policies::scoped_match_result> &a,
-				 const std::pair<filter_value_t, security_policies::scoped_match_result> &b)
+	auto comp = [evt, this] (const std::pair<filter_value_t, security_policies::match_result> &a,
+				 const std::pair<filter_value_t, security_policies::match_result> &b)
 	{
-		bool scope_a = a.second.match_scope(evt, m_mgr->analyzer());
-		bool scope_b = b.second.match_scope(evt, m_mgr->analyzer());
-
-		// An out-of-scope match result is always considered greater than an in-scope result
-		if(scope_a && !scope_b)
-		{
-			return true;
-		}
-		else if(scope_b && !scope_a)
-		{
-			return false;
-		}
-		else {
-			return (security_policies::scoped_match_result::compare(a.second, b.second));
-		}
+		return security_policies::match_result::compare(a.second, b.second);
 	};
 
 	auto it = std::min_element(matches.first, matches.second, comp);
 
-	// We have to check the scope of the first match_result again
-	// to make sure it qualifies. The sort above ensured that
-	// out-of-scopes were never considered before in-scope
-	// matches, but the best might still be out of scope.
-	match_result *match = NULL;
-	if(it->second.match_scope(evt, m_mgr->analyzer()))
-	{
-		match = new match_result(it->second.policy(),
-					 policies_type(),
-					 policies_subtype(),
-					 it->second.item(),
-					 new draiosproto::event_detail(),
-					 it->second.effect(),
-					 it->second.output_field_keys(),
-					 it->second.baseline_id());
-
-		set_match_details(*match, evt);
-	}
-	else
-	{
-		bool scope_miss = true;
-		match = min_default_match(evt, scope_miss);
-	}
+	match_result *match = new match_result(it->second.policy(),
+					       policies_type(),
+					       policies_subtype(),
+					       it->second.item(),
+					       new draiosproto::event_detail(),
+					       it->second.effect(),
+					       it->second.output_field_keys(),
+					       it->second.baseline_id());
+	set_match_details(*match, evt);
 
 	return match;
 }
@@ -758,11 +601,11 @@ net_inbound_policies::~net_inbound_policies()
 {
 }
 
-void net_inbound_policies::init(security_mgr *mgr,
-				dragent_configuration *configuration,
-				sinsp *inspector)
+void net_inbound_policies::init(dragent_configuration *configuration,
+				sinsp *inspector,
+				std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_security_policies::init(mgr, configuration, inspector);
+	matchlist_security_policies::init(configuration, inspector, metrics);
 }
 
 void net_inbound_policies::reset()
@@ -796,11 +639,9 @@ std::string net_inbound_policies::qualifies()
 		);
 }
 
-bool net_inbound_policies::add_matchlist_details(security_policy *policy,
+bool net_inbound_policies::add_matchlist_details(const security_policy &policy,
 						 const draiosproto::matchlist_detail &details,
-						 const scope_predicates &predicates,
-						 std::string baseline_id,
-						 const scope_predicates &baseline_predicates)
+						 std::string baseline_id)
 {
 	bool added = false;
 
@@ -818,17 +659,15 @@ bool net_inbound_policies::add_matchlist_details(security_policy *policy,
 		return added;
 	}
 
-	scoped_match_result res(
-		predicates,
-		policy,
+	match_result res(
+		&policy,
 		policies_type(),
 		policies_subtype(),
 		0,
 		NULL,
 		sdetails.on_default(),
 		sdetails.output_field_keys(),
-		baseline_id,
-		baseline_predicates);
+		baseline_id);
 	m_index.insert(std::upper_bound(m_index.begin(),
 					m_index.end(),
 					res,
@@ -849,16 +688,12 @@ security_policies::match_result *net_inbound_policies::match_event(sinsp_evt *ev
 	const match_result *best_match = NULL;
 	for(const auto &m : m_index)
 	{
-		if(m.match_scope(evt, m_mgr->analyzer()))
-		{
-			best_match = &m;
-			break;
-		}
+		best_match = &m;
+		break;
 	}
 
 	if(!best_match)
 	{
-		m_metrics.incr(evt_metrics::EVM_MISS_SCOPE);
 		return NULL;
 	}
 
@@ -923,11 +758,11 @@ tcp_listenport_policies::~tcp_listenport_policies()
 {
 }
 
-void tcp_listenport_policies::init(security_mgr *mgr,
-				   dragent_configuration *configuration,
-				   sinsp *inspector)
+void tcp_listenport_policies::init(dragent_configuration *configuration,
+				   sinsp *inspector,
+				   std::shared_ptr<security_evt_metrics> metrics)
 {
-	filtercheck_policies::init(mgr, configuration, inspector);
+	filtercheck_policies::init(configuration, inspector, metrics);
 
 	m_check.reset(g_filterlist.new_filter_check_from_fldname("fd.sport", m_inspector, true));
 	m_check->parse_field_name("fd.sport", true, false);
@@ -953,11 +788,9 @@ std::string tcp_listenport_policies::qualifies()
 	return string("fd.l4proto = tcp");
 }
 
-bool tcp_listenport_policies::add_matchlist_details(security_policy *policy,
+bool tcp_listenport_policies::add_matchlist_details(const security_policy &policy,
 						    const draiosproto::matchlist_detail &details,
-						    const scope_predicates &predicates,
-						    std::string baseline_id,
-						    const scope_predicates &baseline_predicates)
+						    std::string baseline_id)
 {
 	bool added = false;
 
@@ -975,33 +808,29 @@ bool tcp_listenport_policies::add_matchlist_details(security_policy *policy,
 
 					filter_value_t key = add_filter_value((uint8_t *) &port, sizeof(uint16_t));
 					m_index.emplace(std::make_pair(key,
-								       scoped_match_result(
-									       predicates,
-									       policy,
+								       match_result(
+									       &policy,
 									       policies_type(),
 									       policies_subtype(),
 									       item,
 									       NULL,
 									       match_list.on_match(),
 									       details.listenport_details().output_field_keys(),
-									       baseline_id,
-									       baseline_predicates)));
+									       baseline_id)));
 				}
 			}
 		}
 		added = true;
 		if(details.listenport_details().on_default() != draiosproto::EFFECT_NEXT)
 		{
-			scoped_match_result res(predicates,
-						policy,
-						policies_type(),
-						policies_subtype(),
-						0,
-						NULL,
-						details.listenport_details().on_default(),
-						details.listenport_details().output_field_keys(),
-						baseline_id,
-						baseline_predicates);
+			match_result res(&policy,
+					 policies_type(),
+					 policies_subtype(),
+					 0,
+					 NULL,
+					 details.listenport_details().on_default(),
+					 details.listenport_details().output_field_keys(),
+					 baseline_id);
 			add_default_match_result(res);
 		}
 	}
@@ -1046,11 +875,11 @@ syscall_policies::~syscall_policies()
 {
 }
 
-void syscall_policies::init(security_mgr *mgr,
-			    dragent_configuration *configuration,
-			    sinsp *inspector)
+void syscall_policies::init(dragent_configuration *configuration,
+			    sinsp *inspector,
+			    std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_security_policies::init(mgr, configuration, inspector);
+	matchlist_security_policies::init(configuration, inspector, metrics);
 
 	// Create a table containing all events, so they can
 	// be mapped to event ids.
@@ -1111,11 +940,9 @@ bool syscall_policies::event_qualifies(sinsp_evt *evt)
 	return evt->falco_consider();
 }
 
-bool syscall_policies::add_matchlist_details(security_policy *policy,
+bool syscall_policies::add_matchlist_details(const security_policy &policy,
 					     const draiosproto::matchlist_detail &details,
-					     const scope_predicates &predicates,
-					     std::string baseline_id,
-					     const scope_predicates &baseline_predicates)
+					     std::string baseline_id)
 {
 	bool added = false;
 
@@ -1143,16 +970,14 @@ bool syscall_policies::add_matchlist_details(security_policy *policy,
 						// way we can just traverse the list
 						// of match results for a given event
 						// until we find a terminal action.
-						scoped_match_result res(predicates,
-									policy,
-									policies_type(),
-									policies_subtype(),
-									item,
-									NULL,
-									match_list.on_match(),
-									details.syscall_details().output_field_keys(),
-									baseline_id,
-									baseline_predicates);
+						match_result res(&policy,
+								 policies_type(),
+								 policies_subtype(),
+								 item,
+								 NULL,
+								 match_list.on_match(),
+								 details.syscall_details().output_field_keys(),
+								 baseline_id);
 						m_event_index[evtnum].insert(std::upper_bound(m_event_index[evtnum].begin(),
 											      m_event_index[evtnum].end(),
 											      res,
@@ -1166,16 +991,14 @@ bool syscall_policies::add_matchlist_details(security_policy *policy,
 				if(it2 != m_syscallnums.end())
 				{
 					if(sinsp::falco_consider_syscallid(it2->second)) {
-						scoped_match_result res(predicates,
-									policy,
-									policies_type(),
-									policies_subtype(),
-									item,
-									NULL,
-									match_list.on_match(),
-									details.syscall_details().output_field_keys(),
-									baseline_id,
-									baseline_predicates);
+						match_result res(&policy,
+								 policies_type(),
+								 policies_subtype(),
+								 item,
+								 NULL,
+								 match_list.on_match(),
+								 details.syscall_details().output_field_keys(),
+								 baseline_id);
 						m_syscall_index[it2->second].insert(std::upper_bound(m_syscall_index[it2->second].begin(),
 												     m_syscall_index[it2->second].end(),
 												     res,
@@ -1187,16 +1010,14 @@ bool syscall_policies::add_matchlist_details(security_policy *policy,
 		}
 		if(details.syscall_details().on_default() != draiosproto::EFFECT_NEXT)
 		{
-			scoped_match_result res(predicates,
-						policy,
-						policies_type(),
-						policies_subtype(),
-						0,
-						NULL,
-						details.syscall_details().on_default(),
-						details.syscall_details().output_field_keys(),
-						baseline_id,
-						baseline_predicates);
+			match_result res(&policy,
+					 policies_type(),
+					 policies_subtype(),
+					 0,
+					 NULL,
+					 details.syscall_details().on_default(),
+					 details.syscall_details().output_field_keys(),
+					 baseline_id);
 			add_default_match_result(res);
 		}
 		added = true;
@@ -1208,7 +1029,6 @@ bool syscall_policies::add_matchlist_details(security_policy *policy,
 security_policies::match_result *syscall_policies::match_event(sinsp_evt *evt)
 {
 	match_result *best_match = NULL;
-	bool scope_miss = false;
 	uint16_t etype = evt->get_type();
 
 	if(!event_qualifies(evt))
@@ -1224,17 +1044,10 @@ security_policies::match_result *syscall_policies::match_event(sinsp_evt *evt)
 
 		for(auto &res : m_syscall_index[evid])
 		{
-			if(!res.match_scope(evt, m_mgr->analyzer()))
+			best_match = &res;
+			if(res.effect() != draiosproto::EFFECT_NEXT)
 			{
-				scope_miss = true;
-			}
-			else
-			{
-				best_match = &res;
-				if(res.effect() != draiosproto::EFFECT_NEXT)
-				{
-					break;
-				}
+				break;
 			}
 		}
 
@@ -1243,25 +1056,17 @@ security_policies::match_result *syscall_policies::match_event(sinsp_evt *evt)
 	{
 		for(auto &res : m_event_index[etype])
 		{
-			if(!res.match_scope(evt, m_mgr->analyzer()))
+			best_match = &res;
+			if(res.effect() != draiosproto::EFFECT_NEXT)
 			{
-				scope_miss = true;
-			}
-			else
-			{
-				best_match = &res;
-				if(res.effect() != draiosproto::EFFECT_NEXT)
-				{
-					break;
-				}
+				break;
 			}
 		}
 	}
 
 	if(!best_match)
 	{
-		return min_default_match(evt, scope_miss);
-
+		return min_default_match(evt);
 	}
 
 	match_result *match = new match_result(best_match->policy(),
@@ -1285,11 +1090,11 @@ matchlist_map_security_policies::~matchlist_map_security_policies()
 {
 }
 
-void matchlist_map_security_policies::init(security_mgr *mgr,
-					   dragent_configuration *configuration,
-					   sinsp *inspector)
+void matchlist_map_security_policies::init(dragent_configuration *configuration,
+					   sinsp *inspector,
+					   std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_security_policies::init(mgr, configuration, inspector);
+	matchlist_security_policies::init(configuration, inspector, metrics);
 }
 
 void matchlist_map_security_policies::reset()
@@ -1298,12 +1103,16 @@ void matchlist_map_security_policies::reset()
 
 	m_vals.clear();
 	m_index.clear();
+
+	// The vector is indexed by match effect as a number
+	// (0=ACCEPT, 1=DENY, 2=NEXT), so add 3 elements.
+	m_index.push_back(path_matchresult_search());
+	m_index.push_back(path_matchresult_search());
+	m_index.push_back(path_matchresult_search());
 }
 
 security_policies::match_result *matchlist_map_security_policies::match_event(sinsp_evt *evt)
 {
-	bool scope_miss = true;
-
 	if(!event_qualifies(evt))
 	{
 		return NULL;
@@ -1320,7 +1129,7 @@ security_policies::match_result *matchlist_map_security_policies::match_event(si
 
 		if(!val)
 		{
-			m_metrics.incr(evt_metrics::EVM_MISS_CONDS);
+			m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
 			return NULL;
 		}
 
@@ -1329,116 +1138,49 @@ security_policies::match_result *matchlist_map_security_policies::match_event(si
 
 		split_components(key, components);
 
-		for(auto &pair : m_index)
+		const match_result *best_match = NULL;
+
+		// Loop over the 3 prefix_map objects (for
+		// ACCEPT, DENY, NEXT). Find the best
+		// match_result that matches the path and
+		// return it.
+		for(auto &prefix_map : m_index)
 		{
-			if(security_policy::match_scope(evt, m_mgr->analyzer(),
-							pair.first.preds,
-							pair.first.host_scope,
-							pair.first.container_scope))
+			const match_result *found = NULL;
+			if((found = prefix_map.match_components(components)) != NULL)
 			{
-				// Any miss after this won't be due to scope
-				scope_miss = false;
-
-				const match_result *best_match = NULL;
-
-				// Loop over the 3 prefix_map objects (for
-				// ACCEPT, DENY, NEXT). Find the best
-				// match_result that matches the path and
-				// return it.
-				for(auto &prefix_map : pair.second)
+				if(best_match == NULL ||
+				   match_result::compare_ptr(found, best_match))
 				{
-					const match_result *found = NULL;
-					if((found = prefix_map.match_components(components)) != NULL)
-					{
-						if(best_match == NULL ||
-						   match_result::compare_ptr(found, best_match))
-						{
-							best_match = found;
-						}
-					}
+					best_match = found;
 				}
-
-				if(!best_match)
-				{
-					continue;
-				}
-
-				match_result *match = new match_result(best_match->policy(),
-								       policies_type(),
-								       policies_subtype(),
-								       best_match->item(),
-								       new draiosproto::event_detail(),
-								       best_match->effect(),
-								       best_match->output_field_keys(),
-								       best_match->baseline_id());
-				set_match_details(*match, evt);
-
-				return match;
 			}
 		}
-	}
 
-	return min_default_match(evt, scope_miss);
-}
-
-bool operator==(const scope_predicates &a,
-		const scope_predicates &b)
-{
-	// They are equal if all keys and values are equal (and in the same order)
-	if (a.size() != b.size())
-	{
-		return false;
-	}
-	for(int i=0; i < a.size(); i++)
-	{
-		if(a[i].SerializeAsString() != b[i].SerializeAsString())
+		if(!best_match)
 		{
-			return false;
+			continue;
 		}
+
+		match_result *match = new match_result(best_match->policy(),
+						       policies_type(),
+						       policies_subtype(),
+						       best_match->item(),
+						       new draiosproto::event_detail(),
+						       best_match->effect(),
+						       best_match->output_field_keys(),
+						       best_match->baseline_id());
+		set_match_details(*match, evt);
+
+		return match;
 	}
 
-	return true;
+	return min_default_match(evt);
 }
 
-bool operator==(const matchlist_map_security_policies::index_predicates_t &a,
-		const matchlist_map_security_policies::index_predicates_t &b)
-{
-	return (a.preds == b.preds &&
-		a.host_scope == b.host_scope &&
-		a.container_scope == b.container_scope);
-}
-
-matchlist_map_security_policies::path_matchresult_search &matchlist_map_security_policies::find_prefix_map(draiosproto::match_effect effect,
-													   const scope_predicates &predicates,
-													   const scope_predicates &baseline_predicates,
-													   bool host_scope,
-													   bool container_scope)
-{
-	index_predicates_t preds = {predicates, baseline_predicates, host_scope, container_scope};
-
-	for(auto &pair : m_index)
-	{
-		if(pair.first == preds)
-		{
-			return pair.second[(uint32_t) effect-1];
-		}
-	}
-
-	m_index.emplace_back(std::make_pair(preds, std::vector<path_matchresult_search>()));
-
-	// The vector is indexed by match effect as a number
-	// (0=ACCEPT, 1=DENY, 2=NEXT), so add 3 elementes.
-	m_index.back().second.push_back(path_matchresult_search());
-	m_index.back().second.push_back(path_matchresult_search());
-	m_index.back().second.push_back(path_matchresult_search());
-	return m_index.back().second[(uint32_t) effect-1];
-}
-
-bool matchlist_map_security_policies::add_matchlist_details(security_policy *policy,
+bool matchlist_map_security_policies::add_matchlist_details(const security_policy &policy,
 							    const draiosproto::matchlist_detail &details,
-							    const scope_predicates &predicates,
-							    std::string baseline_id,
-							    const scope_predicates &baseline_predicates)
+							    std::string baseline_id)
 {
 	bool added = false;
 	uint32_t item = 0;
@@ -1452,21 +1194,17 @@ bool matchlist_map_security_policies::add_matchlist_details(security_policy *pol
 
 		if(match_list_relevant(match_list))
 		{
-
 			for(auto &val : match_list.values())
 			{
 				m_vals.push_back(val);
 				filter_value_t key = make_pair((uint8_t *) m_vals.back().c_str(), m_vals.back().length());
-				path_matchresult_search &search = find_prefix_map(match_list.on_match(),
-										  predicates,
-										  baseline_predicates,
-										  policy->host_scope(),
-										  policy->container_scope());
-				filter_components_t components;
 
+				path_matchresult_search &search = m_index[(uint32_t) match_list.on_match()-1];
+
+				filter_components_t components;
 				split_components(key, components);
 
-				match_result res(policy,
+				match_result res(&policy,
 						 policies_type(),
 						 policies_subtype(),
 						 item,
@@ -1484,16 +1222,14 @@ bool matchlist_map_security_policies::add_matchlist_details(security_policy *pol
 
 	if(lists.on_default()!= draiosproto::EFFECT_NEXT)
 	{
-		scoped_match_result res(predicates,
-					policy,
-					policies_type(),
-					policies_subtype(),
-					0,
-					NULL,
-					lists.on_default(),
-					lists.output_field_keys(),
-					baseline_id,
-					baseline_predicates);
+		match_result res(&policy,
+				 policies_type(),
+				 policies_subtype(),
+				 0,
+				 NULL,
+				 lists.on_default(),
+				 lists.output_field_keys(),
+				 baseline_id);
 		add_default_match_result(res);
 	}
 
@@ -1519,11 +1255,11 @@ readonly_fs_policies::~readonly_fs_policies()
 {
 }
 
-void readonly_fs_policies::init(security_mgr *mgr,
-			     dragent_configuration *configuration,
-			     sinsp *inspector)
+void readonly_fs_policies::init(dragent_configuration *configuration,
+				sinsp *inspector,
+				std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_map_security_policies::init(mgr, configuration, inspector);
+	matchlist_map_security_policies::init(configuration, inspector, metrics);
 
 	std::shared_ptr<sinsp_filter_check> fdn;
 	fdn.reset(g_filterlist.new_filter_check_from_fldname("fd.name", m_inspector, true));
@@ -1610,11 +1346,11 @@ nofd_readwrite_fs_policies::~nofd_readwrite_fs_policies()
 {
 }
 
-void nofd_readwrite_fs_policies::init(security_mgr *mgr,
-				      dragent_configuration *configuration,
-				      sinsp *inspector)
+void nofd_readwrite_fs_policies::init(dragent_configuration *configuration,
+				      sinsp *inspector,
+				      std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_map_security_policies::init(mgr, configuration, inspector);
+	matchlist_map_security_policies::init(configuration, inspector, metrics);
 
 	std::shared_ptr<sinsp_filter_check> arg1, arg2, absp, absdst;
 	arg1.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[1]", m_inspector, true));
@@ -1677,11 +1413,11 @@ container_policies::~container_policies()
 {
 }
 
-void container_policies::init(security_mgr *mgr,
-			     dragent_configuration *configuration,
-			     sinsp *inspector)
+void container_policies::init(dragent_configuration *configuration,
+			      sinsp *inspector,
+			      std::shared_ptr<security_evt_metrics> metrics)
 {
-	matchlist_security_policies::init(mgr, configuration, inspector);
+	matchlist_security_policies::init(configuration, inspector, metrics);
 
 	std::shared_ptr<sinsp_filter_check> cim;
 	cim.reset(g_filterlist.new_filter_check_from_fldname("container.image", m_inspector, true));
@@ -1824,11 +1560,11 @@ process_policies::~process_policies()
 {
 }
 
-void process_policies::init(security_mgr *mgr,
-			     dragent_configuration *configuration,
-			     sinsp *inspector)
+void process_policies::init(dragent_configuration *configuration,
+			    sinsp *inspector,
+			    std::shared_ptr<security_evt_metrics> metrics)
 {
-	filtercheck_policies::init(mgr, configuration, inspector);
+	filtercheck_policies::init(configuration, inspector, metrics);
 
 	m_check.reset(g_filterlist.new_filter_check_from_fldname("proc.name", m_inspector, true));
 	m_check->parse_field_name("proc.name", true, false);
@@ -1849,11 +1585,9 @@ std::set<std::string> process_policies::default_output_fields_keys(sinsp_evt *ev
 	return { "proc.name" };
 }
 
-bool process_policies::add_matchlist_details(security_policy *policy,
+bool process_policies::add_matchlist_details(const security_policy &policy,
                                              const draiosproto::matchlist_detail &details,
-					     const scope_predicates &predicates,
-					     std::string baseline_id,
-					     const scope_predicates &baseline_predicates)
+					     std::string baseline_id)
 {
 	bool added = false;
 
@@ -1867,31 +1601,26 @@ bool process_policies::add_matchlist_details(security_policy *policy,
 				item++;
 				filter_value_t key = add_filter_value((uint8_t *) pname.c_str(), pname.length());
 				m_index.emplace(std::make_pair(key,
-							       scoped_match_result(
-                                                                       predicates,
-								       policy,
-								       policies_type(),
-								       policies_subtype(),
-								       item,
-								       NULL,
-								       match_list.on_match(),
-								       details.process_details().output_field_keys(),
-								       baseline_id,
-								       baseline_predicates)));
+							       match_result(&policy,
+									    policies_type(),
+									    policies_subtype(),
+									    item,
+									    NULL,
+									    match_list.on_match(),
+									    details.process_details().output_field_keys(),
+									    baseline_id)));
 			}
 		}
 		if(details.process_details().on_default() != draiosproto::EFFECT_NEXT)
 		{
-			scoped_match_result res(predicates,
-						policy,
-						policies_type(),
-						policies_subtype(),
-						0,
-						NULL,
-						details.process_details().on_default(),
-						details.process_details().output_field_keys(),
-						baseline_id,
-						baseline_predicates);
+			match_result res(&policy,
+					 policies_type(),
+					 policies_subtype(),
+					 0,
+					 NULL,
+					 details.process_details().on_default(),
+					 details.process_details().output_field_keys(),
+					 baseline_id);
 			add_default_match_result(res);
 		}
 		added = true;
