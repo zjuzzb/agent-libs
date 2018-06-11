@@ -601,12 +601,6 @@ prometheus:
         kubernetes.pod.annotation.prometheus.io/scrape: false
 
 app_checks:
-  - name: solr
-    check_module: solr
-    interval: 10
-    pattern:
-      port: 8983
-      comm: java
   - name: ceph
     interval: 30
     pattern:
@@ -1197,6 +1191,3 @@ monitor_files:
     - /opt/draios/etc/dragent.yaml
     - /opt/draios/etc/kubernetes/config/dragent.yaml
     - /opt/draios/etc/kubernetes/secrets/access-key
-
-log:
-  file_priority: debug
