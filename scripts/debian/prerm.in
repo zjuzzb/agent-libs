@@ -21,5 +21,5 @@ case "$1" in
 esac
 
 # Clean all generated Python bytecode
-find /opt/draios/lib -iname "*.pyc" -delete > /dev/null 2>&1
-find /opt/draios/lib -iname "*.pyo" -delete > /dev/null 2>&1
+find @CMAKE_INSTALL_PREFIX@/lib -iname "*.pyc" -delete > /dev/null 2>&1
+find @CMAKE_INSTALL_PREFIX@/lib -iname "*.pyo" -delete > /dev/null 2>&1

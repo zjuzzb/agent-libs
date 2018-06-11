@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-CONFIG_FILE=/opt/draios/etc/dragent.yaml
-OLD_CONFIG_FILE=/opt/draios/bin/dragent.properties
+CONFIG_FILE=@CMAKE_INSTALL_PREFIX@/etc/dragent.yaml
+OLD_CONFIG_FILE=@CMAKE_INSTALL_PREFIX@/bin/dragent.properties
 
 if [ ! -e $CONFIG_FILE ]; then
 	if grep -q ^customerid $OLD_CONFIG_FILE > /dev/null 2>&1; then

@@ -87,9 +87,6 @@ else()
 	)
 endif()
 
-file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
-	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
-
 file(COPY root.cert
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

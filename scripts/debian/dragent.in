@@ -18,7 +18,7 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="Draios Agent"
 NAME=dragent
-DAEMON=/opt/draios/bin/$NAME
+DAEMON=@CMAKE_INSTALL_PREFIX@/bin/$NAME
 PIDFILE=/var/run/$NAME.pid
 DAEMON_ARGS="--daemon --dragentpid=$PIDFILE"
 SCRIPTNAME=/etc/init.d/$NAME
