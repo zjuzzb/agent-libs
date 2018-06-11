@@ -46,7 +46,8 @@ endif()
 
 add_definitions(-D_GNU_SOURCE)
 
-set(DRAIOS_BIN_PREFIX "/opt/draios")
+set (CMAKE_INSTALL_PREFIX "/opt/draios" CACHE PATH "default install path" FORCE)
+set(DRAIOS_BIN_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(KBUILD_FLAGS "${DRAIOS_DEBUG_FLAGS} ${DRAIOS_FEATURE_FLAGS}")
@@ -90,7 +91,7 @@ set(LPEG_LIB "${DRAIOS_DEPENDENCIES_DIR}/lpeg-1.0.0/target/lpeg.a")
 set(LYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/lyaml-release-v6.0/target/lib/lua/5.1/yaml.a")
 set(LIBYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/libyaml-0.1.7/target/lib/libyaml.a")
 set(FALCO_SINSP_LIBRARY sanalyzer)
-set(FALCO_SHARE_DIR "${DRAIOS_BIN_PREFIX}/share")
+set(FALCO_SHARE_DIR "${CMAKE_INSTALL_PREFIX}/share")
 set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent)
 add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
@@ -112,16 +113,16 @@ if(NOT CYGWIN)
 endif()
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
-	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	COMPONENT agent)
 
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
-	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	RENAME sysdigcloud-probe-loader
 	COMPONENT agent)
 
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
-	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	COMPONENT agent)
 
 set(CPACK_PACKAGE_NAME "draios")
@@ -158,7 +159,7 @@ set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/post
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 	/etc/rc.d
 	/etc/rc.d/init.d
-	/opt)
+	${CMAKE_INSTALL_PREFIX})
 set(CPACK_RPM_PACKAGE_AUTOREQPROV " no")
 set(CPACK_RPM_SPEC_MORE_DEFINE "%global __os_install_post %(echo '%{__os_install_post}' | sed -e 's!/usr/lib[^[:space:]]*/brp-python-bytecompile[[:space:]].*$!!g')")
 set(CPACK_ARCHIVE_COMPONENT_INSTALL "ON")

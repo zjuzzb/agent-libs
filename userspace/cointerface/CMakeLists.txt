@@ -99,7 +99,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
 # Note that we don't package the client. That's only for testing
 # purposes.
 install(DIRECTORY
-	DESTINATION /opt/draios/run
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/run
 	COMPONENT agent)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
