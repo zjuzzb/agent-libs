@@ -9,7 +9,7 @@
 APP_NAME="gen-support-bundle"
 APP_VERSION="0.1"
 NO_S3_UPLOAD=0
-HOME_DIR="/opt/draios"
+HOME_DIR="$(dirname $(dirname $(readlink -f $0)))"
 HOME_DIR_S=${HOME_DIR:1}
 LOG_DIR="$HOME_DIR/logs"
 ETC_DIR="$HOME_DIR/etc"
