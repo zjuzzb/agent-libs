@@ -60,8 +60,9 @@ int monitored_process::exec()
 }
 
 #ifndef CYGWING_AGENT
-monitor::monitor(string pidfile):
-	m_pidfile(move(pidfile))
+monitor::monitor(string pidfile, string self):
+	m_pidfile(move(pidfile)),
+	m_self_binary(move(self))
 #else
 monitor::monitor(string pidfile, bool windows_service_parent):
 	m_pidfile(move(pidfile)),
@@ -145,7 +146,7 @@ int monitor::run()
 						}
 						m_cleanup_function();
 #ifndef CYGWING_AGENT
-						execl("/opt/draios/bin/dragent", "dragent", (char*)NULL);
+						execl(m_self_binary.c_str(), m_self_binary.c_str(), (char*)NULL);
 #else
 						string executable = windows_helpers::get_executable_parent_dir() + "/bin/dragent.exe";
 						if(m_windows_service_parent)

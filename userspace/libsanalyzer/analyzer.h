@@ -247,7 +247,9 @@ public:
 	};
 
 	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
-	sinsp_analyzer(sinsp* inspector);
+	// only use default root_dir if you don't need coclient
+	// (it needs root_dir properly set to locate the cointerface server socket)
+	sinsp_analyzer(sinsp* inspector, std::string root_dir);
 	~sinsp_analyzer();
 
 	void set_sample_callback(analyzer_callback_interface* cb);
@@ -684,6 +686,11 @@ VISIBILITY_PRIVATE
 	run_on_interval m_swarmstate_interval = {SWARM_POLL_INTERVAL};
 	coclient m_coclient;
 #endif
+
+	//
+	// Installation root
+	//
+	string m_root_dir;
 
 	//
 	// The callback we invoke when a sample is ready

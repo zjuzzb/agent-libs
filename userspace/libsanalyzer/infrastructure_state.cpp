@@ -105,8 +105,9 @@ bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::Repea
 	return true;
 }
 
-infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* inspector)
+infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* inspector, std::string install_prefix)
 	: m_inspector(inspector)
+	, m_k8s_coclient(std::move(install_prefix))
 	, m_k8s_subscribed(false)
 	, m_k8s_connected(false)
 	, m_k8s_refresh_interval(refresh_interval)

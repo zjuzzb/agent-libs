@@ -386,7 +386,7 @@ public:
 	// This function will be called with the response to the rpc.
 	typedef std::function<void(bool successful, google::protobuf::Message *response_msg)> response_cb_t;
 
-	coclient();
+	coclient(const std::string& install_prefix);
 	virtual ~coclient();
 
 	void ping(int64_t token, response_cb_t response_cb);

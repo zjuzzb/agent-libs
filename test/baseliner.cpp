@@ -137,7 +137,7 @@ protected:
 		}
 
 		m_inspector = new sinsp();
-		m_analyzer = new sinsp_analyzer(m_inspector);
+		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios");
 		m_inspector->m_analyzer = m_analyzer;
 
 		m_analyzer->get_configuration()->set_falco_baselining_enabled(m_configuration.m_falco_baselining_enabled);

@@ -10,11 +10,11 @@ using namespace std;
 
 #ifndef CYGWING_AGENT
 
-std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
+std::string coclient::default_domain_sock = string("/run/cointerface.sock"); // install prefix will be prepended
 uint32_t coclient::m_max_loop_evts = 100;
 
-coclient::coclient():
-	m_domain_sock(default_domain_sock),
+coclient::coclient(const std::string& install_prefix):
+	m_domain_sock(install_prefix + default_domain_sock),
 	m_outstanding_swarm_state(false)
 {
 	m_print.SetSingleLineMode(true);

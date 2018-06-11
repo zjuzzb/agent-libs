@@ -87,7 +87,7 @@ void security_mgr::init(sinsp *inspector,
 
 	m_refresh_compliance_tasks_interval = make_unique<run_on_interval>(m_configuration->m_security_compliance_refresh_interval);
 
-	m_coclient = make_shared<coclient>();
+	m_coclient = make_shared<coclient>(configuration->m_root_dir);
 
 	m_actions.init(this, m_coclient);
 

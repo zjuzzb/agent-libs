@@ -86,7 +86,9 @@ void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 }
 };
 
-sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
+sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
+	m_coclient(root_dir),
+	m_root_dir(root_dir),
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
 	m_very_high_cpu_switcher("agent cpu usage with sr=128")
@@ -158,7 +160,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 
 	m_falco_baseliner = new sinsp_baseliner();
 #ifndef CYGWING_AGENT
-	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, inspector);
+	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, inspector, root_dir);
 #endif
 
 	//
@@ -449,7 +451,7 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 
 void sinsp_analyzer::add_chisel_dirs()
 {
-	m_inspector->add_chisel_dir("/opt/draios/share/chisels", false);
+	m_inspector->add_chisel_dir((m_root_dir + "/share/chisels").c_str(), false);
 
 	//
 	// sysdig that comes with dragent is always installed in /usr

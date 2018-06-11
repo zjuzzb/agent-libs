@@ -485,6 +485,35 @@ void dragent_configuration::configure_k8s_from_env()
 	}
 }
 
+
+string dragent_configuration::get_install_prefix(const Application* app)
+{
+#ifdef CYGWING_AGENT
+	return windows_helpers::get_executable_parent_dir();
+#else
+	if (!app) // during tests
+	{
+		return ".";
+	}
+	const string& exe = app->argv().at(0);
+
+	size_t dpos = exe.rfind('/');
+	if(dpos != string::npos)
+	{
+		string exedir = exe.substr(0, dpos);
+
+		dpos = exedir.rfind('/');
+		if(dpos != string::npos)
+		{
+			return exedir.substr(0, dpos);
+		}
+	}
+
+	return "";
+#endif
+}
+
+
 void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
 #ifdef CYGWING_AGENT
@@ -494,12 +523,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 #endif
 
 	refresh_machine_id();
+	string install_prefix = get_install_prefix(app);
 
-	File package_dir("/opt/draios");
+	File package_dir(install_prefix);
 	if(package_dir.exists() && use_installed_dragent_yaml)
 	{
 		m_agent_installed = true;
-		m_root_dir = "/opt/draios";
+		m_root_dir = install_prefix;
 		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
 		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
 	}

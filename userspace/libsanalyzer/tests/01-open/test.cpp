@@ -490,7 +490,7 @@ int main(int argc, char **argv)
 	{
 		g_inspector = new sinsp();
 #ifdef HAS_ANALYZER
-		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector);
+		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, "/opt/draios");
 		g_inspector->m_analyzer = analyzer;
 #endif
 

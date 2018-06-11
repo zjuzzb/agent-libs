@@ -9,5 +9,5 @@ target_link_libraries(diff_pb
 	draiosproto)
 
 install(TARGETS diff_pb
-        DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
         COMPONENT tests)

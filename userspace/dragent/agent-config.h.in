@@ -1,3 +1,4 @@
 #pragma once
 
 #define AGENT_VERSION "${AGENT_VERSION}"
+#define CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}"

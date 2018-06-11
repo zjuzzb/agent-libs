@@ -202,7 +202,7 @@ protected:
 		}
 
 		m_inspector = new sinsp();
-		m_analyzer = new sinsp_analyzer(m_inspector);
+		m_analyzer = new sinsp_analyzer(m_inspector, "/opt/draios");
 		m_internal_metrics = make_shared<internal_metrics>();
 		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->set_internal_metrics(m_internal_metrics);

@@ -18,5 +18,5 @@ target_link_libraries(sinsp-open
 endif()
 
 install(TARGETS sinsp-open 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	COMPONENT tests)

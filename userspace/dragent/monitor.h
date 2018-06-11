@@ -55,7 +55,7 @@ class monitor
 {
 public:
 #ifndef CYGWING_AGENT
-	monitor(string pidfile);
+	monitor(string pidfile, string self);
 #else
 	monitor(string pidfile, bool windows_service_parent);
 #endif
@@ -79,7 +79,9 @@ private:
 	function<void(void)> m_cleanup_function;
 	string m_pidfile;
 	vector<monitored_process> m_processes;
-#ifdef CYGWING_AGENT
+#ifndef CYGWING_AGENT
+	string m_self_binary;
+#else
 	bool m_windows_service_parent = true;
 #endif
 };

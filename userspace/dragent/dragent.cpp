@@ -299,7 +299,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 	// It's important that the pidfile gets created immediately!
 	//
 #ifndef CYGWING_AGENT
-	monitor monitor_process(m_pidfile);
+	string me = config().getString("application.path", CMAKE_INSTALL_PREFIX "/bin/dragent");
+	monitor monitor_process(m_pidfile, move(me));
 #else
 	monitor monitor_process(m_pidfile, m_windows_service_parent);
 #endif
@@ -812,7 +813,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	{
 		if(!m_coclient) {
 			// Actually allocate the coclient object
-			m_coclient = make_unique<coclient>();
+			m_coclient = make_unique<coclient>(m_configuration.m_root_dir);
 		}
 
 		// Ping every 5 seconds. If it's ever more than

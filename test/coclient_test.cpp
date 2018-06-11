@@ -23,6 +23,9 @@ using namespace Poco;
 
 class coclient_test : public testing::Test
 {
+public:
+	coclient_test() : testing::Test(), m_coclient(CMAKE_INSTALL_PREFIX) { }
+
 protected:
 	virtual void SetUp()
 	{

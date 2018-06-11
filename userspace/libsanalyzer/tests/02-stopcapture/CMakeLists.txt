@@ -13,5 +13,5 @@ target_link_libraries(sinsp-stopcapture
 	pthread)
 
 install(TARGETS sinsp-stopcapture 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	COMPONENT tests)

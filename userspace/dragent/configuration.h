@@ -832,7 +832,7 @@ private:
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void configure_k8s_from_env();
 	void add_percentiles();
-
+	std::string get_install_prefix(const Application* app);
 	void sanitize_limits(filter_vec_t& filters);
 
 

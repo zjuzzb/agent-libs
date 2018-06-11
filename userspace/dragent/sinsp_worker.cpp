@@ -61,7 +61,7 @@ void sinsp_worker::init()
 	m_initialized = true;
 
 	m_inspector = new sinsp();
-	m_analyzer = new sinsp_analyzer(m_inspector);
+	m_analyzer = new sinsp_analyzer(m_inspector, m_configuration->m_root_dir);
 
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)

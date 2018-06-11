@@ -24,7 +24,7 @@ public:
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
-	infrastructure_state(uint64_t refresh_interval, sinsp *inspector);
+	infrastructure_state(uint64_t refresh_interval, sinsp *inspector, std::string install_prefix);
 	using reg_id_t = std::string;
 
 	~infrastructure_state();

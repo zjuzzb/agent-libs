@@ -107,7 +107,7 @@ if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 		set_target_properties(test_helper_32 PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
 	endif("${ARCH}" STREQUAL "s390x")
 	install(TARGETS test_helper_32
-		DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+		DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 		COMPONENT tests)
 	target_link_libraries(test_helper_32
 		pthread)
@@ -117,11 +117,11 @@ endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
 
 install(DIRECTORY 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/captures
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/captures
 	COMPONENT tests)
 
 install(TARGETS test_helper
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	COMPONENT tests)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_helper.sh
@@ -129,10 +129,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_helper.sh
 	COPYONLY)
 
 install(FILES test_helper.sh
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
 	COMPONENT tests)
 
 install(TARGETS tests 
-	DESTINATION ${DRAIOS_BIN_PREFIX}/test/
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	COMPONENT tests)
