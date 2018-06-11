@@ -70,6 +70,7 @@ public:
 	void on_execve(sinsp_evt *evt);
 	void on_clone(sinsp_evt* evt, sinsp_threadinfo* newtinfo);
 	void on_bind(sinsp_evt *evt);
+	bool on_resolve_container(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info);
 	bool patch_network_role(sinsp_threadinfo* ptinfo,
 		sinsp_fdinfo_t* pfdinfo,
 		bool incoming);
