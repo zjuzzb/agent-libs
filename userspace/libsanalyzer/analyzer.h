@@ -525,6 +525,7 @@ public:
 	void set_max_n_external_clients(uint32_t val) { m_max_n_external_clients = val; }
 	void set_top_connections_in_sample(uint32_t val) { m_top_connections_in_sample = val; }
 	void set_top_processes_in_sample(uint32_t val) { m_top_processes_in_sample = val; }
+	void set_top_processes_per_container(uint32_t val) { m_top_processes_per_container = val; }
 
 	//
 	// Test tool detection state
@@ -902,6 +903,7 @@ VISIBILITY_PRIVATE
 	uint32_t m_max_n_external_clients = MAX_N_EXTERNAL_CLIENTS;
 	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
 	uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
+	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

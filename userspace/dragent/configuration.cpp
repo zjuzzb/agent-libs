@@ -1132,6 +1132,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_top_connections_in_sample = m_config->get_scalar<uint32_t>("top_connections_in_sample", TOP_CONNECTIONS_IN_SAMPLE);
 	m_max_n_external_clients = m_config->get_scalar<uint32_t>("max_n_external_clients", MAX_N_EXTERNAL_CLIENTS);
 	m_top_processes_in_sample = m_config->get_scalar<int32_t>("top_processes_in_sample", TOP_PROCESSES_IN_SAMPLE);
+	m_top_processes_per_container = m_config->get_scalar<int32_t>("top_processes_per_container", TOP_PROCESSES_PER_CONTAINER);
 }
 
 void dragent_configuration::print_configuration() const

@@ -525,6 +525,7 @@ void sinsp_worker::init()
 	m_analyzer->set_max_n_external_clients(m_configuration->m_max_n_external_clients);
 	m_analyzer->set_top_connections_in_sample(m_configuration->m_top_connections_in_sample);
 	m_analyzer->set_top_processes_in_sample(m_configuration->m_top_processes_in_sample);
+	m_analyzer->set_top_processes_per_container(m_configuration->m_top_processes_per_container);
 }
 
 void sinsp_worker::run()

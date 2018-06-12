@@ -804,6 +804,7 @@ public:
 	uint32_t m_max_n_external_clients = MAX_N_EXTERNAL_CLIENTS;
 	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
 	uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
+	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 
 	bool java_present() const
 	{
