@@ -1733,7 +1733,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	{
 		return lhs->get_main_thread()->m_program_hash == rhs->get_main_thread()->m_program_hash;
 	};
-	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(TOP_PROCESSES_IN_SAMPLE, prog_hasher, prog_cmp);
+	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(m_top_processes_in_sample, prog_hasher, prog_cmp);
 	progtable_by_container_t progtable_by_container;
 #ifndef _WIN32
 	vector<sinsp_threadinfo*> java_process_requests;
@@ -2474,19 +2474,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	if(!m_inspector->is_capture())
 	{
 		tracer_emitter filter_trc("filter_progtable", proc_trc);
-		progtable_needs_filtering = progtable.size() > TOP_PROCESSES_IN_SAMPLE;
+		progtable_needs_filtering = progtable.size() > m_top_processes_in_sample;
 		if(progtable_needs_filtering)
 		{
 			// Filter top active programs
 			filter_top_programs(progtable.begin(),
 					    progtable.end(),
 					    false,
-					    TOP_PROCESSES_IN_SAMPLE);
+					    m_top_processes_in_sample);
 			// Filter top client/server programs
 			filter_top_programs(progtable.begin(),
 					    progtable.end(),
 					    true,
-					    TOP_PROCESSES_IN_SAMPLE);
+					    m_top_processes_in_sample);
 			// Add at least one process per emitted_container
 			for(const auto& container_id : emitted_containers)
 			{
