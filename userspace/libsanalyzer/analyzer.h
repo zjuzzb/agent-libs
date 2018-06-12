@@ -522,6 +522,7 @@ public:
 	void init_k8s_limits();
 #endif
 
+	void set_max_n_external_clients(uint32_t val) { m_max_n_external_clients = val; }
 	void set_top_connections_in_sample(uint32_t val) { m_top_connections_in_sample = val; }
 
 	//
@@ -897,6 +898,7 @@ VISIBILITY_PRIVATE
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
 
+	uint32_t m_max_n_external_clients = MAX_N_EXTERNAL_CLIENTS;
 	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
 
 	//

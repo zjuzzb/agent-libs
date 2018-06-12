@@ -3047,7 +3047,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			{
 				unique_external_ips.insert(sip);
 
-				if(unique_external_ips.size() > MAX_N_EXTERNAL_CLIENTS)
+				if(unique_external_ips.size() > m_max_n_external_clients)
 				{
 					aggregate_external_clients = true;
 					break;

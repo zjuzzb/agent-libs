@@ -1130,6 +1130,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_flush_log_time_cooldown = m_config->get_scalar<uint64_t>("flush_tracers", "cooldown_ms", 600000) * 1000000;
 
 	m_top_connections_in_sample = m_config->get_scalar<uint32_t>("top_connections_in_sample", TOP_CONNECTIONS_IN_SAMPLE);
+	m_max_n_external_clients = m_config->get_scalar<uint32_t>("max_n_external_clients", MAX_N_EXTERNAL_CLIENTS);
 }
 
 void dragent_configuration::print_configuration() const
