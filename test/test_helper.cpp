@@ -24,6 +24,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <cassert>
+#include <sys/wait.h>
 
 using namespace std;
 
@@ -237,6 +238,56 @@ void pgid_test(const vector<string>& args)
 	}
 }
 
+void custom_container(const vector<string>& args)
+{
+	string cpu_cgroup = "/sys/fs/cgroup/cpu/custom_container_foo";
+
+	pid_t pid;
+	struct stat s;
+
+	if (stat(cpu_cgroup.c_str(), &s) < 0) {
+		if (mkdir(cpu_cgroup.c_str(), 0777) < 0)
+		{
+			fprintf(stderr, "Could not create cgroup directory %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+			return;
+		}
+	}
+
+	auto fp = fopen((cpu_cgroup + "/cgroup.procs").c_str(), "w");
+	if (!fp)
+	{
+		fprintf(stderr, "Could not open cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return;
+	}
+	if (fprintf(fp, "%d\n", getpid()) < 0)
+	{
+		fprintf(stderr, "Could not write pid to cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return;
+	}
+	if (fclose(fp) < 0)
+	{
+		fprintf(stderr, "Could not close cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return;
+	}
+
+	char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+	char *const exenv[] = {(char *) "CUSTOM_CONTAINER_NAME=custom_name", (char *) "CUSTOM_CONTAINER_IMAGE=custom_image", nullptr};
+	int status;
+
+	signal(SIGCHLD, SIG_IGN);
+	pid = fork();
+	switch(pid) {
+		case 0: // child
+			execve("/bin/echo", exargs, exenv);
+			exit(127);
+		case -1: // error
+			fprintf(stderr, "Could not close cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+			return;
+		default:
+			waitpid(pid, &status, 0);
+	}
+}
+
 const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "proc_mgmt", proc_mgmt},
 			{ "mmap_test", mmap_test},
@@ -268,7 +319,8 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "quotactl_ko", quotactl_ko},
 			{ "quotactl_ok", quotactl_ok},
 			{ "ppoll_timeout", ppoll_timeout},
-			{ "pgid_test", pgid_test}
+			{ "pgid_test", pgid_test},
+			{ "custom_container", custom_container}
 	};
 
 // Helper to test ia32 emulation on 64bit

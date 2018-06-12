@@ -23,6 +23,7 @@
 #ifndef CYGWING_AGENT
 #include "coclient.h"
 #include "infrastructure_state.h"
+#include "custom_container.h"
 #endif
 #include "internal_metrics.h"
 
@@ -428,6 +429,11 @@ public:
 			m_app_proxy = make_unique<app_checks_proxy>();
 		}
 	}
+
+	void set_custom_container_conf(custom_container::resolver&& conf)
+	{
+		std::swap(m_custom_container, conf);
+	}
 #endif	
 #endif // _WIN32
 
@@ -481,6 +487,13 @@ public:
 	bool recent_sinsp_events_dropped()
 	{
 		return ((m_internal_metrics->get_n_drops() + m_internal_metrics->get_n_drops_buffer()) > 0);
+	}
+
+	void dump_config_test()
+	{
+#ifndef CYGWING_AGENT
+		m_custom_container.dump_container_table();
+#endif
 	}
 
 #ifndef CYGWING_AGENT
@@ -783,6 +796,7 @@ VISIBILITY_PRIVATE
 
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
+	custom_container::resolver m_custom_container;
 #endif	
 #endif
 

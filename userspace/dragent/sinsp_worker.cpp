@@ -356,6 +356,11 @@ void sinsp_worker::init()
 
 #ifndef CYGWING_AGENT
 	m_analyzer->set_prometheus_conf(m_configuration->m_prom_conf);
+	if (m_configuration->m_config_test)
+	{
+		m_configuration->m_custom_container.set_config_test(true);
+	}
+	m_analyzer->set_custom_container_conf(move(m_configuration->m_custom_container));
 #endif
 
 	m_analyzer->get_configuration()->set_orch_queue_len(m_configuration->m_orch_queue_len);
@@ -502,6 +507,12 @@ void sinsp_worker::run()
 	g_log->information("sinsp_worker: Starting");
 
 	init();
+
+	if (m_configuration->m_config_test)
+	{
+		dragent_configuration::m_terminate = true;
+		m_analyzer->dump_config_test();
+	}
 
 	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 

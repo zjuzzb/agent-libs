@@ -4,6 +4,7 @@
 #include "logger.h"
 #include "user_event.h"
 #include "metric_limits.h"
+#include "custom_container.h"
 
 // suppress deprecated warnings for auto_ptr in boost
 #pragma GCC diagnostic push
@@ -266,6 +267,28 @@ public:
 		return default_value;
 	}
 
+	template<typename T>
+	T get_scalar(const string& key, const string& subkey, const string& subsubkey, const T& default_value)
+	{
+		for(const auto& root : m_roots)
+		{
+			try
+			{
+				auto node = root[key][subkey][subsubkey];
+				if (node.IsDefined())
+				{
+					return node.as<T>();
+				}
+			}
+			catch (const YAML::BadConversion& ex)
+			{
+				m_errors.emplace_back(string("Config file error at key: ") + key + "." + subkey);
+			}
+		}
+
+		return default_value;
+	}
+
 	/**
 	* get data from a sequence of objects, they
 	* will be merged between settings file and
@@ -368,6 +391,49 @@ public:
 		return ret;
 	}
 
+	template<typename T>
+	void get_map(unordered_map<string, T>& ret, const YAML::Node& node, const std::string& key)
+	{
+		YAML::Node child_node = node[key];
+		if(child_node.IsDefined())
+		{
+			for(const auto& item : child_node)
+			{
+				try
+				{
+					ret[item.first.as<string>()] = item.second.as<T>();
+				}
+				catch (const YAML::BadConversion& ex)
+				{
+					m_errors.emplace_back(string("Config file error at key ") + key);
+				}
+			}
+		}
+	}
+
+	template<typename T, typename... Args>
+	void get_map(unordered_map<string, T>& ret, const YAML::Node& node, const std::string& key, Args... args)
+	{
+		YAML::Node child_node = node[key];
+		if(child_node.IsDefined())
+		{
+			get_map(ret, child_node, args...);
+		}
+	}
+
+	template<typename T, typename... Args>
+	unordered_map<string, T> get_first_deep_map(Args... args)
+	{
+		unordered_map<string, T> ret;
+		for(auto it = m_roots.begin(); it != m_roots.end(); ++it)
+		{
+			get_map(ret, *it, args...);
+			if (!ret.empty())
+				return ret;
+		}
+		return ret;
+	}
+
 	inline const vector<string>& errors() const
 	{
 		return m_errors;
@@ -389,13 +455,12 @@ public:
 		return m_roots;
 	}
 
-private:
-
 	void add_error(const std::string& err)
 	{
 		m_errors.emplace_back(err);
 	}
 
+private:
 	// no-op needed to compile and terminate recursion
 	template <typename T>
 	static void get_sequence(T&, const YAML::Node&)
@@ -535,6 +600,7 @@ public:
 	string m_dump_dir;
 	string m_input_filename;
 	uint64_t m_evtcnt;
+	bool m_config_test;
 
 	// parameters used by cpu usage tuning
 	uint32_t m_subsampling_ratio;
@@ -601,6 +667,7 @@ public:
 	bool m_system_supports_containers;
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
+	custom_container::resolver m_custom_container;
 #endif
 
 	typedef std::set<std::string>      k8s_ext_list_t;

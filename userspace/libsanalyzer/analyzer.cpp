@@ -6061,6 +6061,12 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 	case CT_RKT:
 		container->set_type(draiosproto::RKT);
 		break;
+#warning "Uncomment after SMBACK-1723 lands"
+#if 0
+	case CT_CUSTOM:
+		container->set_type(draiosproto::CUSTOM);
+		break;
+#endif
 	default:
 		ASSERT(false);
 	}
