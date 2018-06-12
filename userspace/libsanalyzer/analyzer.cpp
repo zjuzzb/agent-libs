@@ -3229,7 +3229,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_and_filtered_ipv4_connections;
 	auto connection_to_emit = m_reduced_ipv4_connections;
 
-	if(m_reduced_ipv4_connections->size() > TOP_CONNECTIONS_IN_SAMPLE)
+	if(m_reduced_ipv4_connections->size() > m_top_connections_in_sample)
 	{
 		//
 		// Prepare the sortable list
@@ -3248,11 +3248,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 		// connections
 		//
 		partial_sort(sortable_conns.begin(),
-			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
+			sortable_conns.begin() + m_top_connections_in_sample,
 			sortable_conns.end(),
 			conn_cmp_n_aggregated_connections);
 
-		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
+		for(uint32_t j = 0; j < m_top_connections_in_sample; j++)
 		{
 			//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
 
@@ -3264,11 +3264,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 		// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
 		//
 		partial_sort(sortable_conns.begin(),
-			sortable_conns.begin() + TOP_CONNECTIONS_IN_SAMPLE,
+			sortable_conns.begin() + m_top_connections_in_sample,
 			sortable_conns.end(),
 			conn_cmp_bytes);
 
-		for(uint32_t j = 0; j < TOP_CONNECTIONS_IN_SAMPLE; j++)
+		for(uint32_t j = 0; j < m_top_connections_in_sample; j++)
 		{
 			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
 				*(sortable_conns[j].second);

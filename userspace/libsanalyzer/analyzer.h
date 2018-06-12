@@ -521,6 +521,9 @@ public:
 #ifndef CYGWING_AGENT
 	void init_k8s_limits();
 #endif
+
+	void set_top_connections_in_sample(uint32_t val) { m_top_connections_in_sample = val; }
+
 	//
 	// Test tool detection state
 	//
@@ -893,6 +896,8 @@ VISIBILITY_PRIVATE
 	internal_metrics::sptr_t m_internal_metrics;
 
 	run_on_interval m_proclist_refresher_interval = { NODRIVER_PROCLIST_REFRESH_INTERVAL_NS};
+
+	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

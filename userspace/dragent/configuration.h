@@ -801,6 +801,8 @@ public:
 	uint64_t m_flush_log_time_duration;
 	uint64_t m_flush_log_time_cooldown;
 
+	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

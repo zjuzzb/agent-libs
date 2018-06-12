@@ -522,6 +522,7 @@ void sinsp_worker::init()
 #ifndef CYGWING_AGENT
 	m_analyzer->set_coclient_max_loop_evts(m_configuration->m_coclient_max_loop_evts);
 #endif
+	m_analyzer->set_top_connections_in_sample(m_configuration->m_top_connections_in_sample);
 }
 
 void sinsp_worker::run()
