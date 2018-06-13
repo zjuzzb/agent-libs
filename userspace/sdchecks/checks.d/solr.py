@@ -55,6 +55,8 @@ class Solr(AgentCheck):
 
             if self.version is not None and int(self.version[0:1]) == 5:
                 self.sMetric = Solr5(self.version, instance)
+            elif self.version is None:
+                raise CheckException("Failed to find Solr version")
             else:
                 raise CheckException("Solr version {} not yet supported".format(self.version[0:1]))
 

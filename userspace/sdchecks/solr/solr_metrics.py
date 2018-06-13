@@ -181,7 +181,8 @@ class SolrMetrics(object):
             return [{}, 0]
 
     def _getUrl(self, handler):
-        obj, self.port = SolrMetrics.getUrl(self.host, self.ports, handler)
+        ports = [ self.port ] if self.port else self.ports
+        obj, self.port = SolrMetrics.getUrl(self.host, ports, handler)
         return obj
 
     def _getUrlWithBase(self, baseUrl, handler):
