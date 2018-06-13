@@ -71,3 +71,7 @@ beautifulsoup4==4.5.1
 
 # checks.d/network.py
 psutil==4.4.1
+
+# solr/solr_5.py
+enum34==1.1.6
+netifaces==0.10.7
