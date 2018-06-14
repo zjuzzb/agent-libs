@@ -29,6 +29,7 @@ add_definitions( -DHAS_ANALYZER )
 add_executable(tests
 	analyzer_test.cpp
 	app_checks.cpp
+	baseliner.cpp
 	capture_to_file_test.cpp
 	container.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp

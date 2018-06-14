@@ -1,6 +1,7 @@
 #include <iostream>
 #include <sinsp.h>
 #include <sinsp_int.h>
+#include <filterchecks.h>
 #include "utils.h"
 #ifdef HAS_ANALYZER
 #include "draios.pb.h"
@@ -12,6 +13,7 @@
 #undef AVOID_FDS_FROM_THREAD_TABLE
 
 extern sinsp_evttables g_infotables;
+extern sinsp_filter_check_list g_filterlist;
 
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
@@ -72,6 +74,27 @@ void sinsp_baseliner::init(sinsp* inspector)
 	});
 	m_ifaddr_list = m_inspector->get_ifaddr_list();
 	load_tables(0);
+
+	std::shared_ptr<sinsp_filter_check> arg1, arg2, absp, absdst;
+	arg1.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[1]", m_inspector, true));
+	arg1->parse_field_name("evt.arg[1]", true, false);
+	arg2.reset(g_filterlist.new_filter_check_from_fldname("evt.arg[2]", m_inspector, true));
+	arg2->parse_field_name("evt.arg[2]", true, false);
+	absp.reset(g_filterlist.new_filter_check_from_fldname("evt.abspath", m_inspector, false));
+	absp->parse_field_name("evt.abspath", true, false);
+	absdst.reset(g_filterlist.new_filter_check_from_fldname("evt.abspath.dst", m_inspector, false));
+	absdst->parse_field_name("evt.abspath.dst", true, false);
+
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_MKDIR_2_X, arg1);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RMDIR_2_X, arg1);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_UNLINK_2_X, arg1);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAME_X, arg1);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_MKDIRAT_X, absp);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_UNLINKAT_2_X, absp);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAMEAT_X, absp);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAME_X, arg2);
+	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAMEAT_X, absdst);
+
 #ifndef HAS_ANALYZER
 	const scap_machine_info* minfo = m_inspector->get_machine_info();
 	m_hostname = minfo->hostname;
@@ -1233,8 +1256,101 @@ void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 	}
 }
 
+inline void sinsp_baseliner::extract_from_event(sinsp_evt *evt)
+{
+	file_category cat = file_category::NONE;
+	sinsp_threadinfo* tinfo = evt->get_thread_info();
+	uint16_t etype = evt->get_type();
+
+	if(m_nofd_fs_extractors.find(etype) == m_nofd_fs_extractors.end())
+	{
+		return;
+	}
+
+	//
+	// Check the return value. We only care about successful operations
+	//
+	sinsp_evt_param *parinfo = evt->get_param(0);
+	ASSERT(parinfo->m_len == sizeof(int64_t));
+	int64_t rv = *(int64_t *)parinfo->m_val;
+	if(rv != 0)
+	{
+		cat = file_category::FAILED_OPS;
+	}
+
+	blprogram* pinfo = get_program(tinfo);
+	if(pinfo == NULL)
+	{
+		return;
+	}
+
+	sinsp_threadinfo* mt = tinfo->get_main_thread();
+	uint64_t clone_ts;
+
+	if(mt != NULL)
+	{
+		clone_ts = (mt->m_clone_ts != 0)? mt->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+	else
+	{
+		clone_ts = (tinfo->m_clone_ts != 0)? tinfo->m_clone_ts : m_inspector->m_firstevent_ts;
+	}
+	uint64_t time_from_clone = evt->get_ts() - clone_ts;
+
+	// these operations are always rw
+	cat = static_cast<file_category>(cat | file_category::READ_WRITE);
+
+	bool dir_unlink = false;
+	if(etype == PPME_SYSCALL_UNLINKAT_2_X)
+	{
+		parinfo = evt->get_param(3);
+		ASSERT(parinfo->m_len == sizeof(uint32_t));
+		uint32_t flags = *(uint32_t *)parinfo->m_val;
+		dir_unlink = flags & PPM_AT_REMOVEDIR;
+	}
+
+	auto range = m_nofd_fs_extractors.equal_range(evt->get_type());
+
+	for(auto it = range.first; it != range.second; ++it)
+	{
+		uint8_t *val;
+		uint32_t len;
+
+		val = it->second->extract(evt, &len);
+		string name((const char *)val);
+
+		//
+		// Add the parent directory to the directory table
+		//
+		string sdir = blfiletable::file_to_dir(name);
+		pinfo->m_dirs.add(sdir, cat, time_from_clone);
+
+		if((etype != PPME_SYSCALL_UNLINK_2_X && etype != PPME_SYSCALL_UNLINKAT_2_X) ||
+		   (etype == PPME_SYSCALL_UNLINKAT_2_X && dir_unlink))
+		{
+			//
+			// Add the directory to the directory table
+			//
+			pinfo->m_dirs.add(name, cat, time_from_clone);
+		}
+
+		if((etype == PPME_SYSCALL_UNLINK_2_X || (etype == PPME_SYSCALL_UNLINKAT_2_X && !dir_unlink)) ||
+		   (etype == PPME_SYSCALL_RENAME_X || etype == PPME_SYSCALL_RENAMEAT_X))
+		{
+			//
+			// unlink/unlinkat of a file or
+			// we don't know if name is a file or a directory
+			// so add it to the file table
+			//
+			pinfo->m_files.add(name, cat, time_from_clone);
+		}
+	}
+}
+
 void sinsp_baseliner::process_event(sinsp_evt *evt)
 {
+	extract_from_event(evt);
+
 	uint16_t etype = evt->m_pevt->type;
 	if(!PPME_IS_ENTER(etype))
 	{

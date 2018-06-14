@@ -1402,6 +1402,7 @@ public:
 	void on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo);
 	void on_bind(sinsp_evt *evt);
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
+	inline void extract_from_event(sinsp_evt *evt);
 	void process_event(sinsp_evt *evt);
 
 	void init_programs(sinsp* inspector, uint64_t time, bool skip_fds);
@@ -1421,4 +1422,5 @@ public:
 	std::thread* m_procparser_thread;
 	proc_parser_state* m_procparser_state;
 #endif
+	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_nofd_fs_extractors;
 };
