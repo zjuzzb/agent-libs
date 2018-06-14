@@ -32,6 +32,7 @@ add_executable(tests
 	baseliner.cpp
 	capture_to_file_test.cpp
 	container.cpp
+	container_image_splitting.cpp
 	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp
 	coclient_test.cpp
 	custom_container.cpp

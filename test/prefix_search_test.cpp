@@ -199,53 +199,6 @@ TEST(prefix_search_test, root_dir_maps)
 	ASSERT_TRUE(*match == 2);
 }
 
-struct container_split_testcase
-{
-	filter_value_t input;
-	filter_value_t exp_hostname;
-	filter_value_t exp_port;
-	filter_value_t exp_imagename;
-	filter_value_t exp_tag;
-	filter_value_t exp_digest;
-};
-
-static filter_value_t empty = {(uint8_t *) "\0", 1};
-
-static list<container_split_testcase> container_split_testcases = {
-	{{(uint8_t *) "busybox", 7},empty,empty,{(uint8_t *) "busybox", 7},empty,empty},
-	{{(uint8_t *) "busybox:latest", 14},empty,empty,{(uint8_t *) "busybox", 7},{(uint8_t *) "latest", 6},empty},
-	{{(uint8_t *) "busybox:1.27.2@sha256:bbc3a03", 29},empty,empty,{(uint8_t *) "busybox", 7},{(uint8_t *) "1.27.2",6},{(uint8_t *)"sha256:bbc3a03", 14}},
-	{{(uint8_t *) "my.host.name/busybox:1.27.2@sha256:bbc3a03", 42},{(uint8_t *) "my.host.name", 12},empty,{(uint8_t *) "busybox", 7},{(uint8_t *) "1.27.2",6},{(uint8_t *)"sha256:bbc3a03", 14}},
-	{{(uint8_t *) "my.host.name:12345/library/busybox:1.27.2@sha256:bbc3a03", 56},{(uint8_t *) "my.host.name", 12},{(uint8_t *) "12345", 5},{(uint8_t *) "library/busybox", 15},{(uint8_t *) "1.27.2",6},{(uint8_t *)"sha256:bbc3a03", 14}},
-	{{(uint8_t *) "localhost:12345/library/busybox:1.27.2@sha256:bbc3a03", 53},{(uint8_t *) "localhost", 9},{(uint8_t *) "12345", 5},{(uint8_t *) "library/busybox", 15},{(uint8_t *) "1.27.2",6},{(uint8_t *)"sha256:bbc3a03", 14}}
-};
-
-#define CHECK_FILTER_VALUE(name, actual, expected) ASSERT_TRUE(comp(actual, expected)) << "Expected " << name " '" << string((char *) expected.first, expected.second) << "' did not match actual value '" << string((char *) actual.first, actual.second) << "'"
-
-TEST(prefix_search_test, container_splitting)
-{
-	g_equal_to_membuf comp;
-
-	for(auto &testcase : container_split_testcases)
-	{
-		filter_value_t hostname;
-		filter_value_t port;
-		filter_value_t imagename;
-		filter_value_t tag;
-		filter_value_t digest;
-
-		path_prefix_map_ut::split_container_image(testcase.input,
-							  hostname, port,
-							  imagename,
-							  tag, digest);
-		CHECK_FILTER_VALUE("hostname", hostname, testcase.exp_hostname);
-		CHECK_FILTER_VALUE("port", port, testcase.exp_port);
-		CHECK_FILTER_VALUE("image name", imagename, testcase.exp_imagename);
-		CHECK_FILTER_VALUE("tag", tag, testcase.exp_tag);
-		CHECK_FILTER_VALUE("digest", digest, testcase.exp_digest);
-	}
-}
-
 TEST(prefix_search_test, container_images)
 {
 	path_prefix_map<uint32_t> tree;

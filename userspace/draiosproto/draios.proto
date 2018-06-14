@@ -662,6 +662,9 @@ message container {
     optional string mesos_task_id = 23;
     optional string image_id = 24;
     repeated command_details commands = 25; // List of commands executed in this container during the sample.
+    optional string image_repo = 27;
+    optional string image_tag = 28;
+    optional string image_digest = 29;
 }
 
 //

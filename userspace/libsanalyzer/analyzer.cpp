@@ -6086,6 +6086,21 @@ sinsp_analyzer::emit_container(const string &container_id, unsigned *statsd_limi
 		container->set_image_id(it->second.m_imageid.substr(0, 12));
 	}
 
+	if(!it->second.m_imagerepo.empty())
+	{
+		container->set_image_repo(it->second.m_imagerepo);
+	}
+
+	if(!it->second.m_imagetag.empty())
+	{
+		container->set_image_tag(it->second.m_imagetag);
+	}
+
+	if(!it->second.m_imagedigest.empty())
+	{
+		container->set_image_digest(it->second.m_imagedigest);
+	}
+
 #ifndef CYGWING_AGENT
 	if(!it->second.m_mesos_task_id.empty())
 	{

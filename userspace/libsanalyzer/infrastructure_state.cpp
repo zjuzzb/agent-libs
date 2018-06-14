@@ -944,6 +944,9 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 	(*cg->mutable_tags())["container.name"] = container_info.m_name;
 	(*cg->mutable_tags())["container.image"] = container_info.m_image;
 	(*cg->mutable_tags())["container.image.id"] = container_info.m_imageid.substr(0, 12);
+	(*cg->mutable_tags())["container.image.repo"] = container_info.m_imagerepo;
+	(*cg->mutable_tags())["container.image.tag"] = container_info.m_imagetag;
+	(*cg->mutable_tags())["container.image.digest"] = container_info.m_imagedigest;
 	// only needed for baseline MVP grouping key
 	size_t apos = container_info.m_image.find("@");
 	(*cg->mutable_internal_tags())["container.image.name_no_digest"] = apos != string::npos ? container_info.m_image.substr(0, apos) : container_info.m_image;

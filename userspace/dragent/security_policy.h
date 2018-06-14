@@ -717,17 +717,6 @@ protected:
 	std::string qualifies();
 };
 
-// Slight abuse to use a namespace really from the sysdig repo
-namespace path_prefix_map_ut
-{
-	void split_container_image(const filter_value_t &image,
-				   filter_value_t &hostname,
-				   filter_value_t &port,
-				   filter_value_t &imagename,
-				   filter_value_t &tag,
-				   filter_value_t &digest);
-}
-
 class SINSP_PUBLIC container_policies : public matchlist_map_security_policies
 {
 public:

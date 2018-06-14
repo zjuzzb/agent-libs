@@ -1446,97 +1446,34 @@ std::string container_policies::qualifies()
 	return string("proc.vpid=1 and container.id != host");
 }
 
-static bool split(const filter_value_t &val,
-		  filter_value_t &part1, filter_value_t &part2,
-		  int sep)
-{
-	uint8_t *p;
-	filter_value_t empty = {(uint8_t *) "\0", 1};
-
-	if((p = (uint8_t *) memchr(val.first, sep, val.second)) != NULL)
-	{
-		part1 = make_pair((uint8_t *) val.first, p-val.first);
-		if(part1.second == 0)
-		{
-			part1 = empty;
-		}
-		part2 = make_pair((uint8_t *) (p+1), val.second-part1.second-1);
-		if(part2.second == 0)
-		{
-			part2 = empty;
-		}
-		return true;
-	}
-
-	return false;
-}
-
-void path_prefix_map_ut::split_container_image(const filter_value_t &image,
-					       filter_value_t &hostname,
-					       filter_value_t &port,
-					       filter_value_t &imagename,
-					       filter_value_t &tag,
-					       filter_value_t &digest)
+void container_policies::split_components(const filter_value_t &val, filter_components_t &components)
 {
 	// Regex: (we can switch to it if we will ever support gcc 4.9+)
 	// ^(?:((?=[^:]{4,253})[a-zA-Z0-9-]{1,63}(?:[.][a-zA-Z0-9-]{1,63})*)(?::?([0-9]{1,5}))?/)? -> host.name:port/
 	// ((?:[a-z0-9._-])*(?:/[a-z0-9._-]*)*)(?::((?![.-])[a-zA-Z0-9_.-]{1,128}))? ---------------> name:tag
 	// (?:@[A-Za-z][A-Za-z0-9]*(?:[-_+.][A-Za-z][A-Za-z0-9]*)*:([0-9A-Fa-f]{32,}))?$ -----------> @digest
 
-	filter_value_t hostport, rem, rem2;
+	std::string h, p, n, t, d, image = string((const char *)val.first);
+
+	sinsp_utils::split_container_image(image, h, p, n, t, d);
+
 	filter_value_t empty = {(uint8_t *) "\0", 1};
-
-	hostname = port = imagename = tag = digest = empty;
-
-	if(split(image, hostport, rem, '/'))
+	std::list<std::string> l = {h, p, n, t, d};
+	size_t lastpos = 0;
+	for(const auto &c : l)
 	{
-		if(!split(hostport, hostname, port, ':'))
+		if(c.empty())
 		{
-			hostname = hostport;
-			port = empty;
+			components.emplace_back(empty);
+		}
+		else
+		{
+			lastpos = image.find(c, lastpos);
+			components.emplace_back(make_pair((uint8_t *)(val.first + lastpos), c.length()));
 		}
 	}
-	else
-	{
-		hostname = empty;
-		port = empty;
-		rem = image;
-	}
 
-	if(split(rem, rem2, digest, '@'))
-	{
-		if(!split(rem2, imagename, tag, ':'))
-		{
-			imagename = rem2;
-			tag = empty;
-		}
-	}
-	else
-	{
-		digest = empty;
-		if(!split(rem, imagename, tag, ':'))
-		{
-			imagename = rem;
-			tag = empty;
-		}
-	}
-}
-void container_policies::split_components(const filter_value_t &val, filter_components_t &components)
-{
-	filter_value_t hostname, port, imagename, tag, digest;
-	filter_value_t empty = {(uint8_t *) "\0", 1};
 	g_equal_to_membuf filter_value_equal;
-
-	path_prefix_map_ut::split_container_image(val, hostname, port,
-						  imagename,
-						  tag, digest);
-
-	components.emplace_back(hostname);
-	components.emplace_back(port);
-	components.emplace_back(imagename);
-	components.emplace_back(tag);
-	components.emplace_back(digest);
-
 	while(filter_value_equal(components.back(), empty))
 	{
 		components.pop_back();
