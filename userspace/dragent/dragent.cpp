@@ -397,14 +397,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			args[j++] = "-jar";
 			File sdjagent_jar(m_configuration.m_root_dir + "/share/sdjagent.jar");
 
-			if(sdjagent_jar.exists())
-			{
-				args[j++] = (m_configuration.m_root_dir + "/share/sdjagent.jar").c_str();
-			}
-			else
-			{
-				args[j++] = "../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
-			}
+			std::string jar_file = sdjagent_jar.exists() ?
+				(m_configuration.m_root_dir + "/share/sdjagent.jar").c_str() :
+				"../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
+
+			args[j++] = jar_file.c_str();
 			args[j++] = NULL;
 
 			execv(this->m_configuration.m_java_binary.c_str(), (char* const*)args);
