@@ -148,6 +148,12 @@ class Solr5(SolrMetrics):
             self.TAG_NAME[self.Tag.COLLECTION] % coreStatistic.core.collection,
             self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name,
         ]
+        # Report 0 for non-leader cores so we still show data for the core but
+        # the total of all cores still shows the correct size for the collection
+        if coreStatistic.core.name not in self.localLeaderCores:
+            ret = self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE, 0, tags)
+            return ret
+
         try:
             size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")
             #erase ',' from the size
