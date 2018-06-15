@@ -195,6 +195,16 @@ class SolrMetrics(object):
 
         return obj
 
+    def _isLocal(self, ip, port):
+        try:
+            ret = self.network.ipIsLocalHostOrDockerContainer(ip) and int(self.port) == int(port)
+            self.log.debug("{}:{} is {} to {}:{}".format(ip, port, "local" if ret else "not local", "localhost", self.port))
+        except:
+            self.log.warning("Failed to determine locality of {}:{} on {}:{}".format(ip, port, "localhost", self.port))
+            return False
+
+        return ret
+
     def _getLiveNodes(self):
         ret = []
         obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
@@ -204,8 +214,9 @@ class SolrMetrics(object):
                 live_node_count = 0
                 for live_node in obj["cluster"]["live_nodes"]:
                     hostname = live_node.split(':')[0]
+                    port = live_node.split(':')[1].split('_')[0]
                     ip_address = socket.gethostbyname(hostname)
-                    if self.network.ipIsLocalHostOrDockerContainer(ip_address):
+                    if self._isLocal(ip_address, port):
                         live_node_count += 1
 
                 ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_node_count, None))
@@ -243,9 +254,11 @@ class SolrMetrics(object):
                 for shard in shards.values():
                     for replica in shard["replicas"].values():
                         base_url = replica["base_url"]
-                        node_name = urlparse(base_url).hostname
+                        parsedUrl = urlparse(base_url)
+                        node_name = parsedUrl.hostname
+                        port = parsedUrl.port
                         node_ip_address = socket.gethostbyname(node_name)
-                        if self.network.ipIsLocalHostOrDockerContainer(node_ip_address):
+                        if self._isLocal(node_ip_address, port):
                             # found a replica that is local to this host
                             shards_per_host = shards_per_host + 1
                             break
@@ -337,7 +350,7 @@ class SolrMetrics(object):
                             hostname_from_url = parsedUrl.hostname
                             port_from_url = parsedUrl.port
                             ip_address = socket.gethostbyname(hostname_from_url)
-                            if self.network.ipIsLocalHostOrDockerContainer(ip_address):
+                            if self._isLocal(ip_address, port_from_url):
                                 coreName = replica["core"]
 
                                 leader = replica.get("leader", False)
