@@ -5,7 +5,7 @@ if(Java_Development_FOUND)
     add_custom_target(sdjagent ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/java/sdjagent-1.0-jar-with-dependencies.jar)
     add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/java/sdjagent-1.0-jar-with-dependencies.jar
             COMMAND JAVA_HOME=${JAVA_HOME}
-            ${DRAIOS_DEPENDENCIES_DIR}/apache-maven-3.2.5/bin/mvn -q -PcustomBuild
+            ${DRAIOS_DEPENDENCIES_DIR}/apache-maven-3.2.5/bin/mvn -q -PcustomBuild -Dhttps.protocols=TLSv1.2
             -Dcustom.build.directory=${CMAKE_CURRENT_BINARY_DIR}/java compile assembly:single
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             DEPENDS src/main/java/com/sysdigcloud/sdjagent/ApplicationLoader.java
