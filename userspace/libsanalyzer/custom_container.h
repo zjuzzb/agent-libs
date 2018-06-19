@@ -116,16 +116,31 @@ public:
 		{
 			throw Poco::RuntimeException("Custom containers enabled without custom_containers.id template set");
 		}
+		if (enabled && !m_cgroup_match && m_environ_match.empty())
+		{
+			throw Poco::RuntimeException("Custom containers enabled with neither cgroup nor environ match set");
+		}
 		m_enabled = enabled;
 	}
 
 	void set_cgroup_match(const std::string& rx)
 	{
-		m_cgroup_match.reset(new Poco::RegularExpression(rx, 0));
+		if (rx.empty())
+		{
+			m_cgroup_match.reset(nullptr);
+		}
+		else
+		{
+			m_cgroup_match.reset(new Poco::RegularExpression(rx, 0));
+		}
 	}
 
 	void set_environ_match(const std::string& var_name, const std::string& rx)
 	{
+		if (var_name.empty())
+		{
+			throw Poco::RuntimeException("Environment variable to match cannot be empty");
+		}
 		std::string s(var_name);
 		m_environ_match[s].reset(new Poco::RegularExpression(rx, 0));
 	}
