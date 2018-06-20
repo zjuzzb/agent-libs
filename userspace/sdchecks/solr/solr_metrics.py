@@ -35,7 +35,7 @@ class SolrMetrics(object):
         GET_RPS = 9,
         QUERY_RPS = 10,
         UPDATE_RPS = 11,
-        INDEX_SIZE = 12,
+        INDEX_SIZE_REP = 12,
         BROWSE_RT = 13,
         SELECT_RT = 14,
         GET_RT = 15,
@@ -48,6 +48,7 @@ class SolrMetrics(object):
         UPDATEHANDLER_DELETES_BY_QUERY = 22,
         UPDATEHANDLER_COMMITS = 23,
         UPDATEHANDLER_AUTOCOMMITS = 24,
+        INDEX_SIZE_LOG = 25,
         NONE = 100
 
     class Endpoint(Enum):
