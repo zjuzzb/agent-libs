@@ -194,6 +194,8 @@ public class MonitoredVM {
             } else if (arg.startsWith("-Dcassandra.jmx.local.port=")) { // Hack to autodetect cassandra
                 port = Integer.parseInt(arg.substring(arg.indexOf("=") + 1));
                 name = "org.apache.cassandra.service.CassandraDaemon"; // To avoid false negatives force cassandra here
+            } else if (arg.startsWith("-jar:")){
+                name = arg.substring("-jar:".length());
             }
         }
         if (port != -1 && authenticate == false) {
