@@ -89,4 +89,4 @@ private:
 	internal_metrics::sptr_t m_internal_metrics;
 };
 
-extern dragent_logger* g_log;
+extern std::unique_ptr<dragent_logger> g_log;

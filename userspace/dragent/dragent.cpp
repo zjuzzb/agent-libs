@@ -77,7 +77,6 @@ dragent_app::dragent_app():
 
 dragent_app::~dragent_app()
 {
-	delete g_log;
 	google::protobuf::ShutdownProtobufLibrary();
 }
 
@@ -711,6 +710,7 @@ int dragent_app::sdagent_main()
 	}
 
 	g_log->information("Terminating");
+	g_log->set_capture_job_handler(nullptr);
 	return exit_code;
 }
 
@@ -1109,7 +1109,7 @@ void dragent_app::initialize_logging()
 
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
 
-	g_log = new dragent_logger(&loggerf, make_console_channel(formatter), make_event_channel());
+	g_log = unique_ptr<dragent_logger>(new dragent_logger(&loggerf, make_console_channel(formatter), make_event_channel()));
 
 	g_log->init_user_events_throttling(m_configuration.m_user_events_rate,
 					   m_configuration.m_user_max_burst_events);

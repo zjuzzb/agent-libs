@@ -35,7 +35,7 @@ protected:
 			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
 			Logger &loggerc = Logger::create("DraiosLogC", formatting_channel_console, (Message::Priority) -1);
 
-			g_log = new dragent_logger(&loggerc, &loggerc, &loggerc);
+			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&loggerc, &loggerc, &loggerc));
 		}
 	}
 

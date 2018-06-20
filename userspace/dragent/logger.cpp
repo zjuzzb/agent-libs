@@ -6,7 +6,7 @@
 using namespace Poco;
 using Poco::Message;
 
-dragent_logger* g_log = NULL;
+unique_ptr<dragent_logger> g_log;
 
 dragent_logger::dragent_logger(Logger* file_log, Logger* console_log, Logger* event_log):
 	m_file_log(file_log),
