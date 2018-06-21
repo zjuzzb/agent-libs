@@ -323,6 +323,8 @@ class SolrMetrics(object):
                     if core_name not in self.localLeaderCores:
                         # Report 0 for non-leader cores so that the number panel in the host specific dashboard has data to show
                         ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, 0, tags))
+                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX, 0, tags))
+                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_DELETED, 0, tags))
                         continue
 
                     numDocs = obj["status"][core_name]["index"]["numDocs"]
