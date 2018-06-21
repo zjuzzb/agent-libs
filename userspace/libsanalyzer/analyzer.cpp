@@ -2509,6 +2509,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		}
 	}
 
+	// Keep track of totals of metrics sent, filtered and pre-filtered
+	unsigned num_app_check_metrics_sent = 0;
+	unsigned num_app_check_metrics_filtered = 0;
+	unsigned num_app_check_metrics_total = 0;
+	unsigned num_prometheus_metrics_sent = 0;
+	unsigned num_prometheus_metrics_filtered = 0;
+	unsigned num_prometheus_metrics_total = 0;
+
 	///////////////////////////////////////////////////////////////////////////
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
@@ -2688,8 +2696,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				// Send data for each app-check for the processes in procinfo
 				unsigned sent_app_checks_metrics = 0;
+				unsigned filtered_app_checks_metrics = 0;
 				unsigned total_app_checks_metrics = 0;
 				unsigned sent_prometheus_metrics = 0;
+				unsigned filtered_prometheus_metrics = 0;
 				unsigned total_prometheus_metrics = 0;
 				// Map of app_check data by app-check name and how long the
 				// metrics have been expired to ensure we serve the most recent
@@ -2753,6 +2763,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 									logged_metric = true;
 								}
 							}
+							filtered_prometheus_metrics += app_data.second->num_metrics();
 							total_prometheus_metrics += app_data.second->total_metrics();
 						}
 						else
@@ -2760,6 +2771,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						{
 							sent_app_checks_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_app(),
 								app_checks_limit, m_configuration->get_app_checks_limit());
+							filtered_app_checks_metrics += app_data.second->num_metrics();
 							total_app_checks_metrics += app_data.second->total_metrics();
 						}
 					}
@@ -2779,6 +2791,13 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				std::get<1>(m_app_checks_by_containers[""]) += total_app_checks_metrics;
 				std::get<0>(m_prometheus_by_containers[""]) += sent_prometheus_metrics;
 				std::get<1>(m_prometheus_by_containers[""]) += total_prometheus_metrics;
+				num_app_check_metrics_sent += sent_app_checks_metrics;
+				num_app_check_metrics_filtered += filtered_app_checks_metrics;
+				num_app_check_metrics_total += total_app_checks_metrics;
+
+				num_prometheus_metrics_sent += sent_prometheus_metrics;
+				num_prometheus_metrics_filtered += filtered_prometheus_metrics;
+				num_prometheus_metrics_total += total_prometheus_metrics;
 			}
 #endif
 
@@ -2879,14 +2898,24 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 	if(app_checks_limit == 0)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "App checks metrics limit (%u) reached",
-			m_configuration->get_app_checks_limit());
+		g_logger.format(sinsp_logger::SEV_WARNING, "App checks metrics limit (%u) reached, %u sent of %u filtered, %u total",
+			m_configuration->get_app_checks_limit(), num_app_check_metrics_sent,
+			num_app_check_metrics_filtered, num_app_check_metrics_total);
+	} else {
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Sent %u Appcheck metrics of %u filtered, %u total",
+			num_app_check_metrics_sent, num_app_check_metrics_filtered,
+			num_app_check_metrics_total);
 	}
 #ifndef CYGWING_AGENT
 	if(prom_metrics_limit == 0)
 	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Prometheus metrics limit (%u) reached",
-			m_prom_conf.max_metrics());
+		g_logger.format(sinsp_logger::SEV_WARNING, "Prometheus metrics limit (%u) reached, %u sent of %u filtered, %u total",
+			m_prom_conf.max_metrics(), num_prometheus_metrics_sent,
+			num_prometheus_metrics_filtered, num_prometheus_metrics_total);
+	} else {
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Sent %u Prometheus metrics of %u filtered, %u total",
+			num_app_check_metrics_sent, num_app_check_metrics_filtered,
+			num_app_check_metrics_total);
 	}
 #endif
 

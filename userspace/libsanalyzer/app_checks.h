@@ -224,6 +224,11 @@ public:
 		return m_service_checks;
 	}
 
+	unsigned num_metrics() const
+	{
+		return m_metrics.size() + m_service_checks.size();
+	}
+
 	unsigned total_metrics() const
 	{
 		return m_total_metrics;
