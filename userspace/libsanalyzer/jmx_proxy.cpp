@@ -292,20 +292,20 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// otherwise we can move the whole parsing here
 	Json::Value args_json(Json::arrayValue);
 	string args;
-	bool take_next_arg = false;
+	bool read_jar_arg = false;
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
 		if((arg.find("-D") == 0 && arg.find("jmx") != string::npos && arg.size() < MAX_ARG_SIZE) ||
 		   (arg.find("UsePerfData") != string::npos) ||
-		   (take_next_arg == true))
+		   (read_jar_arg == true))
 		{
-			args_json.append(take_next_arg ? "-jar:" + arg : arg);
+			args_json.append(read_jar_arg ? "-jar:" + arg : arg);
 			args += arg + " ";
-			take_next_arg =  false;
+			read_jar_arg =  false;
 		}
 		else if(arg == "-jar")
 		{
-			take_next_arg = true;
+			read_jar_arg = true;
 		}
 	}
 	// Last non empty arg is usually the main class
