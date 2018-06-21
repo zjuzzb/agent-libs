@@ -292,7 +292,6 @@ Json::Value jmx_proxy::tinfo_to_json(sinsp_threadinfo *tinfo)
 	// otherwise we can move the whole parsing here
 	Json::Value args_json(Json::arrayValue);
 	string args;
-	std::string jar_file;
 	bool take_next_arg = false;
 	for(const auto& arg : tinfo->m_args) {
 		// Do a gross filtering of args
