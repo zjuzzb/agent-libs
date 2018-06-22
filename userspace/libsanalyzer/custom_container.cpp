@@ -332,6 +332,12 @@ void custom_container::resolver::dump_container_table()
 	out << YAML::Key << "custom_containers";
 	out << YAML::Value << YAML::BeginMap;
 
+	if (m_dump.size() > (size_t)m_max)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "%d custom containers present, while the limit is %d. Only a subset will be reported",
+			m_dump.size(), m_max);
+	}
+
 	for (const auto& it : m_dump)
 	{
 		out << YAML::Key << it.first;

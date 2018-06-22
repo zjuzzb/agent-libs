@@ -193,6 +193,13 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 
 	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
 #endif
+
+	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
+		m_custom_container.inc_count();
+	});
+	m_inspector->m_container_manager.subscribe_on_remove_container([this](const sinsp_container_info &container_info) {
+		m_custom_container.dec_count();
+	});
 }
 
 sinsp_analyzer::~sinsp_analyzer()
