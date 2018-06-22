@@ -154,4 +154,101 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 
 	return ret;
 }
+
+// Make sure we only scan any port only once per container or on host
+// If multiple matching processes are listening to a port within the same
+// container, pick the oldest
+void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable)
+{
+	if (procs.size() <= 1)
+		return;
+
+	// Map by container_id and port number to prom_process pointer
+	// Ideally we should key by net namespace but this is a little easier
+	typedef std::map<uint16_t, prom_process *> portmap_t;
+	std::map<string, portmap_t> containermap;
+
+	for (auto &proc : procs)
+	{
+		sinsp_threadinfo *tinfo = threadtable.get(proc.m_pid);
+		if (!tinfo) {
+			g_logger.format(sinsp_logger::SEV_INFO,
+				"Prometheus: Couldn't get thread info for pid %d, skipping port uniqueness filter", proc.m_pid);
+			continue;
+		}
+		if (containermap.find(tinfo->m_container_id) == containermap.end()) {
+			// Not found: add our ports
+			portmap_t portmap;
+			for (auto port : proc.m_ports)
+			{
+				portmap[port] = &proc;
+			}
+			if (!portmap.empty())
+			{
+				containermap[tinfo->m_container_id] = move(portmap);
+			}
+		} else {
+			for (auto port : proc.m_ports)
+			{
+				if (containermap[tinfo->m_container_id].find(port) ==
+					containermap[tinfo->m_container_id].end())
+					continue;
+				// For every matching port determine the eldest process
+				// We can probably rely on the clone timestamps
+				// proc_process *oproc = proc.m_ports[portproc.first];
+				prom_process *oproc = containermap[tinfo->m_container_id][port];
+				sinsp_threadinfo *otinfo = threadtable.get(oproc->m_pid);
+				if (!otinfo)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING,
+						"Prometheus: Couldn't get thread info for pid %d, can't compare with %d", oproc->m_pid, proc.m_pid);
+					ASSERT(0);
+					continue;
+				}
+				// Assuming the clone timestamps will be different
+				if (otinfo->m_clone_ts <= tinfo->m_clone_ts)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"Prometheus: both pids %d and %d are listening to %d %s%s, %d is older",
+						oproc->m_pid, proc.m_pid, port,
+						tinfo->m_container_id.empty() ? "on host" : "in container ",
+						tinfo->m_container_id.c_str(), oproc->m_pid);
+					// Other process is older, remove the port from our ports
+					proc.m_ports.erase(port);
+				}
+				else
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"Prometheus: both pids %d and %d are listening to %d %s%s, %d is older",
+						oproc->m_pid, proc.m_pid, port,
+						tinfo->m_container_id.empty() ? "on host" : "in container ",
+						tinfo->m_container_id.c_str(), proc.m_pid);
+					// This process is older, remove port from the other process
+					// We'll replace it in the portmap after this loop
+					oproc->m_ports.erase(port);
+				}
+			}
+			// Place any ports this process has left into the portmap
+			for (auto port : proc.m_ports)
+			{
+				containermap[tinfo->m_container_id][port] = &proc;
+			}
+		}
+	}
+	// Now remove any processes that don't have ports left.
+	vector<prom_process>::iterator it;
+	for (it = procs.begin() ; it != procs.end() ; )
+	{
+		if (it->m_ports.empty())
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"Prometheus: no ports left to scan in pid %d", it->m_pid);
+			it = procs.erase(it);
+		}
+		else
+		{
+			it++;
+		}
+	}
+}
 #endif // CYGWING_AGENT

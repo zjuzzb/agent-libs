@@ -74,6 +74,8 @@ public:
 		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path), m_options(options) { }
 
 	Json::Value to_json(const prometheus_conf &conf) const;
+
+	static void filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable);
 private:
 	string m_name;	// Just for debugging
 	int m_pid;
