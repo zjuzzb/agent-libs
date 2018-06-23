@@ -30,8 +30,8 @@ class Solr(AgentCheck):
         SolrMetrics.METRIC_NAME_ENUM.GET_RT:                            "solr.get.request_time",
         SolrMetrics.METRIC_NAME_ENUM.QUERY_RT:                          "solr.query.request_time",
         SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT:                         "solr.update.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_REP:                        "solr.index_size.replicated",
-        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_LOG:                        "solr.index_size.logical",
+        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_REP:                    "solr.index_size.replicated",
+        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_LOG:                    "solr.index_size.logical",
         SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT:                  "solr.host.shard_count",
         SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT:            "solr.collection.shard_count",
         SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS:                "solr.updatehandler.adds",
@@ -84,7 +84,7 @@ class Solr(AgentCheck):
         if self.version == None:
             obj, port = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
             if len(obj) > 0:
+                self.log.debug(str("solr: version endpoint found on port {} out of ports {}").format(port, instance["ports"]))
                 self.version = obj["lucene"]["solr-spec-version"]
                 assert int(self.version[0:1]) >= 4
-
 
