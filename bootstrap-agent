@@ -253,7 +253,7 @@ if [ ! -d "$LUAJIT_DIR" ]; then
 fi
 fi
 
-CURL_NAME=curl-7.57.0
+CURL_NAME=curl-7.60.0
 CURL_EXT=tar.bz2
 CURL_DIR=$DEPENDENCIES/$CURL_NAME
 if [ ! -d "$CURL_DIR" ]; then
@@ -261,7 +261,7 @@ if [ ! -d "$CURL_DIR" ]; then
 	wget $DEPENDENCIES_URL/$CURL_NAME.$CURL_EXT
 	tar -xjf $CURL_NAME.$CURL_EXT
 	cd $CURL_DIR
-	./configure --disable-shared  \
+	LDFLAGS=-static LIBS=-lrt ./configure --disable-shared  \
 		--enable-optimize     \
 		--disable-curldebug   \
 		--disable-rt          \
