@@ -1078,7 +1078,7 @@ void infrastructure_state::refresh_hosts_metadata()
 
 			if (nodes.empty()) {
 				// this could also happen if the node has been removed but the backend didn't realized it yet
-				glogf(sinsp_logger::SEV_WARNING, "infra_state: Cannot match host %s, no suitable orchestrator nodes found.", host->uid().id().c_str());
+				glogf(sinsp_logger::SEV_INFO, "infra_state: Cannot match host %s, no suitable orchestrator nodes found.", host->uid().id().c_str());
 				has_child = false;
 			} else if(nodes.size() == 1) {
 				child_uid = *nodes.begin();
