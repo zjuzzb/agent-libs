@@ -1,5 +1,3 @@
-#include <Poco/File.h>
-
 // From sysdig, for g_logger
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -11,6 +9,7 @@
 using namespace std;
 
 #ifndef CYGWING_AGENT
+
 std::string coclient::default_domain_sock = string("/opt/draios/run/cointerface.sock");
 uint32_t coclient::m_max_loop_evts = 100;
 
