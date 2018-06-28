@@ -33,7 +33,6 @@ add_executable(tests
 	capture_to_file_test.cpp
 	container.cpp
 	container_image_splitting.cpp
-	${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/coclient.cpp
 	coclient_test.cpp
 	custom_container.cpp
 	emit_tracers.cpp
@@ -68,16 +67,6 @@ add_executable(tests
 	unix_udp_client_server.cpp
 	main.cpp
 	yaml_configuration.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/baseline_mgr.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/capture_job_handler.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/configuration.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/logger.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/protocol.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/security_mgr.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/security_policy.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/security_action.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_worker.cpp
-	${PROJECT_SOURCE_DIR}/userspace/dragent/sinsp_data_handler.cpp
 	configuration_test.cpp
 	statsd.cpp
 	suppress_events.cpp
@@ -90,6 +79,7 @@ add_executable(tests
 target_link_libraries(tests
 	pthread
 	sanalyzer
+	dragentl
 	draiosproto
 	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a

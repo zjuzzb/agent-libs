@@ -28,7 +28,6 @@ list(APPEND targetfiles
 	dragent.cpp
 	error_handler.cpp
 	logger.cpp
-	main.cpp
 	monitor.cpp
 	protocol.cpp
 	security_action.cpp
@@ -44,7 +43,7 @@ if(CYGWIN)
 		windows_helpers.cpp)
 endif()
 
-add_executable(dragent
+add_library(dragentl STATIC
 	${targetfiles})
 
 if(CYGWIN)
@@ -55,12 +54,9 @@ else()
 	set(POCO_LIB_PREFIX "lib")
 endif()
 
-target_link_libraries(dragent
-	pthread
-	sanalyzer
-	draiosproto
+target_link_libraries(dragentl
 	falco_engine
-	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
+        ${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
@@ -69,6 +65,15 @@ target_link_libraries(dragent
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	rt
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+
+add_executable(dragent
+	main.cpp)
+
+target_link_libraries(dragent
+	pthread
+	sanalyzer
+	dragentl
+	draiosproto)
 
 if(NOT CYGWIN)
 	target_link_libraries(dragent
