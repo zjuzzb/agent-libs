@@ -2486,17 +2486,20 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				}
 			}
 			// Add all processes with appcheck metrics
-			for(auto prog: progtable)
+			if (m_configuration->get_app_checks_always_send())
 			{
-				auto datamap_it = m_app_metrics.find(prog->m_pid);
-				if (datamap_it == m_app_metrics.end())
-					continue;
-				for (const auto& app_data : datamap_it->second)
+				for(auto prog: progtable)
 				{
-					if ((app_data.second.total_metrics() > 0) && (prog->m_ainfo->m_procinfo->m_exclude_from_sample))
+					auto datamap_it = m_app_metrics.find(prog->m_pid);
+					if (datamap_it == m_app_metrics.end())
+						continue;
+					for (const auto& app_data : datamap_it->second)
 					{
-						g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
-						prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+						if ((app_data.second.total_metrics() > 0) && (prog->m_ainfo->m_procinfo->m_exclude_from_sample))
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
+							prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+						}
 					}
 				}
 			}

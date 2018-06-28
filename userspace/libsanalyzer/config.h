@@ -192,6 +192,8 @@ public:
 	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
+	bool get_app_checks_always_send() const;
+	void set_app_checks_always_send(bool);
 	bool get_security_enabled() const;
 	void set_security_enabled(bool enabled);
 	bool get_cointerface_enabled() const;
@@ -317,6 +319,7 @@ private:
 
 	unsigned m_jmx_limit;
 	unsigned m_app_checks_limit;
+	bool m_app_checks_always_send;
 
 	bool m_detect_stress_tools;
 	bool m_security_enabled;

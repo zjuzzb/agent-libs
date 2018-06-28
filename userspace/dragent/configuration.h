@@ -658,6 +658,7 @@ public:
 	string m_python_binary;
 	bool m_app_checks_enabled;
 	unsigned m_app_checks_limit;
+	bool m_app_checks_always_send;
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;
 	vector<string> m_container_patterns;
