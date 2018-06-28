@@ -2485,6 +2485,21 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					filter_top_programs(progs.begin(), progs.end(), false, TOP_PROCESSES_PER_CONTAINER);
 				}
 			}
+			// Add all processes with appcheck metrics
+			for(auto prog: progtable)
+			{
+				auto datamap_it = m_app_metrics.find(prog->m_pid);
+				if (datamap_it == m_app_metrics.end())
+					continue;
+				for (const auto& app_data : datamap_it->second)
+				{
+					if ((app_data.second.total_metrics() > 0) && (prog->m_ainfo->m_procinfo->m_exclude_from_sample))
+					{
+						g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
+						prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+					}
+				}
+			}
 		}
 
 		if(m_mounted_fs_proxy)
