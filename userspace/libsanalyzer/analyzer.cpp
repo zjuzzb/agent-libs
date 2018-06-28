@@ -2921,8 +2921,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			num_prometheus_metrics_filtered, num_prometheus_metrics_total);
 	} else {
 		g_logger.format(sinsp_logger::SEV_DEBUG, "Sent %u Prometheus metrics of %u filtered, %u total",
-			num_app_check_metrics_sent, num_app_check_metrics_filtered,
-			num_app_check_metrics_total);
+			num_prometheus_metrics_sent, num_prometheus_metrics_filtered,
+			num_prometheus_metrics_total);
 	}
 #endif
 
