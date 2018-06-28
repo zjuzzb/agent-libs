@@ -10,6 +10,8 @@ from utils.network import Network
 
 class SolrMetrics(object):
 
+    DEFAULT_TIMEOUT = 5
+
     class Tag(Enum):
         COLLECTION = 1
         SHARD = 2
@@ -132,6 +134,7 @@ class SolrMetrics(object):
         self.localEndpoints = set()
         self.collectionByCore = dict()
         self.log = logging.getLogger(__name__)
+        self.timeout = self.DEFAULT_TIMEOUT
 
     def check(self):
         self.localCores = set()
@@ -165,12 +168,13 @@ class SolrMetrics(object):
     def getUrl(host, ports, handler):
         found = False
         foundPort = 0
+        timeout = SolrMetrics.DEFAULT_TIMEOUT
         for port in ports:
             try:
                 if found is True:
                     break
                 url = SolrMetrics.formatUrl(host, port, handler)
-                data = urllib2.urlopen(url)
+                data = urllib2.urlopen(url, None, timeout)
                 obj = json.load(data)
                 found = True
                 foundPort = port
@@ -189,7 +193,7 @@ class SolrMetrics(object):
     def _getUrlWithBase(self, baseUrl, handler):
         url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
         try:
-            data = urllib2.urlopen(url)
+            data = urllib2.urlopen(url, None, self.timeout)
             obj = json.load(data)
         except:
             return {}
