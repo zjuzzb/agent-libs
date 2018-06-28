@@ -28,6 +28,7 @@ public class Application {
     private static final Logger LOGGER = Logger.getLogger(Application.class.getName());
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final long VMS_CLEANUP_INTERVAL = 10 * 60 * 1000;
+    private static final long GETMETRICS_VM_LOOP_TIMEOUT = 30 * 1000; // 30 seconds
     public static final int MONITOR_DONT_RESTART_CODE = 17;
     private static final String HELP_TEXT = "Available commands:\n" +
             "getMetrics <pid> <vpid> - Get metrics from specified JVM, metrics are configure on dragent.yaml\n" +
@@ -214,6 +215,9 @@ public class Application {
         LOGGER.fine("Executing getMetrics");
         final List<Map<String, Object>> vmList = new LinkedList<Map<String, Object>>();
 
+        Runtime runtime = Runtime.getRuntime();
+        long vmLoopStartTime = 0;
+
         for (VMRequest request : requestedVMs) {
             final Map<String, Object> vmObject = new LinkedHashMap<String, Object>();
             MonitoredVM vm = vms.get(request.getPid());
@@ -238,8 +242,24 @@ public class Application {
                 vmList.add(vmObject);
                 trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", vm.getName()))));
             }
-            else
+            else {
                 trcVm.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("name", "n/a"))));
+            }
+
+            // Check if sdjagent should let dragent know that its still working
+            if (vmLoopStartTime == 0) {
+                vmLoopStartTime = System.currentTimeMillis();
+            } else {
+                long currSysTime = System.currentTimeMillis();
+                long vmLoopTimePeriod = currSysTime - vmLoopStartTime;
+                if (vmLoopTimePeriod >= GETMETRICS_VM_LOOP_TIMEOUT) {
+                    System.err.print(String.format("HB,%d,%d,%d\n", CLibrary.getPid(),
+                                            runtime.totalMemory()/1024, currSysTime/1000));
+                    System.err.flush();
+                    LOGGER.info(String.format("Walking VMs in getMetricsCommand() has taken %d ms, sent HB", vmLoopTimePeriod));
+                    vmLoopStartTime = currSysTime; // Reset the clock
+                }
+            }
         }
         trcMetrics.exit(new ArrayList<NameValue>(Arrays.asList(new NameValue("vmResultSize", Integer.toString(vmList.size())))));
         return vmList;
