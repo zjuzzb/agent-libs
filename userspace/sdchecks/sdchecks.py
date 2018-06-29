@@ -239,6 +239,8 @@ class AppCheckInstance:
         self.instance_conf = {
             "host": "localhost",
             "name": self.name,
+            "pid": self.pid,
+            "vpid": self.vpid,
             "ports": proc_data["ports"]
         }
         if len(proc_data["ports"]) > 0:

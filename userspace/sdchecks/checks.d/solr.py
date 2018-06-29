@@ -6,6 +6,7 @@ from sets import Set
 from checks import AgentCheck, CheckException
 from solr.solr_metrics import SolrMetrics
 from solr.solr_5 import Solr5
+import psutil
 
 
 class Solr(AgentCheck):
@@ -49,8 +50,17 @@ class Solr(AgentCheck):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.version = None
         self.sMetric = None
+        self.port = 0
 
     def check(self, instance):
+        if self.port == 0:
+            self.getPortFromCommandLine(instance)
+        if self.port == 0:
+            self.getPortFromListOfPorts(instance)
+        # Raise exception if still port == 0
+        if self.port == 0:
+            raise CheckException(("Failed to find solr port for pid {}").format(instance["pid"]))
+
         if self.sMetric is None:
             self._getSolrVersion(instance)
 
@@ -60,6 +70,9 @@ class Solr(AgentCheck):
                 raise CheckException("Failed to find Solr version")
             else:
                 raise CheckException("Solr version {} not yet supported".format(self.version[0:1]))
+
+        # Pass the retrieved port to the metric class
+        self.sMetric.setPort(self.port)
 
         confTags = instance.get('tags', [])
 
@@ -82,9 +95,33 @@ class Solr(AgentCheck):
 
     def _getSolrVersion(self, instance):
         if self.version == None:
-            obj, port = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+            url = SolrMetrics.formatUrl(instance["host"], self.port, self.GET_VERSION_ENDPOINT)
+            obj = SolrMetrics._httpGet(url)
             if len(obj) > 0:
-                self.log.debug(str("solr: version endpoint found on port {} out of ports {}").format(port, instance["ports"]))
+                self.log.debug(str("solr: version endpoint found on port {}").format(self.port))
                 self.version = obj["lucene"]["solr-spec-version"]
                 assert int(self.version[0:1]) >= 4
 
+
+    def getPortFromCommandLine(self, instance):
+        pid = instance["pid"]
+        self.log.debug(("checking port for pid {}").format(pid))
+        process = psutil.Process(pid)
+        cmd = process.cmdline()
+        self.log.debug(("found cmd line: {}").format(cmd))
+        if(len(cmd)):
+            for param in cmd:
+                if param[0: param.find("=")] == "-Djetty.port":
+                    self.port = param[param.find("=") + 1:]
+                    self.log.debug(("Detected port {} for solr instance running on port {}").format(self.port, pid))
+                    break
+        if self.port == 0:
+            self.log.debug("could not get solr port fot pid {} from command line")
+
+    def getPortFromListOfPorts(self, instance):
+        obj, port = SolrMetrics.getUrlIteratingOnPorts(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+        if port > 0:
+            self.port = port
+            self.log.debug(("Detected (from list) port {} for solr instance running on port {}").format(self.port, instance["pid"]))
+        else:
+            self.log.debug("could not get solr port fot pid {} from list of ports")
