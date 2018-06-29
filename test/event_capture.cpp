@@ -166,6 +166,6 @@ void event_capture::capture()
 			};
 			nanosleep(&ts, NULL);
 		}
-		ASSERT_EQ(num_consumers, 0);
+		ASSERT_EQ(num_consumers, 0u);
 	}
 }

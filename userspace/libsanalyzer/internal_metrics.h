@@ -135,7 +135,7 @@ public:
 	static draiosproto::statsd_metric* write_metric(draiosproto::statsd_info* statsd_info, const std::string& name, draiosproto::statsd_metric_type type, const T& val)
 	{
 		// don't clog protobuf with values that have not been set yet
-		if(-1 != val)
+		if(-1 != (int) val)
 		{
 			draiosproto::statsd_metric* proto = statsd_info->add_statsd_metrics();
 			proto->set_name(name);

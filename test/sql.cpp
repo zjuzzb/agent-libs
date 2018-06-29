@@ -186,13 +186,13 @@ TEST_F(sys_call_test, sql_table_select)
 	}
 */
 
-	EXPECT_EQ(opmap["tab4"], 368486);
-	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab0 WHERE (((((col0 < 94))))) )"], 1);
-	EXPECT_EQ(opmap["( tab0 AS cor0 CROSS JOIN tab0 AS cor1 )"], 52);
-	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab4 WHERE col3 IS NULL OR (col3 >= 422 OR (col3 > 734 AND (col3 < 813 OR col1 BETWEEN 30.88 AND 73.78) OR col4 >= 799.72)) AND (col3 >= 948) AND ((col3 > 52)) OR (col0 > 298) OR col1 < 283.19 OR col4 = 879.38 )"], 1);
-	EXPECT_EQ(opmap["t15,t56,t18,t14,t43,t4,t1,t25,t31,t49,t27,t33,t52,t17,t20,t42,t55,t34,t8,t9,t7,t46,t53,t38,t3,t13,t45,t16,t24,t10,t47,t2,t35,t36,t57,t44"], 2);
-	EXPECT_EQ(opmap["tab0 cor0 CROSS JOIN tab1"], 991);
-	EXPECT_EQ(opmap["test"], 1);
+	EXPECT_EQ(opmap["tab4"], 368486u);
+	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab0 WHERE (((((col0 < 94))))) )"], 1u);
+	EXPECT_EQ(opmap["( tab0 AS cor0 CROSS JOIN tab0 AS cor1 )"], 52u);
+	EXPECT_EQ(opmap["( SELECT pk, col0 FROM tab4 WHERE col3 IS NULL OR (col3 >= 422 OR (col3 > 734 AND (col3 < 813 OR col1 BETWEEN 30.88 AND 73.78) OR col4 >= 799.72)) AND (col3 >= 948) AND ((col3 > 52)) OR (col0 > 298) OR col1 < 283.19 OR col4 = 879.38 )"], 1u);
+	EXPECT_EQ(opmap["t15,t56,t18,t14,t43,t4,t1,t25,t31,t49,t27,t33,t52,t17,t20,t42,t55,t34,t8,t9,t7,t46,t53,t38,t3,t13,t45,t16,t24,t10,t47,t2,t35,t36,t57,t44"], 2u);
+	EXPECT_EQ(opmap["tab0 cor0 CROSS JOIN tab1"], 991u);
+	EXPECT_EQ(opmap["test"], 1u);
 	printf("Elapsed time: %.3lf\n", duration);
 
 	gzclose(zf);
@@ -260,9 +260,9 @@ TEST_F(sys_call_test, sql_table_delete)
 */
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["tab1"], 3979);
-	EXPECT_EQ(opmap["tab4"], 3973);
-	EXPECT_EQ(opmap["view1"], 3);
+	EXPECT_EQ(opmap["tab1"], 3979u);
+	EXPECT_EQ(opmap["tab4"], 3973u);
+	EXPECT_EQ(opmap["view1"], 3u);
 
 	printf("Elapsed time: %.3lf\n", duration);
 
@@ -331,10 +331,10 @@ TEST_F(sys_call_test, sql_table_insert)
 */
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["tab1"], 1167);
-	EXPECT_EQ(opmap["tab0"], 107009);
-	EXPECT_EQ(opmap["view1"], 3);
-	EXPECT_EQ(opmap["pgbench_history"], 1);
+	EXPECT_EQ(opmap["tab1"], 1167u);
+	EXPECT_EQ(opmap["tab0"], 107009u);
+	EXPECT_EQ(opmap["view1"], 3u);
+	EXPECT_EQ(opmap["pgbench_history"], 1u);
 	printf("Elapsed time: %.3lf\n", duration);
 
 	gzclose(zf);
@@ -402,7 +402,7 @@ TEST_F(sys_call_test, sql_table_replace)
 */
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["t1"], 2);
+	EXPECT_EQ(opmap["t1"], 2u);
 
 	printf("Elapsed time: %.3lf\n", duration);
 
@@ -471,8 +471,8 @@ TEST_F(sys_call_test, sql_table_update)
 */
 
 	EXPECT_EQ(tot, j);
-	EXPECT_EQ(opmap["t1"], 13);
-	EXPECT_EQ(opmap["view1"], 3);
+	EXPECT_EQ(opmap["t1"], 13u);
+	EXPECT_EQ(opmap["view1"], 3u);
 
 	printf("Elapsed time: %.3lf\n", duration);
 

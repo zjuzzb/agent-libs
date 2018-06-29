@@ -321,7 +321,7 @@ TEST_F(jmx_proxy_f, test_filters)
 	use_json("jmx_ok.json");
 	ASSERT_TRUE(m_jsondata.size());
 	metrics = run_filtering(jmx, f);
-	EXPECT_EQ(0, metrics.begin()->second.beans().size());
+	EXPECT_EQ(0u, metrics.begin()->second.beans().size());
 
 }
 
@@ -338,13 +338,13 @@ TEST_F(jmx_proxy_f, limits)
 	EXPECT_EQ(31u, metrics.begin()->second.beans().size());
 	EXPECT_EQ(3u, metrics.begin()->second.beans().rbegin()->attributes().size());
 	auto pid = metrics.begin()->second;// Tomcat process from JSON file
-	EXPECT_EQ(91, pid.total_metrics());
 	
+	EXPECT_EQ(91u, pid.total_metrics());
 	unsigned limit = 3000;
 	limit -= pid.to_protobuf(app, 1, limit, "process", JMX_METRICS_HARD_LIMIT_PER_PROC);
 	ASSERT_TRUE(limit);
 
-	EXPECT_EQ(31u, app->beans().size());
+	EXPECT_EQ(31, app->beans().size());
 	EXPECT_EQ(2, app->beans(0).attributes().size());
 	EXPECT_EQ(3, app->beans(14).attributes().size());
 	EXPECT_EQ(5, app->beans(22).attributes().size());
@@ -354,7 +354,7 @@ TEST_F(jmx_proxy_f, limits)
 	limit = 1;
 	limit -= pid.to_protobuf(app, 1, limit, "process", JMX_METRICS_HARD_LIMIT_PER_PROC);
 
-	ASSERT_EQ(0, limit);
+	ASSERT_EQ(0u, limit);
 	EXPECT_EQ(1, app->beans().size());
 	EXPECT_EQ(1, app->beans(0).attributes().size());
 	app->clear_beans();
@@ -362,7 +362,7 @@ TEST_F(jmx_proxy_f, limits)
 	limit = 2;
 	limit -= pid.to_protobuf(app, 1, limit, "process", JMX_METRICS_HARD_LIMIT_PER_PROC);
 
-	ASSERT_EQ(0, limit);
+	ASSERT_EQ(0u, limit);
 	EXPECT_EQ(1, app->beans().size());
 	EXPECT_EQ(2, app->beans(0).attributes().size());
 	app->clear_beans();
@@ -373,7 +373,7 @@ TEST_F(jmx_proxy_f, limits)
 		limit -= pid.to_protobuf(app, 1, limit, "process", JMX_METRICS_HARD_LIMIT_PER_PROC);
 	} while (limit);
 
-	ASSERT_EQ(0, limit);
+	ASSERT_EQ(0u, limit);
 	EXPECT_EQ(2, app->beans().size());
 	EXPECT_EQ(2, app->beans(0).attributes().size());
 	EXPECT_EQ(1, app->beans(1).attributes().size());

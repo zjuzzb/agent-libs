@@ -1331,6 +1331,6 @@ TEST_F(sys_call_test, remove_stale_thread_clone_exit)
 
 	// We must have seen one clone related to the recycled
 	// pid. Otherwise it never actually checked the cwd at all.
-	EXPECT_EQ(clones_seen, 1);
+	EXPECT_EQ(clones_seen, 1u);
 }
 

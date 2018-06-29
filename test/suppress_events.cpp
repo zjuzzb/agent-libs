@@ -133,8 +133,8 @@ static void test_helper_quotactl(test_helper_args &hargs)
 
 		inspector->get_capture_stats(&st);
 
-		ASSERT_GT(st.n_suppressed, 0);
-		ASSERT_EQ(st.n_tids_suppressed, 0);
+		ASSERT_GT(st.n_suppressed, 0u);
+		ASSERT_EQ(st.n_tids_suppressed, 0u);
 	};
 
 	// We increase the number of timeouts to 1k (~30 seconds, if

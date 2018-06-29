@@ -39,7 +39,7 @@ TEST(nodriver, smoke)
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
 		auto* thread_table = param.m_inspector->m_thread_manager->get_threads();
-		EXPECT_GT(thread_table->size(), 0);
+		EXPECT_GT(thread_table->size(), 0u);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run_nodriver(test, callback);});
@@ -54,7 +54,7 @@ TEST(nodriver, proc_fileio)
 	sinsp_proc_file_stats io_stats;
 	procfs_parser.read_proc_file_stats(getpid(), &io_stats);
 
-	auto bytes_written = 0;
+	uint32_t bytes_written = 0;
 	auto f = fopen("/dev/null", "w");
 	ASSERT_TRUE(f);
 	char buffer[1024];

@@ -1019,7 +1019,7 @@ TEST_F(sys_call_test, udp_client_server_multiple_connect_name_changed)
 	ASSERT_NO_FATAL_FAILURE( {event_capture::run(test, callback, filter, configuration);});
 
 	// Every connect should result in a name changed event other than the duplicate port.
-	ASSERT_EQ(num_name_changed_evts, 4);
+	ASSERT_EQ(num_name_changed_evts, 4u);
 }
 
 TEST_F(sys_call_test, udp_client_server_sendmsg_2buf_fd_name_changed)

@@ -792,7 +792,7 @@ TEST_F(sys_call_test, procfs_get_mounted_fs_list)
 	fs_parser.read_mount_points(limits);
 	vector<mounted_fs> fs_list = fs_parser.get_mounted_fs_list(false);
 	EXPECT_EQ(limits->get_filters().size(), filters.size());
-	EXPECT_GE(fs_list.size(), 1);
+	EXPECT_GE(fs_list.size(), 1u);
 }
 
 

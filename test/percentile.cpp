@@ -23,17 +23,17 @@ TEST(percentile, integers)
 	p.add(9);
 	p.add(15);
 	p.add(13);
-	EXPECT_EQ(p.sample_count(), 8);
+	EXPECT_EQ(p.sample_count(), 8u);
 	percentile::p_map_type pctl_map = p.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);
 
 	percentile pc(p);
-	EXPECT_EQ(pc.sample_count(), 8);
+	EXPECT_EQ(pc.sample_count(), 8u);
 	pctl_map = pc.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);
@@ -41,17 +41,17 @@ TEST(percentile, integers)
 	pctls = {85};
 	percentile p1(pctls);
 	p1.copy(std::vector<int>({4,4,5,5,5,5,6,6,6,7,7,7,8,8,9,9,9,10,10,10}));
-	EXPECT_EQ(p1.sample_count(), 20);
+	EXPECT_EQ(p1.sample_count(), 20u);
 	pctl_map = p1.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 85);
 	EXPECT_DOUBLE_EQ(p_it->second, 9.5);
 
 	pc = p1;
-	EXPECT_EQ(pc.sample_count(), 20);
+	EXPECT_EQ(pc.sample_count(), 20u);
 	pctl_map = pc.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 85);
 	EXPECT_DOUBLE_EQ(p_it->second, 9.5);
@@ -59,9 +59,9 @@ TEST(percentile, integers)
 	pctls = {50};
 	percentile p2(pctls);
 	p2.copy(std::vector<int>({2,3,5,9}));
-	EXPECT_EQ(p2.sample_count(), 4);
+	EXPECT_EQ(p2.sample_count(), 4u);
 	pctl_map = p2.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first,50);
 	EXPECT_FLOAT_EQ(p_it->second, 4.);
@@ -69,9 +69,9 @@ TEST(percentile, integers)
 	pctls = {50,75,85,95};
 	percentile p3(pctls);
 	p3.copy(std::vector<int>({2,3,5,9,11}));
-	EXPECT_EQ(p3.sample_count(), 5);
+	EXPECT_EQ(p3.sample_count(), 5u);
 	pctl_map = p3.percentiles();
-	EXPECT_EQ(pctl_map.size(), 4);
+	EXPECT_EQ(pctl_map.size(), 4u);
 	p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 50);
 	EXPECT_FLOAT_EQ(p_it->second, 5.);
@@ -98,9 +98,9 @@ TEST(percentile, doubles)
 	p.add(9.15);
 	p.add(15.13);
 	p.add(13.5);
-	EXPECT_EQ(p.sample_count(), 8);
+	EXPECT_EQ(p.sample_count(), 8u);
 	percentile::p_map_type pctl_map = p.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.205);
@@ -139,14 +139,14 @@ TEST(percentile, random)
 {
 	std::set<double> quants = {50, 90, 99};
 	percentile p(quants);
-	EXPECT_EQ(p.percentiles().size(), 3);
+	EXPECT_EQ(p.percentiles().size(), 3u);
 
 	srandom(42);
 	for (int i=0; i < 100000; i++)
 	{
 		p.add(random());
 	}
-	EXPECT_EQ(p.sample_count(), 100000);
+	EXPECT_EQ(p.sample_count(), 100000u);
 
 	percentile::p_map_type pctl_map = p.percentiles();
 
@@ -163,13 +163,13 @@ TEST(percentile, random)
 	EXPECT_LE(val, 2126008810 + 21474836);
 
 	p.reset();
-	EXPECT_EQ(p.percentiles().size(), 3);
+	EXPECT_EQ(p.percentiles().size(), 3u);
 
 	for (int i=0; i < 100000; i++)
 	{
 		p.add(random());
 	}
-	EXPECT_EQ(p.sample_count(), 100000);
+	EXPECT_EQ(p.sample_count(), 100000u);
 
 	val = pctl_map[50];
 	EXPECT_GE(val, 1073741823 - 21474836);
@@ -196,20 +196,20 @@ TEST(percentile, merge)
 	p.add(9);
 	p.add(15);
 	p.add(13);
-	EXPECT_EQ(p.sample_count(), 8);
+	EXPECT_EQ(p.sample_count(), 8u);
 	percentile::p_map_type pctl_map = p.percentiles();
-	EXPECT_EQ(pctl_map.size(), 1);
+	EXPECT_EQ(pctl_map.size(), 1u);
 	auto p_it = pctl_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);
 
 	// test merging to an empty percentile store
 	percentile pmerge(pctls);
-	EXPECT_EQ(pmerge.sample_count(), 0);
+	EXPECT_EQ(pmerge.sample_count(), 0u);
 	pmerge.merge(&p);
 	EXPECT_EQ(pmerge.sample_count(), p.sample_count());
 	auto pmerge_map = pmerge.percentiles();
-	EXPECT_EQ(pmerge_map.size(), 1);
+	EXPECT_EQ(pmerge_map.size(), 1u);
 	p_it = pmerge_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);
@@ -218,7 +218,7 @@ TEST(percentile, merge)
 	pmerge.merge(&p);
 	EXPECT_EQ(pmerge.sample_count(), 2 * p.sample_count());
 	pmerge_map = pmerge.percentiles();
-	EXPECT_EQ(pmerge_map.size(), 1);
+	EXPECT_EQ(pmerge_map.size(), 1u);
 	p_it = pmerge_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);
@@ -227,9 +227,9 @@ TEST(percentile, merge)
 	percentile pempty1(pctls);
 	percentile pempty2(pctls);
 	pempty1.merge(&pempty2);
-	EXPECT_EQ(pempty1.sample_count(), 0);
+	EXPECT_EQ(pempty1.sample_count(), 0u);
 	pmerge_map = pempty1.percentiles();
-	EXPECT_EQ(pmerge_map.size(), 1);
+	EXPECT_EQ(pmerge_map.size(), 1u);
 	p_it = pmerge_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 0);
@@ -238,7 +238,7 @@ TEST(percentile, merge)
 	pmerge.merge(&pempty2);
 	EXPECT_EQ(pmerge.sample_count(), 2 * p.sample_count());
 	pmerge_map = pmerge.percentiles();
-	EXPECT_EQ(pmerge_map.size(), 1);
+	EXPECT_EQ(pmerge_map.size(), 1u);
 	p_it = pmerge_map.begin();
 	EXPECT_EQ(p_it->first, 25);
 	EXPECT_DOUBLE_EQ(p_it->second, 6.);

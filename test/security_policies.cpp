@@ -894,7 +894,7 @@ TEST_F(security_policies_test, falco_only)
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
 	ASSERT_EQ(pe->events_size(), 1);
-	ASSERT_EQ(pe->events(0).policy_id(), 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 1u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/sample-sensitive-file-2.txt");
@@ -922,7 +922,7 @@ TEST_F(security_policies_test, falco_no_evttype)
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
-	ASSERT_EQ(pe->events(0).policy_id(), 26);
+	ASSERT_EQ(pe->events(0).policy_id(), 26u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "anything_for_banned_file");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/banned-file.txt");

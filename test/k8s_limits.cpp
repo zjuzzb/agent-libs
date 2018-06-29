@@ -19,10 +19,10 @@ TEST(k8s_limits, purge_proto_structure)
 	cg.mutable_tags()->insert({"kubernetes.pod.label.pod-template-hash", "3316313349"});
 	cg.mutable_tags()->insert({"ground_control", "to_major_tom"});
 
-	ASSERT_EQ(cg.tags().size(), 3);
+	ASSERT_EQ(cg.tags().size(), 3u);
 
 	kl.purge_tags(cg);
 
-	EXPECT_EQ(cg.tags().size(), 1);
+	EXPECT_EQ(cg.tags().size(), 1u);
 	EXPECT_EQ(std::begin(cg.tags())->first, "ground_control");
 }

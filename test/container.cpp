@@ -747,7 +747,7 @@ TEST_F(sys_call_test, container_rkt_after)
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
 		}
 
-		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
+		ASSERT_EQ(42u, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
 		const sinsp_container_info *container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
@@ -825,7 +825,7 @@ TEST_F(sys_call_test, container_rkt_before)
 			ASSERT_NE(tinfo->m_vpid, tinfo->m_pid);
 		}
 
-		ASSERT_EQ(42, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
+		ASSERT_EQ(42u, tinfo->m_container_id.length()) << "container_id is " << tinfo->m_container_id;
 
 		const sinsp_container_info *container_info =
 		        param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
@@ -1062,7 +1062,7 @@ TEST_F(sys_call_test, nsenterok)
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
-	ASSERT_EQ(8, evtcount);
+	ASSERT_EQ(8u, evtcount);
 }
 
 TEST_F(sys_call_test, nsenter_fail)
@@ -1086,5 +1086,5 @@ TEST_F(sys_call_test, nsenter_fail)
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
-	ASSERT_EQ(0, evtcount);
+	ASSERT_EQ(0u, evtcount);
 }

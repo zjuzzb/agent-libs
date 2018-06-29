@@ -111,7 +111,7 @@ TEST_F(custom_container_f, subst_template)
 	{
 		subst_template st1("abc<foo:2>def<VAR2>");
 		const auto& tokens = st1.get_tokens();
-		ASSERT_EQ(4, tokens.size());
+		ASSERT_EQ(4u, tokens.size());
 
 		EXPECT_EQ(tokens[0], subst_token("abc", -1));
 		EXPECT_EQ(tokens[1], subst_token("foo", 2));

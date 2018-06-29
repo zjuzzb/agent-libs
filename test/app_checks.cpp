@@ -90,7 +90,7 @@ TEST_F(app_checks_proxy_f, filters)
 	auto metrics = app_checks->read_metrics(nullptr);
 	ASSERT_EQ(2U, metrics.size());
 	//print(metrics);
-	EXPECT_EQ(0, metrics[2115].begin()->second.metrics().size());
+	EXPECT_EQ(0u, metrics[2115].begin()->second.metrics().size());
 	EXPECT_EQ(1u, metrics[2115].begin()->second.services().size());
 	EXPECT_EQ(31u, metrics[805].begin()->second.metrics().size());
 	EXPECT_EQ(1u, metrics[805].begin()->second.services().size());
@@ -128,7 +128,7 @@ TEST_F(app_checks_proxy_f, filters)
 	EXPECT_EQ(1U, service_list.size());
 
 	metric_list = metrics[2115].begin()->second.metrics();
-	EXPECT_EQ(0, metric_list.size());
+	EXPECT_EQ(0u, metric_list.size());
 	service_list = metrics[2115].begin()->second.services();
 	EXPECT_EQ(1u, service_list.size());
 	EXPECT_TRUE(has(service_list, "nginx.can_connect"));
@@ -204,7 +204,7 @@ TEST_F(app_checks_proxy_f, limits)
 		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
-	EXPECT_EQ(1U, app->metrics().size());
+	EXPECT_EQ(1, app->metrics().size());
 
 	app->clear_metrics();
 	ASSERT_EQ(0, app->metrics().size());
@@ -226,7 +226,7 @@ TEST_F(app_checks_proxy_f, limits)
 		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
-	EXPECT_EQ(30U, app->metrics().size());
+	EXPECT_EQ(30, app->metrics().size());
 
 	// services are also populated into metrics
 	app->clear_metrics();
@@ -239,7 +239,7 @@ TEST_F(app_checks_proxy_f, limits)
 		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit);
 	ASSERT_EQ(0, app_checks_limit);
-	EXPECT_EQ(32U, app->metrics().size());
+	EXPECT_EQ(32, app->metrics().size());
 
 	app->clear_metrics();
 	ASSERT_EQ(0, app->metrics().size());
@@ -251,5 +251,5 @@ TEST_F(app_checks_proxy_f, limits)
 		app_checks_data.to_protobuf(app, app_checks_limit, 0);
 	} while(app_checks_limit > 1);
 	ASSERT_EQ(1, app_checks_limit);
-	EXPECT_EQ(32U, app->metrics().size());
+	EXPECT_EQ(32, app->metrics().size());
 }

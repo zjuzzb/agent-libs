@@ -16,7 +16,7 @@ static void check_iov(struct iovec *iov, int iovcnt,
 		      vector<struct iovec> &expected,
 		      std::string expectedrem)
 {
-	ASSERT_EQ(iovcnt, expected.size());
+	ASSERT_EQ((unsigned) iovcnt, expected.size());
 
 	for(int i=0; i < iovcnt; i++)
 	{
