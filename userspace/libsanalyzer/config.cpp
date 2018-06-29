@@ -34,6 +34,7 @@ sinsp_configuration::sinsp_configuration():
 #endif
 	m_jmx_limit = 500;
 	m_app_checks_limit = 500;
+	m_app_checks_always_send = false;
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = false;
@@ -919,6 +920,16 @@ unsigned sinsp_configuration::get_app_checks_limit() const
 void sinsp_configuration::set_app_checks_limit(unsigned value)
 {
 	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
+}
+
+bool sinsp_configuration::get_app_checks_always_send() const
+{
+	return m_app_checks_always_send;
+}
+
+void sinsp_configuration::set_app_checks_always_send(bool value)
+{
+	m_app_checks_always_send = value;
 }
 
 bool sinsp_configuration::get_security_enabled() const
