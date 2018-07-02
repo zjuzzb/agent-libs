@@ -20,6 +20,14 @@ public:
 				const std::string& fs_type,
 				const std::string& mount_dir);
 	bool increase();
+
+	bool limit_is_reached() const 
+	{
+		return m_current_size >= m_limit_size;
+	}
+	
+	void log_if_max_mount_limit_reached();
+
 	void reset();
 	mount_points_filter_vec get_filters() const { return m_filters; }
 

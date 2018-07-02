@@ -678,7 +678,7 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 	}
 
 	m_mount_points->reset();
-	while(true)
+	while(!m_mount_points->limit_is_reached())	// stops looking for more mount point entries when mount limit is reached
 	{
 		struct mntent* entry = getmntent(fp);
 		if(entry == NULL)
@@ -747,6 +747,8 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 	}
 
 	endmntent(fp);
+
+	m_mount_points->log_if_max_mount_limit_reached();
 #else // !defined(_WIN32) && !defined(CYGWING_AGENT)
 #ifdef CYGWING_AGENT
 	wh_mountlist mtable = wh_wmi_get_mounts(m_whhandle);
