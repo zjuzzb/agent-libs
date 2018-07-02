@@ -200,7 +200,7 @@ bool app_process::is_solr() const
 
 void app_process::get_port_from_cmd(sinsp_threadinfo *tinfo)
 {
-	const string& SOLR_PORT_ARG = "-Djetty.port=";
+	static const string& SOLR_PORT_ARG = "-Djetty.port=";
 	assert(tinfo != nullptr);
 	std::vector<std::string> args = tinfo->m_args;
 	m_solr_port = 0;
