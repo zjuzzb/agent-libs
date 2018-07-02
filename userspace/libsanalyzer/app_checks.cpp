@@ -187,6 +187,42 @@ app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 	m_ports(tinfo->m_ainfo->listening_ports()),
 	m_check(check)
 {
+	if(is_solr())
+	{
+		get_port_from_cmd(tinfo);
+	}
+}
+
+bool app_process::is_solr() const
+{
+	return m_check.module() == "solr";
+}
+
+void app_process::get_port_from_cmd(sinsp_threadinfo *tinfo)
+{
+	const string& SOLR_PORT_ARG = "-Djetty.port=";
+	assert(tinfo != nullptr);
+	std::vector<std::string> args = tinfo->m_args;
+	m_solr_port = 0;
+
+	for(auto arg : args)
+	{
+		if(arg.size() > SOLR_PORT_ARG.size())
+		{
+			if(arg.substr(0, SOLR_PORT_ARG.size()) == SOLR_PORT_ARG)
+			{
+				try
+				{
+					m_solr_port = std::stoi(arg.substr(SOLR_PORT_ARG.size()));
+				}
+				catch(const std::exception& e)
+				{
+					g_logger.format(sinsp_logger::SEV_WARNING, "unable to get solr port from arg %s", arg.c_str());
+				}
+				break;
+			}
+		}
+	}
 }
 
 void app_process::set_conf_vals(shared_ptr<app_process_conf_vals> &conf_vals)
@@ -200,6 +236,10 @@ Json::Value app_process::to_json() const
 	ret["pid"] = m_pid;
 	ret["vpid"] = m_vpid;
 	ret["check"] = m_check.to_json();
+	if(is_solr() && m_solr_port > 0)
+	{
+		ret["port"] = m_solr_port;
+	}
 	ret["ports"] = Json::Value(Json::arrayValue);
 	for(auto port : m_ports)
 	{

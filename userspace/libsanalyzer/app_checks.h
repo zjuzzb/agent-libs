@@ -111,6 +111,11 @@ private:
 	set<uint16_t> m_ports;
 	const app_check& m_check;
 	shared_ptr<app_process_conf_vals> m_conf_vals;
+
+	// Solr temporary patch
+	std::uint16_t m_solr_port;
+	bool is_solr() const;
+	void get_port_from_cmd(sinsp_threadinfo* tinfo);
 };
 
 
