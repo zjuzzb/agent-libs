@@ -982,9 +982,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_suppressed_comms.push_back(comm);
 	}
 
+	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
+	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
+
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
-	m_system_supports_containers = nsfile.exists();
+	m_system_supports_containers = (m_mounts_limit_size > 0) && nsfile.exists();
 
 	if(m_statsd_enabled)
 	{
@@ -1034,9 +1037,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_cache_size = m_config->get_scalar<uint16_t>("k8s_labels_cache_size", 0u);
 	m_excess_k8s_log = m_config->get_scalar("k8s_labels_excess_log", false);
 	sanitize_limits(m_k8s_filter);
-
-	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
-	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
 	m_stress_tools = m_config->get_merged_sequence<string>("perf_sensitive_programs");
 	m_detect_stress_tools = !m_stress_tools.empty();
