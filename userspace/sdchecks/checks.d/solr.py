@@ -10,69 +10,48 @@ from string import split
 
 from checks import AgentCheck, CheckException
 
-class SolrMetrics(object):
+class Solr(AgentCheck):
 
     DEFAULT_TIMEOUT = 5
 
-    class Tag(Enum):
-        COLLECTION = 1
-        SHARD = 2
-        CORE = 3
-        CORE_ALIAS = 4
+    TAG_COLLECTION = "solr.collection.name:%s"
+    TAG_SHARD = "solr.shard.name:%s"
+    TAG_CORE = "solr.core.name:%s"
+    TAG_CORE_ALIAS = "solr.core.alias:%s"
 
-    TAG_NAME = {
-        Tag.COLLECTION: "solr.collection.name:%s",
-        Tag.SHARD: "solr.shard.name:%s",
-        Tag.CORE: "solr.core.name:%s",
-        Tag.CORE_ALIAS: "solr.core.alias:%s",
-    }
+    ENDPOINT_CLUSTER = "/solr/admin/collections?action=clusterstatus&wt=json"
+    ENDPOINT_LIVE_NODES = ENDPOINT_CLUSTER
+    ENDPOINT_SHARDS = ENDPOINT_CLUSTER
+    ENDPOINT_REPLICA = ENDPOINT_CLUSTER
+    ENDPOINT_COLLECTION = ENDPOINT_CLUSTER
+    ENDPOINT_DOCUMENT_COUNT = "/solr/admin/cores?wt=json"
+    ENDPOINT_STATS = "/solr/%s/admin/mbeans?stats=true&wt=json"
 
-    class METRIC_NAME_ENUM(Enum):
-        LIVE_NODES = 1,
-        SHARDS = 2,
-        REPLICA = 3,
-        DOCUMENT_COUNT = 4,
-        DOCUMENT_COUNT_MAX = 5,
-        DOCUMENT_COUNT_DELETED = 6,
-        BROWSE_RPS = 7,
-        SELECT_RPS = 8,
-        GET_RPS = 9,
-        QUERY_RPS = 10,
-        UPDATE_RPS = 11,
-        INDEX_SIZE_REP = 12,
-        BROWSE_RT = 13,
-        SELECT_RT = 14,
-        GET_RT = 15,
-        QUERY_RT = 16,
-        UPDATE_RT = 17,
-        HOST_SHARD_COUNT = 18,
-        COLLECTION_SHARD_COUNT = 19,
-        UPDATEHANDLER_ADDS = 20,
-        UPDATEHANDLER_DELETES_BY_ID = 21,
-        UPDATEHANDLER_DELETES_BY_QUERY = 22,
-        UPDATEHANDLER_COMMITS = 23,
-        UPDATEHANDLER_AUTOCOMMITS = 24,
-        INDEX_SIZE_LOG = 25,
-        NONE = 100
-
-    class Endpoint(Enum):
-        LIVE_NODES = 1
-        SHARDS = 2
-        REPLICA = 3
-        DOCUMENT_COUNT = 4
-        COLLECTION = 5
-        NODE = 6
-        CORES_INFO = 7
-        VERSION = 8
-        STATS = 9
-
-    URL = {
-        Endpoint.LIVE_NODES:        "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.SHARDS:            "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.REPLICA:           "/solr/admin/collections?action=clusterstatus&wt=json",
-        Endpoint.DOCUMENT_COUNT:    "/solr/admin/cores?wt=json",
-        Endpoint.COLLECTION:        "/solr/admin/collections?action=clusterstatus&wt=json",
-    }
+    METRIC_NONE =                           "solr.unknown"
+    METRIC_LIVE_NODES =                     "solr.live_nodes"
+    METRIC_REPLICA =                        "solr.core_count"
+    METRIC_DOCUMENT_COUNT =                 "solr.document_count"
+    METRIC_DOCUMENT_COUNT_MAX =             "solr.document_count_max"
+    METRIC_DOCUMENT_COUNT_DELETED =         "solr.document_count_deleted"
+    METRIC_BROWSE_RPS =                     "solr.browse.requests_per_second"
+    METRIC_SELECT_RPS =                     "solr.select.requests_per_second"
+    METRIC_GET_RPS =                        "solr.get.requests_per_second"
+    METRIC_QUERY_RPS =                      "solr.query.requests_per_second"
+    METRIC_UPDATE_RPS =                     "solr.update.requests_per_second"
+    METRIC_BROWSE_RT =                      "solr.browse.request_time"
+    METRIC_SELECT_RT =                      "solr.select.request_time"
+    METRIC_GET_RT =                         "solr.get.request_time"
+    METRIC_QUERY_RT =                       "solr.query.request_time"
+    METRIC_UPDATE_RT =                      "solr.update.request_time"
+    METRIC_INDEX_SIZE_REP =                 "solr.index_size.replicated"
+    METRIC_INDEX_SIZE_LOG =                 "solr.index_size.logical"
+    METRIC_HOST_SHARD_COUNT =               "solr.host.shard_count"
+    METRIC_COLLECTION_SHARD_COUNT =         "solr.collection.shard_count"
+    METRIC_UPDATEHANDLER_ADDS =             "solr.updatehandler.adds"
+    METRIC_UPDATEHANDLER_DELETES_BY_ID =    "solr.updatehandler.deletes_by_id"
+    METRIC_UPDATEHANDLER_DELETES_BY_QUERY = "solr.updatehandler.deletes_by_query"
+    METRIC_UPDATEHANDLER_COMMITS =          "solr.updatehandler.commits"
+    METRIC_UPDATEHANDLER_AUTOCOMMITS =      "solr.updatehandler.autocommits"
 
     class Metric:
 
@@ -124,7 +103,7 @@ class SolrMetrics(object):
         def getPort(self):
             return self.port
 
-    def __init__(self, version, instance):
+    def SolrMetric__init__(self, version, instance):
         self.version = version
         self.instance = instance
         self.ports = instance["ports"]
@@ -138,7 +117,7 @@ class SolrMetrics(object):
         self.log = logging.getLogger(__name__)
         self.timeout = self.DEFAULT_TIMEOUT
 
-    def check(self):
+    def SolrMetriccheck(self):
         self.localCores = set()
         self.localLeaderCores = set()
         self.localEndpoints = set()
@@ -167,15 +146,20 @@ class SolrMetrics(object):
         return ret
 
     @staticmethod
-    def getUrl(host, ports, handler):
+    def getUrl2(host, ports, handler, log):
+        log.debug("Solr.getUrl2: host {} handler {}".format(host, handler))
         found = False
         foundPort = 0
-        timeout = SolrMetrics.DEFAULT_TIMEOUT
+        timeout = Solr.DEFAULT_TIMEOUT
+        log.debug("Solr, trying ports: {}, timeout {}".format(ports, timeout))
         for port in ports:
+            log.debug("Solr.getUrl2: port {}".format(port))
+            url = "http://" + host + ":" + str(port) + handler
+            log.debug("Solr, trying url: {}".format(url))
             try:
                 if found is True:
                     break
-                url = SolrMetrics.formatUrl(host, port, handler)
+                # url = formatUrl(host, port, handler)
                 data = urllib2.urlopen(url, None, timeout)
                 obj = json.load(data)
                 found = True
@@ -189,12 +173,13 @@ class SolrMetrics(object):
 
     def _getUrl(self, handler):
         ports = [ self.port ] if self.port else self.ports
-        obj, self.port = SolrMetrics.getUrl(self.host, ports, handler)
+        obj, self.port = self.getUrl2(self.host, ports, handler, self.log)
         return obj
 
     def _getUrlWithBase(self, baseUrl, handler):
         url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
         try:
+            self.log.debug("Solr, getting url: {}".format(url))
             data = urllib2.urlopen(url, None, self.timeout)
             obj = json.load(data)
         except:
@@ -214,7 +199,7 @@ class SolrMetrics(object):
 
     def _getLiveNodes(self):
         ret = []
-        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
+        obj = self._getUrl(self.ENDPOINT_LIVE_NODES)
 
         if len(obj) > 0:
             try:
@@ -226,7 +211,8 @@ class SolrMetrics(object):
                     if self._isLocal(ip_address, port):
                         live_node_count += 1
 
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.LIVE_NODES, live_node_count, None))
+#                self.gauge(self.METRIC_LIVE_NODES, live_node_count, tags)
+                ret.append(self.Metric(self.METRIC_LIVE_NODES, live_node_count, None))
                 self.log.debug(("detected {} live local nodes").format(live_node_count))
             except KeyError:
                 pass
@@ -235,14 +221,14 @@ class SolrMetrics(object):
     def _getCollectionShardCount(self):
         ret = []
         try:
-            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
+            obj = self._getUrl(self.ENDPOINT_SHARDS)
             if len(obj) == 0:
                 return ret
 
             for collection in obj["cluster"]["collections"]:
                 shards_per_collection = len(obj["cluster"]["collections"][collection]["shards"])
-                tags = [ self.TAG_NAME[self.Tag.COLLECTION] % collection ]
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT, shards_per_collection, tags))
+                tags = [ self.TAG_COLLECTION % collection ]
+                ret.append(self.Metric(self.METRIC_COLLECTION_SHARD_COUNT, shards_per_collection, tags))
         except Exception as e:
             self.log.error(("Error while fetching collection shard count: {}").format(e))
         return ret
@@ -250,7 +236,7 @@ class SolrMetrics(object):
     def _getHostShardCount(self):
         ret = []
         try:
-            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.SHARDS])
+            obj = self._getUrl(self.ENDPOINT_SHARDS)
             if len(obj) == 0:
                 return ret
 
@@ -270,8 +256,8 @@ class SolrMetrics(object):
                             shards_per_host = shards_per_host + 1
                             break
 
-                tags = [ self.TAG_NAME[self.Tag.COLLECTION] % collection ]
-                ret.append(self.Metric(self.METRIC_NAME_ENUM.HOST_SHARD_COUNT, shards_per_host, tags))
+                tags = [ self.TAG_COLLECTION % collection ]
+                ret.append(self.Metric(self.METRIC_HOST_SHARD_COUNT, shards_per_host, tags))
         except Exception as e:
             self.log.error(("Error while fetching host shard count: {}").format(e))
         return ret
@@ -282,7 +268,7 @@ class SolrMetrics(object):
 
         ret = []
         try:
-            obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.REPLICA])
+            obj = self._getUrl(self.ENDPOINT_REPLICA)
             if len(obj) > 0:
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
                     replicaCount = 0
@@ -297,9 +283,9 @@ class SolrMetrics(object):
                                     replicaCount += 1
                     if replicaCount > 0:
                         tags = [
-                            self.TAG_NAME[self.Tag.COLLECTION] % collectionName,
+                            self.TAG_COLLECTION % collectionName,
                         ]
-                        ret.append(self.Metric(self.METRIC_NAME_ENUM.REPLICA, replicaCount, tags))
+                        ret.append(self.Metric(self.METRIC_REPLICA, replicaCount, tags))
                         self.log.debug(("detected {} replica with tags {}").format(replicaCount, tags))
         except Exception as e:
             self.log.error(("Error while fetching replica: {}").format(e))
@@ -316,36 +302,36 @@ class SolrMetrics(object):
     def _getCoreDocumentCount(self, base):
         ret = []
         try:
-            obj = self._getUrlWithBase(base, SolrMetrics.URL[SolrMetrics.Endpoint.DOCUMENT_COUNT])
+            obj = self._getUrlWithBase(base, self.ENDPOINT_DOCUMENT_COUNT)
             if len(obj) > 0:
                 for core_name in obj["status"]:
                     tags = [
-                        self.TAG_NAME[self.Tag.CORE] % core_name
+                        self.TAG_CORE % core_name
                     ]
                     collectionName = self.collectionByCore.get(core_name, None)
                     if collectionName is not None:
-                        tags.append(self.TAG_NAME[self.Tag.COLLECTION] % collectionName)
+                        tags.append(self.TAG_COLLECTION % collectionName)
 
                     if core_name not in self.localLeaderCores:
                         # Report 0 for non-leader cores so that the number panel in the host specific dashboard has data to show
-                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, 0, tags))
-                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX, 0, tags))
-                        ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_DELETED, 0, tags))
+                        ret.append(self.Metric(self.METRIC_DOCUMENT_COUNT, 0, tags))
+                        ret.append(self.Metric(self.METRIC_DOCUMENT_COUNT_MAX, 0, tags))
+                        ret.append(self.Metric(self.METRIC_DOCUMENT_COUNT_DELETED, 0, tags))
                         continue
 
                     numDocs = obj["status"][core_name]["index"]["numDocs"]
                     maxDoc = obj["status"][core_name]["index"]["maxDoc"]
                     deletedDocs = obj["status"][core_name]["index"]["deletedDocs"]
 
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT, numDocs, tags))
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX, maxDoc, tags))
-                    ret.append(self.Metric(self.METRIC_NAME_ENUM.DOCUMENT_COUNT_DELETED, deletedDocs, tags))
+                    ret.append(self.Metric(self.METRIC_DOCUMENT_COUNT, numDocs, tags))
+                    ret.append(self.Metric(self.METRIC_DOCUMENT_COUNT_MAX, maxDoc, tags))
+                    ret.append(self.Metric(self.METRIC_DOCUMENT_COUNT_DELETED, deletedDocs, tags))
         except Exception as e:
             self.log.error(("Error while fetching core document count: {}").format(e))
         return ret
 
     def _retrieveLocalEndpointsAndCores(self):
-        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.LIVE_NODES])
+        obj = self._getUrl(self.ENDPOINT_LIVE_NODES)
         if len(obj) > 0:
             try:
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
@@ -375,27 +361,22 @@ class SolrMetrics(object):
 
     def _getCollections(self):
         ret = []
-        obj = self._getUrl(SolrMetrics.URL[SolrMetrics.Endpoint.COLLECTION])
+        obj = self._getUrl(self.ENDPOINT_COLLECTION)
         if len(obj) > 0:
             for collection in obj["cluster"]["collections"]:
                 ret.append(collection)
         return ret
 
 
-class Solr5(SolrMetrics):
-    URL = {
-        SolrMetrics.Endpoint.CORES_INFO: "/solr/admin/cores?wt=json",
-        SolrMetrics.Endpoint.DOCUMENT_COUNT: "/solr/admin/cores?wt=json",
-        SolrMetrics.Endpoint.STATS: "/solr/%s/admin/mbeans?stats=true&wt=json"
-    }
+# class Solr5(SolrMetrics):
 
     class PrevStat:
         def __init__(self, val, time):
             self.val = val
             self.time = time
 
-    def __init__(self, version, instance):
-        SolrMetrics.__init__(self, version, instance)
+    def Solr5__init__(self, version, instance):
+        self.SolrMetric__init__(version, instance)
         self.prevStats = dict()
 
     def _getAllRpsAndRequestTime(self):
@@ -409,9 +390,9 @@ class Solr5(SolrMetrics):
             coreName = coreStat.core.name
             coreAlias = coreStat.core.alias
             tags = [
-                self.TAG_NAME[self.Tag.COLLECTION] % collection,
-                self.TAG_NAME[self.Tag.CORE] % coreName,
-                self.TAG_NAME[self.Tag.CORE_ALIAS] % coreAlias,
+                self.TAG_COLLECTION % collection,
+                self.TAG_CORE % coreName,
+                self.TAG_CORE_ALIAS % coreAlias,
             ]
 
             all_rps = self._getFromCoreRpsAndRequestTime(coreStat.data, tags)
@@ -444,7 +425,7 @@ class Solr5(SolrMetrics):
         return ret
 
     def _getSingleCoreStats(self, base, corename):
-        return self._getUrlWithBase(base, self.URL[SolrMetrics.Endpoint.STATS] % corename)
+        return self._getUrlWithBase(base, self.ENDPOINT_STATS % corename)
 
     def _getFromCoreRpsAndRequestTime(self, obj, tags):
         arr = []
@@ -456,29 +437,29 @@ class Solr5(SolrMetrics):
             assert beans[2] == "QUERYHANDLER"
             queryHandlerObj = beans[3]
 
-            arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS, "/browse", queryHandlerObj))
-            arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.SELECT_RPS, "/select", queryHandlerObj))
-            arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.GET_RPS, "/get", queryHandlerObj))
-            arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS, "/query", queryHandlerObj))
-            arr.append(self._getSingleRps(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS, "/update", queryHandlerObj))
+            arr.append(self._getSingleRps(self.METRIC_BROWSE_RPS, "/browse", queryHandlerObj))
+            arr.append(self._getSingleRps(self.METRIC_SELECT_RPS, "/select", queryHandlerObj))
+            arr.append(self._getSingleRps(self.METRIC_GET_RPS, "/get", queryHandlerObj))
+            arr.append(self._getSingleRps(self.METRIC_QUERY_RPS, "/query", queryHandlerObj))
+            arr.append(self._getSingleRps(self.METRIC_UPDATE_RPS, "/update", queryHandlerObj))
 
-            arr.extend(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT, "/browse", queryHandlerObj, tags))
-            arr.extend(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.SELECT_RT, "/select", queryHandlerObj, tags))
-            arr.extend(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.GET_RT, "/get", queryHandlerObj, tags))
-            arr.extend(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.QUERY_RT, "/query", queryHandlerObj, tags))
-            arr.extend(self._getSingleRequestTime(SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT, "/update", queryHandlerObj, tags))
+            arr.extend(self._getSingleRequestTime(self.METRIC_BROWSE_RT, "/browse", queryHandlerObj, tags))
+            arr.extend(self._getSingleRequestTime(self.METRIC_SELECT_RT, "/select", queryHandlerObj, tags))
+            arr.extend(self._getSingleRequestTime(self.METRIC_GET_RT, "/get", queryHandlerObj, tags))
+            arr.extend(self._getSingleRequestTime(self.METRIC_QUERY_RT, "/query", queryHandlerObj, tags))
+            arr.extend(self._getSingleRequestTime(self.METRIC_UPDATE_RT, "/update", queryHandlerObj, tags))
         except Exception as e:
             self.log.debug(("could not get statistic from local core: {}").format(e))
         return arr
 
     def _getSingleRps(self, metricEnumValue, keyString, queryHandlerObj):
         try:
-            ret =  SolrMetrics.Metric(metricEnumValue, queryHandlerObj[keyString]["stats"]["requests"], None, None)
-            ret.metricType = SolrMetrics.Metric.MetricType.rate
+            ret =  self.Metric(metricEnumValue, queryHandlerObj[keyString]["stats"]["requests"], None, None)
+            ret.metricType = self.Metric.MetricType.rate
             return ret
         except Exception as e:
             self.log.debug(("could not get rps {} {}: {}").format(metricEnumValue, keyString, e))
-            return SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.NONE, 0, None, None)
+            return self.Metric(self.METRIC_NONE, 0, None, None)
 
     def _getSingleRequestTime(self, metricEnumValue, keyString, queryHandlerObj, tags):
         ret = []
@@ -494,7 +475,7 @@ class Solr5(SolrMetrics):
             dreqs = reqs - prevStats.val
             dtime = tottime - prevStats.time
             if dreqs > 0 and dtime > 0:
-                ret.append(self.Metric(metricEnumValue, float(dtime / dreqs), tags, SolrMetrics.Metric.MetricType.gauge))
+                ret.append(self.Metric(metricEnumValue, float(dtime / dreqs), tags, self.Metric.MetricType.gauge))
             elif dreqs < 0 or dtime < 0:
                 self.log.debug("decreased request count or total time, resetting stored stats for {}".format(key))
             elif dreqs != 0 or dtime != 0:
@@ -512,11 +493,11 @@ class Solr5(SolrMetrics):
             assert beans[4] == "UPDATEHANDLER"
             stats = beans[5]
 
-            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS, long(stats["updateHandler"]["stats"]["cumulative_adds"]), tags, SolrMetrics.Metric.MetricType.rate))
-            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID, long(stats["updateHandler"]["stats"]["cumulative_deletesById"]), tags, SolrMetrics.Metric.MetricType.rate))
-            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY, long(stats["updateHandler"]["stats"]["cumulative_deletesByQuery"]), tags, SolrMetrics.Metric.MetricType.rate))
-            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS, long(stats["updateHandler"]["stats"]["commits"]), tags, SolrMetrics.Metric.MetricType.rate))
-            ret.append(SolrMetrics.Metric(SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS, long(stats["updateHandler"]["stats"]["autocommits"]), tags, SolrMetrics.Metric.MetricType.rate))
+            ret.append(self.Metric(self.METRIC_UPDATEHANDLER_ADDS, long(stats["updateHandler"]["stats"]["cumulative_adds"]), tags, self.Metric.MetricType.rate))
+            ret.append(self.Metric(self.METRIC_UPDATEHANDLER_DELETES_BY_ID, long(stats["updateHandler"]["stats"]["cumulative_deletesById"]), tags, self.Metric.MetricType.rate))
+            ret.append(self.Metric(self.METRIC_UPDATEHANDLER_DELETES_BY_QUERY, long(stats["updateHandler"]["stats"]["cumulative_deletesByQuery"]), tags, self.Metric.MetricType.rate))
+            ret.append(self.Metric(self.METRIC_UPDATEHANDLER_COMMITS, long(stats["updateHandler"]["stats"]["commits"]), tags, self.Metric.MetricType.rate))
+            ret.append(self.Metric(self.METRIC_UPDATEHANDLER_AUTOCOMMITS, long(stats["updateHandler"]["stats"]["autocommits"]), tags, self.Metric.MetricType.rate))
         except Exception as e:
             self.log.debug(("unable to get updatehandler stats: {}").format(e))
         return ret
@@ -524,8 +505,8 @@ class Solr5(SolrMetrics):
     def _getFromCoreIndexSize(self, coreStatistic):
         ret = []
         tags = [
-            self.TAG_NAME[self.Tag.COLLECTION] % coreStatistic.core.collection,
-            self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name,
+            self.TAG_COLLECTION % coreStatistic.core.collection,
+            self.TAG_CORE % coreStatistic.core.name,
         ]
 
         try:
@@ -539,47 +520,14 @@ class Solr5(SolrMetrics):
             else:
                 sizeInBytes = float(cleanSize)
 
-            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_REP, sizeInBytes, tags))
+            ret.append(self.Metric(self.METRIC_INDEX_SIZE_REP, sizeInBytes, tags))
             # Report 0 for non-leader cores for logical size so we still show data for the core but
             # the total of all cores still shows the correct size for the collection
             logicalSize = sizeInBytes if coreStatistic.core.name in self.localLeaderCores else 0
-            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_LOG, logicalSize, tags))
+            ret.append(self.Metric(self.METRIC_INDEX_SIZE_LOG, logicalSize, tags))
         except Exception as e:
             self.log.error(("error getting index size for core {}: {}").format(coreStatistic.core.name, e))
         return ret
-
-class Solr(AgentCheck):
-    """
-    Solr agent check
-    """
-
-    METRIC_NAME_MAP = {
-        SolrMetrics.METRIC_NAME_ENUM.NONE:                              "solr.unknown",
-        SolrMetrics.METRIC_NAME_ENUM.LIVE_NODES:                        "solr.live_nodes",
-        SolrMetrics.METRIC_NAME_ENUM.REPLICA:                           "solr.core_count",
-        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT:                    "solr.document_count",
-        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_MAX:                "solr.document_count_max",
-        SolrMetrics.METRIC_NAME_ENUM.DOCUMENT_COUNT_DELETED:            "solr.document_count_deleted",
-        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RPS:                        "solr.browse.requests_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.SELECT_RPS:                        "solr.select.requests_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.GET_RPS:                           "solr.get.requests_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.QUERY_RPS:                         "solr.query.requests_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RPS:                        "solr.update.requests_per_second",
-        SolrMetrics.METRIC_NAME_ENUM.BROWSE_RT:                         "solr.browse.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.SELECT_RT:                         "solr.select.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.GET_RT:                            "solr.get.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.QUERY_RT:                          "solr.query.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATE_RT:                         "solr.update.request_time",
-        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_REP:                    "solr.index_size.replicated",
-        SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_LOG:                    "solr.index_size.logical",
-        SolrMetrics.METRIC_NAME_ENUM.HOST_SHARD_COUNT:                  "solr.host.shard_count",
-        SolrMetrics.METRIC_NAME_ENUM.COLLECTION_SHARD_COUNT:            "solr.collection.shard_count",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_ADDS:                "solr.updatehandler.adds",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_ID:       "solr.updatehandler.deletes_by_id",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_DELETES_BY_QUERY:    "solr.updatehandler.deletes_by_query",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_COMMITS:             "solr.updatehandler.commits",
-        SolrMetrics.METRIC_NAME_ENUM.UPDATEHANDLER_AUTOCOMMITS:         "solr.updatehandler.autocommits",
-    }
 
     # Source
     SOURCE_TYPE_NAME = "solr"
@@ -595,7 +543,9 @@ class Solr(AgentCheck):
             self._getSolrVersion(instance)
 
             if self.version is not None and int(self.version[0:1]) == 5:
-                self.sMetric = Solr5(self.version, instance)
+#                self.sMetric = Solr5(self.version, instance)
+                self.sMetric = True
+                self.Solr5__init__(self.version, instance)
             elif self.version is None:
                 raise CheckException("Failed to find Solr version")
             else:
@@ -603,26 +553,32 @@ class Solr(AgentCheck):
 
         confTags = instance.get('tags', [])
 
-        ret = self.sMetric.check()
+        ret = self.SolrMetriccheck()
 
         for metricList in ret:
             if metricList is not None:
                 for metric in metricList:
-                    if metric is not None and metric.getName() != SolrMetrics.METRIC_NAME_ENUM.NONE:
+                    if metric is not None and metric.getName() != self.METRIC_NONE:
                         tags = metric.getTags()
                         if tags is not None:
                             tags.extend(confTags)
                         else:
                             tags = confTags
 
-                        if metric.getType() == SolrMetrics.Metric.MetricType.gauge:
-                            self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), tags)
-                        elif metric.getType() == SolrMetrics.Metric.MetricType.rate:
-                            self.rate(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), tags)
+                        if metric.getType() == self.Metric.MetricType.gauge:
+                            self.log.debug("Solr gauge: {} = {}, tags {}".format(metric.getName(), metric.getValue(), tags))
+                            self.gauge(metric.getName(), metric.getValue(), tags)
+                        #    self.gauge(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), tags)
+                        elif metric.getType() == self.Metric.MetricType.rate:
+                            self.log.debug("Solr rate: {} = {}, tags {}".format(metric.getName(), metric.getValue(), tags))
+                            self.rate(metric.getName(), metric.getValue(), tags)
+                        #    self.rate(self.METRIC_NAME_MAP[metric.getName()], metric.getValue(), tags)
 
     def _getSolrVersion(self, instance):
         if self.version == None:
-            obj, port = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+            self.log.debug("Solr, getting version from ports {}, endpoint {}".format(instance["ports"], self.GET_VERSION_ENDPOINT))
+            obj, port = self.getUrl2(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT, self.log)
+            self.log.debug("Solr, version check (port {}) returns: {}".format(port, obj))
             if len(obj) > 0:
                 self.log.debug(str("solr: version endpoint found on port {} out of ports {}").format(port, instance["ports"]))
                 self.version = obj["lucene"]["solr-spec-version"]
