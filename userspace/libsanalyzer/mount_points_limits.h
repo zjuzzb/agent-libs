@@ -19,7 +19,10 @@ public:
 	bool allow(const std::string& device,
 				const std::string& fs_type,
 				const std::string& mount_dir);
-	bool increase();
+	void increase()
+	{
+		m_current_size++;
+	}
 
 	bool limit_is_reached() const 
 	{

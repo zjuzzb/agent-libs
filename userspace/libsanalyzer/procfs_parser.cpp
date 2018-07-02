@@ -686,6 +686,12 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			break;
 		}
 
+		// already processed; skips
+		if (mount_points.find(entry->mnt_dir) != mount_points.end())
+		{
+			continue;
+		}
+
 		bool colon_found = (strchr(entry->mnt_fsname, ':') != NULL);
 
 		//
@@ -730,10 +736,9 @@ vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enable
 			blocksize = statfs.f_bsize;
 		}
 
-		if (mount_points.find(entry->mnt_dir) == mount_points.end() && !m_mount_points->increase())
-		{
-			continue;
-		}
+
+		m_mount_points->increase();
+
 		mounted_fs fs;
 		fs.device = entry->mnt_fsname;
 		fs.mount_dir = entry->mnt_dir;

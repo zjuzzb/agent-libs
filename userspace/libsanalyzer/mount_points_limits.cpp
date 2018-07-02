@@ -39,20 +39,6 @@ bool mount_points_limits::allow(const std::string& device,
 	return true;
 }
 
-bool mount_points_limits::increase()
-{
-	if (m_current_size >= m_limit_size)
-	{
-		if (!m_limit_logged)
-			g_logger.log("Max mount points limit reached.", sinsp_logger::SEV_DEBUG);
-		m_limit_logged = true;
-		return false;
-	}
-
-	m_current_size++;
-	return true;
-}
-
 void mount_points_limits::log_if_max_mount_limit_reached()
 {
 	if (!m_limit_logged && limit_is_reached()){
