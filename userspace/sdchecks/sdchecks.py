@@ -239,12 +239,13 @@ class AppCheckInstance:
         self.instance_conf = {
             "host": "localhost",
             "name": self.name,
-            "pid": self.pid,
-            "vpid": self.vpid,
             "ports": proc_data["ports"]
         }
-        if len(proc_data["ports"]) > 0:
-            self.instance_conf["port"] = proc_data["ports"][0]
+        if proc_data.has_key("port"):
+            self.instance_conf["solr_port"] = proc_data["port"]
+        else:
+            if len(proc_data["ports"]) > 0:
+                self.instance_conf["port"] = proc_data["ports"][0]
 
         for key, value in check.get("conf", {}).items():
             if isinstance(value, str):
