@@ -39,5 +39,4 @@ private:
 	mount_points_filter_vec m_filters;
 	const unsigned m_limit_size;
 	unsigned m_current_size;
-	bool m_limit_logged;
 };
