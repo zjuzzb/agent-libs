@@ -49,8 +49,19 @@ class Solr(AgentCheck):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.version = None
         self.sMetric = None
+        self.port = 0
 
     def check(self, instance):
+        if self.port == 0:
+            try:
+                self.port = instance["solr_port"]
+            except KeyError as err:
+                self.log.warning(("port number not found in instance. Backuping scanning list of ports"))
+                self.getPortFromListeningPorts(instance)
+        # Raise exception if still port == 0
+        if self.port == 0:
+            raise CheckException(("Failed to find solr port for pid {}").format(instance["pid"]))
+
         if self.sMetric is None:
             self._getSolrVersion(instance)
 
@@ -60,6 +71,9 @@ class Solr(AgentCheck):
                 raise CheckException("Failed to find Solr version")
             else:
                 raise CheckException("Solr version {} not yet supported".format(self.version[0:1]))
+
+        # Pass the retrieved port to the metric class
+        self.sMetric.setPort(self.port)
 
         confTags = instance.get('tags', [])
 
@@ -82,9 +96,18 @@ class Solr(AgentCheck):
 
     def _getSolrVersion(self, instance):
         if self.version == None:
-            obj, port = SolrMetrics.getUrl(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+            url = SolrMetrics.formatUrl(instance["host"], self.port, self.GET_VERSION_ENDPOINT)
+            obj = SolrMetrics._httpGet(url)
             if len(obj) > 0:
-                self.log.debug(str("solr: version endpoint found on port {} out of ports {}").format(port, instance["ports"]))
+                self.log.debug(str("solr: version endpoint found on port {}").format(self.port))
                 self.version = obj["lucene"]["solr-spec-version"]
                 assert int(self.version[0:1]) >= 4
 
+
+    def getPortFromListeningPorts(self, instance):
+        obj, port = SolrMetrics.getUrlIteratingOnPorts(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
+        if port > 0:
+            self.port = port
+            self.log.debug(("Detected port {} from port list {} for solr instance {}").format(self.port, instance["ports"], instance["pid"]))
+        else:
+            self.log.debug("could not get solr port fot pid {} from list of ports")

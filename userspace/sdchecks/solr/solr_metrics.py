@@ -125,7 +125,6 @@ class SolrMetrics(object):
     def __init__(self, version, instance):
         self.version = version
         self.instance = instance
-        self.ports = instance["ports"]
         self.port = 0
         self.host = instance["host"]
         self.network = Network()
@@ -136,13 +135,16 @@ class SolrMetrics(object):
         self.log = logging.getLogger(__name__)
         self.timeout = self.DEFAULT_TIMEOUT
 
+    def setPort(self, port):
+        self.port = port
+
     def check(self):
         self.localCores = set()
         self.localLeaderCores = set()
         self.localEndpoints = set()
         self.collectionByCore = dict()
 
-        self.log.debug(str("solr: Start metrics collection: host {}, port {}, ports {}").format(self.host, self.port, self.ports))
+        self.log.debug(str("solr: Start metrics collection: host {}, port {}").format(self.host, self.port))
         self._retrieveLocalEndpointsAndCores()
         ret = [
             self._getLiveNodes(),
@@ -165,7 +167,7 @@ class SolrMetrics(object):
         return ret
 
     @staticmethod
-    def getUrl(host, ports, handler):
+    def getUrlIteratingOnPorts(host, ports, handler):
         found = False
         foundPort = 0
         timeout = SolrMetrics.DEFAULT_TIMEOUT
@@ -185,20 +187,25 @@ class SolrMetrics(object):
         else:
             return [{}, 0]
 
-    def _getUrl(self, handler):
-        ports = [ self.port ] if self.port else self.ports
-        obj, self.port = SolrMetrics.getUrl(self.host, ports, handler)
-        return obj
-
-    def _getUrlWithBase(self, baseUrl, handler):
-        url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
+    @staticmethod
+    def _httpGet(url):
+        timeout = SolrMetrics.DEFAULT_TIMEOUT
         try:
-            data = urllib2.urlopen(url, None, self.timeout)
+            data = urllib2.urlopen(url, None, timeout)
             obj = json.load(data)
-        except:
+        except Exception as err:
+            logging.getLogger("httpGet").warning(("error calling {}: {}").format(url, err))
             return {}
 
         return obj
+
+    def _getUrl(self, handler):
+        url = SolrMetrics.formatUrl(self.host, self.port, handler)
+        return self._httpGet(url)
+
+    def _getUrlWithBase(self, baseUrl, handler):
+        url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
+        return self._httpGet(url)
 
     def _isLocal(self, ip, port):
         try:
