@@ -49,9 +49,8 @@ class Solr5(SolrMetrics):
     def _getIndexSize(self):
         ret = []
         coresStatisticJson = self._getStats()
-        self.log.debug(str("fetching index memory size for {} local cores").format(len(coresStatisticJson)))
         for coreStatistic in coresStatisticJson:
-            ret.extend(self._getFromCoreIndexSize(coreStatistic))
+            ret.extend(self._getIndexSizeFromCoreStats(coreStatistic))
         return ret
 
     def _getStats(self):
@@ -143,29 +142,47 @@ class Solr5(SolrMetrics):
             self.log.debug(("unable to get updatehandler stats: {}").format(e))
         return ret
 
-    def _getFromCoreIndexSize(self, coreStatistic):
+    def _getIndexSizeFromCoreStats(self, coreStatistic):
         ret = []
         tags = [
             self.TAG_NAME[self.Tag.COLLECTION] % coreStatistic.core.collection,
             self.TAG_NAME[self.Tag.CORE] % coreStatistic.core.name,
+            self.TAG_NAME[self.Tag.CORE_ALIAS] % coreStatistic.core.alias,
         ]
 
         try:
-            size, unit = split(coreStatistic.data["solr-mbeans"][3]["/replication"]["stats"]["indexSize"], " ")
-            #erase ',' from the size
-            cleanSize = size.replace(",", "")
-            if unit == "KB":
-                sizeInBytes = float(cleanSize) * 1000
-            elif unit == "MB":
-                sizeInBytes = float(cleanSize) * 1000000
-            else:
-                sizeInBytes = float(cleanSize)
+            beans = coreStatistic.data["solr-mbeans"]
+            if beans[0] != "CORE":
+                raise Exception('CORE not in position 0 in solr-mbeans')
+            if beans[2] != "QUERYHANDLER":
+                raise Exception('QUERYHANDLER not in position 2 in solr-mbeans')
 
-            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_REP, sizeInBytes, tags))
+            handlers = beans[3]
+            if '/replication' in handlers:
+                indexSize = handlers["/replication"]["stats"]["indexSize"]
+                self.log.debug(str("index size retrieved from /replication for core {}: {}").format(coreStatistic.core.name, indexSize))
+
+                val, unit = indexSize.split()
+
+                # See lucene-solr/solr/core/src/java/org/apache/solr/utils/NumberUtils.java
+                if unit.lower() == "gb":
+                    valInBytes = float(val) * 1024 * 1024 * 1024
+                elif unit.lower() == "mb":
+                    valInBytes = float(val) * 1024 * 1024
+                elif unit.lower() == "kb":
+                    valInBytes = float(val) * 1024
+                elif unit.lower() == "bytes":
+                    valInBytes = long(val)
+            else:
+                indexSize = beans[1]["core"]["stats"]["sizeInBytes"]
+                self.log.debug(str("index size retrieved from core stats for core {}: {}").format(coreStatistic.core.name, indexSize))
+                valInBytes = long(indexSize)
+
+            ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_REP, valInBytes, tags))
             # Report 0 for non-leader cores for logical size so we still show data for the core but
             # the total of all cores still shows the correct size for the collection
-            logicalSize = sizeInBytes if coreStatistic.core.name in self.localLeaderCores else 0
+            logicalSize = valInBytes if coreStatistic.core.name in self.localLeaderCores else 0
             ret.append(self.Metric(SolrMetrics.METRIC_NAME_ENUM.INDEX_SIZE_LOG, logicalSize, tags))
         except Exception as e:
-            self.log.error(("error getting index size for core {}: {}").format(coreStatistic.core.name, e))
+            self.log.error(("Error getting index size for core {}: {}").format(coreStatistic.core.name, e))
         return ret
