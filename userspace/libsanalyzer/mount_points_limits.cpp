@@ -2,7 +2,7 @@
 
 mount_points_limits::mount_points_limits(const mount_points_filter_vec& filters,
 					 unsigned limit_size)
-	: m_limit_size(limit_size), m_current_size(0), m_limit_logged(false)
+	: m_limit_size(limit_size), m_current_size(0)
 {
 	for (const auto& flt : filters)
 	{
@@ -39,22 +39,14 @@ bool mount_points_limits::allow(const std::string& device,
 	return true;
 }
 
-bool mount_points_limits::increase()
+void mount_points_limits::log_if_max_mount_limit_reached()
 {
-	if (m_current_size >= m_limit_size)
-	{
-		if (!m_limit_logged)
-			g_logger.log("Max mount points limit reached.", sinsp_logger::SEV_DEBUG);
-		m_limit_logged = true;
-		return false;
+	if (limit_is_reached()){
+		g_logger.log("Max mount points limit reached.", sinsp_logger::SEV_DEBUG);
 	}
-
-	m_current_size++;
-	return true;
 }
 
 void mount_points_limits::reset()
 {
 	m_current_size = 0;
-	m_limit_logged = false;
 }

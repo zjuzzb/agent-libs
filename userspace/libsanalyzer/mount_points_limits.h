@@ -19,7 +19,18 @@ public:
 	bool allow(const std::string& device,
 				const std::string& fs_type,
 				const std::string& mount_dir);
-	bool increase();
+	void increase()
+	{
+		m_current_size++;
+	}
+
+	bool limit_is_reached() const 
+	{
+		return m_current_size >= m_limit_size;
+	}
+	
+	void log_if_max_mount_limit_reached();
+
 	void reset();
 	mount_points_filter_vec get_filters() const { return m_filters; }
 
@@ -28,5 +39,4 @@ private:
 	mount_points_filter_vec m_filters;
 	const unsigned m_limit_size;
 	unsigned m_current_size;
-	bool m_limit_logged;
 };
