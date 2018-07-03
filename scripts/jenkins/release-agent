@@ -1,0 +1,169 @@
+#!/bin/bash
+
+#!/bin/bash
+set -exuo pipefail
+
+REPOSITORY_BASENAME=$1
+BINARIES_DIR=$2
+REPOSITORY_DIR=$3
+S3_BUCKET=$4
+
+SCRIPT=$(readlink -f $0)
+SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
+JOBS=${JOBS:-$(nproc)}
+
+export AWS_DEFAULT_REGION="us-east-1"
+
+cd $SCRIPTS_DIR/../..
+
+
+function configure_rpm_repo {
+	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+
+	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	
+	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+
+	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+
+	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
+	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
+
+	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo $S3_BUCKET/$REPOSITORY_NAME/rpm/ --acl public-read
+	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+}
+
+function checksum {
+	LABEL=$1
+	CMD=$2
+
+	cat <<EOF
+$LABEL:
+ $($CMD Packages | cut -d" " -f1) $(du -b Packages | tr \\t " ")
+ $($CMD Packages.gz | cut -d" " -f1) $(du -b Packages.gz | tr \\t " ")
+EOF
+
+}
+
+function configure_debian_repo {
+	DEB_BASEARCH=$(dpkg --print-architecture)
+
+	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+	pushd $REPOSITORY_DIR/deb
+	
+	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr stable-$DEB_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+
+	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+	cp $PACKAGES_DIR/*deb stable-$DEB_BASEARCH
+	dpkg-scanpackages --multiversion stable-$DEB_BASEARCH > stable-$DEB_BASEARCH/Packages
+
+	gzip -c stable-$DEB_BASEARCH/Packages > stable-$DEB_BASEARCH/Packages.gz
+	pushd stable-$DEB_BASEARCH
+	(cat <<EOF
+Date: $(date -R)
+Suite: stable-$DEB_BASEARCH
+EOF
+	checksum MD5Sum md5sum
+	checksum SHA1 sha1sum
+	checksum SHA256 sha256sum
+	checksum SHA512 sha512sum
+	) > Release
+	gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
+	gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+	popd
+
+	sed s/_REPOSITORY_/$REPOSITORY_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
+
+	aws s3 cp draios.list $S3_BUCKET/$REPOSITORY_NAME/deb/ --acl public-read
+	aws s3 sync stable-$DEB_BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+
+	popd
+}
+
+function configure_tgz_repo {
+	BASEARCH=$(uname -m)
+
+	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
+	
+	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+
+	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
+	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
+}
+
+function configure_installers {
+	TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
+	cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-agent
+
+	# Some jenkins jobs don't have permission to overwrite the
+	# install-script. Allow for them to skip this without failing
+	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
+	then
+	    sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-agent
+	    aws s3 cp $REPOSITORY_DIR/install-agent $S3_BUCKET/$REPOSITORY_NAME/ --acl public-read
+	    aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
+	fi
+}
+
+function upload_binaries {
+	rm -rf $REPOSITORY_DIR
+	configure_rpm_repo
+	configure_debian_repo
+	configure_tgz_repo
+	configure_installers
+}
+
+function trigger_docker_build {
+	trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
+	tag=${AGENT_VERSION}
+
+	if [[ "${REPOSITORY_BASENAME}" == 'dev' ]]; then
+			echo curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Branch", "source_name": "dev"}' \
+			-X POST ${trigger_url}
+	fi
+
+	if [[ "${REPOSITORY_BASENAME}" == 'stable' ]]; then
+			echo curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Branch", "source_name": "master"}' \
+			-X POST ${trigger_url}
+
+			echo sleep 60s
+
+			echo curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
+			-X POST ${trigger_url}
+	fi
+}
+
+REPOSITORY_NAME=$REPOSITORY_BASENAME
+PACKAGES_DIR=$BINARIES_DIR/release
+upload_binaries
+
+REPOSITORY_NAME=$REPOSITORY_BASENAME-debug
+PACKAGES_DIR=$BINARIES_DIR/debug
+upload_binaries
+
+exit 0
+
+#the build is executed on i686 and x86_64 server
+#the docker hub trigger has to be executed only at the end of x86_64 build
+if [[ ${BASEARCH} == 'x86_64' ]]; then
+	trigger_docker_build
+fi
+
+#keep /tmp clean
+rm -rf ${REPOSITORY_DIR}
+

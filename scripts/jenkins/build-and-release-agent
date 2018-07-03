@@ -1,0 +1,52 @@
+#!/bin/bash
+
+if [ -z "$AGENT_VERSION" ]
+then
+	echo "AGENT_VERSION must be set" >&2
+	exit 1
+fi
+
+if [ -z "$S3_BUCKET" ]
+then
+	echo "S3_BUCKET must be set" >&2
+	exit 1
+fi
+
+SCRIPTS_DIR=$(dirname $(readlink -f $0))
+if [ -z "$WORKSPACE" ]
+then
+	WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
+set -xeuo pipefail
+
+SOURCE=$WORKSPACE/src
+INSTALL_DIR=$WORKSPACE/install
+OUT=$WORKSPACE/out
+BUILD=$WORKSPACE/build
+PIPCACHE=$WORKSPACE/pipcache
+REPO_DIR=$WORKSPACE/repo
+# docker run -it --rm -v $WORKSPACE:/workspace busybox rm -vrf /workspace/build /workspace/pipcache
+
+DRIVER_BUILD=$WORKSPACE/driver
+
+rm -rf $DRIVER_BUILD
+mkdir -p $DRIVER_BUILD
+(
+cd $DRIVER_BUILD
+cmake $WORKSPACE/src/agent
+make -C driver
+)
+
+# since we need sudo anyway, this may be too hacky. just use insmod/rmmod?
+docker run -i --rm --privileged -v $DRIVER_BUILD/driver:/driver busybox rmmod sysdigcloud-probe
+docker run -i --rm --privileged -v $DRIVER_BUILD/driver:/driver busybox insmod /driver/sysdigcloud-probe.ko
+
+docker run -it --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION -v $SOURCE:/draios:ro -v $INSTALL_DIR:/opt/draios -v $OUT:/out -v /var/run/docker.sock:/var/run/docker.sock -v $BUILD:/code/agent/build -v $PIPCACHE:/root/.cache quay.io/sysdig/agent-builder release
+docker run -i --rm -v $OUT:/out busybox chown -R `id -u`:`id -g` /out
+
+sudo $SCRIPTS_DIR/run-tests $INSTALL_DIR
+
+docker run -i --rm --privileged -v $PWD/driver:/driver busybox rmmod sysdigcloud-probe
+
+$SCRIPTS_DIR/release-agent stable $OUT $REPO_DIR $S3_BUCKET
