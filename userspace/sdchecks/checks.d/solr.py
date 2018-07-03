@@ -11,6 +11,7 @@ from string import split
 from checks import AgentCheck, CheckException
 
 class Solr(AgentCheck):
+    SOURCE_TYPE_NAME = "solr"
 
     DEFAULT_TIMEOUT = 5
 
@@ -26,6 +27,7 @@ class Solr(AgentCheck):
     ENDPOINT_COLLECTION = ENDPOINT_CLUSTER
     ENDPOINT_DOCUMENT_COUNT = "/solr/admin/cores?wt=json"
     ENDPOINT_STATS = "/solr/%s/admin/mbeans?stats=true&wt=json"
+    ENDPOINT_VERSION = "/solr/admin/info/system?wt=json"
 
     METRIC_NONE =                           "solr.unknown"
     METRIC_LIVE_NODES =                     "solr.live_nodes"
@@ -72,19 +74,25 @@ class Solr(AgentCheck):
         def getPort(self):
             return self.port
 
-    def SolrMetric__init__(self, version, instance):
-        self.version = version
-        self.instance = instance
-        self.ports = instance["ports"]
+    class PrevStat:
+        def __init__(self, val, time):
+            self.val = val
+            self.time = time
+
+    def __init__(self, name, init_config, agentConfig, instances=None):
+        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
+        self.version = None
+        self.failed = False
+        self.ports = []
         self.port = 0
-        self.host = instance["host"]
+        self.host = ""
         self.network = Network()
         self.localCores = set()
         self.localLeaderCores = set()
         self.localEndpoints = set()
         self.collectionByCore = dict()
-        self.log = logging.getLogger(__name__)
         self.timeout = self.DEFAULT_TIMEOUT
+        self.prevStats = dict()
     
     def clearCache(self):
         self.localCores = set()
@@ -113,52 +121,39 @@ class Solr(AgentCheck):
     def getMajorNumberVersion(self):
         return int(self.version[0:1])
 
-    @staticmethod
-    def formatUrl(host, port, handler):
-        ret = "http://" + host + ":" + str(port) + handler
-        return ret
-
-    @staticmethod
-    def getUrl2(host, ports, handler, log):
-        log.debug("Solr.getUrl2: host {} handler {}".format(host, handler))
-        found = False
-        foundPort = 0
-        timeout = Solr.DEFAULT_TIMEOUT
-        log.debug("Solr, trying ports: {}, timeout {}".format(ports, timeout))
-        for port in ports:
-            log.debug("Solr.getUrl2: port {}".format(port))
-            url = "http://" + host + ":" + str(port) + handler
-            log.debug("Solr, trying url: {}".format(url))
-            try:
-                if found is True:
-                    break
-                # url = formatUrl(host, port, handler)
-                data = urllib2.urlopen(url, None, timeout)
-                obj = json.load(data)
-                found = True
-                foundPort = port
-            except:
-                found = False
-        if found is True:
-            return [obj, foundPort]
-        else:
-            return [{}, 0]
-
-    def _getUrl(self, handler):
-        ports = [ self.port ] if self.port else self.ports
-        obj, self.port = self.getUrl2(self.host, ports, handler, self.log)
-        return obj
-
-    def _getUrlWithBase(self, baseUrl, handler):
-        url = str("{}{}").format(baseUrl[0:baseUrl.find('/solr')], handler)
+    def getUrl(self, url):
+        self.log.debug("Solr, getting url: {}".format(url))
         try:
-            self.log.debug("Solr, getting url: {}".format(url))
             data = urllib2.urlopen(url, None, self.timeout)
             obj = json.load(data)
         except:
             return {}
 
+        if obj is None:
+            return {}
+
         return obj
+
+    def scanPorts(self, handler):
+        ports = [ self.port ] if self.port else self.ports
+
+        self.log.debug("Solr.scanPorts: host {} ports {} handler {}".format(self.host, self.ports, handler))
+        for port in ports:
+            url = "http://" + self.host + ":" + str(port) + handler
+            obj = self.getUrl(url)
+            if obj is not None and len(obj) > 0:
+                self.port = port
+                return obj
+        return {}
+
+    def getHandler(self, handler):
+        url = "http://" + self.host + ":" + str(self.port) + handler
+        return self.getUrl(url)
+
+    def getHandlerWithBase(self, baseUrl, handler):
+        idx = baseUrl.find('/solr')
+        url = (baseUrl + handler) if (idx == -1) else (baseUrl[0:idx] + handler)
+        return self.getUrl(url)
 
     def _isLocal(self, ip, port):
         try:
@@ -171,7 +166,7 @@ class Solr(AgentCheck):
         return ret
 
     def _getLiveNodes(self, confTags):
-        obj = self._getUrl(self.ENDPOINT_LIVE_NODES)
+        obj = self.getHandler(self.ENDPOINT_LIVE_NODES)
 
         if len(obj) > 0:
             try:
@@ -190,7 +185,7 @@ class Solr(AgentCheck):
 
     def _getCollectionShardCount(self, confTags):
         try:
-            obj = self._getUrl(self.ENDPOINT_SHARDS)
+            obj = self.getHandler(self.ENDPOINT_SHARDS)
             if len(obj) == 0:
                 return
 
@@ -203,7 +198,7 @@ class Solr(AgentCheck):
 
     def _getHostShardCount(self, confTags):
         try:
-            obj = self._getUrl(self.ENDPOINT_SHARDS)
+            obj = self.getHandler(self.ENDPOINT_SHARDS)
             if len(obj) == 0:
                 return
 
@@ -230,7 +225,7 @@ class Solr(AgentCheck):
 
     def _getReplica(self, confTags):
         try:
-            obj = self._getUrl(self.ENDPOINT_REPLICA)
+            obj = self.getHandler(self.ENDPOINT_REPLICA)
             if len(obj) > 0:
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
                     replicaCount = 0
@@ -256,7 +251,7 @@ class Solr(AgentCheck):
 
     def _getCoreDocumentCount(self, base, confTags):
         try:
-            obj = self._getUrlWithBase(base, self.ENDPOINT_DOCUMENT_COUNT)
+            obj = self.getHandlerWithBase(base, self.ENDPOINT_DOCUMENT_COUNT)
             if len(obj) > 0:
                 for core_name in obj["status"]:
                     tags = confTags + [ self.TAG_CORE % core_name ]
@@ -282,7 +277,7 @@ class Solr(AgentCheck):
             self.log.error(("Error while fetching core document count: {}").format(e))
 
     def _retrieveLocalEndpointsAndCores(self):
-        obj = self._getUrl(self.ENDPOINT_LIVE_NODES)
+        obj = self.getHandler(self.ENDPOINT_LIVE_NODES)
         if len(obj) > 0:
             try:
                 for collectionName, collection in obj["cluster"]["collections"].iteritems():
@@ -305,19 +300,12 @@ class Solr(AgentCheck):
 
                                 self.collectionByCore[coreName] = collectionName
                                 self.localCores.add(self.Core(coreName, coreAlias, shardName, collectionName, base_url, port_from_url))
+                                # Since we're matching both ip and port
+                                # localEndpoints should only have one base_url
                                 self.localEndpoints.add(base_url)
                                 self.log.debug(str("detected local core {}:{} on node {}").format(coreName, coreAlias, base_url))
             except Exception as e:
                 self.log.error(("Error while attempting to fetch local cores: {}").format(e))
-
-    class PrevStat:
-        def __init__(self, val, time):
-            self.val = val
-            self.time = time
-
-    def Solr5__init__(self, version, instance):
-        self.SolrMetric__init__(version, instance)
-        self.prevStats = dict()
 
     def _getAllRpsAndRequestTime(self, confTags):
         coresStatistic = self._getStats()
@@ -355,7 +343,7 @@ class Solr(AgentCheck):
         return ret
 
     def _getSingleCoreStats(self, base, corename):
-        return self._getUrlWithBase(base, self.ENDPOINT_STATS % corename)
+        return self.getHandlerWithBase(base, self.ENDPOINT_STATS % corename)
 
     def _getFromCoreRpsAndRequestTime(self, obj, tags):
 
@@ -448,26 +436,24 @@ class Solr(AgentCheck):
         except Exception as e:
             self.log.error(("error getting index size for core {}: {}").format(coreStatistic.core.name, e))
 
-    # Source
-    SOURCE_TYPE_NAME = "solr"
-    GET_VERSION_ENDPOINT = "/solr/admin/info/system?wt=json"
-
-    def __init__(self, name, init_config, agentConfig, instances=None):
-        AgentCheck.__init__(self, name, init_config, agentConfig, instances)
-        self.version = None
-        self.sMetric = None
-
     def check(self, instance):
-        if self.sMetric is None:
+        # Don't waste time retrying if we failed because of bad version
+        if self.failed:
+            return
+
+        if self.version is None:
+            self.host = instance["host"]
+            self.ports = instance["ports"]
+
             self._getSolrVersion(instance)
 
-            if self.version is not None and int(self.version[0:1]) == 5:
-#                self.sMetric = Solr5(self.version, instance)
-                self.sMetric = True
-                self.Solr5__init__(self.version, instance)
-            elif self.version is None:
+            if self.version is None:
+                # Default retry behavior is managed by config and sdchecks.py
+                # We might have more luck next time?
                 raise CheckException("Failed to find Solr version")
-            else:
+            elif self.version[0:1] != "5":
+                # Don't retry, cause we would always end up here.
+                self.failed = True
                 raise CheckException("Solr version {} not yet supported".format(self.version[0:1]))
 
         confTags = instance.get('tags', [])
@@ -476,11 +462,11 @@ class Solr(AgentCheck):
 
     def _getSolrVersion(self, instance):
         if self.version == None:
-            self.log.debug("Solr, getting version from ports {}, endpoint {}".format(instance["ports"], self.GET_VERSION_ENDPOINT))
-            obj, port = self.getUrl2(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT, self.log)
-            self.log.debug("Solr, version check (port {}) returns: {}".format(port, obj))
+            self.log.debug("Solr, getting version from ports {}, endpoint {}".format(instance["ports"], self.ENDPOINT_VERSION))
+            obj = self.scanPorts(self.ENDPOINT_VERSION)
+            self.log.debug("Solr, version check (port {}) returns: {}".format(self.port, obj))
             if len(obj) > 0:
-                self.log.debug(str("solr: version endpoint found on port {} out of ports {}").format(port, instance["ports"]))
+                self.log.debug(str("solr: version endpoint found on port {} out of ports {}").format(self.port, instance["ports"]))
                 self.version = obj["lucene"]["solr-spec-version"]
                 assert int(self.version[0:1]) >= 4
 
