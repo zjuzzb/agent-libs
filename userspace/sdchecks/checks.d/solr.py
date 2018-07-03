@@ -93,14 +93,14 @@ class Solr(AgentCheck):
         self.collectionByCore = dict()
         self.timeout = self.DEFAULT_TIMEOUT
         self.prevStats = dict()
+        self.cache = dict()
     
     def clearCache(self):
         self.localCores = set()
         self.localLeaderCores = set()
         self.localEndpoints = set()
         self.collectionByCore = dict()
-#        self.clusterStats = None
-#        self.coreStats = None
+        self.cache = dict()
 
     def SolrMetriccheck(self, confTags):
         self.clearCache()
@@ -122,16 +122,24 @@ class Solr(AgentCheck):
         return int(self.version[0:1])
 
     def getUrl(self, url):
+        if url in self.cache:
+            self.log.debug("Solr, getting url {} from cache".format(url))
+            return self.cache.get(url)
+
         self.log.debug("Solr, getting url: {}".format(url))
         try:
             data = urllib2.urlopen(url, None, self.timeout)
             obj = json.load(data)
         except:
+            # Cache failures as well, so we don't retry
+            self.cache[url] = {}
             return {}
 
         if obj is None:
+            self.cache[url] = {}
             return {}
 
+        self.cache[url] = obj
         return obj
 
     def scanPorts(self, handler):
