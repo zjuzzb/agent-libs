@@ -217,7 +217,7 @@ void app_process::get_port_from_cmd(sinsp_threadinfo *tinfo)
 				}
 				catch(const std::exception& e)
 				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "unable to get solr port from arg %s", arg.c_str());
+					g_logger.format(sinsp_logger::SEV_DEBUG, "unable to get solr port from arg %s", arg.c_str());
 				}
 				break;
 			}
@@ -238,7 +238,7 @@ Json::Value app_process::to_json() const
 	ret["check"] = m_check.to_json();
 	if(is_solr() && m_solr_port > 0)
 	{
-		ret["port"] = m_solr_port;
+		ret["solr_port"] = m_solr_port;
 	}
 	ret["ports"] = Json::Value(Json::arrayValue);
 	for(auto port : m_ports)

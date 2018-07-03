@@ -57,7 +57,7 @@ class Solr(AgentCheck):
                 self.port = instance["solr_port"]
             except KeyError as err:
                 self.log.warning(("port number not found in instance. Backuping scanning list of ports"))
-                self.getPortFromListOfPorts(instance)
+                self.getPortFromListeningPorts(instance)
         # Raise exception if still port == 0
         if self.port == 0:
             raise CheckException(("Failed to find solr port for pid {}").format(instance["pid"]))
@@ -104,10 +104,10 @@ class Solr(AgentCheck):
                 assert int(self.version[0:1]) >= 4
 
 
-    def getPortFromListOfPorts(self, instance):
+    def getPortFromListeningPorts(self, instance):
         obj, port = SolrMetrics.getUrlIteratingOnPorts(instance["host"], instance["ports"], self.GET_VERSION_ENDPOINT)
         if port > 0:
             self.port = port
-            self.log.debug(("Detected (from list) port {} for solr instance running on port {}").format(self.port, instance["pid"]))
+            self.log.debug(("Detected port {} from port list {} for solr instance {}").format(self.port, instance["ports"], instance["pid"]))
         else:
             self.log.debug("could not get solr port fot pid {} from list of ports")
