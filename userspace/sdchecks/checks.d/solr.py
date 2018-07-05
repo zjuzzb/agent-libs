@@ -379,14 +379,14 @@ class Solr(AgentCheck):
         try:
             self.rate(metricName, queryHandlerObj[keyString]["stats"]["requests"], tags)
         except Exception as e:
-            self.log.debug(("could not get rps {} {}: {}").format(metricEnumValue, keyString, e))
+            self.log.debug(("could not get rps {} {}: {}").format(metricName, keyString, e))
 
     def _getSingleRequestTime(self, metricName, keyString, queryHandlerObj, tags):
         try:
             reqs = int(queryHandlerObj[keyString]["stats"]["requests"])
             tottime = float(queryHandlerObj[keyString]["stats"]["totalTime"])
         except Exception as e:
-            self.log.debug(("could not get request time {} {}: {}").format(metricEnumValue, keyString, e))
+            self.log.debug(("could not get request time {} {}: {}").format(metricName, keyString, e))
 
         key = tuple(tags) + (("type:%s" % keyString), )
         prevStats = self.prevStats.get(key, None)
@@ -394,7 +394,7 @@ class Solr(AgentCheck):
             dreqs = reqs - prevStats.val
             dtime = tottime - prevStats.time
             if dreqs > 0 and dtime > 0:
-                self.gauge(metricEnumValue, float(dtime / dreqs), tags)
+                self.gauge(metricName, float(dtime / dreqs), tags)
             elif dreqs < 0 or dtime < 0:
                 self.log.debug("decreased request count or total time, resetting stored stats for {}".format(key))
             elif dreqs != 0 or dtime != 0:
