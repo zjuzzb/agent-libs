@@ -465,7 +465,7 @@ void matchlist_security_policies::add_default_match_result(match_result &res)
 	// This keeps the minimum non-NEXT default match result
 	if(res.effect() != draiosproto::EFFECT_NEXT)
 	{
-		if(!m_default_match.policy() || match_result::compare(res, m_default_match) < 0)
+		if(!m_default_match.policy() || match_result::compare(res, m_default_match))
 		{
 			// Note: shallow copy. Assuming detail is NULL or can be
 			// shallowly copied.
