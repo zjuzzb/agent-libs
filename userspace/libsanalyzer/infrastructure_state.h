@@ -110,6 +110,7 @@ private:
 	void debug_print();
 
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
+	void k8s_generate_user_event(const bool success);
 
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 
@@ -139,6 +140,8 @@ private:
 	mutable std::string m_k8s_cached_cluster_id;
 	run_on_interval m_k8s_refresh_interval;
 	run_on_interval m_k8s_connect_interval;
+	int m_k8s_prev_connect_state;
+	string m_k8s_node;
 
 	friend class new_k8s_delegator;
 };

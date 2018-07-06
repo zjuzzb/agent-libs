@@ -356,13 +356,15 @@ func createKubeClient(apiserver string, ca_cert string, client_cert string, clie
 func createInClusterKubeClient() (kubeClient kubeclient.Interface, err error) {
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		log.Errorf("Cannot create InCluster config: ", err)
+		log.Errorf("Cannot create InCluster config: %s", err)
 		return nil, err
 	}
+	log.Debugf("InCluster k8s server: %s", config.Host);
 	// creates the clientset
 	kubeClient, err = kubeclient.NewForConfig(config)
 	if err != nil {
-		log.Errorf("Cannot create client using cluster config", err)
+		log.Errorf("Cannot create client using cluster config, server %s: %s",
+				   config.Host, err)
 		return nil, err
 	}
 	return

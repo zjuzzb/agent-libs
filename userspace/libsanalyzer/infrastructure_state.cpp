@@ -2,6 +2,8 @@
 
 #ifndef CYGWING_AGENT
 #include "infrastructure_state.h"
+#include "user_event.h"
+#include "logger.h"
 #include "utils.h"
 #include "analyzer.h"
 
@@ -109,8 +111,10 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* ins
 	, m_k8s_connected(false)
 	, m_k8s_refresh_interval(refresh_interval)
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
+	, m_k8s_prev_connect_state(-1)
 {
 	m_k8s_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
+		k8s_generate_user_event(successful);
 
 		if(successful) {
 			draiosproto::congroup_update_event *evt = (draiosproto::congroup_update_event *)response_msg;
@@ -199,6 +203,95 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 		}, ts);
 }
 
+// Currently there's just the one event, k8s server connectivity state
+void infrastructure_state::k8s_generate_user_event(const bool success)
+{
+	if (m_k8s_prev_connect_state == -1) {
+		// Connect state is uninitialized
+		m_k8s_prev_connect_state = success;
+	} else if (m_k8s_prev_connect_state != success) {
+		m_k8s_prev_connect_state = success;
+	} else {
+		// Connection state hasn't changed, so don't do anything
+		return;
+	}
+
+	time_t now = sinsp_utils::get_current_time_ns() / ONE_SECOND_IN_NS;
+
+	sinsp_user_event::tag_map_t event_tags;
+	// The source tag used here is the same as that for k8s events.
+	event_tags["source"] = "kubernetes";
+	if (!m_k8s_url.empty()) {
+		event_tags["url"] = m_k8s_url;
+	}
+
+	// Gather config info to be included in the event description.
+	string config_info;
+	if (!m_k8s_ca_cert.empty()) {
+		config_info += ", k8s_ca_cert: " + m_k8s_ca_cert;
+	}
+	if (!m_k8s_client_cert.empty()) {
+		config_info += ", k8s_client_cert: " + m_k8s_client_cert;
+	}
+	if (!m_k8s_client_key.empty()) {
+		config_info += ", k8s_client_key: " + m_k8s_client_key;
+	}
+
+	event_scope scope;
+	string host;
+	if (inited()) {
+		if (!m_k8s_node.empty()) {
+			scope.add("kubernetes.node.name", m_k8s_node);
+		} else {
+			host = m_inspector->get_machine_info()->hostname;
+			if (!host.empty()) {
+				scope.add("kubernetes.node.name", host);
+			} else if (!m_machine_id.empty()) {
+				host = m_machine_id;
+				scope.add("host.mac", host);
+			}
+		}
+
+		string k8s_cluster_name = get_k8s_cluster_name();
+		if (!k8s_cluster_name.empty()) {
+			scope.add("kubernetes.cluster.name", k8s_cluster_name);
+		}
+
+		string k8s_cluster_id = get_k8s_cluster_id();
+		if (!k8s_cluster_id.empty()) {
+			scope.add("kubernetes.cluster.id", k8s_cluster_id);
+		}
+	}
+
+	string event_name = "Infra Connectivity", event_desc;
+	sinsp_logger::event_severity event_sev;
+	if (success) {
+		event_sev = sinsp_logger::SEV_EVT_INFORMATION;
+		event_desc = "Status: OK";
+	} else {
+		// Most k8s events are INFO, so leaving this at NOTICE for now.
+		event_sev = sinsp_logger::SEV_EVT_NOTICE;
+		event_desc = "Status: Error, check agent logs";
+		if (!host.empty()) {
+			event_desc += " for host '" + host + "'";
+		}
+		uint64_t conn_intv = m_k8s_connect_interval.interval() / ONE_SECOND_IN_NS;
+		config_info += ", reconnect interval: " + to_string(conn_intv) + "s";
+	}
+	if (!config_info.empty()) {
+		event_desc += " (" + config_info + ")";
+	}
+
+	string event_str = sinsp_user_event::to_string(
+											now,
+											std::move(event_name),
+											std::move(event_desc),
+											std::move(scope),
+											std::move(event_tags));
+	g_logger.log("Logging user event: " + event_str, sinsp_logger::SEV_DEBUG);
+	g_logger.log(event_str, event_sev);
+}
+
 void infrastructure_state::init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size)
 {
 	m_k8s_limits.init(filters, cache_size);
@@ -245,6 +338,7 @@ void infrastructure_state::reset()
 	m_orphans.clear();
 	m_state.clear();
 	m_k8s_cached_cluster_id.clear();
+	m_k8s_node.clear();
 
 	if (m_k8s_subscribed) {
 		connect_to_k8s();
@@ -1372,6 +1466,12 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 				glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: we are node %s:%s (%s) based on IP %s", i.first.first.c_str(), i.first.second.c_str(), name.c_str(), ip.c_str());
 				our_node = i.first.second;
 				found_our_node = true;
+
+				if (state->m_k8s_node.empty()) 
+				{
+					state->m_k8s_node = tag->second;
+				}
+
 			}
 		}
 
