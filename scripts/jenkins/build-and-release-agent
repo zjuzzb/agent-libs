@@ -20,7 +20,7 @@ fi
 
 set -xeuo pipefail
 
-SOURCE=$WORKSPACE/src
+SOURCE=$WORKSPACE
 INSTALL_DIR=$WORKSPACE/install
 OUT=$WORKSPACE/out
 BUILD=$WORKSPACE/build
@@ -34,7 +34,7 @@ rm -rf $DRIVER_BUILD
 mkdir -p $DRIVER_BUILD
 (
 cd $DRIVER_BUILD
-cmake $WORKSPACE/src/agent
+cmake $WORKSPACE/agent
 make -C driver
 )
 
