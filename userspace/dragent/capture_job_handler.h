@@ -70,6 +70,7 @@ public:
 		string m_filter;
 		bool m_delete_file_when_done;
 		bool m_send_file;
+		string m_file;
 		sinsp_dumper *m_dumper;
 	};
 

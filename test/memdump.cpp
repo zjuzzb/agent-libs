@@ -47,10 +47,18 @@ namespace {
 class test_sinsp_worker : public Runnable
 {
 public:
-	test_sinsp_worker(protocol_queue *queue,
+	typedef struct {
+		bool successful;
+		string errstr;
+	} dump_response_t;
+
+	test_sinsp_worker(shared_ptr<blocking_queue<std::shared_ptr<capture_job_handler::dump_job_request>>> &dump_job_requests,
+			  shared_ptr<blocking_queue<dump_response_t>> &dump_job_responses,
 			  capture_job_handler *capture_job_handler)
 		: m_ready(false),
-		  m_queue(queue),
+		  m_job_requests_interval(100000000),
+		  m_dump_job_requests(dump_job_requests),
+		  m_dump_job_responses(dump_job_responses),
 		  m_capture_job_handler(capture_job_handler)
 	{
 		m_inspector = make_unique<sinsp>();
@@ -70,6 +78,51 @@ public:
 	const sinsp* get_inspector() const
 	{
 		return m_inspector.get();
+	}
+
+	void process_job_requests()
+	{
+		string errstr;
+
+		std::shared_ptr<capture_job_handler::dump_job_request> request;
+		while(m_dump_job_requests->get(&request, 0))
+		{
+			string errstr;
+
+			g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
+
+			if(m_capture_job_handler->queue_job_request(m_inspector.get(), request, errstr))
+			{
+				dump_response_t res = {true, ""};
+
+				ASSERT_TRUE(m_dump_job_responses->put(res));
+			}
+			else
+			{
+				dump_response_t res = {false, errstr};
+
+				ASSERT_TRUE(m_dump_job_responses->put(res));
+			}
+		}
+	}
+
+	bool queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request, std::string &errstr)
+	{
+		if(!m_dump_job_requests->put(job_request))
+		{
+			errstr = "Could add to job request queue";
+			return false;
+
+		}
+		dump_response_t res;
+		if (!m_dump_job_responses->get(&res, 5000))
+		{
+			errstr = "Could not receive response from job response queue";
+			return false;
+		}
+
+		errstr = res.errstr;
+		return res.successful;
 	}
 
 	void run()
@@ -97,6 +150,11 @@ public:
 				throw sinsp_exception(m_inspector->getlasterr().c_str());
 			}
 
+			m_job_requests_interval.run([this]()
+                        {
+				process_job_requests();
+			}, ev->get_ts());
+
 			m_capture_job_handler->process_event(ev);
 			if(!m_ready)
 			{
@@ -113,7 +171,9 @@ public:
 
 	atomic<bool> m_ready;
 private:
-	protocol_queue *m_queue;
+	run_on_interval m_job_requests_interval;
+	shared_ptr<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>> m_dump_job_requests;
+	shared_ptr<blocking_queue<dump_response_t>> m_dump_job_responses;
 	capture_job_handler *m_capture_job_handler;
 	unique_ptr<sinsp> m_inspector;
 };
@@ -159,7 +219,9 @@ protected:
 		}
 
 		m_capture_job_handler = new capture_job_handler(&m_configuration, m_queue, &m_enable_autodrop);
-		m_sinsp_worker = new test_sinsp_worker(m_queue, m_capture_job_handler);
+		m_dump_job_requests = make_shared<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>>(1);
+		m_dump_job_responses = make_shared<blocking_queue<test_sinsp_worker::dump_response_t>>(1);
+		m_sinsp_worker = new test_sinsp_worker(m_dump_job_requests, m_dump_job_responses, m_capture_job_handler);
 		m_capture_job_handler->init(m_sinsp_worker->get_inspector());
 
 		Poco::ErrorHandler::set(&m_error_handler);
@@ -306,7 +368,7 @@ protected:
 												   before_ms, after_ms);
 
 		g_log->debug("Queuing job request tag=" + tag);
-		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr))
+		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr))
 			<< string("Could not queue job request: ") + errstr;
 
 		// Wait for the initial (keepalive) response to arrive
@@ -335,7 +397,7 @@ protected:
 
 		g_log->debug("Queuing job request stop tag=" + tag);
 
-		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
+		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr));
 	}
 
 	void send_dump_start(const string &tag)
@@ -349,7 +411,7 @@ protected:
 
 		g_log->debug("Queuing job request send_start tag=" + tag);
 
-		ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
+		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr));
 	}
 
 	// Open a filename with a known fixed pattern + unique
@@ -430,7 +492,7 @@ protected:
 	// Request 11 dumps back to back. We expect the first 10 to
 	// succeed and the 11th to fail with a "max outstanding
 	// captures" message.
-	void perform_too_many_dumps()
+	void perform_too_many_dumps(bool back_in_time)
 	{
 		string errstr;
 		std::shared_ptr<protocol_queue_item> buf;
@@ -439,8 +501,8 @@ protected:
 		{
 			g_log->debug("Queuing request for capture " + to_string(i));
 			std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), true, false,
-													   500, 30000);
-			ASSERT_TRUE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
+													   (back_in_time ? 500 : 0), 30000);
+			ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr));
 		}
 
 		// Sleep 5 seconds to make sure the capture job handler
@@ -451,8 +513,8 @@ protected:
 
 		g_log->debug("Starting capture over limit (should fail)");
 		std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(10), true, false,
-												   3000, 30000);
-		ASSERT_FALSE(m_capture_job_handler->queue_job_request((sinsp *) m_sinsp_worker->get_inspector(), req, errstr));
+												   (back_in_time ? 3000 : 0), 30000);
+		ASSERT_FALSE(m_sinsp_worker->queue_job_request(req, errstr));
 
 		ASSERT_STREQ(errstr.c_str(), "maximum number of outstanding captures (10) reached");
 	}
@@ -542,6 +604,8 @@ protected:
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration m_configuration;
 	protocol_queue *m_queue;
+	shared_ptr<blocking_queue<shared_ptr<capture_job_handler::dump_job_request>>> m_dump_job_requests;
+	shared_ptr<blocking_queue<test_sinsp_worker::dump_response_t>> m_dump_job_responses;
 	atomic<bool> m_enable_autodrop;
 	memdump_error_handler m_error_handler;
 
@@ -608,9 +672,14 @@ TEST_F(memdump_test, overlapping_dumps)
 	}
 }
 
+TEST_F(memdump_test, max_outstanding_dumps_back_in_time)
+{
+	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps(true));
+}
+
 TEST_F(memdump_test, max_outstanding_dumps)
 {
-	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps());
+	ASSERT_NO_FATAL_FAILURE(perform_too_many_dumps(false));
 }
 
 TEST_F(memdump_no_dragent_events_test, verify_no_dragent_events)

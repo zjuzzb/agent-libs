@@ -165,7 +165,7 @@ bool capture_job::start(sinsp *inspector, string &token,
 	}
 
 	m_token = token;
-	m_file = m_configuration->m_dump_dir + token + ".scap";
+	m_file = details.m_file;
 	m_duration_ns = details.m_duration_ns;
 	m_max_size = details.m_max_size;
 	m_past_duration_ns = details.m_past_duration_ns;
@@ -200,8 +200,6 @@ bool capture_job::start(sinsp *inspector, string &token,
 	if(details.m_past_duration_ns == 0)
 	{
 		m_dumper = details.m_dumper;
-		m_dumper->open(m_file, true);
-
 		m_handler->add_job(job_state);
 	}
 	else
@@ -744,9 +742,14 @@ bool capture_job_handler::queue_job_request(sinsp *inspector, std::shared_ptr<du
 			errstr = "no details provided for start job";
 			return false;
 		}
+
+		job_request->m_start_details->m_file = m_configuration->m_dump_dir + job_request->m_token + ".scap";
+
 		if (job_request->m_start_details->m_past_duration_ns == 0)
 		{
-			job_request->m_start_details->m_dumper = new sinsp_dumper(inspector);
+			sinsp_dumper *dumper = new sinsp_dumper(inspector);
+			dumper->open(job_request->m_start_details->m_file, true, true);
+			job_request->m_start_details->m_dumper = dumper;
 		}
 	}
 
