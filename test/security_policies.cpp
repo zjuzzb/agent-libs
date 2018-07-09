@@ -61,6 +61,7 @@ public:
 		  m_inspector(inspector)
 	{
 		m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+		m_inspector->start_dropping_mode(1);
 	}
 
 	~test_sinsp_worker()
@@ -1021,11 +1022,11 @@ TEST_F(security_policies_test, container_prefixes)
 
 	kill_container("denyme");
 	kill_image("my.domain.name/busybox:1.27.2");
-	kill_image("my.other.domain.name:12345/alpine:3.5");
+	kill_image("my.other.domain.name:12345/cirros:0.3.3");
 	kill_image("my.third.domain.name/tutum/curl:alpine");
 
 	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
-	ASSERT_EQ(system("docker pull alpine:3.5 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker pull cirros:0.3.3 > /dev/null 2>&1"), 0);
 	ASSERT_EQ(system("docker pull tutum/curl:alpine > /dev/null 2>&1"), 0);
 
 	create_tag("blacklist-image-name:0.0.1", "busybox:1.27.2");
@@ -1042,21 +1043,21 @@ TEST_F(security_policies_test, container_prefixes)
 
 	kill_image("my.domain.name/busybox:1.27.2");
 
-	create_tag("my.other.domain.name:12345/alpine:3.5", "alpine:3.5");
+	create_tag("my.other.domain.name:12345/cirros:0.3.3", "cirros:0.3.3");
 
-	ASSERT_EQ(system("docker run --rm --name denyme my.other.domain.name:12345/alpine:3.5 > /dev/null 2>&1"), 0);
-
-	sleep(2);
-
-	kill_image("my.other.domain.name:12345/alpine:3.5");
-
-	create_tag("my.third.domain.name/alpine:3.5", "alpine:3.5");
-
-	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/alpine:3.5 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name denyme my.other.domain.name:12345/cirros:0.3.3 /bin/sh > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_image("my.third.domain.name/alpine:3.5");
+	kill_image("my.other.domain.name:12345/cirros:0.3.3");
+
+	create_tag("my.third.domain.name/cirros:0.3.3", "cirros:0.3.3");
+
+	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/cirros:0.3.3 /bin/sh > /dev/null 2>&1"), 0);
+
+	sleep(2);
+
+	kill_image("my.third.domain.name/cirros:0.3.3");
 	create_tag("my.third.domain.name/tutum/curl:alpine", "tutum/curl:alpine");
 
 	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/tutum/curl:alpine > /dev/null 2>&1"), 0);
@@ -1071,11 +1072,11 @@ TEST_F(security_policies_test, container_prefixes)
 						       {14,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.domain.name/busybox:1.27.2"},
 												      {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
 												      {"container.name", "denyme"}}},
-						       {15,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.other.domain.name:12345/alpine:3.5"},
-												      {"container.image.id", "6c6084ed97e5851b5d216b20ed1852301278584c3c6aff915272b231593f6f98"},
+						       {15,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.other.domain.name:12345/cirros:0.3.3"},
+												      {"container.image.id", "231974f01f06befaa720909c29baadb586d6e6708e386190873a0d4cc5af033a"},
 												      {"container.name", "denyme"}}},
-						       {16,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/alpine:3.5"},
-												      {"container.image.id", "6c6084ed97e5851b5d216b20ed1852301278584c3c6aff915272b231593f6f98"},
+						       {16,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/cirros:0.3.3"},
+												      {"container.image.id", "231974f01f06befaa720909c29baadb586d6e6708e386190873a0d4cc5af033a"},
 												      {"container.name", "denyme"}}},
 						       {17,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "my.third.domain.name/tutum/curl:alpine"},
 												      {"container.image.id", "b91cd13456bbd3d65f00d0a0be24c95b802ad1f9cd0dc2b8889c4c7fbb599fef"},

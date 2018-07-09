@@ -289,7 +289,7 @@ policy_list {
   matchlist_details {
     container_details {
       lists {
-	values: "my.third.domain.name/alpine"
+	values: "my.third.domain.name/cirros"
         on_match: EFFECT_DENY
       }
       on_default: EFFECT_NEXT
