@@ -3,20 +3,29 @@ set(GOPATH "${BASE_GOPATH}:${CMAKE_CURRENT_SOURCE_DIR}")
 set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target")
 
 # Create golang package directories for the generated go files
-set(PROTO_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface")
-file(MAKE_DIRECTORY ${PROTO_OUT_DIR}/draiosproto)
-file(MAKE_DIRECTORY ${PROTO_OUT_DIR}/sdc_internal)
+set(COINTERFACE_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface")
+set(DECODEPROTO_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto")
+file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/draiosproto)
+file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/sdc_internal)
+file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/draiosproto)
+file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/sdc_internal)
 
 add_custom_target(generate_proto ALL
-  DEPENDS ${PROTO_OUT_DIR}/draiosproto/draios.pb.go
-          ${PROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go)
-add_custom_command(OUTPUT ${PROTO_OUT_DIR}/draiosproto/draios.pb.go
-                          ${PROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go
-        COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${PROTO_OUT_DIR}" go generate cointerface
+  DEPENDS ${COINTERFACE_OUT_DIR}/draiosproto/draios.pb.go
+          ${COINTERFACE_OUT_DIR}/sdc_internal/sdc_internal.pb.go
+          ${DECODEPROTO_OUT_DIR}/draiosproto/draios.pb.go
+          ${DECODEPROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go)
+add_custom_command(OUTPUT ${COINTERFACE_OUT_DIR}/draiosproto/draios.pb.go
+                          ${COINTERFACE_OUT_DIR}/sdc_internal/sdc_internal.pb.go
+                          ${DECODEPROTO_OUT_DIR}/draiosproto/draios.pb.go
+                          ${DECODEPROTO_OUT_DIR}/sdc_internal/sdc_internal.pb.go
+  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${COINTERFACE_OUT_DIR}" go generate cointerface
+  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${DECODEPROTO_OUT_DIR}" go generate decode_proto
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/generate.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto/generate.go
 		)
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
@@ -45,6 +54,15 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
     )
 
+add_custom_target(decode_proto ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/decode_proto)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
+#        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt decode_proto
+        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/decode_proto" decode_proto
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	DEPENDS generate_proto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto/decode_proto.go
+    )
+
 # Note that we don't package the client. That's only for testing
 # purposes.
 install(DIRECTORY
@@ -54,5 +72,9 @@ install(DIRECTORY
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
+	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
+	COMPONENT tests)
 
 

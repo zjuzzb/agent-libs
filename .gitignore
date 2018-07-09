@@ -51,6 +51,8 @@
 ###################
 cointerface/draiosproto
 cointerface/sdc_internal
+decode_proto/draiosproto
+decode_proto/sdc_internal
 
 # misc #
 ######################
