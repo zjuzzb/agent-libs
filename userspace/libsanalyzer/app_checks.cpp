@@ -185,11 +185,26 @@ app_process::app_process(const app_check& check, sinsp_threadinfo *tinfo):
 	m_pid(tinfo->m_pid),
 	m_vpid(tinfo->m_vpid),
 	m_ports(tinfo->m_ainfo->listening_ports()),
-	m_check(check)
+	m_check(check),
+	m_solr_port(0)
 {
 	if(is_solr())
 	{
 		get_port_from_cmd(tinfo);
+		if (m_ports.empty())
+		{
+			string cmdline = tinfo->m_comm;
+			int i = 0;
+			for (auto arg : tinfo->m_args)
+			{
+				cmdline = cmdline + " " + arg;
+				if (++i >= 10) {
+					cmdline = cmdline + " ...";
+					break;
+				}
+			}
+			g_logger.format(sinsp_logger::SEV_DEBUG, "No listening ports found for solr process: %d: %s", tinfo->m_pid, cmdline.c_str());
+		}
 	}
 }
 
