@@ -19,6 +19,7 @@ SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
 JOBS=${JOBS:-$(nproc)}
 BASEARCH=$(uname -m)
+AGENT_VERSION=${AGENT_VERSION:-}
 
 export AWS_DEFAULT_REGION="us-east-1"
 
@@ -175,7 +176,7 @@ upload_binaries
 
 #the build is executed on i686 and x86_64 server
 #the docker hub trigger has to be executed only at the end of x86_64 build
-if [[ ${TRIGGER_DOCKER_BUILDS} == 'yes' && ${BASEARCH} == 'x86_64' ]]; then
+if [[ ${TRIGGER_DOCKER_BUILDS} == 'yes' && ${BASEARCH} == 'x86_64' && ${AGENT_VERSION} != '' ]]; then
 	trigger_docker_build
 fi
 
