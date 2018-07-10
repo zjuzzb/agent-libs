@@ -1,6 +1,4 @@
 #!/bin/bash
-
-#!/bin/bash
 set -exuo pipefail
 
 REPOSITORY_BASENAME=$1
