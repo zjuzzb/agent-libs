@@ -19,10 +19,6 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exc
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/falco/ /code/falco/
 cd /code/agent
 
-if [[ $1 == "container" ]]; then
-  export BUILD_DEB_ONLY=ON
-fi
-
 DOCKERFILE=Dockerfile
 if [[ "`uname -m`" == "s390x" ]]; then
   ./bootstrap-agent
@@ -31,29 +27,77 @@ else
   scl enable devtoolset-2 ./bootstrap-agent
 fi
 
+build_docker_image()
+{
+	cp /code/agent/docker/local/* /out
+	if [ -n "$AGENT_VERSION" ]
+	then
+		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < /code/agent/docker/local/$DOCKERFILE > /out/$DOCKERFILE
+	fi
+	cd /out
+	docker build -t $AGENT_IMAGE -f $DOCKERFILE .
+}
+
+build_package()
+{
+	make -j$MAKE_JOBS package
+	cp *.deb *.rpm /out
+	build_docker_image
+}
+
+build_container()
+{
+	export BUILD_DEB_ONLY=ON
+	make -j$MAKE_JOBS package
+	unset BUILD_DEB_ONLY
+	cp *.deb /out
+	build_docker_image
+}
+
+build_release()
+{
+	mkdir -p /out/{debug,release}
+
+	make -j$MAKE_JOBS install package
+	cp *.deb *.rpm *.tar.gz /out/release
+
+	cd ../debug
+	make -j$MAKE_JOBS package
+	cp *.deb *.rpm *.tar.gz /out/debug
+}
+
+build_sysdig()
+{
+	cd /code/agent
+	scl enable devtoolset-2 ./bootstrap-sysdig
+	cd /code/sysdig/build/release
+	make -j$MAKE_JOBS package
+	cp /code/sysdig/docker/local/* /out
+	cp *.deb /out
+	cp *.rpm /out
+	cd /out
+	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE .
+}
+
 cd build/release
 
-if [[ $1 == "package" || $1 == "container" ]]; then
-  make -j$MAKE_JOBS package
-  cp /code/agent/docker/local/* /out
-  cp *.deb /out
-  if [[ $1 == "package" ]]; then
-    cp *.rpm /out
-  fi
-  cd /out
-  docker build -t $AGENT_IMAGE -f $DOCKERFILE .
-elif [[ $1 == "install" ]]; then
-  make -j$MAKE_JOBS install
-elif [[ $1 == "bash" ]]; then
-  bash
-elif [[ $1 == "sysdig" ]]; then
-  cd /code/agent
-  scl enable devtoolset-2 ./bootstrap-sysdig
-  cd /code/sysdig/build/release
-  make -j$MAKE_JOBS package
-  cp /code/sysdig/docker/local/* /out
-  cp *.deb /out
-  cp *.rpm /out
-  cd /out
-  docker build -t $SYSDIG_IMAGE -f $DOCKERFILE .
-fi
+case "$1" in
+	bash)
+		bash
+		;;
+	container)
+		build_container
+		;;
+	install)
+		make -j$MAKE_JOBS install
+		;;
+	package)
+		build_package
+		;;
+	release)
+		build_release
+		;;
+	sysdig)
+		build_sysdig
+		;;
+esac
