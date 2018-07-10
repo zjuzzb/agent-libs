@@ -145,20 +145,22 @@ function trigger_docker_build {
 	tag=${AGENT_VERSION}
 
 	if [[ "${REPOSITORY_BASENAME}" == 'dev' ]]; then
-			echo curl -H "Content-Type: application/json" \
+			curl -H "Content-Type: application/json" \
 			--data '{"source_type": "Branch", "source_name": "dev"}' \
 			-X POST ${trigger_url}
-	fi
-
-	if [[ "${REPOSITORY_BASENAME}" == 'stable' ]]; then
-			echo curl -H "Content-Type: application/json" \
+	elif [[ "${REPOSITORY_BASENAME}" == 'stable' ]]; then
+			curl -H "Content-Type: application/json" \
 			--data '{"source_type": "Branch", "source_name": "master"}' \
 			-X POST ${trigger_url}
 
-			echo sleep 60s
+			sleep 60s
 
-			echo curl -H "Content-Type: application/json" \
+			curl -H "Content-Type: application/json" \
 			--data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
+			-X POST ${trigger_url}
+	else
+			curl -H "Content-Type: application/json" \
+			--data '{"source_type": "Branch", "source_name": '"${REPOSITORY_BASENAME}"'"}' \
 			-X POST ${trigger_url}
 	fi
 }
