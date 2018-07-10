@@ -34,8 +34,11 @@ function configure_rpm_repo {
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
-	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
-	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.rpm' -print -quit)"
+	then
+		$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+		cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	fi
 	createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
 
 	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
@@ -68,8 +71,11 @@ function configure_debian_repo {
 	ls -1tdr stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 
-	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
-	cp $PACKAGES_DIR/*deb stable-$DEB_BASEARCH
+	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.deb' -print -quit)"
+	then
+		$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+		cp $PACKAGES_DIR/*deb stable-$DEB_BASEARCH
+	fi
 	dpkg-scanpackages --multiversion stable-$DEB_BASEARCH > stable-$DEB_BASEARCH/Packages
 
 	gzip -c stable-$DEB_BASEARCH/Packages > stable-$DEB_BASEARCH/Packages.gz
@@ -96,18 +102,21 @@ EOF
 }
 
 function configure_tgz_repo {
-	BASEARCH=$(uname -m)
+	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.tar.gz' -print -quit)"
+	then
+		BASEARCH=$(uname -m)
 
-	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
-	
-	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+		mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
 
-	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
-	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
+		aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+
+		cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
+		aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
+	fi
 }
 
 function configure_installers {
