@@ -30,6 +30,13 @@ REPO_DIR=$WORKSPACE/repo
 
 DRIVER_BUILD=$WORKSPACE/driver
 
+sudo rm -rf $INSTALL_DIR
+mkdir -p $INSTALL_DIR
+sudo rm -rf $OUT
+mkdir -p $OUT
+sudo rm -rf $BUILD
+mkdir -p $BUILD
+
 rm -rf $DRIVER_BUILD
 mkdir -p $DRIVER_BUILD
 (
