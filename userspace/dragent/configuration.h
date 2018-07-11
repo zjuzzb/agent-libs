@@ -788,6 +788,8 @@ public:
 	int32_t m_max_n_proc_lookups;
 	int32_t m_max_n_proc_socket_lookups;
 
+	bool m_query_docker_image_info;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

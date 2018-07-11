@@ -264,6 +264,7 @@ dragent_configuration::dragent_configuration()
 	m_swarm_enabled = true;
 	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
 	m_snaplen = 0;
+	m_query_docker_image_info = true;
 }
 
 Message::Priority dragent_configuration::string_to_priority(const string& priostr)
@@ -1062,6 +1063,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
+
+	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1436,6 +1439,11 @@ void dragent_configuration::print_configuration() const
 	g_log->information("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
 
 	g_log->information("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
+
+	if(m_query_docker_image_info)
+	{
+		g_log->information("Additional Docker image info fetching enabled.");
+	}
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

@@ -426,6 +426,8 @@ void sinsp_worker::init()
 		m_inspector->suppress_events_comm(comm);
 	}
 
+	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
+
 	//
 	// Start the capture with sinsp
 	//
