@@ -12,14 +12,12 @@ BINARIES_DIR=$1
 REPOSITORY_DIR=$2
 S3_BUCKET=$3
 
-# Docker build trigger has to be explicitly enabled in the environment
-
-#TRIGGER_DOCKER_BUILDS=no
-#if [ "$S3_BUCKET" = "s3://download.draios.com" ]
-#then
-#	# production run, trigger the docker builds
-#	TRIGGER_DOCKER_BUILDS=yes
-#fi
+TRIGGER_DOCKER_BUILDS=no
+if [ "$S3_BUCKET" = "s3://download.draios.com" ]
+then
+	# production run, trigger the docker builds
+	TRIGGER_DOCKER_BUILDS=yes
+fi
 
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
