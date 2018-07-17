@@ -543,6 +543,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 
+        m_log_rotate = m_config->get_scalar("log", "rotate", DEFAULT_LOGROTATE);
+
+        m_max_log_size = m_config->get_scalar("log", "max_size", DEFAULT_MAX_LOGSIZE);
+
 	ifstream kubernetes_access_key(m_root_dir + "/etc/kubernetes/secrets/access-key");
 	if(kubernetes_access_key.good())
 	{
@@ -1667,3 +1671,7 @@ void dragent_configuration::set_auto_config_directory(const string &config_direc
 		it.second->set_config_directory(config_directory);
 	}
 }
+
+
+const uint16_t dragent_configuration::DEFAULT_LOGROTATE = 10;
+const uint16_t dragent_configuration::DEFAULT_MAX_LOGSIZE = 10;

@@ -559,6 +559,8 @@ enum class dragent_mode_t {
 class dragent_configuration
 {
 public:
+        static const uint16_t DEFAULT_LOGROTATE;
+        static const uint16_t DEFAULT_MAX_LOGSIZE; // Megabytes
 	dragent_configuration();
 
 	void init(Application* app, bool use_installed_dragent_yaml=true);
@@ -586,6 +588,9 @@ public:
 	string m_defaults_conf_file;
 	string m_metrics_dir;
 	string m_log_dir;
+        uint16_t m_log_rotate;
+        // Log size in megabytes
+        uint16_t m_max_log_size;
 	string m_customer_id;
 	string m_machine_id;
 	string m_machine_id_prefix;
