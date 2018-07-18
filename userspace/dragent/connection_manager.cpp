@@ -81,6 +81,15 @@ bool connection_manager::init()
 
 bool connection_manager::connect()
 {
+	if (m_configuration->m_promex_enabled)
+	{
+		const string& url = m_configuration->m_promex_connect_url.empty() ?
+			"unix:/opt/draios/run/promex.sock" :
+			m_configuration->m_promex_connect_url;
+		m_prom_channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
+		m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
+	}
+
 	try
 	{
 		ASSERT(m_socket.isNull());
@@ -179,6 +188,29 @@ void connection_manager::disconnect()
 		m_connected = false;
 		m_buffer_used = 0;
 	}
+
+	m_prom_channel = nullptr;
+	m_prom_conn = nullptr;
+}
+
+bool connection_manager::prometheus_connected()
+{
+	if (!m_prom_conn)
+	{
+		return false;
+	}
+
+	auto state = m_prom_channel->GetState(true);
+	switch (state)
+	{
+		case GRPC_CHANNEL_IDLE:
+		case GRPC_CHANNEL_READY:
+			return true;
+		default:
+			g_logger.format(sinsp_logger::SEV_INFO, "Connection to prometheus exporter in state %d", (int)state);
+			return false;
+	}
+
 }
 
 void connection_manager::run()
@@ -263,6 +295,21 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			       + ", now=" + to_string(now)
 			       + ", ts=" + to_string(item->ts_ns)
 			       + ", delay_ms=" + to_string((now - item->ts_ns)/ 1000000.0));
+	}
+
+	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
+	{
+		grpc::ClientContext context;
+		auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(20);
+		context.set_deadline(deadline);
+
+		draiosproto::metrics msg;
+		promex_pb::PrometheusExporterResponse response;
+		if (parse_protocol_queue_item(*item, &msg))
+		{
+			// XXX: this is blocking
+			m_prom_conn->EmitMetrics(&context, msg, &response);
+		}
 	}
 
 	try

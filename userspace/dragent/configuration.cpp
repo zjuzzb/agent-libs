@@ -815,6 +815,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
 
+	// Prometheus exporter
+	m_promex_enabled = m_config->get_scalar<bool>("prometheus_exporter", "enabled", false);
+	m_promex_url = m_config->get_scalar<string>("prometheus_exporter", "listen_url", "0.0.0.0:9544");
+	m_promex_connect_url = m_config->get_scalar<string>("prometheus_exporter", "connect_url", "");
+	m_promex_container_labels = m_config->get_scalar<string>("prometheus_exporter", "container_labels", "");
+
 	// custom container engines
 	try {
 		m_custom_container.set_cgroup_match(m_config->get_scalar<string>("custom_container", "match", "cgroup", ""));
@@ -1284,6 +1290,16 @@ void dragent_configuration::print_configuration() const
 	g_log->information("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
 	if (m_prom_conf.enabled()) {
 		g_log->information("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));
+	}
+	g_log->information("prometheus exporter enabled: " + bool_as_text(m_promex_enabled));
+	if (m_promex_enabled) {
+		g_log->information("prometheus exporter listen address: " + m_promex_url);
+		if (!m_promex_connect_url.empty()) {
+			g_log->information("external prometheus exporter address: " + m_promex_connect_url);
+		} else {
+			g_log->information("internal prometheus exporter started as subprocess");
+		}
+		g_log->information("prometheus exporter container labels: " + m_promex_container_labels);
 	}
 #endif
 	g_log->information("python binary: " + m_python_binary);

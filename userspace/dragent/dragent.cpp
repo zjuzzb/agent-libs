@@ -518,6 +518,27 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return (EXIT_FAILURE);
 		});
 	}
+#ifndef CYGWING_AGENT
+	if(m_configuration.m_promex_enabled && m_configuration.m_promex_connect_url.empty())
+	{
+		m_promex_pipes = make_unique<errpipe_manager>();
+		auto* state = &m_subprocesses_state["promex"];
+		state->set_name("promex");
+		m_subprocesses_logger.add_logfd(m_promex_pipes->get_file(), sinsp_logger_parser("promex"), state);
+		monitor_process.emplace_process("promex", [this]()
+		{
+			m_promex_pipes->attach_child();
+
+			execl((m_configuration.m_root_dir + "/bin/promex").c_str(), "promex",
+			      "-prom-addr", m_configuration.m_promex_url.c_str(),
+			      "-container-labels", m_configuration.m_promex_container_labels.c_str(),
+			      (char *) NULL);
+
+			return (EXIT_FAILURE);
+		});
+	}
+#endif
+
 	monitor_process.set_cleanup_function(
 			[this](void)
 			{

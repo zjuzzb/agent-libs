@@ -60,3 +60,10 @@ bool dragent_protocol::buffer_to_protobuf(const uint8_t* buf, uint32_t size, T* 
 
 	return true;
 }
+
+template<class T> bool parse_protocol_queue_item(const protocol_queue_item& item, T* message)
+{
+	const uint8_t * buf = reinterpret_cast<const uint8_t *>(item.buffer.c_str()) + sizeof(dragent_protocol_header);
+	size_t size = item.buffer.size() - sizeof(dragent_protocol_header);
+	return dragent_protocol::buffer_to_protobuf(buf, size, message);
+}

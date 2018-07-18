@@ -671,6 +671,10 @@ public:
 	bool m_system_supports_containers;
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
+	bool m_promex_enabled;
+	string m_promex_url;
+	string m_promex_connect_url;
+	string m_promex_container_labels;
 	custom_container::resolver m_custom_container;
 #endif
 

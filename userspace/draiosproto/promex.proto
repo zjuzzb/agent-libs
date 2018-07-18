@@ -1,0 +1,11 @@
+syntax = "proto2";
+
+import "draios.proto";
+package promex_pb;
+
+message PrometheusExporterResponse {
+}
+
+service PrometheusExporter {
+    rpc EmitMetrics(draiosproto.metrics) returns (PrometheusExporterResponse);
+}

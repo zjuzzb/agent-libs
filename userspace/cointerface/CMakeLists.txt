@@ -6,12 +6,15 @@ set(PROTOC_DIR "${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/t
 set(COINTERFACE_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface")
 set(DECODEPROTO_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto")
 set(COMPCLIENT_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/compclient")
+set(PROMEX_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/promex")
 file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/draiosproto)
 file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/sdc_internal)
 file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/draiosproto)
 file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/sdc_internal)
 file(MAKE_DIRECTORY ${COMPCLIENT_OUT_DIR}/draiosproto)
 file(MAKE_DIRECTORY ${COMPCLIENT_OUT_DIR}/sdc_internal)
+file(MAKE_DIRECTORY ${PROMEX_OUT_DIR}/draiosproto)
+file(MAKE_DIRECTORY ${PROMEX_OUT_DIR}/promex_pb)
 
 add_custom_target(generate_cointerface_proto ALL
   DEPENDS ${COINTERFACE_OUT_DIR}/draiosproto/draios.pb.go
@@ -46,6 +49,17 @@ add_custom_command(OUTPUT ${COMPCLIENT_OUT_DIR}/draiosproto/draios.pb.go
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/sdc_internal.proto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
 		${CMAKE_CURRENT_SOURCE_DIR}/src/compclient/generate.go
+		)
+
+add_custom_target(generate_promex_proto ALL
+  DEPENDS ${PROMEX_OUT_DIR}/draiosproto/draios.pb.go
+          ${PROMEX_OUT_DIR}/promex_pb/promex.pb.go)
+add_custom_command(OUTPUT ${PROMEX_OUT_DIR}/draiosproto/draios.pb.go
+                          ${PROMEX_OUT_DIR}/promex_pb/promex.pb.go
+			  COMMAND GOPATH=${GOPATH} PATH="${BASE_GOPATH}/bin:${PROTOC_DIR}/bin:$ENV{PATH}" LD_LIBRARY_PATH="${PROTOC_DIR}/lib:$ENV{LD_LIBRARY_PATH}" PROTO_SRC_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto" PROTO_OUT_DIR="${PROMEX_OUT_DIR}" go generate promex
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/promex.proto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/../draiosproto/draios.proto
+		${CMAKE_CURRENT_SOURCE_DIR}/src/promex/generate.go
 		)
 
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
@@ -101,6 +115,15 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto/decode_proto.go
     )
 
+add_custom_target(promex ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/promex)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex
+        COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/promex" promex
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	DEPENDS generate_promex_proto
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex/promex.go
+	        ${CMAKE_CURRENT_SOURCE_DIR}/src/promex/server/server.go
+    )
+
 # Note that we don't package the client. That's only for testing
 # purposes.
 install(DIRECTORY
@@ -108,6 +131,7 @@ install(DIRECTORY
 	COMPONENT agent)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
+                 ${CMAKE_CURRENT_BINARY_DIR}/promex
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	COMPONENT agent)
 

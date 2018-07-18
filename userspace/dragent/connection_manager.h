@@ -9,6 +9,9 @@
 #include "capture_job_handler.h"
 #include <chrono>
 
+#include "promex.pb.h"
+#include "promex.grpc.pb.h"
+
 class connection_manager : public Runnable
 {
 public:
@@ -49,6 +52,7 @@ private:
 	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
 	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
 	void handle_baselines_message(uint8_t* buf, uint32_t size);
+	bool prometheus_connected();
 #endif
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
@@ -73,4 +77,10 @@ private:
 
 	uint32_t m_reconnect_interval;
 	chrono::time_point<std::chrono::system_clock> m_last_connection_failure;
+
+#ifndef CYGWING_AGENT
+	// communication with Prometheus exporter
+	std::shared_ptr<promex_pb::PrometheusExporter::Stub> m_prom_conn;
+	std::shared_ptr<grpc::Channel> m_prom_channel;
+#endif
 };

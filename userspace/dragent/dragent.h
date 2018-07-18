@@ -135,6 +135,7 @@ private:
 	unique_ptr<errpipe_manager> m_mounted_fs_reader_pipe;
 	unique_ptr<errpipe_manager> m_statsite_forwarder_pipe;
 	unique_ptr<pipe_manager> m_cointerface_pipes;
+	unique_ptr<errpipe_manager> m_promex_pipes;
 
 	internal_metrics::sptr_t m_internal_metrics;
 	sinsp_worker m_sinsp_worker;

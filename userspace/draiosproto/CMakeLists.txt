@@ -4,7 +4,9 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 add_library(draiosproto STATIC
 	${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 	${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
-	${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc)
+	${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
+	${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
+	${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.cc)
 
 if(NOT CYGWIN)
 target_link_libraries(draiosproto
@@ -60,3 +62,20 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 		${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
+
+if(NOT CYGWIN)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
+                          ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.h
+                          ${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.cc
+	                  ${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.h
+	COMMENT "Building promex cpp sources from .proto files"
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/promex.proto ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
+	COMMAND ${PROTOC_CMDLINE}
+	        --cpp_out=.
+		${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
+	COMMAND ${PROTOC_CMDLINE}
+                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin
+		${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
+	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
