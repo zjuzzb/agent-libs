@@ -35,7 +35,7 @@ build_docker_image()
 		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < /code/agent/docker/local/$DOCKERFILE > /out/$DOCKERFILE
 	fi
 	cd /out
-	docker build -t $AGENT_IMAGE -f $DOCKERFILE .
+	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
 }
 
 build_package()
@@ -76,7 +76,7 @@ build_sysdig()
 	cp *.deb /out
 	cp *.rpm /out
 	cd /out
-	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE .
+	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE --pull .
 }
 
 cd build/release
