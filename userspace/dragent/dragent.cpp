@@ -1096,7 +1096,7 @@ void dragent_app::initialize_logging()
 
 	AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
 
-        file_channel->setProperty("purgeCount", std::to_string(m_configuration.m_log_rotate));
+	file_channel->setProperty("purgeCount", std::to_string(m_configuration.m_log_rotate));
 	file_channel->setProperty("rotation", std::to_string(m_configuration.m_max_log_size) + "M");
 	file_channel->setProperty("archive", "timestamp");
 
