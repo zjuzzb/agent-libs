@@ -1,4 +1,4 @@
-# (C) Datadog, Inc. 2010-2016
+# (C) Datadog, Inc. 2010-2017
 # (C) Sysdig, Inc. 2016-2017
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
@@ -56,8 +56,8 @@ class ConsulCheck(AgentCheck):
 
     SOURCE_TYPE_NAME = 'consul'
 
-    MAX_CONFIG_TTL = 300 # seconds
-    MAX_SERVICES = 50 # cap on distinct Consul ServiceIDs to interrogate
+    MAX_CONFIG_TTL = 300  # seconds
+    MAX_SERVICES = 50  # cap on distinct Consul ServiceIDs to interrogate
 
     STATUS_SC = {
         'up': AgentCheck.OK,
@@ -85,14 +85,20 @@ class ConsulCheck(AgentCheck):
             clientcertfile = instance.get('client_cert_file', self.init_config.get('client_cert_file', False))
             privatekeyfile = instance.get('private_key_file', self.init_config.get('private_key_file', False))
             cabundlefile = instance.get('ca_bundle_file', self.init_config.get('ca_bundle_file', True))
+            acl_token = instance.get('acl_token', None)
+
+            headers = {}
+            if acl_token:
+                headers['X-Consul-Token'] = acl_token
 
             if clientcertfile:
                 if privatekeyfile:
-                    resp = requests.get(url, cert=(clientcertfile,privatekeyfile), verify=cabundlefile)
+                    resp = requests.get(url, cert=(clientcertfile, privatekeyfile),
+                                        verify=cabundlefile, headers=headers)
                 else:
-                    resp = requests.get(url, cert=clientcertfile, verify=cabundlefile)
+                    resp = requests.get(url, cert=clientcertfile, verify=cabundlefile, headers=headers)
             else:
-                resp = requests.get(url, verify=cabundlefile)
+                resp = requests.get(url, verify=cabundlefile, headers=headers)
 
         except requests.exceptions.Timeout:
             self.log.exception('Consul request to {0} timed out'.format(url))
@@ -101,9 +107,12 @@ class ConsulCheck(AgentCheck):
         resp.raise_for_status()
         return resp.json()
 
-    ### Consul Config Accessors
+    # Consul Config Accessors
     def _get_local_config(self, instance, instance_state):
-        if not instance_state.local_config or datetime.now() - instance_state.last_config_fetch_time > timedelta(seconds=self.MAX_CONFIG_TTL):
+        time_window = 0
+        if instance_state.last_config_fetch_time:
+            time_window = datetime.now() - instance_state.last_config_fetch_time
+        if not instance_state.local_config or time_window > timedelta(seconds=self.MAX_CONFIG_TTL):
             instance_state.local_config = self.consul_request(instance, '/v1/agent/self')
             instance_state.last_config_fetch_time = datetime.now()
 
@@ -115,8 +124,13 @@ class ConsulCheck(AgentCheck):
     def _get_agent_url(self, instance, instance_state):
         self.log.debug("Starting _get_agent_url")
         local_config = self._get_local_config(instance, instance_state)
-        agent_addr = local_config.get('Config', {}).get('AdvertiseAddr')
-        agent_port = local_config.get('Config', {}).get('Ports', {}).get('Server')
+
+        # Member key for consul 0.7.x and up; Config key for older versions
+        agent_addr = local_config.get('Member', {}).get('Addr') or \
+            local_config.get('Config', {}).get('AdvertiseAddr')
+        agent_port = local_config.get('Member', {}).get('Tags', {}).get('port') or \
+            local_config.get('Config', {}).get('Ports', {}).get('Server')
+
         agent_url = "{0}:{1}".format(agent_addr, agent_port)
         self.log.debug("Agent url is %s" % agent_url)
         return agent_url
@@ -126,12 +140,12 @@ class ConsulCheck(AgentCheck):
         agent_dc = local_config.get('Config', {}).get('Datacenter')
         return agent_dc
 
-    ### Consul Leader Checks
+    # Consul Leader Checks
     def _is_instance_leader(self, instance, instance_state):
         try:
             agent_url = self._get_agent_url(instance, instance_state)
             leader = instance_state.last_known_leader or self._get_cluster_leader(instance)
-            self.log.debug("Consul agent lives at %s . Consul Leader lives at %s" % (agent_url,leader))
+            self.log.debug("Consul agent lives at %s . Consul Leader lives at %s" % (agent_url, leader))
             return agent_url == leader
 
         except Exception:
@@ -192,7 +206,7 @@ class ConsulCheck(AgentCheck):
 
         instance_state.last_known_leader = leader
 
-    ### Consul Catalog Accessors
+    # Consul Catalog Accessors
     def get_peers_in_cluster(self, instance):
         return self.consul_request(instance, '/v1/status/peers') or []
 
@@ -208,17 +222,29 @@ class ConsulCheck(AgentCheck):
 
         if service_whitelist:
             if len(service_whitelist) > max_services:
-                self.log.debug('More than %d services in whitelist. Service list will be truncated.' % max_services)
+                self.warning('More than %d services in whitelist. Service list will be truncated.' % max_services)
 
-            services = [s for s in services if s in service_whitelist][:max_services]
+            services = {s: services[s] for s in [s for s in services if s in service_whitelist][:max_services]}
         else:
             if len(services) <= max_services:
-                self.log.debug('Consul service whitelist not defined. Agent will poll for all %d services found', len(services))
+                log_line = 'Consul service whitelist not defined. Agent will poll for all {0} services found'
+                log_line = log_line.format(len(services))
+                self.log.debug(log_line)
             else:
-                self.log.debug('Consul service whitelist not defined. Agent will poll for at most %d services' % max_services)
-                services = list(islice(services.iterkeys(), 0, max_services))
+                log_line = 'Consul service whitelist not defined. Agent will poll for at most {0} services'
+                log_line = log_line.format(max_services)
+                self.warning(log_line)
+                services = {s: services[s] for s in list(islice(services.iterkeys(), 0, max_services))}
 
         return services
+
+    def _get_service_tags(self, service, tags):
+        service_tags = ['consul_service_id:{0}'.format(service)]
+
+        for tag in tags:
+            service_tags.append('consul_{0}_service_tag:{1}'.format(service, tag))
+
+        return service_tags
 
     def check(self, instance):
         # Instance state is mutable, any changes to it will be reflected in self._instance_states
@@ -244,7 +270,7 @@ class ConsulCheck(AgentCheck):
         else:
             self.gauge("consul.peers", len(peers), tags=main_tags + ["mode:leader"])
 
-        service_check_tags = ['consul_url:{0}'.format(instance.get('url'))]
+        service_check_tags = main_tags + ['consul_url:{0}'.format(instance.get('url'))]
         perform_catalog_checks = instance.get('catalog_checks',
                                               self.init_config.get('catalog_checks'))
         perform_network_latency_checks = instance.get('network_latency_checks',
@@ -293,6 +319,8 @@ class ConsulCheck(AgentCheck):
             max_services = instance.get('max_services',
                                         self.init_config.get('max_services', self.MAX_SERVICES))
 
+            self.count_all_nodes(instance, main_tags)
+
             services = self._cull_services_list(services, service_whitelist, max_services)
 
             # {node_id: {"up: 0, "passing": 0, "warning": 0, "critical": 0}
@@ -306,7 +334,7 @@ class ConsulCheck(AgentCheck):
                 # `consul.catalog.nodes_warning` : # of Nodes with service status `warning` from those registered
                 # `consul.catalog.nodes_critical` : # of Nodes with service status `critical` from those registered
 
-                service_tags = ['consul_service_id:{0}'.format(service)]
+                service_tags = self._get_service_tags(service, services[service])
 
                 nodes_with_service = self.get_nodes_with_service(instance, service)
 
@@ -350,7 +378,8 @@ class ConsulCheck(AgentCheck):
                                 # Keep looping in case there is a critical status
 
                         # Increment the counters based on what was found in Checks
-                        # `critical` checks override `warning`s, and if neither are found, register the node as `passing`
+                        # `critical` checks override `warning`s, and if neither are found,
+                        # register the node as `passing`
                         if found_critical:
                             node_status['critical'] += 1
                             nodes_to_service_status[node_id]["critical"] += 1
@@ -455,10 +484,23 @@ class ConsulCheck(AgentCheck):
                 else:
                     median = (latencies[half_n - 1] + latencies[half_n]) / 2
                 self.gauge('consul.net.node.latency.min', latencies[0], hostname=node_name, tags=main_tags)
-                self.gauge('consul.net.node.latency.p25', latencies[ceili(n * 0.25) - 1], hostname=node_name, tags=main_tags)
+                self.gauge('consul.net.node.latency.p25',
+                           latencies[ceili(n * 0.25) - 1], hostname=node_name, tags=main_tags)
                 self.gauge('consul.net.node.latency.median', median, hostname=node_name, tags=main_tags)
-                self.gauge('consul.net.node.latency.p75', latencies[ceili(n * 0.75) - 1], hostname=node_name, tags=main_tags)
-                self.gauge('consul.net.node.latency.p90', latencies[ceili(n * 0.90) - 1], hostname=node_name, tags=main_tags)
-                self.gauge('consul.net.node.latency.p95', latencies[ceili(n * 0.95) - 1], hostname=node_name, tags=main_tags)
-                self.gauge('consul.net.node.latency.p99', latencies[ceili(n * 0.99) - 1], hostname=node_name, tags=main_tags)
-                self.gauge('consul.net.node.latency.max', latencies[-1], hostname=node_name, tags=main_tags)
+                self.gauge('consul.net.node.latency.p75',
+                           latencies[ceili(n * 0.75) - 1], hostname=node_name, tags=main_tags)
+                self.gauge('consul.net.node.latency.p90',
+                           latencies[ceili(n * 0.90) - 1], hostname=node_name, tags=main_tags)
+                self.gauge('consul.net.node.latency.p95',
+                           latencies[ceili(n * 0.95) - 1], hostname=node_name, tags=main_tags)
+                self.gauge('consul.net.node.latency.p99',
+                           latencies[ceili(n * 0.99) - 1], hostname=node_name, tags=main_tags)
+                self.gauge('consul.net.node.latency.max',
+                           latencies[-1], hostname=node_name, tags=main_tags)
+
+    def _get_all_nodes(self, instance):
+        return self.consul_request(instance, 'v1/catalog/nodes')
+
+    def count_all_nodes(self, instance, main_tags):
+        nodes = self._get_all_nodes(instance)
+        self.gauge('consul.catalog.total_nodes', len(nodes), tags=main_tags)
