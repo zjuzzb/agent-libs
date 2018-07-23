@@ -12,6 +12,14 @@ then
 	exit 1
 fi
 
+if [ $# -ne 1 ]
+then
+    echo "Usage: $0 repo-name" >&2
+    exit 1
+fi
+
+REPO_NAME=$1
+
 SCRIPTS_DIR=$(dirname $(readlink -f $0))
 if [ -z "$WORKSPACE" ]
 then
@@ -56,4 +64,4 @@ sudo $SCRIPTS_DIR/run-tests $INSTALL_DIR
 
 docker run -i --rm --privileged -v $PWD/driver:/driver busybox rmmod sysdigcloud-probe
 
-$SCRIPTS_DIR/upload-agent-rc $OUT $REPO_DIR $S3_BUCKET
+$SCRIPTS_DIR/upload-agent-rc $REPO_NAME $OUT $REPO_DIR $S3_BUCKET

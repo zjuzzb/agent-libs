@@ -14,7 +14,8 @@ then
 	exit 1
 fi
 
-SCRIPTS_DIR=$(dirname $(readlink -f $0))
+SCRIPT=$(readlink -f $0)
+SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
 if [ -z "$WORKSPACE" ]
 then
 	WORKSPACE=$SCRIPTS_DIR/../../../..
@@ -51,20 +52,11 @@ function get_rc_files {
 	do
 	    for path in $repo/rpm/$RPM_BASEARCH $repo/deb/stable-$DEB_BASEARCH $repo/tgz/$BASEARCH
 	    do
-		aws s3 sync $S3_BUCKET/$path $REPO_DIR/$path --acl public-read --delete --exact-timestamps --exlude '*' --include '*'"draios-${AGENT_VERSION}"'*'
+		aws s3 sync $S3_BUCKET/$path $REPO_DIR/$path --acl public-read --delete --exact-timestamps --exclude '*' --include '*'"draios-${AGENT_VERSION}"'*'
 	    done
 	done
 	# We may want to error and fail here if we don't find files with the
 	# requested version
-
-	# Get everything from stable (destination) repos
-	for repo in stable stable-debug
-	do
-	    for path in $repo/rpm/$RPM_BASEARCH $repo/deb/stable-$DEB_BASEARCH $repo/tgz/$BASEARCH
-	    do
-		aws s3 sync $S3_BUCKET/$path $REPO_DIR/$path --acl public-read --delete --exact-timestamps
-	    done
-	done
 }
 
 function configure_rpm_repo {
@@ -171,14 +163,13 @@ function configure_installers {
 	# install-script. Allow for them to skip this without failing
 	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
 	then
-	    sed -i s/_REPO_NAME_/${REPO_NAME}/g ${REPO_DIR}/install-agent
+	    sed -i s/_REPO_NAME_/${REPO_NAME}/g ${REPO_DIR}/$REPO_NAME/install-agent
 	    aws s3 cp $REPO_DIR/$REPO_NAME/install-agent $S3_BUCKET/$REPO_NAME/ --acl public-read
 	    aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
 	fi
 }
 
 function upload_binaries {
-	rm -rf $REPO_DIR
 	configure_rpm_repo
 	configure_debian_repo
 	configure_tgz_repo
@@ -216,6 +207,4 @@ if [[ ${TRIGGER_DOCKER_RELEASE} == 'yes' && ${BASEARCH} == 'x86_64' && ${AGENT_V
 	trigger_docker_release
 fi
 
-#keep /tmp clean
 rm -rf ${REPO_DIR}
-

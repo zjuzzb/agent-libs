@@ -1,16 +1,16 @@
 #!/bin/bash
 set -exuo pipefail
 
-if [ $# -ne 3 ]
+if [ $# -ne 4 ]
 then
-    echo "Usage: $0 bin-dir repo-dir s3-bucket" >&2
-    exit -1
+    echo "Usage: $0 repo-name bin-dir repo-dir s3-bucket" >&2
+    exit 1
 fi
 
-REPOSITORY_BASENAME="rc"
-BINARIES_DIR=$1
-REPOSITORY_DIR=$2
-S3_BUCKET=$3
+REPOSITORY_BASENAME=$1
+BINARIES_DIR=$2
+REPOSITORY_DIR=$3
+S3_BUCKET=$4
 
 TRIGGER_DOCKER_BUILDS=no
 if [ "$S3_BUCKET" = "s3://download.draios.com" ]
@@ -147,11 +147,22 @@ function upload_binaries {
 
 function trigger_docker_build {
 	trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
-	tag=${AGENT_VERSION}-rc
+	if [[ "${REPOSITORY_BASENAME}" == 'rc' ]]
+	then
+	    tag=${AGENT_VERSION}-rc
 
-	curl -H "Content-Type: application/json" \
-	    --data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
-	    -X POST ${trigger_url}
+	    curl -H "Content-Type: application/json" \
+		--data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
+		-X POST ${trigger_url}
+	elif [[ "${REPOSITORY_BASENAME}" == 'dev' ]]
+	then
+	    curl -H "Content-Type: application/json" \
+		--data '{"source_type": "Branch", "source_name": "dev"}' \
+		-X POST ${trigger_url}
+	else
+	    echo "Docker build cannot be triggered for repo ${REPOSITORY_BASENAME}"
+	    exit 1
+	fi
 }
 
 REPOSITORY_NAME=$REPOSITORY_BASENAME
