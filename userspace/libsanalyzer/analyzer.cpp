@@ -3018,7 +3018,7 @@ bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connecti
 
 //
 // Strategy:
-//  - sport is *always* masked to zero
+//  - sport is masked to zero, unless m_report_source_port is set
 //  - if there are more than MAX_N_EXTERNAL_CLIENTS external client connections,
 //    external client IPs are masked to zero
 //
@@ -3106,7 +3106,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_dpid = prog_dpid;
 		tuple.m_fields.m_sip = cit->first.m_fields.m_sip;
 		tuple.m_fields.m_dip = cit->first.m_fields.m_dip;
-		tuple.m_fields.m_sport = 0;
+		tuple.m_fields.m_sport = m_report_source_port ? cit->first.m_fields.m_sport : 0;
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 

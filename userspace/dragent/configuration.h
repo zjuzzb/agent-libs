@@ -805,6 +805,7 @@ public:
 	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
 	uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
 	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
+	bool m_report_source_port = false;
 
 	bool java_present() const
 	{
