@@ -90,9 +90,6 @@ endif()
 file(COPY ${PROJECT_SOURCE_DIR}/scripts/debian/dragent
 	DESTINATION ${PROJECT_BINARY_DIR}/scripts/debian)
 
-file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent
-	DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm)
-
 file(COPY root.cert
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 

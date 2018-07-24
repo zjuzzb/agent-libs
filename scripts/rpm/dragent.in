@@ -22,7 +22,7 @@
 [ -e /etc/rc.d/init.d/functions ] && . /etc/rc.d/init.d/functions
 [ -e /etc/rc.status ] && . /etc/rc.status
 
-exec="/opt/draios/bin/dragent"
+exec="@CMAKE_INSTALL_PREFIX@/bin/dragent"
 prog="dragent"
 # config="<path to major config file>"
 

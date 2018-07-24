@@ -14,7 +14,7 @@ else
 	echo -e "kernel source for this kernel does not seem to be installed."
 fi
 
-CONFIG_FILE=/opt/draios/etc/dragent.yaml
+CONFIG_FILE=@CMAKE_INSTALL_PREFIX@/etc/dragent.yaml
 OLD_CONFIG_FILE=/opt/draios/bin/dragent.properties
 
 if [ ! -e $CONFIG_FILE ]; then
