@@ -64,4 +64,4 @@ sudo $SCRIPTS_DIR/run-tests $INSTALL_DIR
 
 docker run -i --rm --privileged -v $PWD/driver:/driver busybox rmmod sysdigcloud-probe
 
-$SCRIPTS_DIR/upload-agent-rc $REPO_NAME $OUT $REPO_DIR $S3_BUCKET
+$SCRIPTS_DIR/upload-agent $REPO_NAME $OUT $REPO_DIR $S3_BUCKET
