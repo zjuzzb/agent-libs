@@ -19,6 +19,11 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exc
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/falco/ /code/falco/
 cd /code/agent
 
+if [[ $1 == "container" ]]; then
+	# Must be set before calling cmake in boostrap-agent
+	export BUILD_DEB_ONLY=ON
+fi
+
 DOCKERFILE=Dockerfile
 if [[ "`uname -m`" == "s390x" ]]; then
   ./bootstrap-agent
@@ -35,7 +40,7 @@ build_docker_image()
 		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < /code/agent/docker/local/$DOCKERFILE > /out/$DOCKERFILE
 	fi
 	cd /out
-	docker build -t $AGENT_IMAGE -f $DOCKERFILE .
+	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
 }
 
 build_package()
@@ -47,9 +52,7 @@ build_package()
 
 build_container()
 {
-	export BUILD_DEB_ONLY=ON
 	make -j$MAKE_JOBS package
-	unset BUILD_DEB_ONLY
 	cp *.deb /out
 	build_docker_image
 }
@@ -76,7 +79,7 @@ build_sysdig()
 	cp *.deb /out
 	cp *.rpm /out
 	cd /out
-	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE .
+	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE --pull .
 }
 
 cd build/release

@@ -45,7 +45,11 @@ RUN rm -rf /usr/bin/clang \
  && ln -s /usr/bin/clang-7 /usr/bin/clang \
  && ln -s /usr/bin/llc-7 /usr/bin/llc
 
-RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
+# Some base images have an empty /lib/modules by default
+# If it's not empty, docker build will fail instead of
+# silently overwriting the existing directory
+RUN rm -df /lib/modules \
+ && ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
 ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
 RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb
