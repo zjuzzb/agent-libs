@@ -88,6 +88,9 @@ else()
 	)
 endif()
 
+file(COPY ${PROJECT_SOURCE_DIR}/scripts/rpm/dragent.in
+	DESTINATION ${PROJECT_BINARY_DIR}/scripts/rpm)
+
 file(COPY root.cert
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
