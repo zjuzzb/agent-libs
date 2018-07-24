@@ -487,8 +487,7 @@ class Solr(AgentCheck):
             if self.version is None:
                 # Default retry behavior is managed by config and sdchecks.py
                 # We might have more luck next time?
-                self.log.info("solr: Failed to determine version")
-                return
+                raise CheckException("solr: Failed to determine version")
             elif self.version[0:1] != "5":
                 # Don't retry, cause we would always end up here.
                 self.failed = True
