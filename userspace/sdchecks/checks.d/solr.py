@@ -482,12 +482,16 @@ class Solr(AgentCheck):
             self.ports = instance["ports"]
             self.port = instance.get("solr_port", 0)
 
+            if self.port == 0 and len(self.ports) == 0:
+                self.log.info("Cannot proceed without a supplied port. Config is {}".format(instance))
+                return
+
             self._getSolrVersion(instance)
 
             if self.version is None:
                 # Default retry behavior is managed by config and sdchecks.py
                 # We might have more luck next time?
-                raise CheckException("solr: Failed to determine version")
+                raise CheckException("solr: Failed to determine version. Config is {}".format(instance))
             elif self.version[0:1] != "5":
                 # Don't retry, cause we would always end up here.
                 self.failed = True
