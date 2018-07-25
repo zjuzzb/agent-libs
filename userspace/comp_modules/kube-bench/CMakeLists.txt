@@ -3,7 +3,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/kubectl
 	COMMAND curl -so ${CMAKE_CURRENT_BINARY_DIR}/kubectl -LO https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/kubectl
-	DESTINATION ${DRAIOS_BIN_PREFIX}/lib/comp_modules/kube-bench
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/comp_modules/kube-bench
 	COMPONENT agent)
 
 add_custom_target(kube_bench ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/kube-bench)
@@ -12,9 +12,9 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/kube-bench
 	COMMAND tar -zxf ${CMAKE_CURRENT_BINARY_DIR}/kube-bench-0.0.17.tar.gz)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/kube-bench-0.0.17/kube-bench
-	DESTINATION ${DRAIOS_BIN_PREFIX}/lib/comp_modules/kube-bench
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/comp_modules/kube-bench
 	COMPONENT agent)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/kube-bench-0.0.17/cfg
-	DESTINATION ${DRAIOS_BIN_PREFIX}/lib/comp_modules/kube-bench
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/comp_modules/kube-bench
 	COMPONENT agent)
