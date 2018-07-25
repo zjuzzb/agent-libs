@@ -47,7 +47,6 @@ endif()
 add_definitions(-D_GNU_SOURCE)
 
 set (CMAKE_INSTALL_PREFIX "/opt/draios" CACHE PATH "default install path" FORCE)
-set(DRAIOS_BIN_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(KBUILD_FLAGS "${DRAIOS_DEBUG_FLAGS} ${DRAIOS_FEATURE_FLAGS}")
