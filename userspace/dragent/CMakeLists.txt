@@ -106,6 +106,18 @@ file(COPY ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
 		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
 		DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/chisels)
 
+if (DEFINED AGENT_BUILD_COMMIT OR DEFINED AGENT_BUILD_DATE)
+	if (DEFINED AGENT_BUILD_COMMIT)
+		file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "commit: ${AGENT_BUILD_COMMIT}\n")
+	endif()
+	if (DEFINED AGENT_BUILD_DATE)
+		file(APPEND ${CMAKE_CURRENT_BINARY_DIR}/.agent_build "build date: ${AGENT_BUILD_DATE}\n")
+	endif()
+	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/.agent_build
+		DESTINATION ${DRAIOS_BIN_PREFIX}/etc
+		COMPONENT agent)
+endif()
+
 install(TARGETS dragent
 	DESTINATION ${DRAIOS_BIN_PREFIX}/bin
 	COMPONENT agent)
