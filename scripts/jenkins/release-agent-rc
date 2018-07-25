@@ -1,0 +1,210 @@
+#!/bin/bash
+# Copy all agent files with the right version from rc to stable
+# Retag docker hub 
+
+if [ -z "$AGENT_VERSION" ]
+then
+	echo "AGENT_VERSION must be set" >&2
+	exit 1
+fi
+
+if [ -z "$S3_BUCKET" ]
+then
+	echo "S3_BUCKET must be set" >&2
+	exit 1
+fi
+
+SCRIPT=$(readlink -f $0)
+SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
+if [ -z "$WORKSPACE" ]
+then
+	WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
+set -exuo pipefail
+
+TRIGGER_DOCKER_RELEASE=no
+if [ "$S3_BUCKET" = "s3://download.draios.com" ]
+then
+	# production run, trigger the docker retagging
+	TRIGGER_DOCKER_RELEASE=yes
+fi
+
+# Need to clean some of this up
+REPO_BASENAME_RC="rc"
+REPO_BASENAME="stable"
+REPO_DIR=$WORKSPACE/repo
+
+sudo rm -rf $REPO_DIR || true
+
+BASEARCH=$(uname -m)
+
+export AWS_DEFAULT_REGION="us-east-1"
+
+cd $SCRIPTS_DIR/../..
+
+function get_rc_files {
+	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+	DEB_BASEARCH=$(dpkg --print-architecture)
+
+	# Only need requested version from rc (source) repos
+	for repo in rc rc-debug
+	do
+	    for path in $repo/rpm/$RPM_BASEARCH $repo/deb/stable-$DEB_BASEARCH $repo/tgz/$BASEARCH
+	    do
+		aws s3 sync $S3_BUCKET/$path $REPO_DIR/$path --acl public-read --delete --exact-timestamps --exclude '*' --include '*'"draios-${AGENT_VERSION}"'*'
+	    done
+	done
+	# We may want to error and fail here if we don't find files with the
+	# requested version
+}
+
+function configure_rpm_repo {
+	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+
+	RCPATHNAME=$REPO_NAME_RC/rpm/$RPM_BASEARCH
+	PATHNAME=$REPO_NAME/rpm/$RPM_BASEARCH
+
+	# Sync everything from S3 to local
+	mkdir -p $REPO_DIR/$PATHNAME
+	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
+	# Delete everything except for the last 5 versions
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+
+	# rpms should already be signed
+	# $SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+	cp $REPO_DIR/$RCPATHNAME/draios-${AGENT_VERSION}*rpm $REPO_DIR/$PATHNAME
+	createrepo $REPO_DIR/$PATHNAME
+
+	cp $SCRIPTS_DIR/draios.repo $REPO_DIR/$REPO_NAME/rpm
+	sed -i s/_REPO_/$REPO_NAME/g $REPO_DIR/$REPO_NAME/rpm/draios.repo
+
+	aws s3 cp $REPO_DIR/$REPO_NAME/rpm/draios.repo $S3_BUCKET/$REPO_NAME/rpm/ --acl public-read
+	aws s3 sync $REPO_DIR/$PATHNAME/ $S3_BUCKET/$PATHNAME/ --acl public-read --delete --exact-timestamps
+}
+
+function checksum {
+	LABEL=$1
+	CMD=$2
+
+	cat <<EOF
+$LABEL:
+ $($CMD Packages | cut -d" " -f1) $(du -b Packages | tr \\t " ")
+ $($CMD Packages.gz | cut -d" " -f1) $(du -b Packages.gz | tr \\t " ")
+EOF
+
+}
+
+function configure_debian_repo {
+	DEB_BASEARCH=$(dpkg --print-architecture)
+
+	RCPATHNAME=$REPO_NAME_RC/deb/stable-$DEB_BASEARCH
+	PATHNAME=$REPO_NAME/deb/stable-$DEB_BASEARCH
+
+	mkdir -p $REPO_DIR/$PATHNAME
+	pushd $REPO_DIR/$REPO_NAME/deb
+	
+	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+
+	# debs should already be signed
+	# $SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+	cp $REPO_DIR/$RCPATHNAME/draios-${AGENT_VERSION}*deb $REPO_DIR/$PATHNAME
+
+	dpkg-scanpackages --multiversion stable-$DEB_BASEARCH > stable-$DEB_BASEARCH/Packages
+
+	gzip -c stable-$DEB_BASEARCH/Packages > stable-$DEB_BASEARCH/Packages.gz
+	pushd stable-$DEB_BASEARCH
+	(cat <<EOF
+Date: $(date -R)
+Suite: stable-$DEB_BASEARCH
+EOF
+	checksum MD5Sum md5sum
+	checksum SHA1 sha1sum
+	checksum SHA256 sha256sum
+	checksum SHA512 sha512sum
+	) > Release
+	gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
+	gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+	popd
+
+	sed s/_REPO_/$REPO_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
+
+	aws s3 cp draios.list $S3_BUCKET/$REPO_NAME/deb/ --acl public-read
+	aws s3 sync stable-$DEB_BASEARCH/ $S3_BUCKET/$PATHNAME/ --acl public-read --delete --exact-timestamps
+
+	popd
+}
+
+function configure_tgz_repo {
+	RCPATHNAME=$REPO_NAME_RC/tgz/$BASEARCH
+	PATHNAME=$REPO_NAME/tgz/$BASEARCH
+	mkdir -p $REPO_DIR/$PATHNAME
+
+	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*tests* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+
+	cp $REPO_DIR/$RCPATHNAME/draios-${AGENT_VERSION}*tar.gz $REPO_DIR/$PATHNAME
+	aws s3 sync $REPO_DIR/$PATHNAME/ $S3_BUCKET/$PATHNAME --acl public-read --delete --exact-timestamps
+}
+
+function configure_installers {
+	TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
+	cp ${TEMPLATE_FILE} ${REPO_DIR}/$REPO_NAME/install-agent
+
+	# Some jenkins jobs don't have permission to overwrite the
+	# install-script. Allow for them to skip this without failing
+	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
+	then
+	    sed -i s/_REPO_NAME_/${REPO_NAME}/g ${REPO_DIR}/$REPO_NAME/install-agent
+	    aws s3 cp $REPO_DIR/$REPO_NAME/install-agent $S3_BUCKET/$REPO_NAME/ --acl public-read
+	    aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
+	fi
+}
+
+function upload_binaries {
+	configure_rpm_repo
+	configure_debian_repo
+	configure_tgz_repo
+	configure_installers
+}
+
+function trigger_docker_release {
+	trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
+	tag=${AGENT_VERSION}
+
+	curl -H "Content-Type: application/json" \
+	    --data '{"source_type": "Branch", "source_name": "master"}' \
+	    -X POST ${trigger_url}
+
+	sleep 60s
+
+	curl -H "Content-Type: application/json" \
+	    --data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
+	    -X POST ${trigger_url}
+}
+
+get_rc_files
+
+REPO_NAME=$REPO_BASENAME
+REPO_NAME_RC=$REPO_BASENAME_RC
+upload_binaries
+
+REPO_NAME=$REPO_BASENAME-debug
+REPO_NAME_RC=$REPO_BASENAME_RC-debug
+upload_binaries
+
+#the build is executed on i686 and x86_64 server
+#the docker hub trigger has to be executed only at the end of x86_64 build
+if [[ ${TRIGGER_DOCKER_RELEASE} == 'yes' && ${BASEARCH} == 'x86_64' && ${AGENT_VERSION} != '' ]]; then
+	trigger_docker_release
+fi
+
+rm -rf ${REPO_DIR}

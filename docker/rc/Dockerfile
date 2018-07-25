@@ -2,13 +2,13 @@ FROM debian:unstable
 
 MAINTAINER Sysdig <support@sysdig.com>
 
-ENV SYSDIG_REPOSITORY dev
+ENV SYSDIG_REPOSITORY rc
 
 ENV SYSDIG_HOST_ROOT /host
 
-ENV AGENT_VERSION 0.1.1dev
-
 ENV HOME /root
+
+ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
 RUN apt-get update \
  && apt-get dist-upgrade -y \
@@ -27,7 +27,7 @@ RUN apt-get update \
 	libelf1 \
 	llvm-7 \
 	openjdk-8-jre-headless \
-	python dkms bzip2 && rm -rf /var/lib/apt/lists/*
+	python bzip2 && rm -rf /var/lib/apt/lists/*
 
 # Since our base Debian image ships with GCC 7 which breaks older kernels, revert the
 # default to gcc-5.
@@ -43,14 +43,15 @@ RUN rm -rf /usr/bin/clang \
  && ln -s /usr/bin/clang-7 /usr/bin/clang \
  && ln -s /usr/bin/llc-7 /usr/bin/llc
 
-# Some base images have an empty /lib/modules by default
-# If it's not empty, docker build will fail instead of
-# silently overwriting the existing directory
-RUN rm -df /lib/modules \
- && ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
+RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add - \
+ && curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$SYSDIG_REPOSITORY/deb/draios.list \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends draios-agent \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
-ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
-RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb
+RUN ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
+
 COPY ./docker-entrypoint.sh /
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
