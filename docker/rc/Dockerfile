@@ -8,12 +8,10 @@ ENV SYSDIG_HOST_ROOT /host
 
 ENV HOME /root
 
-RUN cp /etc/skel/.bashrc /root && cp /etc/skel/.profile /root
-
 ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
 RUN apt-get update \
- && apt-get upgrade -y \
+ && apt-get dist-upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
 	bc \

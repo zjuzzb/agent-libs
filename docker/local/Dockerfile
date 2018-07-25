@@ -10,10 +10,8 @@ ENV AGENT_VERSION 0.1.1dev
 
 ENV HOME /root
 
-RUN cp /etc/skel/.bashrc /root && cp /etc/skel/.profile /root
-
 RUN apt-get update \
- && apt-get upgrade -y \
+ && apt-get dist-upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
 	bc \
