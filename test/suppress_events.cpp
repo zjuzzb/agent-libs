@@ -192,5 +192,134 @@ TEST_F(sys_call_test, suppress_grandchildren)
 	test_helper_quotactl(hargs);
 }
 
+class suppress_types : public sys_call_test
+{
+protected:
+	static bool is_target_call(uint16_t type);
+	void do_syscalls();
+	bool is_suppressed(uint16_t type) const;
+	void run_test(vector<string> supp_types);
 
+	vector<uint16_t> m_suppressed_types;
+	int m_expected_calls;
+};
 
+bool suppress_types::is_target_call(uint16_t type)
+{
+	switch(type)
+	{
+	case PPME_SYSCALL_FCNTL_E:
+	case PPME_SYSCALL_FCNTL_X:
+	case PPME_SYSCALL_GETRLIMIT_E:
+	case PPME_SYSCALL_GETRLIMIT_X:
+		return true;
+		break;
+	}
+	return false;
+}
+
+void suppress_types::do_syscalls()
+{
+	struct rlimit limits;
+	getrlimit(RLIMIT_AS, &limits);
+	fcntl(1, F_GETFD);
+
+	// enter+exit for 2 syscalls
+	m_expected_calls = 4;
+	for (const auto ii : m_suppressed_types)
+	{
+		if (is_target_call(ii))
+		{
+			m_expected_calls--;
+		}
+	}
+
+}
+
+bool suppress_types::is_suppressed(uint16_t type) const
+{
+	for (const auto ii : m_suppressed_types)
+	{
+		if (type == ii)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void suppress_types::run_test(vector<string> supp_types)
+{
+	sinsp_utils::parse_suppressed_types(supp_types, &m_suppressed_types);
+	int callnum = 0;
+
+	//
+	// TEST CODE
+	//
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		for (auto type : m_suppressed_types)
+		{
+			bool expect_exception = (type >= PPM_EVENT_MAX);
+			bool caught_exception = false;
+
+			try
+			{
+				inspector->unset_eventmask(type);
+			}
+			catch (sinsp_exception& e)
+			{
+				caught_exception = true;
+			}
+
+			ASSERT_EQ(expect_exception, caught_exception);
+		}
+
+		do_syscalls();
+	};
+
+	//
+	// OUTPUT VALDATION
+	//
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		auto type = param.m_evt->get_type();
+		EXPECT_FALSE(is_suppressed(type));
+		if (is_target_call(type))
+		{
+			callnum++;
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, m_tid_filter);});
+	EXPECT_EQ(m_expected_calls, callnum);
+}
+
+TEST_F(suppress_types, block_getrlimit)
+{
+	// PPME_SYSCALL_GETRLIMIT_(E|X)
+	ASSERT_NO_FATAL_FAILURE(run_test({"getrlimit"}));
+}
+
+TEST_F(suppress_types, block_fcntl)
+{
+	// PPME_SYSCALL_FCNTL_(E|X)
+	ASSERT_NO_FATAL_FAILURE(run_test({"fcntl"}));
+}
+
+TEST_F(suppress_types, block_getrlimit_and_fcntl)
+{
+	// PPME_SYSCALL_GETRLIMIT_(E|X) && PPME_SYSCALL_FCNTL_(E|X)
+	ASSERT_NO_FATAL_FAILURE(run_test({"getrlimit", "fcntl"}));
+}
+
+TEST_F(suppress_types, block_none)
+{
+	ASSERT_NO_FATAL_FAILURE(run_test({}));
+}
+
+TEST_F(suppress_types, block_nonexistent_call)
+{
+	ASSERT_NO_FATAL_FAILURE(run_test({"notarealname"}));
+}

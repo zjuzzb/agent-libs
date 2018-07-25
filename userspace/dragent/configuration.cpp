@@ -1027,6 +1027,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	{
 		m_suppressed_comms.push_back(comm);
 	}
+#ifndef CYGWING_AGENT
+	auto supp_type_strs = m_config->get_merged_sequence<string>("skip_events_by_type");
+	sinsp_utils::parse_suppressed_types(supp_type_strs, &m_suppressed_types);
+#endif
 
 	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
@@ -1430,6 +1434,34 @@ void dragent_configuration::print_configuration() const
 	else
 	{
 		g_log->information("Will not ignore any events by process name");
+	}
+	if(m_suppressed_types.size() > 0)
+	{
+		std::string supp_str;
+		for(size_t ii = 0; ii < m_suppressed_types.size(); ii++)
+		{
+			auto val = m_suppressed_types[ii];
+			// Ignore exit types because we should
+			// always have the corresponding enter
+			if (PPME_IS_EXIT(val))
+			{
+				ASSERT(m_suppressed_types[ii-1] == val - 1);
+				continue;
+			}
+
+			supp_str += std::string(sinsp_utils::event_name_by_id(val))
+				+ "(" + to_string(val) + "), ";
+		}
+		if (supp_str.size() > 2 &&
+		    supp_str.compare(supp_str.size()-2, string::npos, ", ") == 0)
+		{
+			supp_str.erase(supp_str.size()-2);
+		}
+		g_log->warning("Will ignore all events for the following types: " + supp_str);
+	}
+	else
+	{
+		g_log->information("Will not ignore any events by type");
 	}
 
 	if(m_k8s_event_filter)

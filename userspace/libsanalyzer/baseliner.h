@@ -568,15 +568,7 @@ public:
 	{
 		if((id & 0xffff) != 0)
 		{
-			if(id < PPM_EVENT_MAX)
-			{
-				return g_infotables.m_event_info[id].name;
-			}
-			else
-			{
-				ASSERT(false);
-				return "NA";
-			}
+			return sinsp_utils::event_name_by_id(id);
 		}
 		else
 		{

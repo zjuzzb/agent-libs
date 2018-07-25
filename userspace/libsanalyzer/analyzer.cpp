@@ -4240,7 +4240,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			call_log << " (" << m_host_metrics.m_syscall_count.total_calls() << " total)";
 			for (auto iter = top_calls.crbegin(); iter != top_calls.crend(); iter++)
 			{
-				call_log << ", " << m_inspector->get_event_info_tables()->m_event_info[iter->second].name
+				call_log << ", " << sinsp_utils::event_name_by_id(iter->second)
 					 << "(" << iter->second << "):" << iter->first;
 			}
 			g_logger.log(call_log.str(), sev);

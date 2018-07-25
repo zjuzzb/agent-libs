@@ -486,6 +486,21 @@ void sinsp_worker::init()
 		}
 	}
 
+#ifndef CYGWING_AGENT
+	for(const auto type : m_configuration->m_suppressed_types)
+	{
+		g_log->debug("Setting eventmask for ignored type: " + to_string(type));
+		try
+		{
+			m_inspector->unset_eventmask(type);
+		}
+		catch (sinsp_exception& e)
+		{
+			g_log->error("Setting eventmask failed: " + string(e.what()));
+		}
+	}
+#endif // CYGWING_AGENT
+
 	if(m_configuration->m_subsampling_ratio != 1)
 	{
 		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
