@@ -251,6 +251,10 @@ dragent_configuration::dragent_configuration()
 	m_actions_poll_interval_ns = 1000000000;
 	m_metrics_report_interval_ns = 60000000000;
 	m_security_send_monitor_events = false;
+	m_security_compliance_schedule = "";
+	m_security_send_compliance_events = false;
+	m_security_send_compliance_results = false;
+	m_security_compliance_refresh_interval = 120000000000;
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
@@ -967,6 +971,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 			m_host_tags += ",";
 		}
 		m_host_tags += "sysdig_secure.enabled:true";
+
+		// Also increase the limit on the number of statsd
+		// metrics by 100. When compliance is enabled, up to
+		// 88 new metrics can be emitted when running
+		// docker-bench/k8s-bench tasks.
+		m_statsd_limit += 100;
 	}
 	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
 	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
@@ -989,6 +999,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
+
+	// Set to "PT1H" to run once an hour from startup.
+	m_security_compliance_schedule = m_config->get_scalar<string>("security", "compliance_schedule", "");
+
+	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
+	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", false);
+	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -1340,6 +1357,18 @@ void dragent_configuration::print_configuration() const
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
+
+		if(m_security_compliance_schedule != "")
+		{
+			g_log->information("Will run compliance tasks with schedule: " + m_security_compliance_schedule);
+		}
+
+		g_log->information(string("Will ") + (m_security_send_compliance_events ? "" : "not ") + "send compliance events");
+		g_log->information(string("Will ") + (m_security_send_compliance_results ? "" : "not ") + "send compliance results");
+		g_log->information(string("Will check for new compliance tasks to run every ") +
+				   NumberFormatter::format(m_security_compliance_refresh_interval / 1000000000) + " seconds");
+
+		g_log->information(string("Increased statsd metric limit by 100 for compliance tasks"));
 	}
 
 	if(m_suppressed_comms.size() > 0)

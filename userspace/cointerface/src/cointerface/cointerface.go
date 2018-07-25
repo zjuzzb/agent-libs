@@ -16,7 +16,7 @@ import (
 )
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "usage: cointerface [-sock=<path>] [-log_dir=<path>]\n")
+	fmt.Fprintf(os.Stderr, "usage: cointerface [-sock=<path>] [-log_dir=<path>] [-modules_dir=<path>]\n")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -94,6 +94,7 @@ func mymain() int {
 	flag.Usage = usage
 	sockPtr := flag.String("sock", "/opt/draios/run/cointerface.sock", "domain socket for messages")
 	useJson := flag.Bool("use_json", true, "log using json")
+	modulesDir := flag.String("modules_dir", "/opt/draios/lib/comp_modules", "compliance modules directory")
 
 	flag.Parse()
 
@@ -101,7 +102,7 @@ func mymain() int {
 	defer log.Flush()
 
 	// Only returns when server is killed
-	return startServer(*sockPtr)
+	return startServer(*sockPtr, *modulesDir)
 }
 
 func main() {

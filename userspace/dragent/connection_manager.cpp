@@ -482,6 +482,11 @@ void connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::COMP_CALENDAR:
+				handle_compliance_calendar_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			case draiosproto::message_type::ORCHESTRATOR_EVENTS:
 				handle_orchestrator_events(
 					m_buffer.begin() + sizeof(dragent_protocol_header),
@@ -697,7 +702,37 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 		return;
 	}
 }
-#endif	
+
+void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32_t size)
+{
+	draiosproto::comp_calendar calendar;
+	string errstr;
+
+	if(!m_configuration->m_security_enabled)
+	{
+		g_log->debug("Security disabled, ignoring COMP_CALENDAR message");
+		return;
+	}
+
+	if(m_configuration->m_security_compliance_schedule != "")
+	{
+		g_log->information("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
+		return;
+	}
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &calendar))
+	{
+		g_log->error("Could not parse comp_calendar message");
+		return;
+	}
+
+	if (!m_sinsp_worker->set_compliance_calendar(calendar, errstr))
+	{
+		g_log->error("Could not set compliance calendar: " + errstr);
+		return;
+	}
+}
+#endif
 
 #ifndef CYGWING_AGENT
 void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)

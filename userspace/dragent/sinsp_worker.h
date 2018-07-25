@@ -96,6 +96,7 @@ public:
 
 #ifndef CYGWING_AGENT
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
+	bool set_compliance_calendar(draiosproto::comp_calendar &calendar, std::string &errstr);
 	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
 #endif
 	bool load_baselines(draiosproto::baselines &baselines, std::string &errstr);

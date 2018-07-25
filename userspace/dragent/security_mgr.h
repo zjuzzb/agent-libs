@@ -82,6 +82,13 @@ public:
 
 	void stop_capture(const string &token);
 
+	void load_compliance_modules();
+
+	void set_compliance_calendar(draiosproto::comp_calendar &calendar);
+
+	void refresh_compliance_tasks();
+	void stop_compliance_tasks();
+
 	sinsp_analyzer *analyzer();
 
 	baseline_mgr &baseline_manager();
@@ -202,6 +209,11 @@ private:
 	std::unique_ptr<run_on_interval> m_report_events_interval;
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
+	std::unique_ptr<run_on_interval> m_refresh_compliance_tasks_interval;
+	draiosproto::comp_calendar m_compliance_calendar;
+	std::set<std::string> m_cur_compliance_tasks;
+	bool m_compliance_modules_loaded;
+	bool m_compliance_load_in_progress;
 
 	bool m_initialized;
 	sinsp* m_inspector;
@@ -412,5 +424,11 @@ private:
 	security_evt_metrics m_process_metrics;
 
 	metrics m_metrics;
+
+	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_conn;
+
+	streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart) m_grpc_start;
+	unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad) m_grpc_load;
+	unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop) m_grpc_stop;
 };
 #endif // CYGWING_AGENT

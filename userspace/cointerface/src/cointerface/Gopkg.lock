@@ -32,6 +32,12 @@
   revision = "ea383cf3ba6ec950874b8486cd72356d007c768f"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/channelmeter/iso8601duration"
+  packages = ["."]
+  revision = "8da3af7a2a61a4eb5ae9bddec06bf637fa9593da"
+
+[[projects]]
   name = "github.com/cihub/seelog"
   packages = ["."]
   revision = "d2c6e5aa9fbfdd1c624e140287063c7730654115"
@@ -165,6 +171,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/jasonlvhit/gocron"
+  packages = ["."]
+  revision = "54194c9749d48b073c9aeb2c787b6882e95dd0cd"
+
+[[projects]]
+  branch = "master"
   name = "github.com/juju/ratelimit"
   packages = ["."]
   revision = "5b9ff866471762aa2ab2dced63c9fb6f53921342"
@@ -280,6 +292,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "faf07d6689b5251e46a2f52304b33a6b0d57a7d49aa7ee0d2f18e2e4d5d4f0b3"
+  inputs-digest = "beaa57d798959932a895d27960e31e2f72f78358cb8f351a914d46e425791587"
   solver-name = "gps-cdcl"
   solver-version = 1

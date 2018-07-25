@@ -34,6 +34,7 @@ add_executable(tests
 	container.cpp
 	container_image_splitting.cpp
 	coclient_test.cpp
+	compliance.cpp
 	custom_container.cpp
 	emit_tracers.cpp
 	event_capture.cpp

@@ -25,11 +25,14 @@ public:
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
 	infrastructure_state(uint64_t refresh_interval, sinsp *inspector);
+	using reg_id_t = std::string;
 
 	~infrastructure_state();
 
 	void init(const std::string& machine_id, bool prom_on);
 	bool inited();
+
+	static std::string as_string(const scope_predicates &predicates);
 
 	void subscribe_to_k8s(string url, string ca_cert,
 			      string client_cert, string client_key,
@@ -39,7 +42,23 @@ public:
 
 	void refresh(uint64_t ts);
 
-	bool match_scope(uid_t &uid, const scope_predicates &predicates);
+	// Check the uid against the scope predicates in predicates
+	// and return whether or not the uid matches the predicates.
+	bool match_scope(const uid_t &uid, const scope_predicates &predicates);
+
+	// Register a set of scope predicates with this object and
+	// keep track of whether the predicates match the current
+	// state. This is most interesting for container-level scope,
+	// where the predicates are re-tested as containers come and go.
+	//
+	// Returns true if the scope could be registered, false otherwise.
+	bool register_scope(reg_id_t &reg,
+			    bool host_scope, bool container_scope,
+			    const scope_predicates &predicates);
+
+	// Check a previously registered scope to see if it matches
+	// the current state
+	bool check_registered_scope(reg_id_t &reg);
 
 	void state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
 
@@ -102,8 +121,8 @@ private:
 	void remove(infrastructure_state::uid_t& key);
 	bool has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid);
 
-	bool get_cached_result(std::string &entity_id, size_t h, bool *res);
-	void insert_cached_result(std::string &entity_id, size_t h, bool res);
+	bool get_cached_result(const std::string &entity_id, size_t h, bool *res);
+	void insert_cached_result(const std::string &entity_id, size_t h, bool res);
 
 	void reset();
 
@@ -114,8 +133,19 @@ private:
 
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 
+	bool match_scope_all_containers(const scope_predicates &predicates);
+
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
+
+	struct reg_scope_t {
+		bool m_host_scope;
+		bool m_container_scope;
+		scope_predicates m_predicates;
+		bool m_scope_match;
+	};
+
+	std::map<reg_id_t, reg_scope_t> m_registered_scopes;
 
 	std::queue<draiosproto::congroup_update_event> m_host_events_queue;
 	std::mutex m_host_events_queue_mutex;

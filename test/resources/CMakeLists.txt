@@ -1,7 +1,6 @@
-add_custom_target(resources-cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
-	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_BINARY_DIR}/userspace/cointerface/cointerface ${CMAKE_CURRENT_BINARY_DIR}/cointerface
-	DEPENDS cointerface)
+add_custom_target(resources-cointerface ALL
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/userspace/cointerface/cointerface ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
+add_dependencies(resources-cointerface cointerface)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
@@ -66,6 +65,8 @@ install(TARGETS forking_nested
 install(TARGETS chname 
 	DESTINATION ${DRAIOS_BIN_PREFIX}/test/resources
 	COMPONENT tests)
+
+add_subdirectory(modules_dir)
 
 execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 

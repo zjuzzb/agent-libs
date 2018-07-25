@@ -757,6 +757,10 @@ public:
 	uint32_t m_policy_events_max_burst;
 	bool m_security_send_monitor_events;
 	vector<string> m_suppressed_comms;
+	std::string m_security_compliance_schedule;
+	bool m_security_send_compliance_events;
+	bool m_security_send_compliance_results;
+	uint64_t m_security_compliance_refresh_interval;
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;

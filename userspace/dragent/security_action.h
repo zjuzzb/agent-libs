@@ -22,7 +22,8 @@ public:
 	// This object then owns the policy event and is responsible
 	// for deleting it.
 	//
-	void perform_actions(sinsp_evt *evt,
+	void perform_actions(uint64_t ts_ns,
+			     sinsp_threadinfo *tinfo,
 			     const security_policy *policy,
 			     draiosproto::policy_event *event);
 

@@ -85,7 +85,8 @@ void security_actions::perform_docker_action(uint64_t ts_ns,
 	}
 }
 
-void security_actions::perform_actions(sinsp_evt *evt,
+void security_actions::perform_actions(uint64_t ts_ns,
+				       sinsp_threadinfo *tinfo,
 				       const security_policy *policy,
 				       draiosproto::policy_event *event)
 {
@@ -94,7 +95,6 @@ void security_actions::perform_actions(sinsp_evt *evt,
 	m_outstanding_actions.emplace_back(make_shared<actions_state>(event, policy->actions().size()));
 	shared_ptr<actions_state> astate = m_outstanding_actions.back();
 
-	sinsp_threadinfo *tinfo = evt->get_thread_info();
 	sinsp_container_info container_info;
 	string container_id;
 	uint64_t pid = 0;
@@ -125,7 +125,7 @@ void security_actions::perform_actions(sinsp_evt *evt,
 				apply_scope = action.capture().is_limited_to_container();
 			}
 
-			if(!m_mgr->start_capture(evt->get_ts(),
+			if(!m_mgr->start_capture(ts_ns,
 						 policy->name(),
 						 result->token(),
 						 (action.capture().has_filter() ? action.capture().filter() : ""),
@@ -154,10 +154,10 @@ void security_actions::perform_actions(sinsp_evt *evt,
 
 			break;
 		case draiosproto::ACTION_PAUSE:
-			perform_docker_action(evt->get_ts(), sdc_internal::PAUSE, container_id, action, result, astate);
+			perform_docker_action(ts_ns, sdc_internal::PAUSE, container_id, action, result, astate);
 			break;
 		case draiosproto::ACTION_STOP:
-			perform_docker_action(evt->get_ts(), sdc_internal::STOP, container_id, action, result, astate);
+			perform_docker_action(ts_ns, sdc_internal::STOP, container_id, action, result, astate);
 			break;
 		default:
 			string errstr = string("Policy Action ") + std::to_string(action.type()) + string(" not implemented yet");

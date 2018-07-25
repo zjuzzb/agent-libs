@@ -9,7 +9,7 @@
 
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
 
-bool infrastructure_state::get_cached_result(std::string &entity_id, size_t h, bool *res)
+bool infrastructure_state::get_cached_result(const std::string &entity_id, size_t h, bool *res)
 {
 	auto cached_results = m_policy_cache.find(entity_id);
 	if(cached_results != m_policy_cache.end()) {
@@ -23,7 +23,7 @@ bool infrastructure_state::get_cached_result(std::string &entity_id, size_t h, b
 	return false;
 }
 
-void infrastructure_state::insert_cached_result(std::string &entity_id, size_t h, bool res)
+void infrastructure_state::insert_cached_result(const std::string &entity_id, size_t h, bool res)
 {
 	if(m_policy_cache.find(entity_id) == m_policy_cache.end()) {
 		m_policy_cache.emplace(entity_id, std::unordered_map<size_t, bool>());
@@ -149,6 +149,21 @@ void infrastructure_state::init(const std::string& machine_id, bool prom_enabled
 bool infrastructure_state::inited()
 {
 	return m_inspector != nullptr;
+}
+
+std::string infrastructure_state::as_string(const scope_predicates &predicates)
+{
+	std::string preds_str;
+	for(int i=0; i < predicates.size(); i++)
+	{
+		if(i > 0)
+		{
+			preds_str += " ";
+		}
+		preds_str += predicates[i].ShortDebugString();
+	}
+
+	return preds_str;
 }
 
 void infrastructure_state::subscribe_to_k8s(string url, string ca_cert,
@@ -339,6 +354,7 @@ void infrastructure_state::reset()
 	m_state.clear();
 	m_k8s_cached_cluster_id.clear();
 	m_k8s_node.clear();
+	m_registered_scopes.clear();
 
 	if (m_k8s_subscribed) {
 		connect_to_k8s();
@@ -416,7 +432,7 @@ bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::u
 	visited.emplace(uid);
 
 	auto *cg = m_state.find(uid)->second.get();
-	
+
 	if (!cg) {	// Shouldn't happen
 		return false;
 	}
@@ -822,15 +838,11 @@ bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup
 	return true;
 }
 
-bool infrastructure_state::match_scope(uid_t &uid, const scope_predicates& predicates)
+bool infrastructure_state::match_scope(const uid_t &uid, const scope_predicates& predicates)
 {
 	bool result = true;
 
-	std::string preds_str;
-	for(int i=0; i < predicates.size(); i++)
-	{
-		preds_str += predicates[i].SerializeAsString();
-	}
+	std::string preds_str = as_string(predicates);
 	size_t preds_hash = m_str_hash_f(preds_str);
 
 	if(predicates.empty()) {
@@ -877,6 +889,63 @@ bool infrastructure_state::match_scope(uid_t &uid, const scope_predicates& predi
 	insert_cached_result(uid.second, preds_hash, result);
 
 	return result;
+}
+
+bool infrastructure_state::register_scope(reg_id_t &reg,
+					  bool host_scope, bool container_scope,
+					  const scope_predicates &predicates)
+{
+	auto it = m_registered_scopes.lower_bound(reg);
+
+	if(it != m_registered_scopes.end() && it->first == reg)
+	{
+		// Some entry already exists with this reg.
+		return false;
+	}
+
+	// Now see if the scope matches the set of running containers.
+	bool scope_match = false;
+
+	if(predicates.empty())
+	{
+		scope_match = true;
+	}
+	else
+	{
+		if(host_scope)
+		{
+			infrastructure_state::uid_t uid = make_pair("host", m_machine_id);
+
+			scope_match = match_scope(uid, predicates);
+		}
+		if (!scope_match && container_scope)
+		{
+			scope_match = match_scope_all_containers(predicates);
+		}
+	}
+
+	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Registering scope %s host=%d container=%d (%s)",
+	      reg.c_str(), host_scope, container_scope, as_string(predicates).c_str());
+
+	reg_scope_t rscope = {host_scope, container_scope, predicates, scope_match};
+	m_registered_scopes.emplace_hint(it, std::make_pair(reg, rscope));
+
+	return true;
+}
+
+bool infrastructure_state::check_registered_scope(reg_id_t &reg)
+{
+	auto it = m_registered_scopes.find(reg);
+	if(it == m_registered_scopes.end())
+	{
+		glogf(sinsp_logger::SEV_ERROR, "infra_state: No registered scope matching %s", reg.c_str());
+		return false;
+	}
+
+	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Checking registered scope %s match=%d",
+	      reg.c_str(), it->second.m_scope_match);
+
+	return it->second.m_scope_match;
 }
 
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
@@ -1065,6 +1134,28 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 	handle_event(&evt, true);
 
 	scrape_mesos_env(container_info, tinfo);
+
+	// Now check all registered scopes that do *not* match, and
+	// see if they match this new container.
+	for(auto &sit : m_registered_scopes)
+	{
+		bool old_scope_match = sit.second.m_scope_match;
+
+		// Only need to reevaluate if the scope does *not*
+		// currently match and if the scope is a container-level scope.
+		if(!sit.second.m_scope_match && sit.second.m_container_scope)
+		{
+			infrastructure_state::uid_t uid = make_pair("container", container_info.m_id);
+
+			if(match_scope(uid, sit.second.m_predicates))
+			{
+				sit.second.m_scope_match = true;
+			}
+		}
+
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: on_new_container registered scope %s old match=%d match=%d",
+		      sit.first.c_str(), old_scope_match, sit.second.m_scope_match);
+	}
 }
 
 void infrastructure_state::on_remove_container(const sinsp_container_info& container_info)
@@ -1082,6 +1173,24 @@ void infrastructure_state::on_remove_container(const sinsp_container_info& conta
 	cg->mutable_uid()->set_id(container_info.m_id);
 
 	handle_event(&evt);
+
+	// We're not tracking the specific container that matched the
+	// registered scopes, so we need to reevaluate each scope
+	// against the set of containers.
+	for(auto &sit : m_registered_scopes)
+	{
+		bool old_scope_match = sit.second.m_scope_match;
+
+		// Only need to reevaluate if the scope does
+		// currently match and if the scope is a container-level scope.
+		if(sit.second.m_scope_match && sit.second.m_container_scope)
+		{
+			sit.second.m_scope_match = match_scope_all_containers(sit.second.m_predicates);
+		}
+
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: on_remove_container registered scope %s old match=%d match=%d",
+		      sit.first.c_str(), old_scope_match, sit.second.m_scope_match);
+	}
 }
 
 void infrastructure_state::receive_hosts_metadata(const google::protobuf::RepeatedPtrField<draiosproto::congroup_update_event> &host_events)
@@ -1313,6 +1422,25 @@ void infrastructure_state::purge_tags_and_copy(uid_t key, const draiosproto::con
 	m_k8s_limits.purge_tags(*m_state[key].get());
 }
 
+bool infrastructure_state::match_scope_all_containers(const scope_predicates &predicates)
+{
+	uid_t lb_key("container", "");
+	for (auto it = m_state.lower_bound(lb_key); it != m_state.end(); ++it)
+	{
+		// Stop at the first non-container value.
+		if(it->first.first != "container")
+		{
+			break;
+		}
+		if(match_scope(it->first, predicates))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 // Look for sysdig agent by pod name, container name or image, or daemonset
 // name or label
 bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastructure_state::uid_t uid, std::unordered_set<infrastructure_state::uid_t> *visited)
@@ -1467,7 +1595,7 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 				our_node = i.first.second;
 				found_our_node = true;
 
-				if (state->m_k8s_node.empty()) 
+				if (state->m_k8s_node.empty())
 				{
 					state->m_k8s_node = tag->second;
 				}

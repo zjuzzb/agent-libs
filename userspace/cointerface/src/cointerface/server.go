@@ -1,6 +1,7 @@
 package main
 
 import (
+	"cointerface/compliance"
 	"cointerface/kubecollect"
 	"cointerface/sdc_internal"
 	"fmt"
@@ -233,7 +234,7 @@ func cleanupGC(origGC int, initGC int) {
 	debug.FreeOSMemory()
 }
 
-func startServer(sock string) int {
+func startServer(sock string, modulesDir string) int {
 	log.Tracef("Starting cointerface server, grpc version %s", grpc.Version)
 
 	// Try to remove any existing socket
@@ -262,6 +263,10 @@ func startServer(sock string) int {
 
 	grpcServer := grpc.NewServer()
 	sdc_internal.RegisterCoInterfaceServer(grpcServer, &coInterfaceServer{})
+	if err = compliance.Register(grpcServer, modulesDir); err != nil {
+		log.Errorf("Could not initialize compliance grpc server: %s. Exiting.", err.Error())
+		return 1
+	}
 
 	// Capture SIGINT and exit gracefully
 	signals := make(chan os.Signal, 1)

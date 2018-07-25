@@ -162,7 +162,11 @@ void cointerface_parser::operator()(const string& data)
 	// Parse log level and use it
 	Json::Value cointerface_log;
 	bool parsing_ok = m_json_reader.parse(data, cointerface_log, false);
-	if(parsing_ok && cointerface_log.isObject())
+	if(parsing_ok &&
+	   cointerface_log.isObject() &&
+	   cointerface_log.isMember("pid") &&
+	   cointerface_log.isMember("level") &&
+	   cointerface_log.isMember("message"))
 	{
 		unsigned pid = cointerface_log["pid"].asUInt();
 		string log_level = cointerface_log["level"].asString();

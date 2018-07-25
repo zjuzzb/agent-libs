@@ -99,6 +99,7 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BIN
 if(NOT CYGWIN)
 	add_subdirectory(userspace/cointerface)
 endif()
+add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent)
 add_subdirectory(userspace/draiosproto)
 add_subdirectory(userspace/libsanalyzer)

@@ -121,3 +121,31 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 		g_log->information("Queue full, discarding sample");
 	}
 }
+
+void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const draiosproto::comp_results *results)
+{
+	if(m_configuration->m_print_protobuf)
+	{
+		g_log->information(string("Compliance Results:") + results->DebugString());
+	}
+
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::COMP_RESULTS,
+		*results,
+		m_configuration->m_compression_enabled);
+
+	if(!buffer)
+	{
+		g_log->error("NULL converting message to buffer");
+		return;
+	}
+
+	g_log->information("sec_comp_results len=" + NumberFormatter::format(buffer->buffer.size())
+			   + ", ne=" + NumberFormatter::format(results->results_size()));
+
+	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
+	{
+		g_log->information("Queue full, discarding sample");
+	}
+}

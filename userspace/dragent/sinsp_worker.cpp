@@ -418,6 +418,29 @@ void sinsp_worker::init()
 				throw sinsp_exception("Could not load baselines from file: " + errstr);
 			}
 		}
+
+		if(m_configuration->m_security_compliance_schedule != "")
+		{
+			string errstr;
+			draiosproto::comp_calendar cal;
+
+			draiosproto::comp_task *k8s_task = cal.add_tasks();
+			k8s_task->set_name("Check K8s Environment");
+			k8s_task->set_mod_name("kube-bench");
+			k8s_task->set_enabled(true);
+			k8s_task->set_schedule(m_configuration->m_security_compliance_schedule);
+
+			draiosproto::comp_task *docker_task = cal.add_tasks();
+			docker_task->set_name("Check Docker Environment");
+			docker_task->set_mod_name("docker-bench-security");
+			docker_task->set_enabled(true);
+			docker_task->set_schedule(m_configuration->m_security_compliance_schedule);
+
+			if(! set_compliance_calendar(cal, errstr))
+			{
+				throw sinsp_exception("Could not set built-in compliance calendar: " + errstr);
+			}
+		}
 	}
 #endif // CYGWING_AGENT
 
@@ -666,6 +689,20 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	if(m_security_mgr)
 	{
 		return m_security_mgr->load_policies(policies, errstr);
+	}
+	else
+	{
+		errstr = "No Security Manager object created";
+		return false;
+	}
+}
+
+bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar, std::string &errstr)
+{
+	if(m_security_mgr)
+	{
+		m_security_mgr->set_compliance_calendar(calendar);
+		return true;
 	}
 	else
 	{

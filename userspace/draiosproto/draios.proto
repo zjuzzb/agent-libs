@@ -590,6 +590,8 @@ enum message_type {
     THROTTLED_POLICY_EVENTS = 15;
     ORCHESTRATOR_EVENTS = 16;
     BASELINES = 17;
+    COMP_RESULTS = 18;
+    COMP_CALENDAR = 19;
 }
 
 //
@@ -1376,3 +1378,94 @@ message falco_baseline {
     repeated falco_prog progs = 1;
     repeated falco_container containers = 2;
 }
+
+//
+// Compliance-related messages
+//
+
+message comp_task_param {
+    required string key = 1;
+    required string val = 2;
+}
+
+message comp_task {
+    // The name of the task e.g. "Check Docker Compliance"
+    required string name = 1;
+
+    // The name of the module that implements this task. Separate from
+    // task name in case you want to use the same module to run
+    // separate tasks with different scopes or schedules.
+    required string mod_name = 2;
+
+    // If true, actually schedule the work in this task.
+    optional bool enabled = 3;
+
+    // The agent will only run the task on hosts matching these
+    // predicates or on hosts where containers match these predicates.
+    repeated draiosproto.scope_predicate scope_predicates = 4;
+
+    // This should expressed as an ISO 8601 Duration
+    // (PnYnMnDTnHnMnS).
+    optional string schedule = 5;
+
+    repeated comp_task_param task_params = 6;
+}
+
+message comp_calendar {
+    repeated comp_task tasks = 1;
+}
+
+message comp_result {
+    required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
+
+    required string task_name = 2;
+
+    // The following fields will overlap with the information in
+    // output_fields, but is in the message to ensure that they're
+    // always available to the UI.
+
+    // An overall count of the number of "tests" run by this task and
+    // the number of tests that passed. The notion of a "test" is
+    // generic and up to the module.
+    optional uint32 tests_run = 3;
+    optional uint32 tests_passed = 4;
+
+    // An overall notion of whether this result indicates a low,
+    // medium, or high risk environment.
+    optional string risk = 5;
+
+    // Can be combined with the result template to result in a
+    // human-readable result message. This is a json object as a
+    // string.
+    optional string output_fields = 6;
+
+    // Metrics accompanying this result, if any, will be in
+    // metrics.internal_metrics.
+}
+
+message comp_results {
+    required string machine_id = 1; // The unique ID of the machine that is sending this data
+    optional string customer_id = 2; // The unique ID of the customer that this machine belongs to
+
+    repeated comp_result results = 3;
+}
+
+message comp_event {
+    required uint64 timestamp_ns = 1;
+    required string task_name = 2;
+    optional string container_id = 3;
+
+    optional string output = 4;
+
+    map<string,string> output_fields = 5;
+}
+
+
+message comp_events {
+    required string machine_id = 1; // The unique ID of the machine that is sending this data
+    optional string customer_id = 2; // The unique ID of the customer that this machine belongs to
+
+    repeated comp_event events = 3;
+}
+
+

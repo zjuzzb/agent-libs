@@ -100,3 +100,46 @@ service CoInterface {
     rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
     rpc PerformOrchestratorEventsStream(orchestrator_events_stream_command) returns (stream draiosproto.congroup_update_event) {}
 }
+
+message comp_module_status {
+    required string mod_name = 1;
+    optional bool running = 2;
+    optional string errstr = 3;
+}
+
+message comp_load {
+    required string customer_id = 1;
+    required string machine_id = 2;
+}
+
+message comp_load_result {
+    repeated comp_module_status statuses = 1;
+}
+
+message comp_start {
+    optional string customer_id = 1;
+    optional string machine_id = 2;
+    required draiosproto.comp_calendar calendar = 3;
+}
+
+message comp_stop {
+}
+
+message comp_stop_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
+message comp_task_event {
+    required string task_name = 1;
+    required bool successful = 2;
+    optional string errstr = 3;
+    optional draiosproto.comp_events events = 4;
+    optional draiosproto.comp_results results = 5;
+}
+
+service ComplianceModuleMgr {
+    rpc Load(comp_load) returns (comp_load_result) {}
+    rpc Start(comp_start) returns (stream comp_task_event) {}
+    rpc Stop(comp_stop) returns (comp_stop_result) {}
+}
