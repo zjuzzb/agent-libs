@@ -671,6 +671,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
 	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
 	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
+	m_ssl_ca_cert_dir = m_config->get_scalar<string>("ca_cert_dir", "");
 	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
@@ -1182,6 +1183,10 @@ void dragent_configuration::print_configuration() const
 	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
 	g_log->information("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
 	g_log->information("ca_certificate: " + m_ssl_ca_certificate);
+	if (!m_ssl_ca_cert_dir.empty())
+	{
+		g_log->information("ca_cert_dir: " + m_ssl_ca_cert_dir);
+	}
 	g_log->information("compression.enabled: " + bool_as_text(m_compression_enabled));
 	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
 	g_log->information("dumpdir: " + m_dump_dir);

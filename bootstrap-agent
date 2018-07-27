@@ -183,7 +183,7 @@ if [ $OS != "Windows_NT" ]; then
 	fi
 fi
 
-POCO_VER=1.7.7
+POCO_VER=1.9.0
 POCO_EXT=tar.gz
 POCO_DIR=poco-$POCO_VER-all
 POCO_ARCH=$POCO_DIR.$POCO_EXT
@@ -193,9 +193,7 @@ if [ ! -d "$POCO_DIR" ]; then
         wget $DEPENDENCIES_URL/$POCO_ARCH
  	tar -xzf $POCO_ARCH
 	cd $POCO_DIR
-	patch -p1 < $AGENT_SOURCEDIR/patches/poco_LogFile_cpp_bug.patch
-	patch -p1 < $AGENT_SOURCEDIR/patches/poco_LogFile_h_bug.patch
-	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
+	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page,Redis --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
 	make install
 	cd ..
 fi

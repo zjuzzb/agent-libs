@@ -39,6 +39,7 @@ public:
 
 private:
 	bool init();
+	static std::string get_openssldir();
 	bool connect();
 	void disconnect();
 	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);

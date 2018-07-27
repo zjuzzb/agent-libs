@@ -4,6 +4,8 @@
 #include "protocol.h"
 #include "draios.pb.h"
 #include "utils.h"
+#include "Poco/Net/InvalidCertificateHandler.h"
+#include "Poco/Net/SSLException.h"
 
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
@@ -14,6 +16,24 @@ const string connection_manager::m_name = "connection_manager";
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
 const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
+
+class LoggingCertificateHandler : public Poco::Net::InvalidCertificateHandler
+{
+public:
+	using Poco::Net::InvalidCertificateHandler::InvalidCertificateHandler;
+
+	// Mimicking Poco::Net::ConsoleCertificateHandler but no user input
+	virtual void onInvalidCertificate(const void *pSender,
+					  Poco::Net::VerificationErrorArgs &errorCert) {
+		g_log->error("connection_manager: Certificate verification failed: " +
+			     errorCert.errorMessage() + " (" +
+			     NumberFormatter::format(errorCert.errorNumber()) + ")" +
+			     ", Issuer: " + errorCert.certificate().issuerName() +
+			     ", Subject: " + errorCert.certificate().subjectName() +
+			     ", chain position " + NumberFormatter::format(errorCert.errorDepth())
+			);
+	}
+};
 
 connection_manager::connection_manager(dragent_configuration* configuration,
 				       protocol_queue* queue,
@@ -47,10 +67,22 @@ bool connection_manager::init()
 			g_log->information("SSL enabled, initializing context");
 
 			Poco::Net::Context::VerificationMode verification_mode;
+			SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
+			std::string cert_dir;
 
 			if(m_configuration->m_ssl_verify_certificate)
 			{
 				verification_mode = Poco::Net::Context::VERIFY_STRICT;
+				invalid_cert_handler = new LoggingCertificateHandler(false);
+				if (!m_configuration->m_ssl_ca_cert_dir.empty())
+				{
+					cert_dir = m_configuration->m_ssl_ca_cert_dir;
+				}
+				else
+				{
+					cert_dir = get_openssldir();
+				}
+				g_log->debug("SSL CA cert dir: " + cert_dir);
 			}
 			else
 			{
@@ -61,13 +93,37 @@ bool connection_manager::init()
 				Poco::Net::Context::CLIENT_USE,
 				"",
 				"",
-				m_configuration->m_ssl_ca_certificate,
+				cert_dir,
 				verification_mode,
 				9,
 				false,
 				"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
-			Poco::Net::SSLManager::instance().initializeClient(0, 0, ptrContext);
+			try
+			{
+				g_log->information("openssl loading cert: " + m_configuration->m_ssl_ca_certificate);
+				Poco::Crypto::X509Certificate ca_cert(m_configuration->m_ssl_ca_certificate);
+				ptrContext->addCertificateAuthority(ca_cert);
+			}
+			catch (Poco::Net::SSLException &e)
+			{
+				// thrown by addCertificateAuthority()
+				g_log->error("Unable to add ssl ca certificate: "
+					     + e.message());
+			}
+			catch (Poco::IOException& e)
+			{
+				// thrown by X509Certificate constructor
+				g_log->error("Unable to read ssl ca certificate: "
+					     + e.message());
+			}
+			catch (...)
+			{
+				g_log->error("Unable to load ssl ca certificate: "
+					     + m_configuration->m_ssl_ca_certificate);
+			}
+
+			Poco::Net::SSLManager::instance().initializeClient(0, invalid_cert_handler, ptrContext);
 		}
 
 		return true;
@@ -77,6 +133,62 @@ bool connection_manager::init()
 		g_log->warning("Server address has not been specified");
 		return false;
 	}
+}
+
+// Find the host's default OPENSSLDIR
+// This is best effort for now, so don't log at warn/error
+std::string connection_manager::get_openssldir()
+{
+	std::string path;
+	errno = 0;
+	FILE *out = popen("openssl version -d 2>&1", "r");
+	if (!out)
+	{
+		g_log->information(string("openssl popen() failed: ")
+				   + strerror(errno));
+		return path;
+	}
+
+	// Sample output:
+	// $ openssl version -d
+	// OPENSSLDIR: "/usr/lib/ssl"
+	//
+	// It should only be one line, but read multiple lines in case the
+	// format changes. Also the while control structure works better
+	char buf[256];
+	int ii = 0;
+	const int max_lines = 10;
+	while (ii < max_lines && fgets(buf, sizeof(buf), out))
+	{
+		ii++;
+		std::string out_str(buf);
+		g_log->debug("openssl read from popen(): " + out_str);
+
+		// Would use std::regex if we had compiler support
+		std::string start_targ("OPENSSLDIR: \"");
+		auto start_pos = out_str.find(start_targ);
+		if (start_pos == std::string::npos)
+		{
+			continue;
+		}
+		start_pos += start_targ.size();
+		std::string end_targ("\"");
+		auto end_pos = out_str.find(end_targ, start_pos);
+		if (end_pos == std::string::npos)
+		{
+			continue;
+		}
+
+		path = out_str.substr(start_pos, end_pos - start_pos)
+			+ "/certs";
+		g_log->debug("found OPENSSLDIR: " + path);
+		break;
+	}
+
+	int ret = pclose(out);
+	g_log->debug(string("openssl pclose() exit code: ")
+		     + std::to_string(WEXITSTATUS(ret)));
+	return path;
 }
 
 bool connection_manager::connect()
