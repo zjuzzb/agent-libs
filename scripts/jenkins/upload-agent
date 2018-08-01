@@ -24,6 +24,7 @@ SCRIPTS_DIR=$(dirname $(dirname $SCRIPT))
 JOBS=${JOBS:-$(nproc)}
 BASEARCH=$(uname -m)
 AGENT_VERSION=${AGENT_VERSION:-}
+DOCKER_HUB_ROOT=${DOCKER_HUB_ROOT:-}
 
 export AWS_DEFAULT_REGION="us-east-1"
 
