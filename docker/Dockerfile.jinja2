@@ -1,24 +1,52 @@
-FROM debian:unstable
+FROM {{ p.base_docker_image }}
 
 MAINTAINER Sysdig <support@sysdig.com>
 
-ENV SYSDIG_REPOSITORY dev
+{% if p.include_agent_package is defined %}
+ENV SYSDIG_REPOSITORY {{ p.sysdig_repository }}
 
+{% endif %}
+ENV SYSDIG_BUILD_KERNEL_MODULE {{ p.build_kernel_module }}
+
+ENV SYSDIG_LAUNCH_DRAGENT {{ p.launch_dragent }}
+
+{% if p.build_kernel_module and not p.include_agent_package is defined %}
+COPY ./sysdigcloud-probe-loader /opt/draios/bin/
+
+{% endif %}
+{% if p.agent_version is defined %}
+ENV SYSDIG_VERSION {{ p.agent_version }}
+
+{% endif %}
+{% if p.build_kernel_module == 1 %}
 ENV SYSDIG_HOST_ROOT /host
 
+{% if p.include_agent_package == "local" %}
+ENV AGENT_VERSION 0.1.1dev
+
+{% endif %}
 ENV HOME /root
 
+{% endif %}
+
+{% if p.include_agent_package == "apt" %}
 ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
+{% endif %}
+{% if p.jdk_debian_release == "jessie-backports" %}
+RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list
+
+{% endif %}
 RUN apt-get update \
  && apt-get dist-upgrade -y \
  && apt-get install -y --no-install-recommends \
 	bash-completion \
+	curl \
+	ca-certificates \
+	bzip2 \
+{% if p.build_kernel_module %}
 	bc \
 	clang-7 \
-	curl \
-	gnupg2 \
-	ca-certificates \
 	gcc \
 	gcc-6 \
 	gcc-5 \
@@ -26,9 +54,18 @@ RUN apt-get update \
 	libelf-dev \
 	libelf1 \
 	llvm-7 \
-	openjdk-8-jre-headless \
-	python bzip2 && rm -rf /var/lib/apt/lists/*
+{% endif %}
+{% if p.build_kernel_module and not p.include_agent_package == "apt" %}
+	dkms \
+{% endif %}
+{% if p.include_agent_package is defined %}
+	gnupg2 \
+	python \
+ && apt-get install -y --no-install-recommends -t {{ p.jdk_debian_release }} openjdk-8-jre-headless \
+{% endif %}
+ && rm -rf /var/lib/apt/lists/*
 
+{% if p.build_kernel_module %}
 # Since our base Debian image ships with GCC 7 which breaks older kernels, revert the
 # default to gcc-5.
 # Older distributions of Debian use hardcoded versions of gcc in the kernel Makefile. We
@@ -43,6 +80,8 @@ RUN rm -rf /usr/bin/clang \
  && ln -s /usr/bin/clang-7 /usr/bin/clang \
  && ln -s /usr/bin/llc-7 /usr/bin/llc
 
+{% endif %}
+{% if p.include_agent_package == "apt" %}
 RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add - \
  && curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$SYSDIG_REPOSITORY/deb/draios.list \
  && apt-get update \
@@ -50,9 +89,8 @@ RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public |
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-# Some base images have an empty /lib/modules by default
-# If it's not empty, docker build will fail instead of
-# silently overwriting the existing directory
+{% endif %}
+{% if p.build_kernel_module %}
 RUN rm -df /lib/modules \
  && ln -s $SYSDIG_HOST_ROOT/lib/modules /lib/modules
 
@@ -65,6 +103,13 @@ RUN curl -s -o binutils_2.30-22_amd64.deb http://snapshot.debian.org/archive/deb
  && curl -s -o binutils-common_2.30-22_amd64.deb http://snapshot.debian.org/archive/debian/20180622T211149Z/pool/main/b/binutils/binutils-common_2.30-22_amd64.deb \
  && dpkg -i *binutils*.deb
 
+{% endif %}
+{% if p.include_agent_package == "local" %}
+ADD draios-${AGENT_VERSION}-x86_64-agent.deb /
+RUN dpkg -i /draios-${AGENT_VERSION}-x86_64-agent.deb
+
+{% endif %}
 COPY ./docker-entrypoint.sh /
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
+

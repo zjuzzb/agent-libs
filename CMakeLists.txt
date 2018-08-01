@@ -108,6 +108,7 @@ if(NOT CYGWIN)
 	add_subdirectory(userspace/sdchecks)
 	add_subdirectory(scripts)
 	add_subdirectory(test)
+	add_subdirectory(docker)
 endif()
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite

@@ -34,10 +34,12 @@ fi
 
 build_docker_image()
 {
-	cp /code/agent/docker/local/* /out
+	cp docker/local/docker-entrypoint.sh /out
 	if [ -n "$AGENT_VERSION" ]
 	then
-		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < /code/agent/docker/local/$DOCKERFILE > /out/$DOCKERFILE
+		awk -v "new_ver=$AGENT_VERSION" '/^ENV AGENT_VERSION/ { $3 = new_ver } { print }' < docker/local/$DOCKERFILE > /out/$DOCKERFILE
+	else
+	        cp docker/local/$DOCKERFILE /out/$DOCKERFILE
 	fi
 	cd /out
 	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
@@ -47,7 +49,6 @@ build_package()
 {
 	make -j$MAKE_JOBS package
 	cp *.deb *.rpm /out
-	build_docker_image
 }
 
 build_container()

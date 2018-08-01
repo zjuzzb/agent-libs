@@ -34,6 +34,7 @@ fi
 REPO_BASENAME_RC="rc"
 REPO_BASENAME="stable"
 REPO_DIR=$WORKSPACE/repo
+BINARIES_DIR=$WORKSPACE/out
 
 sudo rm -rf $REPO_DIR || true
 
@@ -176,19 +177,53 @@ function upload_binaries {
 	configure_installers
 }
 
-function trigger_docker_release {
-	trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
-	tag=${AGENT_VERSION}
+function push_docker_images {
 
-	curl -H "Content-Type: application/json" \
-	    --data '{"source_type": "Branch", "source_name": "master"}' \
-	    -X POST ${trigger_url}
+        if [[ "${DOCKER_HUB_ROOT}" == "" ]]; then
+               DOCKER_HUB_ROOT="sysdig"
+        fi
 
-	sleep 60s
+	# This assumes that a prior "make package" has run to put a
+	# tarball containing dockerfiles in
+	# BINARIES_DIR/release/draios-*-dockerfiles.tar.gz. That
+	# happens as a part of the build-agent script.
+	DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
 
-	curl -H "Content-Type: application/json" \
-	    --data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
-	    -X POST ${trigger_url}
+        rm -rf "${DOCKERFILES_ROOT_DIR}" &&
+  	        mkdir -p "${DOCKERFILES_ROOT_DIR}" &&
+		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
+
+	DOCKERFILES_DIR="${DOCKERFILES_ROOT_DIR}/opt/draios/docker"
+
+	for VARIANT in agent-kmodule slim "${REPO_BASENAME}"; do
+
+	    pushd "${DOCKERFILES_DIR}/${VARIANT}"
+
+	    case ${VARIANT} in
+		stable|dev|rc)
+		    IMAGE_NAME=agent
+		    ;;
+		agent-kmodule)
+		    IMAGE_NAME=agent-kmodule
+		    ;;
+		slim)
+		    IMAGE_NAME=agent-slim
+	    esac
+
+	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}"
+	    LATEST_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:latest"
+
+	    docker build -t "${VERSIONED_IMAGE}" . &&
+	        docker push "${VERSIONED_IMAGE}"
+
+	    if [[ "${VARIANT}" != "dev" ]]; then
+	        docker tag "${VERSIONED_IMAGE}" "${LATEST_IMAGE}" &&
+	        docker push "${LATEST_IMAGE}"
+	    fi
+
+	    popd
+
+	done
 }
 
 get_rc_files
@@ -204,7 +239,7 @@ upload_binaries
 #the build is executed on i686 and x86_64 server
 #the docker hub trigger has to be executed only at the end of x86_64 build
 if [[ ${TRIGGER_DOCKER_RELEASE} == 'yes' && ${BASEARCH} == 'x86_64' && ${AGENT_VERSION} != '' ]]; then
-	trigger_docker_release
+	push_docker_images
 fi
 
 rm -rf ${REPO_DIR}

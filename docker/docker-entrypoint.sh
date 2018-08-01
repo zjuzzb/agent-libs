@@ -1,16 +1,7 @@
 #!/bin/bash
 #set -e
 
-function am_i_a_k8s_delegated_node(){
-	ip_addresses=$(hostname --all-ip-addresses)
-	for ip in ${ip_addresses[@]}
-	do
-		if [ "${K8S_DELEGATED_NODE}" == "${ip}" ]; then
-			return 0
-		fi
-	done
-	return 1
-}
+SYSDIG_BUILD_KERNEL_MODULE=${SYSDIG_BUILD_KERNEL_MODULE:-1}
 
 function mount_cgroup_subsys(){
 	requested_subsys=$1
@@ -33,12 +24,14 @@ END {
 	mount -t cgroup -o $subsys,ro none $SYSDIG_HOST_ROOT/cgroup/$requested_subsys
 }
 
-echo "* Setting up /usr/src links from host"
+if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
+    echo "* Setting up /usr/src links from host"
 
-for i in $(ls $SYSDIG_HOST_ROOT/usr/src)
-do 
+    for i in $(ls $SYSDIG_HOST_ROOT/usr/src)
+    do
 	ln -s $SYSDIG_HOST_ROOT/usr/src/$i /usr/src/$i
-done
+    done
+fi
 
 CONFIG_FILE=/opt/draios/etc/dragent.yaml
 if [ -e $CONFIG_FILE ]; then
@@ -130,11 +123,15 @@ mount_cgroup_subsys memory
 mount_cgroup_subsys cpuacct
 
 if [ $# -eq 0 ]; then
+    if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
 	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader; then
 		exit 1
 	fi
+    fi
 
+    if [ -z "$SYSDIG_LAUNCH_DRAGENT" ] || [ "$SYSDIG_LAUNCH_DRAGENT" == 1 ]; then
 	exec /opt/draios/bin/dragent
+    fi
 else
 	exec "$@"
 fi
