@@ -111,7 +111,16 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// Start a routine to do a watch on namespaces
 	// to detect api server connection errors because
 	// SharedInformers don't surface errors
-	go startWatchdog(parentCtx, cancel, kubeClient)
+	//
+	// Returns synchronously with err set if the initial watch fails
+	// Else, return nil and spawn a goroutine to monitor the watch
+	//
+	err = startWatchdog(parentCtx, cancel, kubeClient)
+	if err != nil {
+		// startWatchdog() handles error logging because
+		// we errors may handle asynchronously
+		return nil, nil, err
+	}
 
 	fetchDone := make(chan struct{})
 	var wg sync.WaitGroup
@@ -122,15 +131,8 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	return evtc, fetchDone, nil
 }
 
-func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeClient kubeclient.Interface) {
-	log.Debugf("Creating K8s watchdog thread")
-
-	doCancel := true
-	defer func() {
-		if doCancel {
-			cancel()
-		}
-	}()
+func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeClient kubeclient.Interface) error {
+	log.Debug("Starting K8s watchdog")
 
 	client := kubeClient.CoreV1().RESTClient()
 	// We don't care about what we watch, so limit to a single namespace
@@ -138,32 +140,62 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 	lw := cache.NewListWatchFromClient(client, "namespaces", v1meta.NamespaceAll, fSelector)
 	watcher, err := lw.Watch(v1meta.ListOptions{})
 	if err != nil {
-		log.Errorf("K8s watchdog, error creating api server watchdog: %v", err)
-		return
-	}
-	defer watcher.Stop()
-
-	for {
-		select {
-		case event, ok := <-watcher.ResultChan():
-			if !ok {
-				// The API server can timeout the watch during normal,
-				// operation, so launch a new watchdog connection
-				log.Debugf("K8s watchdog received a watch timeout, restarting")
-				doCancel = false
-				go startWatchdog(parentCtx, cancel, kubeClient)
-				return
+		fullErrString := err.Error()
+		// Watch errors report "unknown" in some cases where the list
+		// error is more descriptive, so check if there's a list error
+		// XXX this may be fixed by upgrading client-go
+		if strings.HasPrefix(fullErrString, "unknown") {
+			_, listErr := lw.List(v1meta.ListOptions{})
+			if listErr != nil {
+				fullErrString += ", additional details: " + listErr.Error()
 			}
-			if event.Type == watch.Error {
-				log.Errorf("K8s watchdog received watch error: %v",
-					apierrs.FromObject(event.Object))
-				return
-			}
-		case <-parentCtx.Done():
-			log.Infof("K8s watchdog, parent context cancelled")
-			return
 		}
+
+		log.Errorf("K8s watchdog, error creating api server watchdog: %v", fullErrString)
+		cancel()
+		return err
 	}
+	// defer watcher.Stop() from the new goroutine
+
+	go func() {
+		log.Debug("Creating K8s watchdog thread")
+
+		// cancel() unless we timeout and successfully create a new watchdog
+		doCancel := true
+		defer func() {
+			log.Debug("K8s watchdog thread exiting")
+			watcher.Stop()
+			if doCancel {
+				cancel()
+			}
+		}()
+
+		for {
+			select {
+			case event, ok := <-watcher.ResultChan():
+				if !ok {
+					// The API server can timeout the watch during normal,
+					// operation, so launch a new watchdog connection
+					log.Debug("K8s watchdog received a watch timeout, restarting")
+					err := startWatchdog(parentCtx, cancel, kubeClient)
+					if err == nil {
+						doCancel = false
+					}
+					return
+				}
+				if event.Type == watch.Error {
+					log.Errorf("K8s watchdog received watch error: %v",
+						apierrs.FromObject(event.Object))
+					return
+				}
+			case <-parentCtx.Done():
+				log.Info("K8s watchdog, parent context cancelled")
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand) {
@@ -173,6 +205,18 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 		if !ok {
 			continue
 		}
+
+		interrupted := false
+		select {
+		case <-ctx.Done():
+			interrupted = true
+		default:
+		}
+		if interrupted {
+			log.Warn("K8s informer startup interrupted by cancelled context")
+			break
+		}
+
 		log.Debugf("Checking kubecollect support for %v", resource)
 
 		// The informers are responsible for Add()'ing to the wg
@@ -268,7 +312,7 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 	// close evtc once they're done to notify the caller
 	go func() {
 		wg.Wait()
-		log.Infof("All informers have exited, closing the events channel")
+		log.Info("All K8s informers have exited, closing the events channel")
 		close(evtc)
 	}()
 }
@@ -326,21 +370,21 @@ func resourceReady(resource string) bool {
 */
 }
 
-func createKubeClient(apiserver string, ca_cert string, client_cert string, client_key string, ssl_verify bool) (kubeClient kubeclient.Interface, err error) {
-	skipVerify := !ssl_verify
+func createKubeClient(apiServer string, caCert string, clientCert string, clientKey string, sslVerify bool) (kubeClient kubeclient.Interface, err error) {
+	skipVerify := !sslVerify
 	if skipVerify {
-		ca_cert = ""
+		caCert = ""
 	}
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{
 		ClusterInfo: clientcmdapi.Cluster{
-			Server: apiserver,
+			Server: apiServer,
 			InsecureSkipTLSVerify: skipVerify,
-			CertificateAuthority: ca_cert,
+			CertificateAuthority: caCert,
 		},
 		AuthInfo: clientcmdapi.AuthInfo{
-			ClientCertificate: client_cert,
-			ClientKey: client_key,
+			ClientCertificate: clientCert,
+			ClientKey: clientKey,
 		},
 	}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
