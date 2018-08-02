@@ -51,7 +51,8 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		log.Infof("Connecting to k8s server at %s", opts.GetUrl())
 		var err error
 		kubeClient, err = createKubeClient(opts.GetUrl(), opts.GetCaCert(),
-			opts.GetClientCert(), opts.GetClientKey())
+			opts.GetClientCert(), opts.GetClientKey(),
+			opts.GetSslVerifyCertificate())
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
 			return nil, nil, err
@@ -325,11 +326,16 @@ func resourceReady(resource string) bool {
 */
 }
 
-func createKubeClient(apiserver string, ca_cert string, client_cert string, client_key string) (kubeClient kubeclient.Interface, err error) {
+func createKubeClient(apiserver string, ca_cert string, client_cert string, client_key string, ssl_verify bool) (kubeClient kubeclient.Interface, err error) {
+	skipVerify := !ssl_verify
+	if skipVerify {
+		ca_cert = ""
+	}
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{
 		ClusterInfo: clientcmdapi.Cluster{
 			Server: apiserver,
+			InsecureSkipTLSVerify: skipVerify,
 			CertificateAuthority: ca_cert,
 		},
 		AuthInfo: clientcmdapi.AuthInfo{
