@@ -22,7 +22,7 @@ class BackendStatus(object):
         return AgentCheck.UNKNOWN
 
 class Varnish(AgentCheck):
-    NEEDED_NS = ( 'mnt', 'uts', )
+    NEEDED_NS = ( 'mnt', 'uts', 'pid', )
     SERVICE_CHECK_NAME = 'varnish.backend_healthy'
 
     GAUGE_TO_RATE_METRICS = ( 'varnish.n_expired', 'varnish.n_lru_nuked' )
@@ -54,6 +54,8 @@ class Varnish(AgentCheck):
 
             # reset for next stat element
             self._reset()
+        elif name == "name" and "MAIN" in self._current_str:
+            self._current_metric += self._current_str.replace("MAIN", '')
         elif name in ("ident", "name") or (name == "type" and self._current_str != "MAIN"):
             self._current_metric += "." + self._current_str
 
@@ -101,7 +103,7 @@ class Varnish(AgentCheck):
         varnishadm_path = instance.get('varnishadm')
         if varnishadm_path:
             secretfile_path = instance.get('secretfile', '/etc/varnish/secret')
-            cmd = ['sudo', varnishadm_path, '-S', secretfile_path, 'debug.health']
+            cmd = [varnishadm_path, '-S', secretfile_path, 'debug.health']
             output, _, _ = get_subprocess_output(cmd, self.log)
             if output:
                 self._parse_varnishadm(output)
