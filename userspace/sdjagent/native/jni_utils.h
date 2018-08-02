@@ -73,8 +73,9 @@ template<typename... Args>
 void log(const char* sev, const char* msgfmt, Args... args)
 {
 	static const char* logfmt = "{\"pid\": %d, \"level\": \"%s\", \"message\": \"%s\" }\n";
-	char msg[500];
-	sprintf(msg, msgfmt, args...);
+	static const size_t buffer_size = 500;
+	char msg[buffer_size];
+	snprintf(msg, buffer_size, msgfmt, args...);
 	fprintf(stderr, logfmt, getpid(), sev, msg);
 	fflush(stderr);
 }

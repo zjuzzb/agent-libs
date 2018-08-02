@@ -20,6 +20,13 @@
 
 using namespace std;
 
+// calculate a literal or const static string length at compile time.
+// This is an utility method that should be better moved in a miscellaneous utilities directory
+static int constexpr LENGTH(const char* str)
+{
+	return *str ? 1 + LENGTH(str + 1) : 0;
+}
+
 class file_descriptor
 {
 public:
@@ -328,6 +335,11 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		close(child_pipe[0]);
 
 		// Copy environment of the target process
+		// Do not pass JAVA_TOOL_OPTIONS. Otherwise sdjagent
+		// is going to be instrumented for external monitoring
+		// (which is absolutely funny considering that monitoring is our business.
+		// But creates problems as well :-) )
+		static const char* JAVA_TOOL_OPTIONS = "JAVA_TOOL_OPTIONS";
 		vector<string> container_environ;
 		char environ_path[200];
 		snprintf(environ_path, sizeof(environ_path), "%s/proc/%d/environ", scap_get_host_root(), pid);
@@ -347,7 +359,10 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		int j = 0;
 		for(const auto& env : container_environ)
 		{
-			container_environ_ptr[j++] = env.c_str();
+			if(env.substr(0, LENGTH(JAVA_TOOL_OPTIONS)) != JAVA_TOOL_OPTIONS)
+			{
+				container_environ_ptr[j++] = env.c_str();
+			}
 		}
 		container_environ_ptr[j++] = NULL;
 
