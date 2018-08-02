@@ -97,6 +97,8 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 ///////////////////////////////////////////////////////////////////////////////
 
 thread_analyzer_info::thread_analyzer_info()
+	: m_first_port_scan(time_point_t::max())
+	, m_second_port_scan_done(false)
 {
 }
 
@@ -386,6 +388,11 @@ void thread_analyzer_info::scan_listening_ports()
 			m_listening_ports->insert(fd.second.m_sockinfo.m_ipv6serverinfo.m_port);
 		}
 	}
+
+	if(m_first_port_scan == time_point_t::max() && !m_listening_ports->empty())
+	{
+		m_first_port_scan = time_point_t::clock::now();
+	}
 }
 
 //
@@ -565,6 +572,44 @@ bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
 	ASSERT(false);
 #endif
 	return false;
+}
+
+void thread_analyzer_info::scan_ports_again_on_timer_elapsed()
+{
+	ASSERT(m_first_port_scan != time_point_t::max())
+	if(!m_second_port_scan_done)
+	{
+		auto now = time_point_t::clock::now();
+		auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(now - m_first_port_scan).count();
+		ASSERT(elapsed_secs > 0)
+		if(elapsed_secs > SECOND_SCAN_PORT_INTERVAL_SECS)
+		{
+			m_second_port_scan_done = true;
+			g_logger.format(sinsp_logger::SEV_DEBUG, "thread_analyzer_info: performed second port scan for pid %ld", this->m_tinfo->m_pid);
+			std::size_t initial_size = m_listening_ports->size();
+			scan_listening_ports();
+			std::size_t current_size = m_listening_ports->size();
+			// Log only if other ports have been found
+			if(current_size > initial_size)
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG, "thread_analyzer_info: found new ports with second scan. Total ports found: %s", listening_ports_to_string().c_str());
+			}
+		}
+	}
+}
+
+
+std::string thread_analyzer_info::listening_ports_to_string()
+{
+	std::string ret;
+	if(m_listening_ports != nullptr && !m_listening_ports->empty())
+	{
+		for(auto& port : *m_listening_ports.get())
+		{
+			ret += std::to_string(port) + ", ";
+		}
+	}
+	return ret.substr(0, ret.size() - 2);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

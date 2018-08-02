@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <chrono>
+
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
@@ -261,12 +263,24 @@ public:
 			return m_main_thread_ainfo.get();
 		}
 	}
+
+	// This method re-scan the process listening ports only if
+	// a previous scan which detected at least a port, has happened
+	// some time (namely SECOND_SCAN_PORT_INTERVAL_SECS seconds) ago
+	void scan_ports_again_on_timer_elapsed();
+
 private:
+	static const uint16_t SECOND_SCAN_PORT_INTERVAL_SECS = 30;
+	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;
 	unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
 	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
 	set<std::string> m_app_checks_found;
 	bool m_prom_check_found;
+	time_point_t m_first_port_scan;
+	bool m_second_port_scan_done;
+
+	std::string listening_ports_to_string();
 };
 
 ///////////////////////////////////////////////////////////////////////////////
