@@ -182,13 +182,11 @@ public:
 	}
 	inline bool found_app_check(const app_check& check)
 	{
-		const string& module = check.module().empty() ? check.name() : check.module();
-		return found_app_check_by_name(module);
+		return found_app_check_by_name(check.name());
 	}
 	inline void set_found_app_check(const app_check& check)
 	{
-		const string& module = check.module().empty() ? check.name() : check.module();
-		m_app_checks_found.emplace(module);
+		m_app_checks_found.emplace(check.name());
 	}
 	inline void clear_found_app_checks()
 	{
