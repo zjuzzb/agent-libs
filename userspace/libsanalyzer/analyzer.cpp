@@ -2956,9 +2956,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		{
 			// Filter out duplicate prometheus scans
 			prom_process::filter_procs(prom_procs,
-				m_inspector->m_thread_manager->m_threadtable);
+				m_inspector->m_thread_manager->m_threadtable, m_app_metrics, m_prev_flush_time_ns);
 
-			m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
+			if(!app_checks_processes.empty() || !prom_procs.empty())
+			{
+				m_app_proxy->send_get_metrics_cmd(app_checks_processes, prom_procs, m_prom_conf);
+			}
 		}
 #endif
 	}

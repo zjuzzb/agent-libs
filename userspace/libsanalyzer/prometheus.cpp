@@ -158,9 +158,48 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 // Make sure we only scan any port only once per container or on host
 // If multiple matching processes are listening to a port within the same
 // container, pick the oldest
-void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable)
+void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy::metric_map_t &app_metrics, uint64_t now)
 {
-	if (procs.size() <= 1)
+	// Set of container_id and listening port for non-expired prometheus metrics
+	// to ensure we don't try scanning those ports again for a different pid.
+	std::set<std::pair<string, uint16_t>> portmetricmap;
+	// Populate port metric map based on app_metrics
+	for (const auto& app_met_pid : app_metrics)
+	{
+		bool have_mets = false;
+		for (const auto& app_met : app_met_pid.second)
+		{
+			if ((app_met.second.type() == app_check_data::check_type::PROMETHEUS) &&
+				(app_met.second.expiration_ts() > (now/ONE_SECOND_IN_NS)))
+			{
+				have_mets = true;
+				break;
+			}
+		}
+		if (!have_mets)
+		{
+			// This pid doesn't have unexpired prometheus metrics
+			continue;
+		}
+		sinsp_threadinfo *tinfo = threadtable.get(app_met_pid.first);
+		if (!tinfo || !tinfo->m_ainfo) {
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"Prometheus: Couldn't get thread info for pid %d", app_met_pid.first);
+			continue;
+		}
+
+		string portstr;
+		// Mark all this pid's ports as associated with the non-expired metrics
+		for (uint16_t port : tinfo->m_ainfo->listening_ports())
+		{
+			portstr = portstr + " " + to_string(port);
+			portmetricmap.emplace(make_pair(tinfo->m_container_id, port));
+		}
+		g_logger.format(sinsp_logger::SEV_TRACE,
+			"Prometheus filter: container %s, pid %d, unexpired metrics for ports %s", tinfo->m_container_id.c_str(), app_met_pid.first, portstr.c_str());
+	}
+
+	if (procs.size() <= 1 && portmetricmap.empty())
 		return;
 
 	// Map by container_id and port number to prom_process pointer
@@ -173,9 +212,26 @@ void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &t
 		sinsp_threadinfo *tinfo = threadtable.get(proc.m_pid);
 		if (!tinfo) {
 			g_logger.format(sinsp_logger::SEV_INFO,
-				"Prometheus: Couldn't get thread info for pid %d, skipping port uniqueness filter", proc.m_pid);
+				"Prometheus filter: Couldn't get thread info for pid %d, skipping port uniqueness filter", proc.m_pid);
 			continue;
 		}
+
+		// Erase any ports for which unexpired metrics are known to exist
+		for (auto it = proc.m_ports.begin(); it != proc.m_ports.end() ; )
+		{
+			if (portmetricmap.find(make_pair(tinfo->m_container_id, *it)) != portmetricmap.end())
+			{
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"Prometheus filter: removing scan for port %d (pid %d) because metrics already exist",
+					*it, tinfo->m_pid);
+				it = proc.m_ports.erase(it);
+			}
+			else
+			{
+				it++;
+			}
+		}
+
 		if (containermap.find(tinfo->m_container_id) == containermap.end()) {
 			// Not found: add our ports
 			portmap_t portmap;
@@ -188,11 +244,15 @@ void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &t
 				containermap[tinfo->m_container_id] = move(portmap);
 			}
 		} else {
-			for (auto port : proc.m_ports)
+			for (auto it = proc.m_ports.begin(); it != proc.m_ports.end() ; )
 			{
+				uint16_t port = *it;
 				if (containermap[tinfo->m_container_id].find(port) ==
 					containermap[tinfo->m_container_id].end())
+				{
+					it++;
 					continue;
+				}
 				// For every matching port determine the eldest process
 				// We can probably rely on the clone timestamps
 				// proc_process *oproc = proc.m_ports[portproc.first];
@@ -203,6 +263,7 @@ void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &t
 					g_logger.format(sinsp_logger::SEV_WARNING,
 						"Prometheus: Couldn't get thread info for pid %d, can't compare with %d", oproc->m_pid, proc.m_pid);
 					ASSERT(0);
+					it++;
 					continue;
 				}
 				// Assuming the clone timestamps will be different
@@ -214,7 +275,7 @@ void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &t
 						tinfo->m_container_id.empty() ? "on host" : "in container ",
 						tinfo->m_container_id.c_str(), oproc->m_pid);
 					// Other process is older, remove the port from our ports
-					proc.m_ports.erase(port);
+					it = proc.m_ports.erase(it);
 				}
 				else
 				{
@@ -226,6 +287,7 @@ void prom_process::filter_procs(vector<prom_process> &procs, threadinfo_map_t &t
 					// This process is older, remove port from the other process
 					// We'll replace it in the portmap after this loop
 					oproc->m_ports.erase(port);
+					it++;
 				}
 			}
 			// Place any ports this process has left into the portmap

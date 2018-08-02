@@ -13,7 +13,7 @@
 #include "draios.pb.h"
 #include "analyzer_settings.h"
 #include "proc_filter.h"
-
+#include "app_checks.h"
 
 Json::Value yaml_to_json(const YAML::Node& node);
 class sinsp_container_info;
@@ -75,7 +75,7 @@ public:
 
 	Json::Value to_json(const prometheus_conf &conf) const;
 
-	static void filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable);
+	static void filter_procs(vector<prom_process> &procs, threadinfo_map_t &threadtable, const app_checks_proxy::metric_map_t &app_metrics, uint64_t now);
 private:
 	string m_name;	// Just for debugging
 	int m_pid;
