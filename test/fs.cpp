@@ -503,29 +503,19 @@ TEST_F(sys_call_test, fs_openat)
 		sinsp_evt* e = param.m_evt;
 		uint16_t type = e->get_type();
 
-		if(type == PPME_SYSCALL_OPENAT_E && param.m_evt->get_param_value_str("name") == FILENAME)
+		if(type == PPME_SYSCALL_OPENAT_2_X && param.m_evt->get_param_value_str("name") == FILENAME &&
+		   (string("<f>") + cwd + FILENAME) == e->get_param_value_str("fd"))
 		{
 			if(callnum == 0)
 			{
 				EXPECT_EQ(dirfd, NumberParser::parse(e->get_param_value_str("dirfd", false)));
+				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("fd", false)));
 				EXPECT_EQ(string("<d>") + bcwd, e->get_param_value_str("dirfd"));
 				callnum++;
 			}
-			else if(callnum == 2)
+			else if(callnum == 1)
 			{
 				EXPECT_EQ(-100, NumberParser::parse(e->get_param_value_str("dirfd", false)));
-				callnum++;
-			}
-		}
-		else if(type == PPME_SYSCALL_OPENAT_X && string("<f>") + cwd + FILENAME == e->get_param_value_str("fd"))
-		{
-			if(callnum == 1)
-			{
-				EXPECT_EQ(fd1, NumberParser::parse(e->get_param_value_str("fd", false)));
-				callnum++;
-			}
-			else if(callnum == 3)
-			{
 				EXPECT_EQ(fd2, NumberParser::parse(e->get_param_value_str("fd", false)));
 				callnum++;
 			}
@@ -534,7 +524,7 @@ TEST_F(sys_call_test, fs_openat)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 
-	EXPECT_EQ(4, callnum);
+	EXPECT_EQ(2, callnum);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

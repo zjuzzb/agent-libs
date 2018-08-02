@@ -127,6 +127,14 @@ bool check_output_fields(map<string,string> &received, map<string,string> &expec
 			received.erase(u);
 		}
 	}
+
+	// in recent versions, glibc open use openat
+	if(received.find("evt.type") != received.end() && received["evt.type"] == "openat" &&
+	   expected.find("evt.type") != expected.end() && expected["evt.type"] == "open")
+	{
+		received["evt.type"] = "open";
+	}
+
 	return received.size() == expected.size()
 		&& std::equal(received.begin(), received.end(),
 			      expected.begin());

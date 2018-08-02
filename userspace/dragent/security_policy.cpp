@@ -1246,7 +1246,7 @@ readonly_fs_policies::readonly_fs_policies()
 	m_name = "files-readonly";
 
 	m_evttypes[PPME_SYSCALL_OPEN_X] = true;
-	m_evttypes[PPME_SYSCALL_OPENAT_X] = true;
+	m_evttypes[PPME_SYSCALL_OPENAT_2_X] = true;
 
 	m_access_type = draiosproto::ACCESS_READ;
 }
@@ -1265,7 +1265,7 @@ void readonly_fs_policies::init(dragent_configuration *configuration,
 	fdn.reset(g_filterlist.new_filter_check_from_fldname("fd.name", m_inspector, true));
 	fdn->parse_field_name("fd.name", true, false);
 	m_checks.emplace(PPME_SYSCALL_OPEN_X, fdn);
-	m_checks.emplace(PPME_SYSCALL_OPENAT_X, fdn);
+	m_checks.emplace(PPME_SYSCALL_OPENAT_2_X, fdn);
 }
 
 draiosproto::policy_type readonly_fs_policies::policies_type()

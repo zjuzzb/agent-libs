@@ -1063,6 +1063,7 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 	m_notification_scap_evt->ts = ts;
 	m_notification_scap_evt->tid = tid;
 	m_notification_scap_evt->type = PPME_NOTIFICATION_E;
+	m_notification_scap_evt->nparams = 2;
 	m_notification_evt.init((uint8_t *) m_notification_scap_evt, 0);
 
 	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));
@@ -1091,6 +1092,7 @@ void capture_job_handler::push_infra_event(uint64_t ts, uint64_t tid, string sou
 	m_notification_scap_evt->ts = ts;
 	m_notification_scap_evt->tid = tid;
 	m_notification_scap_evt->type = PPME_INFRASTRUCTURE_EVENT_E;
+	m_notification_scap_evt->nparams = 4;
 	m_notification_evt.init((uint8_t *) m_notification_scap_evt, 0);
 
 	uint16_t *lens = (uint16_t *)(m_notification_scap_evt_storage + sizeof(struct ppm_evt_hdr));

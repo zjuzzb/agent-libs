@@ -326,7 +326,8 @@ public:
 
 			if(etype == PPME_SYSCALL_OPEN_X ||
 				etype == PPME_SYSCALL_CREAT_X ||
-				etype == PPME_SYSCALL_OPENAT_X)
+				etype == PPME_SYSCALL_OPENAT_X ||
+				etype == PPME_SYSCALL_OPENAT_2_X)
 			{
 				m_count_file_open++;
 				m_count_file++;
