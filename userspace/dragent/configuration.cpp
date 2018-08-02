@@ -786,6 +786,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_custom_container.set_label_pattern(m_config->get_first_deep_map<string>("custom_container", "labels"));
 		m_custom_container.set_max(m_config->get_scalar<int>("custom_container", "limit", 50));
 		m_custom_container.set_max_id_length(m_config->get_scalar<int>("custom_container", "max_id_length", 12));
+		m_custom_container.set_incremental_metadata(m_config->get_scalar<bool>("custom_container", "incremental_metadata", false));
 		m_custom_container.set_enabled(m_config->get_scalar<bool>("custom_container", "enabled", false));
 	} catch (const Poco::RuntimeException& e) {
 		m_config->add_error("config file error inside key custom_containers: " + e.message() + ", disabling custom container support");

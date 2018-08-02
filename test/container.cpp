@@ -689,6 +689,260 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 	ASSERT_TRUE(done);
 }
 
+TEST_F(sys_call_test, container_custom_halfnhalf)
+{
+	bool done = false;
+	string container_name, container_image;
+	proc test_proc = proc("./test_helper", { "custom_container", "halfnhalf" });
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_container_id == "foo";
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		container_name = container_info->m_name;
+		container_image = container_info->m_image;
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_incremental_metadata(true);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+
+	// we're building the metadata process by process, so we can only expect it to be complete at the end
+	EXPECT_EQ("custom_name", container_name);
+	EXPECT_EQ("custom_image", container_image);
+	ASSERT_TRUE(done);
+}
+
+/// Test the happy path for large environment support
+/// Loading the environment from /proc is racy but this process is a "sleep 1" so we should have plenty
+/// of time to do it
+TEST_F(sys_call_test, container_custom_huge_env)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container", "huge_env" });
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_container_id == "foo";
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
+					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
+				      });
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
+/// Run a fast process with a large environment, where the interesting variables are at the beginning
+/// We'll (probably) fail to read the environment from /proc before the process exits
+/// but we still should have the initial 4K available
+TEST_F(sys_call_test, container_custom_huge_env_echo)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_echo" });
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_container_id == "foo";
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
+					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
+				      });
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
+/// Test that loading the environment from /proc actually works
+/// Loading the environment from /proc is racy but this process is a "sleep 1" so we should have plenty
+/// of time to do it. This test will fail if we only use the initial 4K of the environment
+/// (the interesting variables are at the end of the environment)
+/// An analogous test with a short-lived process (e.g. echo) will most probably fail
+/// (we won't be able to read the environment before the process exits)
+TEST_F(sys_call_test, container_custom_huge_env_at_end)
+{
+	bool done = false;
+	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_at_end" });
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+		if(tinfo)
+		{
+			return tinfo->m_container_id == "foo";
+		}
+
+		return false;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		auto handle = start_process(&test_proc);
+		get<0>(handle).wait();
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		EXPECT_EQ("foo", tinfo->m_container_id);
+
+		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_NE(container_info, nullptr);
+
+		EXPECT_EQ(sinsp_container_type::CT_CUSTOM, container_info->m_type);
+		EXPECT_EQ("custom_name", container_info->m_name);
+		EXPECT_EQ("custom_image", container_info->m_image);
+
+		done = true;
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		custom_container::resolver res;
+		res.set_cgroup_match("^/custom_container_(.*)");
+		res.set_environ_match({
+					      { "CUSTOM_CONTAINER_IMAGE",  "custom_(.*)" },
+					      { "CUSTOM_CONTAINER_NAME",  "custom_(.*)" }
+				      });
+		res.set_id_pattern("<cgroup:1>");
+		res.set_name_pattern("<CUSTOM_CONTAINER_NAME>");
+		res.set_image_pattern("<CUSTOM_CONTAINER_IMAGE>");
+		res.set_max(50);
+		res.set_max_id_length(50);
+		res.set_enabled(true);
+		inspector->m_analyzer->set_custom_container_conf(move(res));
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+	ASSERT_TRUE(done);
+}
+
 TEST_F(sys_call_test, container_rkt_after)
 {
 	bool done = false;

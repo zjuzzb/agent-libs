@@ -238,18 +238,16 @@ void pgid_test(const vector<string>& args)
 	}
 }
 
-void custom_container(const vector<string>& args)
+bool custom_container_set_cgroup()
 {
 	string cpu_cgroup = "/sys/fs/cgroup/cpu/custom_container_foo";
-
-	pid_t pid;
 	struct stat s;
 
 	if (stat(cpu_cgroup.c_str(), &s) < 0) {
 		if (mkdir(cpu_cgroup.c_str(), 0777) < 0)
 		{
 			fprintf(stderr, "Could not create cgroup directory %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
-			return;
+			return false;
 		}
 	}
 
@@ -257,34 +255,225 @@ void custom_container(const vector<string>& args)
 	if (!fp)
 	{
 		fprintf(stderr, "Could not open cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
-		return;
+		return false;
 	}
 	if (fprintf(fp, "%d\n", getpid()) < 0)
 	{
 		fprintf(stderr, "Could not write pid to cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
-		return;
+		return false;
 	}
 	if (fclose(fp) < 0)
 	{
 		fprintf(stderr, "Could not close cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return false;
+	}
+	return true;
+}
+
+void custom_container_simple() {
+	signal(SIGCHLD, SIG_IGN);
+	pid_t pid = fork();
+	switch(pid) {
+		case 0: // child
+		{
+			char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+			char *const exenv[] = {(char *) "CUSTOM_CONTAINER_NAME=custom_name", (char *) "CUSTOM_CONTAINER_IMAGE=custom_image", nullptr};
+			execve("/bin/echo", exargs, exenv);
+			exit(127);
+		}
+		case -1: // error
+			fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+			return;
+		default:
+		{
+			int status;
+			waitpid(pid, &status, 0);
+		}
+	}
+}
+
+void custom_container_huge_env() {
+	signal(SIGCHLD, SIG_IGN);
+	pid_t pid = fork();
+	switch(pid) {
+		case 0: // child
+		{
+			string junk(100, 'x');
+			vector<string> env_vec;
+			for (auto i = 0; i < 200; ++i)
+			{
+				env_vec.emplace_back("VAR" + to_string(i) + "=" + junk);
+			}
+
+			char* exenv[env_vec.size() + 3];
+			int i = 0;
+			exenv[i++] = const_cast<char*>("CUSTOM_CONTAINER_NAME=custom_name");
+			exenv[i++] = const_cast<char*>("CUSTOM_CONTAINER_IMAGE=custom_image");
+			for (const auto& var : env_vec)
+			{
+				exenv[i++] = const_cast<char*>(var.c_str());
+			}
+			exenv[i] = nullptr;
+
+			char *const exargs[] = {(char *) "/bin/sleep", (char *) "1", nullptr};
+			execve("/bin/sleep", exargs, exenv);
+			exit(127);
+		}
+		case -1: // error
+			fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+			return;
+		default:
+		{
+			int status;
+			waitpid(pid, &status, 0);
+		}
+	}
+}
+
+void custom_container_huge_env_echo() {
+	signal(SIGCHLD, SIG_IGN);
+	pid_t pid = fork();
+	switch(pid) {
+		case 0: // child
+		{
+			string junk(100, 'x');
+			vector<string> env_vec;
+			for (auto i = 0; i < 200; ++i)
+			{
+				env_vec.emplace_back("VAR" + to_string(i) + "=" + junk);
+			}
+
+			char* exenv[env_vec.size() + 3];
+			int i = 0;
+			exenv[i++] = const_cast<char*>("CUSTOM_CONTAINER_NAME=custom_name");
+			exenv[i++] = const_cast<char*>("CUSTOM_CONTAINER_IMAGE=custom_image");
+			for (const auto& var : env_vec)
+			{
+				exenv[i++] = const_cast<char*>(var.c_str());
+			}
+			exenv[i] = nullptr;
+
+			char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+			execve("/bin/echo", exargs, exenv);
+			exit(127);
+		}
+		case -1: // error
+			fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+			return;
+		default:
+		{
+			int status;
+			waitpid(pid, &status, 0);
+		}
+	}
+}
+
+void custom_container_huge_env_at_end() {
+	signal(SIGCHLD, SIG_IGN);
+	pid_t pid = fork();
+	switch(pid) {
+		case 0: // child
+		{
+			string junk(100, 'x');
+			vector<string> env_vec;
+			for (auto i = 0; i < 200; ++i)
+			{
+				env_vec.emplace_back("VAR" + to_string(i) + "=" + junk);
+			}
+
+			char* exenv[env_vec.size() + 3];
+			int i = 0;
+			for (const auto& var : env_vec)
+			{
+				exenv[i++] = const_cast<char*>(var.c_str());
+			}
+			exenv[i++] = const_cast<char*>("CUSTOM_CONTAINER_NAME=custom_name");
+			exenv[i++] = const_cast<char*>("CUSTOM_CONTAINER_IMAGE=custom_image");
+			exenv[i] = nullptr;
+
+			char *const exargs[] = {(char *) "/bin/sleep", (char *) "1", nullptr};
+			execve("/bin/sleep", exargs, exenv);
+			exit(127);
+		}
+		case -1: // error
+			fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+			return;
+		default:
+		{
+			int status;
+			waitpid(pid, &status, 0);
+		}
+	}
+}
+
+void custom_container_halfnhalf() {
+	signal(SIGCHLD, SIG_IGN);
+
+	pid_t pid = fork();
+	switch(pid) {
+		case 0: // child
+		{
+			char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+			char *const exenv[] = {(char *) "CUSTOM_CONTAINER_NAME=custom_name", nullptr};
+			execve("/bin/echo", exargs, exenv);
+			exit(127);
+		}
+		case -1: // error
+			fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+			return;
+		default:
+		{
+			pid_t pid2 = fork();
+			switch(pid2) {
+				case 0: // child
+				{
+					char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+					char *const exenv[] = {(char *) "CUSTOM_CONTAINER_IMAGE=custom_image", nullptr};
+					execve("/bin/echo", exargs, exenv);
+					exit(127);
+				}
+				case -1: // error
+					fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+					return;
+				default:
+				{
+					int status;
+					waitpid(pid, &status, 0);
+					waitpid(pid2, &status, 0);
+				}
+			}
+		}
+	}
+}
+
+void custom_container(const vector<string>& args)
+{
+	if (!custom_container_set_cgroup())
+	{
 		return;
 	}
 
-	char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
-	char *const exenv[] = {(char *) "CUSTOM_CONTAINER_NAME=custom_name", (char *) "CUSTOM_CONTAINER_IMAGE=custom_image", nullptr};
-	int status;
+	if (args.empty())
+	{
+		return custom_container_simple();
+	}
 
-	signal(SIGCHLD, SIG_IGN);
-	pid = fork();
-	switch(pid) {
-		case 0: // child
-			execve("/bin/echo", exargs, exenv);
-			exit(127);
-		case -1: // error
-			fprintf(stderr, "Could not close cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
-			return;
-		default:
-			waitpid(pid, &status, 0);
+	const auto& arg = args.at(0);
+	if (arg == "halfnhalf")
+	{
+		return custom_container_halfnhalf();
+	}
+	else if (arg == "huge_env")
+	{
+		return custom_container_huge_env();
+	}
+	else if (arg == "huge_env_echo")
+	{
+		return custom_container_huge_env_echo();
+	}
+	else if (arg == "huge_env_at_end")
+	{
+		return custom_container_huge_env_at_end();
 	}
 }
 

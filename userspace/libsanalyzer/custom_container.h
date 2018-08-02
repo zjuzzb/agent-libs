@@ -212,6 +212,11 @@ public:
 		m_max_id_length = max;
 	}
 
+	void set_incremental_metadata(bool incremental_metadata)
+	{
+		m_incremental_metadata = incremental_metadata;
+	}
+
 	void set_config_test(bool config_test)
 	{
 		m_config_test = config_test;
@@ -224,6 +229,12 @@ public:
 protected:
 	bool m_enabled = false;
 	bool m_limit_logged = false;
+
+	// when true, we keep scanning processes in the container for metadata until we fill
+	// the name, image and all labels or until the timeout expires
+	// when false, we stop scanning as soon as we find the container name
+	bool m_incremental_metadata = false;
+
 	bool m_config_test = false;
 	int m_num = 0;
 	int m_max = 0;
@@ -238,7 +249,7 @@ protected:
 
 	bool match_cgroup(sinsp_threadinfo* tinfo, render_context& render_ctx);
 	bool match_environ(sinsp_threadinfo* tinfo, render_context& render_ctx);
-	bool match_environ_tree(sinsp_threadinfo* tinfo, render_context& render_ctx);
+	sinsp_threadinfo* match_environ_tree(sinsp_threadinfo *tinfo, render_context &render_ctx);
 	void clean_label(std::string& val);
 
 	match m_hostname;
