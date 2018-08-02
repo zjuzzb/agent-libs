@@ -177,7 +177,12 @@ function trigger_docker_builds {
 		    IMAGE_NAME=agent-slim
 	    esac
 
-	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}-rc"
+	    VERSION_SUFFIX=""
+	    if [[ "${VARIANT}" == "rc" ]]; then
+		VERSION_SUFFIX="-rc"
+	    fi
+
+	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
 
 	    docker build -t "${VERSIONED_IMAGE}" . &&
 	        docker push "${VERSIONED_IMAGE}"

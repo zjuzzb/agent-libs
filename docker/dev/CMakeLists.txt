@@ -11,6 +11,10 @@ add_custom_target(dev-entrypoint ALL
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/docker-entrypoint.sh
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/../docker-entrypoint.sh ${CMAKE_CURRENT_BINARY_DIR})
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile ${CMAKE_CURRENT_BINARY_DIR}/docker-entrypoint.sh
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile
+	DESTINATION ${DRAIOS_BIN_PREFIX}/docker/dev
+	COMPONENT dockerfiles)
+
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/docker-entrypoint.sh
 	DESTINATION ${DRAIOS_BIN_PREFIX}/docker/dev
 	COMPONENT dockerfiles)
