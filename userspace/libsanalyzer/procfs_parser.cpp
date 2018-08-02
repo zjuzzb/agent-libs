@@ -252,33 +252,19 @@ bool sinsp_procfs_parser::get_boot_time(OUT sinsp_proc_stat* proc_stat, char* li
 	return true;
 }
 
+// must align with the order of sinsp_cpu enum values
+const char* sinsp_procfs_parser::m_cpu_labels[] = { "user", "nice", "system", "irq", "softirq", "steal", "idle", "iowait" };
 
-//
-// There shouldn't be more than 100 ticks per second but ~103 is actually quite typical
-// Add a safety margin and ignore clearly bogus values
-//
-#define MAX_PERCPU_TICKS_PER_SEC 150
-static inline uint64_t get_cpu_delta(const char* label, uint64_t prev, uint64_t curr, const char* note)
+static inline uint64_t cpu_diff(int cpu, const char* label, uint64_t curr, uint64_t prev)
 {
 	if (curr < prev)
 	{
 		static ratelimit r;
 		r.run([&] {
-			g_logger.format(sinsp_logger::SEV_WARNING,
-					"CPU %s time going backwards (%" PRId64 " -> %" PRId64 ")%s",
-					label, prev, curr, note ? note : "");
-			});
+			g_logger.format(sinsp_logger::SEV_WARNING, "CPU#%d %s time going backwards (%" PRIu64 " -> %" PRIu64 ")",
+							cpu, label, prev, curr);
+		});
 		return 0;
-	}
-	else if (curr > prev + MAX_PERCPU_TICKS_PER_SEC)
-	{
-		static ratelimit r;
-		r.run([&] {
-			g_logger.format(sinsp_logger::SEV_WARNING,
-					"CPU %s time jump over %d ticks (%" PRId64 " -> %" PRId64 ")%s",
-					label, MAX_PERCPU_TICKS_PER_SEC, prev, curr, note ? note : "");
-			});
-		return MAX_PERCPU_TICKS_PER_SEC;
 	}
 	return curr - prev;
 }
@@ -287,7 +273,7 @@ static inline uint64_t get_cpu_delta(const char* label, uint64_t prev, uint64_t 
 //
 // See http://stackoverflow.com/questions/3017162/how-to-get-total-cpu-usage-in-linux-c
 //
-bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j)
+bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *line, int cpu_num)
 {
 	ASSERT(proc_stat);
 
@@ -295,29 +281,20 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 
 	if(!m_is_live_capture) { return true; }
 
-	uint64_t user = 0;
-	uint64_t nice = 0;
-	uint64_t system = 0;
-	uint64_t idle = 0;
-	uint64_t iowait = 0;
-	uint64_t irq = 0;
-	uint64_t softirq = 0;
-	uint64_t steal = 0;
-	uint64_t work = 0;
-	uint64_t total = 0;
-	uint64_t delta_user = 0;
-	uint64_t delta_nice = 0;
-	uint64_t delta_system = 0;
-	uint64_t delta_idle = 0;
-	uint64_t delta_iowait = 0;
-	uint64_t delta_irq = 0;
-	uint64_t delta_softirq = 0;
-	uint64_t delta_steal = 0;
-	uint64_t delta_work = 0;
-	uint64_t delta_total = 0;
+	uint64_t current[CPU_NUM_COUNTERS] = { 0 };
+	uint64_t delta[CPU_NUM_COUNTERS] = { 0 };
 
 	int scanned = sscanf(line, "%s %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64" %" PRIu64,
-		cpu, &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal);
+	                     cpu,
+	                     &current[CPU_USER],
+	                     &current[CPU_NICE],
+	                     &current[CPU_SYSTEM],
+	                     &current[CPU_IDLE],
+	                     &current[CPU_IOWAIT],
+	                     &current[CPU_IRQ],
+	                     &current[CPU_SOFTIRQ],
+	                     &current[CPU_STEAL]);
+
 	if(scanned != 9)
 	{
 		g_logger.log("get_cpus_load() scanned " + std::to_string(scanned) +
@@ -325,70 +302,79 @@ bool sinsp_procfs_parser::get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* li
 		return false;
 	}
 
-	if(m_old_total.size() <static_cast<vector<uint64_t>::size_type>(j + 1))
+	if (m_old_cpu[CPU_TOTAL].size() < static_cast<size_t>(cpu_num+1))
 	{
-		total = user + nice + system + idle + iowait + irq + softirq + steal;
-		work = user + nice + system + irq + softirq + steal;
+		for (size_t i = 0; i < CPU_WORK; ++i)
+		{
+			current[CPU_TOTAL] += current[i];
+			if (i <= CPU_WORK_MAX) {
+				current[CPU_WORK] += current[i];
+			}
+		}
 
-		m_old_user.push_back(user);
-		m_old_nice.push_back(nice);
-		m_old_system.push_back(system);
-		m_old_idle.push_back(idle);
-		m_old_iowait.push_back(iowait);
-		m_old_irq.push_back(irq);
-		m_old_softirq.push_back(softirq);
-		m_old_steal.push_back(steal);
-		m_old_work.push_back(work);
-		m_old_total.push_back(total);
+		for (size_t i = 0; i < CPU_NUM_COUNTERS; ++i)
+		{
+			m_old_cpu[i].push_back(current[i]);
+		}
 	}
 	else
 	{
-		delta_user = get_cpu_delta("user", m_old_user[j], user, NULL);
-		delta_nice = get_cpu_delta("nice", m_old_nice[j], nice, NULL);
-		delta_system = get_cpu_delta("system", m_old_system[j], system, NULL);
-		delta_idle = get_cpu_delta("idle", m_old_idle[j], idle, NULL);
-		delta_iowait = get_cpu_delta("iowait", m_old_iowait[j], iowait, NULL);
-		delta_irq = get_cpu_delta("irq", m_old_irq[j], irq, NULL);
-		delta_softirq = get_cpu_delta("softirq", m_old_softirq[j], softirq, NULL);
-		delta_steal = get_cpu_delta("steal", m_old_steal[j], steal,
-			", please upgrade your kernel. See: https://0xstubs.org/debugging-a-flaky-cpu-steal-time-counter-on-a-paravirtualized-xen-guest/");
+		for (size_t i = 0; i < CPU_WORK; ++i)
+		{
+			uint64_t diff = cpu_diff(cpu_num, m_cpu_labels[i], current[i], m_old_cpu[i][cpu_num]);
+			delta[i] = diff;
+			delta[CPU_TOTAL] += diff;
+			if (i <= CPU_WORK_MAX) {
+				delta[CPU_WORK] += diff;
+			}
+		}
 
-		total = m_old_total[j] + delta_user + delta_nice + delta_system + delta_idle + delta_iowait + delta_irq + delta_softirq + delta_steal;
-		if (delta_steal != steal - m_old_steal[j] && total < 80)
+		// heuristics, fixups and sanity checks
+		if (delta[CPU_TOTAL] == 0) {
+			static ratelimit r;
+			r.run([&] {
+				g_logger.format(sinsp_logger::SEV_WARNING, "CPU #%d total time standing still (%" PRIu64 ")",
+								current[CPU_TOTAL]);
+			});
+			return false;
+		}
+		if (current[CPU_STEAL] < m_old_cpu[CPU_STEAL][cpu_num])
 		{
 			static ratelimit r;
 			r.run([&] {
 				g_logger.format(sinsp_logger::SEV_WARNING,
-					"Total CPU time below 80%%, assigning the missing %d ticks to steal", 100 - total);
-				});
-			total = 100;
-			delta_steal += 100 - total;
+								"Unstable stolen CPU counters detected, please upgrade your kernel. "
+								"See: https://0xstubs.org/debugging-a-flaky-cpu-steal-time-counter-on-a-paravirtualized-xen-guest/");
+			});
 		}
-		work = m_old_work[j] + delta_user + delta_nice + delta_system + delta_irq + delta_softirq + delta_steal;
+		// XXX: this depends on actual wall clock time since the last read, if it's not 1 second, then the (arbitrary)
+		// 80 ticks value won't be appropriate
+		if (delta[CPU_TOTAL] < 80)
+		{
+			static ratelimit r;
+			r.run([&] {
+				g_logger.format(sinsp_logger::SEV_WARNING,
+								"Total CPU time below 80%%, assigning the missing %d ticks to steal", 100 - delta[CPU_TOTAL]);
+			});
+			delta[CPU_STEAL] += 100 - delta[CPU_TOTAL];
+			delta[CPU_TOTAL] = 100;
+		}
+		// back to your regularly scheduled program
 
-		delta_work = get_cpu_delta("work", m_old_work[j], work, NULL);
-		delta_total = get_cpu_delta("total", m_old_total[j], total, NULL);
+		assign_jiffies(proc_stat->m_user, delta[CPU_USER], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_nice, delta[CPU_NICE], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_system, delta[CPU_SYSTEM], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_idle, delta[CPU_IDLE], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_iowait, delta[CPU_IOWAIT], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_irq, delta[CPU_IRQ], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_softirq, delta[CPU_SOFTIRQ], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_steal, delta[CPU_STEAL], delta[CPU_TOTAL]);
+		assign_jiffies(proc_stat->m_loads, delta[CPU_WORK], delta[CPU_TOTAL]);
 
-		assign_jiffies(proc_stat->m_user, delta_user, delta_total);
-		assign_jiffies(proc_stat->m_nice, delta_nice, delta_total);
-		assign_jiffies(proc_stat->m_system, delta_system, delta_total);
-		assign_jiffies(proc_stat->m_idle, delta_idle, delta_total);
-		assign_jiffies(proc_stat->m_iowait, delta_iowait, delta_total);
-		assign_jiffies(proc_stat->m_irq, delta_irq, delta_total);
-		assign_jiffies(proc_stat->m_softirq, delta_softirq, delta_total);
-		assign_jiffies(proc_stat->m_steal, delta_steal, delta_total);
-		assign_jiffies(proc_stat->m_loads, delta_work, delta_total);
-
-		m_old_user[j] = user;
-		m_old_nice[j] = nice;
-		m_old_system[j] = system;
-		m_old_idle[j] = idle;
-		m_old_iowait[j] = iowait;
-		m_old_irq[j] = irq;
-		m_old_softirq[j] = softirq;
-		m_old_steal[j] = steal;
-		m_old_work[j] = work;
-		m_old_total[j] = total;
+		for (size_t i = 0; i < CPU_NUM_COUNTERS; ++i)
+		{
+			m_old_cpu[i][cpu_num] = current[i];
+		}
 	}
 
 	return true;

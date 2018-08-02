@@ -381,7 +381,7 @@ public:
 	void set_sampling_ratio(uint64_t value)
 	{
 		m_sampling_ratio = (uint32_t)value;
-		auto newsl = ((uint64_t) ONE_SECOND_IN_NS) / m_sampling_ratio;
+		auto newsl = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS / m_sampling_ratio;
 		if(newsl != m_configuration->get_analyzer_sample_len_ns())
 		{
 			m_configuration->set_analyzer_sample_len_ns(newsl);

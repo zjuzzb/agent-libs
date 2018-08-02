@@ -66,6 +66,22 @@ struct sinsp_proc_file_stats {
 	}
 };
 
+enum sinsp_cpu
+{
+	CPU_USER,
+	CPU_NICE,
+	CPU_SYSTEM,
+	CPU_IRQ,
+	CPU_SOFTIRQ,
+	CPU_STEAL,
+	CPU_WORK_MAX = CPU_STEAL, // include all counters up to this point in CPU_WORK
+	CPU_IDLE,
+	CPU_IOWAIT,
+	CPU_WORK,
+	CPU_TOTAL,
+	CPU_NUM_COUNTERS // must be last
+};
+
 class sinsp_procfs_parser
 {
 public:
@@ -114,7 +130,7 @@ private:
 	void lookup_cpuacct_cgroup_dir();
 	unique_ptr<string> lookup_cgroup_dir(const string& subsys);
 	void assign_jiffies(vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
-	bool get_cpus_load(OUT sinsp_proc_stat* proc_stat, char* line, int j);
+	bool get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *line, int cpu_num);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
 #endif
 	pair<uint32_t, uint32_t> read_net_dev(const string& path, uint64_t* old_last_in_bytes, uint64_t* old_last_out_bytes, const vector<const char*>& bad_interface_names = {});
@@ -136,16 +152,8 @@ private:
 	unique_ptr<string> m_memory_cgroup_dir;
 	unique_ptr<string> m_cpuacct_cgroup_dir;
 
-	vector<uint64_t> m_old_user;
-	vector<uint64_t> m_old_nice;
-	vector<uint64_t> m_old_system;
-	vector<uint64_t> m_old_idle;
-	vector<uint64_t> m_old_iowait;
-	vector<uint64_t> m_old_irq;
-	vector<uint64_t> m_old_softirq;
-	vector<uint64_t> m_old_steal;
-	vector<uint64_t> m_old_work;
-	vector<uint64_t> m_old_total;
+	static const char* m_cpu_labels[];
+	vector<uint64_t> m_old_cpu[CPU_NUM_COUNTERS];
 
 #ifdef CYGWING_AGENT
 	wh_t* m_whhandle;

@@ -3,7 +3,7 @@
 //
 // The analyzer emit interval
 //
-#define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000
+#define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000ULL
 
 //
 // If this is defined, the analyzer will include process information inside
