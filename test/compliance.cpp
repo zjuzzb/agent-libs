@@ -392,6 +392,7 @@ protected:
 };
 
 static std::vector<task_defs_t> one_task = {{"PT1H", "my-task-1", "test-module", "1", "0"}};
+static std::vector<task_defs_t> frequent_task = {{"PT10S", "my-task-1", "test-module", "1", "0"}};
 static std::vector<task_defs_t> task_slow = {{"PT1H", "my-task-1", "test-module", "1", "5"}};
 static std::vector<task_defs_t> one_task_alt_output = {{"PT1H", "my-task-1", "test-module", "2", "0"}};
 static std::vector<task_defs_t> task_two = {{"PT1H", "my-task-2", "test-module", "2", "0"}};
@@ -461,6 +462,16 @@ TEST_F(compliance_test, start)
 	verify_task_result(one_task[0]);
 	verify_task_event(one_task[0]);
 	verify_metric(one_task[0]);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test, start_frequent)
+{
+	start_tasks(frequent_task);
+	verify_task_result(frequent_task[0]);
+	verify_task_event(frequent_task[0]);
+	verify_metric(frequent_task[0]);
 
 	stop_tasks();
 }

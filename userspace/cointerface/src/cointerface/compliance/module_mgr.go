@@ -157,7 +157,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	// iso8601duration. It focuses on ensuring no text before/after
 	// the repeating duration, something the regex within
 	// iso8601duration does not do.
-	if re, err := regexp.Compile("^(?:R(\\d+)/)?(P(?:\\d[YMDW])*(?:T(?:\\d[HMS])+)?)$"); err != nil {
+	if re, err := regexp.Compile("^(?:R(\\d+)/)?(P(?:\\d+[YMDW])*(?:T(?:\\d+[HMS])+)?)$"); err != nil {
 		return err
 	} else {
 		mgr.durationRegexp = re
