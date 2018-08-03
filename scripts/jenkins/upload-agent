@@ -178,7 +178,7 @@ function trigger_docker_builds {
 	    esac
 
 	    VERSION_SUFFIX=""
-	    if [[ "${VARIANT}" == "rc" ]]; then
+	    if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then
 		VERSION_SUFFIX="-rc"
 	    fi
 
