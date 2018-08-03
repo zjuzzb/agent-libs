@@ -93,6 +93,7 @@ message orchestrator_events_stream_command {
     required uint32 startup_low_evt_threshold = 11;
     required bool filter_empty = 12;
     required bool ssl_verify_certificate = 13;
+    required string auth_token = 14;
 }
 
 service CoInterface {

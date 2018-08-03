@@ -214,6 +214,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_startup_low_evt_threshold(m_inspector->m_analyzer->m_configuration->get_orch_low_evt_threshold());
 			cmd.set_filter_empty(m_inspector->m_analyzer->m_configuration->get_orch_filter_empty());
 			cmd.set_ssl_verify_certificate(m_inspector->m_analyzer->m_configuration->get_k8s_ssl_verify_certificate());
+			cmd.set_auth_token(m_inspector->m_analyzer->m_configuration->get_k8s_bt_auth_token());
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);

@@ -52,7 +52,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		var err error
 		kubeClient, err = createKubeClient(opts.GetUrl(), opts.GetCaCert(),
 			opts.GetClientCert(), opts.GetClientKey(),
-			opts.GetSslVerifyCertificate())
+			opts.GetSslVerifyCertificate(), opts.GetAuthToken())
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
 			return nil, nil, err
@@ -114,11 +114,10 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	//
 	// Returns synchronously with err set if the initial watch fails
 	// Else, return nil and spawn a goroutine to monitor the watch
-	//
 	err = startWatchdog(parentCtx, cancel, kubeClient)
 	if err != nil {
-		// startWatchdog() handles error logging because
-		// we errors may handle asynchronously
+		// startWatchdog() may later hit an async error,
+		// so it's responsible for all error logging
 		return nil, nil, err
 	}
 
@@ -370,7 +369,7 @@ func resourceReady(resource string) bool {
 */
 }
 
-func createKubeClient(apiServer string, caCert string, clientCert string, clientKey string, sslVerify bool) (kubeClient kubeclient.Interface, err error) {
+func createKubeClient(apiServer string, caCert string, clientCert string, clientKey string, sslVerify bool, authToken string) (kubeClient kubeclient.Interface, err error) {
 	skipVerify := !sslVerify
 	if skipVerify {
 		caCert = ""
@@ -385,6 +384,7 @@ func createKubeClient(apiServer string, caCert string, clientCert string, client
 		AuthInfo: clientcmdapi.AuthInfo{
 			ClientCertificate: clientCert,
 			ClientKey: clientKey,
+			TokenFile: authToken,
 		},
 	}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
