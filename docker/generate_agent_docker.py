@@ -8,71 +8,61 @@ import datetime
 import jinja2
 
 def usage():
-    print 'usage: %s [-v|--variant <variant>] [-a|--agent-version <version>]' % sys.argv[0]
-    print '     --variant: Can be one of "dev", "rc", "stable", "slim", or "agent-kmodule"'
+    print 'usage: %s [-i|--image <image>] [-r|--repo] [-a|--agent-version <version>]' % sys.argv[0]
+    print '     --image: Can be one of "agent", "kmodule", "agent-slim", or "local" (agent, but using local debian package) '
+    print '     --repo: Can be one of "dev", "stable", "rc" '
     print '     --agent-version: set the agent version directly in the image instead '
     print '                      of extracting from dragent binary'
     sys.exit(1)
 
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"v:a:",["variant=", "agent-version="])
+    opts, args = getopt.getopt(sys.argv[1:],"i:r:a:",["image=", "repo=", "agent-version="])
 except getopt.GetoptError:
     usage()
 
-variant = ""
+image = ""
+repo = ""
 agent_version = ""
 
 for opt, arg in opts:
-    if opt in ("-v", "--variant"):
-        variant = arg
+    if opt in ("-i", "--image"):
+        image = arg
+    if opt in ("-r", "--repo"):
+        repo = arg
     if opt in ("-a", "--agent-version"):
         agent_version = arg
 #
 # Parse arguments
 #
-if variant == "" and len(args) < 1:
+if (image == "" or repo == "") and len(args) < 1:
     usage()
 
 p = {}
 
-if variant == "stable":
+if image == "agent":
     p['base_docker_image'] = "debian:unstable"
-    p['sysdig_repository'] = "stable"
+    p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['jdk_debian_release'] = "unstable"
     p['launch_dragent'] = 1
-elif variant == "rc":
+elif image == "local":
     p['base_docker_image'] = "debian:unstable"
-    p['sysdig_repository'] = "rc"
-    p['include_agent_package'] = "apt"
-    p['build_kernel_module'] = 1
-    p['jdk_debian_release'] = "unstable"
-    p['launch_dragent'] = 1
-elif variant == "dev":
-    p['base_docker_image'] = "debian:unstable"
-    p['sysdig_repository'] = "dev"
-    p['include_agent_package'] = "apt"
-    p['build_kernel_module'] = 1
-    p['jdk_debian_release'] = "unstable"
-    p['launch_dragent'] = 1
-elif variant == "local":
-    p['base_docker_image'] = "debian:unstable"
-    p['sysdig_repository'] = "dev"
+    p['sysdig_repository'] = repo
     p['include_agent_package'] = "local"
     p['build_kernel_module'] = 1
     p['jdk_debian_release'] = "unstable"
     p['launch_dragent'] = 1
-elif variant == "slim":
+elif image == "agent-slim":
     p['base_docker_image'] = "bitnami/minideb:jessie"
-    p['sysdig_repository'] = "stable"
+    p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 0
     p['jdk_debian_release'] = "jessie-backports"
     p['launch_dragent'] = 1
-elif variant == "agent-kmodule":
+elif image == "agent-kmodule":
     p['base_docker_image'] = "debian:unstable"
-    p['sysdig_repository'] = "stable"
+    p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['jdk_debian_release'] = "unstable"

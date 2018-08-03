@@ -162,20 +162,9 @@ function trigger_docker_builds {
   	        mkdir -p "${DOCKERFILES_ROOT_DIR}" &&
 		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
-	for VARIANT in agent-kmodule slim "${REPOSITORY_BASENAME}"; do
+	for IMAGE_NAME in agent-kmodule agent-slim agent; do
 
-	    pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${VARIANT}"
-
-	    case ${VARIANT} in
-		stable|dev|rc)
-		    IMAGE_NAME=agent
-		    ;;
-		agent-kmodule)
-		    IMAGE_NAME=agent-kmodule
-		    ;;
-		slim)
-		    IMAGE_NAME=agent-slim
-	    esac
+	    pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
 
 	    VERSION_SUFFIX=""
 	    if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then

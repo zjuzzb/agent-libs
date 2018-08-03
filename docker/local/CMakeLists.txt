@@ -3,7 +3,7 @@ add_custom_target(local-dockerfile ALL
 	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile
-	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/../venvs/jinja2/bin/python ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --variant local > ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile)
+	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/../venvs/jinja2/bin/python ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image local --repo dev > ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile)
 
 add_custom_target(local-entrypoint ALL
 	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/docker-entrypoint.sh)

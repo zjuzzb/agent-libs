@@ -193,22 +193,9 @@ function push_docker_images {
   	        mkdir -p "${DOCKERFILES_ROOT_DIR}" &&
 		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
-	DOCKERFILES_DIR="${DOCKERFILES_ROOT_DIR}/opt/draios/docker"
+	for IMAGE_NAME in agent-kmodule agent-slim agent; do
 
-	for VARIANT in agent-kmodule slim "${REPO_BASENAME}"; do
-
-	    pushd "${DOCKERFILES_DIR}/${VARIANT}"
-
-	    case ${VARIANT} in
-		stable|dev|rc)
-		    IMAGE_NAME=agent
-		    ;;
-		agent-kmodule)
-		    IMAGE_NAME=agent-kmodule
-		    ;;
-		slim)
-		    IMAGE_NAME=agent-slim
-	    esac
+	    pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPO_BASENAME}"
 
 	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}"
 	    LATEST_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:latest"
@@ -216,7 +203,7 @@ function push_docker_images {
 	    docker build -t "${VERSIONED_IMAGE}" . &&
 	        docker push "${VERSIONED_IMAGE}"
 
-	    if [[ "${VARIANT}" != "dev" ]]; then
+	    if [[ "${REPO_BASENAME}" == "stable" ]]; then
 	        docker tag "${VERSIONED_IMAGE}" "${LATEST_IMAGE}" &&
 	        docker push "${LATEST_IMAGE}"
 	    fi

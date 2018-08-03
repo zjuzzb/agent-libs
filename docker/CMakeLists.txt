@@ -7,8 +7,6 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/venvs/jinja2
 	        ${CMAKE_CURRENT_BINARY_DIR}/venvs/jinja2/bin/pip install jinja2)
 
 add_subdirectory(agent-kmodule)
-add_subdirectory(dev)
+add_subdirectory(agent-slim)
+add_subdirectory(agent)
 add_subdirectory(local)
-add_subdirectory(rc)
-add_subdirectory(slim)
-add_subdirectory(stable)
