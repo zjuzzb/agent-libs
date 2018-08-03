@@ -797,6 +797,10 @@ public:
 
 	bool m_query_docker_image_info;
 
+	uint64_t m_flush_log_time;
+	uint64_t m_flush_log_time_duration;
+	uint64_t m_flush_log_time_cooldown;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

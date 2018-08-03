@@ -515,6 +515,9 @@ void sinsp_worker::init()
 	m_analyzer->set_user_event_queue(m_user_event_queue);
 
 	m_analyzer->set_emit_tracers(m_configuration->m_emit_tracers);
+	m_analyzer->set_flush_log_time(m_configuration->m_flush_log_time);
+	m_analyzer->set_flush_log_time_duration(m_configuration->m_flush_log_time_duration);
+	m_analyzer->set_flush_log_time_cooldown(m_configuration->m_flush_log_time_cooldown);
 
 #ifndef CYGWING_AGENT
 	m_analyzer->set_coclient_max_loop_evts(m_configuration->m_coclient_max_loop_evts);

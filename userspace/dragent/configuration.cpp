@@ -1087,6 +1087,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
 
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
+
+	m_flush_log_time = m_config->get_scalar<uint64_t>("flush_tracers", "timeout_ms", 1000) * 1000000;
+	m_flush_log_time_duration = m_config->get_scalar<uint64_t>("flush_tracers", "duration_ms", 10000) * 1000000;
+	m_flush_log_time_cooldown = m_config->get_scalar<uint64_t>("flush_tracers", "cooldown_ms", 600000) * 1000000;
 }
 
 void dragent_configuration::print_configuration() const

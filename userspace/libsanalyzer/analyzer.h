@@ -14,6 +14,7 @@
 #include "app_checks.h"
 #include "prometheus.h"
 #include <unordered_set>
+#include <tracer_emitter.h>
 #include "sinsp_curl.h"
 #include "user_event.h"
 #ifndef CYGWING_AGENT
@@ -496,6 +497,25 @@ public:
 #endif
 	}
 
+	void set_flush_log_time(uint64_t flush_log_ns)
+	{
+		m_flush_log_time = flush_log_ns;
+	}
+
+	void set_flush_log_time_duration(uint64_t flush_log_duration_ns)
+	{
+		m_flush_log_time_duration = flush_log_duration_ns;
+	}
+
+	void set_flush_log_time_cooldown(uint64_t flush_log_cooldown_ns)
+	{
+		m_flush_log_time_cooldown = flush_log_cooldown_ns;
+	}
+
+	void rearm_tracer_logging();
+	inline uint64_t flush_tracer_timeout();
+
+
 #ifndef CYGWING_AGENT
 	void init_k8s_limits();
 #endif
@@ -608,6 +628,13 @@ VISIBILITY_PRIVATE
 	double m_prev_flush_cpu_pct;
 	uint64_t m_next_flush_time_ns;
 	uint64_t m_prev_flush_time_ns;
+
+	uint64_t m_flush_log_time;
+	uint64_t m_flush_log_time_duration;
+	uint64_t m_flush_log_time_cooldown;
+
+	uint64_t m_flush_log_time_end;
+	uint64_t m_flush_log_time_restart;
 
 	uint64_t m_prev_sample_evtnum;
 	uint64_t m_serialize_prev_sample_evtnum;

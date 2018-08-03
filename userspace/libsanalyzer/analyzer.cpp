@@ -98,6 +98,13 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector):
 	m_prev_flush_cpu_pct = 0.0;
 	m_next_flush_time_ns = 0;
 	m_prev_flush_time_ns = 0;
+
+	m_flush_log_time = tracer_emitter::no_timeout;
+	m_flush_log_time_duration = 0;
+	m_flush_log_time_cooldown = 0;
+	m_flush_log_time_end = 0;
+	m_flush_log_time_restart = 0;
+
 	m_metrics = new draiosproto::metrics;
 	m_serialization_buffer = (char*)malloc(MIN_SERIALIZATION_BUF_SIZE_BYTES);
 	if(!m_serialization_buffer)
@@ -3841,7 +3848,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags)
 {
-	tracer_emitter f_trc("analyzer_flush");
+	tracer_emitter f_trc("analyzer_flush", flush_tracer_timeout());
 	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_TRACE, "Called flush with ts=%lu is_eof=%s flshflags=%d", ts, is_eof? "true" : "false", flshflags);
 	uint32_t j;
@@ -4700,6 +4707,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_falco_baseliner->clear_tables();
 			m_last_buffer_drops = st.n_drops_buffer;
 		}
+	}
+
+	if (f_trc.stop() > m_flush_log_time)
+	{
+		rearm_tracer_logging();
 	}
 }
 
@@ -6966,6 +6978,27 @@ void sinsp_analyzer::init_k8s_limits()
 						m_configuration->get_k8s_cache());
 }
 #endif
+
+void sinsp_analyzer::rearm_tracer_logging() {
+	auto now = sinsp_utils::get_current_time_ns();
+	if (now > m_flush_log_time_restart)
+	{
+		m_flush_log_time_end = now + m_flush_log_time_duration;
+		m_flush_log_time_restart = now + m_flush_log_time_cooldown;
+	}
+}
+
+uint64_t sinsp_analyzer::flush_tracer_timeout() {
+	auto now = sinsp_utils::get_current_time_ns();
+
+	if (now < m_flush_log_time_end) {
+		return 0;
+	} else if (now < m_flush_log_time_restart) {
+		return tracer_emitter::no_timeout;
+	} else {
+		return m_flush_log_time;
+	}
+}
 
 uint64_t self_cputime_analyzer::read_cputime()
 {
