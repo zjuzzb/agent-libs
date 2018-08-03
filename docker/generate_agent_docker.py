@@ -75,7 +75,7 @@ elif variant == "agent-kmodule":
     p['sysdig_repository'] = "stable"
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
-    p['jdk_debian_release'] = "jessie"
+    p['jdk_debian_release'] = "unstable"
     p['launch_dragent'] = 0
 
 if agent_version != "":
