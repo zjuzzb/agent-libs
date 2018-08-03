@@ -73,6 +73,7 @@ elif variant == "slim":
 elif variant == "agent-kmodule":
     p['base_docker_image'] = "debian:unstable"
     p['sysdig_repository'] = "stable"
+    p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
     p['jdk_debian_release'] = "jessie"
     p['launch_dragent'] = 0
