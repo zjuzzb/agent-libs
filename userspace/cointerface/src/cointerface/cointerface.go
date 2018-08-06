@@ -100,7 +100,7 @@ func mymain() int {
 	}
 	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
 	useJson := flag.Bool("use_json", true, "log using json")
-	modulesDir := flag.String("modules_dir", "/opt/draios/lib/comp_modules", "compliance modules directory")
+	modulesDir := flag.String("modules_dir", prefix + "/lib/comp_modules", "compliance modules directory")
 
 	flag.Parse()
 

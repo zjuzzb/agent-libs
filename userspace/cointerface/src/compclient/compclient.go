@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"time"
+	"install_prefix"
 )
 
 func usage() {
@@ -131,7 +132,12 @@ func performStop(client sdc_internal.ComplianceModuleMgrClient) int {
 
 func mymain() int {
 	flag.Usage = usage
-	sockPtr := flag.String("sock", "/opt/draios/run/cointerface.sock", "domain socket for messages")
+	prefix, err := install_prefix.GetInstallPrefix()
+	if err != nil {
+		log.Errorf("Could not determine installation directory: %s", err)
+		return 1
+	}
+	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
 	msgPtr := flag.String("msg", "start", "Message to send to server. Can be one of \"load\", \"start\", \"stop\".")
 
 	flag.Parse()
