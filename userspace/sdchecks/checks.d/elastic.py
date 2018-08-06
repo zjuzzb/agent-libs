@@ -407,6 +407,13 @@ class ESCheck(AgentCheck):
 
         stats_url = urlparse.urljoin(config.url, stats_url)
         stats_data = self._get_data(stats_url, config)
+        es_node = stats_data.get('nodes').values() if stats_data.get('nodes') else None
+        if es_node:
+            roles = es_node[0].get('roles')
+            if roles == ['ingest'] or not len(roles):
+                self.log.info("'{0}' role is assigned to Elastic node.\n For such case, Indices metrics will be zero."
+                              " Please refer target URL ({1})".format(roles[0] if roles else 'No', stats_url))
+
         if stats_data['cluster_name']:
             # retreive the cluster name from the data, and append it to the
             # master tag list.
