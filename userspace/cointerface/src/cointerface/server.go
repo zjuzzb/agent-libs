@@ -73,7 +73,7 @@ func (c *coInterfaceServer) PerformDockerCommand(ctx context.Context, cmd *sdc_i
 		err = cli.ContainerUnpause(ctx, cmd.GetContainerId())
 
 	default:
-		ferr := fmt.Errorf("Unknown docker command %u", int(cmd.GetCmd()))
+		ferr := fmt.Errorf("Unknown docker command %d", int(cmd.GetCmd()))
 		log.Errorf(ferr.Error())
 		return nil, ferr
 	}

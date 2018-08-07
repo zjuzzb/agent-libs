@@ -31,7 +31,7 @@ var startedMap map[string]bool
 var startedMutex sync.RWMutex
 var receiveMap map[string]bool
 var receiveMutex sync.RWMutex
-var prometheus_enabled bool
+var prometheusEnabled bool
 
 const RsyncInterval = 10 * time.Minute
 
@@ -42,7 +42,7 @@ const RsyncInterval = 10 * time.Minute
 // is complete by closing the chan.
 func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan draiosproto.CongroupUpdateEvent, <-chan struct{}, error) {
 	setErrorLogHandler()
-	prometheus_enabled = opts.GetPrometheus()
+	prometheusEnabled = opts.GetPrometheus()
 
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
@@ -405,7 +405,7 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 }
 
 func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
-	if !prometheus_enabled {
+	if !prometheusEnabled {
 		return nil
 	}
 	tags := make(map[string]string)
@@ -435,7 +435,7 @@ func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 }
 
 func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
-	if !prometheus_enabled {
+	if !prometheusEnabled {
 		return true
 	}
 
@@ -459,7 +459,7 @@ func equalResourceList(lhs v1.ResourceList, rhs v1.ResourceList) bool {
 
 	for k, lhsVal := range lhs {
 		rhsVal, ok := rhs[k]
-		if !ok || rhsVal != lhsVal {
+		if !ok || rhsVal.Cmp(lhsVal) != 0 {
 			return false
 		}
 	}

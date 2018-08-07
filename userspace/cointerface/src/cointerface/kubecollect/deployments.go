@@ -24,24 +24,37 @@ func deploymentEvent(dep *v1beta1.Deployment, eventType *draiosproto.CongroupEve
 	}
 }
 
-func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (bool, bool) {
-	in := true
-	out := true
-
-	if lhs.GetName() != rhs.GetName() {
-		in = false
-	}
-
-	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
-        EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
-
+// sameEntity will always be false when sameLinks is false
+func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (sameEntity bool, sameLinks bool) {
+	// Check sameLinks fields first
 	if lhs.GetNamespace() != rhs.GetNamespace() {
-		out = false
-	} else if !reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels) {
-		out = false
+		return false, false
+	}
+	if (lhs.Spec.Selector == nil && rhs.Spec.Selector != nil) ||
+		(lhs.Spec.Selector != nil && rhs.Spec.Selector == nil) ||
+		(lhs.Spec.Selector != nil && rhs.Spec.Selector != nil &&
+		!reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels)) {
+		return false, false
 	}
 
-	return in, out
+	// Now check sameEntity, sameLinks is always true from here out
+	if lhs.GetName() != rhs.GetName() {
+		return false, true
+	}
+	if !reflect.DeepEqual(lhs.Spec.Replicas, rhs.Spec.Replicas) ||
+		lhs.Spec.Paused != rhs.Spec.Paused ||
+		lhs.Status.Replicas != rhs.Status.Replicas ||
+		lhs.Status.AvailableReplicas != rhs.Status.AvailableReplicas ||
+		lhs.Status.UnavailableReplicas != rhs.Status.UnavailableReplicas ||
+		lhs.Status.UpdatedReplicas != rhs.Status.UpdatedReplicas {
+		return false, true
+	}
+	if !EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) ||
+		!EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta) {
+		return false, true
+	}
+
+	return true, true
 }
 
 func newDeploymentCongroup(deployment *v1beta1.Deployment, setLinks bool) (*draiosproto.ContainerGroup) {

@@ -34,25 +34,39 @@ func nodeEquals(oldNode *v1.Node, newNode *v1.Node) bool {
 	}
 
 	// Anything used in addNodeMetrics() needs to be checked here
-	if oldNode.Spec.Unschedulable != oldNode.Spec.Unschedulable {
+	if oldNode.Spec.Unschedulable != newNode.Spec.Unschedulable ||
+		!equalResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) ||
+		!equalResourceList(oldNode.Status.Allocatable, newNode.Status.Allocatable) ||
+		!equalNodeConditions(oldNode.Status.Conditions, newNode.Status.Conditions) {
 		return false
 	}
 
-	if !equalResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) ||
-		!equalResourceList(oldNode.Status.Capacity, newNode.Status.Capacity) {
+	return true
+}
+
+func equalNodeConditions(lhs []v1.NodeCondition, rhs []v1.NodeCondition) bool {
+	if len(lhs) != len(rhs) {
 		return false
 	}
 
-	if len(oldNode.Status.Conditions) != len(newNode.Status.Conditions) {
-		return false
-	}
+	for _, lhsCond := range lhs {
+		found := false
 
-	for _, oldCond := range oldNode.Status.Conditions {
-		for _, newCond := range newNode.Status.Conditions {
-			if oldCond.Type == newCond.Type &&
-				oldCond.Status != newCond.Status {
-				return false
+		for _, rhsCond := range rhs {
+			if lhsCond.Type != rhsCond.Type {
+				continue
 			}
+
+			if lhsCond.Status != rhsCond.Status {
+				return false
+			} else {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			return false
 		}
 	}
 
