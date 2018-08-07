@@ -425,12 +425,6 @@ void sinsp_analyzer::on_capture_start()
 		// K8s url to use
 		string k8s_url = m_configuration->get_k8s_api_server();
 		if (!k8s_url.empty()) {
-			// autodetect is automatically disabled when running in daemonset mode
-			// url instead will always point to get_k8s_api_server
-			if(m_configuration->get_k8s_delegated_nodes() != 0)
-			{
-				k8s_url = "";
-			}
 			m_infrastructure_state->subscribe_to_k8s(k8s_url,
 								 m_configuration->get_k8s_ssl_ca_certificate(),
 								 m_configuration->get_k8s_ssl_cert(),

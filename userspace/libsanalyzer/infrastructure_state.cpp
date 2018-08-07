@@ -1543,6 +1543,7 @@ bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastruct
 // Find out if our node is one of the delegated ones.
 // The first <n> nodes, sorted by uuid, that are running an agent are
 // considered delegated.
+// If we don't find any other nodes running agents, we're assuming they're all running agents.
 bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_delegated)
 {
 	class NodeData {
@@ -1555,6 +1556,7 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 	std::set<std::string> ip_addrs;
 	std::string our_node;
 	std::map<std::string, NodeData> nodes;
+	std::map<std::string, NodeData> allnodes;
 
 	if (!state->m_inspector || !state->m_inspector->get_ifaddr_list())
 	{
@@ -1608,14 +1610,20 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 
 		if (found_our_node || has_agent(state, i.first))
 		{
-			nodes.emplace(std::move(name), NodeData(i.first.second, os.str()));
+			nodes.emplace(name, NodeData(i.first.second, os.str()));
 		}
+		allnodes.emplace(std::move(name), NodeData(i.first.second, os.str()));
 	}
 
+	std::map<std::string, NodeData> *searchnodes = &nodes;
+	if (nodes.size() <= 1) {
+		glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: Didn't find other agent nodes, assuming all %d nodes are running agents.", allnodes.size());
+		searchnodes = &allnodes;
+	}
 	bool delegated = false;
 	int cnt = 0;
-	for (auto it = nodes.begin(); (cnt < num_delegated) &&
-		it != nodes.end(); it++, cnt++)
+	for (auto it = searchnodes->begin(); (cnt < num_delegated) &&
+		it != searchnodes->end(); it++, cnt++)
 	{
 		if (it->second.m_uuid == our_node)
 			delegated = true;
