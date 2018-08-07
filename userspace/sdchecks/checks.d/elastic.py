@@ -11,6 +11,7 @@ from checks import AgentCheck
 from config import _is_affirmative
 from util import headers
 
+LOGGING_INTERVAL = 300 # secs
 
 class NodeNotFound(Exception):
     pass
@@ -337,6 +338,7 @@ class ESCheck(AgentCheck):
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
+        self.logging_interval = {"start_time": time.time()}
 
         # Host status needs to persist across all checks
         self.cluster_status = {}
@@ -407,6 +409,19 @@ class ESCheck(AgentCheck):
 
         stats_url = urlparse.urljoin(config.url, stats_url)
         stats_data = self._get_data(stats_url, config)
+        es_node = stats_data.get('nodes').values() if stats_data.get('nodes') else None
+        diff_time = 0
+
+        if es_node:
+            roles = es_node[0].get('roles')
+            if roles == ['ingest'] or roles == []:
+                diff_time = time.time() - self.logging_interval.get('start_time')
+
+            if diff_time >= instance.get('logging_interval', LOGGING_INTERVAL):
+                self.log.info("Elastic node at URL {0} has role {1}, some metrics may not be applicable".format(
+                    stats_url, roles[0] if roles else "(N/A)"))
+                self.logging_interval['start_time'] = time.time()
+
         if stats_data['cluster_name']:
             # retreive the cluster name from the data, and append it to the
             # master tag list.
