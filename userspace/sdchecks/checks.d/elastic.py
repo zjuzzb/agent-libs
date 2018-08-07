@@ -414,7 +414,7 @@ class ESCheck(AgentCheck):
 
         if es_node:
             roles = es_node[0].get('roles')
-            if roles == ['ingest'] or not len(roles):
+            if roles == ['ingest'] or roles == []:
                 diff_time = time.time() - self.logging_interval.get('start_time')
 
             if diff_time >= instance.get('logging_interval', LOGGING_INTERVAL):
