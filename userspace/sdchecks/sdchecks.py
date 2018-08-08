@@ -640,7 +640,7 @@ class Application:
                     sys.exit(1)
                 else:
                     print("Using check conf: %s" % repr(check_conf))
-                check_instance = AppCheckInstance(check_conf, proc_data)
+                check_instance = AppCheckInstance(check_conf, proc_data, self.config.install_prefix)
                 metrics, service_checks, ex = check_instance.run()
                 print "Conf: %s" % repr(check_instance.instance_conf)
                 print "Metrics: %s" % repr(metrics)
