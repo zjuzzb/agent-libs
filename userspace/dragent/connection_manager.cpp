@@ -60,79 +60,81 @@ connection_manager::~connection_manager()
 
 bool connection_manager::init()
 {
-	if(m_configuration->m_server_addr != "" && m_configuration->m_server_port != 0)
-	{
-		if(m_configuration->m_ssl_enabled)
-		{
-			g_log->information("SSL enabled, initializing context");
-
-			Poco::Net::Context::VerificationMode verification_mode;
-			SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
-			std::string cert_dir;
-
-			if(m_configuration->m_ssl_verify_certificate)
-			{
-				verification_mode = Poco::Net::Context::VERIFY_STRICT;
-				invalid_cert_handler = new LoggingCertificateHandler(false);
-				if (!m_configuration->m_ssl_ca_cert_dir.empty())
-				{
-					cert_dir = m_configuration->m_ssl_ca_cert_dir;
-				}
-				else
-				{
-					cert_dir = get_openssldir();
-				}
-				g_log->debug("SSL CA cert dir: " + cert_dir);
-			}
-			else
-			{
-				verification_mode = Poco::Net::Context::VERIFY_NONE;
-			}
-
-			Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
-				Poco::Net::Context::CLIENT_USE,
-				"",
-				"",
-				cert_dir,
-				verification_mode,
-				9,
-				false,
-				"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
-
-			try
-			{
-				g_log->information("openssl loading cert: " + m_configuration->m_ssl_ca_certificate);
-				Poco::Crypto::X509Certificate ca_cert(m_configuration->m_ssl_ca_certificate);
-				ptrContext->addCertificateAuthority(ca_cert);
-			}
-			catch (Poco::Net::SSLException &e)
-			{
-				// thrown by addCertificateAuthority()
-				g_log->error("Unable to add ssl ca certificate: "
-					     + e.message());
-			}
-			catch (Poco::IOException& e)
-			{
-				// thrown by X509Certificate constructor
-				g_log->error("Unable to read ssl ca certificate: "
-					     + e.message());
-			}
-			catch (...)
-			{
-				g_log->error("Unable to load ssl ca certificate: "
-					     + m_configuration->m_ssl_ca_certificate);
-			}
-
-			Poco::Net::SSLManager::instance().initializeClient(0, invalid_cert_handler, ptrContext);
-		}
-
-		return true;
-	}
-	else
+	if(m_configuration->m_server_addr == "" ||
+	   m_configuration->m_server_port == 0)
 	{
 		g_log->warning("Server address has not been specified");
 		return false;
 	}
+
+	if(!m_configuration->m_ssl_enabled)
+	{
+		return true;
+	}
+
+	g_log->information("SSL enabled, initializing context");
+
+	Poco::Net::Context::VerificationMode verification_mode;
+	SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
+	std::string cert_dir;
+
+	if(m_configuration->m_ssl_verify_certificate)
+	{
+		verification_mode = Poco::Net::Context::VERIFY_STRICT;
+		invalid_cert_handler = new LoggingCertificateHandler(false);
+		if (!m_configuration->m_ssl_ca_cert_dir.empty())
+		{
+			cert_dir = m_configuration->m_ssl_ca_cert_dir;
+		}
+		else
+		{
+			cert_dir = get_openssldir();
+		}
+		g_log->debug("SSL CA cert dir: " + cert_dir);
+	}
+	else
+	{
+		verification_mode = Poco::Net::Context::VERIFY_NONE;
+	}
+
+	Poco::Net::Context::Ptr ptrContext = new Poco::Net::Context(
+		Poco::Net::Context::CLIENT_USE,
+		"",
+		"",
+		cert_dir,
+		verification_mode,
+		9,
+		false,
+		"ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+	try
+	{
+		g_log->information("openssl loading cert: "
+				   + m_configuration->m_ssl_ca_certificate);
+		Poco::Crypto::X509Certificate ca_cert(m_configuration->m_ssl_ca_certificate);
+		ptrContext->addCertificateAuthority(ca_cert);
+	}
+	catch (Poco::Net::SSLException &e)
+	{
+		// thrown by addCertificateAuthority()
+		g_log->error("Unable to add ssl ca certificate: "
+			     + e.message());
+	}
+	catch (Poco::IOException& e)
+	{
+		// thrown by X509Certificate constructor
+		g_log->error("Unable to read ssl ca certificate: "
+			     + e.message());
+	}
+	catch (...)
+	{
+		g_log->error("Unable to load ssl ca certificate: "
+			     + m_configuration->m_ssl_ca_certificate);
+	}
+
+	Poco::Net::SSLManager::instance().initializeClient(0, invalid_cert_handler, ptrContext);
+
+	return true;
 }
 
 // Find the host's default OPENSSLDIR
