@@ -16,11 +16,11 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/docker-entrypoint.
 	COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/../docker-entrypoint.sh ${CMAKE_CURRENT_BINARY_DIR}/${repo})
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
-	DESTINATION ${DRAIOS_BIN_PREFIX}/docker/agent-slim/${repo}
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/agent-slim/${repo}
 	COMPONENT dockerfiles)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${repo}/docker-entrypoint.sh
-	DESTINATION ${DRAIOS_BIN_PREFIX}/docker/agent-slim/${repo}
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/docker/agent-slim/${repo}
 	COMPONENT dockerfiles)
 
 endforeach(repo)
