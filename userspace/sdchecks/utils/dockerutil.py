@@ -1,6 +1,16 @@
 # stdlib
 import os
 
+# monkeypatch logging module if needed
+try:
+    from logging import NullHandler
+except ImportError: #  there's no NullHandler in Python 2.6
+    import logging
+    class NullHandler(logging.Handler):
+        def emit(self, record):
+            pass
+    logging.NullHandler = NullHandler
+
 # 3rd party
 from docker import Client
 from docker import tls

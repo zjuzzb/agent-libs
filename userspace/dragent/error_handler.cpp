@@ -1,5 +1,5 @@
 #include <memory>
-
+#include <fstream>
 #include "error_handler.h"
 
 #include "logger.h"
@@ -76,25 +76,23 @@ void log_reporter::send_report(uint64_t ts_ns)
 
 	p.setFileName("draios.log");
 
-	FILE* fp = fopen(p.toString().c_str(), "r");
-	if(fp == NULL)
+	ifstream fp(p.toString());
+	if (!fp)
 	{
 		g_log->error(string("fopen: ") + strerror(errno));
 		return;
 	}
 
-	if(fseek(fp, 0, SEEK_END) == -1)
+	if (!fp.seekg(0, ios_base::end))
 	{
 		g_log->error(string("fseek (1): ") + strerror(errno));
-		fclose(fp);
 		return;
 	}
 
-	long offset = ftell(fp);
+	long offset = fp.tellg();
 	if(offset == -1)
 	{
 		g_log->error(string("ftell: ") + strerror(errno));
-		fclose(fp);
 		return;
 	}
 
@@ -103,18 +101,16 @@ void log_reporter::send_report(uint64_t ts_ns)
 		offset = m_configuration->m_dirty_shutdown_report_log_size_b;
 	}
 
-	if(fseek(fp, -offset, SEEK_END) == -1)
+	if (!fp.seekg(-offset, ios_base::end))
 	{
 		g_log->error(string("fseek (2): ") + strerror(errno));
-		fclose(fp);
 		return;
 	}
 
 	Buffer<char> buf(offset);
-	if(fread(buf.begin(), offset, 1, fp) != 1)
+	if (!fp.read(buf.begin(), offset))
 	{
 		g_log->error("fread error");
-		fclose(fp);
 		return;
 	}
 
@@ -141,6 +137,4 @@ void log_reporter::send_report(uint64_t ts_ns)
 		g_log->information("Queue full");
 		return;
 	}
-
-	fclose(fp);
 }
