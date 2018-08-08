@@ -5,6 +5,148 @@ option optimize_for = SPEED;
 option java_package = "com.draios.model.protobuf";
 option java_outer_classname = "Agent";
 
+enum error_code {
+    ERR_NONE = 0;
+    ERR_EPERM = 1;
+    ERR_ENOENT = 2;
+    ERR_ESRCH = 3;
+    ERR_EINTR = 4;
+    ERR_EIO = 5;
+    ERR_ENXIO = 6;
+    ERR_E2BIG = 7;
+    ERR_ENOEXEC = 8;
+    ERR_EBADF = 9;
+    ERR_ECHILD = 10;
+    ERR_EAGAIN = 11;
+    ERR_ENOMEM = 12;
+    ERR_EACCES = 13;
+    ERR_EFAULT = 14;
+    ERR_ENOTBLK = 15;
+    ERR_EBUSY = 16;
+    ERR_EEXIST = 17;
+    ERR_EXDEV = 18;
+    ERR_ENODEV = 19;
+    ERR_ENOTDIR = 20;
+    ERR_EISDIR = 21;
+    ERR_EINVAL = 22;
+    ERR_ENFILE = 23;
+    ERR_EMFILE = 24;
+    ERR_ENOTTY = 25;
+    ERR_ETXTBSY = 26;
+    ERR_EFBIG = 27;
+    ERR_ENOSPC = 28;
+    ERR_ESPIPE = 29;
+    ERR_EROFS = 30;
+    ERR_EMLINK = 31;
+    ERR_EPIPE = 32;
+    ERR_EDOM = 33;
+    ERR_ERANGE = 34;
+    ERR_EDEADLK = 35;
+    ERR_ENAMETOOLONG = 36;
+    ERR_ENOLCK = 37;
+    ERR_ENOSYS = 38;
+    ERR_ENOTEMPTY = 39;
+    ERR_ELOOP = 40;
+    ERR_ENOMSG = 42;
+    ERR_EIDRM = 43;
+    ERR_ECHRNG = 44;
+    ERR_EL2NSYNC = 45;
+    ERR_EL3HLT = 46;
+    ERR_EL3RST = 47;
+    ERR_ELNRNG = 48;
+    ERR_EUNATCH = 49;
+    ERR_ENOCSI = 50;
+    ERR_EL2HLT = 51;
+    ERR_EBADE = 52;
+    ERR_EBADR = 53;
+    ERR_EXFULL = 54;
+    ERR_ENOANO = 55;
+    ERR_EBADRQC = 56;
+    ERR_EBADSLT = 57;
+    ERR_EBFONT = 59;
+    ERR_ENOSTR = 60;
+    ERR_ENODATA = 61;
+    ERR_ETIME = 62;
+    ERR_ENOSR = 63;
+    ERR_ENONET = 64;
+    ERR_ENOPKG = 65;
+    ERR_EREMOTE = 66;
+    ERR_ENOLINK = 67;
+    ERR_EADV = 68;
+    ERR_ESRMNT = 69;
+    ERR_ECOMM = 70;
+    ERR_EPROTO = 71;
+    ERR_EMULTIHOP = 72;
+    ERR_EDOTDOT = 73;
+    ERR_EBADMSG = 74;
+    ERR_EOVERFLOW = 75;
+    ERR_ENOTUNIQ = 76;
+    ERR_EBADFD = 77;
+    ERR_EREMCHG = 78;
+    ERR_ELIBACC = 79;
+    ERR_ELIBBAD = 80;
+    ERR_ELIBSCN = 81;
+    ERR_ELIBMAX = 82;
+    ERR_ELIBEXEC = 83;
+    ERR_EILSEQ = 84;
+    ERR_ERESTART = 85;
+    ERR_ESTRPIPE = 86;
+    ERR_EUSERS = 87;
+    ERR_ENOTSOCK = 88;
+    ERR_EDESTADDRREQ = 89;
+    ERR_EMSGSIZE = 90;
+    ERR_EPROTOTYPE = 91;
+    ERR_ENOPROTOOPT = 92;
+    ERR_EPROTONOSUPPORT = 93;
+    ERR_ESOCKTNOSUPPORT = 94;
+    ERR_EOPNOTSUPP = 95;
+    ERR_EPFNOSUPPORT = 96;
+    ERR_EAFNOSUPPORT = 97;
+    ERR_EADDRINUSE = 98;
+    ERR_EADDRNOTAVAIL = 99;
+    ERR_ENETDOWN = 100;
+    ERR_ENETUNREACH = 101;
+    ERR_ENETRESET = 102;
+    ERR_ECONNABORTED = 103;
+    ERR_ECONNRESET = 104;
+    ERR_ENOBUFS = 105;
+    ERR_EISCONN = 106;
+    ERR_ENOTCONN = 107;
+    ERR_ESHUTDOWN = 108;
+    ERR_ETOOMANYREFS = 109;
+    ERR_ETIMEDOUT = 110;
+    ERR_ECONNREFUSED = 111;
+    ERR_EHOSTDOWN = 112;
+    ERR_EHOSTUNREACH = 113;
+    ERR_EALREADY = 114;
+    ERR_EINPROGRESS = 115;
+    ERR_ESTALE = 116;
+    ERR_EUCLEAN = 117;
+    ERR_ENOTNAM = 118;
+    ERR_ENAVAIL = 119;
+    ERR_EISNAM = 120;
+    ERR_EREMOTEIO = 121;
+    ERR_EDQUOT = 122;
+    ERR_ENOMEDIUM = 123;
+    ERR_EMEDIUMTYPE = 124;
+    ERR_ECANCELED = 125;
+    ERR_ERESTARTSYS = 512;
+    ERR_ERESTARTNOINTR = 513;
+    ERR_ERESTARTNOHAND = 514;
+    ERR_ENOIOCTLCMD = 515;
+    ERR_ERESTART_RESTARTBLOCK = 516;
+    ERR_EBADHANDLE = 521;
+    ERR_ENOTSYNC = 522;
+    ERR_EBADCOOKIE = 523;
+    ERR_ENOTSUPP = 524;
+    ERR_ETOOSMALL = 525;
+    ERR_ESERVERFAULT = 526;
+    ERR_EBADTYPE = 527;
+    ERR_EJUKEBOX = 528;
+    ERR_EIOCBQUEUED = 529;
+    ERR_EIOCBRETRY = 530;
+}
+
 message counter_percentile_data {
     required uint32 scale = 1; // scale factor for min, max and means
     required uint32 num_samples = 2;
@@ -587,6 +729,12 @@ message ipv4tuple {
     required uint32 l4proto = 5;
 }
 
+enum connection_state {
+    CONN_SUCCESS = 0;
+    CONN_PENDING = 1;
+    CONN_FAILED = 2;
+}
+
 message ipv4_connection {
     required ipv4tuple tuple = 1;
 
@@ -594,6 +742,8 @@ message ipv4_connection {
     optional uint64 dpid = 5; // The pid of the server
 
     required connection_categories counters = 8; // the metrics for this connection
+    optional connection_state state = 9;
+    optional error_code error_code = 10;
 }
 
 //
@@ -1011,6 +1161,8 @@ message metrics {
     optional orchestrator_state_t global_orchestrator_state = 32;
     reserved 33;
     optional orchestrator_state_t orchestrator_state = 34;
+    // 35 is free to reuse
+    repeated ipv4_connection ipv4_incomplete_connections = 36; // The list of incomplete IPv4 connections
 }
 
 message dump_request_start {
