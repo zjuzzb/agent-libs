@@ -92,8 +92,9 @@ typedef union _process_tuple
 		uint16_t m_sport;
 		uint16_t m_dport;
 		uint8_t m_l4proto;
+		uint8_t m_state;
 	}m_fields;
-	uint8_t m_all[29];
+	uint8_t m_all[30];
 }process_tuple;
 
 struct process_tuple_hash
@@ -104,13 +105,13 @@ struct process_tuple_hash
 
 		std::hash<uint64_t> hasher64;
 		std::hash<uint32_t> hasher32;
-		std::hash<uint8_t> hasher8;
+		std::hash<uint16_t> hasher16;
 
 		seed ^= hasher64(*(uint64_t*)t.m_all) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= hasher64(*(uint64_t*)t.m_all + 8) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= hasher64(*(uint64_t*)t.m_all + 16) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= hasher32(*(uint32_t*)(t.m_all + 24)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		seed ^= hasher8(*(uint8_t*)(t.m_all + 28)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= hasher16(*(uint16_t*)(t.m_all + 28)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
 		return seed;
 	}

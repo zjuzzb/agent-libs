@@ -79,7 +79,7 @@ bool sinsp_connection::is_active() const
 	uint32_t totops = m_metrics.m_client.m_count_in + m_metrics.m_client.m_count_out + 
 				m_metrics.m_server.m_count_in + m_metrics.m_server.m_count_out;
 
-	return (totops != 0);
+	return (totops != 0) || (m_analysis_flags & (sinsp_connection::AF_FAILED | sinsp_connection::AF_PENDING));
 }
 
 void sinsp_connection_aggregator::clear()

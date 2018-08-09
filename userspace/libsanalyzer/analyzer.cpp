@@ -2997,6 +2997,25 @@ void sinsp_analyzer::flush_processes()
 	m_threads_to_remove.clear();
 }
 
+draiosproto::connection_state pb_connection_state(int analyzer_flags)
+{
+	if (analyzer_flags & sinsp_connection::AF_FAILED) {
+		return draiosproto::connection_state::CONN_FAILED;
+	} else if (analyzer_flags & sinsp_connection::AF_PENDING) {
+		return draiosproto::connection_state::CONN_PENDING;
+	} else {
+		return draiosproto::connection_state::CONN_SUCCESS;
+	}
+}
+
+draiosproto::error_code pb_error_code(int error_code)
+{
+	if (draiosproto::error_code_IsValid(error_code)) {
+		return static_cast<draiosproto::error_code>(error_code);
+	}
+	return draiosproto::ERR_NONE;
+}
+
 bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src,
 					pair<const process_tuple*, sinsp_connection*>& dst)
 {
@@ -3117,6 +3136,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_sport = m_report_source_port ? cit->first.m_fields.m_sport : 0;
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
+		tuple.m_fields.m_state = pb_connection_state(cit->second.m_analysis_flags);
 
 		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
 		{
@@ -3232,7 +3252,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// If the table is still too big, sort it and pick only the top connections
 	//
-	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns;
+	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns, sortable_incomplete_conns;
 	pair<const process_tuple*, sinsp_connection*> sortable_conns_entry;
 
 	if(reduced_ipv4_connections.size() > m_top_connections_in_sample)
@@ -3245,40 +3265,69 @@ void sinsp_analyzer::emit_aggregated_connections()
 			sortable_conns_entry.first = &(sit.first);
 			sortable_conns_entry.second = &(sit.second);
 
-			sortable_conns.push_back(sortable_conns_entry);
+			if (sit.first.m_fields.m_state == (int)draiosproto::connection_state::CONN_SUCCESS)
+			{
+				sortable_conns.push_back(sortable_conns_entry);
+			}
+			else
+			{
+				sortable_incomplete_conns.push_back(sortable_conns_entry);
+			}
 		}
 
-		//
-		// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
-		// connections
-		//
-		partial_sort(sortable_conns.begin(),
-			sortable_conns.begin() + m_top_connections_in_sample,
-			sortable_conns.end(),
-			conn_cmp_n_aggregated_connections);
-
-		for(uint32_t j = 0; j < m_top_connections_in_sample; j++)
+		auto conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_conns.size());
+		if (conns_to_report > 0)
 		{
-			//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+			//
+			// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
+			// connections
+			//
+			partial_sort(sortable_conns.begin(),
+				sortable_conns.begin() + conns_to_report,
+				sortable_conns.end(),
+				conn_cmp_n_aggregated_connections);
 
-			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
-				*(sortable_conns[j].second);
+			for(uint32_t j = 0; j < conns_to_report; j++)
+			{
+				//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+
+				reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
+					*(sortable_conns[j].second);
+			}
+
+			//
+			// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
+			//
+			partial_sort(sortable_conns.begin(),
+				sortable_conns.begin() + conns_to_report,
+				sortable_conns.end(),
+				conn_cmp_bytes);
+
+			for(uint32_t j = 0; j < conns_to_report; j++)
+			{
+				reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
+					*(sortable_conns[j].second);
+			}
 		}
 
-		//
-		// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
-		//
-		partial_sort(sortable_conns.begin(),
-			sortable_conns.begin() + m_top_connections_in_sample,
-			sortable_conns.end(),
-			conn_cmp_bytes);
-
-		for(uint32_t j = 0; j < m_top_connections_in_sample; j++)
+		conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_incomplete_conns.size());
+		if (conns_to_report > 0)
 		{
-			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
-				*(sortable_conns[j].second);
-		}
+			//
+			// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
+			// incomplete connections
+			//
+			partial_sort(sortable_incomplete_conns.begin(),
+				     sortable_incomplete_conns.begin() + conns_to_report,
+				     sortable_incomplete_conns.end(),
+				     conn_cmp_n_aggregated_connections);
 
+			for(uint32_t j = 0; j < conns_to_report; j++)
+			{
+				reduced_and_filtered_ipv4_connections[*(sortable_incomplete_conns[j].first)] =
+					*(sortable_incomplete_conns[j].second);
+			}
+		}
 		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
 	}
 	else
@@ -3305,7 +3354,19 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Add the connection to the protobuf
 		//
-		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+		auto conn_state = pb_connection_state(acit.second.m_analysis_flags);
+		draiosproto::ipv4_connection* conn;
+		if (conn_state == draiosproto::CONN_SUCCESS)
+		{
+			conn = m_metrics->add_ipv4_connections();
+		}
+		else
+		{
+			conn = m_metrics->add_ipv4_incomplete_connections();
+		}
+
+		conn->set_state(conn_state);
+		conn->set_error_code(pb_error_code(acit.second.m_error_code));
 		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
 		tuple->set_sip(htonl(acit.first.m_fields.m_sip));
@@ -3340,7 +3401,18 @@ void sinsp_analyzer::emit_full_connections()
 		//
 		if(cit->second.is_active() || m_simpledriver_enabled)
 		{
-			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+			auto conn_state = pb_connection_state(cit->second.m_analysis_flags);
+			draiosproto::ipv4_connection* conn;
+			if (conn_state == draiosproto::CONN_SUCCESS)
+			{
+				conn = m_metrics->add_ipv4_connections();
+			}
+			else
+			{
+				conn = m_metrics->add_ipv4_incomplete_connections();
+			}
+			conn->set_state(conn_state);
+			conn->set_error_code(pb_error_code(cit->second.m_error_code));
 			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
 			tuple->set_sip(htonl(cit->first.m_fields.m_sip));
