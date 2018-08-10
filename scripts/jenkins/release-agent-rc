@@ -200,7 +200,7 @@ function push_docker_images {
 	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}"
 	    LATEST_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:latest"
 
-	    docker build -t "${VERSIONED_IMAGE}" . &&
+	    docker build -t "${VERSIONED_IMAGE}" --pull . &&
 	        docker push "${VERSIONED_IMAGE}"
 
 	    if [[ "${REPO_BASENAME}" == "stable" ]]; then

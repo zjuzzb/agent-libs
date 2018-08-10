@@ -174,7 +174,7 @@ function trigger_docker_builds {
 	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
 	    DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
 
-	    docker build -t "${VERSIONED_IMAGE}" . &&
+	    docker build -t "${VERSIONED_IMAGE}" --pull . &&
 	        docker push "${VERSIONED_IMAGE}"
 
 	    if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
