@@ -55,8 +55,9 @@ RUN apt-get update \
 	libelf1 \
 	llvm-7 \
 {% endif %}
-{% if p.build_kernel_module and not p.include_agent_package == "apt" %}
+{% if p.build_kernel_module %}
 	dkms \
+	xz-utils \
 {% endif %}
 {% if p.include_agent_package is defined %}
 	gnupg2 \
