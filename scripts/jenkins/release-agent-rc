@@ -179,7 +179,7 @@ function upload_binaries {
 
 function push_docker_images {
 
-        if [[ "${DOCKER_HUB_ROOT}" == "" ]]; then
+        if [[ "${DOCKER_HUB_ROOT:-}" == "" ]]; then
                DOCKER_HUB_ROOT="sysdig"
         fi
 
