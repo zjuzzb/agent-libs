@@ -164,7 +164,7 @@ function configure_installers {
 	# install-script. Allow for them to skip this without failing
 	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
 	then
-	    sed -i s/_REPO_NAME_/${REPO_NAME}/g ${REPO_DIR}/$REPO_NAME/install-agent
+	    sed -i s/_REPOSITORY_NAME_/${REPO_NAME}/g ${REPO_DIR}/$REPO_NAME/install-agent
 	    aws s3 cp $REPO_DIR/$REPO_NAME/install-agent $S3_BUCKET/$REPO_NAME/ --acl public-read
 	    aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
 	fi
