@@ -191,7 +191,7 @@ function push_docker_images {
 
         rm -rf "${DOCKERFILES_ROOT_DIR}" &&
   	        mkdir -p "${DOCKERFILES_ROOT_DIR}" &&
-		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-dockerfiles.tar.gz
+		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-dockerfiles.tar.gz"
 
 	for IMAGE_NAME in agent-kmodule agent-slim agent; do
 
