@@ -80,7 +80,7 @@ function configure_rpm_repo {
 	createrepo $REPO_DIR/$PATHNAME
 
 	cp $SCRIPTS_DIR/draios.repo $REPO_DIR/$REPO_NAME/rpm
-	sed -i s/_REPO_/$REPO_NAME/g $REPO_DIR/$REPO_NAME/rpm/draios.repo
+	sed -i s/_REPOSITORY_/$REPO_NAME/g $REPO_DIR/$REPO_NAME/rpm/draios.repo
 
 	aws s3 cp $REPO_DIR/$REPO_NAME/rpm/draios.repo $S3_BUCKET/$REPO_NAME/rpm/ --acl public-read
 	aws s3 sync $REPO_DIR/$PATHNAME/ $S3_BUCKET/$PATHNAME/ --acl public-read --delete --exact-timestamps
@@ -133,7 +133,7 @@ EOF
 	gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
 	popd
 
-	sed s/_REPO_/$REPO_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
+	sed s/_REPOSITORY_/$REPO_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
 
 	aws s3 cp draios.list $S3_BUCKET/$REPO_NAME/deb/ --acl public-read
 	aws s3 sync stable-$DEB_BASEARCH/ $S3_BUCKET/$PATHNAME/ --acl public-read --delete --exact-timestamps
