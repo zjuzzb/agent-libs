@@ -172,9 +172,15 @@ function trigger_docker_builds {
 	    fi
 
 	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
+	    DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
 
 	    docker build -t "${VERSIONED_IMAGE}" . &&
 	        docker push "${VERSIONED_IMAGE}"
+
+	    if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
+	        docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}" &&
+	        docker push "${DEV_IMAGE}"
+	    fi
 
 	    popd
 
