@@ -391,7 +391,7 @@ void sinsp_worker::init()
 			throw sinsp_exception("Security capabilities depend on cointerface, but cointerface is disabled.");
 		}
 
-		m_security_mgr = new security_mgr();
+		m_security_mgr = new security_mgr(m_configuration->m_root_dir);
 		m_security_mgr->init(m_inspector,
 				     &m_sinsp_handler,
 				     m_analyzer,

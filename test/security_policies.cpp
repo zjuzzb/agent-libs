@@ -156,8 +156,12 @@ std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
 
 class security_policies_test : public testing::Test
 {
-protected:
+public:
+	security_policies_test() : m_mgr("/opt/draios")
+	{
+	}
 
+protected:
 	void SetUpTest(bool delayed_reports=false)
 	{
 		// With the 10k packet size and our relatively slow

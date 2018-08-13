@@ -21,7 +21,7 @@ using namespace std;
 // - Add unit tests
 // - Make sure all objects will gracefully fail if init() is not called
 
-security_mgr::security_mgr()
+security_mgr::security_mgr(const string& install_root)
 	: m_compliance_modules_loaded(false),
 	  m_compliance_load_in_progress(false),
 	  m_initialized(false),
@@ -30,7 +30,7 @@ security_mgr::security_mgr()
 	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL),
-	  m_grpc_conn(grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>("unix:/opt/draios/run/cointerface.sock")),
+	  m_grpc_conn(grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>("unix:" + install_root + "/run/cointerface.sock")),
 	  m_grpc_start(m_grpc_conn),
 	  m_grpc_load(m_grpc_conn),
 	  m_grpc_stop(m_grpc_conn)

@@ -34,7 +34,7 @@
 class SINSP_PUBLIC security_mgr
 {
 public:
-	security_mgr();
+	security_mgr(const string& install_root);
 	virtual ~security_mgr();
 
 	void init(sinsp *inspector,
