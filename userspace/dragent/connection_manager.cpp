@@ -84,7 +84,7 @@ bool connection_manager::connect()
 	if (m_configuration->m_promex_enabled)
 	{
 		const string& url = m_configuration->m_promex_connect_url.empty() ?
-			"unix:/opt/draios/run/promex.sock" :
+			"unix:" + m_configuration->m_root_dir + "/run/promex.sock" :
 			m_configuration->m_promex_connect_url;
 		m_prom_channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
 		m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
