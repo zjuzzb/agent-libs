@@ -7,6 +7,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/../falco/userspace/engine)
+include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)

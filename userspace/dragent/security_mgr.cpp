@@ -213,7 +213,7 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		}
 	}
 
-	m_falco_engine = make_shared<falco_engine>();
+	m_falco_engine = make_shared<falco_engine>(true, m_configuration->m_root_dir + "/share/lua/");
 	m_falco_engine->set_inspector(m_inspector);
 	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
 
