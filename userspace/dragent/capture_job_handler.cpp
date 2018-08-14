@@ -1080,7 +1080,7 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 		description.c_str(),
 		desclen);
 
-	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 + idlen + desclen + 1;
+	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) * 2 + idlen + desclen;
 
 	process_event(&m_notification_evt);
 }
@@ -1121,7 +1121,7 @@ void capture_job_handler::push_infra_event(uint64_t ts, uint64_t tid, string sou
 		scope.c_str(),
 		scopelen);
 
-	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) + 4 * 2 + sourcelen + namelen + desclen + scopelen + 1;
+	m_notification_scap_evt->len = sizeof(scap_evt) + sizeof(uint16_t) * 4 + sourcelen + namelen + desclen + scopelen;
 
 	process_event(&m_notification_evt);
 }
