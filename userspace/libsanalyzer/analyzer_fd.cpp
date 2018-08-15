@@ -1578,7 +1578,10 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 			}
 		}
 
-		on_socket_status_changed(evt);
+		if (m_inspector->m_parser->m_track_connection_status)
+		{
+			on_socket_status_changed(evt);
+		}
 	}
 }
 
