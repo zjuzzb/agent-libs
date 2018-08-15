@@ -814,6 +814,8 @@ public:
 	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 	bool m_report_source_port = false;
 
+	bool m_track_connection_status;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

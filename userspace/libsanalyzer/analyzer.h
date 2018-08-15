@@ -468,6 +468,11 @@ public:
 		m_simpledriver_enabled = true;
 	}
 
+	void set_track_connection_status(bool value)
+	{
+		m_inspector->m_parser->m_track_connection_status = value;
+	}
+
 	void set_emit_tracers(bool enabled);
 	void set_internal_metrics(internal_metrics::sptr_t im);
 
