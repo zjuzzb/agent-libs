@@ -472,6 +472,19 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/falco/userspace/engine/lua"
 fi
 
+KUBECTL_BINARY=$DEPENDENCIES/kubectl-1.9.6
+if [ ! -f "${KUBECTL_BINARY}" ]; then
+	cd $DEPENDENCIES
+	wget https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl -O $KUBECTL_BINARY
+fi
+
+KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.0.17
+if [ ! -d "${KUBE_BENCH_DIR}" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/kube-bench-0.0.17.tar.gz
+	tar -xzf kube-bench-0.0.17.tar.gz
+fi
+
 if [ $OS == "Windows_NT" ]; then
 	WINHAL_DIR=$DEPENDENCIES/dragent-win-hal-1.0
 	if [ ! -d "${WINHAL_DIR}" ]; then
