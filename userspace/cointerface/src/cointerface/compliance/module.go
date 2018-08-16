@@ -84,6 +84,14 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 		newenv = append(newenv, key + "=" + val)
 	}
 
+	// If SYSDIG_HOST_ROOT is set, use that as a part of the socket path.
+	sysdigRoot := os.Getenv("SYSDIG_HOST_ROOT")
+	if sysdigRoot != "" {
+		sysdigRoot = sysdigRoot + "/"
+	}
+	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
+	newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
+
 	cmd := exec.Command(prog, subArgs...)
 	cmd.Env = newenv
 	cmd.Dir = moduleDir

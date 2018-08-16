@@ -33,7 +33,7 @@ ENV HOME /root
 ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
 {% endif %}
-{% if p.jdk_debian_release == "jessie-backports" %}
+{% if p.backports_debian_release == "jessie-backports" %}
 RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list
 
 {% endif %}
@@ -44,6 +44,7 @@ RUN apt-get update \
 	curl \
 	ca-certificates \
 	bzip2 \
+	iproute2 \
 {% if p.build_kernel_module %}
 	bc \
 	clang-7 \
@@ -62,7 +63,7 @@ RUN apt-get update \
 {% if p.include_agent_package is defined %}
 	gnupg2 \
 	python \
- && apt-get install -y --no-install-recommends -t {{ p.jdk_debian_release }} openjdk-8-jre-headless \
+ && apt-get install -y --no-install-recommends -t {{ p.backports_debian_release }} openjdk-8-jre-headless docker.io \
 {% endif %}
  && rm -rf /var/lib/apt/lists/*
 

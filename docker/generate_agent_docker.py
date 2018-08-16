@@ -44,28 +44,28 @@ if image == "agent":
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
-    p['jdk_debian_release'] = "unstable"
+    p['backports_debian_release'] = "unstable"
     p['launch_dragent'] = 1
 elif image == "local":
     p['base_docker_image'] = "debian:unstable"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "local"
     p['build_kernel_module'] = 1
-    p['jdk_debian_release'] = "unstable"
+    p['backports_debian_release'] = "unstable"
     p['launch_dragent'] = 1
 elif image == "agent-slim":
     p['base_docker_image'] = "bitnami/minideb:jessie"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 0
-    p['jdk_debian_release'] = "jessie-backports"
+    p['backports_debian_release'] = "jessie-backports"
     p['launch_dragent'] = 1
 elif image == "agent-kmodule":
     p['base_docker_image'] = "debian:unstable"
     p['sysdig_repository'] = repo
     p['include_agent_package'] = "apt"
     p['build_kernel_module'] = 1
-    p['jdk_debian_release'] = "unstable"
+    p['backports_debian_release'] = "unstable"
     p['launch_dragent'] = 0
 
 if agent_version != "":
