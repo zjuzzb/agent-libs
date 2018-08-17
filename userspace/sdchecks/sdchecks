@@ -3,7 +3,7 @@ import site
 import sys
 import os.path
 
-install_prefix = os.path.dirname(os.path.dirname(__file__))
+install_prefix = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Add our path, before system ones to avoid collisions
 bin_deps_dir = install_prefix + '/lib/python-deps%d.%d' % sys.version_info[:2]
