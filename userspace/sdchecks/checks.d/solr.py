@@ -8,6 +8,7 @@ from urlparse import urlparse
 from utils.network import Network
 from string import split
 
+from config import _is_affirmative
 from checks import AgentCheck, CheckException
 
 class Solr(AgentCheck):
@@ -40,11 +41,21 @@ class Solr(AgentCheck):
     METRIC_GET_RPS =                        "solr.get.requests_per_second"
     METRIC_QUERY_RPS =                      "solr.query.requests_per_second"
     METRIC_UPDATE_RPS =                     "solr.update.requests_per_second"
+    METRIC_BROWSE_EPS =                     "solr.browse.errors_per_second"
+    METRIC_SELECT_EPS =                     "solr.select.errors_per_second"
+    METRIC_GET_EPS =                        "solr.get.errors_per_second"
+    METRIC_QUERY_EPS =                      "solr.query.errors_per_second"
+    METRIC_UPDATE_EPS =                     "solr.update.errors_per_second"
     METRIC_BROWSE_RT =                      "solr.browse.request_time"
     METRIC_SELECT_RT =                      "solr.select.request_time"
     METRIC_GET_RT =                         "solr.get.request_time"
     METRIC_QUERY_RT =                       "solr.query.request_time"
     METRIC_UPDATE_RT =                      "solr.update.request_time"
+    METRIC_BROWSE_RT95 =                    "solr.browse.request_time_p95"
+    METRIC_SELECT_RT95 =                    "solr.select.request_time_p95"
+    METRIC_GET_RT95 =                       "solr.get.request_time_p95"
+    METRIC_QUERY_RT95 =                     "solr.query.request_time_p95"
+    METRIC_UPDATE_RT95 =                    "solr.update.request_time_p95"
     METRIC_INDEX_SIZE_REP =                 "solr.index_size.replicated"
     METRIC_INDEX_SIZE_LOG =                 "solr.index_size.logical"
     METRIC_HOST_SHARD_COUNT =               "solr.host.shard_count"
@@ -111,7 +122,7 @@ class Solr(AgentCheck):
         self._getLiveNodes(confTags)
         self._getReplica(confTags)
         self._getLocalDocumentCount(confTags)
-        self._getAllRpsAndRequestTime(confTags)
+        self._getAllRatesAndTimes(confTags)
         self._getIndexSize(confTags)
         self._getCollectionShardCount(confTags)
         self._getHostShardCount(confTags)
@@ -320,7 +331,7 @@ class Solr(AgentCheck):
             except Exception as e:
                 self.log.error(("solr: Error while attempting to fetch local cores: {}").format(e))
 
-    def _getAllRpsAndRequestTime(self, confTags):
+    def _getAllRatesAndTimes(self, confTags):
         coresStatistic = self._getStats()
         self.log.debug(str("solr: fetching rps+rt metrics for {} local cores").format(len(coresStatistic)))
         for coreStat in coresStatistic:
@@ -335,7 +346,7 @@ class Solr(AgentCheck):
                 self.TAG_CORE_ALIAS % coreAlias,
             ]
 
-            self._getFromCoreRpsAndRequestTime(coreStat.data, tags)
+            self._getFromCoreRatesAndTimes(coreStat.data, tags)
             self._getUpdateHandlerStats(coreStat.data, tags)
 
     def _getIndexSize(self, confTags):
@@ -357,7 +368,7 @@ class Solr(AgentCheck):
     def _getSingleCoreStats(self, base, corename):
         return self.getHandlerWithBase(base, self.ENDPOINT_STATS % corename)
 
-    def _getFromCoreRpsAndRequestTime(self, obj, tags):
+    def _getFromCoreRatesAndTimes(self, obj, tags):
 
         # in solr 5, a map has been implemented as an array in which
         # first is put the key, and then the value
@@ -372,11 +383,28 @@ class Solr(AgentCheck):
             self._getSingleRps(self.METRIC_QUERY_RPS, "/query", queryHandlerObj, tags)
             self._getSingleRps(self.METRIC_UPDATE_RPS, "/update", queryHandlerObj, tags)
 
+            if self.getErrorCounts:
+                self._getSingleEps(self.METRIC_BROWSE_EPS, "/browse", queryHandlerObj, tags)
+                self._getSingleEps(self.METRIC_SELECT_EPS, "/select", queryHandlerObj, tags)
+                self._getSingleEps(self.METRIC_GET_EPS, "/get", queryHandlerObj, tags)
+                self._getSingleEps(self.METRIC_QUERY_EPS, "/query", queryHandlerObj, tags)
+                self._getSingleEps(self.METRIC_UPDATE_EPS, "/update", queryHandlerObj, tags)
+
             self._getSingleRequestTime(self.METRIC_BROWSE_RT, "/browse", queryHandlerObj, tags)
             self._getSingleRequestTime(self.METRIC_SELECT_RT, "/select", queryHandlerObj, tags)
             self._getSingleRequestTime(self.METRIC_GET_RT, "/get", queryHandlerObj, tags)
             self._getSingleRequestTime(self.METRIC_QUERY_RT, "/query", queryHandlerObj, tags)
             self._getSingleRequestTime(self.METRIC_UPDATE_RT, "/update", queryHandlerObj, tags)
+
+            if self.getPercentiles:
+                # Only do percentiles for query and update for now
+                # We could calculate these properly over a set period of time, but for now we're just
+                # grabbing them from Solr to keep it simple
+                # self._getSingle95thpcRequestTime(self.METRIC_BROWSE_RT95, "/browse", queryHandlerObj, tags)
+                # self._getSingle95thpcRequestTime(self.METRIC_SELECT_RT95, "/select", queryHandlerObj, tags)
+                # self._getSingle95thpcRequestTime(self.METRIC_GET_RT95, "/get", queryHandlerObj, tags)
+                self._getSingle95thpcRequestTime(self.METRIC_QUERY_RT95, "/query", queryHandlerObj, tags)
+                self._getSingle95thpcRequestTime(self.METRIC_UPDATE_RT95, "/update", queryHandlerObj, tags)
         except Exception as e:
             self.log.debug(("solr: unable to get rps+rt metrics for local core: {}").format(e))
 
@@ -385,6 +413,18 @@ class Solr(AgentCheck):
             self.rate(metricName, queryHandlerObj[keyString]["stats"]["requests"], tags)
         except Exception as e:
             self.log.debug(("solr: could not get rps {} {}: {}").format(metricName, keyString, e))
+
+    def _getSingleEps(self, metricName, keyString, queryHandlerObj, tags):
+        try:
+            self.rate(metricName, queryHandlerObj[keyString]["stats"]["errors"], tags)
+        except Exception as e:
+            self.log.debug(("solr: could not get errors per second {} {}: {}").format(metricName, keyString, e))
+
+    def _getSingle95thpcRequestTime(self, metricName, keyString, queryHandlerObj, tags):
+        try:
+            self.gauge(metricName, queryHandlerObj[keyString]["stats"]["95thPcRequestTime"], tags)
+        except Exception as e:
+            self.log.debug(("solr: could not get 95th pc request time {} {}: {}").format(metricName, keyString, e))
 
     def _getSingleRequestTime(self, metricName, keyString, queryHandlerObj, tags):
         try:
@@ -481,6 +521,8 @@ class Solr(AgentCheck):
             self.host = instance["host"]
             self.ports = instance["ports"]
             self.port = instance.get("solr_port", 0)
+            self.getErrorCounts = _is_affirmative(instance.get('get_error_counts', True))
+            self.getPercentiles = _is_affirmative(instance.get('get_percentiles', True))
 
             if self.port == 0 and len(self.ports) == 0:
                 self.log.info("Cannot proceed without a supplied port. Config is {}".format(instance))
