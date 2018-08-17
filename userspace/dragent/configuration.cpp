@@ -751,7 +751,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 			{"sdjagent", 60U}, 
 			{"mountedfs_reader", 60U}, 
 			{"statsite_forwarder", 60U}, 
-			{"cointerface", 60U}
+			{"cointerface", 60U},
+			{"promex", 60U}
 		});
 
 	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);

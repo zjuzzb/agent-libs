@@ -17,6 +17,7 @@ import (
 	"promex/server"
 	"strings"
 	"install_prefix"
+	"heartbeat"
 )
 
 func main() {
@@ -55,16 +56,21 @@ func main() {
 	}(sigc)
 
 	grpcServer := grpc.NewServer()
-	pb.RegisterPrometheusExporterServer(grpcServer, server.NewServer(
+	exporter := server.NewServer(
 		strings.Split(*containerLabels, ","),
 		*metricTimeout,
-		))
+	)
+	pb.RegisterPrometheusExporterServer(grpcServer, exporter)
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
 		log.Printf("Info: Serving Prometheus stats on %s", *promAddr)
 		log.Fatal(http.ListenAndServe(*promAddr, nil))
 	}()
+
+	go heartbeat.Heartbeat(func() {
+		exporter.CheckLock()
+	})
 
 	log.Printf("Info: Listening on %s socket %s", *pbProto, *pbAddr)
 	log.Fatal(grpcServer.Serve(lis))

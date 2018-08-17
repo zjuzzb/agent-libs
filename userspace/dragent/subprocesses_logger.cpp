@@ -250,8 +250,9 @@ void sdchecks_parser::operator()(const string& line)
 	}
 }
 
-sinsp_logger_parser::sinsp_logger_parser(const string& procname):
-	m_prefix(procname + ": ")
+sinsp_logger_parser::sinsp_logger_parser(const string& procname, bool default_is_error):
+	m_prefix(procname + ": "),
+	m_default_is_error(default_is_error)
 {
 
 }
@@ -271,6 +272,10 @@ void sinsp_logger_parser::operator()(const string& s)
 	else if(s.find("Info") != string::npos)
 	{
 		g_log->information(m_prefix +s);
+	}
+	else if (m_default_is_error)
+	{
+		g_log->error(m_prefix + s);
 	}
 	else
 	{

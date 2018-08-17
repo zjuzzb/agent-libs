@@ -102,10 +102,11 @@ private:
 class sinsp_logger_parser
 {
 public:
-	sinsp_logger_parser(const string& procname);
+	sinsp_logger_parser(const string& procname, bool default_is_error=false);
 	void operator()(const string&);
 private:
 	string m_prefix;
+	bool m_default_is_error;
 };
 
 class sdchecks_parser

@@ -45,6 +45,11 @@ func (s *prometheusExporterServer) EmitMetrics(_ context.Context, msg *draiospro
 	return &pb.PrometheusExporterResponse{}, nil
 }
 
+func (s *prometheusExporterServer) CheckLock() {
+	s.metricsLock.Lock()
+	s.metricsLock.Unlock()
+}
+
 // XXX: always copies by value
 func derefOrEmpty(sp *string) string {
 	if sp == nil {
