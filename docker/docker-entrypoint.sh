@@ -124,7 +124,7 @@ mount_cgroup_subsys cpuacct
 
 if [ $# -eq 0 ]; then
     if [ "$SYSDIG_BUILD_KERNEL_MODULE" = "1" ]; then
-	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader; then
+	if [ -z "$RUN_MODE" ] && ! /opt/draios/bin/sysdigcloud-probe-loader $MAX_RMMOD_WAIT; then
 		exit 1
 	fi
     fi
