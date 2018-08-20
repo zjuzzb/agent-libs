@@ -3283,16 +3283,14 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// Emit the aggregated table into the sample
 	//
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = connection_to_emit->begin();
-		acit != connection_to_emit->end(); ++acit)
+	for(auto& acit : connection_to_emit)
 	{
 		//
 		// Skip connection that had no activity during the sample
 		//
 		if(!m_simpledriver_enabled)
 		{
-			if(!acit->second.is_active())
+			if(!acit.second.is_active())
 			{
 				continue;
 			}
@@ -3304,23 +3302,23 @@ void sinsp_analyzer::emit_aggregated_connections()
 		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
 		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
-		tuple->set_sip(htonl(acit->first.m_fields.m_sip));
-		tuple->set_dip(htonl(acit->first.m_fields.m_dip));
-		tuple->set_sport(acit->first.m_fields.m_sport);
-		tuple->set_dport(acit->first.m_fields.m_dport);
-		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
+		tuple->set_sip(htonl(acit.first.m_fields.m_sip));
+		tuple->set_dip(htonl(acit.first.m_fields.m_dip));
+		tuple->set_sport(acit.first.m_fields.m_sport);
+		tuple->set_dport(acit.first.m_fields.m_dport);
+		tuple->set_l4proto(acit.first.m_fields.m_l4proto);
 
-		conn->set_spid(acit->first.m_fields.m_spid);
-		conn->set_dpid(acit->first.m_fields.m_dpid);
+		conn->set_spid(acit.first.m_fields.m_spid);
+		conn->set_dpid(acit.first.m_fields.m_dpid);
 
-		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
-		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
+		acit.second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
+		acit.second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
 			conn->mutable_counters()->mutable_max_transaction_counters(),
 			m_sampling_ratio);
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//
-		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
+		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit.second.m_timestamp);
 	}
 }
 
