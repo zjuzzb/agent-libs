@@ -68,6 +68,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/namespaces.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes_test.go
