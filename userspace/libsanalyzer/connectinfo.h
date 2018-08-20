@@ -31,10 +31,10 @@ public:
 	void reset_server();
 	void reset_client();
 	void clear();
-	bool is_active();
-	bool is_client_only();
-	bool is_server_only();
-	bool is_client_and_server();
+	bool is_active() const;
+	bool is_client_only() const;
+	bool is_server_only() const;
+	bool is_client_and_server() const;
 
 	int64_t m_spid;
 	int64_t m_stid;
