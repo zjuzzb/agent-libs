@@ -197,6 +197,14 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		}
 	}
 
+	if in {
+		lVal, lFound := getPodConditionMetric(lhs.Status.Conditions, v1.PodReady)
+		rVal, rFound := getPodConditionMetric(rhs.Status.Conditions, v1.PodReady)
+		if lFound != rFound || lVal != rVal {
+			in = false
+		}
+	}
+
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false
 	}
@@ -339,7 +347,7 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	appendMetricContainerResources(metrics, prefix, pod)
 }
 
-func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
+func getPodConditionMetric(conditions []v1.PodCondition, ctype v1.PodConditionType) (float64, bool) {
 	val := float64(0)
 	found := false
 	for _, cond := range conditions {
@@ -356,6 +364,11 @@ func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, co
 		}
 		break
 	}
+	return val, found
+}
+
+func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.PodCondition, ctype v1.PodConditionType) {
+	val, found := getPodConditionMetric(conditions, ctype)
 
 	if found {
 		AppendMetric(metrics, name, val)
