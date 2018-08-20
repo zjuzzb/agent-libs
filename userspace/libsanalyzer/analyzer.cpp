@@ -3035,7 +3035,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 	bool aggregate_external_clients = false;
 	set<uint32_t> unique_external_ips;
 
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_ipv4_connections;
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>
+	        reduced_ipv4_connections,
+		reduced_and_filtered_ipv4_connections,
+		connection_to_emit;
+
 	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
 
 	//
@@ -3230,8 +3234,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns;
 	pair<const process_tuple*, sinsp_connection*> sortable_conns_entry;
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_and_filtered_ipv4_connections;
-	auto connection_to_emit = reduced_ipv4_connections;
 
 	if(reduced_ipv4_connections.size() > m_top_connections_in_sample)
 	{
@@ -3278,6 +3280,10 @@ void sinsp_analyzer::emit_aggregated_connections()
 		}
 
 		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
+	}
+	else
+	{
+		connection_to_emit = std::move(reduced_ipv4_connections);
 	}
 
 	//
