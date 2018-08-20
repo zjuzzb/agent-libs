@@ -713,10 +713,6 @@ VISIBILITY_PRIVATE
 	sinsp_proc_stat m_proc_stat;
 
 	//
-	// The table of aggregated connections
-	//
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
-	//
 	// The aggregated host metrics
 	//
 	sinsp_host_metrics m_host_metrics;

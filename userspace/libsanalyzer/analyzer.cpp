@@ -124,7 +124,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
 
-	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
 	m_score_calculator = NULL;
@@ -221,7 +220,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_delay_calculator;
 	delete m_threadtable_listener;
 	delete m_fd_listener;
-	delete m_reduced_ipv4_connections;
 	delete m_ipv4_connections;
 
 #ifdef HAS_UNIX_CONNECTIONS
@@ -3037,7 +3035,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 	bool aggregate_external_clients = false;
 	set<uint32_t> unique_external_ips;
 
-	m_reduced_ipv4_connections->clear();
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_ipv4_connections;
 	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
 
 	//
@@ -3157,7 +3155,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			// Look for the entry in the reduced connection table.
 			// Note: we don't export connections whose sip or dip is zero.
 			//
-			sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
+			sinsp_connection& conn = reduced_ipv4_connections[tuple];
 			if(conn.m_timestamp == 0)
 			{
 				//
@@ -3235,18 +3233,17 @@ void sinsp_analyzer::emit_aggregated_connections()
 	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns;
 	pair<const process_tuple*, sinsp_connection*> sortable_conns_entry;
 	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_and_filtered_ipv4_connections;
-	auto connection_to_emit = m_reduced_ipv4_connections;
+	auto connection_to_emit = reduced_ipv4_connections;
 
-	if(m_reduced_ipv4_connections->size() > m_top_connections_in_sample)
+	if(reduced_ipv4_connections.size() > m_top_connections_in_sample)
 	{
 		//
 		// Prepare the sortable list
 		//
-		for(auto sit = m_reduced_ipv4_connections->begin();
-			sit != m_reduced_ipv4_connections->end(); ++sit)
+		for(auto& sit : reduced_ipv4_connections)
 		{
-			sortable_conns_entry.first = &(sit->first);
-			sortable_conns_entry.second = &(sit->second);
+			sortable_conns_entry.first = &(sit.first);
+			sortable_conns_entry.second = &(sit.second);
 
 			sortable_conns.push_back(sortable_conns_entry);
 		}
@@ -3282,7 +3279,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 				*(sortable_conns[j].second);
 		}
 
-		connection_to_emit = &reduced_and_filtered_ipv4_connections;
+		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
 	}
 
 	//
