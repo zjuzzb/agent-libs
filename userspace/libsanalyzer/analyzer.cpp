@@ -3041,13 +3041,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// First partial pass to determine if external connections need to be coalesced
 	//
-	for(cit = m_ipv4_connections->m_connections.begin();
-		cit != m_ipv4_connections->m_connections.end();
-		++cit)
+	for (const auto& it : m_ipv4_connections->m_connections)
 	{
-		if(cit->second.is_server_only())
+		if(it.second.is_server_only())
 		{
-			uint32_t sip = cit->first.m_fields.m_sip;
+			uint32_t sip = it.first.m_fields.m_sip;
 
 			if(!m_inspector->m_network_interfaces->is_ipv4addr_in_subnet(sip))
 			{
