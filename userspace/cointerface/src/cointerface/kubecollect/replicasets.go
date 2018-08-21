@@ -34,8 +34,12 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
         EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
-	if in && lhs.Status.Replicas != rhs.Status.Replicas {
+	if in {
+		if (lhs.Status.Replicas != rhs.Status.Replicas) ||
+			(lhs.Status.FullyLabeledReplicas != rhs.Status.FullyLabeledReplicas) ||
+			(lhs.Status.ReadyReplicas != rhs.Status.ReadyReplicas) {
 		in = false
+		}
 	}
 
 	if in && ((lhs.Spec.Replicas == nil && rhs.Spec.Replicas != nil) ||
@@ -49,7 +53,10 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false
-	} else if !reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels) {
+	}
+
+	if lhs.Spec.Selector != nil && rhs.Spec.Selector != nil &&
+		!reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels) {
 		out = false
 	}
 

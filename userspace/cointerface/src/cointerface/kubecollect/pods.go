@@ -198,9 +198,26 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 	}
 
 	if in {
+		lInitRestarts, lInitWaiting := statusCounts(lhs.Status.InitContainerStatuses)
+		rInitRestarts, rInitWaiting := statusCounts(rhs.Status.InitContainerStatuses)
+		if (lInitRestarts != rInitRestarts) || (lInitWaiting != rInitWaiting) {
+			in = false
+		}
+	}
+
+	if in {
 		lVal, lFound := getPodConditionMetric(lhs.Status.Conditions, v1.PodReady)
 		rVal, rFound := getPodConditionMetric(rhs.Status.Conditions, v1.PodReady)
 		if lFound != rFound || lVal != rVal {
+			in = false
+		}
+	}
+
+	if in {
+		lRequestsCpu, lLimitsCpu, lRequestsMem, lLimitsMem := getPodContainerResources(lhs)
+		rRequestsCpu, rLimitsCpu, rRequestsMem, rLimitsMem := getPodContainerResources(rhs)
+		if lRequestsCpu != rRequestsCpu || lLimitsCpu != rLimitsCpu ||
+			lRequestsMem != rRequestsMem || lLimitsMem != rLimitsMem {
 			in = false
 		}
 	}
@@ -375,45 +392,48 @@ func appendMetricPodCondition(metrics *[]*draiosproto.AppMetric, name string, co
 	}
 }
 
-func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, pod *v1.Pod) {
-	podRequestsCpuCores := float64(0)
-	podLimitsCpuCores := float64(0)
-	podRequestsMemoryBytes := float64(0)
-	podLimitsMemoryBytes := float64(0)
+func getPodContainerResources(pod *v1.Pod) (requestsCpu float64, limitsCpu float64, requestsMem float64, limitsMem float64) {
+	requestsCpu, limitsCpu, requestsMem, limitsMem = 0, 0, 0, 0
 
 	// https://kubernetes.io/docs/concepts/workloads/pods/init-containers/#resources
 	// Pod effective resources are the higher of the sum of all app containers
 	// or the highest init container value for that resource
 	for _, c := range pod.Spec.Containers {
-		podRequestsCpuCores += resourceVal(c.Resources.Requests, v1.ResourceCPU)
-		podLimitsCpuCores += resourceVal(c.Resources.Limits, v1.ResourceCPU)
-		podRequestsMemoryBytes += resourceVal(c.Resources.Requests, v1.ResourceMemory)
-		podLimitsMemoryBytes += resourceVal(c.Resources.Limits, v1.ResourceMemory)
+		requestsCpu += resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		limitsCpu += resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		requestsMem += resourceVal(c.Resources.Requests, v1.ResourceMemory)
+		limitsMem += resourceVal(c.Resources.Limits, v1.ResourceMemory)
 	}
 
 	for _, c := range pod.Spec.InitContainers {
-		initRequestsCpuCores := resourceVal(c.Resources.Requests, v1.ResourceCPU)
-		if initRequestsCpuCores > podRequestsCpuCores {
-			podRequestsCpuCores = initRequestsCpuCores
+		initRequestsCpu := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		if initRequestsCpu > requestsCpu {
+			requestsCpu = initRequestsCpu
 		}
-		initLimitsCpuCores := resourceVal(c.Resources.Limits, v1.ResourceCPU)
-		if initLimitsCpuCores > podLimitsCpuCores {
-			podLimitsCpuCores = initLimitsCpuCores
+		initLimitsCpu := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		if initLimitsCpu > limitsCpu {
+			limitsCpu = initLimitsCpu
 		}
-		initRequestsMemoryBytes := resourceVal(c.Resources.Requests, v1.ResourceCPU)
-		if initRequestsMemoryBytes > podRequestsMemoryBytes {
-			podRequestsMemoryBytes = initRequestsMemoryBytes
+		initRequestsMem := resourceVal(c.Resources.Requests, v1.ResourceCPU)
+		if initRequestsMem > requestsMem {
+			requestsMem = initRequestsMem
 		}
-		initLimitsMemoryBytes := resourceVal(c.Resources.Limits, v1.ResourceCPU)
-		if initLimitsMemoryBytes > podLimitsMemoryBytes {
-			podLimitsMemoryBytes = initLimitsMemoryBytes
+		initLimitsMem := resourceVal(c.Resources.Limits, v1.ResourceCPU)
+		if initLimitsMem > limitsMem {
+			limitsMem = initLimitsMem
 		}
 	}
 
-	AppendMetric(metrics, prefix+"resourceRequests.cpuCores", podRequestsCpuCores)
-	AppendMetric(metrics, prefix+"resourceLimits.cpuCores", podLimitsCpuCores)
-	AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", podRequestsMemoryBytes)
-	AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", podLimitsMemoryBytes)
+	return
+}
+
+func appendMetricContainerResources(metrics *[]*draiosproto.AppMetric, prefix string, pod *v1.Pod) {
+	requestsCpu, limitsCpu, requestsMem, limitsMem := getPodContainerResources(pod)
+
+	AppendMetric(metrics, prefix+"resourceRequests.cpuCores", requestsCpu)
+	AppendMetric(metrics, prefix+"resourceLimits.cpuCores", limitsCpu)
+	AppendMetric(metrics, prefix+"resourceRequests.memoryBytes", requestsMem)
+	AppendMetric(metrics, prefix+"resourceLimits.memoryBytes", limitsMem)
 }
 
 func resourceVal(rList v1.ResourceList, rName v1.ResourceName) float64 {
