@@ -103,7 +103,8 @@ RUN curl -s -o binutils_2.30-22_amd64.deb http://snapshot.debian.org/archive/deb
  && curl -s -o libbinutils_2.30-22_amd64.deb http://snapshot.debian.org/archive/debian/20180622T211149Z/pool/main/b/binutils/libbinutils_2.30-22_amd64.deb \
  && curl -s -o binutils-x86-64-linux-gnu_2.30-22_amd64.deb http://snapshot.debian.org/archive/debian/20180622T211149Z/pool/main/b/binutils/binutils-x86-64-linux-gnu_2.30-22_amd64.deb \
  && curl -s -o binutils-common_2.30-22_amd64.deb http://snapshot.debian.org/archive/debian/20180622T211149Z/pool/main/b/binutils/binutils-common_2.30-22_amd64.deb \
- && dpkg -i *binutils*.deb
+ && dpkg -i *binutils*.deb \
+ && rm -f *binutils*.deb
 
 {% endif %}
 {% if p.include_agent_package == "local" %}
