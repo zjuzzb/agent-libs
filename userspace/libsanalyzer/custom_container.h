@@ -226,6 +226,16 @@ public:
 
 	void dump_container_table();
 
+	// return a comma-separated list of labels
+	// a vector<string> would be cleaner but we only use this in one place
+	// (passing the list of labels to prometheus exporter) which expects
+	// this format.
+	// if we (eventually) allow multiple custom container configs (matching
+	// multiple configurations), this method should return a set<string>
+	// (or get one as a reference and modify it in place)
+	string get_labels() const;
+
+
 protected:
 	bool m_enabled = false;
 	bool m_limit_logged = false;

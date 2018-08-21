@@ -402,3 +402,23 @@ void custom_container::resolver::dump_container_table()
 	out << YAML::EndMap;
 	cerr << out.c_str() << '\n';
 }
+
+string custom_container::resolver::get_labels() const
+{
+	string s;
+	if (!m_enabled)
+	{
+		return s;
+	}
+
+	for (auto it = m_label_patterns.cbegin(); it != m_label_patterns.cend(); ++it)
+	{
+		if (!s.empty())
+		{
+			s.append(",");
+		}
+		s.append(it->first);
+	}
+
+	return s;
+}

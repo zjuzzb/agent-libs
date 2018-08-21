@@ -816,12 +816,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
 
-	// Prometheus exporter
-	m_promex_enabled = m_config->get_scalar<bool>("prometheus_exporter", "enabled", false);
-	m_promex_url = m_config->get_scalar<string>("prometheus_exporter", "listen_url", "0.0.0.0:9544");
-	m_promex_connect_url = m_config->get_scalar<string>("prometheus_exporter", "connect_url", "");
-	m_promex_container_labels = m_config->get_scalar<string>("prometheus_exporter", "container_labels", "");
-
 	// custom container engines
 	try {
 		m_custom_container.set_cgroup_match(m_config->get_scalar<string>("custom_container", "match", "cgroup", ""));
@@ -838,6 +832,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_config->add_error("config file error inside key custom_containers: " + e.message() + ", disabling custom container support");
 		m_custom_container.set_enabled(false);
 	}
+
+	// Prometheus exporter
+	m_promex_enabled = m_config->get_scalar<bool>("prometheus_exporter", "enabled", false);
+	m_promex_url = m_config->get_scalar<string>("prometheus_exporter", "listen_url", "0.0.0.0:9544");
+	m_promex_connect_url = m_config->get_scalar<string>("prometheus_exporter", "connect_url", "");
+	m_promex_container_labels = m_config->get_scalar<string>("prometheus_exporter", "container_labels", m_custom_container.get_labels());
 
 #endif // CYGWING_AGENT
 
