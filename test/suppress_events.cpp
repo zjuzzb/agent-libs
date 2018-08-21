@@ -1,6 +1,7 @@
 #include <thread>
 #include <memory>
 
+#include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/quota.h>
 
