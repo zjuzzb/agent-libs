@@ -152,6 +152,9 @@ function trigger_docker_builds {
                DOCKER_HUB_ROOT="sysdig"
         fi
 
+	# Blow away all existing docker images
+	docker images -q -a | uniq | xargs --no-run-if-empty docker rmi
+
 	# This assumes that a prior "make package" has run to put a
 	# tarball containing dockerfiles in
 	# BINARIES_DIR/release/draios-*-dockerfiles.tar.gz. That
