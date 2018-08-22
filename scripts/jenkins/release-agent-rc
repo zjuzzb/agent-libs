@@ -1,6 +1,6 @@
 #!/bin/bash
 # Copy all agent files with the right version from rc to stable
-# Retag docker hub 
+# Rebuild docker hub 
 
 if [ -z "$AGENT_VERSION" ]
 then
@@ -26,7 +26,7 @@ set -exuo pipefail
 TRIGGER_DOCKER_RELEASE=no
 if [ "$S3_BUCKET" = "s3://download.draios.com" ]
 then
-	# production run, trigger the docker retagging
+	# production run, trigger the docker build
 	TRIGGER_DOCKER_RELEASE=yes
 fi
 
@@ -70,6 +70,8 @@ function configure_rpm_repo {
 	mkdir -p $REPO_DIR/$PATHNAME
 	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
 	# Delete everything except for the last 5 versions
+	ls -1tdr $REPO_DIR/$PATHNAME/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
@@ -108,6 +110,8 @@ function configure_debian_repo {
 	pushd $REPO_DIR/$REPO_NAME/deb
 	
 	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPO_DIR/$PATHNAME/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
@@ -147,8 +151,9 @@ function configure_tgz_repo {
 	mkdir -p $REPO_DIR/$PATHNAME
 
 	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPO_DIR/$PATHNAME/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPO_DIR/$PATHNAME/*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
@@ -182,6 +187,11 @@ function push_docker_images {
         if [[ "${DOCKER_HUB_ROOT:-}" == "" ]]; then
                DOCKER_HUB_ROOT="sysdig"
         fi
+
+        # Blow away all existing docker images for sysdig/agent*
+        docker images -a | grep '^sysdig/agent' | awk '{ print $3 }' | uniq | xargs --no-run-if-empty docker rmi -f
+        # Then remove all dangling images
+        docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi
 
 	# This assumes that a prior "make package" has run to put a
 	# tarball containing dockerfiles in

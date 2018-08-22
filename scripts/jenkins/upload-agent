@@ -37,6 +37,8 @@ function configure_rpm_repo {
 	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
 	
 	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
@@ -74,6 +76,8 @@ function configure_debian_repo {
 	pushd $REPOSITORY_DIR/deb
 	
 	aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+	ls -1tdr stable-$DEB_BASEARCH/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
@@ -114,8 +118,9 @@ function configure_tgz_repo {
 		mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
 
 		aws s3 sync $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
-		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
@@ -152,8 +157,10 @@ function trigger_docker_builds {
                DOCKER_HUB_ROOT="sysdig"
         fi
 
-	# Blow away all existing docker images
-	docker images -q -a | uniq | xargs --no-run-if-empty docker rmi
+	# Blow away all existing docker images for sysdig/agent*
+	docker images -a | grep '^sysdig/agent' | awk '{ print $3 }' | uniq | xargs --no-run-if-empty docker rmi -f
+	# Then remove all dangling images
+	docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi
 
 	# This assumes that a prior "make package" has run to put a
 	# tarball containing dockerfiles in
