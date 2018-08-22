@@ -720,14 +720,17 @@ void security_mgr::stop_compliance_tasks()
 	bool stopped = false;
 	auto callback = [this, &stopped](bool successful, sdc_internal::comp_stop_result &res)
 	{
+		// cointerface might shut down before dragent, causing
+		// the stop to itself not complete. So only log
+		// failures at debug level.
 		if(!successful)
 		{
-			g_log->error("Compliance Stop() call was not successful");
+			g_log->debug("Compliance Stop() call was not successful");
 		}
 
 		if(!res.successful())
 		{
-			g_log->error("Compliance Stop() call returned error " + res.errstr());
+			g_log->debug("Compliance Stop() call returned error " + res.errstr());
 		}
 
 		stopped = true;
