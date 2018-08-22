@@ -87,7 +87,7 @@ private:
 	char* m_error_message;
 	uint16_t m_error_code;
 
-	sinsp_slq_query_parser m_query_parser;
+	sinsp_sql_parser m_query_parser;
 
 	friend class sinsp_protostate;
 	friend class sql_state;

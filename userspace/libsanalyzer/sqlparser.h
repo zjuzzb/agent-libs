@@ -1,58 +1,85 @@
 #ifdef HAS_ANALYZER
 #pragma once
 
-class sinsp_slq_query_parser
+#include <set>
+#include <string>
+
+struct str_slice;
+
+class sinsp_sql_parser
 {
-public:	
+public:
+	/// these values are sent directly in protobufs, so they must match
+	/// the values in draios.proto (sql_statement_type enum)
 	enum statement_type
 	{
 		OT_NONE = 0,
-		OT_SELECT = 1, //
-		OT_INSERT = 2, //
-		OT_SET = 3, //
-		OT_CREATE = 4, //
-		OT_DELETE = 5, //
-		OT_DROP = 6, //
-		OT_REPLACE = 7, // 
-		OT_UPDATE = 8, //
+		OT_SELECT = 1,
+		OT_INSERT = 2,
+		OT_SET = 3,
+		OT_CREATE = 4,
+		OT_DELETE = 5,
+		OT_DROP = 6,
+		OT_REPLACE = 7,
+		OT_UPDATE = 8,
 		OT_USE = 9,
 		OT_SHOW = 10,
 		OT_LOCK = 11,
 		OT_UNLOCK = 12,
 		OT_ALTER = 13
 	};
-	
-	sinsp_slq_query_parser()
+
+	sinsp_sql_parser() : m_statement_type(OT_NONE)
 	{
-		m_table = NULL;
 	}
 
-	void parse(char* query, uint32_t querylen);
+	/// the main entry point of the parser
+	///
+	/// \param statement C-style buffer containing the statement (need not be NUL-terminated)
+	/// \param statement_len length of the buffer
+	///
+	/// The method resets the parser state and calls parse_statement()
+	void parse(const char *statement, size_t statement_len);
 
+	/// used only in tests, it returns a string describing m_statement_type
 	const char* get_statement_type_string();
 
 	statement_type m_statement_type;
-	char* m_table;
+
+	/// the set of table names found in the query
+	/// it's kept sorted (by not being an unordered_set) so that we always
+	/// return the tables in the same order without having to sort them in .tables()
+	std::set<std::string> m_tables;
+
+	/// return the set of tables as a ", "-separated string
+	/// we want these to be sorted so that we don't report e.g. "tab1, tab2" for some queries
+	/// and "tab2, tab1" for others (we'd then account these as separate tables)
+	std::string tables() const;
 
 private:
-	inline int32_t find_tokens(const char* src, uint32_t srclen, uint32_t ntoks, char** toks, uint32_t* toklens, uint32_t* nskipped);
-	/**
-	 * @brief Look up a token on a string, skips characters inside ()
-	 * @param str string where to look up
-	 * @param strlen
-	 * @param tofind token to find
-	 * @param tofind_len
-	 * @return
-	 */
-	inline const char* find_token(const char* str, uint32_t strlen, const char* tofind, uint32_t tofind_len);
-	void extract_table(char*src, uint32_t srclen, char* start_token, uint32_t start_token_len,
-					   const char** end_tokens, uint32_t* end_toklens, uint32_t n_end_tokens,
-					   bool cleanup_name = false);
-	
-	char* copy_and_cleanup_table_name(const char* table_name, uint64_t table_name_size);
+	void parse_statement(str_slice&& statement);
 
-	int32_t m_braket_level;
-	sinsp_autobuffer m_str_storage;
+	void find_select_from_clause(str_slice&& statement);
+	void find_insert_from_clause(str_slice&& statement);
+	void find_update_from_clause(str_slice&& statement);
+
+	template<const char *TOK> inline bool find_token(str_slice& slice);
+	void parse_from_clause(str_slice&& clause);
+	inline void parse_joins(str_slice&& clause);
+	inline void add_token(str_slice& token);
+
+	inline void add_table(str_slice&& table);
+
+	inline bool skip_spaces(str_slice& clause);
+	inline bool skip_spaces_rec(str_slice& clause, bool want_from_clause);
+
+	inline size_t next_token_len(str_slice& slice);
+	inline str_slice next_token(str_slice& slice);
+	template<const char *TOK, const char *...Args> inline size_t match_token(str_slice &slice, const char *&token);
+
+	template<const char *TOK> inline const char* match_token_impl(str_slice &slice);
+	template<const char *TOK, const char *TOK2, const char *...Args> inline const char* match_token_impl(
+		str_slice &slice);
 };
 
 #endif // HAS_ANALYZER

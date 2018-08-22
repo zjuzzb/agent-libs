@@ -96,7 +96,7 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 		//
 		sinsp_query_details* entry;
 		sinsp_query_details* type_entry;
-		char* tablename = pp->m_query_parser.m_table;
+		auto tables = pp->m_query_parser.tables();
 		auto statement = truncate_str(pp->m_statement, truncation_size);
 
 		if(is_server)
@@ -107,9 +107,9 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
-			if(tablename != NULL)
+			if(!tables.empty())
 			{
-				auto trunc_table = truncate_str(pp->m_query_parser.m_table, truncation_size);
+				auto trunc_table = truncate_str(tables, truncation_size);
 				if (m_server_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_server_tables.count(trunc_table))
 				{
 					entry = &(m_server_tables[trunc_table]);
@@ -130,12 +130,12 @@ inline void sql_state::update(sinsp_partial_transaction* tr,
 				request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 			}
 
-			if(tablename != NULL)
+			if(!tables.empty())
 			{
-				auto trunc_table = truncate_str(pp->m_query_parser.m_table, truncation_size);
+				auto trunc_table = truncate_str(tables, truncation_size);
 				if(m_client_tables.size() < MAX_THREAD_REQUEST_TABLE_SIZE || m_client_tables.count(trunc_table))
 				{
-					entry = &(m_client_tables[truncate_str(pp->m_query_parser.m_table, truncation_size)]);
+					entry = &(m_client_tables[trunc_table]);
 					request_sorter<string, sinsp_query_details>::update(entry, tr, time_delta, is_error, m_percentiles);
 				}
 			}
