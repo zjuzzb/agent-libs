@@ -189,7 +189,7 @@ function push_docker_images {
         fi
 
         # Blow away all existing docker images for sysdig/agent*
-        docker images -a | grep '^sysdig/agent' | awk '{ print $3 }' | uniq | xargs --no-run-if-empty docker rmi -f
+	docker images -q 'sysdig/agent*' | uniq | xargs --no-run-if-empty docker rmi -f
         # Then remove all dangling images
         docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 
