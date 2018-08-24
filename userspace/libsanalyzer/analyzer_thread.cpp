@@ -576,12 +576,10 @@ bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
 
 void thread_analyzer_info::scan_ports_again_on_timer_elapsed()
 {
-	ASSERT(m_first_port_scan != time_point_t::max())
 	if(!m_second_port_scan_done)
 	{
 		auto now = time_point_t::clock::now();
 		auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(now - m_first_port_scan).count();
-		ASSERT(elapsed_secs > 0)
 		if(elapsed_secs > SECOND_SCAN_PORT_INTERVAL_SECS)
 		{
 			m_second_port_scan_done = true;
