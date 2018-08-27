@@ -464,7 +464,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		}
 	}
 
-	if(m_configuration.python_present() && m_configuration.m_app_checks_enabled)
+	if(m_configuration.python_present() && (m_configuration.m_app_checks_enabled || m_configuration.m_prom_conf.enabled()))
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
 		auto state = &m_subprocesses_state["sdchecks"];
@@ -479,7 +479,10 @@ int dragent_app::main(const std::vector<std::string>& args)
 
 			return (EXIT_FAILURE);
 		});
-		m_sinsp_worker.set_app_checks_enabled(true);
+		if (m_configuration.m_app_checks_enabled)
+		{
+			m_sinsp_worker.set_app_checks_enabled(true);
+		}
 	}
 #ifndef CYGWING_AGENT
 	if(m_configuration.m_system_supports_containers)
