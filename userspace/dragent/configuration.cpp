@@ -959,6 +959,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 			     std::to_string(m_k8s_delegated_nodes) + ") ignored.",
 			     sinsp_logger::SEV_WARNING);
 	}
+
+	// Ugly hack until we standardize on new_k8s
+	if (m_use_new_k8s) {
+		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
+	}
+
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 	// End K8s
