@@ -1606,6 +1606,8 @@ void dragent_configuration::print_configuration() const
 		LOG_INFO("Additional Docker image info fetching enabled.");
 	}
 
+	g_log->information("Incomplete TCP connection reporting: " + string(m_track_connection_status ? "enabled" : "disabled"));
+
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
 	for(const auto& item : m_config->warnings())
