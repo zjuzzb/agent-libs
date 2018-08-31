@@ -81,7 +81,7 @@ struct unixt_cmp
 	}
 };
 
-inline bool sinsp_strcmpi(char* buf1, char* buf2, size_t count)
+inline bool sinsp_strcmpi(const char* buf1, const char* buf2, size_t count)
 {
 	size_t j = count;
 
