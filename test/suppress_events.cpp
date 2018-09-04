@@ -221,7 +221,8 @@ bool suppress_types::is_target_call(uint16_t type)
 void suppress_types::do_syscalls()
 {
 	struct rlimit limits;
-	getrlimit(RLIMIT_AS, &limits);
+	// getrlimit called directly because libc likes prlimit()
+	syscall(SYS_getrlimit, RLIMIT_AS, &limits);
 	fcntl(1, F_GETFD);
 
 	// enter+exit for 2 syscalls
