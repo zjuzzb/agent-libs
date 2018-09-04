@@ -524,6 +524,7 @@ static std::string pathtotaskname(const std::string path)
 
 void infrastructure_state::scrape_mesos_env(const sinsp_container_info& container, sinsp_threadinfo *tinfo)
 {
+	static const std::string mesos_framework_name = "SYSDIG_MESOS_FRAMEWORK_NAME";
 	static const std::string mar_app_id = "MARATHON_APP_ID";
 	static const std::string mar_app_labels = "MARATHON_APP_LABELS";
 	static const std::string mar_app_label = "MARATHON_APP_LABEL_";
@@ -555,7 +556,14 @@ void infrastructure_state::scrape_mesos_env(const sinsp_container_info& containe
 
 	uid_t ckey = make_pair("container", container.m_id);
 	add(ckey);
-	(*m_state[ckey]->mutable_internal_tags())["mesos.framework.name"] = "marathon";
+
+	string fwork_name;
+	if (!sinsp_utils::find_env(fwork_name, env, mesos_framework_name) || fwork_name.empty())
+	{
+		fwork_name = "marathon";
+	}
+
+	(*m_state[ckey]->mutable_internal_tags())["mesos.framework.name"] = fwork_name;
 	if (!groupname.empty())
 		(*m_state[ckey]->mutable_internal_tags())["marathon.group.name"] = groupname;
 	if (!appname.empty())
