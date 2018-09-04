@@ -76,11 +76,12 @@ private:
 		m_name = name;
 	}
 
-	atomic<pid_t> m_pid;
-	atomic<uint64_t> m_memory_used;
-	atomic<uint64_t> m_last_loop_s;
+	std::atomic<pid_t> m_pid;
+	std::atomic<uint64_t> m_memory_used;
+	std::atomic<uint64_t> m_last_loop_s;
 	std::string m_name;
 
+	// Dragent calls set_name just after construction
 	friend class dragent_app;
 };
 

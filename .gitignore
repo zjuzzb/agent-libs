@@ -101,3 +101,9 @@ userspace/cointerface/pkg/
 # vagrant stuff
 .vagrant
 experiments/aws-vm/cloud_images.json
+
+#slickedit
+*.vpj
+*.vpw
+*.vpwhistu
+*.vtg

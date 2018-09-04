@@ -15,6 +15,7 @@ import sys
 import signal
 import ast
 import config
+import time
 
 # project
 from checks import AgentCheck
@@ -455,6 +456,7 @@ def prepare_prom_check(pc, port):
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
+    HEARTBEAT_MIN_S = 10
     def __init__(self, install_prefix):
         self.config = Config(install_prefix)
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
@@ -465,6 +467,7 @@ class Application:
         logging.getLogger("kazoo.client").setLevel(logging.WARNING)
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
+        self.last_heartbeat = datetime(2010, 1, 1, 0, 0, 0);
 
         self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
         self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
@@ -491,6 +494,20 @@ class Application:
         for key in self.known_instances.keys():
             if not key in self.last_request_pidnames:
                 del self.known_instances[key]
+
+    def heartbeat(self, pid, heartbeat_minimum_s):
+
+        now = datetime.now()
+
+        # Only send heartbeat if enough time has passed
+        if self.last_heartbeat + timedelta(0, heartbeat_minimum_s) > now: return
+
+        self.last_heartbeat = now;
+
+        # Send heartbeat
+        ru = resource.getrusage(resource.RUSAGE_SELF)
+        sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
+        sys.stderr.flush()
 
     def run_check(self, response_body, pidname, check, conf, trc):
         self.last_request_pidnames.add(pidname)
@@ -549,7 +566,7 @@ class Application:
                               "expiration_ts": int(expiration_ts.strftime("%s"))})
         return True, nm
 
-    def handle_command(self, command_s):
+    def handle_command(self, command_s, pid):
         appcheck_resp = []
         promcheck_resp = []
         #print "Received command: %s" % command_s
@@ -574,6 +591,7 @@ class Application:
                 if ran:
                     numrun += 1
                 nummetrics += nm
+                self.heartbeat(pid, self.HEARTBEAT_MIN_S);
 
         for p in processes:
             numchecks += 1
@@ -583,6 +601,7 @@ class Application:
             if ran:
                 numrun += 1
             nummetrics += nm
+            self.heartbeat(pid, self.HEARTBEAT_MIN_S);
 
         trc.stop(args={"total_metrics": nummetrics, "checks_run": numrun,
             "checks_total": numchecks})
@@ -600,7 +619,8 @@ class Application:
             # Handle received message
             command_s = self.inqueue.receive(1)
             if command_s:
-                self.handle_command(command_s)
+                self.handle_command(command_s, pid)
+
 
             # Do some cleanup
             now = datetime.now()
@@ -611,10 +631,8 @@ class Application:
                 self.blacklisted_pidnames.clear()
                 self.last_blacklisted_pidnames_cleanup = datetime.now()
 
-            # Send heartbeat
-            ru = resource.getrusage(resource.RUSAGE_SELF)
-            sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
-            sys.stderr.flush()
+            # Always send heartbeat
+            self.heartbeat(pid, 0)
 
     def main(self):
         logging.info("Starting")
