@@ -50,6 +50,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_baselines_message.txt
 	${CMAKE_CURRENT_BINARY_DIR}/security_baselines_message.txt
 	COPYONLY)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ipv6_traces/single_ipv6_conn.scap
+	${CMAKE_CURRENT_BINARY_DIR}/ipv6_traces/single_ipv6_conn.scap
+	COPYONLY)
+
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test
 	COMPONENT tests)

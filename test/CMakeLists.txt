@@ -48,6 +48,7 @@ add_executable(tests
 	label_limits.cpp
 	k8s_limits.cpp
 	internal_metrics.cpp
+	ipv6.cpp
 	net.cpp
 	paths.cpp
 	pipe.cpp

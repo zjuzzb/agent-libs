@@ -4,6 +4,7 @@
 #include <sys/resource.h>
 #include <sys/syscall.h>
 #include <sys/quota.h>
+#include <sys/resource.h>
 
 #include <gtest.h>
 

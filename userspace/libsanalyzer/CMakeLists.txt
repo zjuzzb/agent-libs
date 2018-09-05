@@ -116,6 +116,7 @@ add_library(sanalyzer STATIC
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/token_bucket.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracer_emitter.cpp
 	transactinfo.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tuples.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
