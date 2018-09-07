@@ -496,12 +496,13 @@ string dragent_configuration::get_install_prefix(const Application* app)
 	{
 		return ".";
 	}
-	const string& exe = app->argv().at(0);
+	auto& config = app->config();
+	auto path = config.getString("application.path");
 
-	size_t dpos = exe.rfind('/');
+	size_t dpos = path.rfind('/');
 	if(dpos != string::npos)
 	{
-		string exedir = exe.substr(0, dpos);
+		string exedir = path.substr(0, dpos);
 
 		dpos = exedir.rfind('/');
 		if(dpos != string::npos)
