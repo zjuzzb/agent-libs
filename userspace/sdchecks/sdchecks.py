@@ -102,14 +102,27 @@ class YamlConfig:
                     logging.error("Cannot parse config correctly, \"%s\" is not a list, exception=%s" % (key, str(ex)))
         return ret
 
-    def get_single(self, key, subkey=None, default_value=None):
+    def get_single(self, key, subkey=None, subsubkey=None, default_value=None):
         for root in self._roots:
-            if not subkey is None:
-                if root.has_key(key) and root[key].has_key(subkey):
-                    return root[key][subkey]
-            else:
-                if root.has_key(key):
-                    return root[key]
+            if not root.has_key(key): 
+                continue;
+
+            value = root[key];
+            if subkey is None: 
+                return value;
+
+            if not value.has_key(subkey): 
+                continue
+
+            subvalue = value[subkey]
+            if subsubkey is None: 
+                return subvalue
+
+            if not subvalue.has_key(subsubkey):
+                continue
+
+            return subvalue[subsubkey]
+
         return default_value
 
 class AppCheckException(Exception):
@@ -342,7 +355,7 @@ class Config:
                                         os.path.join(etcdir, "dragent.default.yaml")])
 
     def log_level(self):
-        level = self._yaml_config.get_single("log", "file_priority", "info")
+        level = self._yaml_config.get_single("log", "file_priority", None, "info")
         if level == "error":
             return logging.ERROR
         elif level == "warning":
@@ -376,6 +389,14 @@ class Config:
 
     def ignore_ssl_warnings(self):
         return bool(self._yaml_config.get_single("app_checks_ignore_ssl_warnings"))
+
+    def watchdog(self):
+        timeout = self._yaml_config.get_single("watchdog", 
+                                               "subprocesses_timeout_s", 
+                                               "sdchecks", 
+                                               "60") # This should match the default
+                                                     # in dragent/configuration.cpp
+        return int(timeout)
 
 class PosixQueueType:
     SEND = 0
@@ -456,7 +477,6 @@ def prepare_prom_check(pc, port):
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
     APP_CHECK_EXCEPTION_RETRY_TIMEOUT = timedelta(minutes=30)
-    HEARTBEAT_MIN_S = 10
     def __init__(self, install_prefix):
         self.config = Config(install_prefix)
         logging.basicConfig(format='%(process)s:%(levelname)s:%(message)s', level=self.config.log_level())
@@ -468,6 +488,7 @@ class Application:
         self.known_instances = {}
         self.last_known_instances_cleanup = datetime.now()
         self.last_heartbeat = datetime(2010, 1, 1, 0, 0, 0);
+        self.heartbeat_min = timedelta(0);
 
         self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
         self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
@@ -495,19 +516,21 @@ class Application:
             if not key in self.last_request_pidnames:
                 del self.known_instances[key]
 
-    def heartbeat(self, pid, heartbeat_minimum_s):
+    def heartbeat(self, pid, force=False):
 
         now = datetime.now()
 
         # Only send heartbeat if enough time has passed
-        if self.last_heartbeat + timedelta(0, heartbeat_minimum_s) > now: return
-
-        self.last_heartbeat = now;
+        if ((not force) and (self.last_heartbeat + self.heartbeat_min > now)): return
 
         # Send heartbeat
+        self.last_heartbeat = now;
         ru = resource.getrusage(resource.RUSAGE_SELF)
         sys.stderr.write("HB,%d,%d,%s\n" % (pid, ru.ru_maxrss, now.strftime("%s")))
         sys.stderr.flush()
+
+        # Update the heartbeat_min to half of the watchdog from the config file
+        self.heartbeat_min = timedelta(seconds=(self.config.watchdog() / 2))
 
     def run_check(self, response_body, pidname, check, conf, trc):
         self.last_request_pidnames.add(pidname)
@@ -591,7 +614,7 @@ class Application:
                 if ran:
                     numrun += 1
                 nummetrics += nm
-                self.heartbeat(pid, self.HEARTBEAT_MIN_S);
+                self.heartbeat(pid);
 
         for p in processes:
             numchecks += 1
@@ -601,7 +624,7 @@ class Application:
             if ran:
                 numrun += 1
             nummetrics += nm
-            self.heartbeat(pid, self.HEARTBEAT_MIN_S);
+            self.heartbeat(pid);
 
         trc.stop(args={"total_metrics": nummetrics, "checks_run": numrun,
             "checks_total": numchecks})
@@ -621,7 +644,6 @@ class Application:
             if command_s:
                 self.handle_command(command_s, pid)
 
-
             # Do some cleanup
             now = datetime.now()
             if now - self.last_known_instances_cleanup > self.KNOWN_INSTANCES_CLEANUP_TIMEOUT:
@@ -632,7 +654,7 @@ class Application:
                 self.last_blacklisted_pidnames_cleanup = datetime.now()
 
             # Always send heartbeat
-            self.heartbeat(pid, 0)
+            self.heartbeat(pid, True)
 
     def main(self):
         logging.info("Starting")
