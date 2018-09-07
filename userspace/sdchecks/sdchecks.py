@@ -349,7 +349,7 @@ class Config:
 	self.install_prefix = install_prefix
         etcdir = install_prefix + "/etc"
         self._yaml_config = YamlConfig([os.path.join(etcdir, "dragent.yaml"),
-                                        os.path.join(etcdir, "/kubernetes/config/dragent.yaml"),
+                                        os.path.join(etcdir, "kubernetes/config/dragent.yaml"),
                                         os.path.join(etcdir, "dragent.auto.yaml"),
                                         os.path.join(etcdir, "dragent.default.yaml")])
 
