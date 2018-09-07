@@ -15,7 +15,6 @@ import sys
 import signal
 import ast
 import config
-import time
 
 # project
 from checks import AgentCheck
