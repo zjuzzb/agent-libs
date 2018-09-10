@@ -74,10 +74,10 @@ void event_capture::capture()
 		{
 			m_inspector->autodump_start(m_dump_filename, false);
 		}
-		catch(...)
+		catch(std::exception &e)
 		{
 			m_start_failed = true;
-			m_start_failure_message = string("couldn't start dumping to ") + m_dump_filename;
+			m_start_failure_message = string("couldn't start dumping to ") + m_dump_filename + ": " + e.what();
 			m_capture_started.set();
 			delete m_inspector;
 			delete m_analyzer;
