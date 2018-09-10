@@ -104,13 +104,13 @@ class YamlConfig:
     def get_single(self, key, subkey=None, subsubkey=None, default_value=None):
         for root in self._roots:
             if not root.has_key(key): 
-                continue;
+                continue
 
-            value = root[key];
-            if subkey is None: 
-                return value;
+            value = root[key]
+            if subkey is None:
+                return value
 
-            if not value.has_key(subkey): 
+            if not value.has_key(subkey):
                 continue
 
             subvalue = value[subkey]
