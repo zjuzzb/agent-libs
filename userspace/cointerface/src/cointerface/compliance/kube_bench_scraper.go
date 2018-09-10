@@ -9,21 +9,87 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	log "github.com/cihub/seelog"
+	"os/exec"
 	"strings"
 	"text/template"
 	"time"
 )
 
-func (args *KubeBenchArgs) GenArgs(task *draiosproto.CompTask) ([]string, error) {
-	return []string{"--json", "master"}, nil
+func findProcess(candidates []string) (bool) {
+	for _, cand := range candidates {
+		cmd := exec.Command("ps", "-C", cand)
+
+		out, err := cmd.Output()
+
+		log.Debugf("Output from checking %s: %s %v", cand, out, err)
+
+		if err == nil {
+			return true
+		}
+	}
+
+	return false
 }
 
-type KubeBenchArgs struct {
+func (impl *KubeBenchImpl) Variant(task *draiosproto.CompTask) (string) {
+
+	if impl.variant != "" {
+		return impl.variant
+	}
+
+	// kube-bench can either perform master or node checks,
+	// depending on whether the program is running on the host
+	// where the api server is running, or any other node.
+
+	impl.variant = "none"
+
+	// If a variant was explicitly provided, use it
+	for _, param := range task.TaskParams {
+		if *param.Key == "variant" {
+			if *param.Val != "master" && *param.Val != "node" {
+				log.Errorf("Ignoring configured variant %s, as it is not \"master\" or \"node\"", *param.Val)
+			} else {
+				impl.variant = *param.Val
+			}
+		}
+	}
+
+	if impl.variant == "none" {
+		//
+		// Figure out which way to run by looking for an apiserver
+		// process. kube-bench requires additional services such as
+		// the scheduler, etcd, etc to be running on the master, but
+		// at this level we only need to distinguish between master
+		// and node versions.
+
+		servercmds := []string{"kube-apiserver", "hyperkube apiserver", "apiserver"}
+		if findProcess(servercmds) {
+			impl.variant = "master"
+		} else {
+			nodecmds := []string{"hyperkube kubelet", "kubelet"}
+			if findProcess(nodecmds) {
+				impl.variant = "node"
+			}
+		}
+	}
+
+	log.Debugf("Variant %s", impl.variant);
+	return impl.variant
 }
 
-type KubeBenchScraper struct {
+func (impl *KubeBenchImpl) GenArgs(task *draiosproto.CompTask) ([]string, error) {
+	return []string{"--json", impl.Variant(task)}, nil
+}
+
+func (impl *KubeBenchImpl) ShouldRun(task *draiosproto.CompTask) (bool, error) {
+
+	return (impl.Variant(task) != "none"), nil
+}
+
+type KubeBenchImpl struct {
 	customerId string `json:"customerId"`
 	machineId string `json:"machineId"`
+	variant string `json:"variant"`
 }
 
 type kubeTestResult struct {
@@ -86,8 +152,12 @@ type kubeOutputFields struct {
 //     - 1.1.29 (Ensure that the --tls-cert-file and --tls-private-key-file arguments are set as appropriate)
 //     - 1.1.30 (Ensure that the --client-ca-file argument is set as appropriate)
 //     - 1.3.3 (Ensure that the --insecure-experimental-approve-all-kubelet-csrs-for-group argument is not set)
-//     - Anything in 1.4
-func (scraper *KubeBenchScraper) AssignRisk(id string, result string, curRisk string) string {
+//     - 2.1.2 (Ensure that the --anonymous-auth argument is set to false (Scored))
+//     - 2.1.3 (Ensure that the --authorization-mode argument is not set to AlwaysAllow (Scored))
+//     - 2.1.4 (Ensure that the --client-ca-file argument is set as appropriate (Scored))
+//     - 2.1.12 (Ensure that the --tls-cert-file and --tls-private-key-file arguments are set as appropriate (Scored))
+//     - Anything in 1.4 or 2.2
+func (impl *KubeBenchImpl) AssignRisk(id string, result string, curRisk string) string {
 	newRisk := "low"
 
 	highTestIds := map[string]int {
@@ -100,9 +170,15 @@ func (scraper *KubeBenchScraper) AssignRisk(id string, result string, curRisk st
 		"1.1.29": 1,
 		"1.1.30": 1,
 		"1.3.3": 1,
+		"2.1.2": 1,
+		"2.1.3": 1,
+		"2.1.4": 1,
+		"2.1.12": 1,
 	}
 
-	if (result != "PASS" && (highTestIds[id] == 1 || strings.HasPrefix(id, "1.4"))) {
+	if (result != "PASS" &&
+		((highTestIds[id] == 1 || strings.HasPrefix(id, "1.4")) ||
+		(highTestIds[id] == 2 || strings.HasPrefix(id, "2.2")))) {
 		newRisk = "high"
 	} else if (result != "PASS") {
 		newRisk = "medium"
@@ -115,7 +191,7 @@ func (scraper *KubeBenchScraper) AssignRisk(id string, result string, curRisk st
 	return curRisk
 }
 
-func (scraper *KubeBenchScraper) Scrape(rootPath string, moduleName string,
+func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
 	evtsChannel chan *sdc_internal.CompTaskEvent,
 	metricsChannel chan string) error {
@@ -125,12 +201,12 @@ func (scraper *KubeBenchScraper) Scrape(rootPath string, moduleName string,
 		Successful: proto.Bool(true),
 	}
 	cevts := &draiosproto.CompEvents{
-		MachineId: proto.String(scraper.machineId),
-		CustomerId: proto.String(scraper.customerId),
+		MachineId: proto.String(impl.machineId),
+		CustomerId: proto.String(impl.customerId),
 	}
 	results := &draiosproto.CompResults{
-		MachineId: proto.String(scraper.machineId),
-		CustomerId: proto.String(scraper.customerId),
+		MachineId: proto.String(impl.machineId),
+		CustomerId: proto.String(impl.customerId),
 	}
 
 	metrics := []string{}
@@ -182,7 +258,7 @@ func (scraper *KubeBenchScraper) Scrape(rootPath string, moduleName string,
 
 		for _, result := range section.Results {
 
-			curRisk = scraper.AssignRisk(result.TestNumber, result.Status, curRisk)
+			curRisk = impl.AssignRisk(result.TestNumber, result.Status, curRisk)
 
 			if result.Status != "PASS" {
 

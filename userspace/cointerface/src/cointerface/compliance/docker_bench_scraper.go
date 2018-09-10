@@ -9,18 +9,28 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"io/ioutil"
 	log "github.com/cihub/seelog"
+	"os/exec"
 	"strings"
 	"text/template"
 )
 
-func (args *DockerBenchArgs) GenArgs(task *draiosproto.CompTask) ([]string, error) {
+func (impl *DockerBenchImpl) GenArgs(task *draiosproto.CompTask) ([]string, error) {
 	return []string{"MODULE_DIR/docker-bench-security.sh", "-l", "OUTPUT_DIR/docker-bench.log"}, nil
 }
 
-type DockerBenchArgs struct {
+func (impl *DockerBenchImpl) ShouldRun(task *draiosproto.CompTask) (bool, error) {
+
+	// If docker ps -q runs without errors, we assume the task can run
+	cmd := exec.Command("docker", "ps", "-q")
+
+	out, err := cmd.Output()
+
+	log.Debugf("Output from docker ps -q: %s %v", out, err)
+
+	return (err == nil), nil
 }
 
-type DockerBenchScraper struct {
+type DockerBenchImpl struct {
 	customerId string `json:"customerId"`
 	machineId string `json:"machineId"`
 }
@@ -88,7 +98,7 @@ type dockerOutputFields struct {
 //    - 5.21 (Ensure the default seccomp profile is not Disabled)
 //    - 5.22 (Ensure docker exec commands are not used with privileged option)
 //    - 5.25 (Ensure the container is restricted from acquiring additional privileges)
-func (scraper *DockerBenchScraper) AssignRisk(id string, result string, curRisk string) string {
+func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk string) string {
 	newRisk := "low"
 
 	highTestIds := map[string]int {
@@ -118,7 +128,7 @@ func (scraper *DockerBenchScraper) AssignRisk(id string, result string, curRisk 
 	return curRisk
 }
 
-func (scraper *DockerBenchScraper) Scrape(rootPath string, moduleName string,
+func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
 	evtsChannel chan *sdc_internal.CompTaskEvent,
 	metricsChannel chan string) error {
@@ -129,12 +139,12 @@ func (scraper *DockerBenchScraper) Scrape(rootPath string, moduleName string,
 	}
 
 	cevts := &draiosproto.CompEvents{
-		MachineId: proto.String(scraper.machineId),
-		CustomerId: proto.String(scraper.customerId),
+		MachineId: proto.String(impl.machineId),
+		CustomerId: proto.String(impl.customerId),
 	}
 	results := &draiosproto.CompResults{
-		MachineId: proto.String(scraper.machineId),
-		CustomerId: proto.String(scraper.customerId),
+		MachineId: proto.String(impl.machineId),
+		CustomerId: proto.String(impl.customerId),
 	}
 
 	metrics := []string{}
@@ -224,7 +234,7 @@ func (scraper *DockerBenchScraper) Scrape(rootPath string, moduleName string,
 			//  - 5.18: Ensure the default ulimit is overwritten at runtime, only if needed
 			//  - 5.29: Ensure Docker's default bridge docker0 is not used
 
-			curRisk = scraper.AssignRisk(test.Id, test.Result, curRisk)
+			curRisk = impl.AssignRisk(test.Id, test.Result, curRisk)
 
 			if ((test.Result != "PASS" && test.Result != "INFO") ||
 				(test.Result == "INFO" &&

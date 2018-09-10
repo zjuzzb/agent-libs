@@ -652,6 +652,17 @@ void security_mgr::refresh_compliance_tasks()
 		draiosproto::comp_task *run_task = start.mutable_calendar()->add_tasks();
 
 		*run_task = task;
+
+		// If the task is a kube-bench task and if the agent
+		// is configured to run a specific variant, pass the
+		// variant as a param.
+		if(m_configuration->m_security_compliance_kube_bench_variant != "")
+		{
+			draiosproto::comp_task_param *param = run_task->add_task_params();
+			param->set_key("variant");
+			param->set_val(m_configuration->m_security_compliance_kube_bench_variant);
+		}
+
 		new_tasks.insert(task.name());
 	}
 

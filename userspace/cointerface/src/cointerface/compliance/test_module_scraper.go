@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (args *TestModuleArgs) GenArgs(task *draiosproto.CompTask) ([]string, error) {
+func (impl *TestModuleImpl) GenArgs(task *draiosproto.CompTask) ([]string, error) {
 	sleepTime := "5"
 
 	for _, param := range task.TaskParams {
@@ -22,15 +22,16 @@ func (args *TestModuleArgs) GenArgs(task *draiosproto.CompTask) ([]string, error
 	return []string{sleepTime}, nil
 }
 
-type TestModuleArgs struct {
+func (impl *TestModuleImpl) ShouldRun(task *draiosproto.CompTask) (bool, error) {
+	return true, nil
 }
 
-type TestModuleScraper struct {
+type TestModuleImpl struct {
 	customerId string `json:"customerId"`
 	machineId string `json:"machineId"`
 }
 
-func (scraper *TestModuleScraper) Scrape(rootPath string, moduleName string,
+func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
 	evtsChannel chan *sdc_internal.CompTaskEvent,
 	metricsChannel chan string) error {
@@ -60,8 +61,8 @@ func (scraper *TestModuleScraper) Scrape(rootPath string, moduleName string,
 	}
 
 	events := &draiosproto.CompEvents{
-		MachineId: proto.String(scraper.machineId),
-		CustomerId: proto.String(scraper.customerId),
+		MachineId: proto.String(impl.machineId),
+		CustomerId: proto.String(impl.customerId),
 	}
 
 	fields := map[string]string {
@@ -84,8 +85,8 @@ func (scraper *TestModuleScraper) Scrape(rootPath string, moduleName string,
 	evt.Events = events
 
 	results := &draiosproto.CompResults{
-		MachineId: proto.String(scraper.machineId),
-		CustomerId: proto.String(scraper.customerId),
+		MachineId: proto.String(impl.machineId),
+		CustomerId: proto.String(impl.customerId),
 	}
 
 	result := &draiosproto.CompResult{

@@ -255,6 +255,7 @@ dragent_configuration::dragent_configuration()
 	m_security_send_compliance_events = false;
 	m_security_send_compliance_results = false;
 	m_security_compliance_refresh_interval = 120000000000;
+	m_security_compliance_kube_bench_variant = "";
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
@@ -1047,6 +1048,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
 	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", false);
 	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
+	m_security_compliance_kube_bench_variant = m_config->get_scalar<string>("security", "compliance_kube_bench_variant", "");
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -1427,6 +1429,11 @@ void dragent_configuration::print_configuration() const
 				   NumberFormatter::format(m_security_compliance_refresh_interval / 1000000000) + " seconds");
 
 		g_log->information(string("Increased statsd metric limit by 100 for compliance tasks"));
+
+		if(m_security_compliance_kube_bench_variant != "")
+		{
+			g_log->information(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
+		}
 	}
 
 	if(m_suppressed_comms.size() > 0)

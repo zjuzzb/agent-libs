@@ -86,8 +86,18 @@ func emitStatsdForever(mgr *ModuleMgr) {
 }
 
 func runTask(mgr *ModuleMgr, stask *ScheduledTask) error {
-	log.Debugf("Running task %s", *stask.task.Name)
 	module := mgr.availModules[*stask.task.ModName]
+
+	shouldRun, err := module.Impl.ShouldRun(stask.task); if err != nil {
+		return err
+	}
+
+	if !shouldRun {
+		log.Infof("Not running task %s (ShouldRun false)", *stask.task.Name);
+		return nil
+	} else {
+		log.Infof("Running task %s", *stask.task.Name)
+	}
 
 	stask.numTimesRun++
 
@@ -126,8 +136,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.availModules["docker-bench-security"] = Module{
 		Name: "docker-bench-security",
 		Prog: "bash",
-		Args: &DockerBenchArgs{},
-		Scrapr: &DockerBenchScraper{
+		Impl: &DockerBenchImpl{
 			customerId: customerId,
 			machineId: machineId,
 		},
@@ -136,8 +145,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.availModules["kube-bench"] = Module{
 		Name: "kube-bench",
 		Prog: "MODULE_DIR/kube-bench",
-		Args: &KubeBenchArgs{},
-		Scrapr: &KubeBenchScraper{
+		Impl: &KubeBenchImpl{
 			customerId: customerId,
 			machineId: machineId,
 		},
@@ -146,8 +154,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.availModules["test-module"] = Module{
 		Name: "test-module",
 		Prog: "MODULE_DIR/run.sh",
-		Args: &TestModuleArgs{},
-		Scrapr: &TestModuleScraper{
+		Impl: &TestModuleImpl{
 			customerId: customerId,
 			machineId: machineId,
 		},

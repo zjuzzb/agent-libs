@@ -26,11 +26,20 @@ type TaskArgsGenerator interface {
 	GenArgs(task *draiosproto.CompTask) ([]string, error)
 }
 
+type TaskShouldRun interface {
+	ShouldRun(task *draiosproto.CompTask) (bool, error)
+}
+
+type ModuleImpl interface {
+	Scraper
+	TaskArgsGenerator
+	TaskShouldRun
+}
+
 type Module struct {
 	Name string `json:"name"`
 	Prog string `json:"prog"`
-	Args TaskArgsGenerator `json:"args"`
-	Scrapr Scraper `json:"scraper"`
+	Impl ModuleImpl `json:"impl"`
 }
 
 type ScheduledTask struct {
@@ -59,7 +68,7 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 	prog :=	strings.Replace(strings.Replace(module.Prog, "MODULE_DIR", moduleDir, -1),
 		"OUTPUT_DIR", outputDir, -1)
 
-	args, err := module.Args.GenArgs(stask.task); if err != nil {
+	args, err := module.Impl.GenArgs(stask.task); if err != nil {
 		return err
 	}
 
@@ -169,7 +178,7 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 			return
 		}
 
-		err = module.Scrapr.Scrape(outputDir, module.Name,
+		err = module.Impl.Scrape(outputDir, module.Name,
 			stask.task,
 			mgr.evtsChannel, mgr.metricsChannel); if err != nil {
 				log.Errorf("Could not scrape module %s output (%s)",
