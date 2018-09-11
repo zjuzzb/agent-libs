@@ -954,6 +954,33 @@ TEST_F(security_policies_test, falco_no_evttype)
 	check_expected_internal_metrics(metrics);
 };
 
+TEST_F(security_policies_test, falco_fqdn)
+{
+	ASSERT_EQ(system("curl -m 3 github.com > /dev/null 2>&1"), 0);
+
+	// Not using check_policy_events for this, as it is checking keys only
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() >= 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 27u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "contacted_blacklisted_host");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.sip.name"), "github.com");
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("fd.name") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("user.name") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
+
+	string prefix = "tests contacted the blacklisted host github.com";
+	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
+
+	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+
+	check_expected_internal_metrics(metrics);
+}
+
 TEST_F(security_policies_test, baseline_only)
 {
 	if(!check_docker())

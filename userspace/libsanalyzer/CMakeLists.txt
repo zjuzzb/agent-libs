@@ -14,6 +14,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../draiosproto)
 if(CYGWIN)
 include_directories("${WIN_HAL_INCLUDE}")
@@ -38,6 +39,7 @@ add_library(sanalyzer STATIC
 	custom_container.cpp
 	delays.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/event.cpp
@@ -161,7 +163,8 @@ target_link_libraries(sanalyzer
 	dl
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
-	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+	${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/build/lib_release/libtbb.a)
 
 if(NOT CYGWIN)
 	target_link_libraries(sanalyzer anl)

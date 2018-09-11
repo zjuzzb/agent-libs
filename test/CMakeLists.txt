@@ -24,6 +24,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -38,6 +39,7 @@ add_executable(tests
 	coclient_test.cpp
 	compliance.cpp
 	custom_container.cpp
+	dns_manager.cpp
 	emit_tracers.cpp
 	event_capture.cpp
 	evttype_filter.cpp

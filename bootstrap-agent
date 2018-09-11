@@ -55,6 +55,15 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
+TBB_DIR=$DEPENDENCIES/tbb-2018_U5
+if [ ! -d "$TBB_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/tbb-2018_U5.tar.gz
+	tar -xzf tbb-2018_U5.tar.gz
+	cd $TBB_DIR
+	make tbb_build_dir=${TBB_DIR}/build tbb_build_prefix=lib extra_inc=big_iron.inc
+fi
+
 if [[ "$ARCH" == "s390x" ]]; then
 GO_DIR=/usr/local/go
 if [ ! -d "$GO_DIR" ]; then
