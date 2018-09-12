@@ -77,6 +77,7 @@ func performStart(client sdc_internal.ComplianceModuleMgrClient) int {
 		Calendar:          &draiosproto.CompCalendar{},
 	}
 	start.Calendar.Tasks = append(start.Calendar.Tasks, &draiosproto.CompTask{
+		Id:                proto.Uint64(1),
 		Name:              proto.String("Check Docker Environment"),
 		ModName:           proto.String("docker-bench-security"),
 		Enabled:           proto.Bool(true),
@@ -84,6 +85,7 @@ func performStart(client sdc_internal.ComplianceModuleMgrClient) int {
 	})
 
 	start.Calendar.Tasks = append(start.Calendar.Tasks, &draiosproto.CompTask{
+		Id:                proto.Uint64(2),
 		Name:              proto.String("Check K8s Environment"),
 		ModName:           proto.String("kube-bench"),
 		Enabled:           proto.Bool(true),

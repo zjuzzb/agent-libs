@@ -2,8 +2,10 @@ package compliance
 
 import (
 	"bufio"
+	"bytes"
 	"cointerface/sdc_internal"
 	"cointerface/draiosproto"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -50,6 +52,122 @@ type ScheduledTask struct {
 	maxTimesRun int
 	numTimesRun int
 	activelyStopped bool
+}
+
+// For now, all compliance result json objects have a consistent
+// structure, namely `ExtendedComplianceResult` in the swagger
+// definition. These structs implement that structure.
+
+type ResultStatus int
+
+const (
+	pass ResultStatus = iota
+	fail
+	warn
+	info
+)
+
+func (s ResultStatus) String() string {
+	return [...]string{"pass", "fail", "warn", "info"}[s]
+}
+
+func (d *ResultStatus) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(d.String())
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+func (d *ResultStatus) UnmarshalJSON(b []byte) error {
+	// unmarshal as string
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	// lookup value
+	switch s {
+	case "pass":
+		*d = pass
+	case "fail":
+		*d = fail
+	case "warn":
+		*d = warn
+	case "info":
+		*d = info
+	default:
+		return fmt.Errorf("Unknown ResultStatus string %s", s)
+	}
+	return nil
+}
+
+type ResultRisk int
+
+const (
+	low ResultRisk = iota
+	medium
+	high
+)
+
+func (s ResultRisk) String() string {
+	return [...]string{"low", "medium", "high"}[s]
+}
+
+func (d *ResultRisk) MarshalJSON() ([]byte, error) {
+	buffer := bytes.NewBufferString(`"`)
+	buffer.WriteString(d.String())
+	buffer.WriteString(`"`)
+	return buffer.Bytes(), nil
+}
+
+func (d *ResultRisk) UnmarshalJSON(b []byte) error {
+	// unmarshal as string
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return err
+	}
+	// lookup value
+	switch s {
+	case "low":
+		*d = low
+	case "medium":
+		*d = medium
+	case "high":
+		*d = high
+	default:
+		return fmt.Errorf("Unknown ResultRisk string %s", s)
+	}
+	return nil
+}
+
+type TaskResultTest struct {
+	TestNumber string `json:"testNumber"`
+	Status ResultStatus `json:"status"`
+	Details string `json:"details,omitempty"`
+	Items []string `json:"items,omitempty"`
+}
+
+type TaskResultSection struct {
+	SectionId string `json:"sectionId"`
+	TestsRun uint64 `json:"testsRun"`
+	PassCount uint64 `json:"passCount"`
+	FailCount uint64 `json:"failCount"`
+	WarnCount uint64 `json:"warnCount"`
+	Results []TaskResultTest `json:"results"`
+}
+
+type ExtendedTaskResult struct {
+	Id uint64 `json:"id"`
+	TimestampNS uint64 `json:"timestampNs"`
+	HostMac string `json:"hostMac"`
+	TaskName string `json:"taskName"`
+	TestsRun uint64 `json:"testsRun"`
+	PassCount uint64 `json:"passCount"`
+	FailCount uint64 `json:"failCount"`
+	WarnCount uint64 `json:"warnCount"`
+	Risk ResultRisk `json:"risk"`
+	Tests []TaskResultSection `json:"tests"`
 }
 
 func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {

@@ -120,27 +120,6 @@ type kubeBenchResults struct {
 	TotalWarn uint64 `json:"total_warn"`
 }
 
-type kubeOutputSection struct {
-	Section string `json:"section"`
-	Total uint64 `json:"total"`
-	Pass uint64 `json:"pass"`
-	Fail uint64 `json:"fail"`
-	Warn uint64 `json:"warn"`
-	PassTestIds []string `json:"passTestIds,omitempty"`
-	FailTestIds []string `json:"failTestIds,omitempty"`
-	WarnTestIds []string `json:"warnTestIds,omitempty"`
-}
-
-type kubeOutputFields struct {
-	Version string `json:"version"`
-	NodeType string `json:"nodeType"`
-	Total uint64 `json:"total"`
-	Pass uint64 `json:"pass"`
-	Fail uint64 `json:"fail"`
-	Warn uint64 `json:"warn"`
-	Tests []kubeOutputSection `json:"tests"`
-}
-
 // Given a test id, result, and current risk, assign a new risk based
 // on the result of the test.
 // The risk defaults to low and becomes medium/high if:
@@ -157,8 +136,8 @@ type kubeOutputFields struct {
 //     - 2.1.4 (Ensure that the --client-ca-file argument is set as appropriate (Scored))
 //     - 2.1.12 (Ensure that the --tls-cert-file and --tls-private-key-file arguments are set as appropriate (Scored))
 //     - Anything in 1.4 or 2.2
-func (impl *KubeBenchImpl) AssignRisk(id string, result string, curRisk string) string {
-	newRisk := "low"
+func (impl *KubeBenchImpl) AssignRisk(id string, result string, curRisk ResultRisk) ResultRisk {
+	newRisk := low
 
 	highTestIds := map[string]int {
 		"1.1.5": 1,
@@ -179,12 +158,12 @@ func (impl *KubeBenchImpl) AssignRisk(id string, result string, curRisk string) 
 	if (result != "PASS" &&
 		((highTestIds[id] == 1 || strings.HasPrefix(id, "1.4")) ||
 		(highTestIds[id] == 2 || strings.HasPrefix(id, "2.2")))) {
-		newRisk = "high"
+		newRisk = high
 	} else if (result != "PASS") {
-		newRisk = "medium"
+		newRisk = medium
 	}
 
-	if (newRisk == "high" || (newRisk == "medium" && curRisk == "low")) {
+	if (newRisk == high || (newRisk == medium && curRisk == low)) {
 		return newRisk
 	}
 
@@ -226,48 +205,53 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 		return err
 	}
 
-	output_fields := &kubeOutputFields{
-		Version: bres.Version,
-		NodeType: bres.NodeType,
-		Total: bres.TotalPass + bres.TotalFail + bres.TotalWarn,
-		Pass: bres.TotalPass,
-		Fail: bres.TotalFail,
-		Warn: bres.TotalWarn,
-	}
-
-	curRisk := "low"
-
 	timestamp_ns := uint64(time.Now().UnixNano())
+
+	result := &ExtendedTaskResult{
+		Id: *task.Id,
+		TimestampNS: timestamp_ns,
+		HostMac: impl.machineId,
+		TaskName: *task.Name,
+		TestsRun: bres.TotalPass + bres.TotalFail + bres.TotalWarn,
+		PassCount: bres.TotalPass,
+		FailCount: bres.TotalFail,
+		WarnCount: bres.TotalWarn,
+		Risk: low,
+	}
 
 	for _, section := range bres.Tests {
 
-		output_section := &kubeOutputSection {
-			Section: section.Section,
-			Total: section.Pass + section.Fail + section.Warn,
-			Pass: section.Pass,
-			Fail: section.Fail,
-			Warn: section.Warn,
+		res_section := &TaskResultSection {
+			SectionId: section.Section,
+			TestsRun: section.Pass + section.Fail + section.Warn,
+			PassCount: section.Pass,
+			FailCount: section.Fail,
+			WarnCount: section.Warn,
 		}
 
 		metrics_prefix := fmt.Sprintf("compliance.k8s-bench.%v.%v", section.Section, strings.ToLower(strings.Replace(section.Desc, " ", "-", -1)))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metrics_prefix, output_section.Fail))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metrics_prefix, output_section.Warn))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metrics_prefix, output_section.Pass))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metrics_prefix, output_section.Total))
-		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metrics_prefix, (100.0*float64(output_section.Pass)) / float64(output_section.Total)))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metrics_prefix, res_section.FailCount))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metrics_prefix, res_section.WarnCount))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metrics_prefix, res_section.PassCount))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metrics_prefix, res_section.TestsRun))
+		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metrics_prefix, (100.0*float64(res_section.PassCount)) / float64(res_section.TestsRun)))
 
-		for _, result := range section.Results {
+		for _, test := range section.Results {
 
-			curRisk = impl.AssignRisk(result.TestNumber, result.Status, curRisk)
+			result.Risk = impl.AssignRisk(test.TestNumber, test.Status, result.Risk)
 
-			if result.Status != "PASS" {
+			res_test := &TaskResultTest {
+				TestNumber: test.TestNumber,
+			}
+
+			if test.Status != "PASS" {
 
 				fields := map[string]string{
 					"Task": moduleName,
 					"SectionDesc": section.Desc,
-					"TestId": result.TestNumber,
-					"TestDesc": result.TestDesc,
-					"TestResult": result.Status,
+					"TestId": test.TestNumber,
+					"TestDesc": test.TestDesc,
+					"TestResult": test.Status,
 					"falco.rule": "compliance_modules",
 				}
 				tmplstr := "Compliance task \"{{.Task}}\" test {{.SectionDesc}}/{{.TestId}} ({{.TestDesc}}) result: {{.TestResult}}."
@@ -294,34 +278,33 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 
 					cevts.Events = append(cevts.Events, cevt);
 				}
-
-				if result.Status == "WARN" {
-					output_section.WarnTestIds = append(output_section.WarnTestIds, result.TestNumber)
+				if test.Status == "WARN" {
+					res_test.Status = warn
 				} else {
-					output_section.FailTestIds = append(output_section.FailTestIds, result.TestNumber)
+					res_test.Status = fail
 				}
 			} else {
-				output_section.PassTestIds = append(output_section.PassTestIds, result.TestNumber)
+				res_test.Status = pass
 			}
+			res_section.Results = append(res_section.Results, *res_test)
 		}
-		output_fields.Tests = append(output_fields.Tests, *output_section)
+		result.Tests = append(result.Tests, *res_section)
 	}
 
-	ofbytes, err := json.Marshal(output_fields); if err != nil {
-		log.Errorf("Could not serialize output fields: %v", err.Error())
+	ofbytes, err := json.Marshal(result); if err != nil {
+		log.Errorf("Could not serialize test result: %v", err.Error())
 		return err
 	}
 
-	result := &draiosproto.CompResult{
-		TimestampNs: proto.Uint64(timestamp_ns),
-		TaskName: proto.String(*task.Name),
-		TestsRun: proto.Uint32(uint32(output_fields.Pass + output_fields.Fail)),
-		TestsPassed: proto.Uint32(uint32(output_fields.Pass)),
-		OutputFields: proto.String(string(ofbytes[:])),
-		Risk: proto.String(curRisk),
-	};
+	comp_result := &draiosproto.CompResult{
+		TimestampNs: proto.Uint64(result.TimestampNS),
+		TaskName: proto.String(result.TaskName),
+		ModName: task.ModName,
+		TaskId: proto.Uint64(result.Id),
+		ExtResult: proto.String(string(ofbytes[:])),
+	}
 
-	results.Results = append(results.Results, result)
+	results.Results = append(results.Results, comp_result)
 
 	evt.Events = cevts
 	evt.Results = results
@@ -329,11 +312,11 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 	log.Debugf("Sending kube-bench comp_evt: %v", evt)
 	evtsChannel <- evt
 
-	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_pass:%d|g", output_fields.Pass))
-	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_fail:%d|g", output_fields.Fail))
-	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_warn:%d|g", output_fields.Warn))
-	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_total:%d|g", output_fields.Total))
-	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.pass_pct:%f|g", (100.0*float64(output_fields.Pass)) / float64(output_fields.Total)))
+	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_pass:%d|g", result.PassCount))
+	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_fail:%d|g", result.FailCount))
+	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_warn:%d|g", result.WarnCount))
+	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.tests_total:%d|g", result.TestsRun))
+	metrics = append(metrics, fmt.Sprintf("compliance.k8s-bench.pass_pct:%f|g", (100.0*float64(result.PassCount)) / float64(result.TestsRun)))
 
 	for _, metric := range metrics {
 		log.Debugf("Sending kube-bench metric: %v", metric)

@@ -1389,6 +1389,11 @@ message comp_task_param {
 }
 
 message comp_task {
+
+    // An identifier for the task. Should be 1-1 with name, but allows
+    // for a compact way to identify the task.
+    required uint64 id = 7;
+
     // The name of the task e.g. "Check Docker Compliance"
     required string name = 1;
 
@@ -1420,6 +1425,18 @@ message comp_result {
 
     required string task_name = 2;
 
+    required string mod_name = 9;
+
+    optional uint64 task_id = 7;
+
+    // A stringified json object adhering to the schema of
+    // ExtendedComplianceResult in the swagger definition.
+    optional string ext_result = 8;
+
+    // Metrics accompanying this result, if any, will be in
+    // metrics.internal_metrics.
+
+// ALL REMAINING FIELDS DEPRECATED
     // The following fields will overlap with the information in
     // output_fields, but is in the message to ensure that they're
     // always available to the UI.
@@ -1439,8 +1456,6 @@ message comp_result {
     // string.
     optional string output_fields = 6;
 
-    // Metrics accompanying this result, if any, will be in
-    // metrics.internal_metrics.
 }
 
 message comp_results {

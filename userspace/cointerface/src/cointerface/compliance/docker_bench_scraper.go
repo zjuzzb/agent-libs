@@ -35,10 +35,7 @@ type DockerBenchImpl struct {
 	machineId string `json:"machineId"`
 }
 
-// Used to parse the json output of the docker-bench-security script,
-// *and* in the OutputFields attribute of the CompResult message. In
-// the CompResult message, the description is excluded and the details
-// are only incldued if non-empty.
+// Used to parse the json output of the docker-bench-security script
 type dockerTestResult struct {
 	Id string `json:"id"`
 	Desc string `json:"desc,omitempty"`
@@ -53,7 +50,6 @@ type dockerTestSection struct {
 	Results []dockerTestResult `json:"results"`
 }
 
-// Used to parse the json output of the docker-bench-security script.
 type dockerBenchResults struct {
 	DockerBenchSecurity string `json:"dockerbenchsecurity"`
 	Start uint64 `json:"start"`
@@ -61,27 +57,6 @@ type dockerBenchResults struct {
 	Checks uint64 `json:"checks"`
 	Score int64 `json:"score"`
 	End uint64 `json:"end"`
-}
-
-// Represents the result of the task that is included in the
-// OutputFields attribute of the CompResult message. This will be
-// serialized and passed back as a json string.
-
-type dockerOutputSection struct {
-	Id string `json:"id"`
-	Total uint64 `json:"total"`
-	Pass uint64 `json:"pass"`
-	Fail uint64 `json:"fail"`
-	FailTests []dockerTestResult `json:"failTests,omitempty"`
-	PassTestIds []string `json:"passTestIds,omitempty"`
-}
-
-type dockerOutputFields struct {
-	Score int64 `json:"score"`
-	Total uint64 `json:"total"`
-	Pass uint64 `json:"pass"`
-	Fail uint64 `json:"fail"`
-	Tests []dockerOutputSection `json:"tests"`
 }
 
 // Given a test id, result, and current risk, assign a new risk based
@@ -98,8 +73,8 @@ type dockerOutputFields struct {
 //    - 5.21 (Ensure the default seccomp profile is not Disabled)
 //    - 5.22 (Ensure docker exec commands are not used with privileged option)
 //    - 5.25 (Ensure the container is restricted from acquiring additional privileges)
-func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk string) string {
-	newRisk := "low"
+func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk ResultRisk) ResultRisk {
+	newRisk := low
 
 	highTestIds := map[string]int {
 		"2.4": 1,
@@ -116,12 +91,12 @@ func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk string
 	}
 
 	if (result != "PASS" && (highTestIds[id] == 1 || strings.HasPrefix(id, "3"))) {
-		newRisk = "high"
+		newRisk = high
 	} else if (result != "PASS") {
-		newRisk = "medium"
+		newRisk = medium
 	}
 
-	if (newRisk == "high" || (newRisk == "medium" && curRisk == "low")) {
+	if (newRisk == high || (newRisk == medium && curRisk == low)) {
 		return newRisk
 	}
 
@@ -164,14 +139,17 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 		return err
 	}
 
-	output_fields := &dockerOutputFields{
-		Score: bres.Score,
-		Total: bres.Checks,
-		Pass: 0,
-		Fail: 0,
+	result := &ExtendedTaskResult{
+		Id: *task.Id,
+		TimestampNS: bres.Start * 1e9,
+		HostMac: impl.machineId,
+		TaskName: *task.Name,
+		TestsRun: 0,
+		PassCount: 0,
+		FailCount: 0,
+		WarnCount: 0,
+		Risk: low,
 	}
-
-	curRisk := "low"
 
 	// For those tests where the test can return a number of
 	// items, maps from test id to a description of the items
@@ -213,38 +191,53 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 
 	for _, section := range bres.Tests {
 
-		output_section := &dockerOutputSection {
-			Id: section.Id,
-			Total: 0,
-			Pass: 0,
-			Fail: 0,
+		res_section := &TaskResultSection {
+			SectionId: section.Id,
+			TestsRun: 0,
+			PassCount: 0,
+			FailCount: 0,
+			WarnCount: 0,
 		}
 
 		for _, test := range section.Results {
 
-			output_section.Total++
+			res_section.TestsRun++
 
-			// Generally, non-PASS/INFO results are
-			// skipped. However, there are some tests for which
-			// INFO results are returned:
-			//  - 1.3: Ensure Docker is up to date
-			//  - 1.4: Ensure only trusted users are allowed to control Docker daemon
+			res_test := &TaskResultTest {
+				TestNumber: test.Id,
+				Items: test.Items,
+			}
+
+			// Only populate Details if Items is empty,
+			// the assumption being that if Items is
+			// present, the necessary info is already
+			// covered.
+			if len(test.Items) == 0 {
+				res_test.Details = test.Details
+			}
+
+			// Generally, PASS or INFO results are considered passing.
+			// However, there are some tests for which
+			// INFO results are returned, that are considered warnings
 			//  - 4.7: Ensure update instructions are not use alone in the Dockerfile
 			//  - 5.17: Ensure host devices are not directly exposed to containers
 			//  - 5.18: Ensure the default ulimit is overwritten at runtime, only if needed
 			//  - 5.29: Ensure Docker's default bridge docker0 is not used
 
-			curRisk = impl.AssignRisk(test.Id, test.Result, curRisk)
+			result.Risk = impl.AssignRisk(test.Id, test.Result, result.Risk)
 
-			if ((test.Result != "PASS" && test.Result != "INFO") ||
+			if ((test.Result == "WARN") ||
 				(test.Result == "INFO" &&
-				(test.Id == "1.3" ||
-				test.Id == "1.4" ||
-				test.Id == "4.7" ||
+				(test.Id == "4.7" ||
 				test.Id == "5.17" ||
 				test.Id == "5.18" ||
 				test.Id == "5.29"))) {
-
+				res_test.Status = warn
+				res_section.WarnCount++
+			} else if (test.Result == "NOTE") {
+				res_test.Status = pass
+				res_section.PassCount++
+			} else if ((test.Result != "PASS" && test.Result != "INFO")) {
 				fields := map[string]string{
 					"Task": moduleName,
 					"TestId": test.Id,
@@ -281,48 +274,48 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 					cevts.Events = append(cevts.Events, cevt);
 				}
 
-				// Copy test to a new struct and remove the description (not needed in the result)
-				trim_test := test
-				trim_test.Desc = ""
-
-				output_section.FailTests = append(output_section.FailTests, trim_test)
-				output_section.Fail++
+				res_test.Status = fail
+				res_section.FailCount++
 			} else {
-				output_section.PassTestIds = append(output_section.PassTestIds, test.Id)
-				output_section.Pass++
+				res_test.Status = pass
+				res_section.PassCount++
 			}
 
 			// For certain sections, we parse the details field to get counts of items.
 			mname, ok := item_tests[test.Id]; if (ok && test.Items != nil) {
 				metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.%v:%d|g", mname, len(test.Items)))
 			}
+
+			res_section.Results = append(res_section.Results, *res_test)
 		}
-		output_fields.Tests = append(output_fields.Tests, *output_section)
-		output_fields.Pass += output_section.Pass
-		output_fields.Fail += output_section.Fail
+		result.Tests = append(result.Tests, *res_section)
+		result.PassCount += res_section.PassCount
+		result.FailCount += res_section.FailCount
+		result.WarnCount += res_section.WarnCount
+		result.TestsRun = (result.PassCount + result.WarnCount + result.FailCount)
 
 		metrics_prefix := fmt.Sprintf("compliance.docker-bench.%v.%v", strings.Split(section.Id, ".")[0], strings.ToLower(strings.Replace(section.Desc, " ", "-", -1)))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metrics_prefix, output_section.Pass))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metrics_prefix, output_section.Fail))
-		metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metrics_prefix, output_section.Total))
-		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metrics_prefix, (100.0*float64(output_section.Pass)) / float64(output_section.Total)))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_pass:%d|g", metrics_prefix, res_section.PassCount))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metrics_prefix, res_section.WarnCount))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metrics_prefix, res_section.FailCount))
+		metrics = append(metrics, fmt.Sprintf("%v.tests_total:%d|g", metrics_prefix, res_section.TestsRun))
+		metrics = append(metrics, fmt.Sprintf("%v.pass_pct:%f|g", metrics_prefix, (100.0*float64(res_section.PassCount)) / float64(res_section.TestsRun)))
 	}
 
-	ofbytes, err := json.Marshal(output_fields); if err != nil {
-		log.Errorf("Could not serialize output fields: %v", err.Error())
+	ofbytes, err := json.Marshal(result); if err != nil {
+		log.Errorf("Could not serialize test result: %v", err.Error())
 		return err
 	}
 
-	result := &draiosproto.CompResult{
-		TimestampNs: proto.Uint64(bres.Start * 1e9),
-		TaskName: proto.String(*task.Name),
-		TestsRun: proto.Uint32(uint32(output_fields.Pass + output_fields.Fail)),
-		TestsPassed: proto.Uint32(uint32(output_fields.Pass)),
-		Risk: proto.String(curRisk),
-		OutputFields: proto.String(string(ofbytes[:])),
-	};
+	comp_result := &draiosproto.CompResult{
+		TimestampNs: proto.Uint64(result.TimestampNS),
+		TaskName: proto.String(result.TaskName),
+		ModName: task.ModName,
+		TaskId: proto.Uint64(result.Id),
+		ExtResult: proto.String(string(ofbytes[:])),
+	}
 
-	results.Results = append(results.Results, result)
+	results.Results = append(results.Results, comp_result)
 
 	evt.Events = cevts
 	evt.Results = results
@@ -334,10 +327,11 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	//  Overall, and for each section: Tests Ran/Tests Passed/% of Tests Passing
 
 	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.score:%d|g", bres.Score))
-	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_pass:%d|g", output_fields.Pass))
-	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_fail:%d|g", output_fields.Fail))
-	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_total:%d|g", output_fields.Total))
-	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.pass_pct:%f|g", (100.0*float64(output_fields.Pass)) / float64(output_fields.Total)))
+	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_pass:%d|g", result.PassCount))
+	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_warn:%d|g", result.WarnCount))
+	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_fail:%d|g", result.FailCount))
+	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.tests_total:%d|g", result.TestsRun))
+	metrics = append(metrics, fmt.Sprintf("compliance.docker-bench.pass_pct:%f|g", (100.0*float64(result.PassCount)) / float64(result.TestsRun)))
 
 	for _, metric := range metrics {
 		log.Debugf("Sending docker-bench metric: %v", metric)

@@ -21,6 +21,7 @@ using namespace Poco;
 
 typedef struct {
 	std::string schedule;
+	uint64_t id;
 	std::string name;
 	std::string module;
 	std::string scraper_id;
@@ -242,6 +243,7 @@ protected:
 		for(auto &def: task_defs)
 		{
 			draiosproto::comp_task *task = start.mutable_calendar()->add_tasks();
+			task->set_id(def.id);
 			task->set_name(def.name);
 			task->set_mod_name(def.module);
 			task->set_enabled(true);
@@ -280,14 +282,15 @@ protected:
 		ASSERT_EQ(m_results[def.name].size(), 1) << "After 10 seconds, did not see any results with expected values for task " << def.name;
 		auto &result = m_results[def.name].front();
 
-		std::string output = "test output (task=" + def.name + " iter=" + def.scraper_id + ")";
-		std::string output_json = "{\"task\":\"" + def.name + "\", \"iter\": " + def.scraper_id + "}";
+		Json::Value ext_result;
+		Json::Reader reader;
+		ASSERT_TRUE(reader.parse(result.ext_result(), ext_result));
 
-		ASSERT_STREQ(result.task_name().c_str(), def.name.c_str());
-		ASSERT_EQ(result.tests_run(), strtoul(def.scraper_id.c_str(), NULL, 10));
-		ASSERT_EQ(result.tests_passed(), strtoul(def.scraper_id.c_str(), NULL, 10));
-		ASSERT_STREQ(result.risk().c_str(), "low");
-		ASSERT_STREQ(result.output_fields().c_str(), output_json.c_str());
+		ASSERT_EQ(ext_result["id"].asUInt64(), def.id);
+		ASSERT_STREQ(ext_result["taskName"].asString().c_str(), def.name.c_str());
+		ASSERT_EQ(ext_result["testsRun"].asUInt64(), strtoul(def.scraper_id.c_str(), NULL, 10));
+		ASSERT_EQ(ext_result["testsRun"].asUInt64(), strtoul(def.scraper_id.c_str(), NULL, 10));
+		ASSERT_STREQ(ext_result["risk"].asString().c_str(), "low");
 	}
 
 	void verify_task_event(task_defs_t &def)
@@ -391,19 +394,19 @@ protected:
 	atomic<bool> m_statsd_server_done;
 };
 
-static std::vector<task_defs_t> one_task = {{"PT1H", "my-task-1", "test-module", "1", "0"}};
-static std::vector<task_defs_t> frequent_task = {{"PT10S", "my-task-1", "test-module", "1", "0"}};
-static std::vector<task_defs_t> task_slow = {{"PT1H", "my-task-1", "test-module", "1", "5"}};
-static std::vector<task_defs_t> one_task_alt_output = {{"PT1H", "my-task-1", "test-module", "2", "0"}};
-static std::vector<task_defs_t> task_two = {{"PT1H", "my-task-2", "test-module", "2", "0"}};
-static std::vector<task_defs_t> two_tasks = {{"PT1H", "my-task-1", "test-module", "1", "0"}, {"PT1H", "my-task-2", "test-module", "2", "0"}};
-static std::vector<task_defs_t> two_tasks_alt_output = {{"PT1H", "my-task-1", "test-module", "3", "0"}, {"PT1H", "my-task-2", "test-module", "4", "0"}};
-static std::vector<task_defs_t> one_task_twice = {{"R2/PT1S", "my-task-1", "test-module", "1", "5"}};
-static std::vector<task_defs_t> bad_schedule = {{"not-a-real-schedule", "bad-schedule-task", "test-module", "1", "5"}};
-static std::vector<task_defs_t> bad_schedule_2 = {{"PT1K1M", "bad-schedule-task-2", "test-module", "1", "5"}};
-static std::vector<task_defs_t> bad_schedule_leading_junk = {{"junkPT1H", "bad-schedule-task-leading-junk", "test-module", "1", "5"}};
-static std::vector<task_defs_t> bad_schedule_trailing_junk = {{"PT-1H", "bad-schedule-task-trailing-junk", "test-module", "1", "5"}};
-static std::vector<task_defs_t> bad_module = {{"PT1H", "bad-module-task", "not-a-real-module", "1", "0"}};
+static std::vector<task_defs_t> one_task = {{"PT1H", 1, "my-task-1", "test-module", "1", "0"}};
+static std::vector<task_defs_t> frequent_task = {{"PT10S", 1, "my-task-1", "test-module", "1", "0"}};
+static std::vector<task_defs_t> task_slow = {{"PT1H", 1, "my-task-1", "test-module", "1", "5"}};
+static std::vector<task_defs_t> one_task_alt_output = {{"PT1H", 1, "my-task-1", "test-module", "2", "0"}};
+static std::vector<task_defs_t> task_two = {{"PT1H", 2, "my-task-2", "test-module", "2", "0"}};
+static std::vector<task_defs_t> two_tasks = {{"PT1H", 1, "my-task-1", "test-module", "1", "0"}, {"PT1H", 2, "my-task-2", "test-module", "2", "0"}};
+static std::vector<task_defs_t> two_tasks_alt_output = {{"PT1H", 1, "my-task-1", "test-module", "3", "0"}, {"PT1H", 2, "my-task-2", "test-module", "4", "0"}};
+static std::vector<task_defs_t> one_task_twice = {{"R2/PT1S", 1, "my-task-1", "test-module", "1", "5"}};
+static std::vector<task_defs_t> bad_schedule = {{"not-a-real-schedule", 1, "bad-schedule-task", "test-module", "1", "5"}};
+static std::vector<task_defs_t> bad_schedule_2 = {{"PT1K1M", 1, "bad-schedule-task-2", "test-module", "1", "5"}};
+static std::vector<task_defs_t> bad_schedule_leading_junk = {{"junkPT1H", 1, "bad-schedule-task-leading-junk", "test-module", "1", "5"}};
+static std::vector<task_defs_t> bad_schedule_trailing_junk = {{"PT-1H", 1, "bad-schedule-task-trailing-junk", "test-module", "1", "5"}};
+static std::vector<task_defs_t> bad_module = {{"PT1H", 1, "bad-module-task", "not-a-real-module", "1", "0"}};
 
 // Test cases:
 //  - DONE Schedule a task using test-module, see them all emit events/results/metrics
