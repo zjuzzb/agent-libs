@@ -110,64 +110,64 @@ if (DEFINED AGENT_BUILD_COMMIT OR DEFINED AGENT_BUILD_DATE)
 	endif()
 	install(FILES ${CMAKE_CURRENT_BINARY_DIR}/.agent_build
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
-		COMPONENT agent)
+		COMPONENT agent-slim)
 endif()
 
 install(TARGETS dragent
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES root.cert
 	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES dragent.default.yaml
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/etc
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(DIRECTORY chisels
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/share
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES ${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/common.lua
 		${PROJECT_SOURCE_DIR}/../sysdig/userspace/sysdig/chisels/dkjson.lua
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/share/chisels
-		COMPONENT agent)
+		COMPONENT agent-slim)
 
 if(CYGWIN)
 install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/dragent_win_hal.dll
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES /bin/cygstdc++-6.dll
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES /bin/cyggcc_s-seh-1.dll
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES /bin/cygwin1.dll
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES ${DRAGENT_WINHAL_DIR}/target/bin/DragentService.exe
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/dragent.wxs
 	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(FILES ${PROJECT_SOURCE_DIR}/windows/wix_installer/make_msi.sh
 	PERMISSIONS OWNER_EXECUTE OWNER_READ
 	DESTINATION ${CMAKE_INSTALL_PREFIX}
-	COMPONENT agent)
+	COMPONENT agent-slim)
 endif()
 
 configure_file(agent-config.h.in agent-config.h)

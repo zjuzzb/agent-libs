@@ -1,12 +1,12 @@
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/kubectl-${DRAIOS_KUBECTL_VERSION}
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/comp_modules/kube-bench
 	RENAME kubectl
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/kube-bench-${DRAIOS_KUBE_BENCH_VERSION}/kube-bench
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/comp_modules/kube-bench
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(DIRECTORY ${DRAIOS_DEPENDENCIES_DIR}/kube-bench-${DRAIOS_KUBE_BENCH_VERSION}/cfg
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/comp_modules/kube-bench
-	COMPONENT agent)
+	COMPONENT agent-slim)

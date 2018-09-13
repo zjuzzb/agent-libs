@@ -1,0 +1,13 @@
+dkms add -m draios-agent -v %{version} --rpm_safe_upgrade
+if [ `uname -r | grep -c "BOOT"` -eq 0 ] && [ -e /lib/modules/`uname -r`/build/include ]; then
+	dkms build -m draios-agent -v %{version}
+	dkms install --force -m draios-agent -v %{version}
+elif [ `uname -r | grep -c "BOOT"` -gt 0 ]; then
+	echo -e ""
+	echo -e "Module build for the currently running kernel was skipped since you"
+	echo -e "are running a BOOT variant of the kernel."
+else
+	echo -e ""
+	echo -e "Module build for the currently running kernel was skipped since the"
+	echo -e "kernel source for this kernel does not seem to be installed."
+fi

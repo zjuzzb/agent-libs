@@ -98,7 +98,7 @@ set(LIBYAML_LIB "${DRAIOS_DEPENDENCIES_DIR}/libyaml-0.1.7/target/lib/libyaml.a")
 set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${CMAKE_INSTALL_PREFIX}/share")
 set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
-set(FALCO_COMPONENT agent)
+set(FALCO_COMPONENT agent-slim)
 add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
@@ -119,16 +119,26 @@ endif()
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/../sysdig/scripts/sysdig-probe-loader
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 	RENAME sysdigcloud-probe-loader
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/gen-support-bundle
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
+
+if (NOT DEFINED COMBINED_PACKAGE)
+    set(COMBINED_PACKAGE ON)
+endif()
+
+if (COMBINED_PACKAGE STREQUAL "ON")
+    set(CPACK_COMPONENT_AGENT-SLIM_GROUP agent)
+    set(CPACK_COMPONENT_AGENT-KMODULE_GROUP agent)
+    set(CPACK_COMPONENTS_GROUPING ONE_PER_GROUP)
+endif()
 
 set(CPACK_PACKAGE_NAME "draios")
 set(CPACK_PACKAGE_VENDOR "Sysdig Inc.")
@@ -154,14 +164,26 @@ set(CPACK_DEB_COMPONENT_INSTALL "ON")
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Sysdig <support@sysdig.com>")
 set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
 set(CPACK_DEBIAN_PACKAGE_HOMEPAGE "http://www.sysdig.com")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "dkms (>= 2.1.0.0), python")
+set(CPACK_DEBIAN_AGENT-SLIM_PACKAGE_DEPENDS "python")
+set(CPACK_DEBIAN_AGENT-KMODULE_PACKAGE_DEPENDS "dkms (>= 2.1.0.0)")
+set(CPACK_DEBIAN_AGENT_PACKAGE_DEPENDS "dkms (>= 2.1.0.0), python")
 set(CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${CMAKE_BINARY_DIR}/scripts/debian/postinst;${CMAKE_BINARY_DIR}/scripts/debian/prerm;${PROJECT_SOURCE_DIR}/scripts/debian/postrm")
 
 set(CPACK_RPM_COMPONENT_INSTALL "ON")
-set(CPACK_RPM_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, python")
-set(CPACK_RPM_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
-set(CPACK_RPM_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
-set(CPACK_RPM_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+set(CPACK_RPM_agent-slim_PACKAGE_REQUIRES "python")
+set(CPACK_RPM_agent-slim_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.slim")
+set(CPACK_RPM_agent-slim_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.slim")
+set(CPACK_RPM_agent-slim_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+
+set(CPACK_RPM_agent-kmodule_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl")
+set(CPACK_RPM_agent-kmodule_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall.kmodule")
+set(CPACK_RPM_agent-kmodule_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall.kmodule")
+
+set(CPACK_RPM_agent_PACKAGE_REQUIRES "dkms, gcc, make, kernel-devel, perl, python")
+set(CPACK_RPM_agent_POST_INSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postinstall")
+set(CPACK_RPM_agent_PRE_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/preuninstall")
+set(CPACK_RPM_agent_POST_UNINSTALL_SCRIPT_FILE "${PROJECT_SOURCE_DIR}/scripts/rpm/postuninstall")
+
 set(CPACK_RPM_EXCLUDE_FROM_AUTO_FILELIST_ADDITION
 	/etc/rc.d
 	/etc/rc.d/init.d

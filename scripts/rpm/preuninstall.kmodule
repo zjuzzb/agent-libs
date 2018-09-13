@@ -1,0 +1,1 @@
+dkms remove -m draios-agent -v %{version} --all --rpm_safe_upgrade

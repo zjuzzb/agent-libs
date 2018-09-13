@@ -25,7 +25,7 @@ if(Java_Development_FOUND)
                     pom.xml)
     install(FILES ${CMAKE_CURRENT_BINARY_DIR}/java/sdjagent-1.0-jar-with-dependencies.jar
             DESTINATION ${CMAKE_INSTALL_PREFIX}/share RENAME sdjagent.jar
-            COMPONENT agent)
+            COMPONENT agent-slim)
 endif()
 if(JNI_FOUND)
     include(UseJava)
@@ -39,5 +39,5 @@ if(JNI_FOUND)
     target_link_libraries(sdjagentjni ${JAVA_JVM_LIBRARY} rt)
     install (TARGETS sdjagentjni
              DESTINATION ${CMAKE_INSTALL_PREFIX}/lib
-             COMPONENT agent)
+             COMPONENT agent-slim)
 endif()

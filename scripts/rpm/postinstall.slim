@@ -1,0 +1,36 @@
+# always /usr
+
+USR_PREFIX=$RPM_INSTALL_PREFIX0
+INSTALL_PREFIX=$RPM_INSTALL_PREFIX1
+
+/sbin/chkconfig --add dragent
+
+CONFIG_FILE=$INSTALL_PREFIX/etc/dragent.yaml
+OLD_CONFIG_FILE=/opt/draios/bin/dragent.properties
+
+if [ ! -e $CONFIG_FILE ]; then
+	if grep -q ^customerid $OLD_CONFIG_FILE > /dev/null 2>&1; then
+		CUSTOMERID=`grep ^customerid $OLD_CONFIG_FILE|tr -d ' '|cut -d'=' -f2`
+		echo "customerid: $CUSTOMERID" >> $CONFIG_FILE
+	fi
+	if grep -q ^ui.tags $OLD_CONFIG_FILE > /dev/null 2>&1; then
+		TAGS=`grep ^ui.tags $OLD_CONFIG_FILE|tr -d ' '|cut -d'=' -f2`
+		echo "tags: $TAGS" >> $CONFIG_FILE
+	fi
+	if grep -q ^remotefs.enabled $OLD_CONFIG_FILE > /dev/null 2>&1; then
+		REMOTEFS=`grep ^remotefs.enabled $OLD_CONFIG_FILE|tr -d ' '|cut -d'=' -f2`
+		echo "remotefs: $REMOTEFS" >> $CONFIG_FILE
+	fi
+	if grep -q ^protocols.enabled $OLD_CONFIG_FILE > /dev/null 2>&1; then
+		PROTOCOLS=`grep ^protocols.enabled $OLD_CONFIG_FILE|tr -d ' '|cut -d'=' -f2`
+		echo "protocols: $PROTOCOLS" >> $CONFIG_FILE
+	fi
+fi
+
+if [ "$INSTALL_PREFIX" != /opt/draios ]
+then
+	INITSCRIPT=/etc/rc.d/init.d/dragent
+	INITSCRIPT_TEMPLATE=$INSTALL_PREFIX/bin/dragent.in
+
+	sed "s^@CMAKE_INSTALL_PREFIX@^$INSTALL_PREFIX^g" < $INITSCRIPT_TEMPLATE > $INITSCRIPT
+fi

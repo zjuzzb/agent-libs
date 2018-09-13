@@ -128,12 +128,12 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex
 # purposes.
 install(DIRECTORY
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/run
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/cointerface
                  ${CMAKE_CURRENT_BINARY_DIR}/promex
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
-	COMPONENT agent)
+	COMPONENT agent-slim)
 
 install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/decode_proto
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
