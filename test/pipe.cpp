@@ -149,7 +149,7 @@ public:
 		m_ready.set();
 		/* write "Hi" to the FIFO */
 		fd = open(FIFO_NAME, O_WRONLY);
-		write(fd, "Hi", sizeof("Hi"));
+		ASSERT_TRUE(write(fd, "Hi", sizeof("Hi")) >= 0);
 		close(fd);
 		m_continue.wait();
 		/* remove the FIFO */
@@ -194,7 +194,7 @@ public:
 		m_ready.set();
 		/* open, read, and display the message from the FIFO */
 		fd = open(FIFO_NAME, O_RDONLY);
-		read(fd, buf, MAX_BUF);
+		ASSERT_TRUE(read(fd, buf, MAX_BUF) >= 0);
 
 		close(fd);
 	}

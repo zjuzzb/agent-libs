@@ -749,7 +749,10 @@ static int clone_callback_2(void *arg)
 {
 	char bcwd[256];
 
-	chdir("/");
+	if(chdir("/") != 0)
+	{
+		return -1;
+	}
 	string tmps = getcwd(bcwd, 256);
     syscall(SYS_exit);
     return -1;
@@ -784,7 +787,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 		ptid = getpid();
 
-		getcwd(oriwd, 1024);
+		ASSERT_TRUE(getcwd(oriwd, 1024) != NULL);
 
 		/* Allocate stack for child */
 
@@ -804,7 +807,7 @@ TEST_F(sys_call_test, forking_clone_cwd)
 
 		string tmps = getcwd(bcwd, 256);
 
-		chdir(oriwd);
+		ASSERT_TRUE(chdir(oriwd) == 0);
 
 		sleep(1);
 	};

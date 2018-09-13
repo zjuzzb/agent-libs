@@ -18,7 +18,7 @@ protected:
 		// related to this test will reside.
 		char pat[28];
 		strcpy(pat, "/tmp/auto_config_testXXXXXX");
-		mkdtemp(pat);
+		ASSERT_TRUE(mkdtemp(pat) != NULL);
 		m_auto_config_dir = pat;
 
 //		fprintf(stdout, "Set auto config root to %s\n", m_auto_config_dir.c_str());

@@ -196,7 +196,7 @@ TEST_F(baseliner_test, nofd_ops)
 
 	rename("/tmp/test_baseliner_nofd_ops/three", "/tmp/test_baseliner_nofd_ops/four");
 
-	system("touch /tmp/test_baseliner_nofd_ops/file");
+	ASSERT_TRUE(system("touch /tmp/test_baseliner_nofd_ops/file") == 0);
 
 	unlink("/tmp/test_baseliner_nofd_ops/file");
 

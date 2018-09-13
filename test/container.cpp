@@ -74,7 +74,7 @@ TEST_F(sys_call_test, container_cgroups)
 			ASSERT_TRUE(tinfo->m_cgroups.size() > 0);
 
 			snprintf(buf, sizeof(buf), "/proc/%d/", ctid);
-			int32_t res = scap_proc_fill_cgroups(&scap_tinfo, buf);
+			int32_t res = scap_proc_fill_cgroups(param.m_inspector->m_h, &scap_tinfo, buf);
 			ASSERT_TRUE(res == SCAP_SUCCESS);
 
 			sinsp_tinfo.set_cgroups(scap_tinfo.cgroups, scap_tinfo.cgroups_len);
@@ -268,8 +268,8 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 		return false;
 	};
 
-	system("docker kill ilovesysdig_docker > /dev/null 2>&1");
-	system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
+	ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
+	ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
 	if(system("docker run -d --name ilovesysdig_docker s390x/busybox ping -w 10 127.0.0.1") != 0)
@@ -289,8 +289,8 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	{
 		sleep(5);
 
-		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
-		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
+		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1") == 0);
+		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1") == 0);
 	};
 
 	//
@@ -349,8 +349,8 @@ TEST_F(sys_call_test, container_docker)
 
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
-		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
+		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
 		if(system("docker run -d --name ilovesysdig_docker s390x/busybox") != 0)
@@ -363,8 +363,8 @@ TEST_F(sys_call_test, container_docker)
 
 		sleep(2);
 
-		system("docker kill ilovesysdig_docker > /dev/null 2>&1");
-		system("docker rm -v ilovesysdig_docker > /dev/null 2>&1");
+		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1") == 0);
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -968,8 +968,8 @@ TEST_F(sys_call_test, container_rkt_after)
 	{
 		if (std::ifstream("/tmp/myrkt"))
 		{
-			system("xargs -a /tmp/myrkt rkt stop > /dev/null");
-			system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+			ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt stop > /dev/null") == 0);
+			ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt rm > /dev/null") == 0);
 		}
 
 		int rc = system("rkt fetch --insecure-options=image docker://busybox");
@@ -986,8 +986,8 @@ TEST_F(sys_call_test, container_rkt_after)
 
 		sleep(10);
 
-		system("xargs -a /tmp/myrkt rkt stop > /dev/null");
-		system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+		ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt stop > /dev/null") == 0);
+		ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt rm > /dev/null") == 0);
 		remove("/tmp/myrkt");
 	};
 
@@ -1030,8 +1030,8 @@ TEST_F(sys_call_test, container_rkt_before)
 
 	if (std::ifstream("/tmp/myrkt"))
 	{
-		system("xargs -a /tmp/myrkt rkt stop > /dev/null");
-		system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+		ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt stop > /dev/null") == 0);
+		ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt rm > /dev/null") == 0);
 	}
 
 	// start rkt before sysdig
@@ -1064,8 +1064,8 @@ TEST_F(sys_call_test, container_rkt_before)
 		// wait to be sure that rkt container is started and verified by the callback below
 		sleep(10);
 
-		system("xargs -a /tmp/myrkt rkt stop > /dev/null");
-		system("xargs -a /tmp/myrkt rkt rm > /dev/null");
+		ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt stop > /dev/null") == 0);
+		ASSERT_TRUE(system("xargs -a /tmp/myrkt rkt rm > /dev/null") == 0);
 		remove("/tmp/myrkt");
 	};
 
@@ -1119,8 +1119,8 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1");
-		system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1");
+		ASSERT_TRUE(system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
 		if(system("lxc-create -n ilovesysdig_lxc -t s390x/busybox") != 0)
@@ -1138,8 +1138,8 @@ TEST_F(sys_call_test, DISABLED_container_lxc)
 
 		sleep(2);
 
-		system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1");
-		system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1");
+		ASSERT_TRUE(system("lxc-stop --name ilovesysdig_lxc > /dev/null 2>&1") == 0);
+		ASSERT_TRUE(system("lxc-destroy --name ilovesysdig_lxc > /dev/null 2>&1") == 0);
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -1205,8 +1205,8 @@ TEST_F(sys_call_test, container_libvirt)
 			"</domain>");
 		fclose(f);
 
-		system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1");
-		system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1");
+		ASSERT_TRUE(system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1 || true") == 0);
 
 		if(system("virsh -c lxc:/// define /tmp/conf.xml") != 0)
 		{
@@ -1220,8 +1220,8 @@ TEST_F(sys_call_test, container_libvirt)
 
 		sleep(2);
 
-		system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1");
-		system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1");
+		ASSERT_TRUE(system("virsh -c lxc:/// undefine libvirt-container > /dev/null 2>&1") == 0);
+		ASSERT_TRUE(system("virsh -c lxc:/// destroy libvirt-container > /dev/null 2>&1") == 0);
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)

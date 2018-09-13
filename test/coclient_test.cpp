@@ -111,8 +111,8 @@ protected:
 		};
 
 		// Remove any existing container
-		system("docker unpause coclient_test > /dev/null 2>&1");
-		system("docker rm -f coclient_test > /dev/null 2>&1");
+		ASSERT_TRUE(system("docker unpause coclient_test > /dev/null 2>&1 || true") == 0);
+		ASSERT_TRUE(system("docker rm -f coclient_test > /dev/null 2>&1 || true") == 0);
 
 #ifdef __s390x__
 		ASSERT_EQ(system("docker run -d --name coclient_test s390x/busybox sleep 6000 > /dev/null 2>&1"), 0) << "Could not start test container";

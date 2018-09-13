@@ -52,7 +52,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 	int callnum = 0;
 	char bcwd[1024];
 
-	if(getcwd(bcwd, 1024));
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	string cwd(bcwd);
 	cwd += "/";
 
@@ -77,7 +77,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 			FAIL();
 		}
 
-		if(write(fd, "fica", sizeof("fica")));
+		ASSERT_TRUE(write(fd, "fica", sizeof("fica")) >= 0);
 		close(fd);
 		unlink(FILENAME);
 		unlink(FILENAME);
@@ -150,7 +150,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 	char bcwd[1024];
 	int dirfd;
 
-	getcwd(bcwd, 1024);
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	string cwd(bcwd);
 	cwd += "/";
 
@@ -175,7 +175,7 @@ TEST_F(sys_call_test, DISABLED_fs_link)
 			FAIL();
 		}
 
-		if(write(fd, "fica", sizeof("fica")));
+		ASSERT_TRUE(write(fd, "fica", sizeof("fica")) >= 0);
 		close(fd);
 
 		if(link(FILENAME, FILENAME1) != 0)
@@ -325,7 +325,7 @@ TEST_F(sys_call_test, fs_mkdir_rmdir)
 	int callnum = 0;
 	char bcwd[1024];
 
-	getcwd(bcwd, 1024);
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	string cwd(bcwd);
 	cwd += "/";
 
@@ -444,7 +444,7 @@ TEST_F(sys_call_test, fs_openat)
 	int fd1;
 	int fd2;
 
-	getcwd(bcwd, 1024);
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	string cwd(bcwd);
 	cwd += "/";
 
@@ -478,7 +478,7 @@ TEST_F(sys_call_test, fs_openat)
 			FAIL();
 		}
 
-		write(fd1, DATA, sizeof(DATA));
+		ASSERT_TRUE(write(fd1, DATA, sizeof(DATA)) >= 0);
 
 		close(fd1);
 		close(dirfd);
@@ -557,8 +557,8 @@ TEST_F(sys_call_test, fs_pread)
 			FAIL();
 		}
 
-		write(fd, "ficafica", sizeof("ficafica") - 1);
-		pwrite(fd, "cazo", sizeof("cazo") - 1, 4);
+		ASSERT_TRUE(write(fd, "ficafica", sizeof("ficafica") - 1) >= 0);
+		ASSERT_TRUE(pwrite(fd, "cazo", sizeof("cazo") - 1, 4) >= 0);
 		ssize_t bytes_sent = pwrite64(fd, "cazo", sizeof("cazo") - 1, 987654321987654);
 		//
 		// On NFS, pwrite64 succeeds, so the test must evaluate the return
@@ -566,7 +566,7 @@ TEST_F(sys_call_test, fs_pread)
 		//
 		pwrite64_succeeded = bytes_sent > 0;
 
-		pread64(fd, buf, 32, 1234567891234);
+		ASSERT_TRUE(pread64(fd, buf, 32, 1234567891234) < 0);
 		close(fd);
 
 		fd1 = open(FILENAME, O_RDONLY);
@@ -575,7 +575,7 @@ TEST_F(sys_call_test, fs_pread)
 			FAIL();
 		}
 
-		pread(fd1, buf, 4, 4);
+		ASSERT_TRUE(pread(fd1, buf, 4, 4) >= 0);
 
 		close(fd1);
 
@@ -828,7 +828,7 @@ TEST_F(sys_call_test, fs_preadv)
 		int rres;
 		fd = open(FILENAME, O_CREAT | O_WRONLY, S_IRWXU);
 
-		write(fd, "123456789012345678901234567890", sizeof("ficafica") - 1);
+		ASSERT_TRUE(write(fd, "123456789012345678901234567890", sizeof("ficafica") - 1) >= 0);
 
 		wv[0].iov_base = msg1;
 		wv[1].iov_base = msg2;

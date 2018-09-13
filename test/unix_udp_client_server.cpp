@@ -74,9 +74,9 @@ public:
 		}
 		else
 		{
-			read(sock, buf, 1024);
+			ASSERT_TRUE(read(sock, buf, 1024) >= 0);
 
-			read(sock, buf, 1024);
+			ASSERT_TRUE(read(sock, buf, 1024) >= 0);
 		}
 
 		close(sock);

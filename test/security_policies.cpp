@@ -1287,7 +1287,7 @@ TEST_F(security_policies_test, nofd_operations)
 
 	rename("/tmp/test_nofd_ops/three", "/tmp/test_nofd_ops/four");
 
-	system("touch /tmp/test_nofd_ops/file");
+	ASSERT_EQ(system("touch /tmp/test_nofd_ops/file"), 0);
 	unlink("/tmp/test_nofd_ops/file");
 
 	closedir(dirp);

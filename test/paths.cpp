@@ -130,7 +130,7 @@ TEST_F(sys_call_test, proc_mgmt)
 	string filename = "test_tmpfile";
 	char bcwd[1024];
 
-	getcwd(bcwd, 1024);
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	path_validator vldt(filename, bcwd);
 
 	//
@@ -173,7 +173,7 @@ void testdir(string filename, string chdirtarget = "")
 {
 	char bcwd[1024];
 
-	getcwd(bcwd, 1024);
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	path_validator vldt(filename, bcwd);
 
 	//
@@ -195,9 +195,9 @@ void testdir(string filename, string chdirtarget = "")
 		{
 			char tcwd[1024];
 
-			chdir(chdirtarget.c_str());
+			ASSERT_TRUE(chdir(chdirtarget.c_str()) == 0);
 
-			getcwd(tcwd, 1024);
+			ASSERT_TRUE(getcwd(tcwd, 1024) != NULL);
 			vldt.update_cwd(filename, tcwd);
 		}
 
@@ -219,7 +219,7 @@ void testdir(string filename, string chdirtarget = "")
 
 		if(chdirtarget != "")
 		{
-			chdir(bcwd);
+			ASSERT_TRUE(chdir(bcwd) == 0);
 		}
 	};
 
@@ -517,7 +517,7 @@ TEST_F(sys_call_test, dir_getcwd)
 	char cwd4[256];
 	char cwd5[256];
 
-	getcwd(cwd_ori, 256);
+	ASSERT_TRUE(getcwd(cwd_ori, 256) != NULL);
 
 	//
 	// FILTER
@@ -532,23 +532,23 @@ TEST_F(sys_call_test, dir_getcwd)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		chdir(dir0);
-		getcwd(cwd0, 256);
+		ASSERT_TRUE(chdir(dir0) == 0);
+		ASSERT_TRUE(getcwd(cwd0, 256) != NULL);
 
-		chdir(dir1);
-		getcwd(cwd1, 256);
+		ASSERT_TRUE(chdir(dir1) == 0);
+		ASSERT_TRUE(getcwd(cwd1, 256) != NULL);
 
-		chdir(dir2);
-		getcwd(cwd2, 256);
+		ASSERT_TRUE(chdir(dir2) == 0);
+		ASSERT_TRUE(getcwd(cwd2, 256) != NULL);
 
-		chdir(dir3);
-		getcwd(cwd3, 256);
+		ASSERT_TRUE(chdir(dir3) == 0);
+		ASSERT_TRUE(getcwd(cwd3, 256) != NULL);
 
-		chdir(dir4);
-		getcwd(cwd4, 256);
+		ASSERT_TRUE(chdir(dir4) < 0);
+		ASSERT_TRUE(getcwd(cwd4, 256) != NULL);
 
-		chdir(cwd_ori);
-		getcwd(cwd5, 256);
+		ASSERT_TRUE(chdir(cwd_ori) == 0);
+		ASSERT_TRUE(getcwd(cwd5, 256) != NULL);
 	};
 
 	//
@@ -649,7 +649,7 @@ TEST_F(sys_call_test, dir_fchdir)
 	char cwd4[256];
 	char cwd5[256];
 
-	getcwd(cwd_ori, 256);
+	ASSERT_TRUE(getcwd(cwd_ori, 256) != NULL);
 
 	//
 	// FILTER
@@ -671,8 +671,8 @@ TEST_F(sys_call_test, dir_fchdir)
 		{
 			FAIL();
 		}
-		fchdir(fd);
-		getcwd(cwd0, 256);
+		ASSERT_TRUE(fchdir(fd) == 0);
+		ASSERT_TRUE(getcwd(cwd0, 256) != NULL);
 		close(fd);
 
 		fd = open(dir1, O_RDONLY);
@@ -680,8 +680,8 @@ TEST_F(sys_call_test, dir_fchdir)
 		{
 			FAIL();
 		}
-		fchdir(fd);
-		getcwd(cwd1, 256);
+		ASSERT_TRUE(fchdir(fd) == 0);
+		ASSERT_TRUE(getcwd(cwd1, 256) != NULL);
 		close(fd);
 
 		fd = open(dir2, O_RDONLY);
@@ -689,8 +689,8 @@ TEST_F(sys_call_test, dir_fchdir)
 		{
 			FAIL();
 		}
-		fchdir(fd);
-		getcwd(cwd2, 256);
+		ASSERT_TRUE(fchdir(fd) == 0);
+		ASSERT_TRUE(getcwd(cwd2, 256) != NULL);
 		close(fd);
 
 		fd = open(dir3, O_RDONLY);
@@ -698,12 +698,12 @@ TEST_F(sys_call_test, dir_fchdir)
 		{
 			FAIL();
 		}
-		fchdir(fd);
-		getcwd(cwd3, 256);
+		ASSERT_TRUE(fchdir(fd) == 0);
+		ASSERT_TRUE(getcwd(cwd3, 256) != NULL);
 		close(fd);
 
-		fchdir(12345);
-		getcwd(cwd4, 256);
+		ASSERT_TRUE(fchdir(12345) < 0);
+		ASSERT_TRUE(getcwd(cwd4, 256) != NULL);
 		close(fd);
 
 		fd = open(cwd_ori, O_RDONLY);
@@ -711,8 +711,8 @@ TEST_F(sys_call_test, dir_fchdir)
 		{
 			FAIL();
 		}
-		fchdir(fd);
-		getcwd(cwd5, 256);
+		ASSERT_TRUE(fchdir(fd) == 0);
+		ASSERT_TRUE(getcwd(cwd5, 256) != NULL);
 		close(fd);
 	};
 
@@ -805,7 +805,7 @@ TEST_F(sys_call_test, dir_fchdir)
 			{
 				cdir1 = cdir;
 			}
-			
+
 			EXPECT_EQ(cdir1, pinfo->get_cwd());
 
 			callnum++;
@@ -823,7 +823,7 @@ TEST_F(sys_call_test32, proc_mgmt)
 	string filename = "test_tmpfile";
 	char bcwd[1024];
 
-	getcwd(bcwd, 1024);
+	ASSERT_TRUE(getcwd(bcwd, 1024) != NULL);
 	path_validator vldt(filename, bcwd);
 
 	//

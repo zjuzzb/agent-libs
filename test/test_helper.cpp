@@ -72,15 +72,23 @@ void pread_pwrite(const vector<string>& args)
 	int fd = creat(FILENAME, S_IRWXU);
 	if(fd < 0)
 	{
-		cerr << "ERROR" << endl;
+		cerr << "ERROR (creat)" << endl;
 		return;
 	}
 
 	auto ret = write(fd, "ficafica", sizeof("ficafica") - 1);
 	assert(ret > 0);
+	if(ret <= 0)
+	{
+		cerr << "ERROR (write)" << endl;
+	}
 
 	ret = pwrite(fd, "cazo", sizeof("cazo") - 1, 4);
 	assert(ret > 0);
+	if(ret <= 0)
+	{
+		cerr << "ERROR (pwrite)" << endl;
+	}
 
 	ssize_t bytes_sent = pwrite64(fd, "cazo", sizeof("cazo") - 1, 987654321);
 	//
@@ -91,17 +99,24 @@ void pread_pwrite(const vector<string>& args)
 
 	cout << (pwrite64_succeeded? 1 : 0) << endl;
 
-	pread64(fd, buf, 32, 987654321);
+	if (pread64(fd, buf, 32, 987654321) < 0)
+	{
+		cerr << "ERROR (pread64)" << endl;
+	}
+
 	close(fd);
 
 	int fd1 = open(FILENAME, O_RDONLY);
 	if(fd1 < 0)
 	{
-		cerr << "ERROR" << endl;
+		cerr << "ERROR (open)" << endl;
 		return;
 	}
 
-	pread(fd1, buf, 4, 4);
+	if(pread(fd1, buf, 4, 4) < 0)
+	{
+		cerr << "ERROR (pread)" << endl;
+	}
 
 	close(fd1);
 
@@ -119,7 +134,10 @@ void preadv_pwritev(const vector<string>& args)
 	int rres;
 	auto fd = open(FILENAME, O_CREAT | O_WRONLY, S_IRWXU);
 
-	write(fd, "123456789012345678901234567890", sizeof("ficafica") - 1);
+	if (write(fd, "123456789012345678901234567890", sizeof("ficafica") - 1) < 0)
+	{
+		cerr << "ERROR (write)" << endl;
+	}
 
 	wv[0].iov_base = msg1;
 	wv[1].iov_base = msg2;
@@ -547,7 +565,10 @@ int main(int argc, char** argv)
 			{
 				cout << "STARTED" << endl;
 				char s[32];
-				(void)read(0, s, sizeof s);
+				if(read(0, s, sizeof s) < 0)
+				{
+					cerr << "ERROR (read)" << endl;
+				}
 			}
 			func_map.at(cmd)(args);
 		};

@@ -11,7 +11,10 @@ void* callback(void* arg)
 {
 	char buf[1024];
 	sleep(1);
-	read(fd, buf, sizeof(buf));
+	if(read(fd, buf, sizeof(buf)) < 0)
+	{
+		perror("read");
+	}
 	sleep(10);
 	return NULL;
 }

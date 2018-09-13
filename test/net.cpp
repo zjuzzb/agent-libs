@@ -779,7 +779,7 @@ TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 	auto stats = parser.read_network_interfaces_stats();
 	EXPECT_EQ(stats.first, 0U);
 	EXPECT_EQ(stats.second, 0U);
-	system("curl https://google.com > /dev/null 2> /dev/null");
+	ASSERT_TRUE(system("curl https://google.com > /dev/null 2> /dev/null") == 0);
 	stats = parser.read_network_interfaces_stats();
 	EXPECT_GT(stats.first, 0U);
 	EXPECT_GT(stats.second, 0U);

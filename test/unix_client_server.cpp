@@ -89,7 +89,7 @@ public:
 		}
 		m_server_continue.wait();
 		n = read(newsockfd, buf, 80);
-		write(newsockfd, buf, n);
+		ASSERT_TRUE(write(newsockfd, buf, n) >= 0);
 		close(newsockfd);
 		close(sockfd);
 		unlink(NAME);
@@ -143,7 +143,7 @@ public:
 		}
 		m_client_ready.set();
 		m_client_continue.wait();
-		write(sockfd, PAYLOAD, sizeof(PAYLOAD) - 1);
+		ASSERT_TRUE(write(sockfd, PAYLOAD, sizeof(PAYLOAD) - 1) >= 0);
 		n = read(sockfd, buffer, 80);
 		ASSERT_EQ(sizeof(PAYLOAD)-1,n);
 		close(sockfd);

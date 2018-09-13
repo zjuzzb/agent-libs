@@ -279,7 +279,7 @@ protected:
 		}
 
 		ASSERT_TRUE(m_results.find(def.name) != m_results.end()) << "After 10 seconds, did not see any results with expected values for task " << def.name;
-		ASSERT_EQ(m_results[def.name].size(), 1) << "After 10 seconds, did not see any results with expected values for task " << def.name;
+		ASSERT_EQ(m_results[def.name].size(), 1U) << "After 10 seconds, did not see any results with expected values for task " << def.name;
 		auto &result = m_results[def.name].front();
 
 		Json::Value ext_result;
@@ -308,7 +308,7 @@ protected:
 		}
 
 		ASSERT_TRUE(m_events.find(def.name) != m_events.end()) << "After 10 seconds, did not see any events with expected values for task " << def.name;
-		ASSERT_EQ(m_events[def.name].size(), 1) << "After 10 seconds, did not see any events with expected values for task " << def.name;
+		ASSERT_EQ(m_events[def.name].size(), 1U) << "After 10 seconds, did not see any events with expected values for task " << def.name;
 		auto &event = m_events[def.name].front();
 
 		std::string output = "test output (task=" + def.name + " iter=" + def.scraper_id + ")";
@@ -585,8 +585,8 @@ TEST_F(compliance_test, overlapping_tasks)
 
 	sleep(10);
 
-	ASSERT_EQ(m_events[one_task_twice[0].name].size(), 1);
-	ASSERT_EQ(m_results[one_task_twice[0].name].size(), 1);
+	ASSERT_EQ(m_events[one_task_twice[0].name].size(), 1U);
+	ASSERT_EQ(m_results[one_task_twice[0].name].size(), 1U);
 
 	stop_tasks();
 }
