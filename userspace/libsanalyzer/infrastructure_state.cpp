@@ -1115,6 +1115,7 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 	auto cg = evt.mutable_object();
 	cg->mutable_uid()->set_kind("container");
 	cg->mutable_uid()->set_id(container_info.m_id);
+	(*cg->mutable_tags())["container.id"] = container_info.m_id;
 	(*cg->mutable_tags())["container.name"] = container_info.m_name;
 	(*cg->mutable_tags())["container.image"] = container_info.m_image;
 	(*cg->mutable_tags())["container.image.id"] = container_info.m_imageid.substr(0, 12);
