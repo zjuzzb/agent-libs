@@ -564,6 +564,23 @@ policy_list {
   host_scope: true
   container_scope: false
 }
+policy_list {
+  id: 28
+  name: "policy scoped to docker swarm service"
+  falco_details {
+    rule_filter {
+      name: "read_sensitive_file"
+    }
+  }
+  enabled: 1
+  host_scope: false
+  container_scope: true
+  scope_predicates {
+    key: "swarm.service.name"
+    values: "helloworld"
+    op: EQ
+  }
+}
 falco_rules {
-  contents: "- rule: read_sensitive_file\n  desc: test program reading /tmp/sample-sensitive-file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: tests read /tmp/sample-sensitive-file-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: read_overall_file\n  desc: test program reading /tmp/overall_file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/overall-order-3.txt)\n  output: tests read /tmp/overall-order-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: anything_for_banned_file\n  desc: any operation related to a banned file\n  condition: proc.name in (tests,memcheck-amd64-) and fd.name=/tmp/banned-file.txt\n  output: some operation related to /tmp/banned-file.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: INFO\n  warn_evttypes: false\n- list: blacklisted_hosts\n  items: [github.com, quora.com]\n- rule: contacted_blacklisted_host\n  desc: test program contacted a blacklisted host\n  condition: evt.type=connect and evt.dir=< and (evt.rawres > 0 or evt.res = EINPROGRESS) and fd.sip.name in (blacklisted_hosts)\n  output: tests contacted the blacklisted host %fd.sip.name (user=%user.name command=%proc.cmdline connection=%fd.name)\n  priority: WARNING"
+  contents: "- rule: read_sensitive_file\n  desc: test program reading /tmp/sample-sensitive-file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-,touch) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: tests read /tmp/sample-sensitive-file-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: read_overall_file\n  desc: test program reading /tmp/overall_file-*.txt\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/overall-order-3.txt)\n  output: tests read /tmp/overall-order-*.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: WARNING\n- rule: anything_for_banned_file\n  desc: any operation related to a banned file\n  condition: proc.name in (tests,memcheck-amd64-) and fd.name=/tmp/banned-file.txt\n  output: some operation related to /tmp/banned-file.txt (user=%user.name command=%proc.cmdline parent=%proc.pname file=%fd.name)\n  priority: INFO\n  warn_evttypes: false\n- list: blacklisted_hosts\n  items: [github.com, quora.com]\n- rule: contacted_blacklisted_host\n  desc: test program contacted a blacklisted host\n  condition: evt.type=connect and evt.dir=< and (evt.rawres > 0 or evt.res = EINPROGRESS) and fd.sip.name in (blacklisted_hosts)\n  output: tests contacted the blacklisted host %fd.sip.name (user=%user.name command=%proc.cmdline connection=%fd.name)\n  priority: WARNING"
 }

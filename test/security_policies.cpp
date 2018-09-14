@@ -182,6 +182,7 @@ protected:
 		m_configuration.m_security_policies_file = "./resources/security_policies_message.txt";
 		m_configuration.m_security_baselines_file = "./resources/security_baselines_message.txt";
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
+		m_configuration.m_containers_labels_max_len = 100;
 		if(delayed_reports)
 		{
 			m_configuration.m_security_throttled_report_interval_ns = 1000000000;
@@ -211,6 +212,7 @@ protected:
 		m_inspector->m_analyzer = m_analyzer;
 		m_analyzer->set_internal_metrics(m_internal_metrics);
 		m_analyzer->get_configuration()->set_security_enabled(m_configuration.m_security_enabled);
+		m_analyzer->set_containers_labels_max_len(m_configuration.m_containers_labels_max_len);
 
 		m_inspector->set_debug_mode(true);
 		m_inspector->set_internal_events_mode(true);
@@ -1401,3 +1403,34 @@ TEST_F(security_policies_test_delayed_reports, DISABLED_events_flood)
 	ASSERT_LE(throttled_policy_event_count, 13);
 	ASSERT_EQ(event_count, 1000);
 }
+
+TEST_F(security_policies_test, docker_swarm)
+{
+	if(!check_docker())
+	{
+		return;
+	}
+
+	ASSERT_EQ(system("(docker swarm leave --force || true) > /dev/null 2>&1"), 0);
+
+	ASSERT_EQ(system("(docker swarm init && docker service create --replicas 1 --name helloworld alpine /bin/sh -c \"while true; do echo touch; rm -f /tmp/sample-sensitive-file-2.txt; touch /tmp/sample-sensitive-file-2.txt; sleep 1; done\") > /dev/null 2>&1"), 0);
+
+	sleep(2);
+
+	ASSERT_EQ(system("docker swarm leave --force > /dev/null 2>&1"), 0);
+
+	// Not using check_policy_events for this, as it is checking keys only
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_GE(pe->events_size(), 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 28u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/sample-sensitive-file-2.txt");
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("user.name") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.pname") > 0);
+	ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
+}
+
+

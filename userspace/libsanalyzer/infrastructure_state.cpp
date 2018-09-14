@@ -1124,6 +1124,8 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 	// only needed for baseline MVP grouping key
 	size_t apos = container_info.m_image.find("@");
 	(*cg->mutable_internal_tags())["container.image.name_no_digest"] = apos != string::npos ? container_info.m_image.substr(0, apos) : container_info.m_image;
+	std::string com_docker_swarm = "com.docker.swarm";
+	std::string com_docker = "com.docker.";
 	for (const auto &t : container_info.m_labels) {
 		(*cg->mutable_tags())["container.label." + t.first] = t.second;
 		if(m_k8s_subscribed && std::string(t.first) == "io.kubernetes.pod.uid") {
@@ -1131,6 +1133,16 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 			p->set_kind("k8s_pod");
 			p->set_id(t.second);
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Adding parent <k8s_pod,%s> to container %s", t.second.c_str(), container_info.m_id.c_str());
+		}
+
+		// Convert labels starting with "com.docker.swarm"
+		// into tags, dropping the "com.docker"
+		std::string label = std::string(t.first);
+		if(label.compare(0, com_docker_swarm.size(), com_docker_swarm) == 0)
+		{
+			label.erase(0, com_docker.size());
+			(*cg->mutable_tags())[label] = t.second;
+			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Adding docker swarm label %s -> %s", label.c_str(), t.second.c_str());
 		}
 	}
 	uid_t h_pkey = make_pair("host", m_machine_id);
