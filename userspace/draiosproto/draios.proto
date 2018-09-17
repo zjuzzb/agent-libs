@@ -22,11 +22,9 @@ message counter_percentile {
 
 message counter_time {
     required uint32 count = 1;
-    reserved 4;
     required uint64 time_ns = 2;
-    reserved 5;
     optional uint32 time_percentage = 3;
-    reserved 6 to 7;
+    reserved 4 to 7;
     repeated counter_percentile percentile = 8;
     reserved 9; // tag used by previous format of counter_percentile_data
     optional counter_percentile_data percentile_data = 10;
@@ -34,13 +32,10 @@ message counter_time {
 
 message counter_time_bidirectional {
     required uint32 count_in = 1;
-    reserved 5;
     required uint32 count_out = 2;
-    reserved 6;
     required uint64 time_ns_in = 3;
-    reserved 7;
     required uint64 time_ns_out = 4;
-    reserved 8 to 9;
+    reserved 5 to 9;
     repeated counter_percentile percentile_in = 10;
     repeated counter_percentile percentile_out = 11;
     reserved 12, 13; // tags used by previous format of counter_percentile_data
@@ -50,40 +45,26 @@ message counter_time_bidirectional {
 
 message counter_bytes {
     required uint32 count_in = 1;
-    reserved 5;
     required uint32 count_out = 2;
-    reserved 6;
     required uint32 bytes_in = 3;
-    reserved 7;
     required uint32 bytes_out = 4;
-    reserved 8 to 9;
+    reserved 5 to 9;
 }
 
 message counter_time_bytes {
     required uint64 time_ns_in = 1;
-    reserved 13;
     required uint64 time_ns_out = 2;
-    reserved 14;
     required uint64 time_ns_other = 3;
-    reserved 15;
     required uint32 count_in = 4;
-    reserved 16;
     required uint32 count_out = 5;
-    reserved 17;
     required uint32 count_other = 6;
-    reserved 18;
     required uint32 bytes_in = 7;
-    reserved 19;
     required uint32 bytes_out = 8;
-    reserved 20;
     required uint32 bytes_other = 9;
-    reserved 21;
     optional uint32 time_percentage_in = 10;
-    reserved 22;
     optional uint32 time_percentage_out = 11;
-    reserved 23;
     optional uint32 time_percentage_other = 12;
-    reserved 24 to 25;
+    reserved 13 to 25;
     repeated counter_percentile percentile_in = 26;
     repeated counter_percentile percentile_out = 27;
     reserved 28, 29; // tags used by previous format of counter_percentile_data
@@ -125,88 +106,59 @@ message transaction_breakdown_categories {
 
 message counter_syscall_errors {
     required uint32 count = 1; // Syscall errors count
-    reserved 3;
     repeated uint32 top_error_codes = 2; // Error codes that were generated the most
+    reserved 3;
     optional uint32 count_file = 4; // Number of file errors
-    reserved 7;
     optional uint32 count_file_open = 5; // Number of file open errors
-    reserved 8;
     optional uint32 count_net = 6; // Number of network errors
-    reserved 9, 10;
+    reserved 7 to 10;
 }
 
 message resource_categories {
     optional uint32 capacity_score = 1; // the request capacity score for this process or host. 0 means all the capacity is available, 10000 means that the entity (host or process) has reached the maximum mumber of requests it can serve.
-    reserved 12;
     optional uint32 stolen_capacity_score = 6; // the percentage of request capacity that is not available because of CPU steal. 0 means there was no CPU steal during the sample. 100 means that all the capacity was stolen and the machine essentially couldn't run.
-    reserved 7;
     optional uint32 connection_queue_usage_pct = 2; // if this process or host is serving connections, the occupation of the connection queue FOR THE WORST THREAD IN THIS PROCESS OR HOST (0=empty, 100=full)
-    reserved 8;
     optional uint32 fd_usage_pct = 3; // the ratio (open FDs / total available FDs) FOR THE WORST THREAD IN THIS PROCESS OR HOST. 0 means no FD in use, 100 means FD limit reached.
-    reserved 9;
     optional uint32 cpu_pct = 4; // CPU load of a process (including all the childs). Not present for the host.
-    reserved 10;
     optional uint32 resident_memory_usage_kb = 5; // resident non-swapped memory (as kb).
-    reserved 11;
+    reserved 7 to 12;
     optional uint32 virtual_memory_usage_kb = 13; // total virtual memory (as kb). Not present for the host and container.
-    reserved 17;
     optional uint32 swap_memory_usage_kb = 14; // swapped memory usage (as kb).
-    reserved 18;
-    optional uint32 swap_memory_total_kb = 29; // swapped memory total (as kb).
-    reserved 129;
-    optional uint32 swap_memory_available_kb = 30; // swapped memory available (as kb).
-    reserved 130;
     optional uint64 major_pagefaults = 15; // number of major page faults since last sample.
-    reserved 19;
     optional uint64 minor_pagefaults = 16; // number of minor page faults since last sample.
-    reserved 20;
+    reserved 17 to 20;
     optional uint32 fd_count = 21; // Total number of FDs
-    reserved 22;
-    reserved 23;
+    reserved 22 to 23;
     optional uint32 cpu_shares = 24;
-    reserved 124;
     optional uint32 cpu_shares_usage_pct = 25; // CPU % of a container in terms of the limit assigned to it
-    reserved 125;
     optional uint32 memory_limit_kb = 26; // Max Resident memory allowed for a container
-    reserved 126;
     optional uint32 swap_limit_kb = 27; // Max swap memory allowed for a container
-    reserved 127;
     optional uint32 cpu_quota_used_pct = 28;
-    reserved 128;
+    optional uint32 swap_memory_total_kb = 29; // swapped memory total (as kb).
+    optional uint32 swap_memory_available_kb = 30; // swapped memory available (as kb).
     optional uint64 count_processes = 31; // total processes
-    reserved 131;
     optional uint64 proc_start_count = 32; // started processes
-    reserved 132;
     optional uint64 jmx_sent = 33;
-    reserved 133;
     optional uint64 jmx_total = 34;
-    reserved 134;
     optional uint64 statsd_sent = 35;
-    reserved 135;
     optional uint64 statsd_total = 36;
-    reserved 135;
     optional uint64 app_checks_sent = 37;
-    reserved 137;
     optional uint64 app_checks_total = 38;
-    reserved 138;
     optional uint64 threads_count = 39; // number of threads
-    reserved 139;
     optional uint64 prometheus_sent = 40;
-    reserved 140;
     optional uint64 prometheus_total = 41;
-    reserved 141;
-
+    reserved 124 to 141;
 }
 
 message connection_categories {
     optional counter_bytes server = 1; // client-side metrics
     optional counter_bytes client = 2; // server-side metrics
     optional counter_time_bidirectional transaction_counters = 3; // The transaction counters for this connection
-    reserved 18;
-    optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this connection
     optional uint32 n_aggregated_connections = 4; // If this is an aggregated connection, the number of real connections it represents
     reserved 5;
     reserved 6;
+    reserved 18;
+    optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this connection
 }
 
 message process_details {
@@ -409,13 +361,13 @@ enum jmx_metric_type {
 message jmx_attribute {
     optional string name = 1;
     optional double value = 2;
+    repeated jmx_attribute subattributes = 3;
     reserved 4;
-    reserved 6;
     optional string alias = 5;
+    reserved 6;
     optional jmx_metric_type type = 7;
     optional unit unit = 8;
     optional scale scale = 9;
-    repeated jmx_attribute subattributes = 3;
     // segment_by is a key-value pair
     // let's use statsd_tag that is an already defined
     // structure
@@ -451,21 +403,17 @@ message statsd_metric {
 
     // Valid on COUNT, GAUGE and SET
     optional double value = 4;
-    reserved 104;
 
     // Valid only on HISTOGRAM type
     optional double sum = 5;
-    reserved 105;
     optional double min = 6;
-    reserved 106;
     optional double max = 7;
-    reserved 107;
     optional double count = 8;
-    reserved 108 to 111;
     reserved 9 to 11;
     repeated counter_percentile percentile = 12;
     reserved 13; // tag used by previous format of counter_percentile_data
     optional counter_percentile_data percentile_data = 14;
+    reserved 104 to 111;
 }
 
 message statsd_info {
@@ -495,11 +443,11 @@ message app_metric {
 
     // Valid on GAUGE and RATE
     optional double value = 3;
-    reserved 103;
     repeated app_tag tags = 4;
 
     // Valid for BUCKETS
     repeated app_metric_bucket buckets = 5;
+    reserved 103;
 }
 
 enum app_check_value {
@@ -548,54 +496,37 @@ message network_by_port {
 message host {
     optional string hostname = 1; // The name of the host sending the data
     optional uint32 num_cpus = 2; // Number of CPUs in the system
-    reserved 21;
     repeated uint32 cpu_loads = 3; // Array of CPU loads (0 to 100), with an entry for each CPU
-    reserved 15;
-    repeated uint32 cpu_steal = 11; // Array of CPU loads (0 to 100), with an entry for each CPU
-    reserved 16;
     required uint64 physical_memory_size_bytes = 4; // Physical RAM size
-    reserved 17;
     optional time_categories tcounters = 5; // The time counters for this thread
-    optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for the whole host
-    reserved 22;
-    optional counter_time_bidirectional max_transaction_counters = 23; // The slowest transaction counters for the whole host
     optional uint64 transaction_processing_delay = 7; // the delay introduced by this host when processing transactions.
-    reserved 18;
-
-    // It's calculated by subtracting outgoing connection time from incoming connection time.
-    // NEVER USED optional uint64 merged_server_delay = 14; // the total merged time of all the incoming requests.
-    reserved 19;
-    optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions.
-    reserved 20;
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
     optional counter_time_bytes external_io_net = 10; // The I/O statistics filtered so that only the activity with the external world is used
+    repeated uint32 cpu_steal = 11; // Array of CPU loads (0 to 100), with an entry for each CPU
+    optional transaction_breakdown_categories reqcounters = 12; // how time is spent when serving requests
+    optional uint64 next_tiers_delay = 13; // the delay introduced by this host's next tiers when processing transactions.
+    // It's calculated by subtracting outgoing connection time from incoming connection time.
+    // NEVER USED optional uint64 merged_server_delay = 14; // the total merged time of all the incoming requests.
+    reserved 15 to 22;
+    optional counter_time_bidirectional max_transaction_counters = 23; // The slowest transaction counters for the whole host
     repeated network_by_port network_by_serverports = 24;
-
-    optional uint64 memory_bytes_available_kb = 36; // memory bytes available as kb
-    reserved 136;
-    reserved 32;
-    reserved 132;
-    optional uint64 uptime = 33; // uptime to calculate the reboot
-    reserved 133;
-
-    repeated uint32 system_cpu = 34; // system_cpu
-    reserved 134;
-    repeated uint32 user_cpu = 35; // user_cpu
-    reserved 135;
     repeated uint32 cpu_idle = 25; // cpu_idle
-    reserved 125;
+
+    reserved 32;
+    optional uint64 uptime = 33; // uptime to calculate the reboot
+    repeated uint32 system_cpu = 34; // system_cpu
+    repeated uint32 user_cpu = 35; // user_cpu
+    optional uint64 memory_bytes_available_kb = 36; // memory bytes available as kb
     repeated uint32 iowait_cpu = 37; // iowait_cpu
-    reserved 137;
     repeated uint32 nice_cpu = 38; // nice_cpu
-    reserved 138;
     optional uint32 system_load_1 = 41; // avg system load 1 minute
-    reserved 141;
     optional uint32 system_load_5 = 42; // avg system load 5 minutes
-    reserved 142;
     optional uint32 system_load_15 = 43; // avg system load 15 minutes
-    reserved 143;
+    reserved 125;
+    reserved 132 to 138;
+    reserved 141 to 143;
 }
 
 //
@@ -616,21 +547,19 @@ enum networkrole {
 
 message process {
     optional process_details details = 2; // names and string constants relative to this process
-    reserved 3, 4, 10, 11;
-    optional uint32 netrole = 13;
+    reserved 3, 4;
     optional time_categories tcounters = 5; // The time counters for this thread.
     optional counter_time_bidirectional transaction_counters = 6; // The transaction counters for this process.
-    reserved 18;
-    optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this process.
     optional uint64 transaction_processing_delay = 7; // the delay introduced by this process when processing transactions.
-    reserved 15;
-    // It's calculated by subtracting outgoing connection time from incoming connection time.
-    // NEVER USED optional uint64 merged_server_delay = 14; // the total merged time of all the incoming requests.
-    reserved 16;
-    optional uint64 next_tiers_delay = 12; // the delay introduced by this process' next tiers when processing transactions.
-    reserved 17;
     optional resource_categories resource_counters = 8; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 9; // Syscall error counter
+    reserved 10, 11;
+    optional uint64 next_tiers_delay = 12; // the delay introduced by this process' next tiers when processing transactions.
+    optional uint32 netrole = 13;
+    // It's calculated by subtracting outgoing connection time from incoming connection time.
+    // NEVER USED optional uint64 merged_server_delay = 14; // the total merged time of all the incoming requests.
+    reserved 15 to 18;
+    optional counter_time_bidirectional max_transaction_counters = 19; // The slowest transaction counters for this process.
     optional proto_info protos = 20; // Information about protocols that have been decoded
     optional uint64 start_count = 21; // start processes
     reserved 22;
@@ -706,15 +635,12 @@ message mounted_fs {
     required string mount_dir = 2;
     required string type = 3;
     required uint64 size_bytes = 4;
-    reserved 7;
     required uint64 used_bytes = 5;
-    reserved 8;
     required uint64 available_bytes = 6;
-    reserved 9;
+    reserved 7 to 9;
     optional uint64 total_inodes = 10;
-    reserved 110;
     optional uint64 used_inodes = 11;
-    reserved 111;
+    reserved 110 to 111;
 }
 
 //
@@ -723,13 +649,10 @@ message mounted_fs {
 message file_stat {
     required string name = 1;
     required uint32 bytes = 2;
-    reserved 9;
     required uint64 time_ns = 3;
-    reserved 6;
     required uint32 open_count = 4;
-    reserved 7;
     required uint32 errors = 5;
-    reserved 8;
+    reserved 6 to 9;
 }
 
 enum container_type {
@@ -764,14 +687,12 @@ message container {
     reserved 8;
     optional counter_time_bidirectional max_transaction_counters = 9; // The slowest transaction counters for the whole host
     optional uint64 transaction_processing_delay = 10; // the delay introduced by this host when processing transactions.
-    reserved 15;
     // It's calculated by subtracting outgoing connection time from incoming connection time.
     // NEVER USED optional uint64 merged_server_delay = 11; // the total merged time of all the incoming requests.
-    reserved 16;
     optional uint64 next_tiers_delay = 12; // the delay introduced by this host's next tiers when processing transactions.
-    reserved 17;
     optional resource_categories resource_counters = 13; // The resource counters for this process
     optional counter_syscall_errors syscall_errors = 14; // Syscall error counter
+    reserved 15 to 17;
     repeated container_port_mapping port_mappings = 18;
     optional proto_info protos = 19;
     repeated container_label labels = 20;
@@ -872,18 +793,16 @@ message k8s_pod {
 message k8s_replication_controller {
     required k8s_common common = 1;
     optional uint32 replicas_desired = 2;
-    reserved 102;
     optional uint32 replicas_running = 3;
-    reserved 103;
+    reserved 102 to 103;
 }
 
 message k8s_replica_set {
     required k8s_common common = 1;
     optional uint32 replicas_desired = 2;
-    reserved 102;
     optional uint32 replicas_running = 3;
     reserved 4 to 5;
-    reserved 103 to 105;
+    reserved 102 to 105;
 }
 
 message k8s_service {
@@ -1061,39 +980,37 @@ message orchestrator_state_t {
 message metrics {
     required uint64 timestamp_ns = 1; // The message timestamp, in ns from epoch
     required string machine_id = 2; // The unique ID of the machine that is sending this data
-    reserved 23;
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
+    optional host hostinfo = 4; // The list of processes
+    // NEVER USED repeated process processes = 5; // The list of processes
+    repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
+    repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
+    repeated program programs = 9; // The list of programs
     optional uint32 sampling_ratio = 10; // The sampling ratio when subsampling. If not present, assume 1, which means no subsampling.
-    reserved 17;
     optional string host_custom_name = 11; // This machines's user-set custom name for the draios map.
     optional string host_tags = 12; // This machines's user-set list of tags for the draios map.
     // NEVER USED optional string host_custom_map = 13; // This machines's user-set custom map for the draios UI.
     optional bool is_host_hidden = 14; // This machines's user-set visibility flag for the draios map.
     optional string hidden_processes = 15; // Comma-sparated list of process names that the user wants to hide in the draios map.
     optional string version = 16; // Agent/libsanalyzer/sysdig version
-    optional string instance_id = 21; // AWS instance id
-
-    optional host hostinfo = 4; // The list of processes
-    repeated program programs = 9; // The list of programs
-    // NEVER USED repeated process processes = 5; // The list of processes
-    repeated ipv4_connection ipv4_connections = 7; // The list of IPv4 connections
-    repeated ipv4_network_interface ipv4_network_interfaces = 8; // The list of the machine network interfaces
-    repeated command_details commands = 28; // List of commands executed during the sample.
+    reserved 17;
     repeated mounted_fs mounts = 18; // List of mounted file systems
     repeated file_stat top_files = 19; // Top files
     optional proto_info protos = 20; // Information about protocols that have been decoded
+    optional string instance_id = 21; // AWS instance id
     repeated container containers = 22;
     // NEVER USED (used by back-end) repeated string machine_ids = 23; //machine IDs aggregated for this group
     optional k8s_state kubernetes = 24; // kubernetes cluster state
     optional mesos_state mesos = 25; // mesos cluster state
     repeated agent_event events = 26; // user-configured events
     optional falco_baseline falcobl = 27; // baseline information for falco
+    repeated command_details commands = 28; // List of commands executed during the sample.
     optional swarm_state swarm = 29;
     repeated uint32 config_percentiles = 30; // configured percentiles
     optional statsd_info internal_metrics = 31;
-    optional orchestrator_state_t orchestrator_state = 34;
     optional orchestrator_state_t global_orchestrator_state = 32;
     reserved 33;
+    optional orchestrator_state_t orchestrator_state = 34;
 }
 
 message dump_request_start {
@@ -1102,8 +1019,8 @@ message dump_request_start {
     optional string customer_id = 3; // The unique ID of the customer that this machine belongs to
     optional uint64 duration_ns = 4; // The duration for the capture in ns
     optional string filters = 5; // Dump filters
-    optional uint64 max_size = 7; // Max size
     required string token = 6; // The token associated with the request
+    optional uint64 max_size = 7; // Max size
     optional uint64 past_duration_ns = 8; // The duration before the current time to capture.
                                           // This works only if the agent has been configured with rotational capture
     optional uint64 past_size = 9; // The number of bytes already in the event circular buffer to capture.
