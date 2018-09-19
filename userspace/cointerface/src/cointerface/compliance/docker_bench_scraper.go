@@ -14,14 +14,15 @@ import (
 	"text/template"
 )
 
-func (impl *DockerBenchImpl) GenArgs(task *draiosproto.CompTask) ([]string, error) {
+func (impl *DockerBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	return []string{"MODULE_DIR/docker-bench-security.sh", "-l", "OUTPUT_DIR/docker-bench.log"}, nil
 }
 
-func (impl *DockerBenchImpl) ShouldRun(task *draiosproto.CompTask) (bool, error) {
+func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
 
 	// If docker ps -q runs without errors, we assume the task can run
 	cmd := exec.Command("docker", "ps", "-q")
+	cmd.Env = stask.env
 
 	out, err := cmd.Output()
 

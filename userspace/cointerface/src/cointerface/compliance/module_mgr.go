@@ -88,7 +88,7 @@ func emitStatsdForever(mgr *ModuleMgr) {
 func runTask(mgr *ModuleMgr, stask *ScheduledTask) error {
 	module := mgr.availModules[*stask.task.ModName]
 
-	shouldRun, err := module.Impl.ShouldRun(stask.task); if err != nil {
+	shouldRun, err := module.Impl.ShouldRun(stask); if err != nil {
 		return err
 	}
 
@@ -253,7 +253,8 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		var dur *duration.Duration
 		var err error
 
-		if _, ok := mgr.availModules[*task.ModName]; ! ok {
+		module, ok := mgr.availModules[*task.ModName]
+		if ! ok {
 			err = fmt.Errorf("Module %s does not exist",
 				*task.ModName)
 		} else if _, err = os.Stat(path.Join(mgr.ModulesDir, *task.ModName)); os.IsNotExist(err) {
@@ -286,6 +287,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 			stask := &ScheduledTask{
 				task: task,
 				cmd: nil,
+				env: module.Env(mgr),
 				maxTimesRun: maxTimesRun,
 				numTimesRun: 0,
 			}

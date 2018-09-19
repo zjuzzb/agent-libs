@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-func (impl *TestModuleImpl) GenArgs(task *draiosproto.CompTask) ([]string, error) {
+func (impl *TestModuleImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	sleepTime := "5"
 
-	for _, param := range task.TaskParams {
+	for _, param := range stask.task.TaskParams {
 		if *param.Key == "sleepTime" {
 			sleepTime = *param.Val
 		}
@@ -23,7 +23,7 @@ func (impl *TestModuleImpl) GenArgs(task *draiosproto.CompTask) ([]string, error
 	return []string{sleepTime}, nil
 }
 
-func (impl *TestModuleImpl) ShouldRun(task *draiosproto.CompTask) (bool, error) {
+func (impl *TestModuleImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
 	return true, nil
 }
 

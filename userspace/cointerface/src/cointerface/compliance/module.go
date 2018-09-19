@@ -25,11 +25,11 @@ type Scraper interface {
 }
 
 type TaskArgsGenerator interface {
-	GenArgs(task *draiosproto.CompTask) ([]string, error)
+	GenArgs(stask *ScheduledTask) ([]string, error)
 }
 
 type TaskShouldRun interface {
-	ShouldRun(task *draiosproto.CompTask) (bool, error)
+	ShouldRun(stask *ScheduledTask) (bool, error)
 }
 
 type ModuleImpl interface {
@@ -47,6 +47,7 @@ type Module struct {
 type ScheduledTask struct {
 	task *draiosproto.CompTask
 	cmd *exec.Cmd
+	env []string
 	cmdLock sync.Mutex
 	stopChan chan bool
 	maxTimesRun int
@@ -170,33 +171,9 @@ type ExtendedTaskResult struct {
 	Tests []TaskResultSection `json:"tests"`
 }
 
-func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
-
-	// Create a temporary directory where this module's output will go
-	outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
-		log.Errorf("Could not create temporary directory (%s)", err.Error());
-		return err
-	}
+func (module *Module) Env(mgr *ModuleMgr) []string {
 
 	moduleDir := path.Join(mgr.ModulesDir, module.Name)
-
-	// Replace MODULE_DIR with the path to the module and
-	// OUTPUT_DIR with the temporary output directory.
-
-	prog :=	strings.Replace(strings.Replace(module.Prog, "MODULE_DIR", moduleDir, -1),
-		"OUTPUT_DIR", outputDir, -1)
-
-	args, err := module.Impl.GenArgs(stask.task); if err != nil {
-		return err
-	}
-
-	var subArgs []string
-
-	for _, arg := range args {
-		subArgs = append(subArgs,
-			strings.Replace(strings.Replace(arg, "MODULE_DIR", moduleDir, -1),
-				"OUTPUT_DIR", outputDir, -1))
-	}
 
 	// Add the module dir to PATH
 	env := os.Environ()
@@ -219,8 +196,39 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 	dockerSock := fmt.Sprintf("unix:///%svar/run/docker.sock", sysdigRoot)
 	newenv = append(newenv, "DOCKER_HOST=" + dockerSock);
 
+	return newenv
+}
+
+func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
+
+	// Create a temporary directory where this module's output will go
+	outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
+		log.Errorf("Could not create temporary directory (%s)", err.Error());
+		return err
+	}
+
+	moduleDir := path.Join(mgr.ModulesDir, module.Name)
+
+	// Replace MODULE_DIR with the path to the module and
+	// OUTPUT_DIR with the temporary output directory.
+
+	prog :=	strings.Replace(strings.Replace(module.Prog, "MODULE_DIR", moduleDir, -1),
+		"OUTPUT_DIR", outputDir, -1)
+
+	args, err := module.Impl.GenArgs(stask); if err != nil {
+		return err
+	}
+
+	var subArgs []string
+
+	for _, arg := range args {
+		subArgs = append(subArgs,
+			strings.Replace(strings.Replace(arg, "MODULE_DIR", moduleDir, -1),
+				"OUTPUT_DIR", outputDir, -1))
+	}
+
 	cmd := exec.Command(prog, subArgs...)
-	cmd.Env = newenv
+	cmd.Env = module.Env(mgr)
 	cmd.Dir = moduleDir
 
 	log.Debugf("Running: %v", cmd)

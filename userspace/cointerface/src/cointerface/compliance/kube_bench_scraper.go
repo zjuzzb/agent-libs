@@ -15,9 +15,10 @@ import (
 	"time"
 )
 
-func findProcess(candidates []string) (bool) {
+func findProcess(candidates []string, env []string) (bool) {
 	for _, cand := range candidates {
 		cmd := exec.Command("ps", "-C", cand)
+		cmd.Env = env
 
 		out, err := cmd.Output()
 
@@ -31,7 +32,7 @@ func findProcess(candidates []string) (bool) {
 	return false
 }
 
-func (impl *KubeBenchImpl) Variant(task *draiosproto.CompTask) (string) {
+func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) (string) {
 
 	if impl.variant != "" {
 		return impl.variant
@@ -44,7 +45,7 @@ func (impl *KubeBenchImpl) Variant(task *draiosproto.CompTask) (string) {
 	impl.variant = "none"
 
 	// If a variant was explicitly provided, use it
-	for _, param := range task.TaskParams {
+	for _, param := range stask.task.TaskParams {
 		if *param.Key == "variant" {
 			if *param.Val != "master" && *param.Val != "node" {
 				log.Errorf("Ignoring configured variant %s, as it is not \"master\" or \"node\"", *param.Val)
@@ -63,11 +64,11 @@ func (impl *KubeBenchImpl) Variant(task *draiosproto.CompTask) (string) {
 		// and node versions.
 
 		servercmds := []string{"kube-apiserver", "hyperkube apiserver", "apiserver"}
-		if findProcess(servercmds) {
+		if findProcess(servercmds, stask.env) {
 			impl.variant = "master"
 		} else {
 			nodecmds := []string{"hyperkube kubelet", "kubelet"}
-			if findProcess(nodecmds) {
+			if findProcess(nodecmds, stask.env) {
 				impl.variant = "node"
 			}
 		}
@@ -77,13 +78,12 @@ func (impl *KubeBenchImpl) Variant(task *draiosproto.CompTask) (string) {
 	return impl.variant
 }
 
-func (impl *KubeBenchImpl) GenArgs(task *draiosproto.CompTask) ([]string, error) {
-	return []string{"--json", impl.Variant(task)}, nil
+func (impl *KubeBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
+	return []string{"--json", impl.Variant(stask)}, nil
 }
 
-func (impl *KubeBenchImpl) ShouldRun(task *draiosproto.CompTask) (bool, error) {
-
-	return (impl.Variant(task) != "none"), nil
+func (impl *KubeBenchImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
+	return (impl.Variant(stask) != "none"), nil
 }
 
 type KubeBenchImpl struct {
