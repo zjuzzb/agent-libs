@@ -425,12 +425,14 @@ void sinsp_worker::init()
 			draiosproto::comp_calendar cal;
 
 			draiosproto::comp_task *k8s_task = cal.add_tasks();
+			k8s_task->set_id(1);
 			k8s_task->set_name("Check K8s Environment");
 			k8s_task->set_mod_name("kube-bench");
 			k8s_task->set_enabled(true);
 			k8s_task->set_schedule(m_configuration->m_security_compliance_schedule);
 
 			draiosproto::comp_task *docker_task = cal.add_tasks();
+		        docker_task->set_id(2);
 			docker_task->set_name("Check Docker Environment");
 			docker_task->set_mod_name("docker-bench-security");
 			docker_task->set_enabled(true);
