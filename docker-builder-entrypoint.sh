@@ -17,19 +17,26 @@ fi
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude="cointerface/draiosproto" --exclude="cointerface/sdc_internal" /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='driver/Makefile' --exclude='driver/driver_config.h' /draios/sysdig/ /code/sysdig/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/falco/ /code/falco/
-cd /code/agent
 
 if [[ $1 == "container" ]]; then
 	# Must be set before calling cmake in boostrap-agent
 	export BUILD_DEB_ONLY=ON
 fi
 
-DOCKERFILE=Dockerfile
 if [[ "`uname -m`" == "s390x" ]]; then
-  ./bootstrap-agent
-  DOCKERFILE=Dockerfile.s390x
+	DOCKERFILE=Dockerfile.s390x
+	bootstrap_agent() {
+		cd /code/agent
+		./bootstrap-agent
+		cd /code/agent/build/release
+	}
 else
-  scl enable devtoolset-2 ./bootstrap-agent
+	DOCKERFILE=Dockerfile
+	bootstrap_agent() {
+		cd /code/agent
+		scl enable devtoolset-2 ./bootstrap-agent
+		cd /code/agent/build/release
+	}
 fi
 
 build_docker_image()
@@ -47,6 +54,15 @@ build_docker_image()
 
 build_package()
 {
+	bootstrap_agent
+	make -j$MAKE_JOBS package
+
+	# We run bootstrap_agent twice to run cmake twice, changing the value
+	# of COMBINED_PACKAGE, so in one invocation we get the agent package
+	# with the agent-slim/agent-kmodule components combined into a single
+	# agent package, and in the other invocation we get separate packages
+	# for each component
+	COMBINED_PACKAGE=OFF bootstrap_agent
 	make -j$MAKE_JOBS package
 	cp *.deb *.rpm /out
 }
@@ -62,7 +78,16 @@ build_release()
 {
 	mkdir -p /out/{debug,release}
 
+	bootstrap_agent
 	make -j$MAKE_JOBS install package
+
+	cd ../debug
+	make -j$MAKE_JOBS package
+
+	# see comment in build_package above
+	COMBINED_PACKAGE=OFF bootstrap_agent
+	make -j$MAKE_JOBS package
+
 	cp *.deb *.rpm *.tar.gz /out/release
 
 	cd ../debug
@@ -83,16 +108,17 @@ build_sysdig()
 	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE --pull .
 }
 
-cd build/release
-
 case "$1" in
 	bash)
+		bootstrap_agent
 		bash
 		;;
 	container)
+		bootstrap_agent
 		build_container
 		;;
 	install)
+		bootstrap_agent
 		make -j$MAKE_JOBS install
 		;;
 	package)
