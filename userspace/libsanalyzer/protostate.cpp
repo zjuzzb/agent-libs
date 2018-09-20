@@ -620,4 +620,32 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 
 }
 
+void
+sinsp_url_groups::match_new_url(string url, sinsp_url_details* url_details) const
+{
+    for (auto group = m_matched_groups.begin(); group != m_matched_groups.end(); group++) {
+        if ((*group)->contains(url)) {
+            url_details->add_group(*group);
+        }
+    }
+}
+
+void
+sinsp_url_groups::match_new_groups(unordered_map<string, sinsp_url_details>* urls)
+{
+    // add all matches to all groups
+    for (auto group = m_unmatched_groups.begin(); group != m_unmatched_groups.end(); group++) {
+        for (auto url = urls->begin(); url != urls->end(); url++) {
+            if ((*group)->contains(url->first)) {
+                url->second.add_group(*group);
+            }
+        }
+    }
+
+    // transition gorup to "matched"
+    m_matched_groups.insert(m_matched_groups.end(),
+            m_unmatched_groups.begin(),
+            m_unmatched_groups.end());
+    m_unmatched_groups.clear();
+}
 #endif // HAS_ANALYZER

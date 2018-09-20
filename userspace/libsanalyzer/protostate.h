@@ -3,6 +3,7 @@
 #pragma once
 
 #include <functional> 
+#include <regex>
 #include "percentile.h"
 
 #define SRV_PORT_MYSQL 3306
@@ -231,8 +232,90 @@ private:
 	percentile_ptr_t m_percentile;
 };
 
+class sinsp_url_group {
+public:
+    sinsp_url_group(string pattern)
+        : m_pattern(pattern, regex_constants::icase)
+    {}
+
+    ~sinsp_url_group() {}
+
+    /// 
+    /// determine whether a url, represented by a string, is a member of this group
+    /// @param url  string representation of the url to match
+    /// @returns    whether the url is a member of the group
+    ///
+    bool contains(string url) 
+    {
+        cmatch matches;
+        return regex_match(url, m_pattern);
+    }
+
+private:
+    regex m_pattern; 
+};
+
+// holding class for all our URL groups. they exist as either matched or unmatched.
+// newly created URL groups are considered unmatched and the next time we grab stats to
+// send out, we take all unmatched URLs and attempt to match them against all URLs in the
+// table. When new URLs are added, they are matched against all groups in the "matched groups"
+// list here.
+//
+// When a URL group is first matched against URLs, it is moved from the unmatched list to
+// the matched list.
+class sinsp_url_details;
+class sinsp_url_groups {
+public:
+    void match_new_groups(unordered_map<string, sinsp_url_details>* urls);
+
+    // a bit weird that we take BOTH the URl string AND the details. We need the
+    // url in ordert to actually match against the patterns, and we need the details
+    // to register the groups which matched. The details don't have a reference to the
+    // string and the lookup is only one way from string->details. We could add a reverse
+    // mapping or a reference to the string to avoid storing the string twice.....or we
+    // could just pass it in.
+    //
+    // The latter is simpler.
+    void match_new_url(string url, sinsp_url_details* url_details) const;
+
+private:
+    list<shared_ptr<sinsp_url_group>> m_matched_groups; // list of all URL groups which
+                                                        // have been previously matched
+                                                        // with all URLs in the url list
+    list<shared_ptr<sinsp_url_group>> m_unmatched_groups; // list of all URL groups which
+                                                          // have not yet been matched
+};
+
+
 class sinsp_url_details : public sinsp_request_details
 {
+public:
+    sinsp_url_details()
+        : sinsp_request_details(),
+          m_matched(false),
+          m_url_groups() {}
+
+    ~sinsp_url_details() {}
+
+    void match_url(const sinsp_url_groups* groups, string url) {
+        groups->match_new_url(url, this);
+        m_matched = true;
+    }
+
+    void add_group(shared_ptr<sinsp_url_group> group)
+    {
+        m_url_groups.insert(group);
+    }
+
+    const unordered_set<shared_ptr<sinsp_url_group>>* get_group_list(void)
+    {
+        return &m_url_groups;
+    }
+
+private:
+    bool m_matched; // indeicates whether this URL has already been matched against existing
+                    // URL groups
+    unordered_set<shared_ptr<sinsp_url_group>> m_url_groups; // set of groups this URL matches
 };
 
 class sinsp_query_details : public sinsp_request_details
@@ -242,7 +325,23 @@ class sinsp_query_details : public sinsp_request_details
 ///////////////////////////////////////////////////////////////////////////////
 // Sorter class
 ///////////////////////////////////////////////////////////////////////////////
-template <typename KT, typename T>
+
+class everything_group {
+public:
+    everything_group()
+        : groups()
+    {
+        groups->push_back(0);
+    }
+
+private:
+    unordered_set<shared_pointer<uint64_t>> groups;
+}
+
+// KT is key type of maps
+// T is value type of the maps
+// G is the group type for grouping the keys
+template <typename KT, typename T, typename G = uint64_t>
 class request_sorter
 {
 	typedef bool (*request_comparer)(typename unordered_map<KT, T>::iterator src,
@@ -343,27 +442,64 @@ public:
 			(dst->second.m_bytes_in + dst->second.m_bytes_out);
 	}
 
+        static bool never_excluder(const T*)
+        {
+            return false;
+        }
+
+        // allows us to skip any entries which have non-zero errors
+        static bool error_excluder(const T*)
+        {
+            return T->num_errors == 0;
+        }
+
 	//
 	// Marking functions
 	//
 	static void mark_top_by(vector<typename unordered_map<KT, T>::iterator>* sortable_list,
-							request_comparer comparer, size_t limit)
+							request_comparer comparer, size_t limit,
+                                                        request_excluder excluder = never_excluder)
 	{
 		uint32_t j;
 
-		if(sortable_list->size() > limit)
-		{
-			partial_sort(sortable_list->begin(),
-						 sortable_list->begin() + limit,
-						 sortable_list->end(),
-						 comparer);
-		}
+                // We have two algorithms.
+                //
+                // 1) if we don't have custom URLs, we can simply only sort the top N entries.
+                // 2) we DO have custom URLs, then we want to avoid sorting once for each URL, so the solution is to just sort the whole
+                //    list and then walk through it until we have top 15 for each group. complexity is nlogn for the sort plus n * m, where
+                //    m is the average number of groups a URL is in, which should be small. 
+                if (limit == 0) { // TODO is_enabled(new thing)
+                    sort(sortable_list->begin(), sortable_list->end(), comparer);
 
-		for(j = 0; j < std::min(limit, sortable_list->size()); j++)
-		{
-			sortable_list->at(j)->second.m_flags =
-				(sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
-		}
+                    // map that stores some group identifier (opaque and implementation specific) and the amount we've found for that group
+                    unordered_map<G*, uint64_t> counts_per_group;
+                    for (auto item = sortable_list->begin(); item != sortable_list->end(); ++item) {
+                        for (unordered_set<shared_ptr<G>>::iterator group = item->get_group_list()->begin(); group != item->get_group_list()->end(); ++group) {
+                            if (!excluder(*item) && counts_per_group[&**group] < limit) {
+                                item->second.m_flags |= SRF_INCLUDE_IN_SAMPLE;
+                                ++counts_per_group[&**group];
+                            }
+                        } 
+                    }
+                } else {
+
+                    if(sortable_list->size() > limit)
+                    {
+                            partial_sort(sortable_list->begin(),
+                                                     sortable_list->begin() + limit,
+                                                     sortable_list->end(),
+                                                     comparer);
+                    }
+
+                    for(j = 0; j < std::min(limit, sortable_list->size()); j++)
+                    {
+                        if (excluder(sortable_list->at(j))) {
+                                break;
+                        }
+                            sortable_list->at(j)->second.m_flags =
+                                    (sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
+                    }
+                }
 	}
 
 	static void mark_top(vector<typename unordered_map<KT, T>::iterator>* sortable_list, size_t limit)
@@ -391,35 +527,12 @@ public:
 		//
 		mark_top_by(sortable_list, 
 			cmp_bytes_tot, limit);
-		
-		//
-		// Mark top based on number of errors
-		// Note: we don't use mark_top_by() because there's a good chance that less than
-		//       TOP_URLS_IN_SAMPLE entries have errors, and so we add only the ones that
-		//       have m_nerrors > 0.
-		//
-		if(sortable_list->size() > limit)
-		{
-			partial_sort(sortable_list->begin(),
-						 sortable_list->begin() + limit,
-						 sortable_list->end(),
-						 cmp_nerrors);
-		}
 
-		for(uint32_t j = 0; j < std::min(limit, sortable_list->size()); j++)
-		{
-			T* entry = &(sortable_list->at(j)->second);
-
-			if(entry->m_nerrors > 0)
-			{
-				entry->m_flags =
-					(sinsp_request_flags)((uint32_t)sortable_list->at(j)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
-			}
-			else
-			{
-				break;
-			}
-		}
+                // for errors, we want to ignore non-zero values
+                mark_top_by(sortable_list,
+                            cmd_nerrors,
+                            limit,
+                            error_excluder);
 	}
 };
 
@@ -564,6 +677,8 @@ public:
 		m_client_status_codes.clear();
 		m_server_totals = sinsp_request_details();
 		m_client_totals = sinsp_request_details();
+
+                // TODO: should we reload url groups here?
 	}
 
 	bool has_data()
@@ -594,6 +709,8 @@ private:
 	unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
 	sinsp_request_details m_server_totals;
 	sinsp_request_details m_client_totals;
+
+        sinsp_url_groups m_url_groups;
 };
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
@@ -625,8 +742,18 @@ public:
 class sinsp_http_marker
 {
 public:
+
+        // give pointers to all URLs to the marker. Also match URLs which haven't been, as the marker will need this info to properly
+        // sort and mark
 	void add(sinsp_http_state* state)
 	{
+            for (auto url = state->m_server_urls.begin(); url != state->m_server_urls.end(); ++it) {
+                if (!url->m_matched) {
+                    url->match_url(&state->m_url_groups, url->first);
+                }
+            }
+            state->m_url_groups.match_new_groups(state->m_server_urls);
+
 		for(auto it = state->m_server_status_codes.begin(); it != state->m_server_status_codes.end(); ++it)
 		{
 			m_server_status_codes.push_back(it);
@@ -644,10 +771,11 @@ public:
 			m_client_urls.push_back(it);
 		}
 	}
+
 	void mark_top(size_t limit)
 	{
-		request_sorter<string, sinsp_url_details>::mark_top(&m_server_urls, limit);
-		request_sorter<string, sinsp_url_details>::mark_top(&m_client_urls, limit);
+		request_sorter<string, sinsp_url_details, sinsp_url_group>::mark_top(&m_server_urls, limit);
+		request_sorter<string, sinsp_url_details, sinsp_url_group>::mark_top(&m_client_urls, limit);
 		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_server_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls, limit);
 		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_client_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls, limit);
 	}
