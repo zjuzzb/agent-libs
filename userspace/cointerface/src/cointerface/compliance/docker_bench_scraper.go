@@ -209,12 +209,15 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 				Items: test.Items,
 			}
 
-			// Only populate Details if Items is empty,
-			// the assumption being that if Items is
-			// present, the necessary info is already
-			// covered.
+			// If Items is empty, include Details
+			// as-is. Otherwise, assume that Details has a
+			// preface e.g. "Images w/o HEALTHCHECK:" and
+			// include *only* the preface.
 			if len(test.Items) == 0 {
 				res_test.Details = test.Details
+			} else {
+				parts := strings.Split(test.Details, ":")
+				res_test.Details = parts[0] + ":"
 			}
 
 			// Generally, PASS or INFO results are considered passing.
