@@ -72,7 +72,9 @@ function configure_rpm_repo {
 	# Delete everything except for the last 5 versions
 	ls -1tdr $REPO_DIR/$PATHNAME/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
@@ -112,7 +114,9 @@ function configure_debian_repo {
 	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPO_DIR/$PATHNAME/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 
@@ -153,7 +157,9 @@ function configure_tgz_repo {
 	aws s3 sync $S3_BUCKET/$PATHNAME/ $REPO_DIR/$PATHNAME/ --acl public-read --delete --exact-timestamps
 	ls -1tdr $REPO_DIR/$PATHNAME/draios*dockerfiles* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/draios*tests* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPO_DIR/$PATHNAME/*agent* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent.* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-slim* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPO_DIR/$PATHNAME/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPO_DIR/$PATHNAME/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 
