@@ -46,9 +46,9 @@ public:
 	int64_t m_dfd;
 	string m_dcomm;
 
+	uint64_t m_timestamp;
 	int8_t m_refcount;
 
-	uint64_t m_timestamp;
 
 	//
 	// Analyzer state
