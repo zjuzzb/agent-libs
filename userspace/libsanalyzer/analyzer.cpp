@@ -3257,6 +3257,11 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 	if(reduced_ipv4_connections.size() > m_top_connections_in_sample)
 	{
+		size_t num_conns = 0;
+		size_t num_incomplete_conns = 0;
+		size_t reported_conns = 0;
+		size_t reported_incomplete_conns = 0;
+
 		//
 		// Prepare the sortable list
 		//
@@ -3274,6 +3279,8 @@ void sinsp_analyzer::emit_aggregated_connections()
 				sortable_incomplete_conns.push_back(sortable_conns_entry);
 			}
 		}
+		num_conns = sortable_conns.size();
+		num_incomplete_conns = sortable_incomplete_conns.size();
 
 		auto conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_conns.size());
 		if (conns_to_report > 0)
@@ -3309,6 +3316,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 					*(sortable_conns[j].second);
 			}
 		}
+		reported_conns = reduced_and_filtered_ipv4_connections.size();
 
 		conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_incomplete_conns.size());
 		if (conns_to_report > 0)
@@ -3328,7 +3336,51 @@ void sinsp_analyzer::emit_aggregated_connections()
 					*(sortable_incomplete_conns[j].second);
 			}
 		}
+		reported_incomplete_conns = reduced_and_filtered_ipv4_connections.size() - reported_conns;
 		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
+
+		uint64_t now = sinsp_utils::get_current_time_ns() / ONE_SECOND_IN_NS;
+		if (m_connection_truncate_report_interval > 0) {
+			bool truncated_conns = (num_conns != reported_conns);
+			bool truncated_incomplete_conns = (num_incomplete_conns != reported_incomplete_conns);
+			int trunc = truncated_conns | (truncated_incomplete_conns << 1);
+			if (trunc) {
+				string evt_name = "Too many TCP connections to report, truncating table";
+				string evt_desc;
+
+				switch (trunc) {
+					case 1:
+						evt_desc = "Reported " + to_string(reported_conns) + " out of " + to_string(num_conns) + " connections";
+						break;
+					case 2:
+						evt_desc = "Reported " + to_string(reported_incomplete_conns) + " out of " + to_string(num_incomplete_conns) + " incomplete connections";
+						break;
+					case 3:
+						evt_desc = "Reported " + to_string(reported_conns) + " out of " + to_string(num_conns) + " successful connections and " +
+							to_string(reported_incomplete_conns) + " out of " + to_string(num_incomplete_conns) + " incomplete connections";
+						break;
+					default:
+						ASSERT(false);
+				}
+
+				g_logger.log(evt_name + ". " + evt_desc, sinsp_logger::SEV_INFO);
+
+				if (m_connection_truncate_report_interval > 0 && m_connection_truncate_report_last + m_connection_truncate_report_interval < (int)now) {
+					event_scope scope;
+					scope.add("host.mac", m_configuration->get_machine_id());
+
+					auto event_str = sinsp_user_event::to_string(
+						now,
+						std::move(evt_name),
+						std::move(evt_desc),
+						std::move(scope),
+						{});
+
+					g_logger.log(event_str, sinsp_logger::SEV_EVT_INFORMATION);
+					m_connection_truncate_report_last = (int)now;
+				}
+			}
+		}
 	}
 	else
 	{

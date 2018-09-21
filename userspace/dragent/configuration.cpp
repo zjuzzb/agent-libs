@@ -1167,6 +1167,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_report_source_port = m_config->get_scalar<bool>("report_source_port", false);
 
 	m_track_connection_status = m_config->get_scalar<bool>("track_connection_status", false);
+	m_connection_truncate_report_interval = m_config->get_scalar<int>("connection_table", "truncation_report_interval", 0);
 }
 
 void dragent_configuration::print_configuration() const
