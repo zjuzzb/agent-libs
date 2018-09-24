@@ -3340,7 +3340,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
 
 		uint64_t now = sinsp_utils::get_current_time_ns() / ONE_SECOND_IN_NS;
-		if (m_connection_truncate_report_interval > 0) {
+		if (m_connection_truncate_report_interval > 0 || m_connection_truncate_log_interval > 0) {
 			bool truncated_conns = (num_conns != reported_conns);
 			bool truncated_incomplete_conns = (num_incomplete_conns != reported_incomplete_conns);
 			int trunc = truncated_conns | (truncated_incomplete_conns << 1);
@@ -3363,7 +3363,10 @@ void sinsp_analyzer::emit_aggregated_connections()
 						ASSERT(false);
 				}
 
-				g_logger.log(evt_name + ". " + evt_desc, sinsp_logger::SEV_INFO);
+				if (m_connection_truncate_log_interval > 0 && m_connection_truncate_log_last + m_connection_truncate_log_interval < (int)now) {
+					g_logger.log(evt_name + ". " + evt_desc, sinsp_logger::SEV_INFO);
+					m_connection_truncate_log_last = (int)now;
+				}
 
 				if (m_connection_truncate_report_interval > 0 && m_connection_truncate_report_last + m_connection_truncate_report_interval < (int)now) {
 					event_scope scope;

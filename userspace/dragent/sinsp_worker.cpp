@@ -549,6 +549,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_track_connection_status(m_configuration->m_track_connection_status);
 	m_analyzer->set_connection_truncate_report_interval(m_configuration->m_connection_truncate_report_interval);
+	m_analyzer->set_connection_truncate_log_interval(m_configuration->m_connection_truncate_log_interval);
 }
 
 void sinsp_worker::run()

@@ -536,6 +536,7 @@ public:
 	void set_top_processes_per_container(uint32_t val) { m_top_processes_per_container = val; }
 	void set_report_source_port(bool val) { m_report_source_port = val; }
 	void set_connection_truncate_report_interval(int sec) { m_connection_truncate_report_interval = sec; }
+	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
 	//
 	// Test tool detection state
@@ -912,7 +913,9 @@ VISIBILITY_PRIVATE
 	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 	bool m_report_source_port = false;
 	int m_connection_truncate_report_interval = 0;
+	int m_connection_truncate_log_interval = 0;
 	int m_connection_truncate_report_last = 0;
+	int m_connection_truncate_log_last = 0;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
