@@ -90,7 +90,7 @@ bool connection_manager::init()
 		{
 			cert_dir = get_openssldir();
 		}
-		g_log->debug("SSL CA cert dir: " + cert_dir);
+		g_log->information("SSL CA cert dir: " + cert_dir);
 	}
 	else
 	{
