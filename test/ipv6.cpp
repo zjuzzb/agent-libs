@@ -1,5 +1,7 @@
 #include <functional>
 #include <memory>
+#include <string>
+#include <set>
 
 #include <gtest.h>
 
@@ -12,6 +14,17 @@ typedef function<bool (string &output)> validate_func_t;
 class ipv6_filtercheck_test : public testing::Test
 {
 protected:
+
+	struct cstring_comp
+	{
+		bool operator()(const char *s1, const char *s2) const
+		{
+			return strcmp(s1, s2) < 0;
+		}
+	};
+
+	typedef std::set<const char *, cstring_comp> cstringset_t;
+
 	virtual void SetUp()
 	{
 	}
@@ -82,13 +95,13 @@ protected:
 
 		if(m_socket_connected)
 		{
-			verify_filtercheck(evt, "*%fd.name", m_conn_name.c_str(), full_output);
+			verify_filtercheck(evt, "*%fd.name", m_conn_names, full_output);
 
 			verify_filtercheck(evt, "*%fd.cip", m_client_ip, full_output);
 			verify_filtercheck(evt, "*%fd.sip", m_server_ip, full_output);
 
 			verify_filtercheck(evt, "*%fd.cport", m_client_port, full_output);
-			verify_filtercheck(evt, "*%fd.sport", m_server_port, full_output);
+			verify_filtercheck(evt, "*%fd.sport", m_server_ports, full_output);
 
 			ASSERT_TRUE(m_ip_client_filter->run(evt)) << "fd.ip=" << m_client_ip << " did not match event. Full event output: " << full_output;
 			ASSERT_TRUE(m_ip_server_filter->run(evt)) << "fd.ip=" << m_server_ip << " did not match event. Full event output: " << full_output;
@@ -100,7 +113,7 @@ protected:
 			ASSERT_TRUE(m_snet_filter->run(evt)) << "fd.snet=" << m_server_net << " did not match event. Full event output: " << full_output;
 
 			verify_filtercheck(evt, "*%fd.cproto", m_client_proto, full_output);
-			verify_filtercheck(evt, "*%fd.sproto", m_server_proto, full_output);
+			verify_filtercheck(evt, "*%fd.sproto", m_server_protos, full_output);
 
 			verify_filtercheck(evt, "*%fd.l4proto", m_l4proto, full_output);
 
@@ -116,29 +129,42 @@ protected:
 			verify_filtercheck(evt, "*%fd.rip", m_server_ip, full_output);
 
 			verify_filtercheck(evt, "*%fd.lport", m_client_port, full_output);
-			verify_filtercheck(evt, "*%fd.rport", m_server_port, full_output);
+			verify_filtercheck(evt, "*%fd.rport", m_server_ports, full_output);
 
 			ASSERT_TRUE(m_lnet_filter->run(evt)) << "fd.lnet=" << m_client_net << " did not match event. Full event output: " << full_output;
 			ASSERT_TRUE(m_rnet_filter->run(evt)) << "fd.rnet=" << m_server_net << " did not match event. Full event output: " << full_output;
 
 			verify_filtercheck(evt, "*%fd.lproto", m_client_proto, full_output);
-			verify_filtercheck(evt, "*%fd.rproto", m_server_proto, full_output);
+			verify_filtercheck(evt, "*%fd.rproto", m_server_protos, full_output);
 		}
 	}
 
-	void verify_filtercheck(sinsp_evt *evt, const char *format, string expected, string full_output)
+	void verify_filtercheck(sinsp_evt *evt, const char *format, const char * expectedc, string full_output)
 	{
-		verify_filtercheck(evt, format, expected.c_str(), full_output);
+		cstringset_t expected;
+		expected.insert(expectedc);
+
+		verify_filtercheck(evt, format, expected, full_output);
 	}
 
-	void verify_filtercheck(sinsp_evt *evt, const char *cformat, const char *expected, string full_output)
+	void verify_filtercheck(sinsp_evt *evt, const char *format, string &expecteds, string full_output)
+	{
+		cstringset_t expected;
+		expected.insert(expecteds.c_str());
+
+		verify_filtercheck(evt, format, expected, full_output);
+	}
+
+	void verify_filtercheck(sinsp_evt *evt, const char *cformat, cstringset_t &expected, string full_output)
 	{
 		string output;
 		string format = cformat;
 
 		m_formatter_cache->tostring(evt, format, &output);
 
-		ASSERT_STREQ(expected, output.c_str()) << " Result of format " << cformat << " did not match expected. Full event output: " << full_output;
+		auto it = expected.find(output.c_str());
+
+		ASSERT_TRUE(it != expected.end()) << " Result of format " << cformat << " did not match any expected value. Full event output: " << full_output;
 	}
 
 	void gen_ip_net_filters()
@@ -174,12 +200,12 @@ protected:
 	string m_client_ip;
 	string m_server_ip;
 	string m_client_port;
-	string m_server_port;
+	cstringset_t m_server_ports;
 	string m_client_net;
 	string m_server_net;
 	string m_client_proto;
-	string m_server_proto;
-	string m_conn_name;
+	cstringset_t m_server_protos;
+	cstringset_t m_conn_names;
 	string m_l4proto;
 	string m_is_server;
 
@@ -201,12 +227,12 @@ TEST_F(ipv6_filtercheck_test, curl_google_dnsreq)
 	m_client_ip = "2600:1f18:262c:6542:9aa6:df7a:9a47:d29e";
 	m_server_ip = "2001:4860:4860::8888";
 	m_client_port = "40251";
-	m_server_port = "53";
+	m_server_ports = {"53"};
 	m_client_net = "2600:1f18:262c:6542::";
 	m_server_net = "2001:4860:4860::";
 	m_client_proto = "40251";
-	m_server_proto = "domain";
-	m_conn_name = "2600:1f18:262c:6542:9aa6:df7a:9a47:d29e:40251->2001:4860:4860::8888:domain";
+	m_server_protos = {"domain"};
+	m_conn_names = {"2600:1f18:262c:6542:9aa6:df7a:9a47:d29e:40251->2001:4860:4860::8888:domain"};
 	m_l4proto = "udp";
 	m_is_server = "false";
 
@@ -233,12 +259,12 @@ TEST_F(ipv6_filtercheck_test, curl_google_www)
 	m_client_ip = "2600:1f18:262c:6542:9aa6:df7a:9a47:d29e";
 	m_server_ip = "2607:f8b0:4004:802::2004";
 	m_client_port = "37140";
-	m_server_port = "80";
+	m_server_ports = {"80"};
 	m_client_net = "2600:1f18:262c:6542::";
 	m_server_net = "2607:f8b0:4004:802::";
 	m_client_proto = "37140";
-	m_server_proto = "http";
-	m_conn_name = "2600:1f18:262c:6542:9aa6:df7a:9a47:d29e:37140->2607:f8b0:4004:802::2004:http";
+	m_server_protos = {"http"};
+	m_conn_names = {"2600:1f18:262c:6542:9aa6:df7a:9a47:d29e:37140->2607:f8b0:4004:802::2004:http"};
 	m_l4proto = "tcp";
 	m_is_server = "false";
 
@@ -265,12 +291,16 @@ TEST_F(ipv6_filtercheck_test, single_ipv6_conn_client)
 	m_client_ip = "2001:db8::4";
 	m_server_ip = "2001:db8::3";
 	m_client_port = "54405";
-	m_server_port = "1234";
+
+	// Some /etc/services map port 1234 to search-agent, so we
+	// allow both.
+	m_server_ports = {"1234", "search-agent"};
+
 	m_client_net = "2001:db8::";
 	m_server_net = "2001:db8::";
 	m_client_proto = "54405";
-	m_server_proto = "1234";
-	m_conn_name = "2001:db8::4:54405->2001:db8::3:1234";
+	m_server_protos = {"1234", "search-agent"};
+	m_conn_names = {"2001:db8::4:54405->2001:db8::3:1234", "2001:db8::4:54405->2001:db8::3:search-agent"};
 	m_l4proto = "tcp";
 	m_is_server = "false";
 
@@ -296,12 +326,12 @@ TEST_F(ipv6_filtercheck_test, single_ipv6_conn_server)
 	m_client_ip = "2001:db8::4";
 	m_server_ip = "2001:db8::3";
 	m_client_port = "54405";
-	m_server_port = "1234";
+	m_server_ports = {"1234", "search-agent"};
 	m_client_net = "2001:db8::";
 	m_server_net = "2001:db8::";
 	m_client_proto = "54405";
-	m_server_proto = "1234";
-	m_conn_name = "2001:db8::4:54405->2001:db8::3:1234";
+	m_server_protos = {"1234", "search-agent"};
+	m_conn_names = {"2001:db8::4:54405->2001:db8::3:1234", "2001:db8::4:54405->2001:db8::3:search-agent"};
 	m_l4proto = "tcp";
 	m_is_server = "server";
 
@@ -332,6 +362,8 @@ TEST_F(ipv6_filtercheck_test, test_ipv6_client)
 	//  4. connect to google dns server, port 53
 	//  5. send() on the connected socket (to google dns server)
 	//  6. sendto() back to ::1, port 2345
+	//
+	// Some /etc/services map port 2345 to dbm, so we allow both.
 
 	// The test verifies that the addresses/ports on the socket
 	// change properly for the connects/sendtos.
@@ -347,17 +379,21 @@ TEST_F(ipv6_filtercheck_test, test_ipv6_client)
 		string full = "*%evt.num %evt.outputtime %evt.cpu %proc.name (%thread.tid) %evt.dir %evt.type %evt.info";
 		m_formatter_cache->tostring(evt, full, &full_output);
 
+		cstringset_t unconnected_names = {"::1:0->::1:2345", "::1:0->::1:dbm"};
+		cstringset_t connected_names = {"::1:38255->::1:2345", "::1:38255->::1:dbm"};
+		cstringset_t reconnected_names = {"::1:38255->::1:2345", "::1:38255->::1:dbm"};
+
 		if(evname == "send" ||
 		   evname == "sendto")
 		{
 			switch(state)
 			{
 			case sendto_unconnected:
-				verify_filtercheck(evt, "*%fd.name", "::1:0->::1:2345", full_output);
+				verify_filtercheck(evt, "*%fd.name", unconnected_names, full_output);
 				state = send_connected;
 				break;
 			case send_connected:
-				verify_filtercheck(evt, "*%fd.name", "::1:38255->::1:2345", full_output);
+				verify_filtercheck(evt, "*%fd.name", connected_names, full_output);
 				state = send_reconnected;
 				break;
 			case send_reconnected:
@@ -365,7 +401,7 @@ TEST_F(ipv6_filtercheck_test, test_ipv6_client)
 				state = sendto_reconnected;
 				break;
 			case sendto_reconnected:
-				verify_filtercheck(evt, "*%fd.name", "::1:38255->::1:2345", full_output);
+				verify_filtercheck(evt, "*%fd.name", reconnected_names, full_output);
 				state = done;
 				break;
 			case done:
