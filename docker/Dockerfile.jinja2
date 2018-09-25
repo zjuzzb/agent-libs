@@ -49,6 +49,7 @@ RUN apt-get update \
 {% if p.build_kernel_module %}
 	bc \
 	clang-7 \
+	dkms \
 	gcc \
 	gcc-6 \
 	gcc-5 \
@@ -56,9 +57,6 @@ RUN apt-get update \
 	libelf-dev \
 	libelf1 \
 	llvm-7 \
-{% endif %}
-{% if p.build_kernel_module %}
-	dkms \
 	xz-utils \
 {% endif %}
 {% if p.include_agent_package is defined %}
