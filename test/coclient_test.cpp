@@ -147,8 +147,10 @@ static bool check_docker_service()
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
-		printf("Docker not running, skipping test\n");
-		return false;
+		if (system("systemctl status docker > /dev/null 2>&1") != 0) {
+			printf("Docker not running, skipping test\n");
+			return false;
+		}
 	}
 
 	return true;

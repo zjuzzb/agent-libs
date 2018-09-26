@@ -15,6 +15,7 @@
 #include <gtest.h>
 
 #include <sinsp.h>
+#include <scap.h>
 
 #include <sinsp_worker.h>
 #include <configuration.h>
@@ -23,6 +24,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <metrics.h>
 
 using namespace std;
 
@@ -551,8 +553,10 @@ static bool check_docker()
 {
 	if(system("service docker status > /dev/null 2>&1") != 0)
 	{
-		printf("Docker not running, skipping test\n");
-		return false;
+		if (system("systemctl status docker > /dev/null 2>&1") != 0) {
+			printf("Docker not running, skipping test\n");
+			return false;
+		}
 	}
 
 	// We depend on docker versions >= 1.10
