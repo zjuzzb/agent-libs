@@ -40,7 +40,9 @@ start() {
     [ -x $exec ] || exit 5
     # [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
-    /sbin/modprobe sysdigcloud-probe || return $?
+    if [ ! -d /sys/module/sysdigcloud_probe ]; then
+        /sbin/modprobe sysdigcloud-probe || return $?
+    fi
     ${DAEMONIZE} $exec --daemon --dragentpid=$pidfile
     retval=$?
     echo
