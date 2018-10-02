@@ -142,7 +142,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 			share_store ? &(mt_ainfo->m_transaction_metrics) : nullptr);
 		m_external_transaction_metrics.set_percentiles(m_percentiles,
 			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
-	}
+        }
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -166,6 +166,9 @@ void thread_analyzer_info::allocate_procinfo_if_not_present()
 			m_procinfo->m_proc_metrics.set_percentiles(m_percentiles);
 			m_procinfo->m_proc_transaction_metrics.set_percentiles(m_percentiles);
 			m_procinfo->m_external_transaction_metrics.set_percentiles(m_percentiles);
+                        if (m_inspector->get_url_groups()) {
+                            m_procinfo->m_protostate.set_url_groups(*m_inspector->get_url_groups());
+                        }
 		}
 	}
 }

@@ -1191,3 +1191,8 @@ monitor_files:
     - etc/dragent.yaml
     - etc/kubernetes/config/dragent.yaml
     - etc/kubernetes/secrets/access-key
+
+# configuring url groups
+url_groups:
+  - ".*"
+url_grouping_enabled: true

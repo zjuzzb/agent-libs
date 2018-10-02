@@ -1162,6 +1162,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_top_processes_in_sample = m_config->get_scalar<int32_t>("top_processes_in_sample", TOP_PROCESSES_IN_SAMPLE);
 	m_top_processes_per_container = m_config->get_scalar<int32_t>("top_processes_per_container", TOP_PROCESSES_PER_CONTAINER);
 	m_report_source_port = m_config->get_scalar<bool>("report_source_port", false);
+
+        // URL filter configs
+	auto url_groups_v = m_config->get_merged_sequence<std::string>("url_groups");
+	m_url_groups = std::set<std::string>(url_groups_v.begin(), url_groups_v.end());
+        m_url_groups_enabled = m_config->get_scalar<bool>("url_grouping_enabled", false);
+
 }
 
 void dragent_configuration::print_configuration() const

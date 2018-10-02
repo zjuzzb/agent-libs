@@ -217,6 +217,11 @@ void sinsp_protostate::set_serialize_pctl_data(bool val)
 	m_mongodb.set_serialize_pctl_data(val);
 }
 
+void sinsp_protostate::set_url_groups(const std::set<string>& groups)
+{
+    m_http.m_url_groups.update_group_set(groups);
+}
+
 void sinsp_protostate::add(sinsp_protostate* other)
 {
 	m_http.add(&(other->m_http));
@@ -621,11 +626,11 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 }
 
 void
-sinsp_url_groups::match_new_url(string url, sinsp_url_details* url_details) const
+sinsp_url_groups::match_new_url(const string& url, sinsp_url_details* url_details) const
 {
     for (auto group = m_matched_groups.begin(); group != m_matched_groups.end(); group++) {
-        if ((*group)->contains(url)) {
-            url_details->add_group(*group);
+        if ((*group).second->contains(url)) {
+            url_details->add_group((*group).second);
         }
     }
 }
@@ -636,16 +641,54 @@ sinsp_url_groups::match_new_groups(unordered_map<string, sinsp_url_details>* url
     // add all matches to all groups
     for (auto group = m_unmatched_groups.begin(); group != m_unmatched_groups.end(); group++) {
         for (auto url = urls->begin(); url != urls->end(); url++) {
-            if ((*group)->contains(url->first)) {
-                url->second.add_group(*group);
+            if ((*group).second->contains(url->first)) {
+                url->second.add_group((*group).second);
             }
         }
     }
 
     // transition gorup to "matched"
-    m_matched_groups.insert(m_matched_groups.end(),
-            m_unmatched_groups.begin(),
-            m_unmatched_groups.end());
+    m_matched_groups.insert(m_unmatched_groups.begin(),
+                            m_unmatched_groups.end());
     m_unmatched_groups.clear();
 }
+
+void
+sinsp_url_groups::update_group_set(const set<string>& groups)
+{
+    // first find groups we don't know about yet
+    for (auto it = groups.begin(); it != groups.end(); ++it) {
+        if (m_matched_groups.find(*it) == m_matched_groups.end() &&
+            m_unmatched_groups.find(*it) == m_matched_groups.end()) {
+            // unknown group!
+            m_unmatched_groups.insert(pair<string, shared_ptr<sinsp_url_group>>(*it, make_shared<sinsp_url_group>(*it)));
+        }
+
+        // corner case, we were going to remove it, but haven't done so yet...
+        // just unmark it for removal
+        if (m_dead_groups.find(*it) != m_dead_groups.end()) {
+            m_dead_groups.erase(m_dead_groups.find(*it));
+        }
+    }
+
+    // now find the groups that need to be nuked from space
+    for (auto it = m_matched_groups.begin(); it != m_matched_groups.end(); ++it) {
+        if (groups.find(it->first) != groups.end()) {
+            m_dead_groups.insert(*it);
+        }
+    }
+
+    list<map<string, shared_ptr<sinsp_url_group>>::iterator> to_remove;
+    // find to be added groups that no longer need to be added
+    for (auto it = m_unmatched_groups.begin(); it != m_unmatched_groups.end(); ++it) {
+        if (groups.find(it->first) != groups.end()) {
+            to_remove.insert(to_remove.end(), it);
+        }
+    }
+
+    for (auto it = to_remove.begin(); it != to_remove.end(); ++it) {
+        m_unmatched_groups.erase(*it);
+    }
+}
+
 #endif // HAS_ANALYZER
