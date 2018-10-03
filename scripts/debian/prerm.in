@@ -22,7 +22,7 @@ case "$1" in
 	;;
 esac
 
-if [ -d "@CMAKE_INSTALL_PREFIX@" ]; then
+if [ -d "@CMAKE_INSTALL_PREFIX@/lib" ]; then
 	# Clean all generated Python bytecode
 	find @CMAKE_INSTALL_PREFIX@/lib -iname "*.pyc" -delete > /dev/null 2>&1
 	find @CMAKE_INSTALL_PREFIX@/lib -iname "*.pyo" -delete > /dev/null 2>&1
