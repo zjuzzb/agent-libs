@@ -3336,8 +3336,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 					*(sortable_incomplete_conns[j].second);
 			}
 		}
-		reported_incomplete_conns = reduced_and_filtered_ipv4_connections.size() - reported_conns;
-		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
 
 		uint64_t now = sinsp_utils::get_current_time_ns() / ONE_SECOND_IN_NS;
 		if (m_connection_truncate_report_interval > 0 || m_connection_truncate_log_interval > 0) {
@@ -3365,6 +3363,32 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 				if (m_connection_truncate_log_interval > 0 && m_connection_truncate_log_last + m_connection_truncate_log_interval < (int)now) {
 					g_logger.log(evt_name + ". " + evt_desc, sinsp_logger::SEV_INFO);
+#define IP4ADDR(ip) ip & 0xff, (ip >> 8) & 0xff, (ip >> 16) & 0xff, ip >> 24
+					for (auto it = sortable_conns.begin(); it != sortable_conns.end(); ++it) {
+						const auto tuple = it->first;
+						const auto aconn = it->second;
+						if (reduced_and_filtered_ipv4_connections.find(*(it->first)) == reduced_and_filtered_ipv4_connections.end()) {
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Dropping connection %s %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d",
+									aconn->m_scomm.c_str(),
+									IP4ADDR(tuple->m_fields.m_sip), tuple->m_fields.m_sport,
+									IP4ADDR(tuple->m_fields.m_dip), tuple->m_fields.m_dport);
+						}
+					}
+
+					for (auto it = sortable_incomplete_conns.begin(); it != sortable_incomplete_conns.end(); ++it) {
+						const auto tuple = it->first;
+						const auto aconn = it->second;
+						if (reduced_and_filtered_ipv4_connections.find(*(it->first)) ==
+						    reduced_and_filtered_ipv4_connections.end()) {
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Dropping incomplete connection %s %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d",
+									aconn->m_scomm.c_str(),
+									IP4ADDR(tuple->m_fields.m_sip), tuple->m_fields.m_sport,
+									IP4ADDR(tuple->m_fields.m_dip), tuple->m_fields.m_dport);
+						}
+					}
+#undef IP4ADDR
 					m_connection_truncate_log_last = (int)now;
 				}
 
@@ -3384,6 +3408,9 @@ void sinsp_analyzer::emit_aggregated_connections()
 				}
 			}
 		}
+		reported_incomplete_conns = reduced_and_filtered_ipv4_connections.size() - reported_conns;
+		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
+
 	}
 	else
 	{
