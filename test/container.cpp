@@ -19,7 +19,6 @@
 #include <cassert>
 #include "scap-int.h"
 
-
 TEST_F(sys_call_test, container_cgroups)
 {
 	int ctid;
@@ -1232,7 +1231,7 @@ TEST_F(sys_call_test, container_libvirt)
 		ASSERT_TRUE(tinfo->m_vpid != tinfo->m_pid);
 
 		unsigned int lxc_id;
-		ASSERT_TRUE(tinfo->m_container_id == "libvirt\\x2dcontainer" ||
+		ASSERT_TRUE(tinfo->m_container_id.find("libvirt\\x2dcontainer") != string::npos ||
 		            sscanf(tinfo->m_container_id.c_str(), "lxc-%u-libvirt-container", &lxc_id) == 1);
 
 		const sinsp_container_info *container_info =
