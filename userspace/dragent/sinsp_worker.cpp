@@ -544,10 +544,6 @@ void sinsp_worker::init()
 	m_analyzer->set_top_processes_in_sample(m_configuration->m_top_processes_in_sample);
 	m_analyzer->set_top_processes_per_container(m_configuration->m_top_processes_per_container);
 	m_analyzer->set_report_source_port(m_configuration->m_report_source_port);
-
-        if (m_configuration->m_url_groups_enabled) {
-            m_inspector->set_url_groups(m_configuration->m_url_groups);
-        }
 }
 
 void sinsp_worker::run()

@@ -635,41 +635,41 @@ public:
 	uint64_t m_watchdog_max_memory_usage_mb;
 	uint64_t m_watchdog_warn_memory_usage_mb;
 #ifndef CYGWING_AGENT
-        uint64_t m_watchdog_heap_profiling_interval_s;
+	uint64_t m_watchdog_heap_profiling_interval_s;
 #endif
-        uint64_t m_dirty_shutdown_report_log_size_b;
-        map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
-        map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
-        bool m_capture_dragent_events;
-        aws_metadata m_aws_metadata;
-        uint16_t m_jmx_sampling;
-        bool m_protocols_enabled;
-        uint32_t m_protocols_truncation_size;
-        bool m_remotefs_enabled;
-        string m_java_binary;
-        string m_sdjagent_opts;
-        unsigned m_jmx_limit;
-        bool m_agent_installed;
-        bool m_sysdig_capture_enabled;
-        uint32_t m_max_sysdig_captures;
-        double m_sysdig_capture_transmit_rate;
-        int32_t m_sysdig_capture_compression_level;
-        bool m_statsd_enabled;
-        unsigned m_statsd_limit;
-        uint16_t m_statsd_port;
-        bool m_sdjagent_enabled;
-        vector<app_check> m_app_checks;
-        string m_python_binary;
-        bool m_app_checks_enabled;
-        unsigned m_app_checks_limit;
-        bool m_app_checks_always_send;
-        uint32_t m_containers_limit;
-        uint32_t m_containers_labels_max_len;
-        vector<string> m_container_patterns;
-        ports_set m_known_server_ports;
-        vector<uint16_t> m_blacklisted_ports;
-        vector<sinsp_chisel_details> m_chisel_details;
-        bool m_system_supports_containers;
+	uint64_t m_dirty_shutdown_report_log_size_b;
+	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
+	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
+	bool m_capture_dragent_events;
+	aws_metadata m_aws_metadata;
+	uint16_t m_jmx_sampling;
+	bool m_protocols_enabled;
+	uint32_t m_protocols_truncation_size;
+	bool m_remotefs_enabled;
+	string m_java_binary;
+	string m_sdjagent_opts;
+	unsigned m_jmx_limit;
+	bool m_agent_installed;
+	bool m_sysdig_capture_enabled;
+	uint32_t m_max_sysdig_captures;
+	double m_sysdig_capture_transmit_rate;
+	int32_t m_sysdig_capture_compression_level;
+	bool m_statsd_enabled;
+	unsigned m_statsd_limit;
+	uint16_t m_statsd_port;
+	bool m_sdjagent_enabled;
+	vector<app_check> m_app_checks;
+	string m_python_binary;
+	bool m_app_checks_enabled;
+	unsigned m_app_checks_limit;
+	bool m_app_checks_always_send;
+	uint32_t m_containers_limit;
+	uint32_t m_containers_labels_max_len;
+	vector<string> m_container_patterns;
+	ports_set m_known_server_ports;
+	vector<uint16_t> m_blacklisted_ports;
+	vector<sinsp_chisel_details> m_chisel_details;
+	bool m_system_supports_containers;
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
 	bool m_promex_enabled;
@@ -679,185 +679,181 @@ public:
 	custom_container::resolver m_custom_container;
 #endif
 
-        typedef std::set<std::string>      k8s_ext_list_t;
-        typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
+	typedef std::set<std::string>      k8s_ext_list_t;
+	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
-        std::string m_k8s_api_server;
-        bool m_k8s_autodetect;
-        string m_k8s_ssl_cert_type;
-        string m_k8s_ssl_cert;
-        string m_k8s_ssl_key;
-        string m_k8s_ssl_key_password;
-        string m_k8s_ssl_ca_certificate;
-        bool m_k8s_ssl_verify_certificate;
-        uint64_t m_k8s_timeout_s;
-        string m_k8s_bt_auth_token;
-        int m_k8s_delegated_nodes = 0;
-        bool m_k8s_simulate_delegation;
-        k8s_ext_list_t m_k8s_extensions;
-        bool m_use_new_k8s;
-        std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
-        std::string m_k8s_cluster_name;
+	std::string m_k8s_api_server;
+	bool m_k8s_autodetect;
+	string m_k8s_ssl_cert_type;
+	string m_k8s_ssl_cert;
+	string m_k8s_ssl_key;
+	string m_k8s_ssl_key_password;
+	string m_k8s_ssl_ca_certificate;
+	bool m_k8s_ssl_verify_certificate;
+	uint64_t m_k8s_timeout_s;
+	string m_k8s_bt_auth_token;
+	int m_k8s_delegated_nodes = 0;
+	bool m_k8s_simulate_delegation;
+	k8s_ext_list_t m_k8s_extensions;
+	bool m_use_new_k8s;
+	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
+	std::string m_k8s_cluster_name;
 
-        string m_mesos_state_uri;
-        vector<string> m_marathon_uris;
-        bool m_mesos_autodetect;
-        int m_mesos_timeout_ms;
-        bool m_mesos_follow_leader;
-        bool m_marathon_follow_leader;
+	string m_mesos_state_uri;
+	vector<string> m_marathon_uris;
+	bool m_mesos_autodetect;
+	int m_mesos_timeout_ms;
+	bool m_mesos_follow_leader;
+	bool m_marathon_follow_leader;
 #ifndef CYGWING_AGENT
-        mesos::credentials_t m_mesos_credentials;
-        mesos::credentials_t m_marathon_credentials;
-        mesos::credentials_t m_dcos_enterprise_credentials;
-        std::set<std::string> m_marathon_skip_labels;
+	mesos::credentials_t m_mesos_credentials;
+	mesos::credentials_t m_marathon_credentials;
+	mesos::credentials_t m_dcos_enterprise_credentials;
+	std::set<std::string> m_marathon_skip_labels;
 #endif
 
-        bool m_falco_baselining_enabled;
-        bool m_command_lines_capture_enabled;
-        sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
-        set<string> m_command_lines_valid_ancestors;
-        bool m_memdump_enabled;
-        uint64_t m_memdump_size;
+	bool m_falco_baselining_enabled;
+	bool m_command_lines_capture_enabled;
+	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
+	set<string> m_command_lines_valid_ancestors;
+	bool m_memdump_enabled;
+	uint64_t m_memdump_size;
 
-        user_event_filter_t::ptr_t m_k8s_event_filter;
-        user_event_filter_t::ptr_t m_docker_event_filter;
+	user_event_filter_t::ptr_t m_k8s_event_filter;
+	user_event_filter_t::ptr_t m_docker_event_filter;
 
-        bool m_excess_metric_log = false;
-        filter_vec_t m_metrics_filter;
-        filter_vec_t m_k8s_filter;
-        uint16_t m_k8s_cache_size;
-        bool m_excess_k8s_log = false;
-        unsigned m_metrics_cache;
-        filter_vec_t m_labels_filter;
-        uint16_t m_labels_cache;
-        bool m_excess_labels_log = false;
-        mount_points_filter_vec m_mounts_filter;
-        unsigned m_mounts_limit_size;
-        unsigned m_max_thread_table_size;
-        bool m_enable_coredump;
-        bool m_auto_config;
-        bool m_emit_tracers = false;
+	bool m_excess_metric_log = false;
+	filter_vec_t m_metrics_filter;
+	filter_vec_t m_k8s_filter;
+	uint16_t m_k8s_cache_size;
+	bool m_excess_k8s_log = false;
+	unsigned m_metrics_cache;
+	filter_vec_t m_labels_filter;
+	uint16_t m_labels_cache;
+	bool m_excess_labels_log = false;
+	mount_points_filter_vec m_mounts_filter;
+	unsigned m_mounts_limit_size;
+	unsigned m_max_thread_table_size;
+	bool m_enable_coredump;
+	bool m_auto_config;
+	bool m_emit_tracers = false;
 
-        bool m_enable_falco_engine;
-        string m_falco_default_rules_filename;
-        string m_falco_fallback_default_rules_filename;
-        string m_falco_auto_rules_filename;
-        string m_falco_rules_filename;
-        double m_falco_engine_sampling_multiplier;
-        std::set<std::string> m_falco_engine_disabled_rule_patterns;
+	bool m_enable_falco_engine;
+	string m_falco_default_rules_filename;
+	string m_falco_fallback_default_rules_filename;
+	string m_falco_auto_rules_filename;
+	string m_falco_rules_filename;
+	double m_falco_engine_sampling_multiplier;
+	std::set<std::string> m_falco_engine_disabled_rule_patterns;
 
-        // Set when a new auto rules file is downloaded. Monitored by
-        // sinsp_agent and when set will reload the falco engine and
-        // clear.
-        std::atomic_bool m_reset_falco_engine;
+	// Set when a new auto rules file is downloaded. Monitored by
+	// sinsp_agent and when set will reload the falco engine and
+	// clear.
+	std::atomic_bool m_reset_falco_engine;
 
-        bool m_security_enabled;
-        string m_security_policies_file;
-        string m_security_baselines_file;
-        uint64_t m_security_report_interval_ns;
-        uint64_t m_security_throttled_report_interval_ns;
-        uint64_t m_actions_poll_interval_ns;
-        uint64_t m_metrics_report_interval_ns;
-        double m_policy_events_rate;
-        uint32_t m_policy_events_max_burst;
-        bool m_security_send_monitor_events;
-        vector<string> m_suppressed_comms;
-        vector<uint16_t> m_suppressed_types;
-        std::string m_security_compliance_schedule;
-        bool m_security_send_compliance_events;
-        bool m_security_send_compliance_results;
-        uint64_t m_security_compliance_refresh_interval;
-        std::string m_security_compliance_kube_bench_variant;
+	bool m_security_enabled;
+	string m_security_policies_file;
+	string m_security_baselines_file;
+	uint64_t m_security_report_interval_ns;
+	uint64_t m_security_throttled_report_interval_ns;
+	uint64_t m_actions_poll_interval_ns;
+	uint64_t m_metrics_report_interval_ns;
+	double m_policy_events_rate;
+	uint32_t m_policy_events_max_burst;
+	bool m_security_send_monitor_events;
+	vector<string> m_suppressed_comms;
+	vector<uint16_t> m_suppressed_types;
+	std::string m_security_compliance_schedule;
+	bool m_security_send_compliance_events;
+	bool m_security_send_compliance_results;
+	uint64_t m_security_compliance_refresh_interval;
+	std::string m_security_compliance_kube_bench_variant;
 
-        uint64_t m_user_events_rate;
-        uint64_t m_user_max_burst_events;
-        dragent_mode_t m_mode;
-        bool m_detect_stress_tools = false;
-        vector<string> m_stress_tools;
+	uint64_t m_user_events_rate;
+	uint64_t m_user_max_burst_events;
+	dragent_mode_t m_mode;
+	bool m_detect_stress_tools = false;
+	vector<string> m_stress_tools;
 
-        bool m_cointerface_enabled;
-        uint32_t m_coclient_max_loop_evts = 100;
-        bool m_swarm_enabled;
+	bool m_cointerface_enabled;
+	uint32_t m_coclient_max_loop_evts = 100;
+	bool m_swarm_enabled;
 
-        uint64_t m_security_baseline_report_interval_ns;
+	uint64_t m_security_baseline_report_interval_ns;
 
-        std::set<double> m_percentiles;
-        static const unsigned MAX_PERCENTILES = 4;
-        std::vector<double> m_ignored_percentiles;
-        shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
+	std::set<double> m_percentiles;
+	static const unsigned MAX_PERCENTILES = 4;
+	std::vector<double> m_ignored_percentiles;
+	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 
-        unsigned m_snaplen;
+	unsigned m_snaplen;
 
-        uint16_t m_monitor_files_freq_sec = 0;
-        std::set<std::string> m_monitor_files;
+	uint16_t m_monitor_files_freq_sec = 0;
+	std::set<std::string> m_monitor_files;
 
-        uint32_t m_orch_queue_len;
-        int32_t m_orch_gc;
-        uint32_t m_orch_inf_wait_time_s;
-        uint32_t m_orch_tick_interval_ms;
-        uint32_t m_orch_low_ticks_needed;
-        uint32_t m_orch_low_evt_threshold;
-        bool m_orch_filter_empty;
+	uint32_t m_orch_queue_len;
+	int32_t m_orch_gc;
+	uint32_t m_orch_inf_wait_time_s;
+	uint32_t m_orch_tick_interval_ms;
+	uint32_t m_orch_low_ticks_needed;
+	uint32_t m_orch_low_evt_threshold;
+	bool m_orch_filter_empty;
 
-        int32_t m_max_n_proc_lookups;
-        int32_t m_max_n_proc_socket_lookups;
+	int32_t m_max_n_proc_lookups;
+	int32_t m_max_n_proc_socket_lookups;
 
-        bool m_query_docker_image_info;
+	bool m_query_docker_image_info;
 
-        uint64_t m_flush_log_time;
-        uint64_t m_flush_log_time_duration;
-        uint64_t m_flush_log_time_cooldown;
+	uint64_t m_flush_log_time;
+	uint64_t m_flush_log_time_duration;
+	uint64_t m_flush_log_time_cooldown;
 
-        uint32_t m_max_n_external_clients = MAX_N_EXTERNAL_CLIENTS;
-        uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
-        uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
-        uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
-        bool m_report_source_port = false;
+	uint32_t m_max_n_external_clients = MAX_N_EXTERNAL_CLIENTS;
+	uint32_t m_top_connections_in_sample = TOP_CONNECTIONS_IN_SAMPLE;
+	uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
+	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
+	bool m_report_source_port = false;
 
-        std::set<std::string> m_url_groups;
-        bool m_url_groups_enabled = false;
+	bool java_present() const
+	{
+		return !m_java_binary.empty();
+	}
 
-        bool java_present() const
-        {
-                return !m_java_binary.empty();
-        }
-
-        bool python_present() const
-        {
+	bool python_present() const
+	{
 #ifndef CYGWING_AGENT
-                return !m_python_binary.empty();
+		return !m_python_binary.empty();
 #else
-                return false;
+		return false;
 #endif
-        }
+	}
 
-        void refresh_aws_metadata();
-        void refresh_machine_id();
+	void refresh_aws_metadata();
+	void refresh_machine_id();
 
-        // Returns 0 if already up-to-date, 1 if updated, -1 if
-        // error. On error, &errstr is updated with the source of the
-        // error.
-        int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
+	// Returns 0 if already up-to-date, 1 if updated, -1 if
+	// error. On error, &errstr is updated with the source of the
+	// error.
+	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
 
-        void set_auto_config_directory(const string &config_directory);
+	void set_auto_config_directory(const string &config_directory);
 
 private:
-        inline static bool is_executable(const string& path);
-        void write_statsite_configuration();
-        void normalize_path(const std::string& file_path, std::string& normalized_path);
-        void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
-        void configure_k8s_from_env();
-        void add_percentiles();
-        std::string get_install_prefix(const Application* app);
-        void sanitize_limits(filter_vec_t& filters);
+	inline static bool is_executable(const string& path);
+	void write_statsite_configuration();
+	void normalize_path(const std::string& file_path, std::string& normalized_path);
+	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
+	void configure_k8s_from_env();
+	void add_percentiles();
+	std::string get_install_prefix(const Application* app);
+	void sanitize_limits(filter_vec_t& filters);
 
 
-        std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
-        bool m_load_error;
+	std::map<std::string, std::unique_ptr<dragent_auto_configuration>> m_supported_auto_configs;
+	bool m_load_error;
 
-        friend class aws_metadata_refresher;
+	friend class aws_metadata_refresher;
 };
-
 
 class aws_metadata_refresher: public Runnable
 {

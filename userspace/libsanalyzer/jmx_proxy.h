@@ -11,13 +11,6 @@ class jmx_proxy;
 class java_process;
 class java_bean;
 
-// fwd declaration
-namespace draiosproto {
-    class jmx_attribute;
-    class jmx_bean;
-    class java_info;
-}
-
 class java_bean_attribute
 {
 public:
@@ -68,7 +61,8 @@ public:
 		return m_attributes;
 	}
 
-	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const; 
+	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const;
+
 	unsigned total_metrics() const
 	{
 		return m_total_metrics;
