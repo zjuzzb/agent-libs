@@ -9,6 +9,7 @@
 #include "delays.h"
 #include "procfs_parser.h"
 #include "app_checks.h"
+#include "env_hash.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -84,6 +85,11 @@ struct main_thread_analyzer_info
 	sinsp_protostate m_protostate;
 	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+
+	// hash of all environment variables
+	env_hash m_env_hash;
+
+	void hash_environment(sinsp_threadinfo* tinfo);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

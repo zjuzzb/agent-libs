@@ -136,7 +136,9 @@ add_library(sanalyzer STATIC
 	mount_points_limits.cpp
 	label_limits.cpp
 	k8s_limits.cpp
-	userdb.cpp)
+	userdb.cpp
+	blake2/blake2b.c
+	env_hash.cpp)
 
 add_dependencies(sanalyzer draiosproto)
 

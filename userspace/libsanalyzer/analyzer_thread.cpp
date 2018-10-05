@@ -92,6 +92,11 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 	return res;
 }
 
+void main_thread_analyzer_info::hash_environment(sinsp_threadinfo* tinfo)
+{
+	m_env_hash.update(tinfo);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -142,6 +147,10 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 			share_store ? &(mt_ainfo->m_transaction_metrics) : nullptr);
 		m_external_transaction_metrics.set_percentiles(m_percentiles,
 			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
+	}
+	if (m_tinfo->is_main_thread()) {
+		auto mt_ainfo = main_thread_ainfo();
+		mt_ainfo->hash_environment(m_tinfo);
 	}
 }
 

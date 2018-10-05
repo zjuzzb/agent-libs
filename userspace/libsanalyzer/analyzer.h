@@ -28,6 +28,7 @@
 #endif
 #include "internal_metrics.h"
 #include "userdb.h"
+#include "env_hash.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
