@@ -16,6 +16,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"io/ioutil"
 	"time"
 	"golang.org/x/net/context"
 	"strings"
@@ -374,6 +375,21 @@ func createKubeClient(apiServer string, caCert string, clientCert string, client
 	if skipVerify {
 		caCert = ""
 	}
+	tokenStr := ""
+	if authToken != "" {
+		tokenBytes, err := ioutil.ReadFile(authToken)
+		if err != nil {
+			log.Warnf("Unable to read bearer token from %v", authToken)
+		} else {
+			tokenStr = string(tokenBytes[:])
+			// Trailing newlines cause the api server to reject the token
+			tokenStr = strings.TrimRight(tokenStr, "\n")
+			if tokenStr == "" {
+				log.Warn("No token found in bearer token file")
+			}
+		}
+	}
+
 	baseConfig := clientcmdapi.NewConfig()
 	configOverrides := &clientcmd.ConfigOverrides{
 		ClusterInfo: clientcmdapi.Cluster{
@@ -384,7 +400,7 @@ func createKubeClient(apiServer string, caCert string, clientCert string, client
 		AuthInfo: clientcmdapi.AuthInfo{
 			ClientCertificate: clientCert,
 			ClientKey: clientKey,
-			TokenFile: authToken,
+			Token: tokenStr,
 		},
 	}
 	kubeConfig := clientcmd.NewDefaultClientConfig(*baseConfig, configOverrides)
