@@ -3041,6 +3041,15 @@ bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connecti
 	return (s > d);
 }
 
+static inline bool should_report_connection(const process_tuple& tuple)
+{
+	if (tuple.m_fields.m_state == draiosproto::CONN_SUCCESS) {
+		return tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0;
+	} else {
+		return tuple.m_fields.m_sip != 0 || tuple.m_fields.m_dip != 0;
+	}
+}
+
 //
 // Strategy:
 //  - sport is masked to zero, unless m_report_source_port is set
@@ -3138,7 +3147,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
 		tuple.m_fields.m_state = pb_connection_state(cit->second.m_analysis_flags);
 
-		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
+		if(should_report_connection(tuple))
 		{
 			if(!cit->second.is_client_and_server())
 			{
