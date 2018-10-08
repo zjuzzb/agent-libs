@@ -2565,6 +2565,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
 	auto jmx_limit = m_configuration->get_jmx_limit();
+	std::set<uint64_t> all_uids;
 	tracer_emitter at_trc("aggregate_threads", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
@@ -2603,6 +2604,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
+
+			for (const auto uid : procinfo->m_program_uids) {
+				all_uids.insert(uid);
+				prog->add_uids(uid);
+			}
 
 			//
 			// Basic values
@@ -2923,6 +2929,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		tinfo->m_ainfo->clear_all_metrics();
 	}
 	at_trc.stop();
+
+	tracer_emitter user_trc("userdb_lookup", proc_trc);
+	for (const auto uid : all_uids) {
+		auto userdb = m_metrics->add_userdb();
+		const auto& user = m_userdb.lookup(uid);
+		userdb->set_id(uid);
+		userdb->set_name(user);
+	}
+	user_trc.stop();
 
 	// add jmx and app checks per container
 	for (int i = 0; i < m_metrics->containers_size(); i++)

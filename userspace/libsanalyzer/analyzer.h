@@ -27,6 +27,7 @@
 #include "custom_container.h"
 #endif
 #include "internal_metrics.h"
+#include "userdb.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -916,6 +917,8 @@ VISIBILITY_PRIVATE
 	int m_connection_truncate_log_interval = 0;
 	int m_connection_truncate_report_last = 0;
 	int m_connection_truncate_log_last = 0;
+
+	userdb m_userdb;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

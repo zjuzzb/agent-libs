@@ -273,6 +273,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	ASSERT(other->m_tinfo != NULL);
 
 	m_procinfo->m_program_pids.insert(other->m_tinfo->m_pid);
+	m_procinfo->m_program_uids.insert(other->m_tinfo->m_uid);
 #endif
 
 	if(other->m_transaction_metrics.get_counter()->m_count_in != 0)

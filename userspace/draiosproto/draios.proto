@@ -716,6 +716,12 @@ message process {
 message program {
     required process procinfo = 1; // Information about this program
     repeated uint64 pids = 2; // The list of processes that are part of this program
+    repeated uint64 uids = 3; // The list of user ids that are running the processes forming this program
+}
+
+message id_map {
+    optional uint64 id = 1;
+    optional string name = 2;
 }
 
 //
@@ -1163,6 +1169,7 @@ message metrics {
     optional orchestrator_state_t orchestrator_state = 34;
     // 35 is free to reuse
     repeated ipv4_connection ipv4_incomplete_connections = 36; // The list of incomplete IPv4 connections
+    repeated id_map userdb = 37; // uid->username mapping
 }
 
 message dump_request_start {

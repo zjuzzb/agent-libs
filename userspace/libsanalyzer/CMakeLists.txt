@@ -135,7 +135,8 @@ add_library(sanalyzer STATIC
 	filter_limits.cpp
 	mount_points_limits.cpp
 	label_limits.cpp
-	k8s_limits.cpp)
+	k8s_limits.cpp
+	userdb.cpp)
 
 add_dependencies(sanalyzer draiosproto)
 

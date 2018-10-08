@@ -51,6 +51,7 @@ public:
 	// list of processes that are part of this program
 #ifdef ANALYZER_EMITS_PROGRAMS
 	set<int64_t> m_program_pids;
+	set<int64_t> m_program_uids;
 #endif
 	// Number of child threads or processes that served transactions
 	uint64_t m_n_transaction_threads;
