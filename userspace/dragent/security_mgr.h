@@ -221,6 +221,7 @@ private:
 	sinsp_analyzer *m_analyzer;
 	capture_job_handler *m_capture_job_handler;
 	dragent_configuration *m_configuration;
+	std::string m_cointerface_sock_path;
 
 	Poco::RWLock m_policies_lock;
 
@@ -425,10 +426,10 @@ private:
 
 	metrics m_metrics;
 
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_conn;
+	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_start_conn;
+	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_load_conn;
 
-	streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart) m_grpc_start;
-	unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad) m_grpc_load;
-	unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop) m_grpc_stop;
+	std::unique_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
+	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
 };
 #endif // CYGWING_AGENT

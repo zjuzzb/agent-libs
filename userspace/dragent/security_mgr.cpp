@@ -30,10 +30,7 @@ security_mgr::security_mgr(const string& install_root)
 	  m_analyzer(NULL),
 	  m_capture_job_handler(NULL),
 	  m_configuration(NULL),
-	  m_grpc_conn(grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>("unix:" + install_root + "/run/cointerface.sock")),
-	  m_grpc_start(m_grpc_conn),
-	  m_grpc_load(m_grpc_conn),
-	  m_grpc_stop(m_grpc_conn)
+	  m_cointerface_sock_path("unix:" + install_root + "/run/cointerface.sock")
 {
 	m_security_evt_metrics = {make_shared<security_evt_metrics>(m_process_metrics), make_shared<security_evt_metrics>(m_container_metrics),
 				  make_shared<security_evt_metrics>(m_readonly_fs_metrics),
@@ -392,8 +389,15 @@ void security_mgr::process_event(sinsp_evt *evt)
 			m_metrics.reset();
 		}, ts_ns);
 
-		m_grpc_load.process_queue();
-		m_grpc_start.process_queue();
+		if(m_grpc_load)
+		{
+			m_grpc_load->process_queue();
+		}
+
+		if(m_grpc_start)
+		{
+			m_grpc_start->process_queue();
+		}
 
 		if(!m_compliance_modules_loaded && !m_compliance_load_in_progress)
 		{
@@ -402,6 +406,9 @@ void security_mgr::process_event(sinsp_evt *evt)
 
 		if(m_compliance_modules_loaded)
 		{
+			// We don't need the load connection/stub any longer.
+			m_grpc_load = NULL;
+			m_grpc_load_conn = NULL;
 			m_refresh_compliance_tasks_interval->run([this]() {
 					refresh_compliance_tasks();
 				}, ts_ns);
@@ -606,7 +613,10 @@ void security_mgr::load_compliance_modules()
 
 	g_log->debug(string("Sending load message to cointerface: ") + load.DebugString());
 	m_compliance_load_in_progress = true;
-	m_grpc_load.do_rpc(load, callback);
+
+	m_grpc_load_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
+	m_grpc_load = make_unique<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)>(m_grpc_load_conn);
+	m_grpc_load->do_rpc(load, callback);
 }
 
 void security_mgr::refresh_compliance_tasks()
@@ -672,6 +682,11 @@ void security_mgr::refresh_compliance_tasks()
 		return;
 	}
 
+	// Explicitly tearing down any prior start so the client is
+	// destroyed before the connection.
+	m_grpc_start = NULL;
+	m_grpc_start_conn = NULL;
+
 	auto callback =
 		[this](streaming_grpc::Status status, sdc_internal::comp_task_event &cevent)
 		{
@@ -723,7 +738,10 @@ void security_mgr::refresh_compliance_tasks()
 
 	g_log->debug(string("Sending start message to cointerface: ") + start.DebugString());
 	m_cur_compliance_tasks = new_tasks;
-	m_grpc_start.do_rpc(start, callback);
+
+	m_grpc_start_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
+	m_grpc_start = make_unique<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)>(m_grpc_start_conn);
+	m_grpc_start->do_rpc(start, callback);
 }
 
 void security_mgr::stop_compliance_tasks()
@@ -748,13 +766,18 @@ void security_mgr::stop_compliance_tasks()
 	};
 
 	sdc_internal::comp_stop stop;
-	m_grpc_stop.do_rpc(stop, callback);
+
+	shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> grpc_stop_conn =
+		grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
+	unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop) grpc_stop(grpc_stop_conn);
+
+	grpc_stop.do_rpc(stop, callback);
 
 	// Wait up to 10 seconds for a response
 	for(uint32_t i=0; i < 100; i++)
 	{
 		Poco::Thread::sleep(100);
-		m_grpc_stop.process_queue();
+		grpc_stop.process_queue();
 
 		if(stopped)
 		{
