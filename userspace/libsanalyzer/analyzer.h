@@ -521,6 +521,11 @@ public:
 		m_flush_log_time_cooldown = flush_log_cooldown_ns;
 	}
 
+	void set_username_lookups(bool enabled)
+	{
+		m_username_lookups = enabled;
+	}
+
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
 
@@ -918,6 +923,7 @@ VISIBILITY_PRIVATE
 	int m_connection_truncate_report_last = 0;
 	int m_connection_truncate_log_last = 0;
 
+	bool m_username_lookups = false;
 	userdb m_userdb;
 
 	//

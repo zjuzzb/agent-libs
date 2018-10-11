@@ -1169,6 +1169,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_track_connection_status = m_config->get_scalar<bool>("track_connection_status", false);
 	m_connection_truncate_report_interval = m_config->get_scalar<int>("connection_table", "truncation_report_interval", 0);
 	m_connection_truncate_log_interval = m_config->get_scalar<int>("connection_table", "truncation_log_interval", 0);
+
+	m_username_lookups = m_config->get_scalar<bool>("username_lookups", false);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1609,6 +1611,11 @@ void dragent_configuration::print_configuration() const
 	}
 
 	g_log->information("Incomplete TCP connection reporting: " + string(m_track_connection_status ? "enabled" : "disabled"));
+
+	if(m_username_lookups)
+	{
+		g_log->information("Username lookups enabled.");
+	}
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

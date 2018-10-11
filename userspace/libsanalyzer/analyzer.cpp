@@ -2606,7 +2606,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif // ANALYZER_EMITS_PROGRAMS
 
 			for (const auto uid : procinfo->m_program_uids) {
-				all_uids.insert(uid);
+				if (m_username_lookups) {
+					all_uids.insert(uid);
+				}
 				prog->add_uids(uid);
 			}
 

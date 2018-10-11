@@ -818,6 +818,8 @@ public:
 	int m_connection_truncate_report_interval;
 	int m_connection_truncate_log_interval;
 
+	bool m_username_lookups = false;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();
