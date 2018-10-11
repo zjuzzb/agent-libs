@@ -959,9 +959,30 @@ bool infrastructure_state::check_registered_scope(reg_id_t &reg)
 	return it->second.m_scope_match;
 }
 
+// This function tests if a given container group
+// has a "k8s_namespaces" as one of its parents.
+bool has_k8s_namespace_parent(const draiosproto::container_group *grp) {
+
+	for(const auto &p_uid : grp->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if(!has(pkey)) {
+			// Not in the m_state map.
+			continue;
+		}
+
+		if(p_uid.kind() == "k8s_namespace") {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
-				     google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
-				     std::unordered_set<uid_t>& visited)
+				    google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
+				    std::unordered_set<uid_t>& visited)
 {
 	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
 
@@ -971,6 +992,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 	visited.emplace(uid);
 
+	bool has_namespace_parent(false);
 
 	for (const auto &p_uid : grp->parents()) {
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
@@ -980,6 +1002,13 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 			continue;
 		}
 
+		// while we are checking parents,
+		// check if the current grp has *a*
+		// namespace parent OR it is a namespace itself
+		if(p_uid.kind() == "k8s_namespace") {
+		        has_namespace_parent = true;
+		}
+		
 		//
 		// Build parent state
 		//
@@ -988,8 +1017,10 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 
 	//
 	// Except for containers and hosts, add the current node
-	//
-	if(grp->uid().kind() != "container" && grp->uid().kind() != "host") {
+	// Also do not add a node if it neither is a namespace nor
+	// has a parent namespace
+	if(grp->uid().kind() != "container" && grp->uid().kind() != "host" &&
+	   (has_namespace_parent || grp->uid().kind() == "k8s_namespace")) {
 		auto x = state->Add();
 		x->CopyFrom(*grp);
 		// Clean children links, backend will reconstruct them from parent ones
@@ -1079,7 +1110,8 @@ void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiospr
 {
 	for (auto i = m_state.begin(); i != m_state.end(); ++i) {
 		auto cg = i->second.get();
-		if(cg->uid().kind() != "container" && cg->uid().kind() != "host") {
+		if(cg->uid().kind() != "container" && cg->uid().kind() != "host" &&
+		   (cg->uid().kind() == "k8s_namespace" || has_k8s_namespace_parent(cg))) {
 			auto x = state->Add();
 			x->CopyFrom(*cg);
 			// clean up host links

@@ -131,6 +131,8 @@ private:
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void k8s_generate_user_event(const bool success);
 
+	bool has_k8s_namespace_parent(const draiosproto::container_group *grp);
+
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 
 	bool match_scope_all_containers(const scope_predicates &predicates);
