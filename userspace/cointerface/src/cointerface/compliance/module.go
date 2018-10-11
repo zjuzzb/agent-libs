@@ -155,7 +155,7 @@ type TaskResultSection struct {
 	PassCount uint64 `json:"passCount"`
 	FailCount uint64 `json:"failCount"`
 	WarnCount uint64 `json:"warnCount"`
-	Results []TaskResultTest `json:"results"`
+	Results []TaskResultTest `json:"results,omitempty"`
 }
 
 type ExtendedTaskResult struct {
@@ -168,7 +168,7 @@ type ExtendedTaskResult struct {
 	FailCount uint64 `json:"failCount"`
 	WarnCount uint64 `json:"warnCount"`
 	Risk ResultRisk `json:"risk"`
-	Tests []TaskResultSection `json:"tests"`
+	Tests []TaskResultSection `json:"tests,omitempty"`
 }
 
 func (module *Module) Env(mgr *ModuleMgr) []string {
