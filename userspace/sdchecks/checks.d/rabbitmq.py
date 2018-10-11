@@ -172,8 +172,6 @@ class RabbitMQ(AgentCheck):
             parsed_url = urlparse.urlparse(base_url)
 
         ssl_verify = _is_affirmative(instance.get('ssl_verify', True))
-        if not ssl_verify and parsed_url.scheme == 'https':
-            self.log.warning('Skipping SSL cert validation for %s based on configuration.' % (base_url))
 
         # Limit of queues/nodes to collect metrics from
         max_detailed = {
