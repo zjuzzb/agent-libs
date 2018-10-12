@@ -249,7 +249,6 @@ dragent_configuration::dragent_configuration()
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
-	m_metrics_report_interval_ns = 60000000000;
 	m_security_send_monitor_events = false;
 	m_security_compliance_schedule = "";
 	m_security_send_compliance_events = false;
@@ -1044,7 +1043,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
 	// 100 ms
 	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
-	m_metrics_report_interval_ns = m_config->get_scalar<uint64_t>("security" "metrics_report_interval_ns", 60000000000);
 
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
@@ -1446,7 +1444,6 @@ void dragent_configuration::print_configuration() const
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
 		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
 		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
-		g_log->information("Security Metrics Report Interval (ms)" + NumberFormatter::format(m_metrics_report_interval_ns / 1000000));
 
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));

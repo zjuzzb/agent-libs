@@ -757,7 +757,6 @@ public:
 	uint64_t m_security_report_interval_ns;
 	uint64_t m_security_throttled_report_interval_ns;
 	uint64_t m_actions_poll_interval_ns;
-	uint64_t m_metrics_report_interval_ns;
 	double m_policy_events_rate;
 	uint32_t m_policy_events_max_burst;
 	bool m_security_send_monitor_events;

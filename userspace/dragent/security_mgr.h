@@ -8,6 +8,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <algorithm>
 
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -102,6 +103,18 @@ private:
 			MET_MISS_EVTTYPE = 0,
 			MET_MISS_TINFO,
 			MET_MISS_QUAL,
+			MET_POLICIES,
+			MET_POLICIES_ENABLED,
+			MET_POLICY_EVTS,
+			MET_POLICY_EVTS_SEV_LOW,
+			MET_POLICY_EVTS_SEV_MEDIUM,
+			MET_POLICY_EVTS_SEV_HIGH,
+			MET_POLICY_EVTS_PROCESS,
+			MET_POLICY_EVTS_CONTAINER,
+			MET_POLICY_EVTS_FILESYSTEM,
+			MET_POLICY_EVTS_NETWORK,
+			MET_POLICY_EVTS_SYSCALL,
+			MET_POLICY_EVTS_FALCO,
 			MET_MAX
 		};
 
@@ -114,14 +127,40 @@ private:
 		{
 		}
 
-		void incr(reason res)
+		void set_policies_count(uint64_t num_policies, uint64_t num_enabled)
 		{
-			m_metrics[res]++;
+			m_num_policies = num_policies;
+			m_num_policies_enabled = num_enabled;
+		}
+
+		void incr(reason res, uint64_t delta=1)
+		{
+			m_metrics[res] += delta;
+		}
+
+		void incr_policy(const std::string &policy_name, uint64_t delta=1)
+		{
+			auto it = m_policy_evts_by_name.find(policy_name);
+			if(it == m_policy_evts_by_name.end())
+			{
+				m_policy_evts_by_name.insert(make_pair(policy_name, delta));
+			}
+			else
+			{
+				it->second += delta;
+			}
 		}
 
 		void reset()
 		{
 			std::fill_n(m_metrics, MET_MAX, 0);
+			m_policy_evts_by_name.clear();
+
+			// Add back the policy counts. These aren't
+			// related to any event, so they're only
+			// changed when the set of policies change.
+			incr(MET_POLICIES, m_num_policies);
+			incr(MET_POLICIES_ENABLED, m_num_policies_enabled);
 		}
 
 		std::string to_string()
@@ -133,28 +172,96 @@ private:
 				str += " " + m_metric_names[i] + "=" + std::to_string(m_metrics[i]);
 			}
 
+			for(auto &pair : m_policy_evts_by_name)
+			{
+				str += " policy:" + pair.first + "=" + std::to_string(pair.second);
+			}
+
 			return str;
 		}
 
 		virtual void send_all(draiosproto::statsd_info* statsd_info)
 		{
-			for(uint32_t i=0; i<MET_MAX; i++)
+			// Not we only send some of the metrics here
+			for(uint32_t i=0; i<MET_POLICIES; i++)
 			{
 				internal_metrics::write_metric(statsd_info,
 							       m_metric_names[i],
 							       draiosproto::STATSD_COUNT,
 							       m_metrics[i]);
-				m_metrics[i] = 0;
 			}
+
+			send_some(statsd_info);
+
+			reset();
 		}
+
+		virtual void send_some(draiosproto::statsd_info* statsd_info)
+		{
+
+			for(uint32_t i=MET_POLICIES; i<MET_MAX; i++)
+			{
+				internal_metrics::write_metric(statsd_info,
+							       m_metric_names[i],
+							       draiosproto::STATSD_COUNT,
+							       m_metrics[i]);
+			}
+
+			// Also do counts by policy name, sorted by count decreasing, capped at 10.
+			vector<string> top_policies;
+			for(auto &pair : m_policy_evts_by_name)
+			{
+				top_policies.push_back(pair.first);
+			}
+
+			uint32_t len = (top_policies.size() < 10 ? top_policies.size() : 10);
+			if(top_policies.size() > 0)
+			{
+				partial_sort(top_policies.begin(),
+					     top_policies.begin() + len,
+					     top_policies.end(),
+					     [this](const string &a, const string &b) {
+						     return (m_policy_evts_by_name[a] > m_policy_evts_by_name[b]);
+					     });
+			}
+
+			for(uint32_t i=0; i < len; i++)
+			{
+				std::map<std::string,std::string> tags = {{string("name"), top_policies[i]}};
+				internal_metrics::write_metric(statsd_info,
+							       "security_policy_evts.by_name",
+							       tags,
+							       draiosproto::STATSD_COUNT,
+							       m_policy_evts_by_name[top_policies[i]]);
+			}
+
+			reset();
+		}
+
 	private:
-		std::string prefix;
+		uint64_t m_num_policies;
+		uint64_t m_num_policies_enabled;
 		uint64_t m_metrics[MET_MAX];
 		std::string m_metric_names[MET_MAX]{
 				"security.miss.evttype",
 				"security.miss.tinfo",
 				"security.miss.qual",
+				"security.policies.total",
+				"security.policies.enabled",
+				"security.policy_evts.total",
+				"security.policy_evts.low",
+				"security.policy_evts.medium",
+				"security.policy_evts.high",
+				"security.policy_evts.process",
+				"security.policy_evts.container",
+				"security.policy_evts.filesystem",
+				"security.policy_evts.network",
+				"security.policy_evts.syscall",
+				"security.policy_evts.falco"
 				};
+
+		// Counts by policy name
+		std::map<std::string,uint64_t> m_policy_evts_by_name;
 	};
 
 	// Potentially throttle the provided policy event. This method
@@ -166,6 +273,8 @@ private:
 	// meaning that it will be added to the periodic throttled
 	// events message. In this case, the event should be discarded.
         bool throttle_policy_event(uint64_t ts_ns, std::string &container_id, uint64_t policy_id);
+
+	void add_policy_event_metrics(const security_policies::match_result &res);
 
 	draiosproto::policy_event * create_policy_event(int64_t ts_ns,
 							std::string &container_id,

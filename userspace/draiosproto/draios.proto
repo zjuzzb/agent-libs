@@ -1199,6 +1199,8 @@ message policy {
 
     repeated action actions = 7;
     required bool enabled = 8;
+
+    optional uint64 severity = 18;
 }
 
 // It's repeated to allow for pushing multiple rule files from the

@@ -124,6 +124,11 @@ public:
 			m_metrics[i] = 0;
 		}
 	}
+
+	virtual void send_some(draiosproto::statsd_info* statsd_info)
+	{
+	};
+
 private:
 	std::string m_prefix;
 	bool m_include_falco;
