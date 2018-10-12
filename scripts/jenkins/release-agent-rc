@@ -82,6 +82,7 @@ function configure_rpm_repo {
 	# $SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
 	cp $REPO_DIR/$RCPATHNAME/draios-${AGENT_VERSION}*rpm $REPO_DIR/$PATHNAME
 	createrepo $REPO_DIR/$PATHNAME
+	gpg --local-user EC51E8C4 --batch --no-tty -yes --detach-sign --armor $REPO_DIR/$PATHNAME/repodata/repomd.xml
 
 	cp $SCRIPTS_DIR/draios.repo $REPO_DIR/$REPO_NAME/rpm
 	sed -i s/_REPOSITORY_/$REPO_NAME/g $REPO_DIR/$REPO_NAME/rpm/draios.repo
@@ -121,7 +122,7 @@ function configure_debian_repo {
 	ls -1tdr $REPO_DIR/$PATHNAME/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 
 	# debs should already be signed
-	# $SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+	# $SCRIPTS_DIR/dpkg-sig -k EC51E8C4 -s builder $PACKAGES_DIR/*deb
 	cp $REPO_DIR/$RCPATHNAME/draios-${AGENT_VERSION}*deb $REPO_DIR/$PATHNAME
 
 	dpkg-scanpackages --multiversion stable-$DEB_BASEARCH > stable-$DEB_BASEARCH/Packages
@@ -137,8 +138,8 @@ EOF
 	checksum SHA256 sha256sum
 	checksum SHA512 sha512sum
 	) > Release
-	gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
-	gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+	gpg --local-user EC51E8C4 --batch --no-tty --yes --digest-algo SHA256 -abs -o Release.gpg Release
+	gpg --local-user EC51E8C4 --batch --no-tty --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
 	popd
 
 	sed s/_REPOSITORY_/$REPO_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
@@ -205,9 +206,9 @@ function push_docker_images {
 	# happens as a part of the build-agent script.
 	DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
 
-        rm -rf "${DOCKERFILES_ROOT_DIR}" &&
-  	        mkdir -p "${DOCKERFILES_ROOT_DIR}" &&
-		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-dockerfiles.tar.gz"
+	rm -rf "${DOCKERFILES_ROOT_DIR}"
+	mkdir -p "${DOCKERFILES_ROOT_DIR}"
+	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "$REPO_DIR/$REPO_BASENAME/tgz/$BASEARCH/draios-${AGENT_VERSION}-${BASEARCH}-dockerfiles.tar.gz"
 
 	for IMAGE_NAME in agent-kmodule agent-slim agent; do
 
@@ -216,12 +217,12 @@ function push_docker_images {
 	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}"
 	    LATEST_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:latest"
 
-	    docker build -t "${VERSIONED_IMAGE}" --pull . &&
-	        docker push "${VERSIONED_IMAGE}"
+	    docker build -t "${VERSIONED_IMAGE}" --pull .
+	    docker push "${VERSIONED_IMAGE}"
 
 	    if [[ "${REPO_BASENAME}" == "stable" ]]; then
-	        docker tag "${VERSIONED_IMAGE}" "${LATEST_IMAGE}" &&
-	        docker push "${LATEST_IMAGE}"
+	            docker tag "${VERSIONED_IMAGE}" "${LATEST_IMAGE}"
+		    docker push "${LATEST_IMAGE}"
 	    fi
 
 	    popd

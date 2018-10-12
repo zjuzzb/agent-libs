@@ -60,6 +60,8 @@ make -C driver
 docker run -i --rm --privileged -v $DRIVER_BUILD/driver:/driver busybox rmmod sysdigcloud-probe
 docker run -i --rm --privileged -v $DRIVER_BUILD/driver:/driver busybox insmod /driver/sysdigcloud-probe.ko
 
+docker pull quay.io/sysdig/agent-builder
+docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 docker run -i --rm -e MAKE_JOBS=$(nproc) -e AGENT_VERSION -e AGENT_BUILD_COMMIT -e AGENT_BUILD_DATE -v $SOURCE:/draios:ro -v $INSTALL_DIR:/opt/draios -v $OUT:/out -v /var/run/docker.sock:/var/run/docker.sock -v $BUILD:/code/agent/build -v $PIPCACHE:/root/.cache quay.io/sysdig/agent-builder release
 docker run -i --rm -v $OUT:/out busybox chown -R `id -u`:`id -g` /out
 
