@@ -148,7 +148,8 @@ filter_condition::param2type(std::string pstr)
 		{ "process.name", process_name },
 		{ "process.cmdline", process_cmdline },
 		{ "appcheck.match", app_check_match },
-		{ K8S_ANN, k8s_annotation }
+		{ K8S_ANN, k8s_annotation },
+		{ "all", all }
 	};
 
 	auto it = param_map.find(pstr);
@@ -193,6 +194,10 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 			// If a rule has multiple conditions, they must all be met.
 			bool matchcond = true;
 			switch(cond.m_param_type) {
+			case filter_condition::param_type::all:
+				// Catch all rule. Nothing to do
+				reason << "all";
+				break;
 			case filter_condition::param_type::port:
 			{
 				if (tinfo == nullptr) {
@@ -452,6 +457,27 @@ bool convert<proc_filter::filter_rule>::decode(const Node &node,
 		proc_filter::filter_rule rule;
 		rule.m_include = (rule_it->first.as<string>() == "include");
 
+		if (rule_it->second.IsScalar())
+		{
+			proc_filter::filter_condition cond;
+			cond.m_param = rule_it->second.as<string>();
+
+			cond.m_param_type = proc_filter::filter_condition::param2type(cond.m_param);
+			if (cond.m_param_type == proc_filter::filter_condition::param_type::all)
+			{
+				// "all" is the only condition that doesn't require a value
+				// In this shape it can't be combined with other conditions in a rule
+				rule.m_cond.emplace_back(cond);
+				rhs = rule;
+				return true;
+			}
+			else if (cond.m_param_type != proc_filter::filter_condition::param_type::none)
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING,
+					"Rule condition %s requires comparison value",
+					cond.m_param.c_str());
+			}
+		}
 		if (!rule_it->second.IsMap())
 			continue; // The rule conditions should be in map form
 

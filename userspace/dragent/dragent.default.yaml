@@ -1191,3 +1191,16 @@ monitor_files:
     - etc/dragent.yaml
     - etc/kubernetes/config/dragent.yaml
     - etc/kubernetes/secrets/access-key
+
+use_container_filter: false
+container_filter:
+  - include:
+      container.label.com.sysdig.report: true
+  - exclude:
+      container.label.com.sysdig.report: false
+  - include:
+      kubernetes.pod.annotation.sysdig.com/report: true
+  - exclude:
+      kubernetes.pod.annotation.sysdig.com/report: false
+  - include:
+        all

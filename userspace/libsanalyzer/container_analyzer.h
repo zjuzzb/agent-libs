@@ -1,6 +1,7 @@
 #pragma once
 
 #include <analyzer.h>
+class infrastructure_state;
 class sinsp_connection_aggregator;
 class analyzer_container_state
 {
@@ -37,4 +38,15 @@ public:
 	string m_last_cpuacct_cgroup;
 
 	void clear();
+
+	static const uint64_t FILTER_STATE_CACHE_TIME =	10 * ONE_SECOND_IN_NS;
+	enum {
+		FILT_NONE = 0,
+		FILT_EXCL = 1,
+		FILT_INCL = 2
+	} m_filter_state;
+	uint64_t	m_filter_state_ts;
+
+	bool report_container(const sinsp_configuration *config, const sinsp_container_info *cinfo,
+		const infrastructure_state *infra_state, uint64_t ts);
 };

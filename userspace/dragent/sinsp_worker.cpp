@@ -243,6 +243,8 @@ void sinsp_worker::init()
 			m_configuration->m_group_pctl_conf);
 	m_analyzer->set_percentiles();
 
+	m_analyzer->get_configuration()->set_container_filter(m_configuration->m_container_filter);
+
 	//
 	// Configure compression in the protocol
 	//

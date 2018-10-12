@@ -665,6 +665,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
 	}
 
+	m_container_filter.reset(new proc_filter::conf("container_filter"));
+	m_container_filter->set_enabled(m_config->get_scalar<bool>("use_container_filter", false));
+	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("container_filter"));
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);

@@ -18,6 +18,7 @@ using ports_set = bitset<numeric_limits<uint16_t>::max()+1>;
 
 // fwd declaration
 namespace proc_filter {
+class conf;
 class group_pctl_conf;
 };
 
@@ -190,6 +191,9 @@ public:
 	const std::set<double>& get_percentiles() const;
 	shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
 	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
+	shared_ptr<proc_filter::conf> get_container_filter() const;
+	void set_container_filter(shared_ptr<proc_filter::conf>);
+
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
 	bool get_app_checks_always_send() const;
@@ -259,6 +263,7 @@ private:
 	std::set<double> m_percentiles;
 	unsigned m_statsd_limit;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
+	shared_ptr<proc_filter::conf> m_container_filter;
 
 #ifndef CYGWING_AGENT	
 	string m_k8s_api;
