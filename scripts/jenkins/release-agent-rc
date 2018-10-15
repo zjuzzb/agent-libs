@@ -82,7 +82,7 @@ function configure_rpm_repo {
 	# $SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
 	cp $REPO_DIR/$RCPATHNAME/draios-${AGENT_VERSION}*rpm $REPO_DIR/$PATHNAME
 	createrepo $REPO_DIR/$PATHNAME
-	gpg --local-user EC51E8C4 --batch --no-tty -yes --detach-sign --armor $REPO_DIR/$PATHNAME/repodata/repomd.xml
+	gpg --local-user EC51E8C4 --batch --no-tty --yes --detach-sign --armor $REPO_DIR/$PATHNAME/repodata/repomd.xml
 
 	cp $SCRIPTS_DIR/draios.repo $REPO_DIR/$REPO_NAME/rpm
 	sed -i s/_REPOSITORY_/$REPO_NAME/g $REPO_DIR/$REPO_NAME/rpm/draios.repo
