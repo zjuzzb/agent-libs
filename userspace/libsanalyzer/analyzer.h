@@ -927,6 +927,8 @@ VISIBILITY_PRIVATE
 	bool m_username_lookups = false;
 	userdb m_userdb;
 
+	std::unordered_set<env_hash> m_sent_envs;
+
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
