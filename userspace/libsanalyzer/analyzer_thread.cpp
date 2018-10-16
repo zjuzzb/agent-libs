@@ -180,17 +180,8 @@ void thread_analyzer_info::propagate_flag(flags flags, thread_analyzer_info* oth
 
 void thread_analyzer_info::propagate_flag_bidirectional(flags flag, thread_analyzer_info* other)
 {
-	if(other->m_th_analysis_flags & flag)
-	{
-		m_th_analysis_flags |= flag;
-	}
-	else
-	{
-		if(m_th_analysis_flags & flag)
-		{
-			other->m_th_analysis_flags |= flag;
-		}
-	}
+	m_th_analysis_flags |= other->m_th_analysis_flags & flag;
+	other->m_th_analysis_flags |= m_th_analysis_flags & flag;
 }
 
 void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
