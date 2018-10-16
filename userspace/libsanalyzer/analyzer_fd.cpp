@@ -1241,6 +1241,8 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    evt->get_ts(),
 		    flags,
 		    evt->m_errorcode);
+
+		evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 	}
 	else
 	{
