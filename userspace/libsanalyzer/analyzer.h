@@ -545,6 +545,8 @@ public:
 	void set_connection_truncate_report_interval(int sec) { m_connection_truncate_report_interval = sec; }
 	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
+	void set_track_environment(bool val) { m_track_environment = val; }
+
 	//
 	// Test tool detection state
 	//
@@ -927,6 +929,7 @@ VISIBILITY_PRIVATE
 	bool m_username_lookups = false;
 	userdb m_userdb;
 
+	bool m_track_environment = false;
 	std::unordered_set<env_hash> m_sent_envs;
 
 	//

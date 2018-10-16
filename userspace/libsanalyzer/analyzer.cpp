@@ -2602,17 +2602,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 			prog->add_pids(tinfo->m_pid);
 
-			auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
-			auto env_hash = mt_ainfo->m_env_hash.get_hash();
-			prog->set_environment_hash(env_hash.data(), env_hash.size());
-			auto af_flag = thread_analyzer_info::flags::AF_IS_NET_CLIENT;
-			if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
-				auto new_env = m_sent_envs.insert(mt_ainfo->m_env_hash);
-				if (new_env.second) {
-					auto env = m_metrics->add_environments();
-					env->set_hash(env_hash.data(), env_hash.size());
-					for (const auto& entry : tinfo->m_env) {
-						env->add_variables(entry);
+			if (m_track_environment) {
+				auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
+				auto env_hash = mt_ainfo->m_env_hash.get_hash();
+				prog->set_environment_hash(env_hash.data(), env_hash.size());
+				auto af_flag = thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+				if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
+					auto new_env = m_sent_envs.insert(mt_ainfo->m_env_hash);
+					if (new_env.second) {
+						auto env = m_metrics->add_environments();
+						env->set_hash(env_hash.data(), env_hash.size());
+						for (const auto& entry : tinfo->m_env) {
+							env->add_variables(entry);
+						}
 					}
 				}
 			}

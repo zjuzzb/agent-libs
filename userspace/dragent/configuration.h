@@ -820,6 +820,8 @@ public:
 
 	bool m_username_lookups = false;
 
+	bool m_track_environment = false;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

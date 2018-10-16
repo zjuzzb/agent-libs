@@ -1171,6 +1171,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_connection_truncate_log_interval = m_config->get_scalar<int>("connection_table", "truncation_log_interval", 0);
 
 	m_username_lookups = m_config->get_scalar<bool>("username_lookups", false);
+
+	m_track_environment = m_config->get_scalar<bool>("track_environment", false);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1615,6 +1617,11 @@ void dragent_configuration::print_configuration() const
 	if(m_username_lookups)
 	{
 		g_log->information("Username lookups enabled.");
+	}
+
+	if (m_track_environment)
+	{
+		g_log->information("Environment variable reporting enabled");
 	}
 
 	// Dump warnings+errors after the main config so they're more visible

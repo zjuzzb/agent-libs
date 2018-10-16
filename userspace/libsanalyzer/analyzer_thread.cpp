@@ -148,9 +148,12 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 		m_external_transaction_metrics.set_percentiles(m_percentiles,
 			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
 	}
-	if (m_tinfo->is_main_thread()) {
-		auto mt_ainfo = main_thread_ainfo();
-		mt_ainfo->hash_environment(m_tinfo);
+
+	if (m_analyzer->m_track_environment) {
+		if (m_tinfo->is_main_thread()) {
+			auto mt_ainfo = main_thread_ainfo();
+			mt_ainfo->hash_environment(m_tinfo);
+		}
 	}
 }
 

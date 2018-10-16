@@ -1600,9 +1600,11 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt *evt)
 		m_analyzer->m_falco_baseliner->on_new_proc(evt, evt->get_thread_info());
 	}
 
-	auto tinfo = evt->get_thread_info();
-	if (tinfo && tinfo->m_ainfo) {
-		tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo);
+	if (m_analyzer->m_track_environment) {
+		auto tinfo = evt->get_thread_info();
+		if (tinfo && tinfo->m_ainfo) {
+			tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo);
+		}
 	}
 }
 
