@@ -2560,6 +2560,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	unsigned num_prometheus_metrics_filtered = 0;
 	unsigned num_prometheus_metrics_total = 0;
 
+	uint32_t num_envs_sent = 0;
+
 	///////////////////////////////////////////////////////////////////////////
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
@@ -2610,13 +2612,18 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
 					auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + ENV_HASH_TTL});
 					if (new_env.second || new_env.first->second < m_prev_flush_time_ns) {
-						auto env = m_metrics->add_environments();
-						env->set_hash(env_hash.data(), env_hash.size());
-						for (const auto& entry : tinfo->m_env) {
-							env->add_variables(entry);
-						}
-						if (!new_env.second) {
-							new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
+						if (++num_envs_sent > m_envs_per_flush) {
+							g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
+							m_sent_envs.erase(new_env.first);
+						} else {
+							auto env = m_metrics->add_environments();
+							env->set_hash(env_hash.data(), env_hash.size());
+							for (const auto& entry : tinfo->m_env) {
+								env->add_variables(entry);
+							}
+							if (!new_env.second) {
+								new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
+							}
 						}
 					}
 				}

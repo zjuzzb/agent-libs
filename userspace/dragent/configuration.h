@@ -821,6 +821,7 @@ public:
 	bool m_username_lookups = false;
 
 	bool m_track_environment = false;
+	uint32_t m_envs_per_flush;
 
 	bool java_present() const
 	{

@@ -546,6 +546,7 @@ public:
 	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
 	void set_track_environment(bool val) { m_track_environment = val; }
+	void set_envs_per_flush(uint32_t val) { m_envs_per_flush = val; }
 
 	//
 	// Test tool detection state
@@ -930,6 +931,7 @@ VISIBILITY_PRIVATE
 	userdb m_userdb;
 
 	bool m_track_environment = false;
+	uint32_t m_envs_per_flush;
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 
 	//
