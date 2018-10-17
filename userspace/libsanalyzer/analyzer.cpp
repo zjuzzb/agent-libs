@@ -2608,12 +2608,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				prog->set_environment_hash(env_hash.data(), env_hash.size());
 				auto af_flag = thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 				if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
-					auto new_env = m_sent_envs.insert(mt_ainfo->m_env_hash);
-					if (new_env.second) {
+					auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + ENV_HASH_TTL});
+					if (new_env.second || new_env.first->second < m_prev_flush_time_ns) {
 						auto env = m_metrics->add_environments();
 						env->set_hash(env_hash.data(), env_hash.size());
 						for (const auto& entry : tinfo->m_env) {
 							env->add_variables(entry);
+						}
+						if (!new_env.second) {
+							new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
 						}
 					}
 				}

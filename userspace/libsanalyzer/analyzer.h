@@ -930,7 +930,7 @@ VISIBILITY_PRIVATE
 	userdb m_userdb;
 
 	bool m_track_environment = false;
-	std::unordered_set<env_hash> m_sent_envs;
+	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
