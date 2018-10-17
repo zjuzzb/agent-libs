@@ -2602,7 +2602,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			draiosproto::program* prog = m_metrics->add_programs();
 			draiosproto::process* proc = prog->mutable_procinfo();
 
-			prog->add_pids(tinfo->m_pid);
+			for (const auto pid : procinfo->m_program_pids) {
+				prog->add_pids(pid);
+			}
 
 			if (m_track_environment) {
 				auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
