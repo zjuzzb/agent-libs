@@ -643,6 +643,7 @@ r_conn_creation_done:
 		}
 		else if (fdinfo->is_role_client())
 		{
+			evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_in(1, original_len);
 		}
 		else
@@ -1086,6 +1087,7 @@ w_conn_creation_done:
 		}
 		else if(fdinfo->is_role_client())
 		{
+			evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_out(1, original_len);
 		}
 		else
