@@ -46,6 +46,7 @@ add_executable(tests
 	forking.cpp
 	fs.cpp
 	# infrastructure_state_test.cpp
+	inf_state_test.cpp
 	memdump.cpp
 	metric_limits.cpp
 	label_limits.cpp

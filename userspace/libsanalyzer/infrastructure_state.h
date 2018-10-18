@@ -14,6 +14,7 @@
 #include "k8s_limits.h"
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
+typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
 
 class infrastructure_state
 {
@@ -60,9 +61,9 @@ public:
 	// the current state
 	bool check_registered_scope(reg_id_t &reg);
 
-	void state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
+	void state_of(const std::vector<std::string> &container_ids, container_groups* state);
 
-	void get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
+	void get_state(container_groups* state);
 
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
@@ -105,13 +106,13 @@ private:
 	};
 
 	void state_of(const draiosproto::container_group *grp,
-		google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
-		std::unordered_set<uid_t>& visited);
+		      container_groups* state,
+		      std::unordered_set<uid_t>& visited);
 
 	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
-						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
-						std::unordered_set<uid_t> &visited_groups);
+			    scope_predicates &preds,
+			    std::unordered_set<uid_t> &visited_groups);
 
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
 
@@ -131,7 +132,7 @@ private:
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void k8s_generate_user_event(const bool success);
 
-	bool has_k8s_namespace_parent(const draiosproto::container_group *grp);
+	bool has_k8s_namespace(const draiosproto::container_group *grp);
 
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 

@@ -32,7 +32,7 @@ void infrastructure_state::insert_cached_result(const std::string &entity_id, si
 	m_policy_cache[entity_id].emplace(h, res);
 }
 
-bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
+bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds)
 {
 	auto evaluate = [](const draiosproto::scope_predicate &p, const std::string &value)
 	{
@@ -797,8 +797,8 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key)
 }
 
 bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup,
-										google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
-										std::unordered_set<uid_t> &visited_groups)
+					  scope_predicates &preds,
+					  std::unordered_set<uid_t> &visited_groups)
 {
 	uid_t uid = make_pair(congroup->uid().kind(), congroup->uid().id());
 
@@ -869,7 +869,7 @@ bool infrastructure_state::match_scope(const uid_t &uid, const scope_predicates&
 		if (pos == m_state.end())
 			return false;
 
-		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(predicates);
+		scope_predicates preds(predicates);
 
 		if (uid.first == "host") {
 			result = evaluate_on(pos->second.get(), preds);
@@ -961,8 +961,12 @@ bool infrastructure_state::check_registered_scope(reg_id_t &reg)
 
 // This function tests if a given container group
 // has a "k8s_namespaces" as one of its parents.
-bool has_k8s_namespace_parent(const draiosproto::container_group *grp) {
-
+// Or is itself a k8s_namespace
+bool infrastructure_state::has_k8s_namespace(const draiosproto::container_group *grp)
+{
+	if(grp->uid().kind() == "k8s_namespace") {
+		return true;
+	}
 	for(const auto &p_uid : grp->parents()) {
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
@@ -981,7 +985,7 @@ bool has_k8s_namespace_parent(const draiosproto::container_group *grp) {
 
 
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
-				    google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
+				    container_groups* state,
 				    std::unordered_set<uid_t>& visited)
 {
 	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
@@ -992,21 +996,12 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 	visited.emplace(uid);
 
-	bool has_namespace_parent(false);
-
 	for (const auto &p_uid : grp->parents()) {
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
 		if(!has(pkey)) {
 			// We don't have this parent (yet...)
 			continue;
-		}
-
-		// while we are checking parents,
-		// check if the current grp has *a*
-		// namespace parent OR it is a namespace itself
-		if(p_uid.kind() == "k8s_namespace") {
-		        has_namespace_parent = true;
 		}
 		
 		//
@@ -1020,7 +1015,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	// Also do not add a node if it neither is a namespace nor
 	// has a parent namespace
 	if(grp->uid().kind() != "container" && grp->uid().kind() != "host" &&
-	   (has_namespace_parent || grp->uid().kind() == "k8s_namespace")) {
+	   (has_k8s_namespace(grp))) {
 		auto x = state->Add();
 		x->CopyFrom(*grp);
 		// Clean children links, backend will reconstruct them from parent ones
@@ -1062,7 +1057,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 }
 
-void infrastructure_state::state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state)
+void infrastructure_state::state_of(const std::vector<std::string> &container_ids, container_groups* state)
 {
 	std::unordered_set<uid_t, std::hash<uid_t>> visited;
 
@@ -1106,12 +1101,12 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 	}
 }
 
-void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state)
+void infrastructure_state::get_state(container_groups* state)
 {
 	for (auto i = m_state.begin(); i != m_state.end(); ++i) {
 		auto cg = i->second.get();
 		if(cg->uid().kind() != "container" && cg->uid().kind() != "host" &&
-		   (cg->uid().kind() == "k8s_namespace" || has_k8s_namespace_parent(cg))) {
+		   (has_k8s_namespace(cg))) {
 			auto x = state->Add();
 			x->CopyFrom(*cg);
 			// clean up host links
