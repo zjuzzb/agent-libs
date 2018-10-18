@@ -40,7 +40,6 @@ RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/
-ADD patches /code/agent/patches
 RUN mkdir -p /code/falco/userspace/engine/lua
 ADD https://raw.githubusercontent.com/draios/falco/dev/scripts/build-lpeg.sh /code/falco/scripts/build-lpeg.sh
 RUN chmod +x /code/falco/scripts/build-lpeg.sh
