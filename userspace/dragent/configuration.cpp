@@ -1281,6 +1281,7 @@ void dragent_configuration::print_configuration() const
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
 	g_log->information("jmx.limit: " + NumberFormatter::format(m_jmx_limit));
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	g_log->information("java detected: " + bool_as_text(java_present()));
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);

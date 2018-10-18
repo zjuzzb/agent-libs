@@ -64,6 +64,7 @@ func main() {
 
 	go func() {
 		http.Handle("/metrics", promhttp.Handler())
+		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		log.Printf("Info: Serving Prometheus stats on %s", *promAddr)
 		log.Fatal(http.ListenAndServe(*promAddr, nil))
 	}()

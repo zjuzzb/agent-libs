@@ -572,6 +572,7 @@ int dragent_app::sdagent_main()
 
 	initialize_logging();
 
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	struct sysinfo info;

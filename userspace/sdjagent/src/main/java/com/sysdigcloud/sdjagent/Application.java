@@ -50,6 +50,7 @@ public class Application {
     public static void main(String[] args) {
         try {
             Application app = new Application();
+            // The following message was provided to Goldman Sachs (Oct 2018). Do not change.
             LOGGER.info(String.format("Starting sdjagent with pid: %d", CLibrary.getPid()));
             LOGGER.info(String.format("Java vendor: %s", System.getProperty("java.vendor")));
             LOGGER.info(String.format("Java version: %s", System.getProperty("java.version")));

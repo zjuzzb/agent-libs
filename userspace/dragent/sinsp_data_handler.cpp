@@ -46,6 +46,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
 		return;
 	}
 
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	g_log->information("ts="
 		+ NumberFormatter::format(ts_ns / 1000000000)
 		+ ", len=" + NumberFormatter::format(buffer->buffer.size())

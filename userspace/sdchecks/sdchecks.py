@@ -657,6 +657,7 @@ class Application:
 
     def main(self):
         logging.info("Starting")
+        # The following message was provided to Goldman Sachs (Oct 2018). Do not change.
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
         self.config.set_percentiles()
         logging.debug("sdchecks percentiles: %s", str(GLOBAL_PERCENTILES))
