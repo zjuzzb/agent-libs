@@ -15,10 +15,10 @@ install:
     - export BRANCH=$(if [ "$TRAVIS_PULL_REQUEST" == "false" ]; then echo $TRAVIS_BRANCH; else echo $TRAVIS_PULL_REQUEST_BRANCH; fi)
     - sudo apt-get install linux-headers-$(uname -r) dkms gcc-multilib g++-multilib quota
     - git clone https://github.com/draios/sysdig.git ../sysdig
-    - git clone https://github.com/draios/falco.git ../falco
+    - git clone https://github.com/draios/oss-falco.git ../oss-falco
     # if available, use the branch with the same name in sysdig and falco
     - pushd ../sysdig && (git checkout "${BRANCH}" || exit 0) && echo "Using sysdig branch:" $(git rev-parse --abbrev-ref HEAD) && popd
-    - pushd ../falco && (git checkout "${BRANCH}" || exit 0) && echo "Using falco branch:" $(git rev-parse --abbrev-ref HEAD) && popd
+    - pushd ../oss-falco && (git checkout "${BRANCH}" || exit 0) && echo "Using falco branch:" $(git rev-parse --abbrev-ref HEAD) && popd
     - cd ..
 before_script:
 # This builds and installs the package simply to allow dkms to build the driver. The make install step installs the unit tests to /opt/draios/test/tests where they can be run.

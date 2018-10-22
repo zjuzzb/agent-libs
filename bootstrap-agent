@@ -449,7 +449,7 @@ if [ ! -d "${LPEG_DIR}" ]; then
 	wget $DEPENDENCIES_URL/lpeg-1.0.0.tar.gz
 	tar -xzf lpeg-1.0.0.tar.gz
 	cd $LPEG_DIR
-	LUA_INCLUDE=${LUAJIT_DIR}/src "${ROOT_SOURCEDIR}/falco/scripts/build-lpeg.sh" "${LPEG_DIR}/target"
+	LUA_INCLUDE=${LUAJIT_DIR}/src "${ROOT_SOURCEDIR}/oss-falco/scripts/build-lpeg.sh" "${LPEG_DIR}/target"
 fi
 
 LIBYAML_DIR=$DEPENDENCIES/libyaml-0.1.7
@@ -476,7 +476,7 @@ if [ ! -d "${LYAML_DIR}" ]; then
 	LD_LIBRARY_PATH="${LIBYAML_DIR}/target/lib" ./configure --prefix=$LYAML_DIR/target --enable-static LIBS=-L${LIBYAML_DIR}/target/lib CFLAGS=-I${LIBYAML_DIR}/target/include CPPFLAGS=-I${LIBYAML_DIR}/target/include LUA_INCLUDE=-I${LUAJIT_DIR}/src LUA=${CONFLUA}
 	make
 	make install
-	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/falco/userspace/engine/lua"
+	sh -c "cp -R ${LYAML_DIR}/lib/* ${ROOT_SOURCEDIR}/oss-falco/userspace/engine/lua"
 fi
 
 KUBECTL_BINARY=$DEPENDENCIES/kubectl-1.9.6

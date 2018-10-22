@@ -99,7 +99,7 @@ set(FALCO_SINSP_LIBRARY sanalyzer)
 set(FALCO_SHARE_DIR "${CMAKE_INSTALL_PREFIX}/share")
 set(FALCO_ABSOLUTE_SHARE_DIR "${FALCO_SHARE_DIR}")
 set(FALCO_COMPONENT agent-slim)
-add_subdirectory(${PROJECT_SOURCE_DIR}/../falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
+add_subdirectory(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine ${PROJECT_BINARY_DIR}/userspace/engine)
 
 add_subdirectory(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap ${PROJECT_BINARY_DIR}/libscap)
 if(NOT CYGWIN)
