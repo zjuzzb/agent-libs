@@ -585,6 +585,10 @@ func appendRateMetric(metrics *[]*draiosproto.AppMetric, name string, val float6
 	})
 }
 
+func AppendMetricInt64(metrics *[]*draiosproto.AppMetric, name string, val int64) {
+	AppendMetric(metrics, name, float64(val))
+}
+
 func AppendMetricInt32(metrics *[]*draiosproto.AppMetric, name string, val int32) {
 	AppendMetric(metrics, name, float64(val))
 }

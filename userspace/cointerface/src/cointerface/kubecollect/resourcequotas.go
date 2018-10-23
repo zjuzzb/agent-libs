@@ -21,6 +21,31 @@ func resourceQuotaEvent(rq *v1.ResourceQuota, eventType *draiosproto.CongroupEve
 	}
 }
 
+func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) () {
+	scopes := resourcequota.Spec.Scopes;
+	var terminatingTag = "kubernetes.resourcequota.scope.terminating";
+	var nonterminatingTag = "kubernetes.resourcequota.scope.notterminating"
+	var besteffortTag = "kubernetes.resourcequota.scope.besteffort"
+	var nonbesteffortTag = "kubernetes.resourcequota.scope.notbesteffort"
+
+	tags[terminatingTag] = "false"
+	tags[nonterminatingTag] = "false"
+	tags[besteffortTag] = "false"
+	tags[nonbesteffortTag] = "false"
+
+	for i :=0; i<len(scopes); i++ {
+		if(scopes[i]=="Terminating"){
+			tags[terminatingTag] = "true"
+		} else if(scopes[i] == "NotTerminating"){
+			tags[nonterminatingTag] = "true"
+		} else if(scopes[i]=="BestEffort"){
+			tags[besteffortTag] = "true"
+		} else if(scopes[i]=="NotBestEffort"){
+			tags[nonbesteffortTag] = "true"
+		}
+	}
+}
+
 func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
@@ -29,6 +54,8 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 	for k, v := range resourceQuota.GetLabels() {
 		tags["kubernetes.resourcequota.label." + k] = v
 	}
+
+	setScope(tags, resourceQuota)
 	tags["kubernetes.resourcequota.name"] = resourceQuota.GetName()
 
 	ret := &draiosproto.ContainerGroup{
@@ -37,8 +64,22 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 			Id:proto.String(string(resourceQuota.GetUID()))},
 		Tags: tags,
 	}
+
+	AddResourceQuotaMetrics(&ret.Metrics, resourceQuota)
 	AddNSParents(&ret.Parents, resourceQuota.GetNamespace())
 	return ret
+}
+
+func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v1.ResourceQuota) {
+	prefix := "kubernetes.resourcequota."
+
+	resourceQuota.GetObjectMeta()
+	for k, v := range resourceQuota.Status.Used {
+		hard := resourceQuota.Status.Hard[k]
+		hardvalue := hard.Value()
+		AppendMetricInt64(metrics, prefix+k.String()+".hard", hardvalue);
+		AppendMetricInt64(metrics, prefix+k.String()+".used", v.Value());
+	}
 }
 
 var resourceQuotaInf cache.SharedInformer
@@ -78,7 +119,6 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("resourcequotas")
-				//log.Debugf("AddFunc dumping ResourceQuota: %v", obj.(*v1.ResourceQuota))
 				evtc <- resourceQuotaEvent(obj.(*v1.ResourceQuota),
 					draiosproto.CongroupEventType_ADDED.Enum())
 			},
@@ -86,14 +126,13 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				oldResourceQuota := oldObj.(*v1.ResourceQuota)
 				newResourceQuota := newObj.(*v1.ResourceQuota)
 				if oldResourceQuota.GetResourceVersion() != newResourceQuota.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping ResourceQuota oldResourceQuota %v", oldResourceQuota)
-					//log.Debugf("UpdateFunc dumping ResourceQuota newResourceQuota %v", newResourceQuota)
+
 					evtc <- resourceQuotaEvent(newResourceQuota,
 						draiosproto.CongroupEventType_UPDATED.Enum())
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ResourceQuota: %v", obj.(*v1.ResourceQuota))
+
 				evtc <- resourceQuotaEvent(obj.(*v1.ResourceQuota),
 					draiosproto.CongroupEventType_REMOVED.Enum())
 			},
