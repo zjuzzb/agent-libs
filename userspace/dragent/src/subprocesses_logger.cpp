@@ -302,6 +302,24 @@ subprocesses_logger::log_state::~log_state()
 {
 }
 
+sinsp_encoded_parser::sinsp_encoded_parser(const string& procname):
+	m_prefix(procname + ": ")
+{
+}
+
+void sinsp_encoded_parser::operator()(const string& s)
+{
+	sinsp_logger::severity sev;
+	size_t sev_len = sinsp_logger::decode_severity(s, sev);
+	if (sev_len <= 0)
+	{
+		g_log->error(m_prefix + "unparsable log message: " + s);
+		return;
+	}
+	assert(s.length() > sev_len);
+	g_log->log(m_prefix + s.substr(sev_len), sev);
+}
+
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
 
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :

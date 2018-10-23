@@ -137,6 +137,7 @@ void sinsp_worker::init()
 	// Plug the sinsp logger into our one
 	//
 	m_inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+	g_logger.disable_timestamps();
 	if(m_configuration->m_min_console_priority > m_configuration->m_min_file_priority)
 	{
 		m_inspector->set_min_log_severity(static_cast<sinsp_logger::severity>(m_configuration->m_min_console_priority));

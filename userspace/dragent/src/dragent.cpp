@@ -409,22 +409,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 			ASSERT(false);
 		}
 
-		struct rlimit core_limits = {};
-		if(m_configuration.m_enable_coredump)
-		{
-			core_limits.rlim_cur = RLIM_INFINITY;
-			core_limits.rlim_max = RLIM_INFINITY;
-		}
-		else
-		{
-			core_limits.rlim_cur = 0;
-			core_limits.rlim_max = 0;
-		}
-		if(setrlimit(RLIMIT_CORE, &core_limits) != 0)
-		{
-			LOG_WARNING(string("Cannot set coredump limits: ") + strerror(errno));
-		}
-
 		return this->sdagent_main();
 	}, true);
 	if(m_configuration.java_present() && m_configuration.m_sdjagent_enabled && getpid() != 1)
@@ -556,10 +540,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();
 		auto* state = &m_subprocesses_state["mountedfs_reader"];
 		state->set_name("mountedfs_reader");
-		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_logger_parser("mountedfs_reader"), state);
+		m_subprocesses_logger.add_logfd(m_mounted_fs_reader_pipe->get_file(), sinsp_encoded_parser("mountedfs_reader"), state);
 		monitor_process.emplace_process("mountedfs_reader", [this]()
 		{
 			m_mounted_fs_reader_pipe->attach_child();
+			auto sev = static_cast<sinsp_logger::severity>(std::max(
+				this->m_configuration.m_min_file_priority,
+				this->m_configuration.m_min_console_priority));
+			g_logger.set_severity(sev);
+			g_logger.add_encoded_severity();
+			g_logger.disable_timestamps();
+			g_logger.add_stderr_log();
+
 			mounted_fs_reader proc(this->m_configuration.m_remotefs_enabled,
 						this->m_configuration.m_mounts_filter,
 						this->m_configuration.m_mounts_limit_size);
@@ -650,6 +642,29 @@ int dragent_app::sdagent_main()
 
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
+
+#ifndef _WIN32
+	struct rlimit core_limits = {};
+	if(m_configuration.m_enable_coredump)
+	{
+		core_limits.rlim_cur = RLIM_INFINITY;
+		core_limits.rlim_max = RLIM_INFINITY;
+	}
+	else
+	{
+		core_limits.rlim_cur = 0;
+		core_limits.rlim_max = 0;
+	}
+	errno = 0;
+	if(setrlimit(RLIMIT_CORE, &core_limits) != 0)
+	{
+		LOG_WARNING("Cannot set coredump limits: %s", strerror(errno));
+	}
+	else
+	{
+		LOG_DEBUG("Successfully set coredump limits");
+	}
+#endif // _WIN32
 
 	struct sysinfo info;
 	auto error = sysinfo(&info);

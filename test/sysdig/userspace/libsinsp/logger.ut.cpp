@@ -305,6 +305,35 @@ TEST_F(sinsp_logger_test, log_standard_output)
 }
 
 /**
+ * With a standard ouput logging sink enabled (and the sinsp_logger::OT_ENCODE_SEV
+ * enabled), emitted logs should be written only to standard output, and those
+ * logs contain the encoded severity before the timestamp
+ */
+TEST_F(sinsp_logger_test, log_standard_output_severity)
+{
+	std::string out;
+	std::string err;
+	std::string file;
+
+	get_logger().add_stdout_log();
+	get_logger().add_encoded_severity();
+
+	ASSERT_EQ(get_logger().get_log_output_type(),
+		(sinsp_logger::OT_STDOUT | sinsp_logger::OT_ENCODE_SEV));
+
+	generate_log(DEFAULT_MESSAGE, out, err, file, sinsp_logger::SEV_FATAL);
+
+	// 8 chars for the encoded severity, 22 for the timestamp
+	ASSERT_EQ(out.find(DEFAULT_MESSAGE), 8 + 22);
+
+	sinsp_logger::severity sev;
+	ASSERT_GT(sinsp_logger::decode_severity(out, sev), 0);
+	ASSERT_EQ(sinsp_logger::SEV_FATAL, sev);
+	ASSERT_EQ(err, "");
+	ASSERT_EQ(file, "");
+}
+
+/**
  * With a standard ouput logging sink enabled (and the sinsp_logger::OT_NOTS
  * enabled), emitted logs should be written only to standard output, and those
  * logs do not contain the timestamp.

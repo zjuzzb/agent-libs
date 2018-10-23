@@ -298,7 +298,6 @@ int mounted_fs_reader::run()
 	posix_queue input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE);
 	posix_queue output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND);
 
-	g_logger.add_stderr_log();
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
 	if(getppid() == 1)

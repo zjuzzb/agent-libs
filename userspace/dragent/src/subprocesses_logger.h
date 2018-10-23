@@ -111,6 +111,16 @@ private:
 	bool m_default_is_error;
 };
 
+// Expects logs using sinsp_logger::OT_ENCODE_SEV
+class sinsp_encoded_parser
+{
+public:
+	sinsp_encoded_parser(const string& procname);
+	void operator()(const string&);
+private:
+	string m_prefix;
+};
+
 class sdchecks_parser
 {
 public:
