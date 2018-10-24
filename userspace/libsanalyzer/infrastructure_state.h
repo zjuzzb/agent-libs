@@ -90,13 +90,12 @@ public:
 
 	// These return true if the new entry has been added, false if it already existed
 	bool add(uid_t key);
-	bool add_child_link(uid_t key, uid_t child);
-	bool add_parent_link(uid_t key, uid_t parent);
 
 	std::string get_k8s_cluster_name() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
 	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
+	
 
 private:
 
@@ -115,7 +114,7 @@ private:
 			    std::unordered_set<uid_t> &visited_groups);
 
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
-
+	
 	void refresh_hosts_metadata();
 
 	void connect(infrastructure_state::uid_t& key);
@@ -132,7 +131,7 @@ private:
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void k8s_generate_user_event(const bool success);
 
-	bool has_k8s_namespace(const draiosproto::container_group *grp);
+	bool is_valid_for_export(const draiosproto::container_group *grp);
 
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 
