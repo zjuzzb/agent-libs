@@ -1,5 +1,5 @@
-# (C) Datadog, Inc. 2010-2016
-# (C) Sysdig, Inc. 2017
+# (C) Datadog, Inc. 2010-2017
+# (C) Sysdig, Inc. 2018
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
 
@@ -8,6 +8,7 @@ import random
 from collections import defaultdict
 from time import time, sleep
 import ctypes
+import operator
 
 # 3p
 from kafka.client import KafkaClient
@@ -83,6 +84,12 @@ class KafkaCheck(AgentCheck):
         zk_interval = int(instance.get('zk_iteration_ival', 0))
         get_kafka_consumer_offsets = _is_affirmative(
             instance.get('kafka_consumer_offsets', zk_hosts_ports is None))
+        kafka_consumer_topics = instance.get('kafka_consumer_topics')
+        agg_partitions = 0
+        if isinstance(kafka_consumer_topics, dict):
+            agg_partitions = _is_affirmative(kafka_consumer_topics.get('aggregate_partitions', 0))
+
+        custom_tags = instance.get('tags', [])
 
         # If monitor_unlisted_consumer_groups is True, fetch all groups stored in ZK
         consumer_groups = None
@@ -107,8 +114,8 @@ class KafkaCheck(AgentCheck):
         if get_kafka_consumer_offsets:
             # For now, consumer groups are mandatory if not using ZK
             if not zk_hosts_ports and not consumer_groups:
-                raise BadKafkaConsumerConfiguration('Invalid configuration - if you\'re not collecing '
-                                'offset from ZK you _must_ specify consumer groups')
+                raise BadKafkaConsumerConfiguration('Invalid configuration - if you\'re not collecting '
+                                'offsets from ZK you _must_ specify consumer groups')
             if self._kafka_compatible(kafka_version):
                 kafka_consumer_offsets, topics = self._get_kafka_consumer_offsets(instance, consumer_groups)
 
@@ -139,16 +146,18 @@ class KafkaCheck(AgentCheck):
 
         # Report the broker highwater offset
         for (topic, partition), highwater_offset in highwater_offsets.iteritems():
-            broker_tags = ['topic:%s' % topic, 'partition:%s' % partition]
+            broker_tags = ['topic:%s' % topic, 'partition:%s' % partition] + custom_tags
             self.gauge('kafka.broker_offset', highwater_offset, tags=broker_tags)
 
         # Report the consumer group offsets and consumer lag
         if zk_consumer_offsets:
             self._report_consumer_metrics(highwater_offsets, zk_consumer_offsets,
-                                          topic_partitions_without_a_leader, ['source:zk'])
+                                          topic_partitions_without_a_leader, tags=custom_tags + ['source:zk'],
+                                          agg_partitions=agg_partitions)
         if kafka_consumer_offsets:
             self._report_consumer_metrics(highwater_offsets, kafka_consumer_offsets,
-                                          topic_partitions_without_a_leader, ['source:kafka'])
+                                          topic_partitions_without_a_leader, tags=custom_tags + ['source:kafka'],
+                                          agg_partitions=agg_partitions)
 
 
     def stop(self):
@@ -361,7 +370,9 @@ class KafkaCheck(AgentCheck):
 
         return highwater_offsets, list(set(topic_partitions_without_a_leader))
 
-    def _report_consumer_metrics(self, highwater_offsets, consumer_offsets, unled_topic_partitions=[], tags=[]):
+    def _report_consumer_metrics(self, highwater_offsets, consumer_offsets, unled_topic_partitions=[], tags=[],
+                                 agg_partitions=False):
+        topics_data = dict()
         for (consumer_group, topic, partition), consumer_offset in consumer_offsets.iteritems():
             # Report the consumer group offsets and consumer lag
             if (topic, partition) not in highwater_offsets:
@@ -373,8 +384,7 @@ class KafkaCheck(AgentCheck):
                         "exist in the cluster.", consumer_group, topic, partition)
                 continue
 
-            consumer_group_tags = ['topic:%s' % topic, 'partition:%s' % partition,
-                'consumer_group:%s' % consumer_group] + tags
+            consumer_group_tags = ['topic:%s' % topic, 'consumer_group:%s' % consumer_group] + tags
 
             if consumer_offset < 0:
                 # consumer offset -1 means that there's been no consumer activity for the retention period
@@ -382,8 +392,6 @@ class KafkaCheck(AgentCheck):
                 self.gauge('kafka.consumer_offset', 0, tags=consumer_group_tags)
                 self.gauge('kafka.consumer_lag', 0, tags=consumer_group_tags)
                 continue
-
-            self.gauge('kafka.consumer_offset', consumer_offset, tags=consumer_group_tags)
 
             consumer_lag = highwater_offsets[(topic, partition)] - consumer_offset
             if consumer_lag < 0:
@@ -400,7 +408,24 @@ class KafkaCheck(AgentCheck):
                     key, severity="error")
                 self.log.debug(message)
 
-            self.gauge('kafka.consumer_lag', consumer_lag, tags=consumer_group_tags)
+            # Turn ON topic partitions level metrics
+            if not agg_partitions:
+                consumer_group_tags.append('partition:%s' % partition)
+                self.gauge('kafka.consumer_offset', consumer_offset, tags=consumer_group_tags)
+                self.gauge('kafka.consumer_lag', consumer_lag, tags=consumer_group_tags)
+            else:
+                if not isinstance(topics_data.get(topic, None), dict):
+                    topics_data[(topic, consumer_group)] = dict()
+                topics_data[(topic, consumer_group)].update({partition: (consumer_offset, consumer_lag)})
+
+        if agg_partitions:
+            for (topic, consumer_group), data in topics_data.iteritems():
+                partitions = data.values()
+                consumer_agg_offset = sum(map(operator.itemgetter(0), partitions))
+                consumer_agg_lag = sum(map(operator.itemgetter(1), partitions))
+                consumer_group_tags = ['topic:%s' % topic, 'consumer_group:%s' % consumer_group] + tags
+                self.gauge('kafka.consumer_offset', consumer_agg_offset, tags=consumer_group_tags)
+                self.gauge('kafka.consumer_lag', consumer_agg_lag, tags=consumer_group_tags)
 
     def _get_zk_path_children(self, zk_conn, zk_path, name_for_error):
         """Fetch child nodes for a given Zookeeper path."""
@@ -591,13 +616,13 @@ class KafkaCheck(AgentCheck):
                                 assert isinstance(partition, int)
         return val
 
-    def _send_event(self, title, text, tags, type, aggregation_key, severity='info'):
+    def _send_event(self, title, text, tags, event_type, aggregation_key, severity='info'):
         """Emit an event to the Event Stream."""
         event_dict = {
             'timestamp': int(time()),
             'source_type_name': self.SOURCE_TYPE_NAME,
             'msg_title': title,
-            'event_type': type,
+            'event_type': event_type,
             'alert_type': severity,
             'msg_text': text,
             'tags': tags,
