@@ -28,6 +28,9 @@ kazoo==2.4.0
 # checks.d/postgres.py
 pg8000==1.10.2
 
+# checks.d/mysql.py
+pymysql==0.6.6
+
 # checks.d/gearman.py
 gearman==2.0.2
 
