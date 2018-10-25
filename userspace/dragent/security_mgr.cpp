@@ -77,8 +77,6 @@ void security_mgr::init(sinsp *inspector,
 
 	m_actions_poll_interval = make_unique<run_on_interval>(m_configuration->m_actions_poll_interval_ns);
 
-	m_metrics_report_interval = make_unique<run_on_interval>(m_configuration->m_metrics_report_interval_ns);
-
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
@@ -255,13 +253,20 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 	{
 		ids.push_back(c.first);
 	}
+	uint64_t num_enabled = 0;
 	for(auto &policy : policies.policy_list())
 	{
+		if(policy.enabled())
+		{
+			num_enabled++;
+		}
 		std::shared_ptr<security_policy> spolicy = std::make_shared<security_policy>(policy);
 		m_policies.insert(make_pair(policy.id(), spolicy));
 
 		load_policy(*spolicy.get(), ids);
 	}
+
+	m_metrics.set_policies_count(policies.policy_list().size(), num_enabled);
 
 	for(uint32_t evttype = 0; evttype < PPM_EVENT_MAX; evttype++)
 	{
@@ -378,17 +383,6 @@ void security_mgr::process_event(sinsp_evt *evt)
 			m_actions.periodic_cleanup(ts_ns);
 		}, ts_ns);
 
-		m_metrics_report_interval->run([this]()
-		{
-			for(auto &metric : m_security_evt_metrics)
-			{
-				g_log->debug("Policy event counts: (" + metric->get_prefix() + "): " + metric->to_string());
-				metric->reset();
-			}
-			g_log->information("Security_mgr metrics: " + m_metrics.to_string());
-			m_metrics.reset();
-		}, ts_ns);
-
 		if(m_grpc_load)
 		{
 			m_grpc_load->process_queue();
@@ -477,6 +471,8 @@ void security_mgr::process_event(sinsp_evt *evt)
 
 				if(throttle_policy_event(evt->get_ts(), container_id, match->policy()->id()))
 				{
+					add_policy_event_metrics(*match);
+
 					draiosproto::policy_event *event = create_policy_event(evt->get_ts(),
 											       container_id,
 											       match->policy()->id(),
@@ -881,6 +877,55 @@ bool security_mgr::throttle_policy_event(uint64_t ts_ns, std::string &container_
 	}
 
 	return accepted;
+}
+
+void security_mgr::add_policy_event_metrics(const security_policies::match_result &res)
+{
+	m_metrics.incr(metrics::MET_POLICY_EVTS);
+	switch(res.policies_type())
+	{
+	case draiosproto::PTYPE_PROCESS:
+		m_metrics.incr(metrics::MET_POLICY_EVTS_PROCESS);
+		break;
+	case draiosproto::PTYPE_CONTAINER:
+		m_metrics.incr(metrics::MET_POLICY_EVTS_CONTAINER);
+		break;
+	case draiosproto::PTYPE_FILESYSTEM:
+		m_metrics.incr(metrics::MET_POLICY_EVTS_FILESYSTEM);
+		break;
+	case draiosproto::PTYPE_NETWORK:
+		m_metrics.incr(metrics::MET_POLICY_EVTS_NETWORK);
+		break;
+	case draiosproto::PTYPE_SYSCALL:
+		m_metrics.incr(metrics::MET_POLICY_EVTS_SYSCALL);
+		break;
+	case draiosproto::PTYPE_FALCO:
+		m_metrics.incr(metrics::MET_POLICY_EVTS_FALCO);
+		break;
+	default:
+		g_log->error("Unknown policy type " + to_string(res.policies_type()));
+		break;
+	}
+
+	// If the policy has a severity field, map the severity as
+	// number to one of the values low, medium, high and increment
+	if(res.policy()->has_severity())
+	{
+		if(res.policy()->severity() <= 3)
+		{
+			m_metrics.incr(metrics::MET_POLICY_EVTS_SEV_HIGH);
+		}
+		else if (res.policy()->severity() <= 5)
+		{
+			m_metrics.incr(metrics::MET_POLICY_EVTS_SEV_MEDIUM);
+		}
+		else
+		{
+			m_metrics.incr(metrics::MET_POLICY_EVTS_SEV_LOW);
+		}
+	}
+
+	m_metrics.incr_policy(res.policy()->name());
 }
 
 draiosproto::policy_event * security_mgr::create_policy_event(int64_t ts_ns,

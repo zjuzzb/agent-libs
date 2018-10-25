@@ -517,6 +517,8 @@ public:
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
 
+	// Returns whether or not to include a container in reports sent to backend
+	bool report_container(sinsp_container_info *cinfo);
 
 #ifndef CYGWING_AGENT
 	void init_k8s_limits();

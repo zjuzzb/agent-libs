@@ -51,6 +51,7 @@ function configure_rpm_repo {
 		cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
 	fi
 	createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+	gpg --local-user EC51E8C4 --batch --no-tty --yes --detach-sign --armor $REPOSITORY_DIR/rpm/$RPM_BASEARCH/repodata/repomd.xml
 
 	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
 	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
@@ -88,7 +89,7 @@ function configure_debian_repo {
 
 	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.deb' -print -quit)"
 	then
-		$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+		$SCRIPTS_DIR/dpkg-sig -k EC51E8C4 -s builder $PACKAGES_DIR/*deb
 		cp $PACKAGES_DIR/*deb stable-$DEB_BASEARCH
 	fi
 	dpkg-scanpackages --multiversion stable-$DEB_BASEARCH > stable-$DEB_BASEARCH/Packages
@@ -104,8 +105,8 @@ EOF
 	checksum SHA256 sha256sum
 	checksum SHA512 sha512sum
 	) > Release
-	gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
-	gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+	gpg --local-user EC51E8C4 --batch --no-tty --yes --digest-algo SHA256 -abs -o Release.gpg Release
+	gpg --local-user EC51E8C4 --batch --no-tty --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
 	popd
 
 	sed s/_REPOSITORY_/$REPOSITORY_NAME/g < $SCRIPTS_DIR/draios.list > draios.list
@@ -174,9 +175,9 @@ function trigger_docker_builds {
 	# happens as a part of the build-agent script.
 	DOCKERFILES_ROOT_DIR="${BINARIES_DIR}/tmp/dockerfiles"
 
-        rm -rf "${DOCKERFILES_ROOT_DIR}" &&
-  	        mkdir -p "${DOCKERFILES_ROOT_DIR}" &&
-		tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
+	rm -rf "${DOCKERFILES_ROOT_DIR}"
+	mkdir -p "${DOCKERFILES_ROOT_DIR}"
+	tar -C "${DOCKERFILES_ROOT_DIR}" -zxvf "${BINARIES_DIR}"/release/draios-*-dockerfiles.tar.gz
 
 	for IMAGE_NAME in agent-kmodule agent-slim agent; do
 
@@ -190,11 +191,11 @@ function trigger_docker_builds {
 	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
 	    DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
 
-	    docker build -t "${VERSIONED_IMAGE}" --pull . &&
-	        docker push "${VERSIONED_IMAGE}"
+	    docker build -t "${VERSIONED_IMAGE}" --pull .
+	    docker push "${VERSIONED_IMAGE}"
 
 	    if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
-	        docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}" &&
+	        docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}"
 	        docker push "${DEV_IMAGE}"
 	    fi
 

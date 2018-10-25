@@ -249,7 +249,6 @@ dragent_configuration::dragent_configuration()
 	m_security_report_interval_ns = 1000000000;
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
-	m_metrics_report_interval_ns = 60000000000;
 	m_security_send_monitor_events = false;
 	m_security_compliance_schedule = "";
 	m_security_send_compliance_events = false;
@@ -665,6 +664,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
 	}
 
+	m_container_filter.reset(new proc_filter::conf("container_filter"));
+	m_container_filter->set_enabled(m_config->get_scalar<bool>("use_container_filter", false));
+	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("container_filter"));
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -1040,7 +1043,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_throttled_report_interval_ns = m_config->get_scalar<uint64_t>("security" "throttled_report_interval", 10000000000);
 	// 100 ms
 	m_actions_poll_interval_ns = m_config->get_scalar<uint64_t>("security" "actions_poll_interval_ns", 100000000);
-	m_metrics_report_interval_ns = m_config->get_scalar<uint64_t>("security" "metrics_report_interval_ns", 60000000000);
 
 	m_policy_events_rate = m_config->get_scalar<double>("security", "policy_events_rate", 0.5);
 	m_policy_events_max_burst = m_config->get_scalar<uint64_t>("security", "policy_events_max_burst", 50);
@@ -1279,6 +1281,7 @@ void dragent_configuration::print_configuration() const
 	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
 	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
 	g_log->information("jmx.limit: " + NumberFormatter::format(m_jmx_limit));
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	g_log->information("java detected: " + bool_as_text(java_present()));
 	g_log->information("java_binary: " + m_java_binary);
 	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
@@ -1442,7 +1445,6 @@ void dragent_configuration::print_configuration() const
 		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
 		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
 		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
-		g_log->information("Security Metrics Report Interval (ms)" + NumberFormatter::format(m_metrics_report_interval_ns / 1000000));
 
 		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
 		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));

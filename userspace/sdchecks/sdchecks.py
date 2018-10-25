@@ -445,10 +445,13 @@ def prepare_prom_check(pc, port):
     # print "port:", port
     options = pc.get("options")
     use_https = _is_affirmative(options.get("use_https", False) if options else False)
+    host = "localhost"
+    if options and options.get("host") != None:
+        host = options["host"]
     path = pc.get("path", "/metrics");
     if len(path) > 0 and path[0] != '/':
         path = "/" + path
-    newconf = {"url": ("https" if use_https else "http") + "://localhost:" + str(port) + path}
+    newconf = {"url": ("https" if use_https else "http") + "://" + host + ":" + str(port) + path}
     if pc.get("max_metrics") != None:
         newconf["max_metrics"] = pc["max_metrics"]
     if pc.get("max_tags") != None:
@@ -657,6 +660,7 @@ class Application:
 
     def main(self):
         logging.info("Starting")
+        # The following message was provided to Goldman Sachs (Oct 2018). Do not change.
         logging.info("Container support: %s", str(AppCheckInstance.CONTAINER_SUPPORT))
         self.config.set_percentiles()
         logging.debug("sdchecks percentiles: %s", str(GLOBAL_PERCENTILES))

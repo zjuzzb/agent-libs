@@ -51,7 +51,8 @@ struct filter_condition {
 		process_cmdline,
 		app_check_match,
 		k8s_annotation,	// obsolete, to be replaced with generic tag
-		tag
+		tag,
+		all				// Match all
 	};
 	static param_type param2type(std::string);
 

@@ -912,6 +912,16 @@ void sinsp_configuration::set_percentiles(const std::set<double>& percentiles,
 	m_group_pctl_conf = group_pctl_conf;
 }
 
+shared_ptr<proc_filter::conf> sinsp_configuration::get_container_filter() const
+{
+	return m_container_filter;
+}
+
+void sinsp_configuration::set_container_filter(shared_ptr<proc_filter::conf> conf)
+{
+	m_container_filter = conf;
+}
+
 unsigned sinsp_configuration::get_app_checks_limit() const
 {
 	return m_app_checks_limit;

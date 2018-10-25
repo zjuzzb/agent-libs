@@ -138,6 +138,32 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 	return ret;
 }
 
+bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info)
+{
+	bool ret = false;
+	if(statsd_info)
+	{
+		write_metric(statsd_info, "dragent.analyzer.fl.ms", draiosproto::STATSD_GAUGE,  m_analyzer.fl);
+		write_metric(statsd_info, "dragent.analyzer.sr", draiosproto::STATSD_GAUGE,  m_analyzer.sr);
+
+		write_metric(statsd_info, "dragent.analyzer.n_evts", draiosproto::STATSD_GAUGE,  m_analyzer.n_evts);
+		write_metric(statsd_info, "dragent.analyzer.n_drops", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops);
+		write_metric(statsd_info, "dragent.analyzer.n_drops_buffer", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops_buffer);
+
+		write_metric(statsd_info, "dragent.subproc.cointerface.memory.kb", draiosproto::STATSD_GAUGE,  m_analyzer.cointerface_memory);
+
+		// external sources
+		for(auto &src : m_ext_sources)
+		{
+			src->send_some(statsd_info);
+		}
+		ret = true;
+	}
+
+	reset();
+	return ret;
+}
+
 void internal_metrics::reset()
 {
 	// only reset counters (which are essentially gauges

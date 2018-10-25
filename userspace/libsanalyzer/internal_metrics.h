@@ -123,6 +123,7 @@ public:
 	{
 	public:
 		virtual void send_all(draiosproto::statsd_info *statsd_info) = 0;
+		virtual void send_some(draiosproto::statsd_info *statsd_info) = 0;
 	};
 
 	void add_ext_source(ext_source *src);
@@ -131,14 +132,27 @@ public:
 	// returns false if statsd_info is null
 	bool send_all(draiosproto::statsd_info* statsd_info);
 
+	// Add a limited set of metrics to the provided protobuf.
+	bool send_some(draiosproto::statsd_info* statsd_info);
+
 	template<typename T>
-	static draiosproto::statsd_metric* write_metric(draiosproto::statsd_info* statsd_info, const std::string& name, draiosproto::statsd_metric_type type, const T& val)
+	static draiosproto::statsd_metric* write_metric(draiosproto::statsd_info* statsd_info,
+							const std::string& name,
+							const std::map<std::string,std::string> &tags,
+							draiosproto::statsd_metric_type type, const T& val)
 	{
 		// don't clog protobuf with values that have not been set yet
 		if(-1 != (int) val)
 		{
 			draiosproto::statsd_metric* proto = statsd_info->add_statsd_metrics();
 			proto->set_name(name);
+			for(auto &pair : tags)
+			{
+				draiosproto::statsd_tag* tag = proto->add_tags();
+				tag->set_key(pair.first);
+				tag->set_value(pair.second);
+			}
+
 			proto->set_type(type);
 			proto->set_value(val);
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
@@ -152,6 +166,16 @@ public:
 			g_logger.log("Internal metric [" + name + "] not set, value=" + std::to_string(val), sinsp_logger::SEV_TRACE);
 		}
 		return nullptr;
+	}
+
+	template<typename T>
+	static draiosproto::statsd_metric* write_metric(draiosproto::statsd_info* statsd_info,
+							const std::string& name,
+							draiosproto::statsd_metric_type type, const T& val)
+	{
+		std::map<std::string,std::string> tags;
+
+		return write_metric(statsd_info, name, tags, type, val);
 	}
 
 	// resets all accumulated values

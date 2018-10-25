@@ -842,7 +842,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_internal_metrics->set_fp((int64_t)round(m_prev_flush_cpu_pct * 100));
 			m_internal_metrics->set_sr(m_sampling_ratio);
 			m_internal_metrics->set_fl(m_prev_flushes_duration_ns / 1000000);
-			if(m_internal_metrics->send_all(m_metrics->mutable_internal_metrics()))
+			if(m_internal_metrics->send_some(m_metrics->mutable_protos()->mutable_statsd()))
 			{
 				if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 				{
@@ -1855,20 +1855,34 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		thread_analyzer_info* main_ainfo = main_tinfo->m_ainfo;
 		analyzer_container_state* container = NULL;
 
-		if(tinfo.is_main_thread())
-		{
-			++process_count;
-		}
-
 		// xxx/nags : why not do this once for the main_thread?
 		if(!tinfo.m_container_id.empty())
 		{
 			container = &m_containers[tinfo.m_container_id];
+			// Filtering out containers if use_container_filter is set
+			// Some day we might want to filter host processes as well
+			if (container)
+			{
+				const sinsp_container_info *cinfo = m_inspector->m_container_manager.get_container(tinfo.m_container_id);
+				if (cinfo && !container->report_container(m_configuration, cinfo, infra_state(), m_prev_flush_time_ns))
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"Not reporting thread %ld in container %s", tinfo.m_tid, tinfo.m_container_id.c_str());
+					// Just return from this lambda
+					return true;
+				}
+			}
+
 			const std::set<double>& pctls = m_configuration->get_percentiles();
 			if(pctls.size())
 			{
 				container->set_percentiles(pctls);
 			}
+		}
+
+		if(tinfo.is_main_thread())
+		{
+			++process_count;
 		}
 
 		// We need to reread cmdline only in live mode, with nodriver mode
@@ -5899,7 +5913,8 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 						)
 				{
 					auto analyzer_it = m_containers.find(container_id);
-					if(analyzer_it != m_containers.end())
+					if((analyzer_it != m_containers.end()) &&
+						analyzer_it->second.report_container(m_configuration, container_info, infra_state(), m_prev_flush_time_ns))
 					{
 						containers_ids.push_back(container_id);
 						containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
@@ -7036,6 +7051,7 @@ analyzer_container_state::analyzer_container_state()
 	m_last_bytes_out = 0;
 	m_last_cpu_time = 0;
 	m_last_cpuacct_cgroup.clear();
+	m_filter_state = FILT_NONE;
 }
 
 void analyzer_container_state::clear()
@@ -7054,5 +7070,32 @@ vector<string> stress_tool_matcher::m_comm_list;
 void stress_tool_matcher::set_comm_list(const vector<string> &comms)
 {
 	m_comm_list = comms;
+}
+
+bool analyzer_container_state::report_container(const sinsp_configuration *config,
+	const sinsp_container_info *cinfo, const infrastructure_state *infra_state, uint64_t ts)
+{
+	if ((m_filter_state != FILT_NONE) && (ts - m_filter_state_ts < FILTER_STATE_CACHE_TIME))
+	{
+		return m_filter_state == FILT_INCL;
+	}
+
+	m_filter_state_ts = ts;
+
+	const auto filters = config->get_container_filter();
+	if (!filters || !filters->enabled())
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "container %s, no filter configured", cinfo->m_id.c_str());
+		m_filter_state = FILT_INCL;
+		return true;
+	}
+
+	bool include = filters->match(nullptr, nullptr, cinfo, *infra_state);
+
+	m_filter_state = include ? FILT_INCL : FILT_EXCL;
+
+	g_logger.format(sinsp_logger::SEV_DEBUG, "container %s, %s in report", cinfo->m_id.c_str(),
+		(m_filter_state == FILT_INCL) ? "include" : "exclude");
+	return m_filter_state == FILT_INCL;
 }
 #endif // HAS_ANALYZER

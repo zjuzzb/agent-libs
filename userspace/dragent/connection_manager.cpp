@@ -210,6 +210,7 @@ bool connection_manager::connect()
 
 		SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
 
+		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		g_log->information("Connecting to collector " + sa.toString());
 
 		if(m_configuration->m_ssl_enabled)
@@ -271,12 +272,14 @@ bool connection_manager::connect()
 	}
 	catch(Poco::IOException& e)
 	{
+		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		g_log->error(m_name + ":connect():IOException: " + e.displayText());
 		disconnect();
 		return false;
 	}
 	catch(Poco::TimeoutException& e)
 	{
+		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		g_log->error(m_name + ":connect():Timeout: " + e.displayText());
 		disconnect();
 		return false;
@@ -452,6 +455,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			return false;
 		}
 
+		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 		g_log->information(m_name + ": Sent msgtype="
 				   + to_string((int) item->message_type)
 				   + " len="

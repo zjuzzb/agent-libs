@@ -40,10 +40,9 @@ RUN rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO && \
 
 RUN mkdir -p /code/agent
 ADD bootstrap-agent /code/agent/
-ADD patches /code/agent/patches
-RUN mkdir -p /code/falco/userspace/engine/lua
-ADD https://raw.githubusercontent.com/draios/falco/dev/scripts/build-lpeg.sh /code/falco/scripts/build-lpeg.sh
-RUN chmod +x /code/falco/scripts/build-lpeg.sh
+RUN mkdir -p /code/oss-falco/userspace/engine/lua
+ADD https://raw.githubusercontent.com/draios/oss-falco/dev/scripts/build-lpeg.sh /code/oss-falco/scripts/build-lpeg.sh
+RUN chmod +x /code/oss-falco/scripts/build-lpeg.sh
 
 RUN cd /code/agent && ONLY_DEPS=true scl enable devtoolset-2 ./bootstrap-agent && rm -fr dependencies/*.tar* dependencies/*.zip
 ADD docker-builder-entrypoint.sh /

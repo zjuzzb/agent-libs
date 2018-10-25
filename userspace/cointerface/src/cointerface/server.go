@@ -259,6 +259,7 @@ func startServer(sock string, modulesDir string) int {
 	defer listener.Close()
 	defer os.Remove(sock)
 
+	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	log.Infof("Listening on %s for messages", sock)
 
 	grpcServer := grpc.NewServer()
