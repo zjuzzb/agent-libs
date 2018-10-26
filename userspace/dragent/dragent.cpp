@@ -26,6 +26,8 @@
 
 using namespace std;
 
+DRAGENT_LOGGER();
+
 // local helper functions
 namespace {
 string compute_sha1_digest(SHA1Engine &engine, const string &path)
@@ -253,16 +255,16 @@ static void dragent_gpr_log(gpr_log_func_args *args)
 	switch (args->severity)
 	{
 	case GPR_LOG_SEVERITY_DEBUG:
-		g_log->debug(os.str());
+		LOG_DEBUG(os.str());
 		break;
 	case GPR_LOG_SEVERITY_INFO:
-		g_log->information(os.str());
+		LOG_INFO(os.str());
 		break;
 	case GPR_LOG_SEVERITY_ERROR:
-		g_log->error(os.str());
+		LOG_ERROR(os.str());
 		break;
 	default:
-		g_log->debug(os.str());
+		LOG_DEBUG(os.str());
 		break;
 	}
 }
@@ -426,11 +428,11 @@ int dragent_app::main(const std::vector<std::string>& args)
 			// information
 			if(data.find("Failed") != string::npos)
 			{
-				g_log->error(data);
+				LOG_ERROR(data);
 			}
 			else
 			{
-				g_log->information(data);
+				LOG_INFO(data);
 			}
 		});
 
@@ -573,13 +575,13 @@ int dragent_app::sdagent_main()
 	initialize_logging();
 
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	g_log->information("Agent starting (version " + string(AGENT_VERSION) + ")");
+	LOG_INFO("Agent starting (version " + string(AGENT_VERSION) + ")");
 
 	struct sysinfo info;
 	auto error = sysinfo(&info);
 	if(error == 0)
 	{
-		g_log->information("System uptime: " + NumberFormatter::format(info.uptime) + "s");
+		LOG_INFO("System uptime: " + NumberFormatter::format(info.uptime) + "s");
 	}
 	else
 	{
@@ -588,7 +590,7 @@ int dragent_app::sdagent_main()
 	struct utsname osname;
 	if(uname(&osname) == 0)
 	{
-		g_log->information(string("Kernel version: ") + osname.release);
+		LOG_INFO(string("Kernel version: ") + osname.release);
 	}
 	else
 	{
@@ -600,25 +602,25 @@ int dragent_app::sdagent_main()
 
 	if(m_configuration.load_error())
 	{
-		g_log->error("Unable to load configuration file");
+		LOG_ERROR("Unable to load configuration file");
 		// XXX Return EXIT_OK even on an error so we won't restart
 		return Application::EXIT_OK;
 	}
 
 	if(m_statsite_pipes)
 	{
-		g_log->debug("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
+		LOG_DEBUG("statsite pipes size in=" + NumberFormatter::format(m_statsite_pipes->inpipe_size()) + " out=" + NumberFormatter::format(m_statsite_pipes->outpipe_size()));
 		m_sinsp_worker.set_statsite_pipes(m_statsite_pipes);
 	}
 	if(m_configuration.m_customer_id.empty())
 	{
-		g_log->error("customerid not specified");
+		LOG_ERROR("customerid not specified");
 		return Application::EXIT_SOFTWARE;
 	}
 
 	if(m_configuration.m_machine_id == "00:00:00:00:00:00")
 	{
-		g_log->error("Invalid machine_id detected");
+		LOG_ERROR("Invalid machine_id detected");
 		return Application::EXIT_SOFTWARE;
 	}
 
@@ -638,7 +640,7 @@ int dragent_app::sdagent_main()
 			// If the env var isn't set, disable the dumping interval because it'll be garbage data
 			if(sample_period <= 0)
 			{
-				g_log->error("Disabling watchdog:heap_profiling_interval_s because TCMALLOC_SAMPLE_PARAMETER is not set");
+				LOG_ERROR("Disabling watchdog:heap_profiling_interval_s because TCMALLOC_SAMPLE_PARAMETER is not set");
 				m_configuration.m_watchdog_heap_profiling_interval_s = 0;
 				ASSERT(false);
 			}
@@ -658,7 +660,7 @@ int dragent_app::sdagent_main()
 	}
 	catch (const sinsp_exception &e)
 	{
-		g_log->error(string("Failed to init sinsp_worker. Exception message: ") + string(e.what()));
+		LOG_ERROR(string("Failed to init sinsp_worker. Exception message: ") + string(e.what()));
 		dragent_configuration::m_terminate = true;
 		dragent_error_handler::m_exception = true;
 	}
@@ -686,7 +688,7 @@ int dragent_app::sdagent_main()
 		{
 			if(!m_windows_helpers.is_parent_service_running())
 			{
-				g_log->information("Windows service stopped");
+				LOG_INFO("Windows service stopped");
 				dragent_configuration::m_terminate = true;
 				break;
 			}
@@ -711,17 +713,17 @@ int dragent_app::sdagent_main()
 
 	if(dragent_error_handler::m_exception)
 	{
-		g_log->error("Application::EXIT_SOFTWARE");
+		LOG_ERROR("Application::EXIT_SOFTWARE");
 		exit_code = Application::EXIT_SOFTWARE;
 	}
 	else if(dragent_configuration::m_config_update)
 	{
-		g_log->information("Application::EXIT_CONFIG_UPDATE");
+		LOG_INFO("Application::EXIT_CONFIG_UPDATE");
 		exit_code = ExitCode(monitor::CONFIG_UPDATE_EXIT_CODE);
 	}
 	else
 	{
-		g_log->information("Application::EXIT_OK");
+		LOG_INFO("Application::EXIT_OK");
 		exit_code = Application::EXIT_OK;
 	}
 
@@ -733,7 +735,7 @@ int dragent_app::sdagent_main()
 		mark_clean_shutdown();
 	}
 
-	g_log->information("Terminating");
+	LOG_INFO("Terminating");
 	g_log->set_capture_job_handler(nullptr);
 	return exit_code;
 }
@@ -748,7 +750,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			- m_sinsp_worker.get_last_loop_ns();
 
 #if _DEBUG
-		g_log->debug("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
+		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
 #endif
 
 		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
@@ -784,7 +786,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
 #if _DEBUG
-		g_log->debug("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff) + " ns ago");
+		LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff) + " ns ago");
 #endif
 
 		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_data_handler_timeout_s * 1000000000LL)
@@ -802,7 +804,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			- m_connection_manager.get_last_loop_ns();
 
 #if _DEBUG
-		g_log->debug("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
+		LOG_DEBUG("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
 #endif
 
 		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
@@ -821,7 +823,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 					   - m_subprocesses_logger.get_last_loop_ns();
 
 #if _DEBUG
-		g_log->debug("watchdog: subprocesses_logger last activity " + NumberFormatter::format(diff) + " ns ago");
+		LOG_DEBUG("watchdog: subprocesses_logger last activity " + NumberFormatter::format(diff) + " ns ago");
 #endif
 
 		if(diff > (int64_t) m_configuration.m_watchdog_subprocesses_logger_timeout_s * 1000000000LL)
@@ -878,7 +880,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
 #if _DEBUG
-		g_log->debug("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
+		LOG_DEBUG("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
 #endif
 
 #ifndef CYGWING_AGENT
@@ -890,7 +892,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		// memory state for diffing against later dumps
 		if(heap_profiling && m_last_dump_s == 0 && m_sinsp_worker.get_last_loop_ns() != 0)
 		{
-			g_log->information("watchdog: heap profiling enabled, dumping initial memory state");
+			LOG_INFO("watchdog: heap profiling enabled, dumping initial memory state");
 			dump_heap = true;
 			throttle = false;
 		}
@@ -917,7 +919,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 		else if(memory > m_configuration.m_watchdog_warn_memory_usage_mb)
 		{
-			g_log->notice("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
+			LOG_NOTICE("watchdog: memory usage " + NumberFormatter::format(memory) + " MiB");
 			if(heap_profiling)
 			{
 				dump_heap = true;
@@ -954,7 +956,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		auto& state = proc.second;
 		if(state.valid())
 		{
-			g_log->debug("valid subprocess: " + proc.first + ", " + to_string(state.memory_used()) + " KiB");
+			LOG_DEBUG("valid subprocess: " + proc.first + ", " + to_string(state.memory_used()) + " KiB");
 			bool to_kill = false;
 			if(m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.find(proc.first) != m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.end() &&
 			   state.memory_used()/1024 > m_configuration.m_watchdog_max_memory_usage_subprocesses_mb.at(proc.first))
@@ -970,7 +972,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			}
 			else if(last_loop_s > now)
 			{
-				g_log->debug("watchdog: " + proc.first + " last activity " + NumberFormatter::format(last_loop_s - now) + " s in the future!");
+				LOG_DEBUG("watchdog: " + proc.first + " last activity " + NumberFormatter::format(last_loop_s - now) + " s in the future!");
 			}
 			if(m_configuration.m_watchdog_subprocesses_timeout_s.find(proc.first) != m_configuration.m_watchdog_subprocesses_timeout_s.end() &&
 			   diff > m_configuration.m_watchdog_subprocesses_timeout_s.at(proc.first))
@@ -1171,14 +1173,14 @@ void dragent_app::monitor_files(uint64_t uptime_s)
 			struct stat f_stat;
 			bool file_exists = stat(state.m_path.c_str(), &f_stat) == 0;
 			if (file_exists && (f_stat.st_mtime != state.m_mod_time)) {
-				g_log->debug("Modification time changed for file: " + state.m_path);
+				LOG_DEBUG("Modification time changed for file: " + state.m_path);
 				state.m_mod_time = f_stat.st_mtime;
 
 				// check modification of contents of the file
 				auto new_digest = compute_sha1_digest(engine, state.m_path);
 				if(new_digest != state.m_digest)
 				{
-					g_log->information("Detected changes to file: " + state.m_path);
+					LOG_INFO("Detected changes to file: " + state.m_path);
 					state.m_digest = new_digest;
 					detected_change = true;
 				}

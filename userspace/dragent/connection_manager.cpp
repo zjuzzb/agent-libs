@@ -12,7 +12,8 @@
 #define TCP_USER_TIMEOUT	 18 /* How long for loss retry before timeout */
 #endif
 
-const string connection_manager::m_name = "connection_manager";
+DRAGENT_LOGGER();
+
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
 const uint32_t connection_manager::RECONNECT_MIN_INTERVAL_S = 1;
 const uint32_t connection_manager::RECONNECT_MAX_INTERVAL_S = 60;
@@ -25,7 +26,7 @@ public:
 	// Mimicking Poco::Net::ConsoleCertificateHandler but no user input
 	virtual void onInvalidCertificate(const void *pSender,
 					  Poco::Net::VerificationErrorArgs &errorCert) {
-		g_log->error("connection_manager: Certificate verification failed: " +
+		LOG_ERROR("Certificate verification failed: " +
 			     errorCert.errorMessage() + " (" +
 			     NumberFormatter::format(errorCert.errorNumber()) + ")" +
 			     ", Issuer: " + errorCert.certificate().issuerName() +
@@ -63,7 +64,7 @@ bool connection_manager::init()
 	if(m_configuration->m_server_addr == "" ||
 	   m_configuration->m_server_port == 0)
 	{
-		g_log->warning("Server address has not been specified");
+		LOG_WARNING("Server address has not been specified");
 		return false;
 	}
 
@@ -72,7 +73,7 @@ bool connection_manager::init()
 		return true;
 	}
 
-	g_log->information("SSL enabled, initializing context");
+	LOG_INFO("SSL enabled, initializing context");
 
 	Poco::Net::Context::VerificationMode verification_mode;
 	SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
@@ -90,7 +91,7 @@ bool connection_manager::init()
 		{
 			cert_dir = get_openssldir();
 		}
-		g_log->information("SSL CA cert dir: " + cert_dir);
+		LOG_INFO("SSL CA cert dir: " + cert_dir);
 	}
 	else
 	{
@@ -109,7 +110,7 @@ bool connection_manager::init()
 
 	try
 	{
-		g_log->information("openssl loading cert: "
+		LOG_INFO("openssl loading cert: "
 				   + m_configuration->m_ssl_ca_certificate);
 		Poco::Crypto::X509Certificate ca_cert(m_configuration->m_ssl_ca_certificate);
 		ptrContext->addCertificateAuthority(ca_cert);
@@ -117,18 +118,18 @@ bool connection_manager::init()
 	catch (Poco::Net::SSLException &e)
 	{
 		// thrown by addCertificateAuthority()
-		g_log->error("Unable to add ssl ca certificate: "
+		LOG_ERROR("Unable to add ssl ca certificate: "
 			     + e.message());
 	}
 	catch (Poco::IOException& e)
 	{
 		// thrown by X509Certificate constructor
-		g_log->error("Unable to read ssl ca certificate: "
+		LOG_ERROR("Unable to read ssl ca certificate: "
 			     + e.message());
 	}
 	catch (...)
 	{
-		g_log->error("Unable to load ssl ca certificate: "
+		LOG_ERROR("Unable to load ssl ca certificate: "
 			     + m_configuration->m_ssl_ca_certificate);
 	}
 
@@ -146,7 +147,7 @@ std::string connection_manager::get_openssldir()
 	FILE *out = popen("openssl version -d 2>&1", "r");
 	if (!out)
 	{
-		g_log->information(string("openssl popen() failed: ")
+		LOG_INFO(string("openssl popen() failed: ")
 				   + strerror(errno));
 		return path;
 	}
@@ -164,7 +165,7 @@ std::string connection_manager::get_openssldir()
 	{
 		ii++;
 		std::string out_str(buf);
-		g_log->debug("openssl read from popen(): " + out_str);
+		LOG_DEBUG("openssl read from popen(): " + out_str);
 
 		// Would use std::regex if we had compiler support
 		std::string start_targ("OPENSSLDIR: \"");
@@ -183,12 +184,12 @@ std::string connection_manager::get_openssldir()
 
 		path = out_str.substr(start_pos, end_pos - start_pos)
 			+ "/certs";
-		g_log->debug("found OPENSSLDIR: " + path);
+		LOG_DEBUG("found OPENSSLDIR: " + path);
 		break;
 	}
 
 	int ret = pclose(out);
-	g_log->debug(string("openssl pclose() exit code: ")
+	LOG_DEBUG(string("openssl pclose() exit code: ")
 		     + std::to_string(WEXITSTATUS(ret)));
 	return path;
 }
@@ -211,7 +212,7 @@ bool connection_manager::connect()
 		SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
 
 		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		g_log->information("Connecting to collector " + sa.toString());
+		LOG_INFO("Connecting to collector " + sa.toString());
 
 		if(m_configuration->m_ssl_enabled)
 		{
@@ -239,14 +240,14 @@ bool connection_manager::connect()
 			int32_t ret = ((Poco::Net::SecureStreamSocket*) m_socket.get())->completeHandshake();
 			if(ret != 1)
 			{
-				g_log->error(m_name + ": SSL Handshake didn't complete");
+				LOG_ERROR("SSL Handshake didn't complete");
 				disconnect();
 				return false;
 			}
 
 			((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
 
-			g_log->information("SSL identity verified");
+			LOG_INFO("SSL identity verified");
 		}
 
 		//
@@ -266,21 +267,21 @@ bool connection_manager::connect()
 			// alternatively, could be a setsockopt() call to avoid exception
 		}
 
-		g_log->information("Connected to collector");
+		LOG_INFO("Connected to collector");
 		m_connected = true;
 		return true;
 	}
 	catch(Poco::IOException& e)
 	{
 		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		g_log->error(m_name + ":connect():IOException: " + e.displayText());
+		LOG_ERROR("connect():IOException: " + e.displayText());
 		disconnect();
 		return false;
 	}
 	catch(Poco::TimeoutException& e)
 	{
 		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		g_log->error(m_name + ":connect():Timeout: " + e.displayText());
+		LOG_ERROR("connect():Timeout: " + e.displayText());
 		disconnect();
 		return false;
 	}
@@ -334,7 +335,7 @@ void connection_manager::run()
 {
 	m_pthread_id = pthread_self();
 
-	g_log->information(m_name + ": Starting");
+	LOG_INFO("Starting");
 
 	if(init())
 	{
@@ -349,7 +350,7 @@ void connection_manager::run()
 			//
 			if(m_socket.isNull())
 			{
-				g_log->information(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
+				LOG_INFO(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
 				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
 				{
 					m_last_loop_ns = sinsp_utils::get_current_time_ns();
@@ -396,7 +397,7 @@ void connection_manager::run()
 		}
 	}
 
-	g_log->information(m_name + ": Terminating");
+	LOG_INFO("Terminating");
 }
 
 bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item)
@@ -408,7 +409,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 	if (now > item->ts_ns &&
 	    (now - item->ts_ns) > 5000000000UL)
 	{
-		g_log->warning("Transmitting delayed message. type=" + to_string(item->message_type)
+		LOG_WARNING("Transmitting delayed message. type=" + to_string(item->message_type)
 			       + ", now=" + to_string(now)
 			       + ", ts=" + to_string(item->ts_ns)
 			       + ", delay_ms=" + to_string((now - item->ts_ns)/ 1000000.0));
@@ -445,7 +446,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 
 		if(res != (int32_t) item->buffer.size())
 		{
-			g_log->error(m_name + ": sendBytes sent just "
+			LOG_ERROR("sendBytes sent just "
 				+ NumberFormatter::format(res)
 				+ ", expected " + NumberFormatter::format(item->buffer.size()));
 
@@ -456,7 +457,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 		}
 
 		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		g_log->information(m_name + ": Sent msgtype="
+		LOG_INFO("Sent msgtype="
 				   + to_string((int) item->message_type)
 				   + " len="
 				   + Poco::NumberFormatter::format(item->buffer.size()) + " to collector");
@@ -474,7 +475,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			// caused by an attempted send larger than the buffer size
 			if (item->buffer.size() > m_configuration->m_transmitbuffer_size)
 			{
-				g_log->error(m_name + ":transmit larger than bufsize failed ("
+				LOG_ERROR("transmit larger than bufsize failed ("
 					+ NumberFormatter::format(item->buffer.size()) + ">" +
 					NumberFormatter::format(m_configuration->m_transmitbuffer_size)
 					 + "): " + e.displayText());
@@ -482,18 +483,18 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			}
 			else
 			{
-				g_log->debug(m_name + ":transmit: Ignoring: " + e.displayText());
+				LOG_DEBUG("transmit: Ignoring: " + e.displayText());
 			}
 		}
 		else
 		{
-			g_log->error(m_name + ":transmit:IOException: " + e.displayText());
+			LOG_ERROR("transmit:IOException: " + e.displayText());
 			disconnect();
 		}
 	}
 	catch(Poco::TimeoutException& e)
 	{
-		g_log->debug(m_name + ":transmit:Timeout: " + e.displayText());
+		LOG_DEBUG("transmit:Timeout: " + e.displayText());
 	}
 
 	return false;
@@ -529,7 +530,7 @@ void connection_manager::receive_message()
 
 			if(res == 0)
 			{
-				g_log->error(m_name + ": Lost connection (reading header)");
+				LOG_ERROR("Lost connection (reading header)");
 				disconnect();
 				return;
 			}
@@ -538,7 +539,7 @@ void connection_manager::receive_message()
 			// header might come in the next recv().
 			if(res != sizeof(dragent_protocol_header))
 			{
-				g_log->error(m_name + ": Protocol error: couldn't read full header: " + NumberFormatter::format(res));
+				LOG_ERROR("Protocol error: couldn't read full header: " + NumberFormatter::format(res));
 				ASSERT(false);
 				disconnect();
 				return;
@@ -550,7 +551,7 @@ void connection_manager::receive_message()
 			if((header->len < sizeof(dragent_protocol_header)) ||
 				(header->len > MAX_RECEIVER_BUFSIZE))
 			{
-				g_log->error(m_name + ": Protocol error: invalid header length " + NumberFormatter::format(header->len));
+				LOG_ERROR("Protocol error: invalid header length " + NumberFormatter::format(header->len));
 				ASSERT(false);
 				disconnect();
 				return;
@@ -581,7 +582,7 @@ void connection_manager::receive_message()
 
 		if(res == 0)
 		{
-			g_log->error(m_name + ": Lost connection (reading message)");
+			LOG_ERROR("Lost connection (reading message)");
 			disconnect();
 			ASSERT(false);
 			return;
@@ -589,7 +590,7 @@ void connection_manager::receive_message()
 
 		if(res < 0)
 		{
-			g_log->error(m_name + ": Connection error while reading: " +
+			LOG_ERROR("Connection error while reading: " +
 				NumberFormatter::format(res));
 			disconnect();
 			ASSERT(false);
@@ -597,7 +598,7 @@ void connection_manager::receive_message()
 		}
 
 		m_buffer_used += res;
-		g_log->debug(m_name + ": Receiving message version=" + NumberFormatter::format(header->version) +
+		LOG_DEBUG("Receiving message version=" + NumberFormatter::format(header->version) +
 					 " len=" + NumberFormatter::format(header->len) + " messagetype=" + NumberFormatter::format(header->messagetype) +
 					" received=" + NumberFormatter::format(m_buffer_used));
 
@@ -607,7 +608,7 @@ void connection_manager::receive_message()
 
 			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
 			{
-				g_log->error(m_name + ": Received command for incompatible version protocol "
+				LOG_ERROR("Received command for incompatible version protocol "
 							 + NumberFormatter::format(header->version));
 				ASSERT(false);
 				return;
@@ -615,7 +616,7 @@ void connection_manager::receive_message()
 
 			// When the message is complete, process it
 			// and reset the buffer
-			g_log->information(m_name + ": Received command "
+			LOG_INFO("Received command "
 							   + NumberFormatter::format(header->messagetype)
 							   + " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
 
@@ -664,7 +665,7 @@ void connection_manager::receive_message()
 				break;
 #endif
 			default:
-				g_log->error(m_name + ": Unknown message type: "
+				LOG_ERROR("Unknown message type: "
 							 + NumberFormatter::format(header->messagetype));
 				ASSERT(false);
 			}
@@ -672,7 +673,7 @@ void connection_manager::receive_message()
 
 		if(m_buffer_used > header->len)
 		{
-			g_log->error(m_name + ": Protocol out of sync, disconnecting");
+			LOG_ERROR("Protocol out of sync, disconnecting");
 			disconnect();
 			ASSERT(false);
 			return;
@@ -680,12 +681,12 @@ void connection_manager::receive_message()
 	}
 	catch(Poco::IOException& e)
 	{
-		g_log->error(m_name + ":receive:IOException: " + e.displayText());
+		LOG_ERROR("receive:IOException: " + e.displayText());
 		disconnect();
 	}
 	catch(Poco::TimeoutException& e)
 	{
-		g_log->debug(m_name + ":receive:Timeout: " + e.displayText());
+		LOG_DEBUG("receive:Timeout: " + e.displayText());
 	}
 }
 
@@ -782,13 +783,13 @@ void connection_manager::handle_config_data(uint8_t* buf, uint32_t size)
 							     config_file_proto.content(),
 							     errstr) < 0)
 			{
-				g_log->error(errstr);
+				LOG_ERROR(errstr);
 			}
 		}
 	}
 	else
 	{
-		g_log->debug("Auto config disabled, ignoring CONFIG_DATA message");
+		LOG_DEBUG("Auto config disabled, ignoring CONFIG_DATA message");
 	}
 }
 
@@ -797,7 +798,7 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 	draiosproto::error_message err_msg;
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &err_msg))
 	{
-		g_log->error(m_name + ": received unparsable error message");
+		LOG_ERROR("received unparsable error message");
 		return;
 	}
 
@@ -829,7 +830,7 @@ void connection_manager::handle_error_message(uint8_t* buf, uint32_t size) const
 		}
 	}
 
-	g_log->error(m_name + ": received " + err_str);
+	LOG_ERROR("received " + err_str);
 
 	if(term)
 	{
@@ -845,25 +846,25 @@ void connection_manager::handle_policies_message(uint8_t* buf, uint32_t size)
 
 	if(!m_configuration->m_security_enabled)
 	{
-		g_log->debug("Security disabled, ignoring POLICIES message");
+		LOG_DEBUG("Security disabled, ignoring POLICIES message");
 		return;
 	}
 
 	if(m_configuration->m_security_policies_file != "")
 	{
-		g_log->information("Security policies file configured in dragent.yaml, ignoring POLICIES message");
+		LOG_INFO("Security policies file configured in dragent.yaml, ignoring POLICIES message");
 		return;
 	}
 
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &policies))
 	{
-		g_log->error("Could not parse policies message");
+		LOG_ERROR("Could not parse policies message");
 		return;
 	}
 
 	if (!m_sinsp_worker->load_policies(policies, errstr))
 	{
-		g_log->error("Could not load policies message: " + errstr);
+		LOG_ERROR("Could not load policies message: " + errstr);
 		return;
 	}
 }
@@ -875,25 +876,25 @@ void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32
 
 	if(!m_configuration->m_security_enabled)
 	{
-		g_log->debug("Security disabled, ignoring COMP_CALENDAR message");
+		LOG_DEBUG("Security disabled, ignoring COMP_CALENDAR message");
 		return;
 	}
 
 	if(m_configuration->m_security_compliance_schedule != "")
 	{
-		g_log->information("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
+		LOG_INFO("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
 		return;
 	}
 
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &calendar))
 	{
-		g_log->error("Could not parse comp_calendar message");
+		LOG_ERROR("Could not parse comp_calendar message");
 		return;
 	}
 
 	if (!m_sinsp_worker->set_compliance_calendar(calendar, errstr))
 	{
-		g_log->error("Could not set compliance calendar: " + errstr);
+		LOG_ERROR("Could not set compliance calendar: " + errstr);
 		return;
 	}
 }
@@ -906,13 +907,13 @@ void connection_manager::handle_orchestrator_events(uint8_t* buf, uint32_t size)
 
 	if(!m_configuration->m_security_enabled)
 	{
-		g_log->debug("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
+		LOG_DEBUG("Security disabled, ignoring ORCHESTRATOR_EVENTS message");
 		return;
 	}
 
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &evts))
 	{
-		g_log->error("Could not parse orchestrator_events message");
+		LOG_ERROR("Could not parse orchestrator_events message");
 		return;
 	}
 
@@ -928,25 +929,25 @@ void connection_manager::handle_baselines_message(uint8_t* buf, uint32_t size)
 
 	if(!m_configuration->m_security_enabled)
 	{
-		g_log->debug("Security disabled, ignoring BASELINES message");
+		LOG_DEBUG("Security disabled, ignoring BASELINES message");
 		return;
 	}
 
 	if(m_configuration->m_security_baselines_file != "")
 	{
-		g_log->information("Security baselines file configured in dragent.yaml, ignoring BASELINES message");
+		LOG_INFO("Security baselines file configured in dragent.yaml, ignoring BASELINES message");
 		return;
 	}
 
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &baselines))
 	{
-		g_log->error("Could not parse baselines message");
+		LOG_ERROR("Could not parse baselines message");
 		return;
 	}
 
 	if (!m_sinsp_worker->load_baselines(baselines, errstr))
 	{
-		g_log->error("Could not load baselines message: " + errstr);
+		LOG_ERROR("Could not load baselines message: " + errstr);
 		return;
 	}
 }

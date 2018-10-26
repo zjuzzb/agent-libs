@@ -9,6 +9,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
+include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent)
@@ -80,7 +81,9 @@ add_executable(tests
 	token_bucket_test.cpp
 	user_event.cpp
 	uri.cpp
-	json_query.cpp nodriver.cpp)
+	json_query.cpp
+	nodriver.cpp
+	userspace/dragent/logger_ut.cpp)
 
 target_link_libraries(tests
 	pthread

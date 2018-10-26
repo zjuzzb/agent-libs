@@ -5,6 +5,8 @@
 #include "utils.h"
 #include "logger.h"
 
+DRAGENT_LOGGER();
+
 sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 				       protocol_queue* queue) :
 	m_configuration(configuration),
@@ -31,7 +33,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
 
 	if(m_configuration->m_print_protobuf)
 	{
-		g_log->information(metrics->DebugString());
+		LOG_INFO(metrics->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -42,13 +44,12 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
 
 	if(!buffer)
 	{
-		g_log->error("NULL converting message to buffer");
+		LOG_ERROR("NULL converting message to buffer");
 		return;
 	}
 
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	g_log->information("ts="
-		+ NumberFormatter::format(ts_ns / 1000000000)
+	LOG_INFO("ts=" + NumberFormatter::format(ts_ns / 1000000000)
 		+ ", len=" + NumberFormatter::format(buffer->buffer.size())
 		+ ", ne=" + NumberFormatter::format(nevts)
                 + ", de=" + NumberFormatter::format(num_drop_events)
@@ -60,7 +61,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
-		g_log->information("Queue full, discarding sample");
+		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
@@ -68,7 +69,7 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 {
 	if(m_configuration->m_print_protobuf)
 	{
-		g_log->information(string("Security Events:") + events->DebugString());
+		LOG_INFO(string("Security Events:") + events->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -79,16 +80,16 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 
 	if(!buffer)
 	{
-		g_log->error("NULL converting message to buffer");
+		LOG_ERROR("NULL converting message to buffer");
 		return;
 	}
 
-	g_log->information("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
+	LOG_INFO("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
 			   + ", ne=" + NumberFormatter::format(events->events_size()));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
-		g_log->information("Queue full, discarding sample");
+		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
@@ -98,7 +99,7 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 {
 	if(m_configuration->m_print_protobuf)
 	{
-		g_log->information(string("Throttled Security Events:") + tevents->DebugString());
+		LOG_INFO(string("Throttled Security Events:") + tevents->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -109,17 +110,17 @@ void sinsp_data_handler::security_mgr_throttled_events_ready(uint64_t ts_ns,
 
 	if(!buffer)
 	{
-		g_log->error("NULL converting message to buffer");
+		LOG_ERROR("NULL converting message to buffer");
 		return;
 	}
 
-	g_log->information("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
+	LOG_INFO("sec_evts len=" + NumberFormatter::format(buffer->buffer.size())
 			   + ", nte=" + NumberFormatter::format(tevents->events_size())
 			   + ", tcount=" + NumberFormatter::format(total_throttled_count));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
 	{
-		g_log->information("Queue full, discarding sample");
+		LOG_INFO("Queue full, discarding sample");
 	}
 }
 
@@ -127,7 +128,7 @@ void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const d
 {
 	if(m_configuration->m_print_protobuf)
 	{
-		g_log->information(string("Compliance Results:") + results->DebugString());
+		LOG_INFO(string("Compliance Results:") + results->DebugString());
 	}
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
@@ -138,15 +139,15 @@ void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const d
 
 	if(!buffer)
 	{
-		g_log->error("NULL converting message to buffer");
+		LOG_ERROR("NULL converting message to buffer");
 		return;
 	}
 
-	g_log->information("sec_comp_results len=" + NumberFormatter::format(buffer->buffer.size())
+	LOG_INFO("sec_comp_results len=" + NumberFormatter::format(buffer->buffer.size())
 			   + ", ne=" + NumberFormatter::format(results->results_size()));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
 	{
-		g_log->information("Queue full, discarding sample");
+		LOG_INFO("Queue full, discarding sample");
 	}
 }

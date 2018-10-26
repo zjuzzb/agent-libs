@@ -63,7 +63,6 @@ private:
 	static const uint32_t RECONNECT_MAX_INTERVAL_S;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 	static const chrono::seconds WORKING_INTERVAL_S;
-	static const string m_name;
 
 	SharedPtr<StreamSocket> m_socket;
 	bool m_connected;
