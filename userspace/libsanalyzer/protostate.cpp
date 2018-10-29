@@ -28,7 +28,7 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 	{
 		sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
 		auto url = truncate_str(pp->m_url, truncation_size);
-		bool is_error = ((pp->m_status_code > 400) && (pp->m_status_code < 600));
+		bool is_error = ((pp->m_status_code >= 400) && (pp->m_status_code < 600));
 
 		//
 		// Update the URL table
