@@ -131,7 +131,7 @@ private:
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void k8s_generate_user_event(const bool success);
 
-	bool is_valid_for_export(const draiosproto::container_group *grp);
+	bool is_valid_for_export(const draiosproto::container_group *grp) const;
 
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 

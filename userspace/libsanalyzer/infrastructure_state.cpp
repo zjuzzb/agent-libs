@@ -944,7 +944,7 @@ bool infrastructure_state::check_registered_scope(reg_id_t &reg)
 //                          (b). A k8s_pod should be exported ONLY
 //                               if it has both k8s_namespace and k8s_node
 //                               parents.
-bool infrastructure_state::is_valid_for_export(const draiosproto::container_group *grp)
+bool infrastructure_state::is_valid_for_export(const draiosproto::container_group *grp) const
 {
 	// Always return node and namespace
 	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node") {

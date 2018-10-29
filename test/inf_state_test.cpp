@@ -427,6 +427,15 @@ TEST_F(inf_state_test_with_containers, ComprehensiveTest)
 	ASSERT_EQ(result.size(), 9);
 	result.Clear();
 
+	// Get state of only 1 container
+	// and see if this returns lesser size
+	// than get_state
+	// This simulates delegated agents
+	std::vector<string> single_cont(m_containers.begin(), m_containers.begin()+1);
+	m_infra_state->state_of(single_cont, &result);
+	ASSERT_EQ(result.size(), 6);
+	result.Clear();
+
 	// remove one namespace and see the results
 	remove_congroup(ns2);
 	m_infra_state->state_of(m_containers, &result);
