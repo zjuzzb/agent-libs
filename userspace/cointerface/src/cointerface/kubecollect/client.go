@@ -27,7 +27,6 @@ import (
 
 // XXX make these into one map and/or remove them if
 // HasSynced checking works instead of using receiveMap
-var compatibilityMap map[string]bool // no concurrent access, no lock
 var startedMap map[string]bool
 var startedMutex sync.RWMutex
 var receiveMap map[string]bool
@@ -83,9 +82,12 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 
 	// Reset all globals
 	// XXX better yet, make them not package globals
-	compatibilityMap = make(map[string]bool)
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
+
+	// Initialize a local vector of all resource types
+	var resourceTypes []string
+	
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			verbStr := ""
@@ -101,7 +103,12 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 				resourceList.GroupVersion != "batch/v2alpha1" {
 				continue
 			}
-			compatibilityMap[resource.Name] = true
+
+			if(resource.Name == "nodes" || resource.Name == "namespaces") {
+				resourceTypes = append([]string{resource.Name}, resourceTypes...)
+			} else {
+				resourceTypes = append(resourceTypes, resource.Name)
+			}
 		}
 	}
 
@@ -126,7 +133,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	var wg sync.WaitGroup
 	// Start informers in a separate routine so we can return the
 	// evt chan and let the caller start reading/draining events
-	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts)
+	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes)
 
 	return evtc, fetchDone, nil
 }
@@ -198,13 +205,10 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 	return nil
 }
 
-func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand, resourceTypes []string) {
 	filterEmpty := opts.GetFilterEmpty()
 
-	for resource, ok := range compatibilityMap {
-		if !ok {
-			continue
-		}
+	for _, resource := range resourceTypes {
 
 		interrupted := false
 		select {
