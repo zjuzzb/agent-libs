@@ -104,6 +104,9 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 				continue
 			}
 
+			// If the resource type is "nodes" or "namespaces" we
+			// PREPEND them. (we want to process those first). Else
+			// append the other resource types.
 			if(resource.Name == "nodes" || resource.Name == "namespaces") {
 				resourceTypes = append([]string{resource.Name}, resourceTypes...)
 			} else {
