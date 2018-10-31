@@ -5,6 +5,7 @@ class inf_state_test : public testing::Test
 {
 public:
 	using uid_t = infrastructure_state::uid_t;
+	using cue_t = draiosproto::congroup_update_event;
 	inf_state_test()
 	{
 		m_sinsp.reset(new sinsp());
@@ -17,39 +18,22 @@ protected:
 		ASSERT_NE(m_infra_state.get(), nullptr);
 		ASSERT_TRUE(m_infra_state.get()->inited());
 	}
-	virtual void TearDown() override
-	{
-		// Tear down
 	
-	}
 
-	bool has_congroup(std::string cg_kind, std::string cg_id) const
+	bool has_congroup(const std::string cg_kind, const std::string cg_id) const
 	{
 		return m_infra_state->has(make_pair(cg_kind, cg_id));
 	}
-	bool has_congroup(uid_t key) const
+
+	bool has_congroup(const uid_t& key) const
 	{
 		return m_infra_state->has(key);
 	}
-
-	bool add_congroup(uid_t key)
-	{
-		return m_infra_state->add(key);
-	}
 	
-	std::unique_ptr<infrastructure_state> m_infra_state;
-	std::unique_ptr<sinsp> m_sinsp;
-};
-
-class inf_state_test_with_containers : public inf_state_test
-{
-protected:
-	using cue_t = draiosproto::congroup_update_event;
-	virtual void SetUp() override
+	bool has_congroup(const draiosproto::congroup_uid& key) const
 	{
-		inf_state_test::SetUp();
-		// Future setup that might be
-		// needed. 
+		uid_t cg = make_pair(key.kind(), key.id());
+		return m_infra_state->has(cg);
 	}
 
 	cue_t add_congroup(const std::string& kind) {
@@ -69,11 +53,6 @@ protected:
 		return cue;
 	}
 
-	/*
-	void add_congroup(std::string kind, int id) {
-		
-	}
-	*/
 	void add_parent_link(cue_t& child, const cue_t& parent) {
 
 		child.set_type(draiosproto::UPDATED);
@@ -87,7 +66,6 @@ protected:
 	void remove_congroup(cue_t& cue) {
 		cue.set_type(draiosproto::REMOVED);
 		m_infra_state->load_single_event(cue);
-		cue.Clear();
 
 		if(cue.object().uid().kind() == "container") {
 			for(auto it = m_containers.begin(); it != m_containers.end(); it++)
@@ -98,6 +76,10 @@ protected:
 				}
 			}
 		}
+
+		// We don't want this object to be used
+		// Make sure of it.
+		cue.Clear();
 	}
 	
 	void print_result(const container_groups& result) const {
@@ -107,7 +89,9 @@ protected:
 		}
 		std::cout << " ==== Results End ====== " << std::endl << std::endl;
 	}
-	
+
+	std::unique_ptr<infrastructure_state> m_infra_state;
+	std::unique_ptr<sinsp> m_sinsp;
 	std::unordered_map<std::string, int> m_map_of_counts;
 	std::vector<std::string> m_containers;
 };
@@ -121,32 +105,30 @@ TEST_F(inf_state_test, EmptyStateTest)
 	uid_t cont = make_pair("container","123");
 	ASSERT_FALSE(has_congroup(cont));
 	ASSERT_FALSE(has_congroup("k8s_pod","234"));
-}
 
-TEST_F(inf_state_test, AddCongroupTest)
-{
-	uid_t cont = make_pair("container","123");
-	uid_t pod  = make_pair("k8s_pod", "345");
-
-	// Add it and test for presence
-	ASSERT_TRUE(add_congroup(cont));
-	ASSERT_TRUE(add_congroup(pod));
-	ASSERT_TRUE(has_congroup(cont));
-	ASSERT_TRUE(has_congroup(pod));
-	ASSERT_EQ(m_infra_state->size(),2);
-}
-
-TEST_F(inf_state_test_with_containers, TestInfStateWhenEmpty)
-{
 	// Initially, when we ping the infra state for its current state
 	// "result" should always be empty
 	container_groups result;
 	m_infra_state->state_of(m_containers, &result );
-
 	ASSERT_TRUE(result.empty());
+
+	// Test with get_state also
+	m_infra_state->get_state( &result );
+	ASSERT_TRUE(result.empty());	
 }
 
-TEST_F(inf_state_test_with_containers, AlwaysReturnNodeTypes)
+TEST_F(inf_state_test, AddCongroupTest)
+{
+	// Add a few congroups and test for presence
+	auto cont = add_congroup("container");
+	auto pod  = add_congroup("k8s_pod");
+
+	ASSERT_TRUE(has_congroup(cont.object().uid()));
+	ASSERT_TRUE(has_congroup(pod.object().uid()));
+	ASSERT_EQ(m_infra_state->size(),2);
+}
+
+TEST_F(inf_state_test, AlwaysReturnNodeTypes)
 {
 	// If there is a k8s_node type congroup
 	// always return it. Even if we don't have
@@ -170,7 +152,7 @@ TEST_F(inf_state_test_with_containers, AlwaysReturnNodeTypes)
 	ASSERT_EQ(result.size(),2);
 }
 
-TEST_F(inf_state_test_with_containers, DontExportPodsWithoutNodeParents)
+TEST_F(inf_state_test, DontExportPodsWithoutNodeParents)
 {
 	// All entities except nodes must have namespace parents.
 	// But pods must additionally have node parents
@@ -213,7 +195,7 @@ TEST_F(inf_state_test_with_containers, DontExportPodsWithoutNodeParents)
 	result.Clear();
 }
 
-TEST_F(inf_state_test_with_containers, CongroupsWithoutNamespaceParentsTest)
+TEST_F(inf_state_test, CongroupsWithoutNamespaceParentsTest)
 {
 	// MAIN TEST Which tests if congroup entities
 	// show up ONLY if they have namespace parents
@@ -291,7 +273,7 @@ TEST_F(inf_state_test_with_containers, CongroupsWithoutNamespaceParentsTest)
 	remove_congroup(ns1);
 	
 	// Verify it is gone
-	ASSERT_FALSE(has_congroup(ns1.object().uid().kind(), ns1.object().uid().id()));
+	ASSERT_FALSE(has_congroup(ns1.object().uid()));
 
 	// Now get infra state
 	m_infra_state->get_state( &result);
@@ -300,7 +282,7 @@ TEST_F(inf_state_test_with_containers, CongroupsWithoutNamespaceParentsTest)
 	ASSERT_EQ(result.size(), 1);
 }
 
-TEST_F(inf_state_test_with_containers, NamespacesWithoutContainersTest)
+TEST_F(inf_state_test, NamespacesWithoutContainersTest)
 {
 	// Result of pinging InfraState
 	container_groups result;
@@ -352,7 +334,7 @@ TEST_F(inf_state_test_with_containers, NamespacesWithoutContainersTest)
 	ASSERT_EQ(result.size(), 0);
 }
 
-TEST_F(inf_state_test_with_containers, ComprehensiveTest)
+TEST_F(inf_state_test, ComprehensiveTest)
 {
 	// This will be a comprehensive Test With Containers,
 	// Pods, Deployments, Services, Nodes, ReplicaSets etc.
@@ -436,15 +418,19 @@ TEST_F(inf_state_test_with_containers, ComprehensiveTest)
 	ASSERT_EQ(result.size(), 6);
 	result.Clear();
 
-	// remove one namespace and see the results
-	remove_congroup(ns2);
+	// remove one container and see the results
+	ASSERT_EQ(m_containers.size(),3); // before
+	remove_congroup(cont1);
+	ASSERT_EQ(m_containers.size(),2); // after
 	m_infra_state->state_of(m_containers, &result);
-	ASSERT_EQ(result.size(), 5);
+	// We should not see the pod1 in results
+	// This is because it is parent of cont1
+	ASSERT_EQ(result.size(), 8);
 	result.Clear();
 
-	// Verify if get_state shows same results
+	// Verify if get_state shows all results
 	m_infra_state->get_state(&result);
-	// This should return size 5
-	ASSERT_EQ(result.size(), 5);
+	// This should return size 9 (like before)
+	ASSERT_EQ(result.size(), 9);
 	result.Clear();
 }

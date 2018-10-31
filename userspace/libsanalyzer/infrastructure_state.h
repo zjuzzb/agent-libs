@@ -88,14 +88,10 @@ public:
 	bool has(uid_t uid) const;
 	unsigned int size();
 
-	// These return true if the new entry has been added, false if it already existed
-	bool add(uid_t key);
-
 	std::string get_k8s_cluster_name() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
 	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
-	
 
 private:
 
@@ -103,6 +99,9 @@ private:
 		{"k8s_node", "kubernetes.node.name"}
 		// other orchestrators nodes
 	};
+
+	// These return true if the new entry has been added, false if it already existed
+	bool add(uid_t key);
 
 	void state_of(const draiosproto::container_group *grp,
 		      container_groups* state,

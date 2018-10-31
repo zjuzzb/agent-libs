@@ -937,39 +937,44 @@ bool infrastructure_state::check_registered_scope(reg_id_t &reg)
 
 // This function tests if a given congroup is valid for export
 // Rules:
-// 1.) ALWAYS Export : k8s_namespace, k8s_node
-// 2.) NEVER Export  : host , container
-// 3.) Conditional Export : (a). All other congroups ONLY if they have
+// 1.) ONLY Export: k8s_* objects
+// 2.) ALWAYS Export : k8s_namespace, k8s_node
+// 3.) NEVER Export  : host , container
+// 4.) Conditional Export : (a). All other congroups ONLY if they have
 //                               k8s_namespace parent
 //                          (b). A k8s_pod should be exported ONLY
 //                               if it has both k8s_namespace and k8s_node
 //                               parents.
 bool infrastructure_state::is_valid_for_export(const draiosproto::container_group *grp) const
 {
-	// Always return node and namespace
-	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node") {
-		return true;
-	}
-
 	// Never return host and container.
 	if(grp->uid().kind() == "host" || grp->uid().kind() == "container") {
 		return false;
 	}
 
+	// Make sure we are dealing with a k8s_* object
+	if((grp->uid().kind()).substr(0,4) != "k8s_") {
+		return false;
+	}
+	
+	// Always return node and namespace
+	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node") {
+		return true;
+	}
+
+	// Now check for parents conditions based on rules above
 	bool has_k8s_namespace(false), has_k8s_node(false);
 	
 	for(const auto &p_uid : grp->parents()) {
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
-		if(!has(pkey)) {
-			// Not in the m_state map.
-			continue;
+		if (p_uid.kind() == "k8s_namespace")
+		{
+			has_k8s_namespace = has(pkey);
 		}
-
-		if(p_uid.kind() == "k8s_namespace") {
-			has_k8s_namespace = true;
-		} else if(p_uid.kind() == "k8s_node") {
-			has_k8s_node = true;
+		else if (grp->uid().kind() == "k8s_pod" && p_uid.kind() == "k8s_node")
+		{
+			has_k8s_node = has(pkey);
 		}
 	}
 
