@@ -2,8 +2,8 @@ add_custom_target(local-dockerfile ALL
 	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile
-	COMMAND ${CMAKE_CURRENT_BINARY_DIR}/../venvs/jinja2/bin/python ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image local --repo dev > ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile
-	DEPENDS jinja_venv
+	COMMAND ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/python ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image local --repo dev > ${CMAKE_CURRENT_BINARY_DIR}/Dockerfile
+	DEPENDS jinja
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../Dockerfile.jinja2
 	)
