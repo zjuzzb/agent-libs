@@ -1037,6 +1037,10 @@ void security_mgr::on_new_container(const sinsp_container_info& container_info, 
 {
 	string errstr;
 
+	// It's a write lock because m_policies_groups could be
+	// modified in load_policy()
+	Poco::ScopedWriteRWLock lck(m_policies_lock);
+
 	std::list<std::string> ids{container_info.m_id};
 	for(const auto &it : m_policies)
 	{
