@@ -31,12 +31,23 @@
 #include "Poco/Net/FTPStreamFactory.h"
 #include "Poco/NullStream.h"
 
+// For HTTP server
+#include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/HTTPServer.h>
+#include <Poco/Net/HTTPRequestHandler.h>
+#include <Poco/Net/HTTPRequestHandlerFactory.h>
+#include <Poco/Net/HTTPResponse.h>
+#include <Poco/Net/HTTPServerRequest.h>
+#include <Poco/Net/HTTPServerResponse.h>
+
+
 #include "sinsp_int.h"
 #include "connectinfo.h"
 #include "analyzer_thread.h"
 #include "protostate.h"
 #include "procfs_parser.h"
 #include <array>
+#include <thread>
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;
@@ -49,6 +60,14 @@ using Poco::Exception;
 using Poco::Net::HTTPStreamFactory;
 using Poco::Net::FTPStreamFactory;
 using Poco::NullOutputStream;
+
+using Poco::Net::HTTPServer;
+using Poco::Net::HTTPServerRequest;
+using Poco::Net::HTTPServerResponse;
+using Poco::Net::HTTPServerParams;
+using Poco::Net::HTTPResponse;
+using Poco::Net::ServerSocket;
+
 
 #define SITE "www.google.com"
 #define SITE1 "www.yahoo.com"
@@ -63,6 +82,82 @@ void error(char *msg) {
     perror(msg);
     exit(0);
 }
+
+//
+// HTTP server stuff
+//
+
+///
+/// Handle incoming HTTP requests
+///
+/// Implements a very simple request handler
+///
+class HTTPHandler : public Poco::Net::HTTPRequestHandler
+{
+public:
+  virtual void handleRequest(HTTPServerRequest &request, HTTPServerResponse &response)
+	{
+		response.setStatus(HTTPResponse::HTTP_OK);
+		response.setContentType("text/html");
+
+		ostream& out = response.send();
+		out << "<html><body>"
+		    << "<h1>Sysdig agent test</h1>"
+		    << "<p>Request host = " << request.getHost() << "</p>"
+		    << "<p>Request URI = "  << request.getURI()  << "</p>"
+		    << "</body></html>"
+		    << flush;
+  }
+};
+
+///
+/// Build a request handler when requested by the server
+///
+class HTTPRHFactory : public Poco::Net::HTTPRequestHandlerFactory
+{
+public:
+	static const uint16_t port = 9090;
+	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest &)
+	{
+		return new HTTPHandler;
+	}
+};
+
+///
+/// Make an HTTP request to the built-in server
+///
+/// This function knows how to connect to the above server class and provides
+/// a convenient interface for making a simple request (assuming we don't care
+/// about the response).
+///
+/// @return  true   The request was made successfully
+/// @return  false  The request failed before it could be made
+///
+bool localhost_http_request()
+{
+	if (!URIStreamOpener::defaultOpener().supportsScheme("http")) {
+		try {
+			HTTPStreamFactory::registerFactory();
+		} catch (...) {
+			// If the factory is already registered, that's fine. Carry on.
+		}
+	}
+
+	try {
+		NullOutputStream ostr;
+		stringstream ss;
+		ss << "http://127.0.0.1:" << HTTPRHFactory::port;
+		URI uri(ss.str());
+
+		std::unique_ptr<std::istream> pStr0(URIStreamOpener::defaultOpener().open(uri));
+		StreamCopier::copyStream(*pStr0.get(), ostr);
+	} catch (Exception& ex) {
+		cerr << "Exception: " << ex.displayText() << endl;
+		return false;
+	}
+	return true;
+}
+
 
 TEST_F(sys_call_test, net_web_requests)
 {
@@ -220,7 +315,8 @@ TEST_F(sys_call_test, net_ssl_requests)
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
 		auto tinfo = evt->get_thread_info(false);
-		return (tinfo != nullptr && tinfo->m_comm == "curl") || m_tid_filter(evt);
+		// wget is more reliable than curl for not changing its ssl behavior
+		return (tinfo != nullptr && tinfo->m_comm == "wget") || m_tid_filter(evt);
 	};
 
 	//
@@ -228,7 +324,7 @@ TEST_F(sys_call_test, net_ssl_requests)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		auto ret = system("curl https://www.google.com > /dev/null 2>&1");
+		auto ret = system("wget https://www.sysdig.com > /dev/null 2>&1");
 		EXPECT_EQ(0, ret);
 
 		// We use a random call to tee to signal that we're done
@@ -252,8 +348,9 @@ TEST_F(sys_call_test, net_ssl_requests)
 			sinsp_transaction_counters transaction_metrics;
 			transaction_metrics.clear();
 			threadtable->loop([&] (sinsp_threadinfo& tinfo) {
-				if(tinfo.m_comm == "curl")
+				if(tinfo.m_comm == "wget")
 				{
+					cout << "Adding wget with m_count_out of " << tinfo.m_ainfo->m_transaction_metrics.get_counter()->m_count_out << endl;
 					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
 				}
 				return true;
@@ -445,31 +542,39 @@ TEST_F(sys_call_test, net_connection_table_limit)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
+		const int REQUESTS_TO_SEND = 5;
+		int num_requests = 0;
+		// Spin up a thread to run the HTTP server
+	    std::thread ws_thread([&num_requests]
+		{
+			HTTPServer srv(new HTTPRHFactory, ServerSocket(HTTPRHFactory::port), new HTTPServerParams);
+
+			srv.start();
+
+			while (num_requests < REQUESTS_TO_SEND) {
+				std::this_thread::sleep_for(chrono::milliseconds(250));
+			}
+
+			srv.stop();
+		});
+
 		try
 		{
 			HTTPStreamFactory::registerFactory();
 
 			NullOutputStream ostr;
 
-			URI uri("http://www.google.com");
+			URI uri("http://127.0.0.1:9090");
 
-			//
-			// 5 separate connections
-			//
-			std::unique_ptr<std::istream> pStr0(URIStreamOpener::defaultOpener().open(uri));
-			StreamCopier::copyStream(*pStr0.get(), ostr);
+			// Sleep to give the server time to start up
+			std::this_thread::sleep_for(chrono::milliseconds(500));
 
-			std::unique_ptr<std::istream> pStr1(URIStreamOpener::defaultOpener().open(uri));
-			StreamCopier::copyStream(*pStr1.get(), ostr);
-
-			std::unique_ptr<std::istream> pStr2(URIStreamOpener::defaultOpener().open(uri));
-			StreamCopier::copyStream(*pStr2.get(), ostr);
-
-			std::unique_ptr<std::istream> pStr3(URIStreamOpener::defaultOpener().open(uri));
-			StreamCopier::copyStream(*pStr3.get(), ostr);
-
-			std::unique_ptr<std::istream> pStr4(URIStreamOpener::defaultOpener().open(uri));
-			StreamCopier::copyStream(*pStr4.get(), ostr);
+			std::unique_ptr<std::istream> pStrs[REQUESTS_TO_SEND];
+			for (int i = 0; i < REQUESTS_TO_SEND; ++i) {
+				pStrs[i] = std::move(std::unique_ptr<std::istream>(URIStreamOpener::defaultOpener().open(uri)));
+				StreamCopier::copyStream(*pStrs[i].get(), ostr);
+				++num_requests;
+			}
 			// We use a random call to tee to signal that we're done
 			tee(-1, -1, 0, 0);
 		}
@@ -479,6 +584,7 @@ TEST_F(sys_call_test, net_connection_table_limit)
 			FAIL();
 		}
 
+		ws_thread.join();
 		return;
 	};
 

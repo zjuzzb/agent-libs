@@ -20,6 +20,7 @@ import (
 type Scraper interface {
 	Scrape(rootPath string, moduleName string,
 		task *draiosproto.CompTask,
+		includeDesc bool,
 		evtsChannel chan *sdc_internal.CompTaskEvent,
 		metricsChannel chan string) error
 }
@@ -144,6 +145,7 @@ func (d *ResultRisk) UnmarshalJSON(b []byte) error {
 
 type TaskResultTest struct {
 	TestNumber string `json:"testNumber"`
+	Description string `json:"description,omitempty"`
 	Status ResultStatus `json:"status"`
 	Details string `json:"details,omitempty"`
 	Items []string `json:"items,omitempty"`
@@ -151,6 +153,7 @@ type TaskResultTest struct {
 
 type TaskResultSection struct {
 	SectionId string `json:"sectionId"`
+	Description string `json:"description,omitempty"`
 	TestsRun uint64 `json:"testsRun"`
 	PassCount uint64 `json:"passCount"`
 	FailCount uint64 `json:"failCount"`
@@ -163,6 +166,7 @@ type ExtendedTaskResult struct {
 	TimestampNS uint64 `json:"timestampNs"`
 	HostMac string `json:"hostMac"`
 	TaskName string `json:"taskName"`
+	ResultSchema string `json:"resultSchema,omitempty"`
 	TestsRun uint64 `json:"testsRun"`
 	PassCount uint64 `json:"passCount"`
 	FailCount uint64 `json:"failCount"`
@@ -306,6 +310,7 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 
 		err = module.Impl.Scrape(outputDir, module.Name,
 			stask.task,
+			mgr.IncludeDesc,
 			mgr.evtsChannel, mgr.metricsChannel); if err != nil {
 				log.Errorf("Could not scrape module %s output (%s)",
 					module.Name, err);

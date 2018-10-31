@@ -1,10 +1,8 @@
-add_custom_target(jinja_venv ALL
-	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/venvs/jinja2)
+add_custom_target(jinja ALL
+	DEPENDS ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/lib/python2.7/site-packages/jinja2/__init__.py)
 
-add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/venvs/jinja2
-	COMMAND ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/python -m pip install --user virtualenv &&
-         	${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/python -m virtualenv ${CMAKE_CURRENT_BINARY_DIR}/venvs/jinja2 &&
-	        ${CMAKE_CURRENT_BINARY_DIR}/venvs/jinja2/bin/pip install jinja2)
+add_custom_command(OUTPUT ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/lib/python2.7/site-packages/jinja2/__init__.py
+	COMMAND ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/pip install jinja2)
 
 add_subdirectory(agent-kmodule)
 add_subdirectory(agent-slim)

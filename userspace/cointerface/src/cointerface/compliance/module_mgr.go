@@ -26,6 +26,7 @@ type ModuleMgr struct {
 	customerId string
 	machineId string
 	Calendar *draiosproto.CompCalendar
+	IncludeDesc bool
 	availModules map[string]Module
 	evtsChannel chan *sdc_internal.CompTaskEvent
 	metricsChannel chan string
@@ -243,6 +244,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 	}
 
 	mgr.Calendar = start.Calendar
+	mgr.IncludeDesc = start.GetIncludeDesc()
 
 	// Create a scheduler for the tasks we will run
 	scheduler := gocron.NewScheduler()

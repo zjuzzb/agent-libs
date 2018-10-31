@@ -627,6 +627,8 @@ void security_mgr::refresh_compliance_tasks()
 	// for the tasks that should actually run.
 	sdc_internal::comp_start start;
 
+	start.set_include_desc(m_configuration->m_security_include_desc_in_compliance_results);
+
 	for(auto &task : m_compliance_calendar.tasks())
 	{
 		if(!task.enabled())
@@ -1036,6 +1038,10 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 void security_mgr::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
 	string errstr;
+
+	// It's a write lock because m_policies_groups could be
+	// modified in load_policy()
+	Poco::ScopedWriteRWLock lck(m_policies_lock);
 
 	std::list<std::string> ids{container_info.m_id};
 	for(const auto &it : m_policies)

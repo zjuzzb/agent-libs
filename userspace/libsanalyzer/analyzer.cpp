@@ -124,7 +124,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
 
-	m_reduced_ipv4_connections = new unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>();
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
 	m_score_calculator = NULL;
@@ -221,7 +220,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_delay_calculator;
 	delete m_threadtable_listener;
 	delete m_fd_listener;
-	delete m_reduced_ipv4_connections;
 	delete m_ipv4_connections;
 
 #ifdef HAS_UNIX_CONNECTIONS
@@ -2562,11 +2560,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	unsigned num_prometheus_metrics_filtered = 0;
 	unsigned num_prometheus_metrics_total = 0;
 
+	uint32_t num_envs_sent = 0;
+
 	///////////////////////////////////////////////////////////////////////////
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
 	auto jmx_limit = m_configuration->get_jmx_limit();
+	std::set<uint64_t> all_uids;
 	tracer_emitter at_trc("aggregate_threads", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
@@ -2601,10 +2602,44 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			draiosproto::program* prog = m_metrics->add_programs();
 			draiosproto::process* proc = prog->mutable_procinfo();
 
-			prog->add_pids(tinfo->m_pid);
+			for (const auto pid : procinfo->m_program_pids) {
+				prog->add_pids(pid);
+			}
+
+			if (m_track_environment) {
+				auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
+				auto env_hash = mt_ainfo->m_env_hash.get_hash();
+				prog->set_environment_hash(env_hash.data(), env_hash.size());
+				auto af_flag = thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+				if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
+					auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + ENV_HASH_TTL});
+					if (new_env.second || new_env.first->second < m_prev_flush_time_ns) {
+						if (++num_envs_sent > m_envs_per_flush) {
+							g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
+							m_sent_envs.erase(new_env.first);
+						} else {
+							auto env = m_metrics->add_environments();
+							env->set_hash(env_hash.data(), env_hash.size());
+							for (const auto& entry : tinfo->m_env) {
+								env->add_variables(entry);
+							}
+							if (!new_env.second) {
+								new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
+							}
+						}
+					}
+				}
+			}
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
 #endif // ANALYZER_EMITS_PROGRAMS
+
+			for (const auto uid : procinfo->m_program_uids) {
+				if (m_username_lookups) {
+					all_uids.insert(uid);
+				}
+				prog->add_uids(uid);
+			}
 
 			//
 			// Basic values
@@ -2926,6 +2961,15 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 	at_trc.stop();
 
+	tracer_emitter user_trc("userdb_lookup", proc_trc);
+	for (const auto uid : all_uids) {
+		auto userdb = m_metrics->add_userdb();
+		const auto& user = m_userdb.lookup(uid);
+		userdb->set_id(uid);
+		userdb->set_name(user);
+	}
+	user_trc.stop();
+
 	// add jmx and app checks per container
 	for (int i = 0; i < m_metrics->containers_size(); i++)
 	{
@@ -2999,6 +3043,25 @@ void sinsp_analyzer::flush_processes()
 	m_threads_to_remove.clear();
 }
 
+draiosproto::connection_state pb_connection_state(int analyzer_flags)
+{
+	if (analyzer_flags & sinsp_connection::AF_FAILED) {
+		return draiosproto::connection_state::CONN_FAILED;
+	} else if (analyzer_flags & sinsp_connection::AF_PENDING) {
+		return draiosproto::connection_state::CONN_PENDING;
+	} else {
+		return draiosproto::connection_state::CONN_SUCCESS;
+	}
+}
+
+draiosproto::error_code pb_error_code(int error_code)
+{
+	if (draiosproto::error_code_IsValid(error_code)) {
+		return static_cast<draiosproto::error_code>(error_code);
+	}
+	return draiosproto::ERR_NONE;
+}
+
 bool conn_cmp_bytes(pair<const process_tuple*, sinsp_connection*>& src,
 					pair<const process_tuple*, sinsp_connection*>& dst)
 {
@@ -3024,6 +3087,15 @@ bool conn_cmp_n_aggregated_connections(pair<const process_tuple*, sinsp_connecti
 	return (s > d);
 }
 
+static inline bool should_report_connection(const process_tuple& tuple)
+{
+	if (tuple.m_fields.m_state == draiosproto::CONN_SUCCESS) {
+		return tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0;
+	} else {
+		return tuple.m_fields.m_sip != 0 || tuple.m_fields.m_dip != 0;
+	}
+}
+
 //
 // Strategy:
 //  - sport is masked to zero, unless m_report_source_port is set
@@ -3037,19 +3109,21 @@ void sinsp_analyzer::emit_aggregated_connections()
 	bool aggregate_external_clients = false;
 	set<uint32_t> unique_external_ips;
 
-	m_reduced_ipv4_connections->clear();
+	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>
+	        reduced_ipv4_connections,
+		reduced_and_filtered_ipv4_connections,
+		connection_to_emit;
+
 	unordered_map<uint16_t, sinsp_connection_aggregator> connections_by_serverport;
 
 	//
 	// First partial pass to determine if external connections need to be coalesced
 	//
-	for(cit = m_ipv4_connections->m_connections.begin();
-		cit != m_ipv4_connections->m_connections.end();
-		++cit)
+	for (const auto& it : m_ipv4_connections->m_connections)
 	{
-		if(cit->second.is_server_only())
+		if(it.second.is_server_only())
 		{
-			uint32_t sip = cit->first.m_fields.m_sip;
+			uint32_t sip = it.first.m_fields.m_sip;
 
 			if(!m_inspector->m_network_interfaces->is_ipv4addr_in_subnet(sip))
 			{
@@ -3117,8 +3191,9 @@ void sinsp_analyzer::emit_aggregated_connections()
 		tuple.m_fields.m_sport = m_report_source_port ? cit->first.m_fields.m_sport : 0;
 		tuple.m_fields.m_dport = cit->first.m_fields.m_dport;
 		tuple.m_fields.m_l4proto = cit->first.m_fields.m_l4proto;
+		tuple.m_fields.m_state = pb_connection_state(cit->second.m_analysis_flags);
 
-		if(tuple.m_fields.m_sip != 0 && tuple.m_fields.m_dip != 0)
+		if(should_report_connection(tuple))
 		{
 			if(!cit->second.is_client_and_server())
 			{
@@ -3157,7 +3232,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 			// Look for the entry in the reduced connection table.
 			// Note: we don't export connections whose sip or dip is zero.
 			//
-			sinsp_connection& conn = (*m_reduced_ipv4_connections)[tuple];
+			sinsp_connection& conn = reduced_ipv4_connections[tuple];
 			if(conn.m_timestamp == 0)
 			{
 				//
@@ -3232,72 +3307,182 @@ void sinsp_analyzer::emit_aggregated_connections()
 	//
 	// If the table is still too big, sort it and pick only the top connections
 	//
-	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns;
+	vector<pair<const process_tuple*, sinsp_connection*>> sortable_conns, sortable_incomplete_conns;
 	pair<const process_tuple*, sinsp_connection*> sortable_conns_entry;
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp> reduced_and_filtered_ipv4_connections;
-	auto connection_to_emit = m_reduced_ipv4_connections;
 
-	if(m_reduced_ipv4_connections->size() > m_top_connections_in_sample)
+	if(reduced_ipv4_connections.size() > m_top_connections_in_sample)
 	{
+		size_t num_conns = 0;
+		size_t num_incomplete_conns = 0;
+		size_t reported_conns = 0;
+		size_t reported_incomplete_conns = 0;
+
 		//
 		// Prepare the sortable list
 		//
-		for(auto sit = m_reduced_ipv4_connections->begin();
-			sit != m_reduced_ipv4_connections->end(); ++sit)
+		for(auto& sit : reduced_ipv4_connections)
 		{
-			sortable_conns_entry.first = &(sit->first);
-			sortable_conns_entry.second = &(sit->second);
+			sortable_conns_entry.first = &(sit.first);
+			sortable_conns_entry.second = &(sit.second);
 
-			sortable_conns.push_back(sortable_conns_entry);
+			if (sit.first.m_fields.m_state == (int)draiosproto::connection_state::CONN_SUCCESS)
+			{
+				sortable_conns.push_back(sortable_conns_entry);
+			}
+			else
+			{
+				sortable_incomplete_conns.push_back(sortable_conns_entry);
+			}
+		}
+		num_conns = sortable_conns.size();
+		num_incomplete_conns = sortable_incomplete_conns.size();
+
+		auto conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_conns.size());
+		if (conns_to_report > 0)
+		{
+			//
+			// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
+			// connections
+			//
+			partial_sort(sortable_conns.begin(),
+				sortable_conns.begin() + conns_to_report,
+				sortable_conns.end(),
+				conn_cmp_n_aggregated_connections);
+
+			for(uint32_t j = 0; j < conns_to_report; j++)
+			{
+				//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+
+				reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
+					*(sortable_conns[j].second);
+			}
+
+			//
+			// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
+			//
+			partial_sort(sortable_conns.begin(),
+				sortable_conns.begin() + conns_to_report,
+				sortable_conns.end(),
+				conn_cmp_bytes);
+
+			for(uint32_t j = 0; j < conns_to_report; j++)
+			{
+				reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
+					*(sortable_conns[j].second);
+			}
+		}
+		reported_conns = reduced_and_filtered_ipv4_connections.size();
+
+		conns_to_report = std::min(m_top_connections_in_sample, (uint32_t)sortable_incomplete_conns.size());
+		if (conns_to_report > 0)
+		{
+			//
+			// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
+			// incomplete connections
+			//
+			partial_sort(sortable_incomplete_conns.begin(),
+				     sortable_incomplete_conns.begin() + conns_to_report,
+				     sortable_incomplete_conns.end(),
+				     conn_cmp_n_aggregated_connections);
+
+			for(uint32_t j = 0; j < conns_to_report; j++)
+			{
+				reduced_and_filtered_ipv4_connections[*(sortable_incomplete_conns[j].first)] =
+					*(sortable_incomplete_conns[j].second);
+			}
 		}
 
-		//
-		// Sort by number of sub-connections and pick the TOP_CONNECTIONS_IN_SAMPLE
-		// connections
-		//
-		partial_sort(sortable_conns.begin(),
-			sortable_conns.begin() + m_top_connections_in_sample,
-			sortable_conns.end(),
-			conn_cmp_n_aggregated_connections);
+		uint64_t now = sinsp_utils::get_current_time_ns() / ONE_SECOND_IN_NS;
+		if (m_connection_truncate_report_interval > 0 || m_connection_truncate_log_interval > 0) {
+			bool truncated_conns = (num_conns != reported_conns);
+			bool truncated_incomplete_conns = (num_incomplete_conns != reported_incomplete_conns);
+			int trunc = truncated_conns | (truncated_incomplete_conns << 1);
+			if (trunc) {
+				string evt_name = "Too many TCP connections to report, truncating table";
+				string evt_desc;
 
-		for(uint32_t j = 0; j < m_top_connections_in_sample; j++)
-		{
-			//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
+				switch (trunc) {
+					case 1:
+						evt_desc = "Reported " + to_string(reported_conns) + " out of " + to_string(num_conns) + " connections";
+						break;
+					case 2:
+						evt_desc = "Reported " + to_string(reported_incomplete_conns) + " out of " + to_string(num_incomplete_conns) + " incomplete connections";
+						break;
+					case 3:
+						evt_desc = "Reported " + to_string(reported_conns) + " out of " + to_string(num_conns) + " successful connections and " +
+							to_string(reported_incomplete_conns) + " out of " + to_string(num_incomplete_conns) + " incomplete connections";
+						break;
+					default:
+						ASSERT(false);
+				}
 
-			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
-				*(sortable_conns[j].second);
+				if (m_connection_truncate_log_interval > 0 && m_connection_truncate_log_last + m_connection_truncate_log_interval < (int)now) {
+					g_logger.log(evt_name + ". " + evt_desc, sinsp_logger::SEV_INFO);
+#define IP4ADDR(ip) ip & 0xff, (ip >> 8) & 0xff, (ip >> 16) & 0xff, ip >> 24
+					for (auto it = sortable_conns.begin(); it != sortable_conns.end(); ++it) {
+						const auto tuple = it->first;
+						const auto aconn = it->second;
+						if (reduced_and_filtered_ipv4_connections.find(*(it->first)) == reduced_and_filtered_ipv4_connections.end()) {
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Dropping connection %s %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d",
+									aconn->m_scomm.c_str(),
+									IP4ADDR(tuple->m_fields.m_sip), tuple->m_fields.m_sport,
+									IP4ADDR(tuple->m_fields.m_dip), tuple->m_fields.m_dport);
+						}
+					}
+
+					for (auto it = sortable_incomplete_conns.begin(); it != sortable_incomplete_conns.end(); ++it) {
+						const auto tuple = it->first;
+						const auto aconn = it->second;
+						if (reduced_and_filtered_ipv4_connections.find(*(it->first)) ==
+						    reduced_and_filtered_ipv4_connections.end()) {
+							g_logger.format(sinsp_logger::SEV_DEBUG,
+									"Dropping incomplete connection %s %d.%d.%d.%d:%d -> %d.%d.%d.%d:%d",
+									aconn->m_scomm.c_str(),
+									IP4ADDR(tuple->m_fields.m_sip), tuple->m_fields.m_sport,
+									IP4ADDR(tuple->m_fields.m_dip), tuple->m_fields.m_dport);
+						}
+					}
+#undef IP4ADDR
+					m_connection_truncate_log_last = (int)now;
+				}
+
+				if (m_connection_truncate_report_interval > 0 && m_connection_truncate_report_last + m_connection_truncate_report_interval < (int)now) {
+					event_scope scope;
+					scope.add("host.mac", m_configuration->get_machine_id());
+
+					auto event_str = sinsp_user_event::to_string(
+						now,
+						std::move(evt_name),
+						std::move(evt_desc),
+						std::move(scope),
+						{});
+
+					g_logger.log(event_str, sinsp_logger::SEV_EVT_INFORMATION);
+					m_connection_truncate_report_last = (int)now;
+				}
+			}
 		}
+		reported_incomplete_conns = reduced_and_filtered_ipv4_connections.size() - reported_conns;
+		connection_to_emit = std::move(reduced_and_filtered_ipv4_connections);
 
-		//
-		// Sort by total bytes and pick the TOP_CONNECTIONS_IN_SAMPLE connections
-		//
-		partial_sort(sortable_conns.begin(),
-			sortable_conns.begin() + m_top_connections_in_sample,
-			sortable_conns.end(),
-			conn_cmp_bytes);
-
-		for(uint32_t j = 0; j < m_top_connections_in_sample; j++)
-		{
-			reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
-				*(sortable_conns[j].second);
-		}
-
-		connection_to_emit = &reduced_and_filtered_ipv4_connections;
+	}
+	else
+	{
+		connection_to_emit = std::move(reduced_ipv4_connections);
 	}
 
 	//
 	// Emit the aggregated table into the sample
 	//
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>::iterator acit;
-	for(acit = connection_to_emit->begin();
-		acit != connection_to_emit->end(); ++acit)
+	for(auto& acit : connection_to_emit)
 	{
 		//
 		// Skip connection that had no activity during the sample
 		//
 		if(!m_simpledriver_enabled)
 		{
-			if(!acit->second.is_active())
+			if(!acit.second.is_active())
 			{
 				continue;
 			}
@@ -3306,26 +3491,38 @@ void sinsp_analyzer::emit_aggregated_connections()
 		//
 		// Add the connection to the protobuf
 		//
-		draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+		auto conn_state = pb_connection_state(acit.second.m_analysis_flags);
+		draiosproto::ipv4_connection* conn;
+		if (conn_state == draiosproto::CONN_SUCCESS)
+		{
+			conn = m_metrics->add_ipv4_connections();
+		}
+		else
+		{
+			conn = m_metrics->add_ipv4_incomplete_connections();
+		}
+
+		conn->set_state(conn_state);
+		conn->set_error_code(pb_error_code(acit.second.m_error_code));
 		draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
-		tuple->set_sip(htonl(acit->first.m_fields.m_sip));
-		tuple->set_dip(htonl(acit->first.m_fields.m_dip));
-		tuple->set_sport(acit->first.m_fields.m_sport);
-		tuple->set_dport(acit->first.m_fields.m_dport);
-		tuple->set_l4proto(acit->first.m_fields.m_l4proto);
+		tuple->set_sip(htonl(acit.first.m_fields.m_sip));
+		tuple->set_dip(htonl(acit.first.m_fields.m_dip));
+		tuple->set_sport(acit.first.m_fields.m_sport);
+		tuple->set_dport(acit.first.m_fields.m_dport);
+		tuple->set_l4proto(acit.first.m_fields.m_l4proto);
 
-		conn->set_spid(acit->first.m_fields.m_spid);
-		conn->set_dpid(acit->first.m_fields.m_dpid);
+		conn->set_spid(acit.first.m_fields.m_spid);
+		conn->set_dpid(acit.first.m_fields.m_dpid);
 
-		acit->second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
-		acit->second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
+		acit.second.m_metrics.to_protobuf(conn->mutable_counters(), m_sampling_ratio);
+		acit.second.m_transaction_metrics.to_protobuf(conn->mutable_counters()->mutable_transaction_counters(),
 			conn->mutable_counters()->mutable_max_transaction_counters(),
 			m_sampling_ratio);
 		//
 		// The timestamp field is used to count the number of sub-connections
 		//
-		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit->second.m_timestamp);
+		conn->mutable_counters()->set_n_aggregated_connections((uint32_t)acit.second.m_timestamp);
 	}
 }
 
@@ -3341,7 +3538,18 @@ void sinsp_analyzer::emit_full_connections()
 		//
 		if(cit->second.is_active() || m_simpledriver_enabled)
 		{
-			draiosproto::ipv4_connection* conn = m_metrics->add_ipv4_connections();
+			auto conn_state = pb_connection_state(cit->second.m_analysis_flags);
+			draiosproto::ipv4_connection* conn;
+			if (conn_state == draiosproto::CONN_SUCCESS)
+			{
+				conn = m_metrics->add_ipv4_connections();
+			}
+			else
+			{
+				conn = m_metrics->add_ipv4_incomplete_connections();
+			}
+			conn->set_state(conn_state);
+			conn->set_error_code(pb_error_code(cit->second.m_error_code));
 			draiosproto::ipv4tuple* tuple = conn->mutable_tuple();
 
 			tuple->set_sip(htonl(cit->first.m_fields.m_sip));

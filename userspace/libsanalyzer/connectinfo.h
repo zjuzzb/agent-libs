@@ -12,17 +12,24 @@ class SINSP_PUBLIC sinsp_connection
 public:
 	enum analysis_flags
 	{
-	    AF_NONE = 0,
+		AF_NONE = 0,
 		// Connection has been closed. It will have to be removed from the 
 		// connection table.
-	    AF_CLOSED = (1 << 0), 
+		AF_CLOSED = (1 << 0),
 		// Connection has been closed and reopened with the same key. 
 		// I've seen this happen with unix sockets. A successive unix socket pair 
 		// can be assigned the same addresses of a just closed one.
 		// When that happens, the old connection is removed and the new one is
 		// added with the AF_REUSED flag, so that the analyzer can detect that
 		// connection is different.
-		AF_REUSED = (1 << 1), 
+		AF_REUSED = (1 << 1),
+		// This connection hasn't been established yet (nonblocking connect() was called)
+		AF_PENDING = (1 << 2),
+		// this connection has failed due to:
+		// - connect() error
+		// - getsockopt(SOL_SOCKET, SO_ERROR) reporting an error
+		// - read/write error
+		AF_FAILED = (1 << 3),
 	};
 
 	sinsp_connection();
@@ -31,10 +38,10 @@ public:
 	void reset_server();
 	void reset_client();
 	void clear();
-	bool is_active();
-	bool is_client_only();
-	bool is_server_only();
-	bool is_client_and_server();
+	bool is_active() const;
+	bool is_client_only() const;
+	bool is_server_only() const;
+	bool is_client_and_server() const;
 
 	int64_t m_spid;
 	int64_t m_stid;
@@ -46,14 +53,15 @@ public:
 	int64_t m_dfd;
 	string m_dcomm;
 
+	uint64_t m_timestamp;
 	int8_t m_refcount;
 
-	uint64_t m_timestamp;
 
 	//
 	// Analyzer state
 	//
 	uint8_t m_analysis_flags; // Flags word used by the analysis engine.
+	int32_t m_error_code; // last syscall error code
 	sinsp_connection_counters m_metrics;
 	sinsp_transaction_counters m_transaction_metrics;
 };
@@ -137,7 +145,7 @@ public:
 	{
 		m_n_drops = 0;
 	}
-	sinsp_connection* add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp);
+	sinsp_connection* add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp, uint8_t flags, int32_t error_code);
 	void remove_connection(const TKey& key);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
@@ -175,7 +183,9 @@ public:
 };
 
 template<class TKey, class THash, class TCompare>
-sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp)
+sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
+	const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp,
+	uint8_t flags, int32_t error_code)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
@@ -187,6 +197,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 		m_n_drops++;
 		return NULL;
 	}
+
+	ASSERT((flags & ~(sinsp_connection::AF_PENDING | sinsp_connection::AF_FAILED)) == 0);
 
 	//
 	// Insert the new connection
@@ -202,7 +214,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	{
 		conn.m_timestamp = timestamp;
 		conn.m_refcount = 1;
-		conn.m_analysis_flags = 0;
+		conn.m_analysis_flags = flags;
+		conn.m_error_code = error_code;
 		if(isclient)
 		{
 			conn.m_stid = tid;
@@ -227,6 +240,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	else
 	{
 		conn.m_timestamp = timestamp;
+		conn.m_error_code = error_code;
 
 //		ASSERT(conn.m_analysis_flags != sinsp_connection::AF_CLOSED);
 //		ASSERT(conn.m_refcount <= 2);
@@ -294,6 +308,8 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			conn.m_dpid = pid;
 			conn.m_dcomm = *comm;
 		}
+		conn.m_analysis_flags &= ~(sinsp_connection::AF_PENDING | sinsp_connection::AF_FAILED);
+		conn.m_analysis_flags |= flags;
 	}
 
 	return &conn;

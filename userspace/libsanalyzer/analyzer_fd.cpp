@@ -534,7 +534,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					tid,
 					fd,
 					fdinfo->is_role_client(),
-					evt->get_ts());
+					evt->get_ts(),
+					sinsp_connection::AF_NONE,
+					0);
 			}
 			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
@@ -616,7 +618,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					tid,
 					fd,
 					fdinfo->is_role_client(),
-					evt->get_ts());
+					evt->get_ts(),
+					sinsp_connection::AF_NONE,
+					0);
 			}
 		}
 
@@ -639,6 +643,7 @@ r_conn_creation_done:
 		}
 		else if (fdinfo->is_role_client())
 		{
+			evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_in(1, original_len);
 		}
 		else
@@ -936,7 +941,9 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					tid,
 					fd,
 					fdinfo->is_role_client(),
-					evt->get_ts());
+					evt->get_ts(),
+					sinsp_connection::AF_NONE,
+					0);
 			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
@@ -1017,7 +1024,9 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					tid,
 					fd,
 					fdinfo->is_role_client(),
-					evt->get_ts());
+					evt->get_ts(),
+					sinsp_connection::AF_NONE,
+					0);
 			}
 		}
 
@@ -1078,6 +1087,7 @@ w_conn_creation_done:
 		}
 		else if(fdinfo->is_role_client())
 		{
+			evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 			connection->m_metrics.m_client.add_out(1, original_len);
 		}
 		else
@@ -1212,6 +1222,13 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
 		}
 
+		uint8_t flags = sinsp_connection::AF_NONE;
+		if (evt->m_fdinfo->is_socket_failed()) {
+			flags = sinsp_connection::AF_FAILED;
+		} else if (evt->m_fdinfo->is_socket_pending()) {
+			flags = sinsp_connection::AF_PENDING;
+		}
+
 		//
 		// Add the tuple to the connection table
 		//
@@ -1223,7 +1240,11 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 		    tid,
 		    evt->m_tinfo->m_lastevent_fd,
 		    true,
-		    evt->get_ts());
+		    evt->get_ts(),
+		    flags,
+		    evt->m_errorcode);
+
+		evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 	}
 	else
 	{
@@ -1278,7 +1299,9 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		    tid,
 		    newfd,
 		    false,
-		    evt->get_ts());
+		    evt->get_ts(),
+		    sinsp_connection::AF_NONE,
+		    0);
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 	{
@@ -1495,6 +1518,26 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 	}
 }
 
+
+void sinsp_analyzer_fd_listener::on_socket_status_changed(sinsp_evt *evt)
+{
+	ASSERT(evt->m_fdinfo);
+
+	if (evt->m_fdinfo->is_ipv4_socket() && evt->m_errorcode != EAGAIN)
+	{
+		auto connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
+		if (connection)
+		{
+			connection->m_analysis_flags &= ~sinsp_connection::AF_PENDING;
+			connection->m_error_code = -evt->m_errorcode;
+			if (evt->m_errorcode)
+			{
+				connection->m_analysis_flags |= sinsp_connection::AF_FAILED;
+			}
+		}
+	}
+}
+
 void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 {
 	ASSERT(evt->m_fdinfo);
@@ -1538,6 +1581,11 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 				flush_transaction(&params);
 			}
 		}
+
+		if (m_inspector->m_parser->m_track_connection_status)
+		{
+			on_socket_status_changed(evt);
+		}
 	}
 }
 
@@ -1552,6 +1600,13 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt *evt)
 	if(m_analyzer->m_do_baseline_calculation)
 	{
 		m_analyzer->m_falco_baseliner->on_new_proc(evt, evt->get_thread_info());
+	}
+
+	if (m_analyzer->m_track_environment) {
+		auto tinfo = evt->get_thread_info();
+		if (tinfo && tinfo->m_ainfo) {
+			tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo);
+		}
 	}
 }
 

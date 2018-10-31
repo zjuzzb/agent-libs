@@ -765,6 +765,7 @@ public:
 	std::string m_security_compliance_schedule;
 	bool m_security_send_compliance_events;
 	bool m_security_send_compliance_results;
+	bool m_security_include_desc_in_compliance_results;
 	uint64_t m_security_compliance_refresh_interval;
 	std::string m_security_compliance_kube_bench_variant;
 
@@ -813,6 +814,15 @@ public:
 	uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
 	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 	bool m_report_source_port = false;
+
+	bool m_track_connection_status;
+	int m_connection_truncate_report_interval;
+	int m_connection_truncate_log_interval;
+
+	bool m_username_lookups = false;
+
+	bool m_track_environment = false;
+	uint32_t m_envs_per_flush;
 
 	bool java_present() const
 	{

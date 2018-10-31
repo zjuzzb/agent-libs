@@ -27,6 +27,8 @@
 #include "custom_container.h"
 #endif
 #include "internal_metrics.h"
+#include "userdb.h"
+#include "env_hash.h"
 
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
@@ -92,8 +94,9 @@ typedef union _process_tuple
 		uint16_t m_sport;
 		uint16_t m_dport;
 		uint8_t m_l4proto;
+		uint8_t m_state;
 	}m_fields;
-	uint8_t m_all[29];
+	uint8_t m_all[30];
 }process_tuple;
 
 struct process_tuple_hash
@@ -104,13 +107,13 @@ struct process_tuple_hash
 
 		std::hash<uint64_t> hasher64;
 		std::hash<uint32_t> hasher32;
-		std::hash<uint8_t> hasher8;
+		std::hash<uint16_t> hasher16;
 
 		seed ^= hasher64(*(uint64_t*)t.m_all) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= hasher64(*(uint64_t*)t.m_all + 8) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= hasher64(*(uint64_t*)t.m_all + 16) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 		seed ^= hasher32(*(uint32_t*)(t.m_all + 24)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-		seed ^= hasher8(*(uint8_t*)(t.m_all + 28)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+		seed ^= hasher16(*(uint16_t*)(t.m_all + 28)) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 
 		return seed;
 	}
@@ -467,6 +470,11 @@ public:
 		m_simpledriver_enabled = true;
 	}
 
+	void set_track_connection_status(bool value)
+	{
+		m_inspector->m_parser->m_track_connection_status = value;
+	}
+
 	void set_emit_tracers(bool enabled);
 	void set_internal_metrics(internal_metrics::sptr_t im);
 
@@ -514,6 +522,11 @@ public:
 		m_flush_log_time_cooldown = flush_log_cooldown_ns;
 	}
 
+	void set_username_lookups(bool enabled)
+	{
+		m_username_lookups = enabled;
+	}
+
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
 
@@ -529,6 +542,11 @@ public:
 	void set_top_processes_in_sample(uint32_t val) { m_top_processes_in_sample = val; }
 	void set_top_processes_per_container(uint32_t val) { m_top_processes_per_container = val; }
 	void set_report_source_port(bool val) { m_report_source_port = val; }
+	void set_connection_truncate_report_interval(int sec) { m_connection_truncate_report_interval = sec; }
+	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
+
+	void set_track_environment(bool val) { m_track_environment = val; }
+	void set_envs_per_flush(uint32_t val) { m_envs_per_flush = val; }
 
 	//
 	// Test tool detection state
@@ -712,10 +730,6 @@ VISIBILITY_PRIVATE
 	sinsp_procfs_parser* m_procfs_parser;
 	sinsp_proc_stat m_proc_stat;
 
-	//
-	// The table of aggregated connections
-	//
-	unordered_map<process_tuple, sinsp_connection, process_tuple_hash, process_tuple_cmp>* m_reduced_ipv4_connections;
 	//
 	// The aggregated host metrics
 	//
@@ -908,6 +922,17 @@ VISIBILITY_PRIVATE
 	uint32_t m_top_processes_in_sample = TOP_PROCESSES_IN_SAMPLE;
 	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 	bool m_report_source_port = false;
+	int m_connection_truncate_report_interval = 0;
+	int m_connection_truncate_log_interval = 0;
+	int m_connection_truncate_report_last = 0;
+	int m_connection_truncate_log_last = 0;
+
+	bool m_username_lookups = false;
+	userdb m_userdb;
+
+	bool m_track_environment = false;
+	uint32_t m_envs_per_flush;
+	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

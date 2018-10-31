@@ -53,17 +53,17 @@ void sinsp_connection::reset_client()
 	m_refcount = 1;
 }
 
-bool sinsp_connection::is_client_only()
+bool sinsp_connection::is_client_only() const
 {
 	return 0 != m_stid && 0 == m_dtid;
 }
 
-bool sinsp_connection::is_server_only()
+bool sinsp_connection::is_server_only() const
 {
 	return 0 == m_stid && 0 != m_dtid;
 }
 
-bool sinsp_connection::is_client_and_server()
+bool sinsp_connection::is_client_and_server() const
 {
 	return 0 != m_stid && 0 != m_dtid;
 }
@@ -74,12 +74,12 @@ void sinsp_connection::clear()
 	m_transaction_metrics.clear();
 }
 
-bool sinsp_connection::is_active()
+bool sinsp_connection::is_active() const
 {
 	uint32_t totops = m_metrics.m_client.m_count_in + m_metrics.m_client.m_count_out + 
 				m_metrics.m_server.m_count_in + m_metrics.m_server.m_count_out;
 
-	return (totops != 0);
+	return (totops != 0) || (m_analysis_flags & (sinsp_connection::AF_FAILED | sinsp_connection::AF_PENDING));
 }
 
 void sinsp_connection_aggregator::clear()

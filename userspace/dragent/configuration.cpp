@@ -21,6 +21,8 @@
 using namespace Poco;
 using namespace Poco::Net;
 
+DRAGENT_LOGGER("dragent");
+
 std::atomic<bool> dragent_configuration::m_signal_dump(false);
 std::atomic<bool> dragent_configuration::m_terminate(false);
 std::atomic<bool> dragent_configuration::m_send_log_report(false);
@@ -45,7 +47,7 @@ int dragent_auto_configuration::save(dragent_configuration &config,
 				     const string& config_data,
 				     string &errstr)
 {
-	g_log->debug(string("Received ") + m_config_filename + string(" with content: ") + config_data);
+	LOG_DEBUG(string("Received ") + m_config_filename + string(" with content: ") + config_data);
 	m_sha1_engine.reset();
 	if(!config_data.empty())
 	{
@@ -54,7 +56,7 @@ int dragent_auto_configuration::save(dragent_configuration &config,
 	}
 	auto new_digest = m_sha1_engine.digest();
 
-	g_log->debug(string("New digest=") + DigestEngine::digestToHex(new_digest) + " old digest= " + DigestEngine::digestToHex(m_digest));
+	LOG_DEBUG(string("New digest=") + DigestEngine::digestToHex(new_digest) + " old digest= " + DigestEngine::digestToHex(m_digest));
 
 	if(new_digest != m_digest)
 	{
@@ -81,7 +83,7 @@ int dragent_auto_configuration::save(dragent_configuration &config,
 	}
 	else
 	{
-		g_log->debug("Auto config file is already up-to-date");
+		LOG_DEBUG("Auto config file is already up-to-date");
 		return 0;
 	}
 
@@ -176,7 +178,7 @@ public:
 
 	void apply(dragent_configuration &config)
 	{
-		g_log->information("New agent auto config file applied");
+		LOG_INFO("New agent auto config file applied");
 		config.m_config_update = true;
 		config.m_terminate = true;
 	}
@@ -253,6 +255,7 @@ dragent_configuration::dragent_configuration()
 	m_security_compliance_schedule = "";
 	m_security_send_compliance_events = false;
 	m_security_send_compliance_results = false;
+	m_security_include_desc_in_compliance_results = true;
 	m_security_compliance_refresh_interval = 120000000000;
 	m_security_compliance_kube_bench_variant = "";
 	m_policy_events_rate = 0.5;
@@ -749,12 +752,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 #endif
 	// Right now these two entries does not support merging between defaults and specified on config file
 	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
-	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", 
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s",
 		{
-			{"sdchecks", 60U /* This should match the default timeout in sdchecks.py */ }, 
-			{"sdjagent", 60U}, 
-			{"mountedfs_reader", 60U}, 
-			{"statsite_forwarder", 60U}, 
+			{"sdchecks", 60U /* This should match the default timeout in sdchecks.py */ },
+			{"sdjagent", 60U},
+			{"mountedfs_reader", 60U},
+			{"statsite_forwarder", 60U},
 			{"cointerface", 60U},
 			{"promex", 60U}
 		});
@@ -783,7 +786,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	if(m_sysdig_capture_compression_level < Z_DEFAULT_COMPRESSION ||
 	   m_sysdig_capture_compression_level > Z_BEST_COMPRESSION)
 	{
-		g_log->warning("Invalid compression level "
+		LOG_WARNING("Invalid compression level "
 			       + std::to_string(m_sysdig_capture_compression_level)
 			       + ". Setting to " + std::to_string(Z_DEFAULT_COMPRESSION) + ".");
 		m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
@@ -975,9 +978,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	   !m_k8s_api_server.empty() && uri(m_k8s_api_server).is_local())
 	{
 		m_k8s_delegated_nodes = 0;
-		g_logger.log("K8s API server is local, k8s_delegated_nodes (" +
-			     std::to_string(m_k8s_delegated_nodes) + ") ignored.",
-			     sinsp_logger::SEV_WARNING);
+		LOG_WARNING("K8s API server is local, k8s_delegated_nodes (" +
+			     std::to_string(m_k8s_delegated_nodes) + ") ignored.");
 	}
 
 	// Ugly hack until we standardize on new_k8s
@@ -1065,6 +1067,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
 	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", true);
+	m_security_include_desc_in_compliance_results = m_config->get_scalar<bool>("security", "include_desc_compliance_results", true);
 	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
 	m_security_compliance_kube_bench_variant = m_config->get_scalar<string>("security", "compliance_kube_bench_variant", "");
 
@@ -1164,103 +1167,112 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_top_processes_in_sample = m_config->get_scalar<int32_t>("top_processes_in_sample", TOP_PROCESSES_IN_SAMPLE);
 	m_top_processes_per_container = m_config->get_scalar<int32_t>("top_processes_per_container", TOP_PROCESSES_PER_CONTAINER);
 	m_report_source_port = m_config->get_scalar<bool>("report_source_port", false);
+
+	m_track_connection_status = m_config->get_scalar<bool>("track_connection_status", false);
+	m_connection_truncate_report_interval = m_config->get_scalar<int>("connection_table", "truncation_report_interval", 0);
+	m_connection_truncate_log_interval = m_config->get_scalar<int>("connection_table", "truncation_log_interval", 0);
+
+	m_username_lookups = m_config->get_scalar<bool>("username_lookups", false);
+
+	m_track_environment = m_config->get_scalar<bool>("track_environment", false);
+	m_envs_per_flush = m_config->get_scalar<uint32_t>("envs_per_flush", 20);
 }
 
 void dragent_configuration::print_configuration() const
 {
-	g_log->information("Distribution: " + get_distribution());
-	g_log->information("machine id: " + m_machine_id_prefix + m_machine_id);
-	g_log->information("rootdir: " + m_root_dir);
-	g_log->information("conffile: " + m_conf_file);
-	g_log->information("metricsfile.location: " + m_metrics_dir);
-	g_log->information("log.location: " + m_log_dir);
-	g_log->information("customerid: " + m_customer_id);
-	g_log->information("collector: " + m_server_addr);
-	g_log->information("collector_port: " + NumberFormatter::format(m_server_port));
-	g_log->information("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
-	g_log->information("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
-	g_log->information("log.event_priority: " + NumberFormatter::format(m_min_event_priority));
-	g_log->information("CURL debug: " + bool_as_text(m_curl_debug));
-	g_log->information("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
-	g_log->information("ssl: " + bool_as_text(m_ssl_enabled));
-	g_log->information("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
-	g_log->information("ca_certificate: " + m_ssl_ca_certificate);
+	LOG_INFO("Distribution: " + get_distribution());
+	LOG_INFO("machine id: " + m_machine_id_prefix + m_machine_id);
+	LOG_INFO("rootdir: " + m_root_dir);
+	LOG_INFO("conffile: " + m_conf_file);
+	LOG_INFO("metricsfile.location: " + m_metrics_dir);
+	LOG_INFO("log.location: " + m_log_dir);
+	LOG_INFO("customerid: " + m_customer_id);
+	LOG_INFO("collector: " + m_server_addr);
+	LOG_INFO("collector_port: " + NumberFormatter::format(m_server_port));
+	LOG_INFO("log.file_priority: " + NumberFormatter::format(m_min_file_priority));
+	LOG_INFO("log.console_priority: " + NumberFormatter::format(m_min_console_priority));
+	LOG_INFO("log.event_priority: " + NumberFormatter::format(m_min_event_priority));
+	LOG_INFO("CURL debug: " + bool_as_text(m_curl_debug));
+	LOG_INFO("transmitbuffer_size: " + NumberFormatter::format(m_transmitbuffer_size));
+	LOG_INFO("ssl: " + bool_as_text(m_ssl_enabled));
+	LOG_INFO("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
+	LOG_INFO("ca_certificate: " + m_ssl_ca_certificate);
 	if (!m_ssl_ca_cert_dir.empty())
 	{
-		g_log->information("ca_cert_dir: " + m_ssl_ca_cert_dir);
+		LOG_INFO("ca_cert_dir: " + m_ssl_ca_cert_dir);
 	}
-	g_log->information("compression.enabled: " + bool_as_text(m_compression_enabled));
-	g_log->information("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
-	g_log->information("dumpdir: " + m_dump_dir);
-	g_log->information("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
-	g_log->information("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
-	g_log->information("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
-	g_log->information("falcobaseline.report_interval: " + NumberFormatter::format(m_security_baseline_report_interval_ns));
-	g_log->information("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
-	g_log->information("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
-	g_log->information("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
+	LOG_INFO("compression.enabled: " + bool_as_text(m_compression_enabled));
+	LOG_INFO("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));
+	LOG_INFO("dumpdir: " + m_dump_dir);
+	LOG_INFO("subsampling.ratio: " + NumberFormatter::format(m_subsampling_ratio));
+	LOG_INFO("autodrop.enabled: " + bool_as_text(m_autodrop_enabled));
+	LOG_INFO("falcobaseline.enabled: " + bool_as_text(m_falco_baselining_enabled));
+	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_security_baseline_report_interval_ns));
+	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
+	LOG_INFO("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
+	LOG_INFO("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
 	string ancestors;
 	for(auto s : m_command_lines_valid_ancestors)
 	{
 		ancestors.append(s + " ");
 	}
-	g_log->information("commandlines_capture.valid_ancestors: " + ancestors);
-	g_log->information("memdump.enabled: " + bool_as_text(m_memdump_enabled));
-	g_log->information("memdump.size: " + NumberFormatter::format(m_memdump_size));
-	g_log->information("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
-	g_log->information("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
+	LOG_INFO("commandlines_capture.valid_ancestors: " + ancestors);
+	LOG_INFO("memdump.enabled: " + bool_as_text(m_memdump_enabled));
+	LOG_INFO("memdump.size: " + NumberFormatter::format(m_memdump_size));
+	LOG_INFO("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
+	LOG_INFO("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	if(m_tracepoint_hits_threshold > 0)
 	{
-		g_log->information("tracepoint_hits_threshold: " + NumberFormatter::format(m_tracepoint_hits_threshold) + " seconds=" + NumberFormatter::format(m_tracepoint_hits_ntimes));
+		LOG_INFO("tracepoint_hits_threshold: " + NumberFormatter::format(m_tracepoint_hits_threshold) + " seconds=" + NumberFormatter::format(m_tracepoint_hits_ntimes));
 	}
 	if(m_cpu_usage_max_sr_threshold > 0)
 	{
-		g_log->information("cpu_usage_max_sr_threshold: " + NumberFormatter::format(m_cpu_usage_max_sr_threshold) + " seconds=" + NumberFormatter::format(m_cpu_usage_max_sr_ntimes));
+		LOG_INFO("cpu_usage_max_sr_threshold: " + NumberFormatter::format(m_cpu_usage_max_sr_threshold) + " seconds=" + NumberFormatter::format(m_cpu_usage_max_sr_ntimes));
 	}
-	g_log->information("ui.customname: " + m_host_custom_name);
-	g_log->information("tags: " + m_host_tags);
-	g_log->information("ui.custommap: " + m_host_custom_map);
-	g_log->information("ui.is_hidden: " + m_host_hidden);
-	g_log->information("ui.hidden_processes: " + m_hidden_processes);
-	g_log->information("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
-	g_log->information("protobuf_print: " + bool_as_text(m_print_protobuf));
+	LOG_INFO("ui.customname: " + m_host_custom_name);
+	LOG_INFO("tags: " + m_host_tags);
+	LOG_INFO("ui.custommap: " + m_host_custom_map);
+	LOG_INFO("ui.is_hidden: " + m_host_hidden);
+	LOG_INFO("ui.hidden_processes: " + m_hidden_processes);
+	LOG_INFO("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
+	LOG_INFO("protobuf_print: " + bool_as_text(m_print_protobuf));
 	if(m_json_parse_errors_logfile != "")
 	{
-		g_log->information("Will log json parse errors to; " + m_json_parse_errors_logfile);
+		LOG_INFO("Will log json parse errors to; " + m_json_parse_errors_logfile);
 		g_json_error_log.set_json_parse_errors_file(m_json_parse_errors_logfile);
 	}
 	g_json_error_log.set_machine_id(m_machine_id_prefix + m_machine_id);
 	g_json_error_log.set_events_rate(m_json_parse_errors_events_rate, m_json_parse_errors_events_max_burst);
-	g_log->information("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
-	g_log->information("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
-	g_log->information("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
-	g_log->information("watchdog.subprocesses_logger_timeout_s: " + NumberFormatter::format(m_watchdog_subprocesses_logger_timeout_s));
-	g_log->information("watchdog.analyzer_tid_collision_check_interval_s: " + NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
-	g_log->information("watchdog.sinsp_data_handler_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
-	g_log->information("watchdog.max_memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
-	g_log->information("watchdog.warn_memory_usage_mb: " + NumberFormatter::format(m_watchdog_warn_memory_usage_mb));
+	LOG_INFO("watchdog_enabled: " + bool_as_text(m_watchdog_enabled));
+	LOG_INFO("watchdog.sinsp_worker_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_worker_timeout_s));
+	LOG_INFO("watchdog.connection_manager_timeout_s: " + NumberFormatter::format(m_watchdog_connection_manager_timeout_s));
+	LOG_INFO("watchdog.subprocesses_logger_timeout_s: " + NumberFormatter::format(m_watchdog_subprocesses_logger_timeout_s));
+	LOG_INFO("watchdog.analyzer_tid_collision_check_interval_s: " + NumberFormatter::format(m_watchdog_analyzer_tid_collision_check_interval_s));
+	LOG_INFO("watchdog.sinsp_data_handler_timeout_s: " + NumberFormatter::format(m_watchdog_sinsp_data_handler_timeout_s));
+	LOG_INFO("watchdog.max_memory_usage_mb: " + NumberFormatter::format(m_watchdog_max_memory_usage_mb));
+	LOG_INFO("watchdog.warn_memory_usage_mb: " + NumberFormatter::format(m_watchdog_warn_memory_usage_mb));
 #ifndef CYGWING_AGENT
-	g_log->information("watchdog.heap_profiling_interval_s: " + NumberFormatter::format(m_watchdog_heap_profiling_interval_s));
+	LOG_INFO("watchdog.heap_profiling_interval_s: " + NumberFormatter::format(m_watchdog_heap_profiling_interval_s));
 #endif
-	g_log->information("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
-	g_log->information("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
-	g_log->information("User events rate: " + NumberFormatter::format(m_user_events_rate));
-	g_log->information("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
-	g_log->information("containers: labels max len: " + NumberFormatter::format(m_containers_labels_max_len) + " characters");
+	LOG_INFO("dirty_shutdown.report_log_size_b: " + NumberFormatter::format(m_dirty_shutdown_report_log_size_b));
+	LOG_INFO("capture_dragent_events: " + bool_as_text(m_capture_dragent_events));
+	LOG_INFO("User events rate: " + NumberFormatter::format(m_user_events_rate));
+	LOG_INFO("User events max burst: " + NumberFormatter::format(m_user_max_burst_events));
+	LOG_INFO("containers: labels max len: " + NumberFormatter::format(m_containers_labels_max_len) + " characters");
 	if(m_percentiles.size())
 	{
 		std::ostringstream os;
 		os << '[';
 		for(const auto& p : m_percentiles) { os << p << ','; }
 		os.seekp(-1, os.cur); os << ']';
-		g_log->information("Percentiles: " + os.str());
-		g_log->information("Group Percentiles: " + bool_as_text(m_group_pctl_conf->enabled()));
+		LOG_INFO("Percentiles: " + os.str());
+		LOG_INFO("Group Percentiles: " + bool_as_text(m_group_pctl_conf->enabled()));
 		if (m_group_pctl_conf->enabled()) {
-			g_log->information("  Check interval: " + NumberFormatter::format(m_group_pctl_conf->check_interval()));
-			g_log->information("  Max containers: " + NumberFormatter::format(m_group_pctl_conf->max_containers()));
+			LOG_INFO("  Check interval: " + NumberFormatter::format(m_group_pctl_conf->check_interval()));
+			LOG_INFO("  Max containers: " + NumberFormatter::format(m_group_pctl_conf->max_containers()));
 		}
 	} else {
-		g_log->information("Percentiles: " + bool_as_text(false));
+		LOG_INFO("Percentiles: " + bool_as_text(false));
 	}
 	if(m_ignored_percentiles.size())
 	{
@@ -1268,7 +1280,7 @@ void dragent_configuration::print_configuration() const
 		os << "Percentiles ignored (max allowed " + std::to_string(MAX_PERCENTILES) + "): [";
 		for(const auto& p : m_ignored_percentiles) { os << p << ','; }
 		os.seekp(-1, os.cur); os << ']';
-		g_log->warning(os.str());
+		LOG_WARNING(os.str());
 		sinsp_user_event::tag_map_t tags;
 		tags["source"] = "dragent";
 		g_logger.log(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
@@ -1276,91 +1288,91 @@ void dragent_configuration::print_configuration() const
 					std::string(), std::move(tags)), sinsp_logger::SEV_EVT_WARNING);
 
 	}
-	g_log->information("protocols: " + bool_as_text(m_protocols_enabled));
-	g_log->information("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
-	g_log->information("remotefs: " + bool_as_text(m_remotefs_enabled));
-	g_log->information("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
-	g_log->information("jmx.limit: " + NumberFormatter::format(m_jmx_limit));
+	LOG_INFO("protocols: " + bool_as_text(m_protocols_enabled));
+	LOG_INFO("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
+	LOG_INFO("remotefs: " + bool_as_text(m_remotefs_enabled));
+	LOG_INFO("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
+	LOG_INFO("jmx.limit: " + NumberFormatter::format(m_jmx_limit));
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-	g_log->information("java detected: " + bool_as_text(java_present()));
-	g_log->information("java_binary: " + m_java_binary);
-	g_log->information("sdjagent_opts:" + m_sdjagent_opts);
+	LOG_INFO("java detected: " + bool_as_text(java_present()));
+	LOG_INFO("java_binary: " + m_java_binary);
+	LOG_INFO("sdjagent_opts:" + m_sdjagent_opts);
 	if(m_sdjagent_enabled && getppid() == 1) {
-		g_log->warning("Sysdig Agent container has been launched without `--pid host` parameter, JMX metrics will not be available");
+		LOG_WARNING("Sysdig Agent container has been launched without `--pid host` parameter, JMX metrics will not be available");
 	}
-	g_log->information("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
-	g_log->information("sysdig capture.max outstanding: " + NumberFormatter::format(m_max_sysdig_captures));
-	g_log->information("sysdig capture.transmit rate (bytes/sec): " + NumberFormatter::format(m_sysdig_capture_transmit_rate));
-	g_log->information("sysdig capture.compression level: " + NumberFormatter::format(m_sysdig_capture_compression_level));
-	g_log->information("statsd enabled: " + bool_as_text(m_statsd_enabled));
-	g_log->information("statsd limit: " + std::to_string(m_statsd_limit));
-	g_log->information("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
+	LOG_INFO("sysdig.capture_enabled: " + bool_as_text(m_sysdig_capture_enabled));
+	LOG_INFO("sysdig capture.max outstanding: " + NumberFormatter::format(m_max_sysdig_captures));
+	LOG_INFO("sysdig capture.transmit rate (bytes/sec): " + NumberFormatter::format(m_sysdig_capture_transmit_rate));
+	LOG_INFO("sysdig capture.compression level: " + NumberFormatter::format(m_sysdig_capture_compression_level));
+	LOG_INFO("statsd enabled: " + bool_as_text(m_statsd_enabled));
+	LOG_INFO("statsd limit: " + std::to_string(m_statsd_limit));
+	LOG_INFO("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 #ifndef CYGWING_AGENT
-	g_log->information("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
+	LOG_INFO("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
 	if (m_prom_conf.enabled()) {
-		g_log->information("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));
+		LOG_INFO("prometheus histograms enabled: " + bool_as_text(m_prom_conf.histograms()));
 	}
-	g_log->information("prometheus exporter enabled: " + bool_as_text(m_promex_enabled));
+	LOG_INFO("prometheus exporter enabled: " + bool_as_text(m_promex_enabled));
 	if (m_promex_enabled) {
-		g_log->information("prometheus exporter listen address: " + m_promex_url);
+		LOG_INFO("prometheus exporter listen address: " + m_promex_url);
 		if (!m_promex_connect_url.empty()) {
-			g_log->information("external prometheus exporter address: " + m_promex_connect_url);
+			LOG_INFO("external prometheus exporter address: " + m_promex_connect_url);
 		} else {
-			g_log->information("internal prometheus exporter started as subprocess");
+			LOG_INFO("internal prometheus exporter started as subprocess");
 		}
-		g_log->information("prometheus exporter container labels: " + m_promex_container_labels);
+		LOG_INFO("prometheus exporter container labels: " + m_promex_container_labels);
 	}
 #endif
-	g_log->information("python binary: " + m_python_binary);
-	g_log->information("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
-	g_log->information("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
+	LOG_INFO("python binary: " + m_python_binary);
+	LOG_INFO("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
+	LOG_INFO("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
 	for(const auto& log_entry : m_k8s_logs)
 	{
 		g_log->log(log_entry.second, log_entry.first);
 	}
-	g_log->information("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
-	g_log->information("K8S connection timeout [sec]: " + std::to_string(m_k8s_timeout_s));
+	LOG_INFO("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
+	LOG_INFO("K8S connection timeout [sec]: " + std::to_string(m_k8s_timeout_s));
 
 	if (!m_k8s_api_server.empty())
 	{
-		g_log->information("K8S API server: " + uri(m_k8s_api_server).to_string(false));
+		LOG_INFO("K8S API server: " + uri(m_k8s_api_server).to_string(false));
 	}
 	if (m_k8s_simulate_delegation)
 	{
-		g_log->warning("!!! K8S delegation simulation enabled (non-production setting) !!!");
+		LOG_WARNING("!!! K8S delegation simulation enabled (non-production setting) !!!");
 	}
 	if (m_k8s_delegated_nodes)
 	{
-		g_log->information("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
+		LOG_INFO("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
 	}
 	if (!m_k8s_ssl_cert_type.empty())
 	{
-		g_log->information("K8S certificate type: " + m_k8s_ssl_cert_type);
+		LOG_INFO("K8S certificate type: " + m_k8s_ssl_cert_type);
 	}
 	if (!m_k8s_ssl_cert.empty())
 	{
-		g_log->information("K8S certificate: " + m_k8s_ssl_cert);
+		LOG_INFO("K8S certificate: " + m_k8s_ssl_cert);
 	}
 	if (!m_k8s_ssl_key.empty())
 	{
-		g_log->information("K8S SSL key: " + m_k8s_ssl_key);
+		LOG_INFO("K8S SSL key: " + m_k8s_ssl_key);
 	}
 	if (!m_k8s_ssl_key_password.empty())
 	{
-		g_log->information("K8S key password specified.");
+		LOG_INFO("K8S key password specified.");
 	}
 	else
 	{
-		g_log->information("K8S key password not specified.");
+		LOG_INFO("K8S key password not specified.");
 	}
 	if (!m_k8s_ssl_ca_certificate.empty())
 	{
-		g_log->information("K8S CA certificate: " + m_k8s_ssl_ca_certificate);
+		LOG_INFO("K8S CA certificate: " + m_k8s_ssl_ca_certificate);
 	}
-	g_log->information("K8S certificate verification enabled: " + bool_as_text(m_k8s_ssl_verify_certificate));
+	LOG_INFO("K8S certificate verification enabled: " + bool_as_text(m_k8s_ssl_verify_certificate));
 	if (!m_k8s_bt_auth_token.empty())
 	{
-		g_log->information("K8S bearer token authorization: " + m_k8s_bt_auth_token);
+		LOG_INFO("K8S bearer token authorization: " + m_k8s_bt_auth_token);
 	}
 	if(!m_k8s_extensions.empty())
 	{
@@ -1370,115 +1382,115 @@ void dragent_configuration::print_configuration() const
 		{
 			os << ext << std::endl;
 		}
-		g_log->information("K8S extensions:" + os.str());
+		LOG_INFO("K8S extensions:" + os.str());
 	}
 	if(m_use_new_k8s)
 	{
-		g_log->information("Use new K8s integration");
+		LOG_INFO("Use new K8s integration");
 	}
 	if(!m_k8s_cluster_name.empty())
 	{
-		g_log->information("K8s cluster name: " + m_k8s_cluster_name);
+		LOG_INFO("K8s cluster name: " + m_k8s_cluster_name);
 	}
 	if(!m_blacklisted_ports.empty())
 	{
-		g_log->information("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
+		LOG_INFO("blacklisted_ports count: " + NumberFormatter::format(m_blacklisted_ports.size()));
 	}
 	if(!m_aws_metadata.m_instance_id.empty())
 	{
-		g_log->information("AWS instance-id: " + m_aws_metadata.m_instance_id);
+		LOG_INFO("AWS instance-id: " + m_aws_metadata.m_instance_id);
 	}
 	if(m_aws_metadata.m_public_ipv4)
 	{
-		g_log->information("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
+		LOG_INFO("AWS public-ipv4: " + NumberFormatter::format(m_aws_metadata.m_public_ipv4));
 	}
 	if(!m_mesos_state_uri.empty())
 	{
-		g_log->information("Mesos state API server: " + m_mesos_state_uri);
+		LOG_INFO("Mesos state API server: " + m_mesos_state_uri);
 	}
 #ifndef CYGWING_AGENT
 	if(!m_marathon_uris.empty())
 	{
 		for(const auto& marathon_uri : m_marathon_uris)
 		{
-			g_log->information("Marathon groups API server: " + uri(marathon_uri).to_string(false));
-			g_log->information("Marathon apps API server: " + uri(marathon_uri).to_string(false));
+			LOG_INFO("Marathon groups API server: " + uri(marathon_uri).to_string(false));
+			LOG_INFO("Marathon apps API server: " + uri(marathon_uri).to_string(false));
 		}
 	}
 	else
 	{
-		g_log->information("Marathon API server not configured.");
+		LOG_INFO("Marathon API server not configured.");
 	}
-	g_log->information("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
-	g_log->information("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
-	g_log->information("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
-	g_log->information("Marathon leader following enabled: " + bool_as_text(m_marathon_follow_leader));
+	LOG_INFO("Mesos autodetect enabled: " + bool_as_text(m_mesos_autodetect));
+	LOG_INFO("Mesos connection timeout [ms]: " + std::to_string(m_mesos_timeout_ms));
+	LOG_INFO("Mesos leader following enabled: " + bool_as_text(m_mesos_follow_leader));
+	LOG_INFO("Marathon leader following enabled: " + bool_as_text(m_marathon_follow_leader));
 	if(!m_mesos_credentials.first.empty())
 	{
-		g_log->information("Mesos credentials provided.");
+		LOG_INFO("Mesos credentials provided.");
 	}
 	if(!m_marathon_credentials.first.empty())
 	{
-		g_log->information("Marathon credentials provided.");
+		LOG_INFO("Marathon credentials provided.");
 	}
 	if(!m_dcos_enterprise_credentials.first.empty())
 	{
-		g_log->information("DC/OS Enterprise credentials provided.");
+		LOG_INFO("DC/OS Enterprise credentials provided.");
 	}
 #endif
-	g_log->information("coredump enabled: " + bool_as_text(m_enable_coredump));
+	LOG_INFO("coredump enabled: " + bool_as_text(m_enable_coredump));
 
 	if(m_security_enabled)
 	{
-		g_log->information("Security Features: Enabled");
+		LOG_INFO("Security Features: Enabled");
 
 		if(m_security_policies_file != "")
 		{
-			g_log->information("Using security policies file: " + m_security_policies_file);
+			LOG_INFO("Using security policies file: " + m_security_policies_file);
 		}
 
 		if(m_security_baselines_file != "")
 		{
-			g_log->information("Using security baselines file: " + m_security_baselines_file);
+			LOG_INFO("Using security baselines file: " + m_security_baselines_file);
 		}
 
-		g_log->information("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
-		g_log->information("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
-		g_log->information("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
+		LOG_INFO("Security Report Interval (ms)" + NumberFormatter::format(m_security_report_interval_ns / 1000000));
+		LOG_INFO("Security Throttled Report Interval (ms)" + NumberFormatter::format(m_security_throttled_report_interval_ns / 1000000));
+		LOG_INFO("Security Actions Poll Interval (ms)" + NumberFormatter::format(m_actions_poll_interval_ns / 1000000));
 
-		g_log->information("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
-		g_log->information("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
-		g_log->information(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
+		LOG_INFO("Policy events rate: " + NumberFormatter::format(m_policy_events_rate));
+		LOG_INFO("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
+		LOG_INFO(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
 
 		if(m_security_compliance_schedule != "")
 		{
-			g_log->information("Will run compliance tasks with schedule: " + m_security_compliance_schedule);
+			LOG_INFO("Will run compliance tasks with schedule: " + m_security_compliance_schedule);
 		}
 
-		g_log->information(string("Will ") + (m_security_send_compliance_events ? "" : "not ") + "send compliance events");
-		g_log->information(string("Will ") + (m_security_send_compliance_results ? "" : "not ") + "send compliance results");
-		g_log->information(string("Will check for new compliance tasks to run every ") +
+		LOG_INFO(string("Will ") + (m_security_send_compliance_events ? "" : "not ") + "send compliance events");
+		LOG_INFO(string("Will ") + (m_security_send_compliance_results ? "" : "not ") + "send compliance results");
+		LOG_INFO(string("Will check for new compliance tasks to run every ") +
 				   NumberFormatter::format(m_security_compliance_refresh_interval / 1000000000) + " seconds");
 
-		g_log->information(string("Increased statsd metric limit by 100 for compliance tasks"));
+		LOG_INFO(string("Increased statsd metric limit by 100 for compliance tasks"));
 
 		if(m_security_compliance_kube_bench_variant != "")
 		{
-			g_log->information(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
+			LOG_INFO(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
 		}
 	}
 
 	if(m_suppressed_comms.size() > 0)
 	{
-		g_log->information("Will ignore all events for the following processes:");
+		LOG_INFO("Will ignore all events for the following processes:");
 		for(auto &comm : m_suppressed_comms)
 		{
-			g_log->information("  " + comm);
+			LOG_INFO("  " + comm);
 		}
 	}
 	else
 	{
-		g_log->information("Will not ignore any events by process name");
+		LOG_INFO("Will not ignore any events by process name");
 	}
 	if(m_suppressed_types.size() > 0)
 	{
@@ -1502,56 +1514,56 @@ void dragent_configuration::print_configuration() const
 		{
 			supp_str.erase(supp_str.size()-2);
 		}
-		g_log->warning("Will ignore all events for the following types: " + supp_str);
+		LOG_WARNING("Will ignore all events for the following types: " + supp_str);
 	}
 	else
 	{
-		g_log->information("Will not ignore any events by type");
+		LOG_INFO("Will not ignore any events by type");
 	}
 
 	if(m_k8s_event_filter)
 	{
-		g_log->information("K8s events filter:" + m_k8s_event_filter->to_string());
+		LOG_INFO("K8s events filter:" + m_k8s_event_filter->to_string());
 	}
 	else
 	{
-		g_log->information("K8s events not enabled.");
+		LOG_INFO("K8s events not enabled.");
 	}
 	if(m_docker_event_filter)
 	{
-		g_log->information("Docker events filter:" + m_docker_event_filter->to_string());
+		LOG_INFO("Docker events filter:" + m_docker_event_filter->to_string());
 	}
 	else
 	{
-		g_log->information("Docker events not enabled.");
+		LOG_INFO("Docker events not enabled.");
 	}
 	if(m_auto_config)
 	{
-		g_log->information("Auto config enabled. File types and digests:");
+		LOG_INFO("Auto config enabled. File types and digests:");
 		for (auto &pair : m_supported_auto_configs)
 		{
-			g_log->information("    " + pair.first + ": file digest: " + pair.second->digest());
+			LOG_INFO("    " + pair.first + ": file digest: " + pair.second->digest());
 		}
 	}
 	else
 	{
-		g_log->information("Auto config disabled");
+		LOG_INFO("Auto config disabled");
 	}
 	if (m_emit_tracers)
 	{
-		g_log->information("Emitting sysdig tracers enabled");
+		LOG_INFO("Emitting sysdig tracers enabled");
 	}
 
 	if(m_mode == dragent_mode_t::NODRIVER)
 	{
-		g_log->information("Running in nodriver mode, Security and Sysdig Captures will not work");
+		LOG_INFO("Running in nodriver mode, Security and Sysdig Captures will not work");
 	}
 	else if(m_mode == dragent_mode_t::SIMPLEDRIVER)
 	{
-		g_log->information("Running in simple driver mode, Security and Sysdig Captures will not work");
+		LOG_INFO("Running in simple driver mode, Security and Sysdig Captures will not work");
 	}
 
-	g_log->information("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));
+	LOG_INFO("Metric filters and over limit logging:" + bool_as_text(m_excess_metric_log));
 	std::ostringstream os;
 	if(m_metrics_filter.size())
 	{
@@ -1560,58 +1572,70 @@ void dragent_configuration::print_configuration() const
 			os << std::endl << (e.included() ? "include: " : "exclude: ") << e.to_string();
 		}
 	}
-	g_log->information("Metrics filters:" + os.str());
+	LOG_INFO("Metrics filters:" + os.str());
 	if(m_excess_metric_log)
 	{
-		g_log->information("Metrics filter log enabled");
+		LOG_INFO("Metrics filter log enabled");
 	}
 	else
 	{
-		g_log->information("Metrics filter log disabled");
+		LOG_INFO("Metrics filter log disabled");
 	}
 	if(m_metrics_cache > 0)
 	{
-		g_log->information("Metrics cache enabled, size: " + std::to_string(m_metrics_cache));
+		LOG_INFO("Metrics cache enabled, size: " + std::to_string(m_metrics_cache));
 	}
 	else
 	{
-		g_log->information("Metrics cache disabled");
+		LOG_INFO("Metrics cache disabled");
 	}
 
-	g_log->information("snaplen: " + to_string(m_snaplen));
-	g_log->information("Monitor file frequency: " +
+	LOG_INFO("snaplen: " + to_string(m_snaplen));
+	LOG_INFO("Monitor file frequency: " +
 	                   std::to_string(m_monitor_files_freq_sec) + " seconds");
 	if (! m_monitor_files.empty()) {
-		g_log->information("Files to monitor:");
+		LOG_INFO("Files to monitor:");
 	}
 	for (auto const& path : m_monitor_files) {
-		g_log->information("   " + path);
+		LOG_INFO("   " + path);
 	}
 
-	g_log->information("Orch events queue len: " + to_string(m_orch_queue_len));
-	g_log->information("Orch events GC percent: " + to_string(m_orch_gc));
-	g_log->information("Orch events informer wait time (s): " + to_string(m_orch_inf_wait_time_s));
-	g_log->information("Orch events tick interval (ms): " + to_string(m_orch_tick_interval_ms));
-	g_log->information("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
-	g_log->information("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
-	g_log->information("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
+	LOG_INFO("Orch events queue len: " + to_string(m_orch_queue_len));
+	LOG_INFO("Orch events GC percent: " + to_string(m_orch_gc));
+	LOG_INFO("Orch events informer wait time (s): " + to_string(m_orch_inf_wait_time_s));
+	LOG_INFO("Orch events tick interval (ms): " + to_string(m_orch_tick_interval_ms));
+	LOG_INFO("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
+	LOG_INFO("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
+	LOG_INFO("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
 
-	g_log->information("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
+	LOG_INFO("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
 
 	if(m_query_docker_image_info)
 	{
-		g_log->information("Additional Docker image info fetching enabled.");
+		LOG_INFO("Additional Docker image info fetching enabled.");
+	}
+
+	g_log->information("Incomplete TCP connection reporting: " + string(m_track_connection_status ? "enabled" : "disabled"));
+
+	if(m_username_lookups)
+	{
+		g_log->information("Username lookups enabled.");
+	}
+
+	if (m_track_environment)
+	{
+		g_log->information("Environment variable reporting enabled");
 	}
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom
 	for(const auto& item : m_config->warnings())
 	{
-		g_log->debug(item);
+		LOG_DEBUG(item);
 	}
 	for(const auto& item : m_config->errors())
 	{
-		g_log->critical(item);
+		LOG_CRITICAL(item);
 	}
 }
 
@@ -1672,7 +1696,7 @@ bool dragent_configuration::get_memory_usage_mb(uint64_t* memory)
 	struct rusage usage;
 	if(getrusage(RUSAGE_SELF, &usage) == -1)
 	{
-		g_log->error(string("getrusage") + strerror(errno));
+		LOG_ERROR(string("getrusage") + strerror(errno));
 		return false;
 	}
 	*memory = usage.ru_maxrss / 1024;

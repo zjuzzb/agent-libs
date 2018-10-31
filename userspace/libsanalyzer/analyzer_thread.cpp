@@ -92,6 +92,11 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 	return res;
 }
 
+void main_thread_analyzer_info::hash_environment(sinsp_threadinfo* tinfo)
+{
+	m_env_hash.update(tinfo);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // thread_analyzer_info implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -143,6 +148,13 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 		m_external_transaction_metrics.set_percentiles(m_percentiles,
 			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
 	}
+
+	if (m_analyzer->m_track_environment) {
+		if (m_tinfo->is_main_thread()) {
+			auto mt_ainfo = main_thread_ainfo();
+			mt_ainfo->hash_environment(m_tinfo);
+		}
+	}
 }
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
@@ -180,17 +192,8 @@ void thread_analyzer_info::propagate_flag(flags flags, thread_analyzer_info* oth
 
 void thread_analyzer_info::propagate_flag_bidirectional(flags flag, thread_analyzer_info* other)
 {
-	if(other->m_th_analysis_flags & flag)
-	{
-		m_th_analysis_flags |= flag;
-	}
-	else
-	{
-		if(m_th_analysis_flags & flag)
-		{
-			other->m_th_analysis_flags |= flag;
-		}
-	}
+	m_th_analysis_flags |= other->m_th_analysis_flags & flag;
+	other->m_th_analysis_flags |= m_th_analysis_flags & flag;
 }
 
 void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
@@ -273,6 +276,7 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	ASSERT(other->m_tinfo != NULL);
 
 	m_procinfo->m_program_pids.insert(other->m_tinfo->m_pid);
+	m_procinfo->m_program_uids.insert(other->m_tinfo->m_uid);
 #endif
 
 	if(other->m_transaction_metrics.get_counter()->m_count_in != 0)
