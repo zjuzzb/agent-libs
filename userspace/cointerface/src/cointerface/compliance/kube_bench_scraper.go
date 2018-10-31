@@ -172,6 +172,7 @@ func (impl *KubeBenchImpl) AssignRisk(id string, result string, curRisk ResultRi
 
 func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
+	includeDesc bool,
 	evtsChannel chan *sdc_internal.CompTaskEvent,
 	metricsChannel chan string) error {
 
@@ -212,6 +213,7 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 		TimestampNS: timestamp_ns,
 		HostMac: impl.machineId,
 		TaskName: *task.Name,
+		ResultSchema: bres.Version,
 		TestsRun: bres.TotalPass + bres.TotalFail + bres.TotalWarn,
 		PassCount: bres.TotalPass,
 		FailCount: bres.TotalFail,
@@ -229,6 +231,10 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 			WarnCount: section.Warn,
 		}
 
+		if includeDesc {
+			res_section.Description = section.Desc
+		}
+
 		metrics_prefix := fmt.Sprintf("compliance.k8s-bench.%v.%v", section.Section, strings.ToLower(strings.Replace(section.Desc, " ", "-", -1)))
 		metrics = append(metrics, fmt.Sprintf("%v.tests_fail:%d|g", metrics_prefix, res_section.FailCount))
 		metrics = append(metrics, fmt.Sprintf("%v.tests_warn:%d|g", metrics_prefix, res_section.WarnCount))
@@ -242,6 +248,10 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 
 			res_test := &TaskResultTest {
 				TestNumber: test.TestNumber,
+			}
+
+			if includeDesc {
+				res_test.Description = test.TestDesc
 			}
 
 			if test.Status != "PASS" {

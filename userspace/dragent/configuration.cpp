@@ -255,6 +255,7 @@ dragent_configuration::dragent_configuration()
 	m_security_compliance_schedule = "";
 	m_security_send_compliance_events = false;
 	m_security_send_compliance_results = false;
+	m_security_include_desc_in_compliance_results = true;
 	m_security_compliance_refresh_interval = 120000000000;
 	m_security_compliance_kube_bench_variant = "";
 	m_policy_events_rate = 0.5;
@@ -751,12 +752,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 #endif
 	// Right now these two entries does not support merging between defaults and specified on config file
 	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
-	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s", 
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s",
 		{
-			{"sdchecks", 60U /* This should match the default timeout in sdchecks.py */ }, 
-			{"sdjagent", 60U}, 
-			{"mountedfs_reader", 60U}, 
-			{"statsite_forwarder", 60U}, 
+			{"sdchecks", 60U /* This should match the default timeout in sdchecks.py */ },
+			{"sdjagent", 60U},
+			{"mountedfs_reader", 60U},
+			{"statsite_forwarder", 60U},
 			{"cointerface", 60U},
 			{"promex", 60U}
 		});
@@ -1066,6 +1067,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
 	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", true);
+	m_security_include_desc_in_compliance_results = m_config->get_scalar<bool>("security", "include_desc_compliance_results", true);
 	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
 	m_security_compliance_kube_bench_variant = m_config->get_scalar<string>("security", "compliance_kube_bench_variant", "");
 

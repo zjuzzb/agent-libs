@@ -34,6 +34,7 @@ type TestModuleImpl struct {
 
 func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
+	includeDesc bool,	
 	evtsChannel chan *sdc_internal.CompTaskEvent,
 	metricsChannel chan string) error {
 

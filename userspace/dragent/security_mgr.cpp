@@ -627,6 +627,8 @@ void security_mgr::refresh_compliance_tasks()
 	// for the tasks that should actually run.
 	sdc_internal::comp_start start;
 
+	start.set_include_desc(m_configuration->m_security_include_desc_in_compliance_results);
+
 	for(auto &task : m_compliance_calendar.tasks())
 	{
 		if(!task.enabled())

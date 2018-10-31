@@ -106,6 +106,7 @@ func (impl *DockerBenchImpl) AssignRisk(id string, result string, curRisk Result
 
 func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 	task *draiosproto.CompTask,
+	includeDesc bool,
 	evtsChannel chan *sdc_internal.CompTaskEvent,
 	metricsChannel chan string) error {
 
@@ -145,6 +146,7 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 		TimestampNS: bres.Start * 1e9,
 		HostMac: impl.machineId,
 		TaskName: *task.Name,
+		ResultSchema: bres.DockerBenchSecurity,
 		TestsRun: 0,
 		PassCount: 0,
 		FailCount: 0,
@@ -200,6 +202,10 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 			WarnCount: 0,
 		}
 
+		if includeDesc {
+			res_section.Description = section.Desc
+		}
+
 		for _, test := range section.Results {
 
 			res_section.TestsRun++
@@ -207,6 +213,10 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 			res_test := &TaskResultTest {
 				TestNumber: test.Id,
 				Items: test.Items,
+			}
+
+			if includeDesc {
+				res_test.Description = test.Desc
 			}
 
 			// If Items is empty, include Details

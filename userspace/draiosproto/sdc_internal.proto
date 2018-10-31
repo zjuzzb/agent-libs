@@ -122,6 +122,7 @@ message comp_start {
     optional string customer_id = 1;
     optional string machine_id = 2;
     required draiosproto.comp_calendar calendar = 3;
+    optional bool include_desc = 4;
 }
 
 message comp_stop {
