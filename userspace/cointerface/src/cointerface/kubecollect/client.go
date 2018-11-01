@@ -35,6 +35,40 @@ var prometheusEnabled bool
 
 const RsyncInterval = 10 * time.Minute
 
+func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
+
+	var resourceTypes []string
+	
+	for _, resourceList := range resources {
+		for _, resource := range resourceList.APIResources {
+			verbStr := ""
+			for _, verb := range resource.Verbs {
+				verbStr += verb
+				verbStr += ","
+			}
+			verbStr = strings.Trim(verbStr, ",")
+			log.Debugf("K8s API server supports %s/%s: %s",
+				resourceList.GroupVersion, resource.Name, verbStr)
+
+			if resource.Name == "cronjobs" &&
+				resourceList.GroupVersion != "batch/v2alpha1" {
+				continue
+			}
+
+			// If the resource type is "nodes" or "namespaces" we
+			// PREPEND them. (we want to process those first). Else
+			// append the other resource types.
+			if(resource.Name == "nodes" || resource.Name == "namespaces") {
+				resourceTypes = append([]string{resource.Name}, resourceTypes...)
+			} else {
+				resourceTypes = append(resourceTypes, resource.Name)
+			}
+		}
+	}
+
+	return resourceTypes
+}
+
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block.
@@ -85,36 +119,10 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
 
-	// Initialize a local vector of all resource types
-	var resourceTypes []string
+	// Get a vector of all resource types
+	// from the resourceList in resources.
+	resourceTypes := getResourceTypes(resources)
 	
-	for _, resourceList := range resources {
-		for _, resource := range resourceList.APIResources {
-			verbStr := ""
-			for _, verb := range resource.Verbs {
-				verbStr += verb
-				verbStr += ","
-			}
-			verbStr = strings.Trim(verbStr, ",")
-			log.Debugf("K8s API server supports %s/%s: %s",
-				resourceList.GroupVersion, resource.Name, verbStr)
-
-			if resource.Name == "cronjobs" &&
-				resourceList.GroupVersion != "batch/v2alpha1" {
-				continue
-			}
-
-			// If the resource type is "nodes" or "namespaces" we
-			// PREPEND them. (we want to process those first). Else
-			// append the other resource types.
-			if(resource.Name == "nodes" || resource.Name == "namespaces") {
-				resourceTypes = append([]string{resource.Name}, resourceTypes...)
-			} else {
-				resourceTypes = append(resourceTypes, resource.Name)
-			}
-		}
-	}
-
 	// Caller is responsible for draining the chan
 	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
 
