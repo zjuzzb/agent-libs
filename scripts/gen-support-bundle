@@ -14,7 +14,7 @@ HOME_DIR_S=${HOME_DIR:1}
 LOG_DIR="$HOME_DIR/logs"
 ETC_DIR="$HOME_DIR/etc"
 CUSTOM_CHECKS_DIR="$HOME_DIR/lib/python/checks.custom.d"
-TMP_DIR="/tmp"
+TMP_DIR="$(mktemp -d)"
 TMP_DIR_S=${TMP_DIR:1}
 MACHINE_ID=
 TAR_ARCHIVE=
@@ -49,7 +49,7 @@ function leave()
         fi
     fi
 
-    rm -f $TMP_DIR/docker*.log
+    rm -rf $TMP_DIR
     exit $2
 }
 
@@ -57,6 +57,11 @@ function leave()
 function verify_dirs()
 {
     progress "Verifying directory structure"
+
+    if [ ! -d "$TMP_DIR" ]; then
+        progress "failed"
+        leave "Temp directory does not exist (${TMP_DIR})." 1
+    fi
 
     if [ ! -d "$HOME_DIR" ]; then
         progress "failed"
@@ -123,6 +128,25 @@ function docker_info()
     progress "done"
 }
 
+function k8_info()
+{
+    progress "Inspecting kubernetes"
+
+    # Check for the token to decide whether kubernetes is running on this agent
+    if [ ! -f /var/run/secrets/kubernetes.io/serviceaccount/token ]; then
+        progress "skipped"
+        return
+    fi
+
+    local -r KUBECTL_PATH="/opt/draios/lib/comp_modules/kube-bench/"
+
+    ${KUBECTL_PATH}kubectl get nodes -o wide &> $TMP_DIR/k8_nodes.txt
+    ${KUBECTL_PATH}kubectl get all -o wide --all-namespaces=true &> $TMP_DIR/k8_all.txt
+    ${KUBECTL_PATH}kubectl get ns  -o wide &> $TMP_DIR/k8_ns.txt
+
+    progress "done"
+}
+
 
 function tarball()
 {
@@ -158,6 +182,19 @@ function tarball()
     docker_files=$(ls $TMP_DIR/docker*.log 2> /dev/null | wc -l)
     if [[ "$docker_files" != "0" ]]; then
         tar -uvf $TAR_ARCHIVE $TMP_DIR/docker*.log --transform s,$TMP_DIR_S,$MACHINE_ID, &>/dev/null
+        if [ $? -ne 0 ]; then
+            progress "failed"
+            leave "Failed executing \`tar\`." 1
+        fi
+        progress "done"
+    else
+        progress "skipped"
+    fi
+
+    progress "Archiving kubernetes info"
+    k8_files=$(ls $TMP_DIR/k8*.txt 2> /dev/null | wc -l)
+    if [[ "$k8_files" != "0" ]]; then
+        tar -uvf $TAR_ARCHIVE $TMP_DIR/k8_*.txt --transform s,$TMP_DIR_S,$MACHINE_ID/k8, &>/dev/null
         if [ $? -ne 0 ]; then
             progress "failed"
             leave "Failed executing \`tar\`." 1
@@ -265,6 +302,7 @@ progress "done"
 TAR_ARCHIVE=agent-bundle-$MACHINE_ID-$DATE.tar
 verify_files
 docker_info
+k8_info
 tarball
 upload_s3
 leave "Done." 0
