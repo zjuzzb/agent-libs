@@ -169,6 +169,26 @@ filter_condition::param2type(std::string pstr)
 	return param_type::none;
 }
 
+std::vector<std::string> get_str_tokens(const std::string &str)
+{
+	vector<string> ret;
+
+	size_t lpos = 0;
+	size_t pos;
+	while ((pos = str.find('{', lpos)) != string::npos)
+	{
+		size_t bc = str.find('}', pos);
+		if (bc == string::npos)
+		{
+			return ret;
+		}
+		string token = str.substr(pos+1, bc-(pos+1));
+		ret.emplace_back(move(token));
+		lpos = bc + 1;
+	}
+	return ret;
+}
+
 #ifndef CYGWING_AGENT
 bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	const sinsp_container_info *container, const infrastructure_state &infra_state,
@@ -341,8 +361,47 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	}
 	return false;
 }
-#endif // CYGWING_AGENT
 
+void conf::register_annotations(std::function<void (const std::string &)> reg) const
+{
+	for (const auto& rule: m_rules)
+	{
+		for (const auto& cond: rule.m_cond)
+		{
+			if ((cond.m_param_type != filter_condition::param_type::k8s_annotation) &&
+				(cond.m_param_type != filter_condition::param_type::tag))
+				continue;
+
+			reg(cond.m_param);
+			g_logger.format(sinsp_logger::SEV_INFO,
+				"%s: registering annotation %s", m_context.c_str(),
+				cond.m_param.c_str());
+		}
+		if (rule.m_config.m_port_subst)
+		{
+			auto tokens = get_str_tokens(rule.m_config.m_port);
+			for (const auto &token : tokens)
+			{
+				reg(token);
+				g_logger.format(sinsp_logger::SEV_INFO,
+					"%s: registering port annotation %s", m_context.c_str(),
+					token.c_str());
+			}
+		}
+		if (rule.m_config.m_path_subst)
+		{
+			auto tokens = get_str_tokens(rule.m_config.m_path);
+			for (const auto &token : tokens)
+			{
+				reg(token);
+				g_logger.format(sinsp_logger::SEV_INFO,
+					"%s: registering path annotation %s", m_context.c_str(),
+					token.c_str());
+			}
+		}
+	}
+}
+#endif // CYGWING_AGENT
 } // namespace proc_filter
 
 namespace YAML {

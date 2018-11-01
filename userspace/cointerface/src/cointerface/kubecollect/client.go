@@ -32,7 +32,8 @@ var startedMap map[string]bool
 var startedMutex sync.RWMutex
 var receiveMap map[string]bool
 var receiveMutex sync.RWMutex
-var prometheusEnabled bool
+var annotFilter map[string]bool
+
 
 const RsyncInterval = 10 * time.Minute
 
@@ -43,7 +44,6 @@ const RsyncInterval = 10 * time.Minute
 // is complete by closing the chan.
 func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan draiosproto.CongroupUpdateEvent, <-chan struct{}, error) {
 	setErrorLogHandler()
-	prometheusEnabled = opts.GetPrometheus()
 
 	// TODO: refactor error messages
 	var kubeClient kubeclient.Interface
@@ -86,6 +86,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	compatibilityMap = make(map[string]bool)
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
+	setAnnotFilt(opts.AnnotationFilter)
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			verbStr := ""
@@ -470,14 +471,28 @@ func GetTags(obj v1meta.ObjectMeta, prefix string) map[string]string {
 	return tags
 }
 
+// This needs to be called before any informers are started as the map is
+// not thread-safe for mixing reads & writes.
+func setAnnotFilt(annots []string) {
+	if len(startedMap) != 0 {
+		log.Error("Writing to annotation filter map after multi-threading start")
+	}
+	annotFilter = make(map[string]bool)
+	for _, v := range annots {
+		annotFilter[v] = true
+	}
+}
+
 func GetAnnotations(obj v1meta.ObjectMeta, prefix string) map[string]string {
-	if !prometheusEnabled {
+	if len(annotFilter) == 0 {
 		return nil
 	}
 	tags := make(map[string]string)
 	for k, v := range obj.GetAnnotations() {
-		if strings.Contains(k, "prometheus") {
-			tags[prefix+"annotation." + k] = v
+		// Only get selected annotations
+		annot := prefix + "annotation." + k
+		if annotFilter[annot] {
+			tags[annot] = v
 		}
 	}
 	if len(tags) == 0 {
@@ -501,10 +516,9 @@ func EqualLabels(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
 }
 
 func EqualAnnotations(lhs v1meta.ObjectMeta, rhs v1meta.ObjectMeta) bool {
-	if !prometheusEnabled {
+	if len(annotFilter) == 0 {
 		return true
 	}
-
 	left := lhs.GetAnnotations()
 	right := rhs.GetAnnotations()
 	if (len(left) != len(right)) {

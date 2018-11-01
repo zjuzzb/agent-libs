@@ -141,10 +141,9 @@ infrastructure_state::~infrastructure_state()
 {
 }
 
-void infrastructure_state::init(const std::string& machine_id, bool prom_enabled)
+void infrastructure_state::init(const std::string& machine_id)
 {
 	m_machine_id = machine_id;
-	m_prom_enabled = prom_enabled;
 }
 
 bool infrastructure_state::inited()
@@ -205,7 +204,6 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_ca_cert(m_k8s_ca_cert);
 			cmd.set_client_cert(m_k8s_client_cert);
 			cmd.set_client_key(m_k8s_client_key);
-			cmd.set_prometheus(m_prom_enabled);
 			cmd.set_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_queue_len());
 			cmd.set_startup_gc(m_inspector->m_analyzer->m_configuration->get_orch_gc());
 			cmd.set_startup_inf_wait_time_s(m_inspector->m_analyzer->m_configuration->get_orch_inf_wait_time_s());
@@ -215,6 +213,10 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_filter_empty(m_inspector->m_analyzer->m_configuration->get_orch_filter_empty());
 			cmd.set_ssl_verify_certificate(m_inspector->m_analyzer->m_configuration->get_k8s_ssl_verify_certificate());
 			cmd.set_auth_token(m_inspector->m_analyzer->m_configuration->get_k8s_bt_auth_token());
+			for (const auto &annot : m_annotation_filter)
+			{
+				cmd.add_annotation_filter(annot);
+			}
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
 			m_k8s_coclient.get_orchestrator_events(cmd, m_k8s_callback);
@@ -1463,6 +1465,11 @@ bool infrastructure_state::match_scope_all_containers(const scope_predicates &pr
 	}
 
 	return false;
+}
+
+void infrastructure_state::add_annotation_filter(const string &ann)
+{
+	m_annotation_filter.emplace(ann);
 }
 
 // Look for sysdig agent by pod name, container name or image, or daemonset
