@@ -2,47 +2,137 @@ package kubecollect
 
 import (
 	"testing"
-	"fmt"
-	//"k8s.io/api/core/v1"
+	"time"
+	"math/rand"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func createAPIResourceList() (resourceList *v1meta.APIResourceList) {
 
-	orig:= &v1meta.APIResourceList {
+func createAPIResourceList(listSize int) (resourceList *v1meta.APIResourceList) {
+
+	resourceTypes := []string {
+		"cronjobs", "daemonsets", "deployments", "horizontalpodautoscalers",
+		"ingress", "jobs","namespaces","nodes","pods","replicasets",
+		"replicationcontrollers", "resourcequotas","services","statefulsets"}
+
+	// Make random indexes for above resourceTypes
+	s1 := rand.NewSource(time.Now().UnixNano())
+	r1 := rand.New(s1)
+	
+	indexes := make([]int, listSize)
+	for i := 0; i < listSize; i++ {
+		indexes[i]= r1.Intn(len(resourceTypes))
+	}
+
+	// Create output APIResourceList
+	orig := &v1meta.APIResourceList {
 		GroupVersion: "v1ForTesting",
-		APIResources: []v1meta.APIResource{
-			v1meta.APIResource{
-				Name: "pods",
-			},
-			v1meta.APIResource{
-				Name: "namespaces",
-			},
-		},
+	}
+	
+	for _, ind := range indexes {
+		orig.APIResources = append(orig.APIResources , v1meta.APIResource{
+			Name: resourceTypes[ind],
+		})
 	}
 
 	return orig
 }
 
-func resourceOrderingHelper(t *testing.T , resourceList []*v1meta.APIResourceList) {
 
-	
-	resourceOrder := getResourceTypes(resourceList)
-	for _, str := range resourceOrder {
-		fmt.Println(str)
+func checkNodesAndNamespacesFirstHelper(t *testing.T, resourceOrder []string, expected bool) {
+
+	namespacesOrNodesEnd := false
+	res := true
+	for _, resource := range resourceOrder {
+		if(resource == "nodes" || resource == "namespaces") {
+			// Let's hope this isn't seen after we saw
+			// a non-node or non-namespace resource
+			if(namespacesOrNodesEnd) {
+				res = false
+				break
+			}
+		} else {
+			namespacesOrNodesEnd = true
+		}
 	}
-	
-	if( resourceOrder[0] != "namespaces") {
-		t.Error("Namespaces isn't first on the list")
+
+	if res != expected {
+		t.Error("namespaces or nodes isn't beginning of the list")
 		t.Fail()
 	}
 	
 }
 
+// basic test to test above helper method
+func TestCheckNodesAndNamespacesFirstHelper(t *testing.T) {
+
+	// Test a pass case
+	resOrderPass := []string{"namespaces","nodes", "namespaces", "nodes", "pods", "replicasets"}
+	checkNodesAndNamespacesFirstHelper(t, resOrderPass, true)
+
+	// test a fail case
+	resOrderFail := []string{"namespaces", "nodes", "pods", "nodes"}
+	checkNodesAndNamespacesFirstHelper(t, resOrderFail, false)	
+}
+
+// Test using actual APIResourceList
 func TestBasicResourceOrdering(t *testing.T) {
 
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(),
-		createAPIResourceList()}
+	// Create 2 different sized resourcelists and
+	// test that either nodes or namespaces are always first
+	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(4),
+		createAPIResourceList(5)}
 
-	resourceOrderingHelper(t,resourceList);
+	resourceOrder := getResourceTypes(resourceList)
+	checkNodesAndNamespacesFirstHelper(t ,resourceOrder, true)
+
+	// Ensure you add some namespaces or nodes to the end and still it doesn't fail
+	for _, resource := range resourceList {
+		resource.APIResources = append(resource.APIResources, v1meta.APIResource{
+			Name: "nodes",
+		})
+		resource.APIResources = append(resource.APIResources, v1meta.APIResource{
+			Name: "namespaces",
+		})
+	}
+
+	resourceOrderNew := getResourceTypes(resourceList)
+	checkNodesAndNamespacesFirstHelper(t ,resourceOrderNew, true)	
+}
+
+func checkNoCronjobsExist(t *testing.T, resourceOrder []string, expected bool) {
+
+	res := true
+	for _, str := range resourceOrder {
+		if str == "cronjobs" {
+			res = false
+			break
+		}
+	}
+
+	if res != expected {
+		t.Error("Cronjob exists when it shouldn't")
+		t.Fail()
+	}
+}
+
+func TestCronjobExistsInResourceOrder(t *testing.T) {
+	// Create resourcelists and add Cronjobs to it and
+	// test that it shows up when groupVersion is correct
+	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(7)}
+	resourceList[0].APIResources = append(resourceList[0].APIResources, v1meta.APIResource{
+		Name: "cronjobs",
+	})
+
+	resourceOrderWithOutCronjobs := getResourceTypes(resourceList)
+	
+	// Since group version by default is
+	// v1ForTesting, no cronjobs should be added
+	checkNoCronjobsExist(t, resourceOrderWithOutCronjobs, true)
+
+	// Now modify groupversion to the supported value and check cronjobs exist
+	resourceList[0].GroupVersion = "batch/v2alpha1"
+	
+	resourceOrderWithCronjobs := getResourceTypes(resourceList)
+	checkNoCronjobsExist(t,resourceOrderWithCronjobs, false)
 }

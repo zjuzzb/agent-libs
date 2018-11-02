@@ -37,7 +37,7 @@ const RsyncInterval = 10 * time.Minute
 
 func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
 
-	// Return a vector of all resource names
+	// Return a vector of all resourceType names
 	var resourceTypes []string
 	
 	for _, resourceList := range resources {
@@ -230,7 +230,7 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 		}
 		if interrupted {
 			log.Warn("K8s informer startup interrupted by cancelled context")
-			break
+			break  
 		}
 
 		log.Debugf("Checking kubecollect support for %v", resource)
