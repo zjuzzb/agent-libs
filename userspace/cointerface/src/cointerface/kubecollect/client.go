@@ -37,6 +37,7 @@ const RsyncInterval = 10 * time.Minute
 
 func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
 
+	// Return a vector of all resource names
 	var resourceTypes []string
 	
 	for _, resourceList := range resources {
