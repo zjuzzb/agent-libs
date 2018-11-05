@@ -119,7 +119,6 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// XXX better yet, make them not package globals
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
-
 	setAnnotFilt(opts.AnnotationFilter)
 
 	// Get a vector of all resource types
