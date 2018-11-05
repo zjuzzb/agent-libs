@@ -100,6 +100,10 @@ public:
 	bool match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	           const sinsp_container_info *container, const infrastructure_state &is,
 			   std::function<bool (const filter_rule &rule)> on_match = nullptr) const;
+
+	// Calls callback function for all potential annotations
+	// Used to make sure annotations will be available in infrastructure_state
+	void register_annotations(std::function<void (const std::string &str)> reg) const;
 #endif
 
 protected:
@@ -140,7 +144,6 @@ private:
 	uint32_t m_check_interval;
 	uint32_t m_max_containers;
 };
-
 } // namespace proc_filter
 
 namespace YAML {

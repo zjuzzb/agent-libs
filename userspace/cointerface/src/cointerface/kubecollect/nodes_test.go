@@ -98,40 +98,38 @@ func TestNodeEqualsLabelsModified(t *testing.T) {
 	nodeEqualsHelper(t, oldNode, newNode, false)
 }
 
-func helperNodeEqualsAnnotationsExtra(t *testing.T, usePrometheus bool) {
-	origVal := prometheusEnabled
-	prometheusEnabled = usePrometheus;
+func TestNodeEqualsAnnotationsExtra(t *testing.T) {
+	annots := []string{"annotation.filter"}
+	setAnnotFilt(annots)
 	oldNode, newNode := createNodeCopies()
 	newNode.Annotations["extra_key"] = "extra_val"
 
-	nodeEqualsHelper(t, oldNode, newNode, !usePrometheus)
-	prometheusEnabled = origVal
-}
-
-func TestNodeEqualsAnnotationsExtra(t *testing.T) {
-	helperNodeEqualsAnnotationsExtra(t, true);
-}
-
-func TestNodeEqualsAnnotationsExtraPromDisabled(t *testing.T) {
-	helperNodeEqualsAnnotationsExtra(t, false);
-}
-
-func helperNodeEqualsAnnotationsModified(t *testing.T, usePrometheus bool) {
-	origVal := prometheusEnabled
-	prometheusEnabled = usePrometheus;
-	oldNode, newNode := createNodeCopies()
-	newNode.Annotations["annotation_key1"] = "modified_val"
-
-	nodeEqualsHelper(t, oldNode, newNode, !usePrometheus)
-	prometheusEnabled = origVal
+	nodeEqualsHelper(t, oldNode, newNode, false)
 }
 
 func TestNodeEqualsAnnotationsModified(t *testing.T) {
-	helperNodeEqualsAnnotationsModified(t, true);
+	annots := []string{"annotation.filter"}
+	setAnnotFilt(annots)
+	oldNode, newNode := createNodeCopies()
+	newNode.Annotations["annotation_key1"] = "modified_val"
+
+	nodeEqualsHelper(t, oldNode, newNode, false)
 }
 
-func TestNodeEqualsAnnotationsModifiedPromDisabled(t *testing.T) {
-	helperNodeEqualsAnnotationsModified(t, false);
+func TestNodeEqualsAnnotationsExtraNoFilters(t *testing.T) {
+	setAnnotFilt(nil)
+	oldNode, newNode := createNodeCopies()
+	newNode.Annotations["extra_key"] = "extra_val"
+
+	nodeEqualsHelper(t, oldNode, newNode, true)
+}
+
+func TestNodeEqualsAnnotationsModifiedNoFilters(t *testing.T) {
+	setAnnotFilt(nil)
+	oldNode, newNode := createNodeCopies()
+	newNode.Annotations["annotation_key1"] = "modified_val"
+
+	nodeEqualsHelper(t, oldNode, newNode, true)
 }
 
 func TestNodeEqualsUnschedulable(t *testing.T) {

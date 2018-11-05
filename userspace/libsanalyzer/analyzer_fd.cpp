@@ -1486,7 +1486,7 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 	// File open count update
 	//
 	analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fullpath);
-	if(evt->m_fdinfo)
+	if(evt->m_fdinfo && evt->m_errorcode == 0)
 	{
 		ASSERT(evt->m_fdinfo->is_file());
 		ASSERT(evt->m_fdinfo->m_name == fullpath);

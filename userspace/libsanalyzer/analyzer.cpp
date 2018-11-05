@@ -418,7 +418,26 @@ void sinsp_analyzer::on_capture_start()
 	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
-		m_infrastructure_state->init(m_configuration->get_machine_id(), m_prom_conf.enabled());
+		m_infrastructure_state->init(m_configuration->get_machine_id());
+
+		// Before connecting make sure all annotations we need are registered
+		// so that cointerface will know to send them
+		auto add_annot = [this] (const std::string &str) {
+			m_infrastructure_state->add_annotation_filter(str);
+		};
+		// Annotations for Prometheus autodetection
+		if (m_prom_conf.enabled())
+			m_prom_conf.register_annotations(add_annot);
+		// Annotations for Percentiles
+		const auto pctl_conf = get_configuration_read_only()->get_group_pctl_conf();
+		if (pctl_conf && pctl_conf->enabled()) {
+			pctl_conf->register_annotations(add_annot);
+		}
+		// Annotations for container filter
+		const auto filters = m_configuration->get_container_filter();
+		if (filters && filters->enabled()) {
+			filters->register_annotations(add_annot);
+		}
 
 		// K8s url to use
 		string k8s_url = m_configuration->get_k8s_api_server();

@@ -12,6 +12,7 @@
 #include "analyzer_settings.h"
 #include "coclient.h"
 #include "k8s_limits.h"
+#include "sdc_internal.pb.h"
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 
@@ -29,7 +30,7 @@ public:
 
 	~infrastructure_state();
 
-	void init(const std::string& machine_id, bool prom_on);
+	void init(const std::string& machine_id);
 	bool inited();
 
 	static std::string as_string(const scope_predicates &predicates);
@@ -97,6 +98,8 @@ public:
 	std::string get_k8s_cluster_id() const;
 	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
 
+	void add_annotation_filter(const string &ann);
+
 private:
 
 	std::unordered_map<std::string, std::string> host_children {
@@ -154,7 +157,6 @@ private:
 
 	sinsp *m_inspector;
 	std::string m_machine_id;
-	bool m_prom_enabled;
 
 	std::hash<std::string> m_str_hash_f;
 
@@ -172,6 +174,8 @@ private:
 	run_on_interval m_k8s_connect_interval;
 	int m_k8s_prev_connect_state;
 	string m_k8s_node;
+
+	std::set<std::string> m_annotation_filter;
 
 	friend class new_k8s_delegator;
 };

@@ -84,7 +84,6 @@ message orchestrator_events_stream_command {
     required string ca_cert = 2;
     required string client_cert = 3;
     required string client_key = 4;
-    required bool prometheus = 5;
     required uint32 queue_len = 6;
     required int32 startup_gc = 7;
     required uint32 startup_inf_wait_time_s = 8;
@@ -94,6 +93,7 @@ message orchestrator_events_stream_command {
     required bool filter_empty = 12;
     required bool ssl_verify_certificate = 13;
     required string auth_token = 14;
+    repeated string annotation_filter = 15;
 }
 
 service CoInterface {
