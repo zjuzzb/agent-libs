@@ -80,8 +80,8 @@ func TestBasicResourceOrdering(t *testing.T) {
 
 	// Create 2 different sized resourcelists and
 	// test that either nodes or namespaces are always first
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(4),
-		createAPIResourceList(5)}
+	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(20)),
+		createAPIResourceList(rand.Intn(30))}
 
 	resourceOrder := getResourceTypes(resourceList)
 	checkNodesAndNamespacesFirstHelper(t ,resourceOrder, true)
@@ -100,7 +100,8 @@ func TestBasicResourceOrdering(t *testing.T) {
 	checkNodesAndNamespacesFirstHelper(t ,resourceOrderNew, true)	
 }
 
-func checkNoCronjobsExist(t *testing.T, resourceOrder []string, expected bool) {
+// This function is a helper to test no Cronjob exists in the input list
+func checkNoCronjobsExistHelper(t *testing.T, resourceOrder []string, expected bool) {
 
 	res := true
 	for _, str := range resourceOrder {
@@ -116,10 +117,12 @@ func checkNoCronjobsExist(t *testing.T, resourceOrder []string, expected bool) {
 	}
 }
 
+// Actual function to test Cronjob filtering based
+// on value of "GroupVersion"
 func TestCronjobExistsInResourceOrder(t *testing.T) {
 	// Create resourcelists and add Cronjobs to it and
 	// test that it shows up when groupVersion is correct
-	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(7)}
+	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(10)) }
 	resourceList[0].APIResources = append(resourceList[0].APIResources, v1meta.APIResource{
 		Name: "cronjobs",
 	})
@@ -128,11 +131,11 @@ func TestCronjobExistsInResourceOrder(t *testing.T) {
 	
 	// Since group version by default is
 	// v1ForTesting, no cronjobs should be added
-	checkNoCronjobsExist(t, resourceOrderWithOutCronjobs, true)
+	checkNoCronjobsExistHelper(t, resourceOrderWithOutCronjobs, true)
 
 	// Now modify groupversion to the supported value and check cronjobs exist
 	resourceList[0].GroupVersion = "batch/v2alpha1"
 	
 	resourceOrderWithCronjobs := getResourceTypes(resourceList)
-	checkNoCronjobsExist(t,resourceOrderWithCronjobs, false)
+	checkNoCronjobsExistHelper(t,resourceOrderWithCronjobs, false)
 }
