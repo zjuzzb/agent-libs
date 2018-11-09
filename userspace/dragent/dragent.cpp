@@ -353,15 +353,20 @@ int dragent_app::main(const std::vector<std::string>& args)
 			ASSERT(false);
 		}
 
+		struct rlimit core_limits = {};
 		if(m_configuration.m_enable_coredump)
 		{
-			struct rlimit core_limits;
 			core_limits.rlim_cur = RLIM_INFINITY;
 			core_limits.rlim_max = RLIM_INFINITY;
-			if(setrlimit(RLIMIT_CORE, &core_limits) != 0)
-			{
-				g_log->warning(string("Cannot set coredump limits: ") + strerror(errno));
-			}
+		}
+		else
+		{
+			core_limits.rlim_cur = 0;
+			core_limits.rlim_max = 0;
+		}
+		if(setrlimit(RLIMIT_CORE, &core_limits) != 0)
+		{
+			LOG_WARNING(string("Cannot set coredump limits: ") + strerror(errno));
 		}
 
 		return this->sdagent_main();
