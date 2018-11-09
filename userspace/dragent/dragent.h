@@ -12,6 +12,7 @@
 #include "crash_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
+#include "watchdog_runnable_pool.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
 #include "capture_job_handler.h"
@@ -161,4 +162,5 @@ private:
 		std::string m_digest;
 	};
 	std::vector<monitor_file_state> m_monitored_files;
+	dragent::watchdog_runnable_pool m_pool;
 };

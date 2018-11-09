@@ -286,9 +286,9 @@ void sinsp_logger_parser::operator()(const string& s)
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
 
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
+		dragent::watchdog_runnable("subprocesses_logger"),
 		m_configuration(configuration),
-		m_log_reporter(reporter),
-		m_last_loop_ns(0)
+		m_log_reporter(reporter)
 {
 }
 
@@ -297,9 +297,8 @@ void subprocesses_logger::add_logfd(FILE *fd, function<void(const string&)> &&pa
 	m_error_fds.emplace(fd, make_pair(parser, state));
 }
 
-void subprocesses_logger::run()
+void subprocesses_logger::do_run()
 {
-	m_pthread_id = pthread_self();
 	g_log->information("subprocesses_logger: Starting");
 
 	if(m_error_fds.empty())
@@ -308,10 +307,8 @@ void subprocesses_logger::run()
 		return;
 	}
 
-	while(!dragent_configuration::m_terminate)
+	while(heartbeat())
 	{
-		m_last_loop_ns = sinsp_utils::get_current_time_ns();
-
 		int max_fd = 0;
 		fd_set readset_w;
 		FD_ZERO(&readset_w);
@@ -363,9 +360,8 @@ void subprocesses_logger::run()
 		}
 		if(dragent_configuration::m_send_log_report)
 		{
-			m_log_reporter->send_report(m_last_loop_ns);
+			m_log_reporter->send_report(sinsp_utils::get_current_time_ns());
 			dragent_configuration::m_send_log_report = false;
 		}
 	}
-	g_log->information("subprocesses_logger terminating");
 }

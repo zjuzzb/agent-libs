@@ -1,6 +1,7 @@
 #pragma once
 
 #include "configuration.h"
+#include "watchdog_runnable.h"
 #include "third-party/jsoncpp/json/json.h"
 #include "error_handler.h"
 
@@ -119,7 +120,7 @@ private:
 	uint32_t m_last_sev;
 };
 
-class subprocesses_logger : public Runnable
+class subprocesses_logger : public dragent::watchdog_runnable
 {
 public:
 	subprocesses_logger(dragent_configuration* configuration, log_reporter* reporter);
@@ -128,24 +129,12 @@ public:
 	// or a custom object created on the fly
 	void add_logfd(FILE* fd, function<void(const string&)>&& parser, watchdog_state* state = nullptr);
 
-	void run();
-
-	uint64_t get_last_loop_ns()
-	{
-		return m_last_loop_ns;
-	}
-
-	pthread_t get_pthread_id()
-	{
-		return m_pthread_id;
-	}
+	void do_run() override;
 
 	static const unsigned READ_BUFFER_SIZE;
 private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
 	map<FILE *, pair<function<void(const string&)>, watchdog_state*>> m_error_fds;
-	std::atomic<uint64_t> m_last_loop_ns;
-	std::atomic<pthread_t> m_pthread_id;
 };
 

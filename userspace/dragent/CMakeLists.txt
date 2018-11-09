@@ -27,6 +27,8 @@ list(APPEND targetfiles
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp
+	watchdog_runnable.cpp
+	watchdog_runnable_pool.cpp
 	error_handler.cpp
 	logger.cpp
 	monitor.cpp

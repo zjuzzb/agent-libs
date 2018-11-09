@@ -2,8 +2,68 @@
 #include "sys_call_test.h"
 #include <gtest.h>
 #include <SimpleOpt.h>
+#include <dragent/logger.h>
 
 using namespace std;
+
+namespace {
+
+class dragent_environment : public ::testing::Environment {
+
+public:
+	dragent_environment(bool log_to_console) :
+	   m_log_to_console(log_to_console)
+	{}
+
+private:
+
+	void setup_dragent_logger()
+	{
+		std::string logDir  = "/opt/draios/logs";
+		File d(logDir);
+		d.createDirectories();
+		Path p;
+		p.parseDirectory(logDir);
+		p.setFileName("draios_test.log");
+		string logsdir = p.toString();
+
+		AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
+
+		file_channel->setProperty("purgeCount", std::to_string(10));
+		file_channel->setProperty("rotation", "10M");
+		file_channel->setProperty("archive", "timestamp");
+
+		AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P, %p, %t"));
+		AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, "machine_test"));
+		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
+
+		Logger *loggerc = 0;
+		if(m_log_to_console)
+		{
+			AutoPtr<Channel> console_channel(new ConsoleChannel());
+			AutoPtr<Channel> formatting_channel_console(new FormattingChannel(formatter, console_channel));
+			loggerc = &Logger::create("DraiosLogC", formatting_channel_console, Message::Priority::PRIO_DEBUG);
+		}
+
+		Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, Message::Priority::PRIO_DEBUG);
+
+		g_log = unique_ptr<dragent_logger>(new dragent_logger(&loggerf, loggerc));
+	}
+
+	void SetUp() override
+	{
+		setup_dragent_logger();
+	}
+
+	void TearDown() override
+	{
+	}
+
+	bool m_log_to_console;
+
+};
+
+}
 
 
 class EventListener : public ::testing::EmptyTestEventListener
@@ -39,7 +99,7 @@ private:
 };
 
 // define the ID values to indentify the option
-enum { OPT_KEEP_CAPTURE_FILES };
+enum { OPT_KEEP_CAPTURE_FILES, OPT_LOG_TO_CONSOLE };
 
 // declare a table of CSimpleOpt::SOption structures. See the SimpleOpt.h header
 // for details of each entry in this structure. In summary they are:
@@ -54,6 +114,8 @@ enum { OPT_KEEP_CAPTURE_FILES };
 CSimpleOpt::SOption g_rgOptions[] =
 {
 	{ OPT_KEEP_CAPTURE_FILES, "--keep_capture_files", SO_NONE    }, // "--help"
+	{ OPT_LOG_TO_CONSOLE, "-v",  SO_NONE },
+	{ OPT_LOG_TO_CONSOLE, "--verbose",  SO_NONE },
 	SO_END_OF_OPTIONS                       // END
 };
 
@@ -62,6 +124,7 @@ int main(int argc, char **argv)
 {
 	testing::InitGoogleTest(&argc, argv);
 	bool keep_capture_files = false;
+	bool log_to_console = false;
 	CSimpleOpt args(argc, argv, g_rgOptions);
 
 	//
@@ -75,11 +138,18 @@ int main(int argc, char **argv)
 			{
 				keep_capture_files = true;
 			}
+			else if(args.OptionId() == OPT_LOG_TO_CONSOLE)
+			{
+				log_to_console = true;
+			}
 		}
 	}
 
 	::testing::TestEventListeners &listeners = ::testing::UnitTest::GetInstance()->listeners();
 	listeners.Append(new EventListener(keep_capture_files));
+
+	::testing::AddGlobalTestEnvironment(new dragent_environment(log_to_console));
+
 	return RUN_ALL_TESTS();
 }
 

@@ -657,7 +657,7 @@ int dragent_app::sdagent_main()
 
 	if (!m_configuration.m_config_test)
 	{
-		ThreadPool::defaultPool().start(m_subprocesses_logger, "subprocesses_logger");
+		m_pool.start(m_subprocesses_logger, m_configuration.m_watchdog_subprocesses_logger_timeout_s);
 		ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	}
 	try {
@@ -822,23 +822,23 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
-	if(m_subprocesses_logger.get_last_loop_ns() != 0)
+	auto unhealthy = m_pool.unhealthy_runnables();
+	if(!unhealthy.empty())
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns()
-					   - m_subprocesses_logger.get_last_loop_ns();
-
-#if _DEBUG
-		LOG_DEBUG("watchdog: subprocesses_logger last activity " + NumberFormatter::format(diff) + " ns ago");
-#endif
-
-		if(diff > (int64_t) m_configuration.m_watchdog_subprocesses_logger_timeout_s * 1000000000LL)
+		// Right now, only the subprocesses logger is handled this was
+		for(const dragent::watchdog_runnable_pool::hung_runnable& current : unhealthy)
 		{
 			char line[128];
-			snprintf(line, sizeof(line), "watchdog: Detected subprocesses_logger stall, last activity %" PRId64 " ns ago\n", diff);
+			snprintf(line,
+				 sizeof(line),
+				 "watchdog: Detected %s stall, last activity %" PRId64 " ms ago\n",
+				 current.hung.name().c_str(),
+				 current.since_last_heartbeat_ms);
 			crash_handler::log_crashdump_message(line);
-			pthread_kill(m_subprocesses_logger.get_pthread_id(), SIGABRT);
-			to_kill = true;
+			pthread_kill(current.hung.pthread_id(), SIGABRT);
 		}
+
+		to_kill = true;
 	}
 
 #ifndef CYGWING_AGENT

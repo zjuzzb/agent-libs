@@ -117,7 +117,7 @@ private:
 // the filename and the line number. If prefix is provided then that will
 // proceed the filename.
 #define DRAGENT_LOGGER(__optional_prefix) \
-static const file_logger s_file_logger(__FILE__, "" __optional_prefix);
+static const file_logger s_file_logger(__FILE__, "" __optional_prefix)
 
 // Macros to use in the cpp file to interface with the component logger.
 #define LOG_TRACE(__fmt, ...) \
