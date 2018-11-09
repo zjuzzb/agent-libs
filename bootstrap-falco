@@ -7,7 +7,7 @@ else
   SCRIPT=$(readlink -f $0)
 fi
 AGENT_SOURCEDIR=$(dirname $SCRIPT)
-FALCO_SOURCEDIR=$(dirname $SCRIPT)/../oss-falco
+FALCO_SOURCEDIR=$(dirname $SCRIPT)/../falco
 
 if [ -z "$WORKDIR" ]; then
 	WORKDIR=$AGENT_SOURCEDIR/..
@@ -41,7 +41,7 @@ if [ -z "$BUILD_BPF" ]; then
 	BUILD_BPF=OFF
 fi
 
-FALCO_BUILD_DIR=$WORKDIR/oss-falco/build
+FALCO_BUILD_DIR=$WORKDIR/falco/build
 mkdir -p $FALCO_BUILD_DIR/debug
 mkdir -p $FALCO_BUILD_DIR/release
 
