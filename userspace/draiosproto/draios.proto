@@ -826,6 +826,13 @@ enum container_type {
     CUSTOM = 6;
 }
 
+message container_reporting_group {
+    optional uint32 id = 1;
+    repeated string label = 2; // simply a list of labels that might apply to a given container
+    repeated string image = 3; // list of images which could match a container in this group
+    optional bool require_match_all = 4; // if true, container must match all labels and one image. If false, must match at least one label or one image
+}
+
 message container_port_mapping {
     optional uint32 host_ip = 1;
     optional uint32 host_port = 2;
@@ -867,6 +874,7 @@ message container {
     optional string image_repo = 27;
     optional string image_tag = 28;
     optional string image_digest = 29;
+    repeated uint32 container_reporting_group_id = 30; // maps to the group under which this group was reported
 }
 
 //
@@ -1137,6 +1145,15 @@ message orchestrator_state_t {
     optional string cluster_name = 3;
 }
 
+message unreported_stats {
+    optional time_categories tcounters = 1;
+    optional transaction_breakdown_categories reqcounters = 2;
+    optional counter_time_bidirectional max_transaction_counters = 3;
+    optional resource_categories resource_counters = 4;
+    optional counter_syscall_errors syscall_errors = 5;
+    optional proto_info protos = 6;
+    repeated string names = 7; // names of all containers herein reported
+}
 // ENTRY POINT MESSAGE
 //
 message metrics {
@@ -1177,6 +1194,9 @@ message metrics {
     repeated ipv4_connection ipv4_incomplete_connections = 36; // The list of incomplete IPv4 connections
     repeated id_map userdb = 37; // uid->username mapping
     repeated environment environments = 38; // map of hash -> list of vars
+
+    optional unreported_stats unreported_counters = 39; // stats for all containers which aren't explicitly reported
+    repeated container_reporting_group reporting_groups = 40; // specification for all reporting groups which could contain a container
 }
 
 message dump_request_start {
