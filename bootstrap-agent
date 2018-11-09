@@ -64,6 +64,16 @@ if [ ! -d "$TBB_DIR" ]; then
 	make tbb_build_dir=${TBB_DIR}/build tbb_build_prefix=lib extra_inc=big_iron.inc
 fi
 
+# The njson vs json is intentional. The tarball has njson-x.y.z in the
+# name, but it unpacks to json-x.y.z.
+NJSON_DIR=$DEPENDENCIES/json-3.3.0
+if [ ! -d "$NJSON_DIR" ]; then
+	cd $DEPENDENCIES
+	wget $DEPENDENCIES_URL/njson-3.3.0.tar.gz
+	tar -xzf njson-3.3.0.tar.gz
+	# No build neeeded, all of the code is in a single header file.
+fi
+
 if [[ "$ARCH" == "s390x" ]]; then
 GO_DIR=/usr/local/go
 if [ ! -d "$GO_DIR" ]; then

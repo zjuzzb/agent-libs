@@ -372,7 +372,7 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 	for(auto &ruleset : m_rulesets)
 	{
 		try {
-			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_event(evt, ruleset.second);
+			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_sinsp_event(evt, ruleset.second);
 
 			if(!res)
 			{
