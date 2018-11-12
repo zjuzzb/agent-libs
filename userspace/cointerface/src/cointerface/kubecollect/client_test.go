@@ -7,7 +7,12 @@ import (
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-
+// Return a pointer to a randomized resource list
+// that we create. In the real world you could have
+// multiple resource types; each belonging to different
+// groupversions.
+// But until we have support for different grouoversions;
+// this serves as a good replica. 
 func createAPIResourceList(listSize int) (resourceList *v1meta.APIResourceList) {
 
 	resourceTypes := []string {
@@ -26,7 +31,7 @@ func createAPIResourceList(listSize int) (resourceList *v1meta.APIResourceList) 
 
 	// Create output APIResourceList
 	orig := &v1meta.APIResourceList {
-		GroupVersion: "v1ForTesting",
+		GroupVersion: "core/v1",
 	}
 	
 	for _, ind := range indexes {
