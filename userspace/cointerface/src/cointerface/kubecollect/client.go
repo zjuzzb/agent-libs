@@ -27,7 +27,6 @@ import (
 
 // XXX make these into one map and/or remove them if
 // HasSynced checking works instead of using receiveMap
-var compatibilityMap map[string]bool // no concurrent access, no lock
 var startedMap map[string]bool
 var startedMutex sync.RWMutex
 var receiveMap map[string]bool
@@ -36,6 +35,41 @@ var annotFilter map[string]bool
 
 
 const RsyncInterval = 10 * time.Minute
+
+func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
+
+	// Return a vector of all resourceType names
+	var resourceTypes []string
+	
+	for _, resourceList := range resources {
+		for _, resource := range resourceList.APIResources {
+			verbStr := ""
+			for _, verb := range resource.Verbs {
+				verbStr += verb
+				verbStr += ","
+			}
+			verbStr = strings.Trim(verbStr, ",")
+			log.Debugf("K8s API server supports %s/%s: %s",
+				resourceList.GroupVersion, resource.Name, verbStr)
+
+			if resource.Name == "cronjobs" &&
+				resourceList.GroupVersion != "batch/v2alpha1" {
+				continue
+			}
+
+			// If the resource type is "nodes" or "namespaces" we
+			// PREPEND them. (we want to process those first). Else
+			// append the other resource types.
+			if(resource.Name == "nodes" || resource.Name == "namespaces") {
+				resourceTypes = append([]string{resource.Name}, resourceTypes...)
+			} else {
+				resourceTypes = append(resourceTypes, resource.Name)
+			}
+		}
+	}
+
+	return resourceTypes
+}
 
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
@@ -83,29 +117,14 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 
 	// Reset all globals
 	// XXX better yet, make them not package globals
-	compatibilityMap = make(map[string]bool)
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
 	setAnnotFilt(opts.AnnotationFilter)
-	for _, resourceList := range resources {
-		for _, resource := range resourceList.APIResources {
-			verbStr := ""
-			for _, verb := range resource.Verbs {
-				verbStr += verb
-				verbStr += ","
-			}
-			verbStr = strings.Trim(verbStr, ",")
-			log.Debugf("K8s API server supports %s/%s: %s",
-				resourceList.GroupVersion, resource.Name, verbStr)
 
-			if resource.Name == "cronjobs" &&
-				resourceList.GroupVersion != "batch/v2alpha1" {
-				continue
-			}
-			compatibilityMap[resource.Name] = true
-		}
-	}
-
+	// Get a vector of all resource types
+	// from the resourceList in resources.
+	resourceTypes := getResourceTypes(resources)
+	
 	// Caller is responsible for draining the chan
 	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
 
@@ -127,7 +146,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	var wg sync.WaitGroup
 	// Start informers in a separate routine so we can return the
 	// evt chan and let the caller start reading/draining events
-	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts)
+	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes)
 
 	return evtc, fetchDone, nil
 }
@@ -199,13 +218,10 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 	return nil
 }
 
-func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand) {
+func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand, resourceTypes []string) {
 	filterEmpty := opts.GetFilterEmpty()
 
-	for resource, ok := range compatibilityMap {
-		if !ok {
-			continue
-		}
+	for _, resource := range resourceTypes {
 
 		interrupted := false
 		select {
@@ -215,7 +231,7 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 		}
 		if interrupted {
 			log.Warn("K8s informer startup interrupted by cancelled context")
-			break
+			break  
 		}
 
 		log.Debugf("Checking kubecollect support for %v", resource)
