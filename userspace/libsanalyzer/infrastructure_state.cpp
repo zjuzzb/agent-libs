@@ -953,8 +953,10 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 	}
 
 	// Make sure we are dealing with a k8s_* object
+	// If we are not. Always export and return early.
+	// This preserves previous behaviour for such congroups
 	if((grp->uid().kind()).substr(0,4) != "k8s_") {
-		return false;
+		return true;
 	}
 	
 	// Always return node and namespace
