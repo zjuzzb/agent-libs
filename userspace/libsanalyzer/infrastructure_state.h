@@ -15,6 +15,7 @@
 #include "sdc_internal.pb.h"
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
+typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
 
 class infrastructure_state
 {
@@ -61,9 +62,9 @@ public:
 	// the current state
 	bool check_registered_scope(reg_id_t &reg);
 
-	void state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
+	void state_of(const std::vector<std::string> &container_ids, container_groups* state);
 
-	void get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state);
+	void get_state(container_groups* state);
 
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
@@ -88,11 +89,6 @@ public:
 	bool has(uid_t uid) const;
 	unsigned int size();
 
-	// These return true if the new entry has been added, false if it already existed
-	bool add(uid_t key);
-	bool add_child_link(uid_t key, uid_t child);
-	bool add_parent_link(uid_t key, uid_t parent);
-
 	std::string get_k8s_cluster_name() const;
 	// The UID of the default namespace is used as the cluster id
 	std::string get_k8s_cluster_id() const;
@@ -107,17 +103,20 @@ private:
 		// other orchestrators nodes
 	};
 
+	// These return true if the new entry has been added, false if it already existed
+	bool add(uid_t key);
+
 	void state_of(const draiosproto::container_group *grp,
-		google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
-		std::unordered_set<uid_t>& visited);
+		      container_groups* state,
+		      std::unordered_set<uid_t>& visited);
 
 	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
-						google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
-						std::unordered_set<uid_t> &visited_groups);
+			    scope_predicates &preds,
+			    std::unordered_set<uid_t> &visited_groups);
 
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
-
+	
 	void refresh_hosts_metadata();
 
 	void connect(infrastructure_state::uid_t& key);
@@ -133,6 +132,8 @@ private:
 
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void k8s_generate_user_event(const bool success);
+
+	bool is_valid_for_export(const draiosproto::container_group *grp) const;
 
 	void purge_tags_and_copy(uid_t, const draiosproto::container_group& cg);
 

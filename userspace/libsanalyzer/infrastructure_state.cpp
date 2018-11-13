@@ -32,7 +32,7 @@ void infrastructure_state::insert_cached_result(const std::string &entity_id, si
 	m_policy_cache[entity_id].emplace(h, res);
 }
 
-bool evaluate_on(draiosproto::container_group *congroup, google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds)
+bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds)
 {
 	auto evaluate = [](const draiosproto::scope_predicate &p, const std::string &value)
 	{
@@ -405,30 +405,6 @@ bool infrastructure_state::add(uid_t key)
 	return true;
 }
 
-bool infrastructure_state::add_child_link(uid_t key, uid_t ckey)
-{
-	if(!has(key) || has_link(m_state[key]->children(), ckey))
-		return false;
-
-	draiosproto::congroup_uid *child = m_state[key]->mutable_children()->Add();
-	child->set_kind(ckey.first);
-	child->set_id(ckey.second);
-
-	return true;
-}
-
-bool infrastructure_state::add_parent_link(uid_t key, uid_t pkey)
-{
-	if(!has(key) || has_link(m_state[key]->parents(), pkey))
-		return false;
-
-	draiosproto::congroup_uid *parent = m_state[key]->mutable_parents()->Add();
-	parent->set_kind(pkey.first);
-	parent->set_id(pkey.second);
-
-	return true;
-}
-
 bool infrastructure_state::find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const
 {
 	if (!has(uid) || (visited.find(uid) != visited.end())) {
@@ -701,10 +677,10 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 			child->set_kind(key.first);
 			child->set_id(key.second);
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: child <%s,%s> added to <%s,%s>",
-				  key.first.c_str(), key.second.c_str(), pkey.first.c_str(), pkey.second.c_str());
+			      key.first.c_str(), key.second.c_str(), pkey.first.c_str(), pkey.second.c_str());
 		} else {
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: <%s,%s> already connected to child <%s,%s>",
-				pkey.first.c_str(), pkey.second.c_str(), key.first.c_str(), key.second.c_str());
+			      pkey.first.c_str(), pkey.second.c_str(), key.first.c_str(), key.second.c_str());
 		}
 	}
 
@@ -715,7 +691,7 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 		auto ckey = make_pair(x.kind(), x.id());
 		if(!has(ckey)) {
 			// the connection will be created when the child arrives
-			continue;
+ 			continue;
 		} else if(!has_link(m_state[ckey]->parents(), key)) {
 			draiosproto::congroup_uid *parent = m_state[ckey]->mutable_parents()->Add();
 			parent->set_kind(key.first);
@@ -799,8 +775,8 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key)
 }
 
 bool infrastructure_state::walk_and_match(draiosproto::container_group *congroup,
-										google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> &preds,
-										std::unordered_set<uid_t> &visited_groups)
+					  scope_predicates &preds,
+					  std::unordered_set<uid_t> &visited_groups)
 {
 	uid_t uid = make_pair(congroup->uid().kind(), congroup->uid().id());
 
@@ -871,7 +847,7 @@ bool infrastructure_state::match_scope(const uid_t &uid, const scope_predicates&
 		if (pos == m_state.end())
 			return false;
 
-		google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> preds(predicates);
+		scope_predicates preds(predicates);
 
 		if (uid.first == "host") {
 			result = evaluate_on(pos->second.get(), preds);
@@ -961,9 +937,62 @@ bool infrastructure_state::check_registered_scope(reg_id_t &reg)
 	return it->second.m_scope_match;
 }
 
+// This function tests if a given congroup is valid for export
+// Rules:
+// 1.) ONLY Export: k8s_* objects
+// 2.) ALWAYS Export : k8s_namespace, k8s_node
+// 3.) NEVER Export  : host , container
+// 4.) Conditional Export : (a). All other congroups ONLY if they have
+//                               k8s_namespace parent
+//                          (b). A k8s_pod should be exported ONLY
+//                               if it has both k8s_namespace and k8s_node
+//                               parents.
+bool infrastructure_state::is_valid_for_export(const draiosproto::container_group *grp) const
+{
+	// Never return host and container.
+	if(grp->uid().kind() == "host" || grp->uid().kind() == "container") {
+		return false;
+	}
+
+	// Make sure we are dealing with a k8s_* object
+	// If we are not. Always export and return early.
+	// This preserves previous behaviour for such congroups
+	if((grp->uid().kind()).substr(0,4) != "k8s_") {
+		return true;
+	}
+	
+	// Always return node and namespace
+	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node") {
+		return true;
+	}
+
+	// Now check for parents conditions based on rules above
+	bool has_k8s_namespace(false), has_k8s_node(false);
+	
+	for(const auto &p_uid : grp->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if (p_uid.kind() == "k8s_namespace")
+		{
+			has_k8s_namespace = has(pkey);
+		}
+		else if (grp->uid().kind() == "k8s_pod" && p_uid.kind() == "k8s_node")
+		{
+			has_k8s_node = has(pkey);
+		}
+	}
+
+	if(grp->uid().kind() == "k8s_pod") {
+		return (has_k8s_node && has_k8s_namespace);
+	}
+
+	return has_k8s_namespace;
+}
+
+
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
-				     google::protobuf::RepeatedPtrField<draiosproto::container_group>* state,
-				     std::unordered_set<uid_t>& visited)
+				    container_groups* state,
+				    std::unordered_set<uid_t>& visited)
 {
 	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
 
@@ -973,7 +1002,6 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 	visited.emplace(uid);
 
-
 	for (const auto &p_uid : grp->parents()) {
 		auto pkey = make_pair(p_uid.kind(), p_uid.id());
 
@@ -981,7 +1009,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 			// We don't have this parent (yet...)
 			continue;
 		}
-
+		
 		//
 		// Build parent state
 		//
@@ -989,9 +1017,9 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 
 	//
-	// Except for containers and hosts, add the current node
-	//
-	if(grp->uid().kind() != "container" && grp->uid().kind() != "host") {
+	// Export a congroup only if it obeys the rules
+	// of the valid for export method above
+	if(is_valid_for_export(grp)) {
 		auto x = state->Add();
 		x->CopyFrom(*grp);
 		// Clean children links, backend will reconstruct them from parent ones
@@ -1033,7 +1061,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 }
 
-void infrastructure_state::state_of(const std::vector<std::string> &container_ids, google::protobuf::RepeatedPtrField<draiosproto::container_group>* state)
+void infrastructure_state::state_of(const std::vector<std::string> &container_ids, container_groups* state)
 {
 	std::unordered_set<uid_t, std::hash<uid_t>> visited;
 
@@ -1077,11 +1105,11 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 	}
 }
 
-void infrastructure_state::get_state(google::protobuf::RepeatedPtrField<draiosproto::container_group>* state)
+void infrastructure_state::get_state(container_groups* state)
 {
 	for (auto i = m_state.begin(); i != m_state.end(); ++i) {
 		auto cg = i->second.get();
-		if(cg->uid().kind() != "container" && cg->uid().kind() != "host") {
+		if(is_valid_for_export(cg)) {
 			auto x = state->Add();
 			x->CopyFrom(*cg);
 			// clean up host links
@@ -1373,6 +1401,7 @@ void infrastructure_state::refresh_hosts_metadata()
 
 void infrastructure_state::debug_print()
 {
+	
 	glogf(sinsp_logger::SEV_TRACE, "infra_state: INFRASTRUCTURE STATE (size: %d)", m_state.size());
 
 	for (auto it = m_state.begin(), e = m_state.end(); it != e; ++it) {
@@ -1390,7 +1419,7 @@ void infrastructure_state::debug_print()
 		glogf(sinsp_logger::SEV_TRACE, "infra_state:   Ports:");
 		for (auto p: cong->ports())
 			glogf(sinsp_logger::SEV_TRACE, "infra_state:    %d:%s (target:%d, node:%d, published:%d)",
-				  p.port(), p.protocol().c_str(), p.target_port(), p.node_port(), p.published_port());
+			      p.port(), p.protocol().c_str(), p.target_port(), p.node_port(), p.published_port());
 		glogf(sinsp_logger::SEV_TRACE, "infra_state:   Metrics:");
 		for (auto m: cong->metrics())
 			glogf(sinsp_logger::SEV_TRACE, "infra_state:    %s:%g", m.name().c_str(), m.value());
