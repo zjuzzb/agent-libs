@@ -859,7 +859,17 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 			m_internal_metrics->set_fp((int64_t)round(m_prev_flush_cpu_pct * 100));
 			m_internal_metrics->set_sr(m_sampling_ratio);
 			m_internal_metrics->set_fl(m_prev_flushes_duration_ns / 1000000);
-			if(m_internal_metrics->send_some(m_metrics->mutable_protos()->mutable_statsd()))
+
+			bool sent;
+			if(m_extra_internal_metrics)
+			{
+				sent = m_internal_metrics->send_all(m_metrics->mutable_protos()->mutable_statsd());
+			}
+			else
+			{
+				sent = m_internal_metrics->send_some(m_metrics->mutable_protos()->mutable_statsd());
+			}
+			if(sent)
 			{
 				if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 				{

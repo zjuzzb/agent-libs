@@ -548,6 +548,8 @@ public:
 	void set_track_environment(bool val) { m_track_environment = val; }
 	void set_envs_per_flush(uint32_t val) { m_envs_per_flush = val; }
 
+	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
+
 	//
 	// Test tool detection state
 	//
@@ -933,6 +935,8 @@ VISIBILITY_PRIVATE
 	bool m_track_environment = false;
 	uint32_t m_envs_per_flush;
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
+
+	bool m_extra_internal_metrics = false;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

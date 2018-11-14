@@ -1176,6 +1176,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_track_environment = m_config->get_scalar<bool>("track_environment", false);
 	m_envs_per_flush = m_config->get_scalar<uint32_t>("envs_per_flush", 20);
+
+	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1626,6 +1628,8 @@ void dragent_configuration::print_configuration() const
 	{
 		g_log->information("Environment variable reporting enabled");
 	}
+
+	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

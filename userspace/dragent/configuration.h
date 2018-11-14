@@ -824,6 +824,8 @@ public:
 	bool m_track_environment = false;
 	uint32_t m_envs_per_flush;
 
+	bool m_extra_internal_metrics = false;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();
