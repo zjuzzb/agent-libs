@@ -100,12 +100,11 @@ class file_logger
 {
 public:
 	file_logger(const char *file, const char *component);
-	void log(uint32_t severity, int line, const char *fmt, ...) const __attribute__ ((format (printf, 4, 5)));
 	void log(uint32_t severity, int line, const std::string& str) const;
 
 private:
-	std::string build(int line, const char *fmt, va_list& args) const;
-	const char *m_component;
+	std::string build(int line, const std::string& str) const;
+	const std::string m_component;
 	// Filename without extension
 	std::string m_file;
 
@@ -120,21 +119,21 @@ private:
 static const file_logger s_file_logger(__FILE__, "" __optional_prefix)
 
 // Macros to use in the cpp file to interface with the component logger.
-#define LOG_TRACE(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_TRACE, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_DEBUG(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_DEBUG, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_INFO(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_INFORMATION, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_NOTICE(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_NOTICE, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_WARNING(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_WARNING, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_ERROR(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_ERROR, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_CRITICAL(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_CRITICAL, __LINE__, __fmt, ##__VA_ARGS__)
-#define LOG_FATAL(__fmt, ...) \
-s_file_logger.log(Poco::Message::Priority::PRIO_FATAL, __LINE__, __fmt, ##__VA_ARGS__)
+#define LOG_TRACE(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_TRACE, __LINE__, __msg)
+#define LOG_DEBUG(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_DEBUG, __LINE__, __msg)
+#define LOG_INFO(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_INFORMATION, __LINE__, __msg)
+#define LOG_NOTICE(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_NOTICE, __LINE__, __msg)
+#define LOG_WARNING(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_WARNING, __LINE__, __msg)
+#define LOG_ERROR(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_ERROR, __LINE__, __msg)
+#define LOG_CRITICAL(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_CRITICAL, __LINE__, __msg)
+#define LOG_FATAL(__msg) \
+s_file_logger.log(Poco::Message::Priority::PRIO_FATAL, __LINE__, __msg)
 
 extern std::unique_ptr<dragent_logger> g_log;

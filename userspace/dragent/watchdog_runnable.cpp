@@ -29,8 +29,7 @@ void watchdog_runnable::timeout(uint64_t value)
 {
 	if(is_started())
 	{
-		LOG_ERROR("Attempted to set %s timeout after runnable started.",
-			  m_name.c_str());
+		LOG_ERROR("Attempted to set" + m_name +  " timeout after runnable started.");
 		return;
 	}
 
@@ -62,10 +61,7 @@ bool watchdog_runnable::is_healthy(int64_t& age_ms) const
 	age_ms = monotonic_uptime_ms() - m_last_heartbeat_ms;
 
 #if _DEBUG
-	LOG_ERROR("watchdog: %s, last activity %" PRId64 " ms ago, timeout %" PRIu64 " ms",
-		  m_name.c_str(),
-		  age_ms,
-		  m_timeout_s * 1000ULL);
+	LOG_ERROR("watchdog: " +  m_name + " , last activity " + NumberFormatter::format(age_ms) + " ms ago, timeout " +  NumberFormatter::format(am_timeout_s) * 1000 + " ms");
 #endif
 
 	if(m_timeout_s == NO_TIMEOUT)
@@ -84,12 +80,12 @@ bool watchdog_runnable::is_healthy(int64_t& age_ms) const
 
 void watchdog_runnable::run()
 {
-	LOG_INFO("%s starting", m_name.c_str());
+	LOG_INFO(m_name + " starting");
 
 	m_pthread_id = pthread_self();
 	do_run();
 
-	LOG_INFO("%s terminating", m_name.c_str());
+	LOG_INFO(m_name + " terminating");
 }
 
 uint64_t watchdog_runnable::monotonic_uptime_ms() const

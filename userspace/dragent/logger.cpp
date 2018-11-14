@@ -495,49 +495,22 @@ file_logger::file_logger(const char* path, const char *component) :
 	m_file = filePath.getBaseName();
 }
 
-std::string file_logger::build(int line, const char *fmt, va_list& args) const
+std::string file_logger::build(int line, const std::string& str) const
 {
-	const int MAX_LOG_STR_LENGTH = 512;
-	char client_string[MAX_LOG_STR_LENGTH];
+	std::string toLog;
 
-	// Build client string
-	(void)std::vsnprintf(client_string, sizeof client_string, fmt, args);
-
-	// Build log string
-	char log_string[MAX_LOG_STR_LENGTH];
-	if(strlen(m_component))
+	if(!m_component.empty())
 	{
-		(void)snprintf(log_string,
-			       sizeof log_string,
-			       "%s:%s:%d: %s",
-			       m_component,
-			       m_file.c_str(),
-			       line,
-			       client_string);
-	}
-	else
-	{
-		(void)snprintf(log_string,
-			       sizeof log_string,
-			       "%s:%d: %s",
-			       m_file.c_str(),
-			       line,
-			       client_string);
+		toLog += m_component + ":";
 	}
 
-	return log_string;
+	toLog += m_file + ":" + NumberFormatter::format(line) + ": " + str;
+	return toLog;
 }
 
-void file_logger::log(uint32_t severity, int line, const char *fmt, ...) const
-{
-	va_list args;
-	va_start(args, fmt);
-	std::string message = build(line, fmt, args);
-	va_end(args);
-	g_log->log(message, severity);
-}
 
 void file_logger::log(uint32_t severity, int line, const std::string& str) const
 {
-	log(severity, line, str.c_str());
+
+	g_log->log(build(line, str), severity);
 }
