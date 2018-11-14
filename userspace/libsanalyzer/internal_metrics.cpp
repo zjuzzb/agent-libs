@@ -98,6 +98,7 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 		// analyzer
 		write_metric(statsd_info, "dragent.analyzer.processes", draiosproto::STATSD_GAUGE,  m_analyzer.process_cnt);
 		write_metric(statsd_info, "dragent.analyzer.threads", draiosproto::STATSD_GAUGE,  m_analyzer.thread_cnt);
+		write_metric(statsd_info, "dragent.analyzer.threads.dropped", draiosproto::STATSD_COUNT, m_analyzer.thread_drop_cnt);
 		write_metric(statsd_info, "dragent.analyzer.containers", draiosproto::STATSD_GAUGE,  m_analyzer.container_cnt);
 		write_metric(statsd_info, "dragent.analyzer.javaprocs", draiosproto::STATSD_GAUGE,  m_analyzer.javaproc_cnt);
 		write_metric(statsd_info, "dragent.analyzer.appchecks", draiosproto::STATSD_GAUGE,  m_analyzer.appcheck_cnt);

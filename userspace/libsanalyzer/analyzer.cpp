@@ -2237,6 +2237,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		// update internal metrics
 		m_internal_metrics->set_process(process_count);
 		m_internal_metrics->set_thread(m_inspector->m_thread_manager->m_threadtable.size());
+		m_internal_metrics->set_thread_drops(m_inspector->m_thread_manager->m_n_drops);
 		m_internal_metrics->set_container(m_containers.size());
 		m_internal_metrics->set_appcheck(app_checks_processes.size());
 		m_internal_metrics->set_javaproc(java_process_requests.size());

@@ -51,6 +51,7 @@ public:
 	// analyzer-related interface; not thread-safe, should only be accessed from single thread
 	void set_process(int64_t val);
 	void set_thread(int64_t val);
+	void set_thread_drops(int64_t val);
 	void set_container(int64_t val);
 	void set_javaproc(int64_t val);
 	void set_appcheck(int64_t val);
@@ -68,6 +69,7 @@ public:
 
 	int64_t get_process() const;
 	int64_t get_thread() const;
+	int64_t get_thread_drops() const;
 	int64_t get_container() const;
 	int64_t get_javaproc() const;
 	int64_t get_appcheck() const;
@@ -217,6 +219,7 @@ private:
 		// (instead of aggregated internally)
 		int64_t process_cnt = -1;
 		int64_t thread_cnt = -1;
+		int64_t thread_drop_cnt = -1;
 		int64_t container_cnt = -1;
 		int64_t javaproc_cnt = -1;
 		int64_t appcheck_cnt = -1;
@@ -264,6 +267,11 @@ inline void internal_metrics::set_process(int64_t val)
 inline void internal_metrics::set_thread(int64_t val)
 {
 	m_analyzer.thread_cnt = val;
+}
+
+inline void internal_metrics::set_thread_drops(int64_t val)
+{
+	m_analyzer.thread_drop_cnt = val;
 }
 
 inline void internal_metrics::set_container(int64_t val)
@@ -394,6 +402,11 @@ inline int64_t internal_metrics::get_process() const
 inline int64_t internal_metrics::get_thread() const
 {
 	return m_analyzer.thread_cnt;
+}
+
+inline int64_t internal_metrics::get_thread_drops() const
+{
+	return m_analyzer.thread_drop_cnt;
 }
 
 inline int64_t internal_metrics::get_container() const
