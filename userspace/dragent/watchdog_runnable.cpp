@@ -61,7 +61,7 @@ bool watchdog_runnable::is_healthy(int64_t& age_ms) const
 	age_ms = monotonic_uptime_ms() - m_last_heartbeat_ms;
 
 #if _DEBUG
-	LOG_ERROR("watchdog: " +  m_name + " , last activity " + NumberFormatter::format(age_ms) + " ms ago, timeout " +  NumberFormatter::format(am_timeout_s) * 1000 + " ms");
+	LOG_DEBUG("watchdog: " +  m_name + " , last activity " + NumberFormatter::format(age_ms) + " ms ago, timeout " +  NumberFormatter::format(m_timeout_s * 1000) + " ms");
 #endif
 
 	if(m_timeout_s == NO_TIMEOUT)
