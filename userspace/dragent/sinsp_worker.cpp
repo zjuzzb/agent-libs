@@ -455,6 +455,9 @@ void sinsp_worker::init()
 
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
 
+	m_analyzer->set_track_environment(m_configuration->m_track_environment);
+	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
+
 	//
 	// Start the capture with sinsp
 	//
@@ -552,9 +555,6 @@ void sinsp_worker::init()
 	m_analyzer->set_connection_truncate_log_interval(m_configuration->m_connection_truncate_log_interval);
 
 	m_analyzer->set_username_lookups(m_configuration->m_username_lookups);
-
-	m_analyzer->set_track_environment(m_configuration->m_track_environment);
-	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
 }
 
 void sinsp_worker::run()
