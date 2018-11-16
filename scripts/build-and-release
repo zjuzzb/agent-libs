@@ -4,6 +4,13 @@ set -exuo pipefail
 COMPONENT=$1
 REPOSITORY_BASENAME=$2
 
+
+if [[ "${COMPONENT}" == "agent" ]]; then
+    echo "This script no longer supports building and releasing the agent" >&2
+    echo "Use jenkins/build-agent and jenkins/release-agent-rc instead" >&2
+    exit 1
+fi
+
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $SCRIPT)
 BINARIES_DIR="/tmp/binaries"
@@ -65,9 +72,7 @@ function configure_rpm_repo {
 	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
 	
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*${COMPONENT}*.rpm | head -n -5 | xargs -d '\n' rm -f || true
 
 	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
 	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
@@ -86,9 +91,7 @@ function configure_debian_repo {
 	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
 	
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*${COMPONENT}* | head -n -5 | xargs -d '\n' rm -f || true
 
 	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
 	cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
@@ -135,10 +138,7 @@ function configure_tgz_repo {
 	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
 	
 	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*tests* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*${COMPONENT}* | head -n -5 | xargs -d '\n' rm -f || true
 
 	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
 	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
