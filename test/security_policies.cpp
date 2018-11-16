@@ -97,9 +97,12 @@ public:
 			}
 
 			m_mgr->process_event(ev);
+
 			if(!m_ready)
 			{
 				g_log->information("test_sinsp_worker: ready");
+				string filter = "(proc.name = tests or proc.aname = tests) or container.name in (sec_ut, fs-root-image, blacklisted_image, baseline-test, denyme, inout_test, fs_usecase, mycurl, overlap_test, helloworld) or container.image = swarm_service_ut_image:latest";
+				m_inspector->set_filter(filter.c_str());
 				m_ready = true;
 			}
 		}
@@ -607,7 +610,7 @@ TEST_F(security_policies_test, readonly_fs_only)
 	close(fd);
 
 	// This should not result in an event, as it runs in a container.
-	ASSERT_EQ(system("docker run --rm busybox:latest sh -c 'touch /tmp/sample-sensitive-file-1.txt || true' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --rm --name sec_ut busybox:latest sh -c 'touch /tmp/sample-sensitive-file-1.txt || true' > /dev/null 2>&1"), 0);
 
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDONLY);
 	close(fd);
@@ -637,7 +640,7 @@ TEST_F(security_policies_test, readwrite_fs_only)
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDWR);
 	close(fd);
 
-	ASSERT_EQ(system("docker run --rm busybox:latest sh -c 'touch /tmp/sample-sensitive-file-3.txt || true' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run --name sec_ut --rm busybox:latest sh -c 'touch /tmp/sample-sensitive-file-3.txt || true' > /dev/null 2>&1"), 0);
 
 	std::vector<expected_policy_event> expected = {{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
@@ -962,7 +965,7 @@ TEST_F(security_policies_test, falco_no_evttype)
 
 TEST_F(security_policies_test, falco_fqdn)
 {
-	ASSERT_EQ(system("curl -m 3 github.com > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("echo 'ping' | timeout 2 nc github.com 80 > /dev/null 2>&1"), 0);
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
@@ -980,7 +983,7 @@ TEST_F(security_policies_test, falco_fqdn)
 	string prefix = "tests contacted the blacklisted host github.com";
 	ASSERT_EQ(pe->events(0).event_details().output_details().output().compare(0, prefix.size(), prefix), 0);
 
-	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_GE, 1}},
 							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
 							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
 
@@ -1417,11 +1420,16 @@ TEST_F(security_policies_test, docker_swarm)
 
 	ASSERT_EQ(system("(docker swarm leave --force || true) > /dev/null 2>&1"), 0);
 
-	ASSERT_EQ(system("(docker swarm init && docker service create --replicas 1 --name helloworld alpine /bin/sh -c \"while true; do echo touch; rm -f /tmp/sample-sensitive-file-2.txt; touch /tmp/sample-sensitive-file-2.txt; sleep 1; done\") > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker pull alpine > /dev/null 2>&1"), 0);
+	create_tag("swarm_service_ut_image", "alpine");
+
+	ASSERT_EQ(system("(docker swarm init && docker service create --replicas 1 --name helloworld swarm_service_ut_image /bin/sh -c \"while true; do echo touch; rm -f /tmp/sample-sensitive-file-2.txt; touch /tmp/sample-sensitive-file-2.txt; sleep 1; done\") > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
 	ASSERT_EQ(system("docker swarm leave --force > /dev/null 2>&1"), 0);
+
+	kill_image("swarm_service_ut_image");
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
