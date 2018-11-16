@@ -40,6 +40,7 @@ func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
 
 	// Return a vector of all resourceType names
 	var resourceTypes []string
+	resourceMap := make(map[string]bool)
 	
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
@@ -57,13 +58,18 @@ func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
 				continue
 			}
 
-			// If the resource type is "nodes" or "namespaces" we
-			// PREPEND them. (we want to process those first). Else
-			// append the other resource types.
-			if(resource.Name == "nodes" || resource.Name == "namespaces") {
-				resourceTypes = append([]string{resource.Name}, resourceTypes...)
-			} else {
-				resourceTypes = append(resourceTypes, resource.Name)
+			if(!resourceMap[resource.Name]) {
+				// This resource hasn't been added. Added it now
+				resourceMap[resource.Name] = true
+
+				// If the resource type is "nodes" or "namespaces" we
+				// PREPEND them. (we want to process those first). Else
+				// append the other resource types.
+				if(resource.Name == "nodes" || resource.Name == "namespaces") {
+					resourceTypes = append([]string{resource.Name}, resourceTypes...)
+				} else {
+					resourceTypes = append(resourceTypes, resource.Name)
+				}
 			}
 		}
 	}

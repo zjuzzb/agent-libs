@@ -43,6 +43,28 @@ func createAPIResourceList(listSize int) (resourceList *v1meta.APIResourceList) 
 	return orig
 }
 
+// Func to test if the resourceOrder Vector contains no repeats
+func checkNoRepeatsHelper(t *testing.T, resourceOrder []string, expected bool) {
+
+	resourceMap := make(map[string]bool)
+
+	res := true
+	
+	for _, resourceType := range resourceOrder {
+		if(resourceMap[resourceType]) {
+			res = false
+			break
+		}
+		resourceMap[resourceType] = true
+	}
+	
+	if res != expected {
+		t.Error("There are repeats in the vector")
+		t.Fail()
+	}
+	
+}
+
 
 func checkNodesAndNamespacesFirstHelper(t *testing.T, resourceOrder []string, expected bool) {
 
@@ -89,6 +111,9 @@ func TestBasicResourceOrdering(t *testing.T) {
 		createAPIResourceList(rand.Intn(30))}
 
 	resourceOrder := getResourceTypes(resourceList)
+
+	checkNoRepeatsHelper(t, resourceOrder, true)
+	
 	checkNodesAndNamespacesFirstHelper(t ,resourceOrder, true)
 
 	// Ensure you add some namespaces or nodes to the end and still it doesn't fail
@@ -102,6 +127,7 @@ func TestBasicResourceOrdering(t *testing.T) {
 	}
 
 	resourceOrderNew := getResourceTypes(resourceList)
+	checkNoRepeatsHelper(t, resourceOrderNew, true)
 	checkNodesAndNamespacesFirstHelper(t ,resourceOrderNew, true)	
 }
 
