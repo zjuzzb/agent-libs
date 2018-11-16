@@ -6278,7 +6278,8 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 	check_and_emit_containers(top_cpu_containers);
 
 #ifndef CYGWING_AGENT
-	if(m_use_new_k8s && m_infrastructure_state->subscribed())
+	if(m_use_new_k8s && m_infrastructure_state->subscribed() &&
+		(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT))
 	{
 		std::string cluster_name =
 			!m_configuration->get_k8s_cluster_name().empty() ?
@@ -6292,12 +6293,14 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 			// Build the orchestrator state of the emitted containers (without metrics)
 			m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
 			m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
-			m_infrastructure_state->state_of(emitted_containers, m_metrics->mutable_orchestrator_state()->mutable_groups());
+			m_infrastructure_state->state_of(emitted_containers,
+				m_metrics->mutable_orchestrator_state()->mutable_groups(),
+				m_prev_flush_time_ns);
 			if(check_k8s_delegation()) {
 				m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
 				m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 				// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-				m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups());
+				m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(), m_prev_flush_time_ns);
 			}
 		}
 	}

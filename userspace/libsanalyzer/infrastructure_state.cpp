@@ -360,6 +360,7 @@ void infrastructure_state::reset()
 	m_k8s_cached_cluster_id.clear();
 	m_k8s_node.clear();
 	m_registered_scopes.clear();
+	m_rate_metric_state.clear();
 
 	if (m_k8s_subscribed) {
 		connect_to_k8s();
@@ -770,6 +771,7 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key)
 
 	// Remove the group itself
 	m_state.erase(key);
+	delete_rate_metrics(key);
 
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Container group <%s,%s> removed.", key.first.c_str(), key.second.c_str());
 }
@@ -992,7 +994,7 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 
 void infrastructure_state::state_of(const draiosproto::container_group *grp,
 				    container_groups* state,
-				    std::unordered_set<uid_t>& visited)
+				    std::unordered_set<uid_t>& visited, const uint64_t ts)
 {
 	uid_t uid = make_pair(grp->uid().kind(), grp->uid().id());
 
@@ -1013,7 +1015,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		//
 		// Build parent state
 		//
-		state_of(m_state[pkey].get(), state, visited);
+		state_of(m_state[pkey].get(), state, visited, ts);
 	}
 
 	//
@@ -1029,6 +1031,8 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 		}
 		// Internal_tags are meant for use inside agent only
 		x->mutable_internal_tags()->clear();
+
+		calculate_rate_metrics(x, ts);
 
 		// x->mutable_metrics()->erase(x->mutable_metrics()->begin(), x->mutable_metrics()->end());
 		// // Put back legacy metrics
@@ -1061,7 +1065,7 @@ void infrastructure_state::state_of(const draiosproto::container_group *grp,
 	}
 }
 
-void infrastructure_state::state_of(const std::vector<std::string> &container_ids, container_groups* state)
+void infrastructure_state::state_of(const std::vector<std::string> &container_ids, container_groups* state, uint64_t ts)
 {
 	std::unordered_set<uid_t, std::hash<uid_t>> visited;
 
@@ -1077,7 +1081,7 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 			continue;
 		}
 
-		state_of(pos->second.get(), state, visited);
+		state_of(pos->second.get(), state, visited, ts);
 	}
 
 	//
@@ -1105,7 +1109,50 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 	}
 }
 
-void infrastructure_state::get_state(container_groups* state)
+void infrastructure_state::calculate_rate_metrics(draiosproto::container_group *cg, const uint64_t ts)
+{
+	auto cgkey = make_pair(cg->uid().kind(), cg->uid().id());
+	for (auto it = cg->mutable_metrics()->begin() ; it != cg->mutable_metrics()->end(); it++)
+	{
+		if (it->type() != draiosproto::app_metric_type::APP_METRIC_TYPE_RATE)
+			continue;
+		// Set rate to 0 if we don't have a previous value yet
+		double rate = 0.0;
+		if (m_rate_metric_state.find(cgkey) != m_rate_metric_state.end())
+		{
+			auto rms_it = m_rate_metric_state[cgkey].find(it->name());
+			if (rms_it != m_rate_metric_state[cgkey].end())
+			{
+				uint64_t timediff = ts - rms_it->second.ts;
+				if (timediff < (ONE_SECOND_IN_NS / 2))
+				{
+					// If we're called again during the same cycle, timediff should be 0
+					// We'll just repeat the rate value from last calculation
+					if (timediff)
+					{
+						// This shouldn't happen. We're either called more than
+						// twice per second or with a different time source.
+						glogf(sinsp_logger::SEV_WARNING, "Time difference too small for rate calculation: %" PRIu64 " ns, time now: %" PRIu64 ", last: %" PRIu64, timediff, ts, rms_it->second.ts);
+					}
+					it->set_value(rms_it->second.last_rate);
+					continue;
+				}
+				rate = (it->value() - rms_it->second.val ) * (double)ONE_SECOND_IN_NS / (double)timediff;
+			}
+		}
+		m_rate_metric_state[cgkey][it->name()].val = it->value();
+		m_rate_metric_state[cgkey][it->name()].ts = ts;
+		m_rate_metric_state[cgkey][it->name()].last_rate = rate;
+		it->set_value(rate);
+	}
+}
+
+void infrastructure_state::delete_rate_metrics(const uid_t& key)
+{
+	m_rate_metric_state.erase(key);
+}
+
+void infrastructure_state::get_state(container_groups* state, const uint64_t ts)
 {
 	for (auto i = m_state.begin(); i != m_state.end(); ++i) {
 		auto cg = i->second.get();
@@ -1128,6 +1175,8 @@ void infrastructure_state::get_state(container_groups* state)
 			}
 			// Internal_tags are meant for use inside agent only
 			x->mutable_internal_tags()->clear();
+
+			calculate_rate_metrics(x, ts);
 		}
 	}
 }

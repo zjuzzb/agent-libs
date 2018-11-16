@@ -109,11 +109,11 @@ TEST_F(inf_state_test, EmptyStateTest)
 	// Initially, when we ping the infra state for its current state
 	// "result" should always be empty
 	container_groups result;
-	m_infra_state->state_of(m_containers, &result );
+	m_infra_state->state_of(m_containers, &result, 0);
 	ASSERT_TRUE(result.empty());
 
 	// Test with get_state also
-	m_infra_state->get_state( &result );
+	m_infra_state->get_state( &result, 0 );
 	ASSERT_TRUE(result.empty());	
 }
 
@@ -138,7 +138,7 @@ TEST_F(inf_state_test, AlwaysReturnNodeTypes)
 	auto node1 = add_congroup("k8s_node");
 	
 	container_groups result;
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 
 	ASSERT_FALSE(result.empty());
 	ASSERT_EQ(result.size(),1);
@@ -146,7 +146,7 @@ TEST_F(inf_state_test, AlwaysReturnNodeTypes)
 
 	// Add another node
 	auto node2 = add_congroup("k8s_node");
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 
 	ASSERT_FALSE(result.empty());
 	ASSERT_EQ(result.size(),2);
@@ -170,7 +170,7 @@ TEST_F(inf_state_test, DontExportPodsWithoutNodeParents)
 	add_parent_link(pod1, ns1);
 
 	// Now get infra state
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 	// Result should ONLY contain namespace
 	// Not pod
 	ASSERT_EQ(result.size(),1);
@@ -179,7 +179,7 @@ TEST_F(inf_state_test, DontExportPodsWithoutNodeParents)
 	// Now add a node
 	auto node1 = add_congroup("k8s_node");
 	// Now get infra state
-	m_infra_state->get_state( &result);
+	m_infra_state->get_state( &result, 0);
 	// Result should ONLY contain namespace and node
 	// Not pod
 	ASSERT_EQ(result.size(),2);
@@ -189,7 +189,7 @@ TEST_F(inf_state_test, DontExportPodsWithoutNodeParents)
 	add_parent_link(pod1, node1);
 
 	// Verify with get_state
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 	// Result should contain all 3 
 	ASSERT_EQ(result.size(),3);
 	result.Clear();
@@ -225,7 +225,7 @@ TEST_F(inf_state_test, CongroupsWithoutNamespaceParentsTest)
 	add_parent_link(cont2, pod2);
 
 	// Now ping infra result - should show up empty
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 
 	ASSERT_TRUE(result.empty());
 
@@ -242,7 +242,7 @@ TEST_F(inf_state_test, CongroupsWithoutNamespaceParentsTest)
 	add_parent_link(pod2, ns1);
 
 	// Now get infra state
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 
 	// Now result should not be empty
 	ASSERT_FALSE(result.empty());
@@ -253,7 +253,7 @@ TEST_F(inf_state_test, CongroupsWithoutNamespaceParentsTest)
 	result.Clear();
 
 	// See if get_state shows same results
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 	ASSERT_EQ(result.size(), 1);
 	result.Clear();
 
@@ -263,7 +263,7 @@ TEST_F(inf_state_test, CongroupsWithoutNamespaceParentsTest)
 	add_parent_link(pod2, node1);
 
 	// See if get_state shows updated results
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 	// We should have:
 	// 2 pods, 1 Namespace, 1 node
 	ASSERT_EQ(result.size(), 4);
@@ -276,7 +276,7 @@ TEST_F(inf_state_test, CongroupsWithoutNamespaceParentsTest)
 	ASSERT_FALSE(has_congroup(ns1.object().uid()));
 
 	// Now get infra state
-	m_infra_state->get_state( &result);
+	m_infra_state->get_state( &result, 0);
 
 	// Now result should have only Node result
 	ASSERT_EQ(result.size(), 1);
@@ -291,7 +291,7 @@ TEST_F(inf_state_test, NamespacesWithoutContainersTest)
 	auto ns1 = add_congroup("k8s_namespace");
 
 	// Now get infra state
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 
 	// Now result should be empty
 	ASSERT_TRUE(result.empty());
@@ -302,7 +302,7 @@ TEST_F(inf_state_test, NamespacesWithoutContainersTest)
 	add_parent_link(pod1, ns1);
 
 	// Now get infra state
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 
 	// Now result should still be empty (since no containers)
 	ASSERT_TRUE(result.empty());
@@ -313,7 +313,7 @@ TEST_F(inf_state_test, NamespacesWithoutContainersTest)
 	add_parent_link(cont1, pod1);
 
 	// Now the namespace alone should show up
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 	ASSERT_EQ(result.size(),1);
 	result.Clear();
 
@@ -322,13 +322,13 @@ TEST_F(inf_state_test, NamespacesWithoutContainersTest)
 	add_parent_link(pod1, node1);
 
 	// Now the namespace, node, pod should show up
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 	ASSERT_EQ(result.size(),3);
 	result.Clear();
 	
 	// Now remove the pod and see the result
 	remove_congroup(pod1);
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 	// With the Pod removed, the container has
 	// no parents; so no results show up
 	ASSERT_EQ(result.size(), 0);
@@ -383,7 +383,7 @@ TEST_F(inf_state_test, ComprehensiveTest)
 
 	// Result of pinging InfraState
 	container_groups result;
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 	// Since no congroups have namespaces as parents, this
 	// should return just 1 (the node)
 	ASSERT_EQ(result.size(), 1);
@@ -397,14 +397,14 @@ TEST_F(inf_state_test, ComprehensiveTest)
 	add_parent_link(rs1, ns1);
 	add_parent_link(dep1, ns2);
 
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 	// All entities have namespace parents;
 	// this should return size 9
 	ASSERT_EQ(result.size(), 9);
 	result.Clear();
 
 	// Verify if get_state shows same results
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 	// This should return size 9
 	ASSERT_EQ(result.size(), 9);
 	result.Clear();
@@ -414,7 +414,7 @@ TEST_F(inf_state_test, ComprehensiveTest)
 	// than get_state
 	// This simulates delegated agents
 	std::vector<string> single_cont(m_containers.begin(), m_containers.begin()+1);
-	m_infra_state->state_of(single_cont, &result);
+	m_infra_state->state_of(single_cont, &result, 0);
 	ASSERT_EQ(result.size(), 6);
 	result.Clear();
 
@@ -422,14 +422,14 @@ TEST_F(inf_state_test, ComprehensiveTest)
 	ASSERT_EQ(m_containers.size(),3); // before
 	remove_congroup(cont1);
 	ASSERT_EQ(m_containers.size(),2); // after
-	m_infra_state->state_of(m_containers, &result);
+	m_infra_state->state_of(m_containers, &result, 0);
 	// We should not see the pod1 in results
 	// This is because it is parent of cont1
 	ASSERT_EQ(result.size(), 8);
 	result.Clear();
 
 	// Verify if get_state shows all results
-	m_infra_state->get_state(&result);
+	m_infra_state->get_state(&result, 0);
 	// This should return size 9 (like before)
 	ASSERT_EQ(result.size(), 9);
 	result.Clear();

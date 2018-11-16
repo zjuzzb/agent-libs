@@ -62,9 +62,12 @@ public:
 	// the current state
 	bool check_registered_scope(reg_id_t &reg);
 
-	void state_of(const std::vector<std::string> &container_ids, container_groups* state);
+	void calculate_rate_metrics(draiosproto::container_group *cg, const uint64_t ts);
+	void delete_rate_metrics(const uid_t &key);
 
-	void get_state(container_groups* state);
+	void state_of(const std::vector<std::string> &container_ids, container_groups* state, const uint64_t ts);
+
+	void get_state(container_groups* state, const uint64_t ts);
 
 	void on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo);
 	void on_remove_container(const sinsp_container_info& container_info);
@@ -108,7 +111,7 @@ private:
 
 	void state_of(const draiosproto::container_group *grp,
 		      container_groups* state,
-		      std::unordered_set<uid_t>& visited);
+		      std::unordered_set<uid_t>& visited, uint64_t ts);
 
 	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
@@ -176,6 +179,13 @@ private:
 	int m_k8s_prev_connect_state;
 	string m_k8s_node;
 
+	typedef struct {
+		double val;
+		time_t ts;
+		double last_rate;
+	} rate_metric_state_t;
+
+	std::unordered_map<uid_t, std::map<string, rate_metric_state_t>> m_rate_metric_state;
 	std::set<std::string> m_annotation_filter;
 
 	friend class new_k8s_delegator;

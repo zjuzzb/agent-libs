@@ -359,6 +359,7 @@ func addPodMetrics(metrics *[]*draiosproto.AppMetric, pod *v1.Pod) {
 	waitingCount += initWaiting
 
 	AppendMetricInt32(metrics, prefix+"container.status.restarts", restartCount)
+	appendRateMetric(metrics, prefix+"container.status.restart_rate", float64(restartCount))
 	AppendMetricInt32(metrics, prefix+"container.status.waiting", waitingCount)
 	appendMetricPodCondition(metrics, prefix+"status.ready", pod.Status.Conditions, v1.PodReady)
 	appendMetricContainerResources(metrics, prefix, pod)
