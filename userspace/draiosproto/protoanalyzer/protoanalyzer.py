@@ -17,6 +17,10 @@ from protobuf_to_dict import protobuf_to_dict
 import draios_pb2
 
 
+def print_ts_header(ts):
+    print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
+
+
 # this class parses text dumped protobuf from the agent
 # they can be enabled with "metricsfile: { location: metrics }"
 # on dragent.yaml
@@ -67,25 +71,7 @@ class MetricsFile(object):
         self._tail.kill()
 
 
-parser = argparse.ArgumentParser(description="Analyze protobufs using JQ filters")
-parser.add_argument("--follow", dest="follow", required=False, default=False, action='store_true',
-                    help="Follow the file as tail -f does")
-parser.add_argument("--binary", dest="binary", required=False, default=False, action='store_true',
-                    help="path is a binary file")
-parser.add_argument("--reorder", dest="reorder", required=False, default=False, action="store_true",
-                    help="reorder metrics by timestamp")
-parser.add_argument("--jq-filter", type=str, required=False, help="JQ filter to use")
-parser.add_argument("--filter", type=str, required=False, help="Native functions available")
-parser.add_argument("--filter-args", type=str, required=False, default="", help="Native functions args")
-parser.add_argument("path", type=str, help="File to parse")
-args = parser.parse_args()
-
-
-def print_ts_header(ts):
-    print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
-
-
-def walk_protos(path, filter_f, ext="dam"):
+def walk_protos(args, path, filter_f, ext="dam"):
     for root, dirs, files in os.walk(path, topdown=False):
         if args.reorder:
             # dumb way to reorder timestamps, assuming the file format is
@@ -94,7 +80,7 @@ def walk_protos(path, filter_f, ext="dam"):
         for name in files:
             if name.endswith(ext):
                 fullpath = os.path.join(root, name)
-                analyze_proto(fullpath, filter_f)
+                analyze_proto(args, fullpath, filter_f)
 
 
 class KubernetesCheck(object):
@@ -278,7 +264,7 @@ class ContainerProcessChecker(object):
         self._print_status(self.containers, self.container_processes, self.processes_no_containers)
 
 
-def create_filter():
+def create_filter(args):
     if args.filter:
         return globals()[args.filter](args.filter_args)
     elif args.jq_filter:
@@ -288,7 +274,7 @@ def create_filter():
         return lambda m: m
 
 
-def analyze_proto(path, filter_f):
+def analyze_proto(args, path, filter_f):
     if path.endswith("dam") or args.binary:
         with open(path, "rb") as f:
             f.seek(2)
@@ -325,23 +311,35 @@ def process_metrics(metrics, filter_f):
             sys.stderr.flush()
 
 
-print "Running with args: %s" % repr(args)
-
-if args.path == "last":
-    metricFiles = [p for p in os.listdir("/opt/draios/metrics/") if p.endswith(".dams")]
-    path = os.path.join("/opt/draios/metrics/", metricFiles[-1])
-else:
-    path = args.path
-
-
 # text files
 #
 def main():
-    filter_f = create_filter()
-    if os.path.isdir(path):
-        walk_protos(path, filter_f)
+    parser = argparse.ArgumentParser(description="Analyze protobufs using JQ filters")
+    parser.add_argument("--follow", dest="follow", required=False, default=False, action='store_true',
+                        help="Follow the file as tail -f does")
+    parser.add_argument("--binary", dest="binary", required=False, default=False, action='store_true',
+                        help="path is a binary file")
+    parser.add_argument("--reorder", dest="reorder", required=False, default=False, action="store_true",
+                        help="reorder metrics by timestamp")
+    parser.add_argument("--jq-filter", type=str, required=False, help="JQ filter to use")
+    parser.add_argument("--filter", type=str, required=False, help="Native functions available")
+    parser.add_argument("--filter-args", type=str, required=False, default="", help="Native functions args")
+    parser.add_argument("path", type=str, help="File to parse")
+    args = parser.parse_args()
+
+    print "Running with args: %s" % repr(args)
+
+    if args.path == "last":
+        metric_files = [p for p in os.listdir("/opt/draios/metrics/") if p.endswith(".dams")]
+        path = os.path.join("/opt/draios/metrics/", metric_files[-1])
     else:
-        analyze_proto(path, filter_f)
+        path = args.path
+
+    filter_f = create_filter(args)
+    if os.path.isdir(path):
+        walk_protos(args, path, filter_f)
+    else:
+        analyze_proto(args, path, filter_f)
     print("")
     if hasattr(filter_f, "summary"):
         filter_f.summary()
