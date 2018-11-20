@@ -97,51 +97,50 @@ def walk_protos(path, filter_f, ext="dam"):
                 analyze_proto(fullpath, filter_f)
 
 
-kubernetes_delegated_nodes = set()
-running_containers = set()
-kubernetes_containers = set()
-containers_by_id = {}
-deployments = set()
-k8s_nodes = set()
-nodes = set()
-k8s_pods = set()
+class KubernetesCheck(object):
+    def __init__(self, args):
+        self.kubernetes_delegated_nodes = set()
+        self.running_containers = set()
+        self.kubernetes_containers = set()
+        self.containers_by_id = {}
+        self.deployments = set()
+        self.k8s_nodes = set()
+        self.nodes = set()
+        self.k8s_pods = set()
 
+    def __call__(self, m):
+        if "kubernetes" in m:
+            self.kubernetes_delegated_nodes.add((m["machine_id"], m["hostinfo"]["hostname"]))
+            for pod in m["kubernetes"]["pods"]:
+                for c in pod["container_ids"]:
+                    container_id = c[9:12 + 9]
+                    self.kubernetes_containers.add(container_id)
+                self.k8s_pods.add(pod["common"]["uid"])
+            for deployment in m["kubernetes"]["deployments"]:
+                self.deployments.add(deployment["common"]["name"])
+            for node in m["kubernetes"]["nodes"]:
+                self.k8s_nodes.add((node["common"]["uid"], node["common"]["name"]))
+        if "containers" in m:
+            for c in m["containers"]:
+                self.running_containers.add(c["id"])
+                self.containers_by_id[c['id']] = (c["name"])
+        self.nodes.add((m["machine_id"], m["hostinfo"]["hostname"]))
 
-# TODO: needs to be refactored to a class like MesosCheck
-def kubernetes_check(m):
-    if "kubernetes" in m:
-        kubernetes_delegated_nodes.add((m["machine_id"], m["hostinfo"]["hostname"]))
-        for pod in m["kubernetes"]["pods"]:
-            for c in pod["container_ids"]:
-                container_id = c[9:12 + 9]
-                kubernetes_containers.add(container_id)
-            k8s_pods.add(pod["common"]["uid"])
-        for deployment in m["kubernetes"]["deployments"]:
-            deployments.add(deployment["common"]["name"])
-        for node in m["kubernetes"]["nodes"]:
-            k8s_nodes.add((node["common"]["uid"], node["common"]["name"]))
-    if "containers" in m:
-        for c in m["containers"]:
-            running_containers.add(c["id"])
-            containers_by_id[c['id']] = (c["name"])
-    nodes.add((m["machine_id"], m["hostinfo"]["hostname"]))
-
-
-def print_kubernetes_summary():
-    print "Delegated: %s" % str(kubernetes_delegated_nodes)
-    print "matching containers=%d" % len(running_containers.intersection(kubernetes_containers))
-    # for cid in running_containers.intersection(kubernetes_containers):
-    #  print "name=%s" % containers_by_id[cid]
-    print "running_containers=%d" % len(running_containers)
-    print "k8s_containers=%d" % len(kubernetes_containers)
-    print "k8s_pods=%d" % len(k8s_pods)
-    print "only on k8s containers=%d" % len(kubernetes_containers.difference(running_containers))
-    print "only running containers=%d" % len(running_containers.difference(kubernetes_containers))
-    # for cid in running_containers.difference(kubernetes_containers):
-    #  print "name=%s" % containers_by_id[cid]
-    print "deployments=%s" % str(deployments)
-    print "k8s_nodes=%d\n%s" % (len(k8s_nodes), str(k8s_nodes))
-    print "nodes=%d\n%s" % (len(k8s_nodes), str(nodes))
+    def summary(self):
+        print "Delegated: %s" % str(self.kubernetes_delegated_nodes)
+        print "matching containers=%d" % len(self.running_containers.intersection(self.kubernetes_containers))
+        # for cid in running_containers.intersection(self.kubernetes_containers):
+        #  print "name=%s" % self.containers_by_id[cid]
+        print "running_containers=%d" % len(self.running_containers)
+        print "k8s_containers=%d" % len(self.kubernetes_containers)
+        print "k8s_pods=%d" % len(self.k8s_pods)
+        print "only on k8s containers=%d" % len(self.kubernetes_containers.difference(self.running_containers))
+        print "only running containers=%d" % len(self.running_containers.difference(self.kubernetes_containers))
+        # for cid in self.running_containers.difference(self.kubernetes_containers):
+        #  print "name=%s" % self.containers_by_id[cid]
+        print "deployments=%s" % str(self.deployments)
+        print "k8s_nodes=%d\n%s" % (len(self.k8s_nodes), str(self.k8s_nodes))
+        print "nodes=%d\n%s" % (len(self.k8s_nodes), str(self.nodes))
 
 
 class MesosCheck(object):
