@@ -508,6 +508,25 @@ class Application:
         self.last_blacklisted_pidnames_cleanup = datetime.now()
 
         self.last_request_pidnames = set()
+        self.exclude_localhost_from_proxy()
+
+    @staticmethod
+    def exclude_localhost_from_proxy():
+        # Excluding localhost from proxy
+        os_env = os.environ
+        if any(pxy in os_env for pxy in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")):
+            # A http proxy has been set in the env, check if localhost is affected
+            no_pxy = list({"NO_PROXY", "no_proxy"}.intersection(os_env))
+            no_pxy = {pxy: os_env.get(pxy) for pxy in no_pxy if os_env.get(pxy)}
+            if no_pxy:
+                for key, val in no_pxy.items():
+                    if "localhost" not in val:
+                        os.environ[key] += ",localhost"
+                        logging.warning("https/http proxy does not include localhost in {0},"
+                                        " appending 'localhost' to {0}".format(key))
+            else:
+                os.environ["NO_PROXY"] = "localhost"
+                logging.warning("https/http proxy has empty NO_PROXY, setting to 'localhost'")
 
     def cleanup(self):
         self.inqueue.close()
