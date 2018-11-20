@@ -1,24 +1,21 @@
 #!/usr/bin/env python
-import sys
-import time
-import draios_pb2
-import zlib
+import argparse
+import atexit
+import hashlib
 import os
-import errno
-from protobuf_to_dict import protobuf_to_dict
-import simplejson as json
-from jq import jq
-from google.protobuf.text_format import Merge as parse_text_protobuf
-from google.protobuf.text_format import MessageToString as serialize_text_protobuf
 import os.path
 import subprocess
-import argparse
-import struct
-import socket
-import atexit
+import sys
 from datetime import datetime
+from jq import jq
+
+import simplejson as json
 from IPython import embed
-import hashlib
+from google.protobuf.text_format import Merge as parse_text_protobuf
+from protobuf_to_dict import protobuf_to_dict
+
+import draios_pb2
+
 
 # this class parses text dumped protobuf from the agent
 # they can be enabled with "metricsfile: { location: metrics }"
