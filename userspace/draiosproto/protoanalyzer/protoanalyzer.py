@@ -318,7 +318,7 @@ def process_metrics(metrics, filter_f):
         print(json.dumps(metrics_j, indent=2))
         print("\n")
     else:
-        if hasattr(filter_f, "print_header") and filter_f.print_header:
+        if getattr(filter_f, "print_header", False):
             print_ts_header(ts)
         else:
             sys.stdout.write('.')
