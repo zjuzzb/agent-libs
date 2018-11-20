@@ -263,9 +263,23 @@ class ContainerProcessChecker(object):
         self._print_status(self.containers, self.container_processes, self.processes_no_containers)
 
 
+FILTERS = {
+    'k8s': KubernetesCheck,
+    'mesos': MesosCheck,
+    'follow_container': FollowContainer,
+    'container_procs': ContainerProcessChecker,
+
+    # backwards-compatible names
+    'kubernetes_check': KubernetesCheck,
+    'MesosCheck': MesosCheck,
+    'FollowContainer': FollowContainer,
+    'ContainerProcessChecker': ContainerProcessChecker,
+}
+
+
 def create_filter(args):
     if args.filter:
-        return globals()[args.filter](args.filter_args)
+        return FILTERS[args.filter](args.filter_args)
     elif args.jq_filter:
         jq_filter = jq(args.jq_filter)
         return lambda m: jq_filter.transform(m, multiple_output=True)
