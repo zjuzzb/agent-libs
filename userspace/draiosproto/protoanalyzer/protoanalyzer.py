@@ -146,7 +146,7 @@ class MesosCheck(object):
             mesos = m["mesos"]
             for framework in mesos["frameworks"]:
                 name = framework["common"]["name"]
-                if not name in self.frameworks:
+                if name not in self.frameworks:
                     self.frameworks[name] = set()
                 if "tasks" in framework:
                     for task in framework["tasks"]:
@@ -166,7 +166,6 @@ class MesosCheck(object):
 
         if m["machine_id"] in self.mesosMasters:
             self.masterSamples += 1
-        return None
 
     def parse_marathon_group(self, group):
         if "groups" in group:
@@ -229,7 +228,7 @@ class ContainerProcessChecker(object):
         containers = {}
         container_processes = {}
         processes_no_containers = set()
-        if not "containers" in m:
+        if "containers" not in m:
             return
         for c in m["containers"]:
             containers[c["id"]] = c["name"]
