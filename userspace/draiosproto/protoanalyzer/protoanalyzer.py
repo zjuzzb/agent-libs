@@ -321,8 +321,8 @@ def process_metrics(metrics, filter_f):
         if getattr(filter_f, "print_header", False):
             print_ts_header(ts)
         else:
-            sys.stdout.write('.')
-            sys.stdout.flush()
+            sys.stderr.write('.')
+            sys.stderr.flush()
 
 
 print "Running with args: %s" % repr(args)
