@@ -1481,6 +1481,10 @@ void infrastructure_state::debug_print()
 	}
 }
 
+// TODO: If and when we change the below function to get
+// us the correct name from GKE; we should update the
+// sinsp_analyzer::get_k8s_cluster_name() method correspondingly.
+// See SMAGENT-1164
 std::string infrastructure_state::get_k8s_cluster_name() const
 {
 	// XXX get the cluster name from GKE if possible
