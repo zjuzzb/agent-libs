@@ -488,29 +488,132 @@ void avoid_block_channel::close()
 	m_file_channel->close();
 }
 
-file_logger::file_logger(const char* path, const char *component) :
-	m_component(component)
+void log_sink::dragent_log_output::log(const std::string& message, int severity)
 {
-	Poco::Path filePath(path);
-	m_file = filePath.getBaseName();
+	g_log->log(message, severity);
 }
 
-std::string file_logger::build(int line, const std::string& str) const
+log_sink::stream_log_output::stream_log_output(std::ostream& out) :
+	m_out(out)
 {
-	std::string toLog;
+}
 
-	if(!m_component.empty())
+void log_sink::stream_log_output::log(const std::string& message, int severity)
+{
+	// Since this is used only for unit testint, there's no real value in
+	// translating the severity to a string
+	m_out << severity << ", " << message << std::endl;
+}
+
+log_sink::log_sink(log_output* output,
+                   const std::string& file,
+                   const std::string& component) :
+	m_log_output(output),
+	m_tag(component +
+	      (component.empty() ? "" : ":") +
+	      Poco::Path(file).getBaseName())
+{
+}
+
+log_sink::log_sink(const std::string& file, const std::string& component) :
+	log_sink(new dragent_log_output(), file, component)
+{
+}
+
+log_sink::log_sink(std::ostream& out,
+                   const std::string& file,
+                   const std::string& component) :
+	log_sink(new stream_log_output(out), file, component)
+{
+}
+
+
+/**
+ * Attempts to write the log message described by the given line number, format
+ * specifier, and variable argument list to the given log_string.  If the given
+ * log_string's capacity is sufficient to hold the fully-formatted log message,
+ * then this function will write the log message to it.  If the given 
+ * log_string's capacity is not sufficient to hold the fully-formatted log
+ * message, then its value on return is undefined; clients should use log_string
+ * only if the return value of this function is less than or equal to the
+ * capacity of the given log_string.
+ *
+ * @returns the total buffer size necessary to hold the fully-formatted log
+ *          message.
+ */
+std::string::size_type log_sink::generate_log(std::vector<char>& log_buffer,
+                                              const int line,
+                                              const char* const fmt,
+                                              va_list& args) const
+{
+	va_list mutable_args;
+
+	va_copy(mutable_args, args);
+
+	// Try to write the prefix to log_buffer
+	const std::string::size_type prefix_length =
+		std::snprintf(&log_buffer[0],
+		              log_buffer.capacity(),
+		              "%s:%d: ",
+		              m_tag.c_str(),
+		              line);
+
+	char* suffix_target = nullptr;
+	std::string::size_type suffix_buffer_size = 0;
+
+	if(prefix_length < log_buffer.capacity())
 	{
-		toLog += m_component + ":";
+		suffix_target = &log_buffer[prefix_length];
+		suffix_buffer_size = log_buffer.capacity() - prefix_length;
 	}
 
-	toLog += m_file + ":" + NumberFormatter::format(line) + ": " + str;
-	return toLog;
+	const std::string::size_type suffix_length =
+		std::vsnprintf(suffix_target,
+		               suffix_buffer_size,
+		               fmt,
+		               mutable_args);
+
+	// One extra byte needed for the NUL terminator
+	const std::string::size_type total_length = prefix_length + suffix_length + 1;
+
+	return total_length;
 }
 
-
-void file_logger::log(uint32_t severity, int line, const std::string& str) const
+std::string log_sink::build(const int line, const char* const fmt, va_list& args) const
 {
+	// Allocate a string with an initial capacity of DEFAULT_LOG_STR_LENGTH.
+	// The hope is that most log messages will fit into a buffer of this
+	// size.
+	std::vector<char> log_buffer(DEFAULT_LOG_STR_LENGTH, '\0');
 
-	g_log->log(build(line, str), severity);
+	const std::string::size_type log_length =
+		generate_log(log_buffer, line, fmt, args);
+
+	// If the actual log length exceeds DEFAULT_LOG_STR_LENGTH, then
+	// the previous call to generate_log was unable to write the fully-
+	// formatted log message to log_buffer.  Resize log_buffer to accomodate
+	// the full size of the log line and retry the log generation.
+	if(log_length > DEFAULT_LOG_STR_LENGTH)
+	{
+		log_buffer.resize(log_length);
+		static_cast<void>(generate_log(log_buffer, line, fmt, args));
+	}
+
+	return std::string(&log_buffer[0]);
+}
+
+void log_sink::log(const uint32_t severity, const int line, const char* const fmt, ...) const
+{
+	va_list args;
+
+	va_start(args, fmt);
+	std::string message = build(line, fmt, args);
+	va_end(args);
+
+	m_log_output->log(message, severity);
+}
+
+void log_sink::log(uint32_t severity, int line, const std::string& str) const
+{
+	log(severity, line, "%s", str.c_str());
 }
