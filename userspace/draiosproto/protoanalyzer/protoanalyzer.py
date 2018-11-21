@@ -13,6 +13,7 @@ import simplejson as json
 from IPython import embed
 from google.protobuf.text_format import Merge as parse_text_protobuf
 from protobuf_to_dict import protobuf_to_dict
+from hashlib import md5
 
 import draios_pb2
 
@@ -285,12 +286,48 @@ class BinaryOutput(object):
             dam.write(mobj.SerializeToString())
 
 
+class EnvFuzz(object):
+    print_header = True
+
+    def __init__(self, args):
+        pass
+
+    def rehash(self, hv):
+        out_len = len(hv)
+        new_hv = md5(hv).hexdigest()
+        while len(new_hv) < out_len:
+            new_hv += md5(new_hv).hexdigest()
+        return new_hv[:out_len]
+
+    def __call__(self, m, mobj):
+        machine_id = m['machine_id'].replace(':', '-')
+        timestamp_ns = m['timestamp_ns']
+
+        for env in mobj.environments:
+            env.hash = self.rehash(env.hash)
+
+        for prog in mobj.programs:
+            prog.environment_hash = self.rehash(prog.environment_hash)
+
+        basedir = '/out/{}'.format(machine_id)
+        target = '{}/{}.dam'.format(basedir, timestamp_ns)
+
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        print 'writing to: {}'.format(target)
+        with open(target, 'wb') as dam:
+            dam.write('\x02\x01')
+            dam.write(mobj.SerializeToString())
+
+
 FILTERS = {
     'k8s': KubernetesCheck,
     'mesos': MesosCheck,
     'follow_container': FollowContainer,
     'container_procs': ContainerProcessChecker,
     'binary_output': BinaryOutput,
+    'env_fuzz': EnvFuzz,
 }
 
 # backwards-compatible names
