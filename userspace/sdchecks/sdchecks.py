@@ -516,8 +516,8 @@ class Application:
         os_env = os.environ
         if any(pxy in os_env for pxy in ("HTTP_PROXY", "http_proxy", "HTTPS_PROXY", "https_proxy")):
             # A http proxy has been set in the env, check if localhost is affected
-            no_pxy = list({"NO_PROXY", "no_proxy"}.intersection(os_env))
-            no_pxy = {pxy: os_env.get(pxy) for pxy in no_pxy if os_env.get(pxy)}
+            no_pxy = list(set("NO_PROXY", "no_proxy").intersection(os_env))
+            no_pxy = dict((pxy, os_env.get(pxy)) for pxy in no_pxy if os_env.get(pxy))
             if no_pxy:
                 for key, val in no_pxy.items():
                     if "localhost" not in val:
