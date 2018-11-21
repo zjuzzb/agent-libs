@@ -290,7 +290,14 @@ class EnvFuzz(object):
     print_header = True
 
     def __init__(self, args):
-        pass
+        self.filter_args = {}
+        if args:
+            for arg in args.split():
+                k, v = arg.split('=')
+                if k == 'count':
+                    v = int(v)
+                self.filter_args[k] = v
+        print self.filter_args
 
     def rehash(self, hv):
         out_len = len(hv)
@@ -299,9 +306,17 @@ class EnvFuzz(object):
             new_hv += md5(new_hv).hexdigest()
         return new_hv[:out_len]
 
-    def __call__(self, m, mobj):
-        machine_id = m['machine_id'].replace(':', '-')
-        timestamp_ns = m['timestamp_ns']
+    def new_machine_id(self, machine_id):
+        raw_id = machine_id.replace(':', '').decode('hex')
+        raw_id = md5(raw_id).digest()[0:6]
+        return ':'.join(xd.encode('hex') for xd in raw_id)
+
+    def fuzz(self, mobj):
+        machine_id = self.new_machine_id(mobj.machine_id)
+        mobj.machine_id = machine_id
+
+        machine_id = machine_id.replace(':', '-')
+        timestamp_ns = mobj.timestamp_ns
 
         for env in mobj.environments:
             env.hash = self.rehash(env.hash)
@@ -319,6 +334,12 @@ class EnvFuzz(object):
         with open(target, 'wb') as dam:
             dam.write('\x02\x01')
             dam.write(mobj.SerializeToString())
+
+        return mobj
+
+    def __call__(self, m, mobj):
+        for i in range(self.filter_args.get('count', 1)):
+            mobj = self.fuzz(mobj)
 
 
 FILTERS = {
