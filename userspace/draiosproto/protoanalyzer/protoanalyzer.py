@@ -268,8 +268,10 @@ FILTERS = {
     'mesos': MesosCheck,
     'follow_container': FollowContainer,
     'container_procs': ContainerProcessChecker,
+}
 
-    # backwards-compatible names
+# backwards-compatible names
+OLD_FILTERS = {
     'kubernetes_check': KubernetesCheck,
     'MesosCheck': MesosCheck,
     'FollowContainer': FollowContainer,
@@ -279,7 +281,15 @@ FILTERS = {
 
 def create_filter(args):
     if args.filter:
-        return FILTERS[args.filter](args.filter_args)
+        try:
+            f = FILTERS[args.filter]
+        except KeyError:
+            try:
+                f = OLD_FILTERS[args.filter]
+            except KeyError:
+                raise RuntimeError("Invalid filter {}, valid names are: {}".format(
+                    args.filter, ', '.join(FILTERS.keys() + OLD_FILTERS.keys())))
+        return f(args.filter_args)
     elif args.jq_filter:
         jq_filter = jq(args.jq_filter)
         return lambda m: jq_filter.transform(m, multiple_output=True)
@@ -335,7 +345,7 @@ def main():
     parser.add_argument("--reorder", dest="reorder", required=False, default=False, action="store_true",
                         help="reorder metrics by timestamp")
     parser.add_argument("--jq-filter", type=str, required=False, help="JQ filter to use")
-    parser.add_argument("--filter", type=str, required=False, help="Native functions available")
+    parser.add_argument("--filter", type=str, required=False, help="Native functions available", choices=FILTERS.keys())
     parser.add_argument("--filter-args", type=str, required=False, default="", help="Native functions args")
     parser.add_argument("path", type=str, help="File to parse")
     args = parser.parse_args()
