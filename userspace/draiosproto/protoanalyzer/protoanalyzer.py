@@ -94,7 +94,7 @@ class KubernetesCheck(object):
         self.nodes = set()
         self.k8s_pods = set()
 
-    def __call__(self, m):
+    def __call__(self, m, _mobj):
         if "kubernetes" in m:
             self.kubernetes_delegated_nodes.add((m["machine_id"], m["hostinfo"]["hostname"]))
             for pod in m["kubernetes"]["pods"]:
@@ -141,7 +141,7 @@ class MesosCheck(object):
         self.frameworks = {}
         self.host_by_task = {}
 
-    def __call__(self, m):
+    def __call__(self, m, _mobj):
         if "mesos" in m:
             mesos = m["mesos"]
             for framework in mesos["frameworks"]:
@@ -204,7 +204,7 @@ class FollowContainer(object):
         self.container_to_follow = args
         self.print_header = True
 
-    def __call__(self, m):
+    def __call__(self, m, _mobj):
         for c in m["containers"]:
             if c["id"] == self.container_to_follow:
                 print "Present"
@@ -224,7 +224,7 @@ class ContainerProcessChecker(object):
         self.processes_no_containers = set()
         self.print_header = True
 
-    def __call__(self, m):
+    def __call__(self, m, _mobj):
         containers = {}
         container_processes = {}
         processes_no_containers = set()
@@ -263,11 +263,34 @@ class ContainerProcessChecker(object):
         self._print_status(self.containers, self.container_processes, self.processes_no_containers)
 
 
+class BinaryOutput(object):
+    print_header = True
+
+    def __init__(self, args):
+        pass
+
+    def __call__(self, m, mobj):
+        machine_id = m['machine_id'].replace(':', '-')
+        timestamp_ns = m['timestamp_ns']
+
+        basedir = '/out/{}'.format(machine_id)
+        target = '{}/{}.dam'.format(basedir, timestamp_ns)
+
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        print 'writing to: {}'.format(target)
+        with open(target, 'wb') as dam:
+            dam.write('\x02\x01')
+            dam.write(mobj.SerializeToString())
+
+
 FILTERS = {
     'k8s': KubernetesCheck,
     'mesos': MesosCheck,
     'follow_container': FollowContainer,
     'container_procs': ContainerProcessChecker,
+    'binary_output': BinaryOutput,
 }
 
 # backwards-compatible names
@@ -292,9 +315,9 @@ def create_filter(args):
         return f(args.filter_args)
     elif args.jq_filter:
         jq_filter = jq(args.jq_filter)
-        return lambda m: jq_filter.transform(m, multiple_output=True)
+        return lambda m, mobj: jq_filter.transform(m, multiple_output=True)
     else:
-        return lambda m: m
+        return lambda m, mobj: m
 
 
 def analyze_proto(args, path, filter_f):
@@ -321,7 +344,7 @@ def process_metrics(metrics, filter_f):
     except UnicodeDecodeError:
         print("Error processing sample %s:%s", metrics.timestamp_ns, metrics.machine_id)
         return
-    metrics_j = filter_f(metrics_d)
+    metrics_j = filter_f(metrics_d, metrics)
     if metrics_j:
         print_ts_header(ts)
         print(json.dumps(metrics_j, indent=2))
