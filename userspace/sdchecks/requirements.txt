@@ -16,6 +16,7 @@ simplejson==3.6.5
 
 # note: requests is used in many checks
 # upgrade with caution
+pyopenssl==18.0.0
 requests==2.6.2
 
 # checks.d/riak.py
