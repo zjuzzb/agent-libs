@@ -3055,6 +3055,10 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 	}
 
 	auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + ENV_HASH_TTL});
+	// new_env.first->first: env_hash
+	// new_env.first->second: last sent timestamp
+	// new_env.second: if true, insertion took place (first time we're sending this hash)
+
 	if (!new_env.second && new_env.first->second >= m_prev_flush_time_ns) {
 		return;
 	}
