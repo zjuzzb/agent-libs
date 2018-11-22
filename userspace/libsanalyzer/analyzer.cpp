@@ -3065,7 +3065,9 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 
 	if (++num_envs_sent > m_envs_per_flush) {
 		g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
-		m_sent_envs.erase(new_env.first);
+		if (new_env.second) {
+			m_sent_envs.erase(new_env.first);
+		}
 	} else {
 		auto env = m_metrics->add_environments();
 		env->set_hash(env_hash.data(), env_hash.size());
