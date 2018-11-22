@@ -1176,6 +1176,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_track_environment = m_config->get_scalar<bool>("track_environment", false);
 	m_envs_per_flush = m_config->get_scalar<uint32_t>("envs_per_flush", 3);
+	m_max_env_size = m_config->get_scalar<size_t>("max_env_size", 8192);
 
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }
@@ -1626,7 +1627,8 @@ void dragent_configuration::print_configuration() const
 
 	if (m_track_environment)
 	{
-		g_log->information("Environment variable reporting enabled");
+		LOG_INFO("Environment variable reporting enabled, maximum %d envs per flush, %lu bytes per env",
+			m_envs_per_flush, m_max_env_size);
 	}
 
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));

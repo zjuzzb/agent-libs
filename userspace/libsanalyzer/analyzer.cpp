@@ -3069,11 +3069,28 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 			m_sent_envs.erase(new_env.first);
 		}
 	} else {
+		size_t env_bytes_sent = 0;
+
 		auto env = m_metrics->add_environments();
 		env->set_hash(env_hash.data(), env_hash.size());
 		for (const auto& entry : tinfo->m_env) {
+			env_bytes_sent += entry.size() + 1; // 1 for the trailing NUL
+			if (env_bytes_sent > m_max_env_size) {
+				break;
+			}
+
 			env->add_variables(entry);
 		}
+
+		if (env_bytes_sent > m_max_env_size) {
+			g_logger.format(sinsp_logger::SEV_INFO, "Environment of process %lu (%s) too large, truncating",
+				 tinfo->m_pid, tinfo->m_comm.c_str());
+			for (const auto& entry : tinfo->m_env) {
+				g_logger.format(sinsp_logger::SEV_DEBUG, "Environment of process %lu (%s): %s",
+					tinfo->m_pid, tinfo->m_comm.c_str(), entry.c_str());
+			}
+		}
+
 		if (!new_env.second) {
 			new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
 		}

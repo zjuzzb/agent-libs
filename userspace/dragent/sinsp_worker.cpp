@@ -457,6 +457,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_track_environment(m_configuration->m_track_environment);
 	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
+	m_analyzer->set_max_env_size(m_configuration->m_max_env_size);
 
 	m_analyzer->set_extra_internal_metrics(m_configuration->m_extra_internal_metrics);
 
