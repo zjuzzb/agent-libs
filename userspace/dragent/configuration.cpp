@@ -1175,7 +1175,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_username_lookups = m_config->get_scalar<bool>("username_lookups", false);
 
 	m_track_environment = m_config->get_scalar<bool>("track_environment", false);
-	m_envs_per_flush = m_config->get_scalar<uint32_t>("envs_per_flush", 20);
+	m_envs_per_flush = m_config->get_scalar<uint32_t>("envs_per_flush", 3);
 
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }
