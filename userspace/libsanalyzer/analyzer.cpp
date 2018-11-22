@@ -2640,28 +2640,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 
 			if (m_track_environment) {
-				auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
-				auto env_hash = mt_ainfo->m_env_hash.get_hash();
-				prog->set_environment_hash(env_hash.data(), env_hash.size());
-				auto af_flag = thread_analyzer_info::flags::AF_IS_NET_CLIENT;
-				if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
-					auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + ENV_HASH_TTL});
-					if (new_env.second || new_env.first->second < m_prev_flush_time_ns) {
-						if (++num_envs_sent > m_envs_per_flush) {
-							g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
-							m_sent_envs.erase(new_env.first);
-						} else {
-							auto env = m_metrics->add_environments();
-							env->set_hash(env_hash.data(), env_hash.size());
-							for (const auto& entry : tinfo->m_env) {
-								env->add_variables(entry);
-							}
-							if (!new_env.second) {
-								new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
-							}
-						}
-					}
-				}
+				emit_environment(prog, tinfo, num_envs_sent);
 			}
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
@@ -3063,6 +3042,31 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 	}
 #endif
+}
+
+void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent) {
+	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
+	auto env_hash = mt_ainfo->m_env_hash.get_hash();
+	prog->set_environment_hash(env_hash.data(), env_hash.size());
+	auto af_flag = thread_analyzer_info::AF_IS_NET_CLIENT;
+	if (tinfo->m_ainfo->m_th_analysis_flags & af_flag) {
+		auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + ENV_HASH_TTL});
+		if (new_env.second || new_env.first->second < m_prev_flush_time_ns) {
+			if (++num_envs_sent > m_envs_per_flush) {
+				g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
+				m_sent_envs.erase(new_env.first);
+			} else {
+				auto env = m_metrics->add_environments();
+				env->set_hash(env_hash.data(), env_hash.size());
+				for (const auto& entry : tinfo->m_env) {
+					env->add_variables(entry);
+				}
+				if (!new_env.second) {
+					new_env.first->second = m_prev_flush_time_ns + ENV_HASH_TTL;
+				}
+			}
+		}
+	}
 }
 
 void sinsp_analyzer::flush_processes()

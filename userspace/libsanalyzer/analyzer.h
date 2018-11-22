@@ -573,6 +573,7 @@ VISIBILITY_PRIVATE
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			    bool is_eof, sinsp_analyzer::flush_flags flshflags,
 			    const tracer_emitter &f_trc);
+	void emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
