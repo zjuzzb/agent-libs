@@ -3073,7 +3073,20 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 
 		auto env = m_metrics->add_environments();
 		env->set_hash(env_hash.data(), env_hash.size());
+
 		for (const auto& entry : tinfo->m_env) {
+			bool blacklisted = false;
+			for (const auto& regex : *m_env_blacklist) {
+				if (regex.match(entry)) {
+					blacklisted = true;
+					break;
+				}
+			}
+
+			if (blacklisted) {
+				continue;
+			}
+
 			env_bytes_sent += entry.size() + 1; // 1 for the trailing NUL
 			if (env_bytes_sent > m_max_env_size) {
 				break;

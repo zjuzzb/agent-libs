@@ -89,7 +89,7 @@ struct main_thread_analyzer_info
 	// hash of all environment variables
 	env_hash m_env_hash;
 
-	void hash_environment(sinsp_threadinfo* tinfo);
+	void hash_environment(sinsp_threadinfo *tinfo, const env_hash::regex_list_t& blacklist);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -92,9 +92,9 @@ uint64_t sinsp_procinfo::get_tot_cputime()
 	return res;
 }
 
-void main_thread_analyzer_info::hash_environment(sinsp_threadinfo* tinfo)
+void main_thread_analyzer_info::hash_environment(sinsp_threadinfo *tinfo, const env_hash::regex_list_t& blacklist)
 {
-	m_env_hash.update(tinfo);
+	m_env_hash.update(tinfo, blacklist);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -152,7 +152,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	if (m_analyzer->m_track_environment) {
 		if (m_tinfo->is_main_thread()) {
 			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(m_tinfo);
+			mt_ainfo->hash_environment(m_tinfo, *m_analyzer->m_env_blacklist);
 		}
 	}
 }

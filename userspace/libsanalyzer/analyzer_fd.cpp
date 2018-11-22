@@ -1605,7 +1605,7 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt *evt)
 	if (m_analyzer->m_track_environment) {
 		auto tinfo = evt->get_thread_info();
 		if (tinfo && tinfo->m_ainfo) {
-			tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo);
+			tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo, *m_analyzer->m_env_blacklist);
 		}
 	}
 }

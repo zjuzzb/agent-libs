@@ -1177,6 +1177,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_track_environment = m_config->get_scalar<bool>("track_environment", false);
 	m_envs_per_flush = m_config->get_scalar<uint32_t>("envs_per_flush", 3);
 	m_max_env_size = m_config->get_scalar<size_t>("max_env_size", 8192);
+	m_env_blacklist = make_unique<env_hash::regex_list_t>();
+	for (const auto& regex : m_config->get_merged_sequence<string>("env_blacklist")) {
+		m_env_blacklist->emplace_back(regex);
+	}
 
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }

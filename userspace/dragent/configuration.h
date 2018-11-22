@@ -824,6 +824,7 @@ public:
 	bool m_track_environment = false;
 	uint32_t m_envs_per_flush;
 	size_t m_max_env_size;
+	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
 
 	bool m_extra_internal_metrics = false;
 

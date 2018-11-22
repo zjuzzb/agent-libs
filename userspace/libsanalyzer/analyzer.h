@@ -548,6 +548,7 @@ public:
 	void set_track_environment(bool val) { m_track_environment = val; }
 	void set_envs_per_flush(uint32_t val) { m_envs_per_flush = val; }
 	void set_max_env_size(size_t val) { m_max_env_size = val; }
+	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist) { m_env_blacklist = std::move(blacklist); }
 
 	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
 
@@ -951,6 +952,7 @@ VISIBILITY_PRIVATE
 	uint32_t m_envs_per_flush;
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 	size_t m_max_env_size = 8192;
+	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
 
 	bool m_extra_internal_metrics = false;
 
