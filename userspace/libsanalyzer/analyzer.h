@@ -549,6 +549,14 @@ public:
 	void set_envs_per_flush(uint32_t val) { m_envs_per_flush = val; }
 	void set_max_env_size(size_t val) { m_max_env_size = val; }
 	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist) { m_env_blacklist = std::move(blacklist); }
+	void set_env_hash_ttl(uint64_t secs) {
+		uint64_t nsecs = secs * ONE_SECOND_IN_NS;
+		if (nsecs < ANALYZER_DEFAULT_SAMPLE_LENGTH_NS) {
+			m_env_hash_ttl = 0;
+		} else {
+			m_env_hash_ttl = nsecs - ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
+		}
+	}
 
 	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
 
@@ -953,6 +961,7 @@ VISIBILITY_PRIVATE
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 	size_t m_max_env_size = 8192;
 	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
+	uint64_t m_env_hash_ttl = 86400ULL * ONE_SECOND_IN_NS;
 
 	bool m_extra_internal_metrics = false;
 

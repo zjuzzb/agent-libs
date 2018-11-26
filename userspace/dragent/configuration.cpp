@@ -1181,6 +1181,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	for (const auto& regex : m_config->get_deep_merged_sequence<vector<string>>("environment_tracking", "blacklist")) {
 		m_env_blacklist->emplace_back(regex);
 	}
+	m_env_hash_ttl = m_config->get_scalar<uint64_t>("environment_tracking", "hash_ttl", 86400);
 
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }
@@ -1631,8 +1632,8 @@ void dragent_configuration::print_configuration() const
 
 	if (m_track_environment)
 	{
-		LOG_INFO("Environment variable reporting enabled, maximum %d envs per flush, %lu bytes per env",
-			m_envs_per_flush, m_max_env_size);
+		LOG_INFO("Environment variable reporting enabled, maximum %d envs per flush, %lu bytes per env, hash ttl: %lu seconds",
+			m_envs_per_flush, m_max_env_size, m_env_hash_ttl);
 	}
 
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
