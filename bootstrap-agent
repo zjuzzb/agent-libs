@@ -416,7 +416,7 @@ if [ $OS != "Windows_NT" ]; then
 	fi
 
 	if [ -z $STATSITE_VERSION ]; then
-	  STATSITE_VERSION=0.7.0-sysdig5
+	  STATSITE_VERSION=0.7.0-sysdig6
 	fi
 	STATSITE_DIR=$DEPENDENCIES/statsite-private-$STATSITE_VERSION
 	if [ ! -d "${STATSITE_DIR}" ]; then
