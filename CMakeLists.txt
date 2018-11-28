@@ -34,8 +34,10 @@ set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
-set(CMAKE_C_FLAGS "-Wall -ggdb -std=gnu11 ${DRAIOS_FEATURE_FLAGS}")
-set(CMAKE_CXX_FLAGS "-Wall -ggdb --std=c++0x ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
+set(CMAKE_COMMON_FLAGS "-Wall -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS} -ggdb ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS}")
+set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
 # Add "-fno-inline -fno-omit-frame-pointer" for perf

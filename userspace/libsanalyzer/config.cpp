@@ -338,7 +338,7 @@ void sinsp_configuration::set_host_tags(const string& host_tags)
 	m_host_tags = host_tags;
 }
 
-const bool sinsp_configuration::get_host_hidden() const
+bool sinsp_configuration::get_host_hidden() const
 {
 	return m_host_hidden;
 }

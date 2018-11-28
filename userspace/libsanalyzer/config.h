@@ -75,7 +75,7 @@ public:
 	void set_host_custom_name(string host_custom_name);
 	const string& get_host_tags() const;
 	void set_host_tags(const string& host_tags);
-	const bool get_host_hidden() const;
+	bool get_host_hidden() const;
 	void set_host_hidden(bool host_hidden);
 	const string& get_hidden_processes() const;
 	void set_hidden_processes(string hidden_processes);
