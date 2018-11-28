@@ -65,7 +65,7 @@ bool watchdog_runnable::is_healthy(int64_t& age_ms) const
 	              " ms ago, timeout %" PRIu64 " ms",
 	              m_name.c_str(),
 	              age_ms,
-	              m_timeout_s * 1000ULL);
+	              static_cast<uint64_t>(m_timeout_s * 1000ULL));
 
 	if(m_timeout_s == NO_TIMEOUT)
 	{
