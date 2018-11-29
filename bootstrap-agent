@@ -277,6 +277,20 @@ if [ $OS != "Windows_NT" ]; then
 		./bootstrap
 		make
 	fi
+
+	if [ ! -d "$DEPENDENCIES/benchmark" ]; then
+		# v1.4.1 doesn't work with our old CMake but there was a fix later
+		BENCHMARK_COMMIT=b8ca0c42179b7b5d656494e61dda8b861057122f
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/google-benchmark-$BENCHMARK_COMMIT.zip
+		unzip google-benchmark-$BENCHMARK_COMMIT.zip
+		mv benchmark-$BENCHMARK_COMMIT benchmark
+		cd benchmark
+		mkdir build
+		cd build
+		$CMAKE_DIR/bin/cmake -DBENCHMARK_ENABLE_GTEST_TESTS=OFF -DCMAKE_BUILD_TYPE=Release ..
+		make
+	fi
 fi
 
 if [[ "$ARCH" == "s390x" ]]; then

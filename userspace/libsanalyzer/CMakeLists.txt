@@ -263,7 +263,7 @@ endif()
 if(NOT CYGWIN)
 	target_link_libraries(sanalyzer
 		scap
-		${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
+		draiosproto
 		${LUALIB}
 		${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a
 		${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a
@@ -284,7 +284,7 @@ if(NOT CYGWIN)
 else()
 	target_link_libraries(sanalyzer
 		scap
-		${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
+		draiosproto
 		${LUALIB}
 		${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/lib/.libs/libcurl.a
 		${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a
