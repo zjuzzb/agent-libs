@@ -9,6 +9,7 @@
 #include <Poco/NullChannel.h>
 #include <Poco/Process.h>
 #include <Poco/Pipe.h>
+#include <Poco/RegularExpression.h>
 
 #include <gtest.h>
 
@@ -19,14 +20,28 @@
 using namespace std;
 using namespace Poco;
 
-typedef struct {
+struct task_defs_t {
 	std::string schedule;
 	uint64_t id;
 	std::string name;
 	std::string module;
 	std::string scraper_id;
 	std::string sleep_time;
-} task_defs_t;
+	std::string rc;
+	bool successful;
+
+	std::shared_ptr<Poco::RegularExpression> failure_details_re;
+
+	task_defs_t() {};
+	task_defs_t(std::string tschedule, uint64_t tid, std::string tname, std::string tmodule, std::string tscraper_id, std::string tsleep_time)
+		: schedule(tschedule), id(tid), name(tname), module(tmodule), scraper_id(tscraper_id), sleep_time(tsleep_time), rc("0"), successful(true) {};
+
+	task_defs_t(std::string tschedule, uint64_t tid, std::string tname, std::string tmodule, std::string tscraper_id, std::string tsleep_time, std::string trc, bool tsuccessful, std::string tfailure_details)
+		: schedule(tschedule), id(tid), name(tname), module(tmodule), scraper_id(tscraper_id), sleep_time(tsleep_time), rc(trc), successful(tsuccessful) {
+		failure_details_re = make_shared<Poco::RegularExpression>(tfailure_details);
+	};
+
+};
 
 class compliance_test : public testing::Test
 {
@@ -220,7 +235,7 @@ protected:
 				return;
 			}
 
-			if(!cevent.successful())
+			if(!cevent.call_successful())
 			{
 				m_errors[cevent.task_name()].push_back(cevent.errstr());
 			}
@@ -230,6 +245,9 @@ protected:
 				{
 					m_events[cevent.task_name()].push_back(cevent.events().events(i));
 				}
+
+				ASSERT_STREQ(cevent.results().machine_id().c_str(), "test-machine-id");
+				ASSERT_STREQ(cevent.results().customer_id().c_str(), "test-customer-id");
 
 				for(int i=0; i < cevent.results().results_size(); i++)
 				{
@@ -256,10 +274,15 @@ protected:
 			param = task->add_task_params();
 			param->set_key("sleepTime");
 			param->set_val(def.sleep_time);
+
+			param = task->add_task_params();
+			param->set_key("rc");
+			param->set_val(def.rc);
 		}
 
 		start.set_machine_id("test-machine-id");
 		start.set_customer_id("test-customer-id");
+		start.set_send_failed_results(true);
 
 		m_grpc_start->do_rpc(start, callback);
         }
@@ -282,15 +305,24 @@ protected:
 		ASSERT_EQ(m_results[def.name].size(), 1U) << "After 10 seconds, did not see any results with expected values for task " << def.name;
 		auto &result = m_results[def.name].front();
 
-		Json::Value ext_result;
-		Json::Reader reader;
-		ASSERT_TRUE(reader.parse(result.ext_result(), ext_result));
+		ASSERT_EQ(result.successful(), def.successful);
 
-		ASSERT_EQ(ext_result["id"].asUInt64(), def.id);
-		ASSERT_STREQ(ext_result["taskName"].asString().c_str(), def.name.c_str());
-		ASSERT_EQ(ext_result["testsRun"].asUInt64(), strtoul(def.scraper_id.c_str(), NULL, 10));
-		ASSERT_EQ(ext_result["testsRun"].asUInt64(), strtoul(def.scraper_id.c_str(), NULL, 10));
-		ASSERT_STREQ(ext_result["risk"].asString().c_str(), "low");
+		if(result.successful())
+		{
+			Json::Value ext_result;
+			Json::Reader reader;
+			ASSERT_TRUE(reader.parse(result.ext_result(), ext_result));
+
+			ASSERT_EQ(ext_result["id"].asUInt64(), def.id);
+			ASSERT_STREQ(ext_result["taskName"].asString().c_str(), def.name.c_str());
+			ASSERT_EQ(ext_result["testsRun"].asUInt64(), strtoul(def.scraper_id.c_str(), NULL, 10));
+			ASSERT_EQ(ext_result["passCount"].asUInt64(), strtoul(def.scraper_id.c_str(), NULL, 10));
+			ASSERT_STREQ(ext_result["risk"].asString().c_str(), "low");
+		}
+		else
+		{
+			ASSERT_TRUE(def.failure_details_re->match(result.failure_details()));
+		}
 	}
 
 	void verify_task_event(task_defs_t &def)
@@ -407,6 +439,10 @@ static std::vector<task_defs_t> bad_schedule_2 = {{"PT1K1M", 1, "bad-schedule-ta
 static std::vector<task_defs_t> bad_schedule_leading_junk = {{"junkPT1H", 1, "bad-schedule-task-leading-junk", "test-module", "1", "5"}};
 static std::vector<task_defs_t> bad_schedule_trailing_junk = {{"PT-1H", 1, "bad-schedule-task-trailing-junk", "test-module", "1", "5"}};
 static std::vector<task_defs_t> bad_module = {{"PT1H", 1, "bad-module-task", "not-a-real-module", "1", "0"}};
+static std::vector<task_defs_t> exit_failure = {{"PT1H", 1, "exit-failure-task-1", "test-module", "1", "0", "1", false, "^module test-module via {Path=.*test/resources/modules_dir/test-module/run.sh Args=\\[.*/test/resources/modules_dir/test-module/run.sh 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/test-module} exited with error \\(exit status 1\\) Stdout: \"This is to stdout\\n\" Stderr: \"This is to stderr\\n\""}};
+
+// This module is defined, but its command line doesn't exist, meaning it will fail every time it is run.
+static std::vector<task_defs_t> fail_module = {{"PT1H", 1, "fail-task-1", "fail-module", "1", "0", "1", false, "^Could not start module fail-module via {Path=.*/test/resources/modules_dir/fail-module/not-runnable Args=\\[.*/test/resources/modules_dir/fail-module/not-runnable 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/fail-module} \\(fork/exec .*/test/resources/modules_dir/fail-module/not-runnable: permission denied\\)"}};
 
 // Test cases:
 //  - DONE Schedule a task using test-module, see them all emit events/results/metrics
@@ -426,13 +462,14 @@ TEST_F(compliance_test, load)
 		got_response = true;
 		ASSERT_TRUE(successful);
 
-		ASSERT_EQ(lresult.statuses_size(), 3);
+		ASSERT_EQ(lresult.statuses_size(), 4);
 
 		for(auto &status : lresult.statuses())
 		{
 			if (strcmp(status.mod_name().c_str(), "docker-bench-security") != 0 &&
 			    strcmp(status.mod_name().c_str(), "kube-bench") != 0 &&
-			    strcmp(status.mod_name().c_str(), "test-module") != 0)
+			    strcmp(status.mod_name().c_str(), "test-module") != 0 &&
+			    strcmp(status.mod_name().c_str(), "fail-module") != 0)
 			{
 				FAIL() << "Unexpected module found: " << status.mod_name();
 			}
@@ -642,6 +679,24 @@ TEST_F(compliance_test, bad_module)
 	std::string expected = "Could not schedule task bad-module-task: Module not-a-real-module does not exist";
 
 	verify_error(bad_module[0].name, expected);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test, exit_failure)
+{
+	start_tasks(exit_failure);
+
+	verify_task_result(exit_failure[0]);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test, fail_module)
+{
+	start_tasks(fail_module);
+
+	verify_task_result(fail_module[0]);
 
 	stop_tasks();
 }

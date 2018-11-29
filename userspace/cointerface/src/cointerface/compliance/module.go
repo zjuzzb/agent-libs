@@ -1,13 +1,11 @@
 package compliance
 
 import (
-	"bufio"
 	"bytes"
 	"cointerface/sdc_internal"
 	"cointerface/draiosproto"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	log "github.com/cihub/seelog"
 	"os"
@@ -143,6 +141,12 @@ func (d *ResultRisk) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+// A Prettier summary of a Cmd than what you get with %v
+func CmdString(c *exec.Cmd) string {
+	return fmt.Sprintf("{Path=%s Args=[%s] Env=[%s] Dir=%s}",
+		c.Path, strings.Join(c.Args," "), strings.Join(c.Env, " "), c.Dir)
+}
+
 type TaskResultTest struct {
 	TestNumber string `json:"testNumber"`
 	Description string `json:"description,omitempty"`
@@ -207,8 +211,9 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 
 	// Create a temporary directory where this module's output will go
 	outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {
-		log.Errorf("Could not create temporary directory (%s)", err.Error());
-		return err
+		rerr := fmt.Errorf("Could not create temporary directory (%s)", err.Error());
+		log.Error(rerr.Error())
+		return rerr
 	}
 
 	moduleDir := path.Join(mgr.ModulesDir, module.Name)
@@ -235,38 +240,31 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 	cmd.Env = module.Env(mgr)
 	cmd.Dir = moduleDir
 
-	log.Debugf("Running: %v", cmd)
-
-	stderrPipe, err := cmd.StderrPipe(); if err != nil {
-		log.Errorf("Could not create pipe for cmd stderr (%s)", err.Error());
-		return err
-	}
+	log.Debugf("Running: %s", CmdString(cmd))
 
 	stderrFileName := path.Join(outputDir, "stderr.txt")
 	stderrFile, err := os.Create(stderrFileName); if err != nil {
-		log.Errorf("Could not create stderr file (%s)", err.Error());
-		return err
+		rerr := fmt.Errorf("Could not create stderr file (%s)", err.Error());
+		log.Error(rerr.Error())
+		return rerr
 	}
 
-	stderrWriter := bufio.NewWriter(stderrFile)
-
-	stdoutPipe, err := cmd.StdoutPipe(); if err != nil {
-		log.Errorf("Could not create pipe for cmd stdout (%s)", err.Error());
-		return err
-	}
+	cmd.Stderr = stderrFile
 
 	stdoutFileName := path.Join(outputDir, "stdout.txt")
 	stdoutFile, err := os.Create(stdoutFileName); if err != nil {
-		log.Errorf("Could not create stdout file (%s)", err.Error());
-		return err
+		rerr := fmt.Errorf("Could not create stdout file (%s)", err.Error());
+		log.Error(rerr.Error())
+		return rerr
 	}
 
-	stdoutWriter := bufio.NewWriter(stdoutFile)
+	cmd.Stdout = stdoutFile
 
 	if err = cmd.Start(); err != nil {
-		log.Errorf("Could not start module %s via %v (%s)",
-			module.Name, cmd, err)
-		return err
+		rerr := fmt.Errorf("Could not start module %s via %s (%s)",
+			module.Name, CmdString(cmd), err)
+		log.Error(rerr.Error())
+		return rerr
 	}
 
 	stask.cmdLock.Lock()
@@ -274,17 +272,12 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 	stask.activelyStopped = false
 	stask.cmdLock.Unlock()
 
-	go io.Copy(stderrWriter, stderrPipe)
-	go io.Copy(stdoutWriter, stdoutPipe)
-
 	// Wait for the pid in the background
 	go func() {
 		defer os.RemoveAll(outputDir)
 
 		err := cmd.Wait()
 
-		stderrWriter.Flush()
-		stdoutWriter.Flush()
 		stderrFile.Close()
 		stdoutFile.Close()
 
@@ -292,13 +285,14 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 			stderrBuf, _ := ioutil.ReadFile(stderrFileName)
 			stdoutBuf, _ := ioutil.ReadFile(stdoutFileName)
 
-			msg := fmt.Sprintf("module %s via %v exited with error (%s) Stdout: \"%s\" Stderr: \"%s\"",
-				module.Name, cmd, err, string(stderrBuf), string(stdoutBuf))
+			rerr := fmt.Errorf("module %s via %s exited with error (%s) Stdout: \"%s\" Stderr: \"%s\"",
+				module.Name, CmdString(cmd), err, string(stdoutBuf), string(stderrBuf))
 
 			if ! stask.activelyStopped {
-				log.Error(msg)
+				mgr.FailResult(stask, rerr)
+				log.Error(rerr.Error())
 			} else {
-				log.Debugf(msg)
+				log.Debugf(rerr.Error())
 			}
 
 			stask.cmdLock.Lock()
@@ -312,8 +306,10 @@ func (module *Module) Run(mgr *ModuleMgr, stask *ScheduledTask) error {
 			stask.task,
 			mgr.IncludeDesc,
 			mgr.evtsChannel, mgr.metricsChannel); if err != nil {
-				log.Errorf("Could not scrape module %s output (%s)",
+				rerr := fmt.Errorf("Could not scrape module %s output (%s)",
 					module.Name, err);
+				mgr.FailResult(stask, rerr)
+				log.Error(rerr.Error())
 			}
 		log.Infof("Completed task %s", *stask.task.Name)
 

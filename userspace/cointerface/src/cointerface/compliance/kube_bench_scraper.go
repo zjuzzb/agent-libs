@@ -178,7 +178,7 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 
 	evt := &sdc_internal.CompTaskEvent{
 		TaskName: proto.String(moduleName),
-		Successful: proto.Bool(true),
+		CallSuccessful: proto.Bool(true),
 	}
 	cevts := &draiosproto.CompEvents{
 		MachineId: proto.String(impl.machineId),
@@ -311,6 +311,7 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 		TaskName: proto.String(result.TaskName),
 		ModName: task.ModName,
 		TaskId: proto.Uint64(result.Id),
+		Successful: proto.Bool(true),
 		ExtResult: proto.String(string(ofbytes[:])),
 	}
 

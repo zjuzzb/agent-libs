@@ -628,6 +628,7 @@ void security_mgr::refresh_compliance_tasks()
 	sdc_internal::comp_start start;
 
 	start.set_include_desc(m_configuration->m_security_include_desc_in_compliance_results);
+	start.set_send_failed_results(m_configuration->m_security_compliance_send_failed_results);
 
 	for(auto &task : m_compliance_calendar.tasks())
 	{
@@ -704,7 +705,7 @@ void security_mgr::refresh_compliance_tasks()
 			}
 			else
 			{
-				if(!cevent.successful())
+				if(!cevent.call_successful())
 				{
 					g_log->error(string("Could not start compliance tasks (") + cevent.errstr()+ "), trying again in " +
 						     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +

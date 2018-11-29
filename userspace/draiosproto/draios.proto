@@ -1676,6 +1676,15 @@ message comp_result {
     // ExtendedComplianceResult in the swagger definition.
     optional string ext_result = 8;
 
+    // If true, the result represents a task that ran successful. If
+    // false, the result represents a task that did not run
+    // successfully. If not present, assumed to be true.
+    optional bool successful = 10;
+
+    // Provides a full log of a failed result. Only present when
+    // successful=false.
+    optional string failure_details = 11;
+
     // Metrics accompanying this result, if any, will be in
     // metrics.internal_metrics.
 

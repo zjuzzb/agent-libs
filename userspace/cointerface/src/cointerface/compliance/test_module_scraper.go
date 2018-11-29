@@ -13,14 +13,18 @@ import (
 
 func (impl *TestModuleImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	sleepTime := "5"
+	rc := "0"
 
 	for _, param := range stask.task.TaskParams {
 		if *param.Key == "sleepTime" {
 			sleepTime = *param.Val
 		}
+		if *param.Key == "rc" {
+			rc = *param.Val
+		}
 	}
 
-	return []string{sleepTime}, nil
+	return []string{sleepTime, rc}, nil
 }
 
 func (impl *TestModuleImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
@@ -59,7 +63,7 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 
 	evt := &sdc_internal.CompTaskEvent{
 		TaskName: proto.String(*task.Name),
-		Successful: proto.Bool(true),
+		CallSuccessful: proto.Bool(true),
 	}
 
 	events := &draiosproto.CompEvents{
@@ -129,6 +133,7 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 		TaskName: proto.String(result.TaskName),
 		ModName: task.ModName,
 		TaskId: proto.Uint64(result.Id),
+		Successful: proto.Bool(true),
 		ExtResult: proto.String(string(ofbytes[:])),
 	}
 

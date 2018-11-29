@@ -27,6 +27,7 @@ type ModuleMgr struct {
 	machineId string
 	Calendar *draiosproto.CompCalendar
 	IncludeDesc bool
+	SendFailedResults bool
 	availModules map[string]Module
 	evtsChannel chan *sdc_internal.CompTaskEvent
 	metricsChannel chan string
@@ -86,6 +87,41 @@ func emitStatsdForever(mgr *ModuleMgr) {
 	}
 }
 
+func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
+
+	if !mgr.SendFailedResults {
+		return
+	}
+
+	timestamp_ns := uint64(time.Now().UnixNano())
+
+	// In this struct, CallSuccessful refers to the grpc, not the
+	// execution of any task.
+	evt := &sdc_internal.CompTaskEvent{
+		TaskName: stask.task.Name,
+		CallSuccessful: proto.Bool(true),
+	}
+
+	results := &draiosproto.CompResults{
+		MachineId: proto.String(mgr.machineId),
+		CustomerId: proto.String(mgr.customerId),
+	}
+
+	comp_result := &draiosproto.CompResult{
+		TimestampNs: proto.Uint64(timestamp_ns),
+		TaskName: stask.task.Name,
+		ModName: stask.task.ModName,
+		TaskId: stask.task.Id,
+		Successful: proto.Bool(false),
+		FailureDetails: proto.String(err.Error()),
+	};
+
+	results.Results = append(results.Results, comp_result)
+	evt.Results = results
+
+	mgr.evtsChannel <- evt
+}
+
 func runTask(mgr *ModuleMgr, stask *ScheduledTask) error {
 	module := mgr.availModules[*stask.task.ModName]
 
@@ -119,6 +155,7 @@ func runTask(mgr *ModuleMgr, stask *ScheduledTask) error {
 
 	if err := module.Run(mgr, stask); err != nil {
 		log.Errorf("module.Run returned error: %v", err.Error())
+		mgr.FailResult(stask, err)
 		return err
 	}
 
@@ -133,6 +170,8 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.stopTasksChannel = make(chan bool)
 	mgr.stopTasksDoneChannel = make(chan error)
 	mgr.scheduledTasks = make(map[string]*ScheduledTask)
+	mgr.machineId = machineId
+	mgr.customerId = customerId
 
 	mgr.availModules["docker-bench-security"] = Module{
 		Name: "docker-bench-security",
@@ -155,6 +194,15 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.availModules["test-module"] = Module{
 		Name: "test-module",
 		Prog: "MODULE_DIR/run.sh",
+		Impl: &TestModuleImpl{
+			customerId: customerId,
+			machineId: machineId,
+		},
+	}
+
+	mgr.availModules["fail-module"] = Module{
+		Name: "fail-module",
+		Prog: "MODULE_DIR/not-runnable",
 		Impl: &TestModuleImpl{
 			customerId: customerId,
 			machineId: machineId,
@@ -245,6 +293,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 
 	mgr.Calendar = start.Calendar
 	mgr.IncludeDesc = start.GetIncludeDesc()
+	mgr.SendFailedResults = start.GetSendFailedResults()
 
 	// Create a scheduler for the tasks we will run
 	scheduler := gocron.NewScheduler()
@@ -270,7 +319,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		if err != nil {
 			evt := &sdc_internal.CompTaskEvent{
 				TaskName: task.Name,
-				Successful: proto.Bool(false),
+				CallSuccessful: proto.Bool(false),
 				Errstr: proto.String(fmt.Sprintf("Could not schedule task %s: %s", *task.Name, err.Error())),
 			}
 
