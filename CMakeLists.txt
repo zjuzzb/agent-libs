@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
+option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
+
 # Versions of all third-party libraries used. These may be referred to
 # in lower CMakeLists.txt files.
 set(DRAIOS_OPENSSL_VERSION "1.0.2n")
@@ -34,8 +36,11 @@ set(DRAIOS_NJSON_VERSION "3.3.0")
 set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
-set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
-set(CMAKE_COMMON_FLAGS "-Wall -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS} -ggdb ${DRAIOS_FEATURE_FLAGS}")
+set(CMAKE_COMMON_FLAGS "-Wall -Wextra -ggdb ${DRAIOS_FEATURE_FLAGS}")
+if(BUILD_WARNINGS_AS_ERRORS)
+	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
+	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
+endif()
 set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS}")
 set(CMAKE_C_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
