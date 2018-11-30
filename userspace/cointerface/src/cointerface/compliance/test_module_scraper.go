@@ -27,8 +27,8 @@ func (impl *TestModuleImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	return []string{sleepTime, rc}, nil
 }
 
-func (impl *TestModuleImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
-	return true, nil
+func (impl *TestModuleImpl) ShouldRun(stask *ScheduledTask) bool {
+	return true
 }
 
 type TestModuleImpl struct {

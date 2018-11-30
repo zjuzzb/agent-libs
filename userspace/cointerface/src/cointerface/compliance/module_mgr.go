@@ -3,11 +3,9 @@ package compliance
 import (
 	"cointerface/draiosproto"
 	"cointerface/sdc_internal"
-	duration "github.com/channelmeter/iso8601duration"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/gogo/protobuf/proto"
-	gocron "github.com/jasonlvhit/gocron"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"net"
@@ -15,7 +13,6 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -28,20 +25,19 @@ type ModuleMgr struct {
 	Calendar *draiosproto.CompCalendar
 	IncludeDesc bool
 	SendFailedResults bool
-	availModules map[string]Module
+	availModules map[string]*Module
 	evtsChannel chan *sdc_internal.CompTaskEvent
 	metricsChannel chan string
 	metricsResetChannel chan bool
 
-	// Send a value to this channel to stop any previous start
-	stopTasksChannel chan bool
+	// A cancel function used to cancel background operations
+	// spawned in Start()
+	cancel context.CancelFunc
 
-	// Read the results of the stop from this channel after writing to tasksChannel
-	stopTasksDoneChannel chan error
+	scheduleRegexp *regexp.Regexp
+	scheduleRegexpNames []string
 
-	scheduledTasks map[string] *ScheduledTask
-
-	durationRegexp *regexp.Regexp
+	scheduleListRegexp *regexp.Regexp
 }
 
 func emitStatsdForever(mgr *ModuleMgr) {
@@ -122,58 +118,15 @@ func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
 	mgr.evtsChannel <- evt
 }
 
-func runTask(mgr *ModuleMgr, stask *ScheduledTask) error {
-	module := mgr.availModules[*stask.task.ModName]
-
-	shouldRun, err := module.Impl.ShouldRun(stask); if err != nil {
-		return err
-	}
-
-	if !shouldRun {
-		log.Infof("Not running task %s (ShouldRun false)", *stask.task.Name);
-		return nil
-	} else {
-		log.Infof("Running task %s", *stask.task.Name)
-	}
-
-	stask.numTimesRun++
-
-	// If a task with the provided name is already running, log a warning and return
-	stask.cmdLock.Lock()
-	if stask.cmd != nil {
-		log.Warnf("Task %s already running (pid %d)", *stask.task.Name, stask.cmd.Process.Pid)
-		stask.cmdLock.Unlock()
-		return nil
-	}
-	stask.cmdLock.Unlock()
-
-	// If we have already run this task the specified number of times, do nothing
-	if stask.maxTimesRun > 0 && stask.numTimesRun > stask.maxTimesRun {
-		log.Infof("Task already run max times %d, not doing anything", stask.maxTimesRun)
-		return nil
-	}
-
-	if err := module.Run(mgr, stask); err != nil {
-		log.Errorf("module.Run returned error: %v", err.Error())
-		mgr.FailResult(stask, err)
-		return err
-	}
-
-	return nil
-}
-
 func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
-	mgr.availModules = make(map[string]Module)
+	mgr.availModules = make(map[string]*Module)
 	mgr.evtsChannel = make(chan *sdc_internal.CompTaskEvent, 1000)
 	mgr.metricsChannel = make(chan string, 1000)
 	mgr.metricsResetChannel = make(chan bool)
-	mgr.stopTasksChannel = make(chan bool)
-	mgr.stopTasksDoneChannel = make(chan error)
-	mgr.scheduledTasks = make(map[string]*ScheduledTask)
 	mgr.machineId = machineId
 	mgr.customerId = customerId
 
-	mgr.availModules["docker-bench-security"] = Module{
+	mgr.availModules["docker-bench-security"] = &Module{
 		Name: "docker-bench-security",
 		Prog: "bash",
 		Impl: &DockerBenchImpl{
@@ -182,7 +135,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 		},
 	}
 
-	mgr.availModules["kube-bench"] = Module{
+	mgr.availModules["kube-bench"] = &Module{
 		Name: "kube-bench",
 		Prog: "MODULE_DIR/kube-bench",
 		Impl: &KubeBenchImpl{
@@ -191,7 +144,7 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 		},
 	}
 
-	mgr.availModules["test-module"] = Module{
+	mgr.availModules["test-module"] = &Module{
 		Name: "test-module",
 		Prog: "MODULE_DIR/run.sh",
 		Impl: &TestModuleImpl{
@@ -200,23 +153,13 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 		},
 	}
 
-	mgr.availModules["fail-module"] = Module{
+	mgr.availModules["fail-module"] = &Module{
 		Name: "fail-module",
 		Prog: "MODULE_DIR/not-runnable",
 		Impl: &TestModuleImpl{
 			customerId: customerId,
 			machineId: machineId,
 		},
-	}
-
-	// This regex is intentionally not as exact as the regex in
-	// iso8601duration. It focuses on ensuring no text before/after
-	// the repeating duration, something the regex within
-	// iso8601duration does not do.
-	if re, err := regexp.Compile("^(?:R(\\d+)/)?(P(?:\\d+[YMDW])*(?:T(?:\\d+[HMS])+)?)$"); err != nil {
-		return err
-	} else {
-		mgr.durationRegexp = re
 	}
 
 	// Start a goroutine that reads from the metrics channel and
@@ -226,42 +169,6 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 	mgr.initialized = true
 
 	return nil
-}
-
-// Parse an ISO8601 Repeating Duration string into a number of times
-// to run + a duration. We do this outside of the duration package as
-// it doesn't handle repeating intervals and allows leading/trailing
-// junk in the regexes.
-func (mgr *ModuleMgr) ParseSchedule(schedule string) (int, *duration.Duration, error) {
-
-	maxTimesRun := -1
-
-	// If the schedule starts with "R[n]/", it means the task
-	// should be run a set number of times.
-	if matches := mgr.durationRegexp.FindStringSubmatch(schedule); matches != nil {
-		if matches[1] != "" {
-			if parsed, err := strconv.ParseUint(matches[1], 10, 64); err != nil {
-				return 0, nil, fmt.Errorf("Could not parse repeated duration from schedule %s: %s",
-					schedule, err.Error())
-			} else {
-				maxTimesRun = int(parsed)
-			}
-		}
-
-		schedule = matches[2]
-	} else {
-		return 0, nil, fmt.Errorf("Could not parse duration from schedule %s: did not match expected pattern",
-			schedule)
-	}
-
-	dur, err := duration.FromString(schedule)
-
-	if err != nil {
-		return 0, nil, fmt.Errorf("Could not parse duration from schedule %s: %s",
-			schedule, err.Error())
-	}
-
-	return maxTimesRun, dur, nil
 }
 
 // Generally errors related to the Module Manager itself are returned
@@ -282,26 +189,23 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		}
 	}
 
-	if mgr.Calendar != nil {
+	if mgr.cancel != nil {
 		// Start() was previously called. Stop those tasks first.
-		if err := mgr.StopAllTasks(); err != nil {
-			log.Errorf("Could not stop previously started tasks: %v",
-				err.Error())
-			return err
-		}
+		mgr.cancel()
+		mgr.cancel = nil
 	}
 
 	mgr.Calendar = start.Calendar
 	mgr.IncludeDesc = start.GetIncludeDesc()
 	mgr.SendFailedResults = start.GetSendFailedResults()
 
-	// Create a scheduler for the tasks we will run
-	scheduler := gocron.NewScheduler()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	mgr.cancel = cancel
 
 	for _, task := range mgr.Calendar.Tasks {
 
-		var maxTimesRun int
-		var dur *duration.Duration
+		var stask *ScheduledTask
 		var err error
 
 		module, ok := mgr.availModules[*task.ModName]
@@ -311,9 +215,10 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		} else if _, err = os.Stat(path.Join(mgr.ModulesDir, *task.ModName)); os.IsNotExist(err) {
 			err = fmt.Errorf("Path for module %s not found",
 				*task.ModName)
-		} else if err == nil {
+		} else {
+			stask = NewScheduledTask(mgr, task, module.Env(mgr))
 			log.Debugf("Parsing schedule %s", *task.Schedule)
-			maxTimesRun, dur, err = mgr.ParseSchedule(*task.Schedule)
+			err = stask.ParseSchedule(*task.Schedule, time.Now())
 		}
 
 		if err != nil {
@@ -335,19 +240,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		} else {
 
 			log.Debugf("Scheduling task %s", *task.Name)
-			stask := &ScheduledTask{
-				task: task,
-				cmd: nil,
-				env: module.Env(mgr),
-				maxTimesRun: maxTimesRun,
-				numTimesRun: 0,
-			}
-
-			mgr.scheduledTasks[*task.Name] = stask
-
-			// Run the task immediately, and then on its schedule
-			runTask(mgr, stask)
-			scheduler.Every(uint64(dur.ToDuration().Seconds())).Seconds().Do(runTask, mgr, stask)
+			go stask.RunForever(ctx)
 		}
 	}
 
@@ -355,8 +248,6 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 
 	// Now wait forever, reading events from the channel and
 	// passing them back to the stream
-	ticker := time.NewTicker(1 * time.Second)
-
 	RunTasks:
 	for {
 		select {
@@ -367,50 +258,13 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 				mgr.Calendar = nil
 				return err
 			}
-		case <-ticker.C:
-			scheduler.RunPending()
-		case <- mgr.stopTasksChannel:
-			mgr.Calendar = nil
-			mgr.stopTasksDoneChannel <- mgr.StopTasks()
+		case <- ctx.Done():
 			break RunTasks
 
 		}
 	}
 
 	log.Infof("Tasks done, exiting")
-
-	return nil
-}
-
-func (mgr *ModuleMgr) StopAllTasks() error {
-	mgr.stopTasksChannel <- true
-	err := <- mgr.stopTasksDoneChannel
-
-	if err != nil {
-		log.Errorf("Got error %v from stopTasksDoneChannel", err.Error())
-	}
-
-	mgr.metricsResetChannel <- true
-
-	return err
-}
-
-func (mgr *ModuleMgr) StopTasks() error {
-
-	for _, stask := range mgr.scheduledTasks {
-		stask.cmdLock.Lock()
-		defer stask.cmdLock.Unlock()
-
-		if stask.cmd != nil {
-			stask.activelyStopped = true
-			log.Infof("Received stop request for task %s, killing pid %d",
-				*stask.task.Name,
-				stask.cmd.Process.Pid)
-			err := stask.cmd.Process.Kill(); if err != nil {
-				return err
-			}
-		}
-	}
 
 	return nil
 }
@@ -439,8 +293,8 @@ func (mgr *ModuleMgr) Load(ctx context.Context, load *sdc_internal.CompLoad) (*s
 	return result, nil
 }
 
-func (mgr *ModuleMgr) Stop(ctx context.Context, load *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {
-	log.Debugf("Received Stop message: %s", load.String())
+func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {
+	log.Debugf("Received Stop message: %s", stop.String())
 
 	result := &sdc_internal.CompStopResult{
 		Successful: proto.Bool(true),
@@ -450,18 +304,40 @@ func (mgr *ModuleMgr) Stop(ctx context.Context, load *sdc_internal.CompStop) (*s
 		return result, nil
 	}
 
-	if mgr.Calendar != nil {
-		if err := mgr.StopAllTasks(); err != nil {
-			result.Successful = proto.Bool(false)
-			result.Errstr = proto.String(fmt.Sprintf("Could not stop previously started tasks: %v",
-				err.Error()))
-			log.Errorf(*result.Errstr)
-		}
+	if mgr.cancel != nil {
+		mgr.cancel()
+		mgr.cancel = nil
 	}
 
 	log.Debugf("Returning from Stop: %v", result)
 
 	return result, nil
+}
+
+func (mgr *ModuleMgr) GetFutureRuns(ctx context.Context, req *sdc_internal.CompGetFutureRuns) (*sdc_internal.CompFutureRuns, error) {
+	log.Debugf("Received GetFutureRuns message: %s", req.String())
+
+	ret := &sdc_internal.CompFutureRuns{
+		Successful: proto.Bool(true),
+	}
+
+	start, err := time.Parse(time.RFC3339, *req.Start); if err != nil {
+		ret.Successful = proto.Bool(false)
+		ret.Errstr = proto.String("Could not parse start time " + *req.Start)
+		log.Errorf("Returning from GetFutureRuns: %v", ret)
+		return ret, nil
+	}
+
+	log.Debugf("Parsed start time as %v", start)
+
+	stask := NewScheduledTask(mgr, req.Task, nil)
+	err = stask.ParseSchedule(*req.Task.Schedule, start)
+
+	ret.Runs = stask.FutureRuns(start, *req.NumRuns)
+
+	log.Debugf("Returning from GetFutureRuns: %v", ret)
+
+	return ret, nil
 }
 
 func Register(grpcServer *grpc.Server, modulesDir string) error {
@@ -475,6 +351,22 @@ func Register(grpcServer *grpc.Server, modulesDir string) error {
 	mgr := &ModuleMgr{
 		ModulesDir: modulesDir,
 	}
+
+	// The true spec doesn't allow mixing Week intervals and any other
+	// interval, but we just combine them in the regex and check for
+	// incompatible combinations elsewhere.
+	re, err := regexp.Compile(`^(?:R(?P<repeat>\d+)/)?(?:(?P<start>[^/]+)/)?P(?:(?P<year>\d+)Y)?(?:(?P<month>\d+)M)?(?:(?P<day>\d+)D)?(?:(?P<week>\d+)W)?(?:T(?:(?P<hour>\d+)H)?(?:(?P<minute>\d+)M)?(?:(?P<second>\d+)S)?)?$`); if err != nil {
+		return fmt.Errorf("Could not compile schedule regexp: %s", err.Error())
+	}
+
+	mgr.scheduleRegexp = re
+	mgr.scheduleRegexpNames = re.SubexpNames()
+
+	re, err = regexp.Compile(`\s*,\s*`); if err != nil {
+		return fmt.Errorf("Could not compile schedule regexp: %s", err.Error())
+	}
+
+	mgr.scheduleListRegexp = re
 
 	sdc_internal.RegisterComplianceModuleMgrServer(grpcServer, mgr)
 

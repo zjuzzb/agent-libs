@@ -18,7 +18,7 @@ func (impl *DockerBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	return []string{"MODULE_DIR/docker-bench-security.sh", "-l", "OUTPUT_DIR/docker-bench.log"}, nil
 }
 
-func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
+func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) bool {
 
 	// If docker ps -q runs without errors, we assume the task can run
 	cmd := exec.Command("docker", "ps", "-q")
@@ -26,9 +26,13 @@ func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
 
 	out, err := cmd.Output()
 
-	log.Debugf("Output from docker ps -q: %s %v", out, err)
+	if(err == nil) {
+		log.Debugf("Output from docker ps -q: %s %v", out, err)
+	} else {
+		log.Infof("Output from docker ps -q: %s %v", out, err)
+	}
 
-	return (err == nil), nil
+	return (err == nil)
 }
 
 type DockerBenchImpl struct {

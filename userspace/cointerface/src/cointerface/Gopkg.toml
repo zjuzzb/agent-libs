@@ -56,11 +56,3 @@
 [[constraint]]
   name = "k8s.io/client-go"
   branch = "master"
-
-[[constraint]]
-  name = "github.com/channelmeter/iso8601duration"
-  branch = "master"
-
-[[constraint]]
-  name = "github.com/jasonlvhit/gocron"
-  branch = "master"

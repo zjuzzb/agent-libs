@@ -29,18 +29,70 @@ struct task_defs_t {
 	std::string sleep_time;
 	std::string rc;
 	bool successful;
+	std::string start_time;
+	std::vector<std::string> future_runs;
 
 	std::shared_ptr<Poco::RegularExpression> failure_details_re;
 
 	task_defs_t() {};
-	task_defs_t(std::string tschedule, uint64_t tid, std::string tname, std::string tmodule, std::string tscraper_id, std::string tsleep_time)
-		: schedule(tschedule), id(tid), name(tname), module(tmodule), scraper_id(tscraper_id), sleep_time(tsleep_time), rc("0"), successful(true) {};
+	task_defs_t(std::string tschedule,
+		    uint64_t tid,
+		    std::string tname,
+		    std::string tmodule,
+		    std::string tscraper_id,
+		    std::string tsleep_time)
+		: schedule(tschedule),
+		  id(tid),
+		  name(tname),
+		  module(tmodule),
+		  scraper_id(tscraper_id),
+		  sleep_time(tsleep_time),
+		  rc("0"),
+		  successful(true),
+		  start_time("")
+		{};
 
-	task_defs_t(std::string tschedule, uint64_t tid, std::string tname, std::string tmodule, std::string tscraper_id, std::string tsleep_time, std::string trc, bool tsuccessful, std::string tfailure_details)
-		: schedule(tschedule), id(tid), name(tname), module(tmodule), scraper_id(tscraper_id), sleep_time(tsleep_time), rc(trc), successful(tsuccessful) {
-		failure_details_re = make_shared<Poco::RegularExpression>(tfailure_details);
-	};
+	task_defs_t(std::string tschedule,
+		    uint64_t tid,
+		    std::string tname,
+		    std::string tmodule,
+		    std::string tscraper_id,
+		    std::string tsleep_time,
+		    std::string trc,
+		    bool tsuccessful,
+		    std::string tfailure_details)
+		: schedule(tschedule),
+		  id(tid),
+		  name(tname),
+		  module(tmodule),
+		  scraper_id(tscraper_id),
+		  sleep_time(tsleep_time),
+		  rc(trc),
+		  successful(tsuccessful),
+		  start_time("")
+		{
+			failure_details_re = make_shared<Poco::RegularExpression>(tfailure_details);
+		};
 
+	task_defs_t(std::string tschedule,
+		    uint64_t tid,
+		    std::string tname,
+		    std::string tmodule,
+		    std::string tscraper_id,
+		    std::string tsleep_time,
+		    std::string tstart_time,
+		    std::vector<std::string> tfuture_runs)
+		: schedule(tschedule),
+		  id(tid),
+		  name(tname),
+		  module(tmodule),
+		  scraper_id(tscraper_id),
+		  sleep_time(tsleep_time),
+		  rc("0"),
+		  successful(true),
+		  start_time(tstart_time),
+		  future_runs(tfuture_runs)
+		{};
 };
 
 class compliance_test : public testing::Test
@@ -111,6 +163,7 @@ protected:
 		m_grpc_start = make_shared<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)>(m_grpc_conn);
 		m_grpc_load = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)>(m_grpc_conn);
 		m_grpc_stop = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)>(m_grpc_conn);
+		m_grpc_get_future_runs = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncGetFutureRuns)>(m_grpc_conn);
 
 		// Also create a server listening on the statsd port
 		if ((m_statsd_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
@@ -184,6 +237,7 @@ protected:
 		m_grpc_load.reset();
 		m_grpc_start.reset();
 		m_grpc_stop.reset();
+		m_grpc_get_future_runs.reset();
 		m_grpc_conn.reset();
 		g_log->information("TearDown() complete");
 	}
@@ -222,6 +276,65 @@ protected:
 		}
 
 		FAIL() << "After 10 seconds, did not get response to Stop()";
+	}
+
+	void get_future_runs(task_defs_t &def)
+	{
+		bool received = false;
+		sdc_internal::comp_future_runs future_runs;
+
+		auto callback = [&](bool successful, sdc_internal::comp_future_runs &res)
+		{
+			if(!successful)
+			{
+				FAIL() << "GetFutureRuns() call was not successful";
+			}
+
+			if(!res.successful())
+			{
+				FAIL() << "GetFutureRuns() call returned error " << res.errstr();
+			}
+
+			g_log->debug(string("Return value from GetFutureRuns:") + res.DebugString());
+
+			future_runs = res;
+			received = true;
+		};
+
+		sdc_internal::comp_get_future_runs req;
+		draiosproto::comp_task *task = req.mutable_task();
+
+		task->set_id(def.id);
+		task->set_name(def.name);
+		task->set_mod_name(def.module);
+		task->set_enabled(true);
+		task->set_schedule(def.schedule);
+
+		req.set_start(def.start_time);
+		req.set_num_runs(5);
+
+		m_grpc_get_future_runs->do_rpc(req, callback);
+
+		// Wait up to 10 seconds
+		for(uint32_t i=0; i < 1000; i++)
+		{
+			Poco::Thread::sleep(10);
+			m_grpc_get_future_runs->process_queue();
+
+			if(received)
+			{
+				ASSERT_EQ(uint32_t(future_runs.runs().size()), def.future_runs.size());
+
+				for(int32_t i=0; i < future_runs.runs().size(); i++)
+				{
+					ASSERT_STREQ(future_runs.runs(i).c_str(), def.future_runs.at(i).c_str());
+				}
+
+				return;
+			}
+		}
+
+		FAIL() << "After 10 seconds, did not get response to GetFutureRuns()";
 	}
 
 	void start_tasks(std::vector<task_defs_t> &task_defs)
@@ -287,7 +400,7 @@ protected:
 		m_grpc_start->do_rpc(start, callback);
         }
 
-	void verify_task_result(task_defs_t &def)
+	void verify_task_result(task_defs_t &def, uint64_t num_results=1)
 	{
 		// Wait up to 10 seconds
 		for(uint32_t i=0; i < 1000; i++)
@@ -295,14 +408,15 @@ protected:
 			Poco::Thread::sleep(10);
 			m_grpc_start->process_queue();
 
-			if(m_results.find(def.name) != m_results.end())
+			if(m_results.find(def.name) != m_results.end() &&
+			   m_results[def.name].size() >= num_results)
 			{
 				break;
 			}
 		}
 
 		ASSERT_TRUE(m_results.find(def.name) != m_results.end()) << "After 10 seconds, did not see any results with expected values for task " << def.name;
-		ASSERT_EQ(m_results[def.name].size(), 1U) << "After 10 seconds, did not see any results with expected values for task " << def.name;
+		ASSERT_EQ(m_results[def.name].size(), num_results) << "After 10 seconds, did not see any results with expected values for task " << def.name;
 		auto &result = m_results[def.name].front();
 
 		ASSERT_EQ(result.successful(), def.successful);
@@ -411,6 +525,7 @@ protected:
 	std::shared_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
 	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
 	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)> m_grpc_stop;
+	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncGetFutureRuns)> m_grpc_get_future_runs;
 
 	// Maps from task name to all the results that have been received for that task
 	std::map<std::string, std::vector<draiosproto::comp_result>> m_results;
@@ -444,14 +559,34 @@ static std::vector<task_defs_t> exit_failure = {{"PT1H", 1, "exit-failure-task-1
 // This module is defined, but its command line doesn't exist, meaning it will fail every time it is run.
 static std::vector<task_defs_t> fail_module = {{"PT1H", 1, "fail-task-1", "fail-module", "1", "0", "1", false, "^Could not start module fail-module via {Path=.*/test/resources/modules_dir/fail-module/not-runnable Args=\\[.*/test/resources/modules_dir/fail-module/not-runnable 0 1\\] Env=\\[.*\\] Dir=.*/test/resources/modules_dir/fail-module} \\(fork/exec .*/test/resources/modules_dir/fail-module/not-runnable: permission denied\\)"}};
 
+static std::vector<task_defs_t> multiple_intervals = {{"[R1/PT1S, PT1H]", 1, "multiple-intervals", "test-module", "1", "0"}};
+
+static std::vector<task_defs_t> multiple_intervals_2 = {{"[R1/PT1S, R1/PT2S]", 1, "multiple-intervals-2", "test-module", "1", "0"}};
+
+// The current time will be added to the interval
+static std::vector<task_defs_t> explicit_start_time = {{"/P1D", 1, "my-task-1", "test-module", "1", "0"}};
+
+static std::vector<task_defs_t> future_runs_twice_daily = {{"06:00:00Z/PT12H", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T06:00:00Z", "2018-11-14T18:00:00Z", "2018-11-15T06:00:00Z", "2018-11-15T18:00:00Z", "2018-11-16T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_once_daily_6am = {{"06:00:00Z/P1D", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T06:00:00Z", "2018-11-15T06:00:00Z", "2018-11-16T06:00:00Z", "2018-11-17T06:00:00Z", "2018-11-18T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_once_daily_6pm = {{"18:00:00Z/P1D", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T18:00:00Z", "2018-11-15T18:00:00Z", "2018-11-16T18:00:00Z", "2018-11-17T18:00:00Z", "2018-11-18T18:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_weekly_monday_6am = {{"2018-11-12T06:00:00Z/P1W", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-19T06:00:00Z", "2018-11-26T06:00:00Z", "2018-12-03T06:00:00Z", "2018-12-10T06:00:00Z", "2018-12-17T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_weekly_monday_6pm = {{"2018-11-12T18:00:00Z/P1W", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-19T18:00:00Z", "2018-11-26T18:00:00Z", "2018-12-03T18:00:00Z", "2018-12-10T18:00:00Z", "2018-12-17T18:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_weekly_wednesday_6am = {{"2018-11-14T06:00:00Z/P1W", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T06:00:00Z", "2018-11-21T06:00:00Z", "2018-11-28T06:00:00Z", "2018-12-05T06:00:00Z", "2018-12-12T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_weekly_wednesday_6pm = {{"2018-11-14T18:00:00Z/P1W", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T18:00:00Z", "2018-11-21T18:00:00Z", "2018-11-28T18:00:00Z", "2018-12-05T18:00:00Z", "2018-12-12T18:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_weekly_friday_6am = {{"2018-11-16T06:00:00Z/P1W", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-16T06:00:00Z", "2018-11-23T06:00:00Z", "2018-11-30T06:00:00Z", "2018-12-07T06:00:00Z", "2018-12-14T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_weekly_friday_6pm = {{"2018-11-16T18:00:00Z/P1W", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-16T18:00:00Z", "2018-11-23T18:00:00Z", "2018-11-30T18:00:00Z", "2018-12-07T18:00:00Z", "2018-12-14T18:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_twice_monthly_6am = {{"[2018-11-01T06:00:00Z/P1M, 2018-11-14T06:00:00Z/P1M]", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T06:00:00Z", "2018-12-01T06:00:00Z", "2018-12-14T06:00:00Z", "2019-01-01T06:00:00Z", "2019-01-14T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_twice_monthly_6pm = {{"[2018-11-01T18:00:00Z/P1M, 2018-11-14T18:00:00Z/P1M]", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T18:00:00Z", "2018-12-01T18:00:00Z", "2018-12-14T18:00:00Z", "2019-01-01T18:00:00Z", "2019-01-14T18:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_once_monthly_1st_6am = {{"2018-11-01T06:00:00Z/P1M", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-12-01T06:00:00Z", "2019-01-01T06:00:00Z", "2019-02-01T06:00:00Z", "2019-03-01T06:00:00Z", "2019-04-01T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_once_monthly_1st_6pm = {{"2018-11-01T18:00:00Z/P1M", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-12-01T18:00:00Z", "2019-01-01T18:00:00Z", "2019-02-01T18:00:00Z", "2019-03-01T18:00:00Z", "2019-04-01T18:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_once_monthly_14th_6am = {{"2018-11-14T06:00:00Z/P1M", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T06:00:00Z", "2018-12-14T06:00:00Z", "2019-01-14T06:00:00Z", "2019-02-14T06:00:00Z", "2019-03-14T06:00:00Z"}}};
+static std::vector<task_defs_t> future_runs_once_monthly_14th_6pm = {{"2018-11-14T18:00:00Z/P1M", 1, "next-run-1", "test-module", "1", "0", "2018-11-14T00:00:00Z", {"2018-11-14T18:00:00Z", "2018-12-14T18:00:00Z", "2019-01-14T18:00:00Z", "2019-02-14T18:00:00Z", "2019-03-14T18:00:00Z"}}};
+
+
 // Test cases:
-//  - DONE Schedule a task using test-module, see them all emit events/results/metrics
-//  - DONE Send a second start w/ same schedule, get a second set of events/results/metrics
-//  - DONE Send start while tasks are running, ensure existing task killed and does not send events/results/metrics
-//  - DONE Multiple tasks using the same module. Should get meaningful results/metrics for both
-//  - DONE Verify protection against same task running at once works
-//  - DONE Try a schedule with an invalid calendar, get expected error
-//  - DONE Try a nonexistent module, get expected error
+//   - DONE A single task with multiple intervals
+//   - A task with an explicit start time + interval
+//   - Add some endpoint/method that returns a list of the next 10 or so times each task will run, and use that in tests.
 
 TEST_F(compliance_test, load)
 {
@@ -700,3 +835,145 @@ TEST_F(compliance_test, fail_module)
 
 	stop_tasks();
 }
+
+TEST_F(compliance_test, multiple_intervals)
+{
+	start_tasks(multiple_intervals);
+
+	// Should be 1 result from the "run now" task, and one for the first interval.
+	verify_task_result(multiple_intervals[0], 2);
+
+	stop_tasks();
+}
+
+
+TEST_F(compliance_test, multiple_intervals_2)
+{
+	start_tasks(multiple_intervals_2);
+
+	// Should be 1 result from the "run now" task, and one for each interval
+	verify_task_result(multiple_intervals_2[0], 3);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test, explicit_start_time)
+{
+	char timestr[32];
+	time_t now;
+
+	time(&now);
+
+	now += 10;
+
+	strftime(timestr, sizeof(timestr), "%Y-%m-%dT%H:%M:%SZ", gmtime(&now));
+
+	explicit_start_time[0].schedule = string(timestr) + explicit_start_time[0].schedule;
+
+	start_tasks(explicit_start_time);
+
+	// Start a thread to read results
+	bool done = false;
+	std::thread result_reader = thread([&] ()
+        {
+		while(!done)
+		{
+			Poco::Thread::sleep(10);
+			m_grpc_start->process_queue();
+		}
+	});
+
+	sleep(5);
+
+	// There should be only a single result so far, which reflects
+	// the initial "run now" task.
+	ASSERT_EQ(m_events[explicit_start_time[0].name].size(), 1U);
+	ASSERT_EQ(m_results[explicit_start_time[0].name].size(), 1U);
+
+	sleep(10);
+
+	// Now there should be 2 results, as the start time for the schedule has occurred
+	ASSERT_EQ(m_events[explicit_start_time[0].name].size(), 2U);
+	ASSERT_EQ(m_results[explicit_start_time[0].name].size(), 2U);
+
+	done = true;
+	result_reader.join();
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test, future_runs_twice_daily)
+{
+	get_future_runs(future_runs_twice_daily[0]);
+}
+
+TEST_F(compliance_test, future_runs_once_daily_6am)
+{
+	get_future_runs(future_runs_once_daily_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_once_daily_6pm)
+{
+	get_future_runs(future_runs_once_daily_6pm[0]);
+}
+
+TEST_F(compliance_test, future_runs_weekly_monday_6am)
+{
+	get_future_runs(future_runs_weekly_monday_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_weekly_monday_6pm)
+{
+	get_future_runs(future_runs_weekly_monday_6pm[0]);
+}
+
+TEST_F(compliance_test, future_runs_weekly_wednesday_6am)
+{
+	get_future_runs(future_runs_weekly_wednesday_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_weekly_wednesday_6pm)
+{
+	get_future_runs(future_runs_weekly_wednesday_6pm[0]);
+}
+
+TEST_F(compliance_test, future_runs_weekly_friday_6am)
+{
+	get_future_runs(future_runs_weekly_friday_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_weekly_friday_6pm)
+{
+	get_future_runs(future_runs_weekly_friday_6pm[0]);
+}
+
+TEST_F(compliance_test, future_runs_twice_monthly_6am)
+{
+	get_future_runs(future_runs_twice_monthly_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_twice_monthly_6pm)
+{
+	get_future_runs(future_runs_twice_monthly_6pm[0]);
+}
+
+TEST_F(compliance_test, future_runs_once_monthly_1st_6am)
+{
+	get_future_runs(future_runs_once_monthly_1st_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_once_monthly_1st_6pm)
+{
+	get_future_runs(future_runs_once_monthly_1st_6pm[0]);
+}
+
+TEST_F(compliance_test, future_runs_once_monthly_14th_6am)
+{
+	get_future_runs(future_runs_once_monthly_14th_6am[0]);
+}
+
+TEST_F(compliance_test, future_runs_once_monthly_14th_6pm)
+{
+	get_future_runs(future_runs_once_monthly_14th_6pm[0]);
+}
+

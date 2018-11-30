@@ -82,8 +82,8 @@ func (impl *KubeBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
 	return []string{"--json", impl.Variant(stask)}, nil
 }
 
-func (impl *KubeBenchImpl) ShouldRun(stask *ScheduledTask) (bool, error) {
-	return (impl.Variant(stask) != "none"), nil
+func (impl *KubeBenchImpl) ShouldRun(stask *ScheduledTask) bool {
+	return (impl.Variant(stask) != "none")
 }
 
 type KubeBenchImpl struct {
