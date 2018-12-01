@@ -7,6 +7,8 @@
 #include "logger.h"
 #include "sinsp_worker.h"
 
+DRAGENT_LOGGER();
+
 string crash_handler::m_crashdump_file;
 const sinsp_worker* crash_handler::m_sinsp_worker = NULL;
 
@@ -67,10 +69,23 @@ void crash_handler::run(int sig)
 
 void crash_handler::log_crashdump_message(const char* message)
 {
+	size_t len;
+	size_t mlen = strlen(message);
+
 	int fd = open(m_crashdump_file.c_str(), O_WRONLY|O_APPEND);
 	if(fd != -1)
 	{
-		write(fd, message, strlen(message));
+		if ((len = write(fd, message, mlen)) != mlen)
+		{
+			if(len == -1)
+			{
+				LOG_ERROR("Could not write crash dump message: %s", strerror(errno));
+			}
+			else
+			{
+				LOG_ERROR("Incomplete write when writing crash dump message (%lu of %lu written)", len, mlen);
+			}
+		}
 		close(fd);
 	}
 	else
@@ -78,13 +93,41 @@ void crash_handler::log_crashdump_message(const char* message)
 		ASSERT(false);
 	}
 
-	write(1, message, strlen(message));	
+	if ((len = write(1, message, mlen)) != mlen)
+	{
+		if(len == -1)
+		{
+			LOG_ERROR("Could not write crash dump message: %s", strerror(errno));
+		}
+		else
+		{
+			LOG_ERROR("Incomplete write when writing crash dump message (%lu of %lu written)", len, mlen);
+		}
+	}
+
 	close(fd);
 }
 
 void crash_handler::log_crashdump_message(int fd, const char* message)
 {
-	write(fd, message, strlen(message));
+	size_t len;
+	size_t mlen = strlen(message);
+
+	// We expect fd to represent a file as compared to a network
+	// connection, where an incomplete write might occur due to,
+	// say, a socket buffer being full. So all incomplete writes
+	// are considered errors.
+	if ((len = write(fd, message, strlen(message))) != mlen)
+	{
+		if(len == -1)
+		{
+			LOG_ERROR("Could not write crash dump message: %s", strerror(errno));
+		}
+		else
+		{
+			LOG_ERROR("Incomplete write when writing crash dump message (%lu of %lu written)", len, mlen);
+		}
+	}
 }
 
 bool crash_handler::initialize()

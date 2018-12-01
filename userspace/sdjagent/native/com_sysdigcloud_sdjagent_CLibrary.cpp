@@ -416,7 +416,13 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 				log("SEVERE", "Cannot chroot inside container, errno=%s", strerror(errno));
 				exit(1);
 			}
-			chdir("/");
+			ret = chdir("/");
+			if(ret != 0)
+			{
+				log("SEVERE", "Cannot chdir to '/' inside container, errno=%s", strerror(errno));
+				exit(1);
+			}
+
 		}
 
 		if(setgid(gid) != 0)

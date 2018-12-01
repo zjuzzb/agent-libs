@@ -1242,7 +1242,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("ui.customname: " + m_host_custom_name);
 	LOG_INFO("tags: " + m_host_tags);
 	LOG_INFO("ui.custommap: " + m_host_custom_map);
-	LOG_INFO("ui.is_hidden: " + m_host_hidden);
+	LOG_INFO("ui.is_hidden: " + bool_as_text(m_host_hidden));
 	LOG_INFO("ui.hidden_processes: " + m_hidden_processes);
 	LOG_INFO("autoupdate_enabled: " + bool_as_text(m_autoupdate_enabled));
 	LOG_INFO("protobuf_print: " + bool_as_text(m_print_protobuf));
