@@ -640,6 +640,52 @@ class MongoDb(AgentCheck):
 
         return username, password, db_name, nodelist, clean_server_name
 
+    def calculate_replicationlag_from_primary_node(self, replSet, data, total_seconds, clean_server_name, replset_name,
+                                                   cli, tags, status):
+        """
+        Calculate replication lag from primary node to avoid negative replication lag
+        """
+        current = None
+        primary = None
+
+        # Find node: master (primary)
+        for member in replSet.get('members'):
+            if member.get('self') and int(member.get('state')) == 1:
+                primary = member
+                break
+
+        # Find nodes: slaves (secondaries)
+        for member in replSet.get('members'):
+
+            # Compute a lag time
+            if int(member.get('state')) != 1:
+                current = member
+
+            if current is not None and primary is not None:
+                if 'optimeDate' in primary and 'optimeDate' in current:
+                    lag = primary['optimeDate'] - current['optimeDate']
+                    self.gauge('mongodb.replset.replicationlag', total_seconds(lag),
+                               tags=tags + [u"member_name:{0}".format(current['name'].split(':')[0])])
+
+            data['state'] = replSet['myState']
+
+            if current is not None:
+                total = 0.0
+                cfg = cli['local']['system.replset'].find_one()
+                for member in cfg.get('members'):
+                    total += member.get('votes', 1)
+                    if member['_id'] == current['_id']:
+                        data['votes'] = member.get('votes', 1)
+                data['health'] = current['health']
+                data['voteFraction'] = data['votes'] / total
+
+            status['replSet'] = data
+
+            # Submit events
+            self._report_replica_set_state(
+                data['state'], clean_server_name, replset_name, self.agentConfig
+            )
+
     def check(self, instance):
         """
         Returns a dictionary that looks a lot like what's sent back by
@@ -814,39 +860,43 @@ class MongoDb(AgentCheck):
                     u"replset_state:{0}".format(replset_state),
                 ])
 
-                # Find nodes: master and current node (ourself)
-                for member in replSet.get('members'):
-                    if member.get('self'):
-                        current = member
-                    if int(member.get('state')) == 1:
-                        primary = member
+                if instance.get('replicationlag_from_primary', False):
+                    self.calculate_replicationlag_from_primary_node(replSet, data, total_seconds,
+                                                                    clean_server_name, replset_name, cli, tags, status)
+                else:
+                    # Find nodes: master and current node (ourself)
+                    for member in replSet.get('members'):
+                        if member.get('self'):
+                            current = member
+                        if int(member.get('state')) == 1:
+                            primary = member
 
-                # Compute a lag time
-                if current is not None and primary is not None:
-                    if 'optimeDate' in primary and 'optimeDate' in current:
-                        lag = primary['optimeDate'] - current['optimeDate']
-                        data['replicationLag'] = total_seconds(lag)
+                    # Compute a lag time
+                    if current is not None and primary is not None:
+                        if 'optimeDate' in primary and 'optimeDate' in current:
+                            lag = primary['optimeDate'] - current['optimeDate']
+                            data['replicationLag'] = total_seconds(lag)
 
-                if current is not None:
-                    data['health'] = current['health']
+                    if current is not None:
+                        data['health'] = current['health']
 
-                data['state'] = replSet['myState']
+                    data['state'] = replSet['myState']
 
-                if current is not None:
-                    total = 0.0
-                    cfg = cli['local']['system.replset'].find_one()
-                    for member in cfg.get('members'):
-                        total += member.get('votes', 1)
-                        if member['_id'] == current['_id']:
-                            data['votes'] = member.get('votes', 1)
-                    data['voteFraction'] = data['votes'] / total
+                    if current is not None:
+                        total = 0.0
+                        cfg = cli['local']['system.replset'].find_one()
+                        for member in cfg.get('members'):
+                            total += member.get('votes', 1)
+                            if member['_id'] == current['_id']:
+                                data['votes'] = member.get('votes', 1)
+                        data['voteFraction'] = data['votes'] / total
 
-                status['replSet'] = data
+                    status['replSet'] = data
 
-                # Submit events
-                self._report_replica_set_state(
-                    data['state'], clean_server_name, replset_name, self.agentConfig
-                )
+                    # Submit events
+                    self._report_replica_set_state(
+                        data['state'], clean_server_name, replset_name, self.agentConfig
+                    )
 
         except Exception as e:
             if "OperationFailure" in repr(e) and "replSetGetStatus" in str(e):
