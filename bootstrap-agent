@@ -55,13 +55,15 @@ if [ ! -d "$JQ_DIR" ]; then
 	make LDFLAGS=-all-static
 fi
 
-TBB_DIR=$DEPENDENCIES/tbb-2018_U5
-if [ ! -d "$TBB_DIR" ]; then
-	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/tbb-2018_U5.tar.gz
-	tar -xzf tbb-2018_U5.tar.gz
-	cd $TBB_DIR
-	make tbb_build_dir=${TBB_DIR}/build tbb_build_prefix=lib extra_inc=big_iron.inc
+if [ $OS != "Windows_NT" ]; then
+	TBB_DIR=$DEPENDENCIES/tbb-2018_U5
+	if [ ! -d "$TBB_DIR" ]; then
+		cd $DEPENDENCIES
+		wget $DEPENDENCIES_URL/tbb-2018_U5.tar.gz
+		tar -xzf tbb-2018_U5.tar.gz
+		cd $TBB_DIR
+		make tbb_build_dir=${TBB_DIR}/build tbb_build_prefix=lib extra_inc=big_iron.inc
+	fi
 fi
 
 # The njson vs json is intentional. The tarball has njson-x.y.z in the
@@ -116,18 +118,28 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	make install
 fi
 
-export GOPATH=$DEPENDENCIES/go
+if [ $OS != "Windows_NT" ]; then
+	export GOPATH=$DEPENDENCIES/go
+else
+	export GOPATH=C:/cygwin64$DEPENDENCIES/go
+fi
 if [ ! -d "$GOPATH" ]; then
 	mkdir $GOPATH
 fi
 
+GOGO_PROTOBUF_URL=https://github.com/gogo/protobuf
 GOGO_PROTOBUF_VER=v0.4
 GOGO_PROTOBUF_PATH=github.com/gogo/protobuf/protoc-gen-gofast
+GOGO_PROTOBUF_WIN_CLONE_PATH=dependencies/go/src/github.com/gogo/protobuf
 GOGO_PROTOBUF_DIR=$GOPATH/src/$GOGO_PROTOBUF_PATH
 GOGO_PROTOBUF_BIN=$GOPATH/bin/protoc-gen-gofast
 if [ ! -d "$GOGO_PROTOBUF_DIR" ]; then
 	# download but don't install yet
-	go get -u -d $GOGO_PROTOBUF_PATH
+	if [ $OS != "Windows_NT" ]; then
+		go get -u -d $GOGO_PROTOBUF_PATH
+	else
+		git clone $GOGO_PROTOBUF_URL $GOGO_PROTOBUF_WIN_CLONE_PATH
+	fi
 fi
 cd $GOGO_PROTOBUF_DIR
 # There's no easy way to go get a specific version or install from a
@@ -203,6 +215,15 @@ if [ ! -d "$POCO_DIR" ]; then
         wget $DEPENDENCIES_URL/$POCO_ARCH
  	tar -xzf $POCO_ARCH
 	cd $POCO_DIR
+	if [ $OS == "Windows_NT" ]; then
+		# Need a change in build/config/CYGWIN to use SYSFLAGS = -D_GNU_SOURCE instead of -D_XOPEN_SOURCE
+		# Ref: https://github.com/pocoproject/poco/commit/a9c4f31aa90da640867c753305dc8dcb6d4b58ea
+		# This change is not included in 1.9.0, the latest released version of poco, so manually apply the change.
+		# When we get a new poco release (say 1.9.1) with the above fix, we can switch to that release and get rid of the
+		# manual hack.
+		mv ./build/config/CYGWIN ./build/config/CYGWIN.orig
+		sed 's/SYSFLAGS.*=.*-D_XOPEN_SOURCE.*/SYSFLAGS = -D_GNU_SOURCE/' ./build/config/CYGWIN.orig > ./build/config/CYGWIN
+	fi
 	./configure --prefix=./target --static --no-samples --no-tests --omit=Data,Data/MySQL,Data/ODBC,Data/SQLite,Zip,MongoDB,PageCompiler,PageCompiler/File2Page,Redis --include-path=$OPENSSL_DIR/target/include --cflags="-DPOCO_UTIL_NO_XMLCONFIGURATION -DPOCO_UTIL_NO_JSONCONFIGURATION"
 	make install
 	cd ..
@@ -555,9 +576,13 @@ if [ -z "$ONLY_DEPS" ]; then
 		echo "" > $AGENT_BUILD_DIR/debug/userspace/draiosproto/sdc_internal.grpc.pb.cc
 		echo "" > $AGENT_BUILD_DIR/release/userspace/draiosproto/sdc_internal.grpc.pb.cc
 
+		# Turn off warnings as errors option for Windows
+		# TODO: Fix warnings and then turn it on
+		BUILD_WARNINGS_AS_ERRORS=OFF
 		cd $AGENT_BUILD_DIR/debug
-		/usr/bin/cmake -G"Unix Makefiles" -DCYGWIN=TRUE -DCMAKE_BUILD_TYPE=Debug -DDRAGENT_WINHAL_DIR=$WINHAL_DIR -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DAGENT_BUILD_COMMIT="${AGENT_BUILD_COMMIT:-}" -DAGENT_BUILD_DATE="$AGENT_BUILD_DATE" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DBUILD_BPF=${BUILD_BPF} -DBUILD_WARNINGS_AS_ERRORS=${BUILD_WARNINGS_AS_ERRORS} $AGENT_SOURCEDIR
+		/usr/bin/cmake -G"Unix Makefiles" -DCYGWIN=TRUE -DCMAKE_BUILD_TYPE=Debug -DDRAGENT_WINHAL_DIR=$WINHAL_DIR -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DAGENT_BUILD_COMMIT="${AGENT_BUILD_COMMIT:-}" -DAGENT_BUILD_DATE="$AGENT_BUILD_DATE" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DBUILD_BPF=${BUILD_BPF} -DBUILD_WARNINGS_AS_ERRORS=${BUILD_WARNINGS_AS_ERRORS} -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX:-/opt/draios}" $AGENT_SOURCEDIR
 		cd $AGENT_BUILD_DIR/release
-		/usr/bin/cmake -G"Unix Makefiles" -DCYGWIN=TRUE -DCMAKE_BUILD_TYPE=Release -DDRAGENT_WINHAL_DIR=$WINHAL_DIR -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DAGENT_BUILD_COMMIT="${AGENT_BUILD_COMMIT:-}" -DAGENT_BUILD_DATE="$AGENT_BUILD_DATE" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DBUILD_BPF=${BUILD_BPF} -DBUILD_WARNINGS_AS_ERRORS=${BUILD_WARNINGS_AS_ERRORS} $AGENT_SOURCEDIR
+		/usr/bin/cmake -G"Unix Makefiles" -DCYGWIN=TRUE -DCMAKE_BUILD_TYPE=Release -DDRAGENT_WINHAL_DIR=$WINHAL_DIR -DDRAIOS_DEPENDENCIES_DIR=$DEPENDENCIES -DJAVA_HOME=$JAVA_DIR -DAGENT_VERSION="$AGENT_VERSION" -DAGENT_BUILD_COMMIT="${AGENT_BUILD_COMMIT:-}" -DAGENT_BUILD_DATE="$AGENT_BUILD_DATE" -DSTATSITE_VERSION=$STATSITE_VERSION -DBUILD_DRIVER=${BUILD_DRIVER} -DBUILD_BPF=${BUILD_BPF} -DBUILD_WARNINGS_AS_ERRORS=${BUILD_WARNINGS_AS_ERRORS} -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX:-/opt/draios}" $AGENT_SOURCEDIR
+
 	fi
 fi

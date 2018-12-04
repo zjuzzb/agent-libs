@@ -9,8 +9,10 @@
 #include "capture_job_handler.h"
 #include <chrono>
 
+#ifndef CYGWING_AGENT
 #include "promex.pb.h"
 #include "promex.grpc.pb.h"
+#endif
 
 class connection_manager : public Runnable
 {

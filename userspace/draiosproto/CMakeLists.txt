@@ -1,13 +1,19 @@
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 
-add_library(draiosproto STATIC
-	${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
-	${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
-	${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
-	${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
-	${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.cc)
-
+if(NOT CYGWIN)
+	add_library(draiosproto STATIC
+		${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.cc)
+else()
+	add_library(draiosproto STATIC
+		${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc)
+endif()
 if(NOT CYGWIN)
 target_link_libraries(draiosproto
 	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/libs/opt/libgrpc++_unsecure.a

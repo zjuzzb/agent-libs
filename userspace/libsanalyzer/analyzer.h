@@ -25,6 +25,8 @@
 #include "coclient.h"
 #include "infrastructure_state.h"
 #include "custom_container.h"
+#else
+#include "Poco/RegularExpression.h"
 #endif
 #include "internal_metrics.h"
 #include "userdb.h"

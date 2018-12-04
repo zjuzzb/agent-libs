@@ -89,7 +89,9 @@ void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 };
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
+#ifndef CYGWING_AGENT
 	m_coclient(root_dir),
+#endif
 	m_root_dir(root_dir),
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
@@ -203,7 +205,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_last_mesos_refresh = 0;
 
 	m_docker_swarm_state = make_unique<draiosproto::swarm_state>();
-#endif
 
 	m_inspector->m_container_manager.subscribe_on_new_container([this](const sinsp_container_info &container_info, sinsp_threadinfo *tinfo) {
 		m_custom_container.inc_count();
@@ -211,6 +212,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_inspector->m_container_manager.subscribe_on_remove_container([this](const sinsp_container_info &container_info) {
 		m_custom_container.dec_count();
 	});
+#endif
 }
 
 sinsp_analyzer::~sinsp_analyzer()
@@ -1893,6 +1895,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			// Some day we might want to filter host processes as well
 			if (container)
 			{
+#ifndef CYGWING_AGENT
 				const sinsp_container_info *cinfo = m_inspector->m_container_manager.get_container(tinfo.m_container_id);
 				if (cinfo && !container->report_container(m_configuration, cinfo, infra_state(), m_prev_flush_time_ns))
 				{
@@ -1901,6 +1904,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					// Just return from this lambda
 					return true;
 				}
+#endif
 			}
 
 			const std::set<double>& pctls = m_configuration->get_percentiles();
@@ -4468,7 +4472,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Map customizations coming from the analyzer.
 			//
 			m_metrics->set_host_custom_name(m_configuration->get_host_custom_name());
+#ifndef CYGWING_AGENT
 			m_metrics->set_host_tags(std::move(get_host_tags_with_cluster()));
+#endif
 			m_metrics->set_is_host_hidden(m_configuration->get_host_hidden());
 			m_metrics->set_hidden_processes(m_configuration->get_hidden_processes());
 			m_metrics->set_version(m_configuration->get_version());
@@ -6295,8 +6301,12 @@ vector<string> sinsp_analyzer::emit_containers(const progtable_by_container_t& p
 						)
 				{
 					auto analyzer_it = m_containers.find(container_id);
+#ifndef CYGWING_AGENT
 					if((analyzer_it != m_containers.end()) &&
 						analyzer_it->second.report_container(m_configuration, container_info, infra_state(), m_prev_flush_time_ns))
+#else
+					if(analyzer_it != m_containers.end())
+#endif
 					{
 						containers_ids.push_back(container_id);
 						containers_protostate_marker.add(analyzer_it->second.m_metrics.m_protostate);
@@ -7457,6 +7467,7 @@ void stress_tool_matcher::set_comm_list(const vector<string> &comms)
 bool analyzer_container_state::report_container(const sinsp_configuration *config,
 	const sinsp_container_info *cinfo, const infrastructure_state *infra_state, uint64_t ts)
 {
+#ifndef CYGWING_AGENT
 	if ((m_filter_state != FILT_NONE) && (ts - m_filter_state_ts < FILTER_STATE_CACHE_TIME))
 	{
 		return m_filter_state == FILT_INCL;
@@ -7473,6 +7484,9 @@ bool analyzer_container_state::report_container(const sinsp_configuration *confi
 	}
 
 	bool include = filters->match(nullptr, nullptr, cinfo, *infra_state);
+#else
+	bool include = true;
+#endif
 
 	m_filter_state = include ? FILT_INCL : FILT_EXCL;
 

@@ -471,6 +471,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		}
 	}
 
+#ifndef CYGWING_AGENT
 	if(m_configuration.python_present() && (m_configuration.m_app_checks_enabled || m_configuration.m_prom_conf.enabled()))
 	{
 		m_sdchecks_pipes = make_unique<errpipe_manager>();
@@ -491,7 +492,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 			m_sinsp_worker.set_app_checks_enabled(true);
 		}
 	}
-#ifndef CYGWING_AGENT
 	if(m_configuration.m_system_supports_containers)
 	{
 		m_mounted_fs_reader_pipe = make_unique<errpipe_manager>();

@@ -196,6 +196,7 @@ std::string connection_manager::get_openssldir()
 
 bool connection_manager::connect()
 {
+#ifndef CYGWING_AGENT
 	if (m_configuration->m_promex_enabled)
 	{
 		const string& url = m_configuration->m_promex_connect_url.empty() ?
@@ -204,7 +205,7 @@ bool connection_manager::connect()
 		m_prom_channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
 		m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
 	}
-
+#endif
 	try
 	{
 		ASSERT(m_socket.isNull());
@@ -306,11 +307,13 @@ void connection_manager::disconnect()
 		m_connected = false;
 		m_buffer_used = 0;
 	}
-
+#ifndef CYGWING_AGENT
 	m_prom_channel = nullptr;
 	m_prom_conn = nullptr;
+#endif
 }
 
+#ifndef CYGWING_AGENT
 bool connection_manager::prometheus_connected()
 {
 	if (!m_prom_conn)
@@ -330,6 +333,7 @@ bool connection_manager::prometheus_connected()
 	}
 
 }
+#endif
 
 void connection_manager::run()
 {
@@ -414,7 +418,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			       + ", ts=" + to_string(item->ts_ns)
 			       + ", delay_ms=" + to_string((now - item->ts_ns)/ 1000000.0));
 	}
-
+#ifndef CYGWING_AGENT
 	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
 	{
 		grpc::ClientContext context;
@@ -429,6 +433,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			m_prom_conn->EmitMetrics(&context, msg, &response);
 		}
 	}
+#endif
 
 	try
 	{
