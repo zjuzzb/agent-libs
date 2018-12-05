@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <metrics.h>
+#include <thread>
 
 #include "docker_utils.h"
 
@@ -164,7 +165,7 @@ std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
 class security_policies_test : public testing::Test
 {
 public:
-	security_policies_test() : m_mgr("/opt/draios")
+	security_policies_test() : m_mgr("./resources/")
 	{
 	}
 
@@ -584,6 +585,131 @@ protected:
 	}
 };
 
+class security_policies_test_cointerface : public security_policies_test
+{
+protected:
+
+	virtual void SetUp()
+	{
+		string cointerface_sock = "./resources/run/cointerface.sock";
+
+		Process::Args args{"-sock", cointerface_sock,
+				"-use_json=false",
+				"-modules_dir=./resources/modules_dir"
+				};
+
+		// Start a cointerface process to act as the
+		// server. Capture its output and log everything at
+		// debug level.
+		m_colog = make_shared<Pipe>();
+		m_cointerface = make_shared<ProcessHandle>(Process::launch("./resources/cointerface", args, NULL, m_colog.get(), NULL));
+
+		thread log_reader = thread([] (shared_ptr<Pipe> colog) {
+			PipeInputStream cologstr(*colog);
+			string line;
+
+			while (std::getline(cologstr, line))
+			{
+				g_log->information(line);
+			}
+		}, m_colog);
+
+		log_reader.detach();
+
+		// Wait for the process in a sub-thread so it
+		// is reaped as soon as it exits. This is
+		// necessary as Process::isRunning returns
+		// true for zombie processes.
+		thread waiter = thread([this] () {
+			int status;
+			waitpid(m_cointerface->id(), &status, 0);
+		});
+
+		waiter.detach();
+
+		Thread::sleep(500);
+
+		if (!Process::isRunning(*m_cointerface))
+		{
+			FAIL() << "cointerface process not running after 1 second";
+		}
+
+		SetUpTest();
+		m_grpc_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>("unix:" + cointerface_sock);
+		m_grpc_start = make_shared<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)>(m_grpc_conn);
+		m_grpc_load = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)>(m_grpc_conn);
+		m_grpc_stop = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)>(m_grpc_conn);
+
+	}
+
+	virtual void TearDown()
+	{
+		m_grpc_load.reset();
+		m_grpc_start.reset();
+		m_grpc_stop.reset();
+		m_grpc_conn.reset();
+		if(m_cointerface)
+		{
+			Process::kill(*m_cointerface);
+		}
+		TearDownTest();
+		g_log->information("TearDown() complete");
+	}
+private:
+	shared_ptr<Pipe> m_colog;
+	shared_ptr<ProcessHandle> m_cointerface;
+
+	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_conn;
+	std::shared_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
+	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
+	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)> m_grpc_stop;
+};
+
+static bool check_docker()
+{
+	if(system("service docker status > /dev/null 2>&1") != 0)
+	{
+		if (system("systemctl status docker > /dev/null 2>&1") != 0) {
+			printf("Docker not running, skipping test\n");
+			return false;
+		}
+	}
+
+	// We depend on docker versions >= 1.10
+	if(system("docker --version | grep -qE \"Docker version 1.[56789].\"") == 0)
+	{
+		printf("Docker version too old, skipping test\n");
+		return false;
+	}
+
+	return true;
+}
+
+static void create_tag(const char *tag, const char *image)
+{
+	std::string tag_cmd = string("docker tag ") + image + " " + tag + " > /dev/null 2>&1";
+	std::string remove_tag_cmd = string("(docker rmi ") + tag + " || true) > /dev/null 2>&1";
+
+	EXPECT_EQ(system(remove_tag_cmd.c_str()), 0);
+	EXPECT_EQ(system(tag_cmd.c_str()), 0);
+}
+
+static void kill_container(const char *name)
+{
+	std::string kill_cmd = string("(docker kill ") + name + " || true) > /dev/null 2>&1";
+	std::string rm_cmd = string("(docker rm -fv ") + name + " || true) > /dev/null 2>&1";
+
+	EXPECT_EQ(system(kill_cmd.c_str()), 0);
+	EXPECT_EQ(system(rm_cmd.c_str()), 0);
+}
+
+static void kill_image(const char *image)
+{
+	std::string rmi_cmd = string("(docker rmi ") + image + " || true) > /dev/null 2>&1";
+
+	EXPECT_EQ(system(rmi_cmd.c_str()), 0);
+}
+
 
 TEST_F(security_policies_test, readonly_fs_only)
 {
@@ -978,6 +1104,7 @@ TEST_F(security_policies_test, falco_fqdn)
 	check_expected_internal_metrics(metrics);
 }
 
+
 TEST_F(security_policies_test, multiple_falco_variants)
 {
 	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_variants.txt", "v2 output");
@@ -1011,6 +1138,47 @@ TEST_F(security_policies_test, falco_old_rules_message)
 TEST_F(security_policies_test, falco_old_new_rules_message)
 {
 	multiple_falco_files_test("./resources/security_policies_messages/falco_old_new_rules_message.txt", "some new output");
+}
+
+TEST_F(security_policies_test_cointerface, falco_k8s_audit)
+{
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:8765/k8s_audit -d @./resources/k8s_audit_events.txt > /dev/null 2>&1"), 0);
+
+	// // Not using check_policy_events for this, as it is checking keys only
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() >= 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 30u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_deployment_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"), "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"), "nginx-deployment");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"), "default");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
+
+	// TODO @lorenzo - should we have json specific metrics?
+	// check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_test_cointerface, falco_k8s_audit_messy_client)
+{
+	// Check for unsupported http methods (POST is the only method supported)
+	ASSERT_EQ(system("curl -sX GET localhost:8765/k8s_audit | grep -qx 'Method GET not allowed' || false"), 0);
+	// Don't test HEAD, as curl just hangs...
+	// ASSERT_EQ(system("curl -sX HEAD localhost:8765/k8s_audit | grep -qx 'Method HEAD not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX PUT localhost:8765/k8s_audit | grep -qx 'Method PUT not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX DELETE localhost:8765/k8s_audit | grep -qx 'Method DELETE not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX CONNECT localhost:8765/k8s_audit | grep -qx 'Method CONNECT not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX OPTIONS localhost:8765/k8s_audit | grep -qx 'Method OPTIONS not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX TRACE localhost:8765/k8s_audit | grep -qx 'Method TRACE not allowed' || false"), 0);
+
+	// Hit wrong URIs
+	ASSERT_EQ(system("curl -sX POST localhost:8765 -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
+	ASSERT_EQ(system("curl -sX POST localhost:8765/this-is-not-the-good-door -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
+
+	// Malformed JSONs
+	ASSERT_EQ(system("curl -sX POST localhost:8765/k8s_audit -d '{\"this is\"} : clearly \"not\" a well formatted json' | grep -qx 'Malformed JSON' || false > /dev/null 2>&1"), 0);
 }
 
 TEST_F(security_policies_test, baseline_only)

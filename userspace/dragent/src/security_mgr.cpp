@@ -536,7 +536,8 @@ void security_mgr::process_event(gen_event *evt)
 			// Reset to empty message
 			m_compliance_run = draiosproto::comp_run();
 		}
-		if (!m_k8s_audit_server_started) {
+		if (!m_k8s_audit_server_started)
+		{
 			start_k8s_audit_server_tasks();
 		}
 
@@ -1327,10 +1328,10 @@ void security_mgr::start_k8s_audit_server_tasks()
 			{
 				if(!jevt.successful())
 				{
-					// // TODO *
-					// g_log->error(string("Could not start K8s Audit Server tasks (") + jevt.errstr()+ "), trying again in " +
-					// 	     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
-					// 	     " seconds");
+					// TODO *
+					g_log->error(string("Could not start K8s Audit Server tasks (") + jevt.errstr()+ "), trying again in " +
+						     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
+						     " seconds");
 					m_k8s_audit_server_started = false;
 				} else {
 					std::list<json_event> jevts;
@@ -1361,6 +1362,7 @@ void security_mgr::start_k8s_audit_server_tasks()
 		};
 
 	m_k8s_audit_server_started = true;
+
 	g_log->debug(string("Sending start message to K8s Audit Server: ") + start.DebugString());
 
 	m_k8s_audit_server_start_conn = grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
