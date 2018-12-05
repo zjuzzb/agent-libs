@@ -291,6 +291,23 @@ public:
 	// the policy that matches the event, if any. If multiple
 	// policies match the event, returns the one with the lowest
 	// order.
+	match_result *match_event(gen_event *evt)
+	{
+		sinsp_evt * s_evt = NULL;
+		json_event * j_evt = NULL;
+
+		s_evt = dynamic_cast<sinsp_evt *>(evt);
+		if (s_evt)
+			return match_event(s_evt);
+
+		j_evt = dynamic_cast<json_event *>(evt);
+		if (j_evt)
+			return match_event(j_evt);
+
+		assert(false);
+		return NULL;
+	}
+	virtual match_result *match_event(json_event *evt) = 0;
 	virtual match_result *match_event(sinsp_evt *evt) = 0;
 
 	// Return the number of policies loaded by this object.
@@ -300,9 +317,11 @@ public:
 
 	// Fill the requested information about the policy event
 	void set_match_details(match_result &match, sinsp_evt *evt);
+	void set_match_details(match_result &match, json_event *evt);
 
-	// The event types for which this policy must run.
+	// The event types and source for which this policy must run.
 	std::vector<bool> m_evttypes;
+	std::vector<bool> m_evtsources;
 
 protected:
 
@@ -352,12 +371,14 @@ public:
 	std::set<std::string> default_output_fields_keys(sinsp_evt *evt);
 
 	match_result *match_event(sinsp_evt *evt);
+	match_result *match_event(json_event *evt);
 
 	void set_engine(std::shared_ptr<falco_engine> falco_engine);
 
 private:
 
 	bool check_conditions(sinsp_evt *evt);
+	bool check_conditions(json_event *evt);
 
 	std::shared_ptr<falco_engine> m_falco_engine;
 
@@ -384,6 +405,7 @@ public:
 	virtual std::set<std::string> default_output_fields_keys(sinsp_evt *evt) = 0;
 
 	virtual match_result *match_event(sinsp_evt *evt) = 0;
+	match_result *match_event(json_event *evt) { return NULL;}
 
 	// Add a "default" match result that will be considered if an
 	// event does *not* match the items specified by its matchlist

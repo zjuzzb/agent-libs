@@ -78,6 +78,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/test_module_scraper.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module_mgr.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/k8s_audit/module.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/daemonsets.go

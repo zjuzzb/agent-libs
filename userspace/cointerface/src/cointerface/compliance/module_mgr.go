@@ -281,7 +281,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 }
 
 func (mgr *ModuleMgr) Load(ctx context.Context, load *sdc_internal.CompLoad) (*sdc_internal.CompLoadResult, error) {
-	log.Debugf("Received Load message: %s", load.String())
+	log.Debugf("Received Compliance Load message: %s", load.String())
 
 	if ! mgr.initialized {
 		if err := mgr.Init(*load.CustomerId, *load.MachineId); err != nil {
@@ -299,13 +299,13 @@ func (mgr *ModuleMgr) Load(ctx context.Context, load *sdc_internal.CompLoad) (*s
 		})
 	}
 
-	log.Debugf("Returning from Load: %v", result)
+	log.Debugf("Returning from Compliance Load: %v", result)
 
 	return result, nil
 }
 
-func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {
-	log.Debugf("Received Stop message: %s", stop.String())
+func (mgr *ModuleMgr) Stop(ctx context.Context, load *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {
+	log.Debugf("Received Compliance Stop message : %s", load.String())
 
 	result := &sdc_internal.CompStopResult{
 		Successful: proto.Bool(true),
@@ -328,7 +328,7 @@ func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*s
 		}
 	}
 
-	log.Debugf("Returning from Stop: %v", result)
+	log.Debugf("Returning from Compliance Stop: %v", result)
 
 	return result, nil
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"cointerface/compliance"
+	"cointerface/k8s_audit"
 	"cointerface/kubecollect"
 	"cointerface/sdc_internal"
 	"cointerface/draiosproto"
@@ -329,6 +330,11 @@ func startServer(sock string, modulesDir string) int {
 		return 1
 	}
 
+	if err = k8s_audit.Register(grpcServer); err != nil {
+		log.Errorf("Could not initialize k8s audit grpc server: %s. Exiting.", err.Error())
+		return 1
+	}
+
 	// Capture SIGINT and exit gracefully
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt)
@@ -345,3 +351,4 @@ func startServer(sock string, modulesDir string) int {
 
 	return 0
 }
+
