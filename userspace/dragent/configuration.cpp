@@ -1184,6 +1184,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_env_blacklist->emplace_back(regex);
 	}
 	m_env_hash_ttl = m_config->get_scalar<uint64_t>("environment_tracking", "hash_ttl", 86400);
+	m_large_envs = m_config->get_scalar<bool>("enable_large_environments", false);
 
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }

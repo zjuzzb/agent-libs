@@ -96,6 +96,7 @@ void sinsp_worker::init()
 	m_inspector->set_debug_mode(true);
 	m_inspector->set_internal_events_mode(true);
 	m_inspector->set_hostname_and_port_resolution_mode(false);
+	m_inspector->set_large_envs(m_configuration->m_large_envs);
 
 	if(m_configuration->m_max_thread_table_size > 0)
 	{

@@ -775,6 +775,7 @@ public:
 	dragent_mode_t m_mode;
 	bool m_detect_stress_tools = false;
 	vector<string> m_stress_tools;
+	bool m_large_envs;
 
 	bool m_cointerface_enabled;
 	uint32_t m_coclient_max_loop_evts = 100;
