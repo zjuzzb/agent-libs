@@ -106,6 +106,12 @@ static void test_helper_quotactl(test_helper_args &hargs)
 	{
 		sinsp_evt* evt = param.m_evt;
 
+		// make sure we don't add suppresed threads during initial /proc scan
+		if(param.m_inspector->check_suppressed(evt->get_tid()))
+		{
+			ASSERT_EQ(nullptr, param.m_inspector->get_thread_ref(evt->get_tid(), false, true));
+		}
+
 		switch(evt->get_type())
 		{
 		case PPME_SYSCALL_QUOTACTL_X:
@@ -136,7 +142,7 @@ static void test_helper_quotactl(test_helper_args &hargs)
 		inspector->get_capture_stats(&st);
 
 		ASSERT_GT(st.n_suppressed, 0u);
-		ASSERT_EQ(st.n_tids_suppressed, 0u);
+		ASSERT_EQ(0u, st.n_tids_suppressed);
 	};
 
 	// We increase the number of timeouts to 1k (~30 seconds, if
