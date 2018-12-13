@@ -123,7 +123,9 @@ private:
 	void refresh_hosts_metadata();
 
 	void connect(infrastructure_state::uid_t& key);
-	void remove(infrastructure_state::uid_t& key);
+
+	// Remove given key. Set update to true if the key will be reinstantiated as part of an update
+	void remove(infrastructure_state::uid_t& key, bool update = false);
 	bool has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid);
 
 	bool get_cached_result(const std::string &entity_id, size_t h, bool *res);
@@ -178,6 +180,7 @@ private:
 	run_on_interval m_k8s_connect_interval;
 	int m_k8s_prev_connect_state;
 	string m_k8s_node;
+	string m_k8s_node_uid;
 
 	typedef struct {
 		double val;

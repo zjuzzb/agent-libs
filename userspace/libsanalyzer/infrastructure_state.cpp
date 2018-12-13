@@ -359,6 +359,7 @@ void infrastructure_state::reset()
 	m_state.clear();
 	m_k8s_cached_cluster_id.clear();
 	m_k8s_node.clear();
+	m_k8s_node_uid.clear();
 	m_registered_scopes.clear();
 	m_rate_metric_state.clear();
 
@@ -628,7 +629,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			   evt->object().children().size() > 0 ||
 			   evt->object().ports().size() > 0) {
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will change relationships, remove the container group then connect it again");
-				remove(key);
+				remove(key, true);
 				m_state[key] = make_unique<draiosproto::container_group>();
 				purge_tags_and_copy(key, evt->object());
 				connect(key);
@@ -724,7 +725,7 @@ void infrastructure_state::connect(infrastructure_state::uid_t& key)
 	}
 }
 
-void infrastructure_state::remove(infrastructure_state::uid_t& key)
+void infrastructure_state::remove(infrastructure_state::uid_t& key, bool update)
 {
 	//
 	// Remove all children references to this group
@@ -771,7 +772,12 @@ void infrastructure_state::remove(infrastructure_state::uid_t& key)
 
 	// Remove the group itself
 	m_state.erase(key);
-	delete_rate_metrics(key);
+
+	// Keep rate metric history if this object is just getting updated
+	if (!update)
+	{
+		delete_rate_metrics(key);
+	}
 
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Container group <%s,%s> removed.", key.first.c_str(), key.second.c_str());
 }
@@ -1082,6 +1088,37 @@ void infrastructure_state::state_of(const std::vector<std::string> &container_id
 		}
 
 		state_of(pos->second.get(), state, visited, ts);
+	}
+
+	//
+	// Add everything running on this node that hasn't been added yet
+	// (like pods without containers)
+	//
+	if (!m_k8s_node_uid.empty())
+	{
+		auto node_key = make_pair("k8s_node", m_k8s_node_uid);
+		if (has(node_key))
+		{
+			const auto *node = m_state[node_key].get();
+
+			for (const auto &c_uid : node->children()) {
+
+				glogf(sinsp_logger::SEV_DEBUG, "infra_state: node %s has %s:%s", m_k8s_node_uid.c_str(), c_uid.kind().c_str(), c_uid.id().c_str());
+				auto ckey = make_pair(c_uid.kind(), c_uid.id());
+
+				if(!has(ckey)) {
+					// We don't have this child (yet...)
+					continue;
+				}
+
+				if(visited.find(ckey) == visited.end()) {
+					// state_of() looks at visited too
+					// We just want to do it here for logging purposes
+					glogf(sinsp_logger::SEV_DEBUG, "infra_state: adding state for (container-less) %s:%s", c_uid.kind().c_str(), c_uid.id().c_str());
+					state_of(m_state[ckey].get(), state, visited, ts);
+				}
+			}
+		}
 	}
 
 	//
@@ -1712,9 +1749,12 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 
 				if (state->m_k8s_node.empty())
 				{
-					state->m_k8s_node = tag->second;
+					state->m_k8s_node = name;
 				}
-
+				if (state->m_k8s_node_uid.empty())
+				{
+					state->m_k8s_node_uid = i.first.second;
+				}
 			}
 		}
 
