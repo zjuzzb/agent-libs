@@ -304,8 +304,8 @@ func (mgr *ModuleMgr) Load(ctx context.Context, load *sdc_internal.CompLoad) (*s
 	return result, nil
 }
 
-func (mgr *ModuleMgr) Stop(ctx context.Context, load *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {
-	log.Debugf("Received Compliance Stop message : %s", load.String())
+func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {
+	log.Debugf("Received Compliance Stop message : %s", stop.String())
 
 	result := &sdc_internal.CompStopResult{
 		Successful: proto.Bool(true),

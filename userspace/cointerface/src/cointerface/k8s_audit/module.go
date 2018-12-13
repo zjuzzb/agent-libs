@@ -17,27 +17,32 @@ var(
 )
 
 type k8sAuditServer struct {
-	customerId string
-	machineId string
-
 	evtsChannel chan *sdc_internal.K8SAuditEvent
-	// Send a value to this channel to stop any previous start
-	stopTasksChannel chan bool
-
-	// Read the results of the stop from this channel after writing to tasksChannel
-	stopTasksDoneChannel chan error
-
+	initialized bool
+	cancel context.CancelFunc
 }
 
 func (ks *k8sAuditServer) Init() error {
-	ks.stopTasksChannel = make(chan bool)
-	ks.stopTasksDoneChannel = make(chan error)
 	ks.evtsChannel = make(chan *sdc_internal.K8SAuditEvent)
+
+	ks.initialized = true
+
 	return nil
 }
 
-func (ks *k8sAuditServer) Start (start *sdc_internal.K8SAuditServerStart, stream sdc_internal.K8SAudit_StartServer) error {
+func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream sdc_internal.K8SAudit_StartServer) error {
 	log.Debugf("Received K8s Audit Start message: %s", start.String())
+
+	if ks.cancel != nil {
+		// Start() was previously called. Stop those tasks first.
+		ks.cancel()
+		ks.cancel = nil
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	ks.cancel = cancel
+
 	RunTasks:
 	for {
 		select {
@@ -47,7 +52,7 @@ func (ks *k8sAuditServer) Start (start *sdc_internal.K8SAuditServerStart, stream
 					evt.String(), err.Error())
 				return err
 			}
-		case <- ks.stopTasksChannel:
+		case <- ctx.Done():
 			break RunTasks
 		}
 	}
@@ -57,13 +62,21 @@ func (ks *k8sAuditServer) Start (start *sdc_internal.K8SAuditServerStart, stream
 	return nil
 }
 
-func (ks *k8sAuditServer) Stop (ctx context.Context, load *sdc_internal.K8SAuditServerStop) (*sdc_internal.K8SAuditStopResult, error) {
+func (ks *k8sAuditServer) Stop(ctx context.Context, load *sdc_internal.K8SAuditServerStop) (*sdc_internal.K8SAuditStopResult, error) {
 	log.Debugf("Received K8s Audit Stop message : %s", load.String())
+
 	result := &sdc_internal.K8SAuditStopResult{
 		Successful: proto.Bool(true),
 	}
 
-	ks.stopTasksChannel <- true
+	if ! ks.initialized {
+		return result, nil
+	}
+
+	if ks.cancel != nil {
+		ks.cancel()
+		ks.cancel = nil
+	}
 
 	log.Debugf("Returning from K8s Audit Stop: %v", result)
 
@@ -88,7 +101,6 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Create a new record.
 			evt := &sdc_internal.K8SAuditEvent{
-				TaskName: proto.String("k8s-evt-" + string(k8sEvtID)),
 				EvtJson: proto.String(string(jsn[:])),
 				Successful: proto.Bool(true),
 			}
@@ -124,7 +136,6 @@ func Register(grpcServer *grpc.Server) error {
 
 	sdc_internal.RegisterK8SAuditServer(grpcServer, ks)
 
-	// s.HandleFunc("/k8s_audit", ks.handleK8sAuditEvents)
 	go func() {
 		if err := s.ListenAndServe(); err != nil {
 			panic(err)

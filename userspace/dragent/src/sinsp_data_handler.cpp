@@ -74,7 +74,6 @@ void sinsp_data_handler::security_mgr_policy_events_ready(uint64_t ts_ns, draios
 	{
 		LOG_INFO(string("Security Events:") + events->DebugString());
 	}
-		g_log->error(string(" !!!!!!!!!!!!!!!!!!! Security Events:") + events->DebugString());
 
 	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
 		ts_ns,

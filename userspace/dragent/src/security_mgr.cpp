@@ -1300,9 +1300,6 @@ void security_mgr::start_k8s_audit_server_tasks()
 	g_log->debug("Starting K8s Audit Server");
 	sdc_internal::k8s_audit_server_start start;
 
-	start.set_machine_id(m_configuration->m_machine_id);
-	start.set_customer_id(m_configuration->m_customer_id);
-
 	// just in case we get called multiple times, tear down the
 	// previous GRPCs objects
 	m_k8s_audit_server_start = NULL;
