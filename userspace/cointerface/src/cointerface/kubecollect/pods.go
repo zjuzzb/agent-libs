@@ -305,6 +305,7 @@ func newPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *
 		AddReplicaSetParents(&parents, pod)
 		AddReplicationControllerParents(&parents, pod)
 		AddStatefulSetParentsFromPod(&parents, pod)
+		AddResourceQuotaParentsFromPod(&parents, pod)
 		AddServiceParents(&parents, pod)
 		AddDaemonSetParents(&parents, pod)
 		AddNodeParents(&parents, pod.Spec.NodeName)

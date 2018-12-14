@@ -3,15 +3,18 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
-	"sync"
-	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
+	"github.com/gogo/protobuf/proto"
+	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	kubeclient "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/cache"
+	"sync"
 )
+
+var resourceQuotaInf cache.SharedInformer
 
 // make this a library function?
 func resourceQuotaEvent(rq *v1.ResourceQuota, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
@@ -67,6 +70,7 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 
 	AddResourceQuotaMetrics(&ret.Metrics, resourceQuota)
 	AddNSParents(&ret.Parents, resourceQuota.GetNamespace())
+	AddPodChildren(&ret.Children, labels.NewSelector(),resourceQuota.GetNamespace())
 	return ret
 }
 
@@ -82,7 +86,20 @@ func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v
 	}
 }
 
-var resourceQuotaInf cache.SharedInformer
+func AddResourceQuotaParentsFromPod(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
+	if !resourceReady("resourcequotas") {
+		return
+	}
+
+	for _, obj := range resourceQuotaInf.GetStore().List() {
+		resourcequota := obj.(*v1.ResourceQuota)
+		if(resourcequota.GetNamespace() == pod.GetNamespace()) {
+			*parents = append(*parents, &draiosproto.CongroupUid{
+				Kind:proto.String("k8s_resourcequota"),
+				Id:proto.String(string(resourcequota.GetUID()))})
+		}
+	}
+}
 
 func AddResourceQuotaChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespaceName string) {
 	if !resourceReady("resourcequotas") {

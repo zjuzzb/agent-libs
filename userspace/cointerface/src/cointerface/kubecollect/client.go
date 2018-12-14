@@ -41,7 +41,7 @@ func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
 	// Return a vector of all resourceType names
 	var resourceTypes []string
 	resourceMap := make(map[string]bool)
-	
+
 	for _, resourceList := range resources {
 		for _, resource := range resourceList.APIResources {
 			verbStr := ""
@@ -130,7 +130,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// Get a vector of all resource types
 	// from the resourceList in resources.
 	resourceTypes := getResourceTypes(resources)
-	
+
 	// Caller is responsible for draining the chan
 	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
 
@@ -237,11 +237,10 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 		}
 		if interrupted {
 			log.Warn("K8s informer startup interrupted by cancelled context")
-			break  
+			break
 		}
 
 		log.Debugf("Checking kubecollect support for %v", resource)
-
 		// The informers are responsible for Add()'ing to the wg
 		infStarted := true
 		switch resource {
@@ -267,12 +266,13 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 			startReplicaSetsSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
 		case "replicationcontrollers":
 			startReplicationControllersSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
-		case "resourcequotas":
-			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
 		case "services":
 			startServicesSInformer(ctx, kubeClient, wg, evtc)
 		case "statefulsets":
 			startStatefulSetsSInformer(ctx, kubeClient, wg, evtc)
+		case "resourcequotas":
+			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
+
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false
