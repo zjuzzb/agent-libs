@@ -121,6 +121,8 @@ public:
 	const std::set<std::string>& get_k8s_extensions() const;
 	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
 	const std::string& get_k8s_cluster_name() const;
+	void set_k8s_include_types(const vector<string> &types);
+	const vector<string> & get_k8s_include_types() const;
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	string get_mesos_state_original_uri() const;
@@ -280,6 +282,7 @@ private:
 	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
+	vector<string> m_k8s_include_types;
 
 	string m_mesos_state_uri;
 	string m_mesos_state_original_uri;

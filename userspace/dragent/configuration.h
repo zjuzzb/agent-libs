@@ -698,6 +698,7 @@ public:
 	bool m_use_new_k8s;
 	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
 	std::string m_k8s_cluster_name;
+	vector<string> m_k8s_include_types;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;

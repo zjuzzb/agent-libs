@@ -567,6 +567,16 @@ const std::string& sinsp_configuration::get_k8s_cluster_name() const
 	return m_k8s_cluster_name;
 }
 
+void sinsp_configuration::set_k8s_include_types(const vector<string> &types)
+{
+	m_k8s_include_types = types;
+}
+
+const vector<string>& sinsp_configuration::get_k8s_include_types() const
+{
+	return m_k8s_include_types;
+}
+
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
 	if(sought_url.empty())

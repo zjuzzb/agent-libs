@@ -1184,6 +1184,12 @@ k8s_labels_filter:
   - exclude: "*.controller-revision-hash"
   - include: "*"
 
+k8s_extra_resources:
+    include:
+      - services
+      - horizontalpodautoscalers
+      - resourcequotas
+
 # configuration files to monitor for updates
 monitor_files:
   check_frequency_s: 5

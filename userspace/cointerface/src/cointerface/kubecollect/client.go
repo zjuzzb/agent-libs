@@ -36,7 +36,16 @@ var annotFilter map[string]bool
 
 const RsyncInterval = 10 * time.Minute
 
-func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
+func in_array(s string, arr []string) bool {
+	for _, a := range arr {
+		if s == a {
+			return true
+		}
+	}
+	return false
+}
+
+func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string) ([]string) {
 
 	// Return a vector of all resourceType names
 	var resourceTypes []string
@@ -55,6 +64,12 @@ func getResourceTypes(resources []*v1meta.APIResourceList) ([]string) {
 
 			if resource.Name == "cronjobs" &&
 				resourceList.GroupVersion != "batch/v2alpha1" {
+				continue
+			}
+			// Exclude services, resourcequotas and hpas unless explicitly requested
+			// We'll probably want to change this
+			if (resource.Name == "services" || resource.Name == "resourcequotas" || resource.Name == "horizontalpodautoscalers") && !in_array(resource.Name, includeTypes) {
+				log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
 				continue
 			}
 
@@ -129,7 +144,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 
 	// Get a vector of all resource types
 	// from the resourceList in resources.
-	resourceTypes := getResourceTypes(resources)
+	resourceTypes := getResourceTypes(resources, opts.IncludeTypes)
 
 	// Caller is responsible for draining the chan
 	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())

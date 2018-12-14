@@ -204,6 +204,9 @@ void sinsp_worker::init()
 		m_analyzer->set_use_new_k8s(m_configuration->m_use_new_k8s);
 	}
 	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
+
+	m_analyzer->get_configuration()->set_k8s_include_types(m_configuration->m_k8s_include_types);
+
 	//
 	// mesos
 	//

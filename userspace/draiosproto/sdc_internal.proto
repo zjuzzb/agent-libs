@@ -94,6 +94,7 @@ message orchestrator_events_stream_command {
     required bool ssl_verify_certificate = 13;
     required string auth_token = 14;
     repeated string annotation_filter = 15;
+    repeated string include_types = 16;
 }
 
 service CoInterface {

@@ -110,7 +110,7 @@ func TestBasicResourceOrdering(t *testing.T) {
 	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(20)),
 		createAPIResourceList(rand.Intn(30))}
 
-	resourceOrder := getResourceTypes(resourceList)
+	resourceOrder := getResourceTypes(resourceList, nil)
 
 	checkNoRepeatsHelper(t, resourceOrder, true)
 	
@@ -126,7 +126,7 @@ func TestBasicResourceOrdering(t *testing.T) {
 		})
 	}
 
-	resourceOrderNew := getResourceTypes(resourceList)
+	resourceOrderNew := getResourceTypes(resourceList, nil)
 	checkNoRepeatsHelper(t, resourceOrderNew, true)
 	checkNodesAndNamespacesFirstHelper(t ,resourceOrderNew, true)	
 }
@@ -158,7 +158,7 @@ func TestCronjobExistsInResourceOrder(t *testing.T) {
 		Name: "cronjobs",
 	})
 
-	resourceOrderWithOutCronjobs := getResourceTypes(resourceList)
+	resourceOrderWithOutCronjobs := getResourceTypes(resourceList, nil)
 	
 	// Since group version by default is
 	// v1ForTesting, no cronjobs should be added
@@ -167,6 +167,50 @@ func TestCronjobExistsInResourceOrder(t *testing.T) {
 	// Now modify groupversion to the supported value and check cronjobs exist
 	resourceList[0].GroupVersion = "batch/v2alpha1"
 	
-	resourceOrderWithCronjobs := getResourceTypes(resourceList)
+	resourceOrderWithCronjobs := getResourceTypes(resourceList, nil)
 	checkNoCronjobsExistHelper(t,resourceOrderWithCronjobs, false)
+}
+
+// This function is a helper to test if a given type exists
+func checkExtraResourceTypesHelper(t *testing.T, resources []string, rt string, expected bool) {
+	res := false
+	for _, str := range resources {
+		if str == rt {
+			res = true
+			break
+		}
+	}
+
+	if res != expected {
+		if expected {
+			t.Error(rt + " doesn't exist when it should")
+		} else {
+			t.Error(rt + " exists when it shouldn't")
+		}
+		t.Fail()
+	}
+}
+
+func TestResourceTypeIncludes(t *testing.T) {
+	// Create resourcelists and ensure services, hpas and resourcequotas exist
+	resourceList := []*v1meta.APIResourceList{ createAPIResourceList(rand.Intn(10)) }
+	resourceList[0].APIResources = append(resourceList[0].APIResources,
+		v1meta.APIResource{ Name: "services", },
+		v1meta.APIResource{ Name: "horizontalpodautoscalers", },
+		v1meta.APIResource{ Name: "resourcequotas", } )
+
+	resourceswithoutextras := getResourceTypes(resourceList, nil)
+
+	// Since extras aren't taken by default, these should not exist
+	checkExtraResourceTypesHelper(t, resourceswithoutextras, "services", false)
+	checkExtraResourceTypesHelper(t, resourceswithoutextras, "horizontalpodautoscalers", false)
+	checkExtraResourceTypesHelper(t, resourceswithoutextras, "resourcequotas", false)
+
+	// Now add them to the include list and they should now exist
+	includeList := []string{ "services", "horizontalpodautoscalers", "resourcequotas" }
+
+	resourceswithextras := getResourceTypes(resourceList, includeList)
+	checkExtraResourceTypesHelper(t, resourceswithextras, "services", true)
+	checkExtraResourceTypesHelper(t, resourceswithextras, "horizontalpodautoscalers", true)
+	checkExtraResourceTypesHelper(t, resourceswithextras, "resourcequotas", true)
 }

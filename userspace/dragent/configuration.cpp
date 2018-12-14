@@ -990,6 +990,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
+
+	m_k8s_include_types = m_config->get_scalar<vector<string>>("k8s_extra_resources", "include", {});
 	// End K8s
 
 	// Mesos
