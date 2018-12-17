@@ -49,6 +49,17 @@ func setScope(tags map[string]string, resourcequota *v1.ResourceQuota) () {
 	}
 }
 
+func resourceQuotaEquals(oldResourceQuota *v1.ResourceQuota, newResourceQuota *v1.ResourceQuota) bool {
+	ret := true;
+	if oldResourceQuota.GetName() != newResourceQuota.GetName() ||
+		!EqualLabels(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
+		!EqualAnnotations(oldResourceQuota.ObjectMeta, newResourceQuota.ObjectMeta) ||
+		!equalResourceList(oldResourceQuota.Status.Used, newResourceQuota.Status.Used){
+		ret = false
+	}
+	return ret
+}
+
 func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.ContainerGroup) {
 	// Need a way to distinguish them
 	// ... and make merging annotations+labels it a library function?
@@ -143,7 +154,8 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldResourceQuota := oldObj.(*v1.ResourceQuota)
 				newResourceQuota := newObj.(*v1.ResourceQuota)
-				if oldResourceQuota.GetResourceVersion() != newResourceQuota.GetResourceVersion() {
+				if (oldResourceQuota.GetResourceVersion() != newResourceQuota.GetResourceVersion()) ||
+					!resourceQuotaEquals(oldResourceQuota, newResourceQuota) {
 
 					evtc <- resourceQuotaEvent(newResourceQuota,
 						draiosproto.CongroupEventType_UPDATED.Enum())
