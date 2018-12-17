@@ -1011,7 +1011,7 @@ void capture_job_handler::prepare_response(const string& token, draiosproto::dum
 {
 	response->set_timestamp_ns(sinsp_utils::get_current_time_ns());
 	response->set_customer_id(m_configuration->m_customer_id);
-	response->set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
+	response->set_machine_id(m_configuration->machine_id());
 	response->set_token(token);
 }
 

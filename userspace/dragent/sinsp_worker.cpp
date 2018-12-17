@@ -143,7 +143,7 @@ void sinsp_worker::init()
 	//
 	// The machine id is the MAC address of the first physical adapter
 	//
-	m_analyzer->get_configuration()->set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
+	m_analyzer->get_configuration()->set_machine_id(m_configuration->machine_id());
 
 	m_analyzer->get_configuration()->set_customer_id(m_configuration->m_customer_id);
 
@@ -626,7 +626,7 @@ void sinsp_worker::run()
 				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
 																 "Agent switch to nodriver",
 																 "Agent switched to nodriver mode due to high overhead",
-																 event_scope("host.mac", m_configuration->m_machine_id_prefix + m_configuration->m_machine_id),
+										 event_scope("host.mac", m_configuration->machine_id()),
 																 { {"source", "agent"}},
 																 4));
 				m_last_mode_switch_time = ev->get_ts();
@@ -657,11 +657,11 @@ void sinsp_worker::run()
 					// few seconds before doing it otherwise there can be chances that it's not sent at all
 					full_mode_event_sent = true;
 					g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
-																	 "Agent restore full mode",
-																	 "Agent restarting to restore full operation mode",
-																	 event_scope("host.mac", m_configuration->m_machine_id_prefix + m_configuration->m_machine_id),
-																	 { {"source", "agent"}},
-																	 4));
+											 "Agent restore full mode",
+											 "Agent restarting to restore full operation mode",
+											 event_scope("host.mac", m_configuration->machine_id()),
+											 { {"source", "agent"}},
+											 4));
 				}
 			}
 		}

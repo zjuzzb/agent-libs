@@ -117,7 +117,7 @@ void log_reporter::send_report(uint64_t ts_ns)
 	draiosproto::dirty_shutdown_report report;
 	report.set_timestamp_ns(sinsp_utils::get_current_time_ns());
 	report.set_customer_id(m_configuration->m_customer_id);
-	report.set_machine_id(m_configuration->m_machine_id_prefix + m_configuration->m_machine_id);
+	report.set_machine_id(m_configuration->machine_id());
 	report.set_log(buf.begin(), buf.size());
 
 	std::shared_ptr<protocol_queue_item> report_serialized = dragent_protocol::message_to_buffer(

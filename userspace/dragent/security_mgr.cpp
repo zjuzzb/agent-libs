@@ -588,7 +588,7 @@ void security_mgr::set_compliance_calendar(draiosproto::comp_calendar &calendar)
 void security_mgr::load_compliance_modules()
 {
 	sdc_internal::comp_load load;
-	load.set_machine_id(m_configuration->m_machine_id);
+	load.set_machine_id(m_configuration->machine_id());
 	load.set_customer_id(m_configuration->m_customer_id);
 
 	auto callback = [this](bool successful, sdc_internal::comp_load_result &lresult)
@@ -805,7 +805,7 @@ void security_mgr::send_policy_event(uint64_t ts_ns, shared_ptr<draiosproto::pol
 	if(send_now)
 	{
 		draiosproto::policy_events events;
-		events.set_machine_id(m_configuration->m_machine_id);
+		events.set_machine_id(m_configuration->machine_id());
 		events.set_customer_id(m_configuration->m_customer_id);
 		draiosproto::policy_event *new_event = events.add_events();
 		new_event->MergeFrom(*event);
@@ -986,7 +986,7 @@ void security_mgr::report_events_now(uint64_t ts_ns, draiosproto::policy_events 
 		g_log->information("security_mgr::report_events_now: " + to_string(events.events_size()) + " events");
 	}
 
-	events.set_machine_id(m_configuration->m_machine_id);
+	events.set_machine_id(m_configuration->machine_id());
 	events.set_customer_id(m_configuration->m_customer_id);
 	m_sinsp_handler->security_mgr_policy_events_ready(ts_ns, &events);
 }
@@ -998,7 +998,7 @@ void security_mgr::report_throttled_events(uint64_t ts_ns)
 	if(m_policy_throttled_counts.size() > 0)
 	{
 		draiosproto::throttled_policy_events tevents;
-		tevents.set_machine_id(m_configuration->m_machine_id);
+		tevents.set_machine_id(m_configuration->machine_id());
 		tevents.set_customer_id(m_configuration->m_customer_id);
 
 		for(auto &it : m_policy_throttled_counts)

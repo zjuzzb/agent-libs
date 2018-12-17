@@ -590,8 +590,6 @@ public:
 	// Log size in megabytes
 	uint16_t m_max_log_size;
 	string m_customer_id;
-	string m_machine_id;
-	string m_machine_id_prefix;
 	string m_server_addr;
 	uint16_t m_server_port;
 	uint32_t m_transmitbuffer_size;
@@ -854,6 +852,11 @@ public:
 #endif
 	}
 
+	std::string machine_id()
+	{
+		return m_machine_id_prefix + m_machine_id;
+	}
+
 	void refresh_aws_metadata();
 	void refresh_machine_id();
 
@@ -879,6 +882,9 @@ private:
 	bool m_load_error;
 
 	friend class aws_metadata_refresher;
+
+	string m_machine_id;
+	string m_machine_id_prefix;
 };
 
 class aws_metadata_refresher: public Runnable

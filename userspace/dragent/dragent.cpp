@@ -634,7 +634,7 @@ int dragent_app::sdagent_main()
 		return Application::EXIT_SOFTWARE;
 	}
 
-	if(m_configuration.m_machine_id == "00:00:00:00:00:00")
+	if(m_configuration.machine_id() == "00:00:00:00:00:00")
 	{
 		LOG_ERROR("Invalid machine_id detected");
 		return Application::EXIT_SOFTWARE;
@@ -1146,7 +1146,7 @@ void dragent_app::initialize_logging()
 	file_channel->setProperty("archive", "timestamp");
 
 	AutoPtr<Formatter> formatter(new PatternFormatter("%Y-%m-%d %H:%M:%S.%i, %P, %p, %t"));
-	AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, m_configuration.m_machine_id));
+	AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, m_configuration.machine_id()));
 	AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
