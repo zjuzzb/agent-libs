@@ -15,6 +15,7 @@ import sys
 import signal
 import ast
 import config
+import platform
 
 # project
 from checks import AgentCheck
@@ -43,6 +44,8 @@ GLOBAL_PERCENTILES = []
 
 DONT_SEND_LOG_REPORT = 19
 SIGHUP_HANDLER_EXIT_CODE = DONT_SEND_LOG_REPORT
+
+BLACKLISTED_APP_CHECKS_FOR_PYTHON_2_6 = ('pgbouncer', )
 
 try:
     SYSDIG_HOST_ROOT = os.environ["SYSDIG_HOST_ROOT"]
@@ -491,6 +494,7 @@ class Application:
         self.last_known_instances_cleanup = datetime.now()
         self.last_heartbeat = datetime(2010, 1, 1, 0, 0, 0);
         self.heartbeat_min = timedelta(0);
+        self.python_version = platform.python_version()
 
         self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
         self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
@@ -553,6 +557,16 @@ class Application:
         # Update the heartbeat_min to half of the watchdog from the config file
         self.heartbeat_min = timedelta(seconds=(self.config.watchdog() / 2))
 
+    def is_app_check_supported(self, app_check_name):
+        status = True
+        if self.python_version[:3] == '2.6' and any(
+                app_check for app_check in BLACKLISTED_APP_CHECKS_FOR_PYTHON_2_6 if app_check == app_check_name):
+            status = False
+            logging.warning("AppCheck %s is not supported with Python version %s, "
+                            "please upgrade to 2.7.x and restart the agent.",
+                            app_check_name, self.python_version)
+        return status
+
     def run_check(self, response_body, pidname, check, conf, trc):
         self.last_request_pidnames.add(pidname)
         log_errors = _is_affirmative(check.get("log_errors", True))
@@ -574,6 +588,11 @@ class Application:
                 logging.debug("Process with pid=%d,name=%s is blacklisted", pidname[0], pidname[1])
                 return False, 0
             logging.debug("Requested check %s", repr(check))
+
+            is_supported = self.is_app_check_supported(pidname[1])
+            if not is_supported:
+                self.blacklisted_pidnames.add(pidname)
+                return False, 0
 
             try:
                 check_instance = AppCheckInstance(check, conf, self.config.install_prefix)

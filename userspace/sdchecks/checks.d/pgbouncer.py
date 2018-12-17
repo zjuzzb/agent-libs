@@ -1,18 +1,12 @@
-# (C) Datadog, Inc. 2010-2016
+# (C) Datadog, Inc. 2018
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
-
-"""Pgbouncer check
-
-Collects metrics from the pgbouncer database.
-"""
-# stdlib
 import urlparse
 
-# 3p
 import psycopg2 as pg
+import psycopg2.extras as pgextras
 
-# project
+from config import _is_affirmative
 from checks import AgentCheck, CheckException
 
 
@@ -33,14 +27,21 @@ class PgBouncer(AgentCheck):
             ('database', 'db'),
         ],
         'metrics': [
-            ('total_requests',       ('pgbouncer.stats.requests_per_second', RATE)),
+            ('total_requests',       ('pgbouncer.stats.requests_per_second', RATE)),  # < 1.8
+            ('total_xact_count',     ('pgbouncer.stats.transactions_per_second', RATE)),  # >= 1.8
+            ('total_query_count',    ('pgbouncer.stats.queries_per_second', RATE)),  # >= 1.8
             ('total_received',       ('pgbouncer.stats.bytes_received_per_second', RATE)),
             ('total_sent',           ('pgbouncer.stats.bytes_sent_per_second', RATE)),
-            ('total_query_time',     ('pgbouncer.stats.total_query_time', GAUGE)),
-            ('avg_req',              ('pgbouncer.stats.avg_req', GAUGE)),
+            ('total_query_time',     ('pgbouncer.stats.total_query_time', RATE)),
+            ('total_xact_time',      ('pgbouncer.stats.total_transaction_time', RATE)),  # >= 1.8
+            ('avg_req',              ('pgbouncer.stats.avg_req', GAUGE)),  # < 1.8
+            ('avg_xact_count',       ('pgbouncer.stats.avg_transaction_count', GAUGE)),  # >= 1.8
+            ('avg_query_count',      ('pgbouncer.stats.avg_query_count', GAUGE)),  # >= 1.8
             ('avg_recv',             ('pgbouncer.stats.avg_recv', GAUGE)),
             ('avg_sent',             ('pgbouncer.stats.avg_sent', GAUGE)),
-            ('avg_query',            ('pgbouncer.stats.avg_query', GAUGE)),
+            ('avg_query',            ('pgbouncer.stats.avg_query', GAUGE)),  # < 1.8
+            ('avg_xact_time',        ('pgbouncer.stats.avg_transaction_time', GAUGE)),  # >= 1.8
+            ('avg_query_time',       ('pgbouncer.stats.avg_query_time', GAUGE)),  # >= 1.8
         ],
         'query': """SHOW STATS""",
     }
@@ -67,7 +68,10 @@ class PgBouncer(AgentCheck):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.dbs = {}
 
-    def _get_service_checks_tags(self, host, port, database_url):
+    def _get_service_checks_tags(self, host, port, database_url, tags=None):
+        if tags is None:
+            tags = []
+
         if database_url:
             parsed_url = urlparse.urlparse(database_url)
             host = parsed_url.hostname
@@ -78,6 +82,9 @@ class PgBouncer(AgentCheck):
             "port:%s" % port,
             "db:%s" % self.DB_NAME
         ]
+        service_checks_tags.extend(tags)
+        service_checks_tags = list(set(service_checks_tags))
+
         return service_checks_tags
 
     def _collect_stats(self, db, instance_tags):
@@ -87,45 +94,41 @@ class PgBouncer(AgentCheck):
         metric_scope = [self.STATS_METRICS, self.POOLS_METRICS]
 
         try:
-            cursor = db.cursor()
-            results = None
-            for scope in metric_scope:
-
-                metrics = scope['metrics']
-                cols = [m[0] for m in metrics]
-
-                try:
+            with db.cursor(cursor_factory=pgextras.DictCursor) as cursor:
+                for scope in metric_scope:
+                    descriptors = scope['descriptors']
+                    metrics = scope['metrics']
                     query = scope['query']
-                    self.log.debug("Running query: %s" % query)
-                    cursor.execute(query)
 
-                    results = cursor.fetchall()
-                except pg.Error as e:
-                    self.log.warning("Not all metrics may be available: %s" % str(e))
-                    continue
+                    try:
+                        self.log.debug("Running query: %s", query)
+                        cursor.execute(query)
 
-                for row in results:
-                    if row[0] == self.DB_NAME:
-                        continue
+                        rows = cursor.fetchall()
 
-                    desc = scope['descriptors']
-                    if len(row) == len(cols) + len(desc) + 1:
-                        # Some versions of pgbouncer have an extra field at the end of show pools
-                        row = row[:-1]
-                    assert len(row) == len(cols) + len(desc)
+                    except pg.Error:
+                        self.log.exception("Not all metrics may be available")
 
-                    tags = list(instance_tags)
-                    tags += ["%s:%s" % (d[0][1], d[1]) for d in zip(desc, row[:len(desc)])]
-                    for i, (key_name, (mname, mtype)) in enumerate(metrics):
-                        value = row[i + len(desc)]
-                        mtype(self, mname, value, tags)
+                    else:
+                        for row in rows:
+                            self.log.debug("Processing row: %r", row)
 
-            if not results:
-                self.warning('No results were found for query: "%s"' % query)
+                            # Skip the "pgbouncer" database
+                            if row['database'] == self.DB_NAME:
+                                continue
 
-            cursor.close()
-        except pg.Error as e:
-            self.log.error("Connection error: %s" % str(e))
+                            tags = list(instance_tags)
+                            tags += ["%s:%s" % (tag, row[column]) for (column, tag) in descriptors if column in row]
+                            for (column, (name, reporter)) in metrics:
+                                if column in row:
+                                    reporter(self, name, row[column], tags)
+
+                        if not rows:
+                            self.log.warning("No results were found for query: %s", query)
+
+        except pg.Error:
+            self.log.exception("Connection error")
+
             raise ShouldRestartException
 
     def _get_connect_kwargs(self, host, port, user, password, database_url):
@@ -157,11 +160,10 @@ class PgBouncer(AgentCheck):
                 'database': self.DB_NAME}
 
     def _get_connection(self, key, host='', port='', user='',
-                        password='', database_url='', use_cached=True):
+                        password='', database_url='', tags=None, use_cached=True):
         "Get and memoize connections to instances"
         if key in self.dbs and use_cached:
             return self.dbs[key]
-
         try:
             connect_kwargs = self._get_connect_kwargs(
                 host=host, port=port, user=user,
@@ -181,7 +183,7 @@ class PgBouncer(AgentCheck):
             message = u'Cannot establish connection to {}'.format(redacted_url)
 
             self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
-                               tags=self._get_service_checks_tags(host, port, database_url),
+                               tags=self._get_service_checks_tags(host, port, database_url, tags),
                                message=message)
             raise
 
@@ -204,6 +206,7 @@ class PgBouncer(AgentCheck):
         password = instance.get('password', '')
         tags = instance.get('tags', [])
         database_url = instance.get('database_url')
+        use_cached = _is_affirmative(instance.get('use_cached', True))
 
         if database_url:
             key = database_url
@@ -216,17 +219,17 @@ class PgBouncer(AgentCheck):
             tags = list(set(tags))
 
         try:
-            db = self._get_connection(key, host, port, user, password,
-                                      database_url=database_url)
+            db = self._get_connection(key, host, port, user, password, tags=tags,
+                                      database_url=database_url, use_cached=use_cached)
             self._collect_stats(db, tags)
         except ShouldRestartException:
             self.log.info("Resetting the connection")
-            db = self._get_connection(key, host, port, user, password, use_cached=False)
+            db = self._get_connection(key, host, port, user, password, tags=tags,
+                                      database_url=database_url, use_cached=False)
             self._collect_stats(db, tags)
 
         redacted_dsn = self._get_redacted_dsn(host, port, user, database_url)
         message = u'Established connection to {}'.format(redacted_dsn)
-
         self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.OK,
-                           tags=self._get_service_checks_tags(host, port, database_url),
+                           tags=self._get_service_checks_tags(host, port, database_url, tags),
                            message=message)

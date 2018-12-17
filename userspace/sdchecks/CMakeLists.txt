@@ -42,6 +42,9 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/.libs_cffi_backend/
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.7/.libs_cffi_backend/
 		COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.7/psycopg2/
+               DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.7/psycopg2/
+               COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
 
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.6/
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.6
@@ -52,6 +55,10 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.6/
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.6/
 		DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.6
 		COMPONENT agent-slim FILES_MATCHING PATTERN *.so)
+
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/deps2.6/psycopg2/
+               DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python-deps2.6/psycopg2/
+               COMPONENT agent-slim FILES_MATCHING PATTERN *.so*)
 
 install(FILES
 		${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/lib/libpq.so.5.7
