@@ -123,6 +123,8 @@ public:
 	const std::string& get_k8s_cluster_name() const;
 	void set_k8s_include_types(const vector<string> &types);
 	const vector<string> & get_k8s_include_types() const;
+	void set_k8s_event_counts_log_time(uint32_t log_time);
+	uint32_t get_k8s_event_counts_log_time() const;
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	string get_mesos_state_original_uri() const;
@@ -299,6 +301,7 @@ private:
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
 	vector<string> m_k8s_include_types;
+	uint32_t m_k8s_event_counts_log_time;
 
 	string m_mesos_state_uri;
 	string m_mesos_state_original_uri;

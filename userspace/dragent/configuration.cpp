@@ -1001,6 +1001,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 
 	m_k8s_include_types = m_config->get_scalar<vector<string>>("k8s_extra_resources", "include", {});
+	m_k8s_event_counts_log_time_s = m_config->get_scalar<uint32_t>("k8s_event_counts_log_time", 0);
 	// End K8s
 
 	// Mesos

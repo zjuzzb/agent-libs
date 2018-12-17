@@ -577,6 +577,16 @@ const vector<string>& sinsp_configuration::get_k8s_include_types() const
 	return m_k8s_include_types;
 }
 
+void sinsp_configuration::set_k8s_event_counts_log_time(uint32_t log_time)
+{
+	m_k8s_event_counts_log_time = log_time;
+}
+
+uint32_t sinsp_configuration::get_k8s_event_counts_log_time() const
+{
+	return m_k8s_event_counts_log_time;
+}
+
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
 {
 	if(sought_url.empty())

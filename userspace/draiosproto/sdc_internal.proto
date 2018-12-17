@@ -95,6 +95,7 @@ message orchestrator_events_stream_command {
     required string auth_token = 14;
     repeated string annotation_filter = 15;
     repeated string include_types = 16;
+    required uint32 event_counts_log_time = 17;
 }
 
 service CoInterface {

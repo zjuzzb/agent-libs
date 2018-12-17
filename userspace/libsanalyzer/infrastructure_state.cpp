@@ -219,6 +219,7 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			}
 			const vector<string> &include_types = m_inspector->m_analyzer->m_configuration->get_k8s_include_types();
 			*cmd.mutable_include_types() = {include_types.begin(), include_types.end()};
+			cmd.set_event_counts_log_time(m_inspector->m_analyzer->m_configuration->get_k8s_event_counts_log_time());
 
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;

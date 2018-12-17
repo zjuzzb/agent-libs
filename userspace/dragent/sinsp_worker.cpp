@@ -206,6 +206,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
 
 	m_analyzer->get_configuration()->set_k8s_include_types(m_configuration->m_k8s_include_types);
+	m_analyzer->get_configuration()->set_k8s_event_counts_log_time(m_configuration->m_k8s_event_counts_log_time_s);
 
 	//
 	// mesos

@@ -37,12 +37,65 @@ var annotFilter map[string]bool
 const (
 	EVENT_ADD = iota
 	EVENT_UPDATE = iota
-	EVENT_UPDATE_AND_SEND = iota	// Update and send
+	EVENT_UPDATE_AND_SEND = iota
 	EVENT_DELETE = iota
 )
 
+var eventCountsLogTime uint32
+var eventMapAdd map[string]int
+var emAddMutex sync.RWMutex
+var eventMapUpd map[string]int
+var emUpdMutex sync.RWMutex
+var eventMapUpds map[string]int
+var emUpdsMutex sync.RWMutex
+var eventMapDel map[string]int
+var emDelMutex sync.RWMutex
+
 func addEvent(restype string, evtype int) {
 	profile.NewEvent()
+	if (eventCountsLogTime < 1) {
+		return
+	}
+	if (evtype == EVENT_ADD) {
+		emAddMutex.Lock()
+		eventMapAdd[restype] = eventMapAdd[restype] + 1
+		emAddMutex.Unlock()
+	} else if (evtype == EVENT_UPDATE) {
+		emUpdMutex.Lock()
+		eventMapUpd[restype] = eventMapUpd[restype] + 1
+		emUpdMutex.Unlock()
+	} else if (evtype == EVENT_UPDATE_AND_SEND) {
+		emUpdsMutex.Lock()
+		eventMapUpds[restype] = eventMapUpds[restype] + 1
+		emUpdsMutex.Unlock()
+	} else if (evtype == EVENT_DELETE) {
+		emDelMutex.Lock()
+		eventMapDel[restype] = eventMapDel[restype] + 1
+		emDelMutex.Unlock()
+	} else {
+		log.Warnf("addEvent, unknown event type %d", evtype)
+	}
+}
+
+func logEvents() {
+	if (eventCountsLogTime < 1) {
+		return
+	}
+
+	emAddMutex.RLock()
+	emUpdMutex.RLock()
+	emUpdsMutex.RLock()
+	emDelMutex.RLock()
+
+	for k := range eventMapAdd {
+		log.Infof("%s Events: %d adds, %d updates, %d updates sent, %d deletes", k, eventMapAdd[k],
+			eventMapUpd[k], eventMapUpds[k], eventMapDel[k])
+	}
+
+	emDelMutex.RUnlock()
+	emUpdsMutex.RUnlock()
+	emUpdMutex.RUnlock()
+	emAddMutex.RUnlock()
 }
 
 const RsyncInterval = 10 * time.Minute
@@ -153,6 +206,13 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	receiveMap = make(map[string]bool)
 	setAnnotFilt(opts.AnnotationFilter)
 
+	eventMapAdd = make(map[string]int)
+	eventMapUpd = make(map[string]int)
+	eventMapUpds = make(map[string]int)
+	eventMapDel = make(map[string]int)
+	eventCountsLogTime = opts.GetEventCountsLogTime()
+	log.Infof("Event Counts log time: %d s", eventCountsLogTime)
+
 	// Get a vector of all resource types
 	// from the resourceList in resources.
 	resourceTypes := getResourceTypes(resources, opts.IncludeTypes)
@@ -179,6 +239,15 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// Start informers in a separate routine so we can return the
 	// evt chan and let the caller start reading/draining events
 	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes)
+
+	if (eventCountsLogTime > 0) {
+		go func() {
+			for {
+				time.Sleep(time.Duration(eventCountsLogTime) * time.Second)
+				logEvents()
+			}
+		}()
+	}
 
 	return evtc, fetchDone, nil
 }
