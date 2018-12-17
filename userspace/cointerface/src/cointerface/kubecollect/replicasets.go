@@ -186,8 +186,10 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 
 				evtc <- replicaSetEvent(rs,
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
+				addEvent("ReplicaSet", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
+				addEvent("ReplicaSet", EVENT_UPDATE)
 				oldRS := oldObj.(*v1beta1.ReplicaSet)
 				newRS := newObj.(*v1beta1.ReplicaSet)
 				if oldRS.GetResourceVersion() == newRS.GetResourceVersion() {
@@ -209,6 +211,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 				} else if filterEmpty && oldReplicas == 0 && newReplicas > 0 {
 					evtc <- replicaSetEvent(newRS,
 						draiosproto.CongroupEventType_ADDED.Enum(), true)
+					addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmpty && oldReplicas > 0 && newReplicas == 0 {
 					evtc <- draiosproto.CongroupUpdateEvent {
@@ -219,12 +222,14 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 								Id:proto.String(string(newRS.GetUID()))},
 						},
 					}
+					addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					return
 				} else {
 					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
 					if !sameEntity || !sameLinks {
 						evtc <- replicaSetEvent(newRS,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
+						addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					}
 				}
 			},
@@ -242,6 +247,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 							Id:proto.String(string(rs.GetUID()))},
 					},
 				}
+				addEvent("ReplicaSet", EVENT_DELETE)
 			},
 		},
 	)

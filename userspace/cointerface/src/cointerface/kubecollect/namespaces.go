@@ -105,6 +105,7 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				//log.Debugf("AddFunc dumping namespace: %v", obj.(*v1.Namespace))
 				evtc <- nsEvent(obj.(*v1.Namespace),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("Namespace", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNS := oldObj.(*v1.Namespace)
@@ -114,7 +115,9 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping namespace newNS %v", newNS)
 					evtc <- nsEvent(newNS,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("Namespace", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("Namespace", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldNS := obj.(*v1.Namespace)
@@ -126,6 +129,7 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldNS.GetUID()))},
 					},
 				}
+				addEvent("Namespace", EVENT_DELETE)
 			},
 		},
 	)

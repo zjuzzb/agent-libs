@@ -168,6 +168,7 @@ func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("nodes")
 				evtc <- nodeEvent(obj.(*v1.Node),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("Node", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldNode := oldObj.(*v1.Node)
@@ -175,7 +176,9 @@ func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if oldNode.GetResourceVersion() != newNode.GetResourceVersion() && !nodeEquals(oldNode, newNode) {
 					evtc <- nodeEvent(newNode,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("Node", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("Node", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldNode := obj.(*v1.Node)
@@ -187,6 +190,7 @@ func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldNode.GetUID()))},
 					},
 				}
+				addEvent("Node", EVENT_DELETE)
 			},
 		},
 	)

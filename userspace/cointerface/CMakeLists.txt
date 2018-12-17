@@ -71,6 +71,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 	DEPENDS generate_cointerface_proto
 	        ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/cointerface.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/server.go
+                ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/profile/profile.go
                 ${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/swarm.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/docker_bench_scraper.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/kube_bench_scraper.go

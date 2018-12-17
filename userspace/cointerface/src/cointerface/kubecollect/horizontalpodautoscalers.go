@@ -111,6 +111,7 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 				//log.Debugf("AddFunc dumping HorizontalPodAutoscaler: %v", obj.(*v1as.HorizontalPodAutoscaler))
 				evtc <- horizontalPodAutoscalerEvent(obj.(*v1as.HorizontalPodAutoscaler),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("HPA", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldHorizontalPodAutoscaler := oldObj.(*v1as.HorizontalPodAutoscaler)
@@ -120,12 +121,15 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 					//log.Debugf("UpdateFunc dumping HorizontalPodAutoscaler newHorizontalPodAutoscaler %v", newHorizontalPodAutoscaler)
 					evtc <- horizontalPodAutoscalerEvent(newHorizontalPodAutoscaler,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("HPA", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("HPA", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping HorizontalPodAutoscaler: %v", obj.(*v1as.HorizontalPodAutoscaler))
 				evtc <- horizontalPodAutoscalerEvent(obj.(*v1as.HorizontalPodAutoscaler),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("HPA", EVENT_DELETE)
 			},
 		},
 	)

@@ -194,7 +194,17 @@ public:
 	shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
 	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
 	shared_ptr<proc_filter::conf> get_container_filter() const;
+
+	void set_log_dir(string& dir);
+	string& get_log_dir();
+
 	void set_container_filter(shared_ptr<proc_filter::conf>);
+	void set_dragent_cpu_profile_enabled(bool enabled);
+	void set_dragent_profile_time_seconds(uint32_t seconds);
+	void set_dragent_total_profiles(uint32_t count);
+	bool get_dragent_cpu_profile_enabled() const;
+	uint32_t get_dragent_profile_time_seconds() const;
+	uint32_t get_dragent_total_profiles() const;
 
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
@@ -266,6 +276,12 @@ private:
 	unsigned m_statsd_limit;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
+
+	string m_log_dir;
+
+	bool m_dragent_cpu_profile_enabled;
+	uint32_t m_dragent_profile_time_seconds;
+	uint32_t m_dragent_total_profiles;
 
 #ifndef CYGWING_AGENT	
 	string m_k8s_api;

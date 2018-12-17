@@ -932,6 +932,46 @@ void sinsp_configuration::set_container_filter(shared_ptr<proc_filter::conf> con
 	m_container_filter = conf;
 }
 
+void sinsp_configuration::set_dragent_cpu_profile_enabled(bool enabled)
+{
+	m_dragent_cpu_profile_enabled = enabled;
+}
+
+void sinsp_configuration::set_dragent_profile_time_seconds(uint32_t seconds)
+{
+	m_dragent_profile_time_seconds = seconds;
+}
+
+void sinsp_configuration::set_dragent_total_profiles(uint32_t count)
+{
+	m_dragent_total_profiles = count;
+}
+
+bool sinsp_configuration::get_dragent_cpu_profile_enabled() const
+{
+	return m_dragent_cpu_profile_enabled;
+}
+
+uint32_t sinsp_configuration::get_dragent_profile_time_seconds() const
+{
+	return m_dragent_profile_time_seconds;
+}
+
+uint32_t sinsp_configuration::get_dragent_total_profiles() const
+{
+	return m_dragent_total_profiles;
+}
+
+void sinsp_configuration::set_log_dir(string& dir)
+{
+	m_log_dir = dir;
+}
+
+string& sinsp_configuration::get_log_dir()
+{
+	return m_log_dir;
+}
+
 unsigned sinsp_configuration::get_app_checks_limit() const
 {
 	return m_app_checks_limit;

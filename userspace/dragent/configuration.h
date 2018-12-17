@@ -790,6 +790,14 @@ public:
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
 
+	bool m_dragent_cpu_profile_enabled;
+	int32_t m_dragent_profile_time_seconds;
+	int32_t m_dragent_total_profiles;
+ 	bool m_cointerface_cpu_profile_enabled;
+	int32_t m_cointerface_events_per_profile;
+	int32_t m_cointerface_total_profiles;
+	bool m_cointerface_mem_profile_enabled;
+
 	unsigned m_snaplen;
 
 	uint16_t m_monitor_files_freq_sec = 0;

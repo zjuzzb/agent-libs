@@ -60,6 +60,13 @@ func newContainerEvent(containerEvents *[]*draiosproto.CongroupUpdateEvent,
 			},
 		},
 	})
+	if eventType == draiosproto.CongroupEventType_ADDED {
+		addEvent("Container", EVENT_ADD)
+	} else if eventType == draiosproto.CongroupEventType_REMOVED {
+		addEvent("Container", EVENT_DELETE)
+	} else {
+		addEvent("Container", EVENT_UPDATE)
+	}
 }
 
 // Append ADDED/REMOVED container events to contEvents and add
@@ -556,6 +563,7 @@ func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("pods")
 				newPod := obj.(*v1.Pod)
 				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil, true)
+				addEvent("Pod", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldPod := oldObj.(*v1.Pod)
@@ -564,13 +572,16 @@ func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					sameEntity, sameLinks := podEquals(oldPod, newPod)
 					if !sameEntity || !sameLinks {
 						sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod, !sameLinks)
+						addEvent("Pod", EVENT_UPDATE_AND_SEND)
 					}
 				}
+				addEvent("Pod", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldPod := obj.(*v1.Pod)
 				// we have to call the function in this case because it will remove the containers too
 				sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil, true)
+				addEvent("Pod", EVENT_DELETE)
 			},
 		},
 	)

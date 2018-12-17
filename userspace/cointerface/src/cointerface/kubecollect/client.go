@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"cointerface/draiosproto"
 	"cointerface/sdc_internal"
+	"cointerface/profile"
 	"github.com/gogo/protobuf/proto"
 	"k8s.io/api/core/v1"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,6 +34,16 @@ var receiveMap map[string]bool
 var receiveMutex sync.RWMutex
 var annotFilter map[string]bool
 
+const (
+	EVENT_ADD = iota
+	EVENT_UPDATE = iota
+	EVENT_UPDATE_AND_SEND = iota	// Update and send
+	EVENT_DELETE = iota
+)
+
+func addEvent(restype string, evtype int) {
+	profile.NewEvent()
+}
 
 const RsyncInterval = 10 * time.Minute
 

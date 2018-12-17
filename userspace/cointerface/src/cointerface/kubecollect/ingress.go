@@ -130,6 +130,7 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("ingress")
 				evtc <- ingressEvent(obj.(*v1beta1.Ingress),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("Ingress", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldIngress := oldObj.(*v1beta1.Ingress)
@@ -139,11 +140,14 @@ func watchIngress(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping Service newIngress %v", newIngress)
 					evtc <- ingressEvent(newIngress,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("Ingress", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("Ingress", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				evtc <- ingressEvent(obj.(*v1beta1.Ingress),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("Ingress", EVENT_DELETE)
 			},
 		},
 	)

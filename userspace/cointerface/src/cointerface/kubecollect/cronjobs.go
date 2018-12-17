@@ -106,6 +106,7 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("cronjobs")
 				evtc <- cronJobEvent(obj.(*v2alpha1.CronJob),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("Cronjob", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldJob := oldObj.(*v2alpha1.CronJob)
@@ -121,12 +122,15 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					// fnew.WriteString("\n")
 					evtc <- cronJobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("Cronjob", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("Cronjob", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.ReplicaSet))
 				evtc <- cronJobEvent(obj.(*v2alpha1.CronJob),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("Cronjob", EVENT_DELETE)
 			},
 		},
 	)

@@ -78,6 +78,7 @@ using namespace google::protobuf::io;
 #include "tracer_emitter.h"
 #include "metric_limits.h"
 #include "label_limits.h"
+#include <gperftools/profiler.h>
 
 namespace {
 template<typename T>
@@ -127,6 +128,10 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_serialize_prev_sample_time = 0;
 	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
+
+	m_trace_started = false;
+	m_last_profile_flush_ns = 0;
+	m_trace_count = 0;
 
 	m_procfs_parser = NULL;
 	m_sched_analyzer2 = NULL;
@@ -4162,6 +4167,27 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	{
 		return;
 	}
+
+	if (m_configuration->get_dragent_cpu_profile_enabled())
+	{
+		if (!m_trace_started)
+		{
+			m_trace_started = true;
+			std::string filename = m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
+			ProfilerStart(filename.c_str());
+			m_last_profile_flush_ns = flush_start_ns;
+		}
+		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 > m_configuration->get_dragent_profile_time_seconds())
+		{
+			ProfilerStop();
+			m_trace_count++;
+			m_trace_count %= m_configuration->get_dragent_total_profiles();
+			std::string filename = m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
+			ProfilerStart(filename.c_str());
+			m_last_profile_flush_ns = flush_start_ns;
+		}
+	}
+
 
 	if(evt != NULL)
 	{

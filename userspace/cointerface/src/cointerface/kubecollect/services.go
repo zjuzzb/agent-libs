@@ -198,6 +198,7 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("services")
 				evtc <- serviceEvent(obj.(*v1.Service),
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
+				addEvent("Service", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldService := oldObj.(*v1.Service)
@@ -218,7 +219,9 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if !sameEntity || !sameLinks {
 					evtc <- serviceEvent(newService,
 						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
+					addEvent("Service", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("Service", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldService := obj.(*v1.Service)
@@ -234,6 +237,7 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldService.GetUID()))},
 					},
 				}
+				addEvent("Service", EVENT_DELETE)
 			},
 		},
 	)

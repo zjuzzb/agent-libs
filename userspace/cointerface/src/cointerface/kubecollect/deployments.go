@@ -160,6 +160,7 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("deployments")
 				evtc <- deploymentEvent(obj.(*v1beta1.Deployment),
 					draiosproto.CongroupEventType_ADDED.Enum(), true)
+				addEvent("Deployment", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldDeployment := oldObj.(*v1beta1.Deployment)
@@ -169,8 +170,10 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					if !sameEntity || !sameLinks {
 						evtc <- deploymentEvent(newDeployment,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
+						addEvent("Deployment", EVENT_UPDATE_AND_SEND)
 					}
 				}
+				addEvent("Deployment", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				oldDeployment := obj.(*v1beta1.Deployment)
@@ -182,6 +185,7 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 							Id:proto.String(string(oldDeployment.GetUID()))},
 					},
 				}
+				addEvent("Deployment", EVENT_DELETE)
 			},
 		},
 	)

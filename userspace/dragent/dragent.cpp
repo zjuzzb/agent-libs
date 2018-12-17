@@ -520,7 +520,18 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			m_cointerface_pipes->attach_child_stdio();
 
-			execl((m_configuration.m_root_dir + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
+			if(m_configuration.m_cointerface_cpu_profile_enabled)
+			{
+				string logfile = m_configuration.m_log_dir + "/cpu.prof";
+				execl((m_configuration.m_root_dir + "/bin/cointerface").c_str(), "cointerface",
+				      "-cpuprofile", logfile.c_str(),
+				      "-eventspertrace", to_string(m_configuration.m_cointerface_events_per_profile).c_str(),
+				      "-keeptraces", to_string(m_configuration.m_cointerface_total_profiles).c_str(),
+				      "-memprofile", m_configuration.m_cointerface_mem_profile_enabled ? "true" : "false",
+				      (char *) NULL);
+			} else {
+				execl((m_configuration.m_root_dir + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
+			}
 
 			return (EXIT_FAILURE);
 		});

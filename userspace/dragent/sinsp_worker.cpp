@@ -249,6 +249,13 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_container_filter(m_configuration->m_container_filter);
 
+	// configure CPU tracing
+	m_analyzer->get_configuration()->set_dragent_cpu_profile_enabled(m_configuration->m_dragent_cpu_profile_enabled);
+	m_analyzer->get_configuration()->set_dragent_profile_time_seconds(m_configuration->m_dragent_profile_time_seconds);
+	m_analyzer->get_configuration()->set_dragent_total_profiles(m_configuration->m_dragent_total_profiles);
+
+	m_analyzer->get_configuration()->set_log_dir(m_configuration->m_log_dir);
+
 	//
 	// Configure compression in the protocol
 	//

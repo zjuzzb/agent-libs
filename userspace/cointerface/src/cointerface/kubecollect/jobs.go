@@ -113,6 +113,7 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("jobs")
 				evtc <- jobEvent(obj.(*v1batch.Job),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("Job", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldJob := oldObj.(*v1batch.Job)
@@ -122,12 +123,15 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping Job newJob %v", newJob)
 					evtc <- jobEvent(newJob,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("Job", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("Job", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.Job))
 				evtc <- jobEvent(obj.(*v1batch.Job),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("Job", EVENT_DELETE)
 			},
 		},
 	)

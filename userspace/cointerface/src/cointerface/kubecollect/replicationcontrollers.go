@@ -127,8 +127,10 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent, fi
 
 				evtc <- replicationControllerEvent(rc,
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("ReplicationController", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
+				addEvent("ReplicationController", EVENT_UPDATE)
 				oldRC := oldObj.(*v1.ReplicationController)
 				newRC := newObj.(*v1.ReplicationController)
 				if oldRC.GetResourceVersion() == newRC.GetResourceVersion() {
@@ -150,6 +152,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent, fi
 				} else if filterEmpty && oldReplicas == 0 && newReplicas > 0 {
 					evtc <- replicationControllerEvent(newRC,
 						draiosproto.CongroupEventType_ADDED.Enum())
+					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
 					return
 				} else if filterEmpty && oldReplicas > 0 && newReplicas == 0 {
 					evtc <- draiosproto.CongroupUpdateEvent {
@@ -160,6 +163,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent, fi
 								Id:proto.String(string(newRC.GetUID()))},
 						},
 					}
+					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
 					return
 				} else {
 					// XXX add equals check like other resources
@@ -172,6 +176,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent, fi
 					*/
 					evtc <- replicationControllerEvent(newRC,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("ReplicationController", EVENT_UPDATE_AND_SEND)
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
@@ -188,6 +193,7 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent, fi
 							Id:proto.String(string(rc.GetUID()))},
 					},
 				}
+				addEvent("ReplicationController", EVENT_DELETE)
 			},
 		},
 	)

@@ -14,6 +14,7 @@ import (
 	log "github.com/cihub/seelog"
 	"os"
         "install_prefix"
+	"cointerface/profile"
 )
 
 func usage() {
@@ -91,6 +92,11 @@ func initLogging(useJson bool) {
 
 }
 
+var cpuProfile = flag.String("cpuprofile", "", "write cpu profile to `file`")
+var eventsPerTrace = flag.Int("eventspertrace", 10000, "rollover the cpu profile ever N events")
+var keepTraces = flag.Int("keeptraces", 30, "keep N cpu profiles")
+var memProfile = flag.Bool("memprofile", false, "write mem profile to file")
+
 func mymain() int {
 	flag.Usage = usage
 	prefix, err := install_prefix.GetInstallPrefix()
@@ -103,6 +109,10 @@ func mymain() int {
 	modulesDir := flag.String("modules_dir", prefix + "/lib/comp_modules", "compliance modules directory")
 
 	flag.Parse()
+
+	if *cpuProfile != "" {
+		profile.ProgramStart(*cpuProfile, *eventsPerTrace, *keepTraces, *memProfile);
+	}
 
 	initLogging(*useJson)
 	defer log.Flush()

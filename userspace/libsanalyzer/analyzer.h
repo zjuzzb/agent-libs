@@ -695,6 +695,10 @@ VISIBILITY_PRIVATE
 	uint64_t m_serialize_prev_sample_time;
 	uint64_t m_serialize_prev_sample_num_drop_events;
 
+	bool m_trace_started;
+	uint64_t m_last_profile_flush_ns;
+	uint32_t m_trace_count;
+
 	sinsp_analyzer_parsers* m_parser;
 	bool m_initialized; // In some cases (e.g. when parsing the containers list from a file) some events will go
 						// through the analyzer before on_capture_start is called. We use this flag to skip

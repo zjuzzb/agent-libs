@@ -119,6 +119,7 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				//log.Debugf("AddFunc dumping StatefulSet: %v", obj.(*v1beta1.StatefulSet))
 				evtc <- statefulSetEvent(obj.(*v1beta1.StatefulSet),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("StatefulSet", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldStatefulSet := oldObj.(*v1beta1.StatefulSet)
@@ -128,12 +129,15 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping StatefulSet newStatefulSet %v", newStatefulSet)
 					evtc <- statefulSetEvent(newStatefulSet,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("StatefulSet", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("StatefulSet", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping StatefulSet: %v", obj.(*v1beta1.StatefulSet))
 				evtc <- statefulSetEvent(obj.(*v1beta1.StatefulSet),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("StatefulSet", EVENT_DELETE)
 			},
 		},
 	)

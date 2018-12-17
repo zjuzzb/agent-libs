@@ -672,6 +672,15 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_container_filter->set_enabled(m_config->get_scalar<bool>("use_container_filter", false));
 	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("container_filter"));
 
+	m_dragent_cpu_profile_enabled = m_config->get_scalar<bool>("dragent_cpu_profile_enabled", false);
+	m_dragent_profile_time_seconds = m_config->get_scalar<int32_t>("dragent_profile_time_seconds", 120);
+	m_dragent_total_profiles = m_config->get_scalar<int32_t>("dragent_total_profiles", 30);
+
+	m_cointerface_cpu_profile_enabled = m_config->get_scalar<bool>("cointerface_cpu_profile_enabled", false);
+	m_cointerface_mem_profile_enabled = m_config->get_scalar<bool>("cointerface_mem_profile_enabled", false);
+	m_cointerface_events_per_profile = m_config->get_scalar<int32_t>("cointerface_events_per_profile", 10000);
+	m_cointerface_total_profiles = m_config->get_scalar<int32_t>("cointerface_total_profiles", 30);
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
@@ -1187,6 +1196,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	}
 	m_env_hash_ttl = m_config->get_scalar<uint64_t>("environment_tracking", "hash_ttl", 86400);
 	m_large_envs = m_config->get_scalar<bool>("enable_large_environments", false);
+
 
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }

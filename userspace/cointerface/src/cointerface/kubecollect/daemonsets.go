@@ -103,6 +103,7 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				//log.Debugf("AddFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
 				evtc <- daemonSetEvent(obj.(*v1beta1.DaemonSet),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("DaemonSet", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldDaemonSet := oldObj.(*v1beta1.DaemonSet)
@@ -112,12 +113,15 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					//log.Debugf("UpdateFunc dumping DaemonSet newDaemonSet %v", newDaemonSet)
 					evtc <- daemonSetEvent(newDaemonSet,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("DaemonSet", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("DaemonSet", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
 				evtc <- daemonSetEvent(obj.(*v1beta1.DaemonSet),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("DaemonSet", EVENT_DELETE)
 			},
 		},
 	)

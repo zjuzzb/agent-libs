@@ -138,6 +138,7 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("resourcequotas")
 				evtc <- resourceQuotaEvent(obj.(*v1.ResourceQuota),
 					draiosproto.CongroupEventType_ADDED.Enum())
+				addEvent("ResourceQuota", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
 				oldResourceQuota := oldObj.(*v1.ResourceQuota)
@@ -146,12 +147,15 @@ func watchResourceQuotas(evtc chan<- draiosproto.CongroupUpdateEvent) {
 
 					evtc <- resourceQuotaEvent(newResourceQuota,
 						draiosproto.CongroupEventType_UPDATED.Enum())
+					addEvent("ResourceQuota", EVENT_UPDATE_AND_SEND)
 				}
+				addEvent("ResourceQuota", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 
 				evtc <- resourceQuotaEvent(obj.(*v1.ResourceQuota),
 					draiosproto.CongroupEventType_REMOVED.Enum())
+				addEvent("ResourceQuota", EVENT_DELETE)
 			},
 		},
 	)
