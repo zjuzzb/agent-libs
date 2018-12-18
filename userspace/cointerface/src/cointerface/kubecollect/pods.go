@@ -15,9 +15,12 @@ import (
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
+	"regexp"
 )
 
 var podInf cache.SharedInformer
+
+var containerIDRegex = regexp.MustCompile("^([a-z0-9]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
 
 // pods get their own special version because they send events for containers too
 func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
@@ -160,12 +163,12 @@ func parseContainerID(containerID string) (string, error) {
 	// <dockershortcontainerid>
 	// <rktpodid>:<rktappname>
 	// so here we are doing this conversion
-	if strings.HasPrefix(containerID, "docker://") {
-		if len(containerID) >= 21 {
-			containerID = containerID[9:21]
-		} else {
-			err = errors.New("ID too short for docker format")
-		}
+	matches := containerIDRegex.FindStringSubmatch(containerID);
+	if matches != nil {
+		// matches[0] is the whole ID,
+		// matches[1] is the scheme (e.g. "docker")
+		// matches[2] is the first 12 hex digits of the ID
+		return matches[2], nil
 	} else if strings.HasPrefix(containerID, "rkt://") {
 		// XXX Will the parsed rkt id always
 		// be 12 char like for docker?
