@@ -16,6 +16,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../draiosproto)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
 
 if(CYGWIN)
@@ -25,7 +26,22 @@ endif()
 add_definitions( -DHAS_ANALYZER )
 add_definitions(-DK8S_DISABLE_THREAD)
 
-add_library(sanalyzer STATIC
+if (NOT CYGWIN)
+	set(PROTOC LD_LIBRARY_PATH=${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib
+					   ${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/bin/protoc)
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.h
+				${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/cri.pb.h
+			COMMENT "Generate CRI grpc code"
+			DEPENDS ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
+			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --cpp_out=. ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
+			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+set(SANALYZER_SOURCES
 	analyzer.cpp
 	analyzer_fd.cpp
 	analyzer_parsers.cpp
@@ -41,6 +57,8 @@ add_library(sanalyzer STATIC
 	custom_container.cpp
 	delays.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_docker_common.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_info.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
@@ -142,6 +160,22 @@ add_library(sanalyzer STATIC
 	userdb.cpp
 	blake2/blake2b.c
 	env_hash.cpp)
+
+if(NOT CYGWIN)
+list(APPEND SANALYZER_SOURCES
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_docker_linux.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_lxc.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_mesos.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_rkt.cpp
+
+	${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.cc
+	${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
+)
+else()
+list(APPEND SANALYZER_SOURCES
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_docker_win.cpp)
+endif()
+add_library(sanalyzer STATIC ${SANALYZER_SOURCES})
 
 add_dependencies(sanalyzer draiosproto)
 
