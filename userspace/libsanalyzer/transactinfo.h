@@ -11,7 +11,7 @@
 
 class copyexcept : public std::runtime_error {
 public:
-    copyexcept(const string& message) 
+    copyexcept(const std::string& message)
         : std::runtime_error(message) { };
 };
 
@@ -65,7 +65,7 @@ public:
 			m_storage = (char*)realloc(m_storage, m_storage_totsize);
 			if(m_storage == NULL)
 			{
-				throw copyexcept(string("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage"));
+				throw copyexcept(std::string("memory allocation error in sinsp_partial_transaction::copy_to_reassebly_storage"));
 			}
 		}
 
@@ -243,7 +243,7 @@ public:
 	direction m_direction;
 	int64_t m_tid;
 	int64_t m_fd;
-	vector<string> m_protoinfo;
+	std::vector<std::string> m_protoinfo;
 
 	uint64_t m_start_time;
 	uint64_t m_end_time;
@@ -287,13 +287,13 @@ public:
 	sinsp_partial_transaction m_trinfo;
 
 	uint64_t m_pid;
-	string m_comm;
+	std::string m_comm;
 	uint64_t m_peer_tid;
 	uint64_t m_peer_fd;
 	uint64_t m_peer_pid;
-	string m_peer_comm;
+	std::string m_peer_comm;
 
-	string m_fd_desc;
+	std::string m_fd_desc;
 };
 
 //

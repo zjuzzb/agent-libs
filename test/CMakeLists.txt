@@ -86,7 +86,8 @@ add_executable(tests
 	nodriver.cpp
 	userspace/dragent/blocking_queue.ut.cpp
 	userspace/dragent/watchdog_runnable.ut.cpp
-	userspace/dragent/logger.ut.cpp)
+	userspace/dragent/logger.ut.cpp
+	userspace/libsanalyzer/parser_http.ut.cpp)
 
 target_link_libraries(tests
 	pthread

@@ -1,6 +1,7 @@
 #ifdef HAS_ANALYZER
 
 #pragma once
+#include "protostate.h"
 
 #define HTTP_GET_STR "GET "
 #define HTTP_OPTIONS_STR "OPTI"
@@ -41,12 +42,12 @@ public:
 	bool parse_response(char* buf, uint32_t buflen);
 	proto get_type();
 
-	char* m_path;
-	char* m_url;
-	char* m_agent;
-	char* m_content_type;
-	int32_t m_status_code;
-	http_method m_method;
+	char *m_path = nullptr;
+	char *m_url = nullptr;
+	char *m_agent = nullptr;
+	char *m_content_type = nullptr;
+	int32_t m_status_code = 0;
+	http_method m_method = UM_NONE;
 
 private:
 	inline char* check_and_extract(char* buf, uint32_t buflen, char* tosearch, uint32_t tosearchlen, OUT uint32_t* reslen);

@@ -268,10 +268,14 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 
 			if(n_spaces == 1)
 			{
+				// The text after the first space is the start
+				// of the numerical status code
 				status_code = buf + j + 1;
 			}
 			else if(m_is_valid == false)
 			{
+				// Now we've reached the second space so this
+				// is the end of the status code
 				status_code_len = (uint32_t)(buf + j - status_code);
 				
 				if(!sinsp_numparser::tryparsed32_fast(status_code, 
