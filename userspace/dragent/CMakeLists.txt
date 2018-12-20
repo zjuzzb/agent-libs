@@ -39,6 +39,7 @@ list(APPEND targetfiles
 	sinsp_data_handler.cpp
 	sinsp_worker.cpp
 	subprocesses_logger.cpp
+	uptime.cpp
 	user_event_channel.cpp)
 
 if(CYGWIN)

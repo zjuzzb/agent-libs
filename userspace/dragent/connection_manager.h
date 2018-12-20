@@ -1,20 +1,21 @@
 #pragma once
 
-#include <memory>
-
-#include "main.h"
-#include "configuration.h"
-#include "blocking_queue.h"
-#include "sinsp_worker.h"
-#include "capture_job_handler.h"
 #include <chrono>
+#include <memory>
+#include "blocking_queue.h"
+#include "capture_job_handler.h"
+#include "sinsp_worker.h"
+#include "watchdog_runnable.h"
 
 #ifndef CYGWING_AGENT
 #include "promex.pb.h"
 #include "promex.grpc.pb.h"
 #endif
 
-class connection_manager : public Runnable
+class dragent_configuration;
+class sinsp_worker;
+
+class connection_manager : public dragent::watchdog_runnable
 {
 public:
 	connection_manager(dragent_configuration* configuration,
@@ -23,17 +24,6 @@ public:
 			   capture_job_handler *capture_job_handler);
 	~connection_manager();
 
-	void run();
-	uint64_t get_last_loop_ns()
-	{
-		return m_last_loop_ns;
-	}
-
-	pthread_t get_pthread_id()
-	{
-		return m_pthread_id;
-	}
-
 	bool is_connected()
 	{
 		return m_connected;
@@ -41,6 +31,7 @@ public:
 
 private:
 	bool init();
+	void do_run() override;
 	static std::string get_openssldir();
 	bool connect();
 	void disconnect();
@@ -74,8 +65,6 @@ private:
 	protocol_queue* m_queue;
 	sinsp_worker* m_sinsp_worker;
 	capture_job_handler *m_capture_job_handler;
-	std::atomic<uint64_t> m_last_loop_ns;
-	std::atomic<pthread_t> m_pthread_id;
 
 	uint32_t m_reconnect_interval;
 	chrono::time_point<std::chrono::system_clock> m_last_connection_failure;

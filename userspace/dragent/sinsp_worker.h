@@ -2,17 +2,16 @@
 
 #include <atomic>
 #include <memory>
-
 #include <token_bucket.h>
-
-#include "main.h"
+#include "capture_job_handler.h"
 #include "configuration.h"
+#include "internal_metrics.h"
+#include "main.h"
+#include "security_mgr.h"
 #include "sinsp_data_handler.h"
 #include "subprocesses_logger.h"
-#include "internal_metrics.h"
+#include "watchdog_runnable.h"
 
-#include "capture_job_handler.h"
-#include "security_mgr.h"
 
 class captureinfo
 {
@@ -27,7 +26,7 @@ public:
 	uint64_t m_time;
 };
 
-class sinsp_worker : public Runnable
+class sinsp_worker : public dragent::watchdog_runnable
 {
 public:
 	sinsp_worker(dragent_configuration* configuration,
@@ -37,7 +36,7 @@ public:
 		     capture_job_handler *handler);
 	~sinsp_worker();
 
-	void run();
+	void init();
 
 	// This is a way to schedule capture jobs from threads other
 	// than the sinsp_worker thread. It actually passes the
@@ -45,16 +44,6 @@ public:
 	// some necessary prep work such as creating sinsp_dumper
 	// objects, etc.
 	void queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request);
-
-	uint64_t get_last_loop_ns() const
-	{
-		return m_last_loop_ns;
-	}
-
-	pthread_t get_pthread_id()
-	{
-		return m_pthread_id;
-	}
 
 	const sinsp* get_inspector() const
 	{
@@ -101,8 +90,42 @@ public:
 #endif
 	bool load_baselines(draiosproto::baselines &baselines, std::string &errstr);
 
+	const sinsp_analyzer &analyzer()
+	{
+		return *m_analyzer;
+	}
+
+	/**
+	 * The old event tracker decides when too many events have been
+	 * received that are too old.
+	 */
+	class old_event_tracker
+	{
+	public:
+		old_event_tracker(uint64_t timeout_s);
+
+		// ctor for unit test allows control of time
+		typedef const std::function<uint64_t(void)> current_ns_delegate;
+		typedef const std::function<uint64_t(void)> uptime_ms_delegate;
+		old_event_tracker(uint64_t timeout_s,
+				  current_ns_delegate& current,
+				  uptime_ms_delegate& uptime);
+
+		/**
+		 * @return whether the event time is valid
+		 */
+		bool validate(uint64_t event_ns);
+
+	private:
+		const uint64_t m_timeout_s = 0;
+		current_ns_delegate current_time_ns;
+		uptime_ms_delegate uptime_ms;
+		uint64_t m_first_wall_time_ns = 0;
+		uint64_t m_first_uptime_ms = 0;
+	};
+
 private:
-	void init();
+	void do_run() override;
 	void process_job_requests();
 	void check_autodrop(uint64_t ts_ns);
 
@@ -139,8 +162,9 @@ private:
 
 	user_event_queue::ptr_t m_user_event_queue;
 	internal_metrics::sptr_t m_internal_metrics;
+	old_event_tracker m_old_event_tracker;
 
-	friend class dragent_app;
+	// friends for unit testing
 	friend class memdump_test;
 	friend class security_policies_test;
 };

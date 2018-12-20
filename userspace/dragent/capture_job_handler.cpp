@@ -580,7 +580,8 @@ const uint64_t capture_job_handler::m_keepalive_interval_ns = 30 * 1000000000LL;
 capture_job_handler::capture_job_handler(dragent_configuration *configuration,
 					 protocol_queue *queue,
 					 atomic<bool> *enable_autodrop)
-	: m_sysdig_pid(getpid()),
+	: dragent::watchdog_runnable("capture_job_manager"),
+	  m_sysdig_pid(getpid()),
 	  m_sysdig_sid(0),
 	  m_log_stats_interval(10000000000),
 	  m_inspector(NULL),
@@ -627,11 +628,9 @@ void capture_job_handler::init(const sinsp *inspector)
 	m_notification_evt.m_inspector = m_inspector;
 }
 
-void capture_job_handler::run()
+void capture_job_handler::do_run()
 {
-	g_log->information(m_name + ": starting");
-
-	while(!dragent_configuration::m_terminate)
+	while(heartbeat())
 	{
 		uint32_t sleep_ms = 200;
 		m_last_job_check_ns = sinsp_utils::get_current_time_ns();
@@ -667,8 +666,6 @@ void capture_job_handler::run()
 	}
 
 	cleanup();
-
-	g_log->information(m_name + ": terminating");
 }
 
 void capture_job_handler::process_event(sinsp_evt *ev)

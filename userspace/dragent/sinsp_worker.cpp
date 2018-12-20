@@ -1,10 +1,13 @@
 #include "sinsp_worker.h"
-
-#include "logger.h"
+#include <Poco/DateTimeFormatter.h>
 #include "error_handler.h"
-#include "utils.h"
+#include "logger.h"
 #include "memdumper.h"
-#include "Poco/DateTimeFormatter.h"
+#include "uptime.h"
+#include "utils.h"
+#include "watchdog_runnable_fatal_error.h"
+
+DRAGENT_LOGGER();
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -13,6 +16,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 			   protocol_queue* queue,
 			   atomic<bool> *enable_autodrop,
 			   capture_job_handler *capture_job_handler):
+	dragent::watchdog_runnable("sinsp_worker"),
 	m_job_requests_interval(1000000000),
 	m_initialized(false),
 	m_configuration(configuration),
@@ -27,12 +31,12 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_capture_job_handler(capture_job_handler),
 	m_sinsp_handler(configuration, queue),
 	m_dump_job_requests(10),
-	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration),
-	m_internal_metrics(im)
+	m_internal_metrics(im),
+	m_old_event_tracker(configuration->m_watchdog_sinsp_worker_timeout_s)
 {
 	m_last_mode_switch_time = 0;
 }
@@ -100,7 +104,7 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_max_thread_table_size > 0)
 	{
-		g_log->information("Overriding sinsp thread table size to " + to_string(m_configuration->m_max_thread_table_size));
+		LOG_INFO("Overriding sinsp thread table size to " + to_string(m_configuration->m_max_thread_table_size));
 		m_inspector->set_max_thread_table_size(m_configuration->m_max_thread_table_size);
 	}
 
@@ -137,7 +141,7 @@ void sinsp_worker::init()
 	}
 	else
 	{
-		g_log->information("metricsfile.location not specified, metrics won't be saved to disk.");
+		LOG_INFO("metricsfile.location not specified, metrics won't be saved to disk.");
 	}
 
 	//
@@ -269,13 +273,13 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_drop_upper_threshold != 0)
 	{
-		g_log->information("Drop upper threshold=" + NumberFormatter::format(m_configuration->m_drop_upper_threshold));
+		LOG_INFO("Drop upper threshold=" + NumberFormatter::format(m_configuration->m_drop_upper_threshold));
 		m_analyzer->get_configuration()->set_drop_upper_threshold(m_configuration->m_drop_upper_threshold);
 	}
 
 	if(m_configuration->m_drop_lower_threshold != 0)
 	{
-		g_log->information("Drop lower threshold=" + NumberFormatter::format(m_configuration->m_drop_lower_threshold));
+		LOG_INFO("Drop lower threshold=" + NumberFormatter::format(m_configuration->m_drop_lower_threshold));
 		m_analyzer->get_configuration()->set_drop_lower_threshold(m_configuration->m_drop_lower_threshold);
 	}
 
@@ -291,31 +295,31 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_host_custom_name != "")
 	{
-		g_log->information("Setting custom name=" + m_configuration->m_host_custom_name);
+		LOG_INFO("Setting custom name=" + m_configuration->m_host_custom_name);
 		m_analyzer->get_configuration()->set_host_custom_name(m_configuration->m_host_custom_name);
 	}
 
 	if(m_configuration->m_host_tags != "")
 	{
-		g_log->information("Setting tags=" + m_configuration->m_host_tags);
+		LOG_INFO("Setting tags=" + m_configuration->m_host_tags);
 		m_analyzer->get_configuration()->set_host_tags(m_configuration->m_host_tags);
 	}
 
 	if(m_configuration->m_host_custom_map != "")
 	{
-		g_log->information("Setting custom map=" + m_configuration->m_host_custom_map);
+		LOG_INFO("Setting custom map=" + m_configuration->m_host_custom_map);
 		m_analyzer->get_configuration()->set_host_custom_map(m_configuration->m_host_custom_map);
 	}
 
 	if(m_configuration->m_hidden_processes != "")
 	{
-		g_log->information("Setting hidden processes=" + m_configuration->m_hidden_processes);
+		LOG_INFO("Setting hidden processes=" + m_configuration->m_hidden_processes);
 		m_analyzer->get_configuration()->set_hidden_processes(m_configuration->m_hidden_processes);
 	}
 
 	if(m_configuration->m_host_hidden)
 	{
-		g_log->information("Setting host hidden");
+		LOG_INFO("Setting host hidden");
 		m_analyzer->get_configuration()->set_host_hidden(m_configuration->m_host_hidden);
 	}
 
@@ -323,20 +327,20 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_autodrop_enabled)
 	{
-		g_log->information("Setting autodrop");
+		LOG_INFO("Setting autodrop");
 		m_analyzer->get_configuration()->set_autodrop_enabled(true);
 	}
 
 	if(m_configuration->m_falco_baselining_enabled)
 	{
-		g_log->information("Setting falco baselining");
+		LOG_INFO("Setting falco baselining");
 		m_analyzer->get_configuration()->set_falco_baselining_enabled(
 			m_configuration->m_falco_baselining_enabled);
 	}
 
 	if(m_configuration->m_command_lines_capture_enabled)
 	{
-		g_log->information("Setting command lines capture");
+		LOG_INFO("Setting command lines capture");
 		m_analyzer->get_configuration()->set_command_lines_capture_enabled(
 			m_configuration->m_command_lines_capture_enabled);
 		m_analyzer->get_configuration()->set_command_lines_capture_mode(
@@ -347,7 +351,7 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_capture_dragent_events)
 	{
-		g_log->information("Setting capture dragent events");
+		LOG_INFO("Setting capture dragent events");
 		m_analyzer->get_configuration()->set_capture_dragent_events(
 			m_configuration->m_capture_dragent_events);
 	}
@@ -391,7 +395,7 @@ void sinsp_worker::init()
 	//
 	for(auto chinfo : m_configuration->m_chisel_details)
 	{
-		g_log->information("Loading chisel " + chinfo.m_name);
+		LOG_INFO("Loading chisel " + chinfo.m_name);
 		m_analyzer->add_chisel(&chinfo);
 	}
 
@@ -399,65 +403,7 @@ void sinsp_worker::init()
 
 #ifndef CYGWING_AGENT
 	if(m_configuration->m_security_enabled)
-	{
-		if(!m_configuration->m_cointerface_enabled)
-		{
-			throw sinsp_exception("Security capabilities depend on cointerface, but cointerface is disabled.");
-		}
 
-		m_security_mgr = new security_mgr(m_configuration->m_root_dir);
-		m_security_mgr->init(m_inspector,
-				     &m_sinsp_handler,
-				     m_analyzer,
-				     m_capture_job_handler,
-				     m_configuration,
-				     m_internal_metrics);
-
-		if(m_configuration->m_security_policies_file != "")
-		{
-			string errstr;
-
-			if(!m_security_mgr->load_policies_file(m_configuration->m_security_policies_file.c_str(), errstr))
-			{
-				throw sinsp_exception("Could not load policies from file: " + errstr);
-			}
-		}
-
-		if(m_configuration->m_security_baselines_file != "")
-		{
-			string errstr;
-
-			if(!m_security_mgr->load_baselines_file(m_configuration->m_security_baselines_file.c_str(), errstr))
-			{
-				throw sinsp_exception("Could not load baselines from file: " + errstr);
-			}
-		}
-
-		if(m_configuration->m_security_compliance_schedule != "")
-		{
-			string errstr;
-			draiosproto::comp_calendar cal;
-
-			draiosproto::comp_task *k8s_task = cal.add_tasks();
-			k8s_task->set_id(1);
-			k8s_task->set_name("Check K8s Environment");
-			k8s_task->set_mod_name("kube-bench");
-			k8s_task->set_enabled(true);
-			k8s_task->set_schedule(m_configuration->m_security_compliance_schedule);
-
-			draiosproto::comp_task *docker_task = cal.add_tasks();
-		        docker_task->set_id(2);
-			docker_task->set_name("Check Docker Environment");
-			docker_task->set_mod_name("docker-bench-security");
-			docker_task->set_enabled(true);
-			docker_task->set_schedule(m_configuration->m_security_compliance_schedule);
-
-			if(! set_compliance_calendar(cal, errstr))
-			{
-				throw sinsp_exception("Could not set built-in compliance calendar: " + errstr);
-			}
-		}
-	}
 #endif // CYGWING_AGENT
 
 	for(const auto &comm : m_configuration->m_suppressed_comms)
@@ -478,7 +424,7 @@ void sinsp_worker::init()
 	//
 	// Start the capture with sinsp
 	//
-	g_log->information("Opening the capture source");
+	LOG_INFO("Opening the capture source");
 	if(m_configuration->m_input_filename != "")
 	{
 		m_inspector->open(m_configuration->m_input_filename);
@@ -513,21 +459,21 @@ void sinsp_worker::init()
 #ifndef CYGWING_AGENT
 	for(const auto type : m_configuration->m_suppressed_types)
 	{
-		g_log->debug("Setting eventmask for ignored type: " + to_string(type));
+		LOG_DEBUG("Setting eventmask for ignored type: " + to_string(type));
 		try
 		{
 			m_inspector->unset_eventmask(type);
 		}
 		catch (sinsp_exception& e)
 		{
-			g_log->error("Setting eventmask failed: " + string(e.what()));
+			LOG_ERROR("Setting eventmask failed: " + string(e.what()));
 		}
 	}
 #endif // CYGWING_AGENT
 
 	if(m_configuration->m_subsampling_ratio != 1)
 	{
-		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
+		LOG_INFO("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
 		m_analyzer->start_dropping_mode(m_configuration->m_subsampling_ratio);
 	}
 
@@ -574,16 +520,12 @@ void sinsp_worker::init()
 	m_analyzer->set_username_lookups(m_configuration->m_username_lookups);
 }
 
-void sinsp_worker::run()
+void sinsp_worker::do_run()
 {
 	uint64_t nevts = 0;
 	int32_t res;
 	sinsp_evt* ev;
 	uint64_t ts;
-
-	m_pthread_id = pthread_self();
-
-	g_log->information("sinsp_worker: Starting");
 
 	init();
 
@@ -593,31 +535,29 @@ void sinsp_worker::run()
 		m_analyzer->dump_config_test();
 	}
 
-	m_last_loop_ns = sinsp_utils::get_current_time_ns();
-
-	while(!dragent_configuration::m_terminate)
+	while (heartbeat())
 	{
 		if(m_configuration->m_evtcnt != 0 && nevts == m_configuration->m_evtcnt)
 		{
-			dragent_configuration::m_terminate = true;
-			break;
+			THROW_DRAGENT_WR_FATAL_ERROR("The number of events received does not match "
+					    "the configured value.");
 		}
 
 		res = m_inspector->next(&ev);
 
 		if(res == SCAP_TIMEOUT)
 		{
-			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 			continue;
 		}
 		else if(res == SCAP_EOF)
 		{
-			break;
+			THROW_DRAGENT_WR_FATAL_ERROR("Received unexpected capture end of file.");
 		}
 		else if(res != SCAP_SUCCESS)
 		{
-			cerr << "res = " << res << endl;
-			throw sinsp_exception(m_inspector->getlasterr().c_str());
+			THROW_DRAGENT_WR_FATAL_ERROR("Received unexpected capture result: %d : %s.",
+					    res,
+					    m_inspector->getlasterr().c_str());
 		}
 
 		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
@@ -625,11 +565,11 @@ void sinsp_worker::run()
 			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
 			{
 				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
-																 "Agent switch to nodriver",
-																 "Agent switched to nodriver mode due to high overhead",
+										 "Agent switch to nodriver",
+										 "Agent switched to nodriver mode due to high overhead",
 										 event_scope("host.mac", m_configuration->machine_id()),
-																 { {"source", "agent"}},
-																 4));
+										 { {"source", "agent"}},
+										 4));
 				m_last_mode_switch_time = ev->get_ts();
 
 				m_inspector->close();
@@ -650,7 +590,7 @@ void sinsp_worker::run()
 				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
 				{
 					// TODO: investigate if we can void agent restart and just reopen the inspector
-					throw sinsp_exception("restarting agent to restore normal operation mode");
+					THROW_DRAGENT_WR_FATAL_ERROR("restarting agent to restore normal operation mode");
 				}
 				else if(!full_mode_event_sent && ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME - 2*ONE_SECOND_IN_NS)
 				{
@@ -667,11 +607,10 @@ void sinsp_worker::run()
 			}
 		}
 
-		//
-		// Update the time
-		//
+		(void)heartbeat();
 		ts = ev->get_ts();
-		m_last_loop_ns = ts;
+
+		m_old_event_tracker.validate(ts);
 
 		m_job_requests_interval.run([this]()
 		{
@@ -687,13 +626,13 @@ void sinsp_worker::run()
 		}
 		if(m_aws_metadata_refresher.done())
 		{
-			g_log->information("Refresh network interfaces list");
+			LOG_INFO("Refresh network interfaces list");
 			m_inspector->refresh_ifaddr_list();
 			if(m_configuration->m_aws_metadata.m_public_ipv4)
 			{
 				sinsp_ipv4_ifinfo aws_interface(m_configuration->m_aws_metadata.m_public_ipv4,
-												m_configuration->m_aws_metadata.m_public_ipv4,
-												m_configuration->m_aws_metadata.m_public_ipv4, "aws");
+								m_configuration->m_aws_metadata.m_public_ipv4,
+								m_configuration->m_aws_metadata.m_public_ipv4, "aws");
 				m_inspector->import_ipv4_interface(aws_interface);
 			}
 			m_aws_metadata_refresher.reset();
@@ -714,13 +653,11 @@ void sinsp_worker::run()
 		//
 		++nevts;
 	}
-
-	g_log->information("sinsp_worker: Terminating");
 }
 
 void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
 {
-	g_log->information(m_name + ": scheduling job request type=" +
+	LOG_INFO(m_name + ": scheduling job request type=" +
 			   capture_job_handler::dump_job_request::request_type_str(job_request->m_request_type) +
 			    ", token= " + job_request->m_token);
 
@@ -794,7 +731,7 @@ void sinsp_worker::process_job_requests()
 	if(dragent_configuration::m_signal_dump)
 	{
 		dragent_configuration::m_signal_dump = false;
-		g_log->information("Received SIGUSR1, starting dump");
+		LOG_INFO("Received SIGUSR1, starting dump");
 
 		std::shared_ptr<capture_job_handler::dump_job_request> job_request
 			= make_shared<capture_job_handler::dump_job_request>();
@@ -809,7 +746,7 @@ void sinsp_worker::process_job_requests()
 
 		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
 		{
-			g_log->error("sinsp_worker: could not start capture: " + errstr);
+			LOG_ERROR("sinsp_worker: could not start capture: " + errstr);
 		}
 	}
 
@@ -818,7 +755,7 @@ void sinsp_worker::process_job_requests()
 	{
 		string errstr;
 
-		g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
+		LOG_DEBUG("sinsp_worker: dequeued dump request token=" + request->m_token);
 
 		if(!m_capture_job_handler->queue_job_request(m_inspector, request, errstr))
 		{
@@ -840,7 +777,7 @@ void sinsp_worker::check_autodrop(uint64_t ts_ns)
 	{
 		if (!m_autodrop_currently_enabled)
 		{
-			g_log->information("Restoring dropping mode state");
+			LOG_INFO("Restoring dropping mode state");
 
 			if(m_configuration->m_autodrop_enabled)
 			{
@@ -855,10 +792,78 @@ void sinsp_worker::check_autodrop(uint64_t ts_ns)
 	{
 		if (m_autodrop_currently_enabled)
 		{
-			g_log->information("Disabling dropping mode by setting sampling ratio to 1");
+			LOG_INFO("Disabling dropping mode by setting sampling ratio to 1");
 			m_analyzer->start_dropping_mode(1);
 			m_analyzer->set_capture_in_progress(true);
 			m_autodrop_currently_enabled = false;
 		}
 	}
 }
+
+sinsp_worker::old_event_tracker::old_event_tracker(uint64_t timeout_s) :
+   m_timeout_s(timeout_s),
+   current_time_ns(sinsp_utils::get_current_time_ns),
+   uptime_ms(dragent::uptime::milliseconds)
+{
+
+}
+
+sinsp_worker::old_event_tracker::old_event_tracker(uint64_t timeout_s,
+						   current_ns_delegate& current,
+						   uptime_ms_delegate& uptime) :
+   m_timeout_s(timeout_s),
+   current_time_ns(current),
+   uptime_ms(uptime)
+{
+
+}
+
+
+bool sinsp_worker::old_event_tracker::validate(uint64_t event_ns)
+{
+	if(!m_timeout_s)
+	{
+		return true;
+	}
+
+	const int64_t wall_time_ns = current_time_ns();
+	const int64_t age_ns = wall_time_ns - event_ns;
+	// An event is considered "old" if it is older than the watchdog timeout.
+	const bool isOld = age_ns > static_cast<int64_t>(m_timeout_s * 1000000000LL);
+
+	if(!isOld)
+	{
+		m_first_uptime_ms = 0;
+		m_first_wall_time_ns = 0;
+		return true;
+	}
+
+	// If this is the first old event that we've received then save off
+	// both the uptime and the wall time.
+	if(!m_first_uptime_ms)
+	{
+		m_first_uptime_ms = uptime_ms();
+		m_first_wall_time_ns = wall_time_ns;
+		return true;
+	}
+
+	// Uptime requires an extra system call, so first use the wall time
+	// to check whether we have been receiving old events for too long.
+	const int64_t wall_time_duration_ns = wall_time_ns - m_first_wall_time_ns;
+	if(wall_time_duration_ns < static_cast<int64_t>(m_timeout_s * 1000000000LL))
+	{
+		return true;
+	}
+
+	// So the wall time duration has exceeded the timeout, but we don't
+	// want to trust the wall time. So test again with uptime. (This is
+	// done second because it requires a syscall.)
+	const int64_t uptime_duration_ms = uptime_ms() - m_first_uptime_ms;
+	if(uptime_duration_ms < static_cast<int64_t>(m_timeout_s * 1000LL))
+	{
+		return true;
+	}
+
+	return false;
+}
+
