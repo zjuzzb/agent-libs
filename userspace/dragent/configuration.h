@@ -837,6 +837,8 @@ public:
 	int32_t m_max_n_proc_socket_lookups;
 
 	bool m_query_docker_image_info;
+	std::string m_cri_socket_path;
+	int64_t m_cri_timeout_ms = 1000;
 
 	uint64_t m_flush_log_time;
 	uint64_t m_flush_log_time_duration;
