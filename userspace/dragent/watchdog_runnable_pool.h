@@ -33,18 +33,17 @@ public:
 	 */
 	void stop_all();
 
-	struct unhealthy_runnable
+	struct hung_runnable
 	{
-		const watchdog_runnable& runnable;
-		watchdog_runnable::health health;
+		const watchdog_runnable& hung;
 		int64_t since_last_heartbeat_ms;
 
 	};
-	typedef std::vector<unhealthy_runnable> unhealthy_runnables;
+	typedef std::vector<hung_runnable> hung_runnables;
 	/**
 	 * @return a list of all runnables that are unhealthy
 	 */
-	unhealthy_runnables unhealthy_list() const;
+	hung_runnables unhealthy_runnables() const;
 
 private:
 

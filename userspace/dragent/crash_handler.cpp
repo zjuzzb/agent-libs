@@ -42,7 +42,7 @@ void crash_handler::run(int sig)
 			backtrace_symbols_fd(array, frames, fd);
 #endif
 
-			if(m_sinsp_worker && m_sinsp_worker->is_started())
+			if(m_sinsp_worker && m_sinsp_worker->get_last_loop_ns())
 			{
 				log_crashdump_message(fd, "Memory report:\n");
 

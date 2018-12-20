@@ -32,18 +32,13 @@ public:
 
 	void security_mgr_comp_results_ready(uint64_t ts_ns, const draiosproto::comp_results *results);
 
-	uint64_t last_heartbeat_ms() const
+	uint64_t get_last_loop_ns() const
 	{
-		return m_last_heartbeat_ms;
-	}
-
-	bool is_started() const
-	{
-		return m_last_heartbeat_ms;
+		return m_last_loop_ns;
 	}
 
 private:
 	dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
-	std::atomic<uint64_t> m_last_heartbeat_ms;
+	std::atomic<uint64_t> m_last_loop_ns;
 };

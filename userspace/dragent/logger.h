@@ -1,10 +1,10 @@
 #pragma once
 
-#include <exception>
+#include "main.h"
+#include "internal_metrics.h"
 #include <stdarg.h>
 #include <token_bucket.h>
 #include <vector>
-#include "main.h"
 
 class capture_job_handler;
 
@@ -105,10 +105,9 @@ public:
 	log_sink(std::ostream& out,
 	         const std::string& file,
 	         const std::string& component);
+
 	void log(uint32_t severity, int line, const char *fmt, ...) const __attribute__ ((format (printf, 4, 5)));
 	void log(uint32_t severity, int line, const std::string& str) const;
-	std::string build(const char *fmt, ...) const;
-	std::string tag() const { return m_tag; };
 
 private:
 	/**

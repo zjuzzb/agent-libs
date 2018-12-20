@@ -1,11 +1,9 @@
-
+#include <memory>
 
 #include "sinsp_data_handler.h"
-#include <memory>
 #include "configuration.h"
-#include "logger.h"
-#include "uptime.h"
 #include "utils.h"
+#include "logger.h"
 
 DRAGENT_LOGGER();
 
@@ -13,9 +11,7 @@ sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
 				       protocol_queue* queue) :
 	m_configuration(configuration),
 	m_queue(queue),
-	// Purposely initializing heartbeat to 0 so that we can check
-	// whether sinsp_data_handler has ever started.
-	m_last_heartbeat_ms(0)
+	m_last_loop_ns(0)
 {
 }
 
@@ -33,7 +29,7 @@ void sinsp_data_handler::sinsp_analyzer_data_ready(uint64_t ts_ns,
 						   uint64_t analyzer_flush_duration_ns,
 						   uint64_t num_suppressed_threads)
 {
-	m_last_heartbeat_ms = dragent::uptime::milliseconds();
+	m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
 	if(m_configuration->m_print_protobuf)
 	{

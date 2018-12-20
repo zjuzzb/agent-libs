@@ -1,6 +1,5 @@
 #include <gtest.h>
 #include "dragent/logger.h"
-#include "dragent/watchdog_runnable_fatal_error.h"
 
 namespace
 {

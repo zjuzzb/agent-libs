@@ -1,9 +1,9 @@
 #include "connection_manager.h"
+
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
 #include "utils.h"
-#include "watchdog_runnable_fatal_error.h"
 #include "Poco/Net/InvalidCertificateHandler.h"
 #include "Poco/Net/SSLException.h"
 
@@ -40,7 +40,6 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 				       protocol_queue* queue,
 				       sinsp_worker* sinsp_worker,
 				       capture_job_handler *capture_job_handler) :
-	dragent::watchdog_runnable("connection_manager"),
 	m_socket(NULL),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
@@ -49,6 +48,7 @@ connection_manager::connection_manager(dragent_configuration* configuration,
 	m_queue(queue),
 	m_sinsp_worker(sinsp_worker),
 	m_capture_job_handler(capture_job_handler),
+	m_last_loop_ns(0),
 	m_reconnect_interval(0)
 {
 	Poco::Net::initializeSSL();
@@ -335,66 +335,73 @@ bool connection_manager::prometheus_connected()
 }
 #endif
 
-void connection_manager::do_run()
+void connection_manager::run()
 {
-	if(!init())
-	{
-		THROW_DRAGENT_WR_FATAL_ERROR("initialization failed");
-	}
+	m_pthread_id = pthread_self();
 
-	std::shared_ptr<protocol_queue_item> item;
+	LOG_INFO("Starting");
 
-	while(heartbeat())
+	if(init())
 	{
-		//
-		// Make sure we have a valid connection
-		//
-		if(m_socket.isNull())
+		std::shared_ptr<protocol_queue_item> item;
+
+		while(!dragent_configuration::m_terminate)
 		{
-			LOG_INFO("Waiting to connect %u s", m_reconnect_interval);
+			m_last_loop_ns = sinsp_utils::get_current_time_ns();
 
-			for(uint32_t waited_time = 0; waited_time < m_reconnect_interval; ++waited_time)
+			//
+			// Make sure we have a valid connection
+			//
+			if(m_socket.isNull())
 			{
-				if(!heartbeat())
+				LOG_INFO(string("Waiting to connect ") + std::to_string(m_reconnect_interval) + " s");
+				for(uint32_t waited_time = 0; waited_time < m_reconnect_interval && !dragent_configuration::m_terminate; ++waited_time)
 				{
-					return;
+					m_last_loop_ns = sinsp_utils::get_current_time_ns();
+					Thread::sleep(1000);
 				}
-				Thread::sleep(1000);
+
+				if(dragent_configuration::m_terminate)
+				{
+					break;
+				}
+
+				m_last_connection_failure = chrono::system_clock::now();
+
+				if(!connect())
+				{
+					continue;
+				}
 			}
 
-			m_last_connection_failure = chrono::system_clock::now();
+			//
+			// Check if we received a message. We do it before so nothing gets lost if ELBs
+			// still negotiates a connection and then sends us out at the first read/write
+			//
+			receive_message();
 
-			if(!connect())
+			if(!item)
 			{
-				continue;
+				//
+				// Wait 300ms to get a message from the queue
+				//
+				m_queue->get(&item, 300);
 			}
-		}
 
-		//
-		// Check if we received a message. We do it before so nothing gets lost if ELBs
-		// still negotiates a connection and then sends us out at the first read/write
-		//
-		receive_message();
-
-		if(!item)
-		{
-			//
-			// Wait 300ms to get a message from the queue
-			//
-			m_queue->get(&item, 300);
-		}
-
-		if(item)
-		{
-			//
-			// Got a message, transmit it
-			//
-			if(transmit_buffer(sinsp_utils::get_current_time_ns(), item))
+			if(item)
 			{
-				item = NULL;
+				//
+				// Got a message, transmit it
+				//
+				if(transmit_buffer(m_last_loop_ns, item))
+				{
+					item = NULL;
+				}
 			}
 		}
 	}
+
+	LOG_INFO("Terminating");
 }
 
 bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item)

@@ -9,23 +9,22 @@ namespace dragent
 
 void watchdog_runnable_pool::start(watchdog_runnable& toStart, uint64_t timeout_s)
 {
-	toStart.timeout_ms(timeout_s * 1000);
+	toStart.timeout(timeout_s);
 	Poco::ThreadPool::defaultPool().start(toStart, toStart.name());
 	m_runnables.push_back(toStart);
 }
 
-watchdog_runnable_pool::unhealthy_runnables watchdog_runnable_pool::unhealthy_list() const
+watchdog_runnable_pool::hung_runnables watchdog_runnable_pool::unhealthy_runnables() const
 {
-	unhealthy_runnables unhealthy;
+	hung_runnables unhealthy;
 
 	// Call into every watchdog_runnable and check whether it is healthy
 	for(auto current : m_runnables)
 	{
 		int64_t age_ms;
-		watchdog_runnable::health health = current.get().is_healthy(age_ms);
-		if(health != watchdog_runnable::health::HEALTHY)
+		if(!current.get().is_healthy(age_ms))
 		{
-			unhealthy.emplace_back(unhealthy_runnable{ current.get(), health, age_ms });
+			unhealthy.emplace_back(hung_runnable{current.get(), age_ms });
 		}
 	}
 

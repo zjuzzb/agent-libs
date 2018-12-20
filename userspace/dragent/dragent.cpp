@@ -25,7 +25,6 @@
 #include <sys/resource.h>
 
 using namespace std;
-using namespace dragent;
 
 DRAGENT_LOGGER();
 
@@ -670,7 +669,7 @@ int dragent_app::sdagent_main()
 	if (!m_configuration.m_config_test)
 	{
 		m_pool.start(m_subprocesses_logger, m_configuration.m_watchdog_subprocesses_logger_timeout_s);
-		m_pool.start(m_connection_manager, m_configuration.m_watchdog_connection_manager_timeout_s);
+		ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
 	}
 	try {
 		m_sinsp_worker.init();
@@ -687,8 +686,8 @@ int dragent_app::sdagent_main()
 	if(!dragent_configuration::m_terminate)
 	{
 		m_capture_job_handler.init(m_sinsp_worker.get_inspector());
-		m_pool.start(m_capture_job_handler, watchdog_runnable::NO_TIMEOUT);
-		m_pool.start(m_sinsp_worker, m_configuration.m_watchdog_sinsp_worker_timeout_s);
+		ThreadPool::defaultPool().start(m_capture_job_handler, "capture_job_handler");
+		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 	}
 
 	uint64_t uptime_s = 0;
@@ -745,7 +744,7 @@ int dragent_app::sdagent_main()
 	}
 
 	dragent_configuration::m_terminate = true;
-	m_pool.stop_all();
+	ThreadPool::defaultPool().stopAll();
 
 	if(m_configuration.m_watchdog_enabled)
 	{
@@ -761,64 +760,93 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 {
 	bool to_kill = false;
 
-	if(m_sinsp_worker.is_started())
+	if(m_sinsp_worker.get_last_loop_ns() != 0)
 	{
+		int64_t diff = sinsp_utils::get_current_time_ns()
+			- m_sinsp_worker.get_last_loop_ns();
+
+#if _DEBUG
+		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
+
+		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
+		{
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected sinsp_worker stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
+			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
+			to_kill = true;
+		}
+
 		if((uptime_s % m_configuration.m_watchdog_analyzer_tid_collision_check_interval_s) == 0 &&
-		   m_sinsp_worker.analyzer().m_die)
+			m_sinsp_worker.m_analyzer->m_die)
 		{
 			char line[128];
 			snprintf(line, sizeof(line), "watchdog: too many tid collisions\n");
 			crash_handler::log_crashdump_message(line);
 
-			char buf[1024];
-			m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
-			crash_handler::log_crashdump_message(buf);
+			if(m_sinsp_worker.get_last_loop_ns())
+			{
+				char buf[1024];
+				m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
+				crash_handler::log_crashdump_message(buf);
+			}
 
 			to_kill = true;
 		}
 	}
 
-	if(m_sinsp_worker.get_sinsp_data_handler()->is_started())
+	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
 	{
-		int64_t age_ms;
-		if(watchdog_runnable::is_timed_out("sinsp_data_handler",
-						   m_sinsp_worker.get_sinsp_data_handler()->last_heartbeat_ms(),
-						   m_configuration.m_watchdog_sinsp_data_handler_timeout_s * 1000,
-						   age_ms))
+		int64_t diff = sinsp_utils::get_current_time_ns()
+			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+
+#if _DEBUG
+		LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
+
+		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_data_handler_timeout_s * 1000000000LL)
 		{
 			char line[128];
-			snprintf(line,
-				 sizeof(line),
-				 "watchdog: Detected sinsp_data_handler stall, last activity %" PRId64 " ms ago\n",
-				 age_ms);
+			snprintf(line, sizeof(line), "watchdog: Detected sinsp_data_handler stall, last activity %" PRId64 " ns ago\n", diff);
 			crash_handler::log_crashdump_message(line);
 			to_kill = true;
 		}
 	}
 
-	auto unhealthy = m_pool.unhealthy_list();
+	if(m_connection_manager.get_last_loop_ns() != 0)
+	{
+		int64_t diff = sinsp_utils::get_current_time_ns()
+			- m_connection_manager.get_last_loop_ns();
+
+#if _DEBUG
+		LOG_DEBUG("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
+#endif
+
+		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
+		{
+			char line[128];
+			snprintf(line, sizeof(line), "watchdog: Detected connection_manager stall, last activity %" PRId64 " ns ago\n", diff);
+			crash_handler::log_crashdump_message(line);
+			pthread_kill(m_connection_manager.get_pthread_id(), SIGABRT);
+			to_kill = true;
+		}
+	}
+
+	auto unhealthy = m_pool.unhealthy_runnables();
 	if(!unhealthy.empty())
 	{
-		for(const watchdog_runnable_pool::unhealthy_runnable& current : unhealthy)
+		// Right now, only the subprocesses logger is handled this was
+		for(const dragent::watchdog_runnable_pool::hung_runnable& current : unhealthy)
 		{
-			if(current.health == watchdog_runnable::health::TIMEOUT)
-			{
-				char line[128];
-				snprintf(line,
-					 sizeof(line),
-					 "watchdog: Detected %s stall, last activity %" PRId64 " ms ago with timeout %" PRId64 "\n",
-					 current.runnable.name().c_str(),
-					 current.since_last_heartbeat_ms,
-					 current.runnable.timeout_ms());
-				crash_handler::log_crashdump_message(line);
-				pthread_kill(current.runnable.pthread_id(), SIGABRT);
-			}
-			else
-			{
-				LOG_FATAL("Detected %s fatal error, last activity %" PRId64 " ms ago\n",
-					  current.runnable.name().c_str(),
-					  current.since_last_heartbeat_ms);
-			}
+			char line[128];
+			snprintf(line,
+				 sizeof(line),
+				 "watchdog: Detected %s stall, last activity %" PRId64 " ms ago\n",
+				 current.hung.name().c_str(),
+				 current.since_last_heartbeat_ms);
+			crash_handler::log_crashdump_message(line);
+			pthread_kill(current.hung.pthread_id(), SIGABRT);
 		}
 
 		to_kill = true;
@@ -878,7 +906,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 		// Once the worker is looping, we can dump the initial
 		// memory state for diffing against later dumps
-		if(heap_profiling && m_last_dump_s == 0 && m_sinsp_worker.is_started() != 0)
+		if(heap_profiling && m_last_dump_s == 0 && m_sinsp_worker.get_last_loop_ns() != 0)
 		{
 			LOG_INFO("watchdog: heap profiling enabled, dumping initial memory state");
 			dump_heap = true;
@@ -891,7 +919,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 			snprintf(line, sizeof(line), "watchdog: Fatal memory usage, %" PRId64 " MiB\n", memory);
 			crash_handler::log_crashdump_message(line);
 
-			if(m_sinsp_worker.is_started())
+			if(m_sinsp_worker.get_last_loop_ns())
 			{
 				char buf[1024];
 				m_sinsp_worker.get_inspector()->m_analyzer->generate_memory_report(buf, sizeof(buf));
@@ -926,12 +954,11 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		ASSERT(false);
 	}
 
+	//
 	// Just wait a bit to give time to the other threads to print stacktrace
-	// or to terminate gracefully.
+	//
 	if(to_kill)
 	{
-		LOG_FATAL("Killing dragent process");
-
 		sleep(5);
 		char line[128];
 		snprintf(line, sizeof(line), "watchdog: committing suicide\n");

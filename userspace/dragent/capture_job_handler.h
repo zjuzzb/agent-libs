@@ -23,10 +23,9 @@
 
 #include "configuration.h"
 #include "protocol.h"
-#include "watchdog_runnable.h"
 
 class capture_job;
-class capture_job_handler : public dragent::watchdog_runnable
+class capture_job_handler : public Runnable
 {
 	friend class capture_job;
 public:
@@ -132,7 +131,7 @@ public:
 
 	// Run forever, handling dump requests and sending them when
 	// they're complete.
-	void do_run() override;
+	void run();
 
 	// Incorporate this event into any relevant dump files. This
 	// is called from a separate thread from the thread that
