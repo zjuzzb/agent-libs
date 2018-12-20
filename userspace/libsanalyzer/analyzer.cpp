@@ -6301,7 +6301,10 @@ void sinsp_analyzer::emit_docker_events()
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log(std::string("Docker events error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+		if(docker::should_log_errors())
+		{
+			g_logger.log(std::string("Docker events error: ") + ex.what(), sinsp_logger::SEV_ERROR);
+		}
 		m_docker.reset();
 	}
 }
