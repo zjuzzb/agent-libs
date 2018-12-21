@@ -342,7 +342,7 @@ bool security_mgr::event_qualifies(sinsp_evt *evt)
 		return true;
 	}
 
-	if(container_info->m_type == sinsp_container_type::CT_DOCKER)
+	if(is_docker_compatible(container_info->m_type))
 	{
 		return false;
 	}

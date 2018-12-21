@@ -6731,6 +6731,9 @@ sinsp_analyzer::emit_container(const string &container_id,
 	case CT_CUSTOM:
 		container->set_type(draiosproto::CUSTOM);
 		break;
+	case CT_CRI:
+		container->set_type(draiosproto::CRI);
+		break;
 	default:
 		ASSERT(false);
 	}

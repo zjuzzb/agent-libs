@@ -825,6 +825,7 @@ enum container_type {
     MESOS = 4;
     RKT = 5;
     CUSTOM = 6;
+    CRI = 7;
 }
 
 message container_reporting_group {
