@@ -1,5 +1,6 @@
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
+add_subdirectory(fake_cri)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
