@@ -275,14 +275,26 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 
 	unordered_map<string, tuple<statsd_metric::list_t, unsigned>> ret;
 	uint64_t timestamp = 0;
-	char buffer[300] = {};
+	const size_t buffer_size = 300;
+	char buffer[buffer_size] = {};
 	unsigned metric_count = 0;
 
 	if(m_output_fd)
 	{
-		bool continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
-		while (continue_read)
+		while (fgets_unlocked(buffer, buffer_size, m_output_fd))
 		{
+			// if the line is longer than the buffer, the following 2 things will be true
+			// 1) the last character will be a \0
+			// 2) the second to last character will be neither \0 NOR \n
+			if (buffer[buffer_size - 2] != '\0' && buffer[buffer_size - 2] != '\n')
+			{
+				g_logger.format(sinsp_logger::SEV_ERROR, "Trace longer than buffer, dropping: %s", buffer);
+				fgets_unlocked(buffer, buffer_size, m_output_fd);
+				g_logger.format(sinsp_logger::SEV_ERROR, "Rest of trace: %s", buffer);
+				buffer[buffer_size - 2] = '\0'; // reset this char in the buffer
+				continue;
+			}
+
 			g_logger.format(sinsp_logger::SEV_TRACE, "Received from statsite: %s", buffer);
 			try {
 				bool parsed = m_metric.parse_line(buffer);
@@ -326,8 +338,6 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 			{
 				g_logger.format(sinsp_logger::SEV_ERROR, "parser exception on statsd, buffer: %s", buffer);
 			}
-
-			continue_read = (fgets_unlocked(buffer, sizeof(buffer), m_output_fd) != NULL);
 		}
 		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{

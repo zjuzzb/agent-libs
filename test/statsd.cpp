@@ -163,6 +163,40 @@ TEST(statsite_proxy, parser)
 	fclose(input_fd);
 }
 
+// same as the parser test, but we have a line in there longer than the buffer size to ensure it gets nuked from space properly
+TEST(statsite_proxy, parser_long)
+{
+	auto output_file = fopen("resources/statsite_output_long.txt", "r");
+	auto input_fd = fopen("/dev/null", "w");
+	ASSERT_TRUE(output_file != NULL);
+	statsite_proxy proxy(make_pair(input_fd, output_file));
+
+	auto ret = proxy.read_metrics();
+	EXPECT_EQ(2U, ret.size());
+	EXPECT_EQ(10U, std::get<0>(ret.at("")).size());
+	EXPECT_EQ(10U, std::get<0>(ret.at("3ce9120d8307")).size());
+
+	set<string> reference_set;
+	for(unsigned j = 1; j < 11; ++j)
+	{
+		reference_set.insert(string("totam.sunt.consequatur.numquam.aperiam") + to_string(j));
+	}
+	for(const auto& item : ret)
+	{
+		set<string> found_set;
+		for(const auto& m : std::get<0>(item.second))
+		{
+			found_set.insert(m.name());
+		}
+		for(const auto& ref : reference_set)
+		{
+			EXPECT_TRUE(found_set.find(ref) != found_set.end()) << ref << " not found for " << item.first;
+		}
+	}
+	fclose(output_file);
+	fclose(input_fd);
+}
+
 TEST(statsite_proxy, filter)
 {
 	auto output_file = fopen("resources/statsite_output.txt", "r");

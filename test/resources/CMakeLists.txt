@@ -33,6 +33,7 @@ file(COPY fake_backend.cert
 		jmx_segfault.json
 		jmx_wrong_object.json
 		statsite_output.txt
+		statsite_output_long.txt
 		tcp_client.py
 		tcp_server.py
 		test.default.yaml
