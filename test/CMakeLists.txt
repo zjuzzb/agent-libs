@@ -37,6 +37,7 @@ add_executable(tests
 	baseliner.cpp
 	capture_to_file_test.cpp
 	container.cpp
+	container_cri.cpp
 	container_emitter_test.cpp
 	container_image_splitting.cpp
 	coclient_test.cpp

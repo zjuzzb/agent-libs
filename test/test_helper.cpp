@@ -495,6 +495,70 @@ void custom_container(const vector<string>& args)
 	}
 }
 
+bool cri_container_set_cgroup()
+{
+	string cpu_cgroup = "/sys/fs/cgroup/cpu/docker/575371e748648f5f3fa255091847b3449fa4bd62c597612a4b915afe0bd19ecd";
+	struct stat s;
+
+	if (stat(cpu_cgroup.c_str(), &s) < 0) {
+		if (mkdir(cpu_cgroup.c_str(), 0777) < 0)
+		{
+			fprintf(stderr, "Could not create cgroup directory %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+			return false;
+		}
+	}
+
+	auto fp = fopen((cpu_cgroup + "/cgroup.procs").c_str(), "w");
+	if (!fp)
+	{
+		fprintf(stderr, "Could not open cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return false;
+	}
+	if (fprintf(fp, "%d\n", getpid()) < 0)
+	{
+		fprintf(stderr, "Could not write pid to cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return false;
+	}
+	if (fclose(fp) < 0)
+	{
+		fprintf(stderr, "Could not close cgroup.procs file in %s: %s\n", cpu_cgroup.c_str(), strerror(errno));
+		return false;
+	}
+	return true;
+}
+
+void cri_container_simple() {
+	signal(SIGCHLD, SIG_IGN);
+	pid_t pid = fork();
+	switch(pid) {
+		case 0: // child
+		{
+			char *const exargs[] = {(char *) "/bin/echo", (char *) "-n", nullptr};
+			char *const exenv[] = {nullptr};
+			execve("/bin/echo", exargs, exenv);
+			exit(127);
+		}
+		case -1: // error
+			fprintf(stderr, "Could not fork: %s\n", strerror(errno));
+			return;
+		default:
+		{
+			int status;
+			waitpid(pid, &status, 0);
+		}
+	}
+}
+
+void cri_container(const vector<string>& args)
+{
+	if (!cri_container_set_cgroup())
+	{
+		return;
+	}
+
+	return cri_container_simple();
+}
+
 const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "proc_mgmt", proc_mgmt},
 			{ "mmap_test", mmap_test},
@@ -527,7 +591,8 @@ const unordered_map<string, function<void(const vector<string>&)>> func_map = {
 			{ "quotactl_ok", quotactl_ok},
 			{ "ppoll_timeout", ppoll_timeout},
 			{ "pgid_test", pgid_test},
-			{ "custom_container", custom_container}
+			{ "custom_container", custom_container},
+			{ "cri_container", cri_container}
 	};
 
 // Helper to test ia32 emulation on 64bit
