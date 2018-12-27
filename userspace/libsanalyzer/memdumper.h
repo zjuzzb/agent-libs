@@ -215,9 +215,8 @@ class sinsp_memory_dumper
 public:
 	sinsp_memory_dumper(sinsp* inspector);
 	~sinsp_memory_dumper();
-	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t saturation_inactivity_pause_ns);
+	void init(uint64_t bufsize, uint64_t max_disk_size, uint64_t max_init_attempts);
 	void close();
-	void to_file_multi(string name, uint64_t ts_ns);
 
 	// Write a file on disk that contains the result of applying
 	// the filter to the events in the memory buffer. If track_job
@@ -332,8 +331,6 @@ private:
 	uint32_t m_cur_dump_size;
 	uint32_t m_max_disk_size;
 	uint64_t m_bsize;
-	uint64_t m_saturation_inactivity_pause_ns;
-	uint64_t m_saturation_inactivity_start_time;
 
 	atomic<bool> m_delayed_switch_states_needed;
 	atomic<bool> m_delayed_switch_states_ready;

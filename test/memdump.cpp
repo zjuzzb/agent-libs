@@ -200,6 +200,7 @@ protected:
 		m_configuration.m_security_enabled = false;
 		m_configuration.m_max_sysdig_captures = max_captures;
 		m_configuration.m_autodrop_enabled = false;
+		m_configuration.m_memdump_max_init_attempts = 10;
 
 		// The (global) logger only needs to be set up once
 		if(!g_log)
@@ -378,7 +379,9 @@ protected:
 		{
 			ASSERT_EQ(m_queue->get(&buf, 5000), true);
 			ASSERT_NO_FATAL_FAILURE(parse_dump_response(buf, response));
-			ASSERT_EQ(response.keep_alive(), true);
+			ASSERT_EQ(response.keep_alive(), true)
+				<< "Response from capture job handler did not have keep_alive=true. Full response="
+				<< response.DebugString();
 		}
 	}
 
@@ -397,7 +400,8 @@ protected:
 
 		g_log->debug("Queuing job request stop tag=" + tag);
 
-		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr));
+		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr))
+			<< string("Could not queue job request: ") << errstr;
 	}
 
 	void send_dump_start(const string &tag)
@@ -411,7 +415,8 @@ protected:
 
 		g_log->debug("Queuing job request send_start tag=" + tag);
 
-		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr));
+		ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr))
+			<< "Could not queue job request: " << errstr;
 	}
 
 	// Open a filename with a known fixed pattern + unique
@@ -502,7 +507,8 @@ protected:
 			g_log->debug("Queuing request for capture " + to_string(i));
 			std::shared_ptr<capture_job_handler::dump_job_request> req = generate_dump_request(to_string(i), true, false,
 													   (back_in_time ? 500 : 0), 30000);
-			ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr));
+			ASSERT_TRUE(m_sinsp_worker->queue_job_request(req, errstr))
+				<< "Could not queue job request: " << errstr;
 		}
 
 		// Sleep 5 seconds to make sure the capture job handler

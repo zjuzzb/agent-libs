@@ -26,6 +26,7 @@ sinsp_configuration::sinsp_configuration():
 	m_drop_lower_threshold = DROP_LOWER_THRESHOLD;
 	m_drop_threshold_consecutive_seconds = DROP_THRESHOLD_CONSECUTIVE_SECONDS;
 	m_host_hidden = false;
+	m_dragent_cpu_profile_enabled = false;
 	m_protocols_truncation_size = 512;
 	m_mounts_limit_size = 15u;
 #ifndef CYGWING_AGENT

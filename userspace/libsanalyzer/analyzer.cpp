@@ -267,6 +267,11 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_infrastructure_state;
 	}
 #endif
+
+	if(m_configuration->get_dragent_cpu_profile_enabled())
+	{
+		ProfilerStop();
+	}
 }
 
 void sinsp_analyzer::emit_percentiles_config()

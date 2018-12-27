@@ -207,6 +207,7 @@ dragent_configuration::dragent_configuration()
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
+	m_memdump_max_init_attempts = 10;
 	m_drop_upper_threshold = 0;
 	m_drop_lower_threshold = 0;
 	m_tracepoint_hits_threshold = 0;
@@ -710,6 +711,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
 	m_memdump_size = m_config->get_scalar<unsigned>("memdump", "size", 300 * 1024 * 1024);
+	m_memdump_max_init_attempts = m_config->get_scalar<unsigned>("memdump", "max_init_attempts", 10);
 
 	m_drop_upper_threshold = m_config->get_scalar<decltype(m_drop_upper_threshold)>("autodrop", "upper_threshold", 0);
 	m_drop_lower_threshold = m_config->get_scalar<decltype(m_drop_lower_threshold)>("autodrop", "lower_threshold", 0);
@@ -1243,6 +1245,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("commandlines_capture.valid_ancestors: " + ancestors);
 	LOG_INFO("memdump.enabled: " + bool_as_text(m_memdump_enabled));
 	LOG_INFO("memdump.size: " + NumberFormatter::format(m_memdump_size));
+	LOG_INFO("memdump.max_init_attempts: " + NumberFormatter::format(m_memdump_max_init_attempts));
 	LOG_INFO("autodrop.threshold.upper: " + NumberFormatter::format(m_drop_upper_threshold));
 	LOG_INFO("autodrop.threshold.lower: " + NumberFormatter::format(m_drop_lower_threshold));
 	if(m_tracepoint_hits_threshold > 0)

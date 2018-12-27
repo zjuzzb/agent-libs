@@ -27,19 +27,17 @@ sinsp_memory_dumper::sinsp_memory_dumper(sinsp* inspector)
 	m_cf = NULL;
 	m_disabled = false;
 	m_switches_to_go = 0;
-	m_saturation_inactivity_start_time = 0;
 	m_delayed_switch_states_needed = false;
 	m_delayed_switch_states_ready = false;
 }
 
 void sinsp_memory_dumper::init(uint64_t bufsize,
-	uint64_t max_disk_size,
-	uint64_t saturation_inactivity_pause_ns)
+			       uint64_t max_disk_size,
+			       uint64_t max_init_attempts)
 {
-	glogf(sinsp_logger::SEV_INFO, "memdumper: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64 ", saturation_inactivity_pause_ns=%" PRIu64,
-		bufsize,
-		max_disk_size,
-		saturation_inactivity_pause_ns);
+	glogf(sinsp_logger::SEV_INFO, "memdumper: initializing memdumper, bufsize=%" PRIu64 ", max_disk_size=%" PRIu64,
+	      bufsize,
+	      max_disk_size);
 
 	// Try to allocate a shared memory region of this size
 	// immediately. If we can't, log an error and disable
@@ -47,24 +45,35 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	// across several memory regions but in aggregate the
 	// amount is the same).
 	string name = "/dragent-mem-test";
-	string err = "Could not allocate " + to_string(bufsize) + " bytes of shared memory for memdump: %s. Disabling memdump";
 	shm_unlink(name.c_str());
 
 	int shm_fd = shm_open(name.c_str(), O_RDWR | O_CREAT | O_EXCL, S_IRWXU);
 	if(shm_fd == -1)
 	{
-		glogf(sinsp_logger::SEV_ERROR, err.c_str(), strerror_r(errno, m_errbuf, sizeof(m_errbuf)));
+		string err = "Could not open shm file %s: %s. Disabling memdump";
+		glogf(sinsp_logger::SEV_ERROR, err.c_str(), name.c_str(), strerror_r(errno, m_errbuf, sizeof(m_errbuf)));
 		m_disabled = true;
 	}
 	else
 	{
-		int rc;
+		int rc = EINTR;
+		uint64_t attempts;
 
-		// Make sure the file is fully allocated and
-		// actually uses all the size.
-		if ((rc = posix_fallocate(shm_fd, 0, bufsize)) != 0)
+		// posix_fallocate can return EINTR, in which case we
+		// should retry. Don't try more than the configured
+		// number of times, though.
+		for(attempts = 1; rc == EINTR && attempts <= max_init_attempts; attempts++)
 		{
-			glogf(sinsp_logger::SEV_ERROR, err.c_str(), strerror_r(rc, m_errbuf, sizeof(m_errbuf)));
+			rc = posix_fallocate(shm_fd, 0, bufsize);
+		}
+
+		if (rc != 0)
+		{
+			string retstr = string(" after ") + to_string(attempts) + " attempts";
+			string err = "Could not allocate %" PRIu64 " bytes of shared memory for memdump%s: %s. Disabling memdump";
+			glogf(sinsp_logger::SEV_ERROR, err.c_str(), bufsize,
+			      (rc == EINTR ? retstr.c_str() : ""),
+			      strerror_r(rc, m_errbuf, sizeof(m_errbuf)));
 			m_disabled = true;
 		}
 		::close(shm_fd);
@@ -77,7 +86,6 @@ void sinsp_memory_dumper::init(uint64_t bufsize,
 	}
 
 	m_max_disk_size = max_disk_size;
-	m_saturation_inactivity_pause_ns = saturation_inactivity_pause_ns;
 
 	//
 	// Let the inspector know that we're dumping
@@ -158,54 +166,6 @@ void sinsp_memory_dumper::close()
 {
 	switch_states(0);
 	m_inspector->m_is_dumping = false;
-}
-
-void sinsp_memory_dumper::to_file_multi(string name, uint64_t ts_ns)
-{
-	char tbuf[512];
-
-	m_switches_to_go = 2;
-
-	if(m_cf != NULL)
-	{
-		return;
-	}
-
-	if((m_saturation_inactivity_start_time != 0) &&
-		(ts_ns - m_saturation_inactivity_start_time) < m_saturation_inactivity_pause_ns)
-	{
-		return;
-	}
-
-	time_t rawtime = (time_t)ts_ns / 1000000000;
-	struct tm* time_info = gmtime(&rawtime);
-	snprintf(tbuf, sizeof(tbuf), "%.2d-%.2d_%.2d_%.2d_%.2d_%.6d",
-		time_info->tm_mon + 1,
-		time_info->tm_mday,
-		time_info->tm_hour,
-		time_info->tm_min,
-		time_info->tm_sec,
-		(int)(ts_ns % 1000000000));
-
-	string fname = string("/tmp/sd_dump_") + name + "_" + tbuf + ".scap";
-
-	glogf(sinsp_logger::SEV_INFO, "memdumper: saving dump %s", fname.c_str());
-
-	m_cf = fopen(fname.c_str(), "wb");
-	if(m_cf == NULL)
-	{
-		glogf(sinsp_logger::SEV_ERROR,
-			"memdumper: cannot open file %s, dump will not happen", fname.c_str());
-		return;
-	}
-
-//	sinsp_memory_dumper_state* inactive_state =
-//		(m_active_state == &m_states[0])? &m_states[1] : &m_states[0];
-
-//	fclose(m_cf);
-//	m_cf = NULL;
-
-	m_cur_dump_size = m_bsize;
 }
 
 // Read as much of the shared memory buffer held in state as possible
@@ -491,10 +451,8 @@ void sinsp_memory_dumper::switch_states(uint64_t ts)
 
 			if(toobig)
 			{
-				m_saturation_inactivity_start_time = ts;
-				glogf(sinsp_logger::SEV_INFO, "memdumper: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64 " ns",
-					m_max_disk_size,
-					m_saturation_inactivity_pause_ns);
+				glogf(sinsp_logger::SEV_INFO, "memdumper: dump closed because too big, m_max_disk_size=%" PRIu64 ", waiting %" PRIu64,
+				      m_max_disk_size);
 			}
 			else
 			{

@@ -615,7 +615,9 @@ void capture_job_handler::init(const sinsp *inspector)
 	{
 		g_log->information(m_name + ": enabling memdump, size=" + to_string(m_configuration->m_memdump_size));
 		m_memdumper = make_unique<sinsp_memory_dumper>((sinsp *) inspector);
-		m_memdumper->init(m_configuration->m_memdump_size, m_configuration->m_memdump_size, 300LL * 1000000000LL);
+		m_memdumper->init(m_configuration->m_memdump_size,
+				  m_configuration->m_memdump_size,
+				  m_configuration->m_memdump_max_init_attempts);
 	}
 
 	//
@@ -919,7 +921,10 @@ void capture_job_handler::start_job(string &token,
 
 	if(details.m_past_duration_ns != 0 && (!m_configuration->m_memdump_enabled || !m_memdumper->is_enabled()))
 	{
-		send_error(token, "memory dump functionality not enabled in the target agent. Cannot perform back in time capture.");
+		send_error(token, string("memory dump functionality not enabled in the target agent ") +
+			   string("configured=") + (m_configuration->m_memdump_enabled ? "true" : "false") +
+			   string(" enabled=") + (m_memdumper->is_enabled() ? "true" : "false") +
+			   string(". Cannot perform back in time capture."));
 		return;
 	}
 

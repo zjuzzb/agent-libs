@@ -718,6 +718,7 @@ public:
 	set<string> m_command_lines_valid_ancestors;
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
+	uint64_t m_memdump_max_init_attempts;
 
 	user_event_filter_t::ptr_t m_k8s_event_filter;
 	user_event_filter_t::ptr_t m_docker_event_filter;
