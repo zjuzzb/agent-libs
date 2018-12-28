@@ -839,6 +839,7 @@ public:
 	bool m_query_docker_image_info;
 	std::string m_cri_socket_path;
 	int64_t m_cri_timeout_ms = 1000;
+	bool m_docker_then_cri;
 
 	uint64_t m_flush_log_time;
 	uint64_t m_flush_log_time_duration;

@@ -39,7 +39,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 		ASSERT_NE(container_info, nullptr);
 
-		EXPECT_EQ(sinsp_container_type::CT_DOCKER, container_info->m_type);
+		EXPECT_EQ(sinsp_container_type::CT_CRI, container_info->m_type);
 		EXPECT_EQ("", container_info->m_name);
 		EXPECT_EQ("", container_info->m_image);
 
@@ -49,6 +49,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
+		inspector->set_docker_cri_mode(false);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -101,6 +102,7 @@ TEST_F(container_cri, fake_cri) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
+		inspector->set_docker_cri_mode(false);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});

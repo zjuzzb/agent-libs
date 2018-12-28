@@ -473,8 +473,12 @@ void sinsp_worker::init()
 	}
 
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
-	m_inspector->set_cri_socket_path(m_configuration->m_cri_socket_path);
-	m_inspector->set_cri_timeout(m_configuration->m_cri_timeout_ms);
+	if (!m_configuration->m_cri_socket_path.empty())
+	{
+		m_inspector->set_cri_socket_path(m_configuration->m_cri_socket_path);
+		m_inspector->set_cri_timeout(m_configuration->m_cri_timeout_ms);
+		m_inspector->set_docker_cri_mode(m_configuration->m_docker_then_cri);
+	}
 
 	m_analyzer->set_track_environment(m_configuration->m_track_environment);
 	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
