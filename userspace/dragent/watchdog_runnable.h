@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include <chrono>
 #include <Poco/Thread.h>
 
 
@@ -45,14 +44,28 @@ public:
 		return m_pthread_id;
 	}
 
+	enum class health
+	{
+		HEALTHY = 0,
+		TIMEOUT,
+		FATAL_ERROR
+	};
 	/**
 	 * @param age_ms the number of milliseconds that has elapsed
 	 *      	 since the previous heartbeat
 	 *
-	 * @return bool whether the runnable has called heartbeat within
-	 *         the timeout
+	 * @return health the health of the runnable
 	 */
-	bool is_healthy(int64_t& age_ms) const;
+	health is_healthy(int64_t& age_ms) const;
+
+	/**
+	 * @return whether enough time has passed since the given
+	 *         last_heartbeat for the runnable to have timed out
+	 */
+	static bool is_timed_out(const std::string& name,
+				 uint64_t last_heartbeat,
+				 uint64_t timeout_ms,
+				 int64_t& age_ms);
 
 	/**
 	 * Set the timeout. This is not set in construction because the
@@ -60,7 +73,15 @@ public:
 	 * This must be called before the runnable is started or the value
 	 * will be ignored.
 	 */
-	void timeout(uint64_t value);
+	void timeout_ms(uint64_t value_ms);
+
+	/**
+	 * @return the watchdog timeout
+	 */
+	uint64_t timeout_ms() const
+	{
+		return m_timeout_ms;
+	}
 
 	/**
 	 * Must be implemented by the derived class and must do whatever
@@ -74,21 +95,21 @@ protected:
 	 * Marks this runnable as alive so that the is_healthy check will
 	 * return true. Should be called by the do_run function in the
 	 * derived class.
-	 * @return bool whether to continue
+	 * @return whether to continue
 	 */
 	bool heartbeat();
 
 private:
-	uint64_t monotonic_uptime_ms() const;
 
 	void run() override;
 
+	std::atomic<bool> m_terminated;
 	std::atomic<uint64_t> m_last_heartbeat_ms;
 	std::atomic<pthread_t> m_pthread_id;
 
 	// This timeout is not const, but it can only be set before runnable is
 	// started so it does not need to be atomic.
-	uint64_t m_timeout_s;
+	uint32_t m_timeout_ms;
 	const std::string m_name;
 };
 

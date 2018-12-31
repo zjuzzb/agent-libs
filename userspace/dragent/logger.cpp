@@ -550,17 +550,20 @@ std::string::size_type log_sink::generate_log(std::vector<char>& log_buffer,
 
 	va_copy(mutable_args, args);
 
-	// Try to write the prefix to log_buffer
-	const std::string::size_type prefix_length =
-		std::snprintf(&log_buffer[0],
+	std::string::size_type prefix_length = 0;
+
+	if(line)
+	{
+		// Try to write the prefix to log_buffer
+		prefix_length = std::snprintf(& log_buffer[0],
 		              log_buffer.capacity(),
 		              "%s:%d: ",
 		              m_tag.c_str(),
 		              line);
+	}
 
-	char* suffix_target = nullptr;
+	char *suffix_target = nullptr;
 	std::string::size_type suffix_buffer_size = 0;
-
 	if(prefix_length < log_buffer.capacity())
 	{
 		suffix_target = &log_buffer[prefix_length];
@@ -600,6 +603,16 @@ std::string log_sink::build(const int line, const char* const fmt, va_list& args
 	}
 
 	return std::string(&log_buffer[0]);
+}
+
+std::string log_sink::build(const char *const fmt, ...) const
+{
+	va_list args;
+
+	va_start(args, fmt);
+	std::string message = build(0 /*suffix only*/, fmt, args);
+	va_end(args);
+	return message;
 }
 
 void log_sink::log(const uint32_t severity, const int line, const char* const fmt, ...) const

@@ -25,6 +25,7 @@
 #include <sys/resource.h>
 
 using namespace std;
+using namespace dragent;
 
 DRAGENT_LOGGER();
 
@@ -669,7 +670,7 @@ int dragent_app::sdagent_main()
 	if (!m_configuration.m_config_test)
 	{
 		m_pool.start(m_subprocesses_logger, m_configuration.m_watchdog_subprocesses_logger_timeout_s);
-		ThreadPool::defaultPool().start(m_connection_manager, "connection_manager");
+		m_pool.start(m_connection_manager, m_configuration.m_watchdog_connection_manager_timeout_s);
 	}
 	try {
 		m_sinsp_worker.init();
@@ -686,7 +687,8 @@ int dragent_app::sdagent_main()
 	if(!dragent_configuration::m_terminate)
 	{
 		m_capture_job_handler.init(m_sinsp_worker.get_inspector());
-		ThreadPool::defaultPool().start(m_capture_job_handler, "capture_job_handler");
+		m_pool.start(m_capture_job_handler, watchdog_runnable::NO_TIMEOUT);
+		// sinsp_worker has not been changed to a watchdog_runnable
 		ThreadPool::defaultPool().start(m_sinsp_worker, "sinsp_worker");
 	}
 
@@ -744,7 +746,8 @@ int dragent_app::sdagent_main()
 	}
 
 	dragent_configuration::m_terminate = true;
-	ThreadPool::defaultPool().stopAll();
+	// This will stop everything in the default pool
+	m_pool.stop_all();
 
 	if(m_configuration.m_watchdog_enabled)
 	{
@@ -814,39 +817,29 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 	}
 
-	if(m_connection_manager.get_last_loop_ns() != 0)
-	{
-		int64_t diff = sinsp_utils::get_current_time_ns()
-			- m_connection_manager.get_last_loop_ns();
-
-#if _DEBUG
-		LOG_DEBUG("watchdog: connection_manager last activity " + NumberFormatter::format(diff) + " ns ago");
-#endif
-
-		if(diff > (int64_t) m_configuration.m_watchdog_connection_manager_timeout_s * 1000000000LL)
-		{
-			char line[128];
-			snprintf(line, sizeof(line), "watchdog: Detected connection_manager stall, last activity %" PRId64 " ns ago\n", diff);
-			crash_handler::log_crashdump_message(line);
-			pthread_kill(m_connection_manager.get_pthread_id(), SIGABRT);
-			to_kill = true;
-		}
-	}
-
-	auto unhealthy = m_pool.unhealthy_runnables();
+	auto unhealthy = m_pool.unhealthy_list();
 	if(!unhealthy.empty())
 	{
-		// Right now, only the subprocesses logger is handled this was
-		for(const dragent::watchdog_runnable_pool::hung_runnable& current : unhealthy)
+		for(const watchdog_runnable_pool::unhealthy_runnable& current : unhealthy)
 		{
-			char line[128];
-			snprintf(line,
-				 sizeof(line),
-				 "watchdog: Detected %s stall, last activity %" PRId64 " ms ago\n",
-				 current.hung.name().c_str(),
-				 current.since_last_heartbeat_ms);
-			crash_handler::log_crashdump_message(line);
-			pthread_kill(current.hung.pthread_id(), SIGABRT);
+			if(current.health == watchdog_runnable::health::TIMEOUT)
+			{
+				char line[128];
+				snprintf(line,
+					 sizeof(line),
+					 "watchdog: Detected %s stall, last activity %" PRId64 " ms ago with timeout %" PRId64 "\n",
+					 current.runnable.name().c_str(),
+					 current.since_last_heartbeat_ms,
+					 current.runnable.timeout_ms());
+				crash_handler::log_crashdump_message(line);
+				pthread_kill(current.runnable.pthread_id(), SIGABRT);
+			}
+			else
+			{
+				LOG_FATAL("Detected %s fatal error, last activity %" PRId64 " ms ago\n",
+					  current.runnable.name().c_str(),
+					  current.since_last_heartbeat_ms);
+			}
 		}
 
 		to_kill = true;
@@ -956,9 +949,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	//
 	// Just wait a bit to give time to the other threads to print stacktrace
+  	// or to terminate gracefully.
 	//
 	if(to_kill)
 	{
+
+ 		LOG_FATAL("Killing dragent process");
+
 		sleep(5);
 		char line[128];
 		snprintf(line, sizeof(line), "watchdog: committing suicide\n");
