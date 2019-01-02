@@ -12,9 +12,10 @@ using namespace runtime::v1alpha2;
 
 class FakeCRIServer final : public runtime::v1alpha2::RuntimeService::Service {
 public:
-	FakeCRIServer(ContainerStatusResponse&& cs, PodSandboxStatusResponse&& ps) :
+	FakeCRIServer(ContainerStatusResponse&& cs, PodSandboxStatusResponse&& ps, const std::string& runtime_name) :
 		m_container_status_response(cs),
-		m_pod_sandbox_status_response(ps)
+		m_pod_sandbox_status_response(ps),
+		m_runtime_name(runtime_name)
 	{}
 
 	grpc::Status ContainerStatus(grpc::ServerContext* context,
@@ -36,9 +37,20 @@ public:
 		return grpc::Status::OK;
 	}
 
+	grpc::Status Version(grpc::ServerContext* context,
+		const VersionRequest* req,
+		VersionResponse* resp)
+	{
+		resp->set_version("0.1.0");
+		resp->set_runtime_name(m_runtime_name);
+		resp->set_runtime_version("1.1.2");
+		resp->set_runtime_api_version("v1alpha2");
+		return grpc::Status::OK;
+	}
 private:
 	ContainerStatusResponse m_container_status_response;
 	PodSandboxStatusResponse m_pod_sandbox_status_response;
+	std::string m_runtime_name;
 };
 
 
@@ -48,12 +60,13 @@ int main(int argc, char** argv)
 
 	if (argc < 3)
 	{
-		fprintf(stderr, "Usage: fake_cri listen_addr pb_file_prefix\n");
+		fprintf(stderr, "Usage: fake_cri listen_addr pb_file_prefix [runtime_name]\n");
 		return 1;
 	}
 
 	const char* addr = argv[1];
 	const std::string pb_prefix(argv[2]);
+	const std::string runtime(argc > 3 ? argv[3]: "containerd");
 
 	ContainerStatusResponse cs;
 	{
@@ -73,7 +86,7 @@ int main(int argc, char** argv)
 		close(fd);
 	}
 
-	FakeCRIServer service(std::move(cs), std::move(ps));
+	FakeCRIServer service(std::move(cs), std::move(ps), runtime);
 
 	grpc::ServerBuilder builder;
 	builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
