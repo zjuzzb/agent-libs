@@ -57,7 +57,7 @@ class MetricsFile(object):
             ascii_repr += self._last_line
             self._last_line = self._file.readline()
             if len(self._last_line) == 0:
-                raise StopIteration()
+                break
         # Trim "metrics {"
         if self.proto_start == "metrics {":
             ascii_repr = "\n".join(ascii_repr.split("\n")[1:-2])
