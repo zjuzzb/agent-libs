@@ -341,6 +341,8 @@ void sinsp_worker::init()
 			m_configuration->m_command_lines_capture_enabled);
 		m_analyzer->get_configuration()->set_command_lines_capture_mode(
 			m_configuration->m_command_lines_capture_mode);
+		m_analyzer->get_configuration()->set_command_lines_include_container_healthchecks(
+			m_configuration->m_command_lines_include_container_healthchecks);
 		m_analyzer->get_configuration()->set_command_lines_valid_ancestors(
 			m_configuration->m_command_lines_valid_ancestors);
 	}

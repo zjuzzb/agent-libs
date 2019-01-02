@@ -716,6 +716,7 @@ public:
 	bool m_command_lines_capture_enabled;
 	sinsp_configuration::command_capture_mode_t m_command_lines_capture_mode;
 	set<string> m_command_lines_valid_ancestors;
+	bool m_command_lines_include_container_healthchecks;
 	bool m_memdump_enabled;
 	uint64_t m_memdump_size;
 	uint64_t m_memdump_max_init_attempts;

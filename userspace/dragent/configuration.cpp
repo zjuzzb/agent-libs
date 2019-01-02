@@ -205,6 +205,7 @@ dragent_configuration::dragent_configuration()
 	m_falco_baselining_enabled = false;
 	m_command_lines_capture_enabled = false;
 	m_command_lines_capture_mode = sinsp_configuration::CM_TTY;
+	m_command_lines_include_container_healthchecks = true;
 	m_memdump_enabled = false;
 	m_memdump_size = 0;
 	m_memdump_max_init_attempts = 10;
@@ -707,6 +708,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	} else if(command_lines_capture_mode_s == "all") {
 		m_command_lines_capture_mode = sinsp_configuration::command_capture_mode_t::CM_ALL;
 	}
+	m_command_lines_include_container_healthchecks = m_config->get_scalar<bool>("commandlines_capture", "include_container_healthchecks", true);
 	m_command_lines_valid_ancestors = m_config->get_deep_merged_sequence<set<string>>("commandlines_capture", "valid_ancestors");
 
 	m_memdump_enabled =  m_config->get_scalar<bool>("memdump", "enabled", false);
@@ -1236,13 +1238,14 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("falcobaseline.report_interval: " + NumberFormatter::format(m_security_baseline_report_interval_ns));
 	LOG_INFO("commandlines_capture.enabled: " + bool_as_text(m_command_lines_capture_enabled));
 	LOG_INFO("commandlines_capture.capture_mode: " + NumberFormatter::format(m_command_lines_capture_mode));
-	LOG_INFO("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
+	LOG_INFO("Will" + string((m_command_lines_include_container_healthchecks ? " " :" not")) + " include container health checks in collected commandlines");
 	string ancestors;
 	for(auto s : m_command_lines_valid_ancestors)
 	{
 		ancestors.append(s + " ");
 	}
 	LOG_INFO("commandlines_capture.valid_ancestors: " + ancestors);
+	LOG_INFO("absorb_event_bursts: " + bool_as_text(m_detect_stress_tools));
 	LOG_INFO("memdump.enabled: " + bool_as_text(m_memdump_enabled));
 	LOG_INFO("memdump.size: " + NumberFormatter::format(m_memdump_size));
 	LOG_INFO("memdump.max_init_attempts: " + NumberFormatter::format(m_memdump_max_init_attempts));

@@ -3933,6 +3933,17 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			commands->end(),
 			executed_command_cmp);
 
+		// The metrics are based on the number of command
+		// lines identified, not returned.
+		if(m_internal_metrics)
+		{
+			m_internal_metrics->set_n_command_lines(commands->size());
+
+			// healthcheck command lines count stored separately as
+			// based on config, the healthcheck commands may not
+			// actually be saved.
+			m_internal_metrics->set_n_container_healthcheck_command_lines(m_num_container_healthcheck_command_lines);
+		}
 #if 0
 		uint32_t j;
 		int32_t last_pipe_head = -1;
@@ -4078,6 +4089,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				cd->set_uid(it->m_uid);
 				cd->set_cwd(it->m_cwd);
 				cd->set_tty(it->m_tty);
+				cd->set_is_healthcheck(it->m_is_container_healthcheck);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{

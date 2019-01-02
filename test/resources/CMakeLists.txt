@@ -72,6 +72,7 @@ install(TARGETS chname
 	COMPONENT tests)
 
 add_subdirectory(modules_dir)
+add_subdirectory(health_dockerfiles)
 
 execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 

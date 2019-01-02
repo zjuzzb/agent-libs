@@ -5,6 +5,7 @@
 #include <gtest.h>
 #include <algorithm>
 #include "event_capture.h"
+#include <stdio.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -14,10 +15,15 @@
 #include <Poco/StringTokenizer.h>
 #include <Poco/NumberFormatter.h>
 #include <Poco/NumberParser.h>
+#include <thread>
 #include <list>
 #include <fstream>
+#include <sstream>
 #include <cassert>
+#include <memory>
+#include <atomic>
 #include "scap-int.h"
+#include "docker_utils.h"
 
 TEST_F(sys_call_test, container_cgroups)
 {
@@ -1412,3 +1418,317 @@ TEST_F(sys_call_test, nsenter_fail)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	ASSERT_EQ(0u, evtcount);
 }
+
+class container_state {
+public:
+	container_state() :
+		container_w_healthcheck(false),
+		root_cmd_seen(false),
+		second_cmd_seen(false),
+		healthcheck_seen(false) {};
+	virtual ~container_state() {};
+
+	bool container_w_healthcheck;
+	bool root_cmd_seen;
+	bool second_cmd_seen;
+	bool healthcheck_seen;
+};
+
+static std::string capture_stats(sinsp *inspector)
+{
+	scap_stats st;
+	inspector->get_capture_stats(&st);
+
+	std::stringstream ss;
+
+	ss << "capture stats: dropped=" << st.n_drops <<
+		" buf=" << st.n_drops_buffer <<
+		" pf=" << st.n_drops_pf <<
+		" bug=" << st.n_drops_bug;
+
+	return ss.str();
+}
+
+static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_state &cstate)
+{
+	sinsp_threadinfo* tinfo = evt->m_tinfo;
+
+	if(tinfo == NULL)
+	{
+		return;
+	}
+
+	const sinsp_container_info *container_info =
+		inspector->m_container_manager.get_container(tinfo->m_container_id);
+
+	if(container_info)
+	{
+		std::string cmdline;
+
+		sinsp_threadinfo::populate_cmdline(cmdline, tinfo);
+
+		if(container_info->m_has_healthcheck)
+		{
+			cstate.container_w_healthcheck = true;
+		}
+
+		// This is the container's initial command. In the test case
+		// where the health check is the same command, we will see this
+		// command twice--the first time it should not be identifieed as
+		// a health check, and the second time it should.
+		if(cmdline == "sh -c /bin/sleep 1")
+		{
+			if(!cstate.root_cmd_seen)
+			{
+				cstate.root_cmd_seen = true;
+				ASSERT_FALSE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+			}
+			else
+			{
+				ASSERT_TRUE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+				cstate.healthcheck_seen = true;
+			}
+		}
+
+		// Child process of the above sh command. Same handling as above,
+		// will see twice only when health check is same as root command.
+		if(cmdline == "sleep 1")
+		{
+			if(!cstate.second_cmd_seen)
+			{
+				cstate.second_cmd_seen = true;
+				ASSERT_FALSE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+			}
+			else
+			{
+				// Should inherit container healthcheck property from parent.
+				ASSERT_TRUE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+			}
+		}
+
+		// Commandline for the health check of the healthcheck containers,
+		// in direct exec and shell formats.
+		if(cmdline == "sysdig-ut-healt" || cmdline == "sh -c /bin/sysdig-ut-health-check")
+		{
+			cstate.healthcheck_seen = true;
+
+			ASSERT_TRUE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+		}
+	}
+
+}
+
+// Start up a container with the provided dockerfile, and track the
+// state of the initial command for the container, a child proces of
+// that initial command, and a health check (if one is configured).
+static void healthcheck_helper(const char *dockerfile,
+			       bool expect_healthcheck)
+{
+	container_state cstate;
+	bool exited_early;
+
+	if(!dutils_check_docker())
+	{
+		return;
+	}
+
+	dutils_kill_container("cont_health_ut");
+	dutils_kill_image("cont_health_ut_img");
+
+	std::string build_cmdline = string("cd resources/health_dockerfiles && docker build -t cont_health_ut_img -f ") +
+		dockerfile +
+		" . > /dev/null 2>&1";
+
+	ASSERT_TRUE(system(build_cmdline.c_str()) == 0);
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		sinsp_threadinfo* tinfo = evt->m_tinfo;
+
+		return (strcmp(evt->get_name(), "execve")==0 && evt->get_direction() == SCAP_ED_OUT && tinfo->m_container_id != "");
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// Setting dropping mode preserves the execs but
+		// reduces the chances that we'll drop events during
+		// the docker fetch.
+		inspector->start_dropping_mode(1);
+
+		// --network=none speeds up the container setup a bit.
+		int rc = system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 1' > /dev/null 2>&1");
+
+		ASSERT_TRUE(exited_early || (rc == 0));
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		update_container_state(param.m_inspector, param.m_evt, cstate);
+
+		// Exit as soon as we've seen all the initial commands
+		// and the health check (if expecting one)
+		if(!exited_early &&
+		   cstate.root_cmd_seen &&
+		   cstate.second_cmd_seen &&
+		   (cstate.healthcheck_seen || !expect_healthcheck))
+		{
+			exited_early=true;
+			dutils_kill_container("cont_health_ut");
+		}
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(cstate.root_cmd_seen);
+	ASSERT_TRUE(cstate.second_cmd_seen);
+	ASSERT_EQ(cstate.container_w_healthcheck, expect_healthcheck);
+	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
+}
+
+static void healthcheck_tracefile_helper(const char *dockerfile,
+					 bool expect_healthcheck)
+{
+	container_state cstate;
+	std::unique_ptr<sinsp> inspector;
+	char dumpfile[20] = "/tmp/captureXXXXXX";
+	int dumpfile_fd;
+
+        inspector.reset(new sinsp());
+	inspector->set_hostname_and_port_resolution_mode(false);
+
+	ASSERT_GE(dumpfile_fd = mkstemp(dumpfile), 0);
+
+	inspector->open();
+	inspector->autodump_start(string(dumpfile), true);
+	inspector->start_dropping_mode(1);
+
+	// We can close our fd for the file, the inspector has its own copy.
+	ASSERT_EQ(close(dumpfile_fd), 0u);
+
+	std::atomic_bool done;
+
+	done = false;
+	std::thread dump_thread = std::thread([&] ()
+	{
+		while(!done)
+		{
+			sinsp_evt *ev;
+			int32_t res = inspector->next(&ev);
+
+			if(res == SCAP_TIMEOUT)
+			{
+				continue;
+			}
+
+			ASSERT_EQ(SCAP_SUCCESS, res);
+		}
+
+		inspector->stop_capture();
+		inspector->close();
+	});
+
+	std::string build_cmdline = string("cd resources/health_dockerfiles && docker build -t cont_health_ut_img -f ") +
+		dockerfile +
+		" . > /dev/null 2>&1";
+	ASSERT_TRUE(system(build_cmdline.c_str()) == 0);
+
+	// --network=none speeds up the container setup a bit.
+	ASSERT_TRUE((system("docker run --rm --network=none --name cont_health_ut cont_health_ut_img /bin/sh -c '/bin/sleep 1' > /dev/null 2>&1")) == 0);
+
+	done=true;
+	dump_thread.join();
+
+	// Now reread the file we just wrote and pass it through
+	// update_container_state.
+
+	inspector.reset(new sinsp());
+	inspector->set_hostname_and_port_resolution_mode(false);
+	inspector->set_filter("evt.type=execve and evt.dir=<");
+	inspector->open(dumpfile);
+
+	while(1)
+	{
+		sinsp_evt *ev;
+		int32_t res = inspector->next(&ev);
+
+		if(res == SCAP_TIMEOUT)
+		{
+			continue;
+		}
+		else if(res == SCAP_EOF)
+		{
+			break;
+		}
+		ASSERT_TRUE(res == SCAP_SUCCESS);
+
+		update_container_state(inspector.get(), ev, cstate);
+	}
+
+	inspector->close();
+
+	ASSERT_TRUE(cstate.root_cmd_seen);
+	ASSERT_TRUE(cstate.second_cmd_seen);
+	ASSERT_EQ(cstate.container_w_healthcheck, expect_healthcheck);
+	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
+
+	unlink(dumpfile);
+}
+
+//  Run container w/o health check, should not find any health check
+//  for the container. Should not identify either the entrypoint
+//  or a second process spawned after as a health check process.
+TEST_F(sys_call_test, docker_container_no_healthcheck)
+{
+	healthcheck_helper("Dockerfile.no_healthcheck",
+			   false);
+}
+
+// A container with HEALTHCHECK=none should behave identically to one
+// without any container at all.
+TEST_F(sys_call_test, docker_container_none_healthcheck)
+{
+	healthcheck_helper("Dockerfile.none_healthcheck",
+			   false);
+}
+
+//  Run container w/ health check. Should find health check for
+//  container but not identify entrypoint or second process after as
+//  a health check process. Should identify at least one health
+//  check executed for container.
+TEST_F(sys_call_test, docker_container_healthcheck)
+{
+	healthcheck_helper("Dockerfile.healthcheck",
+			   true);
+}
+
+//  Run container w/ health check and entrypoint having identical
+//  cmdlines. Should identify healthcheck but not entrypoint as a
+//  health check process.
+TEST_F(sys_call_test, docker_container_healthcheck_cmd_overlap)
+{
+	healthcheck_helper("Dockerfile.healthcheck_cmd_overlap",
+			   true);
+}
+
+// A health check using shell exec instead of direct exec.
+TEST_F(sys_call_test, docker_container_healthcheck_shell)
+{
+	healthcheck_helper("Dockerfile.healthcheck_shell",
+			   true);
+}
+
+// Identical to above tests, but read events from a trace file instead
+// of live. Only doing selected cases.
+TEST_F(sys_call_test, docker_container_healthcheck_trace)
+{
+	healthcheck_tracefile_helper("Dockerfile.healthcheck",
+				     true);
+}
+
+TEST_F(sys_call_test, docker_container_healthcheck_cmd_overlap_trace)
+{
+	healthcheck_tracefile_helper("Dockerfile.healthcheck_cmd_overlap",
+				     true);
+}
+
+
+

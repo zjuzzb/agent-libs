@@ -41,6 +41,7 @@ add_executable(tests
 	compliance.cpp
 	custom_container.cpp
 	dns_manager.cpp
+	docker_utils.cpp
 	emit_tracers.cpp
 	event_capture.cpp
 	evttype_filter.cpp

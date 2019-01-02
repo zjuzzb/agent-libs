@@ -164,6 +164,7 @@ public:
 	uint64_t m_uid; // user ID
 	string m_cwd; // process' current working directory
 	uint32_t m_tty; // tty
+	bool m_is_container_healthcheck;
 };
 
 #ifndef _WIN32
@@ -561,6 +562,8 @@ public:
 	}
 
 	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
+
+	void incr_num_container_healthcheck_command_lines() { m_num_container_healthcheck_command_lines++; }
 
 	//
 	// Test tool detection state
@@ -970,6 +973,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_env_hash_ttl = 86400ULL * ONE_SECOND_IN_NS;
 
 	bool m_extra_internal_metrics = false;
+	uint64_t m_num_container_healthcheck_command_lines = 0;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

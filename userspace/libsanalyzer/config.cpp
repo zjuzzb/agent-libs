@@ -40,6 +40,7 @@ sinsp_configuration::sinsp_configuration():
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
 	m_command_lines_capture_enabled = false;
 	m_command_lines_capture_mode = command_capture_mode_t::CM_TTY;
+	m_command_lines_include_container_healthchecks = true;
 	m_capture_dragent_events = false;
 	m_detect_stress_tools = false;
 	m_security_enabled = false;
@@ -235,6 +236,16 @@ sinsp_configuration::command_capture_mode_t sinsp_configuration::get_command_lin
 void sinsp_configuration::set_command_lines_capture_mode(command_capture_mode_t capture_mode)
 {
 	m_command_lines_capture_mode = capture_mode;
+}
+
+void sinsp_configuration::set_command_lines_include_container_healthchecks(bool enabled)
+{
+	m_command_lines_include_container_healthchecks = enabled;
+}
+
+bool sinsp_configuration::get_command_lines_include_container_healthchecks() const
+{
+	return 	m_command_lines_include_container_healthchecks;
 }
 
 set<string> sinsp_configuration::get_command_lines_valid_ancestors() const

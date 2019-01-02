@@ -362,6 +362,16 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return true;
 	}
 
+	if(tinfo->m_is_container_healthcheck)
+	{
+		m_analyzer->incr_num_container_healthcheck_command_lines();
+
+		if(!sinsp_conf->get_command_lines_include_container_healthchecks())
+		{
+			return true;
+		}
+	}
+
 	//
 	// Allocated an executed command storage info and initialize it
 	//
@@ -384,6 +394,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	cmdinfo.m_uid = tinfo->m_uid;
 	cmdinfo.m_cwd = tinfo->m_cwd;
 	cmdinfo.m_tty = tinfo->m_tty;
+	cmdinfo.m_is_container_healthcheck = tinfo->m_is_container_healthcheck;
 
 	//
 	// Build the arguments string

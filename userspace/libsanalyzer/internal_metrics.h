@@ -67,6 +67,9 @@ public:
 	void set_n_drops_buffer(int64_t val);
 	void set_n_preemptions(int64_t val);
 
+	void set_n_command_lines(int64_t val);
+	void set_n_container_healthcheck_command_lines(int64_t val);
+
 	int64_t get_process() const;
 	int64_t get_thread() const;
 	int64_t get_thread_drops() const;
@@ -83,6 +86,9 @@ public:
 	int64_t get_n_drops() const;
 	int64_t get_n_drops_buffer() const;
 	int64_t get_n_preemptions() const;
+
+	int64_t get_n_command_lines() const;
+	int64_t get_n_container_healthcheck_command_lines() const;
 
 	// subprocesses-related interface
 	void set_agent_cpu(int64_t val);
@@ -233,6 +239,9 @@ private:
 		int64_t n_drops = -1;
 		int64_t n_drops_buffer = -1;
 		int64_t n_preemptions = -1;
+
+		int64_t n_command_lines = -1;
+		int64_t n_container_healthcheck_command_lines = -1;
 
 		int64_t agent_cpu;
 		int64_t agent_memory;
@@ -394,6 +403,16 @@ inline void internal_metrics::set_n_preemptions(int64_t val)
 	m_analyzer.n_preemptions = val;
 }
 
+inline void internal_metrics::set_n_command_lines(int64_t val)
+{
+	m_analyzer.n_command_lines = val;
+}
+
+inline void internal_metrics::set_n_container_healthcheck_command_lines(int64_t val)
+{
+	m_analyzer.n_container_healthcheck_command_lines = val;
+}
+
 inline int64_t internal_metrics::get_process() const
 {
 	return m_analyzer.process_cnt;
@@ -467,6 +486,16 @@ inline int64_t internal_metrics::get_n_drops_buffer() const
 inline int64_t internal_metrics::get_n_preemptions() const
 {
 	return m_analyzer.n_preemptions;
+}
+
+inline int64_t internal_metrics::get_n_command_lines() const
+{
+	return m_analyzer.n_command_lines;
+}
+
+inline int64_t internal_metrics::get_n_container_healthcheck_command_lines() const
+{
+	return m_analyzer.n_container_healthcheck_command_lines;
 }
 
 inline int64_t internal_metrics::get_agent_cpu() const

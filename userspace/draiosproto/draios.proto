@@ -325,6 +325,7 @@ message command_details {
     optional uint64 login_shell_id = 9; // ID of the login shell (same as in the spy_users chisel)
     optional uint32 login_shell_distance = 10; // Distance from the login shell (same as in the spy_users chisel)
     optional uint32 tty = 11; // Tty
+    optional bool is_healthcheck = 12; // If true, related to a container health check.
 }
 
 //

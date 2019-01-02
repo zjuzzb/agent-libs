@@ -26,6 +26,8 @@
 #include <fcntl.h>
 #include <metrics.h>
 
+#include "docker_utils.h"
+
 using namespace std;
 
 class security_policy_error_handler : public Poco::ErrorHandler
@@ -552,54 +554,10 @@ protected:
 	}
 };
 
-static bool check_docker()
-{
-	if(system("service docker status > /dev/null 2>&1") != 0)
-	{
-		if (system("systemctl status docker > /dev/null 2>&1") != 0) {
-			printf("Docker not running, skipping test\n");
-			return false;
-		}
-	}
-
-	// We depend on docker versions >= 1.10
-	if(system("docker --version | grep -qE \"Docker version 1.[56789].\"") == 0)
-	{
-		printf("Docker version too old, skipping test\n");
-		return false;
-	}
-
-	return true;
-}
-
-static void create_tag(const char *tag, const char *image)
-{
-	std::string tag_cmd = string("docker tag ") + image + " " + tag + " > /dev/null 2>&1";
-	std::string remove_tag_cmd = string("(docker rmi ") + tag + " || true) > /dev/null 2>&1";
-
-	EXPECT_EQ(system(remove_tag_cmd.c_str()), 0);
-	EXPECT_EQ(system(tag_cmd.c_str()), 0);
-}
-
-static void kill_container(const char *name)
-{
-	std::string kill_cmd = string("(docker kill ") + name + " || true) > /dev/null 2>&1";
-	std::string rm_cmd = string("(docker rm -fv ") + name + " || true) > /dev/null 2>&1";
-
-	EXPECT_EQ(system(kill_cmd.c_str()), 0);
-	EXPECT_EQ(system(rm_cmd.c_str()), 0);
-}
-
-static void kill_image(const char *image)
-{
-	std::string rmi_cmd = string("(docker rmi ") + image + " || true) > /dev/null 2>&1";
-
-	EXPECT_EQ(system(rmi_cmd.c_str()), 0);
-}
 
 TEST_F(security_policies_test, readonly_fs_only)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
@@ -627,7 +585,7 @@ TEST_F(security_policies_test, readonly_fs_only)
 
 TEST_F(security_policies_test, readwrite_fs_only)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
@@ -698,13 +656,13 @@ TEST_F(security_policies_test, fs_prefixes)
 
 TEST_F(security_policies_test, fs_root_dir)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
-	kill_container("fs-root-image");
-	create_tag("busybox:test-root-writes", "busybox:latest");
+	dutils_kill_container("fs-root-image");
+	dutils_create_tag("busybox:test-root-writes", "busybox:latest");
 
 	if(system("docker run --rm --name fs-root-image busybox:test-root-writes sh -c 'touch /allowed-file-below-root && touch /not-allowed' > /dev/null 2>&1") != 0)
 	{
@@ -713,7 +671,7 @@ TEST_F(security_policies_test, fs_root_dir)
 
 	sleep(2);
 
-	kill_image("busybox:test-root-writes");
+	dutils_kill_image("busybox:test-root-writes");
 
 	std::vector<expected_policy_event> expected = {{19,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/not-allowed"}, {"evt.type", "open"}}}};
 	check_policy_events(expected);
@@ -861,16 +819,16 @@ TEST_F(security_policies_test, syscall_only)
 
 TEST_F(security_policies_test, container_only)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
 	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
-	kill_image("blacklist-image-name");
+	dutils_kill_image("blacklist-image-name");
 
-	create_tag("blacklist-image-name", "busybox:1.27.2");
-	kill_container("blacklisted_image");
+	dutils_create_tag("blacklist-image-name", "busybox:1.27.2");
+	dutils_kill_container("blacklisted_image");
 
 	if(system("docker run --rm --name blacklisted_image blacklist-image-name > /dev/null 2>&1") != 0)
 	{
@@ -879,7 +837,7 @@ TEST_F(security_policies_test, container_only)
 
 	sleep(2);
 
-	kill_image("blacklist-image-name");
+	dutils_kill_image("blacklist-image-name");
 
 	std::vector<expected_policy_event> expected = {{7,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name"},
 												     {"container.name", "blacklisted_image"},
@@ -897,7 +855,7 @@ TEST_F(security_policies_test, process_only)
 {
 	ASSERT_EQ(system("ls > /dev/null 2>&1"), 0);
 
-	std::vector<expected_policy_event> expected = {{8,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "ls"}, {"proc.cmdline", "ls "}}}};
+	std::vector<expected_policy_event> expected = {{8,draiosproto::policy_type::PTYPE_PROCESS,{{"proc.name", "ls"}, {"proc.cmdline", "ls"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.processes.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -992,18 +950,18 @@ TEST_F(security_policies_test, falco_fqdn)
 
 TEST_F(security_policies_test, baseline_only)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
-	kill_container("baseline-test");
+	dutils_kill_container("baseline-test");
 
 	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc nc -nl 9274 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_container("baseline-test");
+	dutils_kill_container("baseline-test");
 
 	// This should not result in any policy events, as the
 	// baseline for this image already captures all of its
@@ -1017,18 +975,18 @@ TEST_F(security_policies_test, baseline_only)
 
 TEST_F(security_policies_test, baseline_deviate_port)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
-	kill_container("baseline-test");
+	dutils_kill_container("baseline-test");
 
 	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc nc -nl 8172 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_container("baseline-test");
+	dutils_kill_container("baseline-test");
 
 	// The only policy event should denote the different listening
 	// port
@@ -1039,18 +997,18 @@ TEST_F(security_policies_test, baseline_deviate_port)
 
 TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
-	kill_container("baseline-test");
+	dutils_kill_container("baseline-test");
 
 	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc cat /.dockerenv > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_container("baseline-test");
+	dutils_kill_container("baseline-test");
 
 	// We want to see the following events:
 	//  - a process event for invoking cat
@@ -1063,56 +1021,56 @@ TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 
 TEST_F(security_policies_test, container_prefixes)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
-	kill_container("denyme");
-	kill_image("my.domain.name/busybox:1.27.2");
-	kill_image("my.other.domain.name:12345/cirros:0.3.3");
-	kill_image("my.third.domain.name/tutum/curl:alpine");
+	dutils_kill_container("denyme");
+	dutils_kill_image("my.domain.name/busybox:1.27.2");
+	dutils_kill_image("my.other.domain.name:12345/cirros:0.3.3");
+	dutils_kill_image("my.third.domain.name/tutum/curl:alpine");
 
 	ASSERT_EQ(system("docker pull busybox:1.27.2 > /dev/null 2>&1"), 0);
 	ASSERT_EQ(system("docker pull cirros:0.3.3 > /dev/null 2>&1"), 0);
 	ASSERT_EQ(system("docker pull tutum/curl:alpine > /dev/null 2>&1"), 0);
 
-	create_tag("blacklist-image-name:0.0.1", "busybox:1.27.2");
+	dutils_create_tag("blacklist-image-name:0.0.1", "busybox:1.27.2");
 
 	ASSERT_EQ(system("docker run --rm --name denyme blacklist-image-name:0.0.1 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	create_tag("my.domain.name/busybox:1.27.2", "busybox:1.27.2");
+	dutils_create_tag("my.domain.name/busybox:1.27.2", "busybox:1.27.2");
 
 	ASSERT_EQ(system("docker run --rm --name denyme my.domain.name/busybox:1.27.2 > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_image("my.domain.name/busybox:1.27.2");
+	dutils_kill_image("my.domain.name/busybox:1.27.2");
 
-	create_tag("my.other.domain.name:12345/cirros:0.3.3", "cirros:0.3.3");
+	dutils_create_tag("my.other.domain.name:12345/cirros:0.3.3", "cirros:0.3.3");
 
 	ASSERT_EQ(system("docker run --rm --name denyme my.other.domain.name:12345/cirros:0.3.3 /bin/sh > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_image("my.other.domain.name:12345/cirros:0.3.3");
+	dutils_kill_image("my.other.domain.name:12345/cirros:0.3.3");
 
-	create_tag("my.third.domain.name/cirros:0.3.3", "cirros:0.3.3");
+	dutils_create_tag("my.third.domain.name/cirros:0.3.3", "cirros:0.3.3");
 
 	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/cirros:0.3.3 /bin/sh > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_image("my.third.domain.name/cirros:0.3.3");
-	create_tag("my.third.domain.name/tutum/curl:alpine", "tutum/curl:alpine");
+	dutils_kill_image("my.third.domain.name/cirros:0.3.3");
+	dutils_create_tag("my.third.domain.name/tutum/curl:alpine", "tutum/curl:alpine");
 
 	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/tutum/curl:alpine > /dev/null 2>&1"), 0);
 
 	sleep(2);
 
-	kill_image("my.third.domain.name/tutum/curl:alpine");
+	dutils_kill_image("my.third.domain.name/tutum/curl:alpine");
 
 	std::vector<expected_policy_event> expected = {{07,draiosproto::policy_type::PTYPE_CONTAINER,{{"container.image", "blacklist-image-name:0.0.1"},
 												      {"container.image.id", "6ad733544a6317992a6fac4eb19fe1df577d4dec7529efec28a5bd0edad0fd30"},
@@ -1134,19 +1092,19 @@ TEST_F(security_policies_test, container_prefixes)
 
 TEST_F(security_policies_test, net_inbound_outbound_tcp)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
-	kill_container("inout_test");
-	create_tag("curl:inout_test", "tutum/curl");
+	dutils_kill_container("inout_test");
+	dutils_create_tag("curl:inout_test", "tutum/curl");
 	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c '(timeout 5 nc -l -p 22222 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 22222)' > /dev/null 2>&1"), 0);
 
 	sleep(2);
-	kill_image("curl:inout_test");
+	dutils_kill_image("curl:inout_test");
 
 	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
 												    {"fd.sip", "0.0.0.0"},
@@ -1164,19 +1122,19 @@ TEST_F(security_policies_test, net_inbound_outbound_tcp)
 
 TEST_F(security_policies_test, net_inbound_outbound_udp)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
-	kill_container("inout_test");
-	create_tag("curl:inout_test", "tutum/curl");
+	dutils_kill_container("inout_test");
+	dutils_create_tag("curl:inout_test", "tutum/curl");
 	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; (timeout 5 ncserver -ul -p 22222 -q0 &) && sleep 2 && (echo ping | timeout 5 nc -u $(hostname -I | cut -f 1 -d \" \") 22222 -w 1)' > /dev/null 2>&1"), 0);
 
 	sleep(2);
-	kill_image("curl:inout_test");
+	dutils_kill_image("curl:inout_test");
 
 	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
 												    {"proc.name", "nc"},
@@ -1193,7 +1151,7 @@ TEST_F(security_policies_test, net_inbound_outbound_udp)
 
 TEST_F(security_policies_test, baseline_without_syscalls)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
@@ -1212,19 +1170,19 @@ TEST_F(security_policies_test, baseline_without_syscalls)
 
 TEST_F(security_policies_test, fs_usecase)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
-	kill_container("fs_usecase");
-	create_tag("busybox:fs_usecase", "busybox:latest");
+	dutils_kill_container("fs_usecase");
+	dutils_create_tag("busybox:fs_usecase", "busybox:latest");
 
 	ASSERT_EQ(system("docker run --rm --name fs_usecase busybox:fs_usecase sh -c 'touch /home/allowed && cat /etc/passwd /home/allowed /etc/hostname > /bin/not-allowed'"),0);
 
 	sleep(2);
 
-	kill_image("busybox:fs_usecase");
+	dutils_kill_image("busybox:fs_usecase");
 
 	std::vector<expected_policy_event> expected = {{21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/etc/passwd"}, {"evt.type", "open"}}},
 						       {21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/not-allowed"}, {"evt.type", "open"}}}};
@@ -1233,20 +1191,20 @@ TEST_F(security_policies_test, fs_usecase)
 
 TEST_F(security_policies_test, image_name_priority)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
 	ASSERT_EQ(system("docker pull tutum/curl:alpine > /dev/null 2>&1"), 0);
 
-	kill_container("mycurl");
-	create_tag("tutum/mycurl", "tutum/curl:alpine");
+	dutils_kill_container("mycurl");
+	dutils_create_tag("tutum/mycurl", "tutum/curl:alpine");
 	ASSERT_EQ(system("docker run --rm --name mycurl tutum/mycurl"), 0);
 
 	sleep(2);
 
-	kill_image("tutum/mycurl");
+	dutils_kill_image("tutum/mycurl");
 
 	// between policies 22 and 23 only the latter will trigger
 	// because the order of the policy matchlists it's different
@@ -1258,21 +1216,21 @@ TEST_F(security_policies_test, image_name_priority)
 
 TEST_F(security_policies_test, overlapping_syscall)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
 
 	ASSERT_EQ(system("docker pull tutum/curl > /dev/null 2>&1"), 0);
 
-	kill_container("overlap_test");
-	create_tag("curl:overlap_test", "tutum/curl");
+	dutils_kill_container("overlap_test");
+	dutils_create_tag("curl:overlap_test", "tutum/curl");
 
 	ASSERT_EQ(system("docker run --rm --name overlap_test curl:overlap_test bash -c '(timeout 5 nc -l -p 12345 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 12345)'"),0);
 
 	sleep(2);
 
-	kill_image("curl:overlap_test");
+	dutils_kill_image("curl:overlap_test");
 
 	// Policy 23 match both for syscalls and network, but network
 	// take precedence (rule type order is hard-coded by us)
@@ -1413,7 +1371,7 @@ TEST_F(security_policies_test_delayed_reports, DISABLED_events_flood)
 
 TEST_F(security_policies_test, docker_swarm)
 {
-	if(!check_docker())
+	if(!dutils_check_docker())
 	{
 		return;
 	}
@@ -1421,7 +1379,7 @@ TEST_F(security_policies_test, docker_swarm)
 	ASSERT_EQ(system("(docker swarm leave --force || true) > /dev/null 2>&1"), 0);
 
 	ASSERT_EQ(system("docker pull alpine > /dev/null 2>&1"), 0);
-	create_tag("swarm_service_ut_image", "alpine");
+	dutils_create_tag("swarm_service_ut_image", "alpine");
 
 	ASSERT_EQ(system("(docker swarm init && docker service create --replicas 1 --name helloworld swarm_service_ut_image /bin/sh -c \"while true; do echo touch; rm -f /tmp/sample-sensitive-file-2.txt; touch /tmp/sample-sensitive-file-2.txt; sleep 1; done\") > /dev/null 2>&1"), 0);
 
@@ -1429,7 +1387,7 @@ TEST_F(security_policies_test, docker_swarm)
 
 	ASSERT_EQ(system("docker swarm leave --force > /dev/null 2>&1"), 0);
 
-	kill_image("swarm_service_ut_image");
+	dutils_kill_image("swarm_service_ut_image");
 
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
