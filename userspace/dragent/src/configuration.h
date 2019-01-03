@@ -823,6 +823,11 @@ public:
 	uint64_t m_security_compliance_refresh_interval;
 	std::string m_security_compliance_kube_bench_variant;
 
+	bool m_k8s_audit_server_enabled;
+	string m_k8s_audit_server_url;
+	uint16_t m_k8s_audit_server_port;
+	uint64_t m_k8s_audit_server_refresh_interval;
+
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
 	dragent_mode_t m_mode;
@@ -962,6 +967,16 @@ public:
 	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
 
 	void set_auto_config_directory(const string &config_directory);
+
+	std::string k8s_audit_server_url()
+	{
+		return m_k8s_audit_server_url;
+	}
+
+	std::uint16_t k8s_audit_server_port()
+	{
+		return m_k8s_audit_server_port;
+	}
 
 private:
 	inline static bool is_executable(const string& path);

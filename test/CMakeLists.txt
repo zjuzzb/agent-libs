@@ -136,6 +136,7 @@ endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/resources/run)
 
 install(DIRECTORY 
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/captures
@@ -162,3 +163,4 @@ install(FILES test_helper.sh
 install(TARGETS tests 
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	COMPONENT tests)
+

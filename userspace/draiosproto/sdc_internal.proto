@@ -176,6 +176,16 @@ service ComplianceModuleMgr {
     rpc RunTasks(draiosproto.comp_run) returns (comp_run_result) {}
 }
 
+message k8s_audit_server_load {
+    required string k8s_audit_server_url = 1;
+    required uint32 k8s_audit_server_port = 2;
+}
+
+message k8s_audit_server_load_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
 message k8s_audit_server_start {
 }
 
@@ -184,8 +194,9 @@ message k8s_audit_server_stop {
 
 message k8s_audit_event {
     required bool successful = 1;
-    optional string evt_json = 2;
-    optional string errstr = 3;
+    optional uint64 evt_id = 2;
+    optional string evt_json = 3;
+    optional string errstr = 4;
 }
 
 message k8s_audit_stop_result {
@@ -194,6 +205,7 @@ message k8s_audit_stop_result {
 }
 
 service K8sAudit {
+    rpc Load(k8s_audit_server_load) returns (k8s_audit_server_load_result) {}
     rpc Start(k8s_audit_server_start) returns (stream k8s_audit_event) {}
     rpc Stop(k8s_audit_server_stop) returns (k8s_audit_stop_result) {}
 }

@@ -8,12 +8,13 @@ import (
 	"google.golang.org/grpc"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 	"time"
 	log "github.com/cihub/seelog"
 )
 
 var(
-	k8sEvtID  uint64 = 0   // each k8s event have an ID assigned by this module
+	k8sEvtID  uint64 = 1   // each k8s event have an ID assigned by this module
 )
 
 type k8sAuditServer struct {
@@ -28,6 +29,43 @@ func (ks *k8sAuditServer) Init() error {
 	ks.initialized = true
 
 	return nil
+}
+
+func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditServerLoad) (*sdc_internal.K8SAuditServerLoadResult, error) {
+
+	log.Debugf("Received K8s Audit Server Load message: %s", load.String())
+
+	if ! ks.initialized {
+		if err := ks.Init(); err != nil {
+			return nil, err
+		}
+	}
+
+	result := &sdc_internal.K8SAuditServerLoadResult{
+		Successful: proto.Bool(true),
+	}
+
+	r := http.NewServeMux()
+	r.Handle("/k8s_audit", ks)
+
+	var s = &http.Server {
+		Addr: *load.K8SAuditServerUrl + ":" + strconv.Itoa(int(*load.K8SAuditServerPort)),
+		Handler: r,
+		ReadTimeout: time.Second * 10,
+		WriteTimeout: time.Second * 10,
+		MaxHeaderBytes: 1 << 20,
+	}
+
+
+	go func() {
+		if err := s.ListenAndServe(); err != nil {
+			log.Errorf("K8s Audit Server ListenAndServe(): %s", err)
+			result.Successful = proto.Bool(false)
+			result.Errstr = proto.String(err.Error())
+		}
+	}()
+
+	return result, nil
 }
 
 func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream sdc_internal.K8SAudit_StartServer) error {
@@ -47,6 +85,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	for {
 		select {
 		case evt := <- ks.evtsChannel:
+			log.Debugf("Sending K8s Audit Event to agent %s", evt.String())
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
 					evt.String(), err.Error())
@@ -57,7 +96,7 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 		}
 	}
 
-	log.Debugf("Returning from k8s audit Start")
+	log.Debugf("Returning from K8s Audit Server Start")
 
 	return nil
 }
@@ -101,6 +140,7 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			// Create a new record.
 			evt := &sdc_internal.K8SAuditEvent{
+				EvtId: proto.Uint64(k8sEvtID),
 				EvtJson: proto.String(string(jsn[:])),
 				Successful: proto.Bool(true),
 			}
@@ -118,29 +158,10 @@ func (ks *k8sAuditServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func Register(grpcServer *grpc.Server) error {
 
-	ks := &k8sAuditServer{
-	}
+	ks := &k8sAuditServer{}
 	ks.Init()
 
-	r := http.NewServeMux()
-	r.Handle("/k8s_audit", ks)
-
-	var s = &http.Server {
-		Addr: "127.0.0.1:8765",
-		Handler: r,
-		ReadTimeout: time.Second * 10,
-		WriteTimeout: time.Second * 10,
-		MaxHeaderBytes: 1 << 20,
-	}
-
-
 	sdc_internal.RegisterK8SAuditServer(grpcServer, ks)
-
-	go func() {
-		if err := s.ListenAndServe(); err != nil {
-			panic(err)
-		}
-	}()
 
 	return nil
 }

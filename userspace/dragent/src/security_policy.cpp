@@ -226,19 +226,18 @@ void security_policies::set_match_details(match_result &match, sinsp_evt *evt)
 
 void security_policies::set_match_details(match_result &match, json_event *evt)
 {
-	// TODO @lorenzo - k8s specific metrics
-	// if(match.effect() == draiosproto::EFFECT_ACCEPT)
-	// {
-	// 	m_metrics->incr(security_evt_metrics::EVM_MATCH_ACCEPT);
-	// }
-	// else if(match.effect() == draiosproto::EFFECT_DENY)
-	// {
-	// 	m_metrics->incr(security_evt_metrics::EVM_MATCH_DENY);
-	// }
-	// else if(match.effect() == draiosproto::EFFECT_NEXT)
-	// {
-	// 	m_metrics->incr(security_evt_metrics::EVM_MATCH_NEXT);
-	// }
+	if(match.effect() == draiosproto::EFFECT_ACCEPT)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_ACCEPT);
+	}
+	else if(match.effect() == draiosproto::EFFECT_DENY)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_DENY);
+	}
+	else if(match.effect() == draiosproto::EFFECT_NEXT)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_NEXT);
+	}
 
 	match.detail()->mutable_output_details()->set_output_type(match.policies_type());
 	if(match.policies_subtype() != draiosproto::PSTYPE_NOSUBTYPE)
@@ -486,8 +485,7 @@ security_policies::match_result *falco_security_policies::match_event(json_event
 
 			if(!res)
 			{
-				// TODO @lorenzo - k8s specific metrics
-				// m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
+				m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
 			}
 			else
 			{

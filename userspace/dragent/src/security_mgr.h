@@ -93,6 +93,7 @@ public:
 	void refresh_compliance_tasks();
 	void stop_compliance_tasks();
 
+	void load_k8s_audit_server();
 	void start_k8s_audit_server_tasks();
 	void stop_k8s_audit_tasks();
 
@@ -334,6 +335,8 @@ private:
 	bool m_compliance_load_in_progress;
 	bool m_should_refresh_compliance_tasks;
 	bool m_k8s_audit_server_started;
+	bool m_k8s_audit_server_loaded;
+	bool m_k8s_audit_server_load_in_progress;
 
 	bool m_initialized;
 	sinsp* m_inspector;
@@ -565,9 +568,11 @@ private:
 	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)> m_grpc_run_tasks;
 
 	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_start_conn;
+	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_load_conn;
 
 	std::unique_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
 	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
 	std::unique_ptr<streaming_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStart)> m_k8s_audit_server_start;
+	std::unique_ptr<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)> m_k8s_audit_server_load;
 };
 #endif // CYGWING_AGENT

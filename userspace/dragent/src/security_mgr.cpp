@@ -31,6 +31,8 @@ security_mgr::security_mgr(const string& install_root)
 	  m_compliance_load_in_progress(false),
 	  m_should_refresh_compliance_tasks(false),
 	  m_k8s_audit_server_started(false),
+	  m_k8s_audit_server_loaded(false),
+	  m_k8s_audit_server_load_in_progress(false),
 	  m_initialized(false),
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
@@ -54,7 +56,10 @@ security_mgr::security_mgr(const string& install_root)
 security_mgr::~security_mgr()
 {
 	stop_compliance_tasks();
-	stop_k8s_audit_tasks();
+	if (m_configuration->m_k8s_audit_server_enabled)
+	{
+	    stop_k8s_audit_tasks();
+	}
 }
 
 void security_mgr::init(sinsp *inspector,
@@ -536,14 +541,22 @@ void security_mgr::process_event(gen_event *evt)
 			// Reset to empty message
 			m_compliance_run = draiosproto::comp_run();
 		}
-		if (!m_k8s_audit_server_started)
+		if (m_configuration->m_k8s_audit_server_enabled)
 		{
-			start_k8s_audit_server_tasks();
-		}
+			if(m_k8s_audit_server_load)
+			{
+				m_k8s_audit_server_load->process_queue();
+			}
 
-		if(m_k8s_audit_server_start)
-		{
-			m_k8s_audit_server_start->process_queue();
+			if(m_k8s_audit_server_start)
+			{
+				m_k8s_audit_server_start->process_queue();
+			}
+
+			if(!m_k8s_audit_server_loaded && !m_k8s_audit_server_load_in_progress)
+			{
+				load_k8s_audit_server();
+			}
 		}
 
 	}, ts_ns);
@@ -1296,6 +1309,36 @@ std::shared_ptr<security_mgr::security_policies_group> security_mgr::get_policie
 };
 
 
+void security_mgr::load_k8s_audit_server()
+{
+	sdc_internal::k8s_audit_server_load load;
+	load.set_k8s_audit_server_url(m_configuration->k8s_audit_server_url());
+	load.set_k8s_audit_server_port(m_configuration->k8s_audit_server_port());
+
+	auto callback = [this](bool successful, sdc_internal::k8s_audit_server_load_result &lresult)
+	{
+		m_k8s_audit_server_load_in_progress = false;
+		if(successful)
+		{
+			g_log->debug("Response from K8s Audit Server load: lresult=" +
+				     lresult.DebugString());
+			m_k8s_audit_server_loaded = true;
+			start_k8s_audit_server_tasks();
+		}
+		else
+		{
+			g_log->error("Could not load K8s Audit Server.");
+		}
+	};
+
+	g_log->debug(string("Sending load message to K8s Audit Server: ") + load.DebugString());
+	m_k8s_audit_server_load_in_progress = true;
+
+	m_k8s_audit_server_load_conn = grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
+	m_k8s_audit_server_load = make_unique<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)>(m_k8s_audit_server_load_conn);
+	m_k8s_audit_server_load->do_rpc(load, callback);
+}
+
 void security_mgr::start_k8s_audit_server_tasks()
 {
 	g_log->debug("Starting K8s Audit Server");
@@ -1310,29 +1353,23 @@ void security_mgr::start_k8s_audit_server_tasks()
 		{
 			if(status == streaming_grpc::ERROR)
 			{
-				// TODO * decide the policy in case of error: either raise an exception or re-try
 				g_log->error("Could not start K8s Audit Server tasks, trying again in " +
-					     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
+					     NumberFormatter::format(m_configuration->m_k8s_audit_server_refresh_interval / 1000000000) +
 					     " seconds");
-				m_k8s_audit_server_started = false;
 			}
 			else if(status == streaming_grpc::SHUTDOWN)
 			{
-				// TODO *
 				g_log->error("K8s Audit Server shut down connection, trying again in " +
-					     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
+					     NumberFormatter::format(m_configuration->m_k8s_audit_server_refresh_interval / 1000000000) +
 					     " seconds");
-				m_k8s_audit_server_started = false;
 			}
 			else
 			{
 				if(!jevt.successful())
 				{
-					// TODO *
 					g_log->error(string("Could not start K8s Audit Server tasks (") + jevt.errstr()+ "), trying again in " +
-						     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
+						     NumberFormatter::format(m_configuration->m_k8s_audit_server_refresh_interval / 1000000000) +
 						     " seconds");
-					m_k8s_audit_server_started = false;
 				} else {
 					std::list<json_event> jevts;
 					nlohmann::json j;
@@ -1347,12 +1384,12 @@ void security_mgr::start_k8s_audit_server_tasks()
 					}
 					if(!m_falco_engine->parse_k8s_audit_json(j, jevts))
 					{
-						g_log->error(string("Data not recognized as a k8s audit event"));
+						g_log->error(string("Data not recognized as a K8s Audit Event"));
 						return false;
 					}
 					for(auto jev : jevts)
 					{
-						// TODO instead of calling directly process_event, enqueue into a list and have a worker thread processing the list
+						// instead of calling directly process_event, it might be worth enqueue into a list and have a worker thread processing the list
 						process_event(&jev);
 					}
 					return true;
@@ -1361,7 +1398,7 @@ void security_mgr::start_k8s_audit_server_tasks()
 			return false;
 		};
 
-	m_k8s_audit_server_started = true;
+	// m_k8s_audit_server_started = true;
 
 	g_log->debug(string("Sending start message to K8s Audit Server: ") + start.DebugString());
 
@@ -1380,12 +1417,12 @@ void security_mgr::stop_k8s_audit_tasks()
 		// failures at debug level.
 		if(!successful)
 		{
-			g_log->debug("K8s audit server Stop() call was not successful");
+			g_log->debug("K8s Audit Server Stop() call was not successful");
 		}
 
 		if(!res.successful())
 		{
-			g_log->debug("K8s audit server Stop() call returned error " + res.errstr());
+			g_log->debug("K8s Audit Server Stop() call returned error " + res.errstr());
 		}
 
 		stopped = true;
@@ -1393,9 +1430,9 @@ void security_mgr::stop_k8s_audit_tasks()
 
 	sdc_internal::k8s_audit_server_stop stop;
 
-	shared_ptr<sdc_internal::K8sAudit::Stub> grpc_stop_conn =
+	shared_ptr<sdc_internal::K8sAudit::Stub> k8s_audit_stop_conn =
 		grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
-	unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStop) grpc_stop(grpc_stop_conn);
+	unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStop) grpc_stop(k8s_audit_stop_conn);
 
 	grpc_stop.do_rpc(stop, callback);
 
@@ -1411,7 +1448,7 @@ void security_mgr::stop_k8s_audit_tasks()
 		}
 	}
 
-        g_log->error("Did not receive response to K8s audit Stop() call within 10 seconds");
+        g_log->error("Did not receive response to K8s Audit Stop() call within 10 seconds");
 }
 
 #endif // CYGWING_AGENT
