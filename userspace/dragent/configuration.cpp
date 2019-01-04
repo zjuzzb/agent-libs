@@ -673,6 +673,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_container_filter.reset(new proc_filter::conf("container_filter"));
 	m_container_filter->set_enabled(m_config->get_scalar<bool>("use_container_filter", false));
 	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("container_filter"));
+	m_smart_container_reporting = m_config->get_scalar<bool>("smart_container_reporting", false);
 
 	m_dragent_cpu_profile_enabled = m_config->get_scalar<bool>("dragent_cpu_profile_enabled", false);
 	m_dragent_profile_time_seconds = m_config->get_scalar<int32_t>("dragent_profile_time_seconds", 120);

@@ -203,6 +203,8 @@ public:
 	string& get_log_dir();
 
 	void set_container_filter(shared_ptr<proc_filter::conf>);
+	void set_smart_container_reporting(bool);
+
 	void set_dragent_cpu_profile_enabled(bool enabled);
 	void set_dragent_profile_time_seconds(uint32_t seconds);
 	void set_dragent_total_profiles(uint32_t count);
@@ -280,6 +282,7 @@ private:
 	unsigned m_statsd_limit;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
+	bool m_smart_container_reporting = false;
 
 	string m_log_dir;
 

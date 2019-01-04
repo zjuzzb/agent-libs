@@ -790,6 +790,7 @@ public:
 	std::vector<double> m_ignored_percentiles;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
+	bool m_smart_container_reporting = false;
 
 	bool m_dragent_cpu_profile_enabled;
 	int32_t m_dragent_profile_time_seconds;

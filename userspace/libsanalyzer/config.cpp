@@ -954,6 +954,11 @@ void sinsp_configuration::set_container_filter(shared_ptr<proc_filter::conf> con
 	m_container_filter = conf;
 }
 
+void sinsp_configuration::set_smart_container_reporting(bool enabled)
+{
+	m_smart_container_reporting = enabled;
+}
+
 void sinsp_configuration::set_dragent_cpu_profile_enabled(bool enabled)
 {
 	m_dragent_cpu_profile_enabled = enabled;

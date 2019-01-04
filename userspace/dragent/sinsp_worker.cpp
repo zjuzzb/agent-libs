@@ -249,6 +249,7 @@ void sinsp_worker::init()
 	m_analyzer->set_percentiles();
 
 	m_analyzer->get_configuration()->set_container_filter(m_configuration->m_container_filter);
+	m_analyzer->get_configuration()->set_smart_container_reporting(m_configuration->m_smart_container_reporting);
 
 	// configure CPU tracing
 	m_analyzer->get_configuration()->set_dragent_cpu_profile_enabled(m_configuration->m_dragent_cpu_profile_enabled);
