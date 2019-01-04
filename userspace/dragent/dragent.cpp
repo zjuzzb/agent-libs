@@ -484,7 +484,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 			this->m_sdchecks_pipes->attach_child();
 
 			setenv("LD_LIBRARY_PATH", (m_configuration.m_root_dir + "/lib").c_str(), 1);
-			execl(this->m_configuration.m_python_binary.c_str(), "python", (m_configuration.m_root_dir + "/bin/sdchecks").c_str(), NULL);
+			const char *python = this->m_configuration.m_python_binary.c_str();
+			execl(python, python, (m_configuration.m_root_dir + "/bin/sdchecks").c_str(), NULL);
 
 			return (EXIT_FAILURE);
 		});
