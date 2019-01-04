@@ -203,7 +203,9 @@ public:
 	string& get_log_dir();
 
 	void set_container_filter(shared_ptr<proc_filter::conf>);
+
 	void set_smart_container_reporting(bool);
+	bool get_smart_container_reporting() const;
 
 	void set_dragent_cpu_profile_enabled(bool enabled);
 	void set_dragent_profile_time_seconds(uint32_t seconds);

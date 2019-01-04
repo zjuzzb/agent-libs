@@ -1,8 +1,12 @@
 #pragma once
 
-#include <analyzer.h>
+#include "metrics.h"
+#include <delays.h>
+#include "protostate.h"
+
 class infrastructure_state;
 class sinsp_connection_aggregator;
+class sinsp_configuration;
 class analyzer_container_state
 {
 public:
@@ -37,6 +41,8 @@ public:
 	int64_t m_last_cpu_time;
 	string m_last_cpuacct_cgroup;
 
+	uint64_t m_reported_count;
+
 	void clear();
 
 	static const uint64_t FILTER_STATE_CACHE_TIME =	10 * ONE_SECOND_IN_NS;
@@ -47,6 +53,13 @@ public:
 	} m_filter_state;
 	uint64_t	m_filter_state_ts;
 
-	bool report_container(const sinsp_configuration *config, const sinsp_container_info *cinfo,
-		const infrastructure_state *infra_state, uint64_t ts);
+	bool m_matched_generically; // indicates whether a FILT_INCL state was set due to
+				    // a match with a specific rule, or a more generic "all"
+				    // rule.
+
+	bool should_report_container(const sinsp_configuration *config,
+				     const sinsp_container_info *cinfo,
+				     const infrastructure_state *infra_state,
+				     uint64_t ts,
+				     bool& optional);
 };

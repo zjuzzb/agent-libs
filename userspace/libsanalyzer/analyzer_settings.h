@@ -1,5 +1,8 @@
 #pragma once
 
+#include "tuples.h"
+#include "transactinfo.h" // for sinsp_partial_transaction/sinsp_fdinfo_t
+
 //
 // The analyzer emit interval
 //
@@ -200,9 +203,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 //
 // FD class customized with the storage we need
 //
-#include "tuples.h"
-#include "transactinfo.h"
-class sinsp_partial_transaction;
 template<class T> class sinsp_fdinfo;
 typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 

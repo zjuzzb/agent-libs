@@ -190,12 +190,23 @@ std::vector<std::string> get_str_tokens(const std::string &str)
 }
 
 #ifndef CYGWING_AGENT
-bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
-	const sinsp_container_info *container, const infrastructure_state &infra_state,
-	std::function<bool (const filter_rule &rule)> on_match) const
+bool conf::match(const sinsp_threadinfo *tinfo,
+		 const sinsp_threadinfo *mtinfo,
+		 const sinsp_container_info *container,
+		 const infrastructure_state &infra_state,
+		 std::function<bool (const filter_rule &rule)> on_match,
+		 bool* generic_match) const
+
 {
+	bool dummy_generic_match; // dummy value so we don't need null checks everywhere
+	if (!generic_match) {
+		generic_match = &dummy_generic_match;
+	}
+
 	if (!m_enabled)
+	{
 		return false;
+	}
 
 	infrastructure_state::uid_t c_uid;
 	if (container)
@@ -206,11 +217,23 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 	std::ostringstream reason;
 	int rn = 0;
 
+	// rough overview: There are rules, and each rule is comprised of conditions.
+	// A rule is considered matched if all of its conditions are met. The first rule
+	// which is matched breaks out of the loop, and no further rules are considered.
+	//
+	// A rule is considered generic if all conditions of that rule are param_type::all
 	for (const auto& rule: m_rules)
 	{
 		bool matchrule = true;
+		*generic_match = true;
 		for (const auto& cond: rule.m_cond)
 		{
+			// in cases with multiple conditions, it's only generic
+			// if there is only a single condition and it's all
+			if (cond.m_param_type != filter_condition::param_type::all) {
+				*generic_match = false;
+			}
+
 			// If a rule has multiple conditions, they must all be met.
 			bool matchcond = true;
 			switch(cond.m_param_type) {
@@ -219,22 +242,22 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				reason << "all";
 				break;
 			case filter_condition::param_type::port:
-			{
-				if (tinfo == nullptr) {
-					matchcond = false;
+				{
+					if (tinfo == nullptr) {
+						matchcond = false;
+						break;
+					}
+
+					auto start_ports = tinfo->m_ainfo->listening_ports();
+					auto ports = filter_ports(start_ports, cond.m_port_match);
+					if (!ports.empty()) {
+						reason << ports.size() << " ports match: " << *(ports.begin());
+					} else {
+						matchcond = false;
+					}
+
 					break;
 				}
-
-				auto start_ports = tinfo->m_ainfo->listening_ports();
-				auto ports = filter_ports(start_ports, cond.m_port_match);
-				if (!ports.empty()) {
-					reason << ports.size() << " ports match: " << *(ports.begin());
-				} else {
-					matchcond = false;
-				}
-
-				break;
-			}
 			case filter_condition::param_type::process_name:
 				if (tinfo == nullptr) {
 					matchcond = false;
@@ -246,29 +269,29 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				}
 				break;
 			case filter_condition::param_type::process_cmdline:
-			{
-				if (tinfo == nullptr) {
-					matchcond = false;
+				{
+					if (tinfo == nullptr) {
+						matchcond = false;
+						break;
+					}
+
+					// Should this match include exe and arguments?
+					if ((tinfo->m_exe.find(cond.m_pattern) == string::npos) &&
+					    find_if(tinfo->m_args.begin(), tinfo->m_args.end(),
+						    [&cond](const string& arg)
+						    {
+						    return !fnmatch(cond.m_pattern.c_str(),
+								    arg.c_str(), FNM_EXTMATCH);
+						    }) == tinfo->m_args.end())
+					{
+						matchcond = false;
+					}
+					if (matchcond) {
+						reason << "arg found: " << cond.m_pattern;
+					}
+
 					break;
 				}
-
-				// Should this match include exe and arguments?
-				if ((tinfo->m_exe.find(cond.m_pattern) == string::npos) &&
-					find_if(tinfo->m_args.begin(), tinfo->m_args.end(),
-							[&cond](const string& arg)
-							{
-								return !fnmatch(cond.m_pattern.c_str(),
-											arg.c_str(), FNM_EXTMATCH);
-							}) == tinfo->m_args.end())
-				{
-					matchcond = false;
-				}
-				if (matchcond) {
-					reason << "arg found: " << cond.m_pattern;
-				}
-
-				break;
-			}
 			case filter_condition::param_type::container_name:
 				if (!container) {
 					matchcond = false;
@@ -290,33 +313,33 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				}
 				break;
 			case filter_condition::param_type::container_label:
-			{
-				const string *lbl = get_cont_label(container, cond.m_param);
-				if(!lbl || fnmatch(cond.m_pattern.c_str(),
-					lbl->c_str(), FNM_EXTMATCH))
 				{
-					matchcond = false;
+					const string *lbl = get_cont_label(container, cond.m_param);
+					if(!lbl || fnmatch(cond.m_pattern.c_str(),
+							   lbl->c_str(), FNM_EXTMATCH))
+					{
+						matchcond = false;
+						break;
+					}
+					matchcond = true;
+					reason << "container.label." << cond.m_param << " = " << *lbl;
 					break;
 				}
-				matchcond = true;
-				reason << "container.label." << cond.m_param << " = " << *lbl;
-				break;
-			}
 			case filter_condition::param_type::k8s_annotation:
 			case filter_condition::param_type::tag:
-			{
-				string val;
-				bool found = infra_state.find_tag(c_uid, cond.m_param, val);
-				if(!found || fnmatch(cond.m_pattern.c_str(),
-					val.c_str(), FNM_EXTMATCH))
 				{
-					matchcond = false;
+					string val;
+					bool found = infra_state.find_tag(c_uid, cond.m_param, val);
+					if(!found || fnmatch(cond.m_pattern.c_str(),
+							     val.c_str(), FNM_EXTMATCH))
+					{
+						matchcond = false;
+						break;
+					}
+					matchcond = true;
+					reason << cond.m_param << " = " << val;
 					break;
 				}
-				matchcond = true;
-				reason << cond.m_param << " = " << val;
-				break;
-			}
 			case filter_condition::param_type::app_check_match:
 				if (mtinfo == nullptr) {
 					matchcond = false;
@@ -330,8 +353,8 @@ bool conf::match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
 				break;
 			default:
 				g_logger.format(sinsp_logger::SEV_INFO,
-					"%s: Condition for param_type %d not yet implemented",
-					m_context.c_str(), cond.m_param_type);
+						"%s: Condition for param_type %d not yet implemented",
+						m_context.c_str(), cond.m_param_type);
 				matchcond = false;
 				break;
 			}

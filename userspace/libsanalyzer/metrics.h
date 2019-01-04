@@ -1,5 +1,12 @@
 #pragma once
 
+#include <memory>
+#include <event.h>
+#include <analyzer_settings.h>
+#include "scap.h"
+#include "sinsp.h"
+#include "assert.h"
+
 #ifdef HAS_ANALYZER
 
 //

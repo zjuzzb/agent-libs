@@ -5,6 +5,8 @@
 #include <stack>
 #include <stdexcept>
 
+#include "sinsp_public.h" // for SINSP_PUBLIC
+
 #ifdef CYGWING_AGENT
 #define SINSP_PUBLIC
 #endif

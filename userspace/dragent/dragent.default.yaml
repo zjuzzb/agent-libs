@@ -1212,8 +1212,7 @@ container_filter:
   - include:
         all
 
-# set to true to give filtered contaienrs and older containers priority
+# set to true to give filtered containers and older containers priority
 smart_container_reporting: false
 containers:
   limit: 200
-container_reporting_limit: 250

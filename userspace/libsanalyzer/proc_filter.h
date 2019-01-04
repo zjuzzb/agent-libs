@@ -97,9 +97,12 @@ public:
 	const std::vector<filter_rule>& rules() const { return m_rules; }
 
 #ifndef CYGWING_AGENT
-	bool match(const sinsp_threadinfo *tinfo, const sinsp_threadinfo *mtinfo,
-	           const sinsp_container_info *container, const infrastructure_state &is,
-			   std::function<bool (const filter_rule &rule)> on_match = nullptr) const;
+	bool match(const sinsp_threadinfo *tinfo,
+		   const sinsp_threadinfo *mtinfo,
+	           const sinsp_container_info *container,
+		   const infrastructure_state &is,
+		   std::function<bool (const filter_rule &rule)> on_match = nullptr,
+		   bool* generic_match = NULL) const;
 
 	// Calls callback function for all potential annotations
 	// Used to make sure annotations will be available in infrastructure_state
@@ -136,7 +139,10 @@ public:
 #ifndef CYGWING_AGENT
 	bool match(const sinsp_container_info *container, const infrastructure_state &is) const
 	{
-		return base::match(nullptr, nullptr, container, is);
+		return base::match(nullptr,
+				   nullptr,
+				   container,
+				   is);
 	}
 #endif
 

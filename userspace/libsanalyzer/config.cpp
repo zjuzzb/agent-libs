@@ -959,6 +959,11 @@ void sinsp_configuration::set_smart_container_reporting(bool enabled)
 	m_smart_container_reporting = enabled;
 }
 
+bool sinsp_configuration::get_smart_container_reporting() const
+{
+	return m_smart_container_reporting;
+}
+
 void sinsp_configuration::set_dragent_cpu_profile_enabled(bool enabled)
 {
 	m_dragent_cpu_profile_enabled = enabled;

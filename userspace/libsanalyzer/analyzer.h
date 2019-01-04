@@ -289,7 +289,7 @@ public:
 	//
 	// Processing entry point
 	//
-	void process_event(sinsp_evt* evt, flush_flags flshflags);
+	void process_event(sinsp_evt* evt, flush_flags flushflags);
 
 	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat,
@@ -446,6 +446,16 @@ public:
 #endif	
 #endif // _WIN32
 
+	inline const sinsp_threadinfo* get_agent_thread()
+	{
+		return m_inspector->get_thread(m_inspector->m_sysdig_pid);
+	}
+
+	inline sinsp_container_info* get_container(const string& container_id)
+	{
+		return m_inspector->m_container_manager.get_container(container_id);
+	}
+
 	void set_containers_limit(const uint32_t value)
 	{
 		m_containers_limit = std::min(value, CONTAINERS_HARD_LIMIT);
@@ -533,9 +543,6 @@ public:
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
 
-	// Returns whether or not to include a container in reports sent to backend
-	bool report_container(sinsp_container_info *cinfo);
-
 #ifndef CYGWING_AGENT
 	void init_k8s_limits();
 #endif
@@ -586,7 +593,7 @@ VISIBILITY_PRIVATE
 	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
 	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
-			    bool is_eof, sinsp_analyzer::flush_flags flshflags,
+			    bool is_eof, sinsp_analyzer::flush_flags flushflags,
 			    const tracer_emitter &f_trc);
 	void emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent);
 	void flush_processes();
@@ -633,10 +640,37 @@ VISIBILITY_PRIVATE
 	void emit_docker_events();
 	void emit_top_files();
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
-	vector<string> emit_containers(const progtable_by_container_t& active_containers, sinsp_analyzer::flush_flags flshflags);
-	void emit_container(const string &container_id, unsigned *statsd_limit, uint64_t total_cpu_shares, sinsp_threadinfo* tinfo, sinsp_analyzer::flush_flags flshflags);
-	void tune_drop_mode(flush_flags flshflags, double threshold_metric);
-	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flshflags);
+
+	void update_percentile_data_serialization(const progtable_by_container_t&);
+	void gather_k8s_infrastructure_state(uint32_t flushflags,
+					     vector<string>& emitted_containers);
+	void clean_containers(const progtable_by_container_t&);
+
+	// deprecated in favor of smart container filtering
+	vector<string> emit_containers_deprecated(const progtable_by_container_t& active_containers,
+				       sinsp_analyzer::flush_flags flushflags);
+
+
+	// found_emittable_container is called on all containers which are eligible to be emitted,
+	// regardless of whether they actually ARE emitted. It is guaranteed to be
+	// called before emit_container (if emit_container is called)
+	static void found_emittable_containers(sinsp_analyzer& m_analyzer,
+					       const vector<string>& containers,
+					       const progtable_by_container_t& progtable_by_container);
+
+	// The container_emitter class is responsible for sorting and deciding which containers
+	// to emit. It makes callbacks to this when it has one that needs to be reported.
+	// The static method here simply invokves the member function
+	//
+	// emit_container is called when a container is to be emitted
+        void emit_container(const string &container_id,
+			    unsigned *statsd_limit,
+			    uint64_t total_cpu_shares,
+			    sinsp_threadinfo* tinfo, 
+			    sinsp_analyzer::flush_flags flushflags);
+
+	void tune_drop_mode(flush_flags flushflags, double threshold_metric);
+	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flushflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();
@@ -998,6 +1032,12 @@ VISIBILITY_PRIVATE
 	friend class sinsp_analyzer_parsers;
 	friend class k8s_ca_handler;
 	friend class sinsp_baseliner;
+
+	// in a perfect world, only container_emitter<sinsp_analyzer> would be a friend,
+	// but that requires the instantiation of that template, which means we need
+	// to include the .h/.hh in this header, which means everybody and their mother
+	// needs to build it. Being a bit more lenient here avoids that
+	template <typename T, typename S> friend class container_emitter;
 };
 
 #endif // HAS_ANALYZER
