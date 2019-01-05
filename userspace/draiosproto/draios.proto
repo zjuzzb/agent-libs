@@ -1457,9 +1457,38 @@ message falco_rules_contents {
     repeated string contents = 1;
 }
 
+message falco_rules_variant {
+    optional uint64 required_engine_version = 1;
+    optional string content = 2;
+}
+
+message falco_rules_file {
+    optional string filename = 1;
+    repeated falco_rules_variant variants = 2;
+}
+
+message falco_rules_files {
+    // Not really needed by the agent, but might be used for logging.
+    optional string tag = 1;
+    repeated falco_rules_file files = 2;
+}
+
+message falco_rules_group {
+    optional falco_rules_files default_files = 1;
+    optional falco_rules_files custom_files = 2;
+}
+
 message policies {
     repeated policy policy_list = 1;
+
+    // Old format, which supports only a single system and single user
+    // rules file, with no versioning.
     optional falco_rules_contents falco_rules = 2;
+
+    // New format, which supports a set of system rules files and a
+    // set of user rules files, with each file having multiple
+    // variants for different falco engine versions.
+    optional falco_rules_group falco_group = 3;
 }
 
 message falco_event_detail {
