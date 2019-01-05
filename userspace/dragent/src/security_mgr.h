@@ -286,6 +286,8 @@ private:
 
 	void load_policy(const security_policy &spolicy, std::list<std::string> &ids);
 
+	bool load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr);
+
 	bool load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);
 
 	bool event_qualifies(sinsp_evt *evt);

@@ -167,6 +167,57 @@ void security_mgr::load_policy(const security_policy &spolicy, std::list<std::st
 	}
 }
 
+bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr)
+{
+	bool verbose = false;
+	bool all_events = false;
+
+	for(auto &file : files.files())
+	{
+		// Find the variant that has the highest required
+		// engine version that is compatible with our engine
+		// version.
+		int best_variant = -1;
+		uint32_t best_engine_version = 0;
+
+		for(int i=0; i < file.variants_size(); i++)
+		{
+			auto &variant = file.variants(i);
+
+			if(variant.required_engine_version() <= m_falco_engine->engine_version() &&
+			   ((variant.required_engine_version() > best_engine_version) ||
+			    (best_variant == -1)))
+			{
+				best_variant = i;
+				best_engine_version=variant.required_engine_version();
+			}
+		}
+
+		if(best_variant == -1)
+		{
+			g_log->information("Could not find any compatible variant for falco rules file " + file.filename() + ", skipping");
+		}
+		else
+		{
+			try {
+				g_log->information("Loading falco rules content tag=" + files.tag() +
+					     " filename=" + file.filename() +
+					     " required_engine_version=" + to_string(best_engine_version));
+				m_falco_engine->load_rules(file.variants(best_variant).content(),
+							   verbose, all_events);
+			}
+			catch (falco_exception &e)
+			{
+				errstr = e.what();
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+
 bool security_mgr::load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr)
 {
 	Poco::ScopedWriteRWLock lck(m_policies_lock);
@@ -195,7 +246,7 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		// There must be falco rules content if there are any falco policies
 		if(policy.has_falco_details() && policy.enabled())
 		{
-			if(!policies.has_falco_rules())
+			if(!policies.has_falco_rules() && !policies.has_falco_group())
 			{
 				errstr = "One or more falco policies, but no falco ruleset";
 				return false;
@@ -213,22 +264,63 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 
 	// Load all falco rules files into the engine. We'll selectively
 	// enable them based on the contents of the policies.
+
 	if(policies.has_falco_rules())
 	{
 		bool verbose = false;
 		bool all_events = false;
 
-		for(auto &content : policies.falco_rules().contents())
+		// Only load the first entry (system rules aka
+		// sysdig-provided one) in content if there is no
+		// falco_group.default_files.
+		if(!(policies.has_falco_group() && policies.falco_group().has_default_files()) &&
+		   policies.falco_rules().contents_size() > 0)
 		{
-			g_log->debug("Loading falco rules content: " + content);
-
+			const std::string &system_rules = policies.falco_rules().contents(0);
 			try {
-				g_log->debug("Loading Falco Rules Content: " + content);
-				m_falco_engine->load_rules(content, verbose, all_events);
+				g_log->information("Loading System Falco Rules Content: " + system_rules);
+				m_falco_engine->load_rules(system_rules, verbose, all_events);
 			}
 			catch (falco_exception &e)
 			{
 				errstr = e.what();
+				return false;
+			}
+		}
+
+		// Only load the second entry (user rules aka
+		// customer-provided one) in content if there is no
+		// falco_group.custom_files.
+		if(!(policies.has_falco_group() && policies.falco_group().has_custom_files()) &&
+		   policies.falco_rules().contents_size() > 1)
+		{
+			const std::string &user_rules = policies.falco_rules().contents(1);
+			try {
+				g_log->debug("Loading User Falco Rules Content: " + user_rules);
+				m_falco_engine->load_rules(user_rules, verbose, all_events);
+			}
+			catch (falco_exception &e)
+			{
+				errstr = e.what();
+				return false;
+			}
+		}
+	}
+
+	if(policies.has_falco_group())
+	{
+		if(policies.falco_group().has_default_files())
+		{
+			if(!load_falco_rules_files(policies.falco_group().default_files(), errstr))
+			{
+				return false;
+			}
+		}
+
+		if(policies.falco_group().has_custom_files())
+		{
+			if (!load_falco_rules_files(policies.falco_group().custom_files(), errstr))
+			{
 				return false;
 			}
 		}
