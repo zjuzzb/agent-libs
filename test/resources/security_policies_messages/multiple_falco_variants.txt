@@ -1,0 +1,35 @@
+policy_list {
+  id: 1
+  name: "Reading sensitive file"
+  falco_details {
+    rule_filter {
+      name: "read_sensitive_file"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: false
+}
+falco_group {
+  default_files {
+    tag: "0.1.1test"
+    files {
+      filename: "falco_rules.yaml"
+      variants {
+        required_engine_version: 1
+	content: "- required_engine_version: 2\n- rule: read_sensitive_file\n  desc: some desc\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-1.txt)\n  output: v1 output\n  priority: WARNING\n"
+      }
+      variants {
+        required_engine_version: 2
+	content: "- required_engine_version: 2\n- rule: read_sensitive_file\n  desc: some desc\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-2.txt)\n  output: v2 output\n  priority: WARNING\n"
+      }
+      variants {
+        required_engine_version: 999999
+	content: "- required_engine_version: 999999\n- rule: read_sensitive_file\n  desc: some desc\n  condition: proc.name in (tests,memcheck-amd64-) and evt.type in (open, openat) and evt.is_open_read=true and evt.arg.name in (/tmp/sample-sensitive-file-1.txt)\n  output: v999999 output\n  priority: WARNING\n"
+      }
+    }
+  }
+  custom_files {
+  }
+}

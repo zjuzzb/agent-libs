@@ -186,8 +186,8 @@ protected:
 		m_configuration.m_security_enabled = true;
 		m_configuration.m_max_sysdig_captures = 10;
 		m_configuration.m_autodrop_enabled = false;
-		m_configuration.m_security_policies_file = "./resources/security_policies_message.txt";
-		m_configuration.m_security_baselines_file = "./resources/security_baselines_message.txt";
+		m_configuration.m_security_policies_file = "./resources/security_policies_messages/all_policy_types.txt";
+		m_configuration.m_security_baselines_file = "./resources/security_policies_messages/baseline.txt";
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 		if(delayed_reports)
@@ -521,6 +521,36 @@ protected:
 		ASSERT_TRUE((msg != NULL));
 		ASSERT_EQ(mtype, draiosproto::message_type::POLICY_EVENTS);
 		pe.reset((draiosproto::policy_events *) (msg.release()));
+	}
+
+	// Helper used by several test cases that have a similar test setup/validation.
+	void multiple_falco_files_test(std::string policies_file, std::string expected_output)
+	{
+		string errstr;
+		ASSERT_TRUE(m_mgr.load_policies_file("./resources/security_policies_messages/multiple_falco_variants.txt", errstr));
+		ASSERT_STREQ(errstr.c_str(), "");
+
+		int fd = open("/tmp/sample-sensitive-file-2.txt", O_RDONLY);
+		close(fd);
+
+		// Not using check_policy_events for this, as it is checking keys only
+		unique_ptr<draiosproto::policy_events> pe;
+		get_policy_evts_msg(pe);
+		ASSERT_EQ(pe->events_size(), 1);
+		ASSERT_EQ(pe->events(0).policy_id(), 1u);
+		ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 3);
+		ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
+		ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
+		ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
+
+		string expected_output = "v2 output";
+		ASSERT_EQ(pe->events(0).event_details().output_details().output(), expected_output);
+
+		std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+								     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+								     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+
+		check_expected_internal_metrics(metrics);
 	}
 
 	protocol_queue *m_queue;
@@ -946,6 +976,41 @@ TEST_F(security_policies_test, falco_fqdn)
 							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_test, multiple_falco_variants)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_variants.txt", "v2 output");
+}
+
+TEST_F(security_policies_test, multiple_falco_files)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files.txt", "some output");
+}
+
+TEST_F(security_policies_test, multiple_falco_files_override)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_override.txt", "some output");
+}
+
+TEST_F(security_policies_test, custom_falco_files)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files.txt", "some output");
+}
+
+TEST_F(security_policies_test, custom_falco_files_override)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_override.txt", "some output");
+}
+
+TEST_F(security_policies_test, falco_old_rules_message)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/falco_old_rules_message.txt", "some old output");
+}
+
+TEST_F(security_policies_test, falco_old_new_rules_message)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/falco_old_new_rules_message.txt", "some new output");
 }
 
 TEST_F(security_policies_test, baseline_only)

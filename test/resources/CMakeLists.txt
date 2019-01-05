@@ -43,14 +43,6 @@ file(COPY fake_backend.cert
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_policies_message.txt
-	${CMAKE_CURRENT_BINARY_DIR}/security_policies_message.txt
-	COPYONLY)
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_baselines_message.txt
-	${CMAKE_CURRENT_BINARY_DIR}/security_baselines_message.txt
-	COPYONLY)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ipv6_traces/single_ipv6_conn.scap
 	${CMAKE_CURRENT_BINARY_DIR}/ipv6_traces/single_ipv6_conn.scap
 	COPYONLY)
@@ -73,6 +65,7 @@ install(TARGETS chname
 
 add_subdirectory(modules_dir)
 add_subdirectory(health_dockerfiles)
+add_subdirectory(security_policies_messages)
 
 execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 
