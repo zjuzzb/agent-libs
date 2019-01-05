@@ -157,7 +157,7 @@ private:
 		for (auto i = it; count < limit; ++i, ++count)
 		{
 			// caller responsible for ensuring we only emit containers once
-			ASSERT(m_emitted_containers.find(i) == m_emitted_containers.end());
+			ASSERT(m_emitted_containers.find(*i) == m_emitted_containers.end());
 
 			m_t.emit_container(*i,
 					   &m_statsd_limit,

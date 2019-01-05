@@ -78,9 +78,9 @@ bool watchdog_runnable::is_timed_out(const std::string& name,
 
 	DBG_LOG_ERROR("watchdog: %s, last activity %" PRId64
 	              " ms ago, timeout %" PRIu64 " ms",
-	              m_name.c_str(),
+	              name.c_str(),
 	              age_ms,
-	              static_cast<uint64_t>(m_timeout_s * 1000ULL));
+		      timeout_ms);
 
 	if(timeout_ms == NO_TIMEOUT)
 	{
