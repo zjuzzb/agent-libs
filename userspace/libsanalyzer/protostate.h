@@ -36,11 +36,12 @@ public:
 	sinsp_protocol_parser();
 	virtual ~sinsp_protocol_parser();
 	virtual msg_type should_parse(sinsp_fdinfo_t* fdinfo, 
-		sinsp_partial_transaction::direction dir,
-		bool is_switched,
-		char* buf, uint32_t buflen) = 0;
-	virtual bool parse_request(char* buf, uint32_t buflen) = 0;
-	virtual bool parse_response(char* buf, uint32_t buflen) = 0;
+				      sinsp_partial_transaction::direction dir,
+				      bool is_switched,
+				      const char* buf,
+				      uint32_t buflen) = 0;
+	virtual bool parse_request(const char* buf, uint32_t buflen) = 0;
+	virtual bool parse_response(const char* buf, uint32_t buflen) = 0;
 	virtual proto get_type() = 0;
 
 	bool m_is_valid;

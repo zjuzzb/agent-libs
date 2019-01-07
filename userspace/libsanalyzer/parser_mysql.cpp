@@ -39,9 +39,10 @@ sinsp_mysql_parser::proto sinsp_mysql_parser::get_type()
 }
 
 sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t* fdinfo, 
-																 sinsp_partial_transaction::direction dir,
-																 bool is_switched,
-																 char* buf, uint32_t buflen)
+								 sinsp_partial_transaction::direction dir,
+								 bool is_switched,
+								 const char *buf,
+								 uint32_t buflen)
 {
 	if((fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_IN) ||
 		(fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_OUT))
@@ -80,11 +81,11 @@ sinsp_protocol_parser::msg_type sinsp_mysql_parser::should_parse(sinsp_fdinfo_t*
 	return sinsp_protocol_parser::MSG_NONE;
 }
 
-bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
+bool sinsp_mysql_parser::parse_request(const char *buf, uint32_t buflen)
 {
 	if(buflen + m_reassembly_buf.get_size() > 4)
 	{
-		char* rbuf;
+		const char *rbuf;
 		uint32_t rbufsize;
 
 		//
@@ -112,11 +113,11 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 				//
 				// Login packet
 				//
-				char* tbuf = rbuf + MYSQL_OFFSET_OPCODE;
-				char* bufend = rbuf + rbufsize;
+				const char *tbuf = rbuf + MYSQL_OFFSET_OPCODE;
+				const char *bufend = rbuf + rbufsize;
 
 				uint32_t caps = *(uint32_t*)(tbuf);
-				char* user = rbuf + MYSQL_OFFSET_UNAME;
+				const char *user = rbuf + MYSQL_OFFSET_UNAME;
 				tbuf = user + strnlen((char *)user, rbufsize - MYSQL_OFFSET_UNAME) + 1;
 
 				if(tbuf < bufend)
@@ -171,11 +172,11 @@ bool sinsp_mysql_parser::parse_request(char* buf, uint32_t buflen)
 	return true;
 }
 
-bool sinsp_mysql_parser::parse_response(char* buf, uint32_t buflen)
+bool sinsp_mysql_parser::parse_response(const char *buf, uint32_t buflen)
 {
 	if(buflen + m_reassembly_buf.get_size() > 4)
 	{
-		char* rbuf;
+		const char *rbuf;
 		uint32_t rbufsize;
 
 		//

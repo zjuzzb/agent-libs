@@ -40,9 +40,10 @@ sinsp_postgres_parser::proto sinsp_postgres_parser::get_type()
 }
 
 sinsp_protocol_parser::msg_type sinsp_postgres_parser::should_parse(sinsp_fdinfo_t* fdinfo, 
-																 sinsp_partial_transaction::direction dir,
-																 bool is_switched,
-																 char* buf, uint32_t buflen)
+								    sinsp_partial_transaction::direction dir,
+								    bool is_switched,
+								    const char* buf,
+								    uint32_t buflen)
 {
 	if((fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_IN) ||
 		(fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_OUT))
@@ -81,11 +82,11 @@ sinsp_protocol_parser::msg_type sinsp_postgres_parser::should_parse(sinsp_fdinfo
 	return sinsp_protocol_parser::MSG_NONE;
 }
 
-bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
+bool sinsp_postgres_parser::parse_request(const char* buf, uint32_t buflen)
 {
 	if(buflen + m_reassembly_buf.get_size() > 4)
 	{
-		char* rbuf;
+		const char* rbuf;
 		uint32_t rbufsize;
 
 		//
@@ -117,7 +118,7 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 			// |P|size(uint32)|name|query string| ....
 			//
 			uint32_t querylen;
-			char* querypos;
+			const char* querypos;
 			memcpy(&querylen, rbuf+1, sizeof(uint32_t));
 			querylen = MIN(ntohl(querylen),rbufsize) - sizeof(uint32_t);
 
@@ -154,11 +155,11 @@ bool sinsp_postgres_parser::parse_request(char* buf, uint32_t buflen)
 	return true;
 }
 
-bool sinsp_postgres_parser::parse_response(char* buf, uint32_t buflen)
+bool sinsp_postgres_parser::parse_response(const char* buf, uint32_t buflen)
 {
 	if(buflen + m_reassembly_buf.get_size() > 4)
 	{
-		char* rbuf;
+		const char* rbuf;
 //		uint32_t rbufsize;
 
 		//

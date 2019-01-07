@@ -92,9 +92,10 @@ sinsp_mongodb_parser::proto sinsp_mongodb_parser::get_type()
 }
 
 sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_t* fdinfo,
-																 sinsp_partial_transaction::direction dir,
-																 bool is_switched,
-																 char* buf, uint32_t buflen)
+								   sinsp_partial_transaction::direction dir,
+								   bool is_switched,
+								   const char* buf,
+								   uint32_t buflen)
 {
 	if((fdinfo->is_role_server() && dir == sinsp_partial_transaction::DIR_IN) ||
 		(fdinfo->is_role_client() && dir == sinsp_partial_transaction::DIR_OUT))
@@ -133,11 +134,11 @@ sinsp_protocol_parser::msg_type sinsp_mongodb_parser::should_parse(sinsp_fdinfo_
 	return sinsp_protocol_parser::MSG_NONE;
 }
 
-bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
+bool sinsp_mongodb_parser::parse_request(const char* buf, uint32_t buflen)
 {
 	if(buflen + m_reassembly_buf.get_size() > 16)
 	{
-		char* rbuf;
+		const char* rbuf;
 		uint32_t rbuflen;
 
 		//
@@ -165,7 +166,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 			// Extract collection name
 			if (rbuflen > 49)
 			{
-				char* start_collection = rbuf+20;
+				const char* start_collection = rbuf+20;
 				for(unsigned int j = 0; j < rbuflen-20; ++j)
 				{
 					if(*start_collection == '.')
@@ -177,7 +178,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 				}
 				if(*(uint32_t*)(start_collection) == *(uint32_t*)"$cmd")
 				{
-					char * doc=start_collection+5+8;
+					const char * doc=start_collection+5+8;
 					// In this case document is:
 					// |size(int32_t)|0x02|insert|0|size(int32_t)|collection|0|
 					// bytes
@@ -229,7 +230,7 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 			// Extract collection name
 			if (rbuflen >= 20)
 			{
-				char* start_collection = rbuf+20;
+				const char* start_collection = rbuf+20;
 				for(unsigned int j = 0; j < rbuflen-20; ++j)
 				{
 					if(*start_collection == '.')
@@ -264,12 +265,12 @@ bool sinsp_mongodb_parser::parse_request(char* buf, uint32_t buflen)
 	return true;
 }
 
-bool sinsp_mongodb_parser::parse_response(char* buf, uint32_t buflen)
+bool sinsp_mongodb_parser::parse_response(const char* buf, uint32_t buflen)
 {
 
 	if(buflen + m_reassembly_buf.get_size() >= 16)
 	{
-		char* rbuf;
+		const char* rbuf;
 		uint32_t rbuflen;
 
 		//

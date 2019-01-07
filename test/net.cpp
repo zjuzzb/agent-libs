@@ -748,8 +748,8 @@ TEST(sinsp_protostate, test_per_container_distribution)
 			auto transaction = make_unique<sinsp_partial_transaction>();
 			auto http_parser = new sinsp_http_parser();
 			auto url = string("http://test") + to_string(j);
-			http_parser->m_url = const_cast<char*>(url.c_str());
-			http_parser->m_status_code = 200;
+			http_parser->m_result.url = url.c_str();
+			http_parser->m_result.status_code = 200;
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;
@@ -793,8 +793,8 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 			auto transaction = make_unique<sinsp_partial_transaction>();
 			auto http_parser = new sinsp_http_parser();
 			auto url = string("http://test") + to_string(j);
-			http_parser->m_url = const_cast<char*>(url.c_str());
-			http_parser->m_status_code = 200;
+			http_parser->m_result.url = url.c_str();
+			http_parser->m_result.status_code = 200;
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;
@@ -806,8 +806,8 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 		auto transaction = make_unique<sinsp_partial_transaction>();
 		auto http_parser = new sinsp_http_parser();
 		auto url = string("http://test/url/slow");
-		http_parser->m_url = const_cast<char*>(url.c_str());
-		http_parser->m_status_code = 200;
+		http_parser->m_result.url = url.c_str();
+		http_parser->m_result.status_code = 200;
 		http_parser->m_is_valid = true;
 		transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 		transaction->m_protoparser = http_parser;
@@ -821,8 +821,8 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 			auto transaction = make_unique<sinsp_partial_transaction>();
 			auto http_parser = new sinsp_http_parser();
 			auto url = string("http://test/url/topcall");
-			http_parser->m_url = const_cast<char*>(url.c_str());
-			http_parser->m_status_code = 204;
+			http_parser->m_result.url = url.c_str();
+			http_parser->m_result.status_code = 204;
 			http_parser->m_is_valid = true;
 			transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
 			transaction->m_protoparser = http_parser;

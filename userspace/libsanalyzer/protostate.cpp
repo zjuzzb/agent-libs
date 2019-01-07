@@ -27,8 +27,8 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 	if(tr->m_protoparser->m_is_valid)
 	{
 		sinsp_http_parser* pp = (sinsp_http_parser*)tr->m_protoparser;
-		auto url = truncate_str(pp->m_url, truncation_size);
-		bool is_error = ((pp->m_status_code >= 400) && (pp->m_status_code < 600));
+		auto url = truncate_str(pp->result().url, truncation_size);
+		bool is_error = ((pp->result().status_code >= 400) && (pp->result().status_code < 600));
 
 		//
 		// Update the URL table
@@ -58,11 +58,11 @@ inline void sinsp_http_state::update(sinsp_partial_transaction* tr,
 		sinsp_request_details* status_code_entry;
 		if(is_server)
 		{
-			status_code_entry = &(m_server_status_codes[pp->m_status_code]);
+			status_code_entry = &(m_server_status_codes[pp->result().status_code]);
 		}
 		else
 		{
-			status_code_entry = &(m_client_status_codes[pp->m_status_code]);
+			status_code_entry = &(m_client_status_codes[pp->result().status_code]);
 		}
 		status_code_entry->m_ncalls += 1;
 

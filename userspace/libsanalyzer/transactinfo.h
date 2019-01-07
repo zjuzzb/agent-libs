@@ -84,7 +84,7 @@ public:
 		return res;
 	}
 
-	inline char* strcopy(char* data, uint32_t maxsize, OUT uint32_t* copied_size)
+	inline char* strcopy(const char* data, uint32_t maxsize, OUT uint32_t* copied_size)
 	{
 		char* res;
 		uint32_t size = strnlen(data, maxsize);

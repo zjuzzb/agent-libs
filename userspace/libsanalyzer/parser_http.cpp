@@ -17,8 +17,6 @@ sinsp_protocol_parser::~sinsp_protocol_parser()
 {
 }
 
-///////////////////////////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 sinsp_http_parser::sinsp_http_parser()
 {
 	m_req_storage = (char*)m_req_initial_storage;
@@ -46,9 +44,11 @@ sinsp_http_parser::proto sinsp_http_parser::get_type()
 	return sinsp_protocol_parser::PROTO_HTTP;
 }
 
-inline char* sinsp_http_parser::check_and_extract(char* buf, uint32_t buflen,
-												 char* tosearch, uint32_t tosearchlen,
-												 OUT uint32_t* reslen)
+inline const char* sinsp_http_parser::check_and_extract(const char *buf,
+							uint32_t buflen,
+							char *tosearch,
+							uint32_t tosearchlen,
+							OUT uint32_t *reslen)
 {
 	uint32_t k;
 
@@ -105,7 +105,7 @@ inline void sinsp_http_parser::extend_req_buffer_len(uint32_t len)
 	}
 }
 
-inline void sinsp_http_parser::req_assign(char** dest, char* src, uint32_t len)
+inline void sinsp_http_parser::req_assign(const char** dest, const char *src, uint32_t len)
 {
 	extend_req_buffer_len(len + 1);
 	memcpy(m_req_storage + m_req_storage_pos, src, len);
@@ -133,7 +133,7 @@ inline void sinsp_http_parser::extend_resp_buffer_len(uint32_t len)
 	}
 }
 
-inline void sinsp_http_parser::resp_assign(char** dest, char* src, uint32_t len)
+inline void sinsp_http_parser::resp_assign(const char** dest, const char *src, uint32_t len)
 {
 	extend_resp_buffer_len(len + 1);
 	memcpy(m_resp_storage + m_resp_storage_pos, src, len);
@@ -142,16 +142,16 @@ inline void sinsp_http_parser::resp_assign(char** dest, char* src, uint32_t len)
 	m_resp_storage_pos += (len + 1);
 }
 
-bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
+bool sinsp_http_parser::parse_request(const char* buf, uint32_t buflen)
 {
 	uint32_t j;
-	char* str = NULL;
+	const char *str = nullptr;
 	uint32_t strlen;
 	uint32_t n_extracted = 0;
 	m_req_storage_pos = 0;
-	char* host = NULL;
+	const char *host = nullptr;
 	uint32_t hostlen = 0;
-	char* path = NULL;
+	const char *path = nullptr;
 	uint32_t pathlen = 0;
 	m_is_valid = false;
 	m_is_req_valid = false;
@@ -160,13 +160,16 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 
 	for(j = 0; j < buflen; j++)
 	{
+		// end of string
 		if(buf[j] == 0)
 		{
 			break;
 		}
 		
-		if(m_is_req_valid == false)
+		if(!m_is_req_valid)
 		{
+			// Search for the first two of these delimiters.
+			// The string between them is the path.
 			if(buf[j] == ' ' || buf[j] == '?' || buf[j] == ';')
 			{
 				if(path == NULL)
@@ -182,6 +185,8 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 		else
 		{
+			// After we decide that the string is a valid
+			// http request, we can pull out useragent and host
 			if((!agentvalid) &&
 				buf[j - 1] == '\n' &&
 				((str = check_and_extract(buf + j,
@@ -191,7 +196,7 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 					&strlen)) != NULL))
 			{
 				agentvalid = true;
-				req_assign(&m_agent, str, strlen);
+				req_assign(&m_result.agent, str, strlen);
 				n_extracted++;
 				if(n_extracted == PARSE_REQUEST_N_TO_EXTRACT)
 				{
@@ -222,36 +227,45 @@ bool sinsp_http_parser::parse_request(char* buf, uint32_t buflen)
 		}
 	}
 
-	if(m_is_req_valid == true)
+	if(m_is_req_valid)
 	{
-		m_req_storage[m_req_storage_pos++] = (char)m_method;
+		m_req_storage[m_req_storage_pos++] = (char)m_result.method;
 
-		if(host != NULL)
+		if(host)
 		{
-			req_assign(&m_url, host, hostlen);
-			ASSERT(m_url > m_req_storage);
-			m_url--;
+			// If we found a host string then use it as the start
+			// of the url and append the path to it.
+			req_assign(&m_result.url, host, hostlen);
+			ASSERT(m_result.url > m_req_storage);
+
+			// I (Bryan) was asked in a code review why we are
+			// backing up a character.  I don't have any idea. My
+			// best guess is that req_assign is broken and this was
+			// a hack to the get the pointer in the right place.
+			m_result.url--;
 			m_req_storage_pos--;
-			req_assign(&m_path, path, pathlen);
+			req_assign(&m_result.path, path, pathlen);
 		}
 		else
 		{
-			req_assign(&m_url, path, pathlen);
-			ASSERT(m_url > m_req_storage);
-			m_url--;
+			// If we didn't find a host string then use the path
+			// as the url
+			req_assign(&m_result.url, path, pathlen);
+			ASSERT(m_result.url > m_req_storage);
+			m_result.url--;
 		}
 	}
 
 	return m_is_req_valid;
 }
 
-bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
+bool sinsp_http_parser::parse_response(const char* buf, uint32_t buflen)
 {
 	uint32_t j;
-	char* status_code = NULL;
+	const char *status_code = nullptr;
 	uint32_t status_code_len;
 	uint32_t n_spaces = 0;
-	char* str = NULL;
+	const char *str = nullptr;
 	uint32_t strlen;
 	m_resp_storage_pos = 0;
 
@@ -272,23 +286,23 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 				// of the numerical status code
 				status_code = buf + j + 1;
 			}
-			else if(m_is_valid == false)
+			else if(!m_is_valid)
 			{
 				// Now we've reached the second space so this
 				// is the end of the status code
 				status_code_len = (uint32_t)(buf + j - status_code);
 				
 				if(!sinsp_numparser::tryparsed32_fast(status_code, 
-					status_code_len, &m_status_code))
+					status_code_len, &m_result.status_code))
 				{
-					m_status_code = -1;
+					return false;
 				}
 
 				m_is_valid = true;
 			}
 		}
 
-		if(m_is_valid == true)
+		if(m_is_valid)
 		{
 			if((str = check_and_extract(buf + j, 
 				buflen - j,
@@ -296,7 +310,7 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 				sizeof("content-type:")-1,
 				&strlen)) != NULL)
 			{
-				resp_assign(&m_content_type, str, strlen);
+				resp_assign(&m_result.content_type, str, strlen);
 				return true;
 			}			
 		}
@@ -305,62 +319,65 @@ bool sinsp_http_parser::parse_response(char* buf, uint32_t buflen)
 	return m_is_valid;
 }
 
-#define MSG_STR_RESP 0x50545448		// 'HTTP' in hex
-#define MSG_STR_OPTIONS 0x4954504f
-#define MSG_STR_GET 0x20544547
-#define MSG_STR_HEAD 0x44414548
-#define MSG_STR_POST 0x54534f50
-#define MSG_STR_PUT 0x20545550
-#define MSG_STR_DELETE 0x454c4544
-#define MSG_STR_TRACE 0x43415254
-#define MSG_STR_CONNECT 0x4e4e4f43
-
 sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(sinsp_fdinfo_t* fdinfo, 
-																sinsp_partial_transaction::direction dir,
-																bool is_switched,
-																char* buf, uint32_t buflen)
+								sinsp_partial_transaction::direction dir,
+								bool is_switched,
+								const char *buf,
+								uint32_t buflen)
 {
-	//
-	// This checks if the buffer starts with "HTTP"
-	//
-	if(*(uint32_t*)buf == MSG_STR_RESP)
+	// We want to quickly throw away anything that doesn't match our scheme
+	// so we cast the buffer to an integer and process it numerically.
+	const uint64_t MSG_STR_RESP = 0x002E002F50545448; // "HTTP/X.X"
+	const uint64_t MSG_STR_RESP_MASK = 0x00FF00FFFFFFFFFF;
+	const uint32_t MSG_STR_OPTIONS =  0x4954504f;
+	const uint32_t MSG_STR_GET = 0x20544547;
+	const uint32_t MSG_STR_HEAD = 0x44414548;
+	const uint32_t MSG_STR_POST = 0x54534f50;
+	const uint32_t MSG_STR_PUT = 0x20545550;
+	const uint32_t MSG_STR_DELETE = 0x454c4544;
+	const uint32_t MSG_STR_TRACE = 0x43415254;
+	const uint32_t MSG_STR_CONNECT = 0x4e4e4f43;
+
+	// Going back to at least HTTP 1.0, a Full-Response will always
+	// start with a "Status-Line" which begins with "HTTP/".
+	// https://www.w3.org/Protocols/HTTP/1.0/spec.html#Response
+	if((*reinterpret_cast<const uint64_t *>(buf) & MSG_STR_RESP_MASK) == MSG_STR_RESP)
 	{
 		return sinsp_protocol_parser::MSG_RESPONSE;
 	}
-	else
+
+	switch(*reinterpret_cast<const uint32_t *>(buf))
 	{
-		switch(*(uint32_t*)buf)
-		{
-		case MSG_STR_GET:
-			m_method = UM_GET;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_POST:
-			m_method = UM_POST;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_OPTIONS:
-			m_method = UM_OPTIONS;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_HEAD:
-			m_method = UM_HEAD;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_PUT:
-			m_method = UM_PUT;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_DELETE:
-			m_method = UM_DELETE;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_TRACE:
-			m_method = UM_TRACE;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		case MSG_STR_CONNECT:
-			m_method = UM_CONNECT;
-			return sinsp_protocol_parser::MSG_REQUEST;
-		default:
-			break;
-		}
+	case MSG_STR_GET:
+		m_result.method = http_method::GET;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_POST:
+		m_result.method = http_method::POST;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_OPTIONS:
+		m_result.method = http_method::OPTIONS;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_HEAD:
+		m_result.method = http_method::HEAD;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_PUT:
+		m_result.method = http_method::PUT;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_DELETE:
+		m_result.method = http_method::DELETE;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_TRACE:
+		m_result.method = http_method::TRACE;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	case MSG_STR_CONNECT:
+		m_result.method = http_method::CONNECT;
+		return sinsp_protocol_parser::MSG_REQUEST;
+	default:
+		break;
 	}
 
 	return sinsp_protocol_parser::MSG_NONE;
+
 }
 
 #endif // HAS_ANALYZER

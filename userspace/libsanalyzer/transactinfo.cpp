@@ -286,7 +286,7 @@ void sinsp_transaction_table::emit(sinsp_threadinfo* ptinfo,
 ///////////////////////////////////////////////////////////////////////////////
 sinsp_partial_transaction::sinsp_partial_transaction()
 {
-	m_protoparser = NULL;
+	m_protoparser = nullptr;
 	m_type = TYPE_UNKNOWN;
 	reset();
 }
@@ -540,13 +540,16 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 		return;
 	}
 
-	if(m_protoparser != NULL && len > 0)
+	if(m_protoparser && len)
 	{
-		sinsp_protocol_parser::msg_type mtype = m_protoparser->should_parse(ffdinfo, dir, 
-			res == STATE_SWITCHED,
-			data, len);
+		sinsp_protocol_parser::msg_type mtype =
+			m_protoparser->should_parse(ffdinfo,
+						    dir,
+						    res == STATE_SWITCHED,
+						    data,
+						    len);
 
-		if(mtype == sinsp_protocol_parser::MSG_REQUEST)
+		if(sinsp_protocol_parser::MSG_REQUEST == mtype)
 		{
 			if(m_protoparser->parse_request(data, len))
 			{
@@ -557,7 +560,7 @@ void sinsp_partial_transaction::update(sinsp_analyzer* analyzer,
 				//ptinfo->m_ainfo->m_transactions_in_progress.push_back(this);
 			}
 		}
-		if(mtype == sinsp_protocol_parser::MSG_RESPONSE)
+		else if(sinsp_protocol_parser::MSG_RESPONSE == mtype)
 		{
 			if(m_protoparser->m_is_req_valid)
 			{
