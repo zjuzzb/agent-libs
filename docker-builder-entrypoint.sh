@@ -108,7 +108,60 @@ build_sysdig()
 	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE --pull .
 }
 
+build_single_cpp()
+{
+	# We're searching through Makefiles for the filename followed by a .o
+	# extension and a colon: "dragent.cpp.o:"
+	# Sometimes, this will be in a folder: "userspace/dragent/logger.ut.cpp.o:"
+
+	# Find all Makefiles having a "$1.o" target
+	# -F -- simple string match, not a regex
+	# -r -- recurse down directories
+	# -l -- output file names only
+	# -w -- whole word matching
+	grep -Frlw --include Makefile "$1.o:" /code/agent/build/release | while read makefilePath
+	do
+		# Get the full text of the target, including any directories
+		target="$(grep -Fw $1.o: $makefilePath)"
+		# Remove the colon
+		target=${target%?}
+
+		# chdir to the Makefile directory and make the target
+		builddir=$(dirname $makefilePath)
+		echo "building $target in $builddir"
+		make -C $builddir $target
+	done
+}
+
 case "$1" in
+	"")
+		# no arguments, fallthrough to help
+		;&
+	help)
+		bold=$(tput bold)
+		normal=$(tput sgr0)
+	echo "
+	This is the entry point for the Sysdig agent-builder.
+
+	To build and generate the agent container:
+	${bold}> agent-builder container${normal}
+
+	To build the agent and install to the local machine:
+	${bold}> agent-builder install${normal}
+
+	To build a particular target or file:
+	${bold}> agent-builder make ${normal}
+	${bold}> agent-builder make dragent${normal}
+	${bold}> agent-builder make analyzer.cpp${normal}
+
+	To see a list of possible targets:
+	${bold}> agent-builder make help${normal}
+
+	To get a bash shell inside the builder:
+	${bold}> agent-builder bash${normal}
+
+	"
+		;;
 	bash)
 		bootstrap_agent
 		bash
@@ -129,5 +182,22 @@ case "$1" in
 		;;
 	sysdig)
 		build_sysdig
+		;;
+	make)
+		if [ -z "$2" ]; then
+			# There is no second argument so just call make.
+			# This calls bootstrap agent every time.
+			bootstrap_agent
+			make -j$MAKE_JOBS
+		else
+			if [ ${2: -4} == ".cpp" ]; then
+				# This is a cpp file, so just build that file
+				build_single_cpp $2
+			else
+				# Make a specific target
+				cd /code/agent/build/release
+				make -j$MAKE_JOBS $2 $3
+			fi
+		fi
 		;;
 esac
