@@ -1216,3 +1216,7 @@ statsite_buffer_warning_length: 300
 
 containers:
   limit: 200
+
+cri:
+  known_socket_paths:
+    - /run/containerd/containerd.sock

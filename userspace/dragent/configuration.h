@@ -899,6 +899,7 @@ public:
 
 private:
 	inline static bool is_executable(const string& path);
+	inline static bool is_socket(const string &path);
 	void write_statsite_configuration();
 	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);

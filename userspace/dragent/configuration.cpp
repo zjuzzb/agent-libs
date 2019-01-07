@@ -1205,6 +1205,22 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_cri_timeout_ms = m_config->get_scalar<int64_t>("cri", "timeout_ms", 1000);
 	m_docker_then_cri = m_config->get_scalar<bool>("cri", "docker_then_cri", false);
 
+	if(m_cri_socket_path.empty())
+	{
+		for(const auto& cri_path : m_config->get_deep_merged_sequence<vector<string>>("cri", "known_socket_paths"))
+		{
+			if(is_socket(cri_path))
+			{
+				m_cri_socket_path = cri_path;
+				break;
+			}
+		}
+	}
+	else if(!is_socket(m_cri_socket_path))
+	{
+		m_cri_socket_path = "";
+	}
+
 	m_flush_log_time = m_config->get_scalar<uint64_t>("flush_tracers", "timeout_ms", 1000) * 1000000;
 	m_flush_log_time_duration = m_config->get_scalar<uint64_t>("flush_tracers", "duration_ms", 10000) * 1000000;
 	m_flush_log_time_cooldown = m_config->get_scalar<uint64_t>("flush_tracers", "cooldown_ms", 600000) * 1000000;
@@ -1904,6 +1920,18 @@ bool dragent_configuration::is_executable(const string &path)
 {
 	File file(path);
 	return file.exists() && file.canExecute();
+}
+
+bool dragent_configuration::is_socket(const string &path)
+{
+	string actual_path = scap_get_host_root() + path;
+	struct stat s;
+	if (stat(actual_path.c_str(), &s) == -1)
+	{
+		return false;
+	}
+
+	return (s.st_mode & S_IFMT) == S_IFSOCK;
 }
 
 int dragent_configuration::save_auto_config(const string &config_filename,
