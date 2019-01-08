@@ -942,6 +942,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_use_new_k8s = m_config->get_scalar<bool>("dev_new_k8s", false);
 	m_use_new_k8s = m_config->get_scalar<bool>("new_k8s", m_use_new_k8s);
 	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
+	m_k8s_local_update_frequency = m_config->get_scalar<uint16_t>("k8s_local_update_frequency", 1);
+	m_k8s_cluster_update_frequency = m_config->get_scalar<uint16_t>("k8s_cluster_update_frequency", 1);
 
 	//////////////////////////////////////////////////////////////////////////////////////////
 	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
@@ -1418,6 +1420,8 @@ void dragent_configuration::print_configuration() const
 	if(m_use_new_k8s)
 	{
 		LOG_INFO("Use new K8s integration");
+		LOG_INFO("K8s metadata local update frequency: %d", m_k8s_local_update_frequency);
+		LOG_INFO("K8s metadata cluster update frequency: %d", m_k8s_cluster_update_frequency);
 	}
 	if(!m_k8s_cluster_name.empty())
 	{

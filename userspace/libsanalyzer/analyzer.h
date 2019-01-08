@@ -502,6 +502,16 @@ public:
 		m_use_new_k8s = v;
 	}
 
+	void set_k8s_local_update_frequency(uint16_t value)
+	{
+		m_k8s_local_update_frequency = value;
+	}
+
+	void set_k8s_cluster_update_frequency(uint16_t value)
+	{
+		m_k8s_cluster_update_frequency = value;
+	}
+
 	void set_coclient_max_loop_evts(const uint32_t max_evts)
 	{
 		coclient::set_max_loop_evts(max_evts);
@@ -1008,6 +1018,31 @@ VISIBILITY_PRIVATE
 
 	bool m_extra_internal_metrics = false;
 	uint64_t m_num_container_healthcheck_command_lines = 0;
+
+
+	/**
+	 * Configurable number of flushes between each time that k8
+	 * metadata for the local npde is sent to the backend.
+	 */
+	uint16_t m_k8s_local_update_frequency = 1;
+
+	/**
+	 * Configurable number of flushes between each time that k8s
+	 * metadata for the entire cluster is sent to the backend.
+	 */
+	uint16_t m_k8s_cluster_update_frequency = 1;
+
+	/**
+	 * This works alongside m_k8s_local_update_frequency to
+	 * determine how often k8s metadata should be added.
+	 */
+	uint16_t m_flushes_since_k8_local_flush = 0;
+
+	/**
+	 * This works alongside m_k8s_cluster_update_frequency to
+	 * determine how often k8s metadata should be added.
+	 */
+	uint16_t m_flushes_since_k8_cluster_flush = 0;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

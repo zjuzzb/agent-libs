@@ -202,6 +202,8 @@ void sinsp_worker::init()
 	if(m_configuration->m_use_new_k8s)
 	{
 		m_analyzer->set_use_new_k8s(m_configuration->m_use_new_k8s);
+		m_analyzer->set_k8s_local_update_frequency(m_configuration->m_k8s_local_update_frequency);
+		m_analyzer->set_k8s_cluster_update_frequency(m_configuration->m_k8s_cluster_update_frequency);
 	}
 	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
 

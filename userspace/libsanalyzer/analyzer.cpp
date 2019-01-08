@@ -1791,32 +1791,68 @@ sinsp_analyzer::update_percentile_data_serialization(const progtable_by_containe
 }
 
 void
-sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flushflags,
+sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 						vector<string>& emitted_containers)
 {
 #ifndef CYGWING_AGENT
-	if(m_use_new_k8s && m_infrastructure_state->subscribed() &&
-	   (flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT))
+	if(!m_use_new_k8s)
 	{
-		std::string cluster_name = get_k8s_cluster_name();
-		auto cluster_id = m_infrastructure_state->get_k8s_cluster_id();
-		// ifcluster_id is empty, better to don't send anything since
-		// the backend relies on this field
-		if(!cluster_id.empty())
-		{
-			// Build the orchestrator state of the emitted containers (without metrics)
-			m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
-			m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
-			m_infrastructure_state->state_of(emitted_containers,
-							 m_metrics->mutable_orchestrator_state()->mutable_groups(),
-							 m_prev_flush_time_ns);
-			if(check_k8s_delegation()) {
-				m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
-				m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
-				// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
-				m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(), m_prev_flush_time_ns);
-			}
-		}
+		return;
+	}
+
+	if(!m_infrastructure_state->subscribed())
+	{
+		return;
+	}
+
+	if(flush_flags == sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		return;
+	}
+
+	std::string cluster_name = get_k8s_cluster_name();
+	auto cluster_id = m_infrastructure_state->get_k8s_cluster_id();
+
+	// if cluster_id is empty, better to don't send anything since
+	// the backend relies on this field
+	if(cluster_id.empty())
+	{
+		return;
+	}
+
+	++m_flushes_since_k8_local_flush;
+	if(m_flushes_since_k8_local_flush >= m_k8s_local_update_frequency)
+	{
+		m_flushes_since_k8_local_flush = 0;
+		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node", sinsp_logger::SEV_DEBUG);
+
+		// Build the orchestrator state of the emitted containers (without metrics)
+		// This is the k8 data for the local node
+		m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);
+		m_metrics->mutable_orchestrator_state()->set_cluster_name(cluster_name);
+		m_infrastructure_state->state_of(emitted_containers,
+						 m_metrics->mutable_orchestrator_state()->mutable_groups(),
+						 m_prev_flush_time_ns);
+	}
+
+	// Check whether this node is a delegate node. If it is then it is
+	// responsible for sending k8 metadata for the entire cluster.
+	if(!check_k8s_delegation())
+	{
+		return;
+	}
+
+	++m_flushes_since_k8_cluster_flush;
+	if(m_flushes_since_k8_cluster_flush >= m_k8s_cluster_update_frequency)
+	{
+		m_flushes_since_k8_cluster_flush = 0;
+		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for cluster", sinsp_logger::SEV_DEBUG);
+
+
+		m_metrics->mutable_global_orchestrator_state()->set_cluster_id(cluster_id);
+		m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
+		// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
+		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(), m_prev_flush_time_ns);
 	}
 #endif
 }

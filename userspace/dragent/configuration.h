@@ -694,6 +694,19 @@ public:
 	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
 	bool m_use_new_k8s;
+
+	/**
+	 * The frequency, in units of flushes, that the k8s metadata for
+	 * the local containers is sent to the backend.
+	 */
+	uint16_t m_k8s_local_update_frequency = 1;
+
+	/**
+	 * The frequency, in units of flushes, that the k8s metadata for
+	 * the entire cluster is sent to the backend.
+	 */
+	uint16_t m_k8s_cluster_update_frequency = 1;
+
 	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
 	std::string m_k8s_cluster_name;
 	vector<string> m_k8s_include_types;
