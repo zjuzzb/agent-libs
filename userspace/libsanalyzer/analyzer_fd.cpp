@@ -622,6 +622,10 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					sinsp_connection::AF_NONE,
 					0);
 			}
+			else
+			{
+				connection->set_state(evt->m_errorcode);
+			}
 		}
 
 r_conn_creation_done:
@@ -1027,6 +1031,10 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					evt->get_ts(),
 					sinsp_connection::AF_NONE,
 					0);
+			}
+			else
+			{
+				connection->set_state(evt->m_errorcode);
 			}
 		}
 
