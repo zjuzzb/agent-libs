@@ -1532,12 +1532,7 @@ void sinsp_analyzer_fd_listener::on_socket_status_changed(sinsp_evt *evt)
 		auto connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 		if (connection)
 		{
-			connection->m_analysis_flags &= ~sinsp_connection::AF_PENDING;
-			connection->m_error_code = -evt->m_errorcode;
-			if (evt->m_errorcode)
-			{
-				connection->m_analysis_flags |= sinsp_connection::AF_FAILED;
-			}
+			connection->set_state(-evt->m_errorcode);
 		}
 	}
 }

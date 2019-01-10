@@ -82,6 +82,19 @@ bool sinsp_connection::is_active() const
 	return (totops != 0) || (m_analysis_flags & (sinsp_connection::AF_FAILED | sinsp_connection::AF_PENDING));
 }
 
+void sinsp_connection::set_state(int errorcode)
+{
+	auto prev_state = m_analysis_flags;
+	auto prev_error = m_error_code;
+
+	m_analysis_flags &= ~sinsp_connection::AF_PENDING;
+	m_error_code = errorcode;
+	if (errorcode)
+	{
+		m_analysis_flags |= sinsp_connection::AF_FAILED;
+	}
+}
+
 void sinsp_connection_aggregator::clear()
 {
 	m_metrics.clear();

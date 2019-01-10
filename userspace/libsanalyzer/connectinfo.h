@@ -43,6 +43,8 @@ public:
 	bool is_server_only() const;
 	bool is_client_and_server() const;
 
+	void set_state(int errorcode);
+
 	int64_t m_spid;
 	int64_t m_stid;
 	int64_t m_sfd;
