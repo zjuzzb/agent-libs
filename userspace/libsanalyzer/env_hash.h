@@ -37,3 +37,10 @@ namespace std {
 		}
 	};
 }
+
+struct env_hash_config {
+	uint32_t m_envs_per_flush;
+	size_t m_max_env_size = 8192;
+	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
+	uint64_t m_env_hash_ttl = 86400ULL * ONE_SECOND_IN_NS;
+};

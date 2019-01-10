@@ -3224,7 +3224,7 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 		return;
 	}
 
-	auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + m_env_hash_ttl});
+	auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + m_env_hash_config.m_env_hash_ttl});
 	// new_env.first->first: env_hash
 	// new_env.first->second: last sent timestamp
 	// new_env.second: if true, insertion took place (first time we're sending this hash)
@@ -3233,7 +3233,7 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 		return;
 	}
 
-	if(++num_envs_sent > m_envs_per_flush) {
+	if(++num_envs_sent > m_env_hash_config.m_envs_per_flush) {
 		g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
 		if(new_env.second) {
 			m_sent_envs.erase(new_env.first);
@@ -3249,7 +3249,7 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 				continue;
 			}
 			bool blacklisted = false;
-			for(const auto& regex : *m_env_blacklist) {
+			for(const auto& regex : *m_env_hash_config.m_env_blacklist) {
 				if(regex.match(entry)) {
 					blacklisted = true;
 					break;
@@ -3261,14 +3261,14 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 			}
 
 			env_bytes_sent += entry.size() + 1; // 1 for the trailing NUL
-			if(env_bytes_sent > m_max_env_size) {
+			if(env_bytes_sent > m_env_hash_config.m_max_env_size) {
 				break;
 			}
 
 			env->add_variables(entry);
 		}
 
-		if(env_bytes_sent > m_max_env_size) {
+		if(env_bytes_sent > m_env_hash_config.m_max_env_size) {
 			g_logger.format(sinsp_logger::SEV_INFO, "Environment of process %lu (%s) too large, truncating",
 				 tinfo->m_pid, tinfo->m_comm.c_str());
 			for(const auto& entry : tinfo->m_env) {
@@ -3278,7 +3278,7 @@ void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadin
 		}
 
 		if(!new_env.second) {
-			new_env.first->second = m_prev_flush_time_ns + m_env_hash_ttl;
+			new_env.first->second = m_prev_flush_time_ns + m_env_hash_config.m_env_hash_ttl;
 		}
 	}
 }

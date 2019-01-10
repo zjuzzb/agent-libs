@@ -152,7 +152,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 	if (m_analyzer->m_track_environment) {
 		if (m_tinfo->is_main_thread()) {
 			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(m_tinfo, *m_analyzer->m_env_blacklist);
+			mt_ainfo->hash_environment(m_tinfo, *m_analyzer->m_env_hash_config.m_env_blacklist);
 		}
 	}
 }

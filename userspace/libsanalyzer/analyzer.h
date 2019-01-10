@@ -568,15 +568,15 @@ public:
 	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
 	void set_track_environment(bool val) { m_track_environment = val; }
-	void set_envs_per_flush(uint32_t val) { m_envs_per_flush = val; }
-	void set_max_env_size(size_t val) { m_max_env_size = val; }
-	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist) { m_env_blacklist = std::move(blacklist); }
+	void set_envs_per_flush(uint32_t val) { m_env_hash_config.m_envs_per_flush = val; }
+	void set_max_env_size(size_t val) { m_env_hash_config.m_max_env_size = val; }
+	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist) { m_env_hash_config.m_env_blacklist = std::move(blacklist); }
 	void set_env_hash_ttl(uint64_t secs) {
 		uint64_t nsecs = secs * ONE_SECOND_IN_NS;
 		if (nsecs < ANALYZER_DEFAULT_SAMPLE_LENGTH_NS) {
-			m_env_hash_ttl = 0;
+			m_env_hash_config.m_env_hash_ttl = 0;
 		} else {
-			m_env_hash_ttl = nsecs - ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
+			m_env_hash_config.m_env_hash_ttl = nsecs - ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
 		}
 	}
 
@@ -1015,11 +1015,8 @@ VISIBILITY_PRIVATE
 	userdb m_userdb;
 
 	bool m_track_environment = false;
-	uint32_t m_envs_per_flush;
+	env_hash_config m_env_hash_config;
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
-	size_t m_max_env_size = 8192;
-	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
-	uint64_t m_env_hash_ttl = 86400ULL * ONE_SECOND_IN_NS;
 
 	bool m_extra_internal_metrics = false;
 	uint64_t m_num_container_healthcheck_command_lines = 0;
