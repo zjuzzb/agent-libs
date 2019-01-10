@@ -61,8 +61,7 @@ public:
 		return m_attributes;
 	}
 
-	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const;
-
+	unsigned int to_protobuf(draiosproto::jmx_bean *proto_bean, unsigned sampling, unsigned limit, const std::string& limit_type, unsigned max_limit) const; 
 	unsigned total_metrics() const
 	{
 		return m_total_metrics;

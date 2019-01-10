@@ -3,6 +3,7 @@
 #pragma once
 
 #include <functional> 
+#include <Poco/RegularExpression.h>
 #include "percentile.h"
 
 #define SRV_PORT_MYSQL 3306
@@ -74,8 +75,8 @@ public:
 
 	bool parse_request(char* buf, uint32_t buflen);
 
-	string m_url;
-	string m_agent;
+	std::string m_url;
+	std::string m_agent;
 
 private:
 	uint32_t m_http_options_intval;
@@ -236,13 +237,114 @@ private:
 	percentile_ptr_t m_percentile;
 };
 
+class sinsp_url_group
+{
+public:
+	sinsp_url_group(const std::string& pattern)
+		: m_pattern(pattern, Poco::RegularExpression::RE_CASELESS)
+	{}
+
+	/// 
+	/// determine whether a url, represented by a string, is a member of this group
+	/// @param url  string representation of the url to match
+	/// @returns    whether the url is a member of the group
+	///
+	bool contains(std::string url) const
+	{
+		return m_pattern.match(url);
+	}
+
+private:
+	Poco::RegularExpression m_pattern; 
+};
+
+// holding class for all our URL groups. they exist as either matched or unmatched.
+// newly created URL groups are considered unmatched and the next time we grab stats to
+// send out, we take all unmatched URLs and attempt to match them against all URLs in the
+// table. When new URLs are added, they are matched against all groups in the "matched groups"
+// list here.
+//
+// When a URL group is first matched against URLs, it is moved from the unmatched list to
+// the matched list.
+class sinsp_url_details;
+class sinsp_url_groups
+{
+public:
+
+	/// matches a url against all known url groups
+	///
+	/// @param url string representation of the url to match
+	/// @param url_details the details of the URL backing the url string
+	///
+	/// the url_details will be modified with an indication of which groups were matched
+	//
+	// a bit weird that we take BOTH the URl string AND the details. We need the
+	// url in order to actually match against the patterns, and we need the details
+	// to register the groups which matched. The details don't have a reference to the
+	// string and the lookup is only one way from string->details. We could add a reverse
+	// mapping or a reference to the string to avoid storing the string twice.....or we
+	// could just pass it in.
+	//
+	// The latter is simpler.
+	void match_new_url(const std::string& url, sinsp_url_details& url_details) const;
+
+	/// update our set of URL groups. expected to only be called once at initialization
+	/// time
+	/// @param group the set of regexes we that define the groups
+	void update_group_set(const std::set<std::string>& group);
+private:
+	std::map<std::string, shared_ptr<sinsp_url_group>> m_matched_groups; // list of all URL groups which
+								   // have been previously matched
+								   // with all URLs in the url list
+};
+
+
 class sinsp_url_details : public sinsp_request_details
 {
+public:
+	sinsp_url_details()
+		: sinsp_request_details(),
+		m_matched(false),
+		m_url_groups() {}
+
+	/// takes a URL, and if we haven't compared it to all known URL groups, does so
+	/// @param groups the list of groups to match against
+	/// @param url the string of the url we want to match
+	///
+	/// we have to pass in the URL explicitly since it isn't stored as part of
+	/// url_details
+	void match_url_if_unmatched(const sinsp_url_groups& groups, const std::string& url)
+	{
+		if (m_matched)
+		{
+			return;
+		}
+		groups.match_new_url(url, *this);
+		m_matched = true;
+	}
+
+	/// adds a group to this URL. Since URL groups are currently static, this
+	/// is a permanent action
+	void add_group(const shared_ptr<sinsp_url_group>& group)
+	{
+		m_url_groups.insert(group);
+	}
+
+	std::unordered_set<shared_ptr<sinsp_url_group>>* get_group_list()
+	{
+		return &m_url_groups;
+	}
+
+private:
+	bool m_matched; // indicates whether this URL has already been matched against existing
+	// URL groups
+	std::unordered_set<shared_ptr<sinsp_url_group>> m_url_groups; // set of groups this URL matches
 };
 
 class sinsp_query_details : public sinsp_request_details
 {
 };
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Sorter class
@@ -250,8 +352,8 @@ class sinsp_query_details : public sinsp_request_details
 template <typename KT, typename T>
 class request_sorter
 {
-	typedef bool (*request_comparer)(typename unordered_map<KT, T>::iterator src,
-		typename unordered_map<KT, T>::iterator dst);
+	typedef bool (*request_comparer)(typename std::unordered_map<KT, T>::iterator src,
+		typename std::unordered_map<KT, T>::iterator dst);
 
 public:
 	//
@@ -298,15 +400,15 @@ public:
 	// Merge two maps by adding the elements of the source to the destination
 	//
 #ifdef _WIN32
-	static void merge_maps(typename unordered_map<KT, T>* dst, typename unordered_map<KT, T>* src)
+	static void merge_maps(typename std::unordered_map<KT, T>* dst, typename std::unordered_map<KT, T>* src)
 #else	
-	static void merge_maps(unordered_map<KT, T>* dst, unordered_map<KT, T>* src)
+	static void merge_maps(std::unordered_map<KT, T>* dst, std::unordered_map<KT, T>* src)
 #endif	
 	{
 #ifdef _WIN32
-		unordered_map<KT, T>::iterator uit;
+		std::unordered_map<KT, T>::iterator uit;
 #else	
-		typename unordered_map<KT, T>::iterator uit;
+		typename std::unordered_map<KT, T>::iterator uit;
 #endif
 
 		//
@@ -322,27 +424,27 @@ public:
 	//
 	// Comparers for sorting
 	//
-	static bool cmp_ncalls(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
+	static bool cmp_ncalls(typename std::unordered_map<KT, T>::iterator src, typename std::unordered_map<KT, T>::iterator dst)
 	{
 		return src->second.m_ncalls > dst->second.m_ncalls;
 	}
 
-	static bool cmp_nerrors(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
+	static bool cmp_nerrors(typename std::unordered_map<KT, T>::iterator src, typename std::unordered_map<KT, T>::iterator dst)
 	{
 		return src->second.m_nerrors > dst->second.m_nerrors;
 	}
 
-	static bool cmp_time_avg(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
+	static bool cmp_time_avg(typename std::unordered_map<KT, T>::iterator src, typename std::unordered_map<KT, T>::iterator dst)
 	{
 		return (src->second.get_time_tot() / src->second.m_ncalls) > (dst->second.get_time_tot() / dst->second.m_ncalls);
 	}
 
-	static bool cmp_time_max(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
+	static bool cmp_time_max(typename std::unordered_map<KT, T>::iterator src, typename std::unordered_map<KT, T>::iterator dst)
 	{
 		return src->second.m_time_max > dst->second.m_time_max;
 	}
 
-	static bool cmp_bytes_tot(typename unordered_map<KT, T>::iterator src, typename unordered_map<KT, T>::iterator dst)
+	static bool cmp_bytes_tot(typename std::unordered_map<KT, T>::iterator src, typename std::unordered_map<KT, T>::iterator dst)
 	{
 		return (src->second.m_bytes_in + src->second.m_bytes_out) > 
 			(dst->second.m_bytes_in + dst->second.m_bytes_out);
@@ -351,7 +453,7 @@ public:
 	//
 	// Marking functions
 	//
-	static void mark_top_by(vector<typename unordered_map<KT, T>::iterator>* sortable_list,
+	static void mark_top_by(std::vector<typename std::unordered_map<KT, T>::iterator>* sortable_list,
 							request_comparer comparer, size_t limit)
 	{
 		uint32_t j;
@@ -371,7 +473,7 @@ public:
 		}
 	}
 
-	static void mark_top(vector<typename unordered_map<KT, T>::iterator>* sortable_list, size_t limit)
+	static void mark_top(std::vector<typename std::unordered_map<KT, T>::iterator>* sortable_list, size_t limit)
 	{
 		//
 		// Mark top based on number of calls
@@ -425,6 +527,98 @@ public:
 				break;
 			}
 		}
+	}
+};
+
+// This class exists to sort a map of items based on the grous they belong to
+// The map we will attempt to sort will be of type map<KT, T>. Each T in the map
+// is expected to have a get_group_list function which returns an unordered_set
+// of the G's to which that T belongs.
+template <typename KT, typename T, typename G>
+class group_request_sorter : public request_sorter<KT, T>
+{
+        static bool never_excluder(const T* value)
+        {
+            return false;
+        }
+
+        // allows us to skip any entries which have non-zero errors
+        static bool error_excluder(const T* value)
+        {
+            return value->m_nerrors == 0;
+        }
+
+public:
+	typedef bool (*request_comparer)(typename std::unordered_map<KT, T>::iterator src,
+		      typename std::unordered_map<KT, T>::iterator dst);
+	typedef bool (*request_excluder)(const T*);
+
+private:
+	/// walks through each {KT, T} pair, where each contains a list of G's, and
+	/// marks the top limit pairs for each G. excluder skips certain events as
+	/// defined in that function
+	///
+	/// @param sortable_list the list of things we want to find the top limit of
+	/// @param comparer how we want to compare the things in the list
+	/// @param limit the top N we want to find from the list
+	/// @param excluder a way to skip certain items
+	static void mark_top_by(std::vector<typename std::unordered_map<KT, T>::iterator>* sortable_list,
+				request_comparer comparer,
+				size_t limit,
+				request_excluder excluder = never_excluder)
+	{
+		sort(sortable_list->begin(), sortable_list->end(), comparer);
+
+		// map that stores some group identifier (opaque and implementation specific) and the amount we've found for that group
+		std::unordered_map<const G*, uint64_t> counts_per_group;
+		for (auto item = sortable_list->begin(); item != sortable_list->end(); ++item)
+		{
+			for (typename std::unordered_set<shared_ptr<G>>::iterator group = (*item)->second.get_group_list()->begin(); group != (*item)->second.get_group_list()->end(); ++group)
+			{
+				if (!excluder(&((*item)->second)) && counts_per_group[&**group] < limit)
+				{
+					(*item)->second.m_flags = (sinsp_request_flags)((*item)->second.m_flags | SRF_INCLUDE_IN_SAMPLE);
+					++counts_per_group[&**group];
+				}
+			}
+		}
+	}
+
+public:
+	static void mark_top(std::vector<typename std::unordered_map<KT, T>::iterator>* sortable_list, size_t limit)
+	{
+		//
+		// Mark top based on number of calls
+		//
+		mark_top_by(sortable_list, 
+			request_sorter<KT, T>::cmp_ncalls, limit);
+						
+		//
+		// Mark top based on total time
+		//
+		mark_top_by(sortable_list, 
+			request_sorter<KT, T>::cmp_time_avg, limit);
+
+		//
+		// Mark top based on max time
+		//
+		mark_top_by(sortable_list, 
+			request_sorter<KT, T>::cmp_time_max, limit);
+
+		//
+		// Mark top based on total bytes
+		//
+		mark_top_by(sortable_list, 
+			request_sorter<KT, T>::cmp_bytes_tot, limit);
+
+		//
+		// Will have 0 errors a lot, so
+		// exclude ones that have none
+		//
+		mark_top_by(sortable_list,
+				request_sorter<KT, T>::cmp_nerrors,
+				limit,
+				error_excluder);
 	}
 };
 
@@ -499,21 +693,21 @@ public:
 private:
 	friend class sinsp_sql_marker;
 	void query_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
-		unordered_map<string, sinsp_query_details>* table,
+		std::unordered_map<std::string, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio,
 		bool is_query_table, uint32_t limit);
 	void query_type_table_to_protobuf(draiosproto::sql_info* protobuf_msg,
-		unordered_map<uint32_t, sinsp_query_details>* table,
+		std::unordered_map<uint32_t, sinsp_query_details>* table,
 		bool is_server,
 		uint32_t sampling_ratio, uint32_t limit);
 
-	unordered_map<string, sinsp_query_details> m_server_queries;
-	unordered_map<string, sinsp_query_details> m_client_queries;
-	unordered_map<uint32_t, sinsp_query_details> m_server_query_types;
-	unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
-	unordered_map<string, sinsp_query_details> m_server_tables;
-	unordered_map<string, sinsp_query_details> m_client_tables;
+	std::unordered_map<std::string, sinsp_query_details> m_server_queries;
+	std::unordered_map<std::string, sinsp_query_details> m_client_queries;
+	std::unordered_map<uint32_t, sinsp_query_details> m_server_query_types;
+	std::unordered_map<uint32_t, sinsp_query_details> m_client_query_types;
+	std::unordered_map<std::string, sinsp_query_details> m_server_tables;
+	std::unordered_map<std::string, sinsp_query_details> m_client_tables;
 	sinsp_request_details m_server_totals;
 	sinsp_request_details m_client_totals;
 };
@@ -546,14 +740,14 @@ public:
 
 private:
 	friend class sinsp_mongodb_marker;
-	void collections_to_protobuf(unordered_map<string, sinsp_query_details>& map,
+	void collections_to_protobuf(std::unordered_map<std::string, sinsp_query_details>& map,
 									const function<draiosproto::mongodb_collection_details*(void)> get_cd,
 								 uint32_t sampling_ratio, uint32_t limit);
 	// MongoDB
-	unordered_map<uint32_t, sinsp_query_details> m_server_ops;
-	unordered_map<uint32_t, sinsp_query_details> m_client_ops;
-	unordered_map<string, sinsp_query_details> m_server_collections;
-	unordered_map<string, sinsp_query_details> m_client_collections;
+	std::unordered_map<uint32_t, sinsp_query_details> m_server_ops;
+	std::unordered_map<uint32_t, sinsp_query_details> m_client_ops;
+	std::unordered_map<std::string, sinsp_query_details> m_server_collections;
+	std::unordered_map<std::string, sinsp_query_details> m_client_collections;
 	sinsp_request_details m_server_totals;
 	sinsp_request_details m_client_totals;
 };
@@ -561,6 +755,15 @@ private:
 class sinsp_http_state : public protocol_state
 {
 public:
+
+        // constructor mainly to call clear so we can initialize the URL groups
+        sinsp_http_state()
+            : m_url_groups_enabled(false),
+              m_url_groups()
+        {
+            clear();
+        }
+
 	void clear()
 	{
 		m_server_urls.clear();
@@ -586,19 +789,24 @@ public:
 private:
 	friend class sinsp_http_marker;
 	void url_table_to_protobuf(draiosproto::http_info* protobuf_msg,
-							   unordered_map<string, sinsp_url_details>* table,
+							   std::unordered_map<std::string, sinsp_url_details>* table,
 							   bool is_server,
 							   uint32_t sampling_ratio, uint32_t limit);
 	void status_code_table_to_protobuf(draiosproto::http_info* protobuf_msg,
-									   unordered_map<uint32_t, sinsp_request_details>* table,
+									   std::unordered_map<uint32_t, sinsp_request_details>* table,
 									   bool is_server,
 									   uint32_t sampling_ratio, uint32_t limit);
-	unordered_map<string, sinsp_url_details> m_server_urls;
-	unordered_map<string, sinsp_url_details> m_client_urls;
-	unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
-	unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
+	std::unordered_map<std::string, sinsp_url_details> m_server_urls;
+	std::unordered_map<std::string, sinsp_url_details> m_client_urls;
+	std::unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
+	std::unordered_map<uint32_t, sinsp_request_details> m_client_status_codes;
 	sinsp_request_details m_server_totals;
 	sinsp_request_details m_client_totals;
+
+	bool m_url_groups_enabled;
+	sinsp_url_groups m_url_groups;
+
+	friend class sinsp_protostate;
 };
 ///////////////////////////////////////////////////////////////////////////////
 // The protocol state class
@@ -625,13 +833,33 @@ public:
 	sql_state m_mysql;
 	sql_state m_postgres;
 	mongodb_state m_mongodb;
+
+	// static member to hold the URL groups. Ideally we'd pull this straight from
+	// dragent_config, but include issues make that difficult
+	static void set_url_groups(const std::set<std::string>& groups);
+	static sinsp_url_groups* s_url_groups;
 };
 
 class sinsp_http_marker
 {
 public:
+	// give pointers to all URLs to the marker. Also match URLs which haven't been, as the marker will need this info to properly
+	// sort and mark
 	void add(sinsp_http_state* state)
 	{
+		if (sinsp_protostate::s_url_groups)
+		{
+			for (auto url = state->m_server_urls.begin(); url != state->m_server_urls.end(); ++url)
+			{
+				url->second.match_url_if_unmatched(*sinsp_protostate::s_url_groups, url->first);
+			}
+			for (auto url = state->m_client_urls.begin(); url != state->m_client_urls.end(); ++url)
+			{
+				url->second.match_url_if_unmatched(*sinsp_protostate::s_url_groups, url->first);
+			}
+
+		}
+
 		for(auto it = state->m_server_status_codes.begin(); it != state->m_server_status_codes.end(); ++it)
 		{
 			m_server_status_codes.push_back(it);
@@ -648,20 +876,32 @@ public:
 		{
 			m_client_urls.push_back(it);
 		}
+
 	}
+
 	void mark_top(size_t limit)
 	{
-		request_sorter<string, sinsp_url_details>::mark_top(&m_server_urls, limit);
-		request_sorter<string, sinsp_url_details>::mark_top(&m_client_urls, limit);
+		if (sinsp_protostate::s_url_groups)
+		{
+			group_request_sorter<std::string, sinsp_url_details, sinsp_url_group>::mark_top(&m_server_urls, limit);
+			group_request_sorter<std::string, sinsp_url_details, sinsp_url_group>::mark_top(&m_client_urls, limit);
+		}
+		else
+		{
+			request_sorter<std::string, sinsp_url_details>::mark_top(&m_server_urls, limit);
+			request_sorter<std::string, sinsp_url_details>::mark_top(&m_client_urls, limit);
+		}
 		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_server_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls, limit);
 		request_sorter<uint32_t, sinsp_request_details>::mark_top_by(&m_client_status_codes, request_sorter<uint32_t, sinsp_request_details>::cmp_ncalls, limit);
 	}
 
 private:
-	vector<unordered_map<string, sinsp_url_details>::iterator> m_server_urls;
-	vector<unordered_map<string, sinsp_url_details>::iterator> m_client_urls;
-	vector<unordered_map<uint32_t, sinsp_request_details>::iterator> m_server_status_codes;
-	vector<unordered_map<uint32_t, sinsp_request_details>::iterator> m_client_status_codes;
+	std::vector<std::unordered_map<std::string, sinsp_url_details>::iterator> m_server_urls;
+	std::vector<std::unordered_map<std::string, sinsp_url_details>::iterator> m_client_urls;
+	std::vector<std::unordered_map<uint32_t, sinsp_request_details>::iterator> m_server_status_codes;
+	std::vector<std::unordered_map<uint32_t, sinsp_request_details>::iterator> m_client_status_codes;
+
+        friend class test_helper;
 };
 
 class sinsp_sql_marker
@@ -697,21 +937,21 @@ public:
 
 	void mark_top(size_t limit)
 	{
-		request_sorter<string, sinsp_query_details>::mark_top(&m_server_queries, limit);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_client_queries, limit);
+		request_sorter<std::string, sinsp_query_details>::mark_top(&m_server_queries, limit);
+		request_sorter<std::string, sinsp_query_details>::mark_top(&m_client_queries, limit);
 		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_server_query_types, limit);
 		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_client_query_types, limit);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_server_tables, limit);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_client_tables, limit);
+		request_sorter<std::string, sinsp_query_details>::mark_top(&m_server_tables, limit);
+		request_sorter<std::string, sinsp_query_details>::mark_top(&m_client_tables, limit);
 	}
 
 private:
-	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_queries;
-	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_queries;
-	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_query_types;
-	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_query_types;
-	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_tables;
-	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_tables;
+	std::vector<std::unordered_map<std::string, sinsp_query_details>::iterator> m_server_queries;
+	std::vector<std::unordered_map<std::string, sinsp_query_details>::iterator> m_client_queries;
+	std::vector<std::unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_query_types;
+	std::vector<std::unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_query_types;
+	std::vector<std::unordered_map<std::string, sinsp_query_details>::iterator> m_server_tables;
+	std::vector<std::unordered_map<std::string, sinsp_query_details>::iterator> m_client_tables;
 };
 
 class sinsp_mongodb_marker
@@ -741,15 +981,15 @@ public:
 	{
 		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_server_ops, limit);
 		request_sorter<uint32_t, sinsp_query_details>::mark_top(&m_client_ops, limit);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_server_collections, limit);
-		request_sorter<string, sinsp_query_details>::mark_top(&m_client_collections, limit);
+		request_sorter<std::string, sinsp_query_details>::mark_top(&m_server_collections, limit);
+		request_sorter<std::string, sinsp_query_details>::mark_top(&m_client_collections, limit);
 	}
 
 private:
-	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_ops;
-	vector<unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_ops;
-	vector<unordered_map<string, sinsp_query_details>::iterator> m_server_collections;
-	vector<unordered_map<string, sinsp_query_details>::iterator> m_client_collections;
+	std::vector<std::unordered_map<uint32_t, sinsp_query_details>::iterator> m_server_ops;
+	std::vector<std::unordered_map<uint32_t, sinsp_query_details>::iterator> m_client_ops;
+	std::vector<std::unordered_map<std::string, sinsp_query_details>::iterator> m_server_collections;
+	std::vector<std::unordered_map<std::string, sinsp_query_details>::iterator> m_client_collections;
 };
 
 
@@ -777,6 +1017,8 @@ private:
 	sinsp_sql_marker m_mysql;
 	sinsp_sql_marker m_postgres;
 	sinsp_mongodb_marker m_mongodb;
+
+        friend class test_helper;
 };
 
 #endif // HAS_ANALYZER

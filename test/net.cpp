@@ -738,6 +738,100 @@ TEST(sinsp_protostate, test_zero)
 	EXPECT_FALSE(protos->has_mongodb());
 }
 
+// "standard" class can be used to access private members
+class test_helper
+{
+public:
+    static vector<unordered_map<string, sinsp_url_details>::iterator>* get_server_urls(sinsp_protostate_marker* spm)
+    {
+        return &spm->m_http.m_server_urls;
+    }
+
+    static vector<unordered_map<string, sinsp_url_details>::iterator>* get_client_urls(sinsp_protostate_marker* spm)
+    {
+        return &spm->m_http.m_client_urls;
+    }
+
+    static sinsp_http_parser::Result* get_result(sinsp_http_parser* parser)
+    {
+	    return &parser->m_result;
+    }
+};
+
+// need 3 classes of URLs for this test
+// -URLs which are in the top 15 in a stat
+// -URLs which are not in the top 15, but are in a group and are top in that group
+// -URLs which are not in the top 15, but are in a group and NOT top in that group
+//
+// we'll use 1 for our test...because easier
+TEST(sinsp_protostate, test_url_groups)
+{
+    sinsp_protostate protostate;
+    set<string> groups = {".*group.*"};
+    protostate.set_url_groups(groups);
+
+    for (int i = 0; i < 5; ++i)
+    {
+        auto transaction = make_unique<sinsp_partial_transaction>();
+        auto http_parser = new sinsp_http_parser();
+        auto url = string("http://test");
+	test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
+	test_helper::get_result(http_parser)->status_code = 200;
+        http_parser->m_is_valid = true;
+        transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+        transaction->m_protoparser = http_parser;
+        protostate.update(transaction.get(), 1, false, 512);
+    }
+
+    for (int i = 0; i < 3; ++i)
+    {
+        auto transaction = make_unique<sinsp_partial_transaction>();
+        auto http_parser = new sinsp_http_parser();
+        auto url = string("http://testgroup1");
+	test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
+	test_helper::get_result(http_parser)->status_code = 200;
+        http_parser->m_is_valid = true;
+        transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+        transaction->m_protoparser = http_parser;
+        protostate.update(transaction.get(), 1, false, 512);
+    }
+
+    auto transaction = make_unique<sinsp_partial_transaction>();
+    auto http_parser = new sinsp_http_parser();
+    auto url = string("http://testgroup2");
+    test_helper::get_result(http_parser)->url = const_cast<char*>(url.c_str());
+    test_helper::get_result(http_parser)->status_code = 200;
+    http_parser->m_is_valid = true;
+    transaction->m_type = sinsp_partial_transaction::TYPE_HTTP;
+    transaction->m_protoparser = http_parser;
+    protostate.update(transaction.get(), 1, false, 512);
+
+    sinsp_protostate_marker marker;
+    marker.add(&protostate);
+    marker.mark_top(1);
+
+    auto client_urls = test_helper::get_client_urls(&marker);
+    EXPECT_EQ(client_urls->size(), 3);
+
+    for (auto url = client_urls->begin(); url != client_urls->end(); ++url)
+    {
+        if ((*url)->first == "http://test" ||
+            (*url)->first == "http://testgroup1")
+        {
+            EXPECT_GT((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
+        }
+        else
+        {
+            EXPECT_EQ((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
+        }
+    }
+
+    delete sinsp_protostate::s_url_groups;
+    sinsp_protostate::s_url_groups = NULL;
+}
+
+
+
 TEST(sinsp_protostate, test_per_container_distribution)
 {
 	std::array<sinsp_protostate, 80> protostates;

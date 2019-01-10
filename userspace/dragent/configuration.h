@@ -843,6 +843,9 @@ public:
 	uint32_t m_top_processes_per_container = TOP_PROCESSES_PER_CONTAINER;
 	bool m_report_source_port = false;
 
+	std::set<std::string> m_url_groups;
+	bool m_url_groups_enabled = false;
+
 	bool m_track_connection_status;
 	int m_connection_truncate_report_interval;
 	int m_connection_truncate_log_interval;

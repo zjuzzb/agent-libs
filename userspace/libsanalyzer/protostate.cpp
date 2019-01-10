@@ -16,6 +16,8 @@
 #include "draios.pb.h"
 #include "protostate.h"
 
+sinsp_url_groups* sinsp_protostate::s_url_groups;
+
 ///////////////////////////////////////////////////////////////////////////////
 // Transaction table update support
 ///////////////////////////////////////////////////////////////////////////////
@@ -215,6 +217,16 @@ void sinsp_protostate::set_serialize_pctl_data(bool val)
 	m_mysql.set_serialize_pctl_data(val);
 	m_postgres.set_serialize_pctl_data(val);
 	m_mongodb.set_serialize_pctl_data(val);
+}
+
+void
+sinsp_protostate::set_url_groups(const std::set<string>& groups)
+{
+    if (!sinsp_protostate::s_url_groups)
+    {
+        sinsp_protostate::s_url_groups = new sinsp_url_groups();
+        sinsp_protostate::s_url_groups->update_group_set(groups);
+    }
 }
 
 void sinsp_protostate::add(sinsp_protostate* other)
@@ -618,6 +630,45 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 		});
 	}
 
+}
+
+void
+sinsp_url_groups::match_new_url(const string& url, sinsp_url_details& url_details) const
+{
+	for (auto group = m_matched_groups.begin(); group != m_matched_groups.end(); group++)
+	{
+		if ((*group).second->contains(url))
+		{
+			url_details.add_group((*group).second);
+		}
+	}
+}
+
+void
+sinsp_url_groups::update_group_set(const set<string>& groups)
+{
+	// currently only support being called once
+	ASSERT(m_matched_groups.size() == 0);
+
+	// this is very simplistic since we assume once set, groupset doesn't change
+	// there is code in the branch for the original bug (782) that accounts for that
+
+	// first find groups we don't know about yet
+	for (auto it = groups.begin(); it != groups.end(); ++it)
+	{
+		// this function only supports being called once. so we better
+		// only find a given group once
+		ASSERT(m_matched_groups.find(*it) == m_matched_groups.end());
+		m_matched_groups.insert(pair<string, shared_ptr<sinsp_url_group>>(*it, make_shared<sinsp_url_group>(*it)));
+	}
+
+	// add the group that will capture the top global to avoid dealing with a corner case later
+	string everything_group(".*");
+	// double check to make sure we don't add this if customer already provided it
+	if (m_matched_groups.find(everything_group) == m_matched_groups.end())
+	{
+		m_matched_groups.insert(pair<string, shared_ptr<sinsp_url_group>>(everything_group, make_shared<sinsp_url_group>(everything_group)));
+	}
 }
 
 #endif // HAS_ANALYZER

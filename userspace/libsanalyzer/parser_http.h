@@ -78,6 +78,8 @@ private:
  	friend class sinsp_protostate_test_per_container_distribution_Test;
 	friend class sinsp_protostate_test_top_call_should_be_present_Test;
 
+	friend class test_helper;
+
 };
 
 #endif // HAS_ANALYZER
