@@ -788,6 +788,7 @@ enum message_type {
     BASELINES = 17;
     COMP_RESULTS = 18;
     COMP_CALENDAR = 19;
+    AUDIT_TAP = 20;
 }
 
 //

@@ -4,6 +4,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSIO
 if(NOT CYGWIN)
 	add_library(draiosproto STATIC
 		${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
+		${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.grpc.pb.cc
 		${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
@@ -70,6 +71,14 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 endif()
 
 if(NOT CYGWIN)
+add_custom_command(
+		OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/tap.pb.cc
+		       ${CMAKE_CURRENT_BINARY_DIR}/tap.pb.h
+		COMMENT "Building tap cpp sources from .proto files"
+		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tap.proto
+		COMMAND ${PROTOC_CMDLINE} --cpp_out=. ${CMAKE_CURRENT_SOURCE_DIR}/tap.proto
+		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
                           ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.h
                           ${CMAKE_CURRENT_BINARY_DIR}/promex.grpc.pb.cc
