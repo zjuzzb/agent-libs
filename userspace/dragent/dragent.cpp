@@ -466,7 +466,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 			monitor_process.emplace_process("statsite_forwarder", [this]() -> int
 			{
 				m_statsite_forwarder_pipe->attach_child();
-				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(), m_configuration.m_statsd_port);
+				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
+						       m_configuration.m_statsd_port,
+						       m_configuration.m_statsite_buffer_warning_length);
 				return fwd.run();
 			});
 		}

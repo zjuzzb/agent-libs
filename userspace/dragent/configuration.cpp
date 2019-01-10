@@ -684,6 +684,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_cointerface_events_per_profile = m_config->get_scalar<int32_t>("cointerface_events_per_profile", 10000);
 	m_cointerface_total_profiles = m_config->get_scalar<int32_t>("cointerface_total_profiles", 30);
 
+	m_statsite_buffer_warning_length = m_config->get_scalar<uint32_t>("statsite_buffer_warning_length", 512);
+
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);

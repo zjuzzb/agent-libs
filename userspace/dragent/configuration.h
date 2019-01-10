@@ -813,6 +813,8 @@ public:
 	int32_t m_cointerface_total_profiles;
 	bool m_cointerface_mem_profile_enabled;
 
+	uint32_t m_statsite_buffer_warning_length;
+
 	unsigned m_snaplen;
 
 	uint16_t m_monitor_files_freq_sec = 0;

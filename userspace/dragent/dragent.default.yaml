@@ -1212,7 +1212,7 @@ container_filter:
   - include:
         all
 
-# set to true to give filtered containers and older containers priority
-smart_container_reporting: false
+statsite_buffer_warning_length: 300
+
 containers:
   limit: 200

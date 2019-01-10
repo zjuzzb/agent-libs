@@ -256,9 +256,11 @@ string statsd_metric::desanitize_container_id(string container_id)
 	return container_id;
 }
 
-statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds):
+statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds,
+			       uint32_t buffer_warning_length):
 		m_input_fd(fds.first),
-		m_output_fd(fds.second)
+		m_output_fd(fds.second),
+		m_buffer_warning_length(buffer_warning_length)
 {
 }
 
@@ -275,25 +277,66 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 
 	unordered_map<string, tuple<statsd_metric::list_t, unsigned>> ret;
 	uint64_t timestamp = 0;
-	const size_t buffer_size = 300;
-	char buffer[buffer_size] = {};
 	unsigned metric_count = 0;
+	const std::size_t DEFAULT_BUFFER_SIZE = 300;
 
 	if(m_output_fd)
 	{
-		while (fgets_unlocked(buffer, buffer_size, m_output_fd))
+		bool continue_loop = true;
+		while(continue_loop)
 		{
+			std::vector<char> dyn_buffer(DEFAULT_BUFFER_SIZE);
+			char *read_buffer = &dyn_buffer[0];
+
+			if(!fgets_unlocked(read_buffer, DEFAULT_BUFFER_SIZE, m_output_fd))
+			{
+				break;
+			}
+
 			// if the line is longer than the buffer, the following 2 things will be true
 			// 1) the last character will be a \0
 			// 2) the second to last character will be neither \0 NOR \n
-			if (buffer[buffer_size - 2] != '\0' && buffer[buffer_size - 2] != '\n')
+			while(dyn_buffer[dyn_buffer.size() - 2] != '\0' && dyn_buffer[dyn_buffer.size() - 2] != '\n')
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "Trace longer than buffer, dropping: %s", buffer);
-				fgets_unlocked(buffer, buffer_size, m_output_fd);
-				g_logger.format(sinsp_logger::SEV_ERROR, "Rest of trace: %s", buffer);
-				buffer[buffer_size - 2] = '\0'; // reset this char in the buffer
-				continue;
+				// if we've exceeded our configured buffer size, log it
+				if(dyn_buffer.size() >= m_buffer_warning_length)
+				{
+					g_logger.format(sinsp_logger::SEV_ERROR,
+							"Trace longer than warning size.: %s",
+							&dyn_buffer[0]);
+				}
+
+				// we have to grow the buffer. So grow it by the default buffer
+				// size, then point the char buffer to where the null terminator
+				// previously appeared, since that's where we want to start reading
+				dyn_buffer.resize(dyn_buffer.size() + DEFAULT_BUFFER_SIZE);
+				read_buffer = &dyn_buffer[dyn_buffer.size() - DEFAULT_BUFFER_SIZE - 1];
+
+				// note have to read 1 extra character since we have the null
+				// terminator from the previous read we're going to overwrite
+				if(!fgets_unlocked(read_buffer, DEFAULT_BUFFER_SIZE + 1, m_output_fd))
+				{
+					continue_loop = false;
+
+					if(ferror(m_output_fd))
+					{
+						// have some data, but read failed. can't
+						// reliably parse, so bail
+						goto BREAK_LOOP;
+					}
+					else
+					{
+						// still have data in buffer to parse
+						break;
+					}
+				}
+
 			}
+
+			// parsing code takes a char*, so just initialize one here and use it
+			// Probably should split this function into read/parse halves at some
+			// point. -zipper 1/7/19
+			char *buffer = &dyn_buffer[0];
 
 			g_logger.format(sinsp_logger::SEV_TRACE, "Received from statsite: %s", buffer);
 			try {
@@ -312,7 +355,11 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 					std::string filter;
 					if(ml)
 					{
-						if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
+						// allow() will log if logging is enabled
+						if(ml->allow(m_metric.name(),
+							     filter,
+							     nullptr,
+							     "statsd"))
 						{
 							std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 							++metric_count;
@@ -320,7 +367,11 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 					}
 					else // no filtering, add every metric and log explicitly
 					{
-						metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
+						metric_limits::log(m_metric.name(),
+								   "statsd",
+								   true,
+								   metric_limits::log_enabled(),
+								   " ");
 						std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 						++metric_count;
 					}
@@ -336,17 +387,27 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 			}
 			catch(const statsd_metric::parse_exception& ex)
 			{
-				g_logger.format(sinsp_logger::SEV_ERROR, "parser exception on statsd, buffer: %s", buffer);
+				g_logger.format(sinsp_logger::SEV_ERROR,
+						"parser exception on statsd, buffer: %s",
+						buffer);
 			}
 		}
-		if(m_metric.timestamp() && (timestamp == 0 || timestamp == m_metric.timestamp()))
+
+
+BREAK_LOOP:
+		if(m_metric.timestamp() &&
+		   (timestamp == 0 || timestamp == m_metric.timestamp()))
 		{
-			g_logger.log("statsite_proxy, Adding last sample", sinsp_logger::SEV_DEBUG);
+			g_logger.log("statsite_proxy, Adding last sample",
+				     sinsp_logger::SEV_DEBUG);
+
 			std::string filter;
 			++std::get<1>(ret[m_metric.container_id()]);
+
 			if(ml)
 			{
-				if(ml->allow(m_metric.name(), filter, nullptr, "statsd")) // allow() will log if logging is enabled
+				// allow() will log if logging is enabled
+				if(ml->allow(m_metric.name(), filter, nullptr, "statsd"))
 				{
 					std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 					++metric_count;
@@ -354,22 +415,35 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 			}
 			else // otherwise, add indiscriminately and log explicitly
 			{
-				metric_limits::log(m_metric.name(), "statsd", true, metric_limits::log_enabled(), " ");
+				metric_limits::log(m_metric.name(),
+						   "statsd",
+						   true,
+						   metric_limits::log_enabled(),
+						   " ");
 				std::get<0>(ret[m_metric.container_id()]).push_back(move(m_metric));
 				++metric_count;
 			}
 			m_metric = statsd_metric();
 		}
-		g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, ret vector size is: %u", metric_count);
+
+		g_logger.format(sinsp_logger::SEV_DEBUG,
+				"statsite_proxy, ret vector size is: %u",
+				metric_count);
+
 		if(m_metric.timestamp() > 0)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu", m_metric.timestamp(), ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s", m_metric.name().c_str());
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+					"statsite_proxy, m_metric timestamp is: %lu, vector timestamp: %lu",
+					m_metric.timestamp(),
+					ret.size() > 0 ? std::get<0>(ret.at("")).at(0).timestamp() : 0);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "statsite_proxy, m_metric name is: %s",
+					m_metric.name().c_str());
 		}
 	}
 	else
 	{
-		g_logger.log("statsite_proxy: cannot read metrics (file is null)", sinsp_logger::SEV_ERROR);
+		g_logger.log("statsite_proxy: cannot read metrics (file is null)",
+			     sinsp_logger::SEV_ERROR);
 	}
 	return ret;
 }
@@ -416,8 +490,8 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 	send_metric(metric_data.data(), metric_data.size());
 }
 
-statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes, uint16_t port):
-	m_proxy(pipes),
+statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes, uint16_t port, uint32_t max_buffer_len):
+	m_proxy(pipes, max_buffer_len),
 	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
 	m_exitcode(0),
 	m_port(port),
