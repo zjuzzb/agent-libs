@@ -9,6 +9,10 @@ class throttled_policy_events;
 class comp_results;
 }
 
+namespace tap {
+class AuditLog;
+}
+
 class dragent_configuration;
 
 class sinsp_data_handler : public analyzer_callback_interface
@@ -36,6 +40,8 @@ public:
 						 uint32_t total_throttled_count);
 
 	void security_mgr_comp_results_ready(uint64_t ts_ns, const draiosproto::comp_results *results);
+
+	void audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log);
 
 	uint64_t get_last_loop_ns() const
 	{

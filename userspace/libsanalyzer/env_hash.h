@@ -43,4 +43,6 @@ struct env_hash_config {
 	size_t m_max_env_size = 8192;
 	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
 	uint64_t m_env_hash_ttl = 86400ULL * ONE_SECOND_IN_NS;
+	bool m_send_metrics;
+	bool m_send_audit_tap;
 };

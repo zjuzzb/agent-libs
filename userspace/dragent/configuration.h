@@ -867,6 +867,12 @@ public:
 	size_t m_max_env_size;
 	std::unique_ptr<env_hash::regex_list_t> m_env_blacklist;
 	uint64_t m_env_hash_ttl;
+	bool m_env_metrics = true;
+	bool m_env_audit_tap = true;
+
+	bool m_audit_tap_enabled = false;
+	bool m_audit_tap_emit_local_connections = false;
+	bool m_audit_tap_debug_only = false;
 
 	bool m_extra_internal_metrics = false;
 

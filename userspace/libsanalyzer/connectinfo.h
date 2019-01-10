@@ -32,6 +32,17 @@ public:
 		AF_FAILED = (1 << 3),
 	};
 
+	struct state_transition {
+		state_transition(uint64_t timestamp_, uint8_t state_, int error_code_) :
+			timestamp(timestamp_),
+			state(state_),
+			error_code(error_code_) {}
+
+		uint64_t timestamp;
+		uint8_t state;
+		int error_code;
+	};
+
 	sinsp_connection();
 	sinsp_connection(uint64_t timestamp);
 	void reset();
@@ -44,6 +55,15 @@ public:
 	bool is_client_and_server() const;
 
 	void set_state(int errorcode);
+
+	std::vector<state_transition> get_state_history();
+	inline void record_state_transition(uint64_t timestamp)
+	{
+		if (m_record_state_history)
+		{
+			m_state_history.emplace_back(timestamp, m_analysis_flags, m_error_code);
+		}
+	}
 
 	int64_t m_spid;
 	int64_t m_stid;
@@ -66,6 +86,13 @@ public:
 	int32_t m_error_code; // last syscall error code
 	sinsp_connection_counters m_metrics;
 	sinsp_transaction_counters m_transaction_metrics;
+
+	bool m_record_state_history = false;
+	std::shared_ptr<sinsp_threadinfo> m_sproc;
+	std::shared_ptr<sinsp_threadinfo> m_dproc;
+
+private:
+	std::vector<state_transition> m_state_history;
 };
 
 class sinsp_connection_aggregator
@@ -148,7 +175,7 @@ public:
 		m_n_drops = 0;
 	}
 	sinsp_connection* add_connection(const TKey& key, string* comm, int64_t pid, int64_t tid, int64_t fd, bool isclient, uint64_t timestamp, uint8_t flags, int32_t error_code);
-	void remove_connection(const TKey& key);
+	sinsp_connection* remove_connection(const TKey &key);
 	sinsp_connection* get_connection(const TKey& key, uint64_t timestamp);
 	void remove_expired_connections(uint64_t current_ts);
 
@@ -207,6 +234,13 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 	//
 	sinsp_connection& conn = m_connections[key];
 
+	conn.m_record_state_history = m_inspector->m_analyzer->audit_tap_enabled();
+	shared_ptr<sinsp_threadinfo> proc = nullptr;
+	if(conn.m_record_state_history)
+	{
+		proc = m_inspector->get_thread_ref(pid, false, true);
+	}
+
 	if(m_percentiles.size() && !conn.m_transaction_metrics.has_percentiles())
 	{
 		conn.m_transaction_metrics.set_percentiles(m_percentiles);
@@ -224,19 +258,23 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			conn.m_sfd = fd;
 			conn.m_spid = pid;
 			conn.m_scomm = *comm;
+			conn.m_sproc = proc;
 			conn.m_dtid = 0;
 			conn.m_dfd = 0;
 			conn.m_dpid = 0;
+			conn.m_dproc = nullptr;
 		}
 		else
 		{
 			conn.m_stid = 0;
 			conn.m_sfd = 0;
 			conn.m_spid = 0;
+			conn.m_sproc = nullptr;
 			conn.m_dtid = tid;
 			conn.m_dfd = fd;
 			conn.m_dpid = pid;
 			conn.m_dcomm = *comm;
+			conn.m_dproc = proc;
 		}
 	}
 	else
@@ -277,6 +315,7 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			conn.m_sfd = fd;
 			conn.m_spid = pid;
 			conn.m_scomm = *comm;
+			conn.m_sproc = proc;
 		}
 		else
 		{
@@ -309,23 +348,28 @@ sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::add_connection(
 			conn.m_dfd = fd;
 			conn.m_dpid = pid;
 			conn.m_dcomm = *comm;
+			conn.m_dproc = proc;
 		}
 		conn.m_analysis_flags &= ~(sinsp_connection::AF_PENDING | sinsp_connection::AF_FAILED);
 		conn.m_analysis_flags |= flags;
 	}
 
+	if (!(conn.m_analysis_flags & sinsp_connection::AF_PENDING))
+	{
+		conn.record_state_transition(timestamp);
+	}
 	return &conn;
 };
 
 template<class TKey, class THash, class TCompare>
-void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey& key)
+sinsp_connection* sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey &key)
 {
 	typename unordered_map<TKey, sinsp_connection, THash, TCompare>::iterator cit;
 
 	cit = m_connections.find(key);
 	if(cit == m_connections.end())
 	{
-		return;
+		return nullptr;
 	}
 	else
 	{
@@ -334,8 +378,14 @@ void sinsp_connection_manager<TKey,THash,TCompare>::remove_connection(const TKey
 
 		if(cit->second.m_refcount <= 0)
 		{
+			auto prev_flags = cit->second.m_analysis_flags;
 			cit->second.m_analysis_flags |= sinsp_connection::AF_CLOSED;
+			if(prev_flags != cit->second.m_analysis_flags)
+			{
+				cit->second.record_state_transition(sinsp_utils::get_current_time_ns());
+			}
 		}
+		return &cit->second;
 	}
 };
 

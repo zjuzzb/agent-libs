@@ -32,6 +32,11 @@
 #include "userdb.h"
 #include "env_hash.h"
 
+class audit_tap;
+namespace tap {
+class AuditLog;
+}
+
 //
 // Prototype of the callback invoked by the analyzer when a sample is ready
 //
@@ -47,6 +52,9 @@ public:
 					       double flush_cpu_cpt,
 					       uint64_t analyzer_flush_duration_ns,
 					       uint64_t num_suppressed_threads) = 0;
+
+	virtual void audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log) = 0;
+
 };
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
@@ -579,6 +587,15 @@ public:
 			m_env_hash_config.m_env_hash_ttl = nsecs - ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
 		}
 	}
+	void set_env_emit(bool metrics, bool audit_tap) {
+		m_env_hash_config.m_send_metrics = metrics;
+		m_env_hash_config.m_send_audit_tap = audit_tap;
+	}
+
+	void enable_audit_tap(bool emit_local_connections);
+	bool audit_tap_enabled() const {
+		return m_tap != nullptr;
+	}
 
 	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
 
@@ -745,6 +762,7 @@ VISIBILITY_PRIVATE
 	uint64_t m_serialize_prev_sample_time;
 	uint64_t m_serialize_prev_sample_num_drop_events;
 
+	bool m_sent_metrics;
 	bool m_trace_started;
 	uint64_t m_last_profile_flush_ns;
 	uint32_t m_trace_count;
@@ -1045,6 +1063,8 @@ VISIBILITY_PRIVATE
 	 * determine how often k8s metadata should be added.
 	 */
 	uint16_t m_flushes_since_k8_cluster_flush = 0;
+
+	audit_tap* m_tap;
 
 	//
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART

@@ -114,6 +114,10 @@ public:
 		//int a = 0;
 	}
 
+	void audit_tap_data_ready(uint64_t ns, const tap::AuditLog* audit_log)
+	{
+	}
+
 	void subsampling_disabled()
 	{
 		printf("subsampling disabled\n");

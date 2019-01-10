@@ -24,6 +24,7 @@
 #include "sched_analyzer.h"
 #include "analyzer_thread.h"
 #include "proc_config.h"
+#include "tap.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_procinfo implementation
@@ -634,6 +635,10 @@ void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
 
 void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 {
+	if(tinfo->is_main_thread() && m_analyzer->m_tap)
+	{
+		m_analyzer->m_tap->on_exit(tinfo->m_pid);
+	}
 	if(tinfo->m_ainfo)
 	{
 		tinfo->m_ainfo->~thread_analyzer_info();

@@ -82,6 +82,7 @@ using namespace google::protobuf::io;
 #include "metric_limits.h"
 #include "label_limits.h"
 #include "container_emitter.h"
+#include "tap.h"
 
 typedef container_emitter<sinsp_analyzer, sinsp_analyzer::flush_flags> analyzer_container_emitter;
 #include <gperftools/profiler.h>
@@ -135,6 +136,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
 
+	m_sent_metrics = false;
 	m_trace_started = false;
 	m_last_profile_flush_ns = 0;
 	m_trace_count = 0;
@@ -174,6 +176,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_parser = new sinsp_analyzer_parsers(this);
 
 	m_falco_baseliner = new sinsp_baseliner();
+
+	m_tap = nullptr;
 #ifndef CYGWING_AGENT
 	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, inspector, root_dir);
 #endif
@@ -902,6 +906,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 				g_logger.log("Error processing agent internal metrics.", sinsp_logger::SEV_WARNING);
 			}
 		}
+		m_sent_metrics = true;
 		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, num_drop_events, m_metrics, m_sampling_ratio, m_my_cpuload,
 							     m_prev_flush_cpu_pct, m_prev_flushes_duration_ns, st.n_tids_suppressed);
 
@@ -2614,6 +2619,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 	pt_trc.stop();
 
+	// pass connections to kafka tap
+	if(m_tap)
+	{
+		m_tap->emit_connections(m_ipv4_connections, m_username_lookups ? &m_userdb : nullptr);
+	}
+
 	////////////////////////////////////////////////////////////////////////////
 	// EMIT CONNECTIONS
 	////////////////////////////////////////////////////////////////////////////
@@ -2809,7 +2820,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				prog->add_pids(pid);
 			}
 
-			if(m_track_environment) {
+			if(m_track_environment && m_env_hash_config.m_send_metrics) {
 				emit_environment(prog, tinfo, num_envs_sent);
 			}
 #else // ANALYZER_EMITS_PROGRAMS
@@ -5220,6 +5231,22 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			m_falco_baseliner->clear_tables();
 			m_last_buffer_drops = st.n_drops_buffer;
 		}
+	}
+
+	// audit tap data must be sent to the backend _after_ the main metrics object
+	// as we're authenticated by the first metrics object we send
+	if (m_tap && m_sent_metrics)
+	{
+		if (m_env_hash_config.m_send_audit_tap)
+		{
+			m_tap->emit_pending_envs(m_inspector);
+		}
+		auto tap_events = m_tap->get_events();
+		if (tap_events)
+		{
+			m_sample_callback->audit_tap_data_ready(ts, tap_events);
+		}
+		m_tap->clear();
 	}
 
 	if(f_trc.stop() > m_flush_log_time)
@@ -7646,6 +7673,11 @@ uint64_t sinsp_analyzer::flush_tracer_timeout() {
 	} else {
 		return m_flush_log_time;
 	}
+}
+
+void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
+{
+	m_tap = new audit_tap(&m_env_hash_config, m_configuration->get_machine_id(), emit_local_connections);
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

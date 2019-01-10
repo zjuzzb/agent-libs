@@ -6,6 +6,7 @@
 #include "logger.h"
 
 #include "draios.pb.h"
+#include "tap.pb.h"
 
 DRAGENT_LOGGER();
 
@@ -149,6 +150,43 @@ void sinsp_data_handler::security_mgr_comp_results_ready(uint64_t ts_ns, const d
 			   + ", ne=" + NumberFormatter::format(results->results_size()));
 
 	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_LOW))
+	{
+		LOG_INFO("Queue full, discarding sample");
+	}
+}
+
+void sinsp_data_handler::audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log)
+{
+	if(m_configuration->m_print_protobuf || m_configuration->m_audit_tap_debug_only)
+	{
+		LOG_INFO(string("Audit tap data:") + audit_log->DebugString());
+	}
+
+	std::shared_ptr<protocol_queue_item> buffer = dragent_protocol::message_to_buffer(
+		ts_ns,
+		draiosproto::message_type::AUDIT_TAP,
+		*audit_log,
+		true /* compression always enabled */);
+
+	if(!buffer)
+	{
+		LOG_ERROR("NULL converting audit_tap message to buffer");
+		return;
+	}
+
+	LOG_INFO("audit_tap len=" + NumberFormatter::format(buffer->buffer.size())
+			   + ", np=" + NumberFormatter::format(audit_log->newprocessevents().size())
+		           + ", pe=" + NumberFormatter::format(audit_log->processexitevents().size())
+		           + ", c=" + NumberFormatter::format(audit_log->connectionevents().size())
+			   + ", e=" + NumberFormatter::format(audit_log->environmentvariables().size())
+			   );
+
+	if(m_configuration->m_audit_tap_debug_only)
+	{
+		return;
+	}
+
+	if(!m_queue->put(buffer, protocol_queue::BQ_PRIORITY_MEDIUM))
 	{
 		LOG_INFO("Queue full, discarding sample");
 	}

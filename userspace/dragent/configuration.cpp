@@ -1256,9 +1256,22 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_env_blacklist->emplace_back(regex);
 	}
 	m_env_hash_ttl = m_config->get_scalar<uint64_t>("environment_tracking", "hash_ttl", 86400);
+	m_env_metrics = m_config->get_scalar<bool>("environment_tracking", "send_metrics", true);
+	m_env_audit_tap = m_config->get_scalar<bool>("environment_tracking", "send_audit_tap", true);
 	m_large_envs = m_config->get_scalar<bool>("enable_large_environments", false);
 
+	m_audit_tap_enabled = m_config->get_scalar<bool>("audit_tap", "enabled", false);
+	m_audit_tap_emit_local_connections = m_config->get_scalar<bool>("audit_tap", "emit_local_connections", false);
+	m_audit_tap_debug_only = m_config->get_scalar<bool>("audit_tap", "debug_only", true);
 
+	if (!m_audit_tap_enabled)
+	{
+		m_env_audit_tap = false;
+	}
+	if (!m_env_metrics && !m_env_audit_tap)
+	{
+		m_track_environment = false;
+	}
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 }
 
@@ -1730,10 +1743,24 @@ void dragent_configuration::print_configuration() const
 		g_log->information("Username lookups enabled.");
 	}
 
+	if (m_audit_tap_enabled)
+	{
+		LOG_INFO("Audit tap enabled%s.", m_audit_tap_debug_only ? " (debug only)" : "");
+		LOG_INFO("Auditing local connections: " + bool_as_text(m_audit_tap_emit_local_connections));
+	}
+
 	if (m_track_environment)
 	{
 		LOG_INFO("Environment variable reporting enabled, maximum %d envs per flush, %lu bytes per env, hash ttl: %lu seconds",
-			m_envs_per_flush, m_max_env_size, m_env_hash_ttl);
+			 m_envs_per_flush, m_max_env_size, m_env_hash_ttl);
+		if (m_env_metrics)
+		{
+			LOG_INFO("Sending environment variables in metrics");
+		}
+		if (m_env_audit_tap)
+		{
+			LOG_INFO("Sending environment variables in audit tap");
+		}
 	}
 
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));

@@ -215,7 +215,8 @@ set(SANALYZER_SOURCES
 	k8s_limits.cpp
 	userdb.cpp
 	blake2/blake2b.c
-	env_hash.cpp)
+	env_hash.cpp
+	tap.cpp)
 
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES

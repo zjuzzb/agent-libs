@@ -640,6 +640,10 @@ class analyzer_callback: public analyzer_callback_interface
 		printf("ciao\n");
 	}
 
+	void audit_tap_data_ready(uint64_t ns, const tap::AuditLog* audit_log)
+	{
+	}
+
 	void subsampling_disabled()
 	{
 	}

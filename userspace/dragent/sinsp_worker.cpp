@@ -487,6 +487,12 @@ void sinsp_worker::init()
 	m_analyzer->set_max_env_size(m_configuration->m_max_env_size);
 	m_analyzer->set_env_blacklist(std::move(m_configuration->m_env_blacklist));
 	m_analyzer->set_env_hash_ttl(m_configuration->m_env_hash_ttl);
+	m_analyzer->set_env_emit(m_configuration->m_env_metrics, m_configuration->m_env_audit_tap);
+
+	if(m_configuration->m_audit_tap_enabled)
+	{
+		m_analyzer->enable_audit_tap(m_configuration->m_audit_tap_emit_local_connections);
+	}
 
 	m_analyzer->set_extra_internal_metrics(m_configuration->m_extra_internal_metrics);
 

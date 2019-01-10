@@ -82,6 +82,11 @@ bool sinsp_connection::is_active() const
 	return (totops != 0) || (m_analysis_flags & (sinsp_connection::AF_FAILED | sinsp_connection::AF_PENDING));
 }
 
+std::vector<sinsp_connection::state_transition> sinsp_connection::get_state_history()
+{
+	return std::move(m_state_history);
+}
+
 void sinsp_connection::set_state(int errorcode)
 {
 	auto prev_state = m_analysis_flags;
@@ -92,6 +97,11 @@ void sinsp_connection::set_state(int errorcode)
 	if (errorcode)
 	{
 		m_analysis_flags |= sinsp_connection::AF_FAILED;
+	}
+
+	if(prev_state != m_analysis_flags || prev_error != m_error_code)
+	{
+		record_state_transition(sinsp_utils::get_current_time_ns());
 	}
 }
 
