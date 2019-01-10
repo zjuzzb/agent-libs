@@ -9,6 +9,9 @@ void env_hash::update(sinsp_threadinfo* tinfo, const env_hash::regex_list_t & bl
 	blake2b_init(S, m_env_hash.size());
 	for (const auto& var: tinfo->get_env()) {
 		bool blacklisted = false;
+		if(var.empty() || var[0] == '=') {
+			continue;
+		}
 		for (const auto& regex: blacklist) {
 			if (regex.match(var)) {
 				blacklisted = true;
