@@ -2,7 +2,12 @@
 
 #include "main.h"
 #include "protocol.h"
-#include "draios.pb.h"
+
+namespace draiosproto {
+class policy_events;
+class throttled_policy_events;
+class comp_results;
+}
 
 class dragent_configuration;
 

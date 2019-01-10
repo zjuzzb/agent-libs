@@ -5,6 +5,8 @@
 #include "utils.h"
 #include "logger.h"
 
+#include "draios.pb.h"
+
 DRAGENT_LOGGER();
 
 sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
