@@ -9,10 +9,20 @@
 #include "metric_limits.h"
 #include <fstream>
 #include "third-party/jsoncpp/json/json.h"
+#include <sched.h>
 
 class jmx_proxy_f : public ::testing::Test {
 protected:
 	virtual void SetUp() {
+		struct rlimit msgqueue_rlimits = {
+			.rlim_cur = posix_queue::min_msgqueue_limit(),
+			.rlim_max = posix_queue::min_msgqueue_limit()
+		};
+		if(setrlimit(RLIMIT_MSGQUEUE, &msgqueue_rlimits) != 0)
+		{
+			std::cerr << "Cannot set msgqueue limits: " << strerror(errno) << '\n';
+		}
+
 		m_inqueue = make_unique<posix_queue>("/sdc_sdjagent_out", posix_queue::SEND, 1);
 		jmx = make_unique<jmx_proxy>();
 	}

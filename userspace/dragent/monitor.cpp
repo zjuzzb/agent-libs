@@ -146,7 +146,7 @@ int monitor::run()
 						}
 						m_cleanup_function();
 #ifndef CYGWING_AGENT
-						execl(m_self_binary.c_str(), m_self_binary.c_str(), (char*)NULL);
+						execl(m_self_binary.c_str(), m_self_binary.c_str(), "--noipcns", (char*)NULL);
 #else
 						string executable = windows_helpers::get_executable_parent_dir() + "/bin/dragent.exe";
 						if(m_windows_service_parent)

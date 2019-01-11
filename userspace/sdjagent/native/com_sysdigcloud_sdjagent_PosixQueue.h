@@ -9,14 +9,6 @@ extern "C" {
 #endif
 /*
  * Class:     com_sysdigcloud_sdjagent_PosixQueue
- * Method:    setQueueLimits
- * Signature: ()Z
- */
-JNIEXPORT jboolean JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_setQueueLimits
-  (JNIEnv *, jclass);
-
-/*
- * Class:     com_sysdigcloud_sdjagent_PosixQueue
  * Method:    openQueue
  * Signature: (Ljava/lang/String;II)I
  */

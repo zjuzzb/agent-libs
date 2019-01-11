@@ -130,7 +130,7 @@ if [ $# -eq 0 ]; then
     fi
 
     if [ -z "$SYSDIG_LAUNCH_DRAGENT" ] || [ "$SYSDIG_LAUNCH_DRAGENT" == 1 ]; then
-	exec /opt/draios/bin/dragent
+	exec /opt/draios/bin/dragent --noipcns
     fi
 else
 	exec "$@"

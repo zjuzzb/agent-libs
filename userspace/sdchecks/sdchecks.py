@@ -36,7 +36,6 @@ from requests.packages.urllib3.exceptions import (
     InsecureRequestWarning
 )
 
-RLIMIT_MSGQUEUE = 12
 # %s will be replaced by the install prefix
 CHECKS_DIRECTORY = "%s/lib/python/checks.d"
 CUSTOM_CHECKS_DIRECTORY = "%s/lib/python/checks.custom.d"
@@ -409,8 +408,6 @@ class PosixQueue:
     MAXMSGS = 3
     MAXQUEUES = 10
     def __init__(self, name, direction, maxmsgs=MAXMSGS):
-        limit = self.MAXQUEUES*(self.MAXMSGS+2)*self.MSGSIZE
-        resource.setrlimit(RLIMIT_MSGQUEUE, (limit, limit))
         self.direction = direction
         self.queue = posix_ipc.MessageQueue(name, os.O_CREAT, mode=0600,
                                             max_messages=maxmsgs, max_message_size=self.MSGSIZE,

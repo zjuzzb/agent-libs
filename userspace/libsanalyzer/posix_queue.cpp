@@ -14,10 +14,6 @@ posix_queue::posix_queue(string name, direction_t dir, long maxmsgs):
 {
 	m_readbuffer = new char[MAX_MSGSIZE];
 	ASSERT(name.size() <= NAME_MAX);
-	if(!set_queue_limits())
-	{
-		g_logger.format(sinsp_logger::SEV_ERROR, "Error: Cannot increase posix queue limits");
-	}
 	int flags = dir | O_CREAT;
 	struct mq_attr queue_attrs = {0};
 	if(m_direction == SEND)
@@ -114,32 +110,6 @@ string posix_queue::receive(uint64_t timeout_s)
 	g_logger.log("Error: posix_queue[" + m_name + "]: cannot receive (no queue)", sinsp_logger::SEV_ERROR);
 	return "";
 
-}
-
-bool posix_queue::limits_set = false;
-
-bool posix_queue::set_queue_limits()
-{
-#ifndef CYGWING_AGENT
-	if(!limits_set)
-	{
-		struct rlimit r;
-		r.rlim_cur = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
-		r.rlim_max = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
-
-		int res = setrlimit(RLIMIT_MSGQUEUE, &r);
-		if(res != 0)
-		{
-			g_logger.format(sinsp_logger::SEV_ERROR, "Error: Cannot set queue limits, errno: %s", strerror(errno));
-		}
-		limits_set = (res == 0);
-	}
-	return limits_set;
-#else // CYGWING_AGENT
-//	ASSERT(false);
-	g_logger.format(sinsp_logger::SEV_ERROR, "posix_queue::set_queue_limits must be implemented on Windows");
-//	throw sinsp_exception("posix_queue::set_queue_limits not implemented on Windows");
-#endif // CYGWING_AGENT
 }
 
 bool posix_queue::remove(const string &name)

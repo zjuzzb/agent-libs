@@ -125,6 +125,9 @@ private:
 	bool m_windows_service_parent;
 #endif
 	string m_pidfile;
+#ifndef CYGWING_AGENT
+	bool m_unshare_ipcns;
+#endif
 	dragent_configuration m_configuration;
 	dragent_error_handler m_error_handler;
 	protocol_queue m_queue;

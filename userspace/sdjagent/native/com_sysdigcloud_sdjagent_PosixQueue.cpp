@@ -12,17 +12,6 @@ static const long MAX_MSGSIZE = 3 << 20; // 3 MiB
 static const long MAX_QUEUES = 10;
 static const long MAX_MSGS = 3;
 
-JNIEXPORT jboolean JNICALL Java_com_sysdigcloud_sdjagent_PosixQueue_setQueueLimits
-		(JNIEnv *, jclass)
-{
-	struct rlimit r;
-	r.rlim_cur = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
-	r.rlim_max = MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
-
-	int res = setrlimit(RLIMIT_MSGQUEUE, &r);
-	return res == 0;
-}
-
 /*
  * Class:     com_sysdigcloud_sdjagent_PosixQueue
  * Method:    openQueue

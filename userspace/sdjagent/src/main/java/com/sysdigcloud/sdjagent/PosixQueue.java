@@ -19,14 +19,6 @@ public class PosixQueue {
         }
     }
 
-    static {
-        if (CLibrary.libraryLoaded) {
-            if(!setQueueLimits()) {
-                LOGGER.warning("Cannot set queue limits");
-            }
-        }
-    }
-
     private final int fd;
     private final String name;
     private final byte[] msgbuffer;
@@ -78,7 +70,6 @@ public class PosixQueue {
         queueClose(fd);
     }
 
-    private static native boolean setQueueLimits();
     private static native int openQueue(String name, int flags, int maxmsgs);
     private static native int queueSend(int fd, String message);
     private static native int queueReceive(int fd, byte[] msgbuffer, long timeout_s);

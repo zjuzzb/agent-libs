@@ -246,6 +246,7 @@ dragent_configuration::dragent_configuration()
 	m_jmx_limit = 500;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
+	m_rlimit_msgqueue = posix_queue::min_msgqueue_limit();
 	m_auto_config = true;
 	m_security_enabled = false;
 	m_security_policies_file = "";
@@ -1040,6 +1041,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	// End Mesos
 
 	m_enable_coredump = m_config->get_scalar<bool>("coredump", false);
+	m_rlimit_msgqueue = m_config->get_scalar<unsigned long>("msgqueue_limit", m_rlimit_msgqueue);
+	if(m_rlimit_msgqueue < posix_queue::min_msgqueue_limit())
+	{
+		// cannot log a warning here
+		m_rlimit_msgqueue = posix_queue::min_msgqueue_limit();
+	}
 	m_user_events_rate = m_config->get_scalar<uint64_t>("events", "rate", 1);
 	m_user_max_burst_events = m_config->get_scalar<uint64_t>("events", "max_burst", 1000);
 
@@ -1481,6 +1488,7 @@ void dragent_configuration::print_configuration() const
 	}
 #endif
 	LOG_INFO("coredump enabled: " + bool_as_text(m_enable_coredump));
+	LOG_INFO("POSIX queue limit: %lu", m_rlimit_msgqueue);
 
 	if(m_security_enabled)
 	{

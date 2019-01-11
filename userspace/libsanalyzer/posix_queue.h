@@ -15,6 +15,10 @@
 class posix_queue: noncopyable
 {
 public:
+	static constexpr unsigned long min_msgqueue_limit() {
+		return MAX_QUEUES * (MAX_MSGS+2) * MAX_MSGSIZE;
+	}
+
 	enum direction_t
 	{
 		SEND = O_WRONLY, RECEIVE = O_RDONLY
@@ -29,8 +33,6 @@ public:
 	string receive(const uint64_t timeout_s=0);
 	static bool remove(const string& name);
 private:
-	static bool limits_set;
-	static bool set_queue_limits();
 	mqd_t m_queue_d;
 	direction_t m_direction;
 	string m_name;

@@ -16,6 +16,7 @@
 #ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
 #include <grpc/support/log.h>
+#include <sched.h>
 #else
 #include "windows_helpers.h"
 #endif
@@ -65,6 +66,9 @@ dragent_app::dragent_app():
 	m_version_requested(false),
 #ifdef CYGWING_AGENT
 	m_windows_service_parent(false),
+#endif
+#ifndef CYGWING_AGENT
+    m_unshare_ipcns(true),
 #endif
 	m_queue(MAX_SAMPLE_STORE_SIZE),
 	m_enable_autodrop(true),
@@ -149,6 +153,13 @@ void dragent_app::defineOptions(OptionSet& options)
 			.repeatable(false)
 			.argument("port"));
 
+#ifndef CYGWING_AGENT
+	options.addOption(
+		Option("noipcns", "", "keep IPC namespace (for internal use)")
+			.required(false)
+			.repeatable(false));
+#endif
+
 	options.addOption(
 		Option("dragentpid", "", "pid file.")
 			.required(false)
@@ -213,6 +224,12 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 	{
 		m_configuration.m_server_port = (uint16_t)NumberParser::parse(value);
 	}
+#ifndef CYGWING_AGENT
+	else if(name == "noipcns")
+	{
+		m_unshare_ipcns = false;
+	}
+#endif
 	else if(name == "dragentpid")
 	{
 		m_pidfile = value;
@@ -323,6 +340,22 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGTERM);
 	sigaddset(&sigs, SIGPIPE);
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
+
+#ifndef CYGWING_AGENT
+	if(m_unshare_ipcns && unshare(CLONE_NEWIPC) < 0)
+	{
+		std::cerr << "Cannot create private IPC namespace: " << strerror(errno) << '\n';
+	}
+#endif
+
+	struct rlimit msgqueue_rlimits = {
+		.rlim_cur = m_configuration.m_rlimit_msgqueue,
+		.rlim_max = m_configuration.m_rlimit_msgqueue
+	};
+	if(setrlimit(RLIMIT_MSGQUEUE, &msgqueue_rlimits) != 0)
+	{
+		std::cerr << "Cannot set msgqueue limits: " << strerror(errno) << '\n';
+	}
 
 	// Add our main process
 	monitor_process.emplace_process("sdagent",[this]()
