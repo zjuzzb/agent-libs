@@ -516,11 +516,11 @@ if [ ! -f "${KUBECTL_BINARY}" ]; then
 	wget https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl -O $KUBECTL_BINARY
 fi
 
-KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.0.17.1
+KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.0.23.1
 if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/kube-bench-0.0.17.1.tar.gz
-	tar -xzf kube-bench-0.0.17.1.tar.gz
+	wget $DEPENDENCIES_URL/kube-bench-0.0.23.1.tar.gz
+	tar -xzf kube-bench-0.0.23.1.tar.gz
 fi
 
 if [ $OS == "Windows_NT" ]; then
