@@ -57,7 +57,7 @@ set(SANALYZER_SOURCES
 	custom_container.cpp
 	delays.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_docker_common.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_common.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_info.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
@@ -164,18 +164,19 @@ set(SANALYZER_SOURCES
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_cri.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_docker_linux.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_lxc.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_mesos.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_rkt.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/cri.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_linux.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/libvirt_lxc.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/lxc.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/mesos.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/rkt.cpp
 
 	${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.cc
 	${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
 )
 else()
 list(APPEND SANALYZER_SOURCES
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_docker_win.cpp)
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_win.cpp)
 endif()
 add_library(sanalyzer STATIC ${SANALYZER_SOURCES})
 
