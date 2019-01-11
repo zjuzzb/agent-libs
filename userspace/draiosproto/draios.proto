@@ -718,7 +718,7 @@ message program {
     required process procinfo = 1; // Information about this program
     repeated uint64 pids = 2; // The list of processes that are part of this program
     repeated uint64 uids = 3; // The list of user ids that are running the processes forming this program
-    optional string environment_hash = 4; // the hash of all environment variables
+    optional bytes environment_hash = 4; // the hash of all environment variables
 }
 
 message id_map {
@@ -727,7 +727,7 @@ message id_map {
 }
 
 message environment {
-    optional string hash = 1; // the hash referenced in `message program`
+    optional bytes hash = 1; // the hash referenced in `message program`
     repeated string variables = 2; // individual variables as `KEY=value` strings
 }
 
