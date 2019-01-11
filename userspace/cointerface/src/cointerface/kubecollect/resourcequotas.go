@@ -91,9 +91,11 @@ func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v
 	resourceQuota.GetObjectMeta()
 	for k, v := range resourceQuota.Status.Used {
 		hard := resourceQuota.Status.Hard[k]
-		hardvalue := hard.Value()
-		AppendMetricInt64(metrics, prefix+k.String()+".hard", hardvalue);
-		AppendMetricInt64(metrics, prefix+k.String()+".used", v.Value());
+
+		// Take MilliValue() and divide because
+		// we could lose precision with Value()
+		AppendMetric(metrics, prefix+k.String()+".hard", float64(hard.MilliValue())/1000);
+		AppendMetric(metrics, prefix+k.String()+".used", float64(v.MilliValue())/1000);
 	}
 }
 
