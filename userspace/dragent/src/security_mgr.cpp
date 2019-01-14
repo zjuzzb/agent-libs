@@ -1312,8 +1312,15 @@ std::shared_ptr<security_mgr::security_policies_group> security_mgr::get_policie
 void security_mgr::load_k8s_audit_server()
 {
 	sdc_internal::k8s_audit_server_load load;
-	load.set_k8s_audit_server_url(m_configuration->k8s_audit_server_url());
-	load.set_k8s_audit_server_port(m_configuration->k8s_audit_server_port());
+	load.set_tls_enabled(m_configuration->k8s_audit_server_tls_enabled());
+	load.set_url(m_configuration->k8s_audit_server_url());
+	load.set_port(m_configuration->k8s_audit_server_port());
+
+	if (m_configuration->k8s_audit_server_tls_enabled()) {
+		sdc_internal::k8s_audit_server_X509 *x509 = load.add_x509();
+		x509->set_x509_cert_file(m_configuration->k8s_audit_server_x509_cert_file());
+		x509->set_x509_key_file(m_configuration->k8s_audit_server_x509_key_file());
+	}
 
 	auto callback = [this](bool successful, sdc_internal::k8s_audit_server_load_result &lresult)
 	{

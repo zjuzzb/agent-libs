@@ -268,9 +268,12 @@ dragent_configuration::dragent_configuration()
 	m_security_compliance_kube_bench_variant = "";
 	m_security_compliance_save_temp_files = false;
 	m_k8s_audit_server_enabled = true;
+	m_k8s_audit_server_refresh_interval = 120000000000;
 	m_k8s_audit_server_url = "localhost";
 	m_k8s_audit_server_port = 8765;
-	m_k8s_audit_server_refresh_interval = 120000000000;
+	m_k8s_audit_server_tls_enabled = false;
+	m_k8s_audit_server_x509_cert_file = "";
+	m_k8s_audit_server_x509_key_file = "";
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
@@ -1145,10 +1148,12 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_compliance_save_temp_files = m_config->get_scalar<bool>("security", "compliance_save_temp_files", false);
 
 	m_k8s_audit_server_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_enabled", true);
+	m_k8s_audit_server_refresh_interval = m_config->get_scalar<uint64_t>("security", "k8s_audit_server_refresh_interval", 120000000000);
 	m_k8s_audit_server_url = m_config->get_scalar<string>("security", "k8s_audit_server_url", "localhost");
 	m_k8s_audit_server_port = m_config->get_scalar<uint16_t>("security", "k8s_audit_server_port", 8765);
-	m_k8s_audit_server_refresh_interval = m_config->get_scalar<uint64_t>("security", "k8s_audit_server_refresh_interval", 120000000000);
-
+	m_k8s_audit_server_tls_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_tls_enabled", false);
+	m_k8s_audit_server_x509_cert_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_cert_file", "");
+	m_k8s_audit_server_x509_key_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_key_file", "");
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = (m_mounts_limit_size > 0) && nsfile.exists();
@@ -1625,8 +1630,14 @@ void dragent_configuration::print_configuration() const
 		if (m_k8s_audit_server_enabled)
 		{
 			LOG_INFO(string("K8s Audit Server configured"));
+			LOG_INFO(string("K8s Audit Server tls enabled:  ") + std::to_string(m_k8s_audit_server_tls_enabled));
 			LOG_INFO(string("K8s Audit Server URL:  ") + m_k8s_audit_server_url);
 			LOG_INFO(string("K8s Audit Server port: ") + std::to_string(m_k8s_audit_server_port));
+			if (m_k8s_audit_server_tls_enabled)
+			{
+				LOG_INFO(string("K8s Audit Server X509 crt file: ") + m_k8s_audit_server_x509_cert_file);
+				LOG_INFO(string("K8s Audit Server X509 key file: ") + m_k8s_audit_server_x509_key_fileo);
+			}
 		}
 	}
 

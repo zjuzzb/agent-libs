@@ -2,6 +2,7 @@ package k8s_audit
 
 import (
 	"cointerface/sdc_internal"
+	"crypto/tls"
 	"encoding/json"
 	"github.com/gogo/protobuf/proto"
 	"golang.org/x/net/context"
@@ -31,6 +32,7 @@ func (ks *k8sAuditServer) Init() error {
 	return nil
 }
 
+/* Support is given for a single endpoint at the time: either over HTTP or over HTTPS */
 func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditServerLoad) (*sdc_internal.K8SAuditServerLoadResult, error) {
 
 	log.Debugf("Received K8s Audit Server Load message: %s", load.String())
@@ -45,25 +47,87 @@ func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditS
 		Successful: proto.Bool(true),
 	}
 
-	r := http.NewServeMux()
-	r.Handle("/k8s_audit", ks)
-
-	var s = &http.Server {
-		Addr: *load.K8SAuditServerUrl + ":" + strconv.Itoa(int(*load.K8SAuditServerPort)),
-		Handler: r,
+	/* common HTTP/HTTPS configuration */
+	httpHandler := http.NewServeMux()
+	httpHandler.Handle("/k8s_audit", ks)
+	var httpServer = &http.Server {
+		Addr: load.GetUrl() + ":" + strconv.Itoa(int(load.GetPort())),
+		Handler: httpHandler,
 		ReadTimeout: time.Second * 10,
 		WriteTimeout: time.Second * 10,
 		MaxHeaderBytes: 1 << 20,
 	}
 
+	/* HTTP only (TLS is disabled) */
+	if  load.GetTlsEnabled() == false {
+		log.Debugf("K8s Audit Server setting up endpoint over HTTP")
 
-	go func() {
-		if err := s.ListenAndServe(); err != nil {
-			log.Errorf("K8s Audit Server ListenAndServe(): %s", err)
+
+		go func() {
+			if err := httpServer.ListenAndServe(); err != nil {
+				log.Errorf("K8s Audit Server Load at ListenAndServe(): %s", err)
+				result.Successful = proto.Bool(false)
+				result.Errstr = proto.String(err.Error())
+			}
+		}()
+	} else {  /* HTTPS */
+		log.Debugf("K8s Audit Server setting up endpoint over HTTPS")
+
+		/* Validate X509 object is present */
+		x509 := load.GetX509()
+
+		if x509 == nil {
+			err := "K8s Audit Server Load GetX509(): X509 object is not present"
+			log.Errorf(err)
 			result.Successful = proto.Bool(false)
-			result.Errstr = proto.String(err.Error())
+			result.Errstr = proto.String(err)
+			return result, nil
 		}
-	}()
+		/* Validation on the number of x509 objs */
+		if len(x509) > 3 {
+			err := "K8s Audit Server validate x509 object: too many certificates provided (max is 3)"
+			log.Errorf(err)
+			result.Successful = proto.Bool(false)
+			result.Errstr = proto.String(err)
+			return result, nil
+		}
+
+		cfg := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+
+		for i := 0 ; i < len(x509) + 1; i++ {
+			log.Debugf("Loading X509 private key certificate: {cert file: %s, key file: %s}",
+				*x509[i].X509CertFile, *x509[i].X509KeyFile)
+			cert, err := tls.LoadX509KeyPair(
+				*x509[i].X509CertFile,
+				*x509[i].X509KeyFile)
+
+			if err != nil {
+				log.Errorf("K8s Audit Server Load at tls.LoadX509KeyPair(): %s", err)
+				result.Successful = proto.Bool(false)
+				result.Errstr = proto.String(err.Error())
+			}
+
+			cfg.Certificates = append(cfg.Certificates, cert)
+		}
+
+		cfg.BuildNameToCertificate()
+
+		httpServer.TLSConfig = cfg
+
+		go func() {
+			// passing empty string to ListenAndServeTLS, as we
+			// specify the location of the certificate in the tls
+			// config, as reference please see:
+			// https://github.com/golang/go/commit/f81f6d6ee8a7f578ab19ccb8b7dbc3b6fff81aa0
+			if err := httpServer.ListenAndServeTLS("", ""); err != nil {
+				log.Errorf("K8s Audit Server Load ListenAndServeTLS(): %s", err)
+				result.Successful = proto.Bool(false)
+				result.Errstr = proto.String(err.Error())
+			}
+		}()
+	}
 
 	return result, nil
 }

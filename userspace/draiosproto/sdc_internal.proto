@@ -13,7 +13,7 @@ option optimize_for = SPEED;
 
 message container_mounts {
     required string container_id = 1;
-    repeated draiosproto.mounted_fs mounts = 2; 
+    repeated draiosproto.mounted_fs mounts = 2;
 }
 
 message mounted_fs_response {
@@ -176,9 +176,18 @@ service ComplianceModuleMgr {
     rpc RunTasks(draiosproto.comp_run) returns (comp_run_result) {}
 }
 
+message k8s_audit_server_X509 {
+    required string x509_cert_file = 1;
+    required string x509_key_file = 2;
+}
+
+/* The K8s Audit Server sets up a single endpoint either HTTP or
+ * HTTPS */
 message k8s_audit_server_load {
-    required string k8s_audit_server_url = 1;
-    required uint32 k8s_audit_server_port = 2;
+    required string url = 1;
+    required uint32 port = 2;
+    required bool tls_enabled = 3;
+    repeated k8s_audit_server_X509 x509 = 4;
 }
 
 message k8s_audit_server_load_result {
