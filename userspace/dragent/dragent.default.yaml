@@ -1158,6 +1158,7 @@ mounts_filter:
   - exclude: "*|*|/var/lib/docker/*"
   - exclude: "*|*|/var/lib/kubelet/pods/*"
   - exclude: "*|*|/run/secrets"
+  - exclude: "*|*|/run/containerd/*"
   - include: "*|*|*"
 mounts_limit_size: 15
 
