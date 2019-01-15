@@ -82,6 +82,7 @@ private:
 	inline bool should_report_network(sinsp_fdinfo_t* fdinfo);
 	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
 	void flush_transaction(erase_fd_params* params);
+	void add_ipv4_connection(sinsp_evt* evt);
 
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;

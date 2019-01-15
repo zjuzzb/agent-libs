@@ -1194,27 +1194,50 @@ void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint3
 		NULL, len, 0);
 }
 
-void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data)
+void sinsp_analyzer_fd_listener::add_ipv4_connection(sinsp_evt* evt)
 {
 	int64_t tid = evt->get_tid();
 
+	uint8_t flags = sinsp_connection::AF_NONE;
+	if (evt->m_fdinfo->is_socket_failed()) {
+		flags = sinsp_connection::AF_FAILED;
+	} else if (evt->m_fdinfo->is_socket_pending()) {
+		flags = sinsp_connection::AF_PENDING;
+	}
+
+	//
+	// Add the tuple to the connection table
+	//
+	string scomm = evt->m_tinfo->get_comm();
+
+	m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+									 &scomm,
+									 evt->m_tinfo->m_pid,
+									 tid,
+									 evt->m_tinfo->m_lastevent_fd,
+									 true,
+									 evt->get_ts(),
+									 flags,
+									 evt->m_errorcode);
+
+	evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
+
+}
+
+void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data)
+{
 	uint8_t family = *packed_data;
 
 	//
 	// Connection and transaction handling
 	//
+	// Since UDP sockets don't generate traffic
+	// with connect, ignore them here. We'll
+	// handle the connection at the first read/write
 	if((family == PPM_AF_INET || family == PPM_AF_INET6) &&
-			should_report_network(evt->m_fdinfo))
+			should_report_network(evt->m_fdinfo) &&
+			!evt->m_fdinfo->is_udp_socket())
 	{
-		if(evt->m_fdinfo->is_udp_socket())
-		{
-			// Since UDP sockets don't generate traffic
-			// with connect, ignore them here. We'll
-			// handle the connection at the first read/write
-
-			goto blupdate;
-		}
-
 		//
 		// Mark this fd as a transaction
 		//
@@ -1223,31 +1246,12 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 			evt->m_fdinfo->m_usrstate = new sinsp_partial_transaction();
 		}
 
-		uint8_t flags = sinsp_connection::AF_NONE;
-		if (evt->m_fdinfo->is_socket_failed()) {
-			flags = sinsp_connection::AF_FAILED;
-		} else if (evt->m_fdinfo->is_socket_pending()) {
-			flags = sinsp_connection::AF_PENDING;
+		if(family == PPM_AF_INET)
+		{
+			add_ipv4_connection(evt);
 		}
-
-		//
-		// Add the tuple to the connection table
-		//
-		string scomm = evt->m_tinfo->get_comm();
-
-		m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    evt->m_tinfo->m_lastevent_fd,
-		    true,
-		    evt->get_ts(),
-		    flags,
-		    evt->m_errorcode);
-
-		evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 	}
-	else
+	else if(family == PPM_AF_UNIX)
 	{
 		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
 
@@ -1268,7 +1272,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 #endif // HAS_UNIX_CONNECTIONS
 	}
 
-blupdate:
 	//
 	// Baseline update
 	//
