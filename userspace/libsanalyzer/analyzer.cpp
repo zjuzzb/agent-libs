@@ -53,7 +53,7 @@ using namespace google::protobuf::io;
 #include "analyzer_parsers.h"
 #include "chisel.h"
 #ifndef CYGWING_AGENT
-#include "docker.h"
+#include "container_events/docker.h"
 #include "k8s.h"
 #include "k8s_delegator.h"
 #include "k8s_state.h"

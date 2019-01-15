@@ -54,13 +54,13 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	connectinfo.cpp 
 	config.cpp
+	container_events/docker.cpp
 	custom_container.cpp
 	delays.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_common.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_info.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp
-	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/docker.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dumper.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/event.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/eventformatter.cpp
