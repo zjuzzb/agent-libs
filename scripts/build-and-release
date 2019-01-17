@@ -13,8 +13,8 @@ fi
 
 SCRIPT=$(readlink -f $0)
 SCRIPTS_DIR=$(dirname $SCRIPT)
-BINARIES_DIR="/tmp/binaries"
-REPOSITORY_DIR="/tmp/repo"
+BINARIES_DIR=$(mktemp -d -p . -t binariesXXXXXX | xargs -I{} echo "$(pwd)/{}")
+REPOSITORY_DIR=$(mktemp -d -p . -t repoXXXXXX | xargs -I{} echo "$(pwd)/{}")
 JOBS=${JOBS:-$(nproc)}
 
 export AWS_DEFAULT_REGION="us-east-1"
@@ -22,189 +22,189 @@ export AWS_DEFAULT_REGION="us-east-1"
 cd $SCRIPTS_DIR/../..
 
 function build_components {
-	rm -rf $BINARIES_DIR
-	mkdir -p $BINARIES_DIR/debug
-	mkdir -p $BINARIES_DIR/release
+    rm -rf $BINARIES_DIR
+    mkdir -p $BINARIES_DIR/debug
+    mkdir -p $BINARIES_DIR/release
 
-	case "$COMPONENT" in
-		agent)
-			rm -rf agent/build || true
-			agent/bootstrap-agent
-			
-			make -C agent/build/debug package VERBOSE=1 -j$JOBS
-			make -C agent/build/release package VERBOSE=1 -j$JOBS
+    case "$COMPONENT" in
+        agent)
+            rm -rf agent/build || true
+            agent/bootstrap-agent
+            
+            make -C agent/build/debug package VERBOSE=1 -j$JOBS
+            make -C agent/build/release package VERBOSE=1 -j$JOBS
 
-			cp agent/build/debug/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/debug
-			cp agent/build/debug/*tests*tar.gz $BINARIES_DIR/debug
-			cp agent/build/release/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/release
-			cp agent/build/release/*tests*tar.gz $BINARIES_DIR/release
-			;;
-		sysdig)
-			rm -rf sysdig/build || true
-			agent/bootstrap-sysdig
-			
-			make -C sysdig/build/debug package VERBOSE=1 -j$JOBS
-			make -C sysdig/build/release package VERBOSE=1 -j$JOBS
+            cp agent/build/debug/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+            cp agent/build/debug/*tests*tar.gz $BINARIES_DIR/debug
+            cp agent/build/release/*agent*{deb,rpm,tar.gz} $BINARIES_DIR/release
+            cp agent/build/release/*tests*tar.gz $BINARIES_DIR/release
+            ;;
+        sysdig)
+            rm -rf sysdig/build || true
+            agent/bootstrap-sysdig
+            
+            make -C sysdig/build/debug package VERBOSE=1 -j$JOBS
+            make -C sysdig/build/release package VERBOSE=1 -j$JOBS
 
-			cp sysdig/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
-			cp sysdig/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
-			;;
-		falco)
-			rm -rf falco/build || true
-			agent/bootstrap-sysdig
-			agent/bootstrap-falco
+            cp sysdig/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+            cp sysdig/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+            ;;
+        falco)
+            rm -rf falco/build || true
+            agent/bootstrap-sysdig
+            agent/bootstrap-falco
 
-			make -C falco/build/debug package VERBOSE=1 -j$JOBS
-			make -C falco/build/release package VERBOSE=1 -j$JOBS
+            make -C falco/build/debug package VERBOSE=1 -j$JOBS
+            make -C falco/build/release package VERBOSE=1 -j$JOBS
 
-			cp falco/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
-			cp falco/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
-			;;
-		*)
-			false
-			;;
-	esac
+            cp falco/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+            cp falco/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+            ;;
+        *)
+            false
+            ;;
+    esac
 }
 
 function configure_rpm_repo {
-	RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
+    RPM_BASEARCH=$(python -c 'import rpmUtils.arch; print rpmUtils.arch.getBaseArch()')
 
-	mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
-	
-	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*${COMPONENT}*.rpm | head -n -5 | xargs -d '\n' rm -f || true
+    mkdir -p $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+    
+    aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+    ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*${COMPONENT}*.rpm | head -n -5 | xargs -d '\n' rm -f || true
 
-	$SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
-	cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
-	createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+    $SCRIPTS_DIR/rpm-sign.exp $PACKAGES_DIR/*rpm
+    cp $PACKAGES_DIR/*rpm $REPOSITORY_DIR/rpm/$RPM_BASEARCH
+    createrepo $REPOSITORY_DIR/rpm/$RPM_BASEARCH
 
-	cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
-	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
+    cp $SCRIPTS_DIR/draios.repo $REPOSITORY_DIR/rpm
+    sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/rpm/draios.repo
 
-	aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
-	aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
+    aws s3 cp $REPOSITORY_DIR/rpm/draios.repo s3://download.draios.com/$REPOSITORY_NAME/rpm/ --acl public-read
+    aws s3 sync $REPOSITORY_DIR/rpm/$RPM_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/rpm/$RPM_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
 function configure_debian_repo {
-	DEB_BASEARCH=$(dpkg --print-architecture)
+    DEB_BASEARCH=$(dpkg --print-architecture)
 
-	mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-	
-	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*${COMPONENT}* | head -n -5 | xargs -d '\n' rm -f || true
+    mkdir -p $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+    
+    aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+    ls -1tdr $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/*${COMPONENT}* | head -n -5 | xargs -d '\n' rm -f || true
 
-	$SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
-	cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-	dpkg-scanpackages --multiversion $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
+    $SCRIPTS_DIR/dpkg-sig -s builder $PACKAGES_DIR/*deb
+    cp $PACKAGES_DIR/*deb $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+    dpkg-scanpackages --multiversion $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH | sed s/\\/tmp\\/repo\\/deb\\/// > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages
 
-	gzip -c $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages.gz
-	cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
-	echo "Date:" $(date -R) > Release
-	echo "Suite: stable-$DEB_BASEARCH" >> Release
-	echo "MD5Sum:" >> Release
-	echo -n " "$(md5sum Packages | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages) >> Release
-	echo -n " "$(md5sum Packages.gz | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages.gz) >> Release
-	echo "SHA1:" >> Release
-	echo -n " "$(sha1sum Packages | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages) >> Release
-	echo -n " "$(sha1sum Packages.gz | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages.gz) >> Release
-	echo "SHA256:" >> Release
-	echo -n " "$(sha256sum Packages | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages) >> Release
-	echo -n " "$(sha256sum Packages.gz | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages.gz) >> Release
-	echo "SHA512:" >> Release
-	echo -n " "$(sha512sum Packages | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages) >> Release
-	echo -n " "$(sha512sum Packages.gz | cut -d" " -f1) >> Release
-	echo " "$(du -b Packages.gz) >> Release
-	gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
-	gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
-	cd -
+    gzip -c $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages > $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/Packages.gz
+    cd $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH
+    echo "Date:" $(date -R) > Release
+    echo "Suite: stable-$DEB_BASEARCH" >> Release
+    echo "MD5Sum:" >> Release
+    echo -n " "$(md5sum Packages | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages) >> Release
+    echo -n " "$(md5sum Packages.gz | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages.gz) >> Release
+    echo "SHA1:" >> Release
+    echo -n " "$(sha1sum Packages | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages) >> Release
+    echo -n " "$(sha1sum Packages.gz | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages.gz) >> Release
+    echo "SHA256:" >> Release
+    echo -n " "$(sha256sum Packages | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages) >> Release
+    echo -n " "$(sha256sum Packages.gz | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages.gz) >> Release
+    echo "SHA512:" >> Release
+    echo -n " "$(sha512sum Packages | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages) >> Release
+    echo -n " "$(sha512sum Packages.gz | cut -d" " -f1) >> Release
+    echo " "$(du -b Packages.gz) >> Release
+    gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
+    gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+    cd -
 
-	cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
-	sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
+    cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb
+    sed -i s/_REPOSITORY_/$REPOSITORY_NAME/g $REPOSITORY_DIR/deb/draios.list
 
-	aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
-	aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
+    aws s3 cp $REPOSITORY_DIR/deb/draios.list s3://download.draios.com/$REPOSITORY_NAME/deb/ --acl public-read
+    aws s3 sync $REPOSITORY_DIR/deb/stable-$DEB_BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/deb/stable-$DEB_BASEARCH/ --acl public-read --delete --exact-timestamps
 }
 
 function configure_tgz_repo {
-	BASEARCH=$(uname -m)
+    BASEARCH=$(uname -m)
 
-	mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
-	
-	aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
-	ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*${COMPONENT}* | head -n -5 | xargs -d '\n' rm -f || true
+    mkdir -p $REPOSITORY_DIR/tgz/$BASEARCH
+    
+    aws s3 sync s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH/ $REPOSITORY_DIR/tgz/$BASEARCH/ --acl public-read --delete --exact-timestamps
+    ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*${COMPONENT}* | head -n -5 | xargs -d '\n' rm -f || true
 
-	cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
-	aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
+    cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
+    aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ s3://download.draios.com/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
 }
 
 function configure_installers {
-	if [[ "${COMPONENT}" == "agent" ]]; then
-		TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
-		cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
-	else
-		TEMPLATE_FILE="${SCRIPTS_DIR}/../../sysdig/scripts/install-sysdig.in"
-		cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
-		sed -i s/_COMPONENT_/${COMPONENT}/g ${REPOSITORY_DIR}/install-${COMPONENT}
-	fi
+    if [[ "${COMPONENT}" == "agent" ]]; then
+        TEMPLATE_FILE="${SCRIPTS_DIR}/install-agent"
+        cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
+    else
+        TEMPLATE_FILE="${SCRIPTS_DIR}/../../sysdig/scripts/install-sysdig.in"
+        cp ${TEMPLATE_FILE} ${REPOSITORY_DIR}/install-${COMPONENT}
+        sed -i s/_COMPONENT_/${COMPONENT}/g ${REPOSITORY_DIR}/install-${COMPONENT}
+    fi
 
-	# Some jenkins jobs don't have permission to overwrite the
-	# install-script. Allow for them to skip this without failing
-	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
-	then
-	    sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
-	    aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
-	    aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
-	fi
+    # Some jenkins jobs don't have permission to overwrite the
+    # install-script. Allow for them to skip this without failing
+    if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
+    then
+        sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-${COMPONENT}
+        aws s3 cp $REPOSITORY_DIR/install-$COMPONENT s3://download.draios.com/$REPOSITORY_NAME/ --acl public-read
+        aws s3 cp $SCRIPTS_DIR/smoke-tests s3://download.draios.com/ --acl public-read
+    fi
 }
 
 function upload_binaries {
-	rm -rf $REPOSITORY_DIR
-	configure_rpm_repo
-	configure_debian_repo
-	configure_tgz_repo
-	configure_installers
+    rm -rf $REPOSITORY_DIR
+    configure_rpm_repo
+    configure_debian_repo
+    configure_tgz_repo
+    configure_installers
 }
 
 function trigger_docker_build {
-	case "${COMPONENT}" in
-		agent)
-			trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
-			tag=${AGENT_VERSION}
-			;;
-		sysdig)
-			trigger_url='https://registry.hub.docker.com/u/sysdig/sysdig/trigger/bbe66701-880f-42a0-a8df-14f410587d97/'
-			tag=${SYSDIG_VERSION}
-			;;
-		*)
-			echo "docker hub trigger_url is not configured for ${COMPONENT}"
-			return
-			;;
-	esac
+    case "${COMPONENT}" in
+        agent)
+            trigger_url='https://registry.hub.docker.com/u/sysdig/agent/trigger/f310a4eb-f064-4b81-8c17-3f42931dfb88/'
+            tag=${AGENT_VERSION}
+            ;;
+        sysdig)
+            trigger_url='https://registry.hub.docker.com/u/sysdig/sysdig/trigger/bbe66701-880f-42a0-a8df-14f410587d97/'
+            tag=${SYSDIG_VERSION}
+            ;;
+        *)
+            echo "docker hub trigger_url is not configured for ${COMPONENT}"
+            return
+            ;;
+    esac
 
-	if [[ "${REPOSITORY_BASENAME}" == 'dev' ]]; then
-			curl -H "Content-Type: application/json" \
-			--data '{"source_type": "Branch", "source_name": "dev"}' \
-			-X POST ${trigger_url}
-	fi
+    if [[ "${REPOSITORY_BASENAME}" == 'dev' ]]; then
+            curl -H "Content-Type: application/json" \
+            --data '{"source_type": "Branch", "source_name": "dev"}' \
+            -X POST ${trigger_url}
+    fi
 
-	if [[ "${REPOSITORY_BASENAME}" == 'stable' ]]; then
-			curl -H "Content-Type: application/json" \
-			--data '{"source_type": "Branch", "source_name": "master"}' \
-			-X POST ${trigger_url}
+    if [[ "${REPOSITORY_BASENAME}" == 'stable' ]]; then
+            curl -H "Content-Type: application/json" \
+            --data '{"source_type": "Branch", "source_name": "master"}' \
+            -X POST ${trigger_url}
 
-			sleep 60s
+            sleep 60s
 
-			curl -H "Content-Type: application/json" \
-			--data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
-			-X POST ${trigger_url}
-	fi
+            curl -H "Content-Type: application/json" \
+            --data '{"source_type": "Tag", "source_name": "'"${tag}"'"}' \
+            -X POST ${trigger_url}
+    fi
 }
 
 build_components
@@ -220,8 +220,10 @@ upload_binaries
 #the build is executed on i686 and x86_64 server
 #the docker hub trigger has to be executed only at the end of x86_64 build
 if [[ ${BASEARCH} == 'x86_64' ]]; then
-	trigger_docker_build
+    trigger_docker_build
 fi
 
 #keep /tmp clean
+rm -rf $BINARIES_DIR
+rm -rf $REPOSITORY_DIR
 rm -rf ${REPOSITORY_DIR}
