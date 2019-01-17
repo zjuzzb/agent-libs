@@ -539,6 +539,7 @@ private:
 
 	// The event types and source that are relevant. It's the
 	// union of all event types for all policies.
+	// Examples of even sources are sinsp_evt and json_events.
 	std::vector<bool> m_evttypes;
 	std::vector<bool> m_evtsources;
 

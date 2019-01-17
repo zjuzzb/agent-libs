@@ -619,6 +619,12 @@ void security_mgr::process_event(gen_event *evt)
 
 		for (const auto &group : m_security_policies[container_id])
 		{
+			// An event matches a policy upon three
+			// matching of three conditions:
+			// 1. event source overlap
+			// 2. event type overlap
+			// 3. at least one policy in the group match
+			//    the event and return a non-null match
 			if(group->m_evtsources[evt->get_source()] &&
 			   group->m_evttypes[evt->get_type()] &&
 			   (match = group->match_event(evt)) != NULL)
