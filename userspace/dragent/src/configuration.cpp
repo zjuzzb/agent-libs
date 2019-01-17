@@ -1636,7 +1636,7 @@ void dragent_configuration::print_configuration() const
 			if (m_k8s_audit_server_tls_enabled)
 			{
 				LOG_INFO(string("K8s Audit Server X509 crt file: ") + m_k8s_audit_server_x509_cert_file);
-				LOG_INFO(string("K8s Audit Server X509 key file: ") + m_k8s_audit_server_x509_key_fileo);
+				LOG_INFO(string("K8s Audit Server X509 key file: ") + m_k8s_audit_server_x509_key_file);
 			}
 		}
 	}
