@@ -1074,7 +1074,8 @@ w_conn_creation_done:
 				m_analyzer->m_statsite_proxy->send_container_metric(tinfo->m_container_id, data, len);
 			}
 			else if(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) ||
-			   fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4)
+			        (fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4) ||
+			        m_sinsp_config->get_use_host_statsd())
 			{
 				m_analyzer->m_statsite_proxy->send_metric(data, len);
 			}

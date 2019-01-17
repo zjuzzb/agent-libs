@@ -438,6 +438,16 @@ void sinsp_configuration::set_statsd_limit(unsigned value)
 	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
+bool sinsp_configuration::get_use_host_statsd() const
+{
+	return m_use_host_statsd;
+}
+
+void sinsp_configuration::set_use_host_statsd(const bool value)
+{
+	m_use_host_statsd = value;
+}
+
 #ifndef CYGWING_AGENT
 void sinsp_configuration::set_k8s_api_server(const string& k8s_api)
 {

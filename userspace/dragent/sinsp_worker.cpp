@@ -363,6 +363,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
 	m_analyzer->get_configuration()->set_statsd_limit(m_configuration->m_statsd_limit);
+	m_analyzer->get_configuration()->set_use_host_statsd(m_configuration->m_use_host_statsd);
 	m_analyzer->get_configuration()->set_app_checks_limit(m_configuration->m_app_checks_limit);
 	m_analyzer->get_configuration()->set_app_checks_always_send(m_configuration->m_app_checks_always_send);
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);

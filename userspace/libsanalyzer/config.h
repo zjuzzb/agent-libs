@@ -92,6 +92,8 @@ public:
 	const ports_set & get_blacklisted_ports() const;
 	unsigned get_statsd_limit() const;
 	void set_statsd_limit(unsigned value);
+	bool get_use_host_statsd() const;
+	void set_use_host_statsd(bool value);
 #ifndef CYGWING_AGENT
 	void set_k8s_api_server(const string& k8s_api);
 	const string & get_k8s_api_server() const;
@@ -285,6 +287,7 @@ private:
 
 	std::set<double> m_percentiles;
 	unsigned m_statsd_limit;
+	bool m_use_host_statsd;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
 	bool m_smart_container_reporting = false;

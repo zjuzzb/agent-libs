@@ -242,6 +242,8 @@ dragent_configuration::dragent_configuration()
 	m_statsd_enabled = true;
 	m_statsd_limit = 100;
 	m_statsd_port = 8125;
+	m_statsd_tcp_port = m_statsd_port;
+	m_use_host_statsd = false;
 	m_sdjagent_enabled = true;
 	m_jmx_limit = 500;
 	m_app_checks_enabled = true;
@@ -812,6 +814,18 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", !is_windows);
 	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
+	m_statsd_tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
+	m_use_host_statsd = m_config->get_scalar<bool>("statsd", "use_host_statsd", false);
+
+	if(m_use_host_statsd)
+	{
+		// If we're using the host's statsd, then override the port
+		// settings so that our statsite implementation doesn't listen
+		// on any ports.
+		m_statsd_port = 0;
+		m_statsd_tcp_port = 0;
+	}
+
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", !is_windows);
 	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
@@ -1804,7 +1818,6 @@ void dragent_configuration::write_statsite_configuration()
 		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
 				"[statsite]\nbind_address = 127.0.0.1\n";
 
-	uint16_t tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	auto udp_port = m_statsd_port;
 	uint16_t flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
 
@@ -1824,7 +1837,7 @@ void dragent_configuration::write_statsite_configuration()
 		loglevel = "INFO";
 	}
 
-	statsite_ini.append("port = ").append(std::to_string(tcp_port)).append(1, '\n');
+	statsite_ini.append("port = ").append(std::to_string(m_statsd_tcp_port)).append(1, '\n');
 	statsite_ini.append("udp_port = ").append(std::to_string(udp_port)).append(1, '\n');
 	statsite_ini.append("log_level = ").append(loglevel).append(1, '\n');
 	statsite_ini.append("flush_interval = ").append(std::to_string(flush_interval)).append(1, '\n');
