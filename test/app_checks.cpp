@@ -1,3 +1,6 @@
+#include <sys/time.h>
+#include <sys/resource.h>
+
 #include <gtest.h>
 #include "sys_call_test.h"
 #include "app_checks.h"

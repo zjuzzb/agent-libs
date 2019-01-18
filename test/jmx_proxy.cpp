@@ -1,6 +1,8 @@
 //
 // Created by Luca Marturana on 05/05/15.
 //
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #include <gtest.h>
 #include "sys_call_test.h"
