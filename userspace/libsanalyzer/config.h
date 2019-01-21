@@ -157,6 +157,8 @@ public:
 	void set_k8s_event_filter(user_event_filter_t::ptr_t event_filter);
 	user_event_filter_t::ptr_t get_docker_event_filter() const;
 	void set_docker_event_filter(user_event_filter_t::ptr_t event_filter);
+	user_event_filter_t::ptr_t get_containerd_event_filter() const;
+	void set_containerd_event_filter(user_event_filter_t::ptr_t event_filter);
 	filter_vec_t get_metrics_filter() const;
 	filter_vec_t get_labels_filter() const;
 	void set_metrics_filter(const filter_vec_t& event_filter);
@@ -349,6 +351,7 @@ private:
 
 	std::shared_ptr<user_event_filter_t> m_k8s_event_filter;
 	std::shared_ptr<user_event_filter_t> m_docker_event_filter;
+	std::shared_ptr<user_event_filter_t> m_containerd_event_filter;
 
 	filter_vec_t m_metrics_filter;
 	filter_vec_t m_labels_filter;

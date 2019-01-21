@@ -244,6 +244,7 @@ void sinsp_worker::init()
 	// user-configured events
 	m_analyzer->get_configuration()->set_k8s_event_filter(m_configuration->m_k8s_event_filter);
 	m_analyzer->get_configuration()->set_docker_event_filter(m_configuration->m_docker_event_filter);
+	m_analyzer->get_configuration()->set_containerd_event_filter(m_configuration->m_containerd_event_filter);
 
 	// percentiles
 	m_analyzer->get_configuration()->set_percentiles(m_configuration->m_percentiles,

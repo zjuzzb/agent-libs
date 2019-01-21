@@ -659,6 +659,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		add_event_filter(m_docker_event_filter, "docker", "image");
 		add_event_filter(m_docker_event_filter, "docker", "volume");
 		add_event_filter(m_docker_event_filter, "docker", "network");
+
+		// containerd
+		add_event_filter(m_containerd_event_filter, "containerd", "container");
+		add_event_filter(m_containerd_event_filter, "containerd", "image");
 	}
 
 	add_percentiles();
@@ -1621,6 +1625,14 @@ void dragent_configuration::print_configuration() const
 	else
 	{
 		LOG_INFO("Docker events not enabled.");
+	}
+	if(m_containerd_event_filter)
+	{
+		LOG_INFO("ContainerD events filter:" + m_containerd_event_filter->to_string());
+	}
+	else
+	{
+		LOG_INFO("ContainerD events not enabled.");
 	}
 	if(m_auto_config)
 	{

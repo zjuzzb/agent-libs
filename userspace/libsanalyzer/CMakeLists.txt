@@ -238,6 +238,8 @@ list(APPEND SANALYZER_SOURCES
 	container_events/containerd_task.grpc.pb.cc
 	container_events/containerd_task.pb.cc
 
+	container_events/containerd.cpp
+
 	${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.cc
 	${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
 )

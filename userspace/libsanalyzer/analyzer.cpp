@@ -54,6 +54,9 @@ using namespace google::protobuf::io;
 #include "chisel.h"
 #ifndef CYGWING_AGENT
 #include "container_events/docker.h"
+#include "container_events/containerd.h"
+#include "container_info.h"
+#include "cri.h"
 #include "k8s.h"
 #include "k8s_delegator.h"
 #include "k8s_state.h"
@@ -4862,6 +4865,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				emit_docker_events();
 			}
 
+			//
+			// containerd
+			//
+			if(m_configuration->get_container_filter())
+			{
+				tracer_emitter containerd_trc("emit_containerd", f_trc);
+				emit_containerd_events();
+			}
+
 			tracer_emitter misc_trc("misc_emit", f_trc);
 			emit_top_files();
 #endif// CYGWING_AGENT
@@ -6306,6 +6318,41 @@ void sinsp_analyzer::emit_docker_events()
 			g_logger.log(std::string("Docker events error: ") + ex.what(), sinsp_logger::SEV_ERROR);
 		}
 		m_docker.reset();
+	}
+}
+
+void sinsp_analyzer::emit_containerd_events()
+{
+	if(m_containerd_events == nullptr)
+	{
+		const auto& cri_socket = libsinsp::cri::s_cri_unix_socket_path;
+		auto cri_runtime_type = libsinsp::cri::s_cri_runtime_type;
+
+		if(cri_socket.empty())
+		{
+			return;
+		}
+
+		g_logger.format(sinsp_logger::SEV_DEBUG, "CRI socket: %s, runtime type: %d", cri_socket.c_str(), cri_runtime_type);
+
+		if(cri_runtime_type != sinsp_container_type::CT_CONTAINERD)
+		{
+			return;
+		}
+		g_logger.format(sinsp_logger::SEV_INFO, "Connecting to containerd socket at %s for events", cri_socket.c_str());
+		m_containerd_events = make_unique<containerd_events>(
+			std::string("unix://") + scap_get_host_root() + cri_socket,
+			m_configuration->get_machine_id(),
+			m_configuration->get_containerd_event_filter());
+	}
+
+	if(!m_containerd_events->is_open())
+	{
+		m_containerd_events->subscribe();
+	}
+	if(m_containerd_events)
+	{
+		m_containerd_events->tick();
 	}
 }
 #endif // CYGWING_AGENT

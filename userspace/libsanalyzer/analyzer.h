@@ -71,6 +71,7 @@ class k8s;
 class k8s_delegator;
 class mesos;
 class docker;
+class containerd_events;
 #endif
 class uri;
 class sinsp_baseliner;
@@ -649,6 +650,7 @@ VISIBILITY_PRIVATE
 	void emit_mesos();
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
+	void emit_containerd_events();
 	void emit_top_files();
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 
@@ -975,6 +977,8 @@ VISIBILITY_PRIVATE
 
 	unique_ptr<docker> m_docker;
 	bool m_has_docker;
+
+	unique_ptr<containerd_events> m_containerd_events;
 
 	int m_detect_retry_seconds = 60; // TODO move to config?
 	unique_ptr<new_k8s_delegator> m_new_k8s_delegator;

@@ -817,6 +817,16 @@ void sinsp_configuration::set_docker_event_filter(user_event_filter_t::ptr_t eve
 	m_docker_event_filter = event_filter;
 }
 
+user_event_filter_t::ptr_t sinsp_configuration::get_containerd_event_filter() const
+{
+	return m_containerd_event_filter;
+}
+
+void sinsp_configuration::set_containerd_event_filter(user_event_filter_t::ptr_t event_filter)
+{
+	m_containerd_event_filter = event_filter;
+}
+
 filter_vec_t sinsp_configuration::get_metrics_filter() const
 {
 	return m_metrics_filter;

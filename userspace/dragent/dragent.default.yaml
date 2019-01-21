@@ -1062,6 +1062,17 @@ events:
 #      - connect    # Network Connected     (information)
 #      - disconnect # Network Disconnected  (information)
 #      - destroy    # Network Destroyed     (information)
+  containerd:
+    container:
+#      - create # Container created               (information)
+#      - exit   # Container exited                (information)
+      - die    # Container exited with an error  (warning)
+      - oom    # Container out of memory         (warning)
+    image:
+#      - create # Image created  (information)
+#      - update # Image updated  (information)
+#      - delete # Image deleted  (information)
+
 
 # End of events section
 
