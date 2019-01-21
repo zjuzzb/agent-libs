@@ -39,6 +39,62 @@ if (NOT CYGWIN)
 			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --cpp_out=. ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
 			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_container.grpc.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_container.grpc.pb.h
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_container.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_container.pb.h
+			COMMENT "Generate containerd events grpc code: container events"
+			DEPENDS container_events/containerd_container.proto
+			COMMAND mkdir -p container_events
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_container.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_container.proto
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_events.grpc.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_events.grpc.pb.h
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_events.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_events.pb.h
+			COMMENT "Generate containerd events grpc code: event subscription"
+			DEPENDS container_events/containerd_events.proto
+			COMMAND mkdir -p container_events
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_events.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_events.proto
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_image.grpc.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_image.grpc.pb.h
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_image.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_image.pb.h
+			COMMENT "Generate containerd events grpc code: image events"
+			DEPENDS container_events/containerd_image.proto
+			COMMAND mkdir -p container_events
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_image.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_image.proto
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_mount.grpc.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_mount.grpc.pb.h
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_mount.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_mount.pb.h
+			COMMENT "Generate containerd events grpc code: mounts"
+			DEPENDS container_events/containerd_mount.proto
+			COMMAND mkdir -p container_events
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_mount.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_mount.proto
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_task.grpc.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_task.grpc.pb.h
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_task.pb.cc
+				${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_task.pb.h
+			COMMENT "Generate containerd events grpc code: task events"
+			DEPENDS container_events/containerd_task.proto
+			COMMAND mkdir -p container_events
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_task.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_task.proto
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
 endif()
 
 set(SANALYZER_SOURCES
@@ -170,6 +226,17 @@ list(APPEND SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/lxc.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/mesos.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/rkt.cpp
+
+	container_events/containerd_container.grpc.pb.cc
+	container_events/containerd_container.pb.cc
+	container_events/containerd_events.grpc.pb.cc
+	container_events/containerd_events.pb.cc
+	container_events/containerd_image.grpc.pb.cc
+	container_events/containerd_image.pb.cc
+	container_events/containerd_mount.grpc.pb.cc
+	container_events/containerd_mount.pb.cc
+	container_events/containerd_task.grpc.pb.cc
+	container_events/containerd_task.pb.cc
 
 	${CMAKE_CURRENT_BINARY_DIR}/cri.grpc.pb.cc
 	${CMAKE_CURRENT_BINARY_DIR}/cri.pb.cc
