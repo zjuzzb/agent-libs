@@ -475,9 +475,9 @@ void sinsp_worker::init()
 	}
 
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
+	m_inspector->set_cri_socket_path(m_configuration->m_cri_socket_path);
 	if (!m_configuration->m_cri_socket_path.empty())
 	{
-		m_inspector->set_cri_socket_path(m_configuration->m_cri_socket_path);
 		m_inspector->set_cri_timeout(m_configuration->m_cri_timeout_ms);
 	}
 
