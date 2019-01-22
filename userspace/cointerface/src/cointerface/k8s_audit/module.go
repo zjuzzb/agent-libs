@@ -149,10 +149,10 @@ func (ks *k8sAuditServer) Start(start *sdc_internal.K8SAuditServerStart, stream 
 	for {
 		select {
 		case evt := <- ks.evtsChannel:
-			log.Debugf("Sending K8s Audit Event to agent %s", evt.String())
+			log.Debugf("Sending K8s Audit Event to agent %s", evt.GetEvtId())
 			if err := stream.Send(evt); err != nil {
 				log.Errorf("Could not send event %s: %v",
-					evt.String(), err.Error())
+					evt.GetEvtId(), err.Error())
 				return err
 			}
 		case <- ctx.Done():

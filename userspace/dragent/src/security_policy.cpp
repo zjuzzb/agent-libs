@@ -489,7 +489,7 @@ security_policies::match_result *falco_security_policies::match_event(json_event
 			}
 			else
 			{
-				g_log->error("Event matched falco policy: rule=" + res->rule);
+				g_log->debug("Event matched falco policy: rule=" + res->rule);
 
 				// This ruleset had a match. We keep
 				// it only if its order is less than
