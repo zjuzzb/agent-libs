@@ -5,6 +5,10 @@ import os
 import time
 from xml.etree.ElementTree import ElementTree
 
+# explicitly importing internal modules
+import _strptime
+from xml.parsers import expat
+
 # project
 from checks import AgentCheck
 from util import get_hostname
