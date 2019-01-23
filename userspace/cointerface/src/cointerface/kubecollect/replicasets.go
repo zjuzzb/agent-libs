@@ -16,6 +16,12 @@ import (
 	"k8s.io/api/core/v1"
 )
 
+// Globals are reset in startReplicaSetsSInformer
+var replicaSetInf cache.SharedInformer
+var rsSelectors map[string]labels.Selector
+var rsCacheMutex sync.RWMutex
+var filterEmptyRs bool
+
 func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
@@ -24,43 +30,42 @@ func replicaSetEvent(rs *v1beta1.ReplicaSet, eventType *draiosproto.CongroupEven
 }
 
 func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, bool) {
-	in := true
-	out := true
+	sameEntity := true
+	sameLinks := true
 
 	if lhs.GetName() != rhs.GetName() {
-		in = false
+		sameEntity = false
 	}
 
-	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
         EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
-	if in {
+	if sameEntity {
 		if (lhs.Status.Replicas != rhs.Status.Replicas) ||
 			(lhs.Status.FullyLabeledReplicas != rhs.Status.FullyLabeledReplicas) ||
 			(lhs.Status.ReadyReplicas != rhs.Status.ReadyReplicas) {
-		in = false
+		sameEntity = false
 		}
 	}
 
-	if in && ((lhs.Spec.Replicas == nil && rhs.Spec.Replicas != nil) ||
+	if sameEntity && ((lhs.Spec.Replicas == nil && rhs.Spec.Replicas != nil) ||
 		(lhs.Spec.Replicas != nil && rhs.Spec.Replicas == nil)) {
-		in = false
+		sameEntity = false
 	}
 
-	if in && (lhs.Spec.Replicas != nil && uint32(*lhs.Spec.Replicas) != uint32(*rhs.Spec.Replicas)) {
-		in = false
+	if sameEntity && (lhs.Spec.Replicas != nil && uint32(*lhs.Spec.Replicas) != uint32(*rhs.Spec.Replicas)) {
+		sameEntity = false
 	}
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
-		out = false
+		sameLinks = false
 	}
 
-	if lhs.Spec.Selector != nil && rhs.Spec.Selector != nil &&
-		!reflect.DeepEqual(lhs.Spec.Selector.MatchLabels, rhs.Spec.Selector.MatchLabels) {
-		out = false
+	if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
+		sameLinks = false
 	}
 
-	return in, out
+	return sameEntity, sameLinks
 }
 
 func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*draiosproto.ContainerGroup) {
@@ -76,14 +81,14 @@ func newReplicaSetCongroup(replicaSet *v1beta1.ReplicaSet, setLinks bool) (*drai
 	if setLinks {
 		AddNSParents(&ret.Parents, replicaSet.GetNamespace())
 		AddDeploymentParents(&ret.Parents, replicaSet)
-		selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
-		AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+		selector, ok := getRsChildSelector(replicaSet)
+		if ok {
+			AddPodChildren(&ret.Children, selector, replicaSet.GetNamespace())
+		}
 		AddHorizontalPodAutoscalerParents(&ret.Parents, replicaSet.GetNamespace(), replicaSet.APIVersion, replicaSet.Kind, replicaSet.GetName() )
 	}
 	return ret
 }
-
-var replicaSetInf cache.SharedInformer
 
 func addReplicaSetMetrics(metrics *[]*draiosproto.AppMetric, replicaSet *v1beta1.ReplicaSet) {
 	prefix := "kubernetes.replicaset."
@@ -98,28 +103,35 @@ func AddReplicaSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 		return
 	}
 
+	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range replicaSetInf.GetStore().List() {
 		replicaSet := obj.(*v1beta1.ReplicaSet)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		selector, _ := v1meta.LabelSelectorAsSelector(replicaSet.Spec.Selector)
-		if pod.GetNamespace() == replicaSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+		if pod.GetNamespace() != replicaSet.GetNamespace() {
+			continue
+		}
+
+		selector, ok := getRsChildSelector(replicaSet)
+		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_replicaset"),
-					Id:proto.String(string(replicaSet.GetUID()))})
+				Id:proto.String(string(replicaSet.GetUID()))})
+			break
 		}
 	}
 }
 
-func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, deployment *v1beta1.Deployment) {
+func AddReplicaSetChildren(children *[]*draiosproto.CongroupUid, selector labels.Selector, ns string) {
 	if !resourceReady("replicasets") {
 		return
 	}
 
 	for _, obj := range replicaSetInf.GetStore().List() {
 		replicaSet := obj.(*v1beta1.ReplicaSet)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		selector, _ := v1meta.LabelSelectorAsSelector(deployment.Spec.Selector)
-		if replicaSet.GetNamespace() == deployment.GetNamespace() && selector.Matches(labels.Set(replicaSet.GetLabels())) {
+		if replicaSet.GetNamespace() != ns {
+			continue
+		}
+
+		if selector.Matches(labels.Set(replicaSet.GetLabels())) {
 			*children = append(*children, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_replicaset"),
 				Id:proto.String(string(replicaSet.GetUID()))})
@@ -159,19 +171,21 @@ func AddReplicaSetChildrenByName(children *[]*draiosproto.CongroupUid, namespace
 }
 
 func startReplicaSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
+	rsSelectors = make(map[string]labels.Selector)
+	filterEmptyRs = filterEmpty
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "ReplicaSets", v1meta.NamespaceAll, fields.Everything())
 	replicaSetInf = cache.NewSharedInformer(lw, &v1beta1.ReplicaSet{}, RsyncInterval)
 
 	wg.Add(1)
 	go func() {
-		watchReplicaSets(evtc, filterEmpty)
+		watchReplicaSets(evtc)
 		replicaSetInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty bool) {
+func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 	log.Debugf("In WatchReplicaSets()")
 
 	replicaSetInf.AddEventHandler(
@@ -180,7 +194,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 				eventReceived("replicasets")
 
 				rs := obj.(*v1beta1.ReplicaSet)
-				if filterEmpty && rs.Spec.Replicas != nil && *rs.Spec.Replicas == 0 {
+				if rsFiltered(rs) {
 					return
 				}
 
@@ -196,24 +210,17 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 					return
 				}
 
-				// 1 is default if Spec.Replicas is nil
-				var newReplicas int32 = 1
-				if newRS.Spec.Replicas != nil {
-					newReplicas = *newRS.Spec.Replicas
-				}
-				var oldReplicas int32 = 1
-				if oldRS.Spec.Replicas != nil {
-					oldReplicas = *oldRS.Spec.Replicas
-				}
-
-				if filterEmpty && oldReplicas == 0 && newReplicas == 0 {
+				newReplicas := rsSpecReplicas(newRS)
+				oldReplicas := rsSpecReplicas(oldRS)
+				if filterEmptyRs && oldReplicas == 0 && newReplicas == 0 {
 					return
-				} else if filterEmpty && oldReplicas == 0 && newReplicas > 0 {
+				} else if filterEmptyRs && oldReplicas == 0 && newReplicas > 0 {
 					evtc <- replicaSetEvent(newRS,
 						draiosproto.CongroupEventType_ADDED.Enum(), true)
 					addEvent("ReplicaSet", EVENT_UPDATE_AND_SEND)
 					return
-				} else if filterEmpty && oldReplicas > 0 && newReplicas == 0 {
+				} else if filterEmptyRs && oldReplicas > 0 && newReplicas == 0 {
+					clearRsSelectorCache(newRS)
 					evtc <- draiosproto.CongroupUpdateEvent {
 						Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 						Object: &draiosproto.ContainerGroup{
@@ -226,6 +233,12 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 					return
 				} else {
 					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
+					if !sameLinks ||
+						(!sameEntity &&
+						oldRS.Status.Replicas > 0 &&
+						newRS.Status.Replicas == 0) {
+						updateRsSelectorCache(newRS)
+					}
 					if !sameEntity || !sameLinks {
 						evtc <- replicaSetEvent(newRS,
 							draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
@@ -235,10 +248,11 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 			},
 			DeleteFunc: func(obj interface{}) {
 				rs := obj.(*v1beta1.ReplicaSet)
-				if filterEmpty && rs.Spec.Replicas != nil && *rs.Spec.Replicas == 0 {
+				if rsFiltered(rs) {
 					return
 				}
 
+				clearRsSelectorCache(rs)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
@@ -251,4 +265,68 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent, filterEmpty b
 			},
 		},
 	)
+}
+
+func getRsChildSelector(rs *v1beta1.ReplicaSet) (labels.Selector, bool) {
+	// RSs with Status.Replicas==0 (aka active) never go in the cache to keep
+	// memory consumption down, and Spec.Replicas==0 RSs can be filtered by config
+	//
+	// We have to check for both instead of just status because
+	// an rs can have >0 status and 0 spec just after scaling down
+	if rsFiltered(rs) || rs.Status.Replicas == 0 {
+		var zeroVal labels.Selector
+		return zeroVal, false
+	}
+
+	rsCacheMutex.RLock()
+	s, ok := rsSelectors[string(rs.GetUID())]
+	rsCacheMutex.RUnlock()
+
+	if !ok {
+		s = populateRsSelectorCache(rs)
+	}
+	return s, true
+}
+
+func populateRsSelectorCache(rs *v1beta1.ReplicaSet) labels.Selector {
+	// This is the cpu-heavy piece, so keep it outside the lock
+	s, _ := v1meta.LabelSelectorAsSelector(rs.Spec.Selector)
+
+	rsCacheMutex.Lock()
+	// It's possible another thread added the selector between
+	// locks, but checking requires a second lookup in most cases
+	// so always copy the newly created selector
+	rsSelectors[string(rs.GetUID())] = s
+	rsCacheMutex.Unlock()
+	return s
+}
+
+func clearRsSelectorCache(rs *v1beta1.ReplicaSet) {
+	rsCacheMutex.Lock()
+	delete(rsSelectors, string(rs.GetUID()))
+	rsCacheMutex.Unlock()
+}
+
+// If we know the selector will be used again,
+// it's cheaper to update while we have the lock
+func updateRsSelectorCache(rs *v1beta1.ReplicaSet) {
+	if rs.Status.Replicas == 0 {
+		clearRsSelectorCache(rs)
+	} else {
+		populateRsSelectorCache(rs)
+	}
+}
+
+func rsSpecReplicas(rs *v1beta1.ReplicaSet) int32 {
+	if rs.Spec.Replicas == nil {
+		return 1
+	}
+	return *rs.Spec.Replicas
+}
+
+func rsFiltered(rs *v1beta1.ReplicaSet) bool {
+	if filterEmptyRs && rsSpecReplicas(rs) == 0 {
+		return true
+	}
+	return false
 }

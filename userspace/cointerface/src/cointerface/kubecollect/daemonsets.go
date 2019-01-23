@@ -3,6 +3,7 @@ package kubecollect
 import (
 	"cointerface/draiosproto"
 	"context"
+	"reflect"
 	"sync"
 	"github.com/gogo/protobuf/proto"
 	log "github.com/cihub/seelog"
@@ -15,16 +16,50 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+// Globals are reset in startDaemonSetsSInformer
 var daemonSetInf cache.SharedInformer
+var dsSelectors map[string]labels.Selector
+var dsCacheMutex sync.RWMutex
 
-func daemonSetEvent(ns *v1beta1.DaemonSet, eventType *draiosproto.CongroupEventType) (draiosproto.CongroupUpdateEvent) {
+func daemonSetEvent(ds *v1beta1.DaemonSet, eventType *draiosproto.CongroupEventType, setLinks bool) (draiosproto.CongroupUpdateEvent) {
 	return draiosproto.CongroupUpdateEvent {
 		Type: eventType,
-		Object: newDaemonSetCongroup(ns),
+		Object: newDaemonSetCongroup(ds, setLinks),
 	}
 }
 
-func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerGroup) {
+func dsEquals(lhs *v1beta1.DaemonSet, rhs *v1beta1.DaemonSet) (bool, bool) {
+	sameEntity := true
+	sameLinks := true
+
+	if lhs.GetName() != rhs.GetName() {
+		sameEntity = false
+	}
+
+	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
+        EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+
+	if sameEntity {
+		if (lhs.Status.CurrentNumberScheduled != rhs.Status.CurrentNumberScheduled) ||
+			(lhs.Status.NumberMisscheduled != rhs.Status.NumberMisscheduled) ||
+			(lhs.Status.DesiredNumberScheduled != rhs.Status.DesiredNumberScheduled) ||
+			(lhs.Status.NumberReady != rhs.Status.NumberReady) {
+		sameEntity = false
+		}
+	}
+
+	if lhs.GetNamespace() != rhs.GetNamespace() {
+		sameLinks = false
+	}
+
+	if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
+		sameLinks = false
+	}
+
+	return sameEntity, sameLinks
+}
+
+func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet, setLinks bool) (*draiosproto.ContainerGroup) {
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
 			Kind:proto.String("k8s_daemonset"),
@@ -34,9 +69,13 @@ func newDaemonSetCongroup(daemonSet *v1beta1.DaemonSet) (*draiosproto.ContainerG
 	ret.Tags = GetTags(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	ret.InternalTags = GetAnnotations(daemonSet.ObjectMeta, "kubernetes.daemonSet.")
 	addDaemonSetMetrics(&ret.Metrics, daemonSet)
-	AddNSParents(&ret.Parents, daemonSet.GetNamespace())
-	selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
-	AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())
+	if setLinks {
+		AddNSParents(&ret.Parents, daemonSet.GetNamespace())
+		selector, ok := getDsChildSelector(daemonSet)
+		if ok {
+			AddPodChildren(&ret.Children, selector, daemonSet.GetNamespace())
+		}
+	}
 	return ret
 }
 
@@ -53,14 +92,19 @@ func AddDaemonSetParents(parents *[]*draiosproto.CongroupUid, pod *v1.Pod) {
 		return
 	}
 
+	podLabels := labels.Set(pod.GetLabels())
 	for _, obj := range daemonSetInf.GetStore().List() {
 		daemonSet := obj.(*v1beta1.DaemonSet)
-		//log.Debugf("AddNSParents: %v", nsObj.GetName())
-		selector, _ := v1meta.LabelSelectorAsSelector(daemonSet.Spec.Selector)
-		if pod.GetNamespace() == daemonSet.GetNamespace() && selector.Matches(labels.Set(pod.GetLabels())) {
+		if pod.GetNamespace() != daemonSet.GetNamespace() {
+			continue
+		}
+
+		selector, ok := getDsChildSelector(daemonSet)
+		if ok && selector.Matches(podLabels) {
 			*parents = append(*parents, &draiosproto.CongroupUid{
 				Kind:proto.String("k8s_daemonset"),
 				Id:proto.String(string(daemonSet.GetUID()))})
+			break
 		}
 	}
 }
@@ -81,6 +125,7 @@ func AddDaemonSetChildrenFromNamespace(children *[]*draiosproto.CongroupUid, nam
 }
 
 func startDaemonSetsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
+	dsSelectors = make(map[string]labels.Selector)
 	client := kubeClient.ExtensionsV1beta1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "DaemonSets", v1meta.NamespaceAll, fields.Everything())
 	daemonSetInf = cache.NewSharedInformer(lw, &v1beta1.DaemonSet{}, RsyncInterval)
@@ -102,27 +147,89 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				eventReceived("daemonsets")
 				//log.Debugf("AddFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
 				evtc <- daemonSetEvent(obj.(*v1beta1.DaemonSet),
-					draiosproto.CongroupEventType_ADDED.Enum())
+					draiosproto.CongroupEventType_ADDED.Enum(), true)
 				addEvent("DaemonSet", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
-				oldDaemonSet := oldObj.(*v1beta1.DaemonSet)
-				newDaemonSet := newObj.(*v1beta1.DaemonSet)
-				if oldDaemonSet.GetResourceVersion() != newDaemonSet.GetResourceVersion() {
-					//log.Debugf("UpdateFunc dumping DaemonSet oldDaemonSet %v", oldDaemonSet)
-					//log.Debugf("UpdateFunc dumping DaemonSet newDaemonSet %v", newDaemonSet)
-					evtc <- daemonSetEvent(newDaemonSet,
-						draiosproto.CongroupEventType_UPDATED.Enum())
+				addEvent("DaemonSet", EVENT_UPDATE)
+				oldDS := oldObj.(*v1beta1.DaemonSet)
+				newDS := newObj.(*v1beta1.DaemonSet)
+				if oldDS.GetResourceVersion() == newDS.GetResourceVersion() {
+					return
+				}
+
+				sameEntity, sameLinks := dsEquals(oldDS, newDS)
+				if !sameLinks ||
+					(!sameEntity &&
+					dsNumScheduled(oldDS) > 0 &&
+					dsNumScheduled(newDS) == 0) {
+					updateDsSelectorCache(newDS)
+				}
+				if !sameEntity || !sameLinks {
+					evtc <- daemonSetEvent(newDS,
+						draiosproto.CongroupEventType_UPDATED.Enum(), !sameLinks)
 					addEvent("DaemonSet", EVENT_UPDATE_AND_SEND)
 				}
-				addEvent("DaemonSet", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
 				//log.Debugf("DeleteFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
-				evtc <- daemonSetEvent(obj.(*v1beta1.DaemonSet),
-					draiosproto.CongroupEventType_REMOVED.Enum())
+				ds := obj.(*v1beta1.DaemonSet)
+				clearDsSelectorCache(ds)
+				evtc <- daemonSetEvent(ds,
+					draiosproto.CongroupEventType_REMOVED.Enum(), false)
 				addEvent("DaemonSet", EVENT_DELETE)
 			},
 		},
 	)
+}
+
+
+func getDsChildSelector(ds *v1beta1.DaemonSet) (labels.Selector, bool) {
+	// Only cache selectors for ds with pods currently scheduled
+	if dsNumScheduled(ds) == 0 {
+		var zeroVal labels.Selector
+		return zeroVal, false
+	}
+
+	dsCacheMutex.RLock()
+	s, ok := dsSelectors[string(ds.GetUID())]
+	dsCacheMutex.RUnlock()
+
+	if !ok {
+		s = populateDsSelectorCache(ds)
+	}
+	return s, true
+}
+
+func populateDsSelectorCache(ds *v1beta1.DaemonSet) labels.Selector {
+	// This is the cpu-heavy piece, so keep it outside the lock
+	s, _ := v1meta.LabelSelectorAsSelector(ds.Spec.Selector)
+
+	dsCacheMutex.Lock()
+	// It's possible another thread added the selector between
+	// locks, but checking requires a second lookup in most cases
+	// so always copy the newly created selector
+	dsSelectors[string(ds.GetUID())] = s
+	dsCacheMutex.Unlock()
+	return s
+}
+
+func clearDsSelectorCache(ds *v1beta1.DaemonSet) {
+	dsCacheMutex.Lock()
+	delete(dsSelectors, string(ds.GetUID()))
+	dsCacheMutex.Unlock()
+}
+
+// If we know the selector will be used again,
+// it's cheaper to update while we have the lock
+func updateDsSelectorCache(ds *v1beta1.DaemonSet) {
+	if dsNumScheduled(ds) == 0 {
+		clearDsSelectorCache(ds)
+	} else {
+		populateDsSelectorCache(ds)
+	}
+}
+
+func dsNumScheduled(ds *v1beta1.DaemonSet) int32 {
+	return ds.Status.CurrentNumberScheduled + ds.Status.NumberMisscheduled
 }
