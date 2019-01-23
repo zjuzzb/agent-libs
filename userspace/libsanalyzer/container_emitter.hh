@@ -74,7 +74,6 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 	while (remaining_limit != 0 && turtle_it != containers.end())
 	{
 		uint32_t distance = 0;
-		turtle_it = rabbit_it;
 
 		// move rabbit it to the next age category
 		while (rabbit_it != containers.end() && age_extractor(m_containers.find(*rabbit_it)->second) == age_extractor(m_containers.find(*turtle_it)->second))
@@ -129,6 +128,9 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 
 			remaining_limit = 0;
 		}
+
+		// set the turtle pointer for the start of the new phase
+		turtle_it = rabbit_it;
 	}
 }
 
@@ -217,7 +219,7 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	check_and_emit_containers(m_must_report, m_container_limit);
 	if (m_container_limit > m_must_report.size())
 	{
-		check_and_emit_containers(m_can_report, m_must_report.size() - m_container_limit);
+		check_and_emit_containers(m_can_report, m_container_limit - m_must_report.size());
 	}
 
 	for (auto it = m_emitted_containers.begin(); it != m_emitted_containers.end(); ++it)

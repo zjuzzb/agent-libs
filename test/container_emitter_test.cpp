@@ -404,3 +404,108 @@ TEST(container_emitter, smart_filter_test)
 
 	ASSERT_EQ(fake_analyzer.containers["young container"].m_reported_count, 2);
 }
+
+
+TEST(container_emitter, end_of_list_fencepost)
+{
+	// need to check that we correctly report all containers up to the end of the list.
+	// so here we'll just spawn like 1 old container and 4 new ones and make sure we get
+	// all 5
+	fake_analyzer_t fake_analyzer;
+
+	fake_analyzer.containers["old container"].m_reported_count = 1123098;
+	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.sinsp_containers["old container"].m_name = "old container";
+
+	fake_analyzer.containers["new container"].m_reported_count = 0;
+	fake_analyzer.progtable["new container"] = {};
+	fake_analyzer.sinsp_containers["new container"];
+	fake_analyzer.containers["new container2"].m_reported_count = 0;
+	fake_analyzer.progtable["new container2"] = {};
+	fake_analyzer.sinsp_containers["new container2"];
+	fake_analyzer.containers["new container3"].m_reported_count = 0;
+	fake_analyzer.progtable["new container3"] = {};
+	fake_analyzer.sinsp_containers["new container3"];
+	fake_analyzer.containers["new container4"].m_reported_count = 0;
+	fake_analyzer.progtable["new container4"] = {};
+	fake_analyzer.sinsp_containers["new container4"];
+
+	vector<string> emitted_containers;
+	vector<string> patterns;
+	test_container_emitter emitter(fake_analyzer,
+				       fake_analyzer.containers,
+				       test_statsd_limit,
+				       fake_analyzer.progtable,
+				       patterns,
+				       test_flush_flags,
+				       5,
+				       false,
+				       emitted_containers);
+	emitter.emit_containers();
+
+	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 5);
+}
+
+TEST(container_emitter, next_age_empty)
+{
+	// check that we don't crash if the last age class aligns with the end
+	// of the list. So just have 1 container and check that we don't crash
+	fake_analyzer_t fake_analyzer;
+
+	fake_analyzer.containers["old container"].m_reported_count = 1123098;
+	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.sinsp_containers["old container"].m_name = "old container";
+
+	vector<string> emitted_containers;
+	vector<string> patterns;
+	test_container_emitter emitter(fake_analyzer,
+				       fake_analyzer.containers,
+				       test_statsd_limit,
+				       fake_analyzer.progtable,
+				       patterns,
+				       test_flush_flags,
+				       5,
+				       false,
+				       emitted_containers);
+	emitter.emit_containers();
+
+	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 1);
+}
+
+TEST(container_emitter, not_too_many_maybes)
+{
+	// check that if we don't have any high-priority containers, that we don't
+	// report too many low-priority ones.
+	fake_analyzer_t fake_analyzer;
+
+	fake_analyzer.containers["old container"].m_reported_count = 0;
+	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.sinsp_containers["old container"];
+	fake_analyzer.containers["new container"].m_reported_count = 1;
+	fake_analyzer.progtable["new container"] = {};
+	fake_analyzer.sinsp_containers["new container"];
+	fake_analyzer.containers["new container2"].m_reported_count = 2;
+	fake_analyzer.progtable["new container2"] = {};
+	fake_analyzer.sinsp_containers["new container2"];
+	fake_analyzer.containers["new container3"].m_reported_count = 3;
+	fake_analyzer.progtable["new container3"] = {};
+	fake_analyzer.sinsp_containers["new container3"];
+	fake_analyzer.containers["new container4"].m_reported_count = 4;
+	fake_analyzer.progtable["new container4"] = {};
+	fake_analyzer.sinsp_containers["new container4"];
+
+	vector<string> emitted_containers;
+	vector<string> patterns;
+	test_container_emitter emitter(fake_analyzer,
+				       fake_analyzer.containers,
+				       test_statsd_limit,
+				       fake_analyzer.progtable,
+				       patterns,
+				       test_flush_flags,
+				       3,
+				       false,
+				       emitted_containers);
+	emitter.emit_containers();
+
+	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 3);
+}

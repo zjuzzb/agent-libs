@@ -815,8 +815,7 @@ TEST(sinsp_protostate, test_url_groups)
 
     for (auto url = client_urls->begin(); url != client_urls->end(); ++url)
     {
-        if ((*url)->first == "http://test" ||
-            (*url)->first == "http://testgroup1")
+        if ((*url)->first == "http://testgroup1")
         {
             EXPECT_GT((*url)->second.m_flags & SRF_INCLUDE_IN_SAMPLE, 0);
         }

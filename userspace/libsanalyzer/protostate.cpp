@@ -661,14 +661,6 @@ sinsp_url_groups::update_group_set(const set<string>& groups)
 		ASSERT(m_matched_groups.find(*it) == m_matched_groups.end());
 		m_matched_groups.insert(pair<string, shared_ptr<sinsp_url_group>>(*it, make_shared<sinsp_url_group>(*it)));
 	}
-
-	// add the group that will capture the top global to avoid dealing with a corner case later
-	string everything_group(".*");
-	// double check to make sure we don't add this if customer already provided it
-	if (m_matched_groups.find(everything_group) == m_matched_groups.end())
-	{
-		m_matched_groups.insert(pair<string, shared_ptr<sinsp_url_group>>(everything_group, make_shared<sinsp_url_group>(everything_group)));
-	}
 }
 
 #endif // HAS_ANALYZER
