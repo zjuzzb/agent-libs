@@ -34,8 +34,8 @@ var (
 	procSafeArrayPutElement, _        = modoleaut32.FindProc("SafeArrayPutElement")
 	//procSafeArrayRedim, _             = modoleaut32.FindProc("SafeArrayRedim") // TODO
 	//procSafeArraySetIID, _            = modoleaut32.FindProc("SafeArraySetIID") // TODO
-	procSafeArrayGetRecordInfo, _     = modoleaut32.FindProc("SafeArrayGetRecordInfo")
-	procSafeArraySetRecordInfo, _     = modoleaut32.FindProc("SafeArraySetRecordInfo")
+	procSafeArrayGetRecordInfo, _ = modoleaut32.FindProc("SafeArrayGetRecordInfo")
+	procSafeArraySetRecordInfo, _ = modoleaut32.FindProc("SafeArraySetRecordInfo")
 )
 
 // safeArrayAccessData returns raw array pointer.
@@ -205,17 +205,16 @@ func safeArrayGetElementSize(safearray *SafeArray) (length *uint32, err error) {
 }
 
 // safeArrayGetElement retrieves element at given index.
-func safeArrayGetElement(safearray *SafeArray, index int64) (element uintptr, err error) {
-	err = convertHresultToError(
+func safeArrayGetElement(safearray *SafeArray, index int32, pv unsafe.Pointer) error {
+	return convertHresultToError(
 		procSafeArrayGetElement.Call(
 			uintptr(unsafe.Pointer(safearray)),
 			uintptr(unsafe.Pointer(&index)),
-			uintptr(unsafe.Pointer(&element))))
-	return
+			uintptr(pv)))
 }
 
-// safeArrayGetElement retrieves element at given index and converts to string.
-func safeArrayGetElementString(safearray *SafeArray, index int64) (str string, err error) {
+// safeArrayGetElementString retrieves element at given index and converts to string.
+func safeArrayGetElementString(safearray *SafeArray, index int32) (str string, err error) {
 	var element *int16
 	err = convertHresultToError(
 		procSafeArrayGetElement.Call(
@@ -244,7 +243,7 @@ func safeArrayGetIID(safearray *SafeArray) (guid *GUID, err error) {
 // multidimensional array.
 //
 // AKA: SafeArrayGetLBound in Windows API.
-func safeArrayGetLBound(safearray *SafeArray, dimension uint32) (lowerBound int64, err error) {
+func safeArrayGetLBound(safearray *SafeArray, dimension uint32) (lowerBound int32, err error) {
 	err = convertHresultToError(
 		procSafeArrayGetLBound.Call(
 			uintptr(unsafe.Pointer(safearray)),
@@ -259,7 +258,7 @@ func safeArrayGetLBound(safearray *SafeArray, dimension uint32) (lowerBound int6
 // multidimensional array.
 //
 // AKA: SafeArrayGetUBound in Windows API.
-func safeArrayGetUBound(safearray *SafeArray, dimension uint32) (upperBound int64, err error) {
+func safeArrayGetUBound(safearray *SafeArray, dimension uint32) (upperBound int32, err error) {
 	err = convertHresultToError(
 		procSafeArrayGetUBound.Call(
 			uintptr(unsafe.Pointer(safearray)),

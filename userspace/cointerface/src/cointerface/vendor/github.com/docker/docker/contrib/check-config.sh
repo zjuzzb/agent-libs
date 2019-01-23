@@ -217,9 +217,13 @@ echo 'Optional Features:'
 	check_flags CGROUP_PIDS
 }
 {
+	CODE=${EXITCODE}
 	check_flags MEMCG_SWAP MEMCG_SWAP_ENABLED
-	if  is_set MEMCG_SWAP && ! is_set MEMCG_SWAP_ENABLED; then
-		echo "    $(wrap_color '(note that cgroup swap accounting is not enabled in your kernel config, you can enable it by setting boot option "swapaccount=1")' bold black)"
+	if [ -e /sys/fs/cgroup/memory/memory.memsw.limit_in_bytes ]; then
+		echo "    $(wrap_color '(cgroup swap accounting is currently enabled)' bold black)"
+		EXITCODE=${CODE}
+	elif is_set MEMCG_SWAP && ! is_set MEMCG_SWAP_ENABLED; then
+		echo "    $(wrap_color '(cgroup swap accounting is currently not enabled, you can enable it by setting boot option "swapaccount=1")' bold black)"
 	fi
 }
 {
@@ -261,8 +265,11 @@ flags=(
 	CGROUP_HUGETLB
 	NET_CLS_CGROUP $netprio
 	CFS_BANDWIDTH FAIR_GROUP_SCHED RT_GROUP_SCHED
+	IP_NF_TARGET_REDIRECT
 	IP_VS
 	IP_VS_NFCT
+	IP_VS_PROTO_TCP
+	IP_VS_PROTO_UDP
  	IP_VS_RR
 )
 check_flags "${flags[@]}"
@@ -293,6 +300,8 @@ echo '  - "'$(wrap_color 'ipvlan' blue)'":'
 check_flags IPVLAN | sed 's/^/    /'
 echo '  - "'$(wrap_color 'macvlan' blue)'":'
 check_flags MACVLAN DUMMY | sed 's/^/    /'
+echo '  - "'$(wrap_color 'ftp,tftp client in container' blue)'":'
+check_flags NF_NAT_FTP NF_CONNTRACK_FTP NF_NAT_TFTP NF_CONNTRACK_TFTP | sed 's/^/    /'
 
 # only fail if no storage drivers available
 CODE=${EXITCODE}

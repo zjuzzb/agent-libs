@@ -1,3 +1,4 @@
+syntax = "proto2";
 import weak "draios.proto";
 
 package draiosproto_w_metrics_list;

@@ -26,7 +26,9 @@ func (v *VARIANT) ToIDispatch() *IDispatch {
 // ToArray converts variant to SafeArray helper.
 func (v *VARIANT) ToArray() *SafeArrayConversion {
 	if v.VT != VT_SAFEARRAY {
-		return nil
+		if v.VT&VT_ARRAY == 0 {
+			return nil
+		}
 	}
 	var safeArray *SafeArray = (*SafeArray)(unsafe.Pointer(uintptr(v.Val)))
 	return &SafeArrayConversion{safeArray}
@@ -86,10 +88,10 @@ func (v *VARIANT) Value() interface{} {
 		return v.ToString()
 	case VT_DATE:
 		// VT_DATE type will either return float64 or time.Time.
-		d := float64(v.Val)
+		d := uint64(v.Val)
 		date, err := GetVariantDate(d)
 		if err != nil {
-			return d
+			return float64(v.Val)
 		}
 		return date
 	case VT_UNKNOWN:

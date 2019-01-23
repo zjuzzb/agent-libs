@@ -2,6 +2,10 @@
 
 package ole
 
+import (
+	"unsafe"
+)
+
 // safeArrayAccessData returns raw array pointer.
 //
 // AKA: SafeArrayAccessData in Windows API.
@@ -120,12 +124,12 @@ func safeArrayGetElementSize(safearray *SafeArray) (*uint32, error) {
 }
 
 // safeArrayGetElement retrieves element at given index.
-func safeArrayGetElement(safearray *SafeArray, index int64) (uintptr, error) {
-	return uintptr(0), NewError(E_NOTIMPL)
+func safeArrayGetElement(safearray *SafeArray, index int32, pv unsafe.Pointer) error {
+	return NewError(E_NOTIMPL)
 }
 
 // safeArrayGetElement retrieves element at given index and converts to string.
-func safeArrayGetElementString(safearray *SafeArray, index int64) (string, error) {
+func safeArrayGetElementString(safearray *SafeArray, index int32) (string, error) {
 	return "", NewError(E_NOTIMPL)
 }
 
@@ -142,8 +146,8 @@ func safeArrayGetIID(safearray *SafeArray) (*GUID, error) {
 // multidimensional array.
 //
 // AKA: SafeArrayGetLBound in Windows API.
-func safeArrayGetLBound(safearray *SafeArray, dimension uint32) (int64, error) {
-	return int64(0), NewError(E_NOTIMPL)
+func safeArrayGetLBound(safearray *SafeArray, dimension uint32) (int32, error) {
+	return int32(0), NewError(E_NOTIMPL)
 }
 
 // safeArrayGetUBound returns upper bounds of SafeArray.
@@ -152,8 +156,8 @@ func safeArrayGetLBound(safearray *SafeArray, dimension uint32) (int64, error) {
 // multidimensional array.
 //
 // AKA: SafeArrayGetUBound in Windows API.
-func safeArrayGetUBound(safearray *SafeArray, dimension uint32) (int64, error) {
-	return int64(0), NewError(E_NOTIMPL)
+func safeArrayGetUBound(safearray *SafeArray, dimension uint32) (int32, error) {
+	return int32(0), NewError(E_NOTIMPL)
 }
 
 // safeArrayGetVartype returns data type of SafeArray.

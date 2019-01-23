@@ -105,7 +105,6 @@ func addNodeMetrics(metrics *[]*draiosproto.AppMetric, node *v1.Node) {
 	appendMetricNodeCondition(metrics, prefix+"status.memoryPressure", node.Status.Conditions, v1.NodeMemoryPressure)
 	appendMetricNodeCondition(metrics, prefix+"status.diskPressure", node.Status.Conditions, v1.NodeDiskPressure)
 	appendMetricNodeCondition(metrics, prefix+"status.networkUnavailable", node.Status.Conditions, v1.NodeNetworkUnavailable)
-	appendMetricNodeCondition(metrics, prefix+"status.inodePressure", node.Status.Conditions, v1.NodeInodePressure)
 }
 
 func appendMetricNodeCondition(metrics *[]*draiosproto.AppMetric, name string, conditions []v1.NodeCondition, ctype v1.NodeConditionType) {

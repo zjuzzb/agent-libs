@@ -16,13 +16,15 @@
  *
  */
 
+//go:generate protoc -I ../helloworld --go_out=plugins=grpc:../helloworld ../helloworld/helloworld.proto
+
 package main
 
 import (
+	"context"
 	"log"
 	"net"
 
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	pb "google.golang.org/grpc/examples/helloworld/helloworld"
 	"google.golang.org/grpc/reflection"

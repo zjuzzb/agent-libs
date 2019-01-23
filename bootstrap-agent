@@ -102,13 +102,14 @@ if [ ! -d "$DPKG_DIR" ]; then
 fi
 fi
 
-PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.5.0
+PROTOBUF_V3_DIR=$DEPENDENCIES/protobuf-3.6.1
 if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	cd $DEPENDENCIES
-	wget https://github.com/google/protobuf/releases/download/v3.5.0/protobuf-cpp-3.5.0.tar.gz
-	tar -xzf protobuf-cpp-3.5.0.tar.gz
+	wget https://github.com/google/protobuf/releases/download/v3.6.1/protobuf-cpp-3.6.1.tar.gz
+	tar -xzf protobuf-cpp-3.6.1.tar.gz
 	cd $PROTOBUF_V3_DIR
 	if [[ "$ARCH" == "s390x" ]]; then
+	    # XXX 3.6.1 is untested on s390x
 	    wget $DEPENDENCIES_URL/protobuf-3.5.0-s390x.patch
 	    patch -p1 < protobuf-3.5.0-s390x.patch
 	    aclocal
@@ -128,7 +129,7 @@ if [ ! -d "$GOPATH" ]; then
 fi
 
 GOGO_PROTOBUF_URL=https://github.com/gogo/protobuf
-GOGO_PROTOBUF_VER=v0.4
+GOGO_PROTOBUF_VER=v1.2.0
 GOGO_PROTOBUF_PATH=github.com/gogo/protobuf/protoc-gen-gofast
 GOGO_PROTOBUF_WIN_CLONE_PATH=dependencies/go/src/github.com/gogo/protobuf
 GOGO_PROTOBUF_DIR=$GOPATH/src/$GOGO_PROTOBUF_PATH

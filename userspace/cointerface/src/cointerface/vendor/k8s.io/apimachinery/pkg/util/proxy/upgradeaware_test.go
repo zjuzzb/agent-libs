@@ -19,6 +19,7 @@ package proxy
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
@@ -55,18 +56,14 @@ type fakeResponder struct {
 	w http.ResponseWriter
 }
 
-func (r *fakeResponder) Error(err error) {
+func (r *fakeResponder) Error(w http.ResponseWriter, req *http.Request, err error) {
 	if r.called {
 		r.t.Errorf("Error responder called again!\nprevious error: %v\nnew error: %v", r.err, err)
 	}
 
-	if r.w != nil {
-		r.w.WriteHeader(fakeStatusCode)
-		_, writeErr := r.w.Write([]byte(err.Error()))
-		assert.NoError(r.t, writeErr)
-	} else {
-		r.t.Logf("No ResponseWriter set")
-	}
+	w.WriteHeader(fakeStatusCode)
+	_, writeErr := w.Write([]byte(err.Error()))
+	assert.NoError(r.t, writeErr)
 
 	r.called = true
 	r.err = err
@@ -245,11 +242,7 @@ func TestServeHTTP(t *testing.T) {
 			responder := &fakeResponder{t: t}
 			backendURL, _ := url.Parse(backendServer.URL)
 			backendURL.Path = test.requestPath
-			proxyHandler := &UpgradeAwareHandler{
-				Location:        backendURL,
-				Responder:       responder,
-				UpgradeRequired: test.upgradeRequired,
-			}
+			proxyHandler := NewUpgradeAwareHandler(backendURL, nil, false, test.upgradeRequired, responder)
 			proxyServer := httptest.NewServer(proxyHandler)
 			defer proxyServer.Close()
 			proxyURL, _ := url.Parse(proxyServer.URL)
@@ -337,16 +330,25 @@ func TestServeHTTP(t *testing.T) {
 	}
 }
 
+type RoundTripperFunc func(req *http.Request) (*http.Response, error)
+
+func (fn RoundTripperFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return fn(req)
+}
+
 func TestProxyUpgrade(t *testing.T) {
 
 	localhostPool := x509.NewCertPool()
 	if !localhostPool.AppendCertsFromPEM(localhostCert) {
 		t.Errorf("error setting up localhostCert pool")
 	}
+	var d net.Dialer
 
 	testcases := map[string]struct {
-		ServerFunc     func(http.Handler) *httptest.Server
-		ProxyTransport http.RoundTripper
+		ServerFunc       func(http.Handler) *httptest.Server
+		ProxyTransport   http.RoundTripper
+		UpgradeTransport UpgradeRequestRoundTripper
+		ExpectedAuth     string
 	}{
 		"http": {
 			ServerFunc:     httptest.NewServer,
@@ -395,7 +397,31 @@ func TestProxyUpgrade(t *testing.T) {
 				ts.StartTLS()
 				return ts
 			},
-			ProxyTransport: utilnet.SetTransportDefaults(&http.Transport{Dial: net.Dial, TLSClientConfig: &tls.Config{RootCAs: localhostPool}}),
+			ProxyTransport: utilnet.SetTransportDefaults(&http.Transport{DialContext: d.DialContext, TLSClientConfig: &tls.Config{RootCAs: localhostPool}}),
+		},
+		"https (valid hostname + RootCAs + custom dialer + bearer token)": {
+			ServerFunc: func(h http.Handler) *httptest.Server {
+				cert, err := tls.X509KeyPair(localhostCert, localhostKey)
+				if err != nil {
+					t.Errorf("https (valid hostname): proxy_test: %v", err)
+				}
+				ts := httptest.NewUnstartedServer(h)
+				ts.TLS = &tls.Config{
+					Certificates: []tls.Certificate{cert},
+				}
+				ts.StartTLS()
+				return ts
+			},
+			ProxyTransport: utilnet.SetTransportDefaults(&http.Transport{DialContext: d.DialContext, TLSClientConfig: &tls.Config{RootCAs: localhostPool}}),
+			UpgradeTransport: NewUpgradeRequestRoundTripper(
+				utilnet.SetOldTransportDefaults(&http.Transport{DialContext: d.DialContext, TLSClientConfig: &tls.Config{RootCAs: localhostPool}}),
+				RoundTripperFunc(func(req *http.Request) (*http.Response, error) {
+					req = utilnet.CloneRequest(req)
+					req.Header.Set("Authorization", "Bearer 1234")
+					return MirrorRequest.RoundTrip(req)
+				}),
+			),
+			ExpectedAuth: "Bearer 1234",
 		},
 	}
 
@@ -410,6 +436,12 @@ func TestProxyUpgrade(t *testing.T) {
 			func() { // Cleanup after each test case.
 				backend := http.NewServeMux()
 				backend.Handle("/hello", websocket.Handler(func(ws *websocket.Conn) {
+					if ws.Request().Header.Get("Authorization") != tc.ExpectedAuth {
+						t.Errorf("%s: unexpected headers on request: %v", k, ws.Request().Header)
+						defer ws.Close()
+						ws.Write([]byte("you failed"))
+						return
+					}
 					defer ws.Close()
 					body := make([]byte, 5)
 					ws.Read(body)
@@ -423,12 +455,9 @@ func TestProxyUpgrade(t *testing.T) {
 
 				serverURL, _ := url.Parse(backendServer.URL)
 				serverURL.Path = backendPath
-				proxyHandler := &UpgradeAwareHandler{
-					Location:           serverURL,
-					Transport:          tc.ProxyTransport,
-					InterceptRedirects: redirect,
-					Responder:          &noErrorsAllowed{t: t},
-				}
+				proxyHandler := NewUpgradeAwareHandler(serverURL, tc.ProxyTransport, false, false, &noErrorsAllowed{t: t})
+				proxyHandler.UpgradeTransport = tc.UpgradeTransport
+				proxyHandler.InterceptRedirects = redirect
 				proxy := httptest.NewServer(proxyHandler)
 				defer proxy.Close()
 
@@ -459,7 +488,7 @@ type noErrorsAllowed struct {
 	t *testing.T
 }
 
-func (r *noErrorsAllowed) Error(err error) {
+func (r *noErrorsAllowed) Error(w http.ResponseWriter, req *http.Request, err error) {
 	r.t.Error(err)
 }
 
@@ -469,19 +498,26 @@ func TestProxyUpgradeErrorResponse(t *testing.T) {
 		expectedErr = errors.New("EXPECTED")
 	)
 	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		transport := http.DefaultTransport.(*http.Transport)
-		transport.Dial = func(network, addr string) (net.Conn, error) {
-			return &fakeConn{err: expectedErr}, nil
+		transport := &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+				return &fakeConn{err: expectedErr}, nil
+			},
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
 		}
 		responder = &fakeResponder{t: t, w: w}
-		proxyHandler := &UpgradeAwareHandler{
-			Location: &url.URL{
+		proxyHandler := NewUpgradeAwareHandler(
+			&url.URL{
 				Host: "fake-backend",
 			},
-			UpgradeRequired: true,
-			Responder:       responder,
-			Transport:       transport,
-		}
+			transport,
+			false,
+			true,
+			responder,
+		)
 		proxyHandler.ServeHTTP(w, r)
 	}))
 	defer proxy.Close()
@@ -540,9 +576,7 @@ func TestDefaultProxyTransport(t *testing.T) {
 	for _, test := range tests {
 		locURL, _ := url.Parse(test.location)
 		URL, _ := url.Parse(test.url)
-		h := UpgradeAwareHandler{
-			Location: locURL,
-		}
+		h := NewUpgradeAwareHandler(locURL, nil, false, false, nil)
 		result := h.defaultProxyTransport(URL, nil)
 		transport := result.(*corsRemovingTransport).RoundTripper.(*Transport)
 		if transport.Scheme != test.expectedScheme {
@@ -716,11 +750,7 @@ func TestProxyRequestContentLengthAndTransferEncoding(t *testing.T) {
 
 		responder := &fakeResponder{t: t}
 		backendURL, _ := url.Parse(downstreamServer.URL)
-		proxyHandler := &UpgradeAwareHandler{
-			Location:        backendURL,
-			Responder:       responder,
-			UpgradeRequired: false,
-		}
+		proxyHandler := NewUpgradeAwareHandler(backendURL, nil, false, false, responder)
 		proxyServer := httptest.NewServer(proxyHandler)
 		defer proxyServer.Close()
 

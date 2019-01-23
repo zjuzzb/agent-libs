@@ -27,32 +27,42 @@
 
 [[constraint]]
   name = "github.com/docker/docker"
-  version = "1.13.1"
+  # https://github.com/moby/moby/issues/33989#issuecomment-428755157
+  source = "https://github.com/docker/engine.git"
+  version = "=v18.09.1"
 
 [[constraint]]
   name = "github.com/gogo/protobuf"
-  version = "0.4.0"
+  version = "=1.2.0"
+
+[[override]]
+  name = "github.com/golang/protobuf"
+  version = "=1.2.0"
 
 [[constraint]]
   name = "github.com/shirou/gopsutil"
   version = "2.17.6"
 
 [[constraint]]
-  branch = "master"
+  branch = "release-branch.go1.11"
   name = "golang.org/x/net"
+
+[[override]]
+  branch = "release-branch.go1.11"
+  name = "golang.org/x/sys"
 
 [[constraint]]
   name = "google.golang.org/grpc"
-  version = "1.5.0"
+  version = "=1.17.0"
 
 [[constraint]]
-  branch = "master"
   name = "k8s.io/api"
+  branch = "release-1.13"
 
 [[constraint]]
-  branch = "master"
   name = "k8s.io/apimachinery"
+  branch = "release-1.13"
 
 [[constraint]]
   name = "k8s.io/client-go"
-  branch = "master"
+  branch = "release-10.0" # corresponds to k8s 1.13.0
