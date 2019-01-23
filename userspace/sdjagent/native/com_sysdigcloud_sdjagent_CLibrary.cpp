@@ -15,6 +15,7 @@
 #include <iostream>
 #include <signal.h>
 #include <string.h>
+#include <limits.h>
 
 #include "jni_utils.h"
 
@@ -385,6 +386,11 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		setns(mntnsfd.fd(), CLONE_NEWNS);
 		setns(usernsfd.fd(), CLONE_NEWUSER);
 
+		// readlink the exe before switching uid & gid in case its required later
+		vector<char> proc_exe_link(PATH_MAX, 0);
+		auto proc_exe_link_len = readlink(exe.c_str(), proc_exe_link.data(), proc_exe_link.size() - 1);
+		log("FINE", "readlink(%s) returned %s, vpid=%d, errno=%s", exe.c_str(), proc_exe_link.data(), vpid, strerror(errno));
+
 		// read uid and gid of target process
 		char proc_status_path[200];
 		snprintf(proc_status_path, sizeof(proc_status_path), "/proc/%d/status", vpid);
@@ -438,8 +444,23 @@ JNIEXPORT jstring JNICALL Java_com_sysdigcloud_sdjagent_CLibrary_realRunOnContai
 		prctl(PR_SET_PDEATHSIG, SIGKILL);
 
 		execve(exe.c_str(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
+		if (errno == EACCES) {
+			// SMAGENT-1210: Attempt to handle the case where uid:gid of the target does not have adequate permissions.
+			if (proc_exe_link_len > 0 && proc_exe_link_len < (proc_exe_link.size() - 1)) {
+				// If the link was readable as root, try the result of readlink().
+				execve(proc_exe_link.data(), (char* const*)command_args_c, (char* const*) container_environ_ptr);
+				log("FINE", "Cannot exec sdjagent inside container using result of readlink(%s), %s, pid=%d, vpid=%d, uid:gid=%d:%d, errno=%s",
+					exe.c_str(), proc_exe_link.data(), pid, vpid, uid, gid, strerror(errno));
+			}
+			// Brute force
+			execve("/usr/bin/java", (char* const*)command_args_c, (char* const*) container_environ_ptr);
+			log("SEVERE", "Cannot exec sdjagent inside container using %s, pid=%d, vpid=%d, uid:gid=%d:%d, errno=%s",
+				"/usr/bin/java", pid, vpid, uid, gid, strerror(errno));
+		} else {
+			log("SEVERE", "Cannot exec sdjagent inside container using %s, pid=%d, vpid=%d, uid:gid=%d:%d, errno=%s",
+				exe.c_str(), pid, vpid, uid, gid, strerror(errno));
+		}
 		free(container_environ_ptr);
-		log("SEVERE", "Cannot exec sdjagent inside container, errno=%s", strerror(errno));
 		exit(1);
 	}
 	else
