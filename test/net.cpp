@@ -300,7 +300,7 @@ TEST_F(sys_call_test, net_web_requests)
 	ASSERT_EQ(N_CONNECTIONS, nconns);
 }
 
-TEST_F(sys_call_test, net_ssl_requests)
+TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 {
 	auto ret = system("which curl > /dev/null");
 	if(ret != 0)
