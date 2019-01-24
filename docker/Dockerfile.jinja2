@@ -54,7 +54,6 @@ RUN apt-get update \
 	dkms \
 	gcc \
 	gcc-6 \
-	gcc-5 \
 	libc6-dev \
 	libelf-dev \
 	libelf1 \
@@ -67,6 +66,23 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends -t {{ p.backports_debian_release }} docker.io \
 {% endif %}
  && rm -rf /var/lib/apt/lists/*
+
+{% if p.build_kernel_module %}
+# gcc 5 is no longer included in debian unstable, but we need it to
+# build centos kernels, which are 3.x based and explicitly want a gcc
+# version 3, 4, or 5 compiler. So grab copies we've saved from debian
+# snapshots with the prefix https://snapshot.debian.org/archive/debian/20190122T000000Z.
+
+RUN curl -o cpp-5_5.5.0-12_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/cpp-5_5.5.0-12_amd64.deb \
+ && curl -o gcc-5-base_5.5.0-12_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/gcc-5-base_5.5.0-12_amd64.deb \
+ && curl -o gcc-5_5.5.0-12_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/gcc-5_5.5.0-12_amd64.deb \
+ && curl -o libasan2_5.5.0-12_amd64.deb	https://s3.amazonaws.com/download.draios.com/dependencies/libasan2_5.5.0-12_amd64.deb \
+ && curl -o libgcc-5-dev_5.5.0-12_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/libgcc-5-dev_5.5.0-12_amd64.deb \
+ && curl -o libisl15_0.18-4_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/libisl15_0.18-4_amd64.deb \
+ && curl -o libmpx0_5.5.0-12_amd64.deb https://s3.amazonaws.com/download.draios.com/dependencies/libmpx0_5.5.0-12_amd64.deb \
+ && dpkg -i cpp-5_5.5.0-12_amd64.deb gcc-5-base_5.5.0-12_amd64.deb gcc-5_5.5.0-12_amd64.deb libasan2_5.5.0-12_amd64.deb libgcc-5-dev_5.5.0-12_amd64.deb libisl15_0.18-4_amd64.deb libmpx0_5.5.0-12_amd64.deb \
+ && rm -f cpp-5_5.5.0-12_amd64.deb gcc-5-base_5.5.0-12_amd64.deb gcc-5_5.5.0-12_amd64.deb libasan2_5.5.0-12_amd64.deb libgcc-5-dev_5.5.0-12_amd64.deb libisl15_0.18-4_amd64.deb libmpx0_5.5.0-12_amd64.deb
+{% endif %}
 
 {% if p.include_agent_package is defined %}
 #
