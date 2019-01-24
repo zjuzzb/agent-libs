@@ -95,7 +95,7 @@ TEST(container_emitter, patterns)
 
 	fake_analyzer.containers["k8s container"];
 	fake_analyzer.progtable["k8s container"] = {};
-	fake_analyzer.sinsp_containers["k8s container"].m_name = "k8s_POD";
+	fake_analyzer.sinsp_containers["k8s container"].m_is_pod_sandbox = true;
 
 	fake_analyzer.containers["maybe container 1"].m_metrics.m_cpuload = 1000000;
 	fake_analyzer.progtable["maybe container 1"] = {};
@@ -143,7 +143,7 @@ TEST(container_emitter, smart_filter_test)
 
 	fake_analyzer.containers["k8s container"];
 	fake_analyzer.progtable["k8s container"] = {};
-	fake_analyzer.sinsp_containers["k8s container"].m_name = "k8s_POD";
+	fake_analyzer.sinsp_containers["k8s container"].m_is_pod_sandbox = true;
 
 	fake_analyzer.containers["maybe container 1"].m_metrics.m_cpuload = 1000000;
 	fake_analyzer.progtable["maybe container 1"] = {};

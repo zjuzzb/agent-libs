@@ -1230,7 +1230,8 @@ void infrastructure_state::get_state(container_groups* state, const uint64_t ts)
 
 void infrastructure_state::on_new_container(const sinsp_container_info& container_info, sinsp_threadinfo *tinfo)
 {
-	if(container_info.m_name.find("k8s_POD") != std::string::npos) {
+	if(container_info.is_pod_sandbox())
+	{
 		// filter out k8s internal container/s
 		return;
 	}
@@ -1310,7 +1311,8 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 
 void infrastructure_state::on_remove_container(const sinsp_container_info& container_info)
 {
-	if(container_info.m_name.find("k8s_POD") != std::string::npos) {
+	if(container_info.is_pod_sandbox())
+	{
 		// filter out k8s internal container/s
 		return;
 	}

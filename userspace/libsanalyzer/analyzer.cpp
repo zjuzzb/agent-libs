@@ -2730,7 +2730,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			{
 				const sinsp_container_info *container_info =
 					m_inspector->m_container_manager.get_container(it->first);
-				if(container_info && container_info->m_name.find("k8s_POD") == std::string::npos)
+				if(container_info && !container_info->is_pod_sandbox())
 				{
 					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
 					{
@@ -6507,7 +6507,7 @@ sinsp_analyzer::emit_containers_deprecated(const progtable_by_container_t& progt
 		if(container_info)
 		{
 
-			if(container_info->m_name.find("k8s_POD") == std::string::npos)
+			if(!container_info->is_pod_sandbox())
 			{
 				if((m_container_patterns.empty() ||
 					std::find_if(m_container_patterns.begin(), m_container_patterns.end(),

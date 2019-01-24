@@ -154,8 +154,7 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	{
 		const string& container_id = item.first;
 		const sinsp_container_info* sinsp_container_info_instance = m_t.get_container(container_id);
-		if(sinsp_container_info_instance &&
-		   !is_kubernetes_pod(*sinsp_container_info_instance))
+		if(sinsp_container_info_instance && !sinsp_container_info_instance->is_pod_sandbox())
 		{
 			if (patterns_contain(*sinsp_container_info_instance))
 			{

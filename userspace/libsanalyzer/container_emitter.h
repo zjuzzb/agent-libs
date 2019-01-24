@@ -128,11 +128,6 @@ private:
 		Extractor m_extractor;
 	};
 
-	inline bool is_kubernetes_pod(const sinsp_container_info& container)
-	{
-		return container.m_name.find("k8s_POD") != std::string::npos;
-	}
-
 	bool patterns_contain(const sinsp_container_info& container_info)
 	{
 		if (m_container_patterns.empty()) 
