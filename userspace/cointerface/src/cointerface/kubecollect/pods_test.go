@@ -2,6 +2,7 @@ package kubecollect
 
 import (
 	"testing"
+	. "test_helpers"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -253,4 +254,26 @@ func TestPodEqualsResourceRequestsMem(t *testing.T) {
 	newPod.Spec.Containers[1].Resources.Requests[v1.ResourceMemory] = resource.MustParse("5")
 
 	podEqualsHelper(t, oldPod, newPod, false)
+}
+
+func Test_parseContainerID (t *testing.T) {
+
+	result,err := parseContainerID("docker://0123456789abbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+	AssertEqual(t, err, nil)
+	AssertEqual(t, "0123456789ab", result)
+
+	// Unknown what exactly a legitimate rkt id looks like but this tests
+	// the existing code
+	result,err = parseContainerID("rkt://1234:app")
+	AssertEqual(t, err, nil)
+	AssertEqual(t, "1234:app", result)
+
+	result,err = parseContainerID("rkt://")
+	AssertEqual(t, "rkt://", result)
+	AssertEqual(t, "ID too short for rkt format", err.Error())
+
+	// Missing slash
+	result,err = parseContainerID("docker:/0123456789abbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
+	AssertEqual(t, "docker:/0123456789abbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", result)
+	AssertEqual(t, "Unknown containerID format", err.Error())
 }
