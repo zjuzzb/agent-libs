@@ -96,13 +96,19 @@ message orchestrator_events_stream_command {
     repeated string annotation_filter = 15;
     repeated string include_types = 16;
     required uint32 event_counts_log_time = 17;
+    required uint32 batch_msgs_queue_len = 18;
+    required uint32 batch_msgs_tick_interval_ms = 19;
+}
+
+message array_congroup_update_event {
+    repeated draiosproto.congroup_update_event events = 1;
 }
 
 service CoInterface {
     rpc PerformDockerCommand(docker_command) returns (docker_command_result) {}
     rpc PerformPing(ping) returns (pong) {}
     rpc PerformSwarmState(swarm_state_command) returns (swarm_state_result) {}
-    rpc PerformOrchestratorEventsStream(orchestrator_events_stream_command) returns (stream draiosproto.congroup_update_event) {}
+    rpc PerformOrchestratorEventsStream(orchestrator_events_stream_command) returns (stream array_congroup_update_event) {}
 }
 
 message comp_module_status {

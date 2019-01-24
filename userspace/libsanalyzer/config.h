@@ -253,6 +253,10 @@ public:
 	void set_orch_low_evt_threshold(uint32_t low_evt_threshold);
 	bool get_orch_filter_empty() const;
 	void set_orch_filter_empty(bool filter_empty);
+	uint32_t get_orch_batch_msgs_queue_len() const;
+	void set_orch_batch_msgs_queue_len(uint32_t batch_queue_len);
+	uint32_t get_orch_batch_msgs_tick_interval_ms() const;
+	void set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms);
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -381,6 +385,8 @@ private:
 	uint32_t m_orch_low_ticks_needed;
 	uint32_t m_orch_low_evt_threshold;
 	bool m_orch_filter_empty;
+	uint32_t m_orch_batch_msgs_queue_len;
+	uint32_t m_orch_batch_msgs_tick_interval_ms;
 };
 
 #endif // HAS_ANALYZER

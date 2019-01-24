@@ -392,6 +392,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_orch_low_ticks_needed(m_configuration->m_orch_low_ticks_needed);
 	m_analyzer->get_configuration()->set_orch_low_evt_threshold(m_configuration->m_orch_low_evt_threshold);
 	m_analyzer->get_configuration()->set_orch_filter_empty(m_configuration->m_orch_filter_empty);
+	m_analyzer->get_configuration()->set_orch_batch_msgs_queue_len(m_configuration->m_orch_batch_msgs_queue_len);
+	m_analyzer->get_configuration()->set_orch_batch_msgs_tick_interval_ms(m_configuration->m_orch_batch_msgs_tick_interval_ms);
 
 	//
 	// Load the chisels

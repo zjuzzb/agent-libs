@@ -1177,4 +1177,21 @@ void sinsp_configuration::set_orch_filter_empty(bool filter_empty)
 	m_orch_filter_empty = filter_empty;
 }
 
+uint32_t sinsp_configuration::get_orch_batch_msgs_queue_len() const
+{
+	return m_orch_batch_msgs_queue_len;
+}
+void sinsp_configuration::set_orch_batch_msgs_queue_len(uint32_t batch_queue_len)
+{
+	m_orch_batch_msgs_queue_len = batch_queue_len;
+}
+
+uint32_t sinsp_configuration::get_orch_batch_msgs_tick_interval_ms() const
+{
+	return m_orch_batch_msgs_tick_interval_ms;
+}
+void sinsp_configuration::set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms)
+{
+	m_orch_batch_msgs_tick_interval_ms = batch_tick_interval_ms;
+}
 #endif // HAS_ANALYZER

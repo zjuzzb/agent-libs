@@ -1196,6 +1196,9 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_orch_low_ticks_needed = m_config->get_scalar<uint32_t>("orch_low_ticks_needed", 10);
 	m_orch_low_evt_threshold = m_config->get_scalar<uint32_t>("orch_low_evt_threshold", 50);
 	m_orch_filter_empty = m_config->get_scalar<bool>("orch_filter_empty", true);
+	// options related to batching of cointerface msgs
+	m_orch_batch_msgs_queue_len = m_config->get_scalar<uint32_t>("orch_batch_msgs_queue_len", 100);
+	m_orch_batch_msgs_tick_interval_ms = m_config->get_scalar<uint32_t>("orch_batch_msgs_tick_interval_ms", 100);
 
 	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
@@ -1690,6 +1693,8 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
 	LOG_INFO("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
 	LOG_INFO("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
+	LOG_INFO("Orch events batch messages queue len: " + to_string(m_orch_batch_msgs_queue_len));
+	LOG_INFO("Orch events batch messages tick interval (ms): " + to_string(m_orch_batch_msgs_tick_interval_ms));
 
 	LOG_INFO("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
 

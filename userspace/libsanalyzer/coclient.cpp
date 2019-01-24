@@ -105,7 +105,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 		orchestrator_events_stream_command = static_cast<sdc_internal::orchestrator_events_stream_command *>(request_msg);
 		call->orchestrator_events_reader = m_stub->AsyncPerformOrchestratorEventsStream(&call->ctx, *orchestrator_events_stream_command, &m_cq, (void *)call);
 
-		call->response_msg = make_unique<draiosproto::congroup_update_event>();
+		call->response_msg = make_unique<sdc_internal::array_congroup_update_event>();
 
 		break;
 	default:
@@ -116,20 +116,25 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 
 bool coclient::process_queue()
 {
-	uint32_t count = 0;
-	bool okay = true;
-	while (okay && count < m_max_loop_evts)
+	int32_t total_evts = 0,	curr_count_evts = 0;
+	
+	while (total_evts < m_max_loop_evts)
 	{
-		okay = next();
-		count++;
+		curr_count_evts = next();
+		if(curr_count_evts < 0) {
+			break;
+		}
+		total_evts += curr_count_evts;
 	}
-	return okay;
+
+	return (curr_count_evts < 0);
 }
 
-bool coclient::next()
+int32_t coclient::next()
 {
 	void *tag;
 	bool updates_ok;
+	int32_t count_evts = 0;
 	grpc::CompletionQueue::NextStatus status;
 
 	status = m_cq.AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_REALTIME));
@@ -139,11 +144,11 @@ bool coclient::next()
 		g_logger.log("cointerface process shut down, disconnecting", sinsp_logger::SEV_ERROR);
 		m_stub = NULL;
 		m_outstanding_swarm_state = false;
-		return false;
+		return -1;
 	}
 	else if(status == grpc::CompletionQueue::TIMEOUT)
 	{
-		return false;
+		return -1;
 	}
 
 	call_context *call = static_cast<call_context *>(tag);
@@ -166,7 +171,7 @@ bool coclient::next()
 			      sdc_internal::cointerface_message_type_Name(call->msg_type).c_str());
 			delete call;
 		}
-		return true;
+		return -1;
 	}
 
 
@@ -176,10 +181,14 @@ bool coclient::next()
 		// updates_ok, so we can now assume that the
 		// call was successful
 		//
+		sdc_internal::array_congroup_update_event *array_cue = nullptr;
 		call->status = grpc::Status::OK;
 		switch(call->msg_type) {
 		case(sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND):
-			call->orchestrator_events_reader->Read(static_cast<draiosproto::congroup_update_event *>(call->response_msg.get()), (void *)call);
+			array_cue = dynamic_cast<sdc_internal::array_congroup_update_event *>(call->response_msg.get());
+			count_evts = static_cast<int32_t>(array_cue->events_size());
+			g_logger.log("[CoClient] Number of events processed with current tick: " + to_string(count_evts), sinsp_logger::SEV_DEBUG);
+			call->orchestrator_events_reader->Read(array_cue, (void *)call);
 			break;
 		default:
 			g_logger.log("Unknown streaming message type " + to_string(call->msg_type) + ", can't read response", sinsp_logger::SEV_ERROR);
@@ -193,7 +202,7 @@ bool coclient::next()
 		if(!call->is_server_ready) {
 			call->is_server_ready = true;
 			g_logger.log("RPC streaming server connected and ready to send messages.", sinsp_logger::SEV_DEBUG);
-			return true;
+			return 0;
 		}
 	}
 
@@ -214,7 +223,7 @@ bool coclient::next()
 		delete call;
 	}
 
-	return true;
+	return count_evts;
 }
 
 void coclient::set_domain_sock(std::string &domain_sock)
@@ -265,7 +274,7 @@ void coclient::get_swarm_state(response_cb_t response_cb)
 }
 
 void coclient::get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd,
-										response_cb_t response_cb)
+				       response_cb_t response_cb)
 {
 	prepare(&cmd, sdc_internal::ORCHESTRATOR_EVENTS_STREAM_COMMAND, response_cb);
 }

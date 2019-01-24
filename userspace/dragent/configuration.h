@@ -832,6 +832,8 @@ public:
 	uint32_t m_orch_low_ticks_needed;
 	uint32_t m_orch_low_evt_threshold;
 	bool m_orch_filter_empty;
+	uint32_t m_orch_batch_msgs_queue_len;
+	uint32_t m_orch_batch_msgs_tick_interval_ms;
 
 	int32_t m_max_n_proc_lookups;
 	int32_t m_max_n_proc_socket_lookups;

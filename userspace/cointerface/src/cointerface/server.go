@@ -4,6 +4,7 @@ import (
 	"cointerface/compliance"
 	"cointerface/kubecollect"
 	"cointerface/sdc_internal"
+	"cointerface/draiosproto"
 	"fmt"
 	log "github.com/cihub/seelog"
 	"github.com/docker/docker/client"
@@ -123,6 +124,36 @@ func (c *coInterfaceServer) PerformSwarmState(ctx context.Context, cmd *sdc_inte
 	return getSwarmState(ctx, cmd)
 }
 
+type CueSlice []*draiosproto.CongroupUpdateEvent
+
+// Method that flushes cointerface Msg Queue; it receives a CueSlice Pointer as incoming receiver type
+// The bool parameter is useful only for logging purpose (what triggered the flush?)
+func (cueSlicePtr *CueSlice) flushCointerfaceMsgQueue (stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer, tickFlush bool) error {
+
+	evtq := *cueSlicePtr
+	var events sdc_internal.ArrayCongroupUpdateEvent
+	events.Events = evtq
+
+	if(tickFlush) {
+		log.Debugf("[PerformOrchestratorEventsStream] Performing millisecond tick drain. Number of events processed :  %d" , len(evtq))
+	} else {
+		log.Debugf("[PerformOrchestratorEventsStream] Performing events count drain. Number of events processed :  %d" , len(evtq))
+	}
+
+	if err := stream.Send(&events); err != nil {
+		evt := evtq[len(evtq)-1]
+		log.Errorf("Stream response for {%v:%v} failed: %v",
+			evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId(), err)
+		return err
+	}
+	evtq = evtq[:0] // Slice it to make it zero len (since all msgs are flushed)
+	// But retain capacity; so we can reuse underlying array
+
+	*cueSlicePtr = evtq
+	
+	return nil
+}
+
 func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.OrchestratorEventsStreamCommand, stream sdc_internal.CoInterface_PerformOrchestratorEventsStreamServer) error {
 	log.Infof("[PerformOrchestratorEventsStream] Starting orchestrator events stream.")
 	log.Debugf("[PerformOrchestratorEventsStream] using options: %v", cmd)
@@ -184,16 +215,45 @@ func (c *coInterfaceServer) PerformOrchestratorEventsStream(cmd *sdc_internal.Or
 	}()
 
 	log.Infof("[PerformOrchestratorEventsStream] Entering select loop.")
-	for {
+
+	// Get the config values for batching cointerface msgs and sanity check the values.
+	batchMsgsQueueLen := cmd.GetBatchMsgsQueueLen()
+	if(batchMsgsQueueLen <= 0) {
+		log.Warnf("A value less than 1 entered for the orch_batch_msgs_queue_len configuration property. Setting the value to 1.")
+		batchMsgsQueueLen = 1
+	}
+	batchMsgsTickMs := cmd.GetBatchMsgsTickIntervalMs()
+	if(batchMsgsTickMs <= 0) {
+		log.Warnf("A value less than 1 entered for the orch_batch_msgs_tick_interval configuration property. Setting the value to 1.")
+		batchMsgsTickMs = 1
+	}
+	
+	evtq := make(CueSlice, 0, batchMsgsQueueLen)
+	msTickTimer := time.NewTicker(time.Duration(batchMsgsTickMs) * time.Millisecond)
+	defer msTickTimer.Stop()
+	
+	for {		
 		select {
 		case evt, ok := <-evtc:
 			if !ok {
 				log.Debugf("[PerformOrchestratorEventsStream] event stream finished")
 				return nil
-			} else if err := stream.Send(&evt); err != nil {
-				log.Errorf("Stream response for {%v:%v} failed: %v",
-					evt.Object.GetUid().GetKind(), evt.Object.GetUid().GetId(), err)
-				return err
+			} 
+			evtq = append(evtq, &evt) // Add to event queue
+			// Drain event queue if length equals batchMsgsQueueLen
+			if len(evtq) == int(batchMsgsQueueLen) {
+				if err := evtq.flushCointerfaceMsgQueue(stream, false); err != nil {
+					return err
+				}
+			}
+		case <-msTickTimer.C:
+			// We drain the event queue every batchMsgsTickMs milliseconds
+			// This prevents msgs that are old to wait around
+			// forever if we don't fill the event queue
+			if len(evtq) > 0 {
+				if err := evtq.flushCointerfaceMsgQueue(stream, true); err != nil {
+					return err
+				}
 			}
 		case <-ctx.Done():
 			log.Debugf("[PerformOrchestratorEventsStream] context cancelled")

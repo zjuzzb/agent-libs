@@ -427,8 +427,10 @@ protected:
 	void connect();
 
 	// Check for any responses and call their callback functions.
-	// Returns true if there are possibly more events to read
-	bool next();
+	// Returns a number  >= 0 if there are possibly more events to read.
+	// Returns the number of events read with this call. If it returns
+	// -1 then it suggests no more events to read or some error.
+	int32_t next();
 
 	struct call_context {
 
@@ -454,7 +456,7 @@ protected:
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::pong>> pong_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
-		std::unique_ptr<grpc::ClientAsyncReader<draiosproto::congroup_update_event>> orchestrator_events_reader;
+		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::array_congroup_update_event>> orchestrator_events_reader;
 	};
 
 	// Created by CreateChannel

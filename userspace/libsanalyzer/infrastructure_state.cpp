@@ -19,7 +19,7 @@ bool infrastructure_state::get_cached_result(const std::string &entity_id, size_
 			return true;
 		}
 	}
-
+	
 	return false;
 }
 
@@ -118,8 +118,12 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* ins
 		k8s_generate_user_event(successful);
 
 		if(successful) {
-			draiosproto::congroup_update_event *evt = (draiosproto::congroup_update_event *)response_msg;
-			handle_event(evt);
+			auto evtq = dynamic_cast<sdc_internal::array_congroup_update_event *>(response_msg);
+
+			for(int i = 0; i < evtq->events_size(); i++) {
+				draiosproto::congroup_update_event *evt = evtq->mutable_events(i);
+				handle_event(evt);
+			}
 		} else {
 			//
 			// Error from cointerface, destroy the whole state and subscribe again
@@ -211,6 +215,8 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_startup_low_ticks_needed(m_inspector->m_analyzer->m_configuration->get_orch_low_ticks_needed());
 			cmd.set_startup_low_evt_threshold(m_inspector->m_analyzer->m_configuration->get_orch_low_evt_threshold());
 			cmd.set_filter_empty(m_inspector->m_analyzer->m_configuration->get_orch_filter_empty());
+			cmd.set_batch_msgs_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_queue_len());
+			cmd.set_batch_msgs_tick_interval_ms(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_tick_interval_ms());
 			cmd.set_ssl_verify_certificate(m_inspector->m_analyzer->m_configuration->get_k8s_ssl_verify_certificate());
 			cmd.set_auth_token(m_inspector->m_analyzer->m_configuration->get_k8s_bt_auth_token());
 			for (const auto &annot : m_annotation_filter)
