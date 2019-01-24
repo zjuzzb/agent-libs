@@ -1750,6 +1750,17 @@ bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastruct
 // If we don't find any other nodes running agents, we're assuming they're all running agents.
 bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_delegated)
 {
+	if (num_delegated < 0)
+	{
+		g_logger.log("k8s_deleg: delegation forced by config override", sinsp_logger::SEV_INFO);
+		return true;
+	}
+	else if (num_delegated == 0)
+	{
+		g_logger.log("k8s_deleg: delegation disabled by config override", sinsp_logger::SEV_INFO);
+		return false;
+	}
+
 	class NodeData {
 	public:
 		NodeData(const std::string& id, const std::string& ips)

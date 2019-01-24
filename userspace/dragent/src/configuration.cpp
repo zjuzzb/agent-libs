@@ -1013,65 +1013,14 @@ void dragent_configuration::init()
 	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 	m_k8s_local_update_frequency = m_config->get_scalar<uint16_t>("k8s_local_update_frequency", 1);
 	m_k8s_cluster_update_frequency = m_config->get_scalar<uint16_t>("k8s_cluster_update_frequency", 1);
-
-	//////////////////////////////////////////////////////////////////////////////////////////
-	// Logic for K8s metadata collection and agent auto-delegation, when K8s API server is
-	// - discovered automatically because (process is running on localhost):
-	//     collection enabled and delegation disabled (handled in analyzer)
-	// - discovered automatically via environment variables (agent running in a K8s pod):
-	//     collection enabled and delegation enabled (default 2 delegated nodes, can be
-	//     changed with k8s_delegated_nodes setting)
-	// - configured statically:
-	//     collection enabled and delegation disabled, unless delegation is manually enabled
-	//     with k8s_delegated_nodes > 0
-	//////////////////////////////////////////////////////////////////////////////////////////
-	bool k8s_api_server_empty = m_k8s_api_server.empty();
-	if(k8s_api_server_empty && m_k8s_autodetect)
+	if (m_k8s_api_server.empty() && m_k8s_autodetect)
 	{
 		configure_k8s_from_env();
 	}
-	if(k8s_api_server_empty && m_k8s_api_server.empty())
-	{
-		m_k8s_delegated_nodes = 0;
-	}
-	if(k8s_api_server_empty && !m_k8s_api_server.empty()) // auto-discovered from env
-	{
-		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
-	}
-	else if(!k8s_api_server_empty && !uri(m_k8s_api_server).is_local()) // configured but not localhost
-	{
-		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 0);
-	}
-
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	// non-production private setting, only used for testing - to simulate delegation when     //
-	// running [outside pod] AND [on the same host as K8s API server]                          //
-	// it will work only if K8s API server is running on localhost                             //
-	// this setting will NOT work when agent is running on another host and it should          //
-	// *never* be set to true in production                                                    //
-	m_k8s_simulate_delegation = m_config->get_scalar<bool>("k8s_simulate_delegation", false);  //
-	if(m_k8s_simulate_delegation)                                                              //
-	{                                                                                          //
-		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);           //
-		m_k8s_api_server = "http://127.0.0.1:8080";                                            //
-	}                                                                                          //
-	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	if(m_k8s_delegated_nodes) // always force-disable autodiscovery if delegated
-	{
-		m_k8s_autodetect = false;
-	}
-	if(m_k8s_delegated_nodes && !m_k8s_simulate_delegation &&
-	   !m_k8s_api_server.empty() && uri(m_k8s_api_server).is_local())
-	{
-		m_k8s_delegated_nodes = 0;
-		LOG_WARNING("K8s API server is local, k8s_delegated_nodes (" +
-			     std::to_string(m_k8s_delegated_nodes) + ") ignored.");
-	}
-
-	// Ugly hack until we standardize on new_k8s
-	if (m_use_new_k8s) {
-		m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
-	}
+	// >0 to set the number of delegated nodes
+	// 0 to disable delegation
+	// <0 to force delegation
+	m_k8s_delegated_nodes = m_config->get_scalar<int>("k8s_delegated_nodes", 2);
 
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
@@ -1506,10 +1455,6 @@ void dragent_configuration::print_configuration() const
 	if (!m_k8s_api_server.empty())
 	{
 		LOG_INFO("K8S API server: " + uri(m_k8s_api_server).to_string(false));
-	}
-	if (m_k8s_simulate_delegation)
-	{
-		LOG_WARNING("!!! K8S delegation simulation enabled (non-production setting) !!!");
 	}
 	if (m_k8s_delegated_nodes)
 	{

@@ -30,7 +30,6 @@ sinsp_configuration::sinsp_configuration():
 	m_protocols_truncation_size = 512;
 	m_mounts_limit_size = 15u;
 #ifndef CYGWING_AGENT
-	m_k8s_autodetect = true;
 	m_mesos_autodetect = true;
 #endif
 	m_jmx_limit = 500;
@@ -445,16 +444,6 @@ const string & sinsp_configuration::get_k8s_api_server() const
 	return m_k8s_api;
 }
 
-bool sinsp_configuration::get_k8s_autodetect_enabled() const
-{
-	return m_k8s_autodetect;
-}
-
-void sinsp_configuration::set_k8s_autodetect_enabled(bool enabled)
-{
-	m_k8s_autodetect = enabled;
-}
-
 void sinsp_configuration::set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type)
 {
 	m_k8s_ssl_cert_type = k8s_ssl_cert_type;
@@ -533,16 +522,6 @@ void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 int sinsp_configuration::get_k8s_delegated_nodes() const
 {
 	return m_k8s_delegated_nodes;
-}
-
-void sinsp_configuration::set_k8s_simulate_delegation(bool k8s_simulate_delegation)
-{
-	m_k8s_simulate_delegation = k8s_simulate_delegation;
-}
-
-bool sinsp_configuration::get_k8s_simulate_delegation() const
-{
-	return m_k8s_simulate_delegation;
 }
 
 void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)

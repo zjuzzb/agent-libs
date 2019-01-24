@@ -823,11 +823,7 @@ VISIBILITY_PRIVATE
 #ifndef CYGWING_AGENT
 	typedef sinsp_configuration::k8s_ext_list_t k8s_ext_list_t;
 	typedef sinsp_configuration::k8s_ext_list_ptr_t k8s_ext_list_ptr_t;
-	std::string get_k8s_api_server_proc(sinsp_threadinfo* main_tinfo);
-	std::string detect_k8s(std::string& k8s_api_server);
-	string detect_k8s(sinsp_threadinfo* main_tinfo = 0);
 	bool check_k8s_delegation();
-	bool check_k8s_server(string& addr);
 	k8s_ext_list_ptr_t k8s_discover_ext(const std::string& addr);
 	void init_k8s_ssl(const uri& url);
 	k8s* get_k8s(const uri& k8s_api, const std::string& msg);
@@ -1141,7 +1137,6 @@ VISIBILITY_PRIVATE
 	k8s_ext_list_ptr_t                   m_ext_list_ptr;
 	bool                                 m_k8s_ext_detect_done = false;
 	int                                  m_k8s_retry_seconds = 60; // TODO move to config?
-	bool                                 m_k8s_proc_detected = false;
 
 	unique_ptr<draiosproto::swarm_state> m_docker_swarm_state;
 	unique_ptr<mesos> m_mesos;

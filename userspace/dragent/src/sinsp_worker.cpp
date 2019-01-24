@@ -169,8 +169,6 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
 	}
 
-	m_analyzer->get_configuration()->set_k8s_autodetect_enabled(m_configuration->m_k8s_autodetect);
-
 	if(!m_configuration->m_k8s_ssl_cert_type.empty())
 	{
 		m_analyzer->get_configuration()->set_k8s_ssl_cert_type(m_configuration->m_k8s_ssl_cert_type);
@@ -205,7 +203,6 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_timeout_s(m_configuration->m_k8s_timeout_s);
 
-	m_analyzer->get_configuration()->set_k8s_simulate_delegation(m_configuration->m_k8s_simulate_delegation);
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
 
 	if(m_configuration->m_k8s_extensions.size())

@@ -269,7 +269,6 @@ public:
 	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes = 0;
-	bool m_k8s_simulate_delegation;
 	k8s_ext_list_t m_k8s_extensions;
 	bool m_use_new_k8s;
 

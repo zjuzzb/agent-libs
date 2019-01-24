@@ -1090,52 +1090,6 @@ string sinsp_analyzer::detect_local_server(const string& protocol, uint32_t port
 }
 
 #ifndef CYGWING_AGENT
-bool sinsp_analyzer::check_k8s_server(string& addr)
-{
-	string path = "/api";
-	uri url(addr + path);
-	g_logger.log("Preparing to detect K8S at [" + url.to_string(false) + "] ...", sinsp_logger::SEV_TRACE);
-	std::unique_ptr<sinsp_curl> sc;
-	if(url.is_secure() && !m_k8s_ssl)
-	{
-		const std::string& cert          = m_configuration->get_k8s_ssl_cert();
-		const std::string& key           = m_configuration->get_k8s_ssl_key();
-		const std::string& key_pwd       = m_configuration->get_k8s_ssl_key_password();
-		const std::string& ca_cert       = m_configuration->get_k8s_ssl_ca_certificate();
-		bool verify_cert                 = m_configuration->get_k8s_ssl_verify_certificate();
-		const std::string& cert_type     = m_configuration->get_k8s_ssl_cert_type();
-		m_k8s_ssl = std::make_shared<sinsp_curl::ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
-	}
-	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
-	if(!bt_auth_token.empty())
-	{
-		m_k8s_bt = std::make_shared<sinsp_curl::bearer_token>(bt_auth_token);
-	}
-	sc.reset(new sinsp_curl(url, m_k8s_ssl, m_k8s_bt, 500, m_configuration->get_curl_debug()));
-	string json = sc->get_data(false);
-	if(!json.empty())
-	{
-		g_logger.log("Detecting K8S at [" + url.to_string(false) + ']', sinsp_logger::SEV_DEBUG);
-		Json::Value root;
-		Json::Reader reader;
-		if(reader.parse(json, root))
-		{
-			const Json::Value& vers = root["versions"];
-			if(vers.isArray())
-			{
-				for(const auto& ver : vers)
-				{
-					if(ver.asString() == "v1")
-					{
-						return true;
-					}
-				}
-			}
-		}
-	}
-	return false;
-}
-
 bool sinsp_analyzer::check_mesos_server(string& addr)
 {
 	uri url(addr);
@@ -1383,85 +1337,6 @@ k8s* sinsp_analyzer::get_k8s(const uri& k8s_api, const std::string& msg)
 		}
 	}
 	return nullptr;
-}
-
-std::string sinsp_analyzer::get_k8s_api_server_proc(sinsp_threadinfo* main_tinfo)
-{
-	if(main_tinfo)
-	{
-		if(main_tinfo->m_exe.find("kube-apiserver") != std::string::npos)
-		{
-			return "kube-apiserver";
-		}
-		else if(main_tinfo->m_exe.find("hyperkube") != std::string::npos)
-		{
-			for(const auto& arg : main_tinfo->m_args)
-			{
-				if(arg == "apiserver")
-				{
-					return "hyperkube apiserver";
-				}
-			}
-		}
-	}
-	return "";
-}
-
-std::string sinsp_analyzer::detect_k8s(std::string& k8s_api_server)
-{
-	k8s_api_server = detect_local_server("http", 8080, &sinsp_analyzer::check_k8s_server);
-	if(k8s_api_server.empty())
-	{
-		k8s_api_server = detect_local_server("https", 443, &sinsp_analyzer::check_k8s_server);
-	}
-
-	if(!k8s_api_server.empty())
-	{
-		m_configuration->set_k8s_api_server(k8s_api_server);
-		g_logger.log("K8S API server auto-detected and set to: " + k8s_api_server, sinsp_logger::SEV_INFO);
-	}
-	else
-	{
-		g_logger.log("K8S API server not found.", sinsp_logger::SEV_WARNING);
-	}
-	if(m_configuration->get_k8s_autodetect_enabled())
-	{
-		m_configuration->set_k8s_api_server(k8s_api_server);
-	}
-	return k8s_api_server;
-}
-
-std::string sinsp_analyzer::detect_k8s(sinsp_threadinfo* main_tinfo)
-{
-	string k8s_api_server = m_configuration->get_k8s_api_server();
-	if(m_configuration->get_k8s_autodetect_enabled())
-	{
-		if(k8s_api_server.empty() || !m_k8s)
-		{
-			if(main_tinfo)
-			{
-				string kube_apiserver_process = get_k8s_api_server_proc(main_tinfo);
-
-				if(kube_apiserver_process.empty())
-				{
-					k8s_api_server.clear();
-				}
-
-				if(!kube_apiserver_process.empty())
-				{
-					g_logger.log("K8S: Detected [" + kube_apiserver_process + "] process", sinsp_logger::SEV_INFO);
-					detect_k8s(k8s_api_server);
-				}
-			}
-			else if(m_k8s_proc_detected)
-			{
-				g_logger.log("K8S: Detected API server process", sinsp_logger::SEV_INFO);
-				detect_k8s(k8s_api_server);
-			}
-		}
-		m_configuration->set_k8s_api_server(k8s_api_server);
-	}
-	return k8s_api_server;
 }
 
 uint32_t sinsp_analyzer::get_mesos_api_server_port(sinsp_threadinfo* main_tinfo)
@@ -1809,14 +1684,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		m_procfs_parser->set_global_cpu_jiffies();
 	}
 
-	bool try_detect_k8s = (m_configuration->get_k8s_autodetect_enabled() && !m_k8s &&
-						   m_configuration->get_k8s_api_server().empty());
-	bool k8s_detected = false;
-	static bool k8s_been_here = false;
-	if(m_k8s_proc_detected && !m_configuration->get_k8s_api_server().empty())
-	{
-		m_k8s_proc_detected = false;
-	}
 #endif
 
 	uint64_t process_count = 0;
@@ -1902,16 +1769,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if((m_prev_flush_time_ns / ONE_SECOND_IN_NS) % 5 == 0 &&
 			tinfo.is_main_thread() && !m_inspector->is_capture())
 		{
-			if(!m_k8s_proc_detected)
-			{
-				m_k8s_proc_detected = !(get_k8s_api_server_proc(main_tinfo).empty());
-			}
-			if(m_k8s_proc_detected && try_detect_k8s)
-			{
-				tracer_emitter k8s_trc("detect_k8s", am_trc);
-				k8s_detected = !(detect_k8s(main_tinfo).empty());
-			}
-
 			// mesos autodetection flagging, happens only if mesos is not explicitly configured
 			// we only record the relevant mesos process thread ID here; later, this flag is detected by
 			// emit_mesos() and, if process is found to stil be alive, the appropriate action is taken
@@ -2212,16 +2069,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 		m_internal_metrics->update_subprocess_metrics(m_procfs_parser);
 	}
-
-#ifndef CYGWING_AGENT
-	if(!k8s_been_here && try_detect_k8s && !k8s_detected)
-	{
-		k8s_been_here = true;
-		g_logger.log("K8s API server not configured or auto-detected at this time; "
-					 "K8s information may not be available.",
-					 sinsp_logger::SEV_INFO);
-	}
-#endif
 
 	tracer_emitter pt_trc("walk_progtable", proc_trc);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -5593,10 +5440,6 @@ void sinsp_analyzer::reset_k8s(time_t& last_attempt, const std::string& err)
 	m_k8s_ext_handler.reset();
 	m_ext_list_ptr.reset();
 	m_k8s.reset();
-	if(m_configuration->get_k8s_autodetect_enabled())
-	{
-		m_configuration->set_k8s_api_server("");
-	}
 }
 
 void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
@@ -5632,53 +5475,21 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 
 void sinsp_analyzer::emit_k8s()
 {
-	// k8s_uri string config setting can be set:
-	//
-	//    - explicitly in configuration file; when present, this setting has priority
-	//      over anything else in regards to presence/location of the api server
-	//
-	//    - implicitly, by k8s autodetect flag (which defaults to true);
-	//      when k8s_uri is empty, autodetect is true and api server is detected on the
-	//      local machine, uri will be automatically set to "http://{address}:8080", where
-	//      {address} is the IP address of the interface on which API server is listening
-	//
-	// so, at runtime, k8s_uri being empty or not determines whether k8s data
-	// will be collected and emitted; the connection to k8s api server is entirely managed
+	std::string k8s_api = m_configuration->get_k8s_api_server();
+	if(k8s_api.empty())
+	{
+		return;
+	}
+
+	// the connection to k8s api server is entirely managed
 	// in this function - if it is dropped, the attempts to re-establish it will keep on going
 	// forever, once per cycle, until either connection is re-established or agent shut down
 
 	try
 	{
-		std::string k8s_api = m_configuration->get_k8s_api_server();
-		if(!k8s_api.empty())
+		if (!check_k8s_delegation())
 		{
-			if(uri(k8s_api).is_local())
-			{
-				static bool logged = false;
-				if(!logged && m_configuration->get_k8s_delegated_nodes() && !m_configuration->get_k8s_simulate_delegation())
-				{
-					g_logger.log(std::string("K8s: incompatible settings (local URI and node auto-delegation), "
-											 "node auto-delegation ignored"),
-								 sinsp_logger::SEV_WARNING);
-					logged = true;
-				}
-				else if(m_configuration->get_k8s_simulate_delegation() && m_configuration->get_k8s_delegated_nodes())
-				{
-					// simulation, force delegation check
-					if(!check_k8s_delegation()) { return; }
-				}
-			}
-			else if(m_configuration->get_k8s_delegated_nodes())
-			{
-				if(!check_k8s_delegation()) { return; }
-			}
-		}
-		else
-		{
-			if(m_configuration->get_k8s_autodetect_enabled())
-			{
-				k8s_api = detect_k8s();
-			}
+			return;
 		}
 		if(!k8s_api.empty())
 		{
@@ -6010,18 +5821,7 @@ bool sinsp_analyzer::check_k8s_delegation()
 
 	if(!k8s_uri.empty())
 	{
-		if(uri(k8s_uri).is_local() && !m_configuration->get_k8s_simulate_delegation())
-		{
-			static bool logged = false;
-			if(!logged && delegated_nodes)
-			{
-				g_logger.log(std::string("K8s: incompatible settings (local URI and auto-delegation), auto-delegation ignored"),
-							sinsp_logger::SEV_WARNING);
-				logged = true;
-			}
-			return true;
-		}
-		else if(delegated_nodes)
+		if (delegated_nodes > 0)
 		{
 			try
 			{
@@ -6079,6 +5879,24 @@ bool sinsp_analyzer::check_k8s_delegation()
 				static time_t last_attempt;
 				reset_k8s(last_attempt, std::string("K8s delegator error: ") + ex.what());
 			}
+		}
+		else
+		{
+			// This check should be in k8s_delegator, but that
+			// requires starting the delegator. This keeps the
+			// legacy k8s behavior of not starting the delegator
+			// to avoid any possible legacy k8s perf issues.
+			static run_on_interval deleg_log(K8S_DELEGATION_INTERVAL);
+			deleg_log.run(
+				[delegated_nodes]()
+				{
+					bool enabled = (delegated_nodes < 0);
+					g_logger.log(std::string("K8s delegator: delegation ") +
+						     (enabled ? "forced" : "disabled") +
+						     " by config override",
+						     sinsp_logger::SEV_INFO);
+					return enabled;
+				});
 		}
 	}
 	return false;
