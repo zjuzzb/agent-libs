@@ -92,18 +92,18 @@ RUN JAVA_VERSION_MAJOR=8 \
  && JAVA_VERSION_MINOR=192 \
  && JAVA_VERSION_BUILD=12 \
  && JRE_ARCHIVE_FILE="/tmp/jre.tgz" \
- && /usr/bin/curl -jksSlL -o "${JRE_ARCHIVE_FILE}" \
+ && curl -jksSlL -o "${JRE_ARCHIVE_FILE}" \
         https://github.com/AdoptOpenJDK/openjdk${JAVA_VERSION_MAJOR}-binaries/releases/download/jdk${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}-b${JAVA_VERSION_BUILD}/OpenJDK${JAVA_VERSION_MAJOR}U-jre_x64_linux_hotspot_${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}b${JAVA_VERSION_BUILD}.tar.gz \
- && JAVA_PACKAGE_SHA256=$(/usr/bin/curl -sSlL https://github.com/AdoptOpenJDK/openjdk${JAVA_VERSION_MAJOR}-binaries/releases/download/jdk${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}-b${JAVA_VERSION_BUILD}/OpenJDK${JAVA_VERSION_MAJOR}U-jre_x64_linux_hotspot_${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}b${JAVA_VERSION_BUILD}.tar.gz.sha256.txt | awk '{ print $1 }') \
+ && JAVA_PACKAGE_SHA256=$(curl -sSlL https://github.com/AdoptOpenJDK/openjdk${JAVA_VERSION_MAJOR}-binaries/releases/download/jdk${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}-b${JAVA_VERSION_BUILD}/OpenJDK${JAVA_VERSION_MAJOR}U-jre_x64_linux_hotspot_${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}b${JAVA_VERSION_BUILD}.tar.gz.sha256.txt | awk '{ print $1 }') \
  && echo "${JAVA_PACKAGE_SHA256}  ${JRE_ARCHIVE_FILE}" > ${JRE_ARCHIVE_FILE}.sha256 \
- && /usr/bin/sha256sum -c ${JRE_ARCHIVE_FILE}.sha256 \
- && /usr/bin/tar -C /opt -zxf "${JRE_ARCHIVE_FILE}" \
- && /usr/bin/rm "${JRE_ARCHIVE_FILE}" "${JRE_ARCHIVE_FILE}.sha256" \
+ && sha256sum -c ${JRE_ARCHIVE_FILE}.sha256 \
+ && tar -C /opt -zxf "${JRE_ARCHIVE_FILE}" \
+ && rm "${JRE_ARCHIVE_FILE}" "${JRE_ARCHIVE_FILE}.sha256" \
  && JAVA_INSTALL_DIR="/opt/jdk${JAVA_VERSION_MAJOR}u${JAVA_VERSION_MINOR}-b${JAVA_VERSION_BUILD}-jre" \
- && /usr/bin/rm -r "${JAVA_INSTALL_DIR}/man" \
- && /usr/bin/chown -R root:root "${JAVA_INSTALL_DIR}" \
- && (cd "${JAVA_INSTALL_DIR}/bin" && for i in $(ls); do /usr/bin/ln -sf "${JAVA_INSTALL_DIR}/bin/$i" "/etc/alternatives/$i"; /usr/bin/ln -sf "/etc/alternatives/$i" "/usr/bin/$i"; done) \
- && /usr/bin/true
+ && rm -r "${JAVA_INSTALL_DIR}/man" \
+ && chown -R root:root "${JAVA_INSTALL_DIR}" \
+ && (cd "${JAVA_INSTALL_DIR}/bin" && for i in $(ls); do ln -sf "${JAVA_INSTALL_DIR}/bin/$i" "/etc/alternatives/$i"; ln -sf "/etc/alternatives/$i" "/usr/bin/$i"; done) \
+ && true
 {% endif %}
 
 {% if p.build_kernel_module %}
