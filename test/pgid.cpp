@@ -154,12 +154,12 @@ static void run_setpgid_test(bool use_pid_namespace)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 }
 
-TEST_F(sys_call_test, setpgid)
+TEST_F(sys_call_test, DISABLED_setpgid)
 {
 	run_setpgid_test(false);
 }
 
-TEST_F(sys_call_test, setpgid_pid_namespace)
+TEST_F(sys_call_test, DISABLED_setpgid_pid_namespace)
 {
 	run_setpgid_test(true);
 }
