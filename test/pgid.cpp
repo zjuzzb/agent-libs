@@ -97,7 +97,6 @@ static void run_setpgid_test(bool use_pid_namespace)
 		{
 			flags |= CLONE_NEWPID;
 		}
-
 		stack = (char*) malloc(stack_size);
 		if (stack == NULL)
 		{
@@ -105,14 +104,17 @@ static void run_setpgid_test(bool use_pid_namespace)
 		}
 		stack_top = stack + stack_size;
 
+		fprintf(stderr, "DEBUG msg: Waiting to clone child \n");
 		if ((child_pid = clone(clone_callback, stack_top, flags, NULL)) == -1)
 		{
 		    FAIL();
 		}
 
 		int status;
+		fprintf(stderr, "DEBUG msg : Entering waitpid() \n");
 		ASSERT_EQ(waitpid(child_pid, &status, 0), child_pid);
 		ASSERT_EQ(WEXITSTATUS(status), 0);
+		fprintf(stderr, "DEBUG msg : End of test \n");
 	};
 
 	//
