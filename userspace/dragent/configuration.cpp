@@ -1206,7 +1206,6 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 	m_cri_socket_path = m_config->get_scalar<string>("cri", "socket_path", "");
 	m_cri_timeout_ms = m_config->get_scalar<int64_t>("cri", "timeout_ms", 1000);
-	m_docker_then_cri = m_config->get_scalar<bool>("cri", "docker_then_cri", false);
 
 	if(m_cri_socket_path.empty())
 	{
@@ -1710,7 +1709,6 @@ void dragent_configuration::print_configuration() const
 	else
 	{
 		LOG_INFO("CRI support enabled, socket: %s, timeout: %ld ms", m_cri_socket_path.c_str(), m_cri_timeout_ms);
-		LOG_INFO("Docker-then-CRI mode: " + bool_as_text(m_docker_then_cri));
 	}
 
 	g_log->information("Incomplete TCP connection reporting: " + string(m_track_connection_status ? "enabled" : "disabled"));

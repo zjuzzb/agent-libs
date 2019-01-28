@@ -49,7 +49,6 @@ TEST_F(container_cri, fake_cri_no_server) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_docker_cri_mode(false);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -102,7 +101,6 @@ TEST_F(container_cri, fake_cri) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_docker_cri_mode(false);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
@@ -156,7 +154,6 @@ TEST_F(container_cri, fake_cri_unknown_runtime) {
 	before_open_t setup = [&](sinsp* inspector)
 	{
 		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_docker_cri_mode(false);
 	};
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
