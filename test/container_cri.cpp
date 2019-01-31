@@ -37,11 +37,7 @@ TEST_F(container_cri, fake_cri_no_server) {
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
 		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
-		ASSERT_NE(container_info, nullptr);
-
-		EXPECT_EQ(sinsp_container_type::CT_CRI, container_info->m_type);
-		EXPECT_EQ("", container_info->m_name);
-		EXPECT_EQ("", container_info->m_image);
+		EXPECT_EQ(container_info, nullptr);
 
 		done = true;
 	};
