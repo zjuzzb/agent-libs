@@ -36,6 +36,15 @@ func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (sameEnt
 	if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
 		return false, false
 	}
+	// This is the last sameLinks check because it sometimes
+	// returns sameLinks == true unlike the above checks
+	if lhs.Status.Replicas != rhs.Status.Replicas {
+		if (lhs.Status.Replicas == 0) || (rhs.Status.Replicas == 0) {
+			return false, false
+		} else {
+			return false, true
+		}
+	}
 
 	// Now check sameEntity, sameLinks is always true from here out
 	if lhs.GetName() != rhs.GetName() {
@@ -43,7 +52,6 @@ func deploymentEquals(lhs *v1beta1.Deployment, rhs *v1beta1.Deployment) (sameEnt
 	}
 	if !reflect.DeepEqual(lhs.Spec.Replicas, rhs.Spec.Replicas) ||
 		lhs.Spec.Paused != rhs.Spec.Paused ||
-		lhs.Status.Replicas != rhs.Status.Replicas ||
 		lhs.Status.AvailableReplicas != rhs.Status.AvailableReplicas ||
 		lhs.Status.UnavailableReplicas != rhs.Status.UnavailableReplicas ||
 		lhs.Status.UpdatedReplicas != rhs.Status.UpdatedReplicas {
@@ -181,10 +189,7 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 
 				sameEntity, sameLinks := deploymentEquals(oldDeployment, newDeployment)
-				if !sameLinks ||
-					(!sameEntity &&
-					oldDeployment.Status.Replicas > 0 &&
-					newDeployment.Status.Replicas == 0) {
+				if !sameLinks {
 					updateDeploySelectorCache(newDeployment)
 				}
 				if !sameEntity || !sameLinks {

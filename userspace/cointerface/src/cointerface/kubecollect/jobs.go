@@ -39,21 +39,27 @@ func jobEquals(lhs *v1batch.Job, rhs *v1batch.Job) (bool, bool) {
 
 	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
 
+	if lhs.Status.Active != rhs.Status.Active {
+		sameEntity = false
+		if (lhs.Status.Active == 0) || (rhs.Status.Active == 0) {
+			sameLinks = false;
+		}
+	}
+
 	if sameEntity {
 		if (lhs.Spec.Parallelism != rhs.Spec.Parallelism) ||
 			(lhs.Spec.Completions != rhs.Spec.Completions) ||
-			(lhs.Status.Active != rhs.Status.Active) ||
 			(lhs.Status.Succeeded != rhs.Status.Succeeded) ||
 			(lhs.Status.Failed != rhs.Status.Failed) {
 		sameEntity = false
 		}
 	}
 
-	if lhs.GetNamespace() != rhs.GetNamespace() {
+	if sameLinks && lhs.GetNamespace() != rhs.GetNamespace() {
 		sameLinks = false
 	}
 
-	if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
+	if sameLinks && !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
 		sameLinks = false
 	}
 

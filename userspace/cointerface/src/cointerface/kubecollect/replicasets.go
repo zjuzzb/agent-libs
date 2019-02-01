@@ -40,11 +40,17 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
         EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
+	if lhs.Status.Replicas != rhs.Status.Replicas {
+			sameEntity = false
+		if (lhs.Status.Replicas == 0) || (rhs.Status.Replicas == 0) {
+			sameLinks = false;
+		}
+	}
+
 	if sameEntity {
-		if (lhs.Status.Replicas != rhs.Status.Replicas) ||
-			(lhs.Status.FullyLabeledReplicas != rhs.Status.FullyLabeledReplicas) ||
+		if (lhs.Status.FullyLabeledReplicas != rhs.Status.FullyLabeledReplicas) ||
 			(lhs.Status.ReadyReplicas != rhs.Status.ReadyReplicas) {
-		sameEntity = false
+			sameEntity = false
 		}
 	}
 
@@ -57,11 +63,11 @@ func replicaSetEquals(lhs *v1beta1.ReplicaSet, rhs *v1beta1.ReplicaSet) (bool, b
 		sameEntity = false
 	}
 
-	if lhs.GetNamespace() != rhs.GetNamespace() {
+	if sameLinks && lhs.GetNamespace() != rhs.GetNamespace() {
 		sameLinks = false
 	}
 
-	if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
+	if sameLinks && !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
 		sameLinks = false
 	}
 
@@ -233,10 +239,7 @@ func watchReplicaSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 					return
 				} else {
 					sameEntity, sameLinks := replicaSetEquals(oldRS, newRS)
-					if !sameLinks ||
-						(!sameEntity &&
-						oldRS.Status.Replicas > 0 &&
-						newRS.Status.Replicas == 0) {
+					if !sameLinks {
 						updateRsSelectorCache(newRS)
 					}
 					if !sameEntity || !sameLinks {

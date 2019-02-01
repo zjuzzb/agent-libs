@@ -39,6 +39,13 @@ func dsEquals(lhs *v1beta1.DaemonSet, rhs *v1beta1.DaemonSet) (bool, bool) {
 	sameEntity = sameEntity && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
         EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
+	if dsNumScheduled(lhs) != dsNumScheduled(rhs) {
+		sameEntity = false
+		if (dsNumScheduled(lhs) == 0) || (dsNumScheduled(rhs) == 0) {
+			sameLinks = false
+		}
+	}
+
 	if sameEntity {
 		if (lhs.Status.CurrentNumberScheduled != rhs.Status.CurrentNumberScheduled) ||
 			(lhs.Status.NumberMisscheduled != rhs.Status.NumberMisscheduled) ||
@@ -48,11 +55,11 @@ func dsEquals(lhs *v1beta1.DaemonSet, rhs *v1beta1.DaemonSet) (bool, bool) {
 		}
 	}
 
-	if lhs.GetNamespace() != rhs.GetNamespace() {
+	if sameLinks && lhs.GetNamespace() != rhs.GetNamespace() {
 		sameLinks = false
 	}
 
-	if !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
+	if sameLinks && !reflect.DeepEqual(lhs.Spec.Selector, rhs.Spec.Selector) {
 		sameLinks = false
 	}
 
@@ -159,10 +166,7 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 
 				sameEntity, sameLinks := dsEquals(oldDS, newDS)
-				if !sameLinks ||
-					(!sameEntity &&
-					dsNumScheduled(oldDS) > 0 &&
-					dsNumScheduled(newDS) == 0) {
+				if !sameLinks {
 					updateDsSelectorCache(newDS)
 				}
 				if !sameEntity || !sameLinks {
