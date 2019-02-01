@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/driver)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
@@ -91,7 +92,9 @@ add_executable(tests
 	userspace/dragent/blocking_queue.ut.cpp
 	userspace/dragent/watchdog_runnable.ut.cpp
 	userspace/dragent/logger.ut.cpp
-	userspace/libsanalyzer/parser_http.ut.cpp)
+	userspace/libsanalyzer/parser_http.ut.cpp
+	sysdig/userspace/async/async_key_value_source.ut.cpp
+)
 
 target_link_libraries(tests
 	pthread
