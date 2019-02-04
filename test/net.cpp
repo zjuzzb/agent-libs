@@ -28,18 +28,22 @@
 #include "Poco/URI.h"
 #include "Poco/Exception.h"
 #include "Poco/Net/HTTPStreamFactory.h"
+#include "Poco/Net/HTTPSStreamFactory.h"
 #include "Poco/Net/FTPStreamFactory.h"
 #include "Poco/NullStream.h"
 
 // For HTTP server
 #include <Poco/Net/ServerSocket.h>
+#include <Poco/Net/SecureServerSocket.h>
+#include <Poco/Net/SecureStreamSocket.h>
 #include <Poco/Net/HTTPServer.h>
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPRequestHandlerFactory.h>
 #include <Poco/Net/HTTPResponse.h>
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
-
+#include <Poco/Net/HTTPServerRequestImpl.h>
+#include <Poco/Net/HTTPSClientSession.h>
 
 #include "sinsp_int.h"
 #include "connectinfo.h"
@@ -48,9 +52,11 @@
 #include "procfs_parser.h"
 #include <array>
 #include <thread>
+#include <memory>
 
 using Poco::NumberFormatter;
 using Poco::NumberParser;
+using Poco::SharedPtr;
 
 using Poco::URIStreamOpener;
 using Poco::StreamCopier;
@@ -58,6 +64,7 @@ using Poco::Path;
 using Poco::URI;
 using Poco::Exception;
 using Poco::Net::HTTPStreamFactory;
+using Poco::Net::HTTPSStreamFactory;
 using Poco::Net::FTPStreamFactory;
 using Poco::NullOutputStream;
 
@@ -67,6 +74,8 @@ using Poco::Net::HTTPServerResponse;
 using Poco::Net::HTTPServerParams;
 using Poco::Net::HTTPResponse;
 using Poco::Net::ServerSocket;
+using Poco::Net::SecureServerSocket;
+using Poco::Net::SecureStreamSocket;
 
 
 #define SITE "www.google.com"
@@ -117,11 +126,55 @@ class HTTPRHFactory : public Poco::Net::HTTPRequestHandlerFactory
 {
 public:
 	static const uint16_t port = 9090;
+	static const uint16_t secure_port = 443; // The proto analyzer will barf if it's a wonky port
 	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest &)
 	{
 		return new HTTPHandler;
 	}
 };
+
+///
+/// So that callers don't have to remember all the magic words to get the socket.
+///
+unique_ptr<SecureServerSocket> get_ssl_socket(uint16_t port)
+{
+	return unique_ptr<SecureServerSocket>(new SecureServerSocket(port, 64 /* backlog */));
+}
+
+///
+/// Make an HTTPS request to the built-in server.
+///
+/// This function knows how to connect to the above server class and provides
+/// a convenient interface for making a simple request (assuming we don't care
+/// about the response).
+///
+/// It will block until the response is received.
+///
+/// @param  port  The port to connect on
+///
+/// @return  true   The request was made successfully
+/// @return  false  The request failed before it could be made
+///
+bool localhost_https_request(uint16_t port)
+{
+	try {
+		NullOutputStream ostr;
+		stringstream ss;
+		const string host = "127.0.0.1";
+
+		Poco::Net::HTTPSClientSession session(string("https://") + host, port);
+		Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_GET);
+		Poco::Net::HTTPResponse response;
+		session.setHost(host);
+		session.setKeepAlive(false);
+		session.sendRequest(request);
+		session.receiveResponse(response);
+	} catch (const Exception& ex) {
+		cerr << "Exception: " << ex.displayText() << endl;
+		return false;
+	}
+	return true;
+}
 
 ///
 /// Make an HTTP request to the built-in server
@@ -130,34 +183,28 @@ public:
 /// a convenient interface for making a simple request (assuming we don't care
 /// about the response).
 ///
+/// It will block until the response is received.
+///
 /// @return  true   The request was made successfully
 /// @return  false  The request failed before it could be made
 ///
-bool localhost_http_request()
+bool localhost_http_request(uint16_t port)
 {
-	if (!URIStreamOpener::defaultOpener().supportsScheme("http")) {
-		try {
-			HTTPStreamFactory::registerFactory();
-		} catch (...) {
-			// If the factory is already registered, that's fine. Carry on.
-		}
-	}
-
 	try {
 		NullOutputStream ostr;
 		stringstream ss;
-		ss << "http://127.0.0.1:" << HTTPRHFactory::port;
-		URI uri(ss.str());
 
-		std::unique_ptr<std::istream> pStr0(URIStreamOpener::defaultOpener().open(uri));
-		StreamCopier::copyStream(*pStr0.get(), ostr);
-	} catch (Exception& ex) {
+		Poco::Net::HTTPClientSession session("http://127.0.0.1", port);
+		Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_GET);
+		Poco::Net::HTTPResponse response;
+		session.sendRequest(request);
+		session.receiveResponse(response);
+	} catch (const Exception& ex) {
 		cerr << "Exception: " << ex.displayText() << endl;
 		return false;
 	}
 	return true;
 }
-
 
 TEST_F(sys_call_test, net_web_requests)
 {
@@ -302,12 +349,12 @@ TEST_F(sys_call_test, net_web_requests)
 
 TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 {
-	auto ret = system("which curl > /dev/null");
-	if(ret != 0)
-	{
-		fprintf(stderr, "Cannot run, curl is not present\n");
-		return;
-	}
+	const uint64_t MAX_WAIT_MS = 5 * 1000;
+	std::mutex start_mutex;
+	std::mutex done_mutex;
+	std::condition_variable start_condition;
+	std::condition_variable done_condition;
+	bool started = false;
 
 	//
 	// FILTER
@@ -315,8 +362,7 @@ TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
 		auto tinfo = evt->get_thread_info(false);
-		// wget is more reliable than curl for not changing its ssl behavior
-		return (tinfo != nullptr && tinfo->m_comm == "wget") || m_tid_filter(evt);
+		return (tinfo != nullptr && tinfo->m_comm == "tests") || m_tid_filter(evt);
 	};
 
 	//
@@ -324,12 +370,50 @@ TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		auto ret = system("wget https://www.sysdig.com > /dev/null 2>&1");
-		EXPECT_EQ(0, ret);
+		bool done = false;
+		std::thread ws_thread([&started, &done, &done_mutex, &start_condition, &done_condition, MAX_WAIT_MS]
+		{
+			started = true;
+			auto sss = get_ssl_socket(HTTPRHFactory::secure_port);
+			sss->setNoDelay(true);
+			HTTPServer srv(new HTTPRHFactory(), *sss, new HTTPServerParams);
+
+			srv.start();
+
+			start_condition.notify_one();
+			std::unique_lock<std::mutex> guard(done_mutex);
+			while(!done)
+			{
+				if(done_condition.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
+				{
+					cerr << "Never got notified that the request was sent" << endl;
+					ASSERT(false);
+				}
+			}
+
+			srv.stop();
+		});
+
+		std::unique_lock<std::mutex> guard(start_mutex);
+		while(!started)
+		{
+			if(start_condition.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
+			{
+				cerr << "Never got notified that the server got started!" << endl;
+				ASSERT(false);
+			}
+		}
+
+		bool ret = localhost_https_request(HTTPRHFactory::secure_port);
+		EXPECT_TRUE(ret);
+
+		done = true;
+		done_condition.notify_one();
 
 		// We use a random call to tee to signal that we're done
 		tee(-1, -1, 0, 0);
 
+		ws_thread.join();
 		return 0;
 	};
 
@@ -348,18 +432,13 @@ TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 			sinsp_transaction_counters transaction_metrics;
 			transaction_metrics.clear();
 			threadtable->loop([&] (sinsp_threadinfo& tinfo) {
-				if(tinfo.m_comm == "wget")
-				{
-					cout << "Adding wget with m_count_out of " << tinfo.m_ainfo->m_transaction_metrics.get_counter()->m_count_out << endl;
-					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
-				}
 				return true;
 			});
 
-			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_counter()->m_count_in);
-			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_in);
-			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_max_counter()->m_count_in);
-			EXPECT_EQ((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_in);
+			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_counter()->m_count_in);
+			EXPECT_LT((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_in);
+			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_max_counter()->m_count_in);
+			EXPECT_LT((uint64_t) 0, transaction_metrics.get_max_counter()->m_time_ns_in);
 
 			EXPECT_EQ((uint64_t) 1, transaction_metrics.get_counter()->m_count_out);
 			EXPECT_NE((uint64_t) 0, transaction_metrics.get_counter()->m_time_ns_out);

@@ -1,6 +1,7 @@
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
 add_subdirectory(fake_cri)
+add_subdirectory(test_certs)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
@@ -103,11 +104,14 @@ target_link_libraries(tests
 	draiosproto
 	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
-	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a)
+	${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION}/.libs/libjq.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libssl.a
+	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a)
 
 add_executable(test_helper
 	test_helper.cpp)
@@ -146,6 +150,11 @@ install(TARGETS test_helper
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/test_helper.sh
 	${CMAKE_CURRENT_BINARY_DIR}/test_helper.sh
 	COPYONLY)
+	
+install(FILES test_certs/certificate.pem test_certs/key.pem
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
+	PERMISSIONS OWNER_WRITE OWNER_READ
+	COMPONENT tests)
 
 install(FILES test_helper.sh
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/

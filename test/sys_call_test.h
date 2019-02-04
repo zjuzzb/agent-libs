@@ -1,6 +1,10 @@
 #ifndef SYS_CALL_TEST_H
 #define	SYS_CALL_TEST_H
 
+#include <Poco/Net/SSLManager.h>
+#include <Poco/Net/KeyConsoleHandler.h>
+#include <Poco/Net/AcceptCertificateHandler.h>
+
 
 #include "event_capture.h"
 #include <event.h>
@@ -14,6 +18,12 @@
 #define UNIT_TEST_BINARY
 
 using namespace std;
+
+using Poco::SharedPtr;
+using Poco::Net::X509Certificate;
+using Poco::Net::PrivateKeyPassphraseHandler;
+using Poco::Net::InvalidCertificateHandler;
+
 
 class proc;
 class args;
@@ -51,6 +61,39 @@ private:
 
 class sys_call_test : public testing::Test
 {
+public:
+	static void SetUpTestCase()
+	{
+		// Set up in-process HTTPS server
+		SharedPtr<PrivateKeyPassphraseHandler> pph = new Poco::Net::KeyConsoleHandler(true);
+		SharedPtr<InvalidCertificateHandler> pich = new Poco::Net::AcceptCertificateHandler(false);
+
+		Poco::Net::initializeSSL();
+		// First init with a null context pointer to avoid crashing in the context creation
+		Poco::Net::SSLManager::instance().initializeServer(pph, pich, nullptr);
+		Poco::Net::SSLManager::instance().initializeClient(pph, pich, nullptr);
+
+		// Now create a server context and init again
+		auto sctxt = new Poco::Net::Context(Poco::Net::Context::SERVER_USE,
+										   "key.pem", // Privatekeyfile
+										   "certificate.pem", // Certificatefile
+										   "", // CA location
+										   Poco::Net::Context::VERIFY_NONE);
+		Poco::Net::SSLManager::instance().initializeServer(pph, pich, sctxt);
+
+		// While we're here, create a client context too
+		auto cctxt = new Poco::Net::Context(Poco::Net::Context::CLIENT_USE,
+										   "key.pem", // Privatekeyfile
+										   "certificate.pem", // Certificatefile
+										   "", // CA location,
+										   Poco::Net::Context::VERIFY_NONE);
+		Poco::Net::SSLManager::instance().initializeClient(pph, pich, cctxt);
+	}
+
+	static void TearDownTestCase()
+	{
+		Poco::Net::uninitializeSSL();
+	}
 
 protected:
     void SetUp()
