@@ -636,8 +636,33 @@ public:
 	uint64_t m_watchdog_heap_profiling_interval_s;
 #endif
 	uint64_t m_dirty_shutdown_report_log_size_b;
-	map<string, uint64_t> m_watchdog_max_memory_usage_subprocesses_mb;
-	map<string, uint64_t> m_watchdog_subprocesses_timeout_s;
+
+	typedef std::map<string, uint64_t> ProcessValue64Map;
+	typedef std::map<string, int> ProcessValueMap;
+
+	/**
+	 * The amount of memory that each subprocess is allowed to use.
+	 * If exceeded, the entire dragent application will be
+	 * restarted.
+	 */
+	ProcessValue64Map m_watchdog_max_memory_usage_subprocesses_mb;
+
+	/**
+	 * The amount of time that each subprocess is allowed to run
+	 * before updating the appropriate watchdog heartbeat. If
+	 * exceeded, the entire dragent application will be restarted.
+	 */
+	ProcessValue64Map m_watchdog_subprocesses_timeout_s;
+
+	/**
+	 * The priority to assign to each subprocess. This is only
+	 * supported on linux and sets the "nice" value of the
+	 * subprocess. The default nice value is 0 and both positive and
+	 * negative values are allowed; lower nice values shall cause
+	 * more favorable scheduling.
+	 */
+	ProcessValueMap m_subprocesses_priority;
+
 	bool m_capture_dragent_events;
 	aws_metadata m_aws_metadata;
 	uint16_t m_jmx_sampling;
@@ -767,9 +792,11 @@ public:
 	double m_falco_engine_sampling_multiplier;
 	std::set<std::string> m_falco_engine_disabled_rule_patterns;
 
-	// Set when a new auto rules file is downloaded. Monitored by
-	// sinsp_agent and when set will reload the falco engine and
-	// clear.
+	/**
+	 * Set when a new auto rules file is downloaded. Monitored by
+	 * sinsp_agent and when set will reload the falco engine and
+	 * clear.
+	 */
 	std::atomic_bool m_reset_falco_engine;
 
 	bool m_security_enabled;
@@ -798,7 +825,12 @@ public:
 	vector<string> m_stress_tools;
 	bool m_large_envs;
 
+	/**
+	 * Whether to turn on the cointerface process which is used to
+	 * collect kubernetes information.
+	 */
 	bool m_cointerface_enabled;
+
 	uint32_t m_coclient_max_loop_evts = 100;
 	bool m_swarm_enabled;
 

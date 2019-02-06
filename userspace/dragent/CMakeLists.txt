@@ -4,6 +4,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
@@ -43,8 +44,14 @@ list(APPEND targetfiles
 	user_event_channel.cpp)
 
 if(CYGWIN)
+	# windows specific implementation
 	list(APPEND targetfiles
-		windows_helpers.cpp)
+		windows_helpers.cpp
+		windows/process_helpers.cpp)
+else()
+	# linux specific implementation
+	list(APPEND targetfiles
+		linux/process_helpers.cpp)
 endif()
 
 add_library(dragentl STATIC
