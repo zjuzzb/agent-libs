@@ -1,4 +1,6 @@
 #include "connection_manager.h"
+#include <future>
+#include <errno.h>
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
@@ -6,6 +8,7 @@
 #include "watchdog_runnable_fatal_error.h"
 #include "Poco/Net/InvalidCertificateHandler.h"
 #include "Poco/Net/SSLException.h"
+
 
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
@@ -36,12 +39,26 @@ public:
 	}
 };
 
+/*
+ * Connection manager workflow:
+ * - constructor: Initialize SSL
+ * - run(): Start the connection manager
+ * -- init(): Set up socket (including SSL if enabled)
+ * -- start connect thread: Asynchronously attempt to connect to the backend
+ * --- while connected:
+ * ---- Receive and dispatch one incoming message, if present
+ * ---- Send one message from the outgoing queue
+ *
+ * If the connection is lost, run() will loop back to the top and try to
+ * connect again, looping until the agent is terminated.
+ */
+
 connection_manager::connection_manager(dragent_configuration* configuration,
 				       protocol_queue* queue,
 				       sinsp_worker* sinsp_worker,
 				       capture_job_handler *capture_job_handler) :
 	dragent::watchdog_runnable("connection_manager"),
-	m_socket(NULL),
+	m_socket(nullptr),
 	m_connected(false),
 	m_buffer(RECEIVER_BUFSIZE),
 	m_buffer_used(0),
@@ -115,13 +132,13 @@ bool connection_manager::init()
 		Poco::Crypto::X509Certificate ca_cert(m_configuration->m_ssl_ca_certificate);
 		ptrContext->addCertificateAuthority(ca_cert);
 	}
-	catch (Poco::Net::SSLException &e)
+	catch(const Poco::Net::SSLException &e)
 	{
 		// thrown by addCertificateAuthority()
 		LOG_ERROR("Unable to add ssl ca certificate: "
 			     + e.message());
 	}
-	catch (Poco::IOException& e)
+	catch(const Poco::IOException& e)
 	{
 		// thrown by X509Certificate constructor
 		LOG_ERROR("Unable to read ssl ca certificate: "
@@ -194,102 +211,185 @@ std::string connection_manager::get_openssldir()
 	return path;
 }
 
+// This is a bit of a travesty, but TCP connections are subject to the whims
+// of fate and fortune just as we all are.
+bool connection_manager::is_connected(const SharedPtr<StreamSocket>& sp) const
+{
+	if(!m_connected)
+	{
+		return false;
+	}
+
+	if(sp.isNull())
+	{
+		return false;
+	}
+
+	return true;
+}
+
 bool connection_manager::connect()
 {
-#ifndef CYGWING_AGENT
-	if (m_configuration->m_promex_enabled)
+	m_last_connection_failure = chrono::system_clock::now();
+
+	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
+	         connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+
+	std::promise<SharedPtr<StreamSocket>> sock_promise;
+	std::future<SharedPtr<StreamSocket>> future_sock = sock_promise.get_future();
+
+	//
+	// Asynchronously connect to the collector
+	// We need the hostname as well as the SocketAddress because with just
+	// the address, SSL verification will fail.
+	//
+	SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
+	std::thread connect_thread([&sock_promise](SocketAddress& sa,
+	                                           string& hostname,
+	                                           bool ssl_enabled,
+	                                           uint32_t transmit_buffer_size)
 	{
-		const string& url = m_configuration->m_promex_connect_url.empty() ?
-			"unix:" + m_configuration->m_root_dir + "/run/promex.sock" :
-			m_configuration->m_promex_connect_url;
-		m_prom_channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
-		m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
-	}
-#endif
-	try
-	{
-		ASSERT(m_socket.isNull());
+		StreamSocket* ssp = nullptr;
 
-		SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
-
-		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		LOG_INFO("Connecting to collector " + sa.toString());
-
-		if(m_configuration->m_ssl_enabled)
+		try
 		{
-			m_socket = new Poco::Net::SecureStreamSocket();
+			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+			LOG_INFO("Connecting to collector " + sa.toString());
 
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->setLazyHandshake(true);
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->setPeerHostName(m_configuration->m_server_addr);
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->connect(sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
-		}
-		else
-		{
-			m_socket = new Poco::Net::StreamSocket();
-			m_socket->connect(sa, SOCKET_TIMEOUT_DURING_CONNECT_US);
-		}
-
-		if(m_configuration->m_ssl_enabled)
-		{
-			//
-			// This is done to prevent getting stuck forever waiting during the handshake
-			// if the server doesn't speak to us
-			//
-			m_socket->setSendTimeout(SOCKET_TIMEOUT_DURING_CONNECT_US);
-			m_socket->setReceiveTimeout(SOCKET_TIMEOUT_DURING_CONNECT_US);
-
-			int32_t ret = ((Poco::Net::SecureStreamSocket*) m_socket.get())->completeHandshake();
-			if(ret != 1)
+			if(ssl_enabled)
 			{
-				LOG_ERROR("SSL Handshake didn't complete");
-				disconnect();
-				return false;
+				auto sss = new Poco::Net::SecureStreamSocket();
+
+				sss->setLazyHandshake(true);
+				sss->setPeerHostName(hostname);
+				sss->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+				//
+				// This is done to prevent getting stuck forever waiting during the handshake
+				// if the server doesn't speak to us
+				//
+				sss->setSendTimeout(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+				sss->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+
+				int32_t ret = sss->completeHandshake();
+
+				if (ret == 1)
+				{
+					sss->verifyPeerCertificate();
+					LOG_INFO("SSL identity verified");
+				}
+				else
+				{
+					LOG_ERROR("SSL Handshake didn't complete");
+					sock_promise.set_value(nullptr);
+					return; // This will restart the connection process
+				}
+				ssp = sss;
 			}
+			else
+			{
+				ssp = new Poco::Net::StreamSocket();
+				ssp->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 
-			((Poco::Net::SecureStreamSocket*) m_socket.get())->verifyPeerCertificate();
-
-			LOG_INFO("SSL identity verified");
+			}
+		}
+		catch(const Poco::IOException& e)
+		{
+			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+			LOG_ERROR(":connect():IOException: " + e.displayText());
+			sock_promise.set_value(nullptr);
+			return;
+		}
+		catch(const Poco::TimeoutException& e)
+		{
+			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
+			LOG_ERROR("connect():Timeout: " + e.displayText());
+			sock_promise.set_value(nullptr);
+			return;
 		}
 
-		//
-		// Set the send buffer size for the socket
-		//
-		m_socket->setSendBufferSize(m_configuration->m_transmitbuffer_size);
-		m_socket->setSendTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
-		m_socket->setReceiveTimeout(SOCKET_TIMEOUT_AFTER_CONNECT_US);
+		ssp->setSendBufferSize(transmit_buffer_size);
+		ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+		ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+
 		try
 		{
 			// This option makes the connection fail earlier in case of unplugged cable
-			m_socket->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, SOCKET_TCP_TIMEOUT_MS);
+			ssp->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, connection_manager::SOCKET_TCP_TIMEOUT_MS);
 		}
-		catch(std::exception&)
+		catch(const std::exception&)
 		{
 			// ignore if kernel does not support this
 			// alternatively, could be a setsockopt() call to avoid exception
 		}
 
 		LOG_INFO("Connected to collector");
-		m_connected = true;
-		return true;
-	}
-	catch(Poco::IOException& e)
+
+		sock_promise.set_value(SharedPtr<StreamSocket>(ssp));
+	}, std::ref(sa),
+	   std::ref(m_configuration->m_server_addr),
+	   m_configuration->m_ssl_enabled,
+	   m_configuration->m_transmitbuffer_size);
+
+	//
+	// End thread
+	//
+
+	// Go ahead and detach. We don't need a handle for the thread, and it
+	// will keep the runtime from falling over in case the connection manager
+	// gets terminated or hits an error.
+	connect_thread.detach();
+
+	uint32_t waited_time;
+	uint32_t wait_for;
+
+	if(m_reconnect_interval == 0)
 	{
-		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		LOG_ERROR("connect():IOException: " + e.displayText());
+		wait_for = SOCKET_TIMEOUT_DURING_CONNECT_US;
+	}
+	else
+	{
+		wait_for = m_reconnect_interval;
+	}
+
+	LOG_INFO("Waiting to connect %u s", wait_for);
+	for(waited_time = 0; waited_time < wait_for; ++waited_time)
+	{
+		if(!heartbeat())
+		{
+			break;
+		}
+		if(future_sock.wait_for(std::chrono::seconds(1)) == std::future_status::ready)
+		{
+			break;
+		}
+	}
+
+	if(waited_time >= wait_for)
+	{
+		LOG_WARNING("Connection attempt timed out. Retrying...");
 		disconnect();
 		return false;
 	}
-	catch(Poco::TimeoutException& e)
+
+	// This shouldn't block at this point
+	m_socket = std::move(future_sock.get());
+
+	if(m_socket.isNull())
 	{
-		// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
-		LOG_ERROR("connect():Timeout: " + e.displayText());
+		LOG_WARNING("Connection attempt failed. Retrying...");
 		disconnect();
 		return false;
 	}
-	return false;
+	m_connected = true;
+	return true;
 }
 
 void connection_manager::disconnect()
+{
+	disconnect(m_socket);
+}
+
+void connection_manager::disconnect(SharedPtr<StreamSocket> ssp)
 {
 	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
 	{
@@ -300,13 +400,14 @@ void connection_manager::disconnect()
 		m_reconnect_interval = std::min(std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2), RECONNECT_MAX_INTERVAL_S);
 	}
 
-	if(!m_socket.isNull())
+	if(!ssp.isNull())
 	{
-		m_socket->close();
-		m_socket = NULL;
+		ssp->close();
+		ssp.reset();
 		m_connected = false;
 		m_buffer_used = 0;
 	}
+
 #ifndef CYGWING_AGENT
 	m_prom_channel = nullptr;
 	m_prom_conn = nullptr;
@@ -351,52 +452,69 @@ void connection_manager::do_run()
 		//
 		if(m_socket.isNull())
 		{
-			LOG_INFO("Waiting to connect %u s", m_reconnect_interval);
-
-			for(uint32_t waited_time = 0; waited_time < m_reconnect_interval; ++waited_time)
-			{
-				(void)heartbeat();
-				Thread::sleep(1000);
-			}
-
 			if(dragent_configuration::m_terminate)
 			{
 				break;
 			}
 
-			m_last_connection_failure = chrono::system_clock::now();
-
-			if(!connect())
+#ifndef CYGWING_AGENT
+			if(m_configuration->m_promex_enabled)
 			{
+				const string& url = m_configuration->m_promex_connect_url.empty() ?
+					"unix:" + m_configuration->m_root_dir + "/run/promex.sock" :
+					m_configuration->m_promex_connect_url;
+				m_prom_channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
+				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
+			}
+#endif
+
+			if (!connect()) {
 				continue;
 			}
 		}
 
-		//
-		// Check if we received a message. We do it before so nothing gets lost if ELBs
-		// still negotiates a connection and then sends us out at the first read/write
-		//
-		receive_message();
+		LOG_INFO("Processing messages");
 
-		if(!item)
+		//
+		// The main loop while the connection is established
+		//
+		while(heartbeat() && is_connected())
 		{
 			//
-			// Wait 300ms to get a message from the queue
+			// Check if we received a message. It is possible that the elastic load
+			// balancers could cause connect() to succeed but then cause a
+			// disconnect on first I/O, so we make sure to do a read before removing
+			// an item from the queue.
 			//
-			m_queue->get(&item, 300);
-		}
-
-		if(item)
-		{
-			//
-			// Got a message, transmit it
-			//
-			if(transmit_buffer(sinsp_utils::get_current_time_ns(), item))
+			if(!receive_message())
 			{
-				item = NULL;
+				LOG_WARNING("Receive failed. Looping back to reconnect.");
+				break;
 			}
-		}
-	}
+
+			if(!item)
+			{
+				//
+				// Try for 300ms to get a message from the queue
+				//
+				m_queue->get(&item, 300);
+			}
+
+			if(item)
+			{
+				//
+				// Got a message, transmit it
+				//
+				if(transmit_buffer(sinsp_utils::get_current_time_ns(), item))
+				{
+					item = nullptr;
+				}
+				// If the transmit is unsuccessful, we fall out of the loop
+				// (due to no longer being connected) and hold on to the
+				// item we popped so we can send it once we've reconnected.
+			}
+		} // End while (main loop)
+	} // End while (heartbeat)
 }
 
 bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item)
@@ -413,6 +531,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			       + ", ts=" + to_string(item->ts_ns)
 			       + ", delay_ms=" + to_string((now - item->ts_ns)/ 1000000.0));
 	}
+
 #ifndef CYGWING_AGENT
 	if (item->message_type == draiosproto::message_type::METRICS && prometheus_connected())
 	{
@@ -464,11 +583,11 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 
 		return true;
 	}
-	catch(Poco::IOException& e)
+	catch(const Poco::IOException& e)
 	{
-		// When the output buffer gets full sendBytes() results in
-		// a TimeoutException for SSL connections and EWOULDBLOCK for non-SSL
-		// connections, so we'll treat them the same.
+		// When the underlying socket times out without sending data, this
+		// results in a TimeoutException for SSL connections and EWOULDBLOCK
+		// for non-SSL connections, so we'll treat them the same.
 		if ((e.code() == POCO_EWOULDBLOCK) || (e.code() == POCO_EAGAIN))
 		{
 			// We shouldn't risk hanging indefinitely if the EWOULDBLOCK is
@@ -492,7 +611,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 			disconnect();
 		}
 	}
-	catch(Poco::TimeoutException& e)
+	catch(const Poco::TimeoutException& e)
 	{
 		LOG_DEBUG("transmit:Timeout: " + e.displayText());
 	}
@@ -500,51 +619,68 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 	return false;
 }
 
-void connection_manager::receive_message()
+bool connection_manager::receive_message()
 {
 	try
 	{
 		if(m_socket.isNull())
 		{
-			return;
+			return false;
 		}
 
 		// If the socket has nothing readable, return
 		// immediately. This ensures that when the queue has
 		// multiple items queued we don't limit the rate at
 		// which we dequeue and send messages.
-		if (!m_socket->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ))
+		if(!m_socket->poll(Poco::Timespan(), Poco::Net::Socket::SELECT_READ))
 		{
-			return;
+			return true;
 		}
 
 		if(m_buffer_used == 0)
 		{
 			// We begin by reading and processing the protocol header
-			int32_t res = m_socket->receiveBytes(m_buffer.begin(), sizeof(dragent_protocol_header), MSG_WAITALL);
-			if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
-			   res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+			uint32_t bytes_read = 0;
+			while(bytes_read < sizeof(dragent_protocol_header))
 			{
-				return;
+				int32_t res = m_socket->receiveBytes(m_buffer.begin() + bytes_read,
+				                                     sizeof(dragent_protocol_header) - bytes_read,
+				                                     MSG_WAITALL);
+				if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
+				{
+					// But we just did a read?
+					LOG_ERROR("SSL handshake error (reading message)");
+					disconnect();
+					ASSERT(false);
+					return false;
+
+				}
+				if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+				{
+					// This case will return true so we can go to the write case
+					return true;
+				}
+
+				if(res == 0)
+				{
+					LOG_ERROR("Lost connection (reading header)");
+					disconnect();
+					return false;
+				}
+				if(res > 0)
+				{
+					bytes_read += res;
+				}
+				if(res < 0)
+				{
+					LOG_ERROR("Connection error while reading: " + NumberFormatter::format(res));
+					disconnect();
+					ASSERT(false);
+					return false;
+				}
 			}
 
-			if(res == 0)
-			{
-				LOG_ERROR("Lost connection (reading header)");
-				disconnect();
-				return;
-			}
-
-			// TODO: clean up buffering of received data. Remains of protocol
-			// header might come in the next recv().
-			if(res != sizeof(dragent_protocol_header))
-			{
-				LOG_ERROR("Protocol error: couldn't read full header: " + NumberFormatter::format(res));
-				ASSERT(false);
-				disconnect();
-				return;
-			}
-
+			ASSERT(bytes_read == sizeof(dragent_protocol_header));
 			dragent_protocol_header* header = (dragent_protocol_header*) m_buffer.begin();
 			header->len = ntohl(header->len);
 
@@ -554,7 +690,7 @@ void connection_manager::receive_message()
 				LOG_ERROR("Protocol error: invalid header length " + NumberFormatter::format(header->len));
 				ASSERT(false);
 				disconnect();
-				return;
+				return false;
 			}
 
 			if(header->len > m_buffer.size())
@@ -574,27 +710,33 @@ void connection_manager::receive_message()
 				header->len - m_buffer_used,
 				MSG_WAITALL);
 
-		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ ||
-			res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_READ)
 		{
-			return;
-		}
-
-		if(res == 0)
-		{
-			LOG_ERROR("Lost connection (reading message)");
+			// But we just did a read?
+			LOG_ERROR("SSL handshake error (reading message)");
 			disconnect();
 			ASSERT(false);
-			return;
+			return false;
+
+		}
+		if(res == Poco::Net::SecureStreamSocket::ERR_SSL_WANT_WRITE)
+		{
+			// This case will return true so we can go to the write case
+			return true;
 		}
 
-		if(res < 0)
+		if(res <= 0)
 		{
-			LOG_ERROR("Connection error while reading: " +
-				NumberFormatter::format(res));
-			disconnect();
-			ASSERT(false);
-			return;
+		        std::string error_msg = "Lost connection (reading message)";
+
+		        if(res < 0)
+		        {
+		                error_msg = "Connection error while reading: " + NumberFormatter::format(res);
+		        }
+		        LOG_ERROR("%s", error_msg.c_str());
+		        disconnect();
+		        ASSERT(false);
+		        return false;
 		}
 
 		m_buffer_used += res;
@@ -604,6 +746,7 @@ void connection_manager::receive_message()
 
 		if(m_buffer_used == header->len)
 		{
+			// Now the message is complete. Process it and reset the buffer.
 			m_buffer_used = 0;
 
 			if(header->version != dragent_protocol::PROTOCOL_VERSION_NUMBER)
@@ -611,14 +754,12 @@ void connection_manager::receive_message()
 				LOG_ERROR("Received command for incompatible version protocol "
 							 + NumberFormatter::format(header->version));
 				ASSERT(false);
-				return;
+				return true;
 			}
 
-			// When the message is complete, process it
-			// and reset the buffer
-			LOG_INFO("Received command "
-							   + NumberFormatter::format(header->messagetype)
-							   + " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
+			LOG_INFO("Received command " +
+			         NumberFormatter::format(header->messagetype) +
+			         " (" + draiosproto::message_type_Name((draiosproto::message_type) header->messagetype) + ")");
 
 			switch(header->messagetype)
 			{
@@ -670,24 +811,26 @@ void connection_manager::receive_message()
 				ASSERT(false);
 			}
 		}
-
-		if(m_buffer_used > header->len)
+		else if(m_buffer_used > header->len)
 		{
 			LOG_ERROR("Protocol out of sync, disconnecting");
 			disconnect();
 			ASSERT(false);
-			return;
+			return false;
 		}
 	}
-	catch(Poco::IOException& e)
+	catch(const Poco::IOException& e)
 	{
 		LOG_ERROR("receive:IOException: " + e.displayText());
 		disconnect();
+		return false;
 	}
-	catch(Poco::TimeoutException& e)
+	catch(const Poco::TimeoutException& e)
 	{
 		LOG_DEBUG("receive:Timeout: " + e.displayText());
+		// Timeout currently returns true on purpose
 	}
+	return true;
 }
 
 void connection_manager::handle_dump_request_start(uint8_t* buf, uint32_t size)

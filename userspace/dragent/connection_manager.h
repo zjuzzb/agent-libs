@@ -26,8 +26,11 @@ public:
 
 	bool is_connected()
 	{
-		return m_connected;
+		return m_connected && !m_socket.isNull();
 	}
+
+	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
+	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
 
 private:
 	bool init();
@@ -35,12 +38,14 @@ private:
 	static std::string get_openssldir();
 	bool connect();
 	void disconnect();
+	void disconnect(SharedPtr<StreamSocket> ssp);
 	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);
-	void receive_message();
+	bool receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
+	bool is_connected(const SharedPtr<StreamSocket>& sp) const;
 #ifndef CYGWING_AGENT
 	void handle_policies_message(uint8_t* buf, uint32_t size);
 	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
@@ -50,8 +55,6 @@ private:
 #endif
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
-	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
-	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
 	static const uint32_t RECONNECT_MIN_INTERVAL_S;
 	static const uint32_t RECONNECT_MAX_INTERVAL_S;
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
