@@ -876,6 +876,9 @@ public:
 
 	bool m_extra_internal_metrics = false;
 
+	std::set<std::string> m_procfs_scan_procs;
+	uint32_t m_procfs_scan_interval = 20;
+
 	bool java_present() const
 	{
 		return !m_java_binary.empty();

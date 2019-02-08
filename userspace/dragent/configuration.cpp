@@ -1273,6 +1273,10 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_track_environment = false;
 	}
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
+
+	m_procfs_scan_procs = m_config->get_first_deep_sequence<set<string>>("procfs_scan_procs");
+	m_procfs_scan_interval = m_config->get_scalar<uint32_t>("procfs_scan_interval",
+		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
 }
 
 void dragent_configuration::print_configuration() const

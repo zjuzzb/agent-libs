@@ -10,6 +10,7 @@
 #include "procfs_parser.h"
 #include "app_checks.h"
 #include "env_hash.h"
+#include "analyzer_settings.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -162,9 +163,7 @@ public:
 
 	inline const set<uint16_t>& listening_ports()
 	{
-		// Scan all fd for listening ports only if fdtable isn't too big
-		// otherwise use cached value
-		if(!m_listening_ports || m_tinfo->get_fd_opencount() < LISTENING_PORT_SCAN_FDLIMIT)
+		if(!m_listening_ports)
 		{
 			scan_listening_ports();
 		}
@@ -271,23 +270,21 @@ public:
 		}
 	}
 
-	// This method re-scan the process listening ports only if
-	// a previous scan which detected at least a port, has happened
-	// some time (namely SECOND_SCAN_PORT_INTERVAL_SECS seconds) ago
-	void scan_ports_again_on_timer_elapsed();
+	void scan_listening_ports(bool add_procfs_scan = false,
+		uint32_t procfs_scan_interval = DEFAULT_PROCFS_SCAN_INTERVAL_SECS);
 
 private:
-	static const uint16_t SECOND_SCAN_PORT_INTERVAL_SECS = 30;
+	static const uint32_t RESCAN_PORT_INTERVAL_SECS = 20;
 	using time_point_t = std::chrono::time_point<std::chrono::steady_clock>;
 	unique_ptr<main_thread_analyzer_info> m_main_thread_ainfo;
-	void scan_listening_ports();
 	unique_ptr<set<uint16_t>> m_listening_ports;
+	set<uint16_t> m_procfs_found_ports;
 	set<std::string> m_app_checks_found;
 	bool m_prom_check_found;
-	time_point_t m_first_port_scan;
-	bool m_second_port_scan_done;
+	time_point_t m_last_port_scan;
+	time_point_t m_last_procfs_port_scan;
 
-	std::string listening_ports_to_string();
+	static std::string ports_to_string(const set<uint16_t> &ports);
 };
 
 ///////////////////////////////////////////////////////////////////////////////

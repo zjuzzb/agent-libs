@@ -123,6 +123,7 @@ public:
 	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
 	string read_proc_root(int64_t pid);
 
+	static int read_process_serverports(int64_t pid, const set<uint16_t> &oldports, set<uint16_t> &ports);
 private:
 #ifndef CYGWING_AGENT
 	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;

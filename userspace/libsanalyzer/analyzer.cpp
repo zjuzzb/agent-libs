@@ -2309,8 +2309,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		   (m_next_flush_time_ns - tinfo.m_clone_ts) > ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS &&
 				tinfo.m_vpid > 0)
 		{
-			// Perform a second port scan if necessary
-			tinfo.m_ainfo->scan_ports_again_on_timer_elapsed();
+			const auto &procs = m_configuration->get_procfs_scan_procs();
+			bool procfs_scan = procs.find(tinfo.m_comm) != procs.end();
+			tinfo.m_ainfo->scan_listening_ports(procfs_scan,
+				m_configuration->get_procfs_scan_interval());
 
 			if(m_jmx_proxy && tinfo.get_comm() == "java")
 			{

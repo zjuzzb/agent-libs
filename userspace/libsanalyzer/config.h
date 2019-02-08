@@ -259,6 +259,9 @@ public:
 	void set_orch_batch_msgs_queue_len(uint32_t batch_queue_len);
 	uint32_t get_orch_batch_msgs_tick_interval_ms() const;
 	void set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms);
+	void set_procfs_scan_procs(const set<string> &procs, uint32_t interval);
+	const set<string> &get_procfs_scan_procs();
+	uint32_t get_procfs_scan_interval();
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -390,6 +393,9 @@ private:
 	bool m_orch_filter_empty;
 	uint32_t m_orch_batch_msgs_queue_len;
 	uint32_t m_orch_batch_msgs_tick_interval_ms;
+
+	set<string> m_procfs_scan_procs;
+	uint32_t m_procfs_scan_interval;
 };
 
 #endif // HAS_ANALYZER

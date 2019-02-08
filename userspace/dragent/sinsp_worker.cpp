@@ -396,6 +396,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_orch_batch_msgs_queue_len(m_configuration->m_orch_batch_msgs_queue_len);
 	m_analyzer->get_configuration()->set_orch_batch_msgs_tick_interval_ms(m_configuration->m_orch_batch_msgs_tick_interval_ms);
 
+	m_analyzer->get_configuration()->set_procfs_scan_procs(m_configuration->m_procfs_scan_procs, m_configuration->m_procfs_scan_interval);
+
 	//
 	// Load the chisels
 	//
