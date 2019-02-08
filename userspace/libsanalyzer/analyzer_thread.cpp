@@ -429,7 +429,7 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procf
 
 			if (m_procfs_found_ports.size() > prev_size)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "procfs scan found %d new ports for pid %ld. Procfs found ports: %s", m_procfs_found_ports.size() - prev_size, m_tinfo->m_pid, ports_to_string(m_procfs_found_ports).c_str());
+				g_logger.format(sinsp_logger::SEV_INFO, "procfs scan found %d new ports for pid %ld. Procfs found ports: %s", m_procfs_found_ports.size() - prev_size, m_tinfo->m_pid, ports_to_string(m_procfs_found_ports).c_str());
 			}
 		}
 	}
