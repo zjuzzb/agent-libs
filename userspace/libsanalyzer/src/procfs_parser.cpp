@@ -1586,81 +1586,86 @@ int mounted_fs_reader::run()
 		// Send heartbeat
 		send_subprocess_heartbeat();
 		auto request_s = m_input.receive(1);
-		if(!request_s.empty())
+		if(request_s.empty())
 		{
-			sdc_internal::mounted_fs_request request_proto;
-			if(request_proto.ParseFromString(request_s))
+			continue;
+		}
+
+		sdc_internal::mounted_fs_request request_proto;
+		if(!request_proto.ParseFromString(request_s))
+		{
+			continue;
+		}
+
+		sdc_internal::mounted_fs_response response_proto;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
+		// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s", request_proto.DebugString().c_str());
+		for(const auto& container_proto : request_proto.containers())
+		{
+			// Go to container mnt ns
+			auto changed = change_ns(container_proto.pid());
+
+			if(!changed)
 			{
-				sdc_internal::mounted_fs_response response_proto;
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Look mounted_fs for %d containers", request_proto.containers_size());
-				// g_logger.format(sinsp_logger::SEV_DEBUG, "Receive from dragent; %s", request_proto.DebugString().c_str());
-				for(const auto& container_proto : request_proto.containers())
+				continue;
+			}
+			try
+			{
+				if(container_proto.root() != "/")
 				{
-					// Go to container mnt ns
-					auto changed = change_ns(container_proto.pid());
-
-					if(changed)
+					g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
+					auto res = chroot(container_proto.root().c_str());
+					if(res != 0)
 					{
-						try
-						{
-							if(container_proto.root() != "/")
-							{
-								g_logger.format(sinsp_logger::SEV_DEBUG, "chroot to: %s", container_proto.root().c_str());
-								auto res = chroot(container_proto.root().c_str());
-								if(res != 0)
-								{
-									throw sinsp_exception(string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
-								}
-							}
-							char filename[SCAP_MAX_PATH_SIZE];
-							// Use mtab if it's not a symlink to /proc/self/mounts
-							// Because when entering a mount namespace, we don't have
-							// a self entry on /proc
-							struct stat mtab_stat;
-							if(lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
-							{
-								snprintf(filename, sizeof(filename), "/etc/mtab");
-							}
-							else
-							{
-								snprintf(filename, sizeof(filename), "/proc/%lu/mounts", container_proto.vpid());
-							}
-							auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
-							auto container_mounts_proto = response_proto.add_containers();
-							container_mounts_proto->set_container_id(container_proto.id());
-							for(const auto& fs : fs_list)
-							{
-								auto fsinfo = container_mounts_proto->add_mounts();
-								fs.to_protobuf(fsinfo);
-							}
-						}
-						catch (const sinsp_exception& ex)
-						{
-							g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s, vpid=%d", container_proto.id().c_str(), container_proto.pid(), ex.what(), container_proto.vpid());
-						}
-						// Back home
-						if(setns(home_fd, CLONE_NEWNS) != 0)
-						{
-							g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
-							return ERROR_EXIT;
-						};
-
-						if (chroot(root_dir) < 0)
-						{
-							g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
-							return ERROR_EXIT;
-						}
-						if (chdir("/") < 0)
-						{
-							g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
-							return ERROR_EXIT;
-						}
+						throw sinsp_exception(string("chroot on ") + container_proto.root() + " failed: " + strerror(errno));
 					}
 				}
-				auto response_s = response_proto.SerializeAsString();
-				m_output.send(response_s);
+				char filename[SCAP_MAX_PATH_SIZE];
+				// Use mtab if it's not a symlink to /proc/self/mounts
+				// Because when entering a mount namespace, we don't have
+				// a self entry on /proc
+				struct stat mtab_stat;
+				if(lstat("/etc/mtab", &mtab_stat) == 0 && !S_ISLNK(mtab_stat.st_mode))
+				{
+					snprintf(filename, sizeof(filename), "/etc/mtab");
+				}
+				else
+				{
+					snprintf(filename, sizeof(filename), "/proc/%lu/mounts", container_proto.vpid());
+				}
+				auto fs_list = m_procfs_parser.get_mounted_fs_list(m_remotefs, filename);
+				auto container_mounts_proto = response_proto.add_containers();
+				container_mounts_proto->set_container_id(container_proto.id());
+				for(const auto& fs : fs_list)
+				{
+					auto fsinfo = container_mounts_proto->add_mounts();
+					fs.to_protobuf(fsinfo);
+				}
+			}
+			catch (const sinsp_exception& ex)
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s, vpid=%d", container_proto.id().c_str(), container_proto.pid(), ex.what(), container_proto.vpid());
+			}
+			// Back home
+			if(setns(home_fd, CLONE_NEWNS) != 0)
+			{
+				g_logger.log("Error on setns home, exiting", sinsp_logger::SEV_ERROR);
+				return ERROR_EXIT;
+			};
+
+			if (chroot(root_dir) < 0)
+			{
+				g_logger.log("Cannot set root directory.", sinsp_logger::SEV_ERROR);
+				return ERROR_EXIT;
+			}
+			if (chdir("/") < 0)
+			{
+				g_logger.log("Cannot change to root directory.", sinsp_logger::SEV_ERROR);
+				return ERROR_EXIT;
 			}
 		}
+		auto response_s = response_proto.SerializeAsString();
+		m_output.send(response_s);
 	}
 #else
 	ASSERT(false);
