@@ -211,23 +211,6 @@ std::string connection_manager::get_openssldir()
 	return path;
 }
 
-// This is a bit of a travesty, but TCP connections are subject to the whims
-// of fate and fortune just as we all are.
-bool connection_manager::is_connected(const SharedPtr<StreamSocket>& sp) const
-{
-	if(!m_connected)
-	{
-		return false;
-	}
-
-	if(sp.isNull())
-	{
-		return false;
-	}
-
-	return true;
-}
-
 bool connection_manager::connect()
 {
 	m_last_connection_failure = chrono::system_clock::now();
@@ -289,7 +272,6 @@ bool connection_manager::connect()
 			{
 				ssp = new Poco::Net::StreamSocket();
 				ssp->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
-
 			}
 		}
 		catch(const Poco::IOException& e)
@@ -402,6 +384,7 @@ void connection_manager::disconnect(SharedPtr<StreamSocket> ssp)
 
 	if(!ssp.isNull())
 	{
+		LOG_INFO("Disconnecting from collector");
 		ssp->close();
 		ssp.reset();
 		m_connected = false;
@@ -415,7 +398,7 @@ void connection_manager::disconnect(SharedPtr<StreamSocket> ssp)
 }
 
 #ifndef CYGWING_AGENT
-bool connection_manager::prometheus_connected()
+bool connection_manager::prometheus_connected() const
 {
 	if (!m_prom_conn)
 	{
@@ -450,7 +433,7 @@ void connection_manager::do_run()
 		//
 		// Make sure we have a valid connection
 		//
-		if(m_socket.isNull())
+		if(!is_connected())
 		{
 			if(dragent_configuration::m_terminate)
 			{

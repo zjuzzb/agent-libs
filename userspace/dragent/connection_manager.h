@@ -24,7 +24,7 @@ public:
 			   capture_job_handler *capture_job_handler);
 	~connection_manager();
 
-	bool is_connected()
+	bool is_connected() const
 	{
 		return m_connected && !m_socket.isNull();
 	}
@@ -45,13 +45,12 @@ private:
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
-	bool is_connected(const SharedPtr<StreamSocket>& sp) const;
 #ifndef CYGWING_AGENT
 	void handle_policies_message(uint8_t* buf, uint32_t size);
 	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
 	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
 	void handle_baselines_message(uint8_t* buf, uint32_t size);
-	bool prometheus_connected();
+	bool prometheus_connected() const;
 #endif
 	static const uint32_t MAX_RECEIVER_BUFSIZE = 1 * 1024 * 1024; // 1MiB
 	static const uint32_t RECEIVER_BUFSIZE = 32 * 1024;
