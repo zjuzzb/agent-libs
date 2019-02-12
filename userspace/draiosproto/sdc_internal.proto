@@ -132,6 +132,7 @@ message comp_start {
     required draiosproto.comp_calendar calendar = 3;
     optional bool include_desc = 4;
     optional bool send_failed_results = 5;
+    optional bool save_temp_files = 6;
 }
 
 message comp_stop {

@@ -815,6 +815,7 @@ public:
 	bool m_security_send_compliance_results;
 	bool m_security_include_desc_in_compliance_results;
 	bool m_security_compliance_send_failed_results;
+	bool m_security_compliance_save_temp_files;
 	uint64_t m_security_compliance_refresh_interval;
 	std::string m_security_compliance_kube_bench_variant;
 

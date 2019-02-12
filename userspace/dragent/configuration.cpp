@@ -264,6 +264,7 @@ dragent_configuration::dragent_configuration()
 	m_security_compliance_send_failed_results = true;
 	m_security_compliance_refresh_interval = 120000000000;
 	m_security_compliance_kube_bench_variant = "";
+	m_security_compliance_save_temp_files = false;
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
@@ -1128,6 +1129,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
 	m_security_compliance_kube_bench_variant = m_config->get_scalar<string>("security", "compliance_kube_bench_variant", "");
 	m_security_compliance_send_failed_results = m_config->get_scalar<bool>("security", "compliance_send_failed_results", true);
+	m_security_compliance_save_temp_files = m_config->get_scalar<bool>("security", "compliance_save_temp_files", false);
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -1590,6 +1592,7 @@ void dragent_configuration::print_configuration() const
 		{
 			LOG_INFO(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
 		}
+		LOG_INFO(string("Will ") + (m_security_compliance_save_temp_files ? "" : "not ") + "keep temporary files for compliance tasks on disk");
 	}
 
 	if(m_suppressed_comms.size() > 0)

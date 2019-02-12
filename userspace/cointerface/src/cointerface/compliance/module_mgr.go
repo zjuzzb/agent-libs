@@ -25,6 +25,7 @@ type ModuleMgr struct {
 	Calendar *draiosproto.CompCalendar
 	IncludeDesc bool
 	SendFailedResults bool
+	SaveTempFiles bool
 	availModules map[string]*Module
 	evtsChannel chan *sdc_internal.CompTaskEvent
 	metricsChannel chan string
@@ -198,6 +199,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 	mgr.Calendar = start.Calendar
 	mgr.IncludeDesc = start.GetIncludeDesc()
 	mgr.SendFailedResults = start.GetSendFailedResults()
+	mgr.SaveTempFiles = start.GetSaveTempFiles()
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -307,6 +309,14 @@ func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*s
 	if mgr.cancel != nil {
 		mgr.cancel()
 		mgr.cancel = nil
+	}
+
+	for _, module := range mgr.availModules {
+		if module.LastOutputDir != "" {
+			err := os.RemoveAll(module.LastOutputDir); if err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	log.Debugf("Returning from Stop: %v", result)

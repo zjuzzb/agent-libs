@@ -44,6 +44,7 @@ type Module struct {
 	Name string `json:"name"`
 	Prog string `json:"prog"`
 	Impl ModuleImpl `json:"impl"`
+	LastOutputDir string
 }
 
 // Represents the periodic interval for how often/when a task should
@@ -570,9 +571,22 @@ func (module *Module) Run(start_ctx context.Context, stask *ScheduledTask) error
 		return err
 	}
 
-	// Wait for the command to complete or for us to be cancelled
+	// If an old outputDir is still around, remove it.
+	if module.LastOutputDir != "" {
+		err := os.RemoveAll(module.LastOutputDir); if err != nil {
+			return err
+		}
 
-	defer os.RemoveAll(outputDir)
+		module.LastOutputDir = ""
+	}
+
+	// Either remove the output dir after the module runs or save
+	// it in LastOutputDir so it will be removed next time.
+	if stask.mgr.SaveTempFiles {
+		module.LastOutputDir = outputDir
+	} else {
+		defer os.RemoveAll(outputDir)
+	}
 
 	activelyStopped := false
 

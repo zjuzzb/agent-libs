@@ -629,6 +629,7 @@ void security_mgr::refresh_compliance_tasks()
 
 	start.set_include_desc(m_configuration->m_security_include_desc_in_compliance_results);
 	start.set_send_failed_results(m_configuration->m_security_compliance_send_failed_results);
+	start.set_save_temp_files(m_configuration->m_security_compliance_save_temp_files);
 
 	for(auto &task : m_compliance_calendar.tasks())
 	{
