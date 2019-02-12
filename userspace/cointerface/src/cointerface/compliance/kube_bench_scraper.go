@@ -224,6 +224,12 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 		Risk: low,
 	}
 
+	attr := &TaskResultAttribute{
+		K8sNodeType: bres.NodeType,
+	}
+
+	result.Attributes = append(result.Attributes, *attr)
+
 	for _, section := range bres.Tests {
 
 		res_section := &TaskResultSection {

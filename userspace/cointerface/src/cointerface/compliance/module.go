@@ -456,6 +456,11 @@ type TaskResultSection struct {
 	Results []TaskResultTest `json:"results,omitempty"`
 }
 
+type TaskResultAttribute struct {
+	K8sNodeType string `json:"k8sNodeType,omitempty"`
+	DockerBenchScore *int64 `json:"dockerBenchScore,omitempty"`
+}
+
 type ExtendedTaskResult struct {
 	Id uint64 `json:"id"`
 	TimestampNS uint64 `json:"timestampNs"`
@@ -468,6 +473,7 @@ type ExtendedTaskResult struct {
 	WarnCount uint64 `json:"warnCount"`
 	Risk ResultRisk `json:"risk"`
 	Tests []TaskResultSection `json:"tests,omitempty"`
+	Attributes []TaskResultAttribute `json:"attributes,omitempty"`
 }
 
 func (module *Module) Env(mgr *ModuleMgr) []string {
