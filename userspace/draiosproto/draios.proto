@@ -789,6 +789,7 @@ enum message_type {
     COMP_RESULTS = 18;
     COMP_CALENDAR = 19;
     AUDIT_TAP = 20;
+    COMP_RUN = 21;
 }
 
 //
@@ -1719,6 +1720,11 @@ message comp_results {
     optional string customer_id = 2; // The unique ID of the customer that this machine belongs to
 
     repeated comp_result results = 3;
+}
+
+message comp_run {
+    // Ids of the tasks to be run immediately
+    repeated uint64 task_ids = 1;
 }
 
 message comp_event {

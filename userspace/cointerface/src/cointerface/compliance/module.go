@@ -40,11 +40,18 @@ type ModuleImpl interface {
 	TaskShouldRun
 }
 
+type RunModuleReq struct {
+	Ctx context.Context
+	Stask *ScheduledTask
+	RetChannel chan error
+}
+
 type Module struct {
 	Name string `json:"name"`
 	Prog string `json:"prog"`
 	Impl ModuleImpl `json:"impl"`
 	LastOutputDir string
+	runChannel chan *RunModuleReq
 }
 
 // Represents the periodic interval for how often/when a task should
@@ -505,7 +512,41 @@ func (module *Module) Env(mgr *ModuleMgr) []string {
 	return newenv
 }
 
+// To prevent race conditions between scheduled tasks and tasks run
+// via a RunTask message, all module runs are synchronized through this loop
+func (module *Module) RunModules(ctx context.Context) {
+
+	module.runChannel = make(chan *RunModuleReq)
+	go func() {
+	RunModules:
+		for {
+			select {
+			case run_msg := <- module.runChannel:
+				run_msg.RetChannel <- module.HandleRun(run_msg.Ctx, run_msg.Stask)
+			case <- ctx.Done():
+				break RunModules
+			}
+		}
+	}()
+}
+
 func (module *Module) Run(start_ctx context.Context, stask *ScheduledTask) error {
+	ret := make(chan error)
+
+	req := &RunModuleReq{
+		Ctx: start_ctx,
+		Stask: stask,
+		RetChannel: ret,
+	}
+
+	module.runChannel <- req
+
+	err := <- ret
+
+	return err
+}
+
+func (module *Module) HandleRun(start_ctx context.Context, stask *ScheduledTask) error {
 
 	// Create a temporary directory where this module's output will go
 	outputDir, err := ioutil.TempDir("", "module-" + module.Name + "-output"); if err != nil {

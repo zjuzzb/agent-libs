@@ -789,6 +789,20 @@ bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,
 	}
 }
 
+bool sinsp_worker::run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr)
+{
+	if(m_security_mgr)
+	{
+		m_security_mgr->set_compliance_run(run);
+		return true;
+	}
+	else
+	{
+		errstr = "No Security Manager object created";
+		return false;
+	}
+}
+
 bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string &errstr)
 {
 	if(m_security_mgr)
@@ -805,6 +819,7 @@ bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string
 void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
+	m_security_mgr->request_refresh_compliance_tasks();
 }
 #endif
 

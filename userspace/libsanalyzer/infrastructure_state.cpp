@@ -1495,6 +1495,27 @@ void infrastructure_state::refresh_hosts_metadata()
 
 		m_host_events_queue.pop();
 	}
+
+	// Now take any registered scopes that have a host component
+	// and see if they now match or not.
+	for(auto &sit : m_registered_scopes)
+	{
+		bool old_scope_match = sit.second.m_scope_match;
+
+		// Only need to reevaluate if the scope is a host-level scope.
+		if(sit.second.m_host_scope)
+		{
+			infrastructure_state::uid_t uid = make_pair("host", m_machine_id);
+
+			if(match_scope(uid, sit.second.m_predicates))
+			{
+				sit.second.m_scope_match = true;
+			}
+		}
+
+		glogf(sinsp_logger::SEV_INFO, "infra_state: refresh_hosts_metadata registered scope %s old match=%d match=%d",
+		      sit.first.c_str(), old_scope_match, sit.second.m_scope_match);
+	}
 }
 
 void infrastructure_state::debug_print()

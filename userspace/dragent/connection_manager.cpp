@@ -777,6 +777,11 @@ bool connection_manager::receive_message()
 					m_buffer.begin() + sizeof(dragent_protocol_header),
 					header->len - sizeof(dragent_protocol_header));
 				break;
+			case draiosproto::message_type::COMP_RUN:
+				handle_compliance_run_message(
+					m_buffer.begin() + sizeof(dragent_protocol_header),
+					header->len - sizeof(dragent_protocol_header));
+				break;
 			case draiosproto::message_type::ORCHESTRATOR_EVENTS:
 				handle_orchestrator_events(
 					m_buffer.begin() + sizeof(dragent_protocol_header),
@@ -1021,6 +1026,36 @@ void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32
 	if (!m_sinsp_worker->set_compliance_calendar(calendar, errstr))
 	{
 		LOG_ERROR("Could not set compliance calendar: " + errstr);
+		return;
+	}
+}
+
+void connection_manager::handle_compliance_run_message(uint8_t* buf, uint32_t size)
+{
+	draiosproto::comp_run run;
+	string errstr;
+
+	if(!m_configuration->m_security_enabled)
+	{
+		LOG_DEBUG("Security disabled, ignoring COMP_RUN message");
+		return;
+	}
+
+	if(m_configuration->m_security_compliance_schedule != "")
+	{
+		LOG_INFO("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
+		return;
+	}
+
+	if(!dragent_protocol::buffer_to_protobuf(buf, size, &run))
+	{
+		LOG_ERROR("Could not parse comp_run message");
+		return;
+	}
+
+	if (!m_sinsp_worker->run_compliance_tasks(run, errstr))
+	{
+		LOG_ERROR("Could not run compliance tasks: " + errstr);
 		return;
 	}
 }

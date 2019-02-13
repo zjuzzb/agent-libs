@@ -48,6 +48,7 @@ private:
 #ifndef CYGWING_AGENT
 	void handle_policies_message(uint8_t* buf, uint32_t size);
 	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
+	void handle_compliance_run_message(uint8_t* buf, uint32_t size);
 	void handle_orchestrator_events(uint8_t* buf, uint32_t size);
 	void handle_baselines_message(uint8_t* buf, uint32_t size);
 	bool prometheus_connected() const;

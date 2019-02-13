@@ -86,6 +86,9 @@ public:
 	void load_compliance_modules();
 
 	void set_compliance_calendar(draiosproto::comp_calendar &calendar);
+	void request_refresh_compliance_tasks();
+	void set_compliance_run(draiosproto::comp_run &run);
+	void run_compliance_tasks(draiosproto::comp_run &run);
 
 	void refresh_compliance_tasks();
 	void stop_compliance_tasks();
@@ -318,11 +321,12 @@ private:
 	std::unique_ptr<run_on_interval> m_report_events_interval;
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
-	std::unique_ptr<run_on_interval> m_refresh_compliance_tasks_interval;
 	draiosproto::comp_calendar m_compliance_calendar;
-	std::set<std::string> m_cur_compliance_tasks;
+	draiosproto::comp_run m_compliance_run;
+	std::set<uint64_t> m_cur_compliance_tasks;
 	bool m_compliance_modules_loaded;
 	bool m_compliance_load_in_progress;
+	bool m_should_refresh_compliance_tasks;
 
 	bool m_initialized;
 	sinsp* m_inspector;
@@ -537,8 +541,10 @@ private:
 
 	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_start_conn;
 	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_load_conn;
+	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_run_tasks_conn;
 
 	std::unique_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
 	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
+	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)> m_grpc_run_tasks;
 };
 #endif // CYGWING_AGENT

@@ -163,9 +163,15 @@ message comp_future_runs {
     repeated string runs = 3;
 }
 
+message comp_run_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
 service ComplianceModuleMgr {
     rpc Load(comp_load) returns (comp_load_result) {}
     rpc Start(comp_start) returns (stream comp_task_event) {}
     rpc Stop(comp_stop) returns (comp_stop_result) {}
     rpc GetFutureRuns(comp_get_future_runs)returns (comp_future_runs){}
+    rpc RunTasks(draiosproto.comp_run) returns (comp_run_result) {}
 }
