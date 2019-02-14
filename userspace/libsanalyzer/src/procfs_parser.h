@@ -15,7 +15,9 @@ public:
 	mounted_fs():
 			size_bytes(0),
 			used_bytes(0),
-			available_bytes(0)
+			available_bytes(0),
+			total_inodes(0),
+			used_inodes(0)
 	{
 	}
 	explicit mounted_fs(const draiosproto::mounted_fs& proto);
