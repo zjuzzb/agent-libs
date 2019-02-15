@@ -118,7 +118,8 @@ if(NOT CYGWIN)
 	add_subdirectory(userspace/cointerface)
 endif()
 add_subdirectory(userspace/comp_modules)
-add_subdirectory(userspace/dragent)
+add_subdirectory(userspace/dragent/src)
+add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/draiosproto)
 add_subdirectory(userspace/libsanalyzer)
 if(NOT CYGWIN)
@@ -128,6 +129,10 @@ if(NOT CYGWIN)
 	add_subdirectory(test)
 	add_subdirectory(docker)
 endif()
+
+add_custom_target(run-unit-tests
+	COMMAND make run-unit-test-dragent
+)
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin

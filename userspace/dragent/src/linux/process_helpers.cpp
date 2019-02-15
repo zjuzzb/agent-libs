@@ -1,5 +1,5 @@
 
-#include "dragent/process_helpers.h"
+#include "../process_helpers.h"
 #include <sys/resource.h>
 
 namespace process_helpers

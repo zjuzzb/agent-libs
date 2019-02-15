@@ -1,5 +1,5 @@
-#include "dragent/process_helpers.h"
-#include "dragent/logger.h"
+#include "../process_helpers.h"
+#include "../logger.h"
 
 DRAGENT_LOGGER("dragent");
 

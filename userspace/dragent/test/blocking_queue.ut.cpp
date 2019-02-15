@@ -3,7 +3,7 @@
 #include <time.h>
 #include <Poco/Runnable.h>
 #include "Poco/Thread.h"
-#include "dragent/blocking_queue.h"
+#include "blocking_queue.h"
 
 namespace
 {
