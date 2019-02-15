@@ -6,12 +6,14 @@ import os
 import os.path
 import subprocess
 import sys
+from collections import defaultdict
 from datetime import datetime
 from jq import jq
 
 import simplejson as json
 from IPython import embed
 from google.protobuf.text_format import Merge as parse_text_protobuf
+from google.protobuf.pyext._message import RepeatedCompositeContainer, ScalarMapContainer
 from protobuf_to_dict import protobuf_to_dict
 from hashlib import md5
 
@@ -264,6 +266,44 @@ class ContainerProcessChecker(object):
         self._print_status(self.containers, self.container_processes, self.processes_no_containers)
 
 
+class FlameGraph(object):
+    print_header = False
+
+    def __init__(self, args):
+        self.sizes = defaultdict(int)
+
+    def get_pb_sizes(self, pb, path):
+        total_len = len(pb.SerializePartialToString())
+        children = 0
+        for f in pb.DESCRIPTOR.fields:
+            name = f.name
+            subpath = '{};{}'.format(path, name)
+            if f.message_type is None:
+                continue
+            val = getattr(pb, name)
+            if isinstance(val, RepeatedCompositeContainer):
+                for item in val:
+                    delta = self.get_pb_sizes(item, subpath)
+                    if delta > 0:
+                        children += delta
+            elif isinstance(val, ScalarMapContainer):
+                continue
+            else:
+                delta = self.get_pb_sizes(val, subpath)
+                if delta > 0:
+                    children += delta
+        self.sizes[path] += total_len - children
+        return total_len
+
+    def __call__(self, _m, mobj):
+        self.get_pb_sizes(mobj, 'metrics')
+
+    def summary(self):
+        for k, v in sorted(self.sizes.items()):
+            if v > 0:
+                print '{} {}'.format(k, v)
+
+
 class BinaryOutput(object):
     print_header = True
 
@@ -349,6 +389,7 @@ FILTERS = {
     'container_procs': ContainerProcessChecker,
     'binary_output': BinaryOutput,
     'env_fuzz': EnvFuzz,
+    'flame_graph': FlameGraph,
 }
 
 # backwards-compatible names
