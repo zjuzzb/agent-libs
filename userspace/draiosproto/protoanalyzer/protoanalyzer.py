@@ -326,6 +326,16 @@ class BinaryOutput(object):
             dam.write(mobj.SerializeToString())
 
 
+class TextOutput(object):
+    print_header = True
+
+    def __init__(self, args):
+        pass
+
+    def __call__(self, m, mobj):
+        print str(mobj)
+
+
 class EnvFuzz(object):
     print_header = True
 
@@ -388,6 +398,7 @@ FILTERS = {
     'follow_container': FollowContainer,
     'container_procs': ContainerProcessChecker,
     'binary_output': BinaryOutput,
+    'text_output': TextOutput,
     'env_fuzz': EnvFuzz,
     'flame_graph': FlameGraph,
 }
