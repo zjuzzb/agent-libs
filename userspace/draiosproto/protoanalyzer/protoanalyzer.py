@@ -19,7 +19,7 @@ import draios_pb2
 
 
 def print_ts_header(ts):
-    print("###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S"))
+    print >> sys.stderr, "###### sample ts=%s ######" % ts.strftime("%Y-%m-%d %H:%M:%S")
 
 
 # this class parses text dumped protobuf from the agent
@@ -431,7 +431,7 @@ def main():
     parser.add_argument("path", type=str, help="File to parse")
     args = parser.parse_args()
 
-    print "Running with args: %s" % repr(args)
+    print >> sys.stderr, "Running with args: %s" % repr(args)
 
     if args.path == "last":
         metric_files = [p for p in os.listdir("/opt/draios/metrics/") if p.endswith(".dams")]
@@ -444,7 +444,7 @@ def main():
         walk_protos(args, path, filter_f)
     else:
         analyze_proto(args, path, filter_f)
-    print("")
+    print >> sys.stderr, ""
     if hasattr(filter_f, "summary"):
         filter_f.summary()
 
