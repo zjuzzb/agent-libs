@@ -1209,7 +1209,7 @@ void sinsp_configuration::set_procfs_scan_procs(const set<string> &procs, uint32
 {
 	m_procfs_scan_procs = procs;
 	m_procfs_scan_interval = interval;
-	for (auto proc : m_procfs_scan_procs)
+	for (const auto &proc : m_procfs_scan_procs)
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_proc: %s", proc.c_str());
 	}

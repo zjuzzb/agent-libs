@@ -427,9 +427,9 @@ void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procf
 			sinsp_procfs_parser::read_process_serverports(m_tinfo->m_pid, *m_listening_ports, m_procfs_found_ports);
 			m_last_procfs_port_scan = now;
 
-			if (m_procfs_found_ports.size() > prev_size)
+			if (m_procfs_found_ports.size() != prev_size)
 			{
-				g_logger.format(sinsp_logger::SEV_INFO, "procfs scan found %d new ports for pid %ld. Procfs found ports: %s", m_procfs_found_ports.size() - prev_size, m_tinfo->m_pid, ports_to_string(m_procfs_found_ports).c_str());
+				g_logger.format(sinsp_logger::SEV_INFO, "Updated list of listening ports for pid %" PRIi64 ", %s. Found %d new ports: %s", m_tinfo->m_pid, m_tinfo->m_comm.c_str(), m_procfs_found_ports.size() - prev_size, ports_to_string(m_procfs_found_ports).c_str());
 			}
 		}
 	}

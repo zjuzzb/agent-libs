@@ -1334,10 +1334,10 @@ static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, s
 	fp = fopen(fname.c_str(), "r");
 	if (!fp)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: Failed to open %s for server port scan", fname.c_str());
+		g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: Failed to open %s for server port scan", fname.c_str());
 		return 0;
 	}
-	g_logger.format(sinsp_logger::SEV_TRACE, "procfsports: scanning %s", fname.c_str());
+	g_logger.format(sinsp_logger::SEV_TRACE, "procfs port scan: scanning %s", fname.c_str());
 
 	int socks = 0;
 
@@ -1360,7 +1360,7 @@ static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, s
 		}
 		if (ti < 10)
 		{
-			g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: %s: Only found %d tokens", fname.c_str(), ti);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: Only found %d tokens", fname.c_str(), ti);
 			// Didn't find inode
 			continue;
 		}
@@ -1370,7 +1370,7 @@ static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, s
 		if (end == token[9])
 		{
 			// token[9] didn't contain digits.
-			g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: %s: token %s has no digits", fname.c_str(), token[9]);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: token %s has no digits", fname.c_str(), token[9]);
 			continue;
 		}
 
@@ -1396,7 +1396,7 @@ static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, s
 		if (!end || *end != ':')
 		{
 			// Address didn't end on ':', shouldn't happen
-			g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: %s: address %s ends on %c", fname.c_str(), token[2], *end);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: address %s ends on %c", fname.c_str(), token[2], *end);
 			continue;
 		}
 
@@ -1404,18 +1404,18 @@ static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, s
 		if (!port)
 		{
 			// Local port is 0, shouldn't happen
-			g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: %s: local port is %d, parsed from %s", fname.c_str(), port, end ? end+1 : "NULL");
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: local port is %d, parsed from %s", fname.c_str(), port, end ? end+1 : "NULL");
 			continue;
 		}
 		if (oldports.find(port) == oldports.end())
 		{
 			ports.emplace(port);
-			g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: Added port %d from %s", port, fname.c_str());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: Added port %d from %s", port, fname.c_str());
 			added++;
 		}
 	}
 	if (socks == max_socks) {
-		g_logger.format(sinsp_logger::SEV_INFO, "procfsports: Stopped reading sockets from %s after %d lines", fname.c_str(), socks);
+		g_logger.format(sinsp_logger::SEV_INFO, "procfs port scan: Stopped reading sockets from %s after %d lines", fname.c_str(), socks);
 	}
 	return added;
 }
@@ -1435,7 +1435,7 @@ int sinsp_procfs_parser::read_process_serverports(int64_t pid, const set<uint16_
 	dir_p = opendir(fd_dir.c_str());
 	if(dir_p == NULL)
 	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "procfsports: Failed to open %s for server port scan", fd_dir.c_str());
+		g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: Failed to open %s for server port scan", fd_dir.c_str());
 		return added;
 	}
 
@@ -1465,7 +1465,7 @@ int sinsp_procfs_parser::read_process_serverports(int64_t pid, const set<uint16_
 		link_name[r] = '\0';
 		if (sscanf(link_name, "net:[%" PRIi64 "]", &net_ns) != 1)
 		{
-			g_logger.format(sinsp_logger::SEV_INFO, "procfsports: Malformed net namespace %s for pid %" PRIi64 ", assuming host namespace", link_name, pid);
+			g_logger.format(sinsp_logger::SEV_INFO, "procfs port scan: Malformed net namespace %s for pid %" PRIi64 ", assuming host namespace", link_name, pid);
 		}
 	}
 
@@ -1473,12 +1473,9 @@ int sinsp_procfs_parser::read_process_serverports(int64_t pid, const set<uint16_
 	// if not look in /proc/net/
 	string netdir = net_ns ? proc_dir + "/net" : string(scap_get_host_root()) + "/proc/net";
 
+	// Only looking for tcp sockets for now
 	added += add_ports_from_proc_fs(netdir + "/tcp", oldports, ports, inodes);
-	added += add_ports_from_proc_fs(netdir + "/udp", oldports, ports, inodes);
-	added += add_ports_from_proc_fs(netdir + "/raw", oldports, ports, inodes);
 	added += add_ports_from_proc_fs(netdir + "/tcp6", oldports, ports, inodes);
-	added += add_ports_from_proc_fs(netdir + "/udp6", oldports, ports, inodes);
-	added += add_ports_from_proc_fs(netdir + "/raw6", oldports, ports, inodes);
 
 	return added;
 }
