@@ -270,7 +270,7 @@ dragent_configuration::dragent_configuration()
 	m_k8s_audit_server_enabled = true;
 	m_k8s_audit_server_refresh_interval = 120000000000;
 	m_k8s_audit_server_url = "localhost";
-	m_k8s_audit_server_port = 8765;
+	m_k8s_audit_server_port = 7765;
 	m_k8s_audit_server_tls_enabled = false;
 	m_k8s_audit_server_x509_cert_file = "";
 	m_k8s_audit_server_x509_key_file = "";
@@ -1150,7 +1150,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_k8s_audit_server_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_enabled", true);
 	m_k8s_audit_server_refresh_interval = m_config->get_scalar<uint64_t>("security", "k8s_audit_server_refresh_interval", 120000000000);
 	m_k8s_audit_server_url = m_config->get_scalar<string>("security", "k8s_audit_server_url", "localhost");
-	m_k8s_audit_server_port = m_config->get_scalar<uint16_t>("security", "k8s_audit_server_port", 8765);
+	m_k8s_audit_server_port = m_config->get_scalar<uint16_t>("security", "k8s_audit_server_port", 7765);
 	m_k8s_audit_server_tls_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_tls_enabled", false);
 	m_k8s_audit_server_x509_cert_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_cert_file", "");
 	m_k8s_audit_server_x509_key_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_key_file", "");
