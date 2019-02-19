@@ -422,6 +422,20 @@ void conf::register_annotations(std::function<void (const std::string &)> reg) c
 					token.c_str());
 			}
 		}
+		if (rule.m_config.m_options_subst)
+		{
+			for (const auto &option : rule.m_config.m_options)
+			{
+				auto tokens = get_str_tokens(option.second);
+				for (const auto &token : tokens)
+				{
+					reg(token);
+					g_logger.format(sinsp_logger::SEV_INFO,
+						"%s: registering option annotation %s", m_context.c_str(),
+						token.c_str());
+				}
+			}
+		}
 	}
 }
 #endif // CYGWING_AGENT
@@ -459,6 +473,7 @@ bool convert<proc_filter::rule_config>::decode(const Node &node,
 {
 	if (!node.IsMap())
 		return false;
+	rhs.m_options_subst = false;
 
 	for (auto conf_line = node.begin();
 		conf_line != node.end(); conf_line++)
@@ -517,7 +532,12 @@ bool convert<proc_filter::rule_config>::decode(const Node &node,
 		else if (conf_line->second.IsScalar())
 		{
 			// Allow arbitrary config options to pass to sdchecks
-			rhs.m_options[conf_line->first.as<string>()] = conf_line->second.as<string>();
+			string value = conf_line->second.as<string>();
+			if (!rhs.m_options_subst)
+			{
+				rhs.m_options_subst = contains_token(value);
+			}
+			rhs.m_options[conf_line->first.as<string>()] = move(value);
 		}
 	}
 	return true;
