@@ -1002,6 +1002,8 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	//
 	if(to_kill)
 	{
+		log_watchdog_report();
+
  		LOG_FATAL("Killing dragent process");
 
 		sleep(5);
@@ -1057,6 +1059,32 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	// Pass the (potentially) updated list of subprocesses to the internal metrics module.
 	update_subprocesses();
+}
+
+void dragent_app::log_watchdog_report() const
+{
+	LOG_INFO("About to kill dragent; listing all running processes.");
+	m_pool.log_report();
+
+	const uint64_t now_ns = sinsp_utils::get_current_time_ns();
+	const int64_t sinsp_worker_diff_ns = now_ns - m_sinsp_worker.get_last_loop_ns();
+	const int64_t data_handler_diff_ns = now_ns - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+
+	LOG_INFO("sinsp_worker last activity in  %" PRId64" ms ago", sinsp_worker_diff_ns/1000000);
+	LOG_INFO("data_handler last activity in  %" PRId64" ms ago", data_handler_diff_ns/1000000);
+
+	uint64_t now_s = now_ns / ONE_SECOND_IN_NS;
+	for(auto& proc : m_subprocesses_state)
+	{
+		auto& state = proc.second;
+		if(!state.valid())
+		{
+			continue;
+		}
+
+		const int64_t diff_s = now_s - state.last_loop_s();
+		LOG_INFO("%s last activity %" PRId64" s ago", proc.first.c_str(), diff_s);
+	}
 }
 
 void dragent_app::update_subprocesses()

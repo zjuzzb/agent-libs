@@ -115,6 +115,7 @@ private:
 	Logger* make_console_channel(AutoPtr<Formatter> formatter);
 	Logger* make_event_channel();
 	void send_internal_metrics(pid_t pid, const std::string& name);
+	void log_watchdog_report() const;
 	void update_subprocesses();
 	void update_subprocesses_priority();
 	void monitor_files(uint64_t uptime_s);

@@ -41,10 +41,17 @@ public:
 
 	};
 	typedef std::vector<unhealthy_runnable> unhealthy_runnables;
+
 	/**
 	 * @return a list of all runnables that are unhealthy
 	 */
 	unhealthy_runnables unhealthy_list() const;
+
+	/**
+	 * Log a report on all runnables and how long since they have
+	 * checked in.
+	 */
+	void log_report() const;
 
 private:
 
