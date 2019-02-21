@@ -558,53 +558,6 @@ r_conn_creation_done:
 			ASSERT(false);
 		}
 
-		/////////////////////////////////////////////////////////////////////////////
-		// Handle the transaction
-		/////////////////////////////////////////////////////////////////////////////
-/*
-		if(fdinfo->is_role_server())
-		{
-			//
-			// See if there's already a transaction
-			//
- 			sinsp_partial_transaction *trinfo = &(fdinfo->m_usrstate);
-			if(trinfo->m_type == sinsp_partial_transaction::TYPE_UNKNOWN)
-			{
-				//
-				// Try to parse this as HTTP
-				//
-				if(m_http_parser.is_msg_http(data, len) && m_http_parser.parse_request(data, len))
-				{
-					//
-					// Success. Add an HTTP entry to the transaction table for this fd
-					//
-					trinfo->m_type = sinsp_partial_transaction::TYPE_HTTP;
-					trinfo->m_protoinfo.push_back(m_http_parser.m_url);
-					trinfo->m_protoinfo.push_back(m_http_parser.m_agent);
-				}
-				else
-				{
-					//
-					// The message has not been recognized as HTTP.
-					// Add an IP entry to the transaction table for this fd
-					//
-					trinfo->m_type = sinsp_partial_transaction::TYPE_IP;
-				}
-			}
-
-			//
-			// Update the transaction state.
-			//
-			ASSERT(connection != NULL);
-			trinfo->update(m_analyzer,
-				evt->m_tinfo,
-				connection,
-				evt->m_tinfo->m_lastevent_ts, 
-				evt->get_ts(), 
-				sinsp_partial_transaction::DIR_IN, 
-				len);
-		}
-*/
 		//
 		// Determine the transaction direction.
 		// recv(), recvfrom() and recvmsg() return 0 if the connection has been closed by the other side.
