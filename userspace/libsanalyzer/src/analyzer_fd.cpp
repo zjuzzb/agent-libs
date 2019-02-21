@@ -489,21 +489,17 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 			file_stat->m_time_ns += evt->m_tinfo->m_latency;
 		}
 	}
-
-	evt->set_iosize(original_len);
-
-	if(fdinfo->is_ipv4_socket() || fdinfo->is_unix_socket())
+	else if(fdinfo->is_ipv4_socket())
 	{
-		sinsp_connection *connection = NULL;
+		// XXX do we want this only for IPv4 sockets?
+		evt->set_iosize(original_len);
+
+		sinsp_connection *connection = nullptr;
 
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the connection
 		/////////////////////////////////////////////////////////////////////////////
-		if(fdinfo->is_unix_socket())
-		{
-			return;
-		}
-		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
+		if(should_report_network(fdinfo))
 		{
 			connection = get_ipv4_connection(fdinfo, fdinfo->m_sockinfo.m_ipv4info, evt, tid, fd, true);
 		}
@@ -511,7 +507,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 		//
 		// Attribute the read bytes to the proper connection side
 		//
-		if(connection == NULL)
+		if(connection == nullptr)
 		{
 			//
 			// This happens when the connection table is full
@@ -621,21 +617,18 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			file_stat->m_time_ns += evt->m_tinfo->m_latency;
 		}
 	}
-	
-	evt->set_iosize(original_len);
-
-	if(fdinfo->is_ipv4_socket() || fdinfo->is_unix_socket())
+	else if(fdinfo->is_ipv4_socket())
 	{
+		// XXX do we want this only for IPv4 sockets?
+		evt->set_iosize(original_len);
+
+		sinsp_connection* connection = nullptr;
+
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the connection
 		/////////////////////////////////////////////////////////////////////////////
-		sinsp_connection* connection = NULL; 
 
-		if(fdinfo->is_unix_socket())
-		{
-			return;
-		}
-		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
+		if(should_report_network(fdinfo))
 		{
 			connection = get_ipv4_connection(fdinfo, fdinfo->m_sockinfo.m_ipv4info, evt, tid, fd, false);
 		}
@@ -643,7 +636,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		//
 		// Attribute the read bytes to the proper connection side
 		//
-		if(connection == NULL)
+		if(connection == nullptr)
 		{
 			//
 			// This happens when the connection table is full
