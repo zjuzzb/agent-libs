@@ -773,9 +773,6 @@ VISIBILITY_PRIVATE
 	//
 	sinsp_transaction_table* m_trans_table;
 	sinsp_ipv4_connection_manager* m_ipv4_connections;
-#ifdef HAS_PIPE_CONNECTIONS
-	sinsp_pipe_connection_manager* m_pipe_connections;
-#endif
 
 	//
 	// Pointer to context that we use frequently

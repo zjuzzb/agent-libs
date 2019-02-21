@@ -147,9 +147,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_delay_calculator = NULL;
 
 	m_ipv4_connections = NULL;
-#ifdef HAS_PIPE_CONNECTIONS
-	m_pipe_connections = NULL;
-#endif
 	m_trans_table = NULL;
 	m_k8s_cluster_name = std::string();
 	m_is_sampling = false;
@@ -238,10 +235,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_threadtable_listener;
 	delete m_fd_listener;
 	delete m_ipv4_connections;
-
-#ifdef HAS_PIPE_CONNECTIONS
-	delete m_pipe_connections;
-#endif
 
 	delete m_trans_table;
 	delete m_configuration;
@@ -394,13 +387,6 @@ void sinsp_analyzer::on_capture_start()
 	{
 		m_ipv4_connections->m_percentiles = pctls;
 	}
-#ifdef HAS_PIPE_CONNECTIONS
-	m_pipe_connections = new sinsp_pipe_connection_manager(m_inspector);
-	if(pctls.size())
-	{
-		m_pipe_connections->m_percentiles = pctls;
-	}
-#endif
 	m_trans_table = new sinsp_transaction_table(m_inspector);
 
 	//
@@ -711,9 +697,6 @@ void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 	if(!m_simpledriver_enabled)
 	{
 		m_ipv4_connections->remove_expired_connections(ts);
-#ifdef HAS_PIPE_CONNECTIONS
-		m_pipe_connections->remove_expired_connections(ts);
-#endif
 	}
 }
 
@@ -4549,42 +4532,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 					m_ipv4_connections->clear_n_drops();
 				}
 			}
-
-			//
-			// Go though the list of unix connections and for the moment just clean it up
-			//
-
-#ifdef HAS_PIPE_CONNECTIONS
-			//
-			// Go though the list of pipe connections and for the moment just clean it up
-			//
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"pipe table size:%d",
-					m_pipe_connections->m_connections.size());
-			}
-
-			unordered_map<uint64_t, sinsp_connection, hash<uint64_t>, equal_to<uint64_t>>::iterator pcit;
-			for(pcit = m_pipe_connections->m_connections.begin();
-				pcit != m_pipe_connections->m_connections.end();)
-			{
-				//
-				// Has this connection been closed druring this sample?
-				//
-				if(pcit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
-				{
-					//
-					// Yes, remove the connection from the table
-					//
-					m_pipe_connections->m_connections.erase(pcit++);
-				}
-				else
-				{
-					++pcit;
-				}
-			}
-#endif// HAS_PIPE_CONNECTIONS
 
 			tracer_emitter fp_trc("flush_processes", f_trc);
 			flush_processes();

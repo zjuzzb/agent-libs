@@ -146,11 +146,6 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define TOP_STATUS_CODES_IN_SAMPLE 10
 
 //
-// Should the library track FD connections
-//
-#undef HAS_PIPE_CONNECTIONS
-
-//
 // The maximum duration of a socket server-side read after which we
 // assume the transaction is not client server
 //

@@ -679,23 +679,6 @@ r_conn_creation_done:
 						   len);
 		}
 	}
-#ifdef HAS_PIPE_CONNECTIONS
-	else if(fdinfo->is_pipe())
-	{
-		sinsp_connection *connection = m_analyzer->get_connection(fdinfo->m_ino, evt->get_ts());
-		if(NULL == connection || connection->is_server_only())
-		{
-			string scomm = evt->m_tinfo->get_comm();
-			m_analyzer->m_pipe_connections->add_connection(fdinfo->m_ino,
-				&scomm,
-				evt->m_tinfo->m_pid,
-			    tid,
-			    fd,
-			    true,
-			    evt->get_ts());
-		}
-	}
-#endif
 }
 
 void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
@@ -973,24 +956,6 @@ w_conn_creation_done:
 						   len);
 		}
 	}
-#ifdef HAS_PIPE_CONNECTIONS
-	else if(fdinfo->is_pipe())
-	{
-		sinsp_connection *connection = m_analyzer->get_connection(fdinfo->m_ino, evt->get_ts());
-
-		if(NULL == connection || connection->is_client_only())
-		{
-			string scomm = evt->m_tinfo->get_comm();
-			m_analyzer->m_pipe_connections->add_connection(fdinfo->m_ino,
-				&scomm,
-				evt->m_tinfo->m_pid,
-			    tid,
-			    fd,
-			    false,
-			    evt->get_ts());
-		}
-	}
-#endif
 }
 
 void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len)

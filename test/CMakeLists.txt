@@ -68,7 +68,6 @@ add_executable(tests
 	process.cpp
 	percentile.cpp
 	security_policies.cpp
-	socketpair.cpp
 	sql.cpp
 	sys_call_test.cpp
 	tcp_client_server.cpp
