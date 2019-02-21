@@ -383,25 +383,10 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 		//  - a TCP socket for which we dropped the accept() or connect()
 		// Create a connection entry here and try to automatically detect if this is the client or the server.
 		//
-		if(fdinfo->is_role_none())
+		if(fdinfo->is_role_none() && !patch_network_role(evt->m_tinfo, fdinfo, incoming))
 		{
-			if(!patch_network_role(evt->m_tinfo, fdinfo, incoming))
-			{
-				return connection;
-			}
+			return nullptr;
 		}
-
-		string scomm = evt->m_tinfo->get_comm();
-
-		connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-									    &scomm,
-									    evt->m_tinfo->m_pid,
-									    tid,
-									    fd,
-									    fdinfo->is_role_client(),
-									    evt->get_ts(),
-									    sinsp_connection::AF_NONE,
-									    0);
 	}
 	else if(connection->m_analysis_flags & sinsp_connection::AF_CLOSED)
 	{
@@ -413,24 +398,12 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 		connection->reset();
 		connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-		if(fdinfo->is_role_none())
+		if(fdinfo->is_role_none() && !patch_network_role(evt->m_tinfo, fdinfo, incoming))
 		{
-			if(!patch_network_role(evt->m_tinfo, fdinfo, incoming))
-			{
-				return connection;
-			}
+			// XXX should we return connection (without adding it to the table???) or nullptr?
+			// XXX how can we end up here?
+			return connection;
 		}
-
-		string scomm = evt->m_tinfo->get_comm();
-		connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-									    &scomm,
-									    evt->m_tinfo->m_pid,
-									    tid,
-									    fd,
-									    fdinfo->is_role_client(),
-									    evt->get_ts(),
-									    sinsp_connection::AF_NONE,
-									    0);
 	}
 	else if((evt->m_tinfo->m_pid != connection->m_spid || fd != connection->m_sfd) &&
 		(evt->m_tinfo->m_pid != connection->m_dpid || fd != connection->m_dfd))
@@ -475,31 +448,32 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 
 			connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
-			if(fdinfo->is_role_none())
+			if(fdinfo->is_role_none() && !patch_network_role(evt->m_tinfo, fdinfo, incoming))
 			{
-				if(!patch_network_role(evt->m_tinfo, fdinfo, incoming))
-				{
-					return connection;
-				}
+				// XXX should we return connection (without adding it to the table???) or nullptr?
+				// XXX how can we end up here?
+				return connection;
 			}
 		}
-
-		string scomm = evt->m_tinfo->get_comm();
-		connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-									    &scomm,
-									    evt->m_tinfo->m_pid,
-									    tid,
-									    fd,
-									    fdinfo->is_role_client(),
-									    evt->get_ts(),
-									    sinsp_connection::AF_NONE,
-									    0);
 	}
 	else
 	{
 		connection->set_state(evt->m_errorcode);
+		return connection;
 	}
 
+	// add a new connection to the table
+	string scomm = evt->m_tinfo->get_comm();
+	connection = m_analyzer->m_ipv4_connections->add_connection(
+		fdinfo->m_sockinfo.m_ipv4info,
+		&scomm,
+		evt->m_tinfo->m_pid,
+		tid,
+		fd,
+		fdinfo->is_role_client(),
+		evt->get_ts(),
+		sinsp_connection::AF_NONE,
+		0);
 	return connection;
 }
 
