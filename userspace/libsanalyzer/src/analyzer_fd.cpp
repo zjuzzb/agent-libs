@@ -305,9 +305,7 @@ sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_a
 	m_sinsp_config = analyzer->get_configuration();
 }
 
-bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo, 
-										  sinsp_fdinfo_t* pfdinfo,
-										  bool incoming)
+bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming)
 {
 	//
 	// This should be disabled for the moment
@@ -323,21 +321,15 @@ bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo,
 	// If only the client is local, mark the role as client.
 	// If only the server is local, mark the role as server.
 	//
-	if(is_sip_local)
+	if(is_sip_local && !is_dip_local)
 	{
-		if(!is_dip_local)
-		{
-			pfdinfo->set_role_client();
-			return true;
-		}
+		pfdinfo->set_role_client();
+		return true;
 	}
-	else if(is_dip_local)
+	else if(is_dip_local && !is_sip_local)
 	{
-		if(!is_sip_local)
-		{
-			pfdinfo->set_role_server();
-			return true;
-		}
+		pfdinfo->set_role_server();
+		return true;
 	}
 
 	//
@@ -348,28 +340,24 @@ bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo,
 	//
 	// If this process owns the port, mark it as server, otherwise mark it as client
 	//
-	if(ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport))
-	{
-		if(ptinfo->uses_client_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
-		{
-			goto wildass_guess;
-		}
-
-		pfdinfo->set_role_server();
-		return true;
-	}
-	else
+	if(!ptinfo->is_bound_to_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport))
 	{
 		pfdinfo->set_role_client();
 		return true;
 	}
 
-wildass_guess:
+	if(!ptinfo->uses_client_port(pfdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport))
+	{
+		pfdinfo->set_role_server();
+		return true;
+	}
+
+	//
+	// The process owns both the client and server port.
+	// We just assume that a server usually starts with a read and a client with a write
+	//
 	if(!(pfdinfo->m_flags & (sinsp_fdinfo_t::FLAGS_ROLE_CLIENT | sinsp_fdinfo_t::FLAGS_ROLE_SERVER)))
 	{
-		//
-		// We just assume that a server usually starts with a read and a client with a write
-		//
 		if(incoming)
 		{
 			pfdinfo->set_role_server();
