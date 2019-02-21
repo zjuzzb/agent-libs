@@ -147,9 +147,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_delay_calculator = NULL;
 
 	m_ipv4_connections = NULL;
-#ifdef HAS_UNIX_CONNECTIONS
-	m_unix_connections = NULL;
-#endif
 #ifdef HAS_PIPE_CONNECTIONS
 	m_pipe_connections = NULL;
 #endif
@@ -241,10 +238,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_threadtable_listener;
 	delete m_fd_listener;
 	delete m_ipv4_connections;
-
-#ifdef HAS_UNIX_CONNECTIONS
-	delete m_unix_connections;
-#endif
 
 #ifdef HAS_PIPE_CONNECTIONS
 	delete m_pipe_connections;
@@ -401,13 +394,6 @@ void sinsp_analyzer::on_capture_start()
 	{
 		m_ipv4_connections->m_percentiles = pctls;
 	}
-#ifdef HAS_UNIX_CONNECTIONS
-	m_unix_connections = new sinsp_unix_connection_manager(m_inspector);
-	if(pctls.size())
-	{
-		m_unix_connections->m_percentiles = pctls;
-	}
-#endif
 #ifdef HAS_PIPE_CONNECTIONS
 	m_pipe_connections = new sinsp_pipe_connection_manager(m_inspector);
 	if(pctls.size())
@@ -725,9 +711,6 @@ void sinsp_analyzer::remove_expired_connections(uint64_t ts)
 	if(!m_simpledriver_enabled)
 	{
 		m_ipv4_connections->remove_expired_connections(ts);
-#ifdef HAS_UNIX_CONNECTIONS
-		m_unix_connections->remove_expired_connections(ts);
-#endif
 #ifdef HAS_PIPE_CONNECTIONS
 		m_pipe_connections->remove_expired_connections(ts);
 #endif
@@ -755,18 +738,6 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 
 	return connection;
 }
-
-#ifdef HAS_UNIX_CONNECTIONS
-sinsp_connection* sinsp_analyzer::get_connection(const unix_tuple& tuple, uint64_t timestamp)
-{
-	return m_unix_connections->get_connection(tuple, timestamp);
-}
-
-sinsp_connection* sinsp_analyzer::get_connection(const uint64_t ino, uint64_t timestamp)
-{
-	return m_pipe_connections->get_connection(ino, timestamp);
-}
-#endif
 
 char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 {
@@ -4582,43 +4553,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Go though the list of unix connections and for the moment just clean it up
 			//
-#ifdef HAS_UNIX_CONNECTIONS
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-					"unix table size:%d",
-					m_unix_connections->m_connections.size());
-
-				if(m_unix_connections->get_n_drops() != 0)
-				{
-					g_logger.format(sinsp_logger::SEV_ERROR,
-						"unix table size:%d",
-						m_unix_connections->m_connections.size());
-
-					m_unix_connections->clear_n_drops();
-				}
-			}
-
-			unordered_map<unix_tuple, sinsp_connection, unixt_hash, unixt_cmp>::iterator ucit;
-			for(ucit = m_unix_connections->m_connections.begin();
-				ucit != m_unix_connections->m_connections.end();)
-			{
-				//
-				// Has this connection been closed druring this sample?
-				//
-				if(ucit->second.m_analysis_flags & sinsp_connection::AF_CLOSED)
-				{
-					//
-					// Yes, remove the connection from the table
-					//
-					m_unix_connections->m_connections.erase(ucit++);
-				}
-				else
-				{
-					++ucit;
-				}
-			}
-#endif// HAS_UNIX_CONNECTIONS
 
 #ifdef HAS_PIPE_CONNECTIONS
 			//

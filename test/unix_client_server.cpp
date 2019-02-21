@@ -173,9 +173,6 @@ private:
 TEST_F(sys_call_test, unix_client_server)
 {
 	int32_t callnum = 0;
-#ifdef HAS_UNIX_CONNECTIONS
-	int state = 0;
-#endif
 	bool first_connect_or_accept_seen = true;
 	string sport;
 
@@ -349,14 +346,6 @@ TEST_F(sys_call_test, unix_client_server)
 			callnum++;
 		}
 
-#ifdef HAS_UNIX_CONNECTIONS
-		if(PPME_SYSCALL_CLOSE_X == evt->get_type() && 0 == state && ends_with(evt->get_thread_info(false)->m_args[0], "unix_server.py"))
-		{
-			state = 1;
-			sinsp_threadinfo* ti = evt->get_thread_info();
-			ASSERT_EQ(1, (int)ti->m_ainfo->m_transaction_metrics.m_counter.m_count_in);
-		}
-#endif
 	};
 
 
@@ -366,9 +355,6 @@ TEST_F(sys_call_test, unix_client_server)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_FALSE(first_connect_or_accept_seen);
 	EXPECT_EQ(8, callnum);
-#ifdef HAS_UNIX_CONNECTIONS
-	EXPECT_EQ(1, state);
-#endif
 }
 
 TEST_F(sys_call_test, DISABLED_unix_client_server_with_server_starting_before_capturing_starts)

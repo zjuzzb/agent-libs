@@ -146,9 +146,8 @@ static const int TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER = 5;
 #define TOP_STATUS_CODES_IN_SAMPLE 10
 
 //
-// Should the library track unix and FD connections
+// Should the library track FD connections
 //
-#undef HAS_UNIX_CONNECTIONS
 #undef HAS_PIPE_CONNECTIONS
 
 //

@@ -407,104 +407,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 		/////////////////////////////////////////////////////////////////////////////
 		if(fdinfo->is_unix_socket())
 		{
-#ifdef HAS_UNIX_CONNECTIONS
-			// ignore invalid destination addresses
-			if(0 == fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
-			{
-//				return;
-			}
-
-			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
-			if(connection == NULL)
-			{
-				//
-				// We dropped the accept() or connect()
-				// Create a connection entry here and make an assumption this is the server FD.
-				// (we assume that a server usually starts with a read).
-				//
-				fdinfo->set_role_server();
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts());
-			}
-			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
-				(connection->m_analysis_flags & sinsp_connection::AF_CLOSED))
-			{
-				//
-				// We dropped both accept() and connect(), and the connection has already been established
-				// when handling a read on the other side.
-				//
-				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
-				{
-					//
-					// There is a closed connection with the same key. We drop its content and reuse it.
-					// We also mark it as reused so that the analyzer is aware of it
-					//
-					connection->reset();
-					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					fdinfo->set_role_server();
-				}
-				else
-				{
-					if(connection->is_server_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_client();
-						}
-					}
-					else if(connection->is_client_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_server();
-						}
-					}
-					else
-					{
-						//
-						// FDs don't match but the connection has not been closed yet.
-						// This seem to heppen with unix sockets, whose addresses are reused when 
-						// just on of the endpoints has been closed.
-						// Jusr recycle the connection.
-						//
-						if(fdinfo->is_role_server())
-						{
-							connection->reset_server();
-						}
-						else if(fdinfo->is_role_client())
-						{
-							connection->reset_client();
-						}
-						else
-						{
-							connection->reset();
-						}
-
-						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						fdinfo->set_role_server();
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts());
-			}
-#else
 			return;
-#endif // HAS_UNIX_CONNECTIONS
-
 		}
 		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
 		{
@@ -819,102 +722,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 		if(fdinfo->is_unix_socket())
 		{
-#ifdef HAS_UNIX_CONNECTIONS
-			// ignore invalid destination addresses
-			if(0 == fdinfo->m_sockinfo.m_unixinfo.m_fields.m_dest)
-			{
-//				return;
-			}
-
-			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
-			if(connection == NULL)
-			{
-				//
-				// We dropped the accept() or connect()
-				// Create a connection entry here and make an assumption this is the client FD
-				// (we assume that a client usually starts with a write)
-				//
-				fdinfo->set_role_client();
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
-					&scomm,
-					evt->m_tinfo->m_pid,
-				    tid,
-				    fd,
-				    fdinfo->is_role_client(),
-				    evt->get_ts());
-			}
-			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
-			{
-				//
-				// We dropped both accept() and connect(), and the connection has already been established
-				// when handling a read on the other side.
-				//
-				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
-				{
-					//
-					// There is a closed connection with the same key. We drop its content and reuse it.
-					// We also mark it as reused so that the analyzer is aware of it
-					//
-					connection->reset();
-					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-					fdinfo->set_role_client();
-				}
-				else
-				{
-					if(connection->is_server_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_client();
-						}
-					}
-					else if(connection->is_client_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_server();
-						}
-					}
-					else
-					{
-						//
-						// FDs don't match but the connection has not been closed yet.
-						// This seem to heppen with unix sockets, whose addresses are reused when 
-						// just on of the endpoints has been closed.
-						// Jusr recycle the connection.
-						//
-						if(fdinfo->is_role_server())
-						{
-							connection->reset_server();
-						}
-						else if(fdinfo->is_role_client())
-						{
-							connection->reset_client();
-						}
-						else
-						{
-							connection->reset();
-						}
-
-						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-						fdinfo->set_role_client();
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_unix_connections->add_connection(fdinfo->m_sockinfo.m_unixinfo,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts());
-			}
-#else
 			return;
-#endif // HAS_UNIX_CONNECTIONS
 		}
 		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
 		{
@@ -1262,22 +1070,6 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 	else if(family == PPM_AF_UNIX)
 	{
 		m_inspector->m_parser->set_unix_info(evt->m_fdinfo, packed_data);
-
-#ifdef HAS_UNIX_CONNECTIONS
-		//
-		// Mark this fd as a transaction
-		//
-		evt->m_fdinfo->set_is_transaction();
-
-		string scomm = evt->m_tinfo->get_comm();
-		m_analyzer->m_unix_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    evt->m_tinfo->m_lastevent_fd,
-		    true,
-		    evt->get_ts());
-#endif // HAS_UNIX_CONNECTIONS
 	}
 
 	//
@@ -1317,17 +1109,7 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 	{
-#ifdef HAS_UNIX_CONNECTIONS
-		m_analyzer->m_unix_connections->add_connection(new_fdinfo->m_sockinfo.m_unixinfo,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    newfd,
-		    false,
-		    evt->get_ts());
-#else
 		goto blupdate;
-#endif
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNINITIALIZED)
 	{
@@ -1371,13 +1153,6 @@ inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* param
 			connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, 
 				params->m_ts);
 		}
-#ifdef HAS_UNIX_CONNECTIONS
-		else if(params->m_fdinfo->is_unix_socket())
-		{
-			connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_unixinfo, 
-				params->m_ts);
-		}
-#endif
 		else
 		{
 			ASSERT(false);
@@ -1443,13 +1218,6 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	{
 		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
 	}
-#ifdef HAS_UNIX_CONNECTIONS
-	else if(params->m_fdinfo->is_unix_socket() && 
-		!params->m_fdinfo->has_no_role())
-	{
-		params->m_inspector->m_analyzer->m_unix_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_unixinfo);
-	}
-#endif
 }
 
 void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
@@ -1465,12 +1233,6 @@ void sinsp_analyzer_fd_listener::on_socket_shutdown(sinsp_evt *evt)
 		{
 			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
 		}
-#ifdef HAS_UNIX_CONNECTIONS
-		else
-		{
-			connection = m_analyzer->get_connection(evt->m_fdinfo->m_sockinfo.m_unixinfo, evt->get_ts());
-		}
-#endif
 
 		evt->m_fdinfo->m_usrstate->update(m_inspector->m_analyzer,
 			evt->m_tinfo,
