@@ -371,6 +371,138 @@ bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo, si
 	return true;
 }
 
+sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t* fdinfo, const ipv4tuple& tuple, sinsp_evt* evt, int64_t tid, int64_t fd, bool incoming)
+{
+	sinsp_connection* connection = m_analyzer->get_connection(tuple, evt->get_ts());
+
+	if(connection == nullptr)
+	{
+		//
+		// This is either:
+		//  - the first read of a UDP socket
+		//  - a TCP socket for which we dropped the accept() or connect()
+		// Create a connection entry here and try to automatically detect if this is the client or the server.
+		//
+		if(fdinfo->is_role_none())
+		{
+			if(!patch_network_role(evt->m_tinfo, fdinfo, incoming))
+			{
+				return connection;
+			}
+		}
+
+		string scomm = evt->m_tinfo->get_comm();
+
+		connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
+									    &scomm,
+									    evt->m_tinfo->m_pid,
+									    tid,
+									    fd,
+									    fdinfo->is_role_client(),
+									    evt->get_ts(),
+									    sinsp_connection::AF_NONE,
+									    0);
+	}
+	else if(connection->m_analysis_flags & sinsp_connection::AF_CLOSED)
+	{
+		//
+		// There is a closed connection with the same key. We drop its content and reuse it.
+		// We also mark it as reused so that the analyzer is aware of it
+		//
+
+		connection->reset();
+		connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+
+		if(fdinfo->is_role_none())
+		{
+			if(!patch_network_role(evt->m_tinfo, fdinfo, incoming))
+			{
+				return connection;
+			}
+		}
+
+		string scomm = evt->m_tinfo->get_comm();
+		connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
+									    &scomm,
+									    evt->m_tinfo->m_pid,
+									    tid,
+									    fd,
+									    fdinfo->is_role_client(),
+									    evt->get_ts(),
+									    sinsp_connection::AF_NONE,
+									    0);
+	}
+	else if((evt->m_tinfo->m_pid != connection->m_spid || fd != connection->m_sfd) &&
+		(evt->m_tinfo->m_pid != connection->m_dpid || fd != connection->m_dfd))
+	{
+		//
+		// We dropped both accept() and connect(), and the connection has already been established
+		// when handling a read on the other side.
+		//
+		if(connection->is_server_only())
+		{
+			if(fdinfo->is_role_none())
+			{
+				fdinfo->set_role_client();
+			}
+		}
+		else if(connection->is_client_only())
+		{
+			if(fdinfo->is_role_none())
+			{
+				fdinfo->set_role_server();
+			}
+		}
+		else
+		{
+			//
+			// FDs don't match but the connection has not been closed yet.
+			// This can happen in case of event drops, or when a connection
+			// is accepted by a process and served by another one.
+			//
+			if(fdinfo->is_role_server())
+			{
+				connection->reset_server();
+			}
+			else if(fdinfo->is_role_client())
+			{
+				connection->reset_client();
+			}
+			else
+			{
+				connection->reset();
+			}
+
+			connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+
+			if(fdinfo->is_role_none())
+			{
+				if(!patch_network_role(evt->m_tinfo, fdinfo, incoming))
+				{
+					return connection;
+				}
+			}
+		}
+
+		string scomm = evt->m_tinfo->get_comm();
+		connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
+									    &scomm,
+									    evt->m_tinfo->m_pid,
+									    tid,
+									    fd,
+									    fdinfo->is_role_client(),
+									    evt->get_ts(),
+									    sinsp_connection::AF_NONE,
+									    0);
+	}
+	else
+	{
+		connection->set_state(evt->m_errorcode);
+	}
+
+	return connection;
+}
+
 void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
 										 char *data, uint32_t original_len, uint32_t len)
 {
@@ -399,136 +531,9 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 		}
 		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
 		{
-			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
-			
-			if(connection == NULL)
-			{
-				//
-				// This is either:
-				//  - the first read of a UDP socket
-				//  - a TCP socket for which we dropped the accept() or connect()
-				// Create a connection entry here and try to automatically detect if this is the client or the server.
-				//
-				if(fdinfo->is_role_none())
-				{
-					if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
-					{
-						goto r_conn_creation_done;
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				
-				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts(),
-					sinsp_connection::AF_NONE,
-					0);
-			}
-			else if(connection->m_analysis_flags & sinsp_connection::AF_CLOSED)
-			{
-				//
-				// There is a closed connection with the same key. We drop its content and reuse it.
-				// We also mark it as reused so that the analyzer is aware of it
-				//
-
-				connection->reset();
-				connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-
-				if(fdinfo->is_role_none())
-				{
-					if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
-					{
-						goto r_conn_creation_done;
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts(),
-					sinsp_connection::AF_NONE,
-					0);
-			}
-			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
-			{
-				//
-				// We dropped both accept() and connect(), and the connection has already been established
-				// when handling a read on the other side.
-				//
-				if(connection->is_server_only())
-				{
-					if(fdinfo->is_role_none())
-					{
-						fdinfo->set_role_client();
-					}
-				}
-				else if(connection->is_client_only())
-				{
-					if(fdinfo->is_role_none())
-					{
-						fdinfo->set_role_server();
-					}
-				}
-				else
-				{
-					//
-					// FDs don't match but the connection has not been closed yet.
-					// This can happen in case of event drops, or when a connection
-					// is accepted by a process and served by another one.
-					//
-					if(fdinfo->is_role_server())
-					{
-						connection->reset_server();
-					}
-					else if(fdinfo->is_role_client())
-					{
-						connection->reset_client();
-					}
-					else
-					{
-						connection->reset();
-					}
-
-					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-
-					if(fdinfo->is_role_none())
-					{
-						if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
-						{
-							goto r_conn_creation_done;
-						}
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts(),
-					sinsp_connection::AF_NONE,
-					0);
-			}
-			else
-			{
-				connection->set_state(evt->m_errorcode);
-			}
+			connection = get_ipv4_connection(fdinfo, fdinfo->m_sockinfo.m_ipv4info, evt, tid, fd, true);
 		}
 
-r_conn_creation_done:
-	
 		//
 		// Attribute the read bytes to the proper connection side
 		//
@@ -658,136 +663,9 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		}
 		else if(fdinfo->is_ipv4_socket() && should_report_network(fdinfo))
 		{
-			connection = m_analyzer->get_connection(fdinfo->m_sockinfo.m_ipv4info, evt->get_ts());
-
-			if(connection == NULL)
-			{
-				//
-				// This is either:
-				//  - the first write of a UDP socket
-				//  - a TCP socket for which we dropped the accept() or connect()
-				// Create a connection entry here and try to detect if this is the client or the server by lookig
-				// at the ports.
-				// (we assume that a client usually starts with a write)
-				//
-				if(fdinfo->is_role_none())
-				{
-					if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
-					{
-						goto w_conn_creation_done;
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts(),
-					sinsp_connection::AF_NONE,
-					0);
-			}
-			else if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
-			{
-				//
-				// There is a closed connection with the same key. We drop its content and reuse it.
-				// We also mark it as reused so that the analyzer is aware of it
-				//
-				connection->reset();
-				connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-
-				if(fdinfo->is_role_none())
-				{
-					if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
-					{
-						goto w_conn_creation_done;
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts(),
-					sinsp_connection::AF_NONE,
-					0);
-			}
-			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
-			{
-				//
-				// We dropped both accept() and connect(), and the connection has already been established
-				// when handling a read on the other side.
-				//
-				if(connection->is_server_only())
-				{
-					if(fdinfo->is_role_none())
-					{
-						fdinfo->set_role_client();
-					}
-				}
-				else if(connection->is_client_only())
-				{
-					if(fdinfo->is_role_none())
-					{
-						fdinfo->set_role_server();
-					}
-				}
-				else
-				{
-					//
-					// FDs don't match but the connection has not been closed yet.
-					// This can happen in case of event drops, or when a commection
-					// is accepted by a process and served by another one.
-					//
-					if(fdinfo->is_role_server())
-					{
-						connection->reset_server();
-					}
-					else if(fdinfo->is_role_client())
-					{
-						connection->reset_client();
-					}
-					else
-					{
-						connection->reset();
-					}
-
-					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-
-					if(fdinfo->is_role_none())
-					{
-						if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
-						{
-							goto w_conn_creation_done;
-						}
-					}
-				}
-
-				string scomm = evt->m_tinfo->get_comm();
-				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
-					&scomm,
-					evt->m_tinfo->m_pid,
-					tid,
-					fd,
-					fdinfo->is_role_client(),
-					evt->get_ts(),
-					sinsp_connection::AF_NONE,
-					0);
-			}
-			else
-			{
-				connection->set_state(evt->m_errorcode);
-			}
+			connection = get_ipv4_connection(fdinfo, fdinfo->m_sockinfo.m_ipv4info, evt, tid, fd, false);
 		}
 
-w_conn_creation_done:
-		
 		//
 		// Attribute the read bytes to the proper connection side
 		//
