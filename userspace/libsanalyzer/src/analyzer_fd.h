@@ -87,4 +87,8 @@ private:
 	sinsp_analyzer* m_analyzer;
 	sinsp_proto_detector m_proto_detector;
 	sinsp_configuration* m_sinsp_config;
+
+#ifndef _WIN32
+	void handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const;
+#endif
 };

@@ -644,43 +644,8 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			return;
 		}
 
-		// Support for statsd protocol
-		static const uint32_t LOCALHOST_IPV4 = 0x0100007F; // network endian representation of 127.0.0.1
-		static const uint16_t STATSD_PORT = 8125;
-
 #ifndef _WIN32
-		if(m_analyzer->m_statsite_proxy &&
-		   fdinfo->is_role_client() &&
-		   fdinfo->is_udp_socket() &&
-		   fdinfo->get_serverport() == STATSD_PORT)
-		{
-			// This log line it's useful to debug, but it's not suitable for enabling it always
-			/*g_logger.format(sinsp_logger::SEV_DEBUG, "Detected statsd message ipv4: %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u container: %s",
-							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip & 0xFF,
-							(fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip >> 8 ) & 0xFF,
-							(fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip >> 16 ) & 0xFF,
-							(fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip >> 24 ) & 0xFF,
-							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport,
-							fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip & 0xFF,
-							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 8 ) & 0xFF,
-							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 16 ) & 0xFF,
-							(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip >> 24 ) & 0xFF,
-							fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport,
-							evt->get_thread_info(false)->m_container_id.c_str());*/
-			auto tinfo = evt->get_thread_info(false);
-			if(tinfo != nullptr && !tinfo->m_container_id.empty())
-			{
-				// Send the metric as is, so it will be aggregated by host
-				m_analyzer->m_statsite_proxy->send_metric(data, len);
-				m_analyzer->m_statsite_proxy->send_container_metric(tinfo->m_container_id, data, len);
-			}
-			else if(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) ||
-			        (fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4) ||
-			        m_sinsp_config->get_use_host_statsd())
-			{
-				m_analyzer->m_statsite_proxy->send_metric(data, len);
-			}
-		}
+		handle_statsd_write(evt, fdinfo, data, len);
 #endif
 
 		if(fdinfo->is_role_server())
@@ -759,6 +724,54 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		}
 	}
 }
+
+#ifndef _WIN32
+void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const
+{
+	// Support for statsd protocol
+	static const uint32_t LOCALHOST_IPV4 = 0x0100007F; // network endian representation of 127.0.0.1
+	static const uint16_t STATSD_PORT = 8125;
+
+	if(m_analyzer->m_statsite_proxy &&
+		fdinfo->is_role_client() &&
+		fdinfo->is_udp_socket() &&
+		fdinfo->get_serverport() == STATSD_PORT)
+	{
+		auto tinfo = evt->get_thread_info(false);
+
+#if 0
+		// This log line it's useful to debug, but it's not suitable for enabling it always
+		uint32_t client_ip = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip;
+		uint32_t server_ip = fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip;
+		g_logger.format(sinsp_logger::SEV_DEBUG, "Detected statsd message ipv4: %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u container: %s",
+				client_ip & 0xFF,
+				(client_ip >>  8) & 0xFF,
+				(client_ip >> 16) & 0xFF,
+				(client_ip >> 24) & 0xFF,
+				fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport,
+				server_ip & 0xFF,
+				(server_ip >>  8) & 0xFF,
+				(server_ip >> 16) & 0xFF,
+				(server_ip >> 24) & 0xFF,
+				fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport,
+				tinfo ? tinfo->m_container_id.c_str() : "<no data>");
+#endif
+
+		if(tinfo != nullptr && !tinfo->m_container_id.empty())
+		{
+			// Send the metric as is, so it will be aggregated by host
+			m_analyzer->m_statsite_proxy->send_metric(data, len);
+			m_analyzer->m_statsite_proxy->send_container_metric(tinfo->m_container_id, data, len);
+		}
+		else if(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) ||
+			(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4) ||
+			m_sinsp_config->get_use_host_statsd())
+		{
+			m_analyzer->m_statsite_proxy->send_metric(data, len);
+		}
+	}
+}
+#endif
 
 void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len)
 {
