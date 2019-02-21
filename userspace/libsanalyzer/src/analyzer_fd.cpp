@@ -550,63 +550,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 			trdir = sinsp_partial_transaction::DIR_IN;
 		}
 
-		//
-		// Check if this is a new transaction that needs to be initialized, and whose
-		// protocol needs to be discovered.
-		// NOTE: after two turns, we give up discovering the protocol and we consider this
-		//       to be just IP.
-		//
-		sinsp_partial_transaction *trinfo = fdinfo->m_usrstate;
-
-		if(trinfo == NULL)
-		{
-			fdinfo->m_usrstate = new sinsp_partial_transaction();
-			trinfo = fdinfo->m_usrstate;
-		}
-
-		if(!trinfo->is_active() ||
-		   (trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
-		{
-			//
-			// New or just detected transaction. Detect the protocol and initialize the transaction.
-			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something
-			//       like a shutdown().
-			//
-			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
-			{
-				sinsp_partial_transaction::type type =
-					m_proto_detector.detect_proto(evt, trinfo, trdir,
-								      (uint8_t*)data, len);
-
-				trinfo->mark_active_and_reset(type);
-			}
-			else
-			{
-				trinfo->mark_active_and_reset(trinfo->m_type);
-			}
-		}
-
-		//
-		// Update the transaction state.
-		//
-		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
-		{
-			trinfo->update(m_analyzer,
-				       evt->m_tinfo,
-				       fdinfo,
-				       connection,
-				       evt->m_tinfo->m_lastevent_ts,
-				       evt->get_ts(),
-				       evt->get_cpuid(),
-				       trdir,
-#if _DEBUG
-				       evt,
-				       fd,
-#endif
-				       data,
-				       original_len,
-				       len);
-		}
+		update_transaction(evt, fd, fdinfo, data, original_len, len, connection, trdir);
 	}
 }
 
@@ -667,68 +611,8 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			ASSERT(false);
 		}
 
-		/////////////////////////////////////////////////////////////////////////////
-		// Handle the transaction
-		/////////////////////////////////////////////////////////////////////////////
-		sinsp_partial_transaction::direction trdir = sinsp_partial_transaction::DIR_OUT;
-
-		//
-		// Check if this is a new transaction that needs to be initialized, and whose
-		// protocol needs to be discovered.
-		// NOTE: after two turns, we give up discovering the protocol and we consider this
-		//       to be just IP.
-		//
-		sinsp_partial_transaction *trinfo = fdinfo->m_usrstate;
-
-		if(trinfo == NULL)
-		{
-			fdinfo->m_usrstate = new sinsp_partial_transaction();
-			trinfo = fdinfo->m_usrstate;
-		}
-
-		if(!trinfo->is_active() ||
-		   (trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
-		{
-			//
-			// New or just detected transaction. Detect the protocol and initialize the transaction.
-			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something
-			//       like a shutdown().
-			//
-			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
-			{
-				sinsp_partial_transaction::type type =
-					m_proto_detector.detect_proto(evt, trinfo, trdir,
-								      (uint8_t*)data, len);
-
-				trinfo->mark_active_and_reset(type);
-			}
-			else
-			{
-				trinfo->mark_active_and_reset(trinfo->m_type);
-			}
-		}
-
-		//
-		// Update the transaction state.
-		//
-		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
-		{
-			trinfo->update(m_analyzer,
-				       evt->m_tinfo,
-				       fdinfo,
-				       connection,
-				       evt->m_tinfo->m_lastevent_ts,
-				       evt->get_ts(),
-				       evt->get_cpuid(),
-				       trdir,
-#if _DEBUG
-				       evt,
-				       fd,
-#endif
-				       data,
-				       original_len,
-				       len);
-		}
+		update_transaction(evt, fd, fdinfo, data, original_len, len, connection,
+				   sinsp_partial_transaction::DIR_OUT);
 	}
 }
 
@@ -779,6 +663,69 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt *evt, sinsp_fdinf
 	}
 }
 #endif
+
+void sinsp_analyzer_fd_listener::update_transaction(sinsp_evt *evt, int64_t fd, sinsp_fdinfo_t *fdinfo, char *data,
+						    uint32_t original_len, uint32_t len, sinsp_connection *connection,
+						    sinsp_partial_transaction::direction trdir)
+{
+	//
+	// Check if this is a new transaction that needs to be initialized, and whose
+	// protocol needs to be discovered.
+	// NOTE: after two turns, we give up discovering the protocol and we consider this
+	//       to be just IP.
+	//
+	sinsp_partial_transaction *trinfo = fdinfo->m_usrstate;
+
+	if(trinfo == NULL)
+	{
+		fdinfo->m_usrstate = new sinsp_partial_transaction();
+		trinfo = fdinfo->m_usrstate;
+	}
+
+	if(!trinfo->is_active() ||
+	   (trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
+	{
+		//
+		// New or just detected transaction. Detect the protocol and initialize the transaction.
+		// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something
+		//       like a shutdown().
+		//
+		if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
+		{
+			sinsp_partial_transaction::type type =
+				m_proto_detector.detect_proto(evt, trinfo, trdir,
+							      (uint8_t*)data, len);
+
+			trinfo->mark_active_and_reset(type);
+		}
+		else
+		{
+			trinfo->mark_active_and_reset(trinfo->m_type);
+		}
+	}
+
+	//
+	// Update the transaction state.
+	//
+	if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
+	{
+		trinfo->update(m_analyzer,
+			       evt->m_tinfo,
+			       fdinfo,
+			       connection,
+			       evt->m_tinfo->m_lastevent_ts,
+			       evt->get_ts(),
+			       evt->get_cpuid(),
+			       trdir,
+#if _DEBUG
+			       evt,
+			       fd,
+#endif
+			       data,
+			       original_len,
+			       len);
+	}
+}
 
 void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint32_t len)
 {

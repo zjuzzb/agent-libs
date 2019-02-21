@@ -91,4 +91,9 @@ private:
 #ifndef _WIN32
 	void handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const;
 #endif
+
+	void update_transaction(sinsp_evt *evt, int64_t fd, sinsp_fdinfo_t *fdinfo, char *data,
+				uint32_t original_len,
+				uint32_t len, sinsp_connection *connection,
+				sinsp_partial_transaction::direction trdir);
 };
