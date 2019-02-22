@@ -923,24 +923,13 @@ inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* param
 	//
 	// If this fd has an active transaction transaction table, mark it as unititialized
 	//
-	sinsp_connection *connection;
-	bool do_flush_transaction = params->m_fdinfo->m_usrstate->is_active();
-
-	if(do_flush_transaction)
+	sinsp_connection *connection = nullptr;
+	if(params->m_fdinfo->m_usrstate->is_active() && params->m_fdinfo->is_ipv4_socket())
 	{
-		if(params->m_fdinfo->is_ipv4_socket())
-		{
-			connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, 
-				params->m_ts);
-		}
-		else
-		{
-			ASSERT(false);
-			do_flush_transaction = false;
-		}
+		connection = params->m_inspector->m_analyzer->get_connection(params->m_fdinfo->m_sockinfo.m_ipv4info, params->m_ts);
 	}
 
-	if(do_flush_transaction)
+	if(connection)
 	{
 		params->m_fdinfo->m_usrstate->update(params->m_inspector->m_analyzer,
 			params->m_tinfo,
@@ -986,15 +975,13 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	if(params->m_fdinfo->is_transaction())
 	{
 		flush_transaction(params);
-
-		params->m_fdinfo->m_usrstate->mark_inactive();			
+		params->m_fdinfo->m_usrstate->mark_inactive();
 	}
 
 	//
 	// If the fd is in the connection table, schedule the connection for removal
 	//
-	if(params->m_fdinfo->is_ipv4_socket() && 
-		!params->m_fdinfo->has_no_role())
+	if(params->m_fdinfo->is_ipv4_socket() && !params->m_fdinfo->has_no_role())
 	{
 		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
 	}
