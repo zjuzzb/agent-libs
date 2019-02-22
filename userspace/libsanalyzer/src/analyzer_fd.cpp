@@ -187,6 +187,8 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 				tbuflen = buflen;
 			}
 
+			// XXX do we really want to unconditionally ignore the reassembly buffer?
+			// XXX if we do, why even populate it at all?
 			tbuf=buf;
 			tbuflen = buflen;
 
@@ -463,6 +465,9 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 	}
 
 	// add a new connection to the table
+	// XXX: what about AF_REUSED connections? given the comments (and code) in patch_network_role,
+	// XXX: we expect it to return true and not fall into the `return connection` path, which would mean
+	// XXX: we ignore that preexisting connection and create a new one
 	string scomm = evt->m_tinfo->get_comm();
 	connection = m_analyzer->m_ipv4_connections->add_connection(
 		fdinfo->m_sockinfo.m_ipv4info,
