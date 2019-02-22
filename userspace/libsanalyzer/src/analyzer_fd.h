@@ -81,7 +81,7 @@ private:
 	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
 	void flush_transaction(erase_fd_params* params);
 	sinsp_connection* get_ipv4_connection(sinsp_fdinfo_t* fdinfo, const ipv4tuple& tuple, sinsp_evt* evt, int64_t tid, int64_t fd, bool incoming);
-	void add_ipv4_connection(sinsp_evt* evt);
+	void add_client_ipv4_connection(sinsp_evt *evt);
 
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;

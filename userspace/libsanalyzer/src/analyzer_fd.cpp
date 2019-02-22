@@ -784,7 +784,7 @@ void sinsp_analyzer_fd_listener::on_sendfile(sinsp_evt *evt, int64_t fdin, uint3
 		NULL, len, 0);
 }
 
-void sinsp_analyzer_fd_listener::add_ipv4_connection(sinsp_evt* evt)
+void sinsp_analyzer_fd_listener::add_client_ipv4_connection(sinsp_evt *evt)
 {
 	int64_t tid = evt->get_tid();
 
@@ -838,7 +838,7 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 
 		if(family == PPM_AF_INET)
 		{
-			add_ipv4_connection(evt);
+			add_client_ipv4_connection(evt);
 		}
 	}
 	else if(family == PPM_AF_UNIX)
