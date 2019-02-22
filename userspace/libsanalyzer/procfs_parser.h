@@ -123,6 +123,7 @@ public:
 	sinsp_proc_file_stats read_proc_file_stats(int64_t pid, sinsp_proc_file_stats* old);
 	string read_proc_root(int64_t pid);
 
+	static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, set<uint16_t> &ports, const std::set<uint64_t> &inodes);
 	static int read_process_serverports(int64_t pid, const set<uint16_t> &oldports, set<uint16_t> &ports);
 private:
 #ifndef CYGWING_AGENT

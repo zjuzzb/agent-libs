@@ -1324,7 +1324,7 @@ string sinsp_procfs_parser::read_proc_root(int64_t pid)
 
 // If we end up scanning multiple processes within a namespace we may want
 // to start caching port info per namespace like sysdig does
-static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, set<uint16_t> &ports, const std::set<uint64_t> &inodes)
+int sinsp_procfs_parser::add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, set<uint16_t> &ports, const std::set<uint64_t> &inodes)
 {
 	int added = 0;
 	const int max_socks = 1000;
@@ -1414,6 +1414,9 @@ static int add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, s
 			added++;
 		}
 	}
+
+	fclose(fp);
+
 	if (socks == max_socks) {
 		g_logger.format(sinsp_logger::SEV_INFO, "procfs port scan: Stopped reading sockets from %s after %d lines", fname.c_str(), socks);
 	}
