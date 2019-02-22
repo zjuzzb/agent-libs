@@ -443,11 +443,9 @@ class PosixQueue:
 
 def prepare_prom_check(pc, port):
     # print "port:", port
-    options = pc.get("options")
-    use_https = _is_affirmative(options.get("use_https", False) if options else False)
-    host = "localhost"
-    if options and options.get("host") != None:
-        host = options["host"]
+    options = pc.get("options", {})
+    use_https = _is_affirmative(options.get("use_https", False))
+    host = options.get("host", "localhost")
     path = pc.get("path", "/metrics");
     if len(path) > 0 and path[0] != '/':
         path = "/" + path
@@ -458,8 +456,14 @@ def prepare_prom_check(pc, port):
         newconf["max_tags"] = pc["max_tags"]
     if pc.get("histograms") != None:
         newconf["histograms"] = pc["histograms"]
-    if options and options.get("ssl_verify") != None:
+    if options.get("ssl_verify") != None:
         newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
+    tocopy = ("username", "password",
+        "auth_token_path", "auth_cert_path", "auth_key_path")
+    for key in tocopy:
+        value = options.get(key)
+        if value != None:
+            newconf[key] = value
     newcheck = {
         "check_module": "prometheus",
         "log_errors": pc.get("log_errors", True),

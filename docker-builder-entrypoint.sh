@@ -186,7 +186,6 @@ case "$1" in
 	make)
 		if [ -z "$2" ]; then
 			# There is no second argument so just call make.
-			# This calls bootstrap agent every time.
 			bootstrap_agent
 			make -j$MAKE_JOBS
 		else
@@ -195,7 +194,7 @@ case "$1" in
 				build_single_cpp $2
 			else
 				# Make a specific target
-				cd /code/agent/build/release
+				bootstrap_agent
 				make -j$MAKE_JOBS $2 $3
 			fi
 		fi

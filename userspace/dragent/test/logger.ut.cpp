@@ -1,6 +1,6 @@
 #include <gtest.h>
-#include "dragent/logger.h"
-#include "dragent/watchdog_runnable_fatal_error.h"
+#include "dragent/src/logger.h" /* full path because multiple files have this name*/
+#include "watchdog_runnable_fatal_error.h"
 
 namespace
 {

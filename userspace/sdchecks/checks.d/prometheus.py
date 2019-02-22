@@ -47,8 +47,15 @@ class Prometheus(AgentCheck):
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
         ssl_verify = instance.get('ssl_verify', False)
+        auth = {
+            "username": instance.get('username', False),
+            "password": instance.get('password', False),
+            "auth_token_path": instance.get('auth_token_path', False),
+            "auth_cert_path": instance.get('auth_cert_path', False),
+            "auth_key_path": instance.get('auth_key_path', False)
+        }
 
-        metrics = self.get_prometheus_metrics(query_url, timeout, ssl_verify, "prometheus")
+        metrics = self.get_prometheus_metrics(query_url, timeout, ssl_verify, auth, "prometheus")
         num = 0
         try:
             for family in metrics:
@@ -168,9 +175,19 @@ class Prometheus(AgentCheck):
         except Exception as ex:
             raise AppCheckDontRetryException(ex)
 
-    def get_prometheus_metrics(self, url, timeout, ssl_verify, name):
+    def get_prometheus_metrics(self, url, timeout, ssl_verify, auth, name):
         try:
-            r = requests.get(url, timeout=timeout, verify=ssl_verify)
+            if auth.get("auth_token_path"):
+                with open(auth["auth_token_path"], 'r') as file:
+                    auth_token = file.read()
+                    r = requests.get(url, timeout=timeout, verify=ssl_verify, headers = {"Authorization":"Bearer " + auth_token})
+            elif auth.get("auth_cert_path") and auth.get("auth_key_path"):
+                cert = (auth["auth_cert_path"], auth["auth_key_path"])
+                r = requests.get(url, timeout=timeout, verify=ssl_verify, cert=cert)
+            elif auth.get("username") and auth.get("password"):
+                r = requests.get(url, timeout=timeout, verify=ssl_verify, auth=(auth["username"], auth["password"]))
+            else:
+                r = requests.get(url, timeout=timeout, verify=ssl_verify)
             r.raise_for_status()
         except requests.exceptions.Timeout:
             # If there's a timeout

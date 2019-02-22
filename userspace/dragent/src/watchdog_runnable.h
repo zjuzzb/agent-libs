@@ -84,6 +84,11 @@ public:
 	}
 
 	/**
+	 * Log how long since the last heartbeat.
+	 */
+	void log_report();
+
+	/**
 	 * Must be implemented by the derived class and must do whatever
 	 * the runnable does. Must call heartbeat or the dragent will
 	 * restart.

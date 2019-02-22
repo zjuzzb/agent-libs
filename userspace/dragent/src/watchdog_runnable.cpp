@@ -140,4 +140,10 @@ void watchdog_runnable::run()
 	LOG_INFO("%s terminating", m_name.c_str());
 }
 
+void watchdog_runnable::log_report()
+{
+	const int64_t age_ms = uptime::milliseconds() - m_last_heartbeat_ms;
+	LOG_INFO("%s last activity %" PRId64" ms ago", m_name.c_str(), age_ms);
+}
+
 } // namespace dragent

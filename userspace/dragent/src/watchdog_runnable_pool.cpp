@@ -37,4 +37,13 @@ void watchdog_runnable_pool::stop_all()
 	Poco::ThreadPool::defaultPool().stopAll();
 }
 
+void watchdog_runnable_pool::log_report() const
+{
+	for(auto current : m_runnables)
+	{
+		current.get().log_report();
+	}
+}
+
+
 } // namespace dragent

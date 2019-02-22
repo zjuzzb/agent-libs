@@ -1,10 +1,7 @@
 #include <cstdlib>
-#include "sys_call_test.h"
 #include <gtest.h>
 #include <SimpleOpt.h>
 #include <dragent/src/logger.h> /*full path because there are multiple files with this name*/
-
-using namespace std;
 
 namespace {
 
@@ -25,7 +22,7 @@ private:
 		Path p;
 		p.parseDirectory(logDir);
 		p.setFileName("draios_test.log");
-		string logsdir = p.toString();
+		std::string logsdir = p.toString();
 
 		AutoPtr<FileChannel> file_channel(new FileChannel(logsdir));
 
@@ -37,7 +34,7 @@ private:
 		AutoPtr<Channel> avoid_block(new avoid_block_channel(file_channel, "machine_test"));
 		AutoPtr<Channel> formatting_channel_file(new FormattingChannel(formatter, avoid_block));
 
-		Logger *loggerc = 0;
+		Logger *loggerc = nullptr;
 		if(m_log_to_console)
 		{
 			AutoPtr<Channel> console_channel(new ConsoleChannel());
@@ -55,15 +52,9 @@ private:
 		setup_dragent_logger();
 	}
 
-	void TearDown() override
-	{
-	}
-
 	bool m_log_to_console;
 
 };
-
-}
 
 
 class EventListener : public ::testing::EmptyTestEventListener
@@ -90,7 +81,7 @@ public:
 	{
 		if(!m_keep_capture_files && !test_info.result()->Failed())
 		{
-			string dump_filename = string("./captures/") + test_info.test_case_name() + "_	" + test_info.name() + ".scap";
+			std::string dump_filename = std::string("./captures/") + test_info.test_case_name() + "_	" + test_info.name() + ".scap";
 			remove(dump_filename.c_str());
 		}
 	}
@@ -119,6 +110,7 @@ CSimpleOpt::SOption g_rgOptions[] =
 	SO_END_OF_OPTIONS                       // END
 };
 
+} // anonymous namespace
 
 int main(int argc, char **argv)
 {

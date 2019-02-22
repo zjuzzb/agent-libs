@@ -115,7 +115,32 @@ bool prometheus_conf::match(const sinsp_threadinfo *tinfo,
 						replace_tokens(rule.m_config.m_path, container, infra_state, c_uid) :
 						rule.m_config.m_path;
 			}
-			out_opts = rule.m_config.m_options;
+			if (rule.m_config.m_options_subst && !rule.m_config.m_options.empty())
+			{
+				for (const auto &option : rule.m_config.m_options)
+				{
+					string value = replace_tokens(option.second, container, infra_state, c_uid);
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+						"Prometheus token subst: process %d, option %s: %s = %s",
+						(int)tinfo->m_pid, option.first.c_str(), option.second.c_str(), value.c_str());
+					if (value.empty())
+					{
+						// Not scanning when configured option is empty because an
+						// annotation may not be available in the hierarchy yet and we
+						// don't want the appcheck to get blacklisted prematurely
+						// Seen with user/pass coming from service annotations
+						g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Prometheus autodetection: process %d defined option %s is empty, not scanning",
+							(int)tinfo->m_pid, option.first.c_str(), option.second.c_str());
+						return false;
+					}
+					out_opts[option.first] = move(value);
+				}
+			}
+			else
+			{
+				out_opts = rule.m_config.m_options;
+			}
 			return true;
 		});
 }

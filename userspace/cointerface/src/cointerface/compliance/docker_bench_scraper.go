@@ -158,6 +158,12 @@ func (impl *DockerBenchImpl) Scrape(rootPath string, moduleName string,
 		Risk: low,
 	}
 
+	attr := &TaskResultAttribute{
+		DockerBenchScore: &bres.Score,
+	}
+
+	result.Attributes = append(result.Attributes, *attr)
+
 	// For those tests where the test can return a number of
 	// items, maps from test id to a description of the items
 	// suitable for inclusion in statsd metrics.

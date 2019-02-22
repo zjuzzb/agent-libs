@@ -14,8 +14,8 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
-include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent)
-include_directories(${PROJECT_BINARY_DIR}/userspace/dragent)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
+include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
@@ -90,9 +90,6 @@ add_executable(tests
 	uri.cpp
 	json_query.cpp
 	nodriver.cpp
-	userspace/dragent/blocking_queue.ut.cpp
-	userspace/dragent/watchdog_runnable.ut.cpp
-	userspace/dragent/logger.ut.cpp
 	userspace/libsanalyzer/parser_http.ut.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
 )

@@ -164,6 +164,7 @@ protected:
 		m_grpc_load = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)>(m_grpc_conn);
 		m_grpc_stop = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)>(m_grpc_conn);
 		m_grpc_get_future_runs = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncGetFutureRuns)>(m_grpc_conn);
+		m_grpc_run_tasks = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)>(m_grpc_conn);
 
 		// Also create a server listening on the statsd port
 		if ((m_statsd_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
@@ -237,6 +238,7 @@ protected:
 		m_grpc_load.reset();
 		m_grpc_start.reset();
 		m_grpc_stop.reset();
+		m_grpc_run_tasks.reset();
 		m_grpc_get_future_runs.reset();
 		m_grpc_conn.reset();
 		g_log->information("TearDown() complete");
@@ -400,6 +402,44 @@ protected:
 		m_grpc_start->do_rpc(start, callback);
         }
 
+	void run_tasks(std::vector<task_defs_t> &task_defs)
+	{
+		bool received_response = false;
+
+		auto callback =
+			[&](bool successful, sdc_internal::comp_run_result &res)
+				{
+					ASSERT_TRUE(successful);
+
+					ASSERT_TRUE(res.successful()) << string("Could not run compliance tasks (") + res.errstr();
+
+					received_response = true;
+				};
+
+		draiosproto::comp_run run;
+
+		for(auto &def: task_defs)
+		{
+			run.add_task_ids(def.id);
+		}
+
+		m_grpc_run_tasks->do_rpc(run, callback);
+
+		// Wait up to 10 seconds
+		for(uint32_t i=0; i < 1000; i++)
+		{
+			Poco::Thread::sleep(10);
+			m_grpc_run_tasks->process_queue();
+
+			if(received_response)
+			{
+				return;
+			}
+		}
+
+		FAIL() << "After 10 seconds, did not get response to RunTasks()";
+        }
+
 	void verify_task_result(task_defs_t &def, uint64_t num_results=1)
 	{
 		// Wait up to 10 seconds
@@ -525,6 +565,7 @@ protected:
 	std::shared_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
 	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
 	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)> m_grpc_stop;
+	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)> m_grpc_run_tasks;
 	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncGetFutureRuns)> m_grpc_get_future_runs;
 
 	// Maps from task name to all the results that have been received for that task
@@ -853,6 +894,27 @@ TEST_F(compliance_test, multiple_intervals_2)
 
 	// Should be 1 result from the "run now" task, and one for each interval
 	verify_task_result(multiple_intervals_2[0], 3);
+
+	stop_tasks();
+}
+
+TEST_F(compliance_test, run_tasks)
+{
+	start_tasks(one_task);
+
+	verify_task_result(one_task[0]);
+	verify_task_event(one_task[0]);
+	verify_metric(one_task[0]);
+
+	clear_results_events();
+
+	run_tasks(one_task);
+
+	// Normally this would fail other than the fact that we
+	// triggered running the task out-of-band.
+	verify_task_result(one_task[0]);
+	verify_task_event(one_task[0]);
+	verify_metric(one_task[0]);
 
 	stop_tasks();
 }

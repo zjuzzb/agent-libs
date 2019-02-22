@@ -71,6 +71,7 @@ struct rule_config {
 	bool m_path_subst;		// path contains {token(s)}
 	std::vector<port_filter_rule> m_port_rules;
 	std::map<std::string,std::string> m_options;
+	bool m_options_subst;	// one or more options contain {token(s)}
 };
 
 struct filter_rule {

@@ -59,15 +59,20 @@ TEST_F(dns_manager_test, add_sync_remove)
 	res &= m.match("afakev6fqdn", AF_INET6, &addr6[0], sinsp_utils::get_current_time_ns());
 	ASSERT_TRUE(res);
 
-	// change the resolved addresses and sleep enough for a refresh to happen
+	// change the resolved addresses
 	hosts.seekp(pos);
 	hosts.write("\n0.0.0.2 afakefqdn\n::3 afakev6fqdn\n", sizeof("\n0.0.0.2 afakefqdn\n::3 afakev6fqdn\n"));
 	hosts.flush();
-	sleep(4);
 
 	// now 0.0.0.1 and ::2 shouldn't match anymore
-	res = m.match("afakefqdn", AF_INET, &addr4, sinsp_utils::get_current_time_ns());
-	res |= m.match("afakev6fqdn", AF_INET6, &addr6[0], sinsp_utils::get_current_time_ns());
+	// Keep trying for up to 8 seconds (it can take a while for the DNS cache to refresh)
+	int num_tries = 8;
+	do {
+		sleep(1);
+		res = m.match("afakefqdn", AF_INET, &addr4, sinsp_utils::get_current_time_ns());
+		res |= m.match("afakev6fqdn", AF_INET6, &addr6[0], sinsp_utils::get_current_time_ns());
+		--num_tries;
+	} while (res && num_tries > 0);
 	ASSERT_TRUE(!res);
 
 	// 0.0.0.2 and ::3 should instead match now
@@ -77,8 +82,12 @@ TEST_F(dns_manager_test, add_sync_remove)
 	res &= m.match("afakev6fqdn", AF_INET6, &addr6[0], sinsp_utils::get_current_time_ns());
 	ASSERT_TRUE(res);
 
-	// sleep enough to trigger the erase timeout
-	sleep(11);
+	// Should take 8 seconds to erase. Keep checking for up to 14 seconds because Jenkins.
+	num_tries = 14;
+	do {
+		sleep(1);
+		--num_tries;
+	} while (num_tries > 0 && m.size() > 0);
 	ASSERT_EQ(m.size(), 0);
 
 	hosts.close();

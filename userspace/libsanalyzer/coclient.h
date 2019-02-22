@@ -279,6 +279,11 @@ protected:
 	{
 		if(m_cq)
 		{
+			if(m_state == STATE_CLOSED)
+			{
+				return;
+			}
+
 			m_ctx->TryCancel();
 
 			m_state = STATE_CLOSING;

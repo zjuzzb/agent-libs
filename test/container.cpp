@@ -346,7 +346,8 @@ TEST_F(sys_call_test, container_docker)
 		if(tinfo)
 		{
 			return !tinfo->m_container_id.empty() &&
-				tinfo->m_exe != "docker-runc";
+				tinfo->m_exe != "docker-runc" &&
+				tinfo->m_exe != "runc";
 		}
 
 		return false;

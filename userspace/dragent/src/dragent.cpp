@@ -12,6 +12,7 @@
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "monitor.h"
+#include "process_helpers.h"
 #include "utils.h"
 #ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
@@ -43,6 +44,11 @@ string compute_sha1_digest(SHA1Engine &engine, const string &path)
 	}
 	return DigestEngine::digestToHex(engine.digest());
 }
+
+// Number of seconds (of uptime) after which to update the priority of the
+// processes. This was chosen arbitrarily to be after the processes had time
+// to start.
+const uint32_t TIME_TO_UPDATE_PROCESS_PRIORITY = 5;
 
 };
 
@@ -921,6 +927,13 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	// We now have started all the subprocesses, so pass them to internal_metrics
 	update_subprocesses();
 
+
+	// We only want this to happen once
+	if(TIME_TO_UPDATE_PROCESS_PRIORITY == uptime_s)
+	{
+		update_subprocesses_priority();
+	}
+
 	uint64_t memory;
 	if(dragent_configuration::get_memory_usage_mb(&memory))
 	{
@@ -989,6 +1002,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	//
 	if(to_kill)
 	{
+		log_watchdog_report();
 
  		LOG_FATAL("Killing dragent process");
 
@@ -1047,6 +1061,32 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	update_subprocesses();
 }
 
+void dragent_app::log_watchdog_report() const
+{
+	LOG_INFO("About to kill dragent; listing all running processes.");
+	m_pool.log_report();
+
+	const uint64_t now_ns = sinsp_utils::get_current_time_ns();
+	const int64_t sinsp_worker_diff_ns = now_ns - m_sinsp_worker.get_last_loop_ns();
+	const int64_t data_handler_diff_ns = now_ns - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+
+	LOG_INFO("sinsp_worker last activity in  %" PRId64" ms ago", sinsp_worker_diff_ns/1000000);
+	LOG_INFO("data_handler last activity in  %" PRId64" ms ago", data_handler_diff_ns/1000000);
+
+	uint64_t now_s = now_ns / ONE_SECOND_IN_NS;
+	for(auto& proc : m_subprocesses_state)
+	{
+		auto& state = proc.second;
+		if(!state.valid())
+		{
+			continue;
+		}
+
+		const int64_t diff_s = now_s - state.last_loop_s();
+		LOG_INFO("%s last activity %" PRId64" s ago", proc.first.c_str(), diff_s);
+	}
+}
+
 void dragent_app::update_subprocesses()
 {
 	internal_metrics::subprocs_t subprocs;
@@ -1065,6 +1105,37 @@ void dragent_app::update_subprocesses()
 	}
 
 	m_internal_metrics->set_subprocesses(subprocs);
+}
+
+void dragent_app::update_subprocesses_priority()
+{
+	for(const dragent_configuration::ProcessValueMap::value_type& value : m_configuration.m_subprocesses_priority)
+	{
+		// This is the value configured by the yaml file. If it is the
+		// default of 0, then we just ignore it.
+		if(!value.second == 0)
+		{
+			continue;
+		}
+
+		ProcessStateMap::const_iterator state = m_subprocesses_state.find(value.first);
+		if(m_subprocesses_state.end() == state)
+		{
+			LOG_ERROR("Unable to change priority for process %s because pid was not saved",
+				  value.first.c_str());
+			continue;
+		}
+
+		LOG_INFO("Changing %s priority (%d) to %d",
+			 value.first.c_str(),
+			 state->second.pid(),
+			 value.second);
+
+		if(!process_helpers::change_priority(state->second.pid(), value.second))
+		{
+			LOG_ERROR("Unable to change priority for process %s", value.first.c_str());
+		}
+	}
 }
 
 #ifndef CYGWING_AGENT

@@ -23,8 +23,10 @@ type ModuleMgr struct {
 	customerId string
 	machineId string
 	Calendar *draiosproto.CompCalendar
+	Tasks map[uint64]*draiosproto.CompTask
 	IncludeDesc bool
 	SendFailedResults bool
+	SaveTempFiles bool
 	availModules map[string]*Module
 	evtsChannel chan *sdc_internal.CompTaskEvent
 	metricsChannel chan string
@@ -119,6 +121,7 @@ func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
 }
 
 func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
+	mgr.Tasks = make(map[uint64]*draiosproto.CompTask)
 	mgr.availModules = make(map[string]*Module)
 	mgr.evtsChannel = make(chan *sdc_internal.CompTaskEvent, 1000)
 	mgr.metricsChannel = make(chan string, 1000)
@@ -198,15 +201,23 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 	mgr.Calendar = start.Calendar
 	mgr.IncludeDesc = start.GetIncludeDesc()
 	mgr.SendFailedResults = start.GetSendFailedResults()
+	mgr.SaveTempFiles = start.GetSaveTempFiles()
+	mgr.Tasks = make(map[uint64]*draiosproto.CompTask)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	mgr.cancel = cancel
 
+	for _, module := range mgr.availModules {
+		module.RunModules(ctx)
+	}
+
 	for _, task := range mgr.Calendar.Tasks {
 
 		var stask *ScheduledTask
 		var err error
+
+		mgr.Tasks[*task.Id] = task
 
 		module, ok := mgr.availModules[*task.ModName]
 		if ! ok {
@@ -309,6 +320,14 @@ func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*s
 		mgr.cancel = nil
 	}
 
+	for _, module := range mgr.availModules {
+		if module.LastOutputDir != "" {
+			err := os.RemoveAll(module.LastOutputDir); if err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	log.Debugf("Returning from Stop: %v", result)
 
 	return result, nil
@@ -336,6 +355,58 @@ func (mgr *ModuleMgr) GetFutureRuns(ctx context.Context, req *sdc_internal.CompG
 	ret.Runs = stask.FutureRuns(start, *req.NumRuns)
 
 	log.Debugf("Returning from GetFutureRuns: %v", ret)
+
+	return ret, nil
+}
+
+func (mgr *ModuleMgr) RunTasks(ctx context.Context, req *draiosproto.CompRun) (*sdc_internal.CompRunResult, error) {
+	log.Debugf("Received RunTasks message: %s", req.String())
+
+	ret := &sdc_internal.CompRunResult{
+		Successful: proto.Bool(true),
+	}
+
+	for _, taskId := range req.TaskIds {
+
+		var task *draiosproto.CompTask
+		var stask *ScheduledTask
+		var err error
+
+		if task = mgr.Tasks[taskId]; task == nil {
+			ret.Successful = proto.Bool(false)
+			ret.Errstr = proto.String(fmt.Sprintf("No task matching task id %d", taskId))
+			return ret, nil;
+		}
+
+		module, ok := mgr.availModules[*task.ModName]
+		if ! ok {
+			err = fmt.Errorf("Module %s does not exist",
+				*task.ModName)
+		} else if _, err = os.Stat(path.Join(mgr.ModulesDir, *task.ModName)); os.IsNotExist(err) {
+			err = fmt.Errorf("Path for module %s not found",
+				*task.ModName)
+		}
+
+		if err != nil {
+			ret.Successful = proto.Bool(false)
+			ret.Errstr = proto.String(fmt.Sprintf("Could not create context for task %s: %s", *task.Name, err.Error()))
+
+			return ret, nil
+		}
+
+		stask = NewScheduledTask(mgr, task, module.Env(mgr))
+
+		if err = stask.RunNow(ctx); err != nil {
+			ret.Successful = proto.Bool(false)
+			ret.Errstr = proto.String(fmt.Sprintf("Could not run task %s: %s", *task.Name, err.Error()))
+
+			return ret, nil
+		}
+
+		// Results will be sent via the channels created in Start()
+	}
+
+	log.Debugf("Returning from RunTasks: %v", ret)
 
 	return ret, nil
 }

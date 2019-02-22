@@ -264,6 +264,7 @@ dragent_configuration::dragent_configuration()
 	m_security_compliance_send_failed_results = true;
 	m_security_compliance_refresh_interval = 120000000000;
 	m_security_compliance_kube_bench_variant = "";
+	m_security_compliance_save_temp_files = false;
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
@@ -774,9 +775,9 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 #ifndef CYGWING_AGENT
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 #endif
-	// Right now these two entries does not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<map<string, uint64_t>>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
-	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<map<string, uint64_t>>("watchdog", "subprocesses_timeout_s",
+	// Right now these two entries do not support merging between defaults and specified on config file
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<ProcessValue64Map>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
+	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<ProcessValue64Map>("watchdog", "subprocesses_timeout_s",
 		{
 			{"sdchecks", 60U /* This should match the default timeout in sdchecks.py */ },
 			{"sdjagent", 60U},
@@ -785,6 +786,16 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 			{"cointerface", 60U},
 			{"promex", 60U}
 		});
+	m_subprocesses_priority = m_config->get_scalar<ProcessValueMap>("subprocesses_priority",
+		{
+			{ "sdchecks", 0},
+			{ "sdjagent", 0 },
+			{ "mountedfs_reader", 0 },
+			{ "statsite_forwarder", 0 },
+			{ "cointerface", 0 },
+			{ "promex", 0 }
+		});
+
 
 	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
@@ -1118,6 +1129,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_compliance_refresh_interval = m_config->get_scalar<uint64_t>("security", "compliance_refresh_interval", 120000000000);
 	m_security_compliance_kube_bench_variant = m_config->get_scalar<string>("security", "compliance_kube_bench_variant", "");
 	m_security_compliance_send_failed_results = m_config->get_scalar<bool>("security", "compliance_send_failed_results", true);
+	m_security_compliance_save_temp_files = m_config->get_scalar<bool>("security", "compliance_save_temp_files", false);
 
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
@@ -1584,6 +1596,7 @@ void dragent_configuration::print_configuration() const
 		{
 			LOG_INFO(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
 		}
+		LOG_INFO(string("Will ") + (m_security_compliance_save_temp_files ? "" : "not ") + "keep temporary files for compliance tasks on disk");
 	}
 
 	if(m_suppressed_comms.size() > 0)

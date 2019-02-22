@@ -22,6 +22,13 @@ export AWS_DEFAULT_REGION="us-east-1"
 
 cd $SCRIPTS_DIR/../..
 
+function run_falco_docker_builder {
+    BTYPE=$1
+    ARG=$2
+
+    docker run --user $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -e FALCO_VERSION=$FALCO_VERSION -e BUILD_TYPE=$BTYPE -e MAKE_JOBS=$JOBS -v $PWD/build/falco:/build -v $PWD:/source: falcosecurity/falco-builder:latest $ARG
+}
+
 function build_components {
     rm -rf $BINARIES_DIR
     mkdir -p $BINARIES_DIR/debug
@@ -51,15 +58,16 @@ function build_components {
             cp sysdig/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
             ;;
         falco)
-            rm -rf falco/build || true
-            agent/bootstrap-sysdig
-            agent/bootstrap-falco
+            rm -rf build/falco || true
+	    mkdir -p build/falco
 
-            make -C falco/build/debug package VERBOSE=1 -j$JOBS
-            make -C falco/build/release package VERBOSE=1 -j$JOBS
+	    for btype in Release Debug; do
+		run_falco_docker_builder $btype cmake
+		run_falco_docker_builder $btype package
+	    done
 
-            cp falco/build/debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
-            cp falco/build/release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
+            cp build/falco/Debug/*{deb,rpm,tar.gz} $BINARIES_DIR/debug
+            cp build/falco/Release/*{deb,rpm,tar.gz} $BINARIES_DIR/release
             ;;
         *)
             false
@@ -122,8 +130,8 @@ function configure_debian_repo {
     echo " "$(du -b Packages) >> Release
     echo -n " "$(sha512sum Packages.gz | cut -d" " -f1) >> Release
     echo " "$(du -b Packages.gz) >> Release
-    gpg --yes --digest-algo SHA256 -abs -o Release.gpg Release
-    gpg --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
+    gpg --local-user EC51E8C4 --batch --no-tty --yes --digest-algo SHA256 -abs -o Release.gpg Release
+    gpg --local-user EC51E8C4 --batch --no-tty --yes -a -s --clearsign --digest-algo SHA256 --output  InRelease Release
     cd -
 
     cp $SCRIPTS_DIR/draios.list $REPOSITORY_DIR/deb

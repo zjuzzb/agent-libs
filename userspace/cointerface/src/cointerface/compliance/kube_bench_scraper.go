@@ -17,7 +17,10 @@ import (
 
 func findProcess(candidates []string, env []string) (bool) {
 	for _, cand := range candidates {
-		cmd := exec.Command("ps", "-C", cand)
+		// Check for the candidate at the beginning of the
+		// line, with an optional path
+		prefix := "^(/[^/[:space:]]*)*" + cand
+		cmd := exec.Command("pgrep", "-f", prefix)
 		cmd.Env = env
 
 		out, err := cmd.Output()
@@ -63,7 +66,7 @@ func (impl *KubeBenchImpl) Variant(stask *ScheduledTask) (string) {
 		// at this level we only need to distinguish between master
 		// and node versions.
 
-		servercmds := []string{"kube-apiserver", "hyperkube apiserver", "apiserver"}
+		servercmds := []string{"kube-apiserver", "hyperkube apiserver", "apiserver", "hypershift openshift-kube-apiserver"}
 		if findProcess(servercmds, stask.env) {
 			impl.variant = "master"
 		} else {
@@ -220,6 +223,12 @@ func (impl *KubeBenchImpl) Scrape(rootPath string, moduleName string,
 		WarnCount: bres.TotalWarn,
 		Risk: low,
 	}
+
+	attr := &TaskResultAttribute{
+		K8sNodeType: bres.NodeType,
+	}
+
+	result.Attributes = append(result.Attributes, *attr)
 
 	for _, section := range bres.Tests {
 

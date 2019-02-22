@@ -1,5 +1,6 @@
 # stdlib
 from collections import defaultdict, namedtuple
+import ctypes
 import time
 import urlparse
 
@@ -11,6 +12,8 @@ from checks import AgentCheck
 from config import _is_affirmative
 from util import headers
 
+# Loading this now to ensure we have it before potential namespace change
+_LIBNSS = ctypes.CDLL('libnss_dns.so.2')
 LOGGING_INTERVAL = 300 # secs
 
 class NodeNotFound(Exception):

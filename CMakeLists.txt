@@ -29,7 +29,7 @@ else()
 endif()
 set(DRAIOS_CARES_VERSION "1.13.0")
 set(DRAIOS_KUBECTL_VERSION "1.9.6")
-set(DRAIOS_KUBE_BENCH_VERSION "0.0.23.1")
+set(DRAIOS_KUBE_BENCH_VERSION "0.0.24.1")
 if(NOT CYGWIN)
 	set(DRAIOS_TBB_VERSION "2018_U5")
 endif()
@@ -118,7 +118,8 @@ if(NOT CYGWIN)
 	add_subdirectory(userspace/cointerface)
 endif()
 add_subdirectory(userspace/comp_modules)
-add_subdirectory(userspace/dragent)
+add_subdirectory(userspace/dragent/src)
+add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/draiosproto)
 add_subdirectory(userspace/libsanalyzer)
 if(NOT CYGWIN)
@@ -128,6 +129,10 @@ if(NOT CYGWIN)
 	add_subdirectory(test)
 	add_subdirectory(docker)
 endif()
+
+add_custom_target(run-unit-tests
+	COMMAND make run-unit-test-dragent
+)
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin

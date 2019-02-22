@@ -26,6 +26,11 @@ if [ ! -d "$DEPENDENCIES" ]; then
 	mkdir -p $DEPENDENCIES
 fi
 
+if [ $OS == "Windows_NT" ]; then
+	export PATH=/bin:/cygdrive/c/cygwin64/bin:$PATH
+	export LD_LIBRARY_PATH=/bin:/cygdrive/c/cygwin64/bin
+fi
+
 if [ $OS != "Windows_NT" ]; then
 	ZLIB_VER=1.2.11
 else
@@ -115,14 +120,25 @@ if [ ! -d "$PROTOBUF_V3_DIR" ]; then
 	    aclocal
 	    automake
 	fi
-	CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
+	if [ $OS != "Windows_NT" ]; then
+		CPPFLAGS=-I$ZLIB_DIR LDFLAGS=-L$ZLIB_DIR ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
+	else
+		CPPFLAGS=-I$ZLIB_DIR LDFLAGS="-L$ZLIB_DIR -L/cygdrive/c/cygwin64/bin -L/bin" ./configure --with-zlib --prefix=$PROTOBUF_V3_DIR/target
+	fi
 	make install
 fi
 
 if [ $OS != "Windows_NT" ]; then
 	export GOPATH=$DEPENDENCIES/go
 else
-	export GOPATH=C:/cygwin64$DEPENDENCIES/go
+	# GOPATH can't be relative, so we need the absolute path starting with C:/
+	# / is a link to C:/cygwin and can't be used
+	# TODO: Provide GOPATH as an optional parameter to this script
+	# The first path below works if you're building directly without using container with
+	# standard cygwin install. The second path works if you're using windows-agent-builder
+
+	# export GOPATH=C:/cygwin64$DEPENDENCIES/go
+	export GOPATH=C:/cygwin64/code/agent/dependencies/go
 fi
 if [ ! -d "$GOPATH" ]; then
 	mkdir $GOPATH
@@ -139,6 +155,7 @@ if [ ! -d "$GOGO_PROTOBUF_DIR" ]; then
 	if [ $OS != "Windows_NT" ]; then
 		go get -u -d $GOGO_PROTOBUF_PATH
 	else
+		cd $DEPENDENCIES/..
 		git clone $GOGO_PROTOBUF_URL $GOGO_PROTOBUF_WIN_CLONE_PATH
 	fi
 fi
@@ -517,11 +534,11 @@ if [ ! -f "${KUBECTL_BINARY}" ]; then
 	wget https://storage.googleapis.com/kubernetes-release/release/v1.9.6/bin/linux/amd64/kubectl -O $KUBECTL_BINARY
 fi
 
-KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.0.23.1
+KUBE_BENCH_DIR=$DEPENDENCIES/kube-bench-0.0.24.1
 if [ ! -d "${KUBE_BENCH_DIR}" ]; then
 	cd $DEPENDENCIES
-	wget $DEPENDENCIES_URL/kube-bench-0.0.23.1.tar.gz
-	tar -xzf kube-bench-0.0.23.1.tar.gz
+	wget $DEPENDENCIES_URL/kube-bench-0.0.24.1.tar.gz
+	tar -xzf kube-bench-0.0.24.1.tar.gz
 fi
 
 if [ $OS == "Windows_NT" ]; then

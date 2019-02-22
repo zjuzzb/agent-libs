@@ -132,6 +132,7 @@ message comp_start {
     required draiosproto.comp_calendar calendar = 3;
     optional bool include_desc = 4;
     optional bool send_failed_results = 5;
+    optional bool save_temp_files = 6;
 }
 
 message comp_stop {
@@ -162,9 +163,15 @@ message comp_future_runs {
     repeated string runs = 3;
 }
 
+message comp_run_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
 service ComplianceModuleMgr {
     rpc Load(comp_load) returns (comp_load_result) {}
     rpc Start(comp_start) returns (stream comp_task_event) {}
     rpc Stop(comp_stop) returns (comp_stop_result) {}
     rpc GetFutureRuns(comp_get_future_runs)returns (comp_future_runs){}
+    rpc RunTasks(draiosproto.comp_run) returns (comp_run_result) {}
 }

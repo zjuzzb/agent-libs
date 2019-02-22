@@ -24,6 +24,7 @@ using namespace std;
 security_mgr::security_mgr(const string& install_root)
 	: m_compliance_modules_loaded(false),
 	  m_compliance_load_in_progress(false),
+	  m_should_refresh_compliance_tasks(false),
 	  m_initialized(false),
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
@@ -79,8 +80,6 @@ void security_mgr::init(sinsp *inspector,
 
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
-
-	m_refresh_compliance_tasks_interval = make_unique<run_on_interval>(m_configuration->m_security_compliance_refresh_interval);
 
 	m_coclient = make_shared<coclient>(configuration->m_root_dir);
 
@@ -393,6 +392,11 @@ void security_mgr::process_event(sinsp_evt *evt)
 			m_grpc_start->process_queue();
 		}
 
+		if(m_grpc_run_tasks)
+		{
+			m_grpc_run_tasks->process_queue();
+		}
+
 		if(!m_compliance_modules_loaded && !m_compliance_load_in_progress)
 		{
 			load_compliance_modules();
@@ -403,11 +407,21 @@ void security_mgr::process_event(sinsp_evt *evt)
 			// We don't need the load connection/stub any longer.
 			m_grpc_load = NULL;
 			m_grpc_load_conn = NULL;
-			m_refresh_compliance_tasks_interval->run([this]() {
-					refresh_compliance_tasks();
-				}, ts_ns);
+
+			if(m_should_refresh_compliance_tasks)
+			{
+				refresh_compliance_tasks();
+				m_should_refresh_compliance_tasks = false;
+			}
 		}
 
+		if(!m_compliance_run.task_ids().empty())
+		{
+			run_compliance_tasks(m_compliance_run);
+
+			// Reset to empty message
+			m_compliance_run = draiosproto::comp_run();
+		}
 	}, ts_ns);
 
 	// Consider putting this in check_periodic_tasks above.
@@ -583,6 +597,17 @@ void security_mgr::stop_capture(const string &token)
 void security_mgr::set_compliance_calendar(draiosproto::comp_calendar &calendar)
 {
 	m_compliance_calendar = calendar;
+	request_refresh_compliance_tasks();
+}
+
+void security_mgr::request_refresh_compliance_tasks()
+{
+	m_should_refresh_compliance_tasks = true;
+}
+
+void security_mgr::set_compliance_run(draiosproto::comp_run &run)
+{
+	m_compliance_run = run;
 }
 
 void security_mgr::load_compliance_modules()
@@ -619,7 +644,7 @@ void security_mgr::refresh_compliance_tasks()
 {
 	g_log->debug("Checking for new compliance tasks from calendar: " + m_compliance_calendar.DebugString());
 
-	std::set<std::string> new_tasks;
+	std::set<uint64_t> new_tasks;
 
 	// The calendar might refer to tasks that are not enabled or
 	// tasks that don't match the scope of this agent or the
@@ -629,6 +654,7 @@ void security_mgr::refresh_compliance_tasks()
 
 	start.set_include_desc(m_configuration->m_security_include_desc_in_compliance_results);
 	start.set_send_failed_results(m_configuration->m_security_compliance_send_failed_results);
+	start.set_save_temp_files(m_configuration->m_security_compliance_save_temp_files);
 
 	for(auto &task : m_compliance_calendar.tasks())
 	{
@@ -672,7 +698,7 @@ void security_mgr::refresh_compliance_tasks()
 			param->set_val(m_configuration->m_security_compliance_kube_bench_variant);
 		}
 
-		new_tasks.insert(task.name());
+		new_tasks.insert(task.id());
 	}
 
 	if(new_tasks == m_cur_compliance_tasks)
@@ -741,6 +767,40 @@ void security_mgr::refresh_compliance_tasks()
 	m_grpc_start_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
 	m_grpc_start = make_unique<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)>(m_grpc_start_conn);
 	m_grpc_start->do_rpc(start, callback);
+}
+
+void security_mgr::run_compliance_tasks(draiosproto::comp_run &run)
+{
+	g_log->debug("Running compliance tasks: " + run.DebugString());
+
+	// Explicitly tearing down any prior start so the client is
+	// destroyed before the connection.
+	m_grpc_run_tasks = NULL;
+	m_grpc_run_tasks_conn = NULL;
+
+	auto callback =
+		[this](bool successful, sdc_internal::comp_run_result &res)
+		{
+			if(!successful)
+			{
+				g_log->error("Could not run compliance tasks (grpc error)");
+			}
+			else if(!res.successful())
+			{
+				g_log->error(string("Could not run compliance tasks (") + res.errstr()+ ")");
+			}
+			else
+			{
+				g_log->debug("Response from compliance run_tasks: res=" +
+					     res.DebugString());
+
+				// Results will be returned in the callback from start()
+			}
+		};
+
+	m_grpc_run_tasks_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
+	m_grpc_run_tasks = make_unique<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)>(m_grpc_run_tasks_conn);
+	m_grpc_run_tasks->do_rpc(run, callback);
 }
 
 void security_mgr::stop_compliance_tasks()
