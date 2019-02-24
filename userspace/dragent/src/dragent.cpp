@@ -1113,7 +1113,7 @@ void dragent_app::update_subprocesses_priority()
 	{
 		// This is the value configured by the yaml file. If it is the
 		// default of 0, then we just ignore it.
-		if(!value.second == 0)
+		if(value.second == 0)
 		{
 			continue;
 		}
