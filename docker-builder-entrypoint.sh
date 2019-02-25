@@ -19,23 +19,27 @@ rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exc
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
 
 if [[ $1 == "container" ]]; then
-	# Must be set before calling cmake in boostrap-agent
+	# Must be set before calling cmake in bootstrap-agent
 	export BUILD_DEB_ONLY=ON
 fi
 
 if [[ "`uname -m`" == "s390x" ]]; then
 	DOCKERFILE=Dockerfile.s390x
 	bootstrap_agent() {
+		local build_target="${1:-"release"}"
+
 		cd /code/agent
 		./bootstrap-agent
-		cd /code/agent/build/release
+		cd "/code/agent/build/${build_target}"
 	}
 else
 	DOCKERFILE=Dockerfile
 	bootstrap_agent() {
+		local build_target="${1:-"release"}"
+
 		cd /code/agent
 		scl enable devtoolset-2 ./bootstrap-agent
-		cd /code/agent/build/release
+		cd "/code/agent/build/${build_target}"
 	}
 fi
 
@@ -54,7 +58,9 @@ build_docker_image()
 
 build_package()
 {
-	bootstrap_agent
+	local build_target="${1:-"release"}"
+
+	bootstrap_agent "${build_target}"
 	make -j$MAKE_JOBS package
 
 	# We run bootstrap_agent twice to run cmake twice, changing the value
@@ -62,7 +68,7 @@ build_package()
 	# with the agent-slim/agent-kmodule components combined into a single
 	# agent package, and in the other invocation we get separate packages
 	# for each component
-	COMBINED_PACKAGE=OFF bootstrap_agent
+	COMBINED_PACKAGE=OFF bootstrap_agent "${build_target}"
 	make -j$MAKE_JOBS package
 	cp *.deb *.rpm /out
 }
@@ -133,55 +139,58 @@ build_single_cpp()
 	done
 }
 
+#
+# Run whatever builds/tests we want to run within the build container before
+# we submit.  Eventually it'll be nice to tie in the execution of unit tests
+# here as well.
+#
+build_presubmit()
+{
+	local target=""
+
+	for target in release debug; do
+		echo "Building ${target}"
+		(bootstrap_agent "${target}" && make -j${MAKE_JOBS}) || \
+			(echo "Building target '${target}' failed" && false)
+	done
+
+    echo "Running unit tests"
+    make -j$MAKE_JOBS run-unit-tests
+}
+readonly -f build_presubmit
+
+function bold() {
+	local -r bold=$(tput bold)
+	local -r normal=$(tput sgr0)
+
+    echo "${bold}${@}${normal}"
+}
+readonly -f bold
+
 case "$1" in
-	"")
-		# no arguments, fallthrough to help
-		;&
-	help)
-		bold=$(tput bold)
-		normal=$(tput sgr0)
-	echo "
-	This is the entry point for the Sysdig agent-builder.
-
-	To build and generate the agent container:
-	${bold}> agent-builder container${normal}
-
-	To build the agent and install to the local machine:
-	${bold}> agent-builder install${normal}
-
-	To build a particular target or file:
-	${bold}> agent-builder make ${normal}
-	${bold}> agent-builder make dragent${normal}
-	${bold}> agent-builder make analyzer.cpp${normal}
-
-	To see a list of possible targets:
-	${bold}> agent-builder make help${normal}
-
-	To get a bash shell inside the builder:
-	${bold}> agent-builder bash${normal}
-
-	"
-		;;
 	bash)
-		bootstrap_agent
+		bootstrap_agent "${2:-"release"}"
 		bash
 		;;
 	container)
-		bootstrap_agent
+		bootstrap_agent "${2:-"release"}"
 		build_container
 		;;
 	install)
-		bootstrap_agent
+		bootstrap_agent "${2:-"release"}"
 		make -j$MAKE_JOBS install
 		;;
 	package)
-		build_package
+		build_package "${2:-"release"}"
 		;;
 	release)
 		build_release
 		;;
 	sysdig)
 		build_sysdig
+		;;
+	presubmit)
+		build_presubmit
 		;;
 	make)
 		if [ -z "$2" ]; then
@@ -198,5 +207,34 @@ case "$1" in
 				make -j$MAKE_JOBS $2 $3
 			fi
 		fi
+		;;
+
+	# Catch "help", no arguments, or invalid arguments
+	*)
+        set +x
+		cat << EOF
+	This is the entry point for the Sysdig agent-builder.
+
+	To build and generate the agent container:
+	$(bold "> agent-builder container")
+
+	To build and generate the agent container with the debug agent:
+	$(bold "> agent-builder container debug")
+
+	To build the agent and install to the local machine:
+	$(bold "> agent-builder install")
+
+	To build a particular target or file:
+	$(bold "> agent-builder make")
+	$(bold "> agent-builder make dragent")
+	$(bold "> agent-builder make analyzer.cpp")
+
+	To see a list of possible targets:
+	$(bold "> agent-builder make help")
+
+	To get a bash shell inside the builder:
+	$(bold "> agent-builder bash")
+EOF
+        set -x
 		;;
 esac
