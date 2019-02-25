@@ -15,6 +15,8 @@
 #define TCP_USER_TIMEOUT	 18 /* How long for loss retry before timeout */
 #endif
 
+#define US_TO_S(_usec) ((_usec) / (1000 * 1000))
+
 DRAGENT_LOGGER();
 
 const chrono::seconds connection_manager::WORKING_INTERVAL_S(10);
@@ -216,19 +218,16 @@ bool connection_manager::connect()
 	m_last_connection_failure = chrono::system_clock::now();
 
 	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
-	         connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+	         US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US));
 
 	std::promise<SharedPtr<StreamSocket>> sock_promise;
 	std::future<SharedPtr<StreamSocket>> future_sock = sock_promise.get_future();
 
 	//
 	// Asynchronously connect to the collector
-	// We need the hostname as well as the SocketAddress because with just
-	// the address, SSL verification will fail.
 	//
-	SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
-	std::thread connect_thread([&sock_promise](SocketAddress& sa,
-	                                           string& hostname,
+	std::thread connect_thread([&sock_promise](string& hostname,
+	                                           uint16_t port,
 	                                           bool ssl_enabled,
 	                                           uint32_t transmit_buffer_size)
 	{
@@ -236,6 +235,7 @@ bool connection_manager::connect()
 
 		try
 		{
+			SocketAddress sa(hostname, port);
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_INFO("Connecting to collector " + sa.toString());
 
@@ -273,6 +273,26 @@ bool connection_manager::connect()
 				ssp = new Poco::Net::StreamSocket();
 				ssp->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 			}
+
+			// Set addtional socket options post-connect
+			ssp->setSendBufferSize(transmit_buffer_size);
+			ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+			ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+
+			try
+			{
+				// This option makes the connection fail earlier in case of unplugged cable
+				ssp->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, connection_manager::SOCKET_TCP_TIMEOUT_MS);
+			}
+			catch(const std::exception&)
+			{
+				// ignore if kernel does not support this
+				// alternatively, could be a setsockopt() call to avoid exception
+			}
+
+			LOG_INFO("Connected to collector");
+
+			sock_promise.set_value(SharedPtr<StreamSocket>(ssp));
 		}
 		catch(const Poco::IOException& e)
 		{
@@ -288,27 +308,14 @@ bool connection_manager::connect()
 			sock_promise.set_value(nullptr);
 			return;
 		}
-
-		ssp->setSendBufferSize(transmit_buffer_size);
-		ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
-		ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
-
-		try
+		catch(const std::future_error& e)
 		{
-			// This option makes the connection fail earlier in case of unplugged cable
-			ssp->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, connection_manager::SOCKET_TCP_TIMEOUT_MS);
+			LOG_ERROR("connect():future_error: %s", e.what());
+			sock_promise.set_value(nullptr);
+			return;
 		}
-		catch(const std::exception&)
-		{
-			// ignore if kernel does not support this
-			// alternatively, could be a setsockopt() call to avoid exception
-		}
-
-		LOG_INFO("Connected to collector");
-
-		sock_promise.set_value(SharedPtr<StreamSocket>(ssp));
-	}, std::ref(sa),
-	   std::ref(m_configuration->m_server_addr),
+	}, std::ref(m_configuration->m_server_addr),
+	   m_configuration->m_server_port,
 	   m_configuration->m_ssl_enabled,
 	   m_configuration->m_transmitbuffer_size);
 
@@ -321,20 +328,11 @@ bool connection_manager::connect()
 	// gets terminated or hits an error.
 	connect_thread.detach();
 
-	uint32_t waited_time;
-	uint32_t wait_for;
+	uint32_t waited_time_s;
+	uint32_t wait_for_s = US_TO_S(SOCKET_TIMEOUT_DURING_CONNECT_US);
 
-	if(m_reconnect_interval == 0)
-	{
-		wait_for = SOCKET_TIMEOUT_DURING_CONNECT_US;
-	}
-	else
-	{
-		wait_for = m_reconnect_interval;
-	}
-
-	LOG_INFO("Waiting to connect %u s", wait_for);
-	for(waited_time = 0; waited_time < wait_for; ++waited_time)
+	LOG_INFO("Waiting to connect %u s", wait_for_s);
+	for(waited_time_s = 0; waited_time_s < wait_for_s; ++waited_time_s)
 	{
 		if(!heartbeat())
 		{
@@ -346,7 +344,7 @@ bool connection_manager::connect()
 		}
 	}
 
-	if(waited_time >= wait_for)
+	if(waited_time_s >= wait_for_s)
 	{
 		LOG_WARNING("Connection attempt timed out. Retrying...");
 		disconnect();
@@ -452,6 +450,13 @@ void connection_manager::do_run()
 #endif
 
 			if (!connect()) {
+				// Reconnect backoff
+				uint32_t waited_s = 0;
+				while(heartbeat() && waited_s < m_reconnect_interval)
+				{
+					std::this_thread::sleep_for(std::chrono::seconds(1));
+					++waited_s;
+				}
 				continue;
 			}
 		}
