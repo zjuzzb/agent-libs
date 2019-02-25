@@ -429,21 +429,76 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 					sinsp_connection::AF_NONE,
 					0);
 			}
-			else if((!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
-				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd)) ||
-				(connection->m_analysis_flags & sinsp_connection::AF_CLOSED))
+			else if(connection->m_analysis_flags & sinsp_connection::AF_CLOSED)
+			{
+				//
+				// There is a closed connection with the same key. We drop its content and reuse it.
+				// We also mark it as reused so that the analyzer is aware of it
+				//
+
+				connection->reset();
+				connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+
+				if(fdinfo->is_role_none())
+				{
+					if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
+					{
+						goto r_conn_creation_done;
+					}
+				}
+
+				string scomm = evt->m_tinfo->get_comm();
+				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
+					&scomm,
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					fdinfo->is_role_client(),
+					evt->get_ts(),
+					sinsp_connection::AF_NONE,
+					0);
+			}
+			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
+				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
 				//
 				// We dropped both accept() and connect(), and the connection has already been established
 				// when handling a read on the other side.
 				//
-				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
+				if(connection->is_server_only())
+				{
+					if(fdinfo->is_role_none())
+					{
+						fdinfo->set_role_client();
+					}
+				}
+				else if(connection->is_client_only())
+				{
+					if(fdinfo->is_role_none())
+					{
+						fdinfo->set_role_server();
+					}
+				}
+				else
 				{
 					//
-					// There is a closed connection with the same key. We drop its content and reuse it.
-					// We also mark it as reused so that the analyzer is aware of it
+					// FDs don't match but the connection has not been closed yet.
+					// This can happen in case of event drops, or when a connection
+					// is accepted by a process and served by another one.
 					//
-					connection->reset();
+					if(fdinfo->is_role_server())
+					{
+						connection->reset_server();
+					}
+					else if(fdinfo->is_role_client())
+					{
+						connection->reset_client();
+					}
+					else
+					{
+						connection->reset();
+					}
+
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
 					if(fdinfo->is_role_none())
@@ -451,53 +506,6 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 						if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
 						{
 							goto r_conn_creation_done;
-						}
-					}
-				}
-				else
-				{
-					if(connection->is_server_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_client();
-						}
-					}
-					else if(connection->is_client_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_server();
-						}
-					}
-					else
-					{
-						//
-						// FDs don't match but the connection has not been closed yet.
-						// This can happen in case of event drops, or when a connection
-						// is accepted by a process and served by another one.
-						//
-						if(fdinfo->is_role_server())
-						{
-							connection->reset_server();
-						}
-						else if(fdinfo->is_role_client())
-						{
-							connection->reset_client();
-						}
-						else
-						{
-							connection->reset();
-						}
-
-						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-
-						if(fdinfo->is_role_none())
-						{
-							if(patch_network_role(evt->m_tinfo, fdinfo, true) == false)
-							{
-								goto r_conn_creation_done;
-							}
 						}
 					}
 				}
@@ -681,6 +689,34 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 					sinsp_connection::AF_NONE,
 					0);
 			}
+			else if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
+			{
+				//
+				// There is a closed connection with the same key. We drop its content and reuse it.
+				// We also mark it as reused so that the analyzer is aware of it
+				//
+				connection->reset();
+				connection->m_analysis_flags = sinsp_connection::AF_REUSED;
+
+				if(fdinfo->is_role_none())
+				{
+					if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
+					{
+						goto w_conn_creation_done;
+					}
+				}
+
+				string scomm = evt->m_tinfo->get_comm();
+				connection = m_analyzer->m_ipv4_connections->add_connection(fdinfo->m_sockinfo.m_ipv4info,
+					&scomm,
+					evt->m_tinfo->m_pid,
+					tid,
+					fd,
+					fdinfo->is_role_client(),
+					evt->get_ts(),
+					sinsp_connection::AF_NONE,
+					0);
+			}
 			else if(!(evt->m_tinfo->m_pid == connection->m_spid && fd == connection->m_sfd) &&
 				!(evt->m_tinfo->m_pid == connection->m_dpid && fd == connection->m_dfd))
 			{
@@ -688,13 +724,40 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 				// We dropped both accept() and connect(), and the connection has already been established
 				// when handling a read on the other side.
 				//
-				if(connection->m_analysis_flags == sinsp_connection::AF_CLOSED)
+				if(connection->is_server_only())
+				{
+					if(fdinfo->is_role_none())
+					{
+						fdinfo->set_role_client();
+					}
+				}
+				else if(connection->is_client_only())
+				{
+					if(fdinfo->is_role_none())
+					{
+						fdinfo->set_role_server();
+					}
+				}
+				else
 				{
 					//
-					// There is a closed connection with the same key. We drop its content and reuse it.
-					// We also mark it as reused so that the analyzer is aware of it
+					// FDs don't match but the connection has not been closed yet.
+					// This can happen in case of event drops, or when a commection
+					// is accepted by a process and served by another one.
 					//
-					connection->reset();
+					if(fdinfo->is_role_server())
+					{
+						connection->reset_server();
+					}
+					else if(fdinfo->is_role_client())
+					{
+						connection->reset_client();
+					}
+					else
+					{
+						connection->reset();
+					}
+
 					connection->m_analysis_flags = sinsp_connection::AF_REUSED;
 
 					if(fdinfo->is_role_none())
@@ -702,53 +765,6 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 						if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
 						{
 							goto w_conn_creation_done;
-						}
-					}
-				}
-				else
-				{
-					if(connection->is_server_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_client();
-						}
-					}
-					else if(connection->is_client_only())
-					{
-						if(fdinfo->is_role_none())
-						{
-							fdinfo->set_role_server();
-						}
-					}
-					else
-					{
-						//
-						// FDs don't match but the connection has not been closed yet.
-						// This can happen in case of event drops, or when a commection
-						// is accepted by a process and served by another one.
-						//
-						if(fdinfo->is_role_server())
-						{
-							connection->reset_server();
-						}
-						else if(fdinfo->is_role_client())
-						{
-							connection->reset_client();
-						}
-						else
-						{
-							connection->reset();
-						}
-
-						connection->m_analysis_flags = sinsp_connection::AF_REUSED;
-
-						if(fdinfo->is_role_none())
-						{
-							if(patch_network_role(evt->m_tinfo, fdinfo, false) == false)
-							{
-								goto w_conn_creation_done;
-							}
 						}
 					}
 				}
