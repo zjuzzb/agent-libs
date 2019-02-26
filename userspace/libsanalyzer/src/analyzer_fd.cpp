@@ -565,18 +565,18 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 		}
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
+		   (trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
-			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something 
+			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something
 			//       like a shutdown().
 			//
 			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
 			{
-				sinsp_partial_transaction::type type = 
-					m_proto_detector.detect_proto(evt, trinfo, trdir, 
-					(uint8_t*)data, len);
+				sinsp_partial_transaction::type type =
+					m_proto_detector.detect_proto(evt, trinfo, trdir,
+								      (uint8_t*)data, len);
 
 				trinfo->mark_active_and_reset(type);
 			}
@@ -592,20 +592,20 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
 		{
 			trinfo->update(m_analyzer,
-						   evt->m_tinfo,
-						   fdinfo,
-						   connection,
-						   evt->m_tinfo->m_lastevent_ts,
-						   evt->get_ts(),
-						   evt->get_cpuid(),
-						   trdir,
+				       evt->m_tinfo,
+				       fdinfo,
+				       connection,
+				       evt->m_tinfo->m_lastevent_ts,
+				       evt->get_ts(),
+				       evt->get_cpuid(),
+				       trdir,
 #if _DEBUG
-						   evt,
-						   fd,
+				       evt,
+				       fd,
 #endif
-						   data,
-						   original_len,
-						   len);
+				       data,
+				       original_len,
+				       len);
 		}
 	}
 }
@@ -670,6 +670,8 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		/////////////////////////////////////////////////////////////////////////////
 		// Handle the transaction
 		/////////////////////////////////////////////////////////////////////////////
+		sinsp_partial_transaction::direction trdir = sinsp_partial_transaction::DIR_OUT;
+
 		//
 		// Check if this is a new transaction that needs to be initialized, and whose
 		// protocol needs to be discovered.
@@ -685,18 +687,18 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 		}
 
 		if(!trinfo->is_active() ||
-			(trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
+		   (trinfo->m_n_direction_switches < 8 && trinfo->m_type <= sinsp_partial_transaction::TYPE_IP))
 		{
 			//
 			// New or just detected transaction. Detect the protocol and initialize the transaction.
-			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something 
+			// Note: m_type can be bigger than TYPE_IP if the connection has been reset by something
 			//       like a shutdown().
 			//
 			if(trinfo->m_type <= sinsp_partial_transaction::TYPE_IP)
 			{
-				sinsp_partial_transaction::type type = 
-					m_proto_detector.detect_proto(evt, trinfo, sinsp_partial_transaction::DIR_OUT,
-						(uint8_t*)data, len);
+				sinsp_partial_transaction::type type =
+					m_proto_detector.detect_proto(evt, trinfo, trdir,
+								      (uint8_t*)data, len);
 
 				trinfo->mark_active_and_reset(type);
 			}
@@ -706,26 +708,26 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 			}
 		}
 
+		//
+		// Update the transaction state.
+		//
 		if(trinfo->m_type != sinsp_partial_transaction::TYPE_UNKNOWN)
 		{
-			//
-			// Update the transaction state.
-			//
 			trinfo->update(m_analyzer,
-						   evt->m_tinfo,
-						   fdinfo,
-						   connection,
-						   evt->m_tinfo->m_lastevent_ts,
-						   evt->get_ts(),
-						   evt->get_cpuid(),
-						   sinsp_partial_transaction::DIR_OUT,
+				       evt->m_tinfo,
+				       fdinfo,
+				       connection,
+				       evt->m_tinfo->m_lastevent_ts,
+				       evt->get_ts(),
+				       evt->get_cpuid(),
+				       trdir,
 #if _DEBUG
-						   evt,
-						   fd,
+				       evt,
+				       fd,
 #endif
-						   data,
-						   original_len,
-						   len);
+				       data,
+				       original_len,
+				       len);
 		}
 	}
 }
