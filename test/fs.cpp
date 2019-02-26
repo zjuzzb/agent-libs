@@ -70,7 +70,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		int fd = creat(FILENAME, O_WRONLY);
+		int fd = creat(FILENAME, 0644);
 
 		if(fd < 0)
 		{
@@ -102,7 +102,7 @@ TEST_F(sys_call_test, fs_creat_ulink)
 				string fname = e->get_param_value_str("name", false);
 				if(fname == FILENAME)
 				{
-					EXPECT_EQ("0", e->get_param_value_str("mode"));
+					EXPECT_EQ("0644", e->get_param_value_str("mode"));
 				}
 
 				EXPECT_LT(0, NumberParser::parse(e->get_param_value_str("fd", false)));
