@@ -150,12 +150,9 @@ build_presubmit()
 
 	for target in release debug; do
 		echo "Building ${target}"
-		(bootstrap_agent "${target}" && make -j${MAKE_JOBS}) || \
+		(bootstrap_agent "${target}" && make -j${MAKE_JOBS} all run-unit-tests) || \
 			(echo "Building target '${target}' failed" && false)
 	done
-
-    echo "Running unit tests"
-    make -j$MAKE_JOBS run-unit-tests
 }
 readonly -f build_presubmit
 
