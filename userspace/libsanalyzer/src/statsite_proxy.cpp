@@ -6,6 +6,7 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 #include "statsite_proxy.h"
+#include "subprocess.h"
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
 #include <algorithm>
