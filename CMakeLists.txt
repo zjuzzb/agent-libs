@@ -134,7 +134,7 @@ if(NOT CYGWIN)
 endif()
 
 add_custom_target(run-unit-tests
-	COMMAND make run-unit-test-dragent
+	COMMAND $(MAKE) run-unit-test-dragent
 )
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
