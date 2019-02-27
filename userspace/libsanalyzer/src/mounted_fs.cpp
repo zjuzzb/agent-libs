@@ -112,10 +112,8 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 }
 
 mounted_fs_reader::mounted_fs_reader(bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
-	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
-	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
-	m_remotefs(remotefs),
-	m_mount_points(make_shared<mount_points_limits>(filters, mounts_limit_size))
+	m_mount_points(make_shared<mount_points_limits>(filters, mounts_limit_size)),
+	m_remotefs(remotefs)
 {
 }
 
@@ -155,6 +153,9 @@ int mounted_fs_reader::run()
 {
 #ifndef CYGWING_AGENT
 	auto pid = getpid();
+	posix_queue input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE);
+	posix_queue output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND);
+
 	g_logger.add_stderr_log();
 	g_logger.format(sinsp_logger::SEV_INFO, "Starting mounted_fs_reader with pid %u", pid);
 	int home_fd = 0;
@@ -218,7 +219,7 @@ int mounted_fs_reader::run()
 	{
 		// Send heartbeat
 		send_subprocess_heartbeat();
-		auto request_s = m_input.receive(1);
+		auto request_s = input.receive(1);
 		if(request_s.empty())
 		{
 			continue;
@@ -298,7 +299,7 @@ int mounted_fs_reader::run()
 			}
 		}
 		auto response_s = response_proto.SerializeAsString();
-		m_output.send(response_s);
+		output.send(response_s);
 	}
 #else
 	ASSERT(false);

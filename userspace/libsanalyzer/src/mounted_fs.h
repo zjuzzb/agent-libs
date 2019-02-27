@@ -66,7 +66,5 @@ private:
 	static int open_ns_fd(int pid);
 
 	mount_points_limits::sptr_t m_mount_points;
-	posix_queue m_input;
-	posix_queue m_output;
 	bool m_remotefs;
 };
