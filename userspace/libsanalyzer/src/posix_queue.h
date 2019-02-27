@@ -4,13 +4,12 @@
 
 #pragma once
 
-#include <sinsp.h>
-
 #ifndef _WIN32
-#include "analyzer_utils.h"
 #include <string>
 #include <mqueue.h>
 #include <fcntl.h>
+
+#include "noncopyable.h"
 
 class posix_queue: noncopyable
 {
@@ -30,12 +29,12 @@ public:
 	~posix_queue();
 
 	bool send(const std::string& msg);
-	string receive(const uint64_t timeout_s=0);
-	static bool remove(const string& name);
+	std::string receive(uint64_t timeout_s=0);
+	static bool remove(const std::string& name);
 private:
 	mqd_t m_queue_d;
 	direction_t m_direction;
-	string m_name;
+	std::string m_name;
 	char* m_readbuffer;
 	static const long MAX_MSGSIZE = 3 << 20; // 3 MiB
 	static const long MAX_QUEUES = 10;

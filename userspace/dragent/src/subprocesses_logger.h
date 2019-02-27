@@ -4,6 +4,7 @@
 #include "watchdog_runnable.h"
 #include "third-party/jsoncpp/json/json.h"
 #include "error_handler.h"
+#include "noncopyable.h"
 
 class watchdog_state;
 class pipe_manager: noncopyable

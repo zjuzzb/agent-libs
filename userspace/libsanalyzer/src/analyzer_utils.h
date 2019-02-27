@@ -139,16 +139,6 @@ unique_ptr<T> make_unique(Ts&&... params)
 }
 #endif // _WIN32
 
-// Use it as private superclass to make an object non copyable
-class noncopyable
-{
-public:
-	noncopyable(const noncopyable&) = delete;
-	noncopyable& operator=(const noncopyable&) = delete;
-protected:
-	noncopyable() = default;
-};
-
 #ifdef SIMULATE_DROP_MODE
 bool should_drop(sinsp_evt *evt);
 #endif
