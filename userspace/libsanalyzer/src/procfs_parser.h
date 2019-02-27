@@ -9,36 +9,6 @@
 
 typedef struct wh_t wh_t;
 
-class mounted_fs
-{
-public:
-	mounted_fs():
-			size_bytes(0),
-			used_bytes(0),
-			available_bytes(0),
-			total_inodes(0),
-			used_inodes(0)
-	{
-	}
-	explicit mounted_fs(const draiosproto::mounted_fs& proto);
-	mounted_fs(mounted_fs&&) = default;
-	mounted_fs& operator=(mounted_fs&&) = default;
-
-	void to_protobuf(draiosproto::mounted_fs* proto) const;
-
-private:
-	string device;
-	string mount_dir;
-	string type;
-	uint64_t size_bytes;
-	uint64_t used_bytes;
-	uint64_t available_bytes;
-	uint64_t total_inodes;
-	uint64_t used_inodes;
-
-	friend class sinsp_procfs_parser;
-};
-
 struct sinsp_proc_stat
 {
 	vector<double> m_user;
@@ -93,12 +63,8 @@ public:
 #else
 	sinsp_procfs_parser(sinsp* inspector, uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture, uint64_t ttl_s_cou, uint64_t ttl_s_mem);
 #endif	
-	void read_mount_points(mount_points_limits::sptr_t mount_points);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
 	void get_global_mem_usage_kb(int64_t* used_memory, int64_t* free_memory, int64_t* avail_memory, int64_t* used_swap, int64_t* total_swap, int64_t* avail_swap);
-
-	vector<mounted_fs> get_mounted_fs_list(bool remotefs_enabled,
-										   const string& mtab="/etc/mtab");
 
 #ifndef CYGWING_AGENT
 	void set_global_cpu_jiffies();
@@ -155,8 +121,6 @@ private:
     // Current implementation for read_cgroup_used_memory()
     int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
     double read_cgroup_used_cpuacct_cpu_time(const string &container_memory_cgroup, string& last_cpuacct_cgroup, int64_t *last_cpu_time);
-
-	mount_points_limits::sptr_t m_mount_points;
 
 	uint32_t m_ncpus;
 	int64_t m_physical_memory_kb;
@@ -254,30 +218,3 @@ inline void sinsp_procfs_parser::jiffies_t::set_current()
 	m_current_total = m_procfs_parser.get_global_cpu_jiffies(&m_current_steal);
 }
 #endif // CYGWING_AGENT
-
-class mounted_fs_proxy
-{
-public:
-	explicit mounted_fs_proxy();
-	unordered_map<string, vector<mounted_fs>> receive_mounted_fs_list();
-	bool send_container_list(const vector<sinsp_threadinfo*>& containers);
-private:
-	posix_queue m_input;
-	posix_queue m_output;
-};
-
-class mounted_fs_reader
-{
-public:
-	mounted_fs_reader(sinsp* inspector, bool remotefs, const mount_points_filter_vec& mount_points, unsigned mounts_limit_size);
-	int run();
-private:
-	static const uint16_t ERROR_EXIT = 1;
-	static const uint16_t DONT_RESTART_EXIT = 17;
-	static bool change_ns(int destpid);
-	static int open_ns_fd(int pid);
-	posix_queue m_input;
-	posix_queue m_output;
-	sinsp_procfs_parser m_procfs_parser;
-	bool m_remotefs;
-};

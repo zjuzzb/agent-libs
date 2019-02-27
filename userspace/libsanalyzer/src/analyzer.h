@@ -21,6 +21,7 @@
 #include "k8s_api_handler.h"
 #endif
 #include "procfs_parser.h"
+#include "mounted_fs.h"
 #ifndef CYGWING_AGENT
 #include "coclient.h"
 #include "infrastructure_state.h"
@@ -951,6 +952,7 @@ VISIBILITY_PRIVATE
 
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
+	unique_ptr<mounted_fs_reader> m_mounted_fs_reader;
 
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;
@@ -1012,7 +1014,6 @@ VISIBILITY_PRIVATE
 
 	metric_limits::sptr_t m_metric_limits;
 	std::shared_ptr<label_limits> m_label_limits;
-	mount_points_limits::sptr_t m_mount_points;
 
 	user_event_queue::ptr_t m_user_event_queue;
 

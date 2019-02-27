@@ -176,6 +176,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
 	metric_limits.cpp
 	metrics.cpp
+	mounted_fs.cpp
 	parser_http.cpp
 	parser_mysql.cpp
 	parser_postgres.cpp

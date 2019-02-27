@@ -445,8 +445,7 @@ void sinsp_analyzer::on_capture_start()
 						  m_configuration->get_procfs_scan_interval_ms() / 1000,
 						  m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
 #endif
-	m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
-	m_procfs_parser->read_mount_points(m_mount_points);
+	m_mounted_fs_reader.reset(new mounted_fs_reader(m_remotefs_enabled, m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 
 	m_sched_analyzer2 = new sinsp_sched_analyzer2(m_inspector, m_machine_info->num_cpus);
 	m_score_calculator = new sinsp_scores(m_inspector, m_sched_analyzer2);
@@ -4794,7 +4793,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			else if(!m_inspector->is_capture()) // When not live, fs stats break regression tests causing false positives
 			{
-				auto fs_list = m_procfs_parser->get_mounted_fs_list(m_remotefs_enabled);
+				auto fs_list = m_mounted_fs_reader->get_mounted_fs_list();
 				for(auto it = fs_list.begin(); it != fs_list.end(); ++it)
 				{
 					draiosproto::mounted_fs* fs = m_metrics->add_mounts();

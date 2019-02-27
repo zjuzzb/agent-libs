@@ -499,6 +499,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_extra_internal_metrics(m_configuration->m_extra_internal_metrics);
 
+	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	//
 	// Start the capture with sinsp
 	//
@@ -570,7 +571,6 @@ void sinsp_worker::init()
 	}
 
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
-	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
 	if(m_app_checks_enabled)
 	{
