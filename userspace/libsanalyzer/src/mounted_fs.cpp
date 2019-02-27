@@ -114,9 +114,9 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 mounted_fs_reader::mounted_fs_reader(bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
 	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
 	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
-	m_remotefs(remotefs)
+	m_remotefs(remotefs),
+	m_mount_points(make_shared<mount_points_limits>(filters, mounts_limit_size))
 {
-	read_mount_points(make_shared<mount_points_limits>(filters, mounts_limit_size));
 }
 
 int mounted_fs_reader::open_ns_fd(int pid)
@@ -304,11 +304,6 @@ int mounted_fs_reader::run()
 	ASSERT(false);
 	throw sinsp_exception("mounted_fs_reader::run not implemented on Windows");
 #endif
-}
-
-void mounted_fs_reader::read_mount_points(mount_points_limits::sptr_t mount_points)
-{
-	m_mount_points = mount_points;
 }
 
 vector<mounted_fs> mounted_fs_reader::get_mounted_fs_list(const string& mtab)
