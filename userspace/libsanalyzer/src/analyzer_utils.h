@@ -143,22 +143,6 @@ unique_ptr<T> make_unique(Ts&&... params)
 bool should_drop(sinsp_evt *evt);
 #endif
 
-// Use raw setns syscall for versions of glibc that don't include it (namely glibc-2.12)
-#if __GLIBC__ == 2 && __GLIBC_MINOR__ < 14
-//#define _GNU_SOURCE
-#include <unistd.h>
-#include <sys/syscall.h>
-#if defined(__NR_setns) && !defined(SYS_setns)
-#define SYS_setns __NR_setns
-#endif
-#ifdef SYS_setns
-inline int setns(int fd, int nstype)
-{
-	return syscall(SYS_setns, fd, nstype);
-}
-#endif
-#endif
-
 /**
  * This class allows you to count time used by some function in an easy way
  * you can use it in two ways:

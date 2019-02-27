@@ -15,6 +15,7 @@
 #include "filter.h"
 #include "filterchecks.h"
 #include "analyzer_utils.h"
+#include "setns.h"
 
 
 #ifdef SIMULATE_DROP_MODE

@@ -31,6 +31,8 @@
 #include <sys/quota.h>
 #include <unistd.h>
 
+#include "setns.h"
+
 using namespace std;
 
 using Poco::StringTokenizer;

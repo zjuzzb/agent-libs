@@ -29,7 +29,7 @@ if(Java_Development_FOUND)
 endif()
 if(JNI_FOUND)
     include(UseJava)
-    include_directories(${JAVA_INCLUDE_PATH} ${JAVA_INCLUDE_PATH2})
+    include_directories(${JAVA_INCLUDE_PATH} ${JAVA_INCLUDE_PATH2} ${CMAKE_SOURCE_DIR}/userspace/libsanalyzer/src)
     add_library(sdjagentjni SHARED
             native/com_sysdigcloud_sdjagent_CLibrary.h
             native/com_sysdigcloud_sdjagent_CLibrary.cpp
