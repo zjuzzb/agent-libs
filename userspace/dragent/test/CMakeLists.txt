@@ -46,7 +46,7 @@ target_link_libraries(unit-test-dragent
 )
 
 add_custom_target(run-unit-test-dragent
-	COMMAND unit-test-dragent
+	COMMAND valgrind ./unit-test-dragent
 )
 
 install(TARGETS unit-test-dragent
