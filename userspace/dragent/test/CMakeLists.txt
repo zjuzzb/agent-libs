@@ -29,14 +29,14 @@ add_executable(unit-test-dragent
 )
 
 target_link_libraries(unit-test-dragent
- 	pthread
+	pthread
 	sanalyzer
 	dragentl
- 	draiosproto
+	draiosproto
 	falco_engine
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
-  ${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
+	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
@@ -45,10 +45,29 @@ target_link_libraries(unit-test-dragent
 	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 )
 
-add_custom_target(run-unit-test-dragent
-	COMMAND unit-test-dragent
+file(
+	COPY valgrind/helgrind.suppressions
+	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+# Valgrind's thread analyzer, helgrind, doesn't work well with the release
+# version of the unit test binary -- the backtraces that we want to suppress
+# don't match reality in the code.  Rather than add suppressions for these
+# unexpected backtraces, we'll run helgrind only for debug builds.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_custom_target(run-unit-test-dragent
+		DEPENDS unit-test-dragent
+		COMMAND valgrind --gen-suppressions=all ./unit-test-dragent
+		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-dragent
+	)
+else()
+	add_custom_target(run-unit-test-dragent
+		DEPENDS unit-test-dragent
+		COMMAND valgrind --gen-suppressions=all ./unit-test-dragent
+	)
+endif()
 
 install(TARGETS unit-test-dragent
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	COMPONENT unit-test-dragent)
+

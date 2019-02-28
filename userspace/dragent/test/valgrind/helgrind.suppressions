@@ -1,0 +1,79 @@
+{
+   tcmalloc_CentralFreeList_FetchFromOneSpans
+   Helgrind:Race
+   fun:_ZN8tcmalloc15CentralFreeList17FetchFromOneSpansEiPPvS2_
+   fun:_ZN8tcmalloc15CentralFreeList21FetchFromOneSpansSafeEiPPvS2_
+   fun:_ZN8tcmalloc15CentralFreeList11RemoveRangeEPPvS2_i
+   fun:_ZN8tcmalloc11ThreadCache21FetchFromCentralCacheEmm
+   ...
+}
+
+{
+   std_atomic_bool_operator=
+   Helgrind:Race
+   fun:_ZNSt13__atomic_baseIbE5storeEbSt12memory_order
+   fun:_ZNSt13__atomic_baseIbEaSEb
+   fun:_ZNSt11atomic_boolaSEb
+   ...
+}
+
+{
+   std_atomic_bool_operator_bool
+   Helgrind:Race
+   fun:_ZNKSt13__atomic_baseIbE4loadESt12memory_order
+   fun:_ZNKSt11atomic_boolcvbEv
+   ...
+}
+
+{
+   poco_event_unknown_condition_variable
+   Helgrind:Misc
+   fun:pthread_cond_destroy_WRK
+   fun:pthread_cond_destroy@*
+   fun:_ZN4Poco5EventD1Ev
+   fun:_ZN4Poco6ThreadD1Ev
+   fun:_ZN4Poco12PooledThreadD1Ev
+   fun:_ZN4Poco12PooledThreadD0Ev
+   fun:_ZN4Poco12PooledThread7releaseEv
+   fun:_ZN4Poco10ThreadPool7stopAllEv
+   fun:_ZN4Poco10ThreadPoolD1Ev
+   fun:_ZN4Poco25ThreadPoolSingletonHolderD1Ev
+   fun:exit
+   fun:(below main)
+}
+
+{
+   poco_semaphore_unknown_condition_variable
+   Helgrind:Misc
+   fun:pthread_cond_destroy_WRK
+   fun:pthread_cond_destroy@*
+   fun:_ZN4Poco9SemaphoreD1Ev
+   ...
+}
+
+{
+   std_atomic_assignment
+   Helgrind:Race
+   fun:_ZNSt13__atomic_baseImE5storeEmSt12memory_order
+   fun:_ZNSt13__atomic_baseImEaSEm
+   ...
+}
+
+{
+   std_atomic_base_operator_long
+   Helgrind:Race
+   fun:_ZNKSt13__atomic_baseImE4loadESt12memory_order
+   fun:_ZNKSt13__atomic_baseImEcvmEv
+}
+
+
+{
+   poco_push_runnable
+   Helgrind:Race
+   fun:_ZN12_GLOBAL__N_113push_runnable3runEv
+   fun:_ZN4Poco12PooledThread3runEv
+   fun:_ZN4Poco10ThreadImpl13runnableEntryEPv
+   fun:mythread_wrapper
+   fun:start_thread
+   fun:clone
+}
