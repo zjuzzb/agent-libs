@@ -7,6 +7,11 @@ namespace draiosproto {
 class mounted_fs;
 }
 
+namespace sdc_internal {
+class mounted_fs_request;
+class mounted_fs_response;
+}
+
 class mounted_fs
 {
 public:
@@ -59,6 +64,10 @@ public:
 		return m_mount_points;
 	}
 private:
+#ifndef CYGWING_AGENT
+	int handle_mounted_fs_request(const char* root_dir, int home_fd, const sdc_internal::mounted_fs_request& request,
+		sdc_internal::mounted_fs_response& response);
+#endif
 
 	static const uint16_t ERROR_EXIT = 1;
 	static const uint16_t DONT_RESTART_EXIT = 17;
