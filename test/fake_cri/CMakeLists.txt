@@ -36,4 +36,8 @@ install(TARGETS fake_cri
 install(FILES
         fake_cri_agent_container.pb
         fake_cri_agent_pod.pb
-        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources)
+        fake_cri_crio_container.pb
+        fake_cri_crio_pod.pb
+        fake_cri_crio_images.pb
+        DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources
+        COMPONENT tests)

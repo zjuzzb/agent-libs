@@ -1222,6 +1222,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 	m_cri_socket_path = m_config->get_scalar<string>("cri", "socket_path", "");
 	m_cri_timeout_ms = m_config->get_scalar<int64_t>("cri", "timeout_ms", 1000);
+	m_cri_extra_queries = m_config->get_scalar<bool>("cri", "extra_queries", false);
 
 	if(m_cri_socket_path.empty())
 	{

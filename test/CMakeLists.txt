@@ -1,7 +1,6 @@
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
 add_subdirectory(fake_cri)
-add_subdirectory(test_certs)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
@@ -39,6 +38,7 @@ add_executable(tests
 	baseliner.cpp
 	capture_to_file_test.cpp
 	container.cpp
+	container_cgroup.cpp
 	container_cri.cpp
 	container_emitter_test.cpp
 	container_image_splitting.cpp

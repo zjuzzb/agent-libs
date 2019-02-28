@@ -829,6 +829,7 @@ enum container_type {
     CUSTOM = 6;
     CRI = 7;
     CONTAINERD = 8;
+    CRIO = 9;
 }
 
 message container_reporting_group {
