@@ -1229,3 +1229,4 @@ statsite_buffer_warning_length: 300
 cri:
   known_socket_paths:
     - /run/containerd/containerd.sock
+    - /var/run/crio/crio.sock

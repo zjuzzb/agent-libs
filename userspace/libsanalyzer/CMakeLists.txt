@@ -227,6 +227,7 @@ list(APPEND SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/lxc.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/mesos.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/rkt.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/runc.cpp
 
 	container_events/containerd_container.grpc.pb.cc
 	container_events/containerd_container.pb.cc
