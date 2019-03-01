@@ -782,19 +782,6 @@ TEST_F(sys_call_test, procfs_processcpuload)
 	ASSERT_EQ("CPU load didn't exceed expeted amount in 10 tries", "");
 }
 
-TEST_F(sys_call_test, procfs_get_mounted_fs_list)
-{
-	mount_points_filter_vec filters({{"*|autofs|*", false}, {"*|proc|*", false}, {"*|subfs|*", false}, {"*|debugfs|*", false},
-		{"*|devpts|*", false}, {"*|fusectl|*", false}, {"*|mqueue|*", false}, {"*|rpc_pipefs|*", false},
-		{"*|sysfs|*", false}, {"*|devfs|*", false}, {"*|devtmpfs|*", false}, {"*|kernfs|*", false},
-		{"*|ignore|*", false}, {"*|rootfs|*", false}, {"*|none|*", false}, {"*|*|*", true}});
-
-	mounted_fs_reader reader(false, filters, 15);
-	vector<mounted_fs> fs_list = reader.get_mounted_fs_list();
-	EXPECT_EQ(reader.get_limits()->get_filters().size(), filters.size());
-	EXPECT_GE(fs_list.size(), 1u);
-}
-
 class loadthread
 {
 public:

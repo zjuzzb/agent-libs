@@ -22,6 +22,7 @@ add_definitions( -DHAS_ANALYZER )
 
 add_executable(unit-test-libsanalyzer
 	main.cpp
+	mounted_fs.ut.cpp
 	parser_http.ut.cpp
 )
 

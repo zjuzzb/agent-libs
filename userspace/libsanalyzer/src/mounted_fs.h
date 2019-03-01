@@ -3,6 +3,12 @@
 #include "posix_queue.h"
 #include "mount_points_limits.h"
 
+#ifdef EXPOSE_INTERNALS_MOUNTED_FS_H
+#define MOUNTED_FS_H_VISIBILITY_PRIVATE public:
+#else
+#define MOUNTED_FS_H_VISIBILITY_PRIVATE private:
+#endif
+
 namespace draiosproto {
 class mounted_fs;
 }
@@ -29,7 +35,7 @@ public:
 
 	void to_protobuf(draiosproto::mounted_fs* proto) const;
 
-private:
+MOUNTED_FS_H_VISIBILITY_PRIVATE
 	string device;
 	string mount_dir;
 	string type;
@@ -63,7 +69,8 @@ public:
 	const mount_points_limits::sptr_t& get_limits() const {
 		return m_mount_points;
 	}
-private:
+
+MOUNTED_FS_H_VISIBILITY_PRIVATE
 #ifndef CYGWING_AGENT
 	int handle_mounted_fs_request(const char* root_dir, int home_fd, const sdc_internal::mounted_fs_request& request,
 		sdc_internal::mounted_fs_response& response);

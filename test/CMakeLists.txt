@@ -56,6 +56,7 @@ add_executable(tests
 	inf_state_test.cpp
 	memdump.cpp
 	metric_limits.cpp
+	mounted_fs.cpp
 	label_limits.cpp
 	k8s_limits.cpp
 	internal_metrics.cpp
