@@ -123,7 +123,9 @@ add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent/src)
 add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/draiosproto)
-add_subdirectory(userspace/libsanalyzer)
+add_subdirectory(userspace/libsanalyzer/src)
+add_subdirectory(userspace/libsanalyzer/test)
+add_subdirectory(userspace/libsanalyzer/tests)
 if(NOT CYGWIN)
 	add_subdirectory(userspace/sdjagent)
 	add_subdirectory(userspace/sdchecks)
@@ -135,6 +137,7 @@ endif()
 
 add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-dragent
+	COMMAND $(MAKE) run-unit-test-libsanalyzer
 )
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite

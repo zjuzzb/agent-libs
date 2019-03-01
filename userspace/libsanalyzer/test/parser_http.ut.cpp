@@ -1,7 +1,7 @@
 #include <gtest.h>
 #include <string>
 #include <vector>
-#include <libsanalyzer/parser_http.h>
+#include <parser_http.h>
 
 
 namespace {

@@ -12,7 +12,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
-include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
@@ -90,7 +90,6 @@ add_executable(tests
 	uri.cpp
 	json_query.cpp
 	nodriver.cpp
-	userspace/libsanalyzer/parser_http.ut.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
 )
 
