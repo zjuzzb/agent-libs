@@ -26,13 +26,29 @@ add_executable(unit-test-libsanalyzer
 
 target_link_libraries(unit-test-libsanalyzer
 	sanalyzer
- 	draiosproto
+	draiosproto
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 
-add_custom_target(run-unit-test-libsanalyzer
-	COMMAND valgrind ./unit-test-libsanalyzer
+file(
+	COPY valgrind/helgrind.suppressions
+	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
+
+# Valgrind's thread analyzer, helgrind, doesn't work well with the release
+# version of the unit test binary -- the backtraces that we want to suppress
+# don't match reality in the code.  Rather than add suppressions for these
+# unexpected backtraces, we'll run helgrind only for debug builds.
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	add_custom_target(run-unit-test-libsanalyzer
+		COMMAND valgrind --gen-suppressions=all ./unit-test-libsanalyzer
+		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-libsanalyzer
+	)
+else()
+	add_custom_target(run-unit-test-libsanalyzer
+		COMMAND valgrind --gen-suppressions=all ./unit-test-libsanalyzer
+	)
+endif()
 
 install(TARGETS unit-test-libsanalyzer
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
