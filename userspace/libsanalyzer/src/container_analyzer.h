@@ -3,6 +3,7 @@
 #include "metrics.h"
 #include <delays.h>
 #include "protostate.h"
+#include "analyzer_file_stat.h"
 
 class infrastructure_state;
 class sinsp_connection_aggregator;
@@ -18,6 +19,8 @@ public:
 	vector<vector<sinsp_trlist_entry>> m_server_transactions;
 	vector<vector<sinsp_trlist_entry>> m_client_transactions;
 	unique_ptr<unordered_map<uint16_t, sinsp_connection_aggregator>> m_connections_by_serverport;
+	analyzer_top_file_stat_map m_files_stat;
+	analyzer_top_device_stat_map m_devs_stat;
 
 	void set_percentiles(const std::set<double>& percentiles)
 	{

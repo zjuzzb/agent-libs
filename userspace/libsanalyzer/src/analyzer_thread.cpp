@@ -74,6 +74,8 @@ void sinsp_procinfo::clear()
 	}
 
 	m_protostate.clear();
+	m_files_stat.clear();
+	m_devs_stat.clear();
 	m_fd_count = 0;
 	m_start_count = 0;
 	m_proc_count = 0;
@@ -309,6 +311,8 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 		}
 
 		m_procinfo->m_protostate.add(&other->m_main_thread_ainfo->m_protostate);
+		m_procinfo->m_files_stat.add(other->m_main_thread_ainfo->m_files_stat);
+		m_procinfo->m_devs_stat.add(other->m_main_thread_ainfo->m_devs_stat);
 	}
 
 	m_procinfo->m_fd_count += other->m_tinfo->m_fdtable.size();
@@ -367,6 +371,8 @@ void thread_analyzer_info::clear_all_metrics()
 		}
 
 		m_main_thread_ainfo->m_protostate.clear();
+		m_main_thread_ainfo->m_files_stat.clear();
+		m_main_thread_ainfo->m_devs_stat.clear();
 	}
 	m_called_execve = false;
 	clear_found_app_checks();

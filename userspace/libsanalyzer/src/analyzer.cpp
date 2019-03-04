@@ -2094,6 +2094,14 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		if(container)
 		{
 			container->m_transaction_counters.add(&procinfo->m_proc_transaction_metrics);
+			if(m_top_files_per_container > 0)
+			{
+				container->m_files_stat.add(procinfo->m_files_stat);
+			}
+			if(m_top_file_devices_per_container > 0)
+			{
+				container->m_devs_stat.add(procinfo->m_devs_stat);
+			}
 		}
 
 		if(procinfo->m_proc_transaction_metrics.get_counter()->m_count_in != 0)
@@ -2520,6 +2528,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 				tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 			}
+
+			procinfo->m_files_stat.emit(proc, m_top_files_per_prog);
+			procinfo->m_devs_stat.emit(proc, m_device_map, m_top_file_devices_per_prog);
 
 			//
 			// client-server role
@@ -4485,8 +4496,11 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
-			m_fd_listener->m_files_stat.emit(m_metrics, TOP_FILES_IN_SAMPLE);
+			m_fd_listener->m_files_stat.emit(m_metrics, m_top_files_per_host);
+			m_fd_listener->m_devs_stat.emit(m_metrics, m_device_map, m_top_file_devices_per_host);
+
 			m_fd_listener->m_files_stat.clear();
+			m_fd_listener->m_devs_stat.clear();
 #endif // CYGWING_AGENT
 
 #ifndef _WIN32
@@ -6613,6 +6627,9 @@ sinsp_analyzer::emit_container(const string &container_id,
 	}
 #endif
 
+	it_analyzer->second.m_files_stat.emit(container, m_top_files_per_container);
+	it_analyzer->second.m_devs_stat.emit(container, m_device_map, m_top_file_devices_per_container);
+
 	sinsp_connection_aggregator::filter_and_emit(*it_analyzer->second.m_connections_by_serverport,
 												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
 
@@ -7557,6 +7574,8 @@ void analyzer_container_state::clear()
 	m_server_transactions.clear();
 	m_client_transactions.clear();
 	m_connections_by_serverport->clear();
+	m_files_stat.clear();
+	m_devs_stat.clear();
 }
 
 vector<string> stress_tool_matcher::m_comm_list;

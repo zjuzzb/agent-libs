@@ -492,7 +492,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 	if(fdinfo->is_file())
 	{
-		account_io(evt->get_thread_info(), fdinfo->m_name, original_len, evt->m_tinfo->m_latency);
+		account_io(evt->get_thread_info(), fdinfo->m_name, fdinfo->m_dev, original_len, evt->m_tinfo->m_latency);
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
@@ -558,7 +558,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 	if(fdinfo->is_file())
 	{
-		account_io(evt->get_thread_info(), fdinfo->m_name, original_len, evt->m_tinfo->m_latency);
+		account_io(evt->get_thread_info(), fdinfo->m_name, fdinfo->m_dev, original_len, evt->m_tinfo->m_latency);
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
@@ -966,12 +966,14 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 		ASSERT(evt->m_fdinfo->m_name == fullpath);
 		if(evt->m_fdinfo->is_file())
 		{
-			account_file_open(evt->get_thread_info(), fullpath);
+			account_file_open(evt->get_thread_info(), fullpath, evt->m_fdinfo->m_dev);
 		}
 	}
 	else
 	{
-		account_error(evt->get_thread_info(), fullpath);
+		// on errors we don't get the device info anyway so there's no point
+		// in checking if evt->m_fdinfo != nullptr
+		account_error(evt->get_thread_info(), fullpath, 0);
 	}
 
 	//
@@ -1005,7 +1007,7 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 	{
 		if(evt->m_fdinfo->is_file())
 		{
-			account_error(evt->get_thread_info(), evt->m_fdinfo->m_name);
+			account_error(evt->get_thread_info(), evt->m_fdinfo->m_name, evt->m_fdinfo->m_dev);
 		}
 		else if(evt->m_fdinfo->is_transaction())
 		{
@@ -1107,7 +1109,7 @@ inline bool sinsp_analyzer_fd_listener::should_account_io(const sinsp_threadinfo
 #endif
 	return true;
 }
-void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const string &name, uint32_t bytes, uint64_t time_ns)
+void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const string &name, uint32_t dev, uint32_t bytes, uint64_t time_ns)
 {
 	if (!should_account_io(tinfo))
 	{
@@ -1115,9 +1117,27 @@ void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const strin
 	}
 
 	m_files_stat[name].account_io(bytes, time_ns);
+
+	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
+	if (m_analyzer->detailed_fileio_reporting())
+	{
+		mt_ainfo->m_files_stat[name].account_io(bytes, time_ns);
+	}
+
+	if (dev != 0)
+	{
+		if (m_analyzer->fileio_device_reporting())
+		{
+			m_devs_stat[dev].account_io(bytes, time_ns);
+		}
+		if (m_analyzer->detailed_fileio_device_reporting())
+		{
+			mt_ainfo->m_devs_stat[dev].account_io(bytes, time_ns);
+		}
+	}
 }
 
-void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, const string& name)
+void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, const string& name, uint32_t dev)
 {
 	if (!should_account_io(tinfo))
 	{
@@ -1125,15 +1145,51 @@ void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, cons
 	}
 
 	m_files_stat[name].account_file_open();
+
+	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
+	if (m_analyzer->detailed_fileio_reporting())
+	{
+		mt_ainfo->m_files_stat[name].account_file_open();
+	}
+
+	if (dev != 0)
+	{
+		if (m_analyzer->fileio_device_reporting())
+		{
+			m_devs_stat[dev].account_file_open();
+		}
+		if (m_analyzer->detailed_fileio_device_reporting())
+		{
+			mt_ainfo->m_devs_stat[dev].account_file_open();
+		}
+	}
 }
 
-void sinsp_analyzer_fd_listener::account_error(sinsp_threadinfo* tinfo, const string& name) {
+void sinsp_analyzer_fd_listener::account_error(sinsp_threadinfo* tinfo, const string& name, uint32_t dev) {
 	if (!should_account_io(tinfo))
 	{
 		return;
 	}
 
 	m_files_stat[name].account_error();
+
+	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
+	if (m_analyzer->detailed_fileio_reporting())
+	{
+		mt_ainfo->m_files_stat[name].account_error();
+	}
+
+	if (dev != 0)
+	{
+		if (m_analyzer->fileio_device_reporting())
+		{
+			m_devs_stat[dev].account_error();
+		}
+		if (m_analyzer->detailed_fileio_device_reporting())
+		{
+			mt_ainfo->m_devs_stat[dev].account_error();
+		}
+	}
 }
 
 bool sinsp_analyzer_fd_listener::should_report_network(sinsp_fdinfo_t *fdinfo)

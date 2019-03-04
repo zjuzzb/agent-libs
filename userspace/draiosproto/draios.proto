@@ -707,6 +707,8 @@ message process {
     optional uint64 start_count = 21; // start processes
     reserved 22;
     optional uint64 count_processes = 23; // number of instances with same command line
+    repeated file_stat top_files = 24;
+    repeated file_stat top_devices = 25;
     reserved 123;
 }
 
@@ -882,6 +884,8 @@ message container {
     optional string image_tag = 28;
     optional string image_digest = 29;
     repeated uint32 container_reporting_group_id = 30; // maps to the group under which this group was reported
+    repeated file_stat top_files = 31;
+    repeated file_stat top_devices = 32;
 }
 
 //
@@ -1205,6 +1209,7 @@ message metrics {
 
     optional unreported_stats unreported_counters = 39; // stats for all containers which aren't explicitly reported
     repeated container_reporting_group reporting_groups = 40; // specification for all reporting groups which could contain a container
+    repeated file_stat top_devices = 41;
 }
 
 message dump_request_start {

@@ -32,6 +32,7 @@ public:
 	void set_ipv4_connection_manager(sinsp_ipv4_connection_manager* ipv4_connection_manager);
 
 	analyzer_top_file_stat_map m_files_stat;
+	analyzer_top_device_stat_map m_devs_stat;
 
 private:
 	inline bool should_report_network(sinsp_fdinfo_t* fdinfo);
@@ -40,9 +41,9 @@ private:
 	sinsp_connection* get_ipv4_connection(sinsp_fdinfo_t* fdinfo, const ipv4tuple& tuple, sinsp_evt* evt, int64_t tid, int64_t fd, bool incoming);
 	void add_client_ipv4_connection(sinsp_evt *evt);
 
-	void account_io(sinsp_threadinfo* tinfo, const string& name, uint32_t bytes, uint64_t time_ns);
-	void account_file_open(sinsp_threadinfo* tinfo, const string& name);
-	void account_error(sinsp_threadinfo* tinfo, const string& name);
+	void account_io(sinsp_threadinfo* tinfo, const string& name, uint32_t dev, uint32_t bytes, uint64_t time_ns);
+	void account_file_open(sinsp_threadinfo* tinfo, const string& name, uint32_t dev);
+	void account_error(sinsp_threadinfo* tinfo, const string& name, uint32_t dev);
 
 #ifndef _WIN32
 	void handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const;

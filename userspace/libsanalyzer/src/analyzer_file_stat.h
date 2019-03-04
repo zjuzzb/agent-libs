@@ -247,3 +247,25 @@ public:
 		});
 	}
 };
+
+// A map to store per-device file I/O stats. The key is the device number (major:minor) encoded using `makedev()`.
+// The device number is used as the key in the device number->name map and is owned by the analyzer
+// (there's not much point in duplicating it across all the per program/container maps)
+class analyzer_top_device_stat_map : public analyzer_file_stat_map<uint32_t>
+{
+public:
+	template<class P> void emit(P* protobuf, const std::unordered_map<dev_t, std::string>& device_map, int count)
+	{
+		emit_impl(count, [&](const std::uint32_t& dev) -> draiosproto::file_stat* {
+			const auto& device = device_map.find(dev);
+			if(device != device_map.end())
+			{
+				auto pb = protobuf->add_top_devices();
+				pb->set_name(device->second);
+				return pb;
+			}
+
+			return nullptr;
+		});
+	}
+};

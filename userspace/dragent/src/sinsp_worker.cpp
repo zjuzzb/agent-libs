@@ -647,6 +647,16 @@ void sinsp_worker::init()
 	m_analyzer->set_connection_truncate_log_interval(m_configuration->m_connection_truncate_log_interval);
 
 	m_analyzer->set_username_lookups(m_configuration->m_username_lookups);
+
+	m_analyzer->set_top_files(
+		m_configuration->m_top_files_per_prog,
+		m_configuration->m_top_files_per_container,
+		m_configuration->m_top_files_per_host);
+
+	m_analyzer->set_top_devices(
+		m_configuration->m_top_file_devices_per_prog,
+		m_configuration->m_top_file_devices_per_container,
+		m_configuration->m_top_file_devices_per_host);
 }
 
 void sinsp_worker::run()

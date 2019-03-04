@@ -488,6 +488,14 @@ public:
 	bool m_audit_tap_emit_local_connections = false;
 	bool m_audit_tap_debug_only = false;
 
+	int m_top_files_per_prog = 0;
+	int m_top_files_per_container = 0;
+	int m_top_files_per_host = TOP_FILES_IN_SAMPLE;
+
+	int m_top_file_devices_per_prog = 0;
+	int m_top_file_devices_per_container = 0;
+	int m_top_file_devices_per_host = 0;
+
 	bool m_extra_internal_metrics = false;
 
 	std::set<std::string> m_procfs_scan_procs;

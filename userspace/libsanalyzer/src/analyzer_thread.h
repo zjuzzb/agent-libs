@@ -13,6 +13,7 @@
 #include "app_checks.h"
 #include "env_hash.h"
 #include "analyzer_settings.h"
+#include "analyzer_file_stat.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // Information that is included only in processes that are main threads
@@ -78,6 +79,9 @@ public:
 	// number of process instances
 	int m_proc_count = 0;
 	unsigned m_threads_count = 0;
+	// Per-process file I/O stats
+	analyzer_top_file_stat_map m_files_stat;
+	analyzer_top_device_stat_map m_devs_stat;
 };
 
 class proc_config;
@@ -91,6 +95,10 @@ struct main_thread_analyzer_info
 
 	// hash of all environment variables
 	env_hash m_env_hash;
+
+	// per-file and per-device I/O stats for this process
+	analyzer_top_file_stat_map m_files_stat;
+	analyzer_top_device_stat_map m_devs_stat;
 
 	void hash_environment(sinsp_threadinfo *tinfo, const env_hash::regex_list_t& blacklist);
 };

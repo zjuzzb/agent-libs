@@ -1284,6 +1284,14 @@ void dragent_configuration::init()
 	m_audit_tap_emit_local_connections = m_config->get_scalar<bool>("audit_tap", "emit_local_connections", false);
 	m_audit_tap_debug_only = m_config->get_scalar<bool>("audit_tap", "debug_only", true);
 
+	m_top_files_per_prog = m_config->get_scalar<int>("top_files", "per_program", 0);
+	m_top_files_per_container = m_config->get_scalar<int>("top_files", "per_container", 0);
+	m_top_files_per_host = m_config->get_scalar<int>("top_files", "per_host", TOP_FILES_IN_SAMPLE);
+
+	m_top_file_devices_per_prog = m_config->get_scalar<int>("top_file_devices", "per_program", 0);
+	m_top_file_devices_per_container = m_config->get_scalar<int>("top_file_devices", "per_container", 0);
+	m_top_file_devices_per_host = m_config->get_scalar<int>("top_file_devices", "per_host", 0);
+
 	if (!m_audit_tap_enabled)
 	{
 		m_env_audit_tap = false;
@@ -1805,6 +1813,32 @@ void dragent_configuration::print_configuration() const
 		{
 			LOG_INFO("Sending environment variables in audit tap");
 		}
+	}
+
+	if (m_top_files_per_prog)
+	{
+		LOG_INFO("Reporting top %d files per program.", m_top_files_per_prog);
+	}
+	if (m_top_files_per_container)
+	{
+		LOG_INFO("Reporting top %d files per container.", m_top_files_per_container);
+	}
+	if (m_top_files_per_host)
+	{
+		LOG_INFO("Reporting top %d files per host.", m_top_files_per_host);
+	}
+
+	if (m_top_file_devices_per_prog)
+	{
+		LOG_INFO("Reporting top %d devices for file I/O per program.", m_top_file_devices_per_prog);
+	}
+	if (m_top_file_devices_per_container)
+	{
+		LOG_INFO("Reporting top %d devices for file I/O per container.", m_top_file_devices_per_container);
+	}
+	if (m_top_file_devices_per_host)
+	{
+		LOG_INFO("Reporting top %d devices for file I/O per host.", m_top_file_devices_per_host);
 	}
 
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));

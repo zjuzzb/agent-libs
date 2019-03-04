@@ -548,6 +548,32 @@ public:
 		m_username_lookups = enabled;
 	}
 
+	void set_top_files(int per_prog, int per_container, int per_host)
+	{
+		m_top_files_per_prog = per_prog;
+		m_top_files_per_container = per_container;
+		m_top_files_per_host = per_host;
+	}
+
+	void set_top_devices(int per_prog, int per_container, int per_host)
+	{
+		m_top_file_devices_per_prog = per_prog;
+		m_top_file_devices_per_container = per_container;
+		m_top_file_devices_per_host = per_host;
+	}
+
+	inline bool detailed_fileio_reporting() const {
+		return m_top_files_per_prog > 0 || m_top_files_per_container > 0;
+	}
+
+	inline bool fileio_device_reporting() const {
+		return m_top_file_devices_per_host > 0;
+	}
+
+	inline bool detailed_fileio_device_reporting() const {
+		return m_top_file_devices_per_prog > 0 || m_top_file_devices_per_container > 0;
+	}
+
 	void rearm_tracer_logging();
 	inline uint64_t flush_tracer_timeout();
 
@@ -1206,6 +1232,14 @@ VISIBILITY_PRIVATE
 	bool m_track_environment = false;
 	env_hash_config m_env_hash_config;
 	std::unordered_map<env_hash, uint64_t> m_sent_envs;
+
+	int m_top_files_per_prog = 0;
+	int m_top_files_per_container = 0;
+	int m_top_files_per_host = TOP_FILES_IN_SAMPLE;
+
+	int m_top_file_devices_per_prog = 0;
+	int m_top_file_devices_per_container = 0;
+	int m_top_file_devices_per_host = 0;
 
 	bool m_extra_internal_metrics = false;
 	uint64_t m_num_container_healthcheck_command_lines = 0;
