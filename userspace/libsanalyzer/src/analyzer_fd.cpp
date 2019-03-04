@@ -489,12 +489,7 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 
 	if(fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fdinfo->m_name);
-		if(file_stat)
-		{
-			file_stat->m_bytes += original_len;
-			file_stat->m_time_ns += evt->m_tinfo->m_latency;
-		}
+		account_io(evt->get_thread_info(), fdinfo->m_name, original_len, evt->m_tinfo->m_latency);
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
@@ -560,12 +555,7 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 
 	if(fdinfo->is_file())
 	{
-		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fdinfo->m_name);
-		if(file_stat)
-		{
-			file_stat->m_bytes += original_len;
-			file_stat->m_time_ns += evt->m_tinfo->m_latency;
-		}
+		account_io(evt->get_thread_info(), fdinfo->m_name, original_len, evt->m_tinfo->m_latency);
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
@@ -978,25 +968,18 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 	//
 	// File open count update
 	//
-	analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fullpath);
 	if(evt->m_fdinfo && evt->m_errorcode == 0)
 	{
 		ASSERT(evt->m_fdinfo->is_file());
 		ASSERT(evt->m_fdinfo->m_name == fullpath);
 		if(evt->m_fdinfo->is_file())
 		{
-			if(file_stat)
-			{
-				++file_stat->m_open_count;			
-			}
+			account_file_open(evt->get_thread_info(), fullpath);
 		}
 	}
 	else
 	{
-		if(file_stat)
-		{
-			++file_stat->m_errors;
-		}		
+		account_error(evt->get_thread_info(), fullpath);
 	}
 
 	//
@@ -1035,11 +1018,7 @@ void sinsp_analyzer_fd_listener::on_error(sinsp_evt* evt)
 	{
 		if(evt->m_fdinfo->is_file())
 		{
-			analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), evt->m_fdinfo->m_name);
-			if(file_stat)
-			{
-				++file_stat->m_errors;
-			}
+			account_error(evt->get_thread_info(), evt->m_fdinfo->m_name);
 		}
 		else if(evt->m_fdinfo->is_transaction())
 		{
@@ -1135,7 +1114,7 @@ void sinsp_analyzer_fd_listener::on_clone(sinsp_evt *evt, sinsp_threadinfo* newt
 	}
 }
 
-analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_threadinfo* tinfo, const string& name)
+inline bool sinsp_analyzer_fd_listener::should_account_io(const sinsp_threadinfo* tinfo)
 {
 #if defined(HAS_CAPTURE)
 	//
@@ -1143,22 +1122,38 @@ analyzer_file_stat* sinsp_analyzer_fd_listener::get_file_stat(const sinsp_thread
 	//
 	if(tinfo->m_pid == m_inspector->m_sysdig_pid)
 	{
-		return NULL;
+		return false;
 	}
 #endif
-
-	unordered_map<string, analyzer_file_stat>::iterator it = 
-		m_files_stat.find(name);
-
-	if(it == m_files_stat.end())
+	return true;
+}
+void sinsp_analyzer_fd_listener::account_io(sinsp_threadinfo *tinfo, const string &name, uint32_t bytes, uint64_t time_ns)
+{
+	if (!should_account_io(tinfo))
 	{
-		analyzer_file_stat file_stat;
-		file_stat.m_name = name;
-		m_files_stat.insert(pair<string, analyzer_file_stat>(string(name), file_stat));
-		it = m_files_stat.find(name);
+		return;
 	}
 
-	return &it->second;
+	m_files_stat[name].account_io(bytes, time_ns);
+}
+
+void sinsp_analyzer_fd_listener::account_file_open(sinsp_threadinfo* tinfo, const string& name)
+{
+	if (!should_account_io(tinfo))
+	{
+		return;
+	}
+
+	m_files_stat[name].account_file_open();
+}
+
+void sinsp_analyzer_fd_listener::account_error(sinsp_threadinfo* tinfo, const string& name) {
+	if (!should_account_io(tinfo))
+	{
+		return;
+	}
+
+	m_files_stat[name].account_error();
 }
 
 bool sinsp_analyzer_fd_listener::should_report_network(sinsp_fdinfo_t *fdinfo)

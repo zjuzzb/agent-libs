@@ -4905,8 +4905,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 
 			tracer_emitter misc_trc("misc_emit", f_trc);
-			emit_top_files();
-#endif// CYGWING_AGENT
+			m_fd_listener->m_files_stat.emit(m_metrics, TOP_FILES_IN_SAMPLE);
+			m_fd_listener->m_files_stat.clear();
+#endif // CYGWING_AGENT
 
 #ifndef _WIN32
 			// statsd metrics
@@ -6404,85 +6405,6 @@ void sinsp_analyzer::emit_containerd_events()
 	}
 }
 #endif // CYGWING_AGENT
-
-void sinsp_analyzer::emit_top_files()
-{
-	vector<analyzer_file_stat*> files_sortable_list;
-
-	for(unordered_map<string, analyzer_file_stat>::iterator it = m_fd_listener->m_files_stat.begin();
-		it != m_fd_listener->m_files_stat.end(); ++it)
-	{
-		files_sortable_list.push_back(&it->second);
-	}
-
-	if(files_sortable_list.size() > TOP_FILES_IN_SAMPLE)
-	{
-		partial_sort(files_sortable_list.begin(),
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
-			files_sortable_list.end(),
-			analyzer_file_stat::cmp_bytes);
-
-		for(uint32_t j = 0; j < TOP_FILES_IN_SAMPLE; j++)
-		{
-			files_sortable_list[j]->m_exclude_from_sample = false;
-		}
-
-		partial_sort(files_sortable_list.begin(),
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
-			files_sortable_list.end(),
-			analyzer_file_stat::cmp_time);
-
-		for(uint32_t j = 0; j < TOP_FILES_IN_SAMPLE; j++)
-		{
-			files_sortable_list[j]->m_exclude_from_sample = false;
-		}
-
-		partial_sort(files_sortable_list.begin(),
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
-			files_sortable_list.end(),
-			analyzer_file_stat::cmp_errors);
-
-		for(uint32_t j = 0; j < TOP_FILES_IN_SAMPLE; j++)
-		{
-			files_sortable_list[j]->m_exclude_from_sample = false;
-		}
-
-		partial_sort(files_sortable_list.begin(),
-			files_sortable_list.begin() + TOP_FILES_IN_SAMPLE,
-			files_sortable_list.end(),
-			analyzer_file_stat::cmp_open_count);
-
-		for(uint32_t j = 0; j < TOP_FILES_IN_SAMPLE; j++)
-		{
-			files_sortable_list[j]->m_exclude_from_sample = false;
-		}
-	}
-	else
-	{
-		for(vector<analyzer_file_stat*>::const_iterator it = files_sortable_list.begin();
-			it != files_sortable_list.end(); ++it)
-		{
-			(*it)->m_exclude_from_sample = false;
-		}
-	}
-
-	for(vector<analyzer_file_stat*>::const_iterator it = files_sortable_list.begin();
-		it != files_sortable_list.end(); ++it)
-	{
-		if((*it)->m_exclude_from_sample == false)
-		{
-			draiosproto::file_stat* top_file = m_metrics->add_top_files();
-
-			top_file->set_name((*it)->m_name);
-			top_file->set_bytes((*it)->m_bytes);
-			top_file->set_time_ns((*it)->m_time_ns);
-			top_file->set_open_count((*it)->m_open_count);
-			top_file->set_errors((*it)->m_errors);
-		}
-	}
-
-	m_fd_listener->m_files_stat.clear();
-}
 
 void
 sinsp_analyzer::found_emittable_containers(sinsp_analyzer& analyzer,

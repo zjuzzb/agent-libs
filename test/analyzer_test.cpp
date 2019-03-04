@@ -257,51 +257,48 @@ TEST_F(sys_call_test, analyzer_fdstats)
 			{
 				found = true;
 
-				unordered_map<string, analyzer_file_stat>* files_stat = 
-					&param.m_inspector->m_analyzer->m_fd_listener->m_files_stat;
+				const auto& files_stat = param.m_inspector->m_analyzer->m_fd_listener->m_files_stat;
 
-				EXPECT_NE((uint64_t) 0, files_stat->size());
+				EXPECT_NE((uint64_t) 0, files_stat.size());
 
-				unordered_map<string, analyzer_file_stat>::const_iterator it;
-
-				it = files_stat->find("/tmp/nonexistent");
-				EXPECT_NE(files_stat->end(), it);
-				if (it != files_stat->end())
+				analyzer_top_file_stat_map::const_iterator it = files_stat.find("/tmp/nonexistent");
+				EXPECT_NE(files_stat.end(), it);
+				if (it != files_stat.end())
 				{
-					EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
-					EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
-					EXPECT_EQ((uint64_t) 1, it->second.m_errors);
-					EXPECT_EQ((uint64_t) 0, it->second.m_open_count);
+					EXPECT_EQ((uint64_t) 0, it->second.time_ns());
+					EXPECT_EQ((uint64_t) 0, it->second.bytes());
+					EXPECT_EQ((uint64_t) 1, it->second.errors());
+					EXPECT_EQ((uint64_t) 0, it->second.open_count());
 				}
 
-				it = files_stat->find("/tmp/testfile_opencount");
-				EXPECT_NE(files_stat->end(), it);
-				if (it != files_stat->end())
+				it = files_stat.find("/tmp/testfile_opencount");
+				EXPECT_NE(files_stat.end(), it);
+				if (it != files_stat.end())
 				{
-					EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
-					EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
-					EXPECT_EQ((uint64_t) 0, it->second.m_errors);
-					EXPECT_EQ((uint64_t) 10, it->second.m_open_count);
+					EXPECT_EQ((uint64_t) 0, it->second.time_ns());
+					EXPECT_EQ((uint64_t) 0, it->second.bytes());
+					EXPECT_EQ((uint64_t) 0, it->second.errors());
+					EXPECT_EQ((uint64_t) 10, it->second.open_count());
 				}
 
-				it = files_stat->find("/tmp/testfile_rdwr");
-				EXPECT_NE(files_stat->end(), it);
-				if (it != files_stat->end())
+				it = files_stat.find("/tmp/testfile_rdwr");
+				EXPECT_NE(files_stat.end(), it);
+				if (it != files_stat.end())
 				{
-					EXPECT_NE((uint64_t) 0, it->second.m_time_ns);
-					EXPECT_EQ(10 * sizeof("token1"), it->second.m_bytes);
-					EXPECT_EQ((uint64_t) 0, it->second.m_errors);
-					EXPECT_EQ((uint64_t) 2, it->second.m_open_count);
+					EXPECT_NE((uint64_t) 0, it->second.time_ns());
+					EXPECT_EQ(10 * sizeof("token1"), it->second.bytes());
+					EXPECT_EQ((uint64_t) 0, it->second.errors());
+					EXPECT_EQ((uint64_t) 2, it->second.open_count());
 				}
 
-				it = files_stat->find("/tmp/testfile_rdonly");
-				EXPECT_NE(files_stat->end(), it);
-				if (it != files_stat->end())
+				it = files_stat.find("/tmp/testfile_rdonly");
+				EXPECT_NE(files_stat.end(), it);
+				if (it != files_stat.end())
 				{
-					EXPECT_EQ((uint64_t) 0, it->second.m_time_ns);
-					EXPECT_EQ((uint64_t) 0, it->second.m_bytes);
-					EXPECT_EQ((uint64_t) 1, it->second.m_errors);
-					EXPECT_EQ((uint64_t) 1, it->second.m_open_count);
+					EXPECT_EQ((uint64_t) 0, it->second.time_ns());
+					EXPECT_EQ((uint64_t) 0, it->second.bytes());
+					EXPECT_EQ((uint64_t) 1, it->second.errors());
+					EXPECT_EQ((uint64_t) 1, it->second.open_count());
 				}
 			}
 		}

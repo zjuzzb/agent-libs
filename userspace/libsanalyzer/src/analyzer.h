@@ -34,6 +34,7 @@
 #include "env_hash.h"
 #include "k8s_user_event_message_handler.h"
 #include "procfs_scanner.h"
+#include "analyzer_file_stat.h"
 
 class audit_tap;
 namespace tap {
@@ -677,7 +678,6 @@ VISIBILITY_PRIVATE
 	void reset_mesos(const std::string& errmsg = "");
 	void emit_docker_events();
 	void emit_containerd_events();
-	void emit_top_files();
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 
 	// set m_my_cpuload to the main thread's cpu usage in percent (100 == one whole cpu)

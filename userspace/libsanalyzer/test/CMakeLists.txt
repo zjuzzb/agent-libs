@@ -21,6 +21,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 add_definitions( -DHAS_ANALYZER )
 
 add_executable(unit-test-libsanalyzer
+	analyzer_file_stat.ut.cpp
 	main.cpp
 	mounted_fs.ut.cpp
 	parser_http.ut.cpp

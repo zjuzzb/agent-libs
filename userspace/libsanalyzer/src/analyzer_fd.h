@@ -1,52 +1,6 @@
 #pragma once
 
-class analyzer_file_stat
-{
-public:
-	analyzer_file_stat():
-		m_time_ns(0),
-		m_bytes(0),
-		m_errors(0),
-		m_open_count(0),
-		m_exclude_from_sample(true)
-	{
-	}
-
-	static bool cmp_bytes(const analyzer_file_stat* src, const analyzer_file_stat* dst)
-	{
-		ASSERT(src);
-		ASSERT(dst);
-		return src->m_bytes > dst->m_bytes;
-	}
-
-	static bool cmp_time(const analyzer_file_stat* src, const analyzer_file_stat* dst)
-	{
-		ASSERT(src);
-		ASSERT(dst);
-		return src->m_time_ns > dst->m_time_ns;
-	}
-
-	static bool cmp_errors(const analyzer_file_stat* src, const analyzer_file_stat* dst)
-	{
-		ASSERT(src);
-		ASSERT(dst);
-		return src->m_errors > dst->m_errors;
-	}
-
-	static bool cmp_open_count(const analyzer_file_stat* src, const analyzer_file_stat* dst)
-	{
-		ASSERT(src);
-		ASSERT(dst);
-		return src->m_open_count > dst->m_open_count;
-	}
-
-	string m_name;
-	uint64_t m_time_ns;
-	uint32_t m_bytes;
-	uint32_t m_errors;
-	uint32_t m_open_count;
-	bool m_exclude_from_sample;
-};
+#include "analyzer_file_stat.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // This class listens on FD activity and performs advanced analysis
@@ -74,14 +28,18 @@ public:
 	void on_socket_status_changed(sinsp_evt *evt);
 	bool patch_network_role(sinsp_threadinfo* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming);
 
-	unordered_map<string, analyzer_file_stat> m_files_stat;
+	analyzer_top_file_stat_map m_files_stat;
 
 private:
 	inline bool should_report_network(sinsp_fdinfo_t* fdinfo);
-	analyzer_file_stat* get_file_stat(const sinsp_threadinfo* tinfo, const string& name);
+	inline bool should_account_io(const sinsp_threadinfo* tinfo);
 	void flush_transaction(erase_fd_params* params);
 	sinsp_connection* get_ipv4_connection(sinsp_fdinfo_t* fdinfo, const ipv4tuple& tuple, sinsp_evt* evt, int64_t tid, int64_t fd, bool incoming);
 	void add_client_ipv4_connection(sinsp_evt *evt);
+
+	void account_io(sinsp_threadinfo* tinfo, const string& name, uint32_t bytes, uint64_t time_ns);
+	void account_file_open(sinsp_threadinfo* tinfo, const string& name);
+	void account_error(sinsp_threadinfo* tinfo, const string& name);
 
 	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;

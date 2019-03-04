@@ -101,6 +101,7 @@ endif()
 set(SANALYZER_SOURCES
 	analyzer.cpp
 	analyzer_fd.cpp
+	analyzer_file_stat.cpp
 	analyzer_parsers.cpp
 	analyzer_thread.cpp
 	analyzer_utils.cpp
