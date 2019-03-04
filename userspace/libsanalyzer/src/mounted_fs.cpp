@@ -3,6 +3,7 @@
 #include "setns.h"
 #include "subprocess.h"
 
+#include <unordered_set>
 #include <mntent.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -40,10 +41,11 @@ mounted_fs_proxy::mounted_fs_proxy():
 
 }
 
-unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_list()
+mounted_fs_list mounted_fs_proxy::receive_mounted_fs_list()
 {
 #ifndef CYGWING_AGENT
 	unordered_map<string, vector<mounted_fs>> fs_map;
+	unordered_map<dev_t, string> device_map;
 	auto last_msg = m_input.receive();
 	decltype(last_msg) msg;
 	while(!last_msg.empty())
@@ -67,9 +69,13 @@ unordered_map<string, vector<mounted_fs>> mounted_fs_proxy::receive_mounted_fs_l
 				}
 				fs_map.emplace(c.container_id(), move(fslist));
 			}
+			for(const auto& d : response_proto.devices())
+			{
+				device_map.emplace(d.number(), d.name());
+			}
 		}
 	}
-	return fs_map;
+	return mounted_fs_list(std::move(fs_map), std::move(device_map));
 #else
 	ASSERT(false);
 	throw sinsp_exception("mounted_fs_proxy::receive_mounted_fs_list not implemented on Windows");
@@ -153,6 +159,8 @@ bool mounted_fs_reader::change_ns(int destpid)
 int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_fd,
 	const sdc_internal::mounted_fs_request& request, sdc_internal::mounted_fs_response& response)
 {
+	std::unordered_set<dev_t> seen_devices;
+
 	for(const auto& container_proto : request.containers())
 	{
 		// Go to container mnt ns
@@ -192,6 +200,26 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 				auto fsinfo = container_mounts_proto->add_mounts();
 				fs.to_protobuf(fsinfo);
 			}
+
+			snprintf(filename, sizeof(filename), "/proc/%lu/mountinfo", container_proto.vpid());
+			std::ifstream mountinfo(filename);
+			if(!mountinfo)
+			{
+				throw sinsp_exception(std::string("error opening ") + filename);
+			}
+
+			auto devices = read_mountinfo(mountinfo);
+
+			for(const auto &dev : devices)
+			{
+				auto new_device = seen_devices.insert(dev.first);
+				if(new_device.second)
+				{
+					auto dev_info = response.add_devices();
+					dev_info->set_number(dev.first);
+					dev_info->set_name(dev.second);
+				}
+			}
 		}
 		catch (const sinsp_exception& ex)
 		{
@@ -217,6 +245,49 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 	}
 
 	return 0;
+}
+
+std::unordered_map<uint32_t, std::string> mounted_fs_reader::read_mountinfo(std::istream &mountinfo)
+{
+	std::unordered_map<uint32_t, std::string> dev_numbers;
+	std::string buf_str;
+
+	while(std::getline(mountinfo, buf_str))
+	{
+		uint32_t major, minor;
+		char device[4096];
+		char fs_type[4096];
+		char mountpoint[4096];
+		// 25 0 8:3 / / rw,relatime shared:1 - ext4 /dev/sda3 rw,errors=remount-ro,data=ordered
+		// 152 25 0:45 / /mnt ro,relatime shared:130 - nfs 192.168.121.1:/volume ro,vers=3,...
+		// 177 232 0:51 /sysrq-trigger /proc/sysrq-trigger ro,relatime - proc proc rw
+		int ret;
+		const char* buf = buf_str.c_str();
+		if((ret = sscanf(buf, "%*d %*d %d:%d %*s %s", &major, &minor, mountpoint)) != 3)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to get device number (ret=%d) from \"%s\"", ret, buf);
+			continue;
+		}
+		const char *p = strstr(buf, " - ");
+		if (!p)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to find option separator in \"%s\"", buf);
+			continue;
+		}
+		if((ret = sscanf(p, " - %s %s", fs_type, device)) != 2)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Failed to get device name (ret=%d) from \"%s\"", ret, buf);
+			continue;
+		}
+		if (!m_mount_points->allow(device, fs_type, mountpoint))
+		{
+			continue;
+		}
+
+		dev_numbers.emplace(std::make_pair(makedev(major, minor), device));
+	}
+
+	return dev_numbers;
 }
 #endif
 

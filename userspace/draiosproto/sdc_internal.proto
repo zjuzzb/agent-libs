@@ -16,8 +16,14 @@ message container_mounts {
     repeated draiosproto.mounted_fs mounts = 2;
 }
 
+message mounted_device {
+    required uint32 number = 1;
+    required string name = 2;
+}
+
 message mounted_fs_response {
     repeated container_mounts containers = 1;
+    repeated mounted_device devices = 2;
 }
 
 message container_info {

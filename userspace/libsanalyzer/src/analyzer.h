@@ -7,6 +7,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include "jmx_proxy.h"
 #include "statsite_proxy.h"
 #include <atomic>
@@ -1121,6 +1122,7 @@ VISIBILITY_PRIVATE
 	unique_ptr<mounted_fs_proxy> m_mounted_fs_proxy;
 	unordered_map<string, vector<mounted_fs>> m_mounted_fs_map;
 	unique_ptr<mounted_fs_reader> m_mounted_fs_reader;
+	unordered_map<dev_t, string> m_device_map;
 
 #ifndef CYGWING_AGENT
 	prometheus_conf m_prom_conf;

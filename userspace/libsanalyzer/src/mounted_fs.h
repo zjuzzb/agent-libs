@@ -9,6 +9,8 @@
 #define MOUNTED_FS_H_VISIBILITY_PRIVATE private:
 #endif
 
+#include <istream>
+
 namespace draiosproto {
 class mounted_fs;
 }
@@ -49,11 +51,21 @@ MOUNTED_FS_H_VISIBILITY_PRIVATE
 	friend class mounted_fs_reader;
 };
 
+struct mounted_fs_list
+{
+	std::unordered_map<std::string, std::vector<mounted_fs>> m_mounted_fs;
+	std::unordered_map<dev_t, std::string> m_device_map;
+
+	mounted_fs_list(decltype(m_mounted_fs)&& mounted_fs, decltype(m_device_map)&& device_map) :
+		m_mounted_fs(std::move(mounted_fs)),
+		m_device_map(std::move(device_map)) {}
+};
+
 class mounted_fs_proxy
 {
 public:
 	explicit mounted_fs_proxy();
-	unordered_map<string, vector<mounted_fs>> receive_mounted_fs_list();
+	mounted_fs_list receive_mounted_fs_list();
 	bool send_container_list(const vector<sinsp_threadinfo*>& containers);
 private:
 	posix_queue m_input;
@@ -74,6 +86,10 @@ MOUNTED_FS_H_VISIBILITY_PRIVATE
 #ifndef CYGWING_AGENT
 	int handle_mounted_fs_request(const char* root_dir, int home_fd, const sdc_internal::mounted_fs_request& request,
 		sdc_internal::mounted_fs_response& response);
+#endif
+
+#ifndef CYGWING_AGENT
+	std::unordered_map<uint32_t, std::string> read_mountinfo(std::istream& mountinfo);
 #endif
 
 	static const uint16_t ERROR_EXIT = 1;

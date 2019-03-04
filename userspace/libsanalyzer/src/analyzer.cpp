@@ -4212,9 +4212,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 				{
 					// Get last filesystem stats, list of containers is sent on emit_processes
 					auto new_fs_map = m_mounted_fs_proxy->receive_mounted_fs_list();
-					if(!new_fs_map.empty())
+					if(!new_fs_map.m_mounted_fs.empty())
 					{
-						m_mounted_fs_map = move(new_fs_map);
+						m_mounted_fs_map = move(new_fs_map.m_mounted_fs);
+						m_device_map = move(new_fs_map.m_device_map);
 					}
 				}
 			}
