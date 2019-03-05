@@ -2,9 +2,11 @@
 #include "sys_call_test.h"
 #include <gtest.h>
 #include <SimpleOpt.h>
-#include <dragent/src/logger.h> /*full path because there are multiple files with this name*/
+#include "user_event_channel.h"
 
 using namespace std;
+
+AutoPtr<user_event_channel> uec;
 
 namespace {
 

@@ -420,6 +420,7 @@ public:
 				const std::string &container_id, response_cb_t response_cb);
 
 	void get_orchestrator_events(sdc_internal::orchestrator_events_stream_command cmd, response_cb_t response_cb);
+	void get_orchestrator_event_messages(sdc_internal::orchestrator_attach_user_events_stream_command cmd, response_cb_t response_cb);
 
 	// Read up to m_max_loop_evts from the rpc response queue
 	// Returns true unless we drain the queue or detect a shutdown
@@ -481,6 +482,7 @@ protected:
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::docker_command_result>> docker_cmd_result_reader;
 		std::unique_ptr<grpc::ClientAsyncResponseReader<sdc_internal::swarm_state_result>> swarm_state_reader;
 		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::array_congroup_update_event>> orchestrator_events_reader;
+		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::k8s_user_event>> orchestrator_event_message_reader;
 	};
 
 	// Created by CreateChannel

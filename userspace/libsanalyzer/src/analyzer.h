@@ -32,6 +32,7 @@
 #include "internal_metrics.h"
 #include "userdb.h"
 #include "env_hash.h"
+#include "k8s_user_event_message_handler.h"
 #include "procfs_scanner.h"
 
 class audit_tap;
@@ -488,6 +489,11 @@ public:
 	void set_user_event_queue(user_event_queue::ptr_t user_event_queue)
 	{
 		m_user_event_queue = user_event_queue;
+
+		if (m_k8s_user_event_handler)
+		{
+			m_k8s_user_event_handler->set_user_event_queue(user_event_queue);
+		}
 	}
 
 	void set_simpledriver_mode()
@@ -1015,6 +1021,20 @@ VISIBILITY_PRIVATE
 	metric_limits::sptr_t m_metric_limits;
 	std::shared_ptr<label_limits> m_label_limits;
 
+	// The user event queue is a glogger construct that we pass around, and once it is created, glogger
+	// will catch certain classes of messages and process them. This is not an efficient way to leak the abstraction,
+	// but it works?
+	//
+	// So the users of this only need to depend on it's existence, and until then, events will jst go to
+	// the regular log. When the analyzer is allocated, this is left unset. It is set by a call to
+	// set_user_event_queue, which happens in sinsp_worker initialization, where the sinsp_worker passes
+	// its queue on.  It's version of the queue is set by a call from dragent_app:make_event_channel.
+	//
+	// So this whole thing only works if the following is all true:
+	// 1) dragent initializes the sinsp_worker version before sinsp_init, which is the case
+	// 2) sinsp_worker is inited before analyzer flush, which is almost certianly the case
+	//
+	// So in short, it's a pretty flaky chain of things that have to happen in order, but so it is.
 	user_event_queue::ptr_t m_user_event_queue;
 
 	internal_metrics::sptr_t m_internal_metrics;
@@ -1072,6 +1092,11 @@ VISIBILITY_PRIVATE
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
 	bool m_die;
+
+	/**
+	 * class that manages the k8s event listener
+	 */
+	k8s_user_event_message_handler* m_k8s_user_event_handler = nullptr;
 
 	friend class dragent_app;
 	friend class sinsp_transaction_table;

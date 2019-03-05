@@ -211,6 +211,12 @@ public:
 	void set_smart_container_reporting(bool);
 	bool get_smart_container_reporting() const;
 
+	void set_go_k8s_user_events(bool);
+	bool get_go_k8s_user_events() const;
+
+	void set_root_dir(std::string&);
+	const std::string& get_root_dir() const;
+
 	void set_dragent_cpu_profile_enabled(bool enabled);
 	void set_dragent_profile_time_seconds(uint32_t seconds);
 	void set_dragent_total_profiles(uint32_t count);
@@ -303,6 +309,14 @@ private:
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
 	bool m_smart_container_reporting = false;
+
+	/**
+         * Enable to route K8s user events through cointerface instead of dragent
+         * dragent will only serve as a middleman in this case. Leave false
+         * to cause dragent to directly talk to K8s API server to fetch events
+         */
+	bool m_go_k8s_user_events = false;
+	std::string m_root_dir = "";
 
 	string m_log_dir;
 

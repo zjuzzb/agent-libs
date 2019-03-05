@@ -984,6 +984,26 @@ bool sinsp_configuration::get_smart_container_reporting() const
 	return m_smart_container_reporting;
 }
 
+void sinsp_configuration::set_go_k8s_user_events(bool enabled)
+{
+	m_go_k8s_user_events = enabled;
+}
+
+bool sinsp_configuration::get_go_k8s_user_events() const
+{
+	return m_go_k8s_user_events;
+}
+
+void sinsp_configuration::set_root_dir(std::string& dir)
+{
+	m_root_dir = dir;
+}
+
+const std::string& sinsp_configuration::get_root_dir() const
+{
+	return m_root_dir;
+}
+
 void sinsp_configuration::set_dragent_cpu_profile_enabled(bool enabled)
 {
 	m_dragent_cpu_profile_enabled = enabled;

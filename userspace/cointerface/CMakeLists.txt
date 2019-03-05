@@ -96,6 +96,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/events.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/cronjobs.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
