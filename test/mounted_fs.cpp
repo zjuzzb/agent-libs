@@ -93,7 +93,7 @@ TEST_F(mounted_fs_reader_test, container_mounts)
 		pid_t pid = fork();
 		switch(pid) {
 		case 0: {
-			int ret = 2;
+			int ret = 1;
 
 			sdc_internal::mounted_fs_request req;
 			sdc_internal::mounted_fs_response resp;
