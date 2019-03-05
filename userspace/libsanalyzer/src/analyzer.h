@@ -31,6 +31,7 @@
 #include "internal_metrics.h"
 #include "userdb.h"
 #include "env_hash.h"
+#include "procfs_scanner.h"
 
 class audit_tap;
 namespace tap {
@@ -387,6 +388,11 @@ public:
 		m_protocols_enabled = value;
 	}
 
+	void set_procfs_scan_thread(bool value)
+	{
+		m_procfs_scan_thread = value;
+	}
+
 	void set_remotefs_enabled(bool value)
 	{
 		m_remotefs_enabled = value;
@@ -667,6 +673,10 @@ VISIBILITY_PRIVATE
 	void emit_top_files();
 	void emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emitter &f_trc);
 
+	// set m_my_cpuload to the main thread's cpu usage in percent (100 == one whole cpu)
+	// calculated since the previous call to this method
+	void calculate_analyzer_cpu_usage();
+
 	void update_percentile_data_serialization(const progtable_by_container_t&);
 	void gather_k8s_infrastructure_state(uint32_t flushflags,
 					     vector<string>& emitted_containers);
@@ -823,6 +833,7 @@ VISIBILITY_PRIVATE
 	sinsp_host_metrics m_host_metrics;
 	sinsp_counters m_host_req_metrics;
 
+	bool m_procfs_scan_thread;
 	bool m_protocols_enabled;
 	bool m_remotefs_enabled;
 

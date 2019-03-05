@@ -255,6 +255,12 @@ public:
 	void set_orch_low_evt_threshold(uint32_t low_evt_threshold);
 	bool get_orch_filter_empty() const;
 	void set_orch_filter_empty(bool filter_empty);
+	void set_procfs_scan_delay_ms(uint32_t scan_delay_ms);
+	uint32_t get_procfs_scan_delay_ms() const;
+	void set_procfs_scan_interval_ms(uint32_t scan_interval_ms);
+	uint32_t get_procfs_scan_interval_ms() const;
+	void set_procfs_scan_mem_interval_ms(uint32_t scan_interval_ms);
+	uint32_t get_procfs_scan_mem_interval_ms() const;
 	uint32_t get_orch_batch_msgs_queue_len() const;
 	void set_orch_batch_msgs_queue_len(uint32_t batch_queue_len);
 	uint32_t get_orch_batch_msgs_tick_interval_ms() const;
@@ -388,6 +394,11 @@ private:
 	uint32_t m_orch_low_ticks_needed;
 	uint32_t m_orch_low_evt_threshold;
 	bool m_orch_filter_empty;
+
+	uint32_t m_procfs_scan_delay_ms;
+	uint32_t m_procfs_scan_interval_ms;
+	uint32_t m_procfs_scan_mem_interval_ms;
+
 	uint32_t m_orch_batch_msgs_queue_len;
 	uint32_t m_orch_batch_msgs_tick_interval_ms;
 };

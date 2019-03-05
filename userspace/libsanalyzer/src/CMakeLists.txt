@@ -7,6 +7,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/common)
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
@@ -184,6 +185,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	percentile.cpp
 	procfs_parser.cpp
+	procfs_scanner.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/protodecoder.cpp
 	protostate.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/threadinfo.cpp

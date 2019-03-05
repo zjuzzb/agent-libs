@@ -3,6 +3,7 @@
 #include "posix_queue.h"
 #ifndef CYGWING_AGENT
 #include "sdc_internal.pb.h"
+#include "procfs_scanner.h"
 #endif
 #include "mount_points_limits.h"
 
@@ -86,9 +87,9 @@ class sinsp_procfs_parser
 {
 public:
 #ifndef CYGWING_AGENT
-	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
+	sinsp_procfs_parser(uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture, uint64_t ttl_s_cpu, uint64_t ttl_s_mem);
 #else
-	sinsp_procfs_parser(sinsp* inspector, uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture);
+	sinsp_procfs_parser(sinsp* inspector, uint32_t ncpus, int64_t physical_memory_kb, bool is_live_capture, uint64_t ttl_s_cou, uint64_t ttl_s_mem);
 #endif	
 	void read_mount_points(mount_points_limits::sptr_t mount_points);
 	void get_proc_stat(OUT sinsp_proc_stat* proc_stat);
@@ -99,6 +100,11 @@ public:
 
 #ifndef CYGWING_AGENT
 	void set_global_cpu_jiffies();
+	uint64_t get_cpu_jiffies() const {
+		return m_global_jiffies.total();
+	}
+
+	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 #endif
 
 	// must call set_global_cpu_jiffies() before calling this function
@@ -106,7 +112,17 @@ public:
 	// this function produces an inherent error when called in a loop for all processes or
 	// threads; additionally, there is an OS inaccuracy in reporting per-thread CPU times
 	// in the presence of steal time
-	double get_process_cpu_load(uint64_t pid, uint64_t* old_proc_jiffies);
+
+	// the _sync variant reads the cpu usage in the current thread (*old_proc is the
+	// user+system value from the previous read, time is maintained using the global
+	// jiffie timer
+	double get_process_cpu_load_sync(uint64_t pid, uint64_t* old_proc);
+
+	// this variant reads the cpu usage from the data collected by the /proc scan thread
+	// (m_procfs_scan_thread must be enabled)
+	double get_process_cpu_load(uint64_t pid);
+
+	bool get_process_mem_metrics(pid_t pid, struct proc_metrics::mem_metrics *metrics);
 
 	long get_process_rss_bytes(uint64_t pid);
 
@@ -125,7 +141,6 @@ public:
 
 private:
 #ifndef CYGWING_AGENT
-	double get_global_cpu_jiffies(uint64_t* stolen = nullptr) const;
 	void lookup_memory_cgroup_dir();
 	void lookup_cpuacct_cgroup_dir();
 	unique_ptr<string> lookup_cgroup_dir(const string& subsys);
@@ -157,6 +172,9 @@ private:
 
 #ifdef CYGWING_AGENT
 	wh_t* m_whhandle;
+#else
+	proc_metrics::procfs_scanner_cpu m_procfs_scanner_cpu;
+	proc_metrics::procfs_scanner_mem m_procfs_scanner_mem;
 #endif
 
 #ifndef CYGWING_AGENT
@@ -173,6 +191,10 @@ private:
 		uint64_t delta_total() const;
 		uint64_t delta_steal() const;
 
+		uint64_t total() const {
+			return m_current_total;
+		}
+
 	private:
 		void set_current();
 
@@ -187,6 +209,7 @@ private:
 	jiffies_t m_global_jiffies;
 
 	friend class jiffies_t;
+	friend class test_helper;
 #endif // CYGWING_AGENT
 };
 

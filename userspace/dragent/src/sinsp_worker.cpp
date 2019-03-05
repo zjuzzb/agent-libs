@@ -63,6 +63,11 @@ void sinsp_worker::init()
 	m_inspector = new sinsp();
 	m_analyzer = new sinsp_analyzer(m_inspector, m_configuration->m_root_dir);
 
+	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
+	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
+	m_analyzer->get_configuration()->set_procfs_scan_interval_ms(m_configuration->m_procfs_scan_interval_ms);
+	m_analyzer->get_configuration()->set_procfs_scan_mem_interval_ms(m_configuration->m_procfs_scan_mem_interval_ms);
+
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
 	m_analyzer->get_configuration()->set_metrics_filter(m_configuration->m_metrics_filter);
@@ -543,6 +548,13 @@ void sinsp_worker::init()
 		}
 	}
 #endif // CYGWING_AGENT
+
+	if(m_configuration->m_procfs_scan_thread)
+	{
+		g_log->information("Procfs scan thread enabled, ignoring switch events");
+		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_1_E);
+		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_6_E);
+	}
 
 	if(m_configuration->m_subsampling_ratio != 1)
 	{

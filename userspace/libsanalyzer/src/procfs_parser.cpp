@@ -55,14 +55,19 @@ sinsp_procfs_parser::sinsp_procfs_parser(
 #else
 sinsp_procfs_parser::sinsp_procfs_parser(sinsp* inspector, 
 #endif
-	uint32_t ncpus, 
-	int64_t physical_memory_kb, bool is_live_capture):
+					 uint32_t ncpus, 
+					 int64_t physical_memory_kb,
+					 bool is_live_capture,
+					 uint64_t ttl_s_cpu,
+					 uint64_t ttl_s_mem):
 	m_ncpus(ncpus),
 	m_physical_memory_kb(physical_memory_kb),
 	m_is_live_capture(is_live_capture),
 	m_last_in_bytes(0),
 	m_last_out_bytes(0)
 #ifndef CYGWING_AGENT
+	, m_procfs_scanner_cpu(scap_get_host_root(), ttl_s_cpu, this)
+	, m_procfs_scanner_mem(scap_get_host_root(), ttl_s_mem)
 	, m_global_jiffies(*this)
 #endif
 {
@@ -550,49 +555,21 @@ uint64_t sinsp_procfs_parser::global_steal_pct()
 #endif // CYGWING_AGENT
 }
 
-double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_proc)
+double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid)
 {
 #ifndef CYGWING_AGENT
 	if(!m_is_live_capture) { return -1; }
-	double res = -1;
-	uint64_t global_total_jiffies_delta = m_global_jiffies.delta_total();
 
-	if(global_total_jiffies_delta != jiffies_t::NO_JIFFIES)
+	auto cpu_usage = m_procfs_scanner_cpu.get_data();
+	auto cpu = cpu_usage->load_map.find(pid);
+	if (cpu != cpu_usage->load_map.end())
 	{
-		string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
-
-		// we are looking for /proc/[PID]/stat entries [(14) utime %lu] and [(15) stime %lu],
-		// see http://man7.org/linux/man-pages/man5/proc.5.html
-		// the important bit here is that [(2) comm %s] may contain spaces, so sscanf is not bullet-proof;
-		// we find the first closing paren (ie. skip the first two entries) and then extract desired values
-		// from the rest of the line. so, (14) and (15), after adjustment for shift and zero-base, translates to (11) and (12)
-		std::ifstream f(path);
-		std::string line;
-		if(std::getline(f, line))
-		{
-			if(line.size())
-			{
-				std::string::size_type pos = line.find(')');
-				if((pos != std::string::npos) && (line.size() > pos + 1))
-				{
-					unsigned long utime = 0, stime = 0;
-					if(sscanf(line.c_str()+pos+1, "%*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %lu %lu", &utime, &stime) > 0)
-					{
-						uint64_t proc = utime + stime;
-						if(*old_proc != (uint64_t)-1LL)
-						{
-							uint64_t delta_proc = proc - *old_proc;
-							res = ((double)delta_proc * 100 / global_total_jiffies_delta) * m_ncpus;
-							res = std::min(res, 100.0 * m_ncpus);
-						}
-						*old_proc = proc;
-						return res;
-					}
-				}
-			}
-		}
+		return cpu->second.adjusted;
 	}
-	return res;
+	else // no data, or don't have this pid
+	{
+		return -1;
+	}
 #else // CYGWING_AGENT
 	wh_proc_perf_info pinfo = wh_wmi_get_proc_perf_info(m_whhandle, pid);
 	if(pinfo.m_result != 0)
@@ -603,6 +580,80 @@ double sinsp_procfs_parser::get_process_cpu_load(uint64_t pid, uint64_t* old_pro
 	{
 		return 0;
 	}
+#endif // CYGWING_AGENT
+}
+
+bool sinsp_procfs_parser::get_process_mem_metrics(pid_t pid, struct proc_metrics::mem_metrics *metrics)
+{
+#ifndef CYGWING_AGENT
+	auto mem_data = m_procfs_scanner_mem.get_data();
+	auto mem = mem_data->find(pid);
+	if (mem == mem_data->end())
+	{
+		return false;
+	}
+
+	*metrics = mem->second;
+	return true;
+#else // CYGWING_AGENT
+	// todo: CYGWING_AGENT. for now just return false (not supported)
+	return false;
+#endif // CYGWING_AGENT
+}
+
+double sinsp_procfs_parser::get_process_cpu_load_sync(uint64_t pid, uint64_t* old_proc)
+{
+#ifndef CYGWING_AGENT
+        if(!m_is_live_capture) { return -1; }
+        double res = -1;
+        uint64_t global_total_jiffies_delta = m_global_jiffies.delta_total();
+
+        if(global_total_jiffies_delta == jiffies_t::NO_JIFFIES) {
+        	return -1;
+        }
+
+	string path = string(scap_get_host_root()) + string("/proc/") + to_string((long long unsigned int) pid) + "/stat";
+
+	// we are looking for /proc/[PID]/stat entries [(14) utime %lu] and [(15) stime %lu],
+	// see http://man7.org/linux/man-pages/man5/proc.5.html
+	// the important bit here is that [(2) comm %s] may contain spaces, so sscanf is not bullet-proof;
+	// we find the first closing paren (ie. skip the first two entries) and then extract desired values
+	// from the rest of the line. so, (14) and (15), after adjustment for shift and zero-base, translates to (11) and (12)
+	std::ifstream f(path);
+	std::string line;
+	if(!std::getline(f, line) || line.empty()) {
+		return -1;
+	}
+
+	std::string::size_type pos = line.find(')');
+	if((pos == std::string::npos) || (pos >= line.size() - 1)) {
+		return -1;
+	}
+
+	unsigned long utime = 0, stime = 0;
+	if(sscanf(line.c_str()+pos+1, "%*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %*s %lu %lu", &utime, &stime) > 0)
+	{
+		uint64_t proc = utime + stime;
+		if(*old_proc != (uint64_t)-1LL)
+		{
+			uint64_t delta_proc = proc - *old_proc;
+			res = ((double)delta_proc * 100 / global_total_jiffies_delta) * m_ncpus;
+			res = std::min(res, 100.0 * m_ncpus);
+		}
+		*old_proc = proc;
+		return res;
+	}
+        return res;
+#else // CYGWING_AGENT
+        wh_proc_perf_info pinfo = wh_wmi_get_proc_perf_info(m_whhandle, pid);
+        if(pinfo.m_result != 0)
+        {
+                return pinfo.m_cpu_percent;
+        }
+        else
+        {
+                return 0;
+        }
 #endif // CYGWING_AGENT
 }
 
@@ -619,22 +670,22 @@ long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
 	// from the rest of the line. so, (24), after adjustment for shift and zero-base, translates to (21)
 	std::ifstream f(path);
 	std::string line;
-	if(std::getline(f, line))
+
+	if(!std::getline(f, line) || line.empty()) {
+		return -1;
+	}
+
+	std::string::size_type pos = line.find(')');
+	if((pos == std::string::npos) || (pos >= line.size() - 1)) {
+		return -1;
+	}
+
+	StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
+	if(st.count() >= 22)
 	{
-		if(line.size())
-		{
-			std::string::size_type pos = line.find(')');
-			if((pos != std::string::npos) && (line.size() > pos + 1))
-			{
-				StringTokenizer st(line.substr(pos + 1), " ", StringTokenizer::TOK_TRIM | StringTokenizer::TOK_IGNORE_EMPTY);
-				if(st.count() >= 22)
-				{
-					res = strtol(st[21].c_str(), nullptr, 10);
-					if(res == LONG_MAX && errno == ERANGE) { ASSERT(false);}
-					return sysconf(_SC_PAGESIZE) * res;
-				}
-			}
-		}
+		res = strtol(st[21].c_str(), nullptr, 10);
+		if(res == LONG_MAX && errno == ERANGE) { ASSERT(false);}
+		return sysconf(_SC_PAGESIZE) * res;
 	}
 
 	return res;
@@ -651,8 +702,7 @@ long sinsp_procfs_parser::get_process_rss_bytes(uint64_t pid)
 #endif // CYGWING_AGENT
 }
 
-vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled,
-															const string& mtab)
+vector<mounted_fs> sinsp_procfs_parser::get_mounted_fs_list(bool remotefs_enabled, const string& mtab)
 {
 	map<string, mounted_fs> mount_points;
 
@@ -908,8 +958,7 @@ int64_t sinsp_procfs_parser::read_cgroup_used_memory(const string &container_mem
  *
  * NOTE: This function MUST only be called from read_cgroup_used_memory().
  */
-int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(
-                                        const string &container_memory_cgroup)
+int64_t sinsp_procfs_parser::read_cgroup_used_memory_vmrss(const string &container_memory_cgroup)
 {
     int64_t stat_val_cache = -1, stat_val_rss = -1, stat_val_inactive_file = -1;
     unsigned stat_find_count = 0;
@@ -1426,10 +1475,11 @@ bool mounted_fs_proxy::send_container_list(const vector<sinsp_threadinfo*> &cont
 mounted_fs_reader::mounted_fs_reader(sinsp* inspector, bool remotefs, const mount_points_filter_vec& filters, unsigned mounts_limit_size):
 	m_input("/sdc_mounted_fs_reader_in", posix_queue::direction_t::RECEIVE),
 	m_output("/sdc_mounted_fs_reader_out", posix_queue::direction_t::SEND),
+	// for genric fs reader, fetch new data any time it's requested
 #ifndef CYGWING_AGENT
-	m_procfs_parser(0, 0, true),
+	m_procfs_parser(0, 0, true, 0, 0),
 #else
-	m_procfs_parser(inspector, 0, 0, true),
+	m_procfs_parser(inspector, 0, 0, true, 0, 0),
 #endif
 	m_remotefs(remotefs)
 {

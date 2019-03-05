@@ -872,6 +872,11 @@ public:
 	int32_t m_max_n_proc_lookups;
 	int32_t m_max_n_proc_socket_lookups;
 
+	bool m_procfs_scan_thread;
+	uint32_t m_procfs_scan_interval_ms;
+	uint32_t m_procfs_scan_mem_interval_ms;
+	uint32_t m_procfs_scan_delay_ms;
+
 	bool m_query_docker_image_info;
 	std::string m_cri_socket_path;
 	int64_t m_cri_timeout_ms = 1000;

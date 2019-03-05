@@ -278,6 +278,10 @@ dragent_configuration::dragent_configuration()
 	m_swarm_enabled = true;
 	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
 	m_snaplen = 0;
+	m_procfs_scan_thread = false;
+	m_procfs_scan_mem_interval_ms = 30000;
+	m_procfs_scan_interval_ms = 5000;
+	m_procfs_scan_delay_ms = 100;
 	m_query_docker_image_info = true;
 }
 
@@ -1218,6 +1222,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
+
+#ifndef CYGWING_AGENT
+	m_procfs_scan_thread =  m_config->get_scalar<bool>("procfs_scanner", "enabled", false);
+	m_procfs_scan_mem_interval_ms = m_config->get_scalar<uint32_t>("procfs_scanner", "mem_scan_interval_ms", 30000);
+	m_procfs_scan_interval_ms = m_config->get_scalar<uint32_t>("procfs_scanner", "cpu_scan_interval_ms", 5000);
+	m_procfs_scan_delay_ms = m_config->get_scalar<uint32_t>("procfs_scanner", "start_delay_ms", 100);
+#endif
 
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 	m_cri_socket_path = m_config->get_scalar<string>("cri", "socket_path", "");

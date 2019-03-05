@@ -386,3 +386,7 @@ void ratelimit::run(const Callable& c, uint64_t now)
 		c();
 	}
 }
+
+const uint64_t MSECS_PER_SEC = 1000L;
+const uint64_t USECS_PER_SEC = 1000L * 1000;
+const uint64_t NSECS_PER_SEC = 1000L * 1000 * 1000;

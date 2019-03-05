@@ -193,6 +193,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 #ifndef CYGWING_AGENT
 	m_use_new_k8s = false;
 #endif
+	m_procfs_scan_thread = false;
 	m_protocols_enabled = true;
 	m_remotefs_enabled = false;
 	m_containers_limit = CONTAINERS_HARD_LIMIT;
@@ -268,6 +269,71 @@ sinsp_analyzer::~sinsp_analyzer()
 	{
 		ProfilerStop();
 	}
+}
+
+/// calculate analyzer thread CPU usage in percent
+/// (100 == one full CPU)
+static double calculate_thread_cpu_usage(uint64_t num_cpus, uint64_t current_jiffies)
+{
+	static const uint64_t ticks_per_sec = sysconf(_SC_CLK_TCK);
+
+	static uint64_t prev_cpu_time_us = 0;
+	static uint64_t prev_jiffies = 0;
+
+	double thread_self_cpu_load = -1;
+
+	struct rusage usage;
+	if (getrusage(RUSAGE_THREAD, &usage) != 0)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "calculate_thread_cpu_usage: Unable to call getrusage, errno: %s", strerror(errno));
+		return -1;
+	}
+
+	// CPU time used by the thread since startup
+	uint64_t curr_cpu_time_us =
+		usage.ru_utime.tv_sec * USECS_PER_SEC + usage.ru_utime.tv_usec +
+		usage.ru_stime.tv_sec * USECS_PER_SEC + usage.ru_stime.tv_usec;
+
+	// elapsed CPU time in ticks since the last call
+	// (this increases by ticks_per_sec every second for every CPU)
+	uint64_t elapsed_us = (current_jiffies - prev_jiffies) * USECS_PER_SEC / ticks_per_sec;
+
+	if (prev_cpu_time_us > 0 && elapsed_us > 0)
+	{
+		// get the thread CPU usage difference since last call
+		// and scale it so that 100 == one CPU
+		// except for losing precision, this would be best expressed as:
+		// ((cur - prev) / (elapsed_us / num_cpus)) * 100
+		thread_self_cpu_load = ((double)(curr_cpu_time_us - prev_cpu_time_us) * 100 * num_cpus) / elapsed_us;
+	}
+
+	prev_cpu_time_us = curr_cpu_time_us;
+	prev_jiffies = current_jiffies;
+	return thread_self_cpu_load;
+}
+
+/// get analyzer thread CPU usage in percent and fudge it
+/// by the stolen CPU percentage
+/// XXX: we're probably doing this because our sampling ratio
+/// detection code depends on this value
+void sinsp_analyzer::calculate_analyzer_cpu_usage()
+{
+#if defined(HAS_CAPTURE)
+	double thread_self_cpu_load = calculate_thread_cpu_usage(m_machine_info->num_cpus, m_procfs_parser->get_global_cpu_jiffies());
+	m_my_cpuload = thread_self_cpu_load;
+
+	uint64_t steal_pct = m_procfs_parser->global_steal_pct();
+	if(m_my_cpuload > 0.1 && steal_pct > 0 && steal_pct < 100)
+	{
+		m_my_cpuload -= (m_my_cpuload * ((double)steal_pct / 100));
+		g_logger.log("Agent internal CPU time adjusted for steal time by factor " +
+					std::to_string(m_my_cpuload/thread_self_cpu_load) +
+					": thread_self_cpu_load=" + std::to_string(thread_self_cpu_load) +
+					" => m_my_cpuload=" + std::to_string(m_my_cpuload), sinsp_logger::SEV_DEBUG);
+	}
+#else
+	m_my_cpuload = 0;
+#endif
 }
 
 void sinsp_analyzer::emit_percentiles_config()
@@ -366,9 +432,18 @@ void sinsp_analyzer::on_capture_start()
 	m_total_evts_switcher.set_ntimes_max(tracepoint_hits_threshold.second);
 
 #ifndef CYGWING_AGENT
-	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+	m_procfs_parser = new sinsp_procfs_parser(m_machine_info->num_cpus,
+						  m_machine_info->memory_size_bytes / 1024,
+						  !m_inspector->is_capture(),
+						  m_configuration->get_procfs_scan_interval_ms() / 1000,
+						  m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
 #else
-	m_procfs_parser = new sinsp_procfs_parser(m_inspector, m_machine_info->num_cpus, m_machine_info->memory_size_bytes / 1024, !m_inspector->is_capture());
+	m_procfs_parser = new sinsp_procfs_parser(m_inspector, 
+						  m_machine_info->num_cpus,
+						  m_machine_info->memory_size_bytes / 1024,
+						  !m_inspector->is_capture(),
+						  m_configuration->get_procfs_scan_interval_ms() / 1000,
+						  m_configuration->get_procfs_scan_mem_interval_ms() / 1000);
 #endif
 	m_mount_points.reset(new mount_points_limits(m_configuration->get_mounts_filter(), m_configuration->get_mounts_limit_size()));
 	m_procfs_parser->read_mount_points(m_mount_points);
@@ -2170,26 +2245,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 					{
 						if(!m_skip_proc_parsing)
 						{
-							ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo.m_pid, &ainfo->m_old_proc_jiffies);
-						}
-
-#if defined(HAS_CAPTURE)
-						if(tinfo.m_tid == m_inspector->m_sysdig_pid)
-						{
-							m_my_cpuload = ainfo->m_cpuload;
-							uint64_t steal_pct = m_procfs_parser->global_steal_pct();
-							if(m_my_cpuload > 0.1 && steal_pct > 0 && steal_pct < 100)
+							if (m_procfs_scan_thread)
 							{
-								m_my_cpuload -= (m_my_cpuload * ((double)steal_pct / 100));
-								g_logger.log("Agent internal CPU time adjusted for steal time by factor " +
-											std::to_string(m_my_cpuload/ainfo->m_cpuload) +
-											": ainfo->m_cpuload=" + std::to_string(ainfo->m_cpuload) +
-											" => m_my_cpuload=" + std::to_string(m_my_cpuload), sinsp_logger::SEV_DEBUG);
+								ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load(tinfo.m_pid);
+							}
+							else
+							{
+								ainfo->m_cpuload = m_procfs_parser->get_process_cpu_load_sync(tinfo.m_pid, &ainfo->m_old_proc_jiffies);
 							}
 						}
-#else
-						m_my_cpuload = 0;
-#endif
+
 						if(m_inspector->is_nodriver())
 						{
 #ifndef CYGWING_AGENT
@@ -3045,11 +3110,27 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				proc->mutable_resource_counters()->set_cpu_pct(0);
 			}
 
-			proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
-			proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
-			proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
-			proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
-			proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+			if (m_procfs_scan_thread)
+			{
+				struct proc_metrics::mem_metrics pm;
+				if (m_procfs_parser->get_process_mem_metrics(tinfo->m_pid, &pm))
+				{
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(pm.vmrss_kb);
+					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(pm.vmsize_kb);
+					proc->mutable_resource_counters()->set_swap_memory_usage_kb(pm.vmswap_kb);
+					proc->mutable_resource_counters()->set_major_pagefaults(pm.pfmajor);
+					proc->mutable_resource_counters()->set_minor_pagefaults(pm.pfminor);
+				}
+			}
+			else
+			{
+				proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
+				proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
+				proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
+				proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
+				proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+			}
+
 			proc->mutable_resource_counters()->set_threads_count(procinfo->m_threads_count);
 
 			if(tot.m_count != 0)
@@ -4295,6 +4376,9 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flushflags)
 {
 	tracer_emitter f_trc("analyzer_flush", flush_tracer_timeout());
+	if (flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT) {
+		calculate_analyzer_cpu_usage();
+	}
 	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_TRACE, "Called flush with ts=%lu is_eof=%s flushflags=%d", ts, is_eof? "true" : "false", flushflags);
 	uint32_t j;

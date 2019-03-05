@@ -37,6 +37,7 @@
 #include "protodecoder.h"
 #include "procfs_parser.h"
 #include "analyzer_thread.h"
+#include "procfs_scanner.h"
 
 using namespace std;
 
@@ -693,7 +694,7 @@ TEST_F(sys_call_test, procfs_cpuload)
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
+	sinsp_procfs_parser pparser(nprocs, memkb, true, 0, 0);
 
 	pparser.get_proc_stat(&proc_stat);
 	sleep(1);
@@ -721,7 +722,7 @@ TEST_F(sys_call_test, procfs_cpuload_longinterval)
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
+	sinsp_procfs_parser pparser(nprocs, memkb, true, 0, 0);
 
 	pparser.get_proc_stat(&proc_stat);
 	sleep(1);
@@ -745,24 +746,25 @@ TEST_F(sys_call_test, procfs_cpuload_longinterval)
 
 TEST_F(sys_call_test, procfs_processcpuload)
 {
-	double load;
 	uint32_t j, k;
 	uint32_t t = 1;
 	int pid = getpid();
-	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
+	proc_metrics::load_map_t cpu_usage;
 
-	pparser.set_global_cpu_jiffies();
-	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
-	EXPECT_EQ((double)-1, load);
+	sinsp_procfs_parser pparser(nprocs, memkb, true, 0, 0);
 
-	sleep(1);
-
-	for(j = 20; j > 10; j--)
+	while (pparser.get_process_cpu_load(pid) == -1)
 	{
+		usleep(1000);
+	}
+	EXPECT_NE(pparser.get_process_cpu_load(pid), -1);
+
+	for (j = 1; j < 1000; j++)
+	{
+		// generate some CPU load. This is awful.
 		for(k = 0; k < 5000000 * j; k++)
 		{
 			t += k;
@@ -770,13 +772,13 @@ TEST_F(sys_call_test, procfs_processcpuload)
 		}
 
 		pparser.set_global_cpu_jiffies();
-		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
-		EXPECT_NE((double)-1, load);
-		EXPECT_LE((double)0, load);
-		EXPECT_GE((double)100, load);
-
-		usleep(100000);
+		double load = pparser.get_process_cpu_load(pid);
+		if (load > 50) { // just check we have some load
+			return;
+		}
+		j--;
 	}
+	ASSERT_EQ("CPU load didn't exceed expeted amount in 10 tries", "");
 }
 
 TEST_F(sys_call_test, procfs_get_mounted_fs_list)
@@ -789,7 +791,7 @@ TEST_F(sys_call_test, procfs_get_mounted_fs_list)
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
-	sinsp_procfs_parser fs_parser(nprocs, memkb, true);
+	sinsp_procfs_parser fs_parser(nprocs, memkb, true, 0, 0);
 	shared_ptr<mount_points_limits> limits = make_shared<mount_points_limits>(filters, 15);
 	fs_parser.read_mount_points(limits);
 	vector<mounted_fs> fs_list = fs_parser.get_mounted_fs_list(false);
@@ -859,10 +861,8 @@ public:
 
 TEST_F(sys_call_test, procfs_processchild_cpuload)
 {
-	double load;
 	uint32_t j;
 	int pid = getpid();
-	uint64_t old_proc_jiffies = (uint64_t)-1LL;
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 	uint32_t num_cpus = sysconf(_SC_NPROCESSORS_ONLN);
@@ -871,6 +871,7 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 	std::vector<std::shared_ptr<loadthread>> lts;
 	std::vector<std::shared_ptr<Poco::RunnableAdapter<loadthread>>> rs;
 
+	// spawn a bunch of threads
 	for(j = 0; j < num_cpus; ++j)
 	{
 		std::shared_ptr<Poco::Thread> pt(new Poco::Thread());
@@ -883,24 +884,33 @@ TEST_F(sys_call_test, procfs_processchild_cpuload)
 		pts.back()->start(*rs.back());
 	}
 
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
+	proc_metrics::load_map_t cpu_usage;
 
-	pparser.set_global_cpu_jiffies();
-	load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
+	sinsp_procfs_parser pparser(nprocs, memkb, true, 0, 0);
+	while (pparser.get_process_cpu_load(pid) == -1)
+	{
+		usleep(1000);
+	}
+	EXPECT_NE(pparser.get_process_cpu_load(pid), -1);
 
-	sleep(1);
-
-	EXPECT_EQ((double)-1, load);
-
-	for(j = 0; j < 3; j++)
+	// loop through trying to ensure we get some load. Once we hit half of all CPU load, 
+	// break out and pass. We need multiple tries as sometimes it takes a bit for the
+	// threads to get going
+	bool pass = false;
+	for(j = 0; j < 1000; j++)
 	{
 		pparser.set_global_cpu_jiffies();
-		load = pparser.get_process_cpu_load(pid, &old_proc_jiffies);
+		double load = pparser.get_process_cpu_load(pid);
+		EXPECT_NE(load, -1);
+		if (load > (double)num_cpus * 100 / 2) // should be using a lot...
+		{
+			pass = true;
+			break;
+		}
 
-		sleep(1);
-
-		EXPECT_GE((double)num_cpus * 100, load);
 	}
+
+	EXPECT_EQ(pass, true);
 
 	for(auto l : lts)
 	{
@@ -925,7 +935,7 @@ TEST_F(sys_call_test, procfs_globalmemory)
 	int32_t nprocs = sysconf(_SC_NPROCESSORS_ONLN);
 	int64_t memkb =  (int64_t)sysconf(_SC_PHYS_PAGES) * sysconf(_SC_PAGESIZE) / 1024;
 
-	sinsp_procfs_parser pparser(nprocs, memkb, true);
+	sinsp_procfs_parser pparser(nprocs, memkb, true, 0, 0);
 
 	for(j = 0; j < 5; j++)
 	{
@@ -1109,7 +1119,6 @@ TEST_F(sys_call_test, procinfo_processchild_cpuload)
 
 					uint64_t delta = tcpu - lastcpu;
 
-					printf("%d:%d)%d:%d)%d >> %d %lu\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta, ct.m_utime_delta);
 					ct.m_read_cpu = true;
 
 					if(callnum != 0)
@@ -1197,7 +1206,6 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 
 					uint64_t delta = tcpu - lastcpu;
 
-					printf("%d:%d)%d:%d)%d >> %d\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta);
 
 					if(callnum > 2)
 					{
@@ -1217,8 +1225,6 @@ TEST_F(sys_call_test, procinfo_two_processchilds_cpuload)
 					tcpu = *(uint64_t*)parinfo->m_val;
 
 					uint64_t delta = tcpu - lastcpu1;
-
-					printf("%d:%d)%d:%d)%d >> %d\n", (int)callnum, (int)ctid, (int)tinfo->m_pid, (int)tinfo->m_tid, (int)tcpu, (int)delta);
 
 					if(callnum > 2)
 					{

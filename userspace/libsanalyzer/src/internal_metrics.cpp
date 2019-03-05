@@ -38,7 +38,8 @@ void internal_metrics::update_subprocess_metrics(sinsp_procfs_parser *procfs_par
 			{
 				m_analyzer.subprocs_old_jiffies[pid] = (uint64_t)-1LL;
 			}
-			int64_t cpu = (int32_t)round(procfs_parser->get_process_cpu_load(pid, &m_analyzer.subprocs_old_jiffies[pid])*100);
+
+			int64_t cpu = round(procfs_parser->get_process_cpu_load_sync(pid, &m_analyzer.subprocs_old_jiffies[pid])*100);
 			long mem = procfs_parser->get_process_rss_bytes(pid)/1024;
 
 			if(name == "mountedfs_reader")

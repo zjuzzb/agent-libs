@@ -1056,7 +1056,8 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 
 TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 {
-	sinsp_procfs_parser parser(1, 1024, true);
+	// cpu, mem, live, ttl cpu, ttl mem
+	sinsp_procfs_parser parser(1, 1024, true, 0, 0);
 
 	auto stats = parser.read_network_interfaces_stats();
 	EXPECT_EQ(stats.first, 0U);

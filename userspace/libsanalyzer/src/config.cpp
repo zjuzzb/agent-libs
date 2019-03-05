@@ -1187,6 +1187,36 @@ void sinsp_configuration::set_orch_filter_empty(bool filter_empty)
 	m_orch_filter_empty = filter_empty;
 }
 
+void sinsp_configuration::set_procfs_scan_delay_ms(uint32_t scan_delay_ms)
+{
+	m_procfs_scan_delay_ms = scan_delay_ms;
+}
+
+uint32_t sinsp_configuration::get_procfs_scan_delay_ms() const
+{
+	return m_procfs_scan_delay_ms;
+}
+
+void sinsp_configuration::set_procfs_scan_interval_ms(uint32_t scan_interval_ms)
+{
+	m_procfs_scan_interval_ms = scan_interval_ms;
+}
+
+uint32_t sinsp_configuration::get_procfs_scan_interval_ms() const
+{
+	return m_procfs_scan_interval_ms;
+}
+
+void sinsp_configuration::set_procfs_scan_mem_interval_ms(uint32_t scan_interval_ms)
+{
+	m_procfs_scan_mem_interval_ms = scan_interval_ms;
+}
+
+uint32_t sinsp_configuration::get_procfs_scan_mem_interval_ms() const
+{
+	return m_procfs_scan_mem_interval_ms;
+}
+
 uint32_t sinsp_configuration::get_orch_batch_msgs_queue_len() const
 {
 	return m_orch_batch_msgs_queue_len;
