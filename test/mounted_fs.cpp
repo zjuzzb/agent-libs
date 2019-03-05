@@ -7,6 +7,7 @@
 #include "sdc_internal.pb.h"
 #include "mounted_fs.h"
 #include "sys_call_test.h"
+#include "docker_utils.h"
 
 class mounted_fs_reader_test : public sys_call_test {};
 
@@ -28,7 +29,7 @@ TEST_F(mounted_fs_reader_test, container_mounts)
 	root_dir[root_dir_sz] = '\0';
 
 	const std::string runc = "runc";
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!dutils_check_docker())
 	{
 		printf("Docker not running, skipping test\n");
 		return;
