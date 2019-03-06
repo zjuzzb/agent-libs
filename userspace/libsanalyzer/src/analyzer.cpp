@@ -4913,13 +4913,15 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			unsigned statsd_total = 0, statsd_sent = 0;
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(0);
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(0);
+
 			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
 			{
 				statsd_total += std::get<1>(m_statsd_metrics.at(""));
 				statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at("")),
 					m_metrics->mutable_protos()->mutable_statsd(),
 					m_configuration->get_statsd_limit(),
-					m_configuration->get_statsd_limit());
+					m_configuration->get_statsd_limit(),
+					"host=" + sinsp_gethostname());
 				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(statsd_sent);
 				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(statsd_total);
 			}
@@ -7074,12 +7076,14 @@ sinsp_analyzer::emit_container(const string &container_id,
 #ifndef _WIN32
 	container->mutable_resource_counters()->set_statsd_sent(0);
 	container->mutable_resource_counters()->set_statsd_total(0);
+
 	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
 	{
 		unsigned statsd_total = std::get<1>(m_statsd_metrics.at(it->second.m_id));
 		auto statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at(it->second.m_id)),
 										container->mutable_protos()->mutable_statsd(),
-										*statsd_limit, m_configuration->get_statsd_limit());
+										*statsd_limit, m_configuration->get_statsd_limit(),
+										"container=" + it->second.m_name + " (id=" + it->second.m_id + ")");
 		*statsd_limit -= statsd_sent;
 		container->mutable_resource_counters()->set_statsd_sent(statsd_sent);
 		container->mutable_resource_counters()->set_statsd_total(statsd_total);
@@ -7148,7 +7152,8 @@ void sinsp_analyzer::get_statsd()
 }
 
 #ifndef _WIN32
-unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info, unsigned limit, unsigned max_limit)
+unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
+					unsigned limit, unsigned max_limit, const string& context)
 {
 	unsigned metrics_found = 0;
 	for(const auto& metric : statsd_metrics)
@@ -7176,7 +7181,7 @@ unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metric
 
 	if(metrics_found > 0)
 	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics", metrics_found);
+		g_logger.format(sinsp_logger::SEV_INFO, "Added %d statsd metrics for %s", metrics_found, context.c_str());
 	}
 
 	return metrics_found;
