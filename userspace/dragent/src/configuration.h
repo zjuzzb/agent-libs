@@ -570,6 +570,7 @@ public:
 
 	// Static so that the signal handler can reach it
 	static std::atomic<bool> m_signal_dump;
+	static std::atomic<bool> m_enable_trace;
 	static std::atomic<bool> m_terminate;
 	static std::atomic<bool> m_send_log_report;
 	static std::atomic<bool> m_config_update;
@@ -626,6 +627,7 @@ public:
 	uint32_t m_json_parse_errors_events_max_burst;
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
+	uint64_t m_watchdog_sinsp_worker_debug_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
 	uint64_t m_watchdog_subprocesses_logger_timeout_s;
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;

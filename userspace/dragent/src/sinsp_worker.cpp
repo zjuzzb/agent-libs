@@ -6,6 +6,9 @@
 #include "memdumper.h"
 #include "Poco/DateTimeFormatter.h"
 
+#include <grpc/grpc.h>
+#include <grpc/support/log.h>
+
 const string sinsp_worker::m_name = "sinsp_worker";
 
 sinsp_worker::sinsp_worker(dragent_configuration* configuration,
@@ -30,6 +33,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
+	m_trace_enabled(false),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration),
 	m_internal_metrics(im)
@@ -863,6 +867,25 @@ void sinsp_worker::process_job_requests()
 		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
 		{
 			g_log->error("sinsp_worker: could not start capture: " + errstr);
+		}
+	}
+
+	if(dragent_configuration::m_enable_trace)
+	{
+		dragent_configuration::m_enable_trace = false;
+		if(m_trace_enabled)
+		{
+			m_trace_enabled = false;
+			g_log->information("Received SIGWINCH, disabling gRPC tracing");
+			grpc_tracer_set_enabled("all", 0);
+			gpr_set_log_verbosity(GPR_LOG_SEVERITY_ERROR);
+		}
+		else
+		{
+			m_trace_enabled = true;
+			g_log->information("Received SIGWINCH, enabling gRPC tracing");
+			grpc_tracer_set_enabled("all", 1);
+			gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);
 		}
 	}
 

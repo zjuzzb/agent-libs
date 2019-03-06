@@ -67,6 +67,11 @@ static void g_usr2_signal_callback(int sig)
 	dragent_configuration::m_send_log_report = true;
 }
 
+static void g_winch_signal_callback(int sig)
+{
+	dragent_configuration::m_enable_trace = true;
+}
+
 dragent_app::dragent_app():
 	m_help_requested(false),
 	m_version_requested(false),
@@ -387,6 +392,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		sigaction(SIGUSR1, &sa, NULL);
 		sa.sa_handler = g_usr2_signal_callback;
 		sigaction(SIGUSR2, &sa, NULL);
+		sa.sa_handler = g_winch_signal_callback;
+		sigaction(SIGWINCH, &sa, NULL);
 
 		if(crash_handler::initialize() == false)
 		{
@@ -827,8 +834,14 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
 
+		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_debug_timeout_s,
+			"sinsp_worker", ", enabling tracing"))
+		{
+			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGWINCH);
+		}
+
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_timeout_s,
-			"sinsp_worker", ""))
+			"sinsp_worker", ", terminating process"))
 		{
 			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
 			to_kill = true;

@@ -24,6 +24,7 @@ using namespace Poco::Net;
 DRAGENT_LOGGER("dragent");
 
 std::atomic<bool> dragent_configuration::m_signal_dump(false);
+std::atomic<bool> dragent_configuration::m_enable_trace(false);
 std::atomic<bool> dragent_configuration::m_terminate(false);
 std::atomic<bool> dragent_configuration::m_send_log_report(false);
 std::atomic<bool> dragent_configuration::m_config_update(false);
@@ -220,6 +221,7 @@ dragent_configuration::dragent_configuration()
 	m_json_parse_errors_events_max_burst = 10;
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
+	m_watchdog_sinsp_worker_debug_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
 	m_watchdog_analyzer_tid_collision_check_interval_s = 0;
 	m_watchdog_sinsp_data_handler_timeout_s = 0;
@@ -757,6 +759,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", true);
 #endif
 	m_watchdog_sinsp_worker_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_timeout_s)>("watchdog", "sinsp_worker_timeout_s", 60);
+	m_watchdog_sinsp_worker_debug_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_debug_timeout_s)>("watchdog", "sinsp_worker_debug_timeout_s", 55);
 	m_watchdog_connection_manager_timeout_s = m_config->get_scalar<decltype(m_watchdog_connection_manager_timeout_s)>("watchdog", "connection_manager_timeout_s", 100);
 	m_watchdog_subprocesses_logger_timeout_s = m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>("watchdog", "subprocesses_logger_timeout_s", 60);
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
