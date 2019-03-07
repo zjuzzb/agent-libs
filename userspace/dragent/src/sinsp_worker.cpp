@@ -876,6 +876,7 @@ void sinsp_worker::process_job_requests()
 		if(m_trace_enabled)
 		{
 			m_trace_enabled = false;
+			m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_default_report_log_size_b;
 			g_log->information("Received SIGWINCH, disabling gRPC tracing");
 			grpc_tracer_set_enabled("all", 0);
 			gpr_set_log_verbosity(GPR_LOG_SEVERITY_ERROR);
@@ -883,6 +884,7 @@ void sinsp_worker::process_job_requests()
 		else
 		{
 			m_trace_enabled = true;
+			m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_trace_report_log_size_b;
 			g_log->information("Received SIGWINCH, enabling gRPC tracing");
 			grpc_tracer_set_enabled("all", 1);
 			gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);

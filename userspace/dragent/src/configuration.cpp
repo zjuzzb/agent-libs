@@ -808,6 +808,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
+	m_dirty_shutdown_default_report_log_size_b = m_dirty_shutdown_report_log_size_b;
+	m_dirty_shutdown_trace_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_trace_report_log_size_b)>("dirty_shutdown", "trace_report_log_size_b", 300 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);

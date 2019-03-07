@@ -638,6 +638,8 @@ public:
 	uint64_t m_watchdog_heap_profiling_interval_s;
 #endif
 	uint64_t m_dirty_shutdown_report_log_size_b;
+	uint64_t m_dirty_shutdown_default_report_log_size_b;
+	uint64_t m_dirty_shutdown_trace_report_log_size_b;
 
 	typedef std::map<string, uint64_t> ProcessValue64Map;
 	typedef std::map<string, int> ProcessValueMap;
