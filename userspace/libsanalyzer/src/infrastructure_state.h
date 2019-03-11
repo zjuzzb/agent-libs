@@ -133,7 +133,8 @@ private:
 
 	void reset();
 
-	void debug_print();
+	void print_state() const;
+	void print_obj(const uid_t &key) const;
 
 	void connect_to_k8s(uint64_t ts = sinsp_utils::get_current_time_ns());
 	void k8s_generate_user_event(const bool success);
