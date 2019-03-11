@@ -876,7 +876,22 @@ public:
 	uint32_t m_orch_batch_msgs_queue_len;
 	uint32_t m_orch_batch_msgs_tick_interval_ms;
 
+	/**
+	 * When a tid is looked up in the thread table and not found we
+	 * will explicitly search '/proc' to try to find it.  This value
+	 * determines the number of times that we will search '/proc'
+	 * before logging a message.
+	 */
 	int32_t m_max_n_proc_lookups;
+
+
+	/**
+	 * When a tid is looked up in the thread table and not found we
+	 * will explicitly search '/proc' to try to find it (and
+	 * sometimes that lookup involves reading sockets). This value
+	 * determines the number of times that we will search '/proc'
+	 * (involving sockets) before logging a message.
+	 */
 	int32_t m_max_n_proc_socket_lookups;
 
 	bool m_procfs_scan_thread;
