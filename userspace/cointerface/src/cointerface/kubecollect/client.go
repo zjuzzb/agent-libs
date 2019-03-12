@@ -163,7 +163,10 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 			}
 			// Exclude services, resourcequotas and hpas unless explicitly requested
 			// We'll probably want to change this
-			if (resource.Name == "services" || resource.Name == "resourcequotas" || resource.Name == "horizontalpodautoscalers") && !in_array(resource.Name, includeTypes) {
+			if (resource.Name == "services" ||
+				resource.Name == "resourcequotas" ||
+				resource.Name == "horizontalpodautoscalers" ||
+				resource.Name == "persistentvolumes") && !in_array(resource.Name, includeTypes) {
 				log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
 				continue
 			}
@@ -420,6 +423,9 @@ func startInformers(ctx context.Context,
 		case "events":
 			startUserEventsSInformer(ctx, kubeClient, wg, UserEventChannel)
 			channelType = ChannelTypeUserEvent
+		case "persistentvolumes":
+			startPersistentVolumesInformer(ctx, kubeClient, wg, InformerChannel)
+
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false

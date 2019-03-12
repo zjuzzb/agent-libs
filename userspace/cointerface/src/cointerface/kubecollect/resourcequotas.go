@@ -88,7 +88,6 @@ func newResourceQuotaCongroup(resourceQuota *v1.ResourceQuota) (*draiosproto.Con
 func AddResourceQuotaMetrics(metrics *[]*draiosproto.AppMetric, resourceQuota *v1.ResourceQuota) {
 	prefix := "kubernetes.resourcequota."
 
-	resourceQuota.GetObjectMeta()
 	for k, v := range resourceQuota.Status.Used {
 		hard := resourceQuota.Status.Hard[k]
 

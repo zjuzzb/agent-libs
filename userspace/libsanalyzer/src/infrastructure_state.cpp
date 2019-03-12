@@ -960,7 +960,7 @@ bool infrastructure_state::check_registered_scope(reg_id_t &reg)
 // This function tests if a given congroup is valid for export
 // Rules:
 // 1.) ONLY Export: k8s_* objects
-// 2.) ALWAYS Export : k8s_namespace, k8s_node
+// 2.) ALWAYS Export : k8s_namespace, k8s_node, k8s_persistentvolume
 // 3.) NEVER Export  : host , container
 // 4.) Conditional Export : (a). All other congroups ONLY if they have
 //                               k8s_namespace parent
@@ -982,7 +982,8 @@ bool infrastructure_state::is_valid_for_export(const draiosproto::container_grou
 	}
 	
 	// Always return node and namespace
-	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node") {
+	if(grp->uid().kind() == "k8s_namespace" || grp->uid().kind() == "k8s_node" ||
+		grp->uid().kind() == "k8s_persistentvolume") {
 		return true;
 	}
 

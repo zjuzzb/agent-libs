@@ -101,6 +101,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/ingress.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/horizontalpodautoscalers.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/test_helpers/assert.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumes.go
 		)
 
 add_custom_target(compclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compclient)
