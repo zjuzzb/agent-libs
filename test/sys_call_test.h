@@ -71,7 +71,6 @@ public:
 		Poco::Net::initializeSSL();
 		// First init with a null context pointer to avoid crashing in the context creation
 		Poco::Net::SSLManager::instance().initializeServer(pph, pich, nullptr);
-		Poco::Net::SSLManager::instance().initializeClient(pph, pich, nullptr);
 
 		// Now create a server context and init again
 		auto sctxt = new Poco::Net::Context(Poco::Net::Context::SERVER_USE,
@@ -80,14 +79,6 @@ public:
 										   "", // CA location
 										   Poco::Net::Context::VERIFY_NONE);
 		Poco::Net::SSLManager::instance().initializeServer(pph, pich, sctxt);
-
-		// While we're here, create a client context too
-		auto cctxt = new Poco::Net::Context(Poco::Net::Context::CLIENT_USE,
-										   "key.pem", // Privatekeyfile
-										   "certificate.pem", // Certificatefile
-										   "", // CA location,
-										   Poco::Net::Context::VERIFY_NONE);
-		Poco::Net::SSLManager::instance().initializeClient(pph, pich, cctxt);
 	}
 
 	static void TearDownTestCase()

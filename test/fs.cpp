@@ -1512,9 +1512,9 @@ TEST_F(sys_call_test, large_read_write)
 {
 	const int buf_size = PPM_MAX_ARG_SIZE * 10;
 
-	char buf[buf_size];
+	std::vector<uint8_t> buf(buf_size);
 	int callnum = 0;
-	int fd;
+	int fd1, fd2;
 
 	srandom(42);
 
@@ -1532,27 +1532,27 @@ TEST_F(sys_call_test, large_read_write)
 	{
 		inspector->set_snaplen(RW_MAX_SNAPLEN);
 
-		fd = creat(FILENAME, S_IRWXU);
-		if(fd < 0)
+		fd1 = creat(FILENAME, S_IRWXU);
+		if(fd1 < 0)
 		{
 			FAIL();
 		}
 
-		int res = write(fd, buf, sizeof(buf));
-		EXPECT_EQ(res, (int) sizeof(buf));
+		int res = write(fd1, buf.data(), buf_size);
+		EXPECT_EQ(res, buf_size);
 
-		close(fd);
+		close(fd1);
 
-		fd = open(FILENAME, O_RDONLY);
-		if(fd < 0)
+		fd2 = open(FILENAME, O_RDONLY);
+		if(fd2 < 0)
 		{
 			FAIL();
 		}
 
-		res = read(fd, buf, sizeof(buf));
-		EXPECT_EQ(res, (int) sizeof(buf));
+		res = read(fd2, buf.data(), buf_size);
+		EXPECT_EQ(res, buf_size);
 
-		close(fd);
+		close(fd2);
 
 		unlink(FILENAME);
 	};
@@ -1564,7 +1564,7 @@ TEST_F(sys_call_test, large_read_write)
 
 		if(type == PPME_SYSCALL_WRITE_E)
 		{
-			if(NumberParser::parse(e->get_param_value_str("fd", false)) == fd)
+			if(NumberParser::parse(e->get_param_value_str("fd", false)) == fd1)
 			{
 				callnum++;
 			}
@@ -1576,7 +1576,7 @@ TEST_F(sys_call_test, large_read_write)
 				const sinsp_evt_param *p = e->get_param_value_raw("data");
 
 				EXPECT_EQ(p->m_len, RW_MAX_SNAPLEN);
-				EXPECT_EQ(0, memcmp(buf, p->m_val, RW_MAX_SNAPLEN));
+				EXPECT_EQ(0, memcmp(buf.data(), p->m_val, RW_MAX_SNAPLEN));
 
 				callnum++;
 			}
@@ -1595,7 +1595,7 @@ TEST_F(sys_call_test, large_read_write)
 				const sinsp_evt_param *p = e->get_param_value_raw("data");
 
 				EXPECT_EQ(p->m_len, RW_MAX_SNAPLEN);
-				EXPECT_EQ(0, memcmp(buf, p->m_val, RW_MAX_SNAPLEN));
+				EXPECT_EQ(0, memcmp(buf.data(), p->m_val, RW_MAX_SNAPLEN));
 
 				callnum++;
 			}
