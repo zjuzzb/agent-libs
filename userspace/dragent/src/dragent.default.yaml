@@ -1199,7 +1199,6 @@ k8s_labels_filter:
 k8s_extra_resources:
     include:
       - services
-      - horizontalpodautoscalers
       - resourcequotas
 
 # configuration files to monitor for updates
