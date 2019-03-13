@@ -201,8 +201,7 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		in = false
 	}
 
-	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
-		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+	in = in && EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if in && lhs.Status.PodIP != rhs.Status.PodIP {
 		in = false
@@ -240,6 +239,8 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 			in = false
 		}
 	}
+
+	out = out && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false

@@ -646,6 +646,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			} else {
 				glogf(sinsp_logger::SEV_DEBUG, "infra_state: UPDATED event will not change relationships, just update the metadata");
 				*m_state[key]->mutable_tags() = evt->object().tags();
+				m_k8s_limits.purge_tags(*m_state[key].get());
 				*m_state[key]->mutable_internal_tags() = evt->object().internal_tags();
 				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
