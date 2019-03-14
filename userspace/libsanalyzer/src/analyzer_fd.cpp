@@ -485,6 +485,8 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
 										 char *data, uint32_t original_len, uint32_t len)
 {
+	evt->set_iosize(original_len);
+
 	if(fdinfo->is_file())
 	{
 		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fdinfo->m_name);
@@ -496,9 +498,6 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
-		// XXX do we want this only for IPv4 sockets?
-		evt->set_iosize(original_len);
-
 		sinsp_connection *connection = nullptr;
 
 		/////////////////////////////////////////////////////////////////////////////
@@ -557,6 +556,8 @@ void sinsp_analyzer_fd_listener::on_read(sinsp_evt *evt, int64_t tid, int64_t fd
 void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo,
 										  char *data, uint32_t original_len, uint32_t len)
 {
+	evt->set_iosize(original_len);
+
 	if(fdinfo->is_file())
 	{
 		analyzer_file_stat* file_stat = get_file_stat(evt->get_thread_info(), fdinfo->m_name);
@@ -568,9 +569,6 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 	}
 	else if(fdinfo->is_ipv4_socket())
 	{
-		// XXX do we want this only for IPv4 sockets?
-		evt->set_iosize(original_len);
-
 		sinsp_connection* connection = nullptr;
 
 		/////////////////////////////////////////////////////////////////////////////
