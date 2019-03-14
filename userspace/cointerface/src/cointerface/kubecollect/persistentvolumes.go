@@ -91,7 +91,7 @@ func getPersistentVolumeType(pv *v1.PersistentVolume) string {
 
 func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.ContainerGroup) {
 	label_tag_name := metricPrefix + "label."
-	internal_tag_name := metricPrefix
+	internal_tag_name := metricPrefix + "label."
 
 	tags := make(map[string]string)
 	for k, v := range pv.GetLabels() {

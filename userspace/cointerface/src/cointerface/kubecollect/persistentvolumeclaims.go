@@ -39,7 +39,7 @@ func persistentVolumeClaimEvent(pv *v1.PersistentVolumeClaim, eventType *draiosp
 
 func newPersistentVolumeClaimCongroup(pv *v1.PersistentVolumeClaim) (*draiosproto.ContainerGroup) {
 	label_tag_name := pvcMetricPrefix + "label."
-	internal_tag_name := pvcMetricPrefix
+	internal_tag_name := pvcMetricPrefix + "label."
 
 	tags := make(map[string]string)
 	for k, v := range pv.GetLabels() {
