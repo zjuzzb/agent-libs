@@ -151,7 +151,7 @@ int32_t coclient::next()
 	int32_t count_evts = 0;
 	grpc::CompletionQueue::NextStatus status;
 
-	status = m_cq.AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_REALTIME));
+	status = m_cq.AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_MONOTONIC));
 
 	if(status == grpc::CompletionQueue::SHUTDOWN)
 	{

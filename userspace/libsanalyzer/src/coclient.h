@@ -151,7 +151,7 @@ protected:
 			return false;
 		}
 
-		status = m_cq->AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_REALTIME));
+		status = m_cq->AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_MONOTONIC));
 		if(status == grpc::CompletionQueue::SHUTDOWN)
 		{
 			g_logger.log("server process shut down, disconnecting", sinsp_logger::SEV_ERROR);
@@ -313,7 +313,7 @@ protected:
 			return false;
 		}
 
-		status = m_cq->AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_REALTIME));
+		status = m_cq->AsyncNext(&tag, &updates_ok, gpr_time_0(GPR_CLOCK_MONOTONIC));
 		if(status == grpc::CompletionQueue::SHUTDOWN)
 		{
 			g_logger.log("server process shut down, disconnecting", sinsp_logger::SEV_ERROR);
