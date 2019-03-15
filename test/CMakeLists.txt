@@ -1,6 +1,7 @@
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
 add_subdirectory(fake_cri)
+add_subdirectory(grpc_test_server)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
@@ -52,6 +53,7 @@ add_executable(tests
 	evttype_filter.cpp
 	forking.cpp
 	fs.cpp
+	grpc.cpp
 	# infrastructure_state_test.cpp
 	inf_state_test.cpp
 	memdump.cpp
