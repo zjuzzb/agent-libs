@@ -28,6 +28,17 @@
 // in the general grpc tutorials, but there is one at
 // https://github.com/grpc/grpc/pull/8934/files.
 
+// The basic workflow for gRPC is:
+// * create a connection and hold on to it forever (gRPC will handle disconnects/reconnects)
+// * for every call, get a fresh `unary_grpc_client` (or `streaming_grpc_client`)
+// * call client->do_rpc(request, [callback]) to start the remote call
+// * call client->process_queue([callback]) repeatedly until:
+//   - for unary RPC, your callback gets called
+//   - for streaming RPC, your callback gets called with streaming_grpc::SHUTDOWN as the first argument
+//
+// If you delete the client object before the RPC finishes, gRPC will log an error message
+// but shouldn't cause memory safety problems (e.g. null deref or use after free)
+
 template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url)
 {
 	g_logger.log("CONNECTING TO SOCKET " + socket_url, sinsp_logger::SEV_INFO);
