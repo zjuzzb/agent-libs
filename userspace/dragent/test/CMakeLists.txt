@@ -26,13 +26,14 @@ add_executable(unit-test-dragent
 	main.cpp
 	blocking_queue.ut.cpp
 	watchdog_runnable.ut.cpp
+	crash_handler.ut.cpp
 	logger.ut.cpp
 )
 
 target_link_libraries(unit-test-dragent
- 	sanalyzer
+	sanalyzer
 	dragentl
- 	draiosproto
+	draiosproto
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 
