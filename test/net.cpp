@@ -330,9 +330,8 @@ class ssl_socket
 class HTTPHandler : public Poco::Net::HTTPRequestHandler
 {
 public:
-	virtual void handleRequest(HTTPServerRequest &request, HTTPServerResponse &response)
+	virtual void handleRequest(HTTPServerRequest &request, HTTPServerResponse &response) override
 	{
-		cerr << "Handling request" << endl;
 		response.setStatus(HTTPResponse::HTTP_OK);
 		response.setContentType("text/html");
 
@@ -356,7 +355,6 @@ public:
 	static const uint16_t secure_port = 443; // The proto analyzer will barf if it's a wonky port
 	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest &)
 	{
-		cerr << "Creating request" << endl;
 		return new HTTPHandler();
 	}
 };
@@ -377,6 +375,11 @@ unique_ptr<SecureServerSocket> get_ssl_socket(uint16_t port)
 ///
 /// Yeah, I know all this OpenSSL API code is gross. But the Poco version
 /// was crashing in mysterious ways.
+///
+/// @param[in]  port  The server port to connect to
+///
+/// @return  true  The request was made successfully and a response was received
+/// @return false  The request encountered an error
 ///
 bool localhost_ssl_request(uint16_t port)
 {
