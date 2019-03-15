@@ -14,7 +14,7 @@ import (
 )
 
 var persistentVolumeClaimsInf cache.SharedInformer
-var pvcMetricPrefix = "kubernetes.persistentvolumeclaims."
+var pvcMetricPrefix = "kubernetes.persistentvolumeclaim."
 
 func startPersistentVolumeClaimsInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	client := kubeClient.CoreV1().RESTClient()
@@ -58,7 +58,7 @@ func newPersistentVolumeClaimCongroup(pv *v1.PersistentVolumeClaim) (*draiosprot
 	tags[internal_tag_name + "status.phase"] = string(pv.Status.Phase)
 	storage := pv.Status.Capacity["storage"]
 	tags[internal_tag_name + "storage"] = storage.String()
-	tags[internal_tag_name + "name"] = pv.GetName()
+	tags[pvcMetricPrefix + "name"] = pv.GetName()
 
 	ret := &draiosproto.ContainerGroup{
 		Uid: &draiosproto.CongroupUid{
