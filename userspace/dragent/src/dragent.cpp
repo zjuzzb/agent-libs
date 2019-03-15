@@ -800,24 +800,36 @@ int dragent_app::sdagent_main()
 	return exit_code;
 }
 
+bool dragent_app::timeout_expired(int64_t last_activity_age_ns, uint64_t timeout_s, const char* label, const char* tail)
+{
+	if(timeout_s == 0 || last_activity_age_ns <= timeout_s * 1000000000LL)
+	{
+		return false;
+	}
+
+	char line[128];
+	snprintf(line, sizeof(line), "watchdog: Detected %s stall, last activity %" PRId64 " ns ago%s\n",
+		label, last_activity_age_ns, tail);
+	crash_handler::log_crashdump_message(line);
+
+	return true;
+}
+
 void dragent_app::watchdog_check(uint64_t uptime_s)
 {
 	bool to_kill = false;
 
 	if(m_sinsp_worker.get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns()
-			- m_sinsp_worker.get_last_loop_ns();
+		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
 
 #if _DEBUG
-		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff) + " ns ago");
+		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
 
-		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_worker_timeout_s * 1000000000LL)
+		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_timeout_s,
+			"sinsp_worker", ""))
 		{
-			char line[128];
-			snprintf(line, sizeof(line), "watchdog: Detected sinsp_worker stall, last activity %" PRId64 " ns ago\n", diff);
-			crash_handler::log_crashdump_message(line);
 			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGABRT);
 			to_kill = true;
 		}
@@ -842,18 +854,15 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 	if(m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns() != 0)
 	{
-		int64_t diff = sinsp_utils::get_current_time_ns()
-			- m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
+		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
 #if _DEBUG
-		LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff) + " ns ago");
+		LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
 
-		if(diff > (int64_t) m_configuration.m_watchdog_sinsp_data_handler_timeout_s * 1000000000LL)
+		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_data_handler_timeout_s,
+			"sinsp_data_handler", ""))
 		{
-			char line[128];
-			snprintf(line, sizeof(line), "watchdog: Detected sinsp_data_handler stall, last activity %" PRId64 " ns ago\n", diff);
-			crash_handler::log_crashdump_message(line);
 			to_kill = true;
 		}
 	}

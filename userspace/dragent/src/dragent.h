@@ -107,6 +107,7 @@ protected:
 
 private:
 	int sdagent_main();
+	inline bool timeout_expired(int64_t last_activity_age_ns, uint64_t timeout_s, const char* label, const char* tail);
 	void watchdog_check(uint64_t uptime_s);
 	void dump_heap_profile(uint64_t uptime_s, bool throttle = true);
 	void initialize_logging();
