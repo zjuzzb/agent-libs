@@ -6,14 +6,14 @@
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "crash_handler.h"
+#include "scoped_file_descriptor.h"
+#include "scoped_temp_file.h"
 
 #include <algorithm>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <Poco/UUID.h>
-#include <Poco/UUIDGenerator.h>
 #include <gtest.h>
 
 namespace
@@ -21,85 +21,6 @@ namespace
 
 const int MAX_NUM_SIGNALS = 65; // SIGRTMAX = 64
 
-/**
- * Wraps a file descriptor for the lifetime of the object, and closes the
- * file descriptor (if not already closed) when destroyed.
- */
-class scoped_file_descriptor
-{
-public:
-	scoped_file_descriptor(const int fd):
-		m_fd(fd),
-		m_closed(false)
-	{ }
-
-	~scoped_file_descriptor()
-	{
-		close();
-	}
-
-	int get_fd() const
-	{
-		return m_fd;
-	}
-
-	bool is_valid() const
-	{
-		return m_fd >= 0;
-	}
-
-	void close()
-	{
-		if(is_valid() && !m_closed)
-		{
-			::close(m_fd);
-			m_fd = -1;
-		}
-		m_closed = true;
-	}
-
-private:
-	int m_fd;
-	bool m_closed;
-};
-
-
-/**
- * Create a temp file that lasts for the lifetime of the object.  The filename
- * will be in the form of "/tmp/<uuid>".
- */
-class scoped_temp_file
-{
-public:
-	scoped_temp_file():
-		m_filename("/tmp/" +
-		           Poco::UUIDGenerator::defaultGenerator().create().toString()),
-		m_created_successfully(false)
-	{
-		const scoped_file_descriptor fd(creat(m_filename.c_str(), 0600));
-
-		m_created_successfully = fd.is_valid();
-	}
-
-	~scoped_temp_file()
-	{
-		unlink(m_filename.c_str());
-	}
-
-	const std::string& get_filename() const
-	{
-		return m_filename;
-	}
-
-	bool created_successfull() const
-	{
-		return m_created_successfully;
-	}
-
-private:
-	std::string m_filename;
-	bool m_created_successfully;
-};
 
 class crash_handler_test : public testing::Test
 {
@@ -226,16 +147,16 @@ TEST_F(crash_handler_test, initialize)
  */
 TEST_F(crash_handler_test, handles_crash_segv)
 {
-	scoped_temp_file tmp_file;
+	test_helpers::scoped_temp_file tmp_file;
 	const int signum = SIGSEGV;
 	int pipe_fds[2] = {};
 
-	ASSERT_TRUE(tmp_file.created_successfull());
+	ASSERT_TRUE(tmp_file.created_successfully());
 	ASSERT_TRUE(crash_handler::initialize());
 	ASSERT_EQ(pipe(pipe_fds), 0);
 
-	scoped_file_descriptor write_end(pipe_fds[1]);
-	scoped_file_descriptor read_end(pipe_fds[0]);
+	test_helpers::scoped_file_descriptor write_end(pipe_fds[1]);
+	test_helpers::scoped_file_descriptor read_end(pipe_fds[0]);
 
 	crash_handler::set_crashdump_file(tmp_file.get_filename());
 
@@ -277,8 +198,8 @@ TEST_F(crash_handler_test, handles_crash_segv)
 		          std::string::npos);
 
 		// Read what the child write to the crashdump file.
-		scoped_file_descriptor fd(open(tmp_file.get_filename().c_str(),
-		                               O_RDONLY));
+		test_helpers::scoped_file_descriptor fd(
+				open(tmp_file.get_filename().c_str(), O_RDONLY));
 
 		ASSERT_TRUE(fd.is_valid());
 
