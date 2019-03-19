@@ -25,10 +25,8 @@
 #include <ifaddrs.h>
 #include <netinet/in.h>
 #include <signal.h>
-#include <sys/signalfd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/inotify.h>
 
 #include <sinsp.h>
 #include <sinsp_int.h>
