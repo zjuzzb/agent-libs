@@ -265,11 +265,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	}
 #endif
 
-	if(m_k8s_user_event_handler)
-	{
-		delete m_k8s_user_event_handler;
-	}	
-
 	if(m_configuration->get_dragent_cpu_profile_enabled())
 	{
 		ProfilerStop();
@@ -517,36 +512,15 @@ void sinsp_analyzer::on_capture_start()
 
 		// K8s url to use
 		string k8s_url = m_configuration->get_k8s_api_server();
-		if (!k8s_url.empty())
-		{
-
+		if(!k8s_url.empty()) {
 			m_infrastructure_state->subscribe_to_k8s(k8s_url,
 								 m_configuration->get_k8s_ssl_ca_certificate(),
 								 m_configuration->get_k8s_ssl_cert(),
 								 m_configuration->get_k8s_ssl_key(),
 								 m_configuration->get_k8s_timeout_s());
 			glogf("infrastructure state is now subscribed to k8s API server");
-
-			if (m_configuration->get_go_k8s_user_events())
-			{
-				if (!m_k8s_user_event_handler) {
-					m_k8s_user_event_handler = new k8s_user_event_message_handler(K8S_EVENTS_POLL_INTERVAL_NS,
-												      m_configuration->get_root_dir());
-				}
-
-				glogf("initializing k8s event message handler");
-				m_k8s_user_event_handler->set_machine_id(m_configuration->get_machine_id());
-				m_k8s_user_event_handler->set_user_event_queue(m_user_event_queue);
-
-
-				m_k8s_user_event_handler->subscribe(m_configuration->get_k8s_timeout_s(),
-								    m_configuration->get_k8s_event_filter());
-				glogf("k8s event message handler is now subscribed to the k8s APi server");
-			}
-
 		}
 	}
-
 #endif
 }
 
@@ -4839,33 +4813,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Kubernetes
 			//
 			tracer_emitter k8s_trc("emit_k8s", f_trc);
-			if(!m_configuration->get_go_k8s_user_events())
-			{
-				emit_k8s();
-			}
-
-			std::string k8s_url = m_configuration->get_k8s_api_server();
-			if (m_configuration->get_go_k8s_user_events() &&
-			    !k8s_url.empty() &&
-			    !m_k8s_user_event_handler) {
-
-				m_k8s_user_event_handler = new k8s_user_event_message_handler(K8S_EVENTS_POLL_INTERVAL_NS,
-										    m_configuration->get_root_dir());
-
-				glogf("initializing k8s event message handler");
-				m_k8s_user_event_handler->set_machine_id(m_configuration->get_machine_id());
-				m_k8s_user_event_handler->set_user_event_queue(m_user_event_queue);
-				m_k8s_user_event_handler->subscribe(m_configuration->get_k8s_timeout_s(),
-								    m_configuration->get_k8s_event_filter());
-
-				glogf("k8s event message handler is now subscribed to the k8s APi server");
-			}
-
-			if(m_k8s_user_event_handler)
-			{
-				m_k8s_user_event_handler->refresh(sinsp_utils::get_current_time_ns());
-			}
-
+			emit_k8s();
 			k8s_trc.stop();
 
 			//
@@ -7181,7 +7129,6 @@ void sinsp_analyzer::emit_user_events()
 		{
 			m_docker->reset_event_counter();
 		}
-
 #endif
 		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 		{

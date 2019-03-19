@@ -848,13 +848,6 @@ public:
 	shared_ptr<proc_filter::conf> m_container_filter;
 	bool m_smart_container_reporting = false;
 
-	/**
-	 * Enable to route K8s user events through cointerface instead of dragent
-	 * dragent will only serve as a middleman in this case. Leave false
-	 * to cause dragent to directly talk to K8s API server to fetch events
-	 */
-	bool m_go_k8s_user_events = false;
-
 	bool m_dragent_cpu_profile_enabled;
 	int32_t m_dragent_profile_time_seconds;
 	int32_t m_dragent_total_profiles;

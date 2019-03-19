@@ -163,7 +163,6 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/k8s_state.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_query.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/json_error_log.cpp
-	k8s_user_event_message_handler.cpp
 	k8s_proto.cpp
 	k8s_delegator.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/marathon_component.cpp

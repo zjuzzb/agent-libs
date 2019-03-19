@@ -133,10 +133,7 @@ func AddJobChildrenFromNamespace(children *[]*draiosproto.CongroupUid, namespace
 	}
 }
 
-func startJobsSInformer(ctx context.Context,
-			kubeClient kubeclient.Interface,
-			wg *sync.WaitGroup,
-			evtc chan<- draiosproto.CongroupUpdateEvent) {
+func startJobsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent) {
 	jobSelectors = make(map[string]labels.Selector)
 	client := kubeClient.BatchV1().RESTClient()
 	lw := cache.NewListWatchFromClient(client, "jobs", v1meta.NamespaceAll, fields.Everything())

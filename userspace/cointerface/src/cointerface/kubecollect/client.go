@@ -26,21 +26,20 @@ import (
 	"runtime/debug"
 )
 
+// XXX make these into one map and/or remove them if
+// HasSynced checking works instead of using receiveMap
+var startedMap map[string]bool
+var startedMutex sync.RWMutex
+var receiveMap map[string]bool
+var receiveMutex sync.RWMutex
+var annotFilter map[string]bool
+
 const (
 	EVENT_ADD = iota
 	EVENT_UPDATE = iota
 	EVENT_UPDATE_AND_SEND = iota
 	EVENT_DELETE = iota
 )
-
-// stores which informers have been allocated, so at least we don't segfault
-// does not imply we've successfully registered with the API server
-var startedMap map[string]bool
-var startedMutex sync.RWMutex
-
-var receiveMap map[string]bool
-var receiveMutex sync.RWMutex
-var annotFilter map[string]bool
 
 var eventCountsLogTime uint32
 var eventMapAdd map[string]int
@@ -51,32 +50,6 @@ var eventMapUpds map[string]int
 var emUpdsMutex sync.RWMutex
 var eventMapDel map[string]int
 var emDelMutex sync.RWMutex
-
-const (
-	ChannelTypeInformer = iota
-	ChannelTypeUserEvent = iota
-)
-
-// Given that we depend on global contexts, we need a hard guarantee that we won't have
-// two users trying to attach to channels at the same time. Further, we need to ensure
-// that we're not trying to attach to both channels at the same time (informer must happen
-// before user). These things enable that.
-var ChannelMutex sync.Mutex
-
-// Represents both whether the informer is attached, and equivalently, whether the user
-// event channel exists
-var InformerChannelInUse = false
-
-// Represents whether the user event channel is attached
-var UserEventChannelInUse = false
-
-// Represents whether the dummy user event channel is in use
-// this must be separate from the above because of the multiple ways the dummy can exit...
-// graceful or not
-var DummyEventChannelActive = false
-
-var InformerChannel chan draiosproto.CongroupUpdateEvent
-var UserEventChannel chan sdc_internal.K8SUserEvent
 
 func addEvent(restype string, evtype int) {
 	profile.NewEvent()
@@ -115,12 +88,8 @@ func logEvents() {
 	emDelMutex.RLock()
 
 	for k := range eventMapAdd {
-		log.Infof("%s Events: %d adds, %d updates, %d updates sent, %d deletes",
-			  k,
-			  eventMapAdd[k],
-			  eventMapUpd[k],
-			  eventMapUpds[k],
-			  eventMapDel[k])
+		log.Infof("%s Events: %d adds, %d updates, %d updates sent, %d deletes", k, eventMapAdd[k],
+			eventMapUpd[k], eventMapUpds[k], eventMapDel[k])
 	}
 
 	emDelMutex.RUnlock()
@@ -199,8 +168,7 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 // until the channel is closed, otherwise the component goroutines may block.
 // The empty struct chan notifies the caller that the initial event fetch
 // is complete by closing the chan.
-func WatchCluster(parentCtx context.Context,
-		  opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan struct{}, error) {
+func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan draiosproto.CongroupUpdateEvent, <-chan struct{}, error) {
 	setErrorLogHandler()
 
 	// TODO: refactor error messages
@@ -209,15 +177,12 @@ func WatchCluster(parentCtx context.Context,
 	if opts.GetUrl() != "" {
 		log.Infof("Connecting to k8s server at %s", opts.GetUrl())
 		var err error
-		kubeClient, err = createKubeClient(opts.GetUrl(),
-						   opts.GetCaCert(),
-						   opts.GetClientCert(),
-						   opts.GetClientKey(),
-						   opts.GetSslVerifyCertificate(),
-						   opts.GetAuthToken())
+		kubeClient, err = createKubeClient(opts.GetUrl(), opts.GetCaCert(),
+			opts.GetClientCert(), opts.GetClientKey(),
+			opts.GetSslVerifyCertificate(), opts.GetAuthToken())
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
-			return nil, err
+			return nil, nil, err
 		}
 	} else {
 		log.Infof("Connecting to k8s server using inCluster config")
@@ -225,27 +190,28 @@ func WatchCluster(parentCtx context.Context,
 		kubeClient, err = createInClusterKubeClient()
 		if err != nil {
 			log.Errorf("Cannot create k8s client: %s", err)
-			return nil, err
+			return nil, nil, err
 		}
 	}
 	log.Infof("Testing communication with server")
 	srvVersion, err := kubeClient.Discovery().ServerVersion()
 	if err != nil {
 		log.Errorf("K8s server not responding: %s", err)
-		return nil, err
+		return nil, nil, err
 	}
 	log.Infof("Communication with server successful: %v", srvVersion)
 
 	resources, err := kubeClient.Discovery().ServerResources()
 	if err != nil {
 		log.Errorf("K8s server returned error: %s", err)
-		return nil, err
+		return nil, nil, err
 	}
 
-	// These get reset when either events or listeners channel is reset
+	// Reset all globals
+	// XXX better yet, make them not package globals
 	startedMap = make(map[string]bool)
 	receiveMap = make(map[string]bool)
-	setAnnotFilt( opts.AnnotationFilter)
+	setAnnotFilt(opts.AnnotationFilter)
 
 	eventMapAdd = make(map[string]int)
 	eventMapUpd = make(map[string]int)
@@ -254,15 +220,12 @@ func WatchCluster(parentCtx context.Context,
 	eventCountsLogTime = opts.GetEventCountsLogTime()
 	log.Infof("Event Counts log time: %d s", eventCountsLogTime)
 
-
 	// Get a vector of all resource types
 	// from the resourceList in resources.
 	resourceTypes := getResourceTypes(resources, opts.IncludeTypes)
 
-	// if dragent asks for events, we spin up the channel here, and then they can attach to it later
-	if (opts.GetCollectEvents()) {
-		resourceTypes = append(resourceTypes, "events")
-	}
+	// Caller is responsible for draining the chan
+	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
 
 	ctx, cancel := context.WithCancel(parentCtx)
 	// Start a routine to do a watch on namespaces
@@ -275,21 +238,14 @@ func WatchCluster(parentCtx context.Context,
 	if err != nil {
 		// startWatchdog() may later hit an async error,
 		// so it's responsible for all error logging
-		return nil, err
+		return nil, nil, err
 	}
-
-	InformerChannel = make(chan draiosproto.CongroupUpdateEvent,
-			       opts.GetQueueLen())
-
-	// create even if we don't use it just to make tear-down logic easier
-        UserEventChannel = make(chan sdc_internal.K8SUserEvent, opts.GetUserEventQueueLen())
-
 
 	fetchDone := make(chan struct{})
 	var wg sync.WaitGroup
 	// Start informers in a separate routine so we can return the
 	// evt chan and let the caller start reading/draining events
-	go startInformers(ctx, kubeClient, &wg, fetchDone, opts, resourceTypes)
+	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes)
 
 	if (eventCountsLogTime > 0) {
 		go func() {
@@ -300,7 +256,7 @@ func WatchCluster(parentCtx context.Context,
 		}()
 	}
 
-	return fetchDone, nil
+	return evtc, fetchDone, nil
 }
 
 func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeClient kubeclient.Interface) error {
@@ -370,12 +326,7 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 	return nil
 }
 
-func startInformers(ctx context.Context,
-		    kubeClient kubeclient.Interface,
-		    wg *sync.WaitGroup,
-		    fetchDone chan<- struct{},
-		    opts *sdc_internal.OrchestratorEventsStreamCommand,
-		    resourceTypes []string) {
+func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand, resourceTypes []string) {
 	filterEmpty := opts.GetFilterEmpty()
 
 	for _, resource := range resourceTypes {
@@ -394,50 +345,43 @@ func startInformers(ctx context.Context,
 		log.Debugf("Checking kubecollect support for %v", resource)
 		// The informers are responsible for Add()'ing to the wg
 		infStarted := true
-		channelType := ChannelTypeInformer
 		switch resource {
 		case "cronjobs":
-			startCronJobsSInformer(ctx, kubeClient, wg, InformerChannel)
+			startCronJobsSInformer(ctx, kubeClient, wg, evtc)
 		case "daemonsets":
-			startDaemonSetsSInformer(ctx, kubeClient, wg, InformerChannel)
+			startDaemonSetsSInformer(ctx, kubeClient, wg, evtc)
 		case "deployments":
-			startDeploymentsSInformer(ctx, kubeClient, wg, InformerChannel)
+			startDeploymentsSInformer(ctx, kubeClient, wg, evtc)
 		case "horizontalpodautoscalers":
-			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, InformerChannel)
+			startHorizontalPodAutoscalersSInformer(ctx, kubeClient, wg, evtc)
 		case "ingress":
-			startIngressSInformer(ctx, kubeClient, wg, InformerChannel)
+			startIngressSInformer(ctx, kubeClient, wg, evtc)
 		case "jobs":
-			startJobsSInformer(ctx, kubeClient, wg, InformerChannel)
+			startJobsSInformer(ctx, kubeClient, wg, evtc)
 		case "namespaces":
-			startNamespacesSInformer(ctx, kubeClient, wg, InformerChannel)
+			startNamespacesSInformer(ctx, kubeClient, wg, evtc)
 		case "nodes":
-			startNodesSInformer(ctx, kubeClient, wg, InformerChannel)
+			startNodesSInformer(ctx, kubeClient, wg, evtc)
 		case "pods":
-			startPodsSInformer(ctx, kubeClient, wg, InformerChannel)
+			startPodsSInformer(ctx, kubeClient, wg, evtc)
 		case "replicasets":
-			startReplicaSetsSInformer(ctx, kubeClient, wg, InformerChannel, filterEmpty)
+			startReplicaSetsSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
 		case "replicationcontrollers":
-			startReplicationControllersSInformer(ctx, kubeClient, wg, InformerChannel, filterEmpty)
+			startReplicationControllersSInformer(ctx, kubeClient, wg, evtc, filterEmpty)
 		case "services":
-			startServicesSInformer(ctx, kubeClient, wg, InformerChannel)
+			startServicesSInformer(ctx, kubeClient, wg, evtc)
 		case "statefulsets":
-			startStatefulSetsSInformer(ctx, kubeClient, wg, InformerChannel)
+			startStatefulSetsSInformer(ctx, kubeClient, wg, evtc)
 		case "resourcequotas":
-			startResourceQuotasSInformer(ctx, kubeClient, wg, InformerChannel)
-		case "events":
-			startUserEventsSInformer(ctx, kubeClient, wg, UserEventChannel)
-			channelType = ChannelTypeUserEvent
-		case "persistentvolumes":
-			startPersistentVolumesInformer(ctx, kubeClient, wg, InformerChannel)
-		case "persistentvolumeclaims":
-			startPersistentVolumeClaimsInformer(ctx, kubeClient, wg, InformerChannel)
+			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
+
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
 			infStarted = false
 		}
 
 		if infStarted {
-			// assume it's still startup if len(channel) > threshold
+			// assume it's still startup if len(evtc) > threshold
 			totalWaitTime := time.Duration(opts.GetStartupInfWaitTimeS()) * time.Second
 			tickInterval := time.Duration(opts.GetStartupTickIntervalMs()) * time.Millisecond
 			lowTicksNeeded := int(opts.GetStartupLowTicksNeeded())
@@ -452,11 +396,7 @@ func startInformers(ctx context.Context,
 				evtcLen := 0
 				select {
 				case lastTick = <-ticker.C:
-					if (channelType == ChannelTypeInformer) {
-						evtcLen = len(InformerChannel)
-					} else {
-						evtcLen = len(UserEventChannel)
-					}
+					evtcLen = len(evtc)
 				}
 
 				// XXX should use resourceReady()
@@ -498,13 +438,7 @@ func startInformers(ctx context.Context,
 	go func() {
 		wg.Wait()
 		log.Info("All K8s informers have exited, closing the events channel")
-
-		// don't THINK we need to flush channels here...assume go does this
-		// when we close
-
-		InformerChannelInUse = false
-		close(InformerChannel)
-		close(UserEventChannel)
+		close(evtc)
 	}()
 }
 
@@ -526,6 +460,39 @@ func resourceReady(resource string) bool {
 	ret := startedMap[resource]
 	startedMutex.RUnlock()
 	return ret
+
+/*
+	switch resource {
+	case "cronjobs":
+		return cronJobInf != nil && cronJobInf.HasSynced()
+	case "daemonsets":
+		return daemonSetInf != nil && daemonSetInf.HasSynced()
+	case "deployments":
+		return deploymentInf != nil && deploymentInf.HasSynced()
+	case "ingress":
+		return ingressInf != nil && ingressInf.HasSynced()
+	case "jobs":
+		return jobInf != nil && jobInf.HasSynced()
+	case "namespaces":
+		return namespaceInf != nil && namespaceInf.HasSynced()
+	case "nodes":
+		return nodeInf != nil && nodeInf.HasSynced()
+	case "pods":
+		return podInf != nil && podInf.HasSynced()
+	case "replicasets":
+		return replicaSetInf != nil && replicaSetInf.HasSynced()
+	case "replicationcontrollers":
+		return replicationControllerInf != nil && replicationControllerInf.HasSynced()
+	case "resourcequotas":
+		return resourceQuotaInf != nil && resourceQuotaInf.HasSynced()
+	case "services":
+		return serviceInf != nil && serviceInf.HasSynced()
+	case "statefulsets":
+		return statefulSetInf != nil && statefulSetInf.HasSynced()
+	default:
+		return false
+	}
+*/
 }
 
 func createKubeClient(apiServer string, caCert string, clientCert string, clientKey string, sslVerify bool, authToken string) (kubeClient kubeclient.Interface, err error) {

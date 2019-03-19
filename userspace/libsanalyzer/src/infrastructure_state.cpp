@@ -215,6 +215,8 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			cmd.set_startup_low_ticks_needed(m_inspector->m_analyzer->m_configuration->get_orch_low_ticks_needed());
 			cmd.set_startup_low_evt_threshold(m_inspector->m_analyzer->m_configuration->get_orch_low_evt_threshold());
 			cmd.set_filter_empty(m_inspector->m_analyzer->m_configuration->get_orch_filter_empty());
+			cmd.set_batch_msgs_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_queue_len());
+			cmd.set_batch_msgs_tick_interval_ms(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_tick_interval_ms());
 			cmd.set_ssl_verify_certificate(m_inspector->m_analyzer->m_configuration->get_k8s_ssl_verify_certificate());
 			cmd.set_auth_token(m_inspector->m_analyzer->m_configuration->get_k8s_bt_auth_token());
 			for (const auto &annot : m_annotation_filter)
@@ -224,10 +226,6 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			const vector<string> &include_types = m_inspector->m_analyzer->m_configuration->get_k8s_include_types();
 			*cmd.mutable_include_types() = {include_types.begin(), include_types.end()};
 			cmd.set_event_counts_log_time(m_inspector->m_analyzer->m_configuration->get_k8s_event_counts_log_time());
-			cmd.set_batch_msgs_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_queue_len());
-			cmd.set_batch_msgs_tick_interval_ms(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_tick_interval_ms());
-			cmd.set_collect_events(m_inspector->m_analyzer->m_configuration->get_go_k8s_user_events());
-			cmd.set_user_event_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_queue_len());
 
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
