@@ -141,16 +141,14 @@ build_single_cpp()
 
 #
 # Run whatever builds/tests we want to run within the build container before
-# we submit.  Eventually it'll be nice to tie in the execution of unit tests
-# here as well.
-#
+# we submit.
 build_presubmit()
 {
 	local target=""
 
 	for target in release debug; do
 		echo "Building ${target}"
-		(bootstrap_agent "${target}" && make -j${MAKE_JOBS} all run-unit-tests) || \
+		(BUILD_FOR_TEST=ON bootstrap_agent "${target}" && make -j${MAKE_JOBS} all run-unit-tests) || \
 			(echo "Building target '${target}' failed" && false)
 	done
 }
@@ -166,7 +164,7 @@ readonly -f bold
 
 case "$1" in
 	bash)
-		bootstrap_agent "${2:-"release"}"
+		BUILD_FOR_TEST=ON bootstrap_agent "${2:-"release"}"
 		bash
 		;;
 	container)
@@ -175,6 +173,10 @@ case "$1" in
 		;;
 	install)
 		bootstrap_agent "${2:-"release"}"
+		make -j$MAKE_JOBS install
+		;;
+	install-test)
+		BUILD_FOR_TEST=ON bootstrap_agent "${2:-"release"}"
 		make -j$MAKE_JOBS install
 		;;
 	package)
@@ -192,7 +194,7 @@ case "$1" in
 	make)
 		if [ -z "$2" ]; then
 			# There is no second argument so just call make.
-			bootstrap_agent
+			BUILD_FOR_TEST=ON bootstrap_agent
 			make -j$MAKE_JOBS
 		else
 			if [ ${2: -4} == ".cpp" ]; then
@@ -200,7 +202,7 @@ case "$1" in
 				build_single_cpp $2
 			else
 				# Make a specific target
-				bootstrap_agent
+				BUILD_FOR_TEST=ON bootstrap_agent
 				make -j$MAKE_JOBS $2 $3
 			fi
 		fi
