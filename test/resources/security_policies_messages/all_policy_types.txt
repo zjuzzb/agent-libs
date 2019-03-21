@@ -566,6 +566,19 @@ policy_list {
 }
 policy_list {
   id: 28
+  name: "K8s Deployment Created"
+  falco_details {
+    rule_filter {
+      name: "k8s_deployment_created"
+    }
+  }
+  # Empty list of actions. Means do nothing and prevent other policies from doing anything
+  enabled: 1
+  host_scope: true
+  container_scope: true
+}
+policy_list {
+  id: 29
   name: "policy scoped to docker swarm service"
   falco_details {
     rule_filter {
@@ -585,7 +598,7 @@ policy_list {
 # This policy is not used in the tests, but tests the case of a policy
 # referring to a falco rule that doesn't exist.
 policy_list {
-  id: 29
+  id: 30
   name: "dangling policy with no falco rule"
   falco_details {
     rule_filter {

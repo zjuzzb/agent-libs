@@ -1084,12 +1084,12 @@ TEST_F(security_policies_test, falco_old_new_rules_message)
 TEST_F(security_policies_test_cointerface, falco_k8s_audit)
 {
 	// send a single event (the first line of the file)
-	ASSERT_EQ(system("timeout 2 curl -X POST localhost:8765/k8s_audit -d $(head -1 ./resources/k8s_audit_events.txt) > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 ./resources/k8s_audit_events.txt) > /dev/null 2>&1"), 0);
 
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
-	ASSERT_EQ(pe->events(0).policy_id(), 30u);
+	ASSERT_EQ(pe->events(0).policy_id(), 28u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_deployment_created");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
@@ -1107,12 +1107,12 @@ TEST_F(security_policies_test_cointerface, falco_k8s_audit)
 TEST_F(security_policies_test_cointerface, falco_k8s_audit_multi_events)
 {
 	// send a bunch of events (one per line of the file)
-	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:8765/k8s_audit -d {} < ./resources/k8s_audit_events.txt > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} < ./resources/k8s_audit_events.txt > /dev/null 2>&1"), 0);
 
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
 	ASSERT_TRUE(pe->events_size() >= 1);
-	ASSERT_EQ(pe->events(0).policy_id(), 30u);
+	ASSERT_EQ(pe->events(0).policy_id(), 28u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_deployment_created");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
@@ -1130,21 +1130,21 @@ TEST_F(security_policies_test_cointerface, falco_k8s_audit_multi_events)
 TEST_F(security_policies_test_cointerface, falco_k8s_audit_messy_client)
 {
 	// Check for unsupported http methods (POST is the only method supported)
-	ASSERT_EQ(system("curl -sX GET localhost:8765/k8s_audit | grep -qx 'Method GET not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX GET localhost:7765/k8s_audit | grep -qx 'Method GET not allowed' || false"), 0);
 	// Don't test method HEAD, as curl just hangs...
-	// ASSERT_EQ(system("curl -sX HEAD localhost:8765/k8s_audit | grep -qx 'Method HEAD not allowed' || false"), 0);
-	ASSERT_EQ(system("curl -sX PUT localhost:8765/k8s_audit | grep -qx 'Method PUT not allowed' || false"), 0);
-	ASSERT_EQ(system("curl -sX DELETE localhost:8765/k8s_audit | grep -qx 'Method DELETE not allowed' || false"), 0);
-	ASSERT_EQ(system("curl -sX CONNECT localhost:8765/k8s_audit | grep -qx 'Method CONNECT not allowed' || false"), 0);
-	ASSERT_EQ(system("curl -sX OPTIONS localhost:8765/k8s_audit | grep -qx 'Method OPTIONS not allowed' || false"), 0);
-	ASSERT_EQ(system("curl -sX TRACE localhost:8765/k8s_audit | grep -qx 'Method TRACE not allowed' || false"), 0);
+	// ASSERT_EQ(system("curl -sX HEAD localhost:7765/k8s_audit | grep -qx 'Method HEAD not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX PUT localhost:7765/k8s_audit | grep -qx 'Method PUT not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX DELETE localhost:7765/k8s_audit | grep -qx 'Method DELETE not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX CONNECT localhost:7765/k8s_audit | grep -qx 'Method CONNECT not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX OPTIONS localhost:7765/k8s_audit | grep -qx 'Method OPTIONS not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX TRACE localhost:7765/k8s_audit | grep -qx 'Method TRACE not allowed' || false"), 0);
 
 	// Hit wrong URIs
-	ASSERT_EQ(system("curl -sX POST localhost:8765 -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
-	ASSERT_EQ(system("curl -sX POST localhost:8765/this-is-not-the-good-door -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
+	ASSERT_EQ(system("curl -sX POST localhost:7765 -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
+	ASSERT_EQ(system("curl -sX POST localhost:7765/this-is-not-the-good-door -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
 
 	// Malformed JSONs
-	ASSERT_EQ(system("curl -sX POST localhost:8765/k8s_audit -d '{\"this is\"} : clearly \"not\" a well formatted json' | grep -qx 'Malformed JSON' || false > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("curl -sX POST localhost:7765/k8s_audit -d '{\"this is\"} : clearly \"not\" a well formatted json' | grep -qx 'Malformed JSON' || false > /dev/null 2>&1"), 0);
 }
 
 TEST_F(security_policies_test, baseline_only)
@@ -1592,7 +1592,7 @@ TEST_F(security_policies_test, docker_swarm)
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
 	ASSERT_GE(pe->events_size(), 1);
-	ASSERT_EQ(pe->events(0).policy_id(), 28u);
+	ASSERT_EQ(pe->events(0).policy_id(), 29u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/sample-sensitive-file-2.txt");

@@ -43,16 +43,8 @@ file(COPY fake_backend.cert
 		unix_server.py
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_policies_message.txt
-	${CMAKE_CURRENT_BINARY_DIR}/security_policies_message.txt
-	COPYONLY)
-
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/k8s_audit_events.txt
 	${CMAKE_CURRENT_BINARY_DIR}/k8s_audit_events.txt
-	COPYONLY)
-
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/security_baselines_message.txt
-	${CMAKE_CURRENT_BINARY_DIR}/security_baselines_message.txt
 	COPYONLY)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/ipv6_traces/single_ipv6_conn.scap
