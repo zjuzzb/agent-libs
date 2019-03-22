@@ -7,7 +7,12 @@
 #include "coclient.h"
 #include "security_mgr.h"
 
+// we get nlohmann jsons from falco k8s audit, while dragent dragent
+// generally uses the `jsoncpp' library
+#include <nlohmann/json.hpp>
+
 using namespace std;
+using nlohmann::json;
 
 // XXX/mstemm TODO
 // - Is there a good way to immediately check the status of a sysdig capture that I can put in the action result?
@@ -25,6 +30,9 @@ security_mgr::security_mgr(const string& install_root)
 	: m_compliance_modules_loaded(false),
 	  m_compliance_load_in_progress(false),
 	  m_should_refresh_compliance_tasks(false),
+	  m_k8s_audit_server_started(false),
+	  m_k8s_audit_server_loaded(false),
+	  m_k8s_audit_server_load_in_progress(false),
 	  m_initialized(false),
 	  m_inspector(NULL),
 	  m_sinsp_handler(NULL),
@@ -48,6 +56,10 @@ security_mgr::security_mgr(const string& install_root)
 security_mgr::~security_mgr()
 {
 	stop_compliance_tasks();
+	if (m_configuration->m_k8s_audit_server_enabled)
+	{
+	    stop_k8s_audit_tasks();
+	}
 }
 
 void security_mgr::init(sinsp *inspector,
@@ -72,6 +84,7 @@ void security_mgr::init(sinsp *inspector,
 	});
 
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_evtsources.assign(ESRC_MAX+1, false);
 
 	m_report_events_interval = make_unique<run_on_interval>(m_configuration->m_security_report_interval_ns);
 	m_report_throttled_events_interval = make_unique<run_on_interval>(m_configuration->m_security_throttled_report_interval_ns);
@@ -94,7 +107,6 @@ void security_mgr::init(sinsp *inspector,
 	metrics->add_ext_source(&m_metrics);
 
 	m_initialized = true;
-
 }
 
 bool security_mgr::load_policies_file(const char *filename, std::string &errstr)
@@ -167,6 +179,57 @@ void security_mgr::load_policy(const security_policy &spolicy, std::list<std::st
 	}
 }
 
+bool security_mgr::load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr)
+{
+	bool verbose = false;
+	bool all_events = false;
+
+	for(auto &file : files.files())
+	{
+		// Find the variant that has the highest required
+		// engine version that is compatible with our engine
+		// version.
+		int best_variant = -1;
+		uint32_t best_engine_version = 0;
+
+		for(int i=0; i < file.variants_size(); i++)
+		{
+			auto &variant = file.variants(i);
+
+			if(variant.required_engine_version() <= m_falco_engine->engine_version() &&
+			   ((variant.required_engine_version() > best_engine_version) ||
+			    (best_variant == -1)))
+			{
+				best_variant = i;
+				best_engine_version=variant.required_engine_version();
+			}
+		}
+
+		if(best_variant == -1)
+		{
+			g_log->information("Could not find any compatible variant for falco rules file " + file.filename() + ", skipping");
+		}
+		else
+		{
+			try {
+				g_log->information("Loading falco rules content tag=" + files.tag() +
+					     " filename=" + file.filename() +
+					     " required_engine_version=" + to_string(best_engine_version));
+				m_falco_engine->load_rules(file.variants(best_variant).content(),
+							   verbose, all_events);
+			}
+			catch (falco_exception &e)
+			{
+				errstr = e.what();
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+
 bool security_mgr::load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr)
 {
 	Poco::ScopedWriteRWLock lck(m_policies_lock);
@@ -195,7 +258,7 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		// There must be falco rules content if there are any falco policies
 		if(policy.has_falco_details() && policy.enabled())
 		{
-			if(!policies.has_falco_rules())
+			if(!policies.has_falco_rules() && !policies.has_falco_group())
 			{
 				errstr = "One or more falco policies, but no falco ruleset";
 				return false;
@@ -213,18 +276,40 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 
 	// Load all falco rules files into the engine. We'll selectively
 	// enable them based on the contents of the policies.
+
 	if(policies.has_falco_rules())
 	{
 		bool verbose = false;
 		bool all_events = false;
 
-		for(auto &content : policies.falco_rules().contents())
+		// Only load the first entry (system rules aka
+		// sysdig-provided one) in content if there is no
+		// falco_group.default_files.
+		if(!(policies.has_falco_group() && policies.falco_group().has_default_files()) &&
+		   policies.falco_rules().contents_size() > 0)
 		{
-			g_log->debug("Loading falco rules content: " + content);
-
+			const std::string &system_rules = policies.falco_rules().contents(0);
 			try {
-				g_log->debug("Loading Falco Rules Content: " + content);
-				m_falco_engine->load_rules(content, verbose, all_events);
+				g_log->information("Loading System Falco Rules Content: " + system_rules);
+				m_falco_engine->load_rules(system_rules, verbose, all_events);
+			}
+			catch (falco_exception &e)
+			{
+				errstr = e.what();
+				return false;
+			}
+		}
+
+		// Only load the second entry (user rules aka
+		// customer-provided one) in content if there is no
+		// falco_group.custom_files.
+		if(!(policies.has_falco_group() && policies.falco_group().has_custom_files()) &&
+		   policies.falco_rules().contents_size() > 1)
+		{
+			const std::string &user_rules = policies.falco_rules().contents(1);
+			try {
+				g_log->debug("Loading User Falco Rules Content: " + user_rules);
+				m_falco_engine->load_rules(user_rules, verbose, all_events);
 			}
 			catch (falco_exception &e)
 			{
@@ -234,8 +319,28 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		}
 	}
 
+	if(policies.has_falco_group())
+	{
+		if(policies.falco_group().has_default_files())
+		{
+			if(!load_falco_rules_files(policies.falco_group().default_files(), errstr))
+			{
+				return false;
+			}
+		}
+
+		if(policies.falco_group().has_custom_files())
+		{
+			if (!load_falco_rules_files(policies.falco_group().custom_files(), errstr))
+			{
+				return false;
+			}
+		}
+	}
+
 	m_policies.clear();
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_evtsources.assign(ESRC_MAX+1, false);
 	if(m_analyzer)
 	{
 		m_analyzer->infra_state()->clear_scope_cache();
@@ -272,6 +377,14 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		for(const auto &group: m_policies_groups)
 		{
 			m_evttypes[evttype] = m_evttypes[evttype] | group->m_evttypes[evttype];
+		}
+	}
+
+	for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
+	{
+		for(const auto &group: m_policies_groups)
+		{
+			m_evtsources[evtsource] = m_evtsources[evtsource] | group->m_evtsources[evtsource];
 		}
 	}
 
@@ -351,7 +464,13 @@ bool security_mgr::event_qualifies(sinsp_evt *evt)
 	return true;
 }
 
-void security_mgr::process_event(sinsp_evt *evt)
+bool security_mgr::event_qualifies(json_event *evt)
+{
+
+	return true;
+}
+
+void security_mgr::process_event(gen_event *evt)
 {
 	// Write lock acquired in load_*()
 	if(!m_initialized || !m_policies_lock.tryReadLock())
@@ -422,34 +541,93 @@ void security_mgr::process_event(sinsp_evt *evt)
 			// Reset to empty message
 			m_compliance_run = draiosproto::comp_run();
 		}
+		if (m_configuration->m_k8s_audit_server_enabled)
+		{
+			if(m_k8s_audit_server_load)
+			{
+				m_k8s_audit_server_load->process_queue();
+			}
+
+			if(m_k8s_audit_server_start)
+			{
+				m_k8s_audit_server_start->process_queue();
+			}
+
+			if(!m_k8s_audit_server_loaded && !m_k8s_audit_server_load_in_progress)
+			{
+				load_k8s_audit_server();
+			}
+		}
+
 	}, ts_ns);
 
-	// Consider putting this in check_periodic_tasks above.
-	m_actions.check_outstanding_actions(evt->get_ts());
+	std::string container_id = "";
+		sinsp_evt *sevt = NULL;
+	sinsp_threadinfo *tinfo = NULL;
+	bool evaluate_event = false;
 
-	sinsp_threadinfo *tinfo = evt->get_thread_info();
-	// If no policy cares about this event type, return
-	// immediately.
-	if(!m_evttypes[evt->get_type()])
+	switch (evt->get_source())
 	{
-		m_metrics.incr(metrics::MET_MISS_EVTTYPE);
+	case ESRC_SINSP:
+		// Consider putting this in check_periodic_tasks above.
+		m_actions.check_outstanding_actions(evt->get_ts());
+
+		try
+		{
+			sevt = dynamic_cast<sinsp_evt *>(evt);
+		}
+		catch (std::bad_cast& bc)
+		{
+			g_log->error("Bad cast for SINSP event");
+			break;
+		}
+
+		tinfo = sevt->get_thread_info();
+
+		if(!m_evttypes[sevt->get_type()])
+		{
+			m_metrics.incr(metrics::MET_MISS_EVTTYPE);
+		}
+		else if(!event_qualifies(sevt))
+		{
+			m_metrics.incr(metrics::MET_MISS_QUAL);
+		}
+		else if(!tinfo)
+		{
+			m_metrics.incr(metrics::MET_MISS_TINFO);
+		}
+		else
+		{
+			container_id = tinfo->m_container_id;
+			evaluate_event = true;
+
+		}
+		break;
+	case ESRC_K8S_AUDIT:
+		evaluate_event = true;
+		break;
+	default:
+		g_log->error("Invalid event source" + std::to_string(evt->get_source()));
+		break;
 	}
-	else if(!event_qualifies(evt))
-	{
-		m_metrics.incr(metrics::MET_MISS_QUAL);
-	}
-	else if(!tinfo)
-	{
-		m_metrics.incr(metrics::MET_MISS_TINFO);
-	}
-	else
+
+
+	if (evaluate_event)
 	{
 		std::vector<security_policies::match_result *> best_matches;
 		security_policies::match_result *match;
 
-		for (const auto &group : m_security_policies[tinfo->m_container_id])
+		for (const auto &group : m_security_policies[container_id])
 		{
-			if(group->m_evttypes[evt->get_type()] && (match = group->match_event(evt)) != NULL)
+			// An event matches a policy upon three
+			// matching of three conditions:
+			// 1. event source overlap
+			// 2. event type overlap
+			// 3. at least one policy in the group match
+			//    the event and return a non-null match
+			if(group->m_evtsources[evt->get_source()] &&
+			   group->m_evttypes[evt->get_type()] &&
+			   (match = group->match_event(evt)) != NULL)
 			{
 				if(match->effect() != draiosproto::EFFECT_ACCEPT)
 				{
@@ -474,13 +652,6 @@ void security_mgr::process_event(sinsp_evt *evt)
 			}
 			else if (match->effect() == draiosproto::EFFECT_DENY)
 			{
-				sinsp_threadinfo *tinfo = evt->get_thread_info();
-				std::string container_id;
-				if(tinfo && !tinfo->m_container_id.empty())
-				{
-					container_id=tinfo->m_container_id;
-				}
-
 				g_log->debug("Taking DENY action via policy: " + match->policy()->name());
 
 				if(throttle_policy_event(evt->get_ts(), container_id, match->policy()->id()))
@@ -495,7 +666,7 @@ void security_mgr::process_event(sinsp_evt *evt)
 					// Not throttled--perform the actions associated
 					// with the policy. The actions will add their action
 					// results to the policy event as they complete.
-					m_actions.perform_actions(evt->get_ts(), evt->get_thread_info(), match->policy(), event);
+					m_actions.perform_actions(evt->get_ts(), tinfo, match->policy(), event);
 				}
 
 				break;
@@ -1142,4 +1313,155 @@ std::shared_ptr<security_mgr::security_policies_group> security_mgr::get_policie
 
 	return grp;
 };
+
+
+void security_mgr::load_k8s_audit_server()
+{
+	sdc_internal::k8s_audit_server_load load;
+	load.set_tls_enabled(m_configuration->k8s_audit_server_tls_enabled());
+	load.set_url(m_configuration->k8s_audit_server_url());
+	load.set_port(m_configuration->k8s_audit_server_port());
+
+	if (m_configuration->k8s_audit_server_tls_enabled()) {
+		sdc_internal::k8s_audit_server_X509 *x509 = load.add_x509();
+		x509->set_x509_cert_file(m_configuration->k8s_audit_server_x509_cert_file());
+		x509->set_x509_key_file(m_configuration->k8s_audit_server_x509_key_file());
+	}
+
+	auto callback = [this](bool successful, sdc_internal::k8s_audit_server_load_result &lresult)
+	{
+		m_k8s_audit_server_load_in_progress = false;
+		if(successful)
+		{
+			g_log->debug("Response from K8s Audit Server load: lresult=" +
+				     lresult.DebugString());
+			m_k8s_audit_server_loaded = true;
+			start_k8s_audit_server_tasks();
+		}
+		else
+		{
+			g_log->error("Could not load K8s Audit Server.");
+		}
+	};
+
+	g_log->debug(string("Sending load message to K8s Audit Server: ") + load.DebugString());
+	m_k8s_audit_server_load_in_progress = true;
+
+	m_k8s_audit_server_load_conn = grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
+	m_k8s_audit_server_load = make_unique<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)>(m_k8s_audit_server_load_conn);
+	m_k8s_audit_server_load->do_rpc(load, callback);
+}
+
+void security_mgr::start_k8s_audit_server_tasks()
+{
+	g_log->debug("Starting K8s Audit Server");
+	sdc_internal::k8s_audit_server_start start;
+
+	// just in case we get called multiple times, tear down the
+	// previous GRPCs objects
+	m_k8s_audit_server_start = NULL;
+	m_k8s_audit_server_start_conn = NULL;
+
+	auto callback = [this](streaming_grpc::Status status, sdc_internal::k8s_audit_event &jevt)
+		{
+			if(status == streaming_grpc::ERROR)
+			{
+				g_log->error("Could not start K8s Audit Server tasks, trying again in " +
+					     NumberFormatter::format(m_configuration->m_k8s_audit_server_refresh_interval / 1000000000) +
+					     " seconds");
+			}
+			else if(status == streaming_grpc::SHUTDOWN)
+			{
+				g_log->error("K8s Audit Server shut down connection, trying again in " +
+					     NumberFormatter::format(m_configuration->m_k8s_audit_server_refresh_interval / 1000000000) +
+					     " seconds");
+			}
+			else
+			{
+				if(!jevt.successful())
+				{
+					g_log->error(string("Could not start K8s Audit Server tasks (") + jevt.errstr()+ "), trying again in " +
+						     NumberFormatter::format(m_configuration->m_k8s_audit_server_refresh_interval / 1000000000) +
+						     " seconds");
+				} else {
+					std::list<json_event> jevts;
+					nlohmann::json j;
+
+					g_log->debug("Response from K8s Audit Server start: jevt=" +
+						     jevt.DebugString());
+					try {
+						j = json::parse( jevt.evt_json() );
+					} catch  (json::parse_error& e) {
+						g_log->error(string("Could not parse data: ") + e.what());
+						return false;
+					}
+					if(!m_falco_engine->parse_k8s_audit_json(j, jevts))
+					{
+						g_log->error(string("Data not recognized as a K8s Audit Event"));
+						return false;
+					}
+					for(auto jev : jevts)
+					{
+						// instead of calling directly process_event, it might be worth enqueue into a list and have a worker thread processing the list
+						process_event(&jev);
+					}
+					return true;
+				}
+			}
+			return false;
+		};
+
+	// m_k8s_audit_server_started = true;
+
+	g_log->debug(string("Sending start message to K8s Audit Server: ") + start.DebugString());
+
+	m_k8s_audit_server_start_conn = grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
+	m_k8s_audit_server_start = make_unique<streaming_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStart)>(m_k8s_audit_server_start_conn);
+	m_k8s_audit_server_start->do_rpc(start, callback);
+}
+
+void security_mgr::stop_k8s_audit_tasks()
+{
+	bool stopped = false;
+	auto callback = [this, &stopped](bool successful, sdc_internal::k8s_audit_stop_result &res)
+	{
+		// cointerface might shut down before dragent, causing
+		// the stop to itself not complete. So only log
+		// failures at debug level.
+		if(!successful)
+		{
+			g_log->debug("K8s Audit Server Stop() call was not successful");
+		}
+
+		if(!res.successful())
+		{
+			g_log->debug("K8s Audit Server Stop() call returned error " + res.errstr());
+		}
+
+		stopped = true;
+	};
+
+	sdc_internal::k8s_audit_server_stop stop;
+
+	shared_ptr<sdc_internal::K8sAudit::Stub> k8s_audit_stop_conn =
+		grpc_connect<sdc_internal::K8sAudit::Stub>(m_cointerface_sock_path);
+	unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStop) grpc_stop(k8s_audit_stop_conn);
+
+	grpc_stop.do_rpc(stop, callback);
+
+	// Wait up to 10 seconds for a response
+	for(uint32_t i=0; i < 100; i++)
+	{
+		Poco::Thread::sleep(100);
+		grpc_stop.process_queue();
+
+		if(stopped)
+		{
+			return;
+		}
+	}
+
+        g_log->error("Did not receive response to K8s Audit Stop() call within 10 seconds");
+}
+
 #endif // CYGWING_AGENT
