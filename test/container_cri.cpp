@@ -90,6 +90,10 @@ TEST_F(container_cri, fake_cri) {
 		EXPECT_EQ("docker.io/sysdig/agent:latest", container_info->m_image);
 		EXPECT_EQ("sha256:8d0619a4da278dfe2772f75aa3cc74df0a250385de56085766035db5c9a062ed", container_info->m_imagedigest);
 		EXPECT_EQ("4bc0e14060f4263acf658387e76715bd836a13b9ba44f48465bd0633a412dbd0", container_info->m_imageid);
+		EXPECT_EQ(1073741824, container_info->m_memory_limit);
+		EXPECT_EQ(102, container_info->m_cpu_shares);
+		EXPECT_EQ(0, container_info->m_cpu_quota);
+		EXPECT_EQ(100000, container_info->m_cpu_period);
 
 		done = true;
 	};
