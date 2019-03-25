@@ -5,6 +5,7 @@ include_directories(../src)
 add_executable(unit-test-testhelpers
 	main.cpp
 	scoped_file_descriptor.ut.cpp
+	scoped_pipe.ut.cpp
 	scoped_temp_file.ut.cpp
 )
 

@@ -818,7 +818,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 
 		if(!m_serialization_buffer)
 		{
-			char *estr = g_logger.format(sinsp_logger::SEV_CRITICAL, "memory allocation error at %s:%d", __FILE__, __LINE__);
+			const char *estr = g_logger.format(sinsp_logger::SEV_CRITICAL, "memory allocation error at %s:%d", __FILE__, __LINE__);
 			throw sinsp_exception(estr);
 		}
 
@@ -845,7 +845,7 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 		if(compressed_size > full_len)
 		{
 			ASSERT(false);
-			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
+			const char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
 			throw sinsp_exception(estr);
 		}
 
@@ -1005,7 +1005,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 
 			if(!m_protobuf_fp)
 			{
-				char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
+				const char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
 				throw sinsp_exception(estr);
 			}
 		}
@@ -1023,7 +1023,7 @@ void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
 		   fwrite(footer.c_str(), footer.length(), 1, m_protobuf_fp) != 1)
 		{
 			ASSERT(false);
-			char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
+			const char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
 			throw sinsp_exception(estr);
 		}
 	}

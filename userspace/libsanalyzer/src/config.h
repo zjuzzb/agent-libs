@@ -48,8 +48,6 @@ public:
 	void set_compress_metrics(bool compress);
 	const string& get_metrics_directory() const;
 	void set_metrics_directory(string metrics_directory);
-	sinsp_logger::output_type get_log_output_type() const;
-	void set_log_output_type(sinsp_logger::output_type log_output_type);
 	const string& get_machine_id() const;
 	void set_machine_id(string machine_id);
 	const string& get_customer_id() const;

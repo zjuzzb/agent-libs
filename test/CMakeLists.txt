@@ -18,6 +18,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
@@ -93,6 +94,7 @@ add_executable(tests
 	json_query.cpp
 	nodriver.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
+	sysdig/userspace/libsinsp/logger.ut.cpp
 )
 
 target_link_libraries(tests
@@ -101,6 +103,7 @@ target_link_libraries(tests
 	dragentl
 	draiosproto
 	falco_engine
+	test_helpers
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a

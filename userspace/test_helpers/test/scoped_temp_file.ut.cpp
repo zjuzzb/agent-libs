@@ -1,7 +1,7 @@
 /**
  * @file
  *
- * In-build unit tests for scoped_temp_file.
+ * Unit tests for scoped_temp_file.
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */

@@ -112,20 +112,6 @@ void sinsp_configuration::set_metrics_directory(string metrics_directory)
 	}
 }
 
-sinsp_logger::output_type sinsp_configuration::get_log_output_type() const
-{
-	//
-	// XXX not implemented yet
-	//
-	ASSERT(false);
-	return sinsp_logger::OT_NONE;
-}
-
-void sinsp_configuration::set_log_output_type(sinsp_logger::output_type log_output_type)
-{
-	g_logger.set_log_output_type(log_output_type);
-}
-
 const string& sinsp_configuration::get_machine_id() const
 {
 	return m_machine_id;

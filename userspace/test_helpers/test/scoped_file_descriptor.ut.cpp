@@ -1,12 +1,13 @@
 /**
  * @file
  *
- * In-build unit test for scoped_file_descriptor.
+ * Unit test for scoped_file_descriptor.
  *
  * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
  */
 #include "scoped_file_descriptor.h"
 #include <gtest.h>
+#include <fcntl.h>
 
 TEST(scoped_file_descriptor_test, bad_file_descriptor_not_valid)
 {
@@ -40,16 +41,16 @@ TEST(scoped_file_descriptor_test, good_file_descriptor)
 		fd1.close();
 	}
 
-	// Since the helper closed the file descriptor, trying to close it
-	// now should fail.  Note that this assumes no other thread in this
-	// test opened a file descriptor between the time the fd was closed
-	// above and our attempt to close it here.
+	// Since the helper closed the file descriptor, trying to get the flags
+	// associated with it should now fail.  Note that this assumes no other
+	// thread in this test opened a file descriptor between the time the fd
+	// was closed above and our attempt to close it here.
 	errno = 0;
-	const int rc1 = close(pipe_fds[0]);
+	const int rc1 = fcntl(pipe_fds[0], F_GETFD);
 	const int err1 = errno;
 
 	errno = 0;
-	const int rc2 = close(pipe_fds[1]);
+	const int rc2 = fcntl(pipe_fds[1], F_GETFD);
 	const int err2 = errno;
 
 	ASSERT_EQ(-1, rc1);
