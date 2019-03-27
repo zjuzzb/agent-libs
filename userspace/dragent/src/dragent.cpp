@@ -1084,7 +1084,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 
 void dragent_app::log_watchdog_report() const
 {
-	LOG_INFO("About to kill dragent; listing all running processes.");
+	LOG_INFO("About to kill dragent. Listing all running processes...");
 	m_pool.log_report();
 
 	const uint64_t now_ns = sinsp_utils::get_current_time_ns();
@@ -1097,6 +1097,13 @@ void dragent_app::log_watchdog_report() const
 	uint64_t now_s = now_ns / ONE_SECOND_IN_NS;
 	for(auto& proc : m_subprocesses_state)
 	{
+		// Sdagent doesn't update this status (and we're currently running on it)
+		// so don't bother printing it out.
+		if(proc.first == "sdagent")
+		{
+			continue;
+		}
+
 		auto& state = proc.second;
 		if(!state.valid())
 		{
