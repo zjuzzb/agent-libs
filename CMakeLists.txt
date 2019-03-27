@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
+# This option adds the test targets so that they can be built. The main use case
+# is to avoid the test libraries being build when CPACK runs 'make all' before
+# creating the package.
+option(BUILD_FOR_TEST "Enable building binaries needed for testing")
+
 option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
 
 # Versions of all third-party libraries used. These may be referred to
@@ -121,27 +126,18 @@ if(NOT CYGWIN)
 endif()
 add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent/src)
-add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/draiosproto)
 add_subdirectory(userspace/libsanalyzer/src)
-add_subdirectory(userspace/libsanalyzer/test)
-add_subdirectory(userspace/libsanalyzer/tests)
-add_subdirectory(userspace/test_helpers/src)
-add_subdirectory(userspace/test_helpers/test)
 if(NOT CYGWIN)
 	add_subdirectory(userspace/sdjagent)
 	add_subdirectory(userspace/sdchecks)
 	add_subdirectory(scripts)
-	add_subdirectory(test)
-	add_subdirectory(bench)
 	add_subdirectory(docker)
 endif()
 
-add_custom_target(run-unit-tests
-	COMMAND $(MAKE) run-unit-test-testhelpers
-	COMMAND $(MAKE) run-unit-test-dragent
-	COMMAND $(MAKE) run-unit-test-libsanalyzer
-)
+if(BUILD_FOR_TEST)
+	include(CMakeListsForTest.cmake)
+endif()
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin

@@ -84,14 +84,14 @@ build_release()
 {
 	mkdir -p /out/{debug,release}
 
-	bootstrap_agent
+	BUILD_FOR_TEST=ON bootstrap_agent
 	make -j$MAKE_JOBS install package
 
 	cd ../debug
 	make -j$MAKE_JOBS package
 
 	# see comment in build_package above
-	COMBINED_PACKAGE=OFF bootstrap_agent
+	BUILD_FOR_TEST=ON COMBINED_PACKAGE=OFF bootstrap_agent
 	make -j$MAKE_JOBS package
 
 	cp *.deb *.rpm *.tar.gz /out/release
