@@ -13,6 +13,7 @@
 
 #include "capture_job_handler.h"
 #include "security_mgr.h"
+#include "compliance_mgr.h"
 
 class captureinfo
 {
@@ -96,7 +97,10 @@ public:
 
 #ifndef CYGWING_AGENT
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
-	bool set_compliance_calendar(draiosproto::comp_calendar &calendar, std::string &errstr);
+	bool set_compliance_calendar(draiosproto::comp_calendar &calendar,
+				     bool send_results,
+				     bool send_events,
+				     std::string &errstr);
 	bool run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr);
 	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
 #endif
@@ -122,6 +126,7 @@ private:
 	sinsp_analyzer* m_analyzer;
 #ifndef CYGWING_AGENT
 	security_mgr *m_security_mgr;
+	compliance_mgr *m_compliance_mgr;
 #endif
 	capture_job_handler *m_capture_job_handler;
 	sinsp_data_handler m_sinsp_handler;

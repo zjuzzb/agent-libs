@@ -1016,19 +1016,16 @@ void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32
 		return;
 	}
 
-	if(m_configuration->m_security_compliance_schedule != "")
-	{
-		LOG_INFO("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
-		return;
-	}
-
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &calendar))
 	{
 		LOG_ERROR("Could not parse comp_calendar message");
 		return;
 	}
 
-	if (!m_sinsp_worker->set_compliance_calendar(calendar, errstr))
+	if (!m_sinsp_worker->set_compliance_calendar(calendar,
+						     m_configuration->m_security_send_compliance_results,
+						     m_configuration->m_security_send_compliance_events,
+						     errstr))
 	{
 		LOG_ERROR("Could not set compliance calendar: " + errstr);
 		return;
@@ -1043,12 +1040,6 @@ void connection_manager::handle_compliance_run_message(uint8_t* buf, uint32_t si
 	if(!m_configuration->m_security_enabled)
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_RUN message");
-		return;
-	}
-
-	if(m_configuration->m_security_compliance_schedule != "")
-	{
-		LOG_INFO("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
 		return;
 	}
 

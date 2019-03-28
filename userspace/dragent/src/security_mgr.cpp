@@ -4,7 +4,6 @@
 #include "sinsp_worker.h"
 #include "logger.h"
 
-#include "coclient.h"
 #include "security_mgr.h"
 
 // we get nlohmann jsons from falco k8s audit, while dragent dragent
@@ -27,10 +26,7 @@ using nlohmann::json;
 // - Make sure all objects will gracefully fail if init() is not called
 
 security_mgr::security_mgr(const string& install_root)
-	: m_compliance_modules_loaded(false),
-	  m_compliance_load_in_progress(false),
-	  m_should_refresh_compliance_tasks(false),
-	  m_k8s_audit_server_started(false),
+	: m_k8s_audit_server_started(false),
 	  m_k8s_audit_server_loaded(false),
 	  m_k8s_audit_server_load_in_progress(false),
 	  m_initialized(false),
@@ -55,7 +51,6 @@ security_mgr::security_mgr(const string& install_root)
 
 security_mgr::~security_mgr()
 {
-	stop_compliance_tasks();
 	if (m_configuration->m_k8s_audit_server_enabled)
 	{
 	    stop_k8s_audit_tasks();
@@ -501,46 +496,6 @@ void security_mgr::process_event(gen_event *evt)
 			m_actions.periodic_cleanup(ts_ns);
 		}, ts_ns);
 
-		if(m_grpc_load)
-		{
-			m_grpc_load->process_queue();
-		}
-
-		if(m_grpc_start)
-		{
-			m_grpc_start->process_queue();
-		}
-
-		if(m_grpc_run_tasks)
-		{
-			m_grpc_run_tasks->process_queue();
-		}
-
-		if(!m_compliance_modules_loaded && !m_compliance_load_in_progress)
-		{
-			load_compliance_modules();
-		}
-
-		if(m_compliance_modules_loaded)
-		{
-			// We don't need the load connection/stub any longer.
-			m_grpc_load = NULL;
-			m_grpc_load_conn = NULL;
-
-			if(m_should_refresh_compliance_tasks)
-			{
-				refresh_compliance_tasks();
-				m_should_refresh_compliance_tasks = false;
-			}
-		}
-
-		if(!m_compliance_run.task_ids().empty())
-		{
-			run_compliance_tasks(m_compliance_run);
-
-			// Reset to empty message
-			m_compliance_run = draiosproto::comp_run();
-		}
 		if (m_configuration->m_k8s_audit_server_enabled)
 		{
 			if(m_k8s_audit_server_load)
@@ -558,7 +513,6 @@ void security_mgr::process_event(gen_event *evt)
 				load_k8s_audit_server();
 			}
 		}
-
 	}, ts_ns);
 
 	std::string container_id = "";
@@ -764,260 +718,6 @@ void security_mgr::stop_capture(const string &token)
 		// disk that is never cleaned up.
 	}
 }
-
-void security_mgr::set_compliance_calendar(draiosproto::comp_calendar &calendar)
-{
-	m_compliance_calendar = calendar;
-	request_refresh_compliance_tasks();
-}
-
-void security_mgr::request_refresh_compliance_tasks()
-{
-	m_should_refresh_compliance_tasks = true;
-}
-
-void security_mgr::set_compliance_run(draiosproto::comp_run &run)
-{
-	m_compliance_run = run;
-}
-
-void security_mgr::load_compliance_modules()
-{
-	sdc_internal::comp_load load;
-	load.set_machine_id(m_configuration->machine_id());
-	load.set_customer_id(m_configuration->m_customer_id);
-
-	auto callback = [this](bool successful, sdc_internal::comp_load_result &lresult)
-	{
-		m_compliance_load_in_progress = false;
-		if(successful)
-		{
-			g_log->debug("Response from compliance load: lresult=" +
-				     lresult.DebugString());
-			m_compliance_modules_loaded = true;
-			refresh_compliance_tasks();
-		}
-		else
-		{
-			g_log->error("Could not load compliance modules.");
-		}
-	};
-
-	g_log->debug(string("Sending load message to cointerface: ") + load.DebugString());
-	m_compliance_load_in_progress = true;
-
-	m_grpc_load_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
-	m_grpc_load = make_unique<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)>(m_grpc_load_conn);
-	m_grpc_load->do_rpc(load, callback);
-}
-
-void security_mgr::refresh_compliance_tasks()
-{
-	g_log->debug("Checking for new compliance tasks from calendar: " + m_compliance_calendar.DebugString());
-
-	std::set<uint64_t> new_tasks;
-
-	// The calendar might refer to tasks that are not enabled or
-	// tasks that don't match the scope of this agent or the
-	// containers it runs. So we create a separate calendar just
-	// for the tasks that should actually run.
-	sdc_internal::comp_start start;
-
-	start.set_include_desc(m_configuration->m_security_include_desc_in_compliance_results);
-	start.set_send_failed_results(m_configuration->m_security_compliance_send_failed_results);
-	start.set_save_temp_files(m_configuration->m_security_compliance_save_temp_files);
-
-	for(auto &task : m_compliance_calendar.tasks())
-	{
-		if(!task.enabled())
-		{
-			continue;
-		}
-
-		// Check the scope of the task. Unlike other
-		// policies, where we have an event with an associated
-		// container id, we need to register this scope with the
-		// infrastructure_state object so it can reevaluate the scope
-		// as containers come and go.
-		infrastructure_state::reg_id_t reg = "compliance_tasks:" + task.name();
-
-		m_analyzer->infra_state()->register_scope(reg,
-							  true,
-							  true,
-							  task.scope_predicates());
-
-		// For now, do a single check of the registered scope and only
-		// start the compliance modules if the scope matches. Later,
-		// we'll want to periodically check and start/stop modules.
-		if(!m_analyzer->infra_state()->check_registered_scope(reg))
-		{
-			g_log->information("Not starting compliance task (scope doesn't match)");
-			continue;
-		}
-
-		draiosproto::comp_task *run_task = start.mutable_calendar()->add_tasks();
-
-		*run_task = task;
-
-		// If the task is a kube-bench task and if the agent
-		// is configured to run a specific variant, pass the
-		// variant as a param.
-		if(m_configuration->m_security_compliance_kube_bench_variant != "")
-		{
-			draiosproto::comp_task_param *param = run_task->add_task_params();
-			param->set_key("variant");
-			param->set_val(m_configuration->m_security_compliance_kube_bench_variant);
-		}
-
-		new_tasks.insert(task.id());
-	}
-
-	if(new_tasks == m_cur_compliance_tasks)
-	{
-		g_log->information("Compliance tasks unchanged, not doing anything");
-		return;
-	}
-
-	// Explicitly tearing down any prior start so the client is
-	// destroyed before the connection.
-	m_grpc_start = NULL;
-	m_grpc_start_conn = NULL;
-
-	auto callback =
-		[this](streaming_grpc::Status status, sdc_internal::comp_task_event &cevent)
-		{
-			if(status == streaming_grpc::ERROR)
-			{
-				g_log->error("Could not start compliance tasks, trying again in " +
-					     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
-					     " seconds");
-				m_cur_compliance_tasks.clear();
-			}
-			else if(status == streaming_grpc::SHUTDOWN)
-			{
-				g_log->error("Server shut down connection, trying again in " +
-					     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
-					     " seconds");
-				m_cur_compliance_tasks.clear();
-			}
-			else
-			{
-				if(!cevent.call_successful())
-				{
-					g_log->error(string("Could not start compliance tasks (") + cevent.errstr()+ "), trying again in " +
-						     NumberFormatter::format(m_configuration->m_security_compliance_refresh_interval / 1000000000) +
-						     " seconds");
-				}
-				else
-				{
-					g_log->debug("Response from compliance start: cevent=" +
-						     cevent.DebugString());
-					if(m_configuration->m_security_send_compliance_events)
-					{
-						for(int i=0; i<cevent.events().events_size(); i++)
-						{
-							// XXX/mstemm need to fill this in once we've decided on a message format.
-						}
-					}
-
-					if(m_configuration->m_security_send_compliance_results)
-					{
-						if(cevent.results().results_size() > 0)
-						{
-							m_sinsp_handler->security_mgr_comp_results_ready(cevent.results().results(0).timestamp_ns(),
-													 &(cevent.results()));
-						}
-					}
-				}
-			}
-		};
-
-	g_log->debug(string("Sending start message to cointerface: ") + start.DebugString());
-	m_cur_compliance_tasks = new_tasks;
-
-	m_grpc_start_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
-	m_grpc_start = make_unique<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)>(m_grpc_start_conn);
-	m_grpc_start->do_rpc(start, callback);
-}
-
-void security_mgr::run_compliance_tasks(draiosproto::comp_run &run)
-{
-	g_log->debug("Running compliance tasks: " + run.DebugString());
-
-	// Explicitly tearing down any prior start so the client is
-	// destroyed before the connection.
-	m_grpc_run_tasks = NULL;
-	m_grpc_run_tasks_conn = NULL;
-
-	auto callback =
-		[this](bool successful, sdc_internal::comp_run_result &res)
-		{
-			if(!successful)
-			{
-				g_log->error("Could not run compliance tasks (grpc error)");
-			}
-			else if(!res.successful())
-			{
-				g_log->error(string("Could not run compliance tasks (") + res.errstr()+ ")");
-			}
-			else
-			{
-				g_log->debug("Response from compliance run_tasks: res=" +
-					     res.DebugString());
-
-				// Results will be returned in the callback from start()
-			}
-		};
-
-	m_grpc_run_tasks_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
-	m_grpc_run_tasks = make_unique<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)>(m_grpc_run_tasks_conn);
-	m_grpc_run_tasks->do_rpc(run, callback);
-}
-
-void security_mgr::stop_compliance_tasks()
-{
-	bool stopped = false;
-	auto callback = [this, &stopped](bool successful, sdc_internal::comp_stop_result &res)
-	{
-		// cointerface might shut down before dragent, causing
-		// the stop to itself not complete. So only log
-		// failures at debug level.
-		if(!successful)
-		{
-			g_log->debug("Compliance Stop() call was not successful");
-		}
-
-		if(!res.successful())
-		{
-			g_log->debug("Compliance Stop() call returned error " + res.errstr());
-		}
-
-		stopped = true;
-	};
-
-	sdc_internal::comp_stop stop;
-
-	shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> grpc_stop_conn =
-		grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>(m_cointerface_sock_path);
-	unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop) grpc_stop(grpc_stop_conn);
-
-	grpc_stop.do_rpc(stop, callback);
-
-	// Wait up to 10 seconds for a response
-	for(uint32_t i=0; i < 100; i++)
-	{
-		Poco::Thread::sleep(100);
-		grpc_stop.process_queue();
-
-		if(stopped)
-		{
-			return;
-		}
-	}
-
-        g_log->error("Did not receive response to Compliance Stop() call within 10 seconds");
-}
-
 
 sinsp_analyzer *security_mgr::analyzer()
 {

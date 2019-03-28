@@ -26,6 +26,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_analyzer(NULL),
 #ifndef CYGWING_AGENT
 	m_security_mgr(NULL),
+	m_compliance_mgr(NULL),
 #endif
 	m_capture_job_handler(capture_job_handler),
 	m_sinsp_handler(configuration, queue),
@@ -52,6 +53,7 @@ sinsp_worker::~sinsp_worker()
 	delete m_analyzer;
 #ifndef CYGWING_AGENT
 	delete m_security_mgr;
+	delete m_compliance_mgr;
 #endif
 }
 
@@ -451,8 +453,17 @@ void sinsp_worker::init()
 				throw sinsp_exception("Could not load baselines from file: " + errstr);
 			}
 		}
+	}
 
-		if(m_configuration->m_security_compliance_schedule != "")
+	if(m_configuration->m_cointerface_enabled)
+	{
+		std::string run_dir = m_configuration->m_root_dir + "/run";
+		m_compliance_mgr = new compliance_mgr(run_dir);
+		m_compliance_mgr->init(&m_sinsp_handler,
+				       m_analyzer,
+				       m_configuration);
+
+		if(m_configuration->m_security_default_compliance_schedule != "")
 		{
 			string errstr;
 			draiosproto::comp_calendar cal;
@@ -462,21 +473,24 @@ void sinsp_worker::init()
 			k8s_task->set_name("Check K8s Environment");
 			k8s_task->set_mod_name("kube-bench");
 			k8s_task->set_enabled(true);
-			k8s_task->set_schedule(m_configuration->m_security_compliance_schedule);
+			k8s_task->set_schedule(m_configuration->m_security_default_compliance_schedule);
 
 			draiosproto::comp_task *docker_task = cal.add_tasks();
 		        docker_task->set_id(2);
 			docker_task->set_name("Check Docker Environment");
 			docker_task->set_mod_name("docker-bench-security");
 			docker_task->set_enabled(true);
-			docker_task->set_schedule(m_configuration->m_security_compliance_schedule);
+			docker_task->set_schedule(m_configuration->m_security_default_compliance_schedule);
 
-			if(! set_compliance_calendar(cal, errstr))
+			// When using a default calendar, never send results or events
+			if(! set_compliance_calendar(cal, false, false, errstr))
 			{
-				throw sinsp_exception("Could not set built-in compliance calendar: " + errstr);
+				throw sinsp_exception("Could not set default compliance calendar: " + errstr);
 			}
 		}
 	}
+
+
 #endif // CYGWING_AGENT
 
 	for(const auto &comm : m_configuration->m_suppressed_comms)
@@ -744,6 +758,11 @@ void sinsp_worker::run()
 		{
 			m_security_mgr->process_event(ev);
 		}
+
+		if(m_compliance_mgr)
+		{
+			m_compliance_mgr->process_event(ev);
+		}
 #endif
 
 		m_capture_job_handler->process_event(ev);
@@ -789,30 +808,35 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	}
 }
 
-bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar, std::string &errstr)
+bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,
+					   bool send_results,
+					   bool send_events,
+					   std::string &errstr)
 {
-	if(m_security_mgr)
+	if(m_compliance_mgr)
 	{
-		m_security_mgr->set_compliance_calendar(calendar);
+		m_compliance_mgr->set_compliance_calendar(calendar,
+							  send_results,
+							  send_events);
 		return true;
 	}
 	else
 	{
-		errstr = "No Security Manager object created";
+		errstr = "No Compliance Manager object created";
 		return false;
 	}
 }
 
 bool sinsp_worker::run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr)
 {
-	if(m_security_mgr)
+	if(m_compliance_mgr)
 	{
-		m_security_mgr->set_compliance_run(run);
+		m_compliance_mgr->set_compliance_run(run);
 		return true;
 	}
 	else
 	{
-		errstr = "No Security Manager object created";
+		errstr = "No Compliance Manager object created";
 		return false;
 	}
 }
@@ -833,7 +857,7 @@ bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string
 void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
-	m_security_mgr->request_refresh_compliance_tasks();
+	m_compliance_mgr->request_refresh_compliance_tasks();
 }
 #endif
 

@@ -93,11 +93,12 @@ func (mgr *ModuleMgr) FailResult(stask *ScheduledTask, err error) {
 
 	timestamp_ns := uint64(time.Now().UnixNano())
 
-	// In this struct, CallSuccessful refers to the grpc, not the
-	// execution of any task.
+	// In this struct, InitSuccessful refers to the initialization
+	// of the task (e.g. parsing schedule, etc), not the execution
+	// of any task.
 	evt := &sdc_internal.CompTaskEvent{
 		TaskName: stask.task.Name,
-		CallSuccessful: proto.Bool(true),
+		InitSuccessful: proto.Bool(true),
 	}
 
 	results := &draiosproto.CompResults{
@@ -177,16 +178,12 @@ func (mgr *ModuleMgr) Init(customerId string, machineId string) error {
 // Generally errors related to the Module Manager itself are returned
 // as errors from the function. Errors related to a given task
 // (improperly formed calendar, bad module, etc). are returned as
-// CompTaskEvents with successful=false.
+// CompTaskEvents with init_successful=false.
 
 func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.ComplianceModuleMgr_StartServer) error {
 	log.Debugf("Received Start message: %s", start.String())
 
 	if ! mgr.initialized {
-		if start.CustomerId == nil || start.MachineId == nil {
-			return fmt.Errorf("Start() without a prior Load() must contain customer id/machine id")
-		}
-
 		if err := mgr.Init(*start.CustomerId, *start.MachineId); err != nil {
 			return err
 		}
@@ -235,7 +232,7 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 		if err != nil {
 			evt := &sdc_internal.CompTaskEvent{
 				TaskName: task.Name,
-				CallSuccessful: proto.Bool(false),
+				InitSuccessful: proto.Bool(false),
 				Errstr: proto.String(fmt.Sprintf("Could not schedule task %s: %s", *task.Name, err.Error())),
 			}
 
@@ -278,30 +275,6 @@ func (mgr *ModuleMgr) Start(start *sdc_internal.CompStart, stream sdc_internal.C
 	log.Infof("Tasks done, exiting")
 
 	return nil
-}
-
-func (mgr *ModuleMgr) Load(ctx context.Context, load *sdc_internal.CompLoad) (*sdc_internal.CompLoadResult, error) {
-	log.Debugf("Received Compliance Load message: %s", load.String())
-
-	if ! mgr.initialized {
-		if err := mgr.Init(*load.CustomerId, *load.MachineId); err != nil {
-			return nil, err
-		}
-	}
-
-	result := &sdc_internal.CompLoadResult{}
-
-	for _, module := range mgr.availModules {
-
-		result.Statuses = append(result.Statuses, &sdc_internal.CompModuleStatus{
-			ModName: proto.String(module.Name),
-			Running: proto.Bool(true),
-		})
-	}
-
-	log.Debugf("Returning from Compliance Load: %v", result)
-
-	return result, nil
 }
 
 func (mgr *ModuleMgr) Stop(ctx context.Context, stop *sdc_internal.CompStop) (*sdc_internal.CompStopResult, error) {

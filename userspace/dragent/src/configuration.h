@@ -814,7 +814,7 @@ public:
 	bool m_security_send_monitor_events;
 	vector<string> m_suppressed_comms;
 	vector<uint16_t> m_suppressed_types;
-	std::string m_security_compliance_schedule;
+	std::string m_security_default_compliance_schedule;
 	bool m_security_send_compliance_events;
 	bool m_security_send_compliance_results;
 	bool m_security_include_desc_in_compliance_results;

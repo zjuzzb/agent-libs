@@ -21,8 +21,6 @@
 #include <draios.pb.h>
 #include <falco_engine.h>
 
-#include "coclient.h"
-
 #include "capture_job_handler.h"
 #include "configuration.h"
 #include "analyzer.h"
@@ -31,6 +29,7 @@
 #include "security_action.h"
 #include "baseline_mgr.h"
 #include "internal_metrics.h"
+#include "coclient.h"
 
 class SINSP_PUBLIC security_mgr
 {
@@ -82,16 +81,6 @@ public:
 	void start_sending_capture(const string &token);
 
 	void stop_capture(const string &token);
-
-	void load_compliance_modules();
-
-	void set_compliance_calendar(draiosproto::comp_calendar &calendar);
-	void request_refresh_compliance_tasks();
-	void set_compliance_run(draiosproto::comp_run &run);
-	void run_compliance_tasks(draiosproto::comp_run &run);
-
-	void refresh_compliance_tasks();
-	void stop_compliance_tasks();
 
 	void load_k8s_audit_server();
 	void start_k8s_audit_server_tasks();
@@ -328,12 +317,7 @@ private:
 	std::unique_ptr<run_on_interval> m_report_events_interval;
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
-	draiosproto::comp_calendar m_compliance_calendar;
-	draiosproto::comp_run m_compliance_run;
-	std::set<uint64_t> m_cur_compliance_tasks;
-	bool m_compliance_modules_loaded;
-	bool m_compliance_load_in_progress;
-	bool m_should_refresh_compliance_tasks;
+
 	bool m_k8s_audit_server_started;
 	bool m_k8s_audit_server_loaded;
 	bool m_k8s_audit_server_load_in_progress;
@@ -560,18 +544,11 @@ private:
 
 	metrics m_metrics;
 
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_start_conn;
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_load_conn;
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_run_tasks_conn;
-
-	std::unique_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
-	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
-	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)> m_grpc_run_tasks;
-
 	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_start_conn;
 	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_load_conn;
 
 	std::unique_ptr<streaming_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStart)> m_k8s_audit_server_start;
 	std::unique_ptr<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)> m_k8s_audit_server_load;
+
 };
 #endif // CYGWING_AGENT

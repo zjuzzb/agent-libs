@@ -259,7 +259,7 @@ dragent_configuration::dragent_configuration()
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
 	m_security_send_monitor_events = false;
-	m_security_compliance_schedule = "";
+	m_security_default_compliance_schedule = "";
 	m_security_send_compliance_events = false;
 	m_security_send_compliance_results = false;
 	m_security_include_desc_in_compliance_results = true;
@@ -1136,8 +1136,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
-	// Set to "PT1H" to run once an hour from startup.
-	m_security_compliance_schedule = m_config->get_scalar<string>("security", "compliance_schedule", "");
+	// By default runs once per day at 8am utc
+	m_security_default_compliance_schedule = m_config->get_scalar<string>("security", "default_compliance_schedule", "08:00:00Z/P1D");
 
 	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
 	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", true);
@@ -1607,11 +1607,6 @@ void dragent_configuration::print_configuration() const
 		LOG_INFO("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		LOG_INFO(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
 
-		if(m_security_compliance_schedule != "")
-		{
-			LOG_INFO("Will run compliance tasks with schedule: " + m_security_compliance_schedule);
-		}
-
 		LOG_INFO(string("Will ") + (m_security_send_compliance_events ? "" : "not ") + "send compliance events");
 		LOG_INFO(string("Will ") + (m_security_send_compliance_results ? "" : "not ") + "send compliance results");
 		LOG_INFO(string("Will check for new compliance tasks to run every ") +
@@ -1639,6 +1634,11 @@ void dragent_configuration::print_configuration() const
 				LOG_INFO(string("K8s Audit Server X509 key file: ") + m_k8s_audit_server_x509_key_file);
 			}
 		}
+	}
+
+	if(m_security_default_compliance_schedule != "")
+	{
+		LOG_INFO("When not otherwise specified, will run compliance tasks with schedule: " + m_security_default_compliance_schedule);
 	}
 
 	if(m_suppressed_comms.size() > 0)

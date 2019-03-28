@@ -63,7 +63,7 @@ func (impl *TestModuleImpl) Scrape(rootPath string, moduleName string,
 
 	evt := &sdc_internal.CompTaskEvent{
 		TaskName: proto.String(*task.Name),
-		CallSuccessful: proto.Bool(true),
+		InitSuccessful: proto.Bool(true),
 	}
 
 	events := &draiosproto.CompEvents{
