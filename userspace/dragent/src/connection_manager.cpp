@@ -229,12 +229,28 @@ bool connection_manager::connect()
 	std::thread connect_thread([&sock_promise](string& hostname,
 	                                           uint16_t port,
 	                                           bool ssl_enabled,
-	                                           uint32_t transmit_buffer_size)
+	                                           uint32_t transmit_buffer_size,
+	                                           uint32_t m_reconnect_interval)
 	{
 		StreamSocket* ssp = nullptr;
 
 		try
 		{
+			// Reconnect backoff
+			// How reconnect backoff works, briefly:
+			//  * The backoff starts at 0
+			//  * The first disconnect(), the backoff is set to RECONNECT_MIN_INTERVAL_S (currently 1 second)
+			//  * Every subsequent disconnect, the backoff is doubled
+			//  * If the connection has been active for over WORKING_INTERVAL_S (currently 10 seconds),
+			//    reset the backoff to RECONNECT_MIN_INTERVAL_S on the next disconnect()
+			//  * last_connection_failure is updated above in the call to connect()
+			std::chrono::seconds time_slept = std::chrono::seconds(0);
+			while(time_slept < std::chrono::seconds(m_reconnect_interval))
+			{
+				std::chrono::seconds time_to_sleep = std::chrono::seconds(1);
+				std::this_thread::sleep_for(time_to_sleep);
+				time_slept += time_to_sleep;
+			}
 			SocketAddress sa(hostname, port);
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_INFO("Connecting to collector " + sa.toString());
@@ -274,7 +290,7 @@ bool connection_manager::connect()
 				ssp->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 			}
 
-			// Set addtional socket options post-connect
+			// Set additional socket options post-connect
 			ssp->setSendBufferSize(transmit_buffer_size);
 			ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
 			ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
@@ -311,13 +327,14 @@ bool connection_manager::connect()
 		catch(const std::future_error& e)
 		{
 			LOG_ERROR("connect():future_error: %s", e.what());
-			sock_promise.set_value(nullptr);
+			// We can't touch sock_promise any more in this state
 			return;
 		}
 	}, std::ref(m_configuration->m_server_addr),
 	   m_configuration->m_server_port,
 	   m_configuration->m_ssl_enabled,
-	   m_configuration->m_transmitbuffer_size);
+	   m_configuration->m_transmitbuffer_size,
+	   m_reconnect_interval);
 
 	//
 	// End thread
@@ -329,7 +346,8 @@ bool connection_manager::connect()
 	connect_thread.detach();
 
 	uint32_t waited_time_s;
-	uint32_t wait_for_s = US_TO_S(SOCKET_TIMEOUT_DURING_CONNECT_US);
+	// We might have to wait for the connect timeout + the reconnect backoff
+	const uint32_t wait_for_s = m_reconnect_interval + US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 
 	LOG_INFO("Waiting to connect %u s", wait_for_s);
 	for(waited_time_s = 0; waited_time_s < wait_for_s; ++waited_time_s)
@@ -347,6 +365,13 @@ bool connection_manager::connect()
 	if(waited_time_s >= wait_for_s)
 	{
 		LOG_WARNING("Connection attempt timed out. Retrying...");
+		disconnect();
+		return false;
+	}
+
+	if(dragent_configuration::m_terminate)
+	{
+		LOG_WARNING("Terminated during connection. Aborting.");
 		disconnect();
 		return false;
 	}
@@ -448,15 +473,8 @@ void connection_manager::do_run()
 				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
 			}
 #endif
-
-			if (!connect()) {
-				// Reconnect backoff
-				uint32_t waited_s = 0;
-				while(heartbeat() && waited_s < m_reconnect_interval)
-				{
-					std::this_thread::sleep_for(std::chrono::seconds(1));
-					++waited_s;
-				}
+			if(!connect())
+			{
 				continue;
 			}
 		}
