@@ -374,6 +374,10 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 			startStatefulSetsSInformer(ctx, kubeClient, wg, evtc)
 		case "resourcequotas":
 			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
+		case "persistentvolumes":
+			startPersistentVolumesInformer(ctx, kubeClient, wg, evtc)
+		case "persistentvolumeclaims":
+			startPersistentVolumeClaimsInformer(ctx, kubeClient, wg, evtc)
 
 		default:
 			log.Debugf("No kubecollect support for %v", resource)
