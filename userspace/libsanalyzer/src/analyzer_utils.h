@@ -117,7 +117,7 @@ inline void debug_print_binary_buf(char* buf, uint64_t bufsize)
 	}
 }
 
-inline string truncate_str(const string& s, uint32_t max_size)
+inline std::string truncate_str(const std::string& s, uint32_t max_size)
 {
 	if (s.size() <= max_size)
 	{
@@ -125,7 +125,7 @@ inline string truncate_str(const string& s, uint32_t max_size)
 	}
 	else
 	{
-		string truncated(s, 0, max_size-3);
+		std::string truncated(s, 0, max_size-3);
 		truncated += "...";
 		return truncated;
 	}
@@ -133,9 +133,9 @@ inline string truncate_str(const string& s, uint32_t max_size)
 
 #ifndef _WIN32
 template<typename T, typename... Ts>
-unique_ptr<T> make_unique(Ts&&... params)
+std::unique_ptr<T> make_unique(Ts&&... params)
 {
-	return unique_ptr<T>(new T(forward<Ts>(params)...));
+	return std::unique_ptr<T>(new T(std::forward<Ts>(params)...));
 }
 #endif // _WIN32
 
@@ -171,9 +171,9 @@ class stopwatch
 public:
 	stopwatch() {}
 
-	stopwatch(string&& name):
+	stopwatch(std::string&& name):
 			m_name(name),
-			m_starttime(chrono::system_clock::now()),
+			m_starttime(std::chrono::system_clock::now()),
 			m_started(true)
 	{
 	}
@@ -186,26 +186,26 @@ public:
 		}
 	}
 
-	void start(string&& name)
+	void start(std::string&& name)
 	{
 		m_name = name;
-		m_starttime = chrono::system_clock::now();
+		m_starttime = std::chrono::system_clock::now();
 		m_started = true;
 	}
 
 	void stop()
 	{
-		m_endtime = chrono::system_clock::now();
-		auto d = chrono::duration_cast<chrono::microseconds>(m_endtime - m_starttime);
+		m_endtime = std::chrono::system_clock::now();
+		auto d = std::chrono::duration_cast<std::chrono::microseconds>(m_endtime - m_starttime);
 		std::cerr << m_name << " took " << d.count() << " us" << std::endl;
 		m_started = false;
 	}
 
 
 private:
-	string m_name;
-	chrono::system_clock::time_point m_starttime;
-	chrono::system_clock::time_point m_endtime;
+	std::string m_name;
+	std::chrono::system_clock::time_point m_starttime;
+	std::chrono::system_clock::time_point m_endtime;
 	bool m_started;
 };
 
@@ -313,13 +313,13 @@ bool get_proc_mem_and_cpu(long& kb, int& cpu, std::string* err = nullptr);
 class nsenter
 {
 public:
-	nsenter(int pid, const string& type);
+	nsenter(int pid, const std::string& type);
 	virtual ~nsenter();
 
 private:
-	int open_ns_fd(int pid, const string& type);
-	static unordered_map<string, int> m_home_ns;
-	string m_type;
+	int open_ns_fd(int pid, const std::string& type);
+	static std::unordered_map<std::string, int> m_home_ns;
+	std::string m_type;
 };
 #endif // CYGWING_AGENT
 

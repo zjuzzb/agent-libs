@@ -2,6 +2,7 @@
 add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/libsanalyzer/test)
 add_subdirectory(userspace/libsanalyzer/tests)
+add_subdirectory(userspace/libsanalyzer/test_helpers)
 add_subdirectory(userspace/test_helpers/src)
 add_subdirectory(userspace/test_helpers/test)
 

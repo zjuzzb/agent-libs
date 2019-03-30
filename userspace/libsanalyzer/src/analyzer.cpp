@@ -409,7 +409,9 @@ void sinsp_analyzer::on_capture_start()
 	{
 		if(scap_enable_dynamic_snaplen(m_inspector->m_h) != SCAP_SUCCESS)
 		{
-			throw sinsp_exception(scap_getlasterr(m_inspector->m_h));
+			const std::string err = scap_getlasterr(m_inspector->m_h);
+			g_logger.log("analyzer: " + err, sinsp_logger::SEV_ERROR);
+			throw sinsp_exception(err);
 		}
 	}
 
@@ -420,7 +422,9 @@ void sinsp_analyzer::on_capture_start()
 	if(m_machine_info == NULL)
 	{
 		ASSERT(false);
-		throw sinsp_exception("machine info missing, analyzer can't start");
+		const std::string err = "analyzer: machine info missing, analyzer can't start";
+		g_logger.log(err, sinsp_logger::SEV_ERROR);
+		throw sinsp_exception(err);
 	}
 
 	auto cpu_max_sr_threshold = m_configuration->get_cpu_max_sr_threshold();
@@ -741,7 +745,9 @@ sinsp_configuration* sinsp_analyzer::get_configuration()
 	if(m_inspector->m_h != NULL)
 	{
 		ASSERT(false);
-		throw sinsp_exception("Attempting to get the configuration while the inspector is capturing");
+		std::string err = "Attempting to get the configuration while the inspector is capturing";
+		g_logger.log(err, sinsp_logger::SEV_ERROR);
+		throw sinsp_exception(err);
 	}
 
 	return m_configuration;
@@ -760,7 +766,9 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 	if(m_inspector->m_h != NULL)
 	{
 		ASSERT(false);
-		throw sinsp_exception("Attempting to set the configuration while the inspector is capturing");
+		std::string err = "Attempting to set the configuration while the inspector is capturing";
+		g_logger.log(err, sinsp_logger::SEV_ERROR);
+		throw sinsp_exception(err);
 	}
 
 	*m_configuration = configuration;
@@ -832,7 +840,9 @@ char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
 	{
 #ifdef _WIN32
 		ASSERT(false);
-		throw sinsp_exception("compression in agent protocol not implemented under windows");
+		const std::string err = "compression in agent protocol not implemented under windows";
+		g_logger.log(err, sinsp_logger::SEV_ERROR);
+		throw sinsp_exception(err);
 		return NULL;
 #else
 		ArrayOutputStream array_output(m_serialization_buffer, full_len);
@@ -4455,7 +4465,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		if(m_next_flush_time_ns == 0)
 		{
 			//
-			// This is the very first event, just initialize the times forfuture use
+			// This is the very first event, just initialize the times for future use
 			//
 			m_next_flush_time_ns = ts - ts % sample_duration + sample_duration;
 			m_prev_flush_time_ns = m_next_flush_time_ns - sample_duration;

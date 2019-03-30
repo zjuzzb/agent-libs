@@ -3,7 +3,9 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 
+#include "analyzer_utils.h" /* make_unique */
 #include "transactinfo.h"
 #include "protostate.h"
 #include "delays.h"
@@ -61,12 +63,12 @@ public:
 	// State for delay computation
 	sinsp_delays_info m_transaction_delays;
 	// Time spent by this process on each of the CPUs
-	vector<uint64_t> m_cpu_time_ns;
+	std::vector<uint64_t> m_cpu_time_ns;
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
 	// Completed transactions lists
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	std::vector<std::vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	std::vector<std::vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 	// The protocol state
 	sinsp_protostate m_protostate;
 	// Number of FDs
@@ -83,8 +85,8 @@ class proc_config;
 struct main_thread_analyzer_info
 {
 	sinsp_protostate m_protostate;
-	vector<vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
-	vector<vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
+	std::vector<std::vector<sinsp_trlist_entry>> m_server_transactions_per_cpu;
+	std::vector<std::vector<sinsp_trlist_entry>> m_client_transactions_per_cpu;
 
 	// hash of all environment variables
 	env_hash m_env_hash;
@@ -184,8 +186,8 @@ public:
 		m_prom_check_found = false;
 	}
 
-	bool found_app_check_by_fnmatch(const string& pattern);
-	inline bool found_app_check_by_name(const string& name)
+	bool found_app_check_by_fnmatch(const std::string& pattern);
+	inline bool found_app_check_by_name(const std::string& name)
 	{
 		return (m_app_checks_found.find(name) != m_app_checks_found.end());
 	}
@@ -235,7 +237,7 @@ public:
 	int64_t m_last_wait_duration_ns;
 
 	// Time spent by this process on each of the CPUs
-	vector<uint64_t> m_cpu_time_ns;
+	std::vector<uint64_t> m_cpu_time_ns;
 	// Syscall error table
 	sinsp_error_counters m_syscall_errors;
 	// Completed transactions lists

@@ -1,13 +1,14 @@
 #include "sinsp_worker.h"
-
-#include "logger.h"
 #include "error_handler.h"
-#include "utils.h"
+#include "logger.h"
 #include "memdumper.h"
-#include "Poco/DateTimeFormatter.h"
-
+#include "sinsp_factory.h"
+#include "utils.h"
 #include <grpc/grpc.h>
 #include <grpc/support/log.h>
+#include <Poco/DateTimeFormatter.h>
+
+DRAGENT_LOGGER();
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -22,7 +23,6 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_queue(queue),
 	m_enable_autodrop(enable_autodrop),
 	m_autodrop_currently_enabled(true),
-	m_inspector(NULL),
 	m_analyzer(NULL),
 #ifndef CYGWING_AGENT
 	m_security_mgr(NULL),
@@ -44,10 +44,9 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 
 sinsp_worker::~sinsp_worker()
 {
-	if(m_inspector != NULL)
+	if(m_inspector)
 	{
 		m_inspector->set_log_callback(0);
-		delete m_inspector;
 	}
 
 	delete m_analyzer;
@@ -66,8 +65,8 @@ void sinsp_worker::init()
 
 	m_initialized = true;
 
-	m_inspector = new sinsp();
-	m_analyzer = new sinsp_analyzer(m_inspector, m_configuration->m_root_dir);
+	m_inspector = sinsp_factory::build();
+	m_analyzer = new sinsp_analyzer(m_inspector.get(), m_configuration->m_root_dir);
 
 	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
 	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
@@ -423,11 +422,11 @@ void sinsp_worker::init()
 	{
 		if(!m_configuration->m_cointerface_enabled)
 		{
-			throw sinsp_exception("Security capabilities depend on cointerface, but cointerface is disabled.");
+			LOGGED_THROW(sinsp_exception, "Security capabilities depend on cointerface, but cointerface is disabled.");
 		}
 
 		m_security_mgr = new security_mgr(m_configuration->m_root_dir);
-		m_security_mgr->init(m_inspector,
+		m_security_mgr->init(m_inspector.get(),
 				     &m_sinsp_handler,
 				     m_analyzer,
 				     m_capture_job_handler,
@@ -440,7 +439,7 @@ void sinsp_worker::init()
 
 			if(!m_security_mgr->load_policies_file(m_configuration->m_security_policies_file.c_str(), errstr))
 			{
-				throw sinsp_exception("Could not load policies from file: " + errstr);
+				LOGGED_THROW(sinsp_exception, "Could not load policies from file: %s", errstr.c_str());
 			}
 		}
 
@@ -450,7 +449,7 @@ void sinsp_worker::init()
 
 			if(!m_security_mgr->load_baselines_file(m_configuration->m_security_baselines_file.c_str(), errstr))
 			{
-				throw sinsp_exception("Could not load baselines from file: " + errstr);
+				LOGGED_THROW(sinsp_exception, "Could not load baselines from file: %s", errstr.c_str());
 			}
 		}
 	}
@@ -485,7 +484,7 @@ void sinsp_worker::init()
 			// When using a default calendar, never send results or events
 			if(! set_compliance_calendar(cal, false, false, errstr))
 			{
-				throw sinsp_exception("Could not set default compliance calendar: " + errstr);
+				LOGGED_THROW(sinsp_exception, "Could not set default compliance calendar: %s", errstr.c_str());
 			}
 		}
 	}
@@ -670,7 +669,7 @@ void sinsp_worker::run()
 		else if(res != SCAP_SUCCESS)
 		{
 			cerr << "res = " << res << endl;
-			throw sinsp_exception(m_inspector->getlasterr().c_str());
+			LOGGED_THROW(sinsp_exception, "%s", m_inspector->getlasterr().c_str());
 		}
 
 		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
@@ -703,7 +702,7 @@ void sinsp_worker::run()
 				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
 				{
 					// TODO: investigate if we can void agent restart and just reopen the inspector
-					throw sinsp_exception("restarting agent to restore normal operation mode");
+					LOGGED_THROW(sinsp_exception, "restarting agent to restore normal operation mode");
 				}
 				else if(!full_mode_event_sent && ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME - 2*ONE_SECOND_IN_NS)
 				{
@@ -885,7 +884,7 @@ void sinsp_worker::process_job_requests()
 		job_request->m_start_details->m_delete_file_when_done = false;
 		job_request->m_start_details->m_send_file = false;
 
-		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
+		if(!m_capture_job_handler->queue_job_request(m_inspector.get(), job_request, errstr))
 		{
 			g_log->error("sinsp_worker: could not start capture: " + errstr);
 		}
@@ -919,7 +918,7 @@ void sinsp_worker::process_job_requests()
 
 		g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
 
-		if(!m_capture_job_handler->queue_job_request(m_inspector, request, errstr))
+		if(!m_capture_job_handler->queue_job_request(m_inspector.get(), request, errstr))
 		{
 			// It's assumed these requests were ones from
 			// the backend, so send an error to the

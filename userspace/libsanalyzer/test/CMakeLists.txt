@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
@@ -20,18 +21,32 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 
 add_definitions( -DHAS_ANALYZER )
 
-add_executable(unit-test-libsanalyzer
+list(APPEND libsanalyzer_test_helpers_uts
+	event_builder.ut.cpp
+	sinsp_mock.ut.cpp
+)
+
+list(APPEND libsanalyzer_uts
 	analyzer_file_stat.ut.cpp
 	main.cpp
+	analyzer.ut.cpp
 	mounted_fs.ut.cpp
 	parser_http.ut.cpp
 )
 
+# We test both the libanalyzer itself and its test helpers in this library
+add_executable(unit-test-libsanalyzer
+		${libsanalyzer_test_helpers_uts}
+		${libsanalyzer_uts})
+
 target_link_libraries(unit-test-libsanalyzer
-	sanalyzer
+	sanalyzer.test
 	draiosproto
+	test-helpers-libsanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
+
+target_compile_definitions(unit-test-libsanalyzer PUBLIC SYSDIG_TEST)
 
 file(
 	COPY valgrind/helgrind.suppressions

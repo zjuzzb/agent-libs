@@ -38,7 +38,7 @@ public:
 		     capture_job_handler *handler);
 	~sinsp_worker();
 
-	void run();
+	void run() override;
 
 	// This is a way to schedule capture jobs from threads other
 	// than the sinsp_worker thread. It actually passes the
@@ -59,7 +59,7 @@ public:
 
 	const sinsp* get_inspector() const
 	{
-		return m_inspector;
+		return m_inspector.get();
 	}
 
 	const sinsp_data_handler* get_sinsp_data_handler() const
@@ -122,7 +122,7 @@ private:
 	protocol_queue* m_queue;
 	atomic<bool> *m_enable_autodrop;
 	bool m_autodrop_currently_enabled;
-	sinsp* m_inspector;
+	sinsp::ptr m_inspector;
 	sinsp_analyzer* m_analyzer;
 #ifndef CYGWING_AGENT
 	security_mgr *m_security_mgr;

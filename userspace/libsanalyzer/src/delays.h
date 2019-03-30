@@ -1,6 +1,7 @@
 #ifdef HAS_ANALYZER
 
 #pragma once
+#include "metrics.h" /*for sinsp_transaction_counters*/
 
 class sinsp_percpu_delays
 {

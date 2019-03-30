@@ -96,28 +96,33 @@ public:
 		// We cant use logging because it's not initialized yet
 		for (const auto& path : file_paths)
 		{
-			File conf_file(path);
-			if(conf_file.exists())
+			try
 			{
-				try
+				File conf_file(path);
+				if(conf_file.exists())
 				{
+
 					if(!add_root(YAML::LoadFile(path)))
 					{
 						add_error(string("Cannot read config file: ") + path + " reason: not valid format");
 					}
 				}
-				catch(const YAML::BadFile& ex)
+				else
 				{
-					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
-				}
-				catch(const YAML::ParserException& ex)
-				{
-					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+					m_warnings.emplace_back(string("Config file: ") + path + " does not exists");
 				}
 			}
-			else
+			catch(const YAML::BadFile& ex)
 			{
-				m_warnings.emplace_back(string("Config file: ") + path + " does not exists");
+				m_errors.emplace_back(string("YAML::BadFile:Cannot read config file: ") + path + " reason: " + ex.what());
+			}
+			catch(const YAML::ParserException& ex)
+			{
+				m_errors.emplace_back(string("YAML::ParserException:Cannot read config file: ") + path + " reason: " + ex.what());
+			}
+			catch (const Poco::AssertionViolationException& ex)
+			{
+				m_errors.emplace_back(string("Poco::AssertionViolationException:Cannot read config file: ") + path + " reason: " + ex.what());
 			}
 		}
 	}
@@ -561,7 +566,16 @@ class dragent_configuration
 public:
 	dragent_configuration();
 
+	/**
+	 * Initialize the configuration with a yaml file
+	 */
 	void init(Application* app, bool use_installed_dragent_yaml=true);
+
+	/**
+	 * Initialize the configuration to defaults.
+	 */
+	void init();
+
 	void print_configuration() const;
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);

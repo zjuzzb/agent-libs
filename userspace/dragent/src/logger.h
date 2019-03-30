@@ -199,4 +199,17 @@ private:
 #    define DBG_LOG_CRITICAL(...)  do { } while(false)
 #    define DBG_LOG_FATAL(...)     do { } while(false)
 #endif
+
+// Shorthand macro to log and throw a exception which takes a single string
+// for construction.
+#define LOGGED_THROW(__exception_type, __fmt, ...)                             \
+do {                                                                           \
+	std::string c_err_ = s_log_sink.build(__fmt,                           \
+					      ##__VA_ARGS__);                  \
+	s_log_sink.log(Poco::Message::Priority::PRIO_ERROR,                    \
+		       __LINE__,                                               \
+		       "Throwing: " + c_err_);                                 \
+	throw __exception_type(c_err_.c_str());                                \
+} while(false)
+
 extern std::unique_ptr<dragent_logger> g_log;

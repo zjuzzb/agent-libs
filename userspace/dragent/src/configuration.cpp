@@ -540,12 +540,6 @@ string dragent_configuration::get_install_prefix(const Application* app)
 
 void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
-#ifdef CYGWING_AGENT
-	bool is_windows = true;
-#else
-	bool is_windows = false;
-#endif
-
 	refresh_machine_id();
 	string install_prefix = get_install_prefix(app);
 
@@ -571,6 +565,17 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
 #endif
 	}
+
+	init();
+}
+
+void dragent_configuration::init()
+{
+#ifdef CYGWING_AGENT
+	bool is_windows = true;
+#else
+	bool is_windows = false;
+#endif
 
 	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_root_dir).append("etc").toString()));
 

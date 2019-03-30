@@ -2,13 +2,13 @@
 
 #include <exception>
 
-// Shorthand macro to throw a fatal exception when executing on a watchdog
-// runnable.
+// Shorthand macro to log and throw a fatal exception when executing on a
+// watchdog runnable.
 #define THROW_DRAGENT_WR_FATAL_ERROR(__fmt, ...)                               \
 do {                                                                           \
 	std::string c_err_ = s_log_sink.build(__fmt,                           \
 					      ##__VA_ARGS__);                  \
-        s_log_sink.log(Poco::Message::Priority::PRIO_ERROR,                    \
+	s_log_sink.log(Poco::Message::Priority::PRIO_ERROR,                    \
 		       __LINE__,                                               \
 		       "Throwing: " + c_err_);                                 \
 	throw dragent::watchdog_runnable_fatal_error(c_err_.c_str(),           \
