@@ -47,6 +47,9 @@ sinsp_worker::~sinsp_worker()
 	if(m_inspector)
 	{
 		m_inspector->set_log_callback(0);
+		// Manually delete the inspector so that it is destroyed
+		// before the other objects
+		m_inspector.reset();
 	}
 
 	delete m_analyzer;
