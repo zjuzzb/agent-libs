@@ -285,7 +285,7 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		{
 			const std::string &system_rules = policies.falco_rules().contents(0);
 			try {
-				g_log->information("Loading System Falco Rules Content: " + system_rules);
+				g_log->debug("Loading System Falco Rules Content: " + system_rules);
 				m_falco_engine->load_rules(system_rules, verbose, all_events);
 			}
 			catch (falco_exception &e)

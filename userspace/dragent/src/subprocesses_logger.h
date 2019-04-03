@@ -124,6 +124,16 @@ private:
 class subprocesses_logger : public dragent::watchdog_runnable
 {
 public:
+	class log_state {
+	public:
+		log_state();
+		log_state(function<void(const string&)> parser, watchdog_state *state);
+		virtual ~log_state();
+		function<void(const string&)> m_parser_f;
+		std::shared_ptr<std::string> m_curbuf;
+		watchdog_state *m_state;
+	};
+
 	subprocesses_logger(dragent_configuration* configuration, log_reporter* reporter);
 
 	// `parser` is an rvalue reference because we expect a lambda
@@ -136,6 +146,6 @@ public:
 private:
 	dragent_configuration *m_configuration;
 	log_reporter* m_log_reporter;
-	map<FILE *, pair<function<void(const string&)>, watchdog_state*>> m_error_fds;
+	map<FILE *, log_state> m_error_fds;
 };
 
