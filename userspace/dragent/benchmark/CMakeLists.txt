@@ -1,7 +1,7 @@
-add_executable(bench
-        protobuf.cpp)
+add_executable(benchmark-dragent
+        protobuf.bm.cpp)
 
-add_dependencies(bench dragentl draiosproto)
+add_dependencies(benchmark-dragent dragentl draiosproto)
 add_definitions(-DHAS_ANALYZER)
 
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/benchmark/include)
@@ -29,7 +29,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/incl
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 
-target_link_libraries(bench
+target_link_libraries(benchmark-dragent
     ${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark.a
     ${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark_main.a
     rt
@@ -37,6 +37,10 @@ target_link_libraries(bench
     draiosproto
 )
 
-install(TARGETS bench
+add_custom_target(run-benchmark-dragent
+		COMMAND benchmark-dragent
+)
+
+install(TARGETS benchmark-dragent
     DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
     COMPONENT tests)

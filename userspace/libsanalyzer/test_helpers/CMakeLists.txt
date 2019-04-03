@@ -22,6 +22,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 add_definitions( -DHAS_ANALYZER )
 
 add_library(test-helpers-libsanalyzer STATIC
+	run.cpp
 	sinsp_evt_wrapper.cpp
 	sinsp_mock.cpp
 )
