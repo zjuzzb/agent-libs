@@ -367,10 +367,10 @@ void subprocesses_logger::do_run()
 						g_log->error(string("Could not read from subprocess logger fd: ") + strerror(errno));
 					}
 
-					// Look for a complete line in the buffer
-					auto pos = fds.second.m_curbuf->find_first_of("\n");
-
-					if(pos != string::npos)
+					// For each complete line in the buffer, pass it to the right parser
+					for(auto pos = fds.second.m_curbuf->find_first_of("\n");
+					    pos != string::npos;
+					    pos = fds.second.m_curbuf->find_first_of("\n"))
 					{
 						string data(*(fds.second.m_curbuf), 0, pos);
 
