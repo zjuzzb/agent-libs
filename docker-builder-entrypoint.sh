@@ -14,7 +14,7 @@ if [[ -z $SYSDIG_IMAGE ]]; then
   SYSDIG_IMAGE="sysdig:latest"
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude="cointerface/draiosproto" --exclude="cointerface/sdc_internal" /draios/agent/ /code/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude="cointerface/src/*/draiosproto" --exclude="cointerface/src/*/sdc_internal" --exclude="cointerface/src/*/promex_pb" /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='driver/Makefile' --exclude='driver/driver_config.h' /draios/sysdig/ /code/sysdig/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
 
