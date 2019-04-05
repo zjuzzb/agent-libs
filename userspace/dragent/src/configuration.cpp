@@ -734,7 +734,14 @@ void dragent_configuration::init()
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
 	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
 	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
-	m_ssl_ca_cert_dir = m_config->get_scalar<string>("ca_cert_dir", "");
+
+	m_ssl_ca_cert_paths = m_config->get_first_deep_sequence<vector<string>>("ca_cert_paths");
+	std::string ssl_ca_cert_dir = m_config->get_scalar<string>("ca_cert_dir", "");
+	if(!ssl_ca_cert_dir.empty())
+	{
+		m_ssl_ca_cert_paths.insert(m_ssl_ca_cert_paths.begin(), std::move(ssl_ca_cert_dir));
+	}
+
 	m_compression_enabled = m_config->get_scalar<bool>("compression", "enabled", true);
 	m_emit_full_connections = m_config->get_scalar<bool>("emitfullconnections_enabled", false);
 	m_dump_dir = m_config->get_scalar<string>("dumpdir", "/tmp/");
@@ -1314,9 +1321,14 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("ssl: " + bool_as_text(m_ssl_enabled));
 	LOG_INFO("ssl_verify_certificate: " + bool_as_text(m_ssl_verify_certificate));
 	LOG_INFO("ca_certificate: " + m_ssl_ca_certificate);
-	if (!m_ssl_ca_cert_dir.empty())
+	if (!m_ssl_ca_cert_paths.empty())
 	{
-		LOG_INFO("ca_cert_dir: " + m_ssl_ca_cert_dir);
+		string ca_cert_paths("ca_cert_paths:");
+		for(const auto& path : m_ssl_ca_cert_paths)
+		{
+			ca_cert_paths.append(" " + path);
+		}
+		LOG_INFO(ca_cert_paths);
 	}
 	LOG_INFO("compression.enabled: " + bool_as_text(m_compression_enabled));
 	LOG_INFO("emitfullconnections.enabled: " + bool_as_text(m_emit_full_connections));

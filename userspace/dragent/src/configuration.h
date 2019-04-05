@@ -142,7 +142,7 @@ public:
 	bool m_ssl_enabled;
 	bool m_ssl_verify_certificate;
 	string m_ssl_ca_certificate;
-	string m_ssl_ca_cert_dir;
+	vector<string> m_ssl_ca_cert_paths;
 	bool m_compression_enabled;
 	bool m_emit_full_connections;
 	string m_dump_dir;

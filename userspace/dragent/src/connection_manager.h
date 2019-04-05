@@ -39,7 +39,6 @@ public:
 private:
 	bool init();
 	void do_run() override;
-	static std::string get_openssldir();
 	bool connect();
 	void disconnect();
 	void disconnect(SharedPtr<StreamSocket> ssp);
@@ -49,6 +48,12 @@ private:
 	void handle_dump_request_stop(uint8_t* buf, uint32_t size);
 	void handle_config_data(uint8_t* buf, uint32_t size);
 	void handle_error_message(uint8_t* buf, uint32_t size) const;
+
+	static const std::string& get_openssldir();
+	// Walk over the CA path search list and return the first one that exists
+	// Note: we have to return a new string by value as we potentially alter
+	// the string in the search path (substituting $OPENSSLDIR with the actual path)
+	static std::string find_ca_cert_path(const std::vector<std::string>& search_paths);
 #ifndef CYGWING_AGENT
 	void handle_policies_message(uint8_t* buf, uint32_t size);
 	void handle_compliance_calendar_message(uint8_t* buf, uint32_t size);
