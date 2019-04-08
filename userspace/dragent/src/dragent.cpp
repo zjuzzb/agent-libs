@@ -831,9 +831,19 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	{
 		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
 
+		if(diff_ns < 0)
+		{
+			static ratelimit r;
+			r.run([&] {
+				LOG_WARNING("watchdog: sinsp_worker last activity " + NumberFormatter::format(-diff_ns) + " ns in the future");
+			});
+		}
+		else
+		{
 #if _DEBUG
-		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff_ns) + " ns ago");
+			LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
+		}
 
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_debug_timeout_s,
 			"sinsp_worker", ", enabling tracing"))
@@ -870,9 +880,19 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	{
 		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
+		if(diff_ns < 0)
+		{
+			static ratelimit r;
+			r.run([&] {
+				LOG_WARNING("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(-diff_ns) + " ns in the future");
+			});
+		}
+		else
+		{
 #if _DEBUG
-		LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff_ns) + " ns ago");
+			LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
+		}
 
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_data_handler_timeout_s,
 			"sinsp_data_handler", ""))
