@@ -113,7 +113,6 @@ private:
 #ifndef CYGWING_AGENT
 	void lookup_memory_cgroup_dir();
 	void lookup_cpuacct_cgroup_dir();
-	std::unique_ptr<std::string> lookup_cgroup_dir(const std::string& subsys);
 	void assign_jiffies(std::vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies);
 	bool get_cpus_load(OUT sinsp_proc_stat *proc_stat, char *line, int cpu_num);
 	bool get_boot_time(OUT sinsp_proc_stat* proc_stat, char* line);
@@ -132,8 +131,8 @@ private:
 	uint64_t m_last_out_bytes;
 	// nullptr means that lookup have not yet take place
 	// "" means that it cannot find cgroup mount point
-	std::unique_ptr<std::string> m_memory_cgroup_dir;
-	std::unique_ptr<std::string> m_cpuacct_cgroup_dir;
+	std::shared_ptr<std::string> m_memory_cgroup_dir;
+	std::shared_ptr<std::string> m_cpuacct_cgroup_dir;
 
 	static const char* m_cpu_labels[];
 	std::vector<uint64_t> m_old_cpu[CPU_NUM_COUNTERS];
@@ -184,12 +183,28 @@ private:
 #ifndef CYGWING_AGENT
 inline void sinsp_procfs_parser::lookup_memory_cgroup_dir()
 {
-	m_memory_cgroup_dir = lookup_cgroup_dir("memory");
+	m_memory_cgroup_dir = sinsp::lookup_cgroup_dir("memory");
+	if(!m_memory_cgroup_dir)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot find memory cgroup dir");
+	}
+	else
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Found memory cgroup dir: %s", m_memory_cgroup_dir->c_str());
+	}
 }
 
 inline void sinsp_procfs_parser::lookup_cpuacct_cgroup_dir()
 {
-	m_cpuacct_cgroup_dir = lookup_cgroup_dir("cpuacct");
+	m_cpuacct_cgroup_dir = sinsp::lookup_cgroup_dir("cpuacct");
+	if(!m_cpuacct_cgroup_dir)
+	{
+		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot find cpuacct cgroup dir");
+	}
+	else
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Found cpuacct cgroup dir: %s", m_cpuacct_cgroup_dir->c_str());
+	}
 }
 
 inline void sinsp_procfs_parser::assign_jiffies(std::vector<double>& vec, uint64_t delta_jiffies, uint64_t delta_tot_jiffies)

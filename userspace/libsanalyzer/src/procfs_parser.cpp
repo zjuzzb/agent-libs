@@ -1000,48 +1000,6 @@ double sinsp_procfs_parser::read_cgroup_used_cpuacct_cpu_time(
 	fclose(fp);
 	return -1;
 }
-
-unique_ptr<string> sinsp_procfs_parser::lookup_cgroup_dir(const string& subsys)
-{
-	unique_ptr<string> cgroup_dir;
-
-	// Look for mount point of cgroup filesystem
-	// It should be already mounted on the host or by
-	// our docker-entrypoint.sh script
-	if(strcmp(scap_get_host_root(), "") != 0)
-	{
-		// We are inside our container, so we should use the directory
-		// mounted by it
-		auto cgroup = string(scap_get_host_root()) + "/cgroup/" + subsys;
-		cgroup_dir = make_unique<string>(cgroup);
-	}
-	else
-	{
-		FILE* fp = setmntent("/proc/mounts", "r");
-		struct mntent* entry = getmntent(fp);
-		while(entry != NULL)
-		{
-			if(strcmp(entry->mnt_type, "cgroup") == 0 &&
-			   hasmntopt(entry, subsys.c_str()) != NULL)
-			{
-				cgroup_dir = make_unique<string>(entry->mnt_dir);
-				break;
-			}
-			entry = getmntent(fp);
-		}
-		endmntent(fp);
-	}
-	if(!cgroup_dir)
-	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Cannot find %s cgroup dir", subsys.c_str());
-		return make_unique<string>();
-	}
-	else
-	{
-		g_logger.format(sinsp_logger::SEV_INFO, "Found %s cgroup dir: %s", subsys.c_str(), cgroup_dir->c_str());
-		return cgroup_dir;
-	}
-}
 #endif // CYGWING_AGENT
 
 pair<uint32_t, uint32_t> sinsp_procfs_parser::read_network_interfaces_stats()
