@@ -14,6 +14,7 @@ MAX_SLOW_ENTRIES_KEY = "slowlog-max-len"
 
 REPL_KEY = 'master_link_status'
 LINK_DOWN_KEY = 'master_link_down_since_seconds'
+LOGGING_INTERVAL = 300  # in secs
 
 
 class Redis(AgentCheck):
@@ -93,6 +94,8 @@ class Redis(AgentCheck):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.connections = {}
         self.last_timestamp_seen = defaultdict(int)
+        self.redis_mode = None
+        self.logging_scheduler = {"logging_start_time": time.time()}
 
     def get_library_versions(self):
         return {"redis": redis.__version__}
@@ -170,10 +173,18 @@ class Redis(AgentCheck):
         info = None
         try:
             info = conn.info()
-            tags = sorted(tags + ["redis_role:%s" % info["role"]])
-            status = AgentCheck.OK
-            self.service_check('redis.can_connect', status, tags=tags)
-            self._collect_metadata(info)
+            self.redis_mode = info["redis_mode"]
+            if self.redis_mode.lower() == 'sentinel':
+                diff_time = time.time() - self.logging_scheduler.get('logging_start_time')
+                if diff_time > instance.get('logging_interval', LOGGING_INTERVAL):
+                    self.logging_scheduler['logging_start_time'] = time.time()
+                    self.log.info('Redis node is operating as sentinel. Ignoring redis master/slave metrics.')
+                return None
+            else:
+                tags = sorted(tags + ["redis_role:%s" % info["role"]])
+                status = AgentCheck.OK
+                self.service_check('redis.can_connect', status, tags=tags)
+                self._collect_metadata(info)
         except ValueError:
             status = AgentCheck.CRITICAL
             self.service_check('redis.can_connect', status, tags=tags)
@@ -219,8 +230,10 @@ class Redis(AgentCheck):
                 self.rate(self.RATE_KEYS[info_name], info[info_name], tags=tags)
 
         # Save the number of commands.
-        self.rate('redis.net.commands', info['total_commands_processed'],
-                  tags=tags)
+        if self.redis_mode.lower() != 'sentinel':
+            self.rate('redis.net.commands', info['total_commands_processed'],
+                      tags=tags)
+
         if 'instantaneous_ops_per_sec' in info:
             self.gauge('redis.net.instantaneous_ops_per_sec', info['instantaneous_ops_per_sec'],
                        tags=tags)
@@ -374,7 +387,8 @@ class Redis(AgentCheck):
         custom_tags = instance.get('tags', [])
 
         self._check_db(instance, custom_tags)
-        self._check_slowlog(instance, custom_tags)
+        if self.redis_mode.lower() != 'sentinel':
+            self._check_slowlog(instance, custom_tags)
 
     def _collect_metadata(self, info):
         if info and 'redis_version' in info:

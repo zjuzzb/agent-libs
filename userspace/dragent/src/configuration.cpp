@@ -24,6 +24,7 @@ using namespace Poco::Net;
 DRAGENT_LOGGER("dragent");
 
 std::atomic<bool> dragent_configuration::m_signal_dump(false);
+std::atomic<bool> dragent_configuration::m_enable_trace(false);
 std::atomic<bool> dragent_configuration::m_terminate(false);
 std::atomic<bool> dragent_configuration::m_send_log_report(false);
 std::atomic<bool> dragent_configuration::m_config_update(false);
@@ -220,6 +221,7 @@ dragent_configuration::dragent_configuration()
 	m_json_parse_errors_events_max_burst = 10;
 	m_watchdog_enabled = true;
 	m_watchdog_sinsp_worker_timeout_s = 0;
+	m_watchdog_sinsp_worker_debug_timeout_s = 0;
 	m_watchdog_connection_manager_timeout_s = 0;
 	m_watchdog_analyzer_tid_collision_check_interval_s = 0;
 	m_watchdog_sinsp_data_handler_timeout_s = 0;
@@ -257,7 +259,7 @@ dragent_configuration::dragent_configuration()
 	m_security_throttled_report_interval_ns = 10000000000;
 	m_actions_poll_interval_ns = 1000000000;
 	m_security_send_monitor_events = false;
-	m_security_compliance_schedule = "";
+	m_security_default_compliance_schedule = "";
 	m_security_send_compliance_events = false;
 	m_security_send_compliance_results = false;
 	m_security_include_desc_in_compliance_results = true;
@@ -265,6 +267,13 @@ dragent_configuration::dragent_configuration()
 	m_security_compliance_refresh_interval = 120000000000;
 	m_security_compliance_kube_bench_variant = "";
 	m_security_compliance_save_temp_files = false;
+	m_k8s_audit_server_enabled = true;
+	m_k8s_audit_server_refresh_interval = 120000000000;
+	m_k8s_audit_server_url = "localhost";
+	m_k8s_audit_server_port = 7765;
+	m_k8s_audit_server_tls_enabled = false;
+	m_k8s_audit_server_x509_cert_file = "";
+	m_k8s_audit_server_x509_key_file = "";
 	m_policy_events_rate = 0.5;
 	m_policy_events_max_burst = 50;
 	m_user_events_rate = 1;
@@ -278,6 +287,10 @@ dragent_configuration::dragent_configuration()
 	m_swarm_enabled = true;
 	m_security_baseline_report_interval_ns = DEFAULT_FALCOBL_DUMP_DELTA_NS;
 	m_snaplen = 0;
+	m_procfs_scan_thread = false;
+	m_procfs_scan_mem_interval_ms = 30000;
+	m_procfs_scan_interval_ms = 5000;
+	m_procfs_scan_delay_ms = 100;
 	m_query_docker_image_info = true;
 }
 
@@ -527,12 +540,6 @@ string dragent_configuration::get_install_prefix(const Application* app)
 
 void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
-#ifdef CYGWING_AGENT
-	bool is_windows = true;
-#else
-	bool is_windows = false;
-#endif
-
 	refresh_machine_id();
 	string install_prefix = get_install_prefix(app);
 
@@ -558,6 +565,17 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
 #endif
 	}
+
+	init();
+}
+
+void dragent_configuration::init()
+{
+#ifdef CYGWING_AGENT
+	bool is_windows = true;
+#else
+	bool is_windows = false;
+#endif
 
 	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_root_dir).append("etc").toString()));
 
@@ -751,6 +769,7 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_watchdog_enabled = m_config->get_scalar<bool>("watchdog_enabled", true);
 #endif
 	m_watchdog_sinsp_worker_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_timeout_s)>("watchdog", "sinsp_worker_timeout_s", 60);
+	m_watchdog_sinsp_worker_debug_timeout_s = m_config->get_scalar<decltype(m_watchdog_sinsp_worker_debug_timeout_s)>("watchdog", "sinsp_worker_debug_timeout_s", 55);
 	m_watchdog_connection_manager_timeout_s = m_config->get_scalar<decltype(m_watchdog_connection_manager_timeout_s)>("watchdog", "connection_manager_timeout_s", 100);
 	m_watchdog_subprocesses_logger_timeout_s = m_config->get_scalar<decltype(m_watchdog_subprocesses_logger_timeout_s)>("watchdog", "subprocesses_logger_timeout_s", 60);
 	m_watchdog_analyzer_tid_collision_check_interval_s = m_config->get_scalar<decltype(m_watchdog_analyzer_tid_collision_check_interval_s)>("watchdog", "analyzer_tid_collision_check_interval_s", 600);
@@ -799,6 +818,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 
 	m_max_thread_table_size = m_config->get_scalar<unsigned>("max_thread_table_size", 0);
 	m_dirty_shutdown_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_report_log_size_b)>("dirty_shutdown", "report_log_size_b", 30 * 1024);
+	m_dirty_shutdown_default_report_log_size_b = m_dirty_shutdown_report_log_size_b;
+	m_dirty_shutdown_trace_report_log_size_b = m_config->get_scalar<decltype(m_dirty_shutdown_trace_report_log_size_b)>("dirty_shutdown", "trace_report_log_size_b", 300 * 1024);
 	m_capture_dragent_events = m_config->get_scalar<bool>("capture_dragent_events", false);
 	m_jmx_sampling = m_config->get_scalar<decltype(m_jmx_sampling)>("jmx", "sampling", 1);
 	m_protocols_enabled = m_config->get_scalar<bool>("protocols", true);
@@ -1120,8 +1141,8 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_mounts_filter = m_config->get_merged_sequence<user_configured_filter>("mounts_filter");
 	m_mounts_limit_size = m_config->get_scalar<unsigned>("mounts_limit_size", 15u);
 
-	// Set to "PT1H" to run once an hour from startup.
-	m_security_compliance_schedule = m_config->get_scalar<string>("security", "compliance_schedule", "");
+	// By default runs once per day at 8am utc
+	m_security_default_compliance_schedule = m_config->get_scalar<string>("security", "default_compliance_schedule", "08:00:00Z/P1D");
 
 	m_security_send_compliance_events = m_config->get_scalar<bool>("security", "send_compliance_events", false);
 	m_security_send_compliance_results = m_config->get_scalar<bool>("security", "send_compliance_results", true);
@@ -1131,6 +1152,13 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_security_compliance_send_failed_results = m_config->get_scalar<bool>("security", "compliance_send_failed_results", true);
 	m_security_compliance_save_temp_files = m_config->get_scalar<bool>("security", "compliance_save_temp_files", false);
 
+	m_k8s_audit_server_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_enabled", true);
+	m_k8s_audit_server_refresh_interval = m_config->get_scalar<uint64_t>("security", "k8s_audit_server_refresh_interval", 120000000000);
+	m_k8s_audit_server_url = m_config->get_scalar<string>("security", "k8s_audit_server_url", "localhost");
+	m_k8s_audit_server_port = m_config->get_scalar<uint16_t>("security", "k8s_audit_server_port", 7765);
+	m_k8s_audit_server_tls_enabled = m_config->get_scalar<bool>("security", "k8s_audit_server_tls_enabled", false);
+	m_k8s_audit_server_x509_cert_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_cert_file", "");
+	m_k8s_audit_server_x509_key_file = m_config->get_scalar<string>("security", "k8s_audit_server_x509_key_file", "");
 	// Check existence of namespace to see if kernel supports containers
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = (m_mounts_limit_size > 0) && nsfile.exists();
@@ -1219,9 +1247,17 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
 
+#ifndef CYGWING_AGENT
+	m_procfs_scan_thread =  m_config->get_scalar<bool>("procfs_scanner", "enabled", false);
+	m_procfs_scan_mem_interval_ms = m_config->get_scalar<uint32_t>("procfs_scanner", "mem_scan_interval_ms", 30000);
+	m_procfs_scan_interval_ms = m_config->get_scalar<uint32_t>("procfs_scanner", "cpu_scan_interval_ms", 5000);
+	m_procfs_scan_delay_ms = m_config->get_scalar<uint32_t>("procfs_scanner", "start_delay_ms", 100);
+#endif
+
 	m_query_docker_image_info = m_config->get_scalar<bool>("query_docker_image_info", true);
 	m_cri_socket_path = m_config->get_scalar<string>("cri", "socket_path", "");
 	m_cri_timeout_ms = m_config->get_scalar<int64_t>("cri", "timeout_ms", 1000);
+	m_cri_extra_queries = m_config->get_scalar<bool>("cri", "extra_queries", false);
 
 	if(m_cri_socket_path.empty())
 	{
@@ -1580,11 +1616,6 @@ void dragent_configuration::print_configuration() const
 		LOG_INFO("Policy events max burst: " + NumberFormatter::format(m_policy_events_max_burst));
 		LOG_INFO(string("Will ") + (m_security_send_monitor_events ? "" : "not ") + "send sysdig monitor events when policies trigger");
 
-		if(m_security_compliance_schedule != "")
-		{
-			LOG_INFO("Will run compliance tasks with schedule: " + m_security_compliance_schedule);
-		}
-
 		LOG_INFO(string("Will ") + (m_security_send_compliance_events ? "" : "not ") + "send compliance events");
 		LOG_INFO(string("Will ") + (m_security_send_compliance_results ? "" : "not ") + "send compliance results");
 		LOG_INFO(string("Will check for new compliance tasks to run every ") +
@@ -1596,7 +1627,27 @@ void dragent_configuration::print_configuration() const
 		{
 			LOG_INFO(string("Will force kube-bench compliance check to run " + m_security_compliance_kube_bench_variant + " variant"));
 		}
+
 		LOG_INFO(string("Will ") + (m_security_compliance_save_temp_files ? "" : "not ") + "keep temporary files for compliance tasks on disk");
+
+
+		if (m_k8s_audit_server_enabled)
+		{
+			LOG_INFO(string("K8s Audit Server configured"));
+			LOG_INFO(string("K8s Audit Server tls enabled:  ") + std::to_string(m_k8s_audit_server_tls_enabled));
+			LOG_INFO(string("K8s Audit Server URL:  ") + m_k8s_audit_server_url);
+			LOG_INFO(string("K8s Audit Server port: ") + std::to_string(m_k8s_audit_server_port));
+			if (m_k8s_audit_server_tls_enabled)
+			{
+				LOG_INFO(string("K8s Audit Server X509 crt file: ") + m_k8s_audit_server_x509_cert_file);
+				LOG_INFO(string("K8s Audit Server X509 key file: ") + m_k8s_audit_server_x509_key_file);
+			}
+		}
+	}
+
+	if(m_security_default_compliance_schedule != "")
+	{
+		LOG_INFO("When not otherwise specified, will run compliance tasks with schedule: " + m_security_default_compliance_schedule);
 	}
 
 	if(m_suppressed_comms.size() > 0)

@@ -17,6 +17,7 @@
 #include <sinsp.h>
 #include <configuration.h>
 #include <coclient.h>
+#include "docker_utils.h"
 
 using namespace std;
 using namespace Poco;
@@ -143,25 +144,12 @@ protected:
 	coclient m_coclient;
 };
 
-static bool check_docker_service()
-{
-	if(system("service docker status > /dev/null 2>&1") != 0)
-	{
-		if (system("systemctl status docker > /dev/null 2>&1") != 0) {
-			printf("Docker not running, skipping test\n");
-			return false;
-		}
-	}
-
-	return true;
-}
-
 TEST_F(coclient_test, DISABLED_perform_ping)
 {
 	int64_t token = 828271;
 	bool callback_performed = false;
 
-	if (!check_docker_service())
+	if (!dutils_check_docker())
 	{
 		return;
 	}
@@ -192,7 +180,7 @@ TEST_F(coclient_test, DISABLED_perform_ping)
 
 TEST_F(coclient_test, DISABLED_docker_pause)
 {
-	if (!check_docker_service())
+	if (!dutils_check_docker())
 	{
 		return;
 	}
@@ -202,7 +190,7 @@ TEST_F(coclient_test, DISABLED_docker_pause)
 
 TEST_F(coclient_test, DISABLED_docker_stop)
 {
-	if (!check_docker_service())
+	if (!dutils_check_docker())
 	{
 		return;
 	}

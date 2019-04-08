@@ -1,10 +1,11 @@
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION})
+include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
-include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
@@ -17,12 +18,14 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VE
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 
 list(APPEND targetfiles
 	baseline_mgr.cpp
 	capture_job_handler.cpp
+	compliance_mgr.cpp
 	configuration.cpp
 	connection_manager.cpp
 	crash_handler.cpp
@@ -37,6 +40,7 @@ list(APPEND targetfiles
 	security_mgr.cpp
 	security_policy.cpp
 	sinsp_data_handler.cpp
+	sinsp_factory.cpp
 	sinsp_worker.cpp
 	subprocesses_logger.cpp
 	uptime.cpp
@@ -53,8 +57,6 @@ else()
 		linux/process_helpers.cpp)
 endif()
 
-add_library(dragentl STATIC
-	${targetfiles})
 
 if(CYGWIN)
 	set(POCO_LIB_DIR "bin")
@@ -64,9 +66,8 @@ else()
 	set(POCO_LIB_PREFIX "lib")
 endif()
 
-target_link_libraries(dragentl
-	falco_engine
-        ${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
+list(APPEND dragent_link_libraries
+	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
@@ -75,6 +76,19 @@ target_link_libraries(dragentl
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	rt
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
+
+# Create the production library
+add_library(dragentl STATIC ${targetfiles})
+target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
+
+if(BUILD_FOR_TEST)
+	# Create the test library with the extra SYSDIG_TEST definition
+	add_library(dragentl.test STATIC ${targetfiles})
+	target_compile_definitions(dragentl.test PUBLIC SYSDIG_TEST)
+	# Ideally, we make a test version of falco_engine since it currently depends
+	# on the production version of libsanalyzer
+	target_link_libraries(dragentl.test falco_engine ${dragent_link_libraries})
+endif()
 
 add_executable(dragent
 	main.cpp)

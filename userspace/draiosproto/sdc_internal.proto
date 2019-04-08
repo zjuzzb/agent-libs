@@ -13,7 +13,7 @@ option optimize_for = SPEED;
 
 message container_mounts {
     required string container_id = 1;
-    repeated draiosproto.mounted_fs mounts = 2; 
+    repeated draiosproto.mounted_fs mounts = 2;
 }
 
 message mounted_fs_response {
@@ -117,11 +117,6 @@ message comp_module_status {
     optional string errstr = 3;
 }
 
-message comp_load {
-    required string customer_id = 1;
-    required string machine_id = 2;
-}
-
 message comp_load_result {
     repeated comp_module_status statuses = 1;
 }
@@ -145,7 +140,7 @@ message comp_stop_result {
 
 message comp_task_event {
     required string task_name = 1;
-    required bool call_successful = 2;
+    required bool init_successful = 2;
     optional string errstr = 3;
     optional draiosproto.comp_events events = 4;
     optional draiosproto.comp_results results = 5;
@@ -169,9 +164,51 @@ message comp_run_result {
 }
 
 service ComplianceModuleMgr {
-    rpc Load(comp_load) returns (comp_load_result) {}
     rpc Start(comp_start) returns (stream comp_task_event) {}
     rpc Stop(comp_stop) returns (comp_stop_result) {}
     rpc GetFutureRuns(comp_get_future_runs)returns (comp_future_runs){}
     rpc RunTasks(draiosproto.comp_run) returns (comp_run_result) {}
+}
+
+message k8s_audit_server_X509 {
+    required string x509_cert_file = 1;
+    required string x509_key_file = 2;
+}
+
+/* The K8s Audit Server sets up a single endpoint either HTTP or
+ * HTTPS */
+message k8s_audit_server_load {
+    required string url = 1;
+    required uint32 port = 2;
+    required bool tls_enabled = 3;
+    repeated k8s_audit_server_X509 x509 = 4;
+}
+
+message k8s_audit_server_load_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
+message k8s_audit_server_start {
+}
+
+message k8s_audit_server_stop {
+}
+
+message k8s_audit_event {
+    required bool successful = 1;
+    optional uint64 evt_id = 2;
+    optional string evt_json = 3;
+    optional string errstr = 4;
+}
+
+message k8s_audit_stop_result {
+    required bool successful = 1;
+    optional string errstr = 2;
+}
+
+service K8sAudit {
+    rpc Load(k8s_audit_server_load) returns (k8s_audit_server_load_result) {}
+    rpc Start(k8s_audit_server_start) returns (stream k8s_audit_event) {}
+    rpc Stop(k8s_audit_server_stop) returns (k8s_audit_stop_result) {}
 }

@@ -18,7 +18,7 @@ import (
 
 func usage() {
 	fmt.Fprintf(os.Stderr, "usage: compclient [-sock=<path>] [-msg=<msg>]\n")
-	fmt.Fprintf(os.Stderr, "   <msg> is one of \"load\", \"start\", \"stop\"")
+	fmt.Fprintf(os.Stderr, "   <msg> is one of \"start\", \"stop\"")
 	flag.PrintDefaults()
 	os.Exit(1)
 }
@@ -48,26 +48,6 @@ func unixDialer(addr string, timeout time.Duration) (net.Conn, error) {
 	log.Debugf("Connecting unix socket: addr=%v, timeout=%v", addr, timeout)
 	sock, err := net.DialTimeout("unix", addr, timeout)
 	return sock, err
-}
-
-func performLoad(client sdc_internal.ComplianceModuleMgrClient) int {
-	load := &sdc_internal.CompLoad{
-		MachineId:         proto.String("my-machine-id"),
-		CustomerId:        proto.String("my-customer-id"),
-	}
-
-	log.Debugf("Load=%s", load.String())
-
-	res, err := client.Load(context.Background(), load)
-
-	if err != nil {
-		log.Errorf("Could not load: %s", err)
-		return 1
-	}
-
-	log.Infof("Result of load: %s", res.String())
-
-	return 0
 }
 
 func performStart(client sdc_internal.ComplianceModuleMgrClient) int {
@@ -140,7 +120,7 @@ func mymain() int {
 		return 1
 	}
 	sockPtr := flag.String("sock", prefix + "/run/cointerface.sock", "domain socket for messages")
-	msgPtr := flag.String("msg", "start", "Message to send to server. Can be one of \"load\", \"start\", \"stop\".")
+	msgPtr := flag.String("msg", "start", "Message to send to server. Can be one of \"start\", \"stop\".")
 
 	flag.Parse()
 
@@ -157,8 +137,6 @@ func mymain() int {
 	client := sdc_internal.NewComplianceModuleMgrClient(conn)
 
 	switch *msgPtr {
-	case "load":
-		return performLoad(client)
 	case "start":
 		return performStart(client)
 	case "stop":

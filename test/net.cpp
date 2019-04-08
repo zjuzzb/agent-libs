@@ -45,6 +45,15 @@
 #include <Poco/Net/HTTPServerRequestImpl.h>
 #include <Poco/Net/HTTPSClientSession.h>
 
+#include <unistd.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/pem.h>
+#include <openssl/x509.h>
+#include <openssl/x509v3.h>
+
 #include "sinsp_int.h"
 #include "connectinfo.h"
 #include "analyzer_thread.h"
@@ -93,6 +102,223 @@ void error(char *msg) {
 }
 
 //
+// SSL server stuff
+//
+
+///
+/// Read the SSL certificate and key given as parameters.
+///
+/// The cert and key are read into the provided SSL context.
+///
+void load_certs(SSL_CTX* ctx, string cert_fn, string key_fn)
+{
+	int ret;
+
+	FILE* certf = fopen(cert_fn.c_str(), "r");
+	FILE* keyf = fopen(key_fn.c_str(), "r");
+
+	// Read the cert and key
+	X509* cert_x509 = PEM_read_X509(certf, NULL, NULL, NULL);
+	EVP_PKEY* pkey = PEM_read_PrivateKey(keyf, NULL, NULL, NULL);
+
+	if(cert_x509 == nullptr)
+	{
+		cerr << "Error reading certificate" << endl;
+		ERR_print_errors_fp(stderr);
+		goto cleanup;
+	}
+	if(pkey == nullptr)
+	{
+		cerr << "Error reading private key" << endl;
+		ERR_print_errors_fp(stderr);
+		goto cleanup;
+	}
+
+	// Set the cert and key in the context
+	ret = SSL_CTX_use_certificate(ctx, cert_x509);
+	if(ret <= 0)
+	{
+		cerr << "Error using certificate: " << ret << endl;
+		ERR_print_errors_fp(stderr);
+		goto cleanup;
+	}
+	ret = SSL_CTX_use_PrivateKey(ctx, pkey);
+	if(ret <= 0)
+	{
+		cerr << "Error using private key: " << ret << endl;
+		ERR_print_errors_fp(stderr);
+		goto cleanup;
+	}
+
+cleanup:
+	fclose(certf);
+	fclose(keyf);
+}
+
+///
+/// Encapsulates an SSL server socket
+///
+class ssl_socket
+{
+	int sock_fd = -1;
+	int sock_err = 0;
+	SSL_CTX* ctx = nullptr;
+	bool run_server = false;
+ public:
+	ssl_socket()
+	{
+		SSL_load_error_strings();
+		SSL_library_init();
+		OpenSSL_add_ssl_algorithms();
+
+		// Create the SSL context
+		ctx = SSL_CTX_new(SSLv23_server_method());
+		if(!ctx)
+		{
+			cerr << "Unable to build SSL context" << endl;
+			ERR_print_errors_fp(stderr);
+			sock_err = -1;
+			return;
+		}
+
+		SSL_CTX_set_ecdh_auto(ctx, 1);
+
+		load_certs(ctx, "certificate.pem", "key.pem");
+	}
+
+	~ssl_socket()
+	{
+		if(run_server)
+		{
+			stop();
+		}
+		if(sock_fd > 0)
+		{
+			close(sock_fd);
+			sock_fd = -1;
+		}
+		SSL_CTX_free(ctx);
+		EVP_cleanup();
+	}
+
+	bool error()
+	{
+		return sock_err != 0;
+	}
+
+	void start(uint16_t port)
+	{
+		uint32_t MAX_WAIT_MS = 5 * 1000;
+		run_server = true;
+		bool server_started = false;
+		std::mutex mtx;
+		std::condition_variable cv;
+
+		thread t([this, &server_started, &mtx, &cv](uint16_t port)
+		{
+			// Create the socket and begin listening
+
+			struct sockaddr_in addr;
+			addr.sin_family = AF_INET;
+			addr.sin_addr.s_addr = htonl(INADDR_ANY);
+			addr.sin_port = htons(port);
+
+			int s = socket(addr.sin_family, SOCK_STREAM, 0);
+			if(s < 0)
+			{
+				cerr << "Unable to create socket: " << s << endl;
+				sock_err = s;
+				return;
+			}
+
+			if(bind(s, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+			{
+				cerr << "Unable to bind to address: " << s << endl;
+				sock_err = s;
+				close(s);
+				return;
+			}
+
+			int ret = listen(s, 1);
+			if(ret < 0)
+			{
+				cerr << "Unable to listen on socket: " << ret << endl;
+				sock_err = ret;
+				close(s);
+				return;
+			}
+
+			sock_fd = s;
+			std::unique_lock<std::mutex> lck(mtx);
+			server_started = true;
+			cv.notify_one(); // Let the parent function know the server is ready to roll
+			lck.unlock();
+
+			while(run_server)
+			{
+				struct sockaddr_in addr;
+				uint32_t len = sizeof(addr);
+				SSL* ssl = nullptr;
+
+				int conn_fd = accept(sock_fd, (struct sockaddr*)&addr, &len);
+				if(conn_fd < 0)
+				{
+					cerr << "Error while accepting incoming connection: " << conn_fd << endl;
+					sock_err = conn_fd;
+					run_server = false;
+					continue;
+				}
+
+				ssl = SSL_new(ctx);
+				SSL_set_fd(ssl, conn_fd);
+				int ret = SSL_accept(ssl);
+
+				if(ret <= 0)
+				{
+					cerr << "SSL error accepting incoming connection: " << ret << endl;
+					ERR_print_errors_fp(stderr);
+					run_server = false;
+					continue;
+				}
+				else
+				{
+					char buf[128] =
+					{};
+					string response = "Goodbye from Sysdig test SSL server, signing off!";
+					SSL_read(ssl, buf, sizeof(buf));
+					SSL_write(ssl, buf, strlen(buf));
+					SSL_write(ssl, response.c_str(), response.length());
+					sleep(1);
+				}
+
+				SSL_free(ssl);
+				close(conn_fd);
+			}
+		}, port);
+		t.detach();
+
+		// Wait for the server to actually start before returning
+		std::unique_lock<std::mutex> guard(mtx);
+		while(!server_started)
+		{
+			if(cv.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
+			{
+				cerr << "Never got notified that the server got started!" << endl;
+				ASSERT(false);
+			}
+		}
+	}
+
+	void stop()
+	{
+		run_server = false;
+		close(sock_fd);
+		sock_fd = -1;
+	}
+};
+
+
+//
 // HTTP server stuff
 //
 
@@ -104,7 +330,7 @@ void error(char *msg) {
 class HTTPHandler : public Poco::Net::HTTPRequestHandler
 {
 public:
-  virtual void handleRequest(HTTPServerRequest &request, HTTPServerResponse &response)
+	virtual void handleRequest(HTTPServerRequest &request, HTTPServerResponse &response) override
 	{
 		response.setStatus(HTTPResponse::HTTP_OK);
 		response.setContentType("text/html");
@@ -116,7 +342,7 @@ public:
 		    << "<p>Request URI = "  << request.getURI()  << "</p>"
 		    << "</body></html>"
 		    << flush;
-  }
+	}
 };
 
 ///
@@ -129,7 +355,7 @@ public:
 	static const uint16_t secure_port = 443; // The proto analyzer will barf if it's a wonky port
 	virtual HTTPHandler* createRequestHandler(const HTTPServerRequest &)
 	{
-		return new HTTPHandler;
+		return new HTTPHandler();
 	}
 };
 
@@ -142,39 +368,116 @@ unique_ptr<SecureServerSocket> get_ssl_socket(uint16_t port)
 }
 
 ///
-/// Make an HTTPS request to the built-in server.
+/// Send an ssl request to the given localhost port.
 ///
-/// This function knows how to connect to the above server class and provides
-/// a convenient interface for making a simple request (assuming we don't care
-/// about the response).
+/// This will establish an SSL connection, send a string over that connection,
+/// and then continue reading replies until the socket is closed.
 ///
-/// It will block until the response is received.
+/// Yeah, I know all this OpenSSL API code is gross. But the Poco version
+/// was crashing in mysterious ways.
 ///
-/// @param  port  The port to connect on
+/// @param[in]  port  The server port to connect to
 ///
-/// @return  true   The request was made successfully
-/// @return  false  The request failed before it could be made
+/// @return  true  The request was made successfully and a response was received
+/// @return false  The request encountered an error
 ///
-bool localhost_https_request(uint16_t port)
+bool localhost_ssl_request(uint16_t port)
 {
-	try {
-		NullOutputStream ostr;
-		stringstream ss;
-		const string host = "127.0.0.1";
+    BIO* server = nullptr;
+    SSL_CTX* ctx = nullptr;
+    SSL *ssl = nullptr;
 
-		Poco::Net::HTTPSClientSession session(string("https://") + host, port);
-		Poco::Net::HTTPRequest request(Poco::Net::HTTPRequest::HTTP_GET);
-		Poco::Net::HTTPResponse response;
-		session.setHost(host);
-		session.setKeepAlive(false);
-		session.sendRequest(request);
-		session.receiveResponse(response);
-	} catch (const Exception& ex) {
-		cerr << "Exception: " << ex.displayText() << endl;
-		return false;
-	}
-	return true;
+    // Build the context
+    ctx = SSL_CTX_new(SSLv23_method());
+    if(ctx == nullptr)
+    {
+        cerr << "Unable to build SSL context for client" << endl;
+        ERR_print_errors_fp(stderr);
+        return false;
+    }
+
+    // Set up the context
+    SSL_CTX_set_verify(ctx, SSL_VERIFY_NONE, nullptr);
+    const long flags = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_COMPRESSION;
+    SSL_CTX_set_options(ctx, flags);
+    int res = SSL_CTX_load_verify_locations(ctx, "certificate.pem", nullptr);
+    if(res != 1)
+    {
+        cerr << "Couldn't load certificate: " << res << endl;
+        ERR_print_errors_fp(stderr);
+        return false;
+    }
+
+    // Create the server IO stream and SSL object
+    server = BIO_new_ssl_connect(ctx);
+    if(server == nullptr)
+    {
+        cerr << "Couldn't create SSL BIO object" << endl;
+        ERR_print_errors_fp(stderr);
+        return false;
+    }
+
+    stringstream ss;
+	ss << "127.0.0.1:" << port;
+
+    BIO_set_conn_hostname(server, ss.str().c_str());
+    BIO_get_ssl(server, &ssl);
+
+    if(ssl == nullptr)
+    {
+        cerr << "Couldn't create SSL object" << endl;
+        ERR_print_errors_fp(stderr);
+        return false;
+    }
+
+    SSL_set_tlsext_host_name(ssl, "127.0.0.1");
+
+    // Connect the IO stream to the server
+    res = BIO_do_connect(server);
+    if(res != 1)
+    {
+        cerr << "Client connect failed: " << res << endl;
+        return false;
+    }
+
+    res = BIO_do_handshake(server);
+    if(res != 1)
+    {
+        cerr << "Client handshake failed: " << res << endl;
+        return false;
+    }
+
+    // Send the payload
+    BIO_puts(server, "Hello from Sysdig test SSL client!");
+
+    // Read the responses until the socket is shut down
+    int len = 0;
+    char buf[256] = {};
+
+    while(true)
+    {
+		len = BIO_read(server, buf, sizeof(buf));
+
+		if(len <= 0)
+		{
+			break;
+		}
+    }
+
+    // Cleanup
+    if(server != nullptr)
+    {
+    	BIO_free_all(server);
+    }
+
+    if(ctx != nullptr)
+    {
+    	SSL_CTX_free(ctx);
+    }
+
+    return true;
 }
+
 
 ///
 /// Make an HTTP request to the built-in server
@@ -190,6 +493,7 @@ bool localhost_https_request(uint16_t port)
 ///
 bool localhost_http_request(uint16_t port)
 {
+	cerr << "Sending http request" << endl;
 	try {
 		NullOutputStream ostr;
 		stringstream ss;
@@ -347,15 +651,8 @@ TEST_F(sys_call_test, net_web_requests)
 	ASSERT_EQ(N_CONNECTIONS, nconns);
 }
 
-TEST_F(sys_call_test, DISABLED_net_ssl_requests)
+TEST_F(sys_call_test, net_ssl_requests)
 {
-	const uint64_t MAX_WAIT_MS = 5 * 1000;
-	std::mutex start_mutex;
-	std::mutex done_mutex;
-	std::condition_variable start_condition;
-	std::condition_variable done_condition;
-	bool started = false;
-
 	//
 	// FILTER
 	//
@@ -370,50 +667,19 @@ TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 	//
 	run_callback_t test = [&](sinsp* inspector)
 	{
-		bool done = false;
-		std::thread ws_thread([&started, &done, &done_mutex, &start_condition, &done_condition, MAX_WAIT_MS]
-		{
-			started = true;
-			auto sss = get_ssl_socket(HTTPRHFactory::secure_port);
-			sss->setNoDelay(true);
-			HTTPServer srv(new HTTPRHFactory(), *sss, new HTTPServerParams);
+	    ssl_socket sock;
 
-			srv.start();
+	    sock.start(443);
 
-			start_condition.notify_one();
-			std::unique_lock<std::mutex> guard(done_mutex);
-			while(!done)
-			{
-				if(done_condition.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
-				{
-					cerr << "Never got notified that the request was sent" << endl;
-					ASSERT(false);
-				}
-			}
-
-			srv.stop();
-		});
-
-		std::unique_lock<std::mutex> guard(start_mutex);
-		while(!started)
-		{
-			if(start_condition.wait_for(guard, std::chrono::milliseconds(MAX_WAIT_MS)) == cv_status::timeout)
-			{
-				cerr << "Never got notified that the server got started!" << endl;
-				ASSERT(false);
-			}
-		}
-
-		bool ret = localhost_https_request(HTTPRHFactory::secure_port);
-		EXPECT_TRUE(ret);
-
-		done = true;
-		done_condition.notify_one();
+	    if(!localhost_ssl_request(443))
+	    {
+	        cerr << "A bad thing happened attempting to connect to the SSL server." << endl;
+	    }
+	    sock.stop();
 
 		// We use a random call to tee to signal that we're done
 		tee(-1, -1, 0, 0);
 
-		ws_thread.join();
 		return 0;
 	};
 
@@ -427,11 +693,15 @@ TEST_F(sys_call_test, DISABLED_net_ssl_requests)
 		if(evt->get_type() == PPME_GENERIC_E &&
 		   NumberParser::parse(evt->get_param_value_str("ID", false)) == PPM_SC_TEE)
 		{
-			// curl uses multiple threads so collect all stats
 			auto threadtable = param.m_inspector->m_thread_manager->get_threads();
 			sinsp_transaction_counters transaction_metrics;
 			transaction_metrics.clear();
-			threadtable->loop([&] (sinsp_threadinfo& tinfo) {
+			threadtable->loop([&] (sinsp_threadinfo& tinfo)
+			{
+				if(tinfo.m_comm == "tests")
+				{
+					transaction_metrics.add(&tinfo.m_ainfo->m_transaction_metrics);
+				}
 				return true;
 			});
 
@@ -1056,7 +1326,8 @@ TEST(sinsp_protostate, test_top_call_should_be_present)
 
 TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 {
-	sinsp_procfs_parser parser(1, 1024, true);
+	// cpu, mem, live, ttl cpu, ttl mem
+	sinsp_procfs_parser parser(1, 1024, true, 0, 0);
 
 	auto stats = parser.read_network_interfaces_stats();
 	EXPECT_EQ(stats.first, 0U);

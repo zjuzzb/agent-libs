@@ -10,7 +10,7 @@
         <maven.compiler.source>1.6</maven.compiler.source>
         <maven.compiler.target>1.6</maven.compiler.target>
         <snakeyaml.version>1.13</snakeyaml.version>
-        <jackson.version>2.8.11</jackson.version>
+        <jackson.version>2.9.8</jackson.version>
     </properties>
 
     <profiles>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>${jackson.version}.1</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

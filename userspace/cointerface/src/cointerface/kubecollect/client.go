@@ -130,9 +130,16 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 				resourceList.GroupVersion != "batch/v2alpha1" {
 				continue
 			}
-			// Exclude services, resourcequotas and hpas unless explicitly requested
+			// Exclude services, rqs, hpas, pvs and pvcs unless explicitly requested
 			// We'll probably want to change this
-			if (resource.Name == "services" || resource.Name == "resourcequotas" || resource.Name == "horizontalpodautoscalers") && !in_array(resource.Name, includeTypes) {
+			// Note that PVCs may depend on PVs
+			if (resource.Name == "services" ||
+				resource.Name == "resourcequotas" ||
+				resource.Name == "horizontalpodautoscalers" ||
+				resource.Name == "persistentvolumes" ||
+				resource.Name == "persistentvolumeclaims") &&
+				!in_array(resource.Name, includeTypes) {
+
 				log.Debugf("K8s: Exclude resourcetype %s", resource.Name)
 				continue
 			}
@@ -367,6 +374,10 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 			startStatefulSetsSInformer(ctx, kubeClient, wg, evtc)
 		case "resourcequotas":
 			startResourceQuotasSInformer(ctx, kubeClient, wg, evtc)
+		case "persistentvolumes":
+			startPersistentVolumesInformer(ctx, kubeClient, wg, evtc)
+		case "persistentvolumeclaims":
+			startPersistentVolumeClaimsInformer(ctx, kubeClient, wg, evtc)
 
 		default:
 			log.Debugf("No kubecollect support for %v", resource)

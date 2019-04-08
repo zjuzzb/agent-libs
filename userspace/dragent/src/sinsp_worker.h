@@ -13,6 +13,7 @@
 
 #include "capture_job_handler.h"
 #include "security_mgr.h"
+#include "compliance_mgr.h"
 
 class captureinfo
 {
@@ -37,7 +38,7 @@ public:
 		     capture_job_handler *handler);
 	~sinsp_worker();
 
-	void run();
+	void run() override;
 
 	// This is a way to schedule capture jobs from threads other
 	// than the sinsp_worker thread. It actually passes the
@@ -58,7 +59,7 @@ public:
 
 	const sinsp* get_inspector() const
 	{
-		return m_inspector;
+		return m_inspector.get();
 	}
 
 	const sinsp_data_handler* get_sinsp_data_handler() const
@@ -96,7 +97,10 @@ public:
 
 #ifndef CYGWING_AGENT
 	bool load_policies(draiosproto::policies &policies, std::string &errstr);
-	bool set_compliance_calendar(draiosproto::comp_calendar &calendar, std::string &errstr);
+	bool set_compliance_calendar(draiosproto::comp_calendar &calendar,
+				     bool send_results,
+				     bool send_events,
+				     std::string &errstr);
 	bool run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr);
 	void receive_hosts_metadata(draiosproto::orchestrator_events &evts);
 #endif
@@ -118,10 +122,11 @@ private:
 	protocol_queue* m_queue;
 	atomic<bool> *m_enable_autodrop;
 	bool m_autodrop_currently_enabled;
-	sinsp* m_inspector;
+	sinsp::ptr m_inspector;
 	sinsp_analyzer* m_analyzer;
 #ifndef CYGWING_AGENT
 	security_mgr *m_security_mgr;
+	compliance_mgr *m_compliance_mgr;
 #endif
 	capture_job_handler *m_capture_job_handler;
 	sinsp_data_handler m_sinsp_handler;
@@ -131,6 +136,7 @@ private:
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
+	bool m_trace_enabled;
 	uint64_t m_last_mode_switch_time;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;

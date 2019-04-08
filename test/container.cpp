@@ -256,7 +256,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	bool done = false;
 	bool first = true;
 
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!dutils_check_docker())
 	{
 		printf("Docker not running, skipping test\n");
 		return;
@@ -334,7 +334,7 @@ TEST_F(sys_call_test, container_docker)
 {
 	bool done = false;
 
-	if(system("service docker status > /dev/null 2>&1") != 0)
+	if(!dutils_check_docker())
 	{
 		printf("Docker not running, skipping test\n");
 		return;

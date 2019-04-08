@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
+# This option adds the test targets so that they can be built. The main use case
+# is to avoid the test libraries being build when CPACK runs 'make all' before
+# creating the package.
+option(BUILD_FOR_TEST "Enable building binaries needed for testing")
+
 option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
 
 # Versions of all third-party libraries used. These may be referred to
@@ -29,7 +34,7 @@ else()
 endif()
 set(DRAIOS_CARES_VERSION "1.13.0")
 set(DRAIOS_KUBECTL_VERSION "1.9.6")
-set(DRAIOS_KUBE_BENCH_VERSION "0.0.24.1")
+set(DRAIOS_KUBE_BENCH_VERSION "0.0.24.2")
 if(NOT CYGWIN)
 	set(DRAIOS_TBB_VERSION "2018_U5")
 endif()
@@ -65,8 +70,10 @@ endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	set(KBUILD_FLAGS "${DRAIOS_DEBUG_FLAGS} ${DRAIOS_FEATURE_FLAGS}")
+	set(CPACK_STRIP_FILES "OFF")
 else()
 	set(KBUILD_FLAGS "${DRAIOS_FEATURE_FLAGS}")
+	set(CPACK_STRIP_FILES "ON")
 endif()
 
 set(PACKAGE_NAME "draios-agent")
@@ -119,20 +126,18 @@ if(NOT CYGWIN)
 endif()
 add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent/src)
-add_subdirectory(userspace/dragent/test)
 add_subdirectory(userspace/draiosproto)
-add_subdirectory(userspace/libsanalyzer)
+add_subdirectory(userspace/libsanalyzer/src)
 if(NOT CYGWIN)
 	add_subdirectory(userspace/sdjagent)
 	add_subdirectory(userspace/sdchecks)
 	add_subdirectory(scripts)
-	add_subdirectory(test)
 	add_subdirectory(docker)
 endif()
 
-add_custom_target(run-unit-tests
-	COMMAND make run-unit-test-dragent
-)
+if(BUILD_FOR_TEST)
+	include(CMakeListsForTest.cmake)
+endif()
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
@@ -167,7 +172,6 @@ endif()
 set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${CMAKE_SYSTEM_PROCESSOR}")
 set(CPACK_PACKAGE_DESCRIPTION_FILE "${PROJECT_SOURCE_DIR}/description.txt")
 set(CPACK_PROJECT_CONFIG_FILE "${PROJECT_SOURCE_DIR}/CMakeCPackOptions.cmake")
-set(CPACK_STRIP_FILES "ON")
 set(CPACK_PACKAGE_RELOCATABLE "OFF")
 set(CPACK_DRAIOS_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 

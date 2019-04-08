@@ -1,7 +1,7 @@
 add_subdirectory(resources)
 add_subdirectory(diff_pb)
 add_subdirectory(fake_cri)
-add_subdirectory(test_certs)
+add_subdirectory(grpc_test_server)
 
 include_directories(${PROJECT_SOURCE_DIR}/common)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
@@ -13,11 +13,12 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
-include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
@@ -39,6 +40,7 @@ add_executable(tests
 	baseliner.cpp
 	capture_to_file_test.cpp
 	container.cpp
+	container_cgroup.cpp
 	container_cri.cpp
 	container_emitter_test.cpp
 	container_image_splitting.cpp
@@ -52,10 +54,12 @@ add_executable(tests
 	evttype_filter.cpp
 	forking.cpp
 	fs.cpp
+	grpc.cpp
 	# infrastructure_state_test.cpp
 	inf_state_test.cpp
 	memdump.cpp
 	metric_limits.cpp
+	mounted_fs.cpp
 	label_limits.cpp
 	k8s_limits.cpp
 	internal_metrics.cpp
@@ -68,7 +72,6 @@ add_executable(tests
 	process.cpp
 	percentile.cpp
 	security_policies.cpp
-	socketpair.cpp
 	sql.cpp
 	sys_call_test.cpp
 	tcp_client_server.cpp
@@ -90,8 +93,8 @@ add_executable(tests
 	uri.cpp
 	json_query.cpp
 	nodriver.cpp
-	userspace/libsanalyzer/parser_http.ut.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
+	sysdig/userspace/libsinsp/logger.ut.cpp
 )
 
 target_link_libraries(tests
@@ -100,6 +103,7 @@ target_link_libraries(tests
 	dragentl
 	draiosproto
 	falco_engine
+	test_helpers
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoNetSSL.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
@@ -135,9 +139,14 @@ endif("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
 
 
 file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/captures)
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/resources/run)
 
-install(DIRECTORY 
+install(DIRECTORY
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/captures
+	COMPONENT tests)
+
+install(DIRECTORY
+	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources/run
 	COMPONENT tests)
 
 install(TARGETS test_helper
@@ -158,6 +167,7 @@ install(FILES test_helper.sh
 	PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
 	COMPONENT tests)
 
-install(TARGETS tests 
+install(TARGETS tests
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	COMPONENT tests)
+

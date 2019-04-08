@@ -20,7 +20,16 @@ import (
 
 var podInf cache.SharedInformer
 
-var containerIDRegex = regexp.MustCompile("^([a-z0-9]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
+// container IDs from k8s are of the form <scheme>://<container_id>
+// runc-based runtimes (Docker, containerd, CRI-o) use 64 hex digits as the ID
+// but we truncate them to 12 characters for readability reasons
+// known schemes (corresponding to k8s runtimes):
+// - docker
+// - rkt
+// - containerd
+// - cri-o
+// rkt uses a different container ID format: rkt://<pod_id>:<app_id>
+var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
 
 // pods get their own special version because they send events for containers too
 func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
@@ -192,8 +201,7 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 		in = false
 	}
 
-	in = in && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta) &&
-		EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
+	in = in && EqualAnnotations(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if in && lhs.Status.PodIP != rhs.Status.PodIP {
 		in = false
@@ -231,6 +239,8 @@ func podEquals(lhs *v1.Pod, rhs *v1.Pod) (bool, bool) {
 			in = false
 		}
 	}
+
+	out = out && EqualLabels(lhs.ObjectMeta, rhs.ObjectMeta)
 
 	if lhs.GetNamespace() != rhs.GetNamespace() {
 		out = false

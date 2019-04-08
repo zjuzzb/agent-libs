@@ -12,10 +12,6 @@ from checks import AgentCheck
 from config import _is_affirmative
 from util import headers
 
-import ctypes
-
-# Loading this now to ensure we have it before potential namespace change
-_LIBNSS = ctypes.CDLL('libnss_dns.so.2')
 
 class Etcd(AgentCheck):
 

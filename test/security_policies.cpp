@@ -25,6 +25,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <metrics.h>
+#include <thread>
 
 #include "docker_utils.h"
 
@@ -164,7 +165,8 @@ std::ostream &operator<<(std::ostream &os, const map<string, string> &map)
 class security_policies_test : public testing::Test
 {
 public:
-	security_policies_test() : m_mgr("/opt/draios")
+	/* path to the cointerface unix socket domain */
+	security_policies_test() : m_mgr("./resources")
 	{
 	}
 
@@ -186,8 +188,8 @@ protected:
 		m_configuration.m_security_enabled = true;
 		m_configuration.m_max_sysdig_captures = 10;
 		m_configuration.m_autodrop_enabled = false;
-		m_configuration.m_security_policies_file = "./resources/security_policies_message.txt";
-		m_configuration.m_security_baselines_file = "./resources/security_baselines_message.txt";
+		m_configuration.m_security_policies_file = "./resources/security_policies_messages/all_policy_types.txt";
+		m_configuration.m_security_baselines_file = "./resources/security_policies_messages/baseline.txt";
 		m_configuration.m_falco_engine_sampling_multiplier = 0;
 		m_configuration.m_containers_labels_max_len = 100;
 		if(delayed_reports)
@@ -523,6 +525,36 @@ protected:
 		pe.reset((draiosproto::policy_events *) (msg.release()));
 	}
 
+	// Helper used by several test cases that have a similar test setup/validation.
+	void multiple_falco_files_test(std::string policies_file, std::string expected_output)
+	{
+		string errstr;
+		ASSERT_TRUE(m_mgr.load_policies_file("./resources/security_policies_messages/multiple_falco_variants.txt", errstr));
+		ASSERT_STREQ(errstr.c_str(), "");
+
+		int fd = open("/tmp/sample-sensitive-file-2.txt", O_RDONLY);
+		close(fd);
+
+		// Not using check_policy_events for this, as it is checking keys only
+		unique_ptr<draiosproto::policy_events> pe;
+		get_policy_evts_msg(pe);
+		ASSERT_EQ(pe->events_size(), 1);
+		ASSERT_EQ(pe->events(0).policy_id(), 1u);
+		ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 3);
+		ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
+		ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.name") > 0);
+		ASSERT_TRUE(pe->events(0).event_details().output_details().output_fields().count("proc.cmdline") > 0);
+
+		string expected_output = "v2 output";
+		ASSERT_EQ(pe->events(0).event_details().output_details().output(), expected_output);
+
+		std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_EQ, 1}},
+								     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+								     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+
+		check_expected_internal_metrics(metrics);
+	}
+
 	protocol_queue *m_queue;
 	sinsp *m_inspector;
 	sinsp_analyzer *m_analyzer;
@@ -554,6 +586,71 @@ protected:
 	}
 };
 
+class security_policies_test_cointerface : public security_policies_test
+{
+protected:
+
+	virtual void SetUp()
+	{
+		string cointerface_sock = "./resources/run/cointerface.sock";
+
+		Process::Args args{"-sock", cointerface_sock,
+				"-use_json=false",
+				"-modules_dir=./resources/modules_dir"
+				};
+
+		// Start a cointerface process to act as the
+		// server. Capture its output and log everything at
+		// debug level.
+		m_colog = make_shared<Pipe>();
+		m_cointerface = make_shared<ProcessHandle>(Process::launch("./resources/cointerface", args, NULL, m_colog.get(), NULL));
+
+		thread log_reader = thread([] (shared_ptr<Pipe> colog) {
+			PipeInputStream cologstr(*colog);
+			string line;
+
+			while (std::getline(cologstr, line))
+			{
+				g_log->information(line);
+			}
+		}, m_colog);
+
+		log_reader.detach();
+
+		// Wait for the process in a sub-thread so it
+		// is reaped as soon as it exits. This is
+		// necessary as Process::isRunning returns
+		// true for zombie processes.
+		thread waiter = thread([this] () {
+			int status;
+			waitpid(m_cointerface->id(), &status, 0);
+		});
+
+		waiter.detach();
+
+		Thread::sleep(500);
+
+		if (!Process::isRunning(*m_cointerface))
+		{
+			FAIL() << "cointerface process not running after 1 second";
+		}
+
+		SetUpTest();
+	}
+
+	virtual void TearDown()
+	{
+		if(m_cointerface)
+		{
+			Process::kill(*m_cointerface);
+		}
+		TearDownTest();
+		g_log->information("TearDown() complete");
+	}
+private:
+	shared_ptr<Pipe> m_colog;
+	shared_ptr<ProcessHandle> m_cointerface;
+};
 
 TEST_F(security_policies_test, readonly_fs_only)
 {
@@ -946,6 +1043,108 @@ TEST_F(security_policies_test, falco_fqdn)
 							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
 
 	check_expected_internal_metrics(metrics);
+}
+
+
+TEST_F(security_policies_test, multiple_falco_variants)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_variants.txt", "v2 output");
+}
+
+TEST_F(security_policies_test, multiple_falco_files)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files.txt", "some output");
+}
+
+TEST_F(security_policies_test, multiple_falco_files_override)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/multiple_falco_files_override.txt", "some output");
+}
+
+TEST_F(security_policies_test, custom_falco_files)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files.txt", "some output");
+}
+
+TEST_F(security_policies_test, custom_falco_files_override)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/custom_falco_files_override.txt", "some output");
+}
+
+TEST_F(security_policies_test, falco_old_rules_message)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/falco_old_rules_message.txt", "some old output");
+}
+
+TEST_F(security_policies_test, falco_old_new_rules_message)
+{
+	multiple_falco_files_test("./resources/security_policies_messages/falco_old_new_rules_message.txt", "some new output");
+}
+
+TEST_F(security_policies_test_cointerface, falco_k8s_audit)
+{
+	// send a single event (the first line of the file)
+	ASSERT_EQ(system("timeout 2 curl -X POST localhost:7765/k8s_audit -d $(head -1 ./resources/k8s_audit_events.txt) > /dev/null 2>&1"), 0);
+
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() >= 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 28u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_deployment_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"), "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"), "nginx-deployment");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"), "default");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
+
+	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_GE, 1}},
+							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_test_cointerface, falco_k8s_audit_multi_events)
+{
+	// send a bunch of events (one per line of the file)
+	ASSERT_EQ(system("timeout 2 xargs -0 -d '\n' -I{} curl -X POST localhost:7765/k8s_audit -d {} < ./resources/k8s_audit_events.txt > /dev/null 2>&1"), 0);
+
+	unique_ptr<draiosproto::policy_events> pe;
+	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe->events_size() >= 1);
+	ASSERT_EQ(pe->events(0).policy_id(), 28u);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "k8s_deployment_created");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.auth.decision"), "allow");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.response.code"), "201");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.name"), "nginx-deployment");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.target.namespace"), "default");
+	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("ka.user.name"), "minikube-user");
+
+	std::map<string,expected_internal_metric> metrics = {{"security.falco.match.deny", {expected_internal_metric::CMP_GE, 1}},
+							     {"security.falco.match.accept", {expected_internal_metric::CMP_EQ, 0}},
+							     {"security.falco.match.next", {expected_internal_metric::CMP_EQ, 0}}};
+	check_expected_internal_metrics(metrics);
+}
+
+TEST_F(security_policies_test_cointerface, falco_k8s_audit_messy_client)
+{
+	// Check for unsupported http methods (POST is the only method supported)
+	ASSERT_EQ(system("curl -sX GET localhost:7765/k8s_audit | grep -qx 'Method GET not allowed' || false"), 0);
+	// Don't test method HEAD, as curl just hangs...
+	// ASSERT_EQ(system("curl -sX HEAD localhost:7765/k8s_audit | grep -qx 'Method HEAD not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX PUT localhost:7765/k8s_audit | grep -qx 'Method PUT not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX DELETE localhost:7765/k8s_audit | grep -qx 'Method DELETE not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX CONNECT localhost:7765/k8s_audit | grep -qx 'Method CONNECT not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX OPTIONS localhost:7765/k8s_audit | grep -qx 'Method OPTIONS not allowed' || false"), 0);
+	ASSERT_EQ(system("curl -sX TRACE localhost:7765/k8s_audit | grep -qx 'Method TRACE not allowed' || false"), 0);
+
+	// Hit wrong URIs
+	ASSERT_EQ(system("curl -sX POST localhost:7765 -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
+	ASSERT_EQ(system("curl -sX POST localhost:7765/this-is-not-the-good-door -d @./resources/k8s_audit_events.txt | grep -qx '404 page not found' || false"), 0);
+
+	// Malformed JSONs
+	ASSERT_EQ(system("curl -sX POST localhost:7765/k8s_audit -d '{\"this is\"} : clearly \"not\" a well formatted json' | grep -qx 'Malformed JSON' || false > /dev/null 2>&1"), 0);
 }
 
 TEST_F(security_policies_test, baseline_only)
@@ -1393,7 +1592,7 @@ TEST_F(security_policies_test, docker_swarm)
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
 	ASSERT_GE(pe->events_size(), 1);
-	ASSERT_EQ(pe->events(0).policy_id(), 28u);
+	ASSERT_EQ(pe->events(0).policy_id(), 29u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("falco.rule"), "read_sensitive_file");
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields().at("fd.name"), "/tmp/sample-sensitive-file-2.txt");

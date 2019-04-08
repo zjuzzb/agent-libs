@@ -21,8 +21,6 @@
 #include <draios.pb.h>
 #include <falco_engine.h>
 
-#include "coclient.h"
-
 #include "capture_job_handler.h"
 #include "configuration.h"
 #include "analyzer.h"
@@ -31,6 +29,7 @@
 #include "security_action.h"
 #include "baseline_mgr.h"
 #include "internal_metrics.h"
+#include "coclient.h"
 
 class SINSP_PUBLIC security_mgr
 {
@@ -60,7 +59,7 @@ public:
 	// Attempt to match the event agains the set of policies. If
 	// the event matches one or more policies, will perform the
 	// necessary actions and send agent events.
-	void process_event(sinsp_evt *evt);
+	void process_event(gen_event *evt);
 
 	// Send the provided policy event, either adding the event to
 	// the pending events list or reporting it immediately,
@@ -83,15 +82,9 @@ public:
 
 	void stop_capture(const string &token);
 
-	void load_compliance_modules();
-
-	void set_compliance_calendar(draiosproto::comp_calendar &calendar);
-	void request_refresh_compliance_tasks();
-	void set_compliance_run(draiosproto::comp_run &run);
-	void run_compliance_tasks(draiosproto::comp_run &run);
-
-	void refresh_compliance_tasks();
-	void stop_compliance_tasks();
+	void load_k8s_audit_server();
+	void start_k8s_audit_server_tasks();
+	void stop_k8s_audit_tasks();
 
 	sinsp_analyzer *analyzer();
 
@@ -286,9 +279,12 @@ private:
 
 	void load_policy(const security_policy &spolicy, std::list<std::string> &ids);
 
+	bool load_falco_rules_files(const draiosproto::falco_rules_files &files, std::string &errstr);
+
 	bool load(const draiosproto::policies &policies, const draiosproto::baselines &baselines, std::string &errstr);
 
 	bool event_qualifies(sinsp_evt *evt);
+	bool event_qualifies(json_event *evt);
 
 	void check_periodic_tasks(uint64_t ts_ns);
 
@@ -321,12 +317,10 @@ private:
 	std::unique_ptr<run_on_interval> m_report_events_interval;
 	std::unique_ptr<run_on_interval> m_report_throttled_events_interval;
 	std::unique_ptr<run_on_interval> m_check_periodic_tasks_interval;
-	draiosproto::comp_calendar m_compliance_calendar;
-	draiosproto::comp_run m_compliance_run;
-	std::set<uint64_t> m_cur_compliance_tasks;
-	bool m_compliance_modules_loaded;
-	bool m_compliance_load_in_progress;
-	bool m_should_refresh_compliance_tasks;
+
+	bool m_k8s_audit_server_started;
+	bool m_k8s_audit_server_loaded;
+	bool m_k8s_audit_server_load_in_progress;
 
 	bool m_initialized;
 	sinsp* m_inspector;
@@ -409,6 +403,7 @@ private:
 					       &m_tcp_listenport_policies, &m_udp_listenport_policies,
 					       &m_syscall_policies, &m_falco_policies};
 			m_evttypes.assign(PPM_EVENT_MAX+1, false);
+			m_evtsources.assign(ESRC_MAX+1, false);
 		};
 		virtual ~security_policies_group() {};
 
@@ -447,15 +442,22 @@ private:
 				{
 					m_evttypes[evttype] = m_evttypes[evttype] | spol->m_evttypes[evttype];
 				}
+
+				for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
+				{
+					m_evtsources[evtsource] = m_evtsources[evtsource] | spol->m_evtsources[evtsource];
+				}
 			}
 		}
 
-		security_policies::match_result *match_event(sinsp_evt *evt)
+		security_policies::match_result *match_event(gen_event *evt)
 		{
 			security_policies::match_result *match;
 			for (const auto &spol : m_security_policies)
 			{
-				if(spol->m_evttypes[evt->get_type()] && (match = spol->match_event(evt)) != NULL)
+				if(spol->m_evtsources[evt->get_source()] &&
+				   spol->m_evttypes[evt->get_type()] &&
+				   (match = spol->match_event(evt)) != NULL)
 				{
 					return match;
 				}
@@ -476,6 +478,7 @@ private:
 		}
 
 		std::vector<bool> m_evttypes;
+		std::vector<bool> m_evtsources;
 		scope_info m_scope_info;
 	private:
 		std::list<security_policies *> m_security_policies;
@@ -518,9 +521,11 @@ private:
 	// it calls flush() to send these events to the collector.
 	draiosproto::policy_events m_events;
 
-	// The event types that are relevant. It's the union of all
-	// event types for all policies.
+	// The event types and source that are relevant. It's the
+	// union of all event types for all policies.
+	// Examples of even sources are sinsp_evt and json_events.
 	std::vector<bool> m_evttypes;
+	std::vector<bool> m_evtsources;
 
 	// must be initialized in the same order of security_policies_group::m_security_policies
 	std::list<std::shared_ptr<security_evt_metrics>> m_security_evt_metrics;
@@ -539,12 +544,11 @@ private:
 
 	metrics m_metrics;
 
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_start_conn;
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_load_conn;
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_run_tasks_conn;
+	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_start_conn;
+	std::shared_ptr<sdc_internal::K8sAudit::Stub> m_k8s_audit_server_load_conn;
 
-	std::unique_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
-	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
-	std::unique_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)> m_grpc_run_tasks;
+	std::unique_ptr<streaming_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncStart)> m_k8s_audit_server_start;
+	std::unique_ptr<unary_grpc_client(&sdc_internal::K8sAudit::Stub::AsyncLoad)> m_k8s_audit_server_load;
+
 };
 #endif // CYGWING_AGENT

@@ -1,3 +1,4 @@
+#include <atomic>
 #include <gtest.h>
 #include <functional>
 #include <time.h>
@@ -10,7 +11,7 @@ namespace
 
 const int LOOPS = 1000;
 blocking_queue<int> s_queue(LOOPS);
-bool s_abort = false;
+std::atomic<bool> s_abort(false);
 
 
 // Push into s_queue

@@ -1,10 +1,14 @@
 #include "sinsp_worker.h"
-
-#include "logger.h"
 #include "error_handler.h"
-#include "utils.h"
+#include "logger.h"
 #include "memdumper.h"
-#include "Poco/DateTimeFormatter.h"
+#include "sinsp_factory.h"
+#include "utils.h"
+#include <grpc/grpc.h>
+#include <grpc/support/log.h>
+#include <Poco/DateTimeFormatter.h>
+
+DRAGENT_LOGGER();
 
 const string sinsp_worker::m_name = "sinsp_worker";
 
@@ -19,10 +23,10 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_queue(queue),
 	m_enable_autodrop(enable_autodrop),
 	m_autodrop_currently_enabled(true),
-	m_inspector(NULL),
 	m_analyzer(NULL),
 #ifndef CYGWING_AGENT
 	m_security_mgr(NULL),
+	m_compliance_mgr(NULL),
 #endif
 	m_capture_job_handler(capture_job_handler),
 	m_sinsp_handler(configuration, queue),
@@ -30,6 +34,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
+	m_trace_enabled(false),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(configuration),
 	m_internal_metrics(im)
@@ -39,15 +44,18 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 
 sinsp_worker::~sinsp_worker()
 {
-	if(m_inspector != NULL)
+	if(m_inspector)
 	{
 		m_inspector->set_log_callback(0);
-		delete m_inspector;
+		// Manually delete the inspector so that it is destroyed
+		// before the other objects
+		m_inspector.reset();
 	}
 
 	delete m_analyzer;
 #ifndef CYGWING_AGENT
 	delete m_security_mgr;
+	delete m_compliance_mgr;
 #endif
 }
 
@@ -60,8 +68,13 @@ void sinsp_worker::init()
 
 	m_initialized = true;
 
-	m_inspector = new sinsp();
-	m_analyzer = new sinsp_analyzer(m_inspector, m_configuration->m_root_dir);
+	m_inspector = sinsp_factory::build();
+	m_analyzer = new sinsp_analyzer(m_inspector.get(), m_configuration->m_root_dir);
+
+	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
+	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
+	m_analyzer->get_configuration()->set_procfs_scan_interval_ms(m_configuration->m_procfs_scan_interval_ms);
+	m_analyzer->get_configuration()->set_procfs_scan_mem_interval_ms(m_configuration->m_procfs_scan_mem_interval_ms);
 
 	// custom metrics filters (!!!do not move - needed by jmx, statsd and appchecks, so it must be
 	// set before checks are created!!!)
@@ -414,11 +427,11 @@ void sinsp_worker::init()
 	{
 		if(!m_configuration->m_cointerface_enabled)
 		{
-			throw sinsp_exception("Security capabilities depend on cointerface, but cointerface is disabled.");
+			LOGGED_THROW(sinsp_exception, "Security capabilities depend on cointerface, but cointerface is disabled.");
 		}
 
 		m_security_mgr = new security_mgr(m_configuration->m_root_dir);
-		m_security_mgr->init(m_inspector,
+		m_security_mgr->init(m_inspector.get(),
 				     &m_sinsp_handler,
 				     m_analyzer,
 				     m_capture_job_handler,
@@ -431,7 +444,7 @@ void sinsp_worker::init()
 
 			if(!m_security_mgr->load_policies_file(m_configuration->m_security_policies_file.c_str(), errstr))
 			{
-				throw sinsp_exception("Could not load policies from file: " + errstr);
+				LOGGED_THROW(sinsp_exception, "Could not load policies from file: %s", errstr.c_str());
 			}
 		}
 
@@ -441,11 +454,20 @@ void sinsp_worker::init()
 
 			if(!m_security_mgr->load_baselines_file(m_configuration->m_security_baselines_file.c_str(), errstr))
 			{
-				throw sinsp_exception("Could not load baselines from file: " + errstr);
+				LOGGED_THROW(sinsp_exception, "Could not load baselines from file: %s", errstr.c_str());
 			}
 		}
+	}
 
-		if(m_configuration->m_security_compliance_schedule != "")
+	if(m_configuration->m_cointerface_enabled)
+	{
+		std::string run_dir = m_configuration->m_root_dir + "/run";
+		m_compliance_mgr = new compliance_mgr(run_dir);
+		m_compliance_mgr->init(&m_sinsp_handler,
+				       m_analyzer,
+				       m_configuration);
+
+		if(m_configuration->m_security_default_compliance_schedule != "")
 		{
 			string errstr;
 			draiosproto::comp_calendar cal;
@@ -455,21 +477,24 @@ void sinsp_worker::init()
 			k8s_task->set_name("Check K8s Environment");
 			k8s_task->set_mod_name("kube-bench");
 			k8s_task->set_enabled(true);
-			k8s_task->set_schedule(m_configuration->m_security_compliance_schedule);
+			k8s_task->set_schedule(m_configuration->m_security_default_compliance_schedule);
 
 			draiosproto::comp_task *docker_task = cal.add_tasks();
 		        docker_task->set_id(2);
 			docker_task->set_name("Check Docker Environment");
 			docker_task->set_mod_name("docker-bench-security");
 			docker_task->set_enabled(true);
-			docker_task->set_schedule(m_configuration->m_security_compliance_schedule);
+			docker_task->set_schedule(m_configuration->m_security_default_compliance_schedule);
 
-			if(! set_compliance_calendar(cal, errstr))
+			// When using a default calendar, never send results or events
+			if(! set_compliance_calendar(cal, false, false, errstr))
 			{
-				throw sinsp_exception("Could not set built-in compliance calendar: " + errstr);
+				LOGGED_THROW(sinsp_exception, "Could not set default compliance calendar: %s", errstr.c_str());
 			}
 		}
 	}
+
+
 #endif // CYGWING_AGENT
 
 	for(const auto &comm : m_configuration->m_suppressed_comms)
@@ -479,10 +504,8 @@ void sinsp_worker::init()
 
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
 	m_inspector->set_cri_socket_path(m_configuration->m_cri_socket_path);
-	if (!m_configuration->m_cri_socket_path.empty())
-	{
-		m_inspector->set_cri_timeout(m_configuration->m_cri_timeout_ms);
-	}
+	m_inspector->set_cri_timeout(m_configuration->m_cri_timeout_ms);
+	m_inspector->set_cri_extra_queries(m_configuration->m_cri_extra_queries);
 
 	m_analyzer->set_track_environment(m_configuration->m_track_environment);
 	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
@@ -498,6 +521,7 @@ void sinsp_worker::init()
 
 	m_analyzer->set_extra_internal_metrics(m_configuration->m_extra_internal_metrics);
 
+	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	//
 	// Start the capture with sinsp
 	//
@@ -548,6 +572,13 @@ void sinsp_worker::init()
 	}
 #endif // CYGWING_AGENT
 
+	if(m_configuration->m_procfs_scan_thread)
+	{
+		g_log->information("Procfs scan thread enabled, ignoring switch events");
+		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_1_E);
+		m_inspector->unset_eventmask(PPME_SCHEDSWITCH_6_E);
+	}
+
 	if(m_configuration->m_subsampling_ratio != 1)
 	{
 		g_log->information("Enabling dropping mode, ratio=" + NumberFormatter::format(m_configuration->m_subsampling_ratio));
@@ -562,7 +593,6 @@ void sinsp_worker::init()
 	}
 
 	m_analyzer->set_protocols_enabled(m_configuration->m_protocols_enabled);
-	m_analyzer->set_remotefs_enabled(m_configuration->m_remotefs_enabled);
 	m_analyzer->set_statsd_capture_localhost(m_statsd_capture_localhost);
 	if(m_app_checks_enabled)
 	{
@@ -644,7 +674,7 @@ void sinsp_worker::run()
 		else if(res != SCAP_SUCCESS)
 		{
 			cerr << "res = " << res << endl;
-			throw sinsp_exception(m_inspector->getlasterr().c_str());
+			LOGGED_THROW(sinsp_exception, "%s", m_inspector->getlasterr().c_str());
 		}
 
 		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
@@ -677,7 +707,7 @@ void sinsp_worker::run()
 				if(ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME)
 				{
 					// TODO: investigate if we can void agent restart and just reopen the inspector
-					throw sinsp_exception("restarting agent to restore normal operation mode");
+					LOGGED_THROW(sinsp_exception, "restarting agent to restore normal operation mode");
 				}
 				else if(!full_mode_event_sent && ev->get_ts() - m_last_mode_switch_time > MIN_NODRIVER_SWITCH_TIME - 2*ONE_SECOND_IN_NS)
 				{
@@ -732,6 +762,11 @@ void sinsp_worker::run()
 		{
 			m_security_mgr->process_event(ev);
 		}
+
+		if(m_compliance_mgr)
+		{
+			m_compliance_mgr->process_event(ev);
+		}
 #endif
 
 		m_capture_job_handler->process_event(ev);
@@ -777,30 +812,35 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 	}
 }
 
-bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar, std::string &errstr)
+bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,
+					   bool send_results,
+					   bool send_events,
+					   std::string &errstr)
 {
-	if(m_security_mgr)
+	if(m_compliance_mgr)
 	{
-		m_security_mgr->set_compliance_calendar(calendar);
+		m_compliance_mgr->set_compliance_calendar(calendar,
+							  send_results,
+							  send_events);
 		return true;
 	}
 	else
 	{
-		errstr = "No Security Manager object created";
+		errstr = "No Compliance Manager object created";
 		return false;
 	}
 }
 
 bool sinsp_worker::run_compliance_tasks(draiosproto::comp_run &run, std::string &errstr)
 {
-	if(m_security_mgr)
+	if(m_compliance_mgr)
 	{
-		m_security_mgr->set_compliance_run(run);
+		m_compliance_mgr->set_compliance_run(run);
 		return true;
 	}
 	else
 	{
-		errstr = "No Security Manager object created";
+		errstr = "No Compliance Manager object created";
 		return false;
 	}
 }
@@ -821,7 +861,7 @@ bool sinsp_worker::load_baselines(draiosproto::baselines &baselines, std::string
 void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts)
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
-	m_security_mgr->request_refresh_compliance_tasks();
+	m_compliance_mgr->request_refresh_compliance_tasks();
 }
 #endif
 
@@ -849,9 +889,30 @@ void sinsp_worker::process_job_requests()
 		job_request->m_start_details->m_delete_file_when_done = false;
 		job_request->m_start_details->m_send_file = false;
 
-		if(!m_capture_job_handler->queue_job_request(m_inspector, job_request, errstr))
+		if(!m_capture_job_handler->queue_job_request(m_inspector.get(), job_request, errstr))
 		{
 			g_log->error("sinsp_worker: could not start capture: " + errstr);
+		}
+	}
+
+	if(dragent_configuration::m_enable_trace)
+	{
+		dragent_configuration::m_enable_trace = false;
+		if(m_trace_enabled)
+		{
+			m_trace_enabled = false;
+			m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_default_report_log_size_b;
+			g_log->information("Received SIGWINCH, disabling gRPC tracing");
+			grpc_tracer_set_enabled("all", 0);
+			gpr_set_log_verbosity(GPR_LOG_SEVERITY_ERROR);
+		}
+		else
+		{
+			m_trace_enabled = true;
+			m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_trace_report_log_size_b;
+			g_log->information("Received SIGWINCH, enabling gRPC tracing");
+			grpc_tracer_set_enabled("all", 1);
+			gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);
 		}
 	}
 
@@ -862,7 +923,7 @@ void sinsp_worker::process_job_requests()
 
 		g_log->debug("sinsp_worker: dequeued dump request token=" + request->m_token);
 
-		if(!m_capture_job_handler->queue_job_request(m_inspector, request, errstr))
+		if(!m_capture_job_handler->queue_job_request(m_inspector.get(), request, errstr))
 		{
 			// It's assumed these requests were ones from
 			// the backend, so send an error to the

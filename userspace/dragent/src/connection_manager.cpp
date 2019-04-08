@@ -1,19 +1,21 @@
 #include "connection_manager.h"
-#include <future>
-#include <errno.h>
 #include "logger.h"
 #include "protocol.h"
 #include "draios.pb.h"
 #include "utils.h"
 #include "watchdog_runnable_fatal_error.h"
-#include "Poco/Net/InvalidCertificateHandler.h"
-#include "Poco/Net/SSLException.h"
+#include <future>
+#include <errno.h>
+#include <Poco/Net/InvalidCertificateHandler.h>
+#include <Poco/Net/SSLException.h>
 
 
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
 #define TCP_USER_TIMEOUT	 18 /* How long for loss retry before timeout */
 #endif
+
+#define US_TO_S(_usec) ((_usec) / (1000 * 1000))
 
 DRAGENT_LOGGER();
 
@@ -216,26 +218,40 @@ bool connection_manager::connect()
 	m_last_connection_failure = chrono::system_clock::now();
 
 	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
-	         connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+	         US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US));
 
 	std::promise<SharedPtr<StreamSocket>> sock_promise;
 	std::future<SharedPtr<StreamSocket>> future_sock = sock_promise.get_future();
 
 	//
 	// Asynchronously connect to the collector
-	// We need the hostname as well as the SocketAddress because with just
-	// the address, SSL verification will fail.
 	//
-	SocketAddress sa(m_configuration->m_server_addr, m_configuration->m_server_port);
-	std::thread connect_thread([&sock_promise](SocketAddress& sa,
-	                                           string& hostname,
+	std::thread connect_thread([&sock_promise](string& hostname,
+	                                           uint16_t port,
 	                                           bool ssl_enabled,
-	                                           uint32_t transmit_buffer_size)
+	                                           uint32_t transmit_buffer_size,
+	                                           uint32_t m_reconnect_interval)
 	{
 		StreamSocket* ssp = nullptr;
 
 		try
 		{
+			// Reconnect backoff
+			// How reconnect backoff works, briefly:
+			//  * The backoff starts at 0
+			//  * The first disconnect(), the backoff is set to RECONNECT_MIN_INTERVAL_S (currently 1 second)
+			//  * Every subsequent disconnect, the backoff is doubled
+			//  * If the connection has been active for over WORKING_INTERVAL_S (currently 10 seconds),
+			//    reset the backoff to RECONNECT_MIN_INTERVAL_S on the next disconnect()
+			//  * last_connection_failure is updated above in the call to connect()
+			std::chrono::seconds time_slept = std::chrono::seconds(0);
+			while(time_slept < std::chrono::seconds(m_reconnect_interval))
+			{
+				std::chrono::seconds time_to_sleep = std::chrono::seconds(1);
+				std::this_thread::sleep_for(time_to_sleep);
+				time_slept += time_to_sleep;
+			}
+			SocketAddress sa(hostname, port);
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_INFO("Connecting to collector " + sa.toString());
 
@@ -273,6 +289,26 @@ bool connection_manager::connect()
 				ssp = new Poco::Net::StreamSocket();
 				ssp->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 			}
+
+			// Set additional socket options post-connect
+			ssp->setSendBufferSize(transmit_buffer_size);
+			ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+			ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
+
+			try
+			{
+				// This option makes the connection fail earlier in case of unplugged cable
+				ssp->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, connection_manager::SOCKET_TCP_TIMEOUT_MS);
+			}
+			catch(const std::exception&)
+			{
+				// ignore if kernel does not support this
+				// alternatively, could be a setsockopt() call to avoid exception
+			}
+
+			LOG_INFO("Connected to collector");
+
+			sock_promise.set_value(SharedPtr<StreamSocket>(ssp));
 		}
 		catch(const Poco::IOException& e)
 		{
@@ -288,29 +324,17 @@ bool connection_manager::connect()
 			sock_promise.set_value(nullptr);
 			return;
 		}
-
-		ssp->setSendBufferSize(transmit_buffer_size);
-		ssp->setSendTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
-		ssp->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_AFTER_CONNECT_US);
-
-		try
+		catch(const std::future_error& e)
 		{
-			// This option makes the connection fail earlier in case of unplugged cable
-			ssp->setOption(IPPROTO_TCP, TCP_USER_TIMEOUT, connection_manager::SOCKET_TCP_TIMEOUT_MS);
+			LOG_ERROR("connect():future_error: %s", e.what());
+			// We can't touch sock_promise any more in this state
+			return;
 		}
-		catch(const std::exception&)
-		{
-			// ignore if kernel does not support this
-			// alternatively, could be a setsockopt() call to avoid exception
-		}
-
-		LOG_INFO("Connected to collector");
-
-		sock_promise.set_value(SharedPtr<StreamSocket>(ssp));
-	}, std::ref(sa),
-	   std::ref(m_configuration->m_server_addr),
+	}, std::ref(m_configuration->m_server_addr),
+	   m_configuration->m_server_port,
 	   m_configuration->m_ssl_enabled,
-	   m_configuration->m_transmitbuffer_size);
+	   m_configuration->m_transmitbuffer_size,
+	   m_reconnect_interval);
 
 	//
 	// End thread
@@ -321,20 +345,12 @@ bool connection_manager::connect()
 	// gets terminated or hits an error.
 	connect_thread.detach();
 
-	uint32_t waited_time;
-	uint32_t wait_for;
+	uint32_t waited_time_s;
+	// We might have to wait for the connect timeout + the reconnect backoff
+	const uint32_t wait_for_s = m_reconnect_interval + US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
 
-	if(m_reconnect_interval == 0)
-	{
-		wait_for = SOCKET_TIMEOUT_DURING_CONNECT_US;
-	}
-	else
-	{
-		wait_for = m_reconnect_interval;
-	}
-
-	LOG_INFO("Waiting to connect %u s", wait_for);
-	for(waited_time = 0; waited_time < wait_for; ++waited_time)
+	LOG_INFO("Waiting to connect %u s", wait_for_s);
+	for(waited_time_s = 0; waited_time_s < wait_for_s; ++waited_time_s)
 	{
 		if(!heartbeat())
 		{
@@ -346,9 +362,16 @@ bool connection_manager::connect()
 		}
 	}
 
-	if(waited_time >= wait_for)
+	if(waited_time_s >= wait_for_s)
 	{
 		LOG_WARNING("Connection attempt timed out. Retrying...");
+		disconnect();
+		return false;
+	}
+
+	if(dragent_configuration::m_terminate)
+	{
+		LOG_WARNING("Terminated during connection. Aborting.");
 		disconnect();
 		return false;
 	}
@@ -450,8 +473,8 @@ void connection_manager::do_run()
 				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
 			}
 #endif
-
-			if (!connect()) {
+			if(!connect())
+			{
 				continue;
 			}
 		}
@@ -1011,19 +1034,16 @@ void connection_manager::handle_compliance_calendar_message(uint8_t* buf, uint32
 		return;
 	}
 
-	if(m_configuration->m_security_compliance_schedule != "")
-	{
-		LOG_INFO("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
-		return;
-	}
-
 	if(!dragent_protocol::buffer_to_protobuf(buf, size, &calendar))
 	{
 		LOG_ERROR("Could not parse comp_calendar message");
 		return;
 	}
 
-	if (!m_sinsp_worker->set_compliance_calendar(calendar, errstr))
+	if (!m_sinsp_worker->set_compliance_calendar(calendar,
+						     m_configuration->m_security_send_compliance_results,
+						     m_configuration->m_security_send_compliance_events,
+						     errstr))
 	{
 		LOG_ERROR("Could not set compliance calendar: " + errstr);
 		return;
@@ -1038,12 +1058,6 @@ void connection_manager::handle_compliance_run_message(uint8_t* buf, uint32_t si
 	if(!m_configuration->m_security_enabled)
 	{
 		LOG_DEBUG("Security disabled, ignoring COMP_RUN message");
-		return;
-	}
-
-	if(m_configuration->m_security_compliance_schedule != "")
-	{
-		LOG_INFO("Security compliance schedule configured in dragent.yaml, ignoring COMP_CALENDAR message");
 		return;
 	}
 

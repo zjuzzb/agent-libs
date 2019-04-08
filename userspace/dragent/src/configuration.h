@@ -96,28 +96,33 @@ public:
 		// We cant use logging because it's not initialized yet
 		for (const auto& path : file_paths)
 		{
-			File conf_file(path);
-			if(conf_file.exists())
+			try
 			{
-				try
+				File conf_file(path);
+				if(conf_file.exists())
 				{
+
 					if(!add_root(YAML::LoadFile(path)))
 					{
 						add_error(string("Cannot read config file: ") + path + " reason: not valid format");
 					}
 				}
-				catch(const YAML::BadFile& ex)
+				else
 				{
-					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
-				}
-				catch(const YAML::ParserException& ex)
-				{
-					m_errors.emplace_back(string("Cannot read config file: ") + path + " reason: " + ex.what());
+					m_warnings.emplace_back(string("Config file: ") + path + " does not exists");
 				}
 			}
-			else
+			catch(const YAML::BadFile& ex)
 			{
-				m_warnings.emplace_back(string("Config file: ") + path + " does not exists");
+				m_errors.emplace_back(string("YAML::BadFile:Cannot read config file: ") + path + " reason: " + ex.what());
+			}
+			catch(const YAML::ParserException& ex)
+			{
+				m_errors.emplace_back(string("YAML::ParserException:Cannot read config file: ") + path + " reason: " + ex.what());
+			}
+			catch (const Poco::AssertionViolationException& ex)
+			{
+				m_errors.emplace_back(string("Poco::AssertionViolationException:Cannot read config file: ") + path + " reason: " + ex.what());
 			}
 		}
 	}
@@ -561,7 +566,16 @@ class dragent_configuration
 public:
 	dragent_configuration();
 
+	/**
+	 * Initialize the configuration with a yaml file
+	 */
 	void init(Application* app, bool use_installed_dragent_yaml=true);
+
+	/**
+	 * Initialize the configuration to defaults.
+	 */
+	void init();
+
 	void print_configuration() const;
 	static Message::Priority string_to_priority(const string& priostr);
 	static bool get_memory_usage_mb(uint64_t* memory);
@@ -570,6 +584,7 @@ public:
 
 	// Static so that the signal handler can reach it
 	static std::atomic<bool> m_signal_dump;
+	static std::atomic<bool> m_enable_trace;
 	static std::atomic<bool> m_terminate;
 	static std::atomic<bool> m_send_log_report;
 	static std::atomic<bool> m_config_update;
@@ -626,6 +641,7 @@ public:
 	uint32_t m_json_parse_errors_events_max_burst;
 	bool m_watchdog_enabled;
 	uint64_t m_watchdog_sinsp_worker_timeout_s;
+	uint64_t m_watchdog_sinsp_worker_debug_timeout_s;
 	uint64_t m_watchdog_connection_manager_timeout_s;
 	uint64_t m_watchdog_subprocesses_logger_timeout_s;
 	uint64_t m_watchdog_analyzer_tid_collision_check_interval_s;
@@ -636,6 +652,8 @@ public:
 	uint64_t m_watchdog_heap_profiling_interval_s;
 #endif
 	uint64_t m_dirty_shutdown_report_log_size_b;
+	uint64_t m_dirty_shutdown_default_report_log_size_b;
+	uint64_t m_dirty_shutdown_trace_report_log_size_b;
 
 	typedef std::map<string, uint64_t> ProcessValue64Map;
 	typedef std::map<string, int> ProcessValueMap;
@@ -810,7 +828,7 @@ public:
 	bool m_security_send_monitor_events;
 	vector<string> m_suppressed_comms;
 	vector<uint16_t> m_suppressed_types;
-	std::string m_security_compliance_schedule;
+	std::string m_security_default_compliance_schedule;
 	bool m_security_send_compliance_events;
 	bool m_security_send_compliance_results;
 	bool m_security_include_desc_in_compliance_results;
@@ -818,6 +836,18 @@ public:
 	bool m_security_compliance_save_temp_files;
 	uint64_t m_security_compliance_refresh_interval;
 	std::string m_security_compliance_kube_bench_variant;
+
+	// K8s Audit Server
+	bool m_k8s_audit_server_enabled;
+	uint64_t m_k8s_audit_server_refresh_interval;
+	// Plain HTTP endpoint
+	string m_k8s_audit_server_url;
+	uint16_t m_k8s_audit_server_port;
+	// Optional HTTPS configurations
+	bool m_k8s_audit_server_tls_enabled;
+	string m_k8s_audit_server_x509_cert_file;
+	string m_k8s_audit_server_x509_key_file;
+
 
 	uint64_t m_user_events_rate;
 	uint64_t m_user_max_burst_events;
@@ -869,12 +899,33 @@ public:
 	uint32_t m_orch_batch_msgs_queue_len;
 	uint32_t m_orch_batch_msgs_tick_interval_ms;
 
+	/**
+	 * When a tid is looked up in the thread table and not found we
+	 * will explicitly search '/proc' to try to find it.  This value
+	 * determines the number of times that we will search '/proc'
+	 * before logging a message.
+	 */
 	int32_t m_max_n_proc_lookups;
+
+
+	/**
+	 * When a tid is looked up in the thread table and not found we
+	 * will explicitly search '/proc' to try to find it (and
+	 * sometimes that lookup involves reading sockets). This value
+	 * determines the number of times that we will search '/proc'
+	 * (involving sockets) before logging a message.
+	 */
 	int32_t m_max_n_proc_socket_lookups;
+
+	bool m_procfs_scan_thread;
+	uint32_t m_procfs_scan_interval_ms;
+	uint32_t m_procfs_scan_mem_interval_ms;
+	uint32_t m_procfs_scan_delay_ms;
 
 	bool m_query_docker_image_info;
 	std::string m_cri_socket_path;
 	int64_t m_cri_timeout_ms = 1000;
+	bool m_cri_extra_queries;
 
 	uint64_t m_flush_log_time;
 	uint64_t m_flush_log_time_duration;
@@ -940,6 +991,32 @@ public:
 	int save_auto_config(const string &config_filename, const string& config_data, string &errstr);
 
 	void set_auto_config_directory(const string &config_directory);
+
+	bool k8s_audit_server_tls_enabled()
+	{
+		return m_k8s_audit_server_tls_enabled;
+	}
+
+	std::string k8s_audit_server_url()
+	{
+		return m_k8s_audit_server_url;
+	}
+
+	std::uint16_t k8s_audit_server_port()
+	{
+		return m_k8s_audit_server_port;
+	}
+
+	std::string k8s_audit_server_x509_cert_file()
+	{
+		return m_k8s_audit_server_x509_cert_file;
+	}
+
+	std::string k8s_audit_server_x509_key_file()
+	{
+		return m_k8s_audit_server_x509_key_file;
+	}
+
 
 private:
 	inline static bool is_executable(const string& path);

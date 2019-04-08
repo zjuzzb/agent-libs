@@ -15,7 +15,8 @@
 
 #include <sinsp.h>
 #include <configuration.h>
-#include <coclient.h>
+#include <protocol.h>
+#include <compliance_mgr.h>
 
 using namespace std;
 using namespace Poco;
@@ -116,7 +117,8 @@ protected:
 			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&nullc, &loggerc, &nullc));
 		}
 
-		string cointerface_sock = "./resources/compliance_test.sock";
+		std::string cointerface_root = "./resources";
+		string cointerface_sock = cointerface_root + "/cointerface.sock";
 
 		Process::Args args{"-sock", cointerface_sock,
 				"-use_json=false",
@@ -159,12 +161,18 @@ protected:
 			FAIL() << "cointerface process not running after 1 second";
 		}
 
-		m_grpc_conn = grpc_connect<sdc_internal::ComplianceModuleMgr::Stub>("unix:" + cointerface_sock);
-		m_grpc_start = make_shared<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)>(m_grpc_conn);
-		m_grpc_load = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)>(m_grpc_conn);
-		m_grpc_stop = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)>(m_grpc_conn);
-		m_grpc_get_future_runs = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncGetFutureRuns)>(m_grpc_conn);
-		m_grpc_run_tasks = make_shared<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)>(m_grpc_conn);
+		m_queue = new protocol_queue(100);
+
+		m_configuration.init(NULL, false);
+		dragent_configuration::m_terminate = false;
+
+		m_data_handler = new sinsp_data_handler(&m_configuration, m_queue);
+
+		m_compliance_mgr = new compliance_mgr(cointerface_root);
+
+		// These tests don't check scope of compliance tasks so analyzer is set to NULL
+		bool save_errors = true;
+		m_compliance_mgr->init(m_data_handler, NULL, &m_configuration, save_errors);
 
 		// Also create a server listening on the statsd port
 		if ((m_statsd_sock = socket(PF_INET, SOCK_DGRAM, 0)) < 0)
@@ -193,12 +201,12 @@ protected:
 			FAIL() << "Can't set timeout of 5 seconds for fake statsd server: " << strerror(errno);
 		}
 
-		m_statsd_server_done = false;
+		m_done = false;
 
 		// In a thread, receive statsd metrics and update m_metrics
 		m_statsd_server = thread([this] ()
                 {
-			while (!m_statsd_server_done)
+			while (!m_done)
 			{
 				char buf[1024];
 				ssize_t recv_len;
@@ -218,6 +226,45 @@ protected:
 				}
 			}
 		});
+
+		// Start a thread that reads from the queue, appending results to m_results
+		m_result_reader = thread([this]()
+		{
+			while(!m_done)
+			{
+				shared_ptr<protocol_queue_item> item;
+				dragent_protocol_header *hdr;
+				const uint8_t *buf;
+				uint32_t size;
+
+				if (!m_queue->get(&item, 100))
+				{
+					continue;
+				}
+
+				hdr = (dragent_protocol_header*) item->buffer.data();
+				buf = (const uint8_t *) (item->buffer.data() + sizeof(dragent_protocol_header));
+				size = ntohl(hdr->len) - sizeof(dragent_protocol_header);
+
+				g_log->debug("Got message type=" + to_string(hdr->messagetype));
+
+				draiosproto::comp_results res;
+				switch (hdr->messagetype)
+				{
+				case draiosproto::message_type::COMP_RESULTS:
+					ASSERT_TRUE(dragent_protocol::buffer_to_protobuf(buf, size, &res));
+					break;
+
+				default:
+					FAIL() << "Received unknown message " << hdr->messagetype;
+				}
+
+				for(auto &result : res.results())
+				{
+					m_results[result.task_name()].push_back(result);
+				}
+			}
+		});
 	}
 
 	virtual void TearDown()
@@ -227,83 +274,31 @@ protected:
 			Process::kill(*m_cointerface);
 		}
 
-		m_statsd_server_done = 1;
+		m_done = true;
 	        m_statsd_server.join();
+	        m_result_reader.join();
 
 		if(close(m_statsd_sock) < 0)
 		{
 			FAIL() << "Can't close statsd socket: " << strerror(errno);
 		}
 
-		m_grpc_load.reset();
-		m_grpc_start.reset();
-		m_grpc_stop.reset();
-		m_grpc_run_tasks.reset();
-		m_grpc_get_future_runs.reset();
-		m_grpc_conn.reset();
+		delete m_compliance_mgr;
+		delete m_data_handler;
+		delete m_queue;
 		g_log->information("TearDown() complete");
 	}
 
 	void stop_tasks()
 	{
-		bool stopped = false;
-		auto callback = [this, &stopped](bool successful, sdc_internal::comp_stop_result &res)
-		{
-			if(!successful)
-			{
-				FAIL() << "Stop() call was not successful";
-			}
-
-			if(!res.successful())
-			{
-				FAIL() << "Stop() call returned error " << res.errstr();
-			}
-
-			stopped = true;
-		};
-
-		sdc_internal::comp_stop stop;
-		m_grpc_stop->do_rpc(stop, callback);
-
-		// Wait up to 10 seconds
-		for(uint32_t i=0; i < 1000; i++)
-		{
-			Poco::Thread::sleep(10);
-			m_grpc_stop->process_queue();
-
-			if(stopped)
-			{
-				return;
-			}
-		}
-
-		FAIL() << "After 10 seconds, did not get response to Stop()";
+		m_compliance_mgr->stop_compliance_tasks();
 	}
 
 	void get_future_runs(task_defs_t &def)
 	{
-		bool received = false;
+		sdc_internal::comp_get_future_runs req;
 		sdc_internal::comp_future_runs future_runs;
 
-		auto callback = [&](bool successful, sdc_internal::comp_future_runs &res)
-		{
-			if(!successful)
-			{
-				FAIL() << "GetFutureRuns() call was not successful";
-			}
-
-			if(!res.successful())
-			{
-				FAIL() << "GetFutureRuns() call returned error " << res.errstr();
-			}
-
-			g_log->debug(string("Return value from GetFutureRuns:") + res.DebugString());
-
-			future_runs = res;
-			received = true;
-		};
-
-		sdc_internal::comp_get_future_runs req;
 		draiosproto::comp_task *task = req.mutable_task();
 
 		task->set_id(def.id);
@@ -315,67 +310,24 @@ protected:
 		req.set_start(def.start_time);
 		req.set_num_runs(5);
 
-		m_grpc_get_future_runs->do_rpc(req, callback);
+		std::string errstr;
+		ASSERT_TRUE(m_compliance_mgr->get_future_runs(req, future_runs, errstr)) << "get_future_runs() returned error:" << errstr;
 
-		// Wait up to 10 seconds
-		for(uint32_t i=0; i < 1000; i++)
+		ASSERT_EQ(uint32_t(future_runs.runs().size()), def.future_runs.size());
+
+		for(int32_t i=0; i < future_runs.runs().size(); i++)
 		{
-			Poco::Thread::sleep(10);
-			m_grpc_get_future_runs->process_queue();
-
-			if(received)
-			{
-				ASSERT_EQ(uint32_t(future_runs.runs().size()), def.future_runs.size());
-
-				for(int32_t i=0; i < future_runs.runs().size(); i++)
-				{
-					ASSERT_STREQ(future_runs.runs(i).c_str(), def.future_runs.at(i).c_str());
-				}
-
-				return;
-			}
+			ASSERT_STREQ(future_runs.runs(i).c_str(), def.future_runs.at(i).c_str());
 		}
-
-		FAIL() << "After 10 seconds, did not get response to GetFutureRuns()";
 	}
 
 	void start_tasks(std::vector<task_defs_t> &task_defs)
 	{
-		auto callback = [this](streaming_grpc::Status status, sdc_internal::comp_task_event &cevent)
-		{
-			ASSERT_NE(status, streaming_grpc::ERROR);
-
-			if(!status == streaming_grpc::OK)
-			{
-				return;
-			}
-
-			if(!cevent.call_successful())
-			{
-				m_errors[cevent.task_name()].push_back(cevent.errstr());
-			}
-			else
-			{
-				for(int i=0; i < cevent.events().events_size(); i++)
-				{
-					m_events[cevent.task_name()].push_back(cevent.events().events(i));
-				}
-
-				ASSERT_STREQ(cevent.results().machine_id().c_str(), "test-machine-id");
-				ASSERT_STREQ(cevent.results().customer_id().c_str(), "test-customer-id");
-
-				for(int i=0; i < cevent.results().results_size(); i++)
-				{
-					m_results[cevent.task_name()].push_back(cevent.results().results(i));
-				}
-			}
-		};
-
-		sdc_internal::comp_start start;
+		draiosproto::comp_calendar cal;
 
 		for(auto &def: task_defs)
 		{
-			draiosproto::comp_task *task = start.mutable_calendar()->add_tasks();
+			draiosproto::comp_task *task = cal.add_tasks();
 			task->set_id(def.id);
 			task->set_name(def.name);
 			task->set_mod_name(def.module);
@@ -395,27 +347,13 @@ protected:
 			param->set_val(def.rc);
 		}
 
-		start.set_machine_id("test-machine-id");
-		start.set_customer_id("test-customer-id");
-		start.set_send_failed_results(true);
-
-		m_grpc_start->do_rpc(start, callback);
+		bool send_results = true;
+		bool send_events = true;
+		m_compliance_mgr->set_compliance_calendar(cal, send_results, send_events);
         }
 
 	void run_tasks(std::vector<task_defs_t> &task_defs)
 	{
-		bool received_response = false;
-
-		auto callback =
-			[&](bool successful, sdc_internal::comp_run_result &res)
-				{
-					ASSERT_TRUE(successful);
-
-					ASSERT_TRUE(res.successful()) << string("Could not run compliance tasks (") + res.errstr();
-
-					received_response = true;
-				};
-
 		draiosproto::comp_run run;
 
 		for(auto &def: task_defs)
@@ -423,30 +361,17 @@ protected:
 			run.add_task_ids(def.id);
 		}
 
-		m_grpc_run_tasks->do_rpc(run, callback);
-
-		// Wait up to 10 seconds
-		for(uint32_t i=0; i < 1000; i++)
-		{
-			Poco::Thread::sleep(10);
-			m_grpc_run_tasks->process_queue();
-
-			if(received_response)
-			{
-				return;
-			}
-		}
-
-		FAIL() << "After 10 seconds, did not get response to RunTasks()";
+		m_compliance_mgr->set_compliance_run(run);
         }
 
 	void verify_task_result(task_defs_t &def, uint64_t num_results=1)
 	{
 		// Wait up to 10 seconds
-		for(uint32_t i=0; i < 1000; i++)
+		for(uint32_t i=0; i < 100; i++)
 		{
-			Poco::Thread::sleep(10);
-			m_grpc_start->process_queue();
+			Poco::Thread::sleep(100);
+
+			m_compliance_mgr->check_tasks();
 
 			if(m_results.find(def.name) != m_results.end() &&
 			   m_results[def.name].size() >= num_results)
@@ -455,6 +380,7 @@ protected:
 			}
 		}
 
+		ASSERT_EQ(m_compliance_mgr->m_num_grpc_errs, 0u);
 		ASSERT_TRUE(m_results.find(def.name) != m_results.end()) << "After 10 seconds, did not see any results with expected values for task " << def.name;
 		ASSERT_EQ(m_results[def.name].size(), num_results) << "After 10 seconds, did not see any results with expected values for task " << def.name;
 		auto &result = m_results[def.name].front();
@@ -479,40 +405,10 @@ protected:
 		}
 	}
 
-	void verify_task_event(task_defs_t &def)
-	{
-		// Wait up to 10 seconds
-		for(uint32_t i=0; i < 1000; i++)
-		{
-			Poco::Thread::sleep(10);
-			m_grpc_start->process_queue();
-
-			if(m_results.find(def.name) != m_results.end())
-			{
-				break;
-			}
-		}
-
-		ASSERT_TRUE(m_events.find(def.name) != m_events.end()) << "After 10 seconds, did not see any events with expected values for task " << def.name;
-		ASSERT_EQ(m_events[def.name].size(), 1U) << "After 10 seconds, did not see any events with expected values for task " << def.name;
-		auto &event = m_events[def.name].front();
-
-		std::string output = "test output (task=" + def.name + " iter=" + def.scraper_id + ")";
-		std::string output_json = "{\"task\":\"" + def.name + "\", \"iter\": " + def.scraper_id + "}";
-
-		ASSERT_STREQ(event.task_name().c_str(), def.name.c_str());
-		ASSERT_STREQ(event.container_id().c_str(), "test-container");
-		ASSERT_STREQ(event.output().c_str(), output.c_str());
-		ASSERT_STREQ(event.output_fields().at("task").c_str(), def.name.c_str());
-		ASSERT_STREQ(event.output_fields().at("iter").c_str(), def.scraper_id.c_str());
-	}
-
-	void clear_results_events()
+	void clear_results()
 	{
 		m_results.clear();
-		m_events.clear();
 		m_metrics.clear();
-		m_errors.clear();
 	}
 
 	void verify_metric(task_defs_t &def)
@@ -523,6 +419,9 @@ protected:
 		for(uint32_t i=0; i < 1000; i++)
 		{
 			Poco::Thread::sleep(10);
+
+			m_compliance_mgr->check_tasks();
+
 			{
 				std::lock_guard<std::mutex> lock(m_metrics_mutex);
 				if(m_metrics.find(expected) != m_metrics.end())
@@ -541,11 +440,12 @@ protected:
 		for(uint32_t i=0; i < 1000; i++)
 		{
 			Poco::Thread::sleep(10);
-			m_grpc_start->process_queue();
 
-			if (m_errors.find(task_name) != m_errors.end())
+			m_compliance_mgr->check_tasks();
+
+			if (m_compliance_mgr->m_task_errors.find(task_name) != m_compliance_mgr->m_task_errors.end())
 			{
-				for(auto &errstr : m_errors[task_name])
+				for(auto &errstr : m_compliance_mgr->m_task_errors[task_name])
 				{
 					if (errstr == expected)
 					{
@@ -558,37 +458,32 @@ protected:
 		FAIL() << "After 10 seconds, did not see expected error \"" << expected << "\" for task name " << task_name;
 	}
 
+	protocol_queue *m_queue;
+	sinsp_data_handler *m_data_handler;
+	compliance_mgr *m_compliance_mgr;
+	dragent_configuration m_configuration;
 	shared_ptr<Pipe> m_colog;
 	shared_ptr<ProcessHandle> m_cointerface;
 
-	std::shared_ptr<sdc_internal::ComplianceModuleMgr::Stub> m_grpc_conn;
-	std::shared_ptr<streaming_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStart)> m_grpc_start;
-	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncLoad)> m_grpc_load;
-	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncStop)> m_grpc_stop;
-	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncRunTasks)> m_grpc_run_tasks;
-	std::shared_ptr<unary_grpc_client(&sdc_internal::ComplianceModuleMgr::Stub::AsyncGetFutureRuns)> m_grpc_get_future_runs;
-
 	// Maps from task name to all the results that have been received for that task
 	std::map<std::string, std::vector<draiosproto::comp_result>> m_results;
-	std::map<std::string, std::vector<draiosproto::comp_event>> m_events;
-	std::map<std::string, std::vector<std::string>> m_errors;
 
 	// All the unique metrics that have ever been received by the fake statsd server
 	std::set<std::string> m_metrics;
 	std::mutex m_metrics_mutex;
 
-	std::thread m_statsd_server;
+	std::thread m_statsd_server, m_result_reader;
 	int m_statsd_sock;
-	atomic<bool> m_statsd_server_done;
+	atomic<bool> m_done;
 };
 
 static std::vector<task_defs_t> one_task = {{"PT1H", 1, "my-task-1", "test-module", "1", "0"}};
 static std::vector<task_defs_t> frequent_task = {{"PT10S", 1, "my-task-1", "test-module", "1", "0"}};
 static std::vector<task_defs_t> task_slow = {{"PT1H", 1, "my-task-1", "test-module", "1", "5"}};
-static std::vector<task_defs_t> one_task_alt_output = {{"PT1H", 1, "my-task-1", "test-module", "2", "0"}};
+static std::vector<task_defs_t> one_task_alt_output = {{"PT1H", 3, "my-task-3", "test-module", "2", "0"}};
 static std::vector<task_defs_t> task_two = {{"PT1H", 2, "my-task-2", "test-module", "2", "0"}};
 static std::vector<task_defs_t> two_tasks = {{"PT1H", 1, "my-task-1", "test-module", "1", "0"}, {"PT1H", 2, "my-task-2", "test-module", "2", "0"}};
-static std::vector<task_defs_t> two_tasks_alt_output = {{"PT1H", 1, "my-task-1", "test-module", "3", "0"}, {"PT1H", 2, "my-task-2", "test-module", "4", "0"}};
+static std::vector<task_defs_t> two_tasks_alt_output = {{"PT1H", 3, "my-task-3", "test-module", "3", "0"}, {"PT1H", 4, "my-task-4", "test-module", "4", "0"}};
 static std::vector<task_defs_t> one_task_twice = {{"R2/PT1S", 1, "my-task-1", "test-module", "1", "5"}};
 static std::vector<task_defs_t> bad_schedule = {{"not-a-real-schedule", 1, "bad-schedule-task", "test-module", "1", "5"}};
 static std::vector<task_defs_t> bad_schedule_2 = {{"PT1K1M", 1, "bad-schedule-task-2", "test-module", "1", "5"}};
@@ -629,54 +524,10 @@ static std::vector<task_defs_t> future_runs_once_monthly_14th_6pm = {{"2018-11-1
 //   - A task with an explicit start time + interval
 //   - Add some endpoint/method that returns a list of the next 10 or so times each task will run, and use that in tests.
 
-TEST_F(compliance_test, load)
-{
-	bool got_response = false;
-
-	auto callback = [this, &got_response](bool successful, sdc_internal::comp_load_result &lresult)
-	{
-		got_response = true;
-		ASSERT_TRUE(successful);
-
-		ASSERT_EQ(lresult.statuses_size(), 4);
-
-		for(auto &status : lresult.statuses())
-		{
-			if (strcmp(status.mod_name().c_str(), "docker-bench-security") != 0 &&
-			    strcmp(status.mod_name().c_str(), "kube-bench") != 0 &&
-			    strcmp(status.mod_name().c_str(), "test-module") != 0 &&
-			    strcmp(status.mod_name().c_str(), "fail-module") != 0)
-			{
-				FAIL() << "Unexpected module found: " << status.mod_name();
-			}
-
-			ASSERT_TRUE(status.running());
-			ASSERT_EQ(status.has_errstr(), false);
-		}
-	};
-
-	sdc_internal::comp_load load;
-
-	load.set_machine_id("test-machine-id");
-	load.set_customer_id("test-customer-id");
-
-	m_grpc_load->do_rpc(load, callback);
-
-	// Wait up to 10 seconds
-	for(uint32_t i=0; i < 1000 && !got_response; i++)
-	{
-		Poco::Thread::sleep(10);
-		m_grpc_load->process_queue();
-	}
-
-	ASSERT_TRUE(got_response) << "10 seconds after Load(), did not receive any response";
-}
-
 TEST_F(compliance_test, start)
 {
 	start_tasks(one_task);
 	verify_task_result(one_task[0]);
-	verify_task_event(one_task[0]);
 	verify_metric(one_task[0]);
 
 	stop_tasks();
@@ -686,7 +537,6 @@ TEST_F(compliance_test, start_frequent)
 {
 	start_tasks(frequent_task);
 	verify_task_result(frequent_task[0]);
-	verify_task_event(frequent_task[0]);
 	verify_metric(frequent_task[0]);
 
 	stop_tasks();
@@ -696,13 +546,11 @@ TEST_F(compliance_test, multiple_start)
 {
 	start_tasks(one_task);
 	verify_task_result(one_task[0]);
-	verify_task_event(one_task[0]);
 	verify_metric(one_task[0]);
-	clear_results_events();
+	clear_results();
 
 	start_tasks(one_task_alt_output);
 	verify_task_result(one_task_alt_output[0]);
-	verify_task_event(one_task_alt_output[0]);
 	verify_metric(one_task_alt_output[0]);
 
 	stop_tasks();
@@ -712,14 +560,12 @@ TEST_F(compliance_test, start_after_stop)
 {
 	start_tasks(one_task);
 	verify_task_result(one_task[0]);
-	verify_task_event(one_task[0]);
 	verify_metric(one_task[0]);
 	stop_tasks();
-	clear_results_events();
+	clear_results();
 
 	start_tasks(one_task_alt_output);
 	verify_task_result(one_task_alt_output[0]);
-	verify_task_event(one_task_alt_output[0]);
 	verify_metric(one_task_alt_output[0]);
 
 	stop_tasks();
@@ -729,11 +575,9 @@ TEST_F(compliance_test, multiple_tasks_same_module)
 {
 	start_tasks(two_tasks);
 	verify_task_result(two_tasks[0]);
-	verify_task_event(two_tasks[0]);
 	verify_metric(two_tasks[0]);
 
 	verify_task_result(two_tasks[1]);
-	verify_task_event(two_tasks[1]);
 	verify_metric(two_tasks[1]);
 
 	stop_tasks();
@@ -743,22 +587,18 @@ TEST_F(compliance_test, multiple_tasks_multiple_start)
 {
 	start_tasks(two_tasks);
 	verify_task_result(two_tasks[0]);
-	verify_task_event(two_tasks[0]);
 	verify_metric(two_tasks[0]);
 
 	verify_task_result(two_tasks[1]);
-	verify_task_event(two_tasks[1]);
 	verify_metric(two_tasks[1]);
 
-	clear_results_events();
+	clear_results();
 
 	start_tasks(two_tasks_alt_output);
 	verify_task_result(two_tasks_alt_output[0]);
-	verify_task_event(two_tasks_alt_output[0]);
 	verify_metric(two_tasks_alt_output[0]);
 
 	verify_task_result(two_tasks_alt_output[1]);
-	verify_task_event(two_tasks_alt_output[1]);
 	verify_metric(two_tasks_alt_output[1]);
 
 	stop_tasks();
@@ -773,12 +613,10 @@ TEST_F(compliance_test, start_cancels)
 	start_tasks(task_two);
 
 	verify_task_result(task_two[0]);
-	verify_task_event(task_two[0]);
 	verify_metric(task_two[0]);
 
 	sleep(10);
 	ASSERT_TRUE(m_results.find(task_slow[0].name) == m_results.end());
-	ASSERT_TRUE(m_events.find(task_slow[0].name) == m_events.end());
 	ASSERT_TRUE(m_metrics.find(task_slow[0].name) == m_metrics.end());
 
 	stop_tasks();
@@ -789,16 +627,14 @@ TEST_F(compliance_test, overlapping_tasks)
 	start_tasks(one_task_twice);
 
 	verify_task_result(one_task_twice[0]);
-	verify_task_event(one_task_twice[0]);
 	verify_metric(one_task_twice[0]);
 
-	// Ensure that there is only a single result/event. The first
+	// Ensure that there is only a single result. The first
 	// task runs for 5 seconds, so the second invocation
 	// should have been skipped.
 
 	sleep(10);
 
-	ASSERT_EQ(m_events[one_task_twice[0].name].size(), 1U);
 	ASSERT_EQ(m_results[one_task_twice[0].name].size(), 1U);
 
 	stop_tasks();
@@ -903,17 +739,15 @@ TEST_F(compliance_test, run_tasks)
 	start_tasks(one_task);
 
 	verify_task_result(one_task[0]);
-	verify_task_event(one_task[0]);
 	verify_metric(one_task[0]);
 
-	clear_results_events();
+	clear_results();
 
 	run_tasks(one_task);
 
 	// Normally this would fail other than the fact that we
 	// triggered running the task out-of-band.
 	verify_task_result(one_task[0]);
-	verify_task_event(one_task[0]);
 	verify_metric(one_task[0]);
 
 	stop_tasks();
@@ -934,32 +768,24 @@ TEST_F(compliance_test, explicit_start_time)
 
 	start_tasks(explicit_start_time);
 
-	// Start a thread to read results
-	bool done = false;
-	std::thread result_reader = thread([&] ()
-        {
-		while(!done)
-		{
-			Poco::Thread::sleep(10);
-			m_grpc_start->process_queue();
-		}
-	});
-
-	sleep(5);
+	for(uint32_t i=0; i < 50; i++)
+	{
+		Poco::Thread::sleep(100);
+		m_compliance_mgr->check_tasks();
+	}
 
 	// There should be only a single result so far, which reflects
 	// the initial "run now" task.
-	ASSERT_EQ(m_events[explicit_start_time[0].name].size(), 1U);
 	ASSERT_EQ(m_results[explicit_start_time[0].name].size(), 1U);
 
-	sleep(10);
+	for(uint32_t i=0; i < 100; i++)
+	{
+		Poco::Thread::sleep(100);
+		m_compliance_mgr->check_tasks();
+	}
 
 	// Now there should be 2 results, as the start time for the schedule has occurred
-	ASSERT_EQ(m_events[explicit_start_time[0].name].size(), 2U);
 	ASSERT_EQ(m_results[explicit_start_time[0].name].size(), 2U);
-
-	done = true;
-	result_reader.join();
 
 	stop_tasks();
 }

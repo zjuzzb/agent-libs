@@ -283,6 +283,25 @@ void sinsp_logger_parser::operator()(const string& s)
 	}
 }
 
+subprocesses_logger::log_state::log_state()
+	: m_parser_f(nullptr),
+	  m_curbuf(make_shared<string>()),
+	  m_state(nullptr)
+
+{
+}
+
+subprocesses_logger::log_state::log_state(function<void(const string&)> parser, watchdog_state *state)
+	: m_parser_f(parser),
+	  m_curbuf(make_shared<string>()),
+	  m_state(state)
+{
+}
+
+subprocesses_logger::log_state::~log_state()
+{
+}
+
 const unsigned subprocesses_logger::READ_BUFFER_SIZE = 4096;
 
 subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, log_reporter* reporter) :
@@ -294,7 +313,8 @@ subprocesses_logger::subprocesses_logger(dragent_configuration *configuration, l
 
 void subprocesses_logger::add_logfd(FILE *fd, function<void(const string&)> &&parser, watchdog_state* state)
 {
-	m_error_fds.emplace(fd, make_pair(parser, state));
+	log_state st(parser, state);
+	m_error_fds.emplace(fd, st);
 }
 
 void subprocesses_logger::do_run()
@@ -329,31 +349,51 @@ void subprocesses_logger::do_run()
 			{
 				if(FD_ISSET(fileno(fds.first), &readset_w))
 				{
-					auto available_stream = fds.first;
 					char buffer[READ_BUFFER_SIZE];
-					auto fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
-					while(fgets_res != NULL)
+
+					ssize_t bytes_read = 0;
+
+					do {
+						bytes_read = read(fileno(fds.first), buffer, sizeof(buffer));
+						if(bytes_read > 0)
+						{
+							fds.second.m_curbuf->append(buffer, bytes_read);
+						}
+					} while (bytes_read > 0);
+
+					// EAGAIN is expected as the fd is nonblocking
+					if(bytes_read == -1 && errno != EAGAIN)
 					{
-						string data(buffer);
+						g_log->error(string("Could not read from subprocess logger fd: ") + strerror(errno));
+					}
+
+					// For each complete line in the buffer, pass it to the right parser
+					for(auto pos = fds.second.m_curbuf->find_first_of("\n");
+					    pos != string::npos;
+					    pos = fds.second.m_curbuf->find_first_of("\n"))
+					{
+						string data(*(fds.second.m_curbuf), 0, pos);
+
+						fds.second.m_curbuf->erase(0, pos+1);
+
 						trim(data);
-						if(fds.second.second != nullptr && data.find("HB,") == 0)
+						if(fds.second.m_state != nullptr && data.find("HB,") == 0)
 						{
 							// This is a heartbeat message, so parse and store values
 							// for watchdog, format: HB,pid,memory_used,last_loop_ts
 							StringTokenizer tokenizer(data, ",");
 							if(tokenizer.count() > 3)
 							{
-								fds.second.second->reset(stoul(tokenizer[1]),
-														 stoul(tokenizer[2]),
-														 stoul(tokenizer[3]));
+								fds.second.m_state->reset(stoul(tokenizer[1]),
+											  stoul(tokenizer[2]),
+											  stoul(tokenizer[3]));
 							}
-							g_log->debug("Received [" + fds.second.second->name() + "] heartbeat: " + data);
+							g_log->debug("Received [" + fds.second.m_state->name() + "] heartbeat: " + data);
 						}
 						else
 						{
-							fds.second.first(data);
+							fds.second.m_parser_f(data);
 						}
-						fgets_res = fgets_unlocked(buffer, READ_BUFFER_SIZE, available_stream);
 					}
 				}
 			}

@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "logger.h"
+#include "json_evt.h"
 
 #include "security_mgr.h"
 #include "security_policy.h"
@@ -135,6 +136,7 @@ security_policies::security_policies()
 	: m_num_loaded_policies(0)
 {
 	m_evttypes.assign(PPM_EVENT_MAX+1, false);
+	m_evtsources.assign(ESRC_MAX+1, false);
 }
 
 security_policies::~security_policies()
@@ -222,6 +224,29 @@ void security_policies::set_match_details(match_result &match, sinsp_evt *evt)
 	}
 }
 
+void security_policies::set_match_details(match_result &match, json_event *evt)
+{
+	if(match.effect() == draiosproto::EFFECT_ACCEPT)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_ACCEPT);
+	}
+	else if(match.effect() == draiosproto::EFFECT_DENY)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_DENY);
+	}
+	else if(match.effect() == draiosproto::EFFECT_NEXT)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MATCH_NEXT);
+	}
+
+	match.detail()->mutable_output_details()->set_output_type(match.policies_type());
+	if(match.policies_subtype() != draiosproto::PSTYPE_NOSUBTYPE)
+	{
+		match.detail()->mutable_output_details()->set_output_subtype(match.policies_subtype());
+	}
+	match.detail()->set_on_default(false);
+}
+
 std::string security_policies::qualifies()
 {
 	return string("");
@@ -254,6 +279,10 @@ std::ostream &operator <<(std::ostream &os, const security_policies::match_resul
 falco_security_policies::falco_security_policies()
 {
 	m_name = "falco";
+	m_evtsources[ESRC_SINSP] = true;
+	m_evtsources[ESRC_K8S_AUDIT] = true;
+	// All k8s audit events have the single tag "1". - see falco_engine::process_k8s_audit_event
+	m_evttypes[1] = true;
 }
 
 falco_security_policies::~falco_security_policies()
@@ -311,6 +340,14 @@ void falco_security_policies::add_policy(const security_policy &policy, std::sha
 			m_evttypes[evttype] = m_evttypes[evttype] | evttypes[evttype];
 		}
 
+		// TODO falco might implement a evtsources_for_ruleset to optimize this out
+		vector<bool> evtsources = {false, true, true};
+
+		for(uint32_t evtsource = 0; evtsource < ESRC_MAX; evtsource++)
+		{
+			m_evtsources[evtsource] = m_evtsources[evtsource] | evtsources[evtsource];
+		}
+
 		m_num_loaded_policies++;
 	}
 }
@@ -318,6 +355,7 @@ void falco_security_policies::add_policy(const security_policy &policy, std::sha
 void falco_security_policies::reset()
 {
 	m_evttypes.clear();
+	m_evtsources.clear();
 	m_rulesets.clear();
 }
 
@@ -354,6 +392,17 @@ bool falco_security_policies::check_conditions(sinsp_evt *evt)
 	if((evt->get_info_flags() & EF_DROP_FALCO) != 0)
 	{
 		m_metrics->incr(security_evt_metrics::EVM_MISS_EF_DROP_FALCO);
+		return false;
+	}
+
+	return true;
+}
+
+bool falco_security_policies::check_conditions(json_event *evt)
+{
+	if(!m_falco_engine)
+	{
+		m_metrics->incr(security_evt_metrics::EVM_MISS_NO_FALCO_ENGINE);
 		return false;
 	}
 
@@ -414,7 +463,69 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 		}
 		catch (falco_exception& e)
 		{
-			g_log->error("Error processing event against falco engine: " + string(e.what()));
+			g_log->error("Error processing sinsp event against falco engine: " + string(e.what()));
+		}
+	}
+
+	return match;
+}
+
+security_policies::match_result *falco_security_policies::match_event(json_event *evt)
+{
+	if(!check_conditions(evt))
+	{
+		return NULL;
+	}
+
+	match_result *match = NULL;
+	for(auto &ruleset : m_rulesets)
+	{
+		try {
+			unique_ptr<falco_engine::rule_result> res = m_falco_engine->process_k8s_audit_event(evt, ruleset.second);
+
+			if(!res)
+			{
+				m_metrics->incr(security_evt_metrics::EVM_MISS_CONDS);
+			}
+			else
+			{
+				g_log->debug("Event matched falco policy: rule=" + res->rule);
+
+				// This ruleset had a match. We keep
+				// it only if its order is less than
+				// the current best policy.
+				if(!match || ruleset.first->order() < match->policy()->order())
+				{
+					if(match)
+					{
+						delete match;
+					}
+
+					// We don't need to worry about which rule matched in a given ruleset--falco handles that internally.
+					match = new match_result(ruleset.first,
+								 policies_type(), policies_subtype(), 0,
+								 new draiosproto::event_detail(), draiosproto::EFFECT_DENY,
+								 ruleset.first->falco_details().output_field_keys());
+
+					json_event_formatter jevt_formatter(m_falco_engine->json_factory(), res->format);
+					match->detail()->mutable_output_details()->set_output(jevt_formatter.tostring(evt));
+					(*match->detail()->mutable_output_details()->mutable_output_fields())["falco.rule"] = res->rule;
+
+					std::list<std::pair<std::string,std::string>> resolved_tokens;
+					jevt_formatter.resolve_tokens(evt, resolved_tokens);
+					for (const auto &rt : resolved_tokens)
+					{
+						if (!rt.first.empty() && !rt.second.empty())
+							(*match->detail()->mutable_output_details()->mutable_output_fields())[rt.first] = rt.second;
+					}
+
+					set_match_details(*match, evt);
+				}
+			}
+		}
+		catch (falco_exception& e)
+		{
+			g_log->error("Error processing k8s audit event against falco engine: " + string(e.what()));
 		}
 	}
 
@@ -423,6 +534,7 @@ security_policies::match_result *falco_security_policies::match_event(sinsp_evt 
 
 matchlist_security_policies::matchlist_security_policies()
 {
+	m_evtsources[ESRC_SINSP] = true;
 }
 
 matchlist_security_policies::~matchlist_security_policies()

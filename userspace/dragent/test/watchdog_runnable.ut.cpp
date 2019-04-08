@@ -1,4 +1,4 @@
-
+#include <atomic>
 #include <exception>
 #include <gtest.h>
 #include "configuration.h"
@@ -23,8 +23,8 @@ public:
 	{
 	}
 
-	bool m_continue;
-	bool m_hijinks;
+	std::atomic<bool> m_continue;
+	std::atomic<bool> m_hijinks;
 
 private:
 	void do_run() override

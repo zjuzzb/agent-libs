@@ -22,7 +22,8 @@ RUN curl -o /etc/yum.repos.d/devtools-2.repo https://people.centos.org/tru/devto
         tar \
         autoconf \
         automake \
-        libtool && \
+        libtool \
+        valgrind && \
     yum -y install \
         glibc-devel.i686 \
         devtoolset-2-libstdc++-devel.i686 \

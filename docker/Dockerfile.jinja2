@@ -34,10 +34,10 @@ ADD http://download.draios.com/apt-draios-priority /etc/apt/preferences.d/
 
 {% endif %}
 {% if p.backports_debian_release == "jessie-backports" %}
-RUN echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list
+RUN echo "deb http://archive.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list
 
 {% endif %}
-RUN apt-get update \
+RUN apt-get update -o Acquire::Check-Valid-Until=false \
  && apt-get dist-upgrade -y \
  && apt-get install -y --no-install-recommends \
 # current bash-completion is a security hole
@@ -143,7 +143,7 @@ RUN rm -rf /usr/bin/clang \
 {% if p.include_agent_package == "apt" %}
 RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add - \
  && curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$SYSDIG_REPOSITORY/deb/draios.list \
- && apt-get update \
+ && apt-get update -o Acquire::Check-Valid-Until=false \
  && apt-get install -y --no-install-recommends draios-agent \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*

@@ -53,6 +53,22 @@ private:
 	std::string m_runtime_name;
 };
 
+class FakeCRIImageServer final : public runtime::v1alpha2::ImageService::Service {
+public:
+	FakeCRIImageServer(ListImagesResponse&& is) :
+		m_list_images_response(is) {}
+
+	grpc::Status ListImages(grpc::ServerContext *context,
+				     const ListImagesRequest *req,
+				     ListImagesResponse *resp)
+	{
+		resp->CopyFrom(m_list_images_response);
+		return grpc::Status::OK;
+	}
+private:
+	ListImagesResponse m_list_images_response;
+};
+
 
 int main(int argc, char** argv)
 {
@@ -86,11 +102,25 @@ int main(int argc, char** argv)
 		close(fd);
 	}
 
+	ListImagesResponse is;
+	{
+		const std::string path = pb_prefix + "_images.pb";
+		int fd = open(path.c_str(), O_RDONLY);
+		if (fd >= 0)
+		{
+			google::protobuf::io::FileInputStream fs(fd);
+			google::protobuf::TextFormat::Parse(&fs, &is);
+			close(fd);
+		}
+	}
+
 	FakeCRIServer service(std::move(cs), std::move(ps), runtime);
+	FakeCRIImageServer image_service(std::move(is));
 
 	grpc::ServerBuilder builder;
 	builder.AddListeningPort(addr, grpc::InsecureServerCredentials());
 	builder.RegisterService(&service);
+	builder.RegisterService(&image_service);
 	std::unique_ptr<grpc::Server> server(builder.BuildAndStart());
 	server->Wait();
 

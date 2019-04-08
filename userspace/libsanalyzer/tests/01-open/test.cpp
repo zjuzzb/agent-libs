@@ -541,27 +541,30 @@ int main(int argc, char **argv)
 #ifdef HAS_ANALYZER
 				if(string(optarg) == "stdout")
 				{
-					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDOUT);
+					g_logger.add_stdout_log();
 				}
 				else if(string(optarg) == "stderr")
 				{
-					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_STDERR);
+					g_logger.add_stderr_log();
 				}
 				else if(string(optarg) == "file")
 				{
-					analyzer->get_configuration()->set_log_output_type(sinsp_logger::OT_FILE);
+					g_logger.add_file_log("sinsp.log");
 				}
 				else if(string(optarg) == "stdout_nots")
 				{
-					analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDOUT | sinsp_logger::OT_NOTS));
+					g_logger.add_stdout_log();
+					g_logger.disable_timestamps();
 				}
 				else if(string(optarg) == "stderr_nots")
 				{
-					analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_STDERR | sinsp_logger::OT_NOTS));
+					g_logger.add_stderr_log();
+					g_logger.disable_timestamps();
 				}
 				else if(string(optarg) == "file_nots")
 				{
-					analyzer->get_configuration()->set_log_output_type((sinsp_logger::output_type)(sinsp_logger::OT_FILE | sinsp_logger::OT_NOTS));
+					g_logger.add_file_log("sinsp.log");
+					g_logger.disable_timestamps();
 				}
 				else
 				{

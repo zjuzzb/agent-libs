@@ -50,7 +50,7 @@ TEST(nodriver, proc_fileio)
 	//
 	// TEST CODE
 	//
-	sinsp_procfs_parser procfs_parser(4, 500, true);
+	sinsp_procfs_parser procfs_parser(4, 500, true, 0, 0);
 	sinsp_proc_file_stats io_stats;
 	procfs_parser.read_proc_file_stats(getpid(), &io_stats);
 
