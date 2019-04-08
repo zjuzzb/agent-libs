@@ -810,7 +810,7 @@ int dragent_app::sdagent_main()
 
 bool dragent_app::timeout_expired(int64_t last_activity_age_ns, uint64_t timeout_s, const char* label, const char* tail)
 {
-	if(timeout_s == 0 || last_activity_age_ns <= timeout_s * 1000000000LL)
+	if(timeout_s == 0 || last_activity_age_ns <= static_cast<int64_t>(timeout_s) * 1000000000LL)
 	{
 		return false;
 	}
