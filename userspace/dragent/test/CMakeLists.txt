@@ -27,6 +27,10 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 
 add_definitions( -DHAS_ANALYZER )
 
+add_library(libfake_collector STATIC
+	fake_collector.cpp
+)
+
 add_executable(unit-test-dragent
 	main.cpp
 	blocking_queue.ut.cpp
@@ -34,12 +38,14 @@ add_executable(unit-test-dragent
 	logger.ut.cpp
 	sinsp_worker.ut.cpp
 	watchdog_runnable.ut.cpp
+	connection_manager.ut.cpp
 )
 
 target_link_libraries(unit-test-dragent
 	sanalyzer.test
 	dragentl.test
 	draiosproto
+	libfake_collector
 	test_helpers
 	test-helpers-libsanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
