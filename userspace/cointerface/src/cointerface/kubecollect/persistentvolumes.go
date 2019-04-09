@@ -130,6 +130,10 @@ func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.Containe
 func addPersistentVolumeMetrics(metrics *[]*draiosproto.AppMetric, pv *v1.PersistentVolume) {
 	size, _ := pv.Spec.Capacity["storage"]
 	AppendMetricInt64(metrics, metricPrefix+"storage", size.Value())
+
+	// A cluster-wide count of PVs. the usual namespace-wide count does not apply
+	// for PV as it is not bound to any namespace
+	AppendMetricInt32(metrics, metricPrefix+"count", 1)
 }
 
 func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
