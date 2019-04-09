@@ -19,6 +19,13 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-libsanalyzer
 )
 
+
+
+# Build all benchmarks.
+add_custom_target(benchmarks
+	DEPENDS benchmark-libsanalyzer
+)
+
 # Run all benchmarks
 add_custom_target(run-benchmarks
   # benchmark-dragent needs a protobuf to get uploaded for it to be functional
