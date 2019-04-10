@@ -49,7 +49,7 @@ inline void user_event_channel::log(const Message& msg)
 	}
 	catch(std::exception& ex)
 	{
-		g_logger.log(std::string("Exception in user event channel: ") + ex.what(), sinsp_logger::SEV_ERROR);
+		g_logger.log(std::string("Exception in user event channel: ") + ex.what() + ", source: " + msg.getSource() + ", message: " + msg.getText(), sinsp_logger::SEV_ERROR);
 	}
 }
 
