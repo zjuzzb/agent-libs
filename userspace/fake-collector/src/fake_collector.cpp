@@ -149,15 +149,14 @@ bool fake_collector::start(uint16_t port)
 				}
 				else // Descriptor is for a client connection that's become readable
 				{
-					int read_ret = read(fds[fd].fd, temp_buf, sizeof(temp_buf));
-					if(read_ret <= 0)
+					uint32_t read_ret = read_one_message(fds[fd].fd, temp_buf, sizeof(temp_buf));
+					if(read_ret == 0)
 					{
 						fds[fd].fd = -1;
-						// We'll need to compact the array if we want to support more than 1 client connection
+						// We'll need to compact the FD list if we start supporting multiple agent connections
 						--nfds;
 						continue;
 					}
-					temp_buf[read_ret] = '\0';
 
 					// Yay inefficient
 					uint8_t* bufp = new uint8_t[read_ret + 1];
@@ -182,29 +181,51 @@ void fake_collector::stop()
 	m_run_server = false;
 }
 
-
-#ifdef FAKE_COLLECTOR_STANDALONE
-
-int main(int argc, char** argv)
+uint32_t fake_collector::read_one_message(int fd, char* buffer, uint32_t buf_len)
 {
-	fake_collector fc;
+	const uint32_t header_len = 5;
+	int len = 0;
 
-	fc.start(0);
-
-	std::cout << "Fake collector started at port " << fc.get_port() << std::endl;
-	sleep(60);
-
-	fc.stop();
-
-	std::cout << "Received data:" << std::endl;
-	while(fc.has_data())
+	if(buf_len < (header_len + 1) || !buffer)
 	{
-		auto b = fc.pop_data();
-		printf("\t\"%s\"\n", b.ptr);
-		delete[] b.ptr;
+		return 0;
 	}
 
+	// Read the header
+	int read_ret = read(fd, buffer, header_len);
+	if(read_ret <= 0)
+	{
+		goto read_error;
+	}
+	buffer[read_ret] = '\0';
+
+	len = std::stoi(buffer);
+
+	if(len <= 0)
+	{
+		return 0;
+	}
+
+	if(buf_len < (uint32_t)len + 1)
+	{
+		return 0;
+	}
+
+	// Now read the body
+	read_ret = read(fd, buffer, len);
+	if(read_ret <= 0)
+	{
+		goto read_error;
+	}
+	buffer[read_ret] = '\0';
+
+	return read_ret;
+
+read_error:
+	if(read_ret < 0)
+	{
+		m_error_code = read_ret;
+		m_error_msg = strerror(read_ret);
+	}
 	return 0;
 }
-
-#endif

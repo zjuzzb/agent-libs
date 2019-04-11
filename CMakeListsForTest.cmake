@@ -1,6 +1,7 @@
 
 add_subdirectory(userspace/dragent/benchmark)
 add_subdirectory(userspace/dragent/test)
+add_subdirectory(userspace/fake-collector/src)
 add_subdirectory(userspace/libsanalyzer/benchmark)
 add_subdirectory(userspace/libsanalyzer/test)
 add_subdirectory(userspace/libsanalyzer/tests)

@@ -117,4 +117,15 @@ private:
 
 	uint16_t m_port;   // The port the server is listening on
 
+	/**
+	 * Reads one from the given file descriptor
+	 *
+	 * @param[in]  fd       The file descriptor to read from
+	 * @param[out] buffer   The buffer to read the data into
+	 * @param[in]  buf_len  The max length of the buffer
+	 *
+	 * @return  The length of data read. Zero indicates a read failure.
+	 */
+	uint32_t read_one_message(int fd, char* buffer, uint32_t buf_len);
+
 };

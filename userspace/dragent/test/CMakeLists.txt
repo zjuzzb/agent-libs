@@ -13,6 +13,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/fake-collector/src)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
@@ -26,10 +27,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
-
-add_library(libfake_collector STATIC
-	fake_collector.cpp
-)
 
 add_executable(unit-test-dragent
 	main.cpp
@@ -45,7 +42,7 @@ target_link_libraries(unit-test-dragent
 	sanalyzer.test
 	dragentl.test
 	draiosproto
-	libfake_collector
+	fake-collector-core
 	test_helpers
 	test-helpers-libsanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a

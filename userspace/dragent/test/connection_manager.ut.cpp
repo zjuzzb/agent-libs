@@ -51,7 +51,6 @@ std::string build_test_string(uint32_t len)
 	{
 		ss << alpha[rand() % alpha.size()];
 	}
-
 	return ss.str();
 }
 } // End namespace
@@ -110,6 +109,13 @@ TEST(connection_manager_test, connect_transmit)
 		it->ts_ns = sinsp_utils::get_current_time_ns();
 		it->message_type = draiosproto::message_type::METRICS;
 		it->buffer = msg;
+
+		// Add the length to the front of the string
+		// (Almost as if this were a real protocol!)
+		std::stringstream ss;
+		ASSERT_LT(msg.length(), 10000);
+		ss << std::setfill('0') << std::setw(4) << msg.length() << ":" << msg;
+		it->buffer = ss.str();
 		queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
 		msleep(100);
 	}
