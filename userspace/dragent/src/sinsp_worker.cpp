@@ -273,6 +273,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_dragent_total_profiles(m_configuration->m_dragent_total_profiles);
 
 	m_analyzer->get_configuration()->set_statsite_buffer_warning_length(m_configuration->m_statsite_buffer_warning_length);
+	m_analyzer->get_configuration()->set_statsite_check_format(m_configuration->m_statsite_check_format);
 	m_analyzer->get_configuration()->set_log_dir(m_configuration->m_log_dir);
 
 	//

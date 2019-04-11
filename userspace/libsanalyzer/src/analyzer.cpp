@@ -7524,7 +7524,8 @@ void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool fo
 {
 	check_metric_limits();
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds,
-						       m_configuration->get_statsite_buffer_warning_length());
+						       m_configuration->get_statsite_buffer_warning_length(),
+						       m_configuration->get_statsite_check_format());
 	if(forwarder)
 	{
 		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);

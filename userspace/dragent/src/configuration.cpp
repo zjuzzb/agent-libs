@@ -711,6 +711,7 @@ void dragent_configuration::init()
 	m_cointerface_total_profiles = m_config->get_scalar<int32_t>("cointerface_total_profiles", 30);
 
 	m_statsite_buffer_warning_length = m_config->get_scalar<uint32_t>("statsite_buffer_warning_length", 512);
+	m_statsite_check_format = m_config->get_scalar<bool>("statsite_check_format", false);
 
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
 

@@ -258,10 +258,12 @@ string statsd_metric::desanitize_container_id(string container_id)
 }
 
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds,
-			       uint32_t buffer_warning_length):
+			       uint32_t buffer_warning_length,
+			       bool check_format):
 		m_input_fd(fds.first),
 		m_output_fd(fds.second),
-		m_buffer_warning_length(buffer_warning_length)
+		m_buffer_warning_length(buffer_warning_length),
+		m_check_format(check_format)
 {
 }
 
@@ -449,8 +451,40 @@ BREAK_LOOP:
 	return ret;
 }
 
+// Breaking down this regex:
+//
+// start sentinel and open group for each line: ^(
+// match all characters except :, |, and newline one or more times: [^:|\\n]+
+// colon: [:]
+// same stuff as before: [^:|\\n]+
+// pipe: [|]
+// same stuff as before: [^:|\\n]+
+// optional pipe followed by some stuff: ([|][^:|\\n]+)?
+// newline: \\n
+// close the line group and repeat: )*
+//
+// then we have the last line, which is the same except with a ? to indicate the optional concluding newline:
+// [^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+\\n?
+//
+// ending sentinel: $
+
+const std::string statsite_proxy::stats_validator_regex = "^([^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+([|][^:|\\n]+)?\\n)*[^:|\\n]+[:][^:|\\n]+[|][^:|\\n]+([|][^:|\\n]+)?\\n?$";
+Poco::RegularExpression statsite_proxy::m_statsd_regex(statsite_proxy::stats_validator_regex);
+bool statsite_proxy::validate_buffer(const char *buf, uint64_t len)
+{
+	std::string string_buf(buf, len);
+	return m_statsd_regex.match(string_buf);
+}
+
 void statsite_proxy::send_metric(const char *buf, uint64_t len)
 {
+	if (m_check_format && !validate_buffer(buf, len))
+	{
+		std::string string_buf(buf, len);
+		g_logger.format("statsite_proxy: invalid buffer format. Dropping. %s", string_buf.c_str(), sinsp_logger::SEV_ERROR);
+		return;
+	}
+
 	//string buf_p(buf, len);
 	//g_logger.format(sinsp_logger::SEV_INFO, "Sending statsd metric: %s", buf_p.c_str());
 	if(buf && len && m_input_fd)
@@ -491,8 +525,11 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 	send_metric(metric_data.data(), metric_data.size());
 }
 
-statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes, uint16_t port, uint32_t max_buffer_len):
-	m_proxy(pipes, max_buffer_len),
+statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes,
+				       uint16_t port,
+				       uint32_t max_buffer_len,
+				       bool check_format):
+	m_proxy(pipes, max_buffer_len, check_format),
 	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
 	m_exitcode(0),
 	m_port(port),

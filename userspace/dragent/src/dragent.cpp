@@ -514,7 +514,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
 						       m_configuration.m_statsd_port,
-						       m_configuration.m_statsite_buffer_warning_length);
+						       m_configuration.m_statsite_buffer_warning_length,
+						       m_configuration.m_statsite_check_format);
 				return fwd.run();
 			});
 		}

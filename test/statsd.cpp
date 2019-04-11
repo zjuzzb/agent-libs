@@ -137,7 +137,7 @@ TEST(statsite_proxy, parser)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen so to be bigger than anything in the above file.
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300);
+	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
 
 	auto ret = proxy.read_metrics();
 	EXPECT_EQ(2U, ret.size());
@@ -173,7 +173,7 @@ TEST(statsite_proxy, parser_long)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen to be smaller than the longest string in the above file
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300);
+	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
 
 	auto ret = proxy.read_metrics();
 	ASSERT_EQ(1U, ret.size());
@@ -201,12 +201,74 @@ TEST(statsite_proxy, parser_long)
 	fclose(input_fd);
 }
 
+class test_helper {
+public:
+	static bool validate_buffer(statsite_proxy& proxy, std::string candidate)
+	{
+		return proxy.validate_buffer(candidate.c_str(), candidate.length());
+	}
+};
+
+// check that the regex for validating outgoing messages to statsite is working correctly
+TEST(statsite_proxy, buffer_validation)
+{
+	auto output_file = fopen("resources/statsite_output_long.txt", "r");
+	auto input_fd = fopen("/dev/null", "w");
+	ASSERT_TRUE(output_file != NULL);
+	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	// one line
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n"), true);
+	// one line without newline at the end
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c"), true);
+	// two lines 
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\nd:e|f\n"), true);
+	// two lines  without newline
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\nd:e|f"), true);
+	// multiple characters
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "abc:basd|clkjsdf.\n][ppoid:;;;e|frrroar"), true);
+	// extra pipe at end of either line
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c|d\nd:e|f\ng:h|i|j"), true);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c|d\nd:e|f\ng:h|i|j\n"), true);
+
+	// no colon
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "ab|c\na:b|c"), false);
+	// no pipe
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:bc\na:b|c"), false);
+	// no colon
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "ab|c"), false);
+	// no pipe
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:bc"), false);
+	// random extra colons
+	ASSERT_EQ(test_helper::validate_buffer(proxy, ":a:b|c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a::b|c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|:c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n:a:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b:|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b:|c:"), false);
+	// random extra pipes
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "|a:b|c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a|:b|c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b||c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n|a:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b||c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b:|c|"), false);
+	// random extra newlines
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "\na:b|c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:\nb|c\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|\nc\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n\na:b|c"), false);
+	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b\n|c"), false);
+
+	fclose(output_file);
+	fclose(input_fd);
+}
+
 TEST(statsite_proxy, filter)
 {
 	auto output_file = fopen("resources/statsite_output.txt", "r");
 	auto input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300);
+	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
 
 	filter_vec_t f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
 	metric_limits::sptr_t ml(new metric_limits(f));
@@ -221,7 +283,7 @@ TEST(statsite_proxy, filter)
 	output_file = fopen("resources/statsite_output.txt", "r");
 	input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy2(make_pair(input_fd, output_file), 300);
+	statsite_proxy proxy2(make_pair(input_fd, output_file), 300, false);
 
 	f = {{"*1?", true}, {"totam.sunt.consequatur.numquam.aperiam7", true}, {"*", false}};
 	ml.reset(new metric_limits(f));

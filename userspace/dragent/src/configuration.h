@@ -883,6 +883,7 @@ public:
 	bool m_cointerface_mem_profile_enabled;
 
 	uint32_t m_statsite_buffer_warning_length;
+	bool m_statsite_check_format;
 
 	unsigned m_snaplen;
 
