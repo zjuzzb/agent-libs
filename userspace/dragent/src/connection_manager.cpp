@@ -6,6 +6,7 @@
 #include "watchdog_runnable_fatal_error.h"
 #include <future>
 #include <errno.h>
+#include <memory>
 #include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
 
@@ -221,13 +222,16 @@ bool connection_manager::connect()
 	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
 	         US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US));
 
-	std::promise<SharedPtr<StreamSocket>> sock_promise;
-	std::future<SharedPtr<StreamSocket>> future_sock = sock_promise.get_future();
+	std::promise<socket_ptr> sock_promise;
+	std::future<socket_ptr> future_sock = sock_promise.get_future();
 
 	//
 	// Asynchronously connect to the collector
 	//
-	std::thread connect_thread([&sock_promise](string& hostname,
+	// Since sock_promise is captured by reference, need to ensure that it
+	// doesn't go out of scope until the thread ends.
+	//
+	std::thread connect_thread([&sock_promise](const string& hostname,
 	                                           uint16_t port,
 	                                           bool ssl_enabled,
 	                                           uint32_t transmit_buffer_size,
@@ -309,7 +313,7 @@ bool connection_manager::connect()
 
 			LOG_INFO("Connected to collector");
 
-			sock_promise.set_value(SharedPtr<StreamSocket>(ssp));
+			sock_promise.set_value(socket_ptr(ssp));
 		}
 		catch(const Poco::IOException& e)
 		{
@@ -353,10 +357,11 @@ bool connection_manager::connect()
 	LOG_INFO("Waiting to connect %u s", wait_for_s);
 	for(waited_time_s = 0; waited_time_s < wait_for_s; ++waited_time_s)
 	{
-		if(!heartbeat())
-		{
-			break;
-		}
+		// SMAGENT-1449
+		// We can't break out of this loop even if the program is being terminated
+		// because the thread has captured some local variables. Come what may, we
+		// have to ride out this attempt to connect until the bitter end.
+		(void)heartbeat();
 		if(future_sock.wait_for(std::chrono::seconds(1)) == std::future_status::ready)
 		{
 			break;
@@ -380,7 +385,7 @@ bool connection_manager::connect()
 	// This shouldn't block at this point
 	m_socket = std::move(future_sock.get());
 
-	if(m_socket.isNull())
+	if(!m_socket)
 	{
 		LOG_WARNING("Connection attempt failed. Retrying...");
 		disconnect();
@@ -395,7 +400,7 @@ void connection_manager::disconnect()
 	disconnect(m_socket);
 }
 
-void connection_manager::disconnect(SharedPtr<StreamSocket> ssp)
+void connection_manager::disconnect(socket_ptr ssp)
 {
 	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
 	{
@@ -406,7 +411,7 @@ void connection_manager::disconnect(SharedPtr<StreamSocket> ssp)
 		m_reconnect_interval = std::min(std::max(connection_manager::RECONNECT_MIN_INTERVAL_S, m_reconnect_interval * 2), RECONNECT_MAX_INTERVAL_S);
 	}
 
-	if(!ssp.isNull())
+	if(ssp)
 	{
 		LOG_INFO("Disconnecting from collector");
 		ssp->close();
@@ -558,7 +563,7 @@ bool connection_manager::transmit_buffer(uint64_t now, std::shared_ptr<protocol_
 
 	try
 	{
-		if(m_socket.isNull())
+		if(!m_socket)
 		{
 			return false;
 		}
@@ -630,7 +635,7 @@ bool connection_manager::receive_message()
 {
 	try
 	{
-		if(m_socket.isNull())
+		if(!m_socket)
 		{
 			return false;
 		}
