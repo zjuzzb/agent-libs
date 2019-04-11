@@ -34,6 +34,7 @@ add_executable(unit-test-dragent
 	crash_handler.ut.cpp
 	logger.ut.cpp
 	sinsp_worker.ut.cpp
+	spinlock.ut.cpp
 	watchdog_runnable.ut.cpp
 	connection_manager.ut.cpp
 )
@@ -63,7 +64,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_custom_target(run-unit-test-dragent
 		DEPENDS unit-test-dragent
 		COMMAND valgrind --gen-suppressions=all ./unit-test-dragent
-		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-dragent
+		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-dragent --gtest_filter="-spinlock_test.*"
 	)
 else()
 	add_custom_target(run-unit-test-dragent
