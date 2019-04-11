@@ -14,6 +14,7 @@ import simplejson as json
 from IPython import embed
 from google.protobuf.text_format import Merge as parse_text_protobuf
 from google.protobuf.pyext._message import RepeatedCompositeContainer, ScalarMapContainer
+from google.protobuf.descriptor import FieldDescriptor
 from protobuf_to_dict import protobuf_to_dict
 from hashlib import md5
 
@@ -97,7 +98,7 @@ class KubernetesCheck(object):
         self.nodes = set()
         self.k8s_pods = set()
 
-    def __call__(self, m, _mobj):
+    def __call__(self, m, _mobj, path):
         if "kubernetes" in m:
             self.kubernetes_delegated_nodes.add((m["machine_id"], m["hostinfo"]["hostname"]))
             for pod in m["kubernetes"]["pods"]:
@@ -144,7 +145,7 @@ class MesosCheck(object):
         self.frameworks = {}
         self.host_by_task = {}
 
-    def __call__(self, m, _mobj):
+    def __call__(self, m, _mobj, path):
         if "mesos" in m:
             mesos = m["mesos"]
             for framework in mesos["frameworks"]:
@@ -207,7 +208,7 @@ class FollowContainer(object):
         self.container_to_follow = args
         self.print_header = True
 
-    def __call__(self, m, _mobj):
+    def __call__(self, m, _mobj, path):
         for c in m["containers"]:
             if c["id"] == self.container_to_follow:
                 print "Present"
@@ -227,7 +228,7 @@ class ContainerProcessChecker(object):
         self.processes_no_containers = set()
         self.print_header = True
 
-    def __call__(self, m, _mobj):
+    def __call__(self, m, _mobj, path):
         containers = {}
         container_processes = {}
         processes_no_containers = set()
@@ -295,7 +296,7 @@ class FlameGraph(object):
         self.sizes[path] += total_len - children
         return total_len
 
-    def __call__(self, _m, mobj):
+    def __call__(self, _m, mobj, path):
         self.get_pb_sizes(mobj, 'metrics')
 
     def summary(self):
@@ -303,6 +304,96 @@ class FlameGraph(object):
             if v > 0:
                 print '{} {}'.format(k, v)
 
+class DeepAnalysis(object):
+    print_header = False
+
+    def __init__(self, args):
+        # maps a path to a size
+        self.subtree_size = defaultdict(int)
+        # maps a path to a data hash
+        # don't need it directly here, but necessary for
+        # cross-time comparisons
+        self.subtree_data = {}
+        self.subtree_data_hr = {}
+        # maps a data hash to the path where it occurs.
+        self.hash_locations = {}
+        self.count = 0
+
+        # Note: there is SOME risk here that we are over aggressive. Consider if
+        # we have a uint32 with value 0, and a uint64 with value 0. These will be the "same"
+        # as far as the maps are concerned, but are in reality different. We don't foresee
+        # this being a particularly big problem
+
+    def scalar_stuff(self, value, f, path):
+        # grab the size based on the type...but set integer types to 0...since not worth it
+        if f.type is FieldDescriptor.TYPE_DOUBLE or FieldDescriptor.TYPE_INT64 or FieldDescriptor.TYPE_UINT64 or FieldDescriptor.TYPE_FIXED64 or FieldDescriptor.TYPE_SFIXED64 or FieldDescriptor.TYPE_SINT64:
+            self.subtree_size[path] = 0
+        elif f.type is FieldDescriptor.TYPE_FLOAT or FieldDescriptor.TYPE_INT32 or FieldDescriptor.TYPE_FIXED32 or FieldDescriptor.TYPE_UINT32 or FieldDescriptor.TYPE_ENUM or FieldDescriptor.TYPE_SFIXED32 or FieldDescriptor.TYPE_SINT32:
+            self.subtree_size[path] = 0
+        elif f.type is FieldDescriptor.TYPE_BOOL:
+            self.subtree_size[path] = 0
+        elif f.type is FieldDescriptor.TYPE_STRING:
+            self.subtree_size[path] = len(value)
+        else:
+            assert False, "Unhandled scalar type"
+
+        self.subtree_data[path] = value
+        if value not in self.hash_locations:
+            self.hash_locations[value] = []
+        self.hash_locations[value].append(path)
+
+    def deep_analyze(self, pb, path):
+        data = pb.SerializePartialToString()
+        self.subtree_size[path] = len(data)
+        self.subtree_data[path] = data
+        self.subtree_data_hr[path] = pb
+        if data not in self.hash_locations:
+            self.hash_locations[data] = []
+        self.hash_locations[data].append(path)
+
+        for f in pb.DESCRIPTOR.fields:
+            if f.label is FieldDescriptor.LABEL_REPEATED: # repeated field
+                vals = getattr(pb, f.name)
+                for i in range(0, len(vals)):
+                    item = vals[i]
+                    subpath = '{};{}.{}'.format(path, f.name, i)
+                    if f.message_type is None: # first deal with scalarrrs
+                        self.scalar_stuff(item, f, subpath)
+                    else: # repeated message
+                        self.deep_analyze(item, subpath)
+            else:
+                subpath = '{};{}'.format(path, f.name)
+                if f.message_type is None: #stand-alone scalar
+                    self.scalar_stuff(getattr(pb, f.name), f, subpath)
+                else: # regular sub message
+                    self.deep_analyze(getattr(pb, f.name), subpath)
+
+    def __call__(self, _m, mobj, path):
+        self.count += 1
+        self.deep_analyze(mobj, path + '::metrics')
+
+    def summary(self):
+        total_savings = defaultdict(int)
+        found_data = set()
+        found_data.add(0) # seriously...we don't need to dedupe 0's
+        for k in self.subtree_data:
+            if len(self.hash_locations[self.subtree_data[k]]) > 1 and self.subtree_size[k] > 0 and self.subtree_data[k] not in found_data: #only take multiples
+                total_savings[k] = self.subtree_size[k] * (len(self.hash_locations[self.subtree_data[k]]) - 1)
+                found_data.add(self.subtree_data[k])
+
+        # using magic, sorts hashes by most savings
+        most_savings = sorted(total_savings.iteritems(), key=lambda x: x[1], reverse=True)
+
+        # print out paths of top 20
+        for k,v in most_savings:
+            print "Potential Savings: ", v/self.count, " bytes per message
+            print "Data:"
+            print ""
+            print self.subtree_data_hr[k]
+            print "Paths:"
+            for i in self.hash_locations[self.subtree_data[k]]:
+                print "\t",i
+            print "\n\n"
 
 class BinaryOutput(object):
     print_header = True
@@ -310,7 +401,7 @@ class BinaryOutput(object):
     def __init__(self, args):
         pass
 
-    def __call__(self, m, mobj):
+    def __call__(self, m, mobj, path):
         machine_id = m['machine_id'].replace(':', '-')
         timestamp_ns = m['timestamp_ns']
 
@@ -332,7 +423,7 @@ class TextOutput(object):
     def __init__(self, args):
         pass
 
-    def __call__(self, m, mobj):
+    def __call__(self, m, mobj, path):
         print str(mobj)
 
 
@@ -387,7 +478,7 @@ class EnvFuzz(object):
 
         return mobj
 
-    def __call__(self, m, mobj):
+    def __call__(self, m, mobj, path):
         for i in range(self.filter_args.get('count', 1)):
             mobj = self.fuzz(mobj)
 
@@ -401,6 +492,7 @@ FILTERS = {
     'text_output': TextOutput,
     'env_fuzz': EnvFuzz,
     'flame_graph': FlameGraph,
+    'deep_analysis' : DeepAnalysis,
 }
 
 # backwards-compatible names
@@ -435,26 +527,26 @@ def analyze_proto(args, path, filter_f):
         with open(path, "rb") as f:
             f.seek(2)
             metrics = draios_pb2.metrics.FromString(f.read())
-            process_metrics(metrics, filter_f)
+            process_metrics(metrics, filter_f, path)
     else:
         if args.reorder:
             ml = [metrics for metrics in MetricsFile(path)]
             ml.sort(key=lambda m: m.timestamp_ns)
             for m in ml:
-                process_metrics(m, filter_f)
+                process_metrics(m, filter_f, path)
         else:
             for metrics in MetricsFile(path, tail=args.follow):
-                process_metrics(metrics, filter_f)
+                process_metrics(metrics, filter_f, path)
 
 
-def process_metrics(metrics, filter_f):
+def process_metrics(metrics, filter_f, filename):
     ts = datetime.fromtimestamp(metrics.timestamp_ns / 1000000000)
     try:
         metrics_d = protobuf_to_dict(metrics)
     except UnicodeDecodeError:
         print("Error processing sample %s:%s", metrics.timestamp_ns, metrics.machine_id)
         return
-    metrics_j = filter_f(metrics_d, metrics)
+    metrics_j = filter_f(metrics_d, metrics, filename)
     if metrics_j:
         print_ts_header(ts)
         print(json.dumps(metrics_j, indent=2))
