@@ -154,6 +154,14 @@ private:
 			// caller responsible for ensuring we only emit containers once
 			ASSERT(m_emitted_containers.find(*i) == m_emitted_containers.end());
 
+			// it would be....odd/wrong to have a container without the
+			// backing program...
+			if (m_progtable_by_container.at(*i).size() == 0)
+			{
+				ASSERT(false);
+				continue;
+			}
+
 			m_t.emit_container(*i,
 					   &m_statsd_limit,
 					   m_total_cpu_shares,
