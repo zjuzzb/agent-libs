@@ -24,6 +24,7 @@ except ImportError:
 import yaml
 
 # project
+import _internal_modules
 from checks import check_status
 from util import get_hostname, get_next_id, LaconicFilter, yLoader
 from utils.platform import Platform
