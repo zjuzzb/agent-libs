@@ -144,8 +144,6 @@ private:
 	uint32_t m_buffer_warning_length;
 	statsd_metric m_metric;
 	bool m_check_format = false;
-
-	friend class test_helper;
 };
 
 class statsd_server
