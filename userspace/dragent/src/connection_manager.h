@@ -44,7 +44,7 @@ private:
 	static std::string get_openssldir();
 	bool connect();
 	void disconnect();
-	void disconnect(socket_ptr ssp);
+	void disconnect(socket_ptr& ssp);
 	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);
 	bool receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);

@@ -400,7 +400,7 @@ void connection_manager::disconnect()
 	disconnect(m_socket);
 }
 
-void connection_manager::disconnect(socket_ptr ssp)
+void connection_manager::disconnect(socket_ptr& ssp)
 {
 	if(chrono::system_clock::now() - m_last_connection_failure >= WORKING_INTERVAL_S)
 	{
