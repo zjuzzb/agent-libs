@@ -18,6 +18,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "configuration_manager.h"
+
 using namespace Poco;
 using namespace Poco::Net;
 
@@ -29,9 +31,22 @@ std::atomic<bool> dragent_configuration::m_terminate(false);
 std::atomic<bool> dragent_configuration::m_send_log_report(false);
 std::atomic<bool> dragent_configuration::m_config_update(false);
 
-static std::string bool_as_text(bool b)
+namespace {
+
+std::string bool_as_text(bool b)
 {
 	return b ? "true" : "false";
+}
+
+/**
+ * Helper to pass into the configuration manager since it
+ * doesn't have access to the logger.
+ */
+void log_config(const::std::string& value)
+{
+	LOG_INFO(value);
+}
+
 }
 
 dragent_auto_configuration::dragent_auto_configuration(const string &config_filename,
@@ -597,6 +612,7 @@ void dragent_configuration::init()
 
 	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
 
+
 	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
 
 	if(!m_config->get_scalar<string>("metricsfile", "location", "").empty())
@@ -710,7 +726,6 @@ void dragent_configuration::init()
 	m_cointerface_events_per_profile = m_config->get_scalar<int32_t>("cointerface_events_per_profile", 10000);
 	m_cointerface_total_profiles = m_config->get_scalar<int32_t>("cointerface_total_profiles", 30);
 
-	m_statsite_buffer_warning_length = m_config->get_scalar<uint32_t>("statsite_buffer_warning_length", 512);
 	m_statsite_check_format = m_config->get_scalar<bool>("statsite_check_format", false);
 
 	m_curl_debug = m_config->get_scalar<bool>("curl_debug", false);
@@ -1322,6 +1337,9 @@ void dragent_configuration::init()
 		m_track_environment = false;
 	}
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
+
+	// init the configurations
+	configuration_manager::init_config(*m_config);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1829,6 +1847,8 @@ void dragent_configuration::print_configuration() const
 	}
 
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
+
+	configuration_manager::print_config(log_config);
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

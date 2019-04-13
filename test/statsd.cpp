@@ -137,7 +137,7 @@ TEST(statsite_proxy, parser)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen so to be bigger than anything in the above file.
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy(make_pair(input_fd, output_file), false);
 
 	auto ret = proxy.read_metrics();
 	EXPECT_EQ(2U, ret.size());
@@ -173,7 +173,7 @@ TEST(statsite_proxy, parser_long)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen to be smaller than the longest string in the above file
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy(make_pair(input_fd, output_file), false);
 
 	auto ret = proxy.read_metrics();
 	ASSERT_EQ(1U, ret.size());
@@ -225,7 +225,7 @@ void do_statsite_proxy_validation(const std::string& stats,
 	ASSERT_TRUE(out != nullptr);
 
 	ASSERT_NO_THROW({
-		statsite_proxy proxy(make_pair(in, out), 300, true);
+		statsite_proxy proxy(make_pair(in, out), true);
 
 		proxy.send_metric(stats.c_str(), stats.size());
 	});
@@ -520,7 +520,7 @@ TEST(statsite_proxy, filter)
 	auto output_file = fopen("resources/statsite_output.txt", "r");
 	auto input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy(make_pair(input_fd, output_file), false);
 
 	filter_vec_t f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
 	metric_limits::sptr_t ml(new metric_limits(f));
@@ -535,7 +535,7 @@ TEST(statsite_proxy, filter)
 	output_file = fopen("resources/statsite_output.txt", "r");
 	input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy2(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy2(make_pair(input_fd, output_file), false);
 
 	f = {{"*1?", true}, {"totam.sunt.consequatur.numquam.aperiam7", true}, {"*", false}};
 	ml.reset(new metric_limits(f));

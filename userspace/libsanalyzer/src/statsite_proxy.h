@@ -124,7 +124,6 @@ public:
 	typedef unordered_map<string, vector<statsd_metric>> metric_map_t;
 
 	statsite_proxy(const pair<FILE*, FILE*>& pipes,
-		       uint32_t buffer_warning_length,
 		       bool check_format);
 	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 	void send_metric(const char *buf, uint64_t len);
@@ -141,7 +140,6 @@ private:
 private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
-	uint32_t m_buffer_warning_length;
 	statsd_metric m_metric;
 	bool m_check_format = false;
 };
@@ -175,7 +173,6 @@ class statsite_forwarder: public Poco::ErrorHandler
 public:
 	statsite_forwarder(const pair<FILE*, FILE*>& pipes,
 			   uint16_t statsd_port,
-			   uint32_t buffer_warning_length,
 			   bool check_format);
 	virtual void exception(const Poco::Exception& ex) override;
 	virtual void exception(const std::exception& ex) override;

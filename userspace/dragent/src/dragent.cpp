@@ -336,7 +336,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 	monitor monitor_process(m_pidfile, m_windows_service_parent);
 #endif
 
-	m_configuration.init(this);
+	try
+	{
+		m_configuration.init(this);
+	}
+	catch (const yaml_configuration_exception &ex)
+	{
+		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
+		dragent_configuration::m_terminate = true;
+	}
+
 #ifndef _WIN32
 	//
 	// Before running the monitor, unblock all the signals,
@@ -514,7 +523,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
 						       m_configuration.m_statsd_port,
-						       m_configuration.m_statsite_buffer_warning_length,
 						       m_configuration.m_statsite_check_format);
 				return fwd.run();
 			});

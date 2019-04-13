@@ -36,8 +36,6 @@ file(COPY fake_backend.cert
 		statsite_output_long.txt
 		tcp_client.py
 		tcp_server.py
-		test.default.yaml
-		test.yaml
 		test_filters.yaml
 		unix_client.py
 		unix_server.py
