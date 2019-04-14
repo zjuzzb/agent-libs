@@ -70,4 +70,4 @@ endif()
 
 install(TARGETS unit-test-libsanalyzer
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT unit-test-libsanalyzer)
+	COMPONENT tests)

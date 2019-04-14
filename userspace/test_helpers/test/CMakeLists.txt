@@ -74,5 +74,5 @@ endif()
 
 install(TARGETS unit-test-testhelpers
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT unit-test-testhelpers
+	COMPONENT tests
 )

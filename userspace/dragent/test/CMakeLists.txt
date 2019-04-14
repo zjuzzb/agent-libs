@@ -77,5 +77,5 @@ endif()
 
 install(TARGETS unit-test-dragent
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT unit-test-dragent)
+	COMPONENT tests)
 
