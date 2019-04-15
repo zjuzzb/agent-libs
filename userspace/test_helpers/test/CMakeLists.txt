@@ -30,6 +30,7 @@ add_executable(unit-test-testhelpers
 	main.cpp
 	scoped_file_descriptor.ut.cpp
 	scoped_pipe.ut.cpp
+	scoped_temp_directory.ut.cpp
 	scoped_temp_file.ut.cpp
 )
 
@@ -63,11 +64,13 @@ file(
 # unexpected backtraces, we'll run helgrind only for debug builds.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_custom_target(run-unit-test-testhelpers
+		DEPENDS unit-test-testhelpers
 		COMMAND valgrind --gen-suppressions=all ./unit-test-testhelpers
 		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-testhelpers
 	)
 else()
 	add_custom_target(run-unit-test-testhelpers
+		DEPENDS unit-test-testhelpers
 		COMMAND valgrind --gen-suppressions=all ./unit-test-testhelpers
 	)
 endif()

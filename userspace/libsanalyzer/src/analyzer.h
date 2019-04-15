@@ -34,31 +34,15 @@
 #include "env_hash.h"
 #include "procfs_scanner.h"
 #include "analyzer_file_stat.h"
+#include "analyzer_callback_interface.h"
 
-class audit_tap;
-namespace tap {
-class AuditLog;
+namespace libsanalyzer
+{
+class metric_serializer;
 }
 
-//
-// Prototype of the callback invoked by the analyzer when a sample is ready
-//
-class analyzer_callback_interface
-{
-public:
-	virtual void sinsp_analyzer_data_ready(uint64_t ts_ns,
-					       uint64_t nevts,
-					       uint64_t num_drop_events,
-					       draiosproto::metrics* metrics,
-					       uint32_t sampling_ratio,
-					       double analyzer_cpu_pct,
-					       double flush_cpu_cpt,
-					       uint64_t analyzer_flush_duration_ns,
-					       uint64_t num_suppressed_threads) = 0;
+class audit_tap;
 
-	virtual void audit_tap_data_ready(uint64_t ts_ns, const tap::AuditLog *audit_log) = 0;
-
-};
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
@@ -611,6 +595,17 @@ public:
 	mode_switch_state m_mode_switch_state;
 	stress_tool_matcher m_stress_tool_matcher;
 
+	/**
+	 * Ensure that any async processing associated with flush() is complete
+	 * before returning.
+	 */
+	void flush_drain() const;
+
+	/**
+	 * Enable or disable async protobuf serialization.
+	 */
+	void set_async_protobuf_serialize_enabled(bool enabled);
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
 
@@ -623,8 +618,6 @@ VISIBILITY_PRIVATE
 	void filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	template<class Iterator>
 	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
-	char* serialize_to_bytebuf(OUT uint32_t *len, bool compressed);
-	void serialize(sinsp_evt* evt, uint64_t ts);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			    bool is_eof, sinsp_analyzer::flush_flags flushflags,
 			    const tracer_emitter &f_trc);
@@ -766,11 +759,12 @@ VISIBILITY_PRIVATE
 	uint64_t m_flush_log_time_restart;
 
 	uint64_t m_prev_sample_evtnum;
-	uint64_t m_serialize_prev_sample_evtnum;
-	uint64_t m_serialize_prev_sample_time;
-	uint64_t m_serialize_prev_sample_num_drop_events;
 
-	bool m_sent_metrics;
+	/**
+	 * Have metrics ever been sent?  This is atomic because it can
+	 * be read from/written to on different threads.
+	 */
+	std::atomic<bool> m_sent_metrics;
 	bool m_trace_started;
 	uint64_t m_last_profile_flush_ns;
 	uint32_t m_trace_count;
@@ -801,9 +795,6 @@ VISIBILITY_PRIVATE
 	// This is the protobuf class that we use to pack things
 	//
 	draiosproto::metrics* m_metrics;
-	char* m_serialization_buffer;
-	uint32_t m_serialization_buffer_size;
-	FILE* m_protobuf_fp;
 
 	//
 	// Checking Docker swarm state every 10 seconds
@@ -1073,6 +1064,9 @@ VISIBILITY_PRIVATE
 	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
 	//
 	bool m_die;
+
+	std::unique_ptr<libsanalyzer::metric_serializer> m_serializer;
+	bool m_async_serialize_enabled;
 
 	friend class dragent_app;
 	friend class sinsp_transaction_table;

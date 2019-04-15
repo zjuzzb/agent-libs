@@ -3,5 +3,6 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/targe
 add_library(test_helpers STATIC
 	scoped_file_descriptor.cpp
 	scoped_pipe.cpp
+	scoped_temp_directory.cpp
 	scoped_temp_file.cpp
 )

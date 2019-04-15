@@ -139,7 +139,10 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser_api.cpp
+	metric_serializer.cpp
+	metric_serializer_factory.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/prefix_search.cpp
+	protobuf_metric_serializer.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp

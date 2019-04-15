@@ -9,6 +9,17 @@
 }
 
 {
+   tcmalloc_DLL_Remove
+   Helgrind:Race
+   fun:_ZN8tcmalloc10DLL_RemoveEPNS_4SpanE
+   fun:_ZN8tcmalloc15CentralFreeList17FetchFromOneSpansEiPPvS2_
+   fun:_ZN8tcmalloc15CentralFreeList21FetchFromOneSpansSafeEiPPvS2_
+   fun:_ZN8tcmalloc15CentralFreeList11RemoveRangeEPPvS2_i
+   fun:_ZN8tcmalloc11ThreadCache21FetchFromCentralCacheEmm
+   ...
+}
+
+{
    std_atomic_bool_operator=
    Helgrind:Race
    fun:_ZNSt13__atomic_baseIbE5storeEbSt12memory_order
@@ -65,7 +76,6 @@
    fun:_ZNKSt13__atomic_baseImE4loadESt12memory_order
    fun:_ZNKSt13__atomic_baseImEcvmEv
 }
-
 
 {
    poco_push_runnable
