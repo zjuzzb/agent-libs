@@ -186,6 +186,17 @@ public:
 		pctl_to_protobuf(m_percentile);
 	}
 
+	inline void coalesce_protobuf(draiosproto::counter_proto_entry* counters,
+				      uint32_t sampling_ratio) const
+	{
+		counters->set_ncalls(counters->ncalls() + m_ncalls * sampling_ratio);
+		counters->set_time_tot(counters->time_tot() + m_time_tot * sampling_ratio);
+		counters->set_time_max(std::max(m_time_max, counters->time_max()));
+		counters->set_bytes_in(counters->bytes_in() + m_bytes_in * sampling_ratio);
+		counters->set_bytes_out(counters->bytes_out() + m_bytes_out * sampling_ratio);
+		counters->set_nerrors(counters->nerrors() + m_nerrors * sampling_ratio);
+	}
+
 	void add_time(uint64_t time_delta)
 	{
 		m_time_tot += time_delta;
@@ -684,6 +695,8 @@ public:
 				uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	void to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
+	void coalesce_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampling_ratio);
+
 	inline bool has_data()
 	{
 		return m_server_queries.size() > 0 ||
@@ -731,6 +744,7 @@ public:
 				uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	void to_protobuf(draiosproto::mongodb_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
+	void coalesce_protobuf(draiosproto::mongodb_info* protobuf_msg, uint32_t sampling_ratio);
 
 	inline bool has_data()
 	{
@@ -785,17 +799,21 @@ public:
 				uint64_t time_delta, bool is_server, uint32_t truncation_size);
 
 	inline void to_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
+	inline void coalesce_protobuf(draiosproto::http_info* protobuf_msg, uint32_t sampling_ratio);
 
 private:
 	friend class sinsp_http_marker;
 	void url_table_to_protobuf(draiosproto::http_info* protobuf_msg,
-							   std::unordered_map<std::string, sinsp_url_details>* table,
-							   bool is_server,
-							   uint32_t sampling_ratio, uint32_t limit);
+				   std::unordered_map<std::string, sinsp_url_details>* table,
+				   bool is_server,
+				   uint32_t sampling_ratio, uint32_t limit);
+
 	void status_code_table_to_protobuf(draiosproto::http_info* protobuf_msg,
-									   std::unordered_map<uint32_t, sinsp_request_details>* table,
-									   bool is_server,
-									   uint32_t sampling_ratio, uint32_t limit);
+					   std::unordered_map<uint32_t, sinsp_request_details>* table,
+					   bool is_server,
+					   uint32_t sampling_ratio,
+					   uint32_t limit);
+
 	std::unordered_map<std::string, sinsp_url_details> m_server_urls;
 	std::unordered_map<std::string, sinsp_url_details> m_client_urls;
 	std::unordered_map<uint32_t, sinsp_request_details> m_server_status_codes;
@@ -827,7 +845,11 @@ public:
 	void add(sinsp_protostate* other);
 	void set_percentiles(const std::set<double>& pctls);
 	void set_serialize_pctl_data(bool val);
-	void to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit);
+	void to_protobuf(draiosproto::proto_info* protobuf_msg,
+			 uint32_t sampling_ratio,
+			 uint32_t limit);
+	void coalesce_protobuf(draiosproto::proto_info* protobuf_msg,
+			       uint32_t sampling_ratio);
 
 	sinsp_http_state m_http;
 	sql_state m_mysql;
@@ -1020,5 +1042,4 @@ private:
 
         friend class test_helper;
 };
-
 #endif // HAS_ANALYZER

@@ -427,6 +427,28 @@ void sinsp_http_state::to_protobuf(draiosproto::http_info *protobuf_msg, uint32_
 
 }
 
+void sinsp_http_state::coalesce_protobuf(draiosproto::http_info *protobuf_msg,
+					 uint32_t sampling_ratio)
+{
+	// don't bother with URLs and statuses since we're just duplicating host
+	// data at that point
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.coalesce_protobuf(totals, sampling_ratio);
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.coalesce_protobuf(totals, sampling_ratio);
+	}
+
+}
+
 void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32_t sampling_ratio, uint32_t limit)
 {
 	//
@@ -450,6 +472,33 @@ void sinsp_protostate::to_protobuf(draiosproto::proto_info* protobuf_msg, uint32
 	if(m_mongodb.has_data())
 	{
 		m_mongodb.to_protobuf(protobuf_msg->mutable_mongodb(), sampling_ratio, limit);
+	}
+}
+
+void sinsp_protostate::coalesce_protobuf(draiosproto::proto_info* protobuf_msg,
+					 uint32_t sampling_ratio)
+{
+	//
+	// HTTP
+	//
+	if(m_http.has_data())
+	{
+		m_http.coalesce_protobuf(protobuf_msg->mutable_http(), sampling_ratio);
+	}
+	//
+	// mysql
+	//
+	if(m_mysql.has_data())
+	{
+		m_mysql.coalesce_protobuf(protobuf_msg->mutable_mysql(), sampling_ratio);
+	}
+	if(m_postgres.has_data())
+	{
+		m_postgres.coalesce_protobuf(protobuf_msg->mutable_postgres(), sampling_ratio);
+	}
+	if(m_mongodb.has_data())
+	{
+		m_mongodb.coalesce_protobuf(protobuf_msg->mutable_mongodb(), sampling_ratio);
 	}
 }
 
@@ -487,6 +536,25 @@ void sql_state::to_protobuf(draiosproto::sql_info* protobuf_msg, uint32_t sampli
 				[&] (const sinsp_request_details::percentile_ptr_t pct) {
 			percentile_to_protobuf(totals, pct);
 		});
+	}
+}
+
+void sql_state::coalesce_protobuf(draiosproto::sql_info* protobuf_msg,
+				  uint32_t sampling_ratio)
+{
+	// query tables covered in host metrics
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.coalesce_protobuf(totals, sampling_ratio);
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.coalesce_protobuf(totals, sampling_ratio);
 	}
 }
 
@@ -628,6 +696,26 @@ void mongodb_state::to_protobuf(draiosproto::mongodb_info *protobuf_msg, uint32_
 				[&] (const sinsp_request_details::percentile_ptr_t pct) {
 			percentile_to_protobuf(totals, pct);
 		});
+	}
+
+}
+
+void mongodb_state::coalesce_protobuf(draiosproto::mongodb_info *protobuf_msg,
+				      uint32_t sampling_ratio)
+{
+
+	draiosproto::counter_proto_entry* totals;
+
+	if (m_server_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_server_totals();
+		m_server_totals.coalesce_protobuf(totals, sampling_ratio);
+	}
+
+	if (m_client_totals.get_time_tot())
+	{
+		totals = protobuf_msg->mutable_client_totals();
+		m_client_totals.coalesce_protobuf(totals, sampling_ratio);
 	}
 
 }

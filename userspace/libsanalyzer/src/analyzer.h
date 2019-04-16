@@ -790,7 +790,14 @@ public:
 	                    unsigned* statsd_limit,
 	                    uint64_t total_cpu_shares,
 	                    sinsp_threadinfo* tinfo, 
-	                    sinsp_analyzer::flush_flags flushflags);
+	                    sinsp_analyzer::flush_flags flushflags,
+			    const std::list<uint32_t>& groups);
+
+	/**
+	 * coalesce all stats from containers which weren't emitted into the proper
+	 * protobuf
+	 */
+	void coalesce_unemitted_stats(const vector<std::string>& emitted_containers);
 
 
 VISIBILITY_PRIVATE
@@ -868,7 +875,6 @@ VISIBILITY_PRIVATE
 	// deprecated in favor of smart container filtering
 	vector<string> emit_containers_deprecated(const progtable_by_container_t& active_containers,
 				       sinsp_analyzer::flush_flags flushflags);
-
 
 
 	void tune_drop_mode(flush_flags flushflags, double threshold_metric);
@@ -1235,6 +1241,8 @@ VISIBILITY_PRIVATE
 	 *     - too many tid collisions
 	 */
 	bool m_die;
+
+	friend class test_helper;
 
 	std::unique_ptr<libsanalyzer::metric_serializer> m_serializer;
 	bool m_async_serialize_enabled;

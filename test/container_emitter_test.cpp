@@ -81,15 +81,23 @@ public:
 							  containers.begin(),
 							  containers.end());
 	}
-	set<string> emitted_containers;
+	set<string> high_priority_emitted_containers;
+	set<string> low_priority_emitted_containers;
+
 	void emit_container(const string &container_id,
 				   unsigned *statsd_limit,
 				   uint64_t total_cpu_shares,
 				   sinsp_threadinfo* tinfo,
-				   uint32_t flush_flags)
+				   uint32_t flush_flags,
+				   const std::list<uint32_t> groups)
 	{
 		ASSERT_EQ(flush_flags, test_flush_flags);
-		emitted_containers.insert(container_id);
+		if (groups.size() > 0)
+		{
+			high_priority_emitted_containers.insert(container_id);
+		} else {
+			low_priority_emitted_containers.insert(container_id);
+		}
 	}
 };
 
@@ -128,8 +136,8 @@ TEST(container_emitter, patterns)
 				       emitted_containers);
 	emitter.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 1);
-	ASSERT_NE(fake_analyzer.emitted_containers.find("maybe container 2"), fake_analyzer.emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 1);
+	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 2"), fake_analyzer.low_priority_emitted_containers.end());
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 1);
 	ASSERT_EQ(emitted_containers.size(), 1);
 	ASSERT_NE(std::find(emitted_containers.begin(), emitted_containers.end(),"maybe container 2"), emitted_containers.end());
@@ -232,20 +240,22 @@ TEST(container_emitter, smart_filter_test)
 	// 1) list of containers which we determined were emittable
 	// 2) list of containers which we actually emitted
 	// 3) returned list of containers which we claimed to emit
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 12);
-	ASSERT_EQ(fake_analyzer.emitted_containers.find("k8s container"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("maybe container 1"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("maybe container 2"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("old container"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("young container"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high net"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high cpu"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high file"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high mem"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low mem"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low file"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low net"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low cpu"), fake_analyzer.emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 2);
+	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 10);
+	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.find("k8s container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.find("k8s container"), fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 1"), fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.low_priority_emitted_containers.find("maybe container 2"), fake_analyzer.low_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("young container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low mem"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low file"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low net"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low cpu"), fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 	ASSERT_EQ(std::find(fake_analyzer.emittable_containers.begin(), fake_analyzer.emittable_containers.end(),"k8s container"), fake_analyzer.emittable_containers.end());
@@ -283,7 +293,8 @@ TEST(container_emitter, smart_filter_test)
 	// second subtest: only marked containers get sent
 	emitted_containers.clear();
 	fake_analyzer.emittable_containers.clear();
-	fake_analyzer.emitted_containers.clear();
+	fake_analyzer.high_priority_emitted_containers.clear();
+	fake_analyzer.low_priority_emitted_containers.clear();
 
 	test_container_emitter emitter2(fake_analyzer,
 					fake_analyzer.containers,
@@ -297,16 +308,16 @@ TEST(container_emitter, smart_filter_test)
 	emitter2.emit_containers();
 
 	//ASSERT_EQ(fake_analyzer.emitted_containers.size(), 10);
-	ASSERT_NE(fake_analyzer.emitted_containers.find("old container"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("young container"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high net"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high cpu"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high file"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high mem"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low mem"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low file"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low net"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("low cpu"), fake_analyzer.emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("young container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low mem"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low file"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low net"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("low cpu"), fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
@@ -327,7 +338,8 @@ TEST(container_emitter, smart_filter_test)
 	// third subtest: when splitting on age, high stat containers get sent
 	emitted_containers.clear();
 	fake_analyzer.emittable_containers.clear();
-	fake_analyzer.emitted_containers.clear();
+	fake_analyzer.low_priority_emitted_containers.clear();
+	fake_analyzer.high_priority_emitted_containers.clear();
 
 	test_container_emitter emitter3(fake_analyzer,
 					fake_analyzer.containers,
@@ -340,12 +352,12 @@ TEST(container_emitter, smart_filter_test)
 					emitted_containers);
 	emitter3.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 5);
-	ASSERT_NE(fake_analyzer.emitted_containers.find("old container"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high net"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high cpu"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high file"), fake_analyzer.emitted_containers.end());
-	ASSERT_NE(fake_analyzer.emitted_containers.find("high mem"), fake_analyzer.emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 5);
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high net"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high cpu"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high file"), fake_analyzer.high_priority_emitted_containers.end());
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("high mem"), fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
@@ -362,7 +374,8 @@ TEST(container_emitter, smart_filter_test)
 	// fourth subtest: double check age split, and only have 1 container
 	emitted_containers.clear();
 	fake_analyzer.emittable_containers.clear();
-	fake_analyzer.emitted_containers.clear();
+	fake_analyzer.low_priority_emitted_containers.clear();
+	fake_analyzer.high_priority_emitted_containers.clear();
 
 	test_container_emitter emitter4(fake_analyzer,
 					fake_analyzer.containers,
@@ -375,8 +388,8 @@ TEST(container_emitter, smart_filter_test)
 					emitted_containers);
 	emitter4.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 1);
-	ASSERT_NE(fake_analyzer.emitted_containers.find("old container"), fake_analyzer.emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 1);
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
@@ -388,7 +401,8 @@ TEST(container_emitter, smart_filter_test)
 	// fifth subtest: have a non %4=0 count to ensure we split correctly
 	emitted_containers.clear();
 	fake_analyzer.emittable_containers.clear();
-	fake_analyzer.emitted_containers.clear();
+	fake_analyzer.low_priority_emitted_containers.clear();
+	fake_analyzer.high_priority_emitted_containers.clear();
 
 	test_container_emitter emitter5(fake_analyzer,
 					fake_analyzer.containers,
@@ -401,8 +415,8 @@ TEST(container_emitter, smart_filter_test)
 					emitted_containers);
 	emitter5.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 1);
-	ASSERT_NE(fake_analyzer.emitted_containers.find("old container"), fake_analyzer.emitted_containers.end());
+	ASSERT_EQ(fake_analyzer.high_priority_emitted_containers.size(), 1);
+	ASSERT_NE(fake_analyzer.high_priority_emitted_containers.find("old container"), fake_analyzer.high_priority_emitted_containers.end());
 
 	ASSERT_EQ(fake_analyzer.emittable_containers.size(), 12);
 
@@ -450,7 +464,7 @@ TEST(container_emitter, end_of_list_fencepost)
 				       emitted_containers);
 	emitter.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 5);
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 5);
 }
 
 TEST(container_emitter, next_age_empty)
@@ -476,7 +490,7 @@ TEST(container_emitter, next_age_empty)
 				       emitted_containers);
 	emitter.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 1);
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 1);
 }
 
 TEST(container_emitter, not_too_many_maybes)
@@ -514,5 +528,5 @@ TEST(container_emitter, not_too_many_maybes)
 				       emitted_containers);
 	emitter.emit_containers();
 
-	ASSERT_EQ(fake_analyzer.emitted_containers.size(), 3);
+	ASSERT_EQ(fake_analyzer.low_priority_emitted_containers.size(), 3);
 }

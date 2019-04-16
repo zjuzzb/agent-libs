@@ -57,7 +57,9 @@ uint64_t container_emitter<callback_type,callback_arg_type>::age_extractor(const
 }
 
 template <typename callback_type, typename callback_arg_type>
-void container_emitter<callback_type,callback_arg_type>::check_and_emit_containers(vector<string>& containers, const uint32_t containers_limit)
+void container_emitter<callback_type,callback_arg_type>::check_and_emit_containers(vector<string>& containers,
+										   const uint32_t containers_limit,
+										   bool high_priority)
 {
 	// first sort containers by who has been emitted the longest
 	sort(containers.begin(),
@@ -85,7 +87,7 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 		// all of them fit. ship it!
 		if (remaining_limit >= distance)
 		{
-			emit_range(turtle_it, distance);
+			emit_range(turtle_it, distance, high_priority);
 			remaining_limit -= distance;
 		}
 		else // they all won't fit....sort by stats
@@ -95,13 +97,13 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 				    turtle_it + limit_per_type,
 				    rabbit_it,
 				    containers_cmp<decltype(&mem_extractor)>(&m_containers, &m_emitted_containers, &mem_extractor));
-			emit_range(turtle_it, limit_per_type);
+			emit_range(turtle_it, limit_per_type, high_priority);
 
 			partial_sort(turtle_it,
 				    turtle_it + limit_per_type,
 				    rabbit_it,
 				    containers_cmp<decltype(&file_io_extractor)>(&m_containers, &m_emitted_containers, &file_io_extractor));
-			emit_range(turtle_it, limit_per_type);
+			emit_range(turtle_it, limit_per_type, high_priority);
 
 			// in cases where we have no driver, skip net_io, and emit double cpu
 			if (m_nodriver)
@@ -118,13 +120,13 @@ void container_emitter<callback_type,callback_arg_type>::check_and_emit_containe
 					    rabbit_it,
 					    containers_cmp<decltype(&net_io_extractor)>(&m_containers, &m_emitted_containers, &net_io_extractor));
 			}
-			emit_range(turtle_it, limit_per_type);
+			emit_range(turtle_it, limit_per_type, high_priority);
 
 			partial_sort(turtle_it,
 				    turtle_it + limit_per_type,
 				    rabbit_it,
 				    containers_cmp<decltype(&cpu_extractor)>(&m_containers, &m_emitted_containers, &cpu_extractor));
-			emit_range(turtle_it, limit_per_type);
+			emit_range(turtle_it, limit_per_type, high_priority);
 
 			remaining_limit = 0;
 		}
@@ -215,10 +217,10 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 	//  spots we have to fill in our limit allocation, and then attempt to take the top
 	//  from each stat category
 
-	check_and_emit_containers(m_must_report, m_container_limit);
+	check_and_emit_containers(m_must_report, m_container_limit, true);
 	if (m_container_limit > m_must_report.size())
 	{
-		check_and_emit_containers(m_can_report, m_container_limit - m_must_report.size());
+		check_and_emit_containers(m_can_report, m_container_limit - m_must_report.size(), false);
 	}
 
 	for (auto it = m_emitted_containers.begin(); it != m_emitted_containers.end(); ++it)

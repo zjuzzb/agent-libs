@@ -2316,6 +2316,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						   m_inspector->is_nodriver(),
 						   emitted_containers);
 		emitter.emit_containers();
+		coalesce_unemitted_stats(emitted_containers);
 
 		gather_k8s_infrastructure_state(flushflags, emitted_containers);
 
@@ -6196,7 +6197,8 @@ sinsp_analyzer::emit_containers_deprecated(const progtable_by_container_t& progt
 			// since we are getting containerids from that table
 			// same tinfo is used also to get memory cgroup path
 			auto tinfo = progtable_by_container.at(containerid).front();
-			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo, flushflags);
+			std::list<uint32_t> groups;
+			this->emit_container(containerid, &statsd_limit, total_cpu_shares, tinfo, flushflags, groups);
 			emitted_containers.emplace_back(containerid);
 			containers_ids.erase(containers_ids.begin());
 		}
@@ -6271,7 +6273,8 @@ sinsp_analyzer::emit_container(const string &container_id,
 			       unsigned *statsd_limit,
 			       uint64_t total_cpu_shares,
 			       sinsp_threadinfo* tinfo,
-			       sinsp_analyzer::flush_flags flushflags)
+			       sinsp_analyzer::flush_flags flushflags,
+			       const std::list<uint32_t>& groups)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
 	auto it = containers_info->find(container_id);
@@ -6288,6 +6291,11 @@ sinsp_analyzer::emit_container(const string &container_id,
 	draiosproto::container* container = m_metrics->add_containers();
 
 	container->set_id(it->second.m_id);
+
+	for (auto& i : groups)
+	{
+		container->add_container_reporting_group_id(i);
+	}
 
 	switch(it->second.m_type)
 	{
@@ -6609,6 +6617,94 @@ sinsp_analyzer::emit_container(const string &container_id,
 												 container, TOP_SERVER_PORTS_IN_SAMPLE_PER_CONTAINER, m_sampling_ratio);
 
 	it_analyzer->second.clear();
+}
+
+void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted_containers)
+{
+	std::set<std::string> unemitted_containers;
+
+	for (const auto& container : m_containers)
+	{
+		unemitted_containers.insert(container.first);
+	}
+
+	for (const auto& container : emitted_containers)
+	{
+		unemitted_containers.erase(container);
+	}
+
+	draiosproto::unreported_stats* container_buffer = m_metrics->mutable_unreported_counters();
+
+
+	auto rc = container_buffer->mutable_resource_counters();
+
+	// the metrics need a couple of denominators that are maintained across calls.
+	// this is a bit ugly...
+	uint64_t opaque_denominator_a = 0;
+	uint64_t opaque_denominator_b = 0;
+	uint64_t opaque_denominator_c = 0;
+	uint64_t opaque_denominator_d = 0;
+	uint32_t count = 0;
+	for (const auto& container_name : unemitted_containers)
+	{
+		count++;
+		const auto& sinsp_container_data = m_inspector->m_container_manager.get_containers()->find(container_name)->second;
+		auto& analyzer_container_data = m_containers.find(sinsp_container_data.m_id)->second;
+
+
+#ifndef CYGWING_AGENT
+		rc->set_connection_queue_usage_pct(std::max(rc->connection_queue_usage_pct(),
+							    analyzer_container_data.m_metrics.m_connection_queue_usage_pct));
+		if(!m_inspector->is_nodriver())
+		{
+			rc->set_fd_usage_pct(rc->fd_usage_pct() + analyzer_container_data.m_metrics.m_fd_usage_pct);
+		}
+
+#endif
+		rc->set_cpu_pct(rc->cpu_pct() + analyzer_container_data.m_metrics.m_cpuload * 100);
+		rc->set_resident_memory_usage_kb(rc->resident_memory_usage_kb() + analyzer_container_data.m_metrics.m_res_memory_used_kb);
+		rc->set_swap_memory_usage_kb(rc->swap_memory_usage_kb() + analyzer_container_data.m_metrics.m_swap_memory_used_kb);
+		rc->set_major_pagefaults(rc->major_pagefaults() +  analyzer_container_data.m_metrics.m_pfmajor);
+		rc->set_minor_pagefaults(rc->minor_pagefaults() + analyzer_container_data.m_metrics.m_pfminor);
+		rc->set_fd_count(rc->fd_count() + analyzer_container_data.m_metrics.m_fd_count);
+		rc->set_cpu_shares(rc->cpu_shares() + sinsp_container_data.m_cpu_shares);
+		rc->set_memory_limit_kb(rc->memory_limit_kb() + sinsp_container_data.m_memory_limit/1024);
+		rc->set_swap_limit_kb(rc->swap_limit_kb() + sinsp_container_data.m_swap_limit/1024);
+		rc->set_count_processes(rc->count_processes() + analyzer_container_data.m_metrics.get_process_count());
+		rc->set_proc_start_count(rc->proc_start_count() + analyzer_container_data.m_metrics.get_process_start_count());
+		rc->set_threads_count(rc->threads_count() + analyzer_container_data.m_metrics.m_threads_count);
+
+		analyzer_container_data.m_metrics.m_metrics.coalesce_protobuf(container_buffer->mutable_tcounters(),
+									      m_sampling_ratio,
+									      opaque_denominator_a,
+									      opaque_denominator_b);
+
+#ifndef CYGWING_AGENT
+		if (m_protocols_enabled)
+		{
+			analyzer_container_data.m_metrics.m_protostate->coalesce_protobuf(container_buffer->mutable_protos(),
+											  m_sampling_ratio);
+		}
+
+		analyzer_container_data.m_req_metrics.coalesce_reqprotobuf(container_buffer->mutable_reqcounters(),
+									   m_sampling_ratio,
+									   opaque_denominator_c,
+									   opaque_denominator_d);
+
+		analyzer_container_data.m_metrics.m_syscall_errors.coalesce_protobuf(container_buffer->mutable_syscall_errors(),
+										     m_sampling_ratio);
+
+		analyzer_container_data.m_transaction_counters.coalesce_protobuf(container_buffer->mutable_transaction_counters(),
+										 container_buffer->mutable_max_transaction_counters(),
+										 m_sampling_ratio);
+#endif
+
+		container_buffer->add_names(container_name);
+
+		analyzer_container_data.clear();
+	}
+
+	g_logger.format(sinsp_logger::SEV_DEBUG, "Total Containers Found: %d, Emitted: %d, Unemitted: %d, Coalesced: %d", m_containers.size(), emitted_containers.size(), unemitted_containers.size(), count);
 }
 
 void sinsp_analyzer::get_statsd()
