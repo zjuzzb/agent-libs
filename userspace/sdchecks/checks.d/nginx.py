@@ -70,10 +70,18 @@ class Nginx(AgentCheck):
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
         self.logging_interval = dict(("%s_start_time" % k, time.time()) for k, v in PLUS_API_ENDPOINTS.items())
+        self.logging_interval.update({"log_start_time": time.time() - LOGGING_INTERVAL})
         self.plus_version = None
 
     def check(self, instance):
         status_url, api_url, ssl_validation, auth, use_plus_api, plus_api_version = self._get_instance_params(instance)
+
+        if self.python_version[:3] == '2.6' and use_plus_api:
+            diff_time = time.time() - self.logging_interval.get('log_start_time')
+            if diff_time >= instance.get('logging_interval', LOGGING_INTERVAL):
+                self.log.warning("AppCheck nginx plus is not supported with Python version %s, "
+                                 "please upgrade to 2.7.x and restart the agent.", self.python_version)
+                self.logging_interval['log_start_time'] = time.time()
 
         metrics = []
         tags = instance.get('tags', [])
