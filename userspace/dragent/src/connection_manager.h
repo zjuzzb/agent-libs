@@ -32,6 +32,10 @@ public:
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
 	static const uint32_t SOCKET_TIMEOUT_AFTER_CONNECT_US = 100 * 1000;
 
+#ifdef SYSDIG_TEST
+	void test_run() { do_run(); }
+#endif
+
 private:
 	bool init();
 	void do_run() override;

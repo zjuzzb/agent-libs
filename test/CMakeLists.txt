@@ -14,6 +14,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
@@ -82,8 +83,8 @@ add_executable(tests
 	udp_client_server.cpp
 	unix_client_server.cpp
 	unix_udp_client_server.cpp
-	main.cpp
 	yaml_configuration.cpp
+	main.cpp
 	configuration_test.cpp
 	statsd.cpp
 	suppress_events.cpp

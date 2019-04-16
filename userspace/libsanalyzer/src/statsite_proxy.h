@@ -11,6 +11,7 @@
 #include <Poco/Net/DatagramSocket.h>
 #include <Poco/Net/SocketNotification.h>
 #include <Poco/ErrorHandler.h>
+#include <Poco/RegularExpression.h>
 #include <atomic>
 
 class statsite_proxy;
@@ -117,20 +118,30 @@ private:
 
 class statsite_proxy
 {
+private:
+	bool validate_buffer(const char *buf, uint64_t len);
 public:
 	typedef unordered_map<string, vector<statsd_metric>> metric_map_t;
 
 	statsite_proxy(const pair<FILE*, FILE*>& pipes,
-		       uint32_t buffer_warning_length);
+		       bool check_format);
 	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
-private:
 
+private:
+	// This regex SHOULD match strings in such a way that each line goes:
+	// stuff : stuff | stuff \n
+	// except for the last one, which may or may not have a newline. See
+	// the definition for a full breakdown of the regex
+	static const std::string stats_validator_regex;
+	static Poco::RegularExpression m_statsd_regex;
+
+private:
 	FILE* m_input_fd;
 	FILE* m_output_fd;
-	uint32_t m_buffer_warning_length;
 	statsd_metric m_metric;
+	bool m_check_format = false;
 };
 
 class statsd_server
@@ -162,7 +173,7 @@ class statsite_forwarder: public Poco::ErrorHandler
 public:
 	statsite_forwarder(const pair<FILE*, FILE*>& pipes,
 			   uint16_t statsd_port,
-			   uint32_t buffer_warning_length);
+			   bool check_format);
 	virtual void exception(const Poco::Exception& ex) override;
 	virtual void exception(const std::exception& ex) override;
 	virtual void exception() override;

@@ -44,14 +44,15 @@ public:
 /*
  * Connection manager workflow:
  * - constructor: Initialize SSL
- * - run(): Start the connection manager
+ * - do_run(): Start the connection manager
  * -- init(): Set up socket (including SSL if enabled)
- * -- start connect thread: Asynchronously attempt to connect to the backend
- * --- while connected:
- * ---- Receive and dispatch one incoming message, if present
- * ---- Send one message from the outgoing queue
+ * -- connect(): start connect thread: Asynchronously attempt to connect to the backend
+ * -- wait until connected
+ * -- while connected:
+ * --- Receive and dispatch one incoming message, if present
+ * --- Send one message from the outgoing queue
  *
- * If the connection is lost, run() will loop back to the top and try to
+ * If the connection is lost, do_run() will loop back to the top and try to
  * connect again, looping until the agent is terminated.
  */
 

@@ -14,7 +14,7 @@ if [[ -z $SYSDIG_IMAGE ]]; then
   SYSDIG_IMAGE="sysdig:latest"
 fi
 
-rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude="cointerface/draiosproto" --exclude="cointerface/sdc_internal" /draios/agent/ /code/agent/
+rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude="cointerface/src/*/draiosproto" --exclude="cointerface/src/*/sdc_internal" --exclude="cointerface/src/*/promex_pb" /draios/agent/ /code/agent/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='driver/Makefile' --exclude='driver/driver_config.h' /draios/sysdig/ /code/sysdig/
 rsync --delete -t -r --exclude=.git --exclude=dependencies --exclude=build --exclude='userspace/engine/lua/lyaml*' /draios/oss-falco/ /code/oss-falco/
 
@@ -54,6 +54,20 @@ build_docker_image()
 	fi
 	cd /out
 	docker build -t $AGENT_IMAGE -f $DOCKERFILE --pull .
+}
+
+build_benchmarks()
+{
+	local build_target="${1:-"release"}"
+
+	BUILD_FOR_TEST=ON bootstrap_agent "${build_target}"
+	make -j$MAKE_JOBS benchmarks
+
+	# Copy all files that start with "benchmark-" to /out
+	for SRC in $(find "/code/agent/build/${build_target}" -name 'benchmark-*' -type f -print); do
+		echo "copy $SRC to /out"
+		cp $SRC /out
+	done
 }
 
 build_package()
@@ -118,7 +132,7 @@ build_single_cpp()
 {
 	# We're searching through Makefiles for the filename followed by a .o
 	# extension and a colon: "dragent.cpp.o:"
-	# Sometimes, this will be in a folder: "userspace/dragent/logger.ut.cpp.o:"
+	# Note that sometimes this can be in a folder.
 
 	# Find all Makefiles having a "$1.o" target
 	# -F -- simple string match, not a regex
@@ -178,6 +192,9 @@ case "$1" in
 	install-test)
 		BUILD_FOR_TEST=ON bootstrap_agent "${2:-"release"}"
 		make -j$MAKE_JOBS install
+		;;
+	benchmarks)
+		build_benchmarks
 		;;
 	package)
 		build_package "${2:-"release"}"

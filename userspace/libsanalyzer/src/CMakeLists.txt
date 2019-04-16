@@ -12,12 +12,14 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../userspace-shared/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
 
 if(CYGWIN)
@@ -137,7 +139,10 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/logger.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/lua_parser_api.cpp
+	metric_serializer.cpp
+	metric_serializer_factory.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/prefix_search.cpp
+	protobuf_metric_serializer.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tracers.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/uri.cpp
@@ -263,6 +268,7 @@ else()
 endif()
 
 list(APPEND sanalyzer_common_link_libraries
+	userspace-shared
 	scap
 	draiosproto
 	${LUALIB}

@@ -499,8 +499,8 @@ class Application:
         self.heartbeat_min = timedelta(0);
         self.python_version = platform.python_version()
 
-        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
-        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
+        self.inqueue = None
+        self.outqueue = None
 
         if self.config.ignore_ssl_warnings():
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -536,13 +536,19 @@ class Application:
                 logging.warning("https/http proxy has empty NO_PROXY, setting to 'localhost'")
 
     def cleanup(self):
-        self.inqueue.close()
-        self.outqueue.close()
+        if self.inqueue:
+            self.inqueue.close()
+        if self.outqueue:
+            self.outqueue.close()
 
     def clean_known_instances(self):
         for key in self.known_instances.keys():
             if not key in self.last_request_pidnames:
                 del self.known_instances[key]
+
+    def initialize_queues(self):
+        self.inqueue = PosixQueue("/sdc_app_checks_in", PosixQueueType.RECEIVE, 1)
+        self.outqueue = PosixQueue("/sdc_app_checks_out", PosixQueueType.SEND, 1)
 
     def heartbeat(self, pid, force=False):
 
@@ -677,7 +683,8 @@ class Application:
         }
         response_s = json.dumps(response_body)
         logging.debug("Response size is %d", len(response_s))
-        self.outqueue.send(response_s)
+        if self.outqueue:
+            self.outqueue.send(response_s)
 
     def main_loop(self):
         pid = os.getpid()
@@ -706,6 +713,7 @@ class Application:
         self.config.set_percentiles()
         logging.debug("sdchecks percentiles: %s", str(GLOBAL_PERCENTILES))
         if len(sys.argv) > 1:
+
             if sys.argv[1] == "runCheck":
                 proc_data = {
                     "check": sys.argv[2],
@@ -730,11 +738,20 @@ class Application:
                 print "Metrics: %s" % repr(metrics)
                 print "Checks: %s" % repr(service_checks)
                 print "Exception: %s" % ex
-            elif sys.argv[1] == "help":
-                print "Available commands:"
-                print "sdchecks runCheck <checkname> <pid> <vpid> <port> <conf_vals>"
-        else:
-            # In this mode register our usr1 handler to print stack trace (useful for debugging)
-            signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
-            signal.signal(signal.SIGHUP, sighup_handler)
-            self.main_loop()
+                exit()
+            elif sys.argv[1] == "run":
+                self.initialize_queues()
+                # In this mode register our usr1 handler to print stack trace (useful for debugging)
+                signal.signal(signal.SIGUSR1, lambda sig, stack: traceback.print_stack(stack))
+                signal.signal(signal.SIGHUP, sighup_handler)
+                self.main_loop()
+                exit()
+
+        print "Available commands:"
+        print "Run sdchecks as part of an application:"
+        print "sdchecks run"
+        print ""
+        print "Run a single check from a terminal:"
+        print "> ./sdchecks runCheck <checkname> <pid> <vpid> <port> <conf_vals>"
+        exit()
+

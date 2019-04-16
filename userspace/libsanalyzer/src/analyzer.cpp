@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -40,6 +41,9 @@ using namespace google::protobuf::io;
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
+#include "analyzer_callback_interface.h"
+#include "metric_serializer.h"
+#include "metric_serializer_factory.h"
 #include "connectinfo.h"
 #include "metrics.h"
 #include "draios.pb.h"
@@ -84,29 +88,42 @@ using namespace google::protobuf::io;
 #include "container_emitter.h"
 #include "tap.h"
 
+using namespace libsanalyzer;
+
 typedef container_emitter<sinsp_analyzer, sinsp_analyzer::flush_flags> analyzer_container_emitter;
 #include <gperftools/profiler.h>
 
-namespace {
+namespace
+{
+
 template<typename T>
 void init_host_level_percentiles(T &metrics, const std::set<double> &pctls)
 {
 	metrics.set_percentiles(pctls);
 	metrics.set_serialize_pctl_data(true);
 }
-};
+
+} // end namespace
 
 sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
+	m_configuration(new sinsp_configuration()),
+	m_inspector(inspector),
 #ifndef CYGWING_AGENT
 	m_coclient(root_dir),
 #endif
 	m_root_dir(root_dir),
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
-	m_very_high_cpu_switcher("agent cpu usage with sr=128")
-  {
+	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
+	m_serializer(metric_serializer_factory::build(
+				m_inspector,
+				m_internal_metrics,
+				m_configuration->get_emit_metrics_to_file(),
+				m_configuration->get_compress_metrics(),
+				m_configuration->get_metrics_directory())),
+	m_async_serialize_enabled(true)
+{
 	m_initialized = false;
-	m_inspector = inspector;
 	m_n_flushes = 0;
 	m_prev_flushes_duration_ns = 0;
 	m_prev_flush_cpu_pct = 0.0;
@@ -120,20 +137,8 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_flush_log_time_restart = 0;
 
 	m_metrics = new draiosproto::metrics;
-	m_serialization_buffer = (char*)malloc(MIN_SERIALIZATION_BUF_SIZE_BYTES);
-	if(!m_serialization_buffer)
-	{
-		char tbuf[256];
-		snprintf(tbuf, sizeof(tbuf), "memory allocation error at %s:%d", __FILE__, __LINE__);
-		throw sinsp_exception(string(tbuf));
-	}
-	m_serialization_buffer_size = MIN_SERIALIZATION_BUF_SIZE_BYTES;
 	m_sample_callback = NULL;
-	m_protobuf_fp = NULL;
 	m_prev_sample_evtnum = 0;
-	m_serialize_prev_sample_evtnum = 0;
-	m_serialize_prev_sample_time = 0;
-	m_serialize_prev_sample_num_drop_events = 0;
 	m_client_tr_time_by_servers = 0;
 
 	m_sent_metrics = false;
@@ -165,7 +170,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_die = false;
 	m_run_chisels = false;
 
-	m_configuration = new sinsp_configuration();
 
 	m_parser = new sinsp_analyzer_parsers(this);
 
@@ -228,7 +232,6 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 sinsp_analyzer::~sinsp_analyzer()
 {
 	delete m_metrics;
-	free(m_serialization_buffer);
 	delete m_score_calculator;
 	delete m_procfs_parser;
 	delete m_sched_analyzer2;
@@ -240,11 +243,6 @@ sinsp_analyzer::~sinsp_analyzer()
 	delete m_trans_table;
 	delete m_configuration;
 	delete m_parser;
-
-	if(m_protobuf_fp != NULL)
-	{
-		fclose(m_protobuf_fp);
-	}
 
 	for(vector<sinsp_chisel*>::iterator it = m_chisels.begin();
 	it != m_chisels.end(); ++it)
@@ -533,6 +531,7 @@ void sinsp_analyzer::set_sample_callback(analyzer_callback_interface* cb)
 	ASSERT(cb != NULL);
 	ASSERT(m_sample_callback == NULL);
 	m_sample_callback = cb;
+	m_serializer->set_sample_callback(cb);
 }
 
 void sinsp_analyzer::add_chisel_dirs()
@@ -772,6 +771,10 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 	}
 
 	*m_configuration = configuration;
+
+	m_serializer->update_configuration(m_configuration->get_emit_metrics_to_file(),
+	                                   m_configuration->get_compress_metrics(),
+	                                   m_configuration->get_metrics_directory());
 }
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
@@ -802,241 +805,6 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 	}
 
 	return connection;
-}
-
-char* sinsp_analyzer::serialize_to_bytebuf(OUT uint32_t *len, bool compressed)
-{
-	//
-	// Find out how many bytes we need for the serialization
-	//
-	uint32_t full_len = m_metrics->ByteSize();
-
-	//
-	// If the buffer is not big enough, expand it
-	//
-	if(m_serialization_buffer_size < full_len)
-	{
-		if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
-		{
-			g_logger.log("Metrics sample too big. Dropping it.", sinsp_logger::SEV_ERROR);
-			return NULL;
-		}
-
-		m_serialization_buffer = (char*)realloc(m_serialization_buffer, full_len);
-
-		if(!m_serialization_buffer)
-		{
-			const char *estr = g_logger.format(sinsp_logger::SEV_CRITICAL, "memory allocation error at %s:%d", __FILE__, __LINE__);
-			throw sinsp_exception(estr);
-		}
-
-		m_serialization_buffer_size = full_len;
-	}
-
-	//
-	// Do the serialization
-	//
-	if(compressed)
-	{
-#ifdef _WIN32
-		ASSERT(false);
-		const std::string err = "compression in agent protocol not implemented under windows";
-		g_logger.log(err, sinsp_logger::SEV_ERROR);
-		throw sinsp_exception(err);
-		return NULL;
-#else
-		ArrayOutputStream array_output(m_serialization_buffer, full_len);
-		GzipOutputStream gzip_output(&array_output);
-
-		m_metrics->SerializeToZeroCopyStream(&gzip_output);
-		gzip_output.Close();
-
-		uint32_t compressed_size = (uint32_t) array_output.ByteCount();
-		if(compressed_size > full_len)
-		{
-			ASSERT(false);
-			const char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "unexpected serialization buffer size");
-			throw sinsp_exception(estr);
-		}
-
-		*len = compressed_size;
-		return m_serialization_buffer;
-#endif
-	}
-	else
-	{
-		//
-		// Reserve 4 bytes at the beginning of the string for the length
-		//
-		ArrayOutputStream array_output(m_serialization_buffer, full_len);
-		m_metrics->SerializeToZeroCopyStream(&array_output);
-
-		*len = full_len;
-		return m_serialization_buffer;
-	}
-}
-
-void sinsp_analyzer::serialize(sinsp_evt* evt, uint64_t ts)
-{
-
-	uint64_t nevts = 0;
-	uint64_t num_drop_events = 0;
-
-	if(evt)
-	{
-		nevts = evt->get_num() - m_serialize_prev_sample_evtnum;
-		m_serialize_prev_sample_evtnum = evt->get_num();
-
-		//
-		// Subsampling can cause repeated samples, which we skip here
-		//
-		if(m_serialize_prev_sample_time != 0)
-		{
-			if(ts == m_serialize_prev_sample_time)
-			{
-				return;
-			}
-		}
-
-		m_serialize_prev_sample_time = ts;
-	}
-
-	// Get the number of dropped events and include that in the log message
-	scap_stats st;
-	m_inspector->get_capture_stats(&st);
-	num_drop_events = st.n_drops - m_serialize_prev_sample_num_drop_events;
-	m_serialize_prev_sample_num_drop_events = st.n_drops;
-
-	if(m_sample_callback != NULL)
-	{
-		if(m_internal_metrics)
-		{
-			scap_stats st;
-			m_inspector->get_capture_stats(&st);
-
-			m_internal_metrics->set_n_evts(st.n_evts);
-			m_internal_metrics->set_n_drops(st.n_drops);
-			m_internal_metrics->set_n_drops_buffer(st.n_drops_buffer);
-			m_internal_metrics->set_n_preemptions(st.n_preemptions);
-
-			m_internal_metrics->set_fp((int64_t)round(m_prev_flush_cpu_pct * 100));
-			m_internal_metrics->set_sr(m_sampling_ratio);
-			m_internal_metrics->set_fl(m_prev_flushes_duration_ns / 1000000);
-
-			bool sent;
-			if(m_extra_internal_metrics)
-			{
-				sent = m_internal_metrics->send_all(m_metrics->mutable_protos()->mutable_statsd());
-			}
-			else
-			{
-				sent = m_internal_metrics->send_some(m_metrics->mutable_protos()->mutable_statsd());
-			}
-			if(sent)
-			{
-				if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
-				{
-					g_logger.log(m_metrics->protos().statsd().DebugString(), sinsp_logger::SEV_TRACE);
-				}
-			}
-			else
-			{
-				g_logger.log("Error processing agent internal metrics.", sinsp_logger::SEV_WARNING);
-			}
-		}
-		m_sent_metrics = true;
-		m_sample_callback->sinsp_analyzer_data_ready(ts, nevts, num_drop_events, m_metrics, m_sampling_ratio, m_my_cpuload,
-							     m_prev_flush_cpu_pct, m_prev_flushes_duration_ns, st.n_tids_suppressed);
-
-		m_prev_flushes_duration_ns = 0;
-	}
-
-	if(m_configuration->get_emit_metrics_to_file())
-	{
-		char fname[128];
-		uint32_t buflen;
-
-		//
-		// Serialize the protobuf
-		//
-		char* buf = sinsp_analyzer::serialize_to_bytebuf(&buflen,
-			m_configuration->get_compress_metrics());
-
-		g_logger.format(sinsp_logger::SEV_INFO,
-				"to_file ts=%" PRIu64 ", len=%" PRIu32 ", ne=%" PRIu64 ", de=%" PRIu64 ", c=%.2lf, sr=%" PRIu32 ", st=%" PRIu64,
-				ts / 100000000,
-				buflen, nevts, num_drop_events,
-				m_my_cpuload,
-				m_sampling_ratio,
-				st.n_tids_suppressed
-			);
-
-		if(!buf)
-		{
-			return;
-		}
-
-		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dam",
-			m_configuration->get_metrics_directory().c_str(),
-			ts / 1000000000);
-
-		//
-		// Write the data to file
-		//
-		//fp = fopen(fname, "wb");
-
-		//if(!fp)
-		//{
-		//	char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
-		//	throw sinsp_exception(estr);
-		//}
-
-		//if(fwrite(buf, buflen, 1, fp) != 1)
-		//{
-		//	ASSERT(false);
-		//	char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
-		//	throw sinsp_exception(estr);
-		//}
-
-		//fclose(fp);
-
-		//
-		// Write the string version to file
-		//
-		string pbstr = m_metrics->DebugString();
-
-		snprintf(fname, sizeof(fname), "%s%" PRIu64 ".dams",
-			m_configuration->get_metrics_directory().c_str(),
-			ts / 1000000000);
-
-		if(m_protobuf_fp == NULL)
-		{
-			m_protobuf_fp = fopen(fname, "w");
-
-			if(!m_protobuf_fp)
-			{
-				const char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't open file %s", fname);
-				throw sinsp_exception(estr);
-			}
-		}
-
-		// The agent is writing individual metrics protobufs,
-		// but we want the contents of the file to be readable
-		// as a metrics_list protobuf. So add a "metrics {"
-		// header and "}" trailer to each protobuf so it
-		// appears to be a metrics_list item (i.e. message).
-
-		string header = "metrics {\n";
-		string footer = "}\n";
-		if(fwrite(header.c_str(), header.length(), 1, m_protobuf_fp) != 1 ||
-		   fwrite(pbstr.c_str(), pbstr.length(), 1, m_protobuf_fp) != 1 ||
-		   fwrite(footer.c_str(), footer.length(), 1, m_protobuf_fp) != 1)
-		{
-			ASSERT(false);
-			const char *estr = g_logger.format(sinsp_logger::SEV_ERROR, "can't write actual data to file %s", fname);
-			throw sinsp_exception(estr);
-		}
-	}
 }
 
 template<class Iterator>
@@ -3271,7 +3039,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 }
 
-void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent) {
+void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent)
+{
 	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
 	auto env_hash = mt_ainfo->m_env_hash.get_hash();
 	prog->set_environment_hash(env_hash.data(), env_hash.size());
@@ -5054,16 +4823,40 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			emit_baseline(evt, is_eof, f_trc);
 
-			////////////////////////////////////////////////////////////////////////////
-			// Serialize the whole crap
-			////////////////////////////////////////////////////////////////////////////
+			////////////////////////////////////////////////////////
+			// Serialize everything
+			////////////////////////////////////////////////////////
 			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				uint64_t serialize_sample_time =
-				m_prev_flush_time_ns - m_prev_flush_time_ns % m_configuration->get_analyzer_original_sample_len_ns();
+				const uint64_t evt_num =
+					(evt ? evt->get_num()
+					     : metric_serializer::NO_EVENT_NUMBER);
+				const uint64_t serialize_sample_time =
+					m_prev_flush_time_ns -
+                                        (m_prev_flush_time_ns %
+                                        m_configuration->get_analyzer_original_sample_len_ns());
 
-				tracer_emitter ser_trc("serialize", f_trc);
-				serialize(evt, serialize_sample_time);
+				// Note that this passes a *copy* of m_metrics
+				// to the serializer.
+				m_serializer->serialize(
+						make_unique<metric_serializer::data>(
+								evt_num,
+								serialize_sample_time,
+								m_sampling_ratio,
+								m_prev_flush_cpu_pct,
+								m_prev_flushes_duration_ns,
+								m_sent_metrics,
+								m_my_cpuload,
+								m_extra_internal_metrics,
+								*m_metrics));
+
+				// If the client doesn't want async protobuf
+				// serialization, block waiting for it to
+				// complete.
+				if(!m_async_serialize_enabled)
+				{
+					m_serializer->drain();
+				}
 			}
 
 			//
@@ -5074,9 +4867,9 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		}
 	}
 
-	///////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 	// CLEANUPS
-	///////////////////////////////////////////////////////////////////////////
+	////////////////////////////////////////////////////////////////////////
 
 	//
 	// Clear the transaction state
@@ -5180,7 +4973,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		evt->m_tinfo = evt->get_thread_info();
 	}
 
-	m_prev_flushes_duration_ns += sinsp_utils::get_current_time_ns() - flush_start_ns;
+	m_prev_flushes_duration_ns = sinsp_utils::get_current_time_ns() - flush_start_ns;
 	m_cputime_analyzer.end_flush();
 
 	if(m_configuration->get_autodrop_enabled() && !m_capture_in_progress)
@@ -7519,6 +7312,7 @@ bool sinsp_analyzer::driver_stopped_dropping()
 void sinsp_analyzer::set_internal_metrics(internal_metrics::sptr_t im)
 {
 	m_internal_metrics = im;
+	m_serializer->set_internal_metrics(im);
 }
 
 #ifndef _WIN32
@@ -7526,7 +7320,7 @@ void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool fo
 {
 	check_metric_limits();
 	m_statsite_proxy = make_unique<statsite_proxy>(iofds,
-						       m_configuration->get_statsite_buffer_warning_length());
+						       m_configuration->get_statsite_check_format());
 	if(forwarder)
 	{
 		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);
@@ -7560,7 +7354,8 @@ void sinsp_analyzer::init_k8s_limits()
 }
 #endif
 
-void sinsp_analyzer::rearm_tracer_logging() {
+void sinsp_analyzer::rearm_tracer_logging()
+{
 	auto now = sinsp_utils::get_current_time_ns();
 	if(now > m_flush_log_time_restart)
 	{
@@ -7569,7 +7364,8 @@ void sinsp_analyzer::rearm_tracer_logging() {
 	}
 }
 
-uint64_t sinsp_analyzer::flush_tracer_timeout() {
+uint64_t sinsp_analyzer::flush_tracer_timeout()
+{
 	auto now = sinsp_utils::get_current_time_ns();
 
 	if(now < m_flush_log_time_end) {
@@ -7584,6 +7380,16 @@ uint64_t sinsp_analyzer::flush_tracer_timeout() {
 void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 {
 	m_tap = new audit_tap(&m_env_hash_config, m_configuration->get_machine_id(), emit_local_connections);
+}
+
+void sinsp_analyzer::flush_drain() const
+{
+	m_serializer->drain();
+}
+
+void sinsp_analyzer::set_async_protobuf_serialize_enabled(const bool enabled)
+{
+	 m_async_serialize_enabled = enabled;
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

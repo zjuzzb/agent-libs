@@ -9,9 +9,6 @@ import re
 
 # 3rd party
 import requests
-# universaldetector is not referenced by this file directly, but must be explicitly
-# loaded before switching namespaces
-import requests.packages.chardet.universaldetector
 
 # project
 from checks import AgentCheck

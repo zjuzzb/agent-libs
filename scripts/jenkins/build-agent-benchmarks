@@ -1,0 +1,158 @@
+#!/bin/bash
+
+#set -xeuo pipefail
+
+SCRIPTS_DIR=$(dirname $(readlink -f $0))
+WORKSPACE=$SCRIPTS_DIR/../../..
+SOURCE=$WORKSPACE
+PYTHON_DEPS=$WORKSPACE/python-deps
+OUT=$WORKSPACE/out
+BUILD=$WORKSPACE/build
+CONTENDER=""
+BASELINE=""
+
+# Get passed in contender and baseline
+while getopts b:c: option
+do
+case "${option}"
+in
+b) BASELINE=${OPTARG};;
+c) CONTENDER=${OPTARG};;
+esac
+done
+
+if [ -z "$CONTENDER" ]; then
+    CONTENDER="`git -C $SOURCE/agent rev-parse HEAD`"
+    echo "Contender not set with -c option. Setting contender to HEAD ($CONTENDER)."
+fi
+if [ -z "$BASELINE" ]; then
+    BASELINE="`git -C $SOURCE/agent rev-parse $CONTENDER~1`"
+    echo "Baseline not set with -b option. Setting baseline to one change before contender ($BASELINE)."
+fi
+
+rm -rf $OUT
+mkdir -p $OUT
+rm -rf $PYTHON_DEPS
+mkdir -p $PYTHON_DEPS
+rm -rf $BUILD
+mkdir -p $BUILD
+
+#docker pull quay.io/sysdig/agent-builder
+docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
+
+# Build the BASELINE
+git reset --hard $BASELINE
+
+# Build the benchmarks and copy them into $OUT/bench-baseline
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-baseline:/out -v $BUILD:/code/agent/build agent-builder benchmarks
+
+# Build the $CONTENDER
+git reset --hard $CONTENDER
+
+# Build the benchmarks and copy them into $OUT/bench-contender
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-contender:/out -v $BUILD:/code/agent/build agent-builder benchmarks
+
+if [ ! -d "$PYTHON_DEPS/benchmark" ]; then
+    cd $PYTHON_DEPS
+    # This matches what is done in bootstrap-agent
+    DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
+    BENCHMARK_COMMIT=b8ca0c42179b7b5d656494e61dda8b861057122f
+    cd $PYTHON_DEPS
+    wget $DEPENDENCIES_URL/google-benchmark-$BENCHMARK_COMMIT.zip
+    unzip google-benchmark-$BENCHMARK_COMMIT.zip
+    mv benchmark-$BENCHMARK_COMMIT benchmark
+    cd benchmark
+fi
+
+# Benchmark output looks like this...
+#
+# Benchmark                                    Time             CPU      Time Old      Time New       CPU Old       CPU New
+# -------------------------------------------------------------------------------------------------------------------------
+# one_hundred_thousand_reads                +0.1185         +0.1195            13            14            12            14
+#
+#
+# For detail about the compare.py script, see https://github.com/google/benchmark/blob/master/docs/tools.md
+#
+# We use the compare script to compare the two benchmarks that we just built.
+# If any single benchmark has regressed more than IS_REGRESSION_PERCENT then
+# an error is reported.
+
+REGRESSION_THRESHOLD=0.05
+REGRESSIONS=()
+
+cd $OUT
+# For every benchmark binary in the contender folder, compare against the benchmark
+# binary in the baseline folder.
+for BENCHMARK_CONTENDER in $(find bench-contender -name 'benchmark-*' -type f -print); do
+	echo "found $BENCHMARK_CONTENDER"
+	BENCHMARK_BASELINE="bench-baseline/$(basename $BENCHMARK_CONTENDER)"
+	if [ -f "${BENCHMARK_BASELINE}" ]; then
+
+	    COMPARE_OUTPUT=$($PYTHON_DEPS/benchmark/tools/compare.py benchmarks $BENCHMARK_BASELINE $BENCHMARK_CONTENDER)
+	    echo "$COMPARE_OUTPUT"
+
+	    # Go through the output line by line
+	    while read -r line; do
+
+		# We only care about lines with a plus sign
+		if [[ $line == *"+"* ]]; then
+
+		    TIME=$(echo $line | awk {'print $3'})
+		    CPU=$(echo $line | awk {'print $4'})
+
+		    if [ ${TIME:0:1} == "+" ]; then
+			TIME="${TIME:1}"
+			IS_TIME_REGRESSION=$(awk 'BEGIN{ print "'$REGRESSION_THRESHOLD'"<"'$TIME'" }')
+			if [ $IS_TIME_REGRESSION == 1 ]; then
+			    REGRESSIONS+=("$line")
+			    continue
+			fi
+		    fi
+		    if [ ${CPU:0:1} == "+" ]; then
+			CPU="${CPU:1}"
+			IS_CPU_REGRESSION=$(awk 'BEGIN{ print "'$REGRESSION_THRESHOLD'"<"'$CPU'" }')
+			if [ $IS_CPU_REGRESSION == 1 ]; then
+			    REGRESSIONS+=("$line")
+			    continue
+			fi
+		    fi
+
+		fi
+
+	    done <<< "$COMPARE_OUTPUT"
+	fi
+done
+
+NUM_REGRESSIONS=${#REGRESSIONS[@]}
+echo ""
+echo ""
+echo ""
+echo "RESULT:"
+
+# Handle color
+if [ $NUM_REGRESSIONS == 0 ]; then
+    COLOR="\e[92m"
+else
+    COLOR="\e[91m"
+fi
+
+# Handle tense
+if [ $NUM_REGRESSIONS == 1 ]; then
+    echo -e "$COLOR$NUM_REGRESSIONS performance regression found! (> +$REGRESSION_THRESHOLD)"
+else
+    echo -e "$COLOR$NUM_REGRESSIONS performance regressions found (> +$REGRESSION_THRESHOLD)."
+fi
+
+for (( i=0; i<$NUM_REGRESSIONS; i++ )); do
+    echo "${REGRESSIONS[$i]}"
+done
+
+echo ""
+
+
+if [ $NUM_REGRESSIONS != 0 ]; then
+    # Script failed
+    exit 1
+fi
+
+exit 0

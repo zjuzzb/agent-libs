@@ -149,6 +149,7 @@ class RabbitMQ(AgentCheck):
         self.logging_interval = {"%s_start_time" % EXCHANGE_TYPE: time.time(),
                                  "%s_start_time" % QUEUE_TYPE: time.time(),
                                  "%s_start_time" % NODE_TYPE: time.time()}
+        self.req_session = requests.Session()
 
     def _get_config(self, instance):
         # make sure 'rabbitmq_api_url' is present and get parameters
@@ -262,7 +263,7 @@ class RabbitMQ(AgentCheck):
 
     def _get_data(self, url, auth=None, ssl_verify=True, proxies={}):
         try:
-            r = requests.get(url, auth=auth, proxies=proxies, timeout=self.default_integration_http_timeout, verify=ssl_verify)
+            r = self.req_session.get(url, auth=auth, proxies=proxies, timeout=self.default_integration_http_timeout, verify=ssl_verify)
             r.raise_for_status()
             return r.json()
         except RequestException as e:

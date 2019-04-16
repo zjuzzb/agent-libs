@@ -1196,6 +1196,11 @@ k8s_labels_filter:
   - exclude: "*.controller-revision-hash"
   - include: "*"
 
+# Additional kubernetes resources to report
+# Note that the include list does not get merged from multiple configuration files;
+# If it is configured in dragent.yaml it will override this one. In order to add
+# resources to report, just copy this list and add any additional ones.
+# Some kubernetes resources may not be supported yet.
 k8s_extra_resources:
     include:
       - services

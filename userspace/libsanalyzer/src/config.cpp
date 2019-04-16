@@ -1000,14 +1000,14 @@ uint32_t sinsp_configuration::get_dragent_total_profiles() const
 	return m_dragent_total_profiles;
 }
 
-void sinsp_configuration::set_statsite_buffer_warning_length(uint32_t len)
+void sinsp_configuration::set_statsite_check_format(bool enabled)
 {
-	        m_statsite_buffer_warning_length = len;
+	        m_statsite_check_format = enabled;
 }
 
-uint32_t sinsp_configuration::get_statsite_buffer_warning_length(void) const
+bool sinsp_configuration::get_statsite_check_format() const
 {
-	        return m_statsite_buffer_warning_length;
+	        return m_statsite_check_format;
 }
 
 void sinsp_configuration::set_log_dir(string& dir)

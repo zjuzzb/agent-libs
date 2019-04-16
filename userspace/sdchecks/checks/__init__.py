@@ -9,6 +9,7 @@ import copy
 import logging
 import numbers
 import os
+import platform
 import re
 import time
 import timeit
@@ -23,6 +24,7 @@ except ImportError:
 import yaml
 
 # project
+import _internal_modules
 from checks import check_status
 from util import get_hostname, get_next_id, LaconicFilter, yLoader
 from utils.platform import Platform
@@ -36,6 +38,20 @@ DEFAULT_PSUTIL_METHODS = ['get_memory_info', 'get_io_counters']
 
 AGENT_METRICS_CHECK_NAME = 'agent_metrics'
 
+
+class LoggerAdapter(logging.LoggerAdapter):
+    """
+    This class is extended to append appcheck name in the log message
+    """
+    def __init__(self, logger, prefix):
+        super(LoggerAdapter, self).__init__(logger, {})
+        self.prefix = prefix
+
+    def process(self, msg, kwargs):
+        return '[%s] %s' % (self.prefix, msg), kwargs
+
+    def warn(self, msg, *args, **kwargs):
+        return self.warning(msg, *args, **kwargs)
 
 # Konstants
 class CheckException(Exception):
@@ -326,7 +342,13 @@ class AgentCheck(object):
         self.default_integration_http_timeout = float(agentConfig.get('default_integration_http_timeout', 9))
 
         self.hostname = agentConfig.get('checksd_hostname') or get_hostname(agentConfig)
+        self.python_version = platform.python_version()
         self.log = logging.getLogger('%s.%s' % (__name__, name))
+
+        # TODO: Code is future proof, testing of agent on python version => 3 is not possible
+        # TODO: because sdchecks code currently works with Python versions 2.6 and 2.7 only
+        if float(self.python_version[:3]) >= 2.7:
+            self.log = LoggerAdapter(self.log, name)
         self.aggregator = MetricsAggregator(
             self.hostname,
             formatter=agent_formatter,

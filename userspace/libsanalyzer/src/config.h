@@ -216,8 +216,8 @@ public:
 	uint32_t get_dragent_profile_time_seconds() const;
 	uint32_t get_dragent_total_profiles() const;
 
-	uint32_t get_statsite_buffer_warning_length() const;
-	void set_statsite_buffer_warning_length(uint32_t len);
+	bool get_statsite_check_format() const;
+	void set_statsite_check_format(bool enabled);
 
 	unsigned get_app_checks_limit() const;
 	void set_app_checks_limit(unsigned value);
@@ -311,7 +311,7 @@ private:
 	uint32_t m_dragent_profile_time_seconds;
 	uint32_t m_dragent_total_profiles;
 
-	uint32_t m_statsite_buffer_warning_length;
+	bool m_statsite_check_format;
 
 #ifndef CYGWING_AGENT	
 	string m_k8s_api;

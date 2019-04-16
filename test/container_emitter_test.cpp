@@ -94,15 +94,15 @@ TEST(container_emitter, patterns)
 	fake_analyzer_t fake_analyzer;
 
 	fake_analyzer.containers["k8s container"];
-	fake_analyzer.progtable["k8s container"] = {};
+	fake_analyzer.progtable["k8s container"] = {NULL};
 	fake_analyzer.sinsp_containers["k8s container"].m_is_pod_sandbox = true;
 
 	fake_analyzer.containers["maybe container 1"].m_metrics.m_cpuload = 1000000;
-	fake_analyzer.progtable["maybe container 1"] = {};
+	fake_analyzer.progtable["maybe container 1"] = {NULL};
 	fake_analyzer.sinsp_containers["maybe container 1"].m_image = "stop. zipper time.";
 
 	fake_analyzer.containers["maybe container 2"].m_reported_count = 1123098;
-	fake_analyzer.progtable["maybe container 2"] = {};
+	fake_analyzer.progtable["maybe container 2"] = {NULL};
 	fake_analyzer.sinsp_containers["maybe container 2"].m_name = "go go gadget zipper";
 
 	vector<string> emitted_containers;
@@ -142,60 +142,60 @@ TEST(container_emitter, smart_filter_test)
 	fake_analyzer_t fake_analyzer;
 
 	fake_analyzer.containers["k8s container"];
-	fake_analyzer.progtable["k8s container"] = {};
+	fake_analyzer.progtable["k8s container"] = {NULL};
 	fake_analyzer.sinsp_containers["k8s container"].m_is_pod_sandbox = true;
 
 	fake_analyzer.containers["maybe container 1"].m_metrics.m_cpuload = 1000000;
-	fake_analyzer.progtable["maybe container 1"] = {};
+	fake_analyzer.progtable["maybe container 1"] = {NULL};
 	fake_analyzer.sinsp_containers["maybe container 1"];
 
 	fake_analyzer.containers["maybe container 2"].m_reported_count = 1123098;
-	fake_analyzer.progtable["maybe container 2"] = {};
+	fake_analyzer.progtable["maybe container 2"] = {NULL};
 	fake_analyzer.sinsp_containers["maybe container 2"];
 
 	fake_analyzer.containers["old container"].m_reported_count = 10000000;
-	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.progtable["old container"] = {NULL};
 	fake_analyzer.sinsp_containers["old container"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["young container"].m_reported_count = 0;
 	fake_analyzer.containers["young container"].m_metrics.m_cpuload = 100000;
-	fake_analyzer.progtable["young container"] = {};
+	fake_analyzer.progtable["young container"] = {NULL};
 	fake_analyzer.sinsp_containers["young container"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["high net"].m_req_metrics.m_io_net.add_in(1, 100000, 1000000);
 	fake_analyzer.containers["high net"].m_reported_count = 1;
-	fake_analyzer.progtable["high net"] = {};
+	fake_analyzer.progtable["high net"] = {NULL};
 	fake_analyzer.sinsp_containers["high net"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["high cpu"].m_metrics.m_cpuload = 100000;
 	fake_analyzer.containers["high cpu"].m_reported_count = 1;
-	fake_analyzer.progtable["high cpu"] = {};
+	fake_analyzer.progtable["high cpu"] = {NULL};
 	fake_analyzer.sinsp_containers["high cpu"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["high file"].m_req_metrics.m_io_file.add_in(1, 100000, 1000000);
 	fake_analyzer.containers["high file"].m_reported_count = 1;
-	fake_analyzer.progtable["high file"] = {};
+	fake_analyzer.progtable["high file"] = {NULL};
 	fake_analyzer.sinsp_containers["high file"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["high mem"].m_metrics.m_res_memory_used_kb = 100000;
 	fake_analyzer.containers["high mem"].m_reported_count = 1;
-	fake_analyzer.progtable["high mem"] = {};
+	fake_analyzer.progtable["high mem"] = {NULL};
 	fake_analyzer.sinsp_containers["high mem"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["low net"].m_reported_count = 1;
-	fake_analyzer.progtable["low net"] = {};
+	fake_analyzer.progtable["low net"] = {NULL};
 	fake_analyzer.sinsp_containers["low net"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["low cpu"].m_reported_count = 1;
-	fake_analyzer.progtable["low cpu"] = {};
+	fake_analyzer.progtable["low cpu"] = {NULL};
 	fake_analyzer.sinsp_containers["low cpu"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["low file"].m_reported_count = 1;
-	fake_analyzer.progtable["low file"] = {};
+	fake_analyzer.progtable["low file"] = {NULL};
 	fake_analyzer.sinsp_containers["low file"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	fake_analyzer.containers["low mem"].m_reported_count = 1;
-	fake_analyzer.progtable["low mem"] = {};
+	fake_analyzer.progtable["low mem"] = {NULL};
 	fake_analyzer.sinsp_containers["low mem"].m_labels["container.label.com.sysdig.report"] = "true";
 
 	// absolute ordering should be:
@@ -414,20 +414,20 @@ TEST(container_emitter, end_of_list_fencepost)
 	fake_analyzer_t fake_analyzer;
 
 	fake_analyzer.containers["old container"].m_reported_count = 1123098;
-	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.progtable["old container"] = {NULL};
 	fake_analyzer.sinsp_containers["old container"].m_name = "old container";
 
 	fake_analyzer.containers["new container"].m_reported_count = 0;
-	fake_analyzer.progtable["new container"] = {};
+	fake_analyzer.progtable["new container"] = {NULL};
 	fake_analyzer.sinsp_containers["new container"];
 	fake_analyzer.containers["new container2"].m_reported_count = 0;
-	fake_analyzer.progtable["new container2"] = {};
+	fake_analyzer.progtable["new container2"] = {NULL};
 	fake_analyzer.sinsp_containers["new container2"];
 	fake_analyzer.containers["new container3"].m_reported_count = 0;
-	fake_analyzer.progtable["new container3"] = {};
+	fake_analyzer.progtable["new container3"] = {NULL};
 	fake_analyzer.sinsp_containers["new container3"];
 	fake_analyzer.containers["new container4"].m_reported_count = 0;
-	fake_analyzer.progtable["new container4"] = {};
+	fake_analyzer.progtable["new container4"] = {NULL};
 	fake_analyzer.sinsp_containers["new container4"];
 
 	vector<string> emitted_containers;
@@ -453,7 +453,7 @@ TEST(container_emitter, next_age_empty)
 	fake_analyzer_t fake_analyzer;
 
 	fake_analyzer.containers["old container"].m_reported_count = 1123098;
-	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.progtable["old container"] = {NULL};
 	fake_analyzer.sinsp_containers["old container"].m_name = "old container";
 
 	vector<string> emitted_containers;
@@ -479,19 +479,19 @@ TEST(container_emitter, not_too_many_maybes)
 	fake_analyzer_t fake_analyzer;
 
 	fake_analyzer.containers["old container"].m_reported_count = 0;
-	fake_analyzer.progtable["old container"] = {};
+	fake_analyzer.progtable["old container"] = {NULL};
 	fake_analyzer.sinsp_containers["old container"];
 	fake_analyzer.containers["new container"].m_reported_count = 1;
-	fake_analyzer.progtable["new container"] = {};
+	fake_analyzer.progtable["new container"] = {NULL};
 	fake_analyzer.sinsp_containers["new container"];
 	fake_analyzer.containers["new container2"].m_reported_count = 2;
-	fake_analyzer.progtable["new container2"] = {};
+	fake_analyzer.progtable["new container2"] = {NULL};
 	fake_analyzer.sinsp_containers["new container2"];
 	fake_analyzer.containers["new container3"].m_reported_count = 3;
-	fake_analyzer.progtable["new container3"] = {};
+	fake_analyzer.progtable["new container3"] = {NULL};
 	fake_analyzer.sinsp_containers["new container3"];
 	fake_analyzer.containers["new container4"].m_reported_count = 4;
-	fake_analyzer.progtable["new container4"] = {};
+	fake_analyzer.progtable["new container4"] = {NULL};
 	fake_analyzer.sinsp_containers["new container4"];
 
 	vector<string> emitted_containers;

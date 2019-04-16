@@ -7,13 +7,11 @@
 import re
 import urlparse
 import time
-import _strptime
 from datetime import datetime
 
 # 3rd party
 import requests
 import simplejson as json
-import requests.packages.chardet.universaldetector
 
 # project
 from checks import AgentCheck
