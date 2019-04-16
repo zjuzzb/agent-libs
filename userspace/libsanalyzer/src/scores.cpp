@@ -313,7 +313,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyz
 // 			// This gives us the *actual* resouce limit.
 // 			//
 // 			float score = calculate_score_4(ntr, ntrcpu, nother, 
-// 				(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
+// 				(uint32_t)m_inspector->m_analyzer->num_server_programs());
 
 // 			tot_score += score;
 // 			n_scores++;
@@ -349,7 +349,7 @@ sinsp_scores::sinsp_scores(sinsp* inspector, sinsp_sched_analyzer2* sched_analyz
 // 				}
 
 // 				score1 = calculate_score_4(ntr1, ntrcpu1, nother1,
-// 					(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
+// 					(uint32_t)m_inspector->m_analyzer->num_server_programs());
 // 			}
 // 			else
 // 			{
@@ -530,13 +530,14 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 		//
 		// Extract the CPU spent not serving transactions
 		//
-		if(m_inspector->m_analyzer->m_proc_stat.m_idle.size() != 0)
+		if(m_inspector->m_analyzer->has_cpu_idle_data())
 		{
-			idle = (((float)m_inspector->m_analyzer->m_proc_stat.m_idle[cpuid]) * cpu_state->m_sample_effective_length_ns) / 100;
+			idle = (static_cast<float>(m_inspector->m_analyzer->get_cpu_idle_data(cpuid)) *
+			        cpu_state->m_sample_effective_length_ns) / 100;
 		}
 		else
 		{
-			idle = (float)cpu_state->m_lastsample_idle_ns;
+			idle = static_cast<float>(cpu_state->m_lastsample_idle_ns);
 		}
 
 		float otherns = (float)(cpu_state->m_sample_effective_length_ns - tr_cpu_time - idle);
@@ -556,8 +557,11 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 			// Perform score calculation *excluding steal time*.
 			// This gives us the *actual* resouce limit.
 			//
-			float score = calculate_score_5(ntr, ntrcpu, nother, 
-				(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
+			const float score =
+				calculate_score_5(ntr,
+			                          ntrcpu,
+			                          nother,
+			                          static_cast<uint32_t>(m_inspector->m_analyzer->num_server_programs()));
 
 			tot_score += score;
 			n_scores++;
@@ -577,9 +581,10 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 			//
 			float score1;
 
-			if(m_inspector->m_analyzer->m_proc_stat.m_steal.size() != 0)
+			if(m_inspector->m_analyzer->has_cpu_steal_data())
 			{
-				float steal = (float)(m_inspector->m_analyzer->m_proc_stat.m_steal[cpuid]);
+				const float steal = static_cast<float>(
+						m_inspector->m_analyzer->get_cpu_steal_data(cpuid));
 
 				float ntr1 = ntr * (100 - steal) / 100;
 				float nother1 = nother * (100 - steal) / 100;
@@ -588,12 +593,13 @@ sinsp_score_info sinsp_scores::get_system_capacity_score_bycpu_5(sinsp_delays_in
 
 				if(idle1 < 0)
 				{
-//					ASSERT(false);
 					idle1 = 0;
 				}
 
-				score1 = calculate_score_5(ntr1, ntrcpu1, nother1,
-					(uint32_t)m_inspector->m_analyzer->m_server_programs.size());
+				score1 = calculate_score_5(ntr1,
+				                           ntrcpu1,
+				                           nother1,
+				                           static_cast<uint32_t>(m_inspector->m_analyzer->num_server_programs()));
 			}
 			else
 			{

@@ -51,7 +51,6 @@ class sinsp_scores;
 class mounted_fs;
 class sinsp_procfs_parser;
 class mounted_fs_proxy;
-class sinsp_sched_analyzer;
 class sinsp_sched_analyzer2;
 class sinsp_delays;
 class analyzer_threadtable_listener;
@@ -72,12 +71,10 @@ class uri;
 class sinsp_baseliner;
 class tracer_emitter;
 class metric_limits;
-
-typedef class sinsp_ipv4_connection_manager sinsp_ipv4_connection_manager;
-typedef class sinsp_unix_connection_manager sinsp_unix_connection_manager;
-typedef class sinsp_pipe_connection_manager sinsp_pipe_connection_manager;
-typedef class sinsp_connection sinsp_connection;
+class sinsp_ipv4_connection_manager;
 class sinsp_connection_aggregator;
+class sinsp_container_manager;
+
 //
 // Aggregated connection table: entry and hashing infrastructure
 //
@@ -191,9 +188,6 @@ private:
 	uint64_t m_previouscputime;
 };
 #endif // _WIN32
-
-class sinsp_curl;
-class uri;
 
 class stress_tool_matcher
 {
@@ -329,6 +323,7 @@ public:
 	void stop_dropping_mode();
 	void start_dropping_mode(uint32_t sampling_ratio);
 	bool driver_stopped_dropping();
+	void set_driver_stopped_dropping(bool driver_stopped_dropping);
 
 	void set_is_sampling(bool is_sampling)
 	{
@@ -393,6 +388,11 @@ public:
 			m_configuration->set_analyzer_sample_len_ns(newsl);
 		}
 	}
+
+	/**
+	 * Returns the current sampling ratio.
+	 */
+	uint32_t get_sampling_ratio() const;
 
 	void set_statsd_capture_localhost(bool value)
 	{
@@ -564,6 +564,8 @@ public:
 	void set_connection_truncate_log_interval(int sec) { m_connection_truncate_log_interval = sec; }
 
 	void set_track_environment(bool val) { m_track_environment = val; }
+	bool is_tracking_environment() const { return m_track_environment; }
+
 	void set_envs_per_flush(uint32_t val) { m_env_hash_config.m_envs_per_flush = val; }
 	void set_max_env_size(size_t val) { m_env_hash_config.m_max_env_size = val; }
 	void set_env_blacklist(std::unique_ptr<env_hash::regex_list_t>&& blacklist) { m_env_hash_config.m_env_blacklist = std::move(blacklist); }
@@ -589,12 +591,6 @@ public:
 
 	void incr_num_container_healthcheck_command_lines() { m_num_container_healthcheck_command_lines++; }
 
-	//
-	// Test tool detection state
-	//
-	mode_switch_state m_mode_switch_state;
-	stress_tool_matcher m_stress_tool_matcher;
-
 	/**
 	 * Ensure that any async processing associated with flush() is complete
 	 * before returning.
@@ -606,8 +602,205 @@ public:
 	 */
 	void set_async_protobuf_serialize_enabled(bool enabled);
 
+	/**
+	 * Return true if the agent should terminate because something has
+	 * gone wrong in the analyzer, false otherwise.
+	 */
+	bool should_terminate() const;
+
+	/**
+	 * Returns the current number of server programs.
+	 */
+	size_t num_server_programs() const;
+
+	/**
+	 * Returns true if the analyzer has CPU idle information, false
+	 * otherwise.
+	 */
+	bool has_cpu_idle_data() const;
+
+	/**
+	 * Returns the CPU idle data for the given cpuid.
+	 * Precondition: has_idle_cpu_data() returns true.
+	 */
+	double get_cpu_idle_data(size_t cpuid) const;
+
+	/**
+	 * Returns true if this analyzer has CPU steal information, false
+	 * otherwise.
+	 */
+	bool has_cpu_steal_data() const;
+
+	/**
+	 * Returns the CPU steal data for the given cpuid.
+	 * Precondition: has_idle_cpu_data() returns true.
+	 */
+	double get_cpu_steal_data(size_t cpuid) const;
+
+	/**
+	 * Returns true if this analyzer has CPU load information, false
+	 * otherwise.
+	 */
+	bool has_cpu_load_data() const;
+
+	/**
+	 * Returns the CPU load data for the given cpuid.
+	 * Precondition: has_idle_cpu_data() returns true.
+	 */
+	double get_cpu_load_data(size_t cpuid) const;
+
+	/**
+	 * Returns the environment blacklist.
+	 * Precondition: get_track_environment() returns true.
+	 */
+	const env_hash::regex_list_t& get_environment_blacklist() const;
+
+	/**
+	 * Find the name of the Java process with the given pid.
+	 *
+	 * @param[in] pid   The ID of the process.
+	 * @param[out] name The name of the process.
+	 *
+	 * @returns true if a Java process with the given pid was found,
+	 *          false otherwise.
+	 */
+	bool find_java_process_name(int pid, std::string& name) const;
+
+	/**
+	 * Return the thread memory ID.
+	 */
+	uint32_t get_thread_memory_id() const;
+
+	/**
+	 * Return the number of IPv4 connections that were dropped because
+	 * the ipv4_connection_manager didn't have room in the connection
+	 * table.
+	 */
+	uint32_t get_num_dropped_ipv4_connections() const;
+
+	/**
+	 * Inject a statsd metric into statsite.  If the given tinfo is non-
+	 * nullptr, and if it has a container id associated with it, then
+	 * inject both a container metric and a host metric; otherwise
+	 * inject only the host metric.  If this sinsp_analyzer doesn't
+	 * currently have a statsite_proxy, then this method does nothing.
+	 *
+	 * @param[in] container_id    The ID of the container, or the empty
+	 *                            string if there is no container id.
+	 * @param[in] dest_is_ipv4_localhost true if the destination is
+	 *                            127.0.0.1, false otherwise.
+	 * @param[in] use_host_statsd true if the host is running its own
+	 *                            statsd server, false otherwise.
+	 * @param[in] data            The stat
+	 * @param[in] len             The length of data
+	 */
+	void inject_statsd_metric(const std::string& container_id,
+	                          bool dest_is_ipv4_localhost,
+	                          bool use_host_statsd,
+	                          const char* data,
+	                          uint32_t len);
+
+	/**
+	 * Attempts to resolve a custom container.
+	 */
+	bool resolve_custom_container(sinsp_container_manager* manager,
+	                              sinsp_threadinfo* tinfo,
+	                              bool query_os_for_missing_info);
+
+	/**
+	 * Remove the IPv4 connection associated with the given ipv4info.
+	 */
+	void remove_ipv4_connection(const ipv4tuple& ipv4info);
+
+	/**
+	 * Return the current size of the thread table.
+	 */
+	uint32_t get_thread_count() const;
+
+	/**
+	 * Enable or disable simulated drop mode.
+	 */
+	void simulate_drop_mode(bool enabled);
+
+	/**
+	 * If the agent is configured to detect stress tool, then determine
+	 * if the given command is a stress tool.  If so, and if we're not
+	 * in NODRIVER mode, switch to NODRIVER mode.
+	 *
+	 * @param[in] command The command that might be the name of a stress
+	 *                    tool.
+	 * @returns true if a stress tool was detected, false otherwise.
+	 */
+	bool detect_and_match_stress_tool(const std::string& command);
+
+
+	/**
+	 * Add the given command to the set of commands that have been
+	 * executed by the given container_id.
+	 */
+	void add_executed_command(const std::string& container_id,
+	                          const sinsp_executed_command& command);
+
+	/**
+	 * Set the last dropmode switch time to the given time.
+	 */
+	void set_last_dropmode_switch_time(uint64_t last_dropmode_switch_time);
+
+	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flushflags);
+
+	/**
+	 * Returns the current mode switch state.
+	 */
+	mode_switch_state get_mode_switch_state() const;
+
+	/**
+	 * Sets the current mode switch state to the given state.
+	 */
+	void set_mode_switch_state(mode_switch_state state);
+
+	/**
+	 * Returns the previous flush time in nanoseconds.
+	 */
+	uint64_t get_prev_flush_time_ns() const;
+
+
+	/**
+	 * Returns true if the analyzer has a statsite proxy, false otherwise.
+	 */
+	bool has_statsite_proxy() const;
+
+	/**
+	 * Called on all containers that are eligible to be emitted, regardless
+	 * of whether they actually ARE emitted. It is guaranteed to be called
+	 * before emit_container() (if emit_container() is called).
+	 */
+	static void found_emittable_containers(
+			sinsp_analyzer& m_analyzer,
+			const std::vector<std::string>& containers,
+			const progtable_by_container_t& progtable_by_container);
+
+	/**
+	 * The container_emitter class is responsible for sorting and deciding
+	 * which containers to emit. It makes callbacks to this when it has one
+	 * that needs to be reported.
+	 *
+	 * emit_container is called when a container is to be emitted.
+	 */
+        void emit_container(const std::string& container_id,
+	                    unsigned* statsd_limit,
+	                    uint64_t total_cpu_shares,
+	                    sinsp_threadinfo* tinfo, 
+	                    sinsp_analyzer::flush_flags flushflags);
+
+
 VISIBILITY_PRIVATE
 	typedef bool (sinsp_analyzer::*server_check_func_t)(string&);
+
+	//
+	// Test tool detection state
+	//
+	mode_switch_state m_mode_switch_state;
+	stress_tool_matcher m_stress_tool_matcher;
 
 	void chisels_on_capture_start();
 	void chisels_on_capture_end();
@@ -644,11 +837,11 @@ VISIBILITY_PRIVATE
 	void reset_k8s(time_t& last_attempt, const std::string& err);
 	// Return the cluster name that must be set
 	// for the orch state. This is what will be
-	// displayed on the front end. 
+	// displayed on the front end.
 	std::string get_k8s_cluster_name();
- 	// Append the cluster name as a "cluster:$NAME" tag
- 	// if no "cluster:*" tag is already configured
- 	std::string get_host_tags_with_cluster();
+	// Append the cluster name as a "cluster:$NAME" tag
+	// if no "cluster:*" tag is already configured
+	std::string get_host_tags_with_cluster();
 	// If the agent tags contain a tag for:
 	// cluster:$NAME ; then extract $NAME and return it
 	std::string get_cluster_name_from_agent_tags() const;
@@ -681,26 +874,8 @@ VISIBILITY_PRIVATE
 				       sinsp_analyzer::flush_flags flushflags);
 
 
-	// found_emittable_container is called on all containers which are eligible to be emitted,
-	// regardless of whether they actually ARE emitted. It is guaranteed to be
-	// called before emit_container (if emit_container is called)
-	static void found_emittable_containers(sinsp_analyzer& m_analyzer,
-					       const vector<string>& containers,
-					       const progtable_by_container_t& progtable_by_container);
-
-	// The container_emitter class is responsible for sorting and deciding which containers
-	// to emit. It makes callbacks to this when it has one that needs to be reported.
-	// The static method here simply invokves the member function
-	//
-	// emit_container is called when a container is to be emitted
-        void emit_container(const string &container_id,
-			    unsigned *statsd_limit,
-			    uint64_t total_cpu_shares,
-			    sinsp_threadinfo* tinfo, 
-			    sinsp_analyzer::flush_flags flushflags);
 
 	void tune_drop_mode(flush_flags flushflags, double threshold_metric);
-	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flushflags);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();
@@ -905,7 +1080,6 @@ VISIBILITY_PRIVATE
 	// Falco stuff
 	//
 	sinsp_baseliner* m_falco_baseliner = NULL;
-	bool m_do_baseline_calculation = false;
 	uint64_t m_last_falco_dump_ts = 0;
 	uint64_t m_last_buffer_drops = 0;
 
@@ -1060,38 +1234,19 @@ VISIBILITY_PRIVATE
 
 	audit_tap* m_tap;
 
-	//
-	// KILL FLAG. IF THIS IS SET, THE AGENT WILL RESTART
-	//
+	/**
+	 * Kill flag.  If this is set to true, the agent will restart.
+	 * Possible causes:
+	 *     - too many tid collisions
+	 */
 	bool m_die;
 
 	std::unique_ptr<libsanalyzer::metric_serializer> m_serializer;
 	bool m_async_serialize_enabled;
 
-	friend class dragent_app;
-	friend class sinsp_transaction_table;
-	friend class sinsp_scores;
-	friend class sinsp_sched_analyzer2;
-	friend class sinsp_delays;
-	friend class sinsp_evt;
-	friend class sinsp_threadinfo;
-	friend class sinsp_transaction_manager;
-	friend class sinsp_partial_transaction;
-	friend class sinsp_fdtable;
-	friend class sinsp_thread_manager;
-	friend class thread_analyzer_info;
-	friend class sinsp_analyzer_fd_listener;
-	friend class analyzer_threadtable_listener;
-	friend class sinsp_sched_analyzer;
-	friend class sinsp_analyzer_parsers;
-	friend class k8s_ca_handler;
-	friend class sinsp_baseliner;
-
-	// in a perfect world, only container_emitter<sinsp_analyzer> would be a friend,
-	// but that requires the instantiation of that template, which means we need
-	// to include the .h/.hh in this header, which means everybody and their mother
-	// needs to build it. Being a bit more lenient here avoids that
-	template <typename T, typename S> friend class container_emitter;
+	//
+	// Please do not add any friends.
+	//
 };
 
 #endif // HAS_ANALYZER

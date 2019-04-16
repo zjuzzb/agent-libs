@@ -161,10 +161,10 @@ void container_emitter<callback_type,callback_arg_type>::emit_containers()
 				auto analyzer_container_info = m_containers.find(container_id);
 				bool optional;
 				if((analyzer_container_info != m_containers.end()) &&
-				   analyzer_container_info->second.should_report_container(m_t.m_configuration,
+				   analyzer_container_info->second.should_report_container(m_t.get_configuration_read_only(),
 											   sinsp_container_info_instance,
 											   m_t.infra_state(),
-											   m_t.m_prev_flush_time_ns,
+											   m_t.get_prev_flush_time_ns(),
 											   optional))
 				{
 					if (optional) {

@@ -1372,8 +1372,10 @@ public:
 class sinsp_baseliner
 {
 public:
-	void init(sinsp* inspector);
+	sinsp_baseliner();
 	~sinsp_baseliner();
+
+	void init(sinsp* inspector);
 	void load_tables(uint64_t time);
 	void clear_tables();
 	void register_callbacks(sinsp_fd_listener* listener);
@@ -1402,12 +1404,17 @@ public:
 	inline blprogram* get_program(sinsp_threadinfo* tinfo);
 	inline void add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category category);
 
+	sinsp* get_inspector();
+	void set_baseline_calculation_enabled(bool enabled = true);
+	bool is_baseline_calculation_enabled() const;
+
+private:
 	sinsp* m_inspector;
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram*> m_progtable;
 	unordered_map<string, blcontainer> m_container_table;
 #ifndef HAS_ANALYZER
-	string m_hostname;
+	std::string m_hostname;
 	uint64_t m_hostid;
 #endif
 #ifdef ASYNC_PROC_PARSING
@@ -1415,4 +1422,5 @@ public:
 	proc_parser_state* m_procparser_state;
 #endif
 	std::unordered_multimap<uint16_t, std::shared_ptr<sinsp_filter_check>> m_nofd_fs_extractors;
+	bool m_do_baseline_calculation;
 };

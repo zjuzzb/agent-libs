@@ -188,7 +188,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_threadtable_listener = new analyzer_threadtable_listener(inspector, this);
 	inspector->m_thread_manager->set_listener((sinsp_threadtable_listener*)m_threadtable_listener);
 
-	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this);
+	m_fd_listener = new sinsp_analyzer_fd_listener(inspector, this, m_falco_baseliner);
 	inspector->m_parser->m_fd_listener = m_fd_listener;
 #ifndef _WIN32
 	m_jmx_sampling = 1;
@@ -463,14 +463,15 @@ void sinsp_analyzer::on_capture_start()
 	{
 		m_ipv4_connections->m_percentiles = pctls;
 	}
+	m_fd_listener->set_ipv4_connection_manager(m_ipv4_connections);
 	m_trans_table = new sinsp_transaction_table(m_inspector);
 
 	//
 	// Notify the scheduler analyzer
 	//
 	ASSERT(m_sched_analyzer2 != NULL);
+	m_parser->set_sched_analyzer2(m_sched_analyzer2);
 	m_sched_analyzer2->on_capture_start();
-	m_parser->on_capture_start();
 
 	//
 	// Call the chisels on_capture_start callback
@@ -480,11 +481,12 @@ void sinsp_analyzer::on_capture_start()
 	//
 	// Start the falco baseliner
 	//
-	m_do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
-	if(m_do_baseline_calculation)
+	const bool do_baseline_calculation = m_configuration->get_falco_baselining_enabled();
+	if(do_baseline_calculation)
 	{
 		glogf("starting baseliner");
 		m_falco_baseliner->init(m_inspector);
+		m_falco_baseliner->set_baseline_calculation_enabled(do_baseline_calculation);
 	}
 
 #ifndef CYGWING_AGENT
@@ -3813,10 +3815,11 @@ void sinsp_analyzer::tune_drop_mode(flush_flags flushflags, double threshold_met
 				new_sampling_ratio = m_sampling_ratio * 2;
 			}
 
-			if(new_sampling_ratio > 1 && m_do_baseline_calculation)
+			if(new_sampling_ratio > 1 &&
+			   m_falco_baseliner->is_baseline_calculation_enabled())
 			{
 				g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining");
-				m_do_baseline_calculation = false;
+				m_falco_baseliner->set_baseline_calculation_enabled(false);
 				m_falco_baseliner->clear_tables();
 			}
 
@@ -4096,7 +4099,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 	// if it's time to emit the falco baseline, do the serialization and then restart it
 	//
 	tracer_emitter falco_trc("falco_baseline", f_trc);
-	if(m_do_baseline_calculation)
+	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
 		if(is_eof)
 		{
@@ -4130,7 +4133,7 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 					// It's safe to turn baselining on again.
 					// Reset the tables and restart the baseline time counter.
 					//
-					m_do_baseline_calculation = true;
+					m_falco_baseliner->set_baseline_calculation_enabled(false);
 					m_falco_baseliner->clear_tables();
 					m_falco_baseliner->load_tables(evt->get_ts());
 					m_last_falco_dump_ts = evt->get_ts();
@@ -4989,7 +4992,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		g_logger.log("Skipping drop mode tuning.", sinsp_logger::SEV_DEBUG);
 	}
 
-	if(m_do_baseline_calculation)
+	if(m_falco_baseliner->is_baseline_calculation_enabled())
 	{
 		//
 		// Disable the baseline if the ring buffer is full
@@ -4999,7 +5002,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		if(st.n_drops_buffer > (m_last_buffer_drops + FALCOBL_MAX_DROPS_FULLBUF))
 		{
 			g_logger.format(sinsp_logger::SEV_WARNING, "disabling falco baselining because buffer is full");
-			m_do_baseline_calculation = false;
+			m_falco_baseliner->set_baseline_calculation_enabled(false);
+
 			m_falco_baseliner->clear_tables();
 			m_last_buffer_drops = st.n_drops_buffer;
 		}
@@ -5265,13 +5269,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flushflags)
 		return;
 	}
 
-	//
-	// If process the event in the baseliner
-	//
-	if(m_do_baseline_calculation)
-	{
-		m_falco_baseliner->process_event(evt);
-	}
+	m_falco_baseliner->process_event(evt);
 
 #ifndef CYGWING_AGENT
 	if(m_infrastructure_state && (m_configuration->get_security_enabled() || m_infrastructure_state->subscribed()))
@@ -7309,6 +7307,11 @@ bool sinsp_analyzer::driver_stopped_dropping()
 	return m_driver_stopped_dropping;
 }
 
+void sinsp_analyzer::set_driver_stopped_dropping(const bool driver_stopped_dropping)
+{
+	m_driver_stopped_dropping = driver_stopped_dropping;
+}
+
 void sinsp_analyzer::set_internal_metrics(internal_metrics::sptr_t im)
 {
 	m_internal_metrics = im;
@@ -7379,7 +7382,10 @@ uint64_t sinsp_analyzer::flush_tracer_timeout()
 
 void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 {
-	m_tap = new audit_tap(&m_env_hash_config, m_configuration->get_machine_id(), emit_local_connections);
+	m_tap = new audit_tap(&m_env_hash_config,
+	                      m_configuration->get_machine_id(),
+	                      emit_local_connections);
+	m_threadtable_listener->set_audit_tap(m_tap);
 }
 
 void sinsp_analyzer::flush_drain() const
@@ -7389,7 +7395,181 @@ void sinsp_analyzer::flush_drain() const
 
 void sinsp_analyzer::set_async_protobuf_serialize_enabled(const bool enabled)
 {
-	 m_async_serialize_enabled = enabled;
+         m_async_serialize_enabled = enabled;
+}
+
+bool sinsp_analyzer::should_terminate() const
+{
+	return m_die;
+}
+
+
+size_t sinsp_analyzer::num_server_programs() const
+{
+	return m_server_programs.size();
+}
+
+bool sinsp_analyzer::has_cpu_idle_data() const
+{
+	return !m_proc_stat.m_idle.empty();
+}
+
+double sinsp_analyzer::get_cpu_idle_data(const size_t cpuid) const
+{
+	return m_proc_stat.m_idle[cpuid];
+}
+
+bool sinsp_analyzer::has_cpu_steal_data() const
+{
+	return !m_proc_stat.m_steal.empty();
+}
+
+double sinsp_analyzer::get_cpu_steal_data(const size_t cpuid) const
+{
+	return m_proc_stat.m_steal[cpuid];
+}
+
+bool sinsp_analyzer::has_cpu_load_data() const
+{
+	return !m_proc_stat.m_loads.empty();
+}
+
+double sinsp_analyzer::get_cpu_load_data(size_t cpuid) const
+{
+	return m_proc_stat.m_loads[cpuid];
+}
+
+const env_hash::regex_list_t& sinsp_analyzer::get_environment_blacklist() const
+{
+	return *m_env_hash_config.m_env_blacklist.get();
+}
+
+bool sinsp_analyzer::find_java_process_name(const int pid, std::string& name) const
+{
+	bool found = false;
+
+	auto process = m_jmx_metrics.find(pid);
+	if(process != m_jmx_metrics.end())
+	{
+		name = process->second.name();
+		found = true;
+	}
+
+	return found;
+}
+
+uint32_t sinsp_analyzer::get_thread_memory_id() const
+{
+	return m_thread_memory_id;
+}
+
+uint32_t sinsp_analyzer::get_num_dropped_ipv4_connections() const
+{
+	return m_ipv4_connections->get_n_drops();
+}
+
+void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
+                                          const bool dest_is_ipv4_localhost,
+                                          const bool use_host_statsd,
+                                          const char* const data,
+                                          const uint32_t len)
+{
+	if(!m_statsite_proxy)
+	{
+		return;
+	}
+
+	if(!container_id.empty())
+	{
+		// Send the metric as is, so it will be aggregated by host
+		m_statsite_proxy->send_metric(data, len);
+		m_statsite_proxy->send_container_metric(container_id, data, len);
+	}
+	else if(m_statsd_capture_localhost.load(memory_order_relaxed) ||
+	        !dest_is_ipv4_localhost ||
+		use_host_statsd)
+	{
+		m_statsite_proxy->send_metric(data, len);
+	}
+}
+
+bool sinsp_analyzer::resolve_custom_container(sinsp_container_manager* const manager,
+                                              sinsp_threadinfo* const tinfo,
+                                              const bool query_os_for_missing_info)
+{
+	return m_custom_container.resolve(manager, tinfo, query_os_for_missing_info);
+}
+
+void sinsp_analyzer::remove_ipv4_connection(const ipv4tuple& ipv4info)
+{
+	m_ipv4_connections->remove_connection(ipv4info);
+}
+
+uint32_t sinsp_analyzer::get_thread_count() const
+{
+	return m_inspector->m_thread_manager->get_thread_count();
+}
+
+bool sinsp_analyzer::detect_and_match_stress_tool(const std::string& command)
+{
+	if(m_configuration->get_detect_stress_tools())
+	{
+		if(m_stress_tool_matcher.match(command))
+		{
+			if(!m_inspector->is_nodriver())
+			{
+				m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
+			}
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void sinsp_analyzer::simulate_drop_mode(const bool enabled)
+{
+#if defined(SIMULATE_DROP_MODE)
+	m_inspector->m_isdropping = enabled;
+#endif
+}
+
+void sinsp_analyzer::add_executed_command(const std::string& container_id,
+                                          const sinsp_executed_command& command)
+{
+	m_executed_commands[container_id].push_back(command);
+}
+
+
+uint32_t sinsp_analyzer::get_sampling_ratio() const
+{
+	return m_sampling_ratio;
+}
+
+void sinsp_analyzer::set_last_dropmode_switch_time(const uint64_t last_dropmode_switch_time)
+{
+	m_last_dropmode_switch_time = last_dropmode_switch_time;
+}
+
+sinsp_analyzer::mode_switch_state sinsp_analyzer::get_mode_switch_state() const
+{
+	return m_mode_switch_state;
+}
+
+void sinsp_analyzer::set_mode_switch_state(const mode_switch_state state)
+{
+	m_mode_switch_state = state;
+}
+
+uint64_t sinsp_analyzer::get_prev_flush_time_ns() const
+{
+	return m_prev_flush_time_ns;
+}
+
+bool sinsp_analyzer::has_statsite_proxy() const
+{
+	return m_statsite_proxy != nullptr;
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

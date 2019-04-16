@@ -43,6 +43,16 @@ public:
 		m_configuration_instance.set_container_filter(m_container_filter);
 	}
 
+	const sinsp_configuration* get_configuration_read_only()
+	{
+		return m_configuration;
+	}
+
+	uint64_t get_prev_flush_time_ns() const
+	{
+		return m_prev_flush_time_ns;
+	}
+
         shared_ptr<proc_filter::conf> m_container_filter;
 
 	std::unordered_map<std::string, analyzer_container_state> containers;
@@ -81,9 +91,6 @@ public:
 		ASSERT_EQ(flush_flags, test_flush_flags);
 		emitted_containers.insert(container_id);
 	}
-
-
-
 };
 
 typedef container_emitter<fake_analyzer_t, uint32_t> test_container_emitter;

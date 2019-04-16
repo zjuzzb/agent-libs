@@ -867,7 +867,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 
 		if((uptime_s % m_configuration.m_watchdog_analyzer_tid_collision_check_interval_s) == 0 &&
-			m_sinsp_worker.m_analyzer->m_die)
+			m_sinsp_worker.m_analyzer->should_terminate())
 		{
 			char line[128];
 			snprintf(line, sizeof(line), "watchdog: too many tid collisions\n");

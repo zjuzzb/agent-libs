@@ -26,7 +26,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
 ///////////////////////////////////////////////////////////////////////////////
-const char* sql_querystart_toks[] = {"select",
+const char* sql_querystart_toks[] = {
+		"select",
 		"insert",
 		"set ",
 		"create",
@@ -299,13 +300,16 @@ sinsp_partial_transaction::type sinsp_proto_detector::detect_proto(sinsp_evt *ev
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_analyzer_fd_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
-sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer):
-	m_proto_detector(analyzer->get_configuration())
-{
-	m_inspector = inspector; 
-	m_analyzer = analyzer;
-	m_sinsp_config = analyzer->get_configuration();
-}
+sinsp_analyzer_fd_listener::sinsp_analyzer_fd_listener(
+		sinsp* const inspector,
+		sinsp_analyzer* const analyzer,
+		sinsp_baseliner* const falco_baseliner):
+	m_inspector(inspector),
+	m_analyzer(analyzer),
+	m_falco_baseliner(falco_baseliner),
+	m_proto_detector(sinsp_proto_detector(analyzer->get_configuration())),
+	m_sinsp_config(analyzer->get_configuration())
+{ }
 
 bool sinsp_analyzer_fd_listener::patch_network_role(sinsp_threadinfo* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming)
 {
@@ -469,7 +473,7 @@ sinsp_connection* sinsp_analyzer_fd_listener::get_ipv4_connection(sinsp_fdinfo_t
 	// XXX: we expect it to return true and not fall into the `return connection` path, which would mean
 	// XXX: we ignore that preexisting connection and create a new one
 	string scomm = evt->m_tinfo->get_comm();
-	connection = m_analyzer->m_ipv4_connections->add_connection(
+	connection = m_ipv4_connections->add_connection(
 		fdinfo->m_sockinfo.m_ipv4info,
 		&scomm,
 		evt->m_tinfo->m_pid,
@@ -608,13 +612,13 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const
 {
 	// Support for statsd protocol
-	static const uint32_t LOCALHOST_IPV4 = 0x0100007F; // network endian representation of 127.0.0.1
-	static const uint16_t STATSD_PORT = 8125;
+	const uint32_t LOCALHOST_IPV4 = 0x0100007F; // network endian representation of 127.0.0.1
+	const uint16_t STATSD_PORT = 8125;
 
-	if(m_analyzer->m_statsite_proxy &&
-		fdinfo->is_role_client() &&
-		fdinfo->is_udp_socket() &&
-		fdinfo->get_serverport() == STATSD_PORT)
+	if(m_analyzer->has_statsite_proxy() &&
+	   fdinfo->is_role_client() &&
+	   fdinfo->is_udp_socket() &&
+	   fdinfo->get_serverport() == STATSD_PORT)
 	{
 		auto tinfo = evt->get_thread_info(false);
 
@@ -636,18 +640,16 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt *evt, sinsp_fdinf
 				tinfo ? tinfo->m_container_id.c_str() : "<no data>");
 #endif
 
-		if(tinfo != nullptr && !tinfo->m_container_id.empty())
-		{
-			// Send the metric as is, so it will be aggregated by host
-			m_analyzer->m_statsite_proxy->send_metric(data, len);
-			m_analyzer->m_statsite_proxy->send_container_metric(tinfo->m_container_id, data, len);
-		}
-		else if(m_analyzer->m_statsd_capture_localhost.load(memory_order_relaxed) ||
-			(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip != LOCALHOST_IPV4) ||
-			m_sinsp_config->get_use_host_statsd())
-		{
-			m_analyzer->m_statsite_proxy->send_metric(data, len);
-		}
+		const std::string container_id = (tinfo != nullptr)
+		                               ? tinfo->m_container_id
+		                               : "";
+
+		m_analyzer->inject_statsd_metric(
+				container_id,
+				(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip == LOCALHOST_IPV4),
+				m_sinsp_config->get_use_host_statsd(),
+				data,
+				len);
 	}
 }
 #endif
@@ -748,15 +750,15 @@ void sinsp_analyzer_fd_listener::add_client_ipv4_connection(sinsp_evt *evt)
 	//
 	string scomm = evt->m_tinfo->get_comm();
 
-	m_analyzer->m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
-									 &scomm,
-									 evt->m_tinfo->m_pid,
-									 tid,
-									 evt->m_tinfo->m_lastevent_fd,
-									 true,
-									 evt->get_ts(),
-									 flags,
-									 evt->m_errorcode);
+	m_ipv4_connections->add_connection(evt->m_fdinfo->m_sockinfo.m_ipv4info,
+	                                   &scomm,
+	                                   evt->m_tinfo->m_pid,
+	                                   tid,
+	                                   evt->m_tinfo->m_lastevent_fd,
+	                                   true,
+	                                   evt->get_ts(),
+	                                   flags,
+	                                   evt->m_errorcode);
 
 	evt->m_tinfo->m_ainfo->m_th_analysis_flags |= thread_analyzer_info::flags::AF_IS_NET_CLIENT;
 
@@ -797,13 +799,8 @@ void sinsp_analyzer_fd_listener::on_connect(sinsp_evt *evt, uint8_t* packed_data
 	//
 	// Baseline update
 	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_connect(evt);
-	}
+	ASSERT(m_falco_baseliner != NULL);
+	m_falco_baseliner->on_connect(evt);
 }
 
 void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_t* packed_data, sinsp_fdinfo_t* new_fdinfo)
@@ -819,15 +816,16 @@ void sinsp_analyzer_fd_listener::on_accept(sinsp_evt *evt, int64_t newfd, uint8_
 		//
 		// Add the tuple to the connection table
 		//
-		m_analyzer->m_ipv4_connections->add_connection(new_fdinfo->m_sockinfo.m_ipv4info,
-			&scomm,
-			evt->m_tinfo->m_pid,
-		    tid,
-		    newfd,
-		    false,
-		    evt->get_ts(),
-		    sinsp_connection::AF_NONE,
-		    0);
+		m_ipv4_connections->add_connection(
+				new_fdinfo->m_sockinfo.m_ipv4info,
+				&scomm,
+				evt->m_tinfo->m_pid,
+				tid,
+				newfd,
+				false,
+				evt->get_ts(),
+				sinsp_connection::AF_NONE,
+				0);
 	}
 	else if(new_fdinfo->m_type == SCAP_FD_UNIX_SOCK)
 	{
@@ -851,13 +849,8 @@ blupdate:
 	//
 	// Baseline update
 	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_accept(evt, new_fdinfo);
-	}
+	ASSERT(m_falco_baseliner != NULL);
+	m_falco_baseliner->on_accept(evt, new_fdinfo);
 }
 
 inline void sinsp_analyzer_fd_listener::flush_transaction(erase_fd_params* params)
@@ -925,7 +918,7 @@ void sinsp_analyzer_fd_listener::on_erase_fd(erase_fd_params* params)
 	//
 	if(params->m_fdinfo->is_ipv4_socket() && !params->m_fdinfo->has_no_role())
 	{
-		params->m_inspector->m_analyzer->m_ipv4_connections->remove_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
+		params->m_inspector->m_analyzer->remove_ipv4_connection(params->m_fdinfo->m_sockinfo.m_ipv4info);
 	}
 }
 
@@ -985,13 +978,8 @@ void sinsp_analyzer_fd_listener::on_file_open(sinsp_evt* evt, const string& full
 	//
 	// Baseline update
 	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_file_open(evt, (string&)fullpath, flags);
-	}
+	ASSERT(m_falco_baseliner != NULL);
+	m_falco_baseliner->on_file_open(evt, (string&)fullpath, flags);
 }
 
 
@@ -1061,18 +1049,15 @@ void sinsp_analyzer_fd_listener::on_execve(sinsp_evt *evt)
 	//
 	// Baseline update
 	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
+	ASSERT(m_falco_baseliner != NULL);
+	m_falco_baseliner->on_new_proc(evt, evt->get_thread_info());
 
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
+	if (m_analyzer->is_tracking_environment())
 	{
-		m_analyzer->m_falco_baseliner->on_new_proc(evt, evt->get_thread_info());
-	}
-
-	if (m_analyzer->m_track_environment) {
 		auto tinfo = evt->get_thread_info();
+
 		if (tinfo && tinfo->m_ainfo) {
-			tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo, *m_analyzer->m_env_hash_config.m_env_blacklist);
+			tinfo->m_ainfo->main_thread_ainfo()->hash_environment(tinfo, m_analyzer->get_environment_blacklist());
 		}
 	}
 }
@@ -1082,22 +1067,23 @@ void sinsp_analyzer_fd_listener::on_bind(sinsp_evt *evt)
 	//
 	// Baseline update
 	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_bind(evt);
-	}
+	ASSERT(m_falco_baseliner != NULL);
+	m_falco_baseliner->on_bind(evt);
 }
 
-bool sinsp_analyzer_fd_listener::on_resolve_container(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info)
+bool sinsp_analyzer_fd_listener::on_resolve_container(
+		sinsp_container_manager* const manager,
+		sinsp_threadinfo* const tinfo,
+		const bool query_os_for_missing_info)
 {
-#ifndef CYGWING_AGENT
-	return m_analyzer->m_custom_container.resolve(manager, tinfo, query_os_for_missing_info);
-#else
-	return false;
+	bool resolved = false;
+
+#if !defined(CYGWING_AGENT)
+	resolved = m_analyzer->resolve_custom_container(manager,
+	                                                tinfo,
+	                                                query_os_for_missing_info);
 #endif
+	return resolved;
 }
 
 void sinsp_analyzer_fd_listener::on_clone(sinsp_evt *evt, sinsp_threadinfo* newtinfo)
@@ -1105,13 +1091,8 @@ void sinsp_analyzer_fd_listener::on_clone(sinsp_evt *evt, sinsp_threadinfo* newt
 	//
 	// Baseline update
 	//
-	ASSERT(m_analyzer->m_falco_baseliner != NULL);
-
-	// We only do baseline calculatation if the agent's resource usage is low 
-	if(m_analyzer->m_do_baseline_calculation)
-	{
-		m_analyzer->m_falco_baseliner->on_new_proc(evt, newtinfo);
-	}
+	ASSERT(m_falco_baseliner != NULL);
+	m_falco_baseliner->on_new_proc(evt, newtinfo);
 }
 
 inline bool sinsp_analyzer_fd_listener::should_account_io(const sinsp_threadinfo* tinfo)
@@ -1160,4 +1141,11 @@ bool sinsp_analyzer_fd_listener::should_report_network(sinsp_fdinfo_t *fdinfo)
 {
 	return !m_sinsp_config->get_blacklisted_ports().test(fdinfo->get_serverport());
 }
+
+void sinsp_analyzer_fd_listener::set_ipv4_connection_manager(
+		sinsp_ipv4_connection_manager* const ipv4_connection_manager)
+{
+	m_ipv4_connections = ipv4_connection_manager;
+}
+
 #endif // HAS_ANALYZER

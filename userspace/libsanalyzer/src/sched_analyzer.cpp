@@ -445,9 +445,9 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 				state.m_lastsample_other_ns,
 				state.m_lastsample_unknown_ns,
 				state.m_lastsample_idle_ns,
-				(m_inspector->m_analyzer->m_proc_stat.m_loads.size() != 0)?m_inspector->m_analyzer->m_proc_stat.m_loads[j] : 0,
-				(m_inspector->m_analyzer->m_proc_stat.m_idle.size() != 0)?m_inspector->m_analyzer->m_proc_stat.m_idle[j] : 0,
-				(m_inspector->m_analyzer->m_proc_stat.m_steal.size() != 0)?m_inspector->m_analyzer->m_proc_stat.m_steal[j] : 0);
+				m_inspector->m_analyzer->has_cpu_load_data() ? m_inspector->m_analyzer->get_cpu_load_data(j) : 0,
+				m_inspector->m_analyzer->has_cpu_idle_data() ? m_inspector->m_analyzer->get_cpu_idle_data(j) : 0,
+				m_inspector->m_analyzer->has_cpu_steal_data() ? m_inspector->m_analyzer->get_cpu_steal_data(j) : 0);
 		}
 #endif
 	}

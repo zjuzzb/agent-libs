@@ -151,10 +151,10 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
 	}
 
-	if (m_analyzer->m_track_environment) {
+	if (m_analyzer->is_tracking_environment()) {
 		if (m_tinfo->is_main_thread()) {
 			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(m_tinfo, *m_analyzer->m_env_hash_config.m_env_blacklist);
+			mt_ainfo->hash_environment(m_tinfo, m_analyzer->get_environment_blacklist());
 		}
 	}
 }
@@ -483,7 +483,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 							connection = m_analyzer->get_connection(it->second.m_sockinfo.m_ipv4info, 
 								endtime);
 
-							ASSERT(connection || m_analyzer->m_ipv4_connections->get_n_drops() != 0);
+							ASSERT(connection || m_analyzer->get_num_dropped_ipv4_connections() != 0);
 						}
 						else if(it->second.is_unix_socket())
 						{
@@ -625,26 +625,31 @@ std::string thread_analyzer_info::ports_to_string(const set<uint16_t> &ports)
 ///////////////////////////////////////////////////////////////////////////////
 // analyzer_threadtable_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
-analyzer_threadtable_listener::analyzer_threadtable_listener(sinsp* inspector, sinsp_analyzer* analyzer)
-{
-	m_inspector = inspector; 
-	m_analyzer = analyzer;
-}
+analyzer_threadtable_listener::analyzer_threadtable_listener(
+		sinsp* const inspector,
+		sinsp_analyzer* const analyzer):
+	m_inspector(inspector),
+	m_analyzer(analyzer),
+	m_tap(nullptr)
+
+{ }
 
 void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
 {
-	void *buffer = tinfo->get_private_state(m_analyzer->m_thread_memory_id);
+	void *buffer = tinfo->get_private_state(m_analyzer->get_thread_memory_id());
+
 	std::memset(buffer, 0, sizeof(thread_analyzer_info));
+
 	tinfo->m_ainfo = new (buffer) thread_analyzer_info(); // placement new
-	tinfo->m_ainfo->m_percentiles = m_analyzer->m_configuration->get_percentiles();
+	tinfo->m_ainfo->m_percentiles = m_analyzer->get_configuration_read_only()->get_percentiles();
 	tinfo->m_ainfo->init(m_inspector, tinfo);
 }
 
-void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
+void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const tinfo)
 {
-	if(tinfo->is_main_thread() && m_analyzer->m_tap)
+	if(tinfo->is_main_thread() && m_tap != nullptr)
 	{
-		m_analyzer->m_tap->on_exit(tinfo->m_pid);
+		m_tap->on_exit(tinfo->m_pid);
 	}
 	if(tinfo->m_ainfo)
 	{
@@ -652,11 +657,16 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 	}
 }
 
+void analyzer_threadtable_listener::set_audit_tap(audit_tap* const tap)
+{
+	m_tap = tap;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Support for thread sorting
 ///////////////////////////////////////////////////////////////////////////////
 bool threadinfo_cmp_cpu(sinsp_threadinfo* src , sinsp_threadinfo* dst)
-{ 
+{
 	ASSERT(src->m_ainfo);
 	ASSERT(src->m_ainfo->m_procinfo);
 	ASSERT(dst->m_ainfo);

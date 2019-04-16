@@ -292,6 +292,8 @@ private:
 ///////////////////////////////////////////////////////////////////////////////
 // Thread table changes listener
 ///////////////////////////////////////////////////////////////////////////////
+class audit_tap;
+
 class analyzer_threadtable_listener : public sinsp_threadtable_listener
 {
 public:
@@ -299,9 +301,12 @@ public:
 	void on_thread_created(sinsp_threadinfo* tinfo);
 	void on_thread_destroyed(sinsp_threadinfo* tinfo);
 
+	void set_audit_tap(audit_tap* tap);
+
 private:
-	sinsp* m_inspector; 
+	sinsp* m_inspector;
 	sinsp_analyzer* m_analyzer;
+	audit_tap* m_tap;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

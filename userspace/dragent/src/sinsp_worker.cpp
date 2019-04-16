@@ -677,9 +677,9 @@ void sinsp_worker::run()
 			LOGGED_THROW(sinsp_exception, "%s", m_inspector->getlasterr().c_str());
 		}
 
-		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
+		if(m_analyzer->get_mode_switch_state() >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
 		{
-			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
+			if(m_analyzer->get_mode_switch_state() == sinsp_analyzer::MSR_REQUEST_NODRIVER)
 			{
 				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
 																 "Agent switch to nodriver",
@@ -690,7 +690,7 @@ void sinsp_worker::run()
 				m_last_mode_switch_time = ev->get_ts();
 
 				m_inspector->close();
-				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER;
+				m_analyzer->set_mode_switch_state(sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER);
 				m_analyzer->set_sampling_ratio(1);
 
 				m_inspector->open_nodriver();
