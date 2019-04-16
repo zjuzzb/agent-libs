@@ -1220,4 +1220,24 @@ void sinsp_configuration::set_orch_batch_msgs_tick_interval_ms(uint32_t batch_ti
 {
 	m_orch_batch_msgs_tick_interval_ms = batch_tick_interval_ms;
 }
+
+void sinsp_configuration::set_procfs_scan_procs(const set<string> &procs, uint32_t interval)
+{
+	m_procfs_scan_procs = procs;
+	m_procfs_scan_interval = interval;
+	for (const auto &proc : m_procfs_scan_procs)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_proc: %s", proc.c_str());
+	}
+	g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_interval: %d", m_procfs_scan_interval);
+}
+const set<string> &sinsp_configuration::get_procfs_scan_procs()
+{
+	return m_procfs_scan_procs;
+}
+uint32_t sinsp_configuration::get_procfs_scan_interval()
+{
+	return m_procfs_scan_interval;
+}
+
 #endif // HAS_ANALYZER

@@ -1338,6 +1338,10 @@ void dragent_configuration::init()
 	}
 	m_extra_internal_metrics = m_config->get_scalar<bool>("extra_internal_metrics", false);
 
+	m_procfs_scan_procs = m_config->get_first_deep_sequence<set<string>>("procfs_scan_procs");
+	m_procfs_scan_interval = m_config->get_scalar<uint32_t>("procfs_scan_interval",
+		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
+
 	// init the configurations
 	configuration_manager::init_config(*m_config);
 }
