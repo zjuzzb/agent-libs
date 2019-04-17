@@ -96,7 +96,7 @@ func (ks *k8sAuditServer) Load(ctx context.Context, load *sdc_internal.K8SAuditS
 			MinVersion: tls.VersionTLS12,
 		}
 
-		for i := 0 ; i < len(x509) + 1; i++ {
+		for i := 0 ; i < len(x509) ; i++ {
 			log.Debugf("Loading X509 private key certificate: {cert file: %s, key file: %s}",
 				*x509[i].X509CertFile, *x509[i].X509KeyFile)
 			cert, err := tls.LoadX509KeyPair(
