@@ -252,6 +252,7 @@ set(SANALYZER_SOURCES
 
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/async_cgroup.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/bpm.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/cri.cpp
