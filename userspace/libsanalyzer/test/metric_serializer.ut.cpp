@@ -52,7 +52,12 @@ TEST(metric_serializer_test, initial_state)
 {
 	const bool EMIT_METRICS_TO_FILE = false;
 	const bool COMPRESS_METRICS = false;
-	const std::string METRICS_DIRECTORY = "";
+	const std::string METRICS_DIRECTORY = "./";
+
+	sinsp_configuration config;
+
+	config.set_emit_metrics_to_file(EMIT_METRICS_TO_FILE);
+	config.set_compress_metrics(COMPRESS_METRICS);
 
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
@@ -60,9 +65,7 @@ TEST(metric_serializer_test, initial_state)
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
 		                                 int_metrics,
-		                                 EMIT_METRICS_TO_FILE,
-		                                 COMPRESS_METRICS,
-		                                 METRICS_DIRECTORY));
+						 &config));
 
 	ASSERT_NE(s.get(), nullptr);
 	ASSERT_EQ(int_metrics.get(), s->get_internal_metrics().get());
@@ -81,7 +84,12 @@ TEST(metric_serializer_test, update_configuration)
 {
 	bool emit_metrics_to_file = false;
 	bool compress_metrics = false;
-	std::string metrics_directory = "";
+	std::string metrics_directory = "./";
+
+	sinsp_configuration config;
+
+	config.set_emit_metrics_to_file(emit_metrics_to_file);
+	config.set_compress_metrics(compress_metrics);
 
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
@@ -89,9 +97,7 @@ TEST(metric_serializer_test, update_configuration)
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
 		                                 int_metrics,
-		                                 emit_metrics_to_file,
-		                                 compress_metrics,
-		                                 metrics_directory));
+						 &config));
 
 	// Make sure that build() passed the values along as expected
 	ASSERT_EQ(emit_metrics_to_file, s->get_emit_metrics_to_file());
@@ -100,12 +106,15 @@ TEST(metric_serializer_test, update_configuration)
 
 	emit_metrics_to_file = true;
 	compress_metrics = true;
-	metrics_directory = "/tmp";
+	metrics_directory = "/tmp/";
 
+	sinsp_configuration new_config;
 
-	s->update_configuration(emit_metrics_to_file,
-	                        compress_metrics,
-	                        metrics_directory);
+	new_config.set_emit_metrics_to_file(emit_metrics_to_file);
+	new_config.set_compress_metrics(compress_metrics);
+	new_config.set_metrics_directory(metrics_directory);
+
+	s->update_configuration(&new_config);
 
 	// Make sure that update_configuration() updates the values
 	ASSERT_EQ(emit_metrics_to_file, s->get_emit_metrics_to_file());
@@ -121,10 +130,12 @@ TEST(metric_serializer_test, set_internal_metrics)
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 	internal_metrics::sptr_t int_metrics2(new internal_metrics());
+	sinsp_configuration config;
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
-		                                 int_metrics));
+		                                 int_metrics,
+		                                 &config));
 
 
 	s->set_internal_metrics(int_metrics2);
@@ -139,10 +150,12 @@ TEST(metric_serializer_test, set_sample_callback)
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
 	null_analyzer_callback_interface cb;
+	sinsp_configuration config;
 
 	std::unique_ptr<metric_serializer> s(
 		metric_serializer_factory::build(stats_source,
-		                                 int_metrics));
+		                                 int_metrics,
+		                                 &config));
 
 
 	s->set_sample_callback(&cb);

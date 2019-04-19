@@ -38,14 +38,10 @@ metric_serializer::data::data(const uint64_t evt_num,
 { }
 
 metric_serializer::metric_serializer(const internal_metrics::sptr_t& internal_metrics,
-                                     const bool emit_metrics_to_file,
-                                     const bool compress_metrics,
-                                     const std::string& metrics_directory):
+                                     const sinsp_configuration* const configuration):
 	m_mutex(),
 	m_internal_metrics(internal_metrics),
-	m_emit_metrics_to_file(emit_metrics_to_file),
-	m_compress_metrics(compress_metrics),
-	m_metrics_directory(metrics_directory),
+	m_configuration(configuration),
 	m_sample_callback(nullptr)
 { }
 
@@ -53,32 +49,28 @@ bool metric_serializer::get_emit_metrics_to_file() const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 
-	return m_emit_metrics_to_file;
+	return m_configuration->get_emit_metrics_to_file();
 }
 
 bool metric_serializer::get_compress_metrics() const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 
-	return m_compress_metrics;
+	return m_configuration->get_compress_metrics();
 }
 
-const std::string metric_serializer::get_metrics_directory() const
+const std::string& metric_serializer::get_metrics_directory() const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 
-	return m_metrics_directory;
+	return m_configuration->get_metrics_directory();
 }
 
-void metric_serializer::update_configuration(const bool emit_metrics_to_file,
-                                             const bool compress_metrics,
-                                             const std::string& metrics_directory)
+void metric_serializer::update_configuration(const sinsp_configuration* const configuration)
 {
 	std::unique_lock<std::mutex> lock(m_mutex);
 
-	m_emit_metrics_to_file = emit_metrics_to_file;
-	m_compress_metrics = compress_metrics;
-	m_metrics_directory = metrics_directory;
+	m_configuration = configuration;
 }
 
 void metric_serializer::set_internal_metrics(const internal_metrics::sptr_t im)

@@ -31,23 +31,14 @@ public:
 	/**
 	 * Initialize this protobuf_metric_serializer.
 	 *
-	 * @param[in] stats_source         The source from which to fetch stats.
-	 * @param[in] internal_metrics     The internal_metrics that might be
-	 *                                 serialized.
-	 * @param[in] emit_metrics_to_file If true, this protobuf_metric_serializer
-	 *                                 should also write metrics to a file.
-	 * @param[in] compress_metrics     If true, and if emit_metrics_to_file
-	 *                                 is true, compress the metrics written
-	 *                                 to file.
-	 * @param[in] metrics_directory    If emit_metrics_to_file is true,
-	 *                                 write the metrics to a file in this
-	 *                                 directory.
+	 * @param[in] stats_source     The source from which to fetch stats.
+	 * @param[in] internal_metrics The internal_metrics that might be
+	 *                             serialized.
+	 * @param[in] configuraiton    The current sinsp_configuration.
 	 */
 	protobuf_metric_serializer(capture_stats_source* stats_source,
 	                           const internal_metrics::sptr_t& internal_metrics,
-	                           bool emit_metrics_to_file = false,
-	                           bool compress_metrics = false,
-	                           const std::string& metrics_directory = "");
+				   const sinsp_configuration* configuration);
 
 	~protobuf_metric_serializer() override;
 

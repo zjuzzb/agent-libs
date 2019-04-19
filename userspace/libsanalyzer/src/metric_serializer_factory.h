@@ -11,6 +11,7 @@
 #include <string>
 
 class capture_stats_source;
+class sinsp_configuration;
 
 namespace libsanalyzer
 {
@@ -30,9 +31,7 @@ namespace metric_serializer_factory
  */
 metric_serializer* build(capture_stats_source* stats_source,
                          const internal_metrics::sptr_t& internal_metrics,
-                         bool emit_metrics_to_file = false,
-                         bool compress_metrics = false,
-                         const std::string& metrics_directory = "");
+                         const sinsp_configuration* configuration);
 
 } // namespace metric_serializer_factory
 

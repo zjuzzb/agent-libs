@@ -16,6 +16,7 @@
 namespace draiosproto { class metrics; }
 
 class analyzer_callback_interface;
+class sinsp_configuration;
 
 namespace libsanalyzer
 {
@@ -65,20 +66,12 @@ public:
 	/**
 	 * Initialize this metric_serializer.
 	 *
-	 * @param[in] internal_metrics     The internal metrics to serialize.
-	 * @param[in] emit_metrics_to_file If true, this metric_serializer
-	 *                                 should also write metrics to a file.
-	 * @param[in] compress_metrics     If true, and if emit_metrics_to_file
-	 *                                 is true, compress the metrics written
-	 *                                 to file.
-	 * @param[in] metrics_directory    If emit_metrics_to_file is true,
-	 *                                 write the metrics to a file in this
-	 *                                 directory.
+	 * @param[in] internal_metrics The internal metrics to serialize.
+	 * @param[in] configuration    The current state of the
+	 *                             sinsp configuration.
 	 */
 	metric_serializer(const internal_metrics::sptr_t& internal_metrics,
-	                    bool emit_metrics_to_file,
-			    bool compress_metrics,
-			    const std::string& metrics_directory);
+			  const sinsp_configuration* configuration);
 
 	virtual ~metric_serializer() = default;
 
@@ -135,28 +128,19 @@ public:
 	 * will write metrics to file.  This method's return value is
 	 * meaningful only when get_emit_metrics_to_file() returns true.
 	 */
-	const std::string get_metrics_directory() const;
+	const std::string& get_metrics_directory() const;
 
 	/**
 	 * Updates the configuration state of this metric_serializer.
 	 *
-	 * @param[in] emit_metrics_to_file Should this metric_serializer also
-	 *                                 write metrics to file?
-	 * @param[in] compress_metrics     Should this metric_serializer
-	 *                                 compress metrics written to file?
-	 * @param[in] metrics_directory    The directory into which metrics
-	 *                                 files are written (when enabled).
+	 * @param[in] configuration A pointer to the new configuration.
 	 */
-	void update_configuration(bool emit_metrics_to_file,
-	                          bool compress_metrics,
-	                          const std::string& metrics_directory);
+	void update_configuration(const sinsp_configuration* configuration);
 
 private:
 	mutable std::mutex m_mutex;
 	internal_metrics::sptr_t m_internal_metrics;
-	bool m_emit_metrics_to_file;
-	bool m_compress_metrics;
-	std::string m_metrics_directory;
+	const sinsp_configuration* m_configuration;
 	analyzer_callback_interface* m_sample_callback;
 };
 

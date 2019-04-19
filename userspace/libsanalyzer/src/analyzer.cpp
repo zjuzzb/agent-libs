@@ -118,9 +118,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_serializer(metric_serializer_factory::build(
 				m_inspector,
 				m_internal_metrics,
-				m_configuration->get_emit_metrics_to_file(),
-				m_configuration->get_compress_metrics(),
-				m_configuration->get_metrics_directory())),
+				m_configuration)),
 	m_async_serialize_enabled(true)
 {
 	m_initialized = false;
@@ -777,11 +775,18 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 		throw sinsp_exception(err);
 	}
 
-	*m_configuration = configuration;
+	// Since the analyzer and the serializer share a pointer to the same
+	// config, we'll avoid changing the config out from under the
+	// serializer by allocating a new object, copying the config into
+	// the new object, then updating the serializer.  We don't expect
+	// this to happen very often.
+	sinsp_configuration* const new_configuration = new sinsp_configuration();
+	*new_configuration = configuration;
 
-	m_serializer->update_configuration(m_configuration->get_emit_metrics_to_file(),
-	                                   m_configuration->get_compress_metrics(),
-	                                   m_configuration->get_metrics_directory());
+	m_serializer->update_configuration(new_configuration);
+
+	delete m_configuration;
+	m_configuration = new_configuration;
 }
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)

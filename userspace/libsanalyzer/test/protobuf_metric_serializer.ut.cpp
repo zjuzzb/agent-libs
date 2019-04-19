@@ -224,10 +224,12 @@ TEST(protobuf_metric_serializer_test, initial_state)
 {
 	precanned_capture_stats_source stats_source;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
+	sinsp_configuration config;
 
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
-			                               int_metrics));
+			                               int_metrics,
+			                               &config));
 
 	ASSERT_EQ(0, s->get_prev_sample_evtnum());
 	ASSERT_EQ(0, s->get_prev_sample_time());
@@ -266,9 +268,7 @@ TEST(protobuf_metric_serializer_test, serialize)
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               configuration.get_emit_metrics_to_file(),
-			                               configuration.get_compress_metrics(),
-			                               configuration.get_metrics_directory()));
+			                               &configuration));
 
 	s->set_sample_callback(&analyzer_callback);
 	s->serialize(make_unique<metric_serializer::data>(
@@ -402,9 +402,7 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	std::unique_ptr<protobuf_metric_serializer> s(
 			new protobuf_metric_serializer(&stats_source,
 			                               int_metrics,
-			                               configuration.get_emit_metrics_to_file(),
-			                               configuration.get_compress_metrics(),
-			                               configuration.get_metrics_directory()));
+			                               &configuration));
 
 	s->set_sample_callback(&analyzer_callback);
 	s->serialize(make_unique<metric_serializer::data>(
