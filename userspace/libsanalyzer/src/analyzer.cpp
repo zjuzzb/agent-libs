@@ -373,8 +373,13 @@ infrastructure_state *sinsp_analyzer::infra_state()
 
 void sinsp_analyzer::on_capture_start()
 {
-	m_initialized = true;
+	if(m_initialized)
+	{
+		// This is called twice when loading an scap file
+		return;
+	}
 
+	m_initialized = true;
 	if(m_procfs_parser != NULL)
 	{
 		//

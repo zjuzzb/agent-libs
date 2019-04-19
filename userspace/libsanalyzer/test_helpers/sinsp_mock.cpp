@@ -52,6 +52,13 @@ void sinsp_mock::open(uint32_t timeout_ms) /*override*/
 
 int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 {
+	// If the filename is set then we are loading events from an scap file
+	// and the baseclass can handle this.
+	if(!get_input_filename().empty())
+	{
+		return sinsp::next(evt);
+	}
+
 	if(m_events.empty())
 	{
 		return SCAP_EOF;

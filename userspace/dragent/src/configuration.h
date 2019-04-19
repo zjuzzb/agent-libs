@@ -507,7 +507,7 @@ public:
 #endif
 	}
 
-	std::string machine_id()
+	std::string machine_id() const
 	{
 		return m_machine_id_prefix + m_machine_id;
 	}
@@ -522,27 +522,27 @@ public:
 
 	void set_auto_config_directory(const string &config_directory);
 
-	bool k8s_audit_server_tls_enabled()
+	bool k8s_audit_server_tls_enabled() const
 	{
 		return m_k8s_audit_server_tls_enabled;
 	}
 
-	std::string k8s_audit_server_url()
+	const std::string& k8s_audit_server_url() const
 	{
 		return m_k8s_audit_server_url;
 	}
 
-	std::uint16_t k8s_audit_server_port()
+	std::uint16_t k8s_audit_server_port() const
 	{
 		return m_k8s_audit_server_port;
 	}
 
-	std::string k8s_audit_server_x509_cert_file()
+	const std::string& k8s_audit_server_x509_cert_file() const
 	{
 		return m_k8s_audit_server_x509_cert_file;
 	}
 
-	std::string k8s_audit_server_x509_key_file()
+	const std::string& k8s_audit_server_x509_key_file() const
 	{
 		return m_k8s_audit_server_x509_key_file;
 	}
@@ -572,7 +572,7 @@ private:
 class aws_metadata_refresher: public Runnable
 {
 public:
-	aws_metadata_refresher(dragent_configuration* configuration):
+	aws_metadata_refresher(dragent_configuration &configuration):
 		m_refreshed(false),
 		m_running(false),
 		m_configuration(configuration)
@@ -581,7 +581,7 @@ public:
 	void run()
 	{
 		m_running.store(true, memory_order_relaxed);
-		m_configuration->refresh_aws_metadata();
+		m_configuration.refresh_aws_metadata();
 		m_refreshed.store(true, memory_order_relaxed);
 	}
 
@@ -604,5 +604,5 @@ public:
 private:
 	atomic<bool> m_refreshed;
 	atomic<bool> m_running;
-	dragent_configuration* m_configuration;
+	dragent_configuration &m_configuration;
 };

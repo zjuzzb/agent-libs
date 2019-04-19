@@ -36,7 +36,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_app_checks_enabled(false),
 	m_trace_enabled(false),
 	m_next_iflist_refresh_ns(0),
-	m_aws_metadata_refresher(configuration),
+	m_aws_metadata_refresher(*configuration),
 	m_internal_metrics(im)
 {
 	m_last_mode_switch_time = 0;
@@ -523,7 +523,7 @@ void sinsp_worker::init()
 	// Start the capture with sinsp
 	//
 	g_log->information("Opening the capture source");
-	if(m_configuration->m_input_filename != "")
+	if(!m_configuration->m_input_filename.empty())
 	{
 		m_inspector->open(m_configuration->m_input_filename);
 	}
@@ -807,6 +807,13 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 		errstr = "No Security Manager object created";
 		return false;
 	}
+}
+
+bool sinsp_worker::is_stall_fatal() const
+{
+	// If the input filename is not empty then we are reading an scap file
+	// that has old timestamps so tell the caller to not check for stalls
+	return m_configuration->m_input_filename.empty();
 }
 
 bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,

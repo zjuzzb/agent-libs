@@ -731,7 +731,7 @@ void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentia
 	m_dcos_enterprise_credentials = creds;
 }
 
-void sinsp_configuration::set_marathon_skip_labels(std::set<std::string> &labels)
+void sinsp_configuration::set_marathon_skip_labels(const std::set<std::string> &labels)
 {
 	m_marathon_skip_labels = labels;
 }
@@ -989,7 +989,7 @@ bool sinsp_configuration::get_statsite_check_format() const
 	        return m_statsite_check_format;
 }
 
-void sinsp_configuration::set_log_dir(string& dir)
+void sinsp_configuration::set_log_dir(const string& dir)
 {
 	m_log_dir = dir;
 }

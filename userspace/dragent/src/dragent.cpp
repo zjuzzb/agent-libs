@@ -835,7 +835,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 {
 	bool to_kill = false;
 
-	if(m_sinsp_worker.get_last_loop_ns() != 0)
+	if(m_sinsp_worker.get_last_loop_ns() && m_sinsp_worker.is_stall_fatal())
 	{
 		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
 

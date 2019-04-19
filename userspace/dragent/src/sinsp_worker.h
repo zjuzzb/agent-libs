@@ -52,6 +52,13 @@ public:
 		return m_last_loop_ns;
 	}
 
+	/**
+	 * Returns whether the sinsp_worker is running in a mode where
+	 *         the caller should verify that get_last_loop_ns has
+	 *         fallen behind the current wall time.
+	 */
+	bool is_stall_fatal() const;
+
 	pthread_t get_pthread_id()
 	{
 		return m_pthread_id;
@@ -118,7 +125,7 @@ private:
 	run_on_interval m_job_requests_interval;
 
 	bool m_initialized;
-	dragent_configuration* m_configuration;
+	dragent_configuration *m_configuration;
 	protocol_queue* m_queue;
 	atomic<bool> *m_enable_autodrop;
 	bool m_autodrop_currently_enabled;

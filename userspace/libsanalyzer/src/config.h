@@ -139,7 +139,7 @@ public:
 	const mesos::credentials_t& get_marathon_credentials() const;
 	void set_marathon_credentials(const mesos::credentials_t& creds);
 	const mesos::credentials_t& get_dcos_enterprise_credentials() const;
-	void set_marathon_skip_labels(std::set<std::string> &labels);
+	void set_marathon_skip_labels(const std::set<std::string> &labels);
 	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
 #endif // CYGWING_AGENT
@@ -197,7 +197,7 @@ public:
 	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
 	shared_ptr<proc_filter::conf> get_container_filter() const;
 
-	void set_log_dir(string& dir);
+	void set_log_dir(const std::string& dir);
 	string& get_log_dir();
 
 	void set_container_filter(shared_ptr<proc_filter::conf>);

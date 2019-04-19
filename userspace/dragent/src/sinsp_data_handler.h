@@ -18,7 +18,7 @@ class dragent_configuration;
 class sinsp_data_handler : public analyzer_callback_interface
 {
 public:
-	sinsp_data_handler(dragent_configuration* configuration,
+	sinsp_data_handler(const dragent_configuration* configuration,
 			   protocol_queue* queue);
 
 	virtual ~sinsp_data_handler();
@@ -49,7 +49,7 @@ public:
 	}
 
 private:
-	dragent_configuration* m_configuration;
+	const dragent_configuration* m_configuration;
 	protocol_queue* m_queue;
 	std::atomic<uint64_t> m_last_loop_ns;
 };

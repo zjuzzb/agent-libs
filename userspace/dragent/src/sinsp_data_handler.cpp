@@ -10,7 +10,7 @@
 
 DRAGENT_LOGGER();
 
-sinsp_data_handler::sinsp_data_handler(dragent_configuration* configuration,
+sinsp_data_handler::sinsp_data_handler(const dragent_configuration* configuration,
 				       protocol_queue* queue) :
 	m_configuration(configuration),
 	m_queue(queue),
