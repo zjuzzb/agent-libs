@@ -1,3 +1,15 @@
+/**
+ * @file
+ *
+ * Implementation of type_config.
+ *
+ * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
+ */
+#include "yaml_configuration.h"
+#include <vector>
+#include <sstream>
+
+
 template<typename data_type>
 type_config<data_type>::type_config(const data_type& default_value,
 				    const std::string& description,
@@ -13,21 +25,21 @@ type_config<data_type>::type_config(const data_type& default_value,
 template<typename data_type>
 void type_config<data_type>::init(const yaml_configuration& raw_config)
 {
-        if (m_subkey.empty())
+        if (get_subkey().empty())
         {
-                m_data = raw_config.get_scalar<data_type>(m_key, m_default);
+                m_data = raw_config.get_scalar<data_type>(get_key(), m_default);
         }
-        else if (m_subsubkey.empty())
+        else if (get_subsubkey().empty())
         {
-		m_data = raw_config.get_scalar<data_type>(m_key,
-							  m_subkey,
+		m_data = raw_config.get_scalar<data_type>(get_key(),
+							  get_subkey(),
 							  m_default);
         }
         else
         {
-		m_data = raw_config.get_scalar<data_type>(m_key,
-							  m_subkey,
-							  m_subsubkey,
+		m_data = raw_config.get_scalar<data_type>(get_key(),
+							  get_subkey(),
+							  get_subsubkey(),
 							  m_default);
         }
 }
@@ -39,7 +51,13 @@ data_type& type_config<data_type>::get()
 }
 
 template<typename data_type>
-const data_type& type_config<data_type>::get_const() const
+const data_type& type_config<data_type>::get() const
 {
         return m_data;
+}
+
+template<typename data_type>
+std::string type_config<data_type>::value_to_string() const
+{
+	return get_value_string(m_data);
 }

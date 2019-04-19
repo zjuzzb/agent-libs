@@ -1,5 +1,5 @@
+#include "yaml_configuration.h"
 #include <gtest.h>
-#include <configuration_manager.h>
 
 using namespace std;
 
@@ -243,69 +243,3 @@ TEST(yaml_conf, get_deep_sequence)
 	evts2 = yaml_configuration::get_deep_sequence<set<string, ci_compare>>(conf, roots[1], "events2", "docker", "image");
 	ASSERT_EQ(evts2.size(), 0U);
 }
-
-// Note: since the configuration map is global, these tests should not
-// share keys among them and are not thread safe. 
-//
-// Note: these have to be global as well, or only sorta...but we'd have to allocate them
-//       and never free them anyway....so...
-//
-type_config<bool> bool_not_there_true(true, "some test description", "bool_not_there_true");
-type_config<bool> bool_not_there_false(false, "some test description", "bool_not_there_false");
-type_config<bool> bool_true(false, "some test description", "bool_true");
-type_config<bool> bool_false(false, "some test description", "bool_false");
-type_config<bool> bool_true_nested(false, "some test description", "bool_nested","bool_true_nested");
-type_config<bool> bool_false_nested(false, "some test description", "bool_nested","bool_false_nested");
-type_config<bool> bool_true_double_nested(false, "some test description", "bool_double_nested","bool_double_nested_sub", "bool_true_double_nested");
-type_config<bool> bool_false_double_nested(false, "some test description", "bool_double_nested","bool_double_nested_sub", "bool_false_double_nested");
-type_config<uint64_t> uint64_t_config(1, "some test description", "int_12345");
-type_config<bool> bool_true_1(false, "some test description", "bool_true_overlap");
-type_config<bool> bool_true_2(false, "some test description", "bool_true_overlap");
-
-TEST(yaml_conf, simple_config_test)
-{
-	yaml_configuration conf({"resources/test_simple_config.yaml"});
-
-	// double check a couple of the values to make sure defaults are getting populated
-	EXPECT_EQ(bool_not_there_true.get(), true);
-	EXPECT_EQ(bool_not_there_false.get(), false);
-	EXPECT_EQ(uint64_t_config.get(), 1);
-
-	// check that key strings work
-	EXPECT_EQ(bool_true.get_key_string(), "bool_true");
-	EXPECT_EQ(bool_true_nested.get_key_string(), "bool_nested.bool_true_nested");
-	EXPECT_EQ(bool_true_double_nested.get_key_string(), "bool_double_nested.bool_double_nested_sub.bool_true_double_nested");
-
-	// check that tostring works
-	EXPECT_EQ(bool_true.to_string(), "bool_true: false");
-	EXPECT_EQ(bool_false.to_string(), "bool_false: false");
-
-	// actually read the configs now
-	configuration_manager::init_config(conf);
-
-	// check that all values are correct
-	EXPECT_EQ(bool_not_there_true.get(), true);
-	EXPECT_EQ(bool_not_there_false.get(), false);
-	EXPECT_EQ(bool_true.get(), true);
-	EXPECT_EQ(bool_false.get(), false);
-	EXPECT_EQ(bool_true_nested.get(), true);
-	EXPECT_EQ(bool_false_nested.get(), false);
-	EXPECT_EQ(bool_true_double_nested.get(), true);
-	EXPECT_EQ(bool_false_double_nested.get(), false);
-
-	// check that to_string is updated
-	EXPECT_EQ(bool_true.to_string(), "bool_true: true");
-
-	// check the int variant works
-	EXPECT_EQ(uint64_t_config.get(), 12345);
-	EXPECT_EQ(uint64_t_config.to_string(), "int_12345: 12345");
-
-	// second bool doesn't pick up value. should be a log in the log
-	EXPECT_EQ(bool_true_1.get(), true);
-	EXPECT_EQ(bool_true_2.get(), false);
-
-	// double check get const works on something
-	EXPECT_EQ(bool_true.get_const(), true);
-	EXPECT_EQ(uint64_t_config.get_const(), 12345);
-}
-

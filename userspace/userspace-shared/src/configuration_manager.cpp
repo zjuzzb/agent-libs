@@ -1,8 +1,32 @@
+/**
+ * @file
+ *
+ * Implementation of configuration_manager and configuration_unit.
+ *
+ * @copyright Copyright (c) 2019 Sysdig Inc., All Rights Reserved
+ */
 #include "configuration_manager.h"
+#include "type_config.h"
 #include <assert.h>
-#include <Poco/NumberFormatter.h>
+#include <map>
 
-std::map<std::string, configuration_unit*>* configuration_manager::config_map;
+namespace
+{
+
+std::map<std::string, configuration_unit*>& get_map()
+{
+	static std::map<std::string, configuration_unit*>* config_map = nullptr;
+
+	if (config_map == nullptr)
+	{
+		config_map = new std::map<std::string, configuration_unit*>();
+	}
+
+	return *config_map;
+}
+
+} // end namespace
+
 
 void configuration_manager::init_config(const yaml_configuration& raw_config)
 {
@@ -37,37 +61,31 @@ void configuration_manager::register_config(configuration_unit* config)
 	get_map().emplace(config->get_key_string(), config);
 }
 
-std::map<std::string, configuration_unit*>& configuration_manager::get_map()
+void configuration_manager::deregister_config(configuration_unit* config)
 {
-	if (config_map == nullptr)
+	if (config == nullptr || config->get_key_string().size() == 0)
 	{
-		config_map = new std::map<std::string, configuration_unit*>();
+		return;
 	}
 
-	return *config_map;
+	get_map().erase(config->get_key_string());
 }
 
-
-template<>
-std::string type_config<bool>::to_string() const
+bool configuration_manager::is_registered(configuration_unit* config)
 {
-	return get_key_string() + ": " + (m_data ? "true" : "false");
+	return get_map().find(config->get_key_string()) != get_map().end();
 }
 
-template<>
-std::string type_config<uint64_t>::to_string() const
-{
-	return get_key_string() + ": " + Poco::NumberFormatter::format(m_data);
-}
+
 
 configuration_unit::configuration_unit(const std::string& key,
 				       const std::string& subkey,
 				       const std::string& subsubkey,
-				       const std::string& description)
-	:m_key(key),
-	 m_subkey(subkey),
-	 m_subsubkey(subsubkey),
-	 m_description(description)
+				       const std::string& description) :
+	m_key(key),
+	m_subkey(subkey),
+	m_subsubkey(subsubkey),
+	m_description(description)
 {
 	if (m_subkey.empty())
 	{
@@ -85,7 +103,37 @@ configuration_unit::configuration_unit(const std::string& key,
 	configuration_manager::register_config(this);
 }
 
+configuration_unit::~configuration_unit()
+{
+	configuration_manager::deregister_config(this);
+}
+
+std::string configuration_unit::to_string() const
+{
+	return get_key_string() + ": " + value_to_string();
+}
+
 const std::string& configuration_unit::get_key_string() const
 {
 	return m_keystring;
+}
+
+const std::string& configuration_unit::get_key() const
+{
+	return m_key;
+}
+
+const std::string& configuration_unit::get_subkey() const
+{
+	return m_subkey;
+}
+
+const std::string& configuration_unit::get_subsubkey() const
+{
+	return m_subsubkey;
+}
+
+const std::string& configuration_unit::get_description() const
+{
+	return m_description;
 }

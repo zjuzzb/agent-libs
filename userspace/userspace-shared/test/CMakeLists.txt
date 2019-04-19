@@ -1,6 +1,7 @@
 add_subdirectory(resources)
 
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
@@ -8,7 +9,10 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 
 add_executable(unit-test-userspace-shared
 	main.cpp
-	yaml_configuration.ut.cpp)
+	configuration_manager.ut.cpp
+	type_config.ut.cpp
+	yaml_configuration.ut.cpp
+)
 
 target_link_libraries(unit-test-userspace-shared
 	userspace-shared
@@ -32,11 +36,13 @@ target_link_libraries(unit-test-userspace-shared
 # unexpected backtraces, we'll run helgrind only for debug builds.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_custom_target(run-unit-test-userspace-shared
+        DEPENDS unit-test-userspace-shared
 		COMMAND valgrind --gen-suppressions=all ./unit-test-userspace-shared
 		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-userspace-shared
 	)
 else()
 	add_custom_target(run-unit-test-userspace-shared
+        DEPENDS unit-test-userspace-shared
 		COMMAND valgrind --gen-suppressions=all ./unit-test-userspace-shared
 	)
 endif()

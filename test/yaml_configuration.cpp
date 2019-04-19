@@ -4,7 +4,6 @@
 #include "proc_config.h"
 #include "app_checks.h"
 #include "metric_limits.h"
-#include <configuration_manager.h>
 
 using namespace std;
 

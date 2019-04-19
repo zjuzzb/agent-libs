@@ -10,11 +10,17 @@
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
 #include <algorithm>
-#include "configuration_manager.h"
+#include "type_config.h"
 
-type_config<uint64_t> config_buffer_warning_length(512,
-						   "limit to how long a single entry from statsite is before we log a warning",
-						   "statsite_buffer_warning_length");
+namespace
+{
+
+type_config<uint64_t> config_buffer_warning_length(
+		512,
+		"limit to how long a single entry from statsite is before we log a warning",
+		"statsite_buffer_warning_length");
+
+} // end namespace
 
 #ifndef _WIN32
 
