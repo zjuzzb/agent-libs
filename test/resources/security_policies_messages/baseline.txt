@@ -10,6 +10,9 @@ baseline_list {
       lists {
         values: "nc"
         values: "entrypoint.sh"
+        values: "sh"
+        values: "sleep"
+        values: "timeout"
 	on_match: EFFECT_ACCEPT
       }
       on_default: EFFECT_DENY
@@ -59,6 +62,7 @@ baseline_list {
         values: "fchown"
         values: "fchownat"
         values: "fcntl"
+        values: "fork"
         values: "fstat"
         values: "futex"
         values: "getcwd"
@@ -71,6 +75,7 @@ baseline_list {
         values: "getuid"
         values: "ioctl"
 	values: "keyctl"
+        values: "kill"
         values: "listen"
 	values: "lstat"
         values: "mkdirat"
@@ -114,6 +119,7 @@ baseline_list {
 	values: "unlinkat"
 	values: "unshare"
 	values: "umask"
+        values: "vfork"
 	values: "wait4"
 	values: "write"
 	values: "writev"
@@ -147,7 +153,8 @@ baseline_list {
     process_details {
       lists {
         values: "sh"
-	values: "touch"
+        values: "sleep"
+        values: "echo"
 	on_match: EFFECT_ACCEPT
       }
       on_default: EFFECT_DENY

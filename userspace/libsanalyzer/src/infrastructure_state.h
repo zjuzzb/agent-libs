@@ -130,6 +130,7 @@ private:
 
 	bool get_cached_result(const std::string &entity_id, size_t h, bool *res);
 	void insert_cached_result(const std::string &entity_id, size_t h, bool res);
+	void clear_cached_result(const std::string &entity_id);
 
 	void reset();
 

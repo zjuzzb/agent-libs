@@ -32,6 +32,11 @@ void infrastructure_state::insert_cached_result(const std::string &entity_id, si
 	m_policy_cache[entity_id].emplace(h, res);
 }
 
+void infrastructure_state::clear_cached_result(const std::string &entity_id)
+{
+	m_policy_cache.erase(entity_id);
+}
+
 bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds)
 {
 	auto evaluate = [](const draiosproto::scope_predicate &p, const std::string &value)
@@ -1235,6 +1240,17 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 		// filter out k8s internal container/s
 		return;
 	}
+
+	// Remove any cached result related to this container
+	// id. (This can occur for containers where an initial stub
+	// container with complete information is added first, with a
+	// complete container being added later).
+	//
+	// It's necessary as match_scope always checks the cache
+	// first, and if the cache is based on the incomplete
+	// container, it won't ever relocate it based on the complete
+	// container information.
+	clear_cached_result(container_info.m_id);
 
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Receiving new container event (id: %s) from container_manager", container_info.m_id.c_str());
 	draiosproto::congroup_update_event evt;
