@@ -11,21 +11,33 @@ using namespace test_helpers;
 namespace {
 
 /**
- * Run the sinsp worker thread with the given inspector.
+ * Run the sinsp worker thread with the given config and the
+ * given inspector.
  */
-void run_sinsp_worker(const sinsp::ptr &inspector, protocol_queue& queue)
+void run_sinsp_worker(const sinsp::ptr& inspector,
+		      dragent_configuration& config,
+		      protocol_queue& queue)
 {
 	sinsp_factory::inject(inspector);
 
 	dragent_configuration::m_terminate = false;
-	dragent_configuration config;
-	config.init();
 	internal_metrics::sptr_t im = std::make_shared<internal_metrics>();
 	atomic<bool> enable_autodrop;
 
 	capture_job_handler job_handler(&config, &queue, &enable_autodrop);
 	sinsp_worker worker(&config, im, &queue, &enable_autodrop, &job_handler);
 	worker.run();
+}
+
+/**
+ * Run the sinsp worker thread with the given inspector. This
+ * will load a config with defaults
+ */
+void run_sinsp_worker(const sinsp::ptr &inspector, protocol_queue& queue)
+{
+	dragent_configuration config;
+	config.init();
+	run_sinsp_worker(inspector, config, queue);
 }
 
 }
@@ -60,3 +72,50 @@ TEST(sinsp_worker_test, end_to_end_basic)
 	ASSERT_EQ(75, metrics.programs(0).pids(1));
 
 }
+
+
+TEST(sinsp_worker_test, is_stall_fatal_in_capture_mode)
+{
+	dragent_configuration config;
+	config.m_input_filename = "capture_file.scap";
+	sinsp_worker worker(&config, nullptr, nullptr, nullptr,  nullptr);
+	ASSERT_FALSE(worker.is_stall_fatal());
+}
+
+TEST(sinsp_worker_test, is_stall_fatal_in_driver_mode)
+{
+	dragent_configuration config;
+	sinsp_worker worker(&config, nullptr, nullptr, nullptr,  nullptr);
+	ASSERT_TRUE(worker.is_stall_fatal());
+}
+
+TEST(sinsp_worker_test, capture_file)
+{
+	std::shared_ptr<sinsp_mock> inspector = std::make_shared<sinsp_mock>();
+
+	dragent_configuration config;
+	config.init();
+	config.m_input_filename = "resources/random-capture.scap";
+
+	// Run the sinsp_worker
+	protocol_queue queue(MAX_SAMPLE_STORE_SIZE);
+	run_sinsp_worker(inspector, config, queue);
+
+	// For the purposes of this test, we are just proving that a capture
+	// file loads, gets processed and results in several protobufs. We
+	// aren't checking the content of the file.
+	// In this case, the timestamps of the scap file cause flush to occur
+	// 15 times and generate 15 metric protobufs.
+	ASSERT_EQ(15, queue.size());
+
+	for(int i = 0; i < queue.size();++i)
+	{
+		std::shared_ptr<protocol_queue_item> item;
+		const bool hasItem = queue.get(&item, 300 /*timeout_ms*/);
+		ASSERT_TRUE(hasItem);
+		ASSERT_EQ(draiosproto::message_type::METRICS, item->message_type);
+
+	}
+}
+
+

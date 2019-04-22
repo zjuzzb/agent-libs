@@ -137,7 +137,7 @@ TEST(statsite_proxy, parser)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen so to be bigger than anything in the above file.
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy(make_pair(input_fd, output_file), false);
 
 	auto ret = proxy.read_metrics();
 	EXPECT_EQ(2U, ret.size());
@@ -173,7 +173,7 @@ TEST(statsite_proxy, parser_long)
 	ASSERT_TRUE(output_file != NULL);
 
 	// 300 chosen to be smaller than the longest string in the above file
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy(make_pair(input_fd, output_file), false);
 
 	auto ret = proxy.read_metrics();
 	ASSERT_EQ(1U, ret.size());
@@ -201,66 +201,318 @@ TEST(statsite_proxy, parser_long)
 	fclose(input_fd);
 }
 
-class test_helper {
-public:
-	static bool validate_buffer(statsite_proxy& proxy, std::string candidate)
-	{
-		return proxy.validate_buffer(candidate.c_str(), candidate.length());
-	}
-};
-
-// check that the regex for validating outgoing messages to statsite is working correctly
-TEST(statsite_proxy, buffer_validation)
+namespace
 {
-	auto output_file = fopen("resources/statsite_output_long.txt", "r");
-	auto input_fd = fopen("/dev/null", "w");
-	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
-	// one line
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n"), true);
-	// one line without newline at the end
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c"), true);
-	// two lines 
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\nd:e|f\n"), true);
-	// two lines  without newline
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\nd:e|f"), true);
-	// multiple characters
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "abc:basd|clkjsdf.\n][ppoid:;;;e|frrroar"), true);
-	// extra pipe at end of either line
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c|d\nd:e|f\ng:h|i|j"), true);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c|d\nd:e|f\ng:h|i|j\n"), true);
 
-	// no colon
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "ab|c\na:b|c"), false);
-	// no pipe
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:bc\na:b|c"), false);
-	// no colon
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "ab|c"), false);
-	// no pipe
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:bc"), false);
-	// random extra colons
-	ASSERT_EQ(test_helper::validate_buffer(proxy, ":a:b|c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a::b|c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|:c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n:a:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b:|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b:|c:"), false);
-	// random extra pipes
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "|a:b|c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a|:b|c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b||c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n|a:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b||c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b:|c|"), false);
-	// random extra newlines
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "\na:b|c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:\nb|c\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|\nc\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\n\na:b|c"), false);
-	ASSERT_EQ(test_helper::validate_buffer(proxy, "a:b|c\na:b\n|c"), false);
+/**
+ * Send the given stats to statsite_proxy and let it validate it for
+ * correctness.  If it's valid, statsite_proxy will write it to the appropriate
+ * FILE*, which we can later inspect.
+ *
+ * @param[in] stats    a potential statsd metric (valid or invalid).
+ * @param[in] expected What the client expects statsite_proxy to write to 
+ *                     the FILE*.
+ */
+void do_statsite_proxy_validation(const std::string& stats,
+		                  const std::string& expected)
+{
+	char in_buffer[512] = {};
+	char out_buffer[2] = {};
+	FILE* const in = fmemopen(in_buffer, sizeof(in_buffer) - 1, "r+");
+	FILE* const out = fmemopen(out_buffer, sizeof(out_buffer) - 1, "r+");
 
-	fclose(output_file);
-	fclose(input_fd);
+	ASSERT_TRUE(in != nullptr);
+	ASSERT_TRUE(out != nullptr);
+
+	ASSERT_NO_THROW({
+		statsite_proxy proxy(make_pair(in, out), true);
+
+		proxy.send_metric(stats.c_str(), stats.size());
+	});
+
+	ASSERT_EQ(0, fclose(in));
+	ASSERT_EQ(0, fclose(out));
+
+	ASSERT_EQ(expected, std::string(in_buffer));
+}
+
+}
+
+/**
+ * Ensure that writing a single metric without a trailing newline is validated
+ */
+TEST(statsite_proxy, single_metric_no_newline_validated)
+{
+	const std::string valid_metric = "a:b|c";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing a single metric with a trailing newline is validated.
+ */
+TEST(statsite_proxy, single_metric_no_newline_extra_pipe_validated)
+{
+	const std::string valid_metric = "a:b|c\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing a single metric with an extra pipe and without a
+ * trailing newline is validated.
+ */
+TEST(statsite_proxy, single_metric_extra_pipe_no_newline)
+{
+	const std::string valid_metric = "a:b|c|d";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing a single metric with an extra pipe and with a
+ * trailing newline is validated.
+ */
+TEST(statsite_proxy, single_metric_extra_pipe_newline)
+{
+	const std::string valid_metric = "a:b|c|d\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics without a trailing newline is validated
+ */
+TEST(statsite_proxy, multiple_metrics_no_newline_validated)
+{
+	const std::string valid_metric = "a:b|c\nd:e|f";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with a trailing newline is validated
+ */
+TEST(statsite_proxy, multiple_metrics_newline_validated)
+{
+	const std::string valid_metric = "a:b|c\nd:e|f\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with extra pipes, without a trailing
+ * newline is validated
+ */
+TEST(statsite_proxy, multiple_metrics_extra_pipe_no_newline_validated)
+{
+	const std::string valid_metric = "a:b|c|d\ne:f|g|h";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with extra pipes, with a trailing
+ * newline is validated
+ */
+TEST(statsite_proxy, multiple_metrics_extra_pipe_newline_validated)
+{
+	const std::string valid_metric = "a:b|c|d\ne:f|g|h\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing a single metric with multiple characters and no newline
+ * is validated.
+ */
+TEST(statsite_proxy, single_metric_multiple_characters_no_newline)
+{
+	const std::string valid_metric = "abc:defg|hijklmn";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing a single metric with multiple characters and a trailing
+ * newline is validated.
+ */
+TEST(statsite_proxy, single_metric_multiple_characters_newline)
+{
+	const std::string valid_metric = "abc:defg|hijklmn\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with multiple characters and no
+ * trailing newline is validated.
+ */
+TEST(statsite_proxy, multiple_metrics_multiple_characters_no_newline)
+{
+	const std::string valid_metric = "abc:defg|hijklmn\nop:qr|st";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with multiple characters and a
+ * trailing newline is validated.
+ */
+TEST(statsite_proxy, multiple_metrics_multiple_characters_newline)
+{
+	const std::string valid_metric = "abc:defg|hijklmn\nop:qr|st\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with multiple characters, multiple
+ * pipes, and no trailing newline is validated.
+ */
+TEST(statsite_proxy, multiple_metrics_multiple_characters_extra_pipe_no_newline)
+{
+	const std::string valid_metric = "abc:defg|hijklmn|zzz\nop:qr|st|xxx";
+	const std::string expected = valid_metric + "\n";
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that writing multiple metrics with multiple characters, multiple
+ * pipes, and with a trailing newline is validated.
+ */
+TEST(statsite_proxy, multiple_metrics_multiple_characters_extra_pipe_newline)
+{
+	const std::string valid_metric = "abc:defg|hijklmn|zzz\nop:qr|st|xxx\n";
+	const std::string expected = valid_metric;
+
+	do_statsite_proxy_validation(valid_metric, expected);
+}
+
+/**
+ * Ensure that if a colon is missing, the metric is not validated.
+ */
+TEST(statsite_proxy, single_metric_missing_colon_invalid)
+{
+	const std::string invalid_metric = "ab|c";
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(invalid_metric, expected);
+}
+
+/**
+ * Ensure that if a colon is missing, the entire buffer is not validated.
+ */
+TEST(statsite_proxy, multiple_metrics_missing_colon_invalid)
+{
+	const std::string invalid_metric = "ab|c\na:b|c";
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(invalid_metric, expected);
+}
+
+/**
+ * Ensure that if a pipe is missing, the metric is not validated.
+ */
+TEST(statsite_proxy, single_metric_missing_pipe_invalid)
+{
+	const std::string invalid_metric = "a:bc";
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(invalid_metric, expected);
+}
+
+/**
+ * Ensure that if a pipe is missing, the entire buffer is not validated.
+ */
+TEST(statsite_proxy, multiple_metrics_missing_pipe_invalid)
+{
+	const std::string invalid_metric = "a:bc\na:b|c";
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(invalid_metric, expected);
+}
+
+/**
+ * Ensure that a metric containing only pipes is invalid.
+ */
+TEST(statsite_proxy, only_pipes_invalid)
+{
+	const std::string invalid_metric = "a|b|c";
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(invalid_metric, expected);
+}
+
+/**
+ * Ensure that a metric containing only colons is invalid.
+ */
+TEST(statsite_proxy, only_colons_invalid)
+{
+	const std::string invalid_metric = "a:b:c";
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(invalid_metric, expected);
+}
+
+/**
+ * Ensure that having extra colons in various invalid places is not
+ * validated.
+ */
+TEST(statsite_proxy, random_extra_colons_invalid)
+{
+	const std::string expected = "";
+
+	do_statsite_proxy_validation(":a:b|c\na:b|c", expected);
+	do_statsite_proxy_validation("a::b|c\na:b|c", expected);
+	do_statsite_proxy_validation("a:b|:c\na:b|c", expected);
+	do_statsite_proxy_validation("a:b|c\n:a:b|c", expected);
+	do_statsite_proxy_validation("a:b|c\na:b:|c", expected);
+	do_statsite_proxy_validation("a:b|c\na:b:|c:", expected);
+}
+
+/**
+ * Ensure that having extra pipes in various invalid places is not
+ * validated.
+ */
+TEST(statsite_proxy, random_extra_pipes_invalid)
+{
+	const std::string expected = "";
+
+	do_statsite_proxy_validation("|a:b|c\na:b|c", expected);
+	do_statsite_proxy_validation("a|:b|c\na:b|c", expected);
+	do_statsite_proxy_validation("a:b||c\na:b|c", expected);
+	do_statsite_proxy_validation("a:b|c\n|a:b|c", expected);
+	do_statsite_proxy_validation("a:b|c\na:b||c", expected);
+	do_statsite_proxy_validation("a:b|c\na:b:|c|", expected);
+}
+
+/**
+ * Ensure that having extra newlines in various invalid places is not
+ * validated.
+ */
+TEST(statsite_proxy, random_extra_newlines_invalid)
+{
+	const std::string expected = "";
+
+	do_statsite_proxy_validation("\na:b|c\na:b|c", expected);
+	do_statsite_proxy_validation("a:\nb|c\na:b|c", expected);
+	do_statsite_proxy_validation("a:b|\nc\na:b|c", expected);
+	do_statsite_proxy_validation("a:b|c\n\na:b|c", expected);
+	do_statsite_proxy_validation("a:b|c\na:b\n|c", expected);
 }
 
 TEST(statsite_proxy, filter)
@@ -268,7 +520,7 @@ TEST(statsite_proxy, filter)
 	auto output_file = fopen("resources/statsite_output.txt", "r");
 	auto input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy(make_pair(input_fd, output_file), false);
 
 	filter_vec_t f({{"totam.sunt.consequatur.numquam.aperiam5", true}, {"totam.*", false}});
 	metric_limits::sptr_t ml(new metric_limits(f));
@@ -283,7 +535,7 @@ TEST(statsite_proxy, filter)
 	output_file = fopen("resources/statsite_output.txt", "r");
 	input_fd = fopen("/dev/null", "w");
 	ASSERT_TRUE(output_file != NULL);
-	statsite_proxy proxy2(make_pair(input_fd, output_file), 300, false);
+	statsite_proxy proxy2(make_pair(input_fd, output_file), false);
 
 	f = {{"*1?", true}, {"totam.sunt.consequatur.numquam.aperiam7", true}, {"*", false}};
 	ml.reset(new metric_limits(f));

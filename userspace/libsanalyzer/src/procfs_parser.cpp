@@ -26,6 +26,8 @@
 #ifdef CYGWING_AGENT
 #include "dragent_win_hal_public.h"
 #endif
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 
 using Poco::StringTokenizer;
 
@@ -1240,4 +1242,165 @@ string sinsp_procfs_parser::read_proc_root(int64_t pid)
 #else // CYGWING_AGENT
 	return "/";
 #endif // CYGWING_AGENT
+}
+
+// If we end up scanning multiple processes within a namespace we may want
+// to start caching port info per namespace like sysdig does
+int sinsp_procfs_parser::add_ports_from_proc_fs(string fname, const set<uint16_t> &oldports, set<uint16_t> &ports, const std::set<uint64_t> &inodes)
+{
+	int added = 0;
+	const int max_socks = 1000;
+	FILE *fp;
+	char buf[1024];
+
+	fp = fopen(fname.c_str(), "r");
+	if (!fp)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: Failed to open %s for server port scan", fname.c_str());
+		return 0;
+	}
+	g_logger.format(sinsp_logger::SEV_TRACE, "procfs port scan: scanning %s", fname.c_str());
+
+	int socks = 0;
+
+	for (; socks < max_socks && fgets(buf, sizeof(buf), fp); socks++)
+	{
+		char *token[10];
+		char *tokptr, *nextptr;
+		uint64_t inode;
+
+		// Skip first line (table header)
+		if (!socks)
+			continue;
+
+		// Tokenize the first 10 tokens (last should be inode)
+		int ti;
+		tokptr = strtok_r(buf, " ", &nextptr);
+		for (ti = 0; ti < 10 && tokptr; ti++, tokptr = strtok_r(NULL, " ", &nextptr))
+		{
+			token[ti] = tokptr;
+		}
+		if (ti < 10)
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: Only found %d tokens", fname.c_str(), ti);
+			// Didn't find inode
+			continue;
+		}
+
+		char *end;
+		inode = (uint64_t)strtoull(token[9], &end, 10);
+		if (end == token[9])
+		{
+			// token[9] didn't contain digits.
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: token %s has no digits", fname.c_str(), token[9]);
+			continue;
+		}
+
+		if (inodes.find(inode) == inodes.end())
+		{
+			// Inode isn't in the set of inodes we're looking for
+			continue;
+		}
+
+		// Get remote address, should end at ':' delimiting the port number
+		uint64_t addr = (uint64_t)strtoull(token[2], &end, 16);
+
+		if (addr != 0)
+		{
+			// Skip sockets with a remote address, we're only interested in
+			// ports we're just listening on.
+			continue;
+		}
+
+		// Get local address, should end at ':' delimiting the port number
+		addr = (uint64_t)strtoull(token[1], &end, 16);
+
+		if (!end || *end != ':')
+		{
+			// Address didn't end on ':', shouldn't happen
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: address %s ends on %c", fname.c_str(), token[2], *end);
+			continue;
+		}
+
+		uint32_t port = (uint32_t)strtoul(end+1, NULL, 16);
+		if (!port)
+		{
+			// Local port is 0, shouldn't happen
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: %s: local port is %d, parsed from %s", fname.c_str(), port, end ? end+1 : "NULL");
+			continue;
+		}
+		if (oldports.find(port) == oldports.end())
+		{
+			ports.emplace(port);
+			g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: Added port %d from %s", port, fname.c_str());
+			added++;
+		}
+	}
+
+	fclose(fp);
+
+	if (socks == max_socks) {
+		g_logger.format(sinsp_logger::SEV_INFO, "procfs port scan: Stopped reading sockets from %s after %d lines", fname.c_str(), socks);
+	}
+	return added;
+}
+
+int sinsp_procfs_parser::read_process_serverports(int64_t pid, const set<uint16_t> &oldports, set<uint16_t> &ports)
+{
+	int added = 0;
+	string proc_dir = string(scap_get_host_root()) + "/proc/" + to_string(pid);
+	string fd_dir = proc_dir + "/fd";
+	string ns_link = proc_dir + "/ns/net";
+	char link_name[SCAP_MAX_PATH_SIZE];
+	DIR *dir_p = nullptr;
+	struct dirent *dir_entry_p = nullptr;
+	uint64_t net_ns = 0;
+
+	// Get set of inodes from /proc/<pid>/fd/*
+	dir_p = opendir(fd_dir.c_str());
+	if(dir_p == NULL)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "procfs port scan: Failed to open %s for server port scan", fd_dir.c_str());
+		return added;
+	}
+
+	std::set<uint64_t> inodes;
+	while((dir_entry_p = readdir(dir_p)) != NULL)
+	{
+		uint64_t inode;
+		string f_name = fd_dir + "/" + dir_entry_p->d_name;
+
+		ssize_t r = readlink(f_name.c_str(), link_name, sizeof(link_name));
+		if ((r > 0) && (sscanf(link_name, "socket:[%" PRIi64 "]", &inode) == 1))
+		{
+			inodes.emplace(inode);
+		}
+	}
+	closedir(dir_p);
+
+	// Get the network namespace of the process
+	ssize_t r = readlink(ns_link.c_str(), link_name, sizeof(link_name));
+	if(r <= 0)
+	{
+		// No network namespace available. Assume global
+		net_ns = 0;
+	}
+	else
+	{
+		link_name[r] = '\0';
+		if (sscanf(link_name, "net:[%" PRIi64 "]", &net_ns) != 1)
+		{
+			g_logger.format(sinsp_logger::SEV_INFO, "procfs port scan: Malformed net namespace %s for pid %" PRIi64 ", assuming host namespace", link_name, pid);
+		}
+	}
+
+	// If namespaces are supported look in /proc/<pid>/net/
+	// if not look in /proc/net/
+	string netdir = net_ns ? proc_dir + "/net" : string(scap_get_host_root()) + "/proc/net";
+
+	// Only looking for tcp sockets for now
+	added += add_ports_from_proc_fs(netdir + "/tcp", oldports, ports, inodes);
+	added += add_ports_from_proc_fs(netdir + "/tcp6", oldports, ports, inodes);
+
+	return added;
 }

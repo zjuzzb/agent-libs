@@ -37,7 +37,9 @@ TEST_F(container_cri, fake_cri_no_server) {
 		EXPECT_EQ(cri_container_id, tinfo->m_container_id);
 
 		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
-		EXPECT_EQ(container_info, nullptr);
+
+		// This can either be null or a container with incomplete metadata
+		EXPECT_TRUE((container_info == nullptr || container_info->m_metadata_complete == false));
 
 		done = true;
 	};

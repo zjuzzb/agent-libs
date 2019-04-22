@@ -367,7 +367,7 @@ bool custom_container::resolver::resolve(sinsp_container_manager* manager, sinsp
 	if (container == &container_info)
 	{
 		manager->add_container(container_info, tinfo);
-		manager->notify_new_container(container_info);
+		manager->notify_new_container(container_info, tinfo->m_tid);
 	}
 	return true;
 }

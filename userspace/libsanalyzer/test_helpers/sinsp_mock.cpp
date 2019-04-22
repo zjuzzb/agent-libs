@@ -11,7 +11,7 @@ sinsp_mock::sinsp_mock() :
 	m_network_interfaces(this)
 {
 	m_mock_machine_info.num_cpus = 4;
-	m_mock_machine_info.memory_size_bytes = 16ULL * 1024ULL * 1024ULL * 1024ULL; /*16GB*/
+	m_mock_machine_info.memory_size_bytes = 64ULL * 1024ULL * 1024ULL * 1024ULL; /*64GB*/
 	m_mock_machine_info.max_pid = 0x1FFFFFFFFFFFFFFF;
 	strcpy(m_mock_machine_info.hostname, "draios-unit-test-host");
 }
@@ -52,6 +52,13 @@ void sinsp_mock::open(uint32_t timeout_ms) /*override*/
 
 int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 {
+	// If the filename is set then we are loading events from an scap file
+	// and the baseclass can handle this.
+	if(!get_input_filename().empty())
+	{
+		return sinsp::next(evt);
+	}
+
 	if(m_events.empty())
 	{
 		return SCAP_EOF;
@@ -87,6 +94,9 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 	if(m_analyzer)
 	{
 		m_analyzer->process_event(*evt, sinsp_analyzer::DF_NONE);
+
+		// Wait for async processing to complete
+		m_analyzer->flush_drain();
 	}
 
 	return SCAP_SUCCESS;

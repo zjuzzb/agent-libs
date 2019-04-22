@@ -13,6 +13,7 @@ void event_capture::capture()
 	m_inspector->m_analyzer = m_analyzer;
 
 	m_analyzer->set_configuration(m_configuration);
+	m_analyzer->set_async_protobuf_serialize_enabled(false);
 
 	if(m_max_thread_table_size != 0)
 	{

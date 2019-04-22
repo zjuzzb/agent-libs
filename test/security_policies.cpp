@@ -665,12 +665,16 @@ TEST_F(security_policies_test, readonly_fs_only)
 	close(fd);
 
 	// This should not result in an event, as it runs in a container.
-	ASSERT_EQ(system("docker run --rm --name sec_ut busybox:latest sh -c 'touch /tmp/sample-sensitive-file-1.txt || true' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --rm --name sec_ut busybox:latest sh -c 'while true; do echo '' > /tmp/sample-sensitive-file-1.txt || true; done' > /dev/null 2>&1"), 0);
+
+	sleep(5);
+
+	dutils_kill_container("sec_ut");
 
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDONLY);
 	close(fd);
 
-	std::vector<expected_policy_event> expected = {{2,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-1.txt"}, {"evt.type", "open"}}}};
+	std::vector<expected_policy_event> expected = {{2,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-1.txt"}, {"evt.type", "open"}, {"proc.name", "tests"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.files-readonly.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -695,9 +699,13 @@ TEST_F(security_policies_test, readwrite_fs_only)
 	fd = open("/tmp/sample-sensitive-file-3.txt", O_RDWR);
 	close(fd);
 
-	ASSERT_EQ(system("docker run --name sec_ut --rm busybox:latest sh -c 'touch /tmp/sample-sensitive-file-3.txt || true' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name sec_ut --rm busybox:latest sh -c 'while true; do echo '' > /tmp/sample-sensitive-file-3.txt || true; done' > /dev/null 2>&1"), 0);
 
-	std::vector<expected_policy_event> expected = {{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"}, {"evt.type", "open"}}}};
+	sleep(5);
+
+	dutils_kill_container("sec_ut");
+
+	std::vector<expected_policy_event> expected = {{3,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/tmp/sample-sensitive-file-3.txt"}, {"evt.type", "open"}, {"proc.name", "tests"}}}};
 	check_policy_events(expected);
 
 	std::map<string,expected_internal_metric> metrics = {{"security.files-readwrite.match.deny", {expected_internal_metric::CMP_EQ, 1}},
@@ -761,12 +769,14 @@ TEST_F(security_policies_test, fs_root_dir)
 	dutils_kill_container("fs-root-image");
 	dutils_create_tag("busybox:test-root-writes", "busybox:latest");
 
-	if(system("docker run --rm --name fs-root-image busybox:test-root-writes sh -c 'touch /allowed-file-below-root && touch /not-allowed' > /dev/null 2>&1") != 0)
+	if(system("docker run -d --rm --name fs-root-image busybox:test-root-writes sh -c 'while true; do echo '' > /allowed-file-below-root && echo '' > /not-allowed; sleep 1; done' > /dev/null 2>&1") != 0)
 	{
 		ASSERT_TRUE(false);
 	}
 
-	sleep(2);
+	sleep(5);
+
+	dutils_kill_container("fs-root-image");
 
 	dutils_kill_image("busybox:test-root-writes");
 
@@ -927,12 +937,10 @@ TEST_F(security_policies_test, container_only)
 	dutils_create_tag("blacklist-image-name", "busybox:1.27.2");
 	dutils_kill_container("blacklisted_image");
 
-	if(system("docker run --rm --name blacklisted_image blacklist-image-name > /dev/null 2>&1") != 0)
+	if(system("docker run --rm --name blacklisted_image blacklist-image-name sleep 5 > /dev/null 2>&1") != 0)
 	{
 		ASSERT_TRUE(false);
 	}
-
-	sleep(2);
 
 	dutils_kill_image("blacklist-image-name");
 
@@ -1156,9 +1164,9 @@ TEST_F(security_policies_test, baseline_only)
 
 	dutils_kill_container("baseline-test");
 
-	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc nc -nl 9274 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc /bin/sh -c \"while true; do timeout -t 1 nc -nl 9274 > /dev/null 2>&1; done\""), 0);
 
-	sleep(2);
+	sleep(5);
 
 	dutils_kill_container("baseline-test");
 
@@ -1181,9 +1189,9 @@ TEST_F(security_policies_test, baseline_deviate_port)
 
 	dutils_kill_container("baseline-test");
 
-	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc nc -nl 8172 > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc /bin/sh -c \"while true; do timeout -t 1 nc -nl 8172 > /dev/null 2>&1; done\""), 0);
 
-	sleep(2);
+	sleep(5);
 
 	dutils_kill_container("baseline-test");
 
@@ -1203,9 +1211,9 @@ TEST_F(security_policies_test, baseline_deviate_cat_dockerenv)
 
 	dutils_kill_container("baseline-test");
 
-	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc cat /.dockerenv > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test appropriate/nc /bin/sh -c \"while true; do cat /.dockerenv > /dev/null 2>&1; sleep 1; done\""), 0);
 
-	sleep(2);
+	sleep(5);
 
 	dutils_kill_container("baseline-test");
 
@@ -1236,38 +1244,28 @@ TEST_F(security_policies_test, container_prefixes)
 
 	dutils_create_tag("blacklist-image-name:0.0.1", "busybox:1.27.2");
 
-	ASSERT_EQ(system("docker run --rm --name denyme blacklist-image-name:0.0.1 > /dev/null 2>&1"), 0);
-
-	sleep(2);
+	ASSERT_EQ(system("docker run --rm --name denyme blacklist-image-name:0.0.1 sleep 5 > /dev/null 2>&1"), 0);
 
 	dutils_create_tag("my.domain.name/busybox:1.27.2", "busybox:1.27.2");
 
-	ASSERT_EQ(system("docker run --rm --name denyme my.domain.name/busybox:1.27.2 > /dev/null 2>&1"), 0);
-
-	sleep(2);
+	ASSERT_EQ(system("docker run --rm --name denyme my.domain.name/busybox:1.27.2 sleep 5 > /dev/null 2>&1"), 0);
 
 	dutils_kill_image("my.domain.name/busybox:1.27.2");
 
 	dutils_create_tag("my.other.domain.name:12345/cirros:0.3.3", "cirros:0.3.3");
 
-	ASSERT_EQ(system("docker run --rm --name denyme my.other.domain.name:12345/cirros:0.3.3 /bin/sh > /dev/null 2>&1"), 0);
-
-	sleep(2);
+	ASSERT_EQ(system("docker run --rm --name denyme my.other.domain.name:12345/cirros:0.3.3 /bin/sh -c 'sleep 5' > /dev/null 2>&1"), 0);
 
 	dutils_kill_image("my.other.domain.name:12345/cirros:0.3.3");
 
 	dutils_create_tag("my.third.domain.name/cirros:0.3.3", "cirros:0.3.3");
 
-	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/cirros:0.3.3 /bin/sh > /dev/null 2>&1"), 0);
-
-	sleep(2);
+	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/cirros:0.3.3 /bin/sh -c 'sleep 5' > /dev/null 2>&1"), 0);
 
 	dutils_kill_image("my.third.domain.name/cirros:0.3.3");
 	dutils_create_tag("my.third.domain.name/tutum/curl:alpine", "tutum/curl:alpine");
 
-	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/tutum/curl:alpine > /dev/null 2>&1"), 0);
-
-	sleep(2);
+	ASSERT_EQ(system("docker run --rm --name denyme my.third.domain.name/tutum/curl:alpine sleep 5 > /dev/null 2>&1"), 0);
 
 	dutils_kill_image("my.third.domain.name/tutum/curl:alpine");
 
@@ -1300,9 +1298,10 @@ TEST_F(security_policies_test, net_inbound_outbound_tcp)
 
 	dutils_kill_container("inout_test");
 	dutils_create_tag("curl:inout_test", "tutum/curl");
-	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c '(timeout 5 nc -l -p 22222 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 22222)' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name inout_test --rm curl:inout_test bash -c 'while true; do (timeout 5 nc -l -p 22222 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 22222); sleep 1; done' > /dev/null 2>&1"), 0);
 
-	sleep(2);
+	sleep(5);
+	dutils_kill_container("inout_test");
 	dutils_kill_image("curl:inout_test");
 
 	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
@@ -1330,9 +1329,10 @@ TEST_F(security_policies_test, net_inbound_outbound_udp)
 
 	dutils_kill_container("inout_test");
 	dutils_create_tag("curl:inout_test", "tutum/curl");
-	ASSERT_EQ(system("docker run --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; (timeout 5 ncserver -ul -p 22222 -q0 &) && sleep 2 && (echo ping | timeout 5 nc -u $(hostname -I | cut -f 1 -d \" \") 22222 -w 1)' > /dev/null 2>&1"), 0);
+	ASSERT_EQ(system("docker run -d --name inout_test --rm curl:inout_test bash -c 'ln -s `which nc` /bin/ncserver; while true; do (timeout 5 ncserver -ul -p 22222 -q0 &) && sleep 2 && (echo ping | timeout 5 nc -u $(hostname -I | cut -f 1 -d \" \") 22222 -w 1); sleep 1; done' > /dev/null 2>&1"), 0);
 
-	sleep(2);
+	sleep(5);
+	dutils_kill_container("inout_test");
 	dutils_kill_image("curl:inout_test");
 
 	std::vector<expected_policy_event> expected = {{18,draiosproto::policy_type::PTYPE_NETWORK,{{"fd.sport", "22222"},
@@ -1355,15 +1355,17 @@ TEST_F(security_policies_test, baseline_without_syscalls)
 		return;
 	}
 
-	ASSERT_EQ(system("docker run --name baseline-test --rm alpine touch /bin/test"), 0);
+	ASSERT_EQ(system("docker run -d --name baseline-test --rm alpine /bin/sh -c \"while true; do echo '' > /bin/test; sleep 1; done\""), 0);
 
-	sleep(2);
+	sleep(5);
+
+	dutils_kill_container("baseline-test");
 
 	// Syscall aren't enforced, so no policy events
 	// about the syscall made by touch even if they
 	// aren't in the baseline whitelist
 	// Filesystem is instead enforced by the baseline
-	std::vector<expected_policy_event> expected = {{20,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/test"},{"proc.name", "touch"}, {"evt.type", "open"}}, "uuid-2-here"}};
+	std::vector<expected_policy_event> expected = {{20,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/bin/test"},{"proc.name", "sh"}, {"evt.type", "open"}}, "uuid-2-here"}};
 	check_policy_events(expected);
 }
 
@@ -1377,10 +1379,11 @@ TEST_F(security_policies_test, fs_usecase)
 	dutils_kill_container("fs_usecase");
 	dutils_create_tag("busybox:fs_usecase", "busybox:latest");
 
-	ASSERT_EQ(system("docker run --rm --name fs_usecase busybox:fs_usecase sh -c 'touch /home/allowed && cat /etc/passwd /home/allowed /etc/hostname > /bin/not-allowed'"),0);
+	ASSERT_EQ(system("docker run -d --rm --name fs_usecase busybox:fs_usecase sh -c 'while true; do touch /home/allowed && cat /etc/passwd /home/allowed /etc/hostname > /bin/not-allowed; sleep 1; done'"),0);
 
-	sleep(2);
+	sleep(5);
 
+	dutils_kill_container("fs_usecase");
 	dutils_kill_image("busybox:fs_usecase");
 
 	std::vector<expected_policy_event> expected = {{21,draiosproto::policy_type::PTYPE_FILESYSTEM,{{"fd.name", "/etc/passwd"}, {"evt.type", "open"}}},
@@ -1399,9 +1402,7 @@ TEST_F(security_policies_test, image_name_priority)
 
 	dutils_kill_container("mycurl");
 	dutils_create_tag("tutum/mycurl", "tutum/curl:alpine");
-	ASSERT_EQ(system("docker run --rm --name mycurl tutum/mycurl"), 0);
-
-	sleep(2);
+	ASSERT_EQ(system("docker run --rm --name mycurl tutum/mycurl sleep 5"), 0);
 
 	dutils_kill_image("tutum/mycurl");
 
@@ -1425,10 +1426,11 @@ TEST_F(security_policies_test, overlapping_syscall)
 	dutils_kill_container("overlap_test");
 	dutils_create_tag("curl:overlap_test", "tutum/curl");
 
-	ASSERT_EQ(system("docker run --rm --name overlap_test curl:overlap_test bash -c '(timeout 5 nc -l -p 12345 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 12345)'"),0);
+	ASSERT_EQ(system("docker run -d --rm --name overlap_test curl:overlap_test bash -c 'while true; do (timeout 5 nc -l -p 12345 -q0 &) && sleep 2 && (timeout 5 nc $(hostname -I | cut -f 1 -d \" \") 12345); sleep 1; done'"),0);
 
-	sleep(2);
+	sleep(5);
 
+	dutils_kill_container("overlap_test");
 	dutils_kill_image("curl:overlap_test");
 
 	// Policy 23 match both for syscalls and network, but network
@@ -1582,7 +1584,7 @@ TEST_F(security_policies_test, docker_swarm)
 
 	ASSERT_EQ(system("(docker swarm init && docker service create --replicas 1 --name helloworld swarm_service_ut_image /bin/sh -c \"while true; do echo touch; rm -f /tmp/sample-sensitive-file-2.txt; touch /tmp/sample-sensitive-file-2.txt; sleep 1; done\") > /dev/null 2>&1"), 0);
 
-	sleep(2);
+	sleep(5);
 
 	ASSERT_EQ(system("docker swarm leave --force > /dev/null 2>&1"), 0);
 
@@ -1591,6 +1593,7 @@ TEST_F(security_policies_test, docker_swarm)
 	// Not using check_policy_events for this, as it is checking keys only
 	unique_ptr<draiosproto::policy_events> pe;
 	get_policy_evts_msg(pe);
+	ASSERT_TRUE(pe.get() != NULL);
 	ASSERT_GE(pe->events_size(), 1);
 	ASSERT_EQ(pe->events(0).policy_id(), 29u);
 	ASSERT_EQ(pe->events(0).event_details().output_details().output_fields_size(), 6);

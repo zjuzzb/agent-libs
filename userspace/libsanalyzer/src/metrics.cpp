@@ -222,6 +222,24 @@ void sinsp_counter_time::to_protobuf(draiosproto::counter_time* protobuf_msg, ui
 	}
 }
 
+void sinsp_counter_time::coalesce_protobuf(draiosproto::counter_time* protobuf_msg,
+					   uint64_t tot_relevant_time_ns,
+					   uint64_t& denom,
+					   const uint32_t sampling_ratio)
+{
+	protobuf_msg->set_time_ns(protobuf_msg->time_ns() + m_time_ns * sampling_ratio);
+
+	if(tot_relevant_time_ns != 0)
+	{
+		uint64_t new_denom = denom + tot_relevant_time_ns * sampling_ratio;
+		uint64_t prev_numer = denom * protobuf_msg->time_percentage();
+		protobuf_msg->set_time_percentage((uint32_t)(prev_numer + (double)m_time_ns * 10000) / new_denom);
+		denom = new_denom;
+	}
+
+	protobuf_msg->set_count(protobuf_msg->count() + m_count * sampling_ratio);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_counter_time_bidirectional implementation
 ///////////////////////////////////////////////////////////////////////////////
@@ -375,6 +393,23 @@ void sinsp_counter_time_bidirectional::to_protobuf(draiosproto::counter_time_bid
 	}
 }
 
+void sinsp_counter_time_bidirectional::coalesce_protobuf_add(draiosproto::counter_time_bidirectional* protobuf_msg,
+							     uint32_t sampling_ratio) const
+{
+	protobuf_msg->set_time_ns_in(protobuf_msg->time_ns_in() + m_time_ns_in * sampling_ratio);
+	protobuf_msg->set_time_ns_out(protobuf_msg->time_ns_out() + m_time_ns_out * sampling_ratio);
+	protobuf_msg->set_count_in(protobuf_msg->count_in() + m_count_in * sampling_ratio);
+	protobuf_msg->set_count_out(protobuf_msg->count_out() + m_count_out * sampling_ratio);
+}
+
+void sinsp_counter_time_bidirectional::coalesce_protobuf_max(draiosproto::counter_time_bidirectional* protobuf_msg,
+							     uint32_t sampling_ratio) const
+{
+	protobuf_msg->set_time_ns_in(std::max(protobuf_msg->time_ns_in(), m_time_ns_in * sampling_ratio));
+	protobuf_msg->set_time_ns_out(std::max(protobuf_msg->time_ns_out(), m_time_ns_out * sampling_ratio));
+	protobuf_msg->set_count_in(std::max(protobuf_msg->count_in(), m_count_in * sampling_ratio));
+	protobuf_msg->set_count_out(std::max(protobuf_msg->count_out(), m_count_out * sampling_ratio));
+}
 uint32_t sinsp_counter_time_bidirectional::get_tot_count() const
 {
 	return m_count_in + m_count_out + m_count_other;
@@ -588,7 +623,8 @@ void sinsp_counter_time_bytes::clear()
 }
 
 void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
-										   uint64_t tot_relevant_time_ns, uint32_t sampling_ratio)
+					   uint64_t tot_relevant_time_ns,
+					   uint32_t sampling_ratio)
 {
 	protobuf_msg->set_time_ns_in(m_time_ns_in * sampling_ratio);
 	protobuf_msg->set_time_ns_out(m_time_ns_out * sampling_ratio);
@@ -637,6 +673,31 @@ void sinsp_counter_time_bytes::to_protobuf(draiosproto::counter_time_bytes* prot
 		                                            (!m_serialize_pctl_data) ? nullptr :
 		                                            &CTB::mutable_percentile_out_data);
 	}
+}
+
+void sinsp_counter_time_bytes::coalesce_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
+					   uint64_t tot_relevant_time_ns,
+					   const uint32_t sampling_ratio)
+{
+	protobuf_msg->set_time_ns_in(protobuf_msg->time_ns_in() + m_time_ns_in * sampling_ratio);
+	protobuf_msg->set_time_ns_out(protobuf_msg->time_ns_out() + m_time_ns_out * sampling_ratio);
+	protobuf_msg->set_time_ns_other(protobuf_msg->time_ns_other() + m_time_ns_other * sampling_ratio);
+
+	if(tot_relevant_time_ns != 0)
+	{
+		protobuf_msg->set_time_percentage_in(protobuf_msg->time_percentage_in() + (uint32_t)(((double)m_time_ns_in) * 10000 / (tot_relevant_time_ns * sampling_ratio)));
+		protobuf_msg->set_time_percentage_out(protobuf_msg->time_percentage_out() + (uint32_t)(((double)m_time_ns_out) * 10000 / (tot_relevant_time_ns * sampling_ratio)));
+		protobuf_msg->set_time_percentage_other(protobuf_msg->time_percentage_other() + (uint32_t)(((double)m_time_ns_other) * 10000 / (tot_relevant_time_ns * sampling_ratio)));
+	}
+
+	protobuf_msg->set_count_in(protobuf_msg->count_in() + m_count_in * sampling_ratio);
+	protobuf_msg->set_count_out(protobuf_msg->count_out() + m_count_out * sampling_ratio);
+	protobuf_msg->set_count_other(protobuf_msg->count_other() + m_count_other * sampling_ratio);
+
+
+	protobuf_msg->set_bytes_in(protobuf_msg->bytes_in() + m_bytes_in * sampling_ratio);
+	protobuf_msg->set_bytes_out(protobuf_msg->bytes_out() + m_bytes_out * sampling_ratio);
+	protobuf_msg->set_bytes_other(protobuf_msg->bytes_other() + m_bytes_other * sampling_ratio);
 }
 
 uint64_t sinsp_counter_time_bytes::get_tot_bytes() const
@@ -814,6 +875,32 @@ void sinsp_counters::to_protobuf(draiosproto::time_categories* protobuf_msg, uin
 #endif
 }
 
+void sinsp_counters::coalesce_protobuf(draiosproto::time_categories* protobuf_msg,
+				       const uint32_t sampling_ratio,
+				       uint64_t& other_denom,
+				       uint64_t& processing_denom)
+{
+	calculate_totals();
+
+	m_tot_other.coalesce_protobuf(protobuf_msg->mutable_other(),
+				      m_tot_relevant.m_time_ns,
+				      other_denom,
+				      sampling_ratio);
+	m_tot_io_file.coalesce_protobuf(protobuf_msg->mutable_io_file(),
+					m_tot_relevant.m_time_ns,
+					sampling_ratio);
+	m_tot_io_net.coalesce_protobuf(protobuf_msg->mutable_io_net(),
+				       m_tot_relevant.m_time_ns,
+				       sampling_ratio);
+	m_processing.coalesce_protobuf(protobuf_msg->mutable_processing(),
+				       m_tot_relevant.m_time_ns,
+				       processing_denom,
+				       sampling_ratio);
+
+	ASSERT(m_tot_io_file.m_bytes_other == 0);
+	ASSERT(m_tot_io_net.m_bytes_other == 0);
+}
+
 void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, uint32_t sampling_ratio)
 {
 	calculate_totals();
@@ -835,6 +922,29 @@ void sinsp_counters::to_reqprotobuf(draiosproto::transaction_breakdown_categorie
 	ttot.add(&m_unknown);
 	ttot.m_time_ns += m_io_net.m_time_ns_in;
 #endif
+}
+
+void sinsp_counters::coalesce_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, 
+					  uint32_t sampling_ratio,
+					  uint64_t& other_denom,
+					  uint64_t& processing_denom)
+{
+	calculate_totals();
+
+	m_tot_other.coalesce_protobuf(protobuf_msg->mutable_other(),
+				      m_tot_relevant.m_time_ns,
+				      other_denom,
+				      sampling_ratio);
+	m_tot_io_file.coalesce_protobuf(protobuf_msg->mutable_io_file(),
+					m_tot_relevant.m_time_ns,
+					sampling_ratio);
+	m_tot_io_net.coalesce_protobuf(protobuf_msg->mutable_io_net(),
+				       m_tot_relevant.m_time_ns,
+				       sampling_ratio);
+	m_processing.coalesce_protobuf(protobuf_msg->mutable_processing(),
+				       m_tot_relevant.m_time_ns,
+				       processing_denom,
+				       sampling_ratio);
 }
 
 uint64_t sinsp_counters::get_total_other_time()
@@ -941,33 +1051,23 @@ void sinsp_transaction_counters::set_serialize_pctl_data(bool val)
 }
 
 void sinsp_transaction_counters::to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, 
-		//draiosproto::counter_time_bidirectional* min_protobuf_msg,
-		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
-		uint32_t sampling_ratio) const
+					     draiosproto::counter_time_bidirectional* max_protobuf_msg, 
+					     uint32_t sampling_ratio) const
 {
 	m_counter.to_protobuf(protobuf_msg, sampling_ratio);
-	//m_min_counter.to_protobuf(min_protobuf_msg, 1);
 	m_max_counter.to_protobuf(max_protobuf_msg, 1);
+}
+
+void sinsp_transaction_counters::coalesce_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, 
+						   draiosproto::counter_time_bidirectional* max_protobuf_msg, 
+						   uint32_t sampling_ratio) const
+{
+	m_counter.coalesce_protobuf_add(protobuf_msg, sampling_ratio);
+	m_max_counter.coalesce_protobuf_max(max_protobuf_msg, 1);
 }
 
 void sinsp_transaction_counters::add(sinsp_transaction_counters* other)
 {
-	/*if(m_min_counter.m_count_in == 0 || 
-		(other->m_min_counter.m_count_in != 0 &&
-		other->m_min_counter.m_time_ns_in < m_min_counter.m_time_ns_in))
-	{
-		m_min_counter.m_count_in = other->m_min_counter.m_count_in;
-		m_min_counter.m_time_ns_in = other->m_min_counter.m_time_ns_in;
-	}
-
-	if(m_min_counter.m_count_out == 0 ||
-		(other->m_min_counter.m_count_out != 0 &&
-		other->m_min_counter.m_time_ns_out < m_min_counter.m_time_ns_out))
-	{
-		m_min_counter.m_count_out = other->m_min_counter.m_count_out;
-		m_min_counter.m_time_ns_out = other->m_min_counter.m_time_ns_out;
-	}*/
-
 	if(m_max_counter.m_count_in == 0 || 
 		(other->m_max_counter.m_count_in != 0 &&
 		other->m_max_counter.m_time_ns_in > m_max_counter.m_time_ns_in))
@@ -1015,13 +1115,6 @@ void sinsp_transaction_counters::add_out(uint32_t cnt_delta, uint64_t time_delta
 	ASSERT(cnt_delta == 1);
 	if(cnt_delta == 1)
 	{
-		/*if(m_min_counter.m_count_out == 0 || 
-			time_delta < m_min_counter.m_time_ns_out)
-		{
-			m_min_counter.m_count_out = cnt_delta;
-			m_min_counter.m_time_ns_out = time_delta;
-		}*/
-
 		if(m_max_counter.m_count_out == 0 || 
 			time_delta > m_max_counter.m_time_ns_out)
 		{
@@ -1037,12 +1130,6 @@ const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_counter(
 {
 	return &m_counter;
 }
-/*
-const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_min_counter()
-{
-	return &m_min_counter;
-}
-*/
 const sinsp_counter_time_bidirectional* sinsp_transaction_counters::get_max_counter()
 {
 	return &m_max_counter;
@@ -1109,6 +1196,26 @@ void sinsp_error_counters::to_protobuf(draiosproto::counter_syscall_errors* prot
 	}
 }
 
+void sinsp_error_counters::coalesce_protobuf(draiosproto::counter_syscall_errors* protobuf_msg,
+					     uint32_t sampling_ratio) const
+{
+	protobuf_msg->set_count(protobuf_msg->count() + m_count * sampling_ratio);
+
+	if(m_count_file != 0)
+	{
+		protobuf_msg->set_count_file(protobuf_msg->count_file() + m_count_file * sampling_ratio);
+	}
+
+	if(m_count_file_open != 0)
+	{
+		protobuf_msg->set_count_file_open(protobuf_msg->count_file_open() + m_count_file_open * sampling_ratio);
+	}
+
+	if(m_count_net != 0)
+	{
+		protobuf_msg->set_count_net(protobuf_msg->count_net() + m_count_net * sampling_ratio);
+	}
+}
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_syscall_counters implementation
 ///////////////////////////////////////////////////////////////////////////////

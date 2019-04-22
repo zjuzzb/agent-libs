@@ -32,6 +32,11 @@ void infrastructure_state::insert_cached_result(const std::string &entity_id, si
 	m_policy_cache[entity_id].emplace(h, res);
 }
 
+void infrastructure_state::clear_cached_result(const std::string &entity_id)
+{
+	m_policy_cache.erase(entity_id);
+}
+
 bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds)
 {
 	auto evaluate = [](const draiosproto::scope_predicate &p, const std::string &value)
@@ -607,7 +612,7 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			m_state[key] = make_unique<draiosproto::container_group>();
 			purge_tags_and_copy(key, evt->object());
 			connect(key);
-			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
+			print_obj(key);
 			break;
 		case draiosproto::REMOVED:
 			// allow double delete (example: remove a container for an already terminated k8s_job)
@@ -628,10 +633,10 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 			}
 			glogf(sinsp_logger::SEV_DEBUG, "infra_state: Overwrite container group <%s,%s>", kind.c_str(), id.c_str());
 			purge_tags_and_copy(key, evt->object());
-			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
+			print_obj(key);
 			break;
 		case draiosproto::REMOVED:
-			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
+			print_obj(key);
 			remove(key);
 			break;
 		case draiosproto::UPDATED:
@@ -651,15 +656,13 @@ void infrastructure_state::handle_event(const draiosproto::congroup_update_event
 				m_state[key]->mutable_ip_addresses()->CopyFrom(evt->object().ip_addresses());
 				m_state[key]->mutable_metrics()->CopyFrom(evt->object().metrics());
 			}
-			glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s", m_state[key]->DebugString().c_str());
+			print_obj(key);
 			break;
 		}
 	}
 
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s event with uid <%s,%s> handled. Current state size: %d", draiosproto::congroup_event_type_Name(evt->type()).c_str(), kind.c_str(), id.c_str(), m_state.size());
-	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE) {
-		debug_print();
-	}
+	print_state();
 }
 
 bool infrastructure_state::has_link(const google::protobuf::RepeatedPtrField<draiosproto::congroup_uid>& links, const uid_t& uid)
@@ -1238,6 +1241,17 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 		return;
 	}
 
+	// Remove any cached result related to this container
+	// id. (This can occur for containers where an initial stub
+	// container with complete information is added first, with a
+	// complete container being added later).
+	//
+	// It's necessary as match_scope always checks the cache
+	// first, and if the cache is based on the incomplete
+	// container, it won't ever relocate it based on the complete
+	// container information.
+	clear_cached_result(container_info.m_id);
+
 	glogf(sinsp_logger::SEV_DEBUG, "infra_state: Receiving new container event (id: %s) from container_manager", container_info.m_id.c_str());
 	draiosproto::congroup_update_event evt;
 	evt.set_type(draiosproto::ADDED);
@@ -1520,8 +1534,12 @@ void infrastructure_state::refresh_hosts_metadata()
 	}
 }
 
-void infrastructure_state::debug_print()
+void infrastructure_state::print_state() const
 {
+	if (g_logger.get_severity() < sinsp_logger::SEV_TRACE)
+	{
+		return;
+	}
 	
 	glogf(sinsp_logger::SEV_TRACE, "infra_state: INFRASTRUCTURE STATE (size: %d)", m_state.size());
 
@@ -1550,6 +1568,26 @@ void infrastructure_state::debug_print()
 		glogf(sinsp_logger::SEV_TRACE, "infra_state:   Children:");
 		for (auto m: cong->children())
 			glogf(sinsp_logger::SEV_TRACE, "infra_state:    <%s,%s>", m.kind().c_str(), m.id().c_str());
+	}
+}
+
+void infrastructure_state::print_obj(const uid_t &key) const
+{
+	if (g_logger.get_severity() < sinsp_logger::SEV_DEBUG)
+	{
+		return;
+	}
+
+	decltype(m_state)::const_iterator iter = m_state.find(key);
+	if (iter == m_state.cend())
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Couldn't find <%s,%s>",
+		      key.first.c_str(), key.second.c_str());
+	}
+	else
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: %s",
+		      iter->second->DebugString().c_str());
 	}
 }
 
@@ -1728,6 +1766,17 @@ bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastruct
 // If we don't find any other nodes running agents, we're assuming they're all running agents.
 bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_delegated)
 {
+	if (num_delegated < 0)
+	{
+		g_logger.log("k8s_deleg: delegation forced by config override", sinsp_logger::SEV_INFO);
+		return true;
+	}
+	else if (num_delegated == 0)
+	{
+		g_logger.log("k8s_deleg: delegation disabled by config override", sinsp_logger::SEV_INFO);
+		return false;
+	}
+
 	class NodeData {
 	public:
 		NodeData(const std::string& id, const std::string& ips)

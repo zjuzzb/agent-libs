@@ -36,7 +36,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_app_checks_enabled(false),
 	m_trace_enabled(false),
 	m_next_iflist_refresh_ns(0),
-	m_aws_metadata_refresher(configuration),
+	m_aws_metadata_refresher(*configuration),
 	m_internal_metrics(im)
 {
 	m_last_mode_switch_time = 0;
@@ -169,8 +169,6 @@ void sinsp_worker::init()
 		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
 	}
 
-	m_analyzer->get_configuration()->set_k8s_autodetect_enabled(m_configuration->m_k8s_autodetect);
-
 	if(!m_configuration->m_k8s_ssl_cert_type.empty())
 	{
 		m_analyzer->get_configuration()->set_k8s_ssl_cert_type(m_configuration->m_k8s_ssl_cert_type);
@@ -205,7 +203,6 @@ void sinsp_worker::init()
 
 	m_analyzer->get_configuration()->set_k8s_timeout_s(m_configuration->m_k8s_timeout_s);
 
-	m_analyzer->get_configuration()->set_k8s_simulate_delegation(m_configuration->m_k8s_simulate_delegation);
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
 
 	if(m_configuration->m_k8s_extensions.size())
@@ -272,7 +269,6 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_dragent_profile_time_seconds(m_configuration->m_dragent_profile_time_seconds);
 	m_analyzer->get_configuration()->set_dragent_total_profiles(m_configuration->m_dragent_total_profiles);
 
-	m_analyzer->get_configuration()->set_statsite_buffer_warning_length(m_configuration->m_statsite_buffer_warning_length);
 	m_analyzer->get_configuration()->set_statsite_check_format(m_configuration->m_statsite_check_format);
 	m_analyzer->get_configuration()->set_log_dir(m_configuration->m_log_dir);
 
@@ -410,6 +406,8 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_orch_batch_msgs_queue_len(m_configuration->m_orch_batch_msgs_queue_len);
 	m_analyzer->get_configuration()->set_orch_batch_msgs_tick_interval_ms(m_configuration->m_orch_batch_msgs_tick_interval_ms);
 
+	m_analyzer->get_configuration()->set_procfs_scan_procs(m_configuration->m_procfs_scan_procs, m_configuration->m_procfs_scan_interval);
+
 	//
 	// Load the chisels
 	//
@@ -525,7 +523,7 @@ void sinsp_worker::init()
 	// Start the capture with sinsp
 	//
 	g_log->information("Opening the capture source");
-	if(m_configuration->m_input_filename != "")
+	if(!m_configuration->m_input_filename.empty())
 	{
 		m_inspector->open(m_configuration->m_input_filename);
 	}
@@ -676,9 +674,9 @@ void sinsp_worker::run()
 			LOGGED_THROW(sinsp_exception, "%s", m_inspector->getlasterr().c_str());
 		}
 
-		if(m_analyzer->m_mode_switch_state >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
+		if(m_analyzer->get_mode_switch_state() >= sinsp_analyzer::MSR_REQUEST_NODRIVER)
 		{
-			if(m_analyzer->m_mode_switch_state == sinsp_analyzer::MSR_REQUEST_NODRIVER)
+			if(m_analyzer->get_mode_switch_state() == sinsp_analyzer::MSR_REQUEST_NODRIVER)
 			{
 				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
 																 "Agent switch to nodriver",
@@ -689,7 +687,7 @@ void sinsp_worker::run()
 				m_last_mode_switch_time = ev->get_ts();
 
 				m_inspector->close();
-				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER;
+				m_analyzer->set_mode_switch_state(sinsp_analyzer::MSR_SWITCHED_TO_NODRIVER);
 				m_analyzer->set_sampling_ratio(1);
 
 				m_inspector->open_nodriver();
@@ -809,6 +807,13 @@ bool sinsp_worker::load_policies(draiosproto::policies &policies, std::string &e
 		errstr = "No Security Manager object created";
 		return false;
 	}
+}
+
+bool sinsp_worker::is_stall_fatal() const
+{
+	// If the input filename is not empty then we are reading an scap file
+	// that has old timestamps so tell the caller to not check for stalls
+	return m_configuration->m_input_filename.empty();
 }
 
 bool sinsp_worker::set_compliance_calendar(draiosproto::comp_calendar &calendar,

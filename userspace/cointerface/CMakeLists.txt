@@ -7,6 +7,7 @@ set(COINTERFACE_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface")
 set(DECODEPROTO_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/decode_proto")
 set(COMPCLIENT_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/compclient")
 set(PROMEX_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/promex")
+# Generated dirs must be excluded from rsync in docker-builder-entrypoint.sh
 file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/draiosproto)
 file(MAKE_DIRECTORY ${COINTERFACE_OUT_DIR}/sdc_internal)
 file(MAKE_DIRECTORY ${DECODEPROTO_OUT_DIR}/draiosproto)
@@ -65,7 +66,6 @@ add_custom_command(OUTPUT ${PROMEX_OUT_DIR}/draiosproto/draios.pb.go
 add_custom_target(cointerface ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 #        COMMAND env GOPATH=${CMAKE_CURRENT_SOURCE_DIR} go fmt cointerface
-        COMMAND env GOPATH=${GOPATH} go test cointerface/...
         COMMAND env GOPATH=${GOPATH} go build -o "${CMAKE_CURRENT_BINARY_DIR}/cointerface" cointerface
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
 	DEPENDS generate_cointerface_proto
@@ -80,20 +80,14 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/compliance/module.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/k8s_audit/module.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/daemonsets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/namespaces.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicationcontrollers.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas.go
-		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas_test.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/statefulsets.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/services.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/jobs.go
@@ -103,6 +97,20 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface
 		${CMAKE_CURRENT_SOURCE_DIR}/src/test_helpers/assert.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumes.go
 		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/persistentvolumeclaims.go
+		)
+
+add_custom_target(cointerface_test ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt)
+add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
+        COMMAND env GOPATH=${GOPATH} go test cointerface/...
+        COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_CURRENT_BINARY_DIR}/cointerface_test_success.txt
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	DEPENDS cointerface
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/client_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/deployments_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/pods_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/nodes_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/replicasets_test.go
+		${CMAKE_CURRENT_SOURCE_DIR}/src/cointerface/kubecollect/resourcequotas_test.go
 		)
 
 add_custom_target(compclient ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/compclient)

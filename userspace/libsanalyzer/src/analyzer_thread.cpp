@@ -103,8 +103,9 @@ void main_thread_analyzer_info::hash_environment(sinsp_threadinfo *tinfo, const 
 ///////////////////////////////////////////////////////////////////////////////
 
 thread_analyzer_info::thread_analyzer_info()
-	: m_first_port_scan(time_point_t::max())
-	, m_second_port_scan_done(false)
+	: m_prom_check_found(false)
+	, m_last_port_scan(time_point_t::min())
+	, m_last_procfs_port_scan(time_point_t::min())
 {
 }
 
@@ -150,10 +151,10 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 			share_store ? &(mt_ainfo->m_external_transaction_metrics) : nullptr);
 	}
 
-	if (m_analyzer->m_track_environment) {
+	if (m_analyzer->is_tracking_environment()) {
 		if (m_tinfo->is_main_thread()) {
 			auto mt_ainfo = main_thread_ainfo();
-			mt_ainfo->hash_environment(m_tinfo, *m_analyzer->m_env_hash_config.m_env_blacklist);
+			mt_ainfo->hash_environment(m_tinfo, m_analyzer->get_environment_blacklist());
 		}
 	}
 }
@@ -378,8 +379,23 @@ void thread_analyzer_info::clear_role_flags()
 		AF_IS_UNIX_SERVER | AF_IS_LOCAL_IPV4_CLIENT | AF_IS_REMOTE_IPV4_CLIENT | AF_IS_UNIX_CLIENT);
 }
 
-void thread_analyzer_info::scan_listening_ports()
+void thread_analyzer_info::scan_listening_ports(bool scan_procfs, uint32_t procfs_scan_interval)
 {
+	time_point_t now = time_point_t::min();
+
+	// If this pid has a lot of open fds, only rescan
+	// every RESCAN_PORT_INTERVAL_SECS
+	if (m_listening_ports && (m_tinfo->get_fd_opencount() >= LISTENING_PORT_SCAN_FDLIMIT))
+	{
+		now = time_point_t::clock::now();
+		auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(now - m_last_port_scan).count();
+		if((m_last_port_scan != time_point_t::min()) &&
+			(elapsed_secs < RESCAN_PORT_INTERVAL_SECS))
+		{
+			return;
+		}
+	}
+
 	m_listening_ports = make_unique<set<uint16_t>>();
 	auto fd_table = m_tinfo->get_fd_table();
 	for(const auto& fd : fd_table->m_table)
@@ -394,9 +410,33 @@ void thread_analyzer_info::scan_listening_ports()
 		}
 	}
 
-	if(m_first_port_scan == time_point_t::max() && !m_listening_ports->empty())
+	m_last_port_scan = time_point_t::clock::now();
+
+	// Only scan procfs every procfs_scan_interval
+	if (scan_procfs) {
+		if (now == time_point_t::min())
+			now = time_point_t::clock::now();
+
+		auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(now - m_last_procfs_port_scan).count();
+		if((m_last_procfs_port_scan == time_point_t::min()) ||
+			(elapsed_secs >= procfs_scan_interval))
+		{
+			int prev_size = m_procfs_found_ports.size();
+			m_procfs_found_ports.clear();
+
+			sinsp_procfs_parser::read_process_serverports(m_tinfo->m_pid, *m_listening_ports, m_procfs_found_ports);
+			m_last_procfs_port_scan = now;
+
+			if (m_procfs_found_ports.size() != prev_size)
+			{
+				g_logger.format(sinsp_logger::SEV_INFO, "Updated list of listening ports for pid %" PRIi64 ", %s. Found %d new ports: %s", m_tinfo->m_pid, m_tinfo->m_comm.c_str(), m_procfs_found_ports.size() - prev_size, ports_to_string(m_procfs_found_ports).c_str());
+			}
+		}
+	}
+
+	for (auto port : m_procfs_found_ports)
 	{
-		m_first_port_scan = time_point_t::clock::now();
+		m_listening_ports->insert(port);
 	}
 }
 
@@ -443,7 +483,7 @@ void thread_analyzer_info::flush_inactive_transactions(uint64_t sample_end_time,
 							connection = m_analyzer->get_connection(it->second.m_sockinfo.m_ipv4info, 
 								endtime);
 
-							ASSERT(connection || m_analyzer->m_ipv4_connections->get_n_drops() != 0);
+							ASSERT(connection || m_analyzer->get_num_dropped_ipv4_connections() != 0);
 						}
 						else if(it->second.is_unix_socket())
 						{
@@ -572,38 +612,12 @@ bool thread_analyzer_info::found_app_check_by_fnmatch(const string& pattern)
 	return false;
 }
 
-void thread_analyzer_info::scan_ports_again_on_timer_elapsed()
-{
-	if(!m_second_port_scan_done)
-	{
-		auto now = time_point_t::clock::now();
-		auto elapsed_secs = std::chrono::duration_cast<std::chrono::seconds>(now - m_first_port_scan).count();
-		if(elapsed_secs > SECOND_SCAN_PORT_INTERVAL_SECS)
-		{
-			m_second_port_scan_done = true;
-			g_logger.format(sinsp_logger::SEV_DEBUG, "thread_analyzer_info: performed second port scan for pid %ld", this->m_tinfo->m_pid);
-			std::size_t initial_size = m_listening_ports->size();
-			scan_listening_ports();
-			std::size_t current_size = m_listening_ports->size();
-			// Log only if other ports have been found
-			if(current_size > initial_size)
-			{
-				g_logger.format(sinsp_logger::SEV_DEBUG, "thread_analyzer_info: found new ports with second scan. Total ports found: %s", listening_ports_to_string().c_str());
-			}
-		}
-	}
-}
-
-
-std::string thread_analyzer_info::listening_ports_to_string()
+std::string thread_analyzer_info::ports_to_string(const set<uint16_t> &ports)
 {
 	std::string ret;
-	if(m_listening_ports != nullptr && !m_listening_ports->empty())
+	for(auto port : ports)
 	{
-		for(auto& port : *m_listening_ports.get())
-		{
-			ret += std::to_string(port) + ", ";
-		}
+		ret += std::to_string(port) + ", ";
 	}
 	return ret.substr(0, ret.size() - 2);
 }
@@ -611,26 +625,31 @@ std::string thread_analyzer_info::listening_ports_to_string()
 ///////////////////////////////////////////////////////////////////////////////
 // analyzer_threadtable_listener implementation
 ///////////////////////////////////////////////////////////////////////////////
-analyzer_threadtable_listener::analyzer_threadtable_listener(sinsp* inspector, sinsp_analyzer* analyzer)
-{
-	m_inspector = inspector; 
-	m_analyzer = analyzer;
-}
+analyzer_threadtable_listener::analyzer_threadtable_listener(
+		sinsp* const inspector,
+		sinsp_analyzer* const analyzer):
+	m_inspector(inspector),
+	m_analyzer(analyzer),
+	m_tap(nullptr)
+
+{ }
 
 void analyzer_threadtable_listener::on_thread_created(sinsp_threadinfo* tinfo)
 {
-	void *buffer = tinfo->get_private_state(m_analyzer->m_thread_memory_id);
+	void *buffer = tinfo->get_private_state(m_analyzer->get_thread_memory_id());
+
 	std::memset(buffer, 0, sizeof(thread_analyzer_info));
+
 	tinfo->m_ainfo = new (buffer) thread_analyzer_info(); // placement new
-	tinfo->m_ainfo->m_percentiles = m_analyzer->m_configuration->get_percentiles();
+	tinfo->m_ainfo->m_percentiles = m_analyzer->get_configuration_read_only()->get_percentiles();
 	tinfo->m_ainfo->init(m_inspector, tinfo);
 }
 
-void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
+void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* const tinfo)
 {
-	if(tinfo->is_main_thread() && m_analyzer->m_tap)
+	if(tinfo->is_main_thread() && m_tap != nullptr)
 	{
-		m_analyzer->m_tap->on_exit(tinfo->m_pid);
+		m_tap->on_exit(tinfo->m_pid);
 	}
 	if(tinfo->m_ainfo)
 	{
@@ -638,11 +657,16 @@ void analyzer_threadtable_listener::on_thread_destroyed(sinsp_threadinfo* tinfo)
 	}
 }
 
+void analyzer_threadtable_listener::set_audit_tap(audit_tap* const tap)
+{
+	m_tap = tap;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Support for thread sorting
 ///////////////////////////////////////////////////////////////////////////////
 bool threadinfo_cmp_cpu(sinsp_threadinfo* src , sinsp_threadinfo* dst)
-{ 
+{
 	ASSERT(src->m_ainfo);
 	ASSERT(src->m_ainfo->m_procinfo);
 	ASSERT(dst->m_ainfo);

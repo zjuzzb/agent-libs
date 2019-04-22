@@ -342,15 +342,7 @@ TEST_F(sys_call_test, container_docker)
 
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
-		{
-			return !tinfo->m_container_id.empty() &&
-				tinfo->m_exe != "docker-runc" &&
-				tinfo->m_exe != "runc";
-		}
-
-		return false;
+		return (evt->get_type() == PPME_CONTAINER_JSON_E);
 	};
 
 	run_callback_t test = [&](sinsp* inspector)
@@ -1593,6 +1585,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 	char dumpfile[20] = "/tmp/captureXXXXXX";
 	int dumpfile_fd;
 
+        inspector.reset(NULL);
         inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
 
@@ -1641,6 +1634,7 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 	// Now reread the file we just wrote and pass it through
 	// update_container_state.
 
+        inspector.reset(NULL);
 	inspector.reset(new sinsp());
 	inspector->set_hostname_and_port_resolution_mode(false);
 	inspector->set_filter("evt.type=execve and evt.dir=<");

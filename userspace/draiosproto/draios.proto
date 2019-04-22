@@ -830,6 +830,7 @@ enum container_type {
     CRI = 7;
     CONTAINERD = 8;
     CRIO = 9;
+    COALESCE = 10;
 }
 
 message container_reporting_group {
@@ -1159,6 +1160,7 @@ message unreported_stats {
     optional counter_syscall_errors syscall_errors = 5;
     optional proto_info protos = 6;
     repeated string names = 7; // names of all containers herein reported
+    optional counter_time_bidirectional transaction_counters = 8;
 }
 // ENTRY POINT MESSAGE
 //

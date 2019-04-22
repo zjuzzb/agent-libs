@@ -23,17 +23,11 @@
 #include "analyzer_thread.h"
 #include "analyzer_fd.h"
 
-sinsp_analyzer_parsers::sinsp_analyzer_parsers(sinsp_analyzer* analyzer)
-{
-	m_analyzer = analyzer;
-	m_sched_analyzer2 = NULL;
-	m_last_drop_was_enter = false;
-}
-
-void sinsp_analyzer_parsers::on_capture_start()
-{
-	m_sched_analyzer2 = m_analyzer->m_sched_analyzer2;
-}
+sinsp_analyzer_parsers::sinsp_analyzer_parsers(sinsp_analyzer* const analyzer):
+	m_analyzer(analyzer),
+	m_sched_analyzer2(nullptr),
+	m_last_drop_was_enter(false)
+{ }
 
 //
 // This is similar to sinsp_parser::process_event, but it's for draios-only event
@@ -47,7 +41,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 	{
 	case PPME_SCHEDSWITCH_1_E:
 	case PPME_SCHEDSWITCH_6_E:
-		if(m_analyzer->m_inspector->m_thread_manager->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
+		if(m_analyzer->get_thread_count() < DROP_SCHED_ANALYZER_THRESHOLD)
 		{
 			m_sched_analyzer2->process_event(evt);
 		}
@@ -76,13 +70,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		if(!m_last_drop_was_enter)
 		{
 			parse_drop(evt);
+			m_analyzer->simulate_drop_mode(true);
 
-#ifdef SIMULATE_DROP_MODE
-			//
-			// Set dropping mode
-			//
-			m_analyzer->m_inspector->m_isdropping = true;
-#endif
 			//g_logger.log("Executing flush (drop_e)", sinsp_logger::SEV_INFO);
 			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH);
 
@@ -94,13 +83,8 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		if(m_last_drop_was_enter)
 		{
 			parse_drop(evt);
+			m_analyzer->simulate_drop_mode(false);
 
-#ifdef SIMULATE_DROP_MODE
-			//
-			// Turn off dropping mode
-			//
-			m_analyzer->m_inspector->m_isdropping = false;
-#endif
 			//g_logger.log("Executing flush (drop_x)", sinsp_logger::SEV_INFO);
 			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
 
@@ -110,13 +94,18 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 		return false;
 
 	case PPME_SYSDIGEVENT_E:
-		m_analyzer->m_driver_stopped_dropping = true;
+		m_analyzer->set_driver_stopped_dropping(true);
 		return false;
 	case PPME_CONTAINER_E:
 		return false;
 	default:
 		return true;
 	}
+}
+
+void sinsp_analyzer_parsers::set_sched_analyzer2(sinsp_sched_analyzer2* const sched_analyzer2)
+{
+	m_sched_analyzer2 = sched_analyzer2;
 }
 
 void sinsp_analyzer_parsers::parse_accept_exit(sinsp_evt* evt)
@@ -203,7 +192,7 @@ void sinsp_analyzer_parsers::parse_select_poll_epollwait_exit(sinsp_evt *evt)
 				// If this was a wait on multiple FDs, we encode the delta as a negative number so
 				// the next steps will know that it needs to be handled with more care.
 				//
-				uint64_t sample_duration = m_analyzer->m_configuration->get_analyzer_sample_len_ns();
+				uint64_t sample_duration = m_analyzer->get_configuration_read_only()->get_analyzer_sample_len_ns();
 				uint64_t ts = evt->get_ts();
 
 				tinfo->m_ainfo->m_last_wait_end_time_ns = ts;
@@ -251,17 +240,9 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	//
 	// Detect if this is a stress tool and in that case request to go in nodriver mode
 	//
-	if(m_analyzer->m_configuration->get_detect_stress_tools())
+	if(m_analyzer->detect_and_match_stress_tool(tinfo->m_comm))
 	{
-		if(m_analyzer->m_stress_tool_matcher.match(tinfo->m_comm))
-		{
-			if(!m_analyzer->m_inspector->is_nodriver())
-			{
-				m_analyzer->m_mode_switch_state = sinsp_analyzer::MSR_REQUEST_NODRIVER;
-			}
-
-			return true;
-		}
+		return true;
 	}
 
 	//
@@ -427,14 +408,14 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		cmdinfo.m_flags |= sinsp_executed_command::FL_PIPE_TAIL;
 	}
 
-	m_analyzer->m_executed_commands[tinfo->m_container_id].push_back(cmdinfo);
+	m_analyzer->add_executed_command(tinfo->m_container_id, cmdinfo);
 
 	return true;
 }
 
 void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 {
-	m_analyzer->m_last_dropmode_switch_time = evt->get_ts();
+	m_analyzer->set_last_dropmode_switch_time(evt->get_ts());
 
 	//
 	// If required, update the sample length
@@ -443,10 +424,10 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 	parinfo = evt->get_param(0);
 	ASSERT(parinfo->m_len == sizeof(int32_t));
 
-	if(*(uint32_t*)parinfo->m_val != m_analyzer->m_sampling_ratio)
+	if(*(uint32_t*)parinfo->m_val != m_analyzer->get_sampling_ratio())
 	{
 		g_logger.format(sinsp_logger::SEV_INFO, "sinsp Switching sampling ratio from % " PRIu32 " to %" PRIu32,
-			m_analyzer->m_sampling_ratio,
+			m_analyzer->get_sampling_ratio(),
 			*(uint32_t*)parinfo->m_val);
 
 		m_analyzer->set_sampling_ratio(*(int32_t*)parinfo->m_val);

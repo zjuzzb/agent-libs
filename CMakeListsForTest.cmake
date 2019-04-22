@@ -8,6 +8,7 @@ add_subdirectory(userspace/libsanalyzer/tests)
 add_subdirectory(userspace/libsanalyzer/test_helpers)
 add_subdirectory(userspace/test_helpers/src)
 add_subdirectory(userspace/test_helpers/test)
+add_subdirectory(userspace/userspace-shared/test)
 
 if(NOT CYGWIN)
 	add_subdirectory(test)

@@ -70,3 +70,9 @@ sudo $SCRIPTS_DIR/run-tests $INSTALL_DIR
 docker run -i --rm --privileged -v $PWD/driver:/driver busybox rmmod sysdigcloud-probe
 
 $SCRIPTS_DIR/upload-agent $REPO_NAME $OUT $REPO_DIR $S3_BUCKET
+
+# Cleanup after the build
+sudo rm -rf $INSTALL_DIR
+sudo rm -rf $OUT
+sudo rm -rf $BUILD
+sudo rm -rf $DRIVER_BUILD

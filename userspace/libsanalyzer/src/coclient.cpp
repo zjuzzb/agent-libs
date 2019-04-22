@@ -207,11 +207,13 @@ int32_t coclient::next()
 	}
 
 	if(call->status.ok()) {
-		string tmp;
-		m_print.PrintToString(*(call->response_msg), &tmp);
+		if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
+		{
+			string tmp;
+			m_print.PrintToString(*(call->response_msg), &tmp);
 
-		g_logger.log("Got response from cointerface: " + tmp, sinsp_logger::SEV_DEBUG);
-
+			g_logger.log("Got response from cointerface: " + tmp, sinsp_logger::SEV_TRACE);
+		}
 	} else {
 		g_logger.log("cointerface rpc failed", sinsp_logger::SEV_DEBUG);
 	}

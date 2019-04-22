@@ -7,6 +7,7 @@
 #include <future>
 #include <errno.h>
 #include <memory>
+#include <Poco/File.h>
 #include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
 
@@ -98,21 +99,14 @@ bool connection_manager::init()
 
 	Poco::Net::Context::VerificationMode verification_mode;
 	SharedPtr<LoggingCertificateHandler> invalid_cert_handler = nullptr;
-	std::string cert_dir;
+	std::string cert_path;
 
 	if(m_configuration->m_ssl_verify_certificate)
 	{
 		verification_mode = Poco::Net::Context::VERIFY_STRICT;
 		invalid_cert_handler = new LoggingCertificateHandler(false);
-		if (!m_configuration->m_ssl_ca_cert_dir.empty())
-		{
-			cert_dir = m_configuration->m_ssl_ca_cert_dir;
-		}
-		else
-		{
-			cert_dir = get_openssldir();
-		}
-		LOG_INFO("SSL CA cert dir: " + cert_dir);
+		cert_path = find_ca_cert_path(m_configuration->m_ssl_ca_cert_paths);
+		LOG_INFO("SSL CA cert path: " + cert_path);
 	}
 	else
 	{
@@ -123,7 +117,7 @@ bool connection_manager::init()
 		Poco::Net::Context::CLIENT_USE,
 		"",
 		"",
-		cert_dir,
+		cert_path,
 		verification_mode,
 		9,
 		false,
@@ -161,9 +155,15 @@ bool connection_manager::init()
 
 // Find the host's default OPENSSLDIR
 // This is best effort for now, so don't log at warn/error
-std::string connection_manager::get_openssldir()
+const std::string& connection_manager::get_openssldir()
 {
-	std::string path;
+	static std::string path;
+
+	if (!path.empty())
+	{
+		return path;
+	}
+
 	errno = 0;
 	FILE *out = popen("openssl version -d 2>&1", "r");
 	if (!out)
@@ -203,8 +203,7 @@ std::string connection_manager::get_openssldir()
 			continue;
 		}
 
-		path = out_str.substr(start_pos, end_pos - start_pos)
-			+ "/certs";
+		path = out_str.substr(start_pos, end_pos - start_pos);
 		LOG_DEBUG("found OPENSSLDIR: " + path);
 		break;
 	}
@@ -213,6 +212,35 @@ std::string connection_manager::get_openssldir()
 	LOG_DEBUG(string("openssl pclose() exit code: ")
 		     + std::to_string(WEXITSTATUS(ret)));
 	return path;
+}
+
+std::string connection_manager::find_ca_cert_path(const std::vector<std::string>& search_paths)
+{
+	std::vector<std::string> failed_paths;
+	for (auto path : search_paths)
+	{
+		auto pos = path.find("$OPENSSLDIR");
+		if (pos != std::string::npos)
+		{
+			path.replace(pos, strlen("$OPENSSLDIR"), get_openssldir());
+		}
+
+		LOG_DEBUG("Checking CA path: " + path);
+		if (Poco::File(path).exists())
+		{
+			return path;
+		}
+
+		failed_paths.emplace_back(path);
+	}
+
+	std::string msg("Could not find any valid CA path, tried:");
+	for (const auto& path : failed_paths)
+	{
+		msg.append(' ' + path);
+	}
+	LOG_WARNING(msg);
+	return "";
 }
 
 bool connection_manager::connect()

@@ -69,7 +69,7 @@ private:
 	bool m_used;
 	bool m_nodriver;
 
-	void check_and_emit_containers(std::vector<std::string>& containers, const uint32_t containers_limit);
+	void check_and_emit_containers(std::vector<std::string>& containers, const uint32_t containers_limit, bool high_priority);
 
 	template<typename Extractor>
 	class containers_cmp
@@ -146,7 +146,7 @@ private:
 		return result != m_container_patterns.end();
 	}
 
-	void emit_range(std::vector<std::string>::iterator it, uint32_t limit)
+	void emit_range(std::vector<std::string>::iterator it, uint32_t limit, bool high_priority)
 	{
 		uint32_t count = 0;
 		for (auto i = it; count < limit; ++i, ++count)
@@ -154,11 +154,30 @@ private:
 			// caller responsible for ensuring we only emit containers once
 			ASSERT(m_emitted_containers.find(*i) == m_emitted_containers.end());
 
+			// it would be....odd/wrong to have a container without the
+			// backing program...
+			if (m_progtable_by_container.at(*i).size() == 0)
+			{
+				ASSERT(false);
+				continue;
+			}
+
+			//  ideally, we'll pull this out of the filter in order to populate correclt,y
+			//  but that's a bit of work and the back-end ignores it anyway. They only care
+			//  about the count of groups in terms of priority, so just indicate that it
+			//  matched a group
+			std::list<uint32_t> groups;
+			if (high_priority)
+			{
+				groups.push_back(1);
+			}
+
 			m_t.emit_container(*i,
 					   &m_statsd_limit,
 					   m_total_cpu_shares,
 					   m_progtable_by_container.at(*i).front(),
-					   m_flshflags);
+					   m_flshflags,
+					   groups);
 			m_emitted_containers.emplace(*i);
 		}
 	}

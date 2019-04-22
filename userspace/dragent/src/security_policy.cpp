@@ -976,6 +976,12 @@ syscall_policies::syscall_policies()
 
 	for(uint32_t j = 0; j < PPM_EVENT_MAX; j++)
 	{
+		// Skip container events, they aren't a result of executed programs.
+		if(j == PPME_CONTAINER_JSON_E)
+		{
+			continue;
+		}
+
 		if(PPME_IS_ENTER(j))
 		{
 			m_evttypes[j] = true;
@@ -1517,8 +1523,7 @@ container_policies::container_policies()
 {
 	m_name = "containers";
 
-	m_evttypes[PPME_SYSCALL_EXECVE_18_X] = true;
-	m_evttypes[PPME_SYSCALL_EXECVE_19_X] = true;
+	m_evttypes[PPME_CONTAINER_JSON_E] = true;
 }
 
 container_policies::~container_policies()
@@ -1534,8 +1539,7 @@ void container_policies::init(dragent_configuration *configuration,
 	std::shared_ptr<sinsp_filter_check> cim;
 	cim.reset(g_filterlist.new_filter_check_from_fldname("container.image", m_inspector, true));
 	cim->parse_field_name("container.image", true, false);
-	m_checks.emplace(PPME_SYSCALL_EXECVE_18_X, cim);
-	m_checks.emplace(PPME_SYSCALL_EXECVE_19_X, cim);
+	m_checks.emplace(PPME_CONTAINER_JSON_E, cim);
 }
 
 draiosproto::policy_type container_policies::policies_type()
@@ -1555,7 +1559,7 @@ std::set<std::string> container_policies::default_output_fields_keys(sinsp_evt *
 
 std::string container_policies::qualifies()
 {
-	return string("proc.vpid=1 and container.id != host");
+	return string("evt.type=container");
 }
 
 void container_policies::split_components(const filter_value_t &val, filter_components_t &components)

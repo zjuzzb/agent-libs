@@ -99,6 +99,10 @@ public:
 	void subtract(uint32_t cnt_delta, uint64_t time_delta);
 	void clear();
 	void to_protobuf(draiosproto::counter_time* protobuf_msg, uint64_t tot_relevant_time_ns, uint32_t sampling_ratio);
+	void coalesce_protobuf(draiosproto::counter_time* protobuf_msg,
+			       uint64_t tot_relevant_time_ns,
+			       uint64_t& denominator,
+			       const uint32_t sampling_ratio);
 
 	uint32_t m_count;
 	uint64_t m_time_ns;
@@ -123,6 +127,10 @@ public:
 	void add(sinsp_counter_time_bidirectional* other);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg, uint32_t sampling_ratio) const;
+	void coalesce_protobuf_add(draiosproto::counter_time_bidirectional* protobuf_msg,
+				   uint32_t sampling_ratio) const;
+	void coalesce_protobuf_max(draiosproto::counter_time_bidirectional* protobuf_msg,
+			       uint32_t sampling_ratio) const;
 	uint32_t get_tot_count() const;
 
 	uint32_t m_count_in;
@@ -173,7 +181,11 @@ public:
 	void add(sinsp_counter_time_bidirectional* other, bool add_count);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
-					 uint64_t tot_relevant_time_ns, uint32_t sampling_ratio);
+			 uint64_t tot_relevant_time_ns,
+			 uint32_t sampling_ratio);
+	void coalesce_protobuf(draiosproto::counter_time_bytes* protobuf_msg,
+			       uint64_t tot_relevant_time_ns,
+			       const uint32_t sampling_ratio);
 	uint64_t get_tot_bytes() const;
 
 	uint32_t m_count_in;
@@ -224,7 +236,15 @@ public:
 	void get_total(sinsp_counter_time* tot);
 	void calculate_totals();
 	void to_protobuf(draiosproto::time_categories* protobuf_msg, uint32_t sampling_ratio);
+	void coalesce_protobuf(draiosproto::time_categories* protobuf_msg,
+			       const uint32_t sampling_ratio,
+			       uint64_t& other_denom,
+			       uint64_t& processing_denom);
 	void to_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg, uint32_t sampling_ratio);
+	void coalesce_reqprotobuf(draiosproto::transaction_breakdown_categories* protobuf_msg,
+				  uint32_t sampling_ratio,
+				  uint64_t& other_denom,
+				  uint64_t& processing_denom);
 
 	uint64_t get_total_other_time();
 	uint64_t get_total_wait_time();
@@ -274,9 +294,11 @@ public:
 	void set_serialize_pctl_data(bool val);
 	void clear();
 	void to_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
-		//draiosproto::counter_time_bidirectional* min_protobuf_msg,
 		draiosproto::counter_time_bidirectional* max_protobuf_msg, 
 		uint32_t sampling_ratio) const;
+	void coalesce_protobuf(draiosproto::counter_time_bidirectional* protobuf_msg,
+			       draiosproto::counter_time_bidirectional* max_protobuf_msg, 
+			       uint32_t sampling_ratio) const;
 	void add(sinsp_transaction_counters* other);
 	void add_in(uint32_t cnt_delta, uint64_t time_delta);
 	void add_out(uint32_t cnt_delta, uint64_t time_delta);
@@ -353,6 +375,8 @@ public:
 	}
 	void add(sinsp_error_counters* other);
 	void to_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, uint32_t sampling_ratio) const;
+	void coalesce_protobuf(draiosproto::counter_syscall_errors* protobuf_msg, 
+			       uint32_t sampling_ratio) const;
 };
 
 //
@@ -419,8 +443,8 @@ public:
 	double m_cpuload; // for containers
 	unsigned m_threads_count = 0;
 
-	int get_process_count();
-	int get_process_start_count();
+	int get_process_count() const;
+	int get_process_start_count() const;
 
 private:
 	double m_tot_capacity_score;
@@ -428,14 +452,16 @@ private:
 	uint32_t m_tot_server_transactions;
 	int m_proc_count = 0;
 	int m_proc_start_count = 0;
+
+	friend class test_helper;
 };
 
-inline int sinsp_host_metrics::get_process_count()
+inline int sinsp_host_metrics::get_process_count() const
 {
 	return m_proc_count;
 }
 
-inline int sinsp_host_metrics::get_process_start_count()
+inline int sinsp_host_metrics::get_process_start_count() const
 {
 	return m_proc_start_count;
 }

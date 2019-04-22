@@ -30,7 +30,6 @@ sinsp_configuration::sinsp_configuration():
 	m_protocols_truncation_size = 512;
 	m_mounts_limit_size = 15u;
 #ifndef CYGWING_AGENT
-	m_k8s_autodetect = true;
 	m_mesos_autodetect = true;
 #endif
 	m_jmx_limit = 500;
@@ -445,16 +444,6 @@ const string & sinsp_configuration::get_k8s_api_server() const
 	return m_k8s_api;
 }
 
-bool sinsp_configuration::get_k8s_autodetect_enabled() const
-{
-	return m_k8s_autodetect;
-}
-
-void sinsp_configuration::set_k8s_autodetect_enabled(bool enabled)
-{
-	m_k8s_autodetect = enabled;
-}
-
 void sinsp_configuration::set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type)
 {
 	m_k8s_ssl_cert_type = k8s_ssl_cert_type;
@@ -533,16 +522,6 @@ void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 int sinsp_configuration::get_k8s_delegated_nodes() const
 {
 	return m_k8s_delegated_nodes;
-}
-
-void sinsp_configuration::set_k8s_simulate_delegation(bool k8s_simulate_delegation)
-{
-	m_k8s_simulate_delegation = k8s_simulate_delegation;
-}
-
-bool sinsp_configuration::get_k8s_simulate_delegation() const
-{
-	return m_k8s_simulate_delegation;
 }
 
 void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
@@ -752,7 +731,7 @@ void sinsp_configuration::set_dcos_enterprise_credentials(const mesos::credentia
 	m_dcos_enterprise_credentials = creds;
 }
 
-void sinsp_configuration::set_marathon_skip_labels(std::set<std::string> &labels)
+void sinsp_configuration::set_marathon_skip_labels(const std::set<std::string> &labels)
 {
 	m_marathon_skip_labels = labels;
 }
@@ -1000,16 +979,6 @@ uint32_t sinsp_configuration::get_dragent_total_profiles() const
 	return m_dragent_total_profiles;
 }
 
-void sinsp_configuration::set_statsite_buffer_warning_length(uint32_t len)
-{
-	        m_statsite_buffer_warning_length = len;
-}
-
-uint32_t sinsp_configuration::get_statsite_buffer_warning_length() const
-{
-	        return m_statsite_buffer_warning_length;
-}
-
 void sinsp_configuration::set_statsite_check_format(bool enabled)
 {
 	        m_statsite_check_format = enabled;
@@ -1020,7 +989,7 @@ bool sinsp_configuration::get_statsite_check_format() const
 	        return m_statsite_check_format;
 }
 
-void sinsp_configuration::set_log_dir(string& dir)
+void sinsp_configuration::set_log_dir(const string& dir)
 {
 	m_log_dir = dir;
 }
@@ -1230,4 +1199,24 @@ void sinsp_configuration::set_orch_batch_msgs_tick_interval_ms(uint32_t batch_ti
 {
 	m_orch_batch_msgs_tick_interval_ms = batch_tick_interval_ms;
 }
+
+void sinsp_configuration::set_procfs_scan_procs(const set<string> &procs, uint32_t interval)
+{
+	m_procfs_scan_procs = procs;
+	m_procfs_scan_interval = interval;
+	for (const auto &proc : m_procfs_scan_procs)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_proc: %s", proc.c_str());
+	}
+	g_logger.format(sinsp_logger::SEV_INFO, "procfs_scan_interval: %d", m_procfs_scan_interval);
+}
+const set<string> &sinsp_configuration::get_procfs_scan_procs()
+{
+	return m_procfs_scan_procs;
+}
+uint32_t sinsp_configuration::get_procfs_scan_interval()
+{
+	return m_procfs_scan_interval;
+}
+
 #endif // HAS_ANALYZER

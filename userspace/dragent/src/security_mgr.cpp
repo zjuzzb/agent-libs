@@ -432,6 +432,14 @@ bool security_mgr::event_qualifies(sinsp_evt *evt)
 	// The checks are intentionally ordered from the fastest to the slowest,
 	// so we first check if the process is runc and if we have a container event,
 	// and only if that's true we check if it's a docker container event.
+
+	// CONTAINER_JSON events are always ok as the rules that use
+	// container events focus on container properties.
+	if(evt->get_type() == PPME_CONTAINER_JSON_E)
+	{
+		return true;
+	}
+
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	if(tinfo == NULL)
 	{

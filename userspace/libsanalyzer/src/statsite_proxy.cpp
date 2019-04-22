@@ -10,6 +10,17 @@
 #include <Poco/Net/NetException.h>
 #include <Poco/Thread.h>
 #include <algorithm>
+#include "type_config.h"
+
+namespace
+{
+
+type_config<uint64_t> config_buffer_warning_length(
+		512,
+		"limit to how long a single entry from statsite is before we log a warning",
+		"statsite_buffer_warning_length");
+
+} // end namespace
 
 #ifndef _WIN32
 
@@ -258,11 +269,9 @@ string statsd_metric::desanitize_container_id(string container_id)
 }
 
 statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds,
-			       uint32_t buffer_warning_length,
 			       bool check_format):
 		m_input_fd(fds.first),
 		m_output_fd(fds.second),
-		m_buffer_warning_length(buffer_warning_length),
 		m_check_format(check_format)
 {
 }
@@ -302,7 +311,7 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 			while(dyn_buffer[dyn_buffer.size() - 2] != '\0' && dyn_buffer[dyn_buffer.size() - 2] != '\n')
 			{
 				// if we've exceeded our configured buffer size, log it
-				if(dyn_buffer.size() >= m_buffer_warning_length)
+				if(dyn_buffer.size() >= config_buffer_warning_length.get())
 				{
 					g_logger.format(sinsp_logger::SEV_ERROR,
 							"Trace longer than warning size.: %s",
@@ -527,9 +536,8 @@ void statsite_proxy::send_container_metric(const string &container_id, const cha
 
 statsite_forwarder::statsite_forwarder(const pair<FILE *, FILE *> &pipes,
 				       uint16_t port,
-				       uint32_t max_buffer_len,
 				       bool check_format):
-	m_proxy(pipes, max_buffer_len, check_format),
+	m_proxy(pipes, check_format),
 	m_inqueue("/sdc_statsite_forwarder_in", posix_queue::RECEIVE, 1),
 	m_exitcode(0),
 	m_port(port),

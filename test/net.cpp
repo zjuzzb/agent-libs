@@ -1337,3 +1337,40 @@ TEST(sinsp_procfs_parser, DISABLED_test_read_network_interfaces_stats)
 	EXPECT_GT(stats.first, 0U);
 	EXPECT_GT(stats.second, 0U);
 }
+
+TEST(sinsp_procfs_parser, test_add_ports_from_proc_fs)
+{
+	const char *filename="resources/procfs.tcp";
+	set<uint16_t> oldports = { 2379 };
+	set<uint16_t> newports;
+	// These inodes should match local ports 42602, 2379, 2380 and 59042
+	// Port 59042 is a connection to a remote host and not a listening port
+	set<uint64_t> inodes = { 17550, 18661, 18655, 128153, 12345 };
+
+	// Since oldports already has 2379 the expected ports added in newports should be 42602 and 2380
+	EXPECT_EQ(sinsp_procfs_parser::add_ports_from_proc_fs(filename, oldports, newports, inodes), 2);
+	EXPECT_EQ(newports.size(), 2);
+	EXPECT_TRUE(newports.find(42602) != newports.end());
+	EXPECT_TRUE(newports.find(2380) != newports.end());
+}
+
+TEST(sinsp_procfs_parser, test_read_process_serverports)
+{
+	const uint16_t port = 999;
+	set<uint16_t> oldports;
+	set<uint16_t> newports;
+	pid_t pid = getpid();
+
+	// Populate oldports with current listening ports
+	sinsp_procfs_parser::read_process_serverports(pid, newports, oldports);
+	// Make sure we're not listening to our port yet
+	ASSERT_TRUE(oldports.find(port) == oldports.end());
+	// Create socket, bind and listen
+	ServerSocket sock(port);
+
+	// Check listening ports
+	EXPECT_EQ(sinsp_procfs_parser::read_process_serverports(pid, oldports, newports), 1);
+	// Should have found our new port
+	EXPECT_EQ(newports.size(), 1);
+	EXPECT_TRUE(newports.find(port) != newports.end());
+}

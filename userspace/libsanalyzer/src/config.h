@@ -95,8 +95,6 @@ public:
 #ifndef CYGWING_AGENT
 	void set_k8s_api_server(const string& k8s_api);
 	const string & get_k8s_api_server() const;
-	bool get_k8s_autodetect_enabled() const;
-	void set_k8s_autodetect_enabled(bool enabled);
 	void set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type);
 	const string & get_k8s_ssl_cert_type() const;
 	void set_k8s_ssl_cert(const string& k8s_ssl_cert);
@@ -111,8 +109,6 @@ public:
 	bool get_k8s_ssl_verify_certificate() const;
 	void set_k8s_timeout_s(uint64_t k8s_timeout_s);
 	uint64_t get_k8s_timeout_s() const;
-	void set_k8s_simulate_delegation(bool k8s_simulate_delegation);
-	bool get_k8s_simulate_delegation() const;
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
 	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
@@ -143,7 +139,7 @@ public:
 	const mesos::credentials_t& get_marathon_credentials() const;
 	void set_marathon_credentials(const mesos::credentials_t& creds);
 	const mesos::credentials_t& get_dcos_enterprise_credentials() const;
-	void set_marathon_skip_labels(std::set<std::string> &labels);
+	void set_marathon_skip_labels(const std::set<std::string> &labels);
 	const std::set<std::string>& get_marathon_skip_labels() const;
 	void set_dcos_enterprise_credentials(const mesos::credentials_t& creds);
 #endif // CYGWING_AGENT
@@ -201,7 +197,7 @@ public:
 	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
 	shared_ptr<proc_filter::conf> get_container_filter() const;
 
-	void set_log_dir(string& dir);
+	void set_log_dir(const std::string& dir);
 	string& get_log_dir();
 
 	void set_container_filter(shared_ptr<proc_filter::conf>);
@@ -216,8 +212,6 @@ public:
 	uint32_t get_dragent_profile_time_seconds() const;
 	uint32_t get_dragent_total_profiles() const;
 
-	uint32_t get_statsite_buffer_warning_length() const;
-	void set_statsite_buffer_warning_length(uint32_t len);
 	bool get_statsite_check_format() const;
 	void set_statsite_check_format(bool enabled);
 
@@ -265,6 +259,9 @@ public:
 	void set_orch_batch_msgs_queue_len(uint32_t batch_queue_len);
 	uint32_t get_orch_batch_msgs_tick_interval_ms() const;
 	void set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms);
+	void set_procfs_scan_procs(const set<string> &procs, uint32_t interval);
+	const set<string> &get_procfs_scan_procs();
+	uint32_t get_procfs_scan_interval();
 private:
 	string get_mesos_uri(const std::string& sought_url) const;
 	void set_mesos_uri(string& url, const string & new_url);
@@ -310,12 +307,10 @@ private:
 	uint32_t m_dragent_profile_time_seconds;
 	uint32_t m_dragent_total_profiles;
 
-	uint32_t m_statsite_buffer_warning_length;
 	bool m_statsite_check_format;
 
 #ifndef CYGWING_AGENT	
 	string m_k8s_api;
-	bool   m_k8s_autodetect;
 	string m_k8s_ssl_cert_type;
 	string m_k8s_ssl_cert;
 	string m_k8s_ssl_key;
@@ -325,7 +320,6 @@ private:
 	uint64_t m_k8s_timeout_s;
 	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
-	bool m_k8s_simulate_delegation;
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
 	vector<string> m_k8s_include_types;
@@ -402,6 +396,9 @@ private:
 
 	uint32_t m_orch_batch_msgs_queue_len;
 	uint32_t m_orch_batch_msgs_tick_interval_ms;
+
+	set<string> m_procfs_scan_procs;
+	uint32_t m_procfs_scan_interval;
 };
 
 #endif // HAS_ANALYZER

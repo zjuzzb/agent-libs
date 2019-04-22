@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
 include_directories(${PROJECT_SOURCE_DIR}/../oss-falco/userspace/engine)
 include_directories(${PROJECT_BINARY_DIR}/userspace/engine)
@@ -30,8 +31,6 @@ list(APPEND targetfiles
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp
-	watchdog_runnable.cpp
-	watchdog_runnable_pool.cpp
 	error_handler.cpp
 	logger.cpp
 	monitor.cpp
@@ -44,7 +43,9 @@ list(APPEND targetfiles
 	sinsp_worker.cpp
 	subprocesses_logger.cpp
 	uptime.cpp
-	user_event_channel.cpp)
+	user_event_channel.cpp
+	watchdog_runnable_pool.cpp
+	watchdog_runnable.cpp)
 
 if(CYGWIN)
 	# windows specific implementation
@@ -69,11 +70,9 @@ endif()
 list(APPEND dragent_link_libraries
 	${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/src/libb64.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNetSSL.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoUtil.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoNet.a
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
-	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoCrypto.a
 	rt
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
 

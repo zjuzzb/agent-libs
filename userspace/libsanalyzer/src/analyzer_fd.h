@@ -8,7 +8,9 @@
 class sinsp_analyzer_fd_listener : public sinsp_fd_listener
 {
 public:
-	sinsp_analyzer_fd_listener(sinsp* inspector, sinsp_analyzer* analyzer);
+	sinsp_analyzer_fd_listener(sinsp* inspector,
+	                           sinsp_analyzer* analyzer,
+	                           sinsp_baseliner* falco_baseliner);
 
 	// XXX this functions have way too many parameters. Fix it.
 	void on_read(sinsp_evt *evt, int64_t tid, int64_t fd, sinsp_fdinfo_t* fdinfo, char *data, uint32_t original_len, uint32_t len);
@@ -27,6 +29,7 @@ public:
 	bool on_resolve_container(sinsp_container_manager* manager, sinsp_threadinfo* tinfo, bool query_os_for_missing_info);
 	void on_socket_status_changed(sinsp_evt *evt);
 	bool patch_network_role(sinsp_threadinfo* ptinfo, sinsp_fdinfo_t* pfdinfo, bool incoming);
+	void set_ipv4_connection_manager(sinsp_ipv4_connection_manager* ipv4_connection_manager);
 
 	analyzer_top_file_stat_map m_files_stat;
 
@@ -41,11 +44,6 @@ private:
 	void account_file_open(sinsp_threadinfo* tinfo, const string& name);
 	void account_error(sinsp_threadinfo* tinfo, const string& name);
 
-	sinsp* m_inspector;
-	sinsp_analyzer* m_analyzer;
-	sinsp_proto_detector m_proto_detector;
-	sinsp_configuration* m_sinsp_config;
-
 #ifndef _WIN32
 	void handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const;
 #endif
@@ -54,4 +52,11 @@ private:
 				uint32_t original_len,
 				uint32_t len, sinsp_connection *connection,
 				sinsp_partial_transaction::direction trdir);
+
+	sinsp* m_inspector;
+	sinsp_analyzer* m_analyzer;
+	sinsp_baseliner* m_falco_baseliner;
+	sinsp_proto_detector m_proto_detector;
+	sinsp_configuration* m_sinsp_config;
+	sinsp_ipv4_connection_manager* m_ipv4_connections;
 };

@@ -336,7 +336,16 @@ int dragent_app::main(const std::vector<std::string>& args)
 	monitor monitor_process(m_pidfile, m_windows_service_parent);
 #endif
 
-	m_configuration.init(this);
+	try
+	{
+		m_configuration.init(this);
+	}
+	catch (const yaml_configuration_exception &ex)
+	{
+		std::cerr << "Failed to init sinsp_worker. Exception message: " << ex.what() << '\n';
+		dragent_configuration::m_terminate = true;
+	}
+
 #ifndef _WIN32
 	//
 	// Before running the monitor, unblock all the signals,
@@ -514,7 +523,6 @@ int dragent_app::main(const std::vector<std::string>& args)
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
 						       m_configuration.m_statsd_port,
-						       m_configuration.m_statsite_buffer_warning_length,
 						       m_configuration.m_statsite_check_format);
 				return fwd.run();
 			});
@@ -810,7 +818,7 @@ int dragent_app::sdagent_main()
 
 bool dragent_app::timeout_expired(int64_t last_activity_age_ns, uint64_t timeout_s, const char* label, const char* tail)
 {
-	if(timeout_s == 0 || last_activity_age_ns <= timeout_s * 1000000000LL)
+	if(timeout_s == 0 || last_activity_age_ns <= static_cast<int64_t>(timeout_s) * 1000000000LL)
 	{
 		return false;
 	}
@@ -827,13 +835,23 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 {
 	bool to_kill = false;
 
-	if(m_sinsp_worker.get_last_loop_ns() != 0)
+	if(m_sinsp_worker.get_last_loop_ns() && m_sinsp_worker.is_stall_fatal())
 	{
 		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_last_loop_ns();
 
+		if(diff_ns < 0)
+		{
+			static ratelimit r;
+			r.run([&] {
+				LOG_WARNING("watchdog: sinsp_worker last activity " + NumberFormatter::format(-diff_ns) + " ns in the future");
+			});
+		}
+		else
+		{
 #if _DEBUG
-		LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff_ns) + " ns ago");
+			LOG_DEBUG("watchdog: sinsp_worker last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
+		}
 
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_debug_timeout_s,
 			"sinsp_worker", ", enabling tracing"))
@@ -849,7 +867,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		}
 
 		if((uptime_s % m_configuration.m_watchdog_analyzer_tid_collision_check_interval_s) == 0 &&
-			m_sinsp_worker.m_analyzer->m_die)
+			m_sinsp_worker.m_analyzer->should_terminate())
 		{
 			char line[128];
 			snprintf(line, sizeof(line), "watchdog: too many tid collisions\n");
@@ -870,9 +888,19 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	{
 		int64_t diff_ns = sinsp_utils::get_current_time_ns() - m_sinsp_worker.get_sinsp_data_handler()->get_last_loop_ns();
 
+		if(diff_ns < 0)
+		{
+			static ratelimit r;
+			r.run([&] {
+				LOG_WARNING("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(-diff_ns) + " ns in the future");
+			});
+		}
+		else
+		{
 #if _DEBUG
-		LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff_ns) + " ns ago");
+			LOG_DEBUG("watchdog: sinsp_data_handler last activity " + NumberFormatter::format(diff_ns) + " ns ago");
 #endif
+		}
 
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_data_handler_timeout_s,
 			"sinsp_data_handler", ""))

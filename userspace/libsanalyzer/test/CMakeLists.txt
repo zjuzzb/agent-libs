@@ -9,6 +9,7 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/simpleopt)
@@ -18,6 +19,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
 add_definitions( -DHAS_ANALYZER )
 
@@ -30,8 +32,10 @@ list(APPEND libsanalyzer_uts
 	analyzer_file_stat.ut.cpp
 	main.cpp
 	analyzer.ut.cpp
+	metric_serializer.ut.cpp
 	mounted_fs.ut.cpp
 	parser_http.ut.cpp
+	protobuf_metric_serializer.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library
@@ -43,6 +47,7 @@ target_link_libraries(unit-test-libsanalyzer
 	sanalyzer.test
 	draiosproto
 	test-helpers-libsanalyzer
+    test_helpers
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 
@@ -59,15 +64,17 @@ file(
 # unexpected backtraces, we'll run helgrind only for debug builds.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_custom_target(run-unit-test-libsanalyzer
+		DEPENDS unit-test-libsanalyzer
 		COMMAND valgrind --gen-suppressions=all ./unit-test-libsanalyzer
 		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-libsanalyzer
 	)
 else()
 	add_custom_target(run-unit-test-libsanalyzer
+		DEPENDS unit-test-libsanalyzer
 		COMMAND valgrind --gen-suppressions=all ./unit-test-libsanalyzer
 	)
 endif()
 
 install(TARGETS unit-test-libsanalyzer
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
-	COMPONENT unit-test-libsanalyzer)
+	COMPONENT tests)

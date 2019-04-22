@@ -131,6 +131,8 @@ using Poco::DigestEngine;
 #ifdef ASSERT
 #undef ASSERT
 #endif // ASSERT
+
+// Only assert on DEBUG builds
 #ifdef _DEBUG
 #define ASSERT(X) \
 	if(!(X)) \
@@ -140,7 +142,7 @@ using Poco::DigestEngine;
 			g_log->error(Poco::format("ASSERTION %s at %s:%d", string(#X), string(__FILE__), __LINE__)); \
 		} \
 		assert(X); \
-	} 
+	}
 #else // _DEBUG
 #define ASSERT(X)
 #endif // _DEBUG

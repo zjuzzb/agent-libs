@@ -8,6 +8,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/include)
@@ -19,6 +20,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/curl-${DRAIOS_CURL_VERSION}/inclu
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/jq-${DRAIOS_JQ_VERSION})
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/libb64-${DRAIOS_B64_VERSION}/include)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include)
 
 add_executable(benchmark-libsanalyzer
 	analyzer.bm.cpp

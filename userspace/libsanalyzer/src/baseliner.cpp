@@ -22,7 +22,7 @@ extern sinsp_filter_check_list g_filterlist;
 ///////////////////////////////////////////////////////////////////////////////
 void proc_parser(proc_parser_state* state)
 {
-	sinsp* inspector_ori = state->m_bl->m_inspector;
+	sinsp* inspector_ori = state->m_bl->get_inspector();
 	
 	//
 	// Create and open the secondary inspector used for /proc parsing
@@ -63,6 +63,23 @@ void proc_parser(proc_parser_state* state)
 // Baseliner
 ///////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
+sinsp_baseliner::sinsp_baseliner():
+	m_inspector(nullptr),
+	m_ifaddr_list(nullptr),
+	m_progtable(),
+	m_container_table(),
+#ifndef HAS_ANALYZER
+	m_hostname(),
+	m_hostid(0),
+#endif
+#ifdef ASYNC_PROC_PARSING
+	m_procparser_thread(nullptr),
+	m_procparser_state(nullptr),
+#endif
+	m_nofd_fs_extractors(),
+	m_do_baseline_calculation(false)
+{ }
+
 void sinsp_baseliner::init(sinsp* inspector)
 {
 #ifdef ASYNC_PROC_PARSING
@@ -100,6 +117,8 @@ void sinsp_baseliner::init(sinsp* inspector)
 	m_hostname = minfo->hostname;
 	m_hostid = 12345;	// XXX implement this
 #endif
+
+	m_do_baseline_calculation = false;
 }
 
 sinsp_baseliner::~sinsp_baseliner()
@@ -635,10 +654,11 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 
 			if(it.second->m_pids.size() != 0)
 			{
-				auto el = m_inspector->m_analyzer->m_jmx_metrics.find(it.second->m_pids[0]);
-				if(el != m_inspector->m_analyzer->m_jmx_metrics.end())
+				std::string jname;
+
+				if(m_inspector->m_analyzer->find_java_process_name(
+							it.second->m_pids[0], jname))
 				{
-					string jname = el->second.name();
 					prog->set_comm(jname);
 				}
 			}
@@ -863,6 +883,12 @@ inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 ///////////////////////////////////////////////////////////////////////////////
 void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openflags)
 {
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return;
+	}
+
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 	sinsp_evt_param *parinfo;
 	file_category cat = file_category::NONE;
@@ -916,6 +942,12 @@ void sinsp_baseliner::on_file_open(sinsp_evt *evt, string& name, uint32_t openfl
 
 void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 {
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return;
+	}
+
 	ASSERT(tinfo != NULL);
 
 	//
@@ -992,6 +1024,12 @@ void sinsp_baseliner::on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo)
 
 void sinsp_baseliner::on_connect(sinsp_evt *evt)
 {
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return;
+	}
+
 	//
 	// Note: the presence of fdinfo is assured in sinsp_parser::parse_connect_exit, so
 	//       we don't need to check it
@@ -1078,6 +1116,12 @@ void sinsp_baseliner::on_connect(sinsp_evt *evt)
 
 void sinsp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 {
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return;
+	}
+
 	sinsp_threadinfo* tinfo = evt->get_thread_info();
 
 	//
@@ -1130,6 +1174,12 @@ void sinsp_baseliner::on_accept(sinsp_evt *evt, sinsp_fdinfo_t* fdinfo)
 
 void sinsp_baseliner::on_bind(sinsp_evt *evt)
 {
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return;
+	}
+
 	//
 	// Note: the presence of fdinfo is assured in sinsp_parser::parse_connect_exit, so
 	//       we don't need to check it
@@ -1256,6 +1306,21 @@ void sinsp_baseliner::add_fd_from_io_evt(sinsp_evt *evt, enum ppm_event_category
 	}
 }
 
+sinsp* sinsp_baseliner::get_inspector()
+{
+	return m_inspector;
+}
+
+void sinsp_baseliner::set_baseline_calculation_enabled(const bool enabled)
+{
+	m_do_baseline_calculation = enabled;
+}
+
+bool sinsp_baseliner::is_baseline_calculation_enabled() const
+{
+	return m_do_baseline_calculation;
+}
+
 inline void sinsp_baseliner::extract_from_event(sinsp_evt *evt)
 {
 	file_category cat = file_category::NONE;
@@ -1349,6 +1414,12 @@ inline void sinsp_baseliner::extract_from_event(sinsp_evt *evt)
 
 void sinsp_baseliner::process_event(sinsp_evt *evt)
 {
+	// We do baseline calculatation only if the agent's resource usage is low
+	if(!m_do_baseline_calculation)
+	{
+		return;
+	}
+
 	extract_from_event(evt);
 
 	uint16_t etype = evt->m_pevt->type;
