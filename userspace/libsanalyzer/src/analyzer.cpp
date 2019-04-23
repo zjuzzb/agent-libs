@@ -229,6 +229,11 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 
 sinsp_analyzer::~sinsp_analyzer()
 {
+	if(m_configuration->get_dragent_cpu_profile_enabled())
+	{
+		ProfilerStop();
+	}
+
 	delete m_metrics;
 	delete m_score_calculator;
 	delete m_procfs_parser;
@@ -260,11 +265,6 @@ sinsp_analyzer::~sinsp_analyzer()
 		delete m_infrastructure_state;
 	}
 #endif
-
-	if(m_configuration->get_dragent_cpu_profile_enabled())
-	{
-		ProfilerStop();
-	}
 }
 
 /// calculate analyzer thread CPU usage in percent
@@ -775,18 +775,7 @@ void sinsp_analyzer::set_configuration(const sinsp_configuration& configuration)
 		throw sinsp_exception(err);
 	}
 
-	// Since the analyzer and the serializer share a pointer to the same
-	// config, we'll avoid changing the config out from under the
-	// serializer by allocating a new object, copying the config into
-	// the new object, then updating the serializer.  We don't expect
-	// this to happen very often.
-	sinsp_configuration* const new_configuration = new sinsp_configuration();
-	*new_configuration = configuration;
-
-	m_serializer->update_configuration(new_configuration);
-
-	delete m_configuration;
-	m_configuration = new_configuration;
+	*m_configuration = configuration;
 }
 
 void sinsp_analyzer::remove_expired_connections(uint64_t ts)
