@@ -53,8 +53,8 @@ class immediate_metadata_source : public precanned_metadata_source
 public:
 	const static uint64_t MAX_WAIT_TIME_MS;
 
-	immediate_metadata_source():
-		precanned_metadata_source(MAX_WAIT_TIME_MS)
+	immediate_metadata_source(const uint64_t max_wait_ms=MAX_WAIT_TIME_MS):
+		precanned_metadata_source(max_wait_ms)
 	{ }
 
 protected:
@@ -147,6 +147,99 @@ TEST(async_key_value_source_test, lookup_key_immediate_return)
 	ASSERT_TRUE(source.lookup(key, response));
 	ASSERT_EQ(metadata, response);
 	ASSERT_TRUE(source.is_running());
+}
+
+/**
+ * Ensure that get_complete_results returns all complete results
+ */
+TEST(async_key_value_source_test, get_complete_results)
+{
+	const std::string key1 = "foo1";
+	const std::string key2 = "foo2";
+	const std::string metadata = "bar";
+	std::string response1 = "response1-not-set";
+	std::string response2 = "response2-not-set";
+
+	delayed_metadata_source source(500);
+
+	// Seed the precanned response
+	source.set_response(key1, metadata);
+	source.set_response(key2, metadata);
+
+	EXPECT_FALSE(source.lookup(key1, response1));
+	EXPECT_FALSE(source.lookup(key2, response2));
+	EXPECT_EQ("response1-not-set", response1);
+	EXPECT_EQ("response2-not-set", response2);
+
+	usleep(1100000);
+	EXPECT_TRUE(source.is_running());
+	auto completed = source.get_complete_results();
+
+	EXPECT_EQ(2, completed.size());
+	EXPECT_EQ(metadata, completed[key1]);
+	EXPECT_EQ(metadata, completed[key2]);
+}
+
+/**
+ * Ensure that get_complete_results returns all complete results
+ * but does *not* return results that have not yet been computed
+ */
+TEST(async_key_value_source_test, get_complete_results_incomplete)
+{
+	const std::string key1 = "foo1";
+	const std::string key2 = "foo2";
+	const std::string metadata = "bar";
+	std::string response1 = "response1-not-set";
+	std::string response2 = "response2-not-set";
+
+	delayed_metadata_source source(500);
+
+	// Seed the precanned response
+	source.set_response(key1, metadata);
+	source.set_response(key2, metadata);
+
+	EXPECT_FALSE(source.lookup(key1, response1));
+	EXPECT_FALSE(source.lookup(key2, response2));
+	EXPECT_EQ("response1-not-set", response1);
+	EXPECT_EQ("response2-not-set", response2);
+
+	usleep(600000);
+	EXPECT_TRUE(source.is_running());
+	auto completed = source.get_complete_results();
+
+	EXPECT_EQ(1, completed.size());
+	EXPECT_EQ(metadata, completed[key1]);
+}
+
+/**
+ * Ensure that lookup_delayed() does not return the value immediately
+ * but only after the specified time
+ */
+TEST(async_key_value_source_test, lookup_delayed)
+{
+	const std::string key = "foo_delayed";
+	const std::string metadata = "bar";
+	std::string response = "response-not-set";
+
+	immediate_metadata_source source(0);
+
+	// Seed the precanned response
+	source.set_response(key, metadata);
+
+	// the delayed lookup cannot return a value right away
+	EXPECT_FALSE(source.lookup_delayed(key, response, std::chrono::milliseconds(500)));
+	EXPECT_EQ("response-not-set", response);
+
+	// after 300 ms, the response should not yet be ready
+	usleep(300000);
+	EXPECT_TRUE(source.is_running());
+	EXPECT_EQ("response-not-set", response);
+
+	// add 100 ms just in case -- after 600 ms we should have the response
+	usleep(300000);
+	EXPECT_TRUE(source.is_running());
+	EXPECT_TRUE(source.lookup(key, response));
+	EXPECT_EQ(metadata, response);
 }
 
 /**
