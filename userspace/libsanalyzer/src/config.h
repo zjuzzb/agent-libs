@@ -36,7 +36,12 @@ public:
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
 	sinsp_configuration();
-	sinsp_configuration(const sinsp_configuration& configuration);
+
+	// There was previously an incomplete copy constructor.  We removed
+	// it and marked it deleted to ensure no one was using it.  If we
+	// need to copy this in the future, the default might be sufficient.
+	sinsp_configuration(const sinsp_configuration& configuration) = delete;
+
 	uint64_t get_connection_timeout_ns() const;
 	uint64_t get_connection_timeout_sec() const;
 	void set_connection_timeout_in_sec(uint64_t timeout_sec);

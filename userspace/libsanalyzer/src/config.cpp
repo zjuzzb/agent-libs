@@ -47,11 +47,6 @@ sinsp_configuration::sinsp_configuration():
 	m_swarm_enabled = true;
 }
 
-sinsp_configuration::sinsp_configuration(const sinsp_configuration& configuration)
-{
-	m_connection_timeout_ns = configuration.m_connection_timeout_ns;
-}
-
 uint64_t sinsp_configuration::get_connection_timeout_ns() const
 {
 	return m_connection_timeout_ns;
