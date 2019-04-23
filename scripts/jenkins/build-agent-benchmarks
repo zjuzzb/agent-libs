@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# There are two use cases for this job.
+# 1. Run after every change in jenkins to check for performance regressions
+# 2. Run in your branch to test for regressions. WARNING: This script will
+#    do a hard reset to the baseline, so make sure you push to origin or create
+#    a new branch so that you don't lose any changes.
+
 #set -xeuo pipefail
 
 SCRIPTS_DIR=$(dirname $(readlink -f $0))
@@ -26,9 +32,12 @@ if [ -z "$CONTENDER" ]; then
     echo "Contender not set with -c option. Setting contender to HEAD ($CONTENDER)."
 fi
 if [ -z "$BASELINE" ]; then
-    BASELINE="`git -C $SOURCE/agent rev-parse $CONTENDER~1`"
-    echo "Baseline not set with -b option. Setting baseline to one change before contender ($BASELINE)."
+    BASELINE="`git merge-base HEAD origin/dev`"
+    echo "Baseline not set with -b option. Setting baseline to the merge point between HEAD and DEV ($BASELINE)."
 fi
+
+echo "Executing in directory:"
+echo $('pwd')
 
 rm -rf $OUT
 mkdir -p $OUT
@@ -37,22 +46,25 @@ mkdir -p $PYTHON_DEPS
 rm -rf $BUILD
 mkdir -p $BUILD
 
-#docker pull quay.io/sysdig/agent-builder
+docker pull quay.io/sysdig/agent-builder
 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
-
-# Build the BASELINE
-git reset --hard $BASELINE
-
-# Build the benchmarks and copy them into $OUT/bench-baseline
-docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-baseline:/out -v $BUILD:/code/agent/build agent-builder benchmarks
 
 # Build the $CONTENDER
 git reset --hard $CONTENDER
 
 # Build the benchmarks and copy them into $OUT/bench-contender
-docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-contender:/out -v $BUILD:/code/agent/build agent-builder benchmarks
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-contender:/out -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder benchmarks
+
+# Build the BASELINE
+git reset --hard $BASELINE
+
+# Build the benchmarks and copy them into $OUT/bench-baseline
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-baseline:/out -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder benchmarks
 
 if [ ! -d "$PYTHON_DEPS/benchmark" ]; then
+
+    sudo apt-get -y install unzip python-numpy python-scipy python-matplotlib ipython ipython-notebook python-pandas python-sympy python-nose
+
     cd $PYTHON_DEPS
     # This matches what is done in bootstrap-agent
     DEPENDENCIES_URL="https://s3.amazonaws.com/download.draios.com/dependencies"
@@ -80,6 +92,8 @@ fi
 REGRESSION_THRESHOLD=0.05
 REGRESSIONS=()
 
+RAN_AT_LEAST_ONE_BENCHMARK=false
+
 cd $OUT
 # For every benchmark binary in the contender folder, compare against the benchmark
 # binary in the baseline folder.
@@ -95,7 +109,10 @@ for BENCHMARK_CONTENDER in $(find bench-contender -name 'benchmark-*' -type f -p
 	    while read -r line; do
 
 		# We only care about lines with a plus sign
-		if [[ $line == *"+"* ]]; then
+		if [[ $line == *"-"* ]]; then
+		    RAN_AT_LEAST_ONE_BENCHMARK=true
+		elif [[ $line == *"+"* ]]; then
+		    RAN_AT_LEAST_ONE_BENCHMARK=true
 
 		    TIME=$(echo $line | awk {'print $3'})
 		    CPU=$(echo $line | awk {'print $4'})
@@ -123,11 +140,21 @@ for BENCHMARK_CONTENDER in $(find bench-contender -name 'benchmark-*' -type f -p
 	fi
 done
 
+# Cleanup
+sudo rm -rf $OUT
+sudo rm -rf $PYTHON_DEPS
+sudo rm -rf $BUILD
+
 NUM_REGRESSIONS=${#REGRESSIONS[@]}
 echo ""
 echo ""
 echo ""
 echo "RESULT:"
+
+if ! $RAN_AT_LEAST_ONE_BENCHMARK; then
+    echo "Zero regression tests were run. Check script output for problems."
+    exit 2
+fi
 
 # Handle color
 if [ $NUM_REGRESSIONS == 0 ]; then
@@ -149,9 +176,7 @@ done
 
 echo ""
 
-
 if [ $NUM_REGRESSIONS != 0 ]; then
-    # Script failed
     exit 1
 fi
 

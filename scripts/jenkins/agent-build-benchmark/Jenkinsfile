@@ -1,0 +1,33 @@
+
+pipeline {
+	agent { label 'agent-docker-builder' }
+	stages {
+		stage('Check out dependencies') {
+		steps {
+			dir('agent') {
+				checkout([$class: 'GitSCM', branches: [[name: 'refs/heads/'+env.BRANCH_NAME]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent']]])
+			}
+			dir('oss-falco') {
+				checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
+			}
+			dir('sysdig') {
+				checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/sysdig']]])
+			}
+		}
+		}
+		stage('Benchmark against HEAD') {
+			steps {
+				script{
+					docker.withRegistry("https://quay.io", 'QUAY') {
+						sh('./agent/scripts/jenkins/build-agent-benchmarks')
+					}
+				}
+			}
+		}
+	}
+	post {
+		always {
+			cleanWs()
+		}
+	}
+}
