@@ -15,7 +15,7 @@ import (
 )
 
 func (impl *DockerBenchImpl) GenArgs(stask *ScheduledTask) ([]string, error) {
-	return []string{"MODULE_DIR/docker-bench-security.sh", "-l", "OUTPUT_DIR/docker-bench.log"}, nil
+	return []string{"MODULE_DIR/docker-bench-security.sh", "-l", "OUTPUT_DIR/docker-bench.log", "-n", "500"}, nil
 }
 
 func (impl *DockerBenchImpl) ShouldRun(stask *ScheduledTask) bool {

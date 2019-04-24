@@ -1,6 +1,19 @@
 #!/bin/sh
 
-images=$(docker images -q)
+if [ -n "$imgList" ]; then
+    pattern=$(echo "$imgList" | sed 's/,/ /g')
+    for img in $pattern; do
+      echo "Looking for image $img"
+      sha256=$(docker image ls "$img" -q)
+      if [ -z "$sha256" ]; then
+        echo "Image $img not found. Exiting."
+        exit 1
+      fi
+      images="$images $sha256 "
+    done 
+else
+  images=$(docker images -q)  
+fi
 
 check_4() {
   logit "\n"
@@ -36,7 +49,7 @@ check_4_1() {
     for c in $containers; do
       user=$(docker inspect --format 'User={{.Config.User}}' "$c")
 
-      if [ "$user" = "User=" -o "$user" = "User=[]" -o "$user" = "User=<no value>" ]; then
+      if [ "$user" = "User=0" ] || [ "$user" = "User=root" ] || [ "$user" = "User=" ] || [ "$user" = "User=[]" ] || [ "$user" = "User=<no value>" ]; then
         # If it's the first container, fail the test
         if [ $fail -eq 0 ]; then
           warn "$check_4_1"
@@ -180,7 +193,7 @@ check_4_7() {
   if [ $fail -eq 0 ]; then
     pass "$check_4_7"
     resulttestjson "PASS"
-    currentScore=$((currentScore + 1))
+    currentScore=$((currentScore + 0))
   else
     resulttestjson "INFO" "Update instructions found" "$update_images"
     currentScore=$((currentScore + 0))
@@ -211,8 +224,8 @@ check_4_9() {
   fail=0
   add_images=""
   for img in $images; do
-    docker history "$img" 2> /dev/null | grep 'ADD' >/dev/null 2>&1
-    if [ $? -eq 0 ]; then
+    if docker history --format "{{ .CreatedBy }}" --no-trunc "$img" | \
+      sed '$d' | grep -q 'ADD'; then
       if [ $fail -eq 0 ]; then
         fail=1
         info "$check_4_9"
@@ -228,9 +241,9 @@ check_4_9() {
   if [ $fail -eq 0 ]; then
     pass "$check_4_9"
     resulttestjson "PASS"
-    currentScore=$((currentScore + 1))
+    currentScore=$((currentScore + 0))
   else
-    resulttestjson "WARN" "Images using ADD" "$add_images"
+    resulttestjson "INFO" "Images using ADD" "$add_images"
   fi
 }
 

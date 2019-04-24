@@ -40,7 +40,7 @@ check_5_1() {
   for c in $containers; do
     policy=$(docker inspect --format 'AppArmorProfile={{ .AppArmorProfile }}' "$c")
 
-    if [ "$policy" = "AppArmorProfile=" -o "$policy" = "AppArmorProfile=[]" -o "$policy" = "AppArmorProfile=<no value>" ]; then
+    if [ "$policy" = "AppArmorProfile=" ] || [ "$policy" = "AppArmorProfile=[]" ] || [ "$policy" = "AppArmorProfile=<no value>" ]; then
       # If it's the first container, fail the test
       if [ $fail -eq 0 ]; then
         warn "$check_5_1"
@@ -82,7 +82,7 @@ check_5_2() {
   for c in $containers; do
     policy=$(docker inspect --format 'SecurityOpt={{ .HostConfig.SecurityOpt }}' "$c")
 
-    if [ "$policy" = "SecurityOpt=" -o "$policy" = "SecurityOpt=[]" -o "$policy" = "SecurityOpt=<no value>" ]; then
+    if [ "$policy" = "SecurityOpt=" ] || [ "$policy" = "SecurityOpt=[]" ] || [ "$policy" = "SecurityOpt=<no value>" ]; then
       # If it's the first container, fail the test
       if [ $fail -eq 0 ]; then
         warn "$check_5_2"
@@ -127,7 +127,7 @@ check_5_3() {
       sed 's/CAPADD/CapAdd/' | \
       sed -r "s/AUDIT_WRITE|CHOWN|DAC_OVERRIDE|FOWNER|FSETID|KILL|MKNOD|NET_BIND_SERVICE|NET_RAW|SETFCAP|SETGID|SETPCAP|SETUID|SYS_CHROOT|\s//g")
 
-    if [ "$caps" != 'CapAdd=' -a "$caps" != 'CapAdd=[]' -a "$caps" != 'CapAdd=<no value>' -a "$caps" != 'CapAdd=<nil>' ]; then
+    if [ "$caps" != 'CapAdd=' ] && [ "$caps" != 'CapAdd=[]' ] && [ "$caps" != 'CapAdd=<no value>' ] && [ "$caps" != 'CapAdd=<nil>' ]; then
       # If it's the first container, fail the test
       if [ $fail -eq 0 ]; then
         warn "$check_5_3"
@@ -489,11 +489,11 @@ check_5_11() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_11"
         warn "     * Container running without CPU restrictions: $c"
-	cpu_unlimited_containers="$cpu_unlimited_containers $c"
+        cpu_unlimited_containers="$cpu_unlimited_containers $c"
         fail=1
       else
         warn "     * Container running without CPU restrictions: $c"
-	cpu_unlimited_containers="$cpu_unlimited_containers $c"
+        cpu_unlimited_containers="$cpu_unlimited_containers $c"
       fi
     fi
   done
@@ -572,11 +572,11 @@ check_5_13() {
         if [ $fail -eq 0 ]; then
           warn "$check_5_13"
           warn "     * Port being bound to wildcard IP: $ip in $c"
-	  incoming_unbound_containers="$incoming_unbound_containers $c:$ip"
+          incoming_unbound_containers="$incoming_unbound_containers $c:$ip"
           fail=1
         else
           warn "     * Port being bound to wildcard IP: $ip in $c"
-	  incoming_unbound_containers="$incoming_unbound_containers $c:$ip"
+          incoming_unbound_containers="$incoming_unbound_containers $c:$ip"
         fi
       fi
     done
@@ -657,11 +657,11 @@ check_5_15() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_15"
         warn "     * Host PID namespace being shared with: $c"
-	pidns_shared_containers="$pidns_shared_containers $c"
+        pidns_shared_containers="$pidns_shared_containers $c"
         fail=1
       else
         warn "     * Host PID namespace being shared with: $c"
-	pidns_shared_containers="$pidns_shared_containers $c"
+        pidns_shared_containers="$pidns_shared_containers $c"
       fi
     fi
   done
@@ -699,11 +699,11 @@ check_5_16() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_16"
         warn "     * Host IPC namespace being shared with: $c"
-	ipcns_shared_containers="$ipcns_shared_containers $c"
+        ipcns_shared_containers="$ipcns_shared_containers $c"
         fail=1
       else
         warn "     * Host IPC namespace being shared with: $c"
-	ipcns_shared_containers="$ipcns_shared_containers $c"
+        ipcns_shared_containers="$ipcns_shared_containers $c"
       fi
     fi
   done
@@ -736,16 +736,16 @@ check_5_17() {
   for c in $containers; do
     devices=$(docker inspect --format 'Devices={{ .HostConfig.Devices }}' "$c")
 
-    if [ "$devices" != "Devices=" -a "$devices" != "Devices=[]" -a "$devices" != "Devices=<no value>" ]; then
+    if [ "$devices" != "Devices=" ] && [ "$devices" != "Devices=[]" ] && [ "$devices" != "Devices=<no value>" ]; then
       # If it's the first container, fail the test
       if [ $fail -eq 0 ]; then
         info "$check_5_17"
         info "     * Container has devices exposed directly: $c"
-	hostdev_exposed_containers="$hostdev_exposed_containers $c"
+        hostdev_exposed_containers="$hostdev_exposed_containers $c"
         fail=1
       else
         info "     * Container has devices exposed directly: $c"
-	hostdev_exposed_containers="$hostdev_exposed_containers $c"
+        hostdev_exposed_containers="$hostdev_exposed_containers $c"
       fi
     fi
   done
@@ -778,16 +778,16 @@ check_5_18() {
   for c in $containers; do
     ulimits=$(docker inspect --format 'Ulimits={{ .HostConfig.Ulimits }}' "$c")
 
-    if [ "$ulimits" = "Ulimits=" -o "$ulimits" = "Ulimits=[]" -o "$ulimits" = "Ulimits=<no value>" ]; then
+    if [ "$ulimits" = "Ulimits=" ] || [ "$ulimits" = "Ulimits=[]" ] || [ "$ulimits" = "Ulimits=<no value>" ]; then
       # If it's the first container, fail the test
       if [ $fail -eq 0 ]; then
         info "$check_5_18"
         info "     * Container no default ulimit override: $c"
-	no_ulimit_containers="$no_ulimit_containers $c"
+        no_ulimit_containers="$no_ulimit_containers $c"
         fail=1
       else
         info "     * Container no default ulimit override: $c"
-	no_ulimit_containers="$no_ulimit_containers $c"
+        no_ulimit_containers="$no_ulimit_containers $c"
       fi
     fi
   done
@@ -824,11 +824,11 @@ check_5_19() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_19"
         warn "     * Mount propagation mode is shared: $c"
-	mountprop_shared_containers="$mountprop_shared_containers $c"
+        mountprop_shared_containers="$mountprop_shared_containers $c"
         fail=1
       else
         warn "     * Mount propagation mode is shared: $c"
-	mountprop_shared_containers="$mountprop_shared_containers $c"
+        mountprop_shared_containers="$mountprop_shared_containers $c"
       fi
     fi
   done
@@ -866,11 +866,11 @@ check_5_20() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_20"
         warn "     * Host UTS namespace being shared with: $c"
-	utcns_shared_containers="$utcns_shared_containers $c"
+        utcns_shared_containers="$utcns_shared_containers $c"
         fail=1
       else
         warn "     * Host UTS namespace being shared with: $c"
-	utcns_shared_containers="$utcns_shared_containers $c"
+        utcns_shared_containers="$utcns_shared_containers $c"
       fi
     fi
   done
@@ -907,11 +907,11 @@ check_5_21() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_21"
         warn "     * Default seccomp profile disabled: $c"
-	seccomp_disabled_containers="$seccomp_disabled_containers $c"
+        seccomp_disabled_containers="$seccomp_disabled_containers $c"
         fail=1
       else
         warn "     * Default seccomp profile disabled: $c"
-	seccomp_disabled_containers="$seccomp_disabled_containers $c"
+        seccomp_disabled_containers="$seccomp_disabled_containers $c"
       fi
     fi
   done
@@ -983,11 +983,11 @@ check_5_24() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_24"
         warn "     * Confirm cgroup usage: $c"
-	unexpected_cgroup_containers="$unexpected_cgroup_containers $c"
+        unexpected_cgroup_containers="$unexpected_cgroup_containers $c"
         fail=1
       else
         warn "     * Confirm cgroup usage: $c"
-	unexpected_cgroup_containers="$unexpected_cgroup_containers $c"
+        unexpected_cgroup_containers="$unexpected_cgroup_containers $c"
       fi
     fi
   done
@@ -1022,11 +1022,11 @@ check_5_25() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_25"
         warn "     * Privileges not restricted: $c"
-	addprivs_containers="$addprivs_containers $c"
+        addprivs_containers="$addprivs_containers $c"
         fail=1
       else
         warn "     * Privileges not restricted: $c"
-	addprivs_containers="$addprivs_containers $c"
+        addprivs_containers="$addprivs_containers $c"
       fi
     fi
   done
@@ -1061,11 +1061,11 @@ check_5_26() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_26"
         warn "     * Health check not set: $c"
-	nohealthcheck_containers="$nohealthcheck_containers $c"
+        nohealthcheck_containers="$nohealthcheck_containers $c"
         fail=1
       else
         warn "     * Health check not set: $c"
-	nohealthcheck_containers="$nohealthcheck_containers $c"
+        nohealthcheck_containers="$nohealthcheck_containers $c"
       fi
     fi
   done
@@ -1119,11 +1119,11 @@ check_5_28() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_28"
         warn "     * PIDs limit not set: $c"
-	nopids_limit_containers="$nopids_limit_containers $c"
+        nopids_limit_containers="$nopids_limit_containers $c"
         fail=1
       else
         warn "     * PIDs limit not set: $c"
-	nopids_limit_containers="$nopids_limit_containers $c"
+        nopids_limit_containers="$nopids_limit_containers $c"
       fi
     fi
   done
@@ -1173,7 +1173,7 @@ check_5_29() {
             fi
             if ! [ -z "$cName" ]; then
               info "     * Container in docker0 network: $cName"
-	      docker_network_containers="$docker_network_containers $c:$cName"
+              docker_network_containers="$docker_network_containers $c:$cName"
             fi
           done
         fi
@@ -1187,7 +1187,7 @@ check_5_29() {
       currentScore=$((currentScore + 1))
   else
       resulttestjson "INFO" "Containers using docker0 network" "$docker_network_containers"
-      currentScore=$((currentScore - 1))
+      currentScore=$((currentScore + 0))
   fi
 }
 
@@ -1212,11 +1212,11 @@ check_5_30() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_30"
         warn "     * Namespace shared: $c"
-	hostns_shared_containers="$hostns_shared_containers $c"
+        hostns_shared_containers="$hostns_shared_containers $c"
         fail=1
       else
         warn "     * Namespace shared: $c"
-	hostns_shared_containers="$hostns_shared_containers $c"
+        hostns_shared_containers="$hostns_shared_containers $c"
       fi
     fi
   done
@@ -1252,11 +1252,11 @@ check_5_31() {
       if [ $fail -eq 0 ]; then
         warn "$check_5_31"
         warn "     * Docker socket shared: $c"
-	docker_sock_containers="$docker_sock_containers $c"
+        docker_sock_containers="$docker_sock_containers $c"
         fail=1
       else
         warn "     * Docker socket shared: $c"
-	docker_sock_containers="$docker_sock_containers $c"
+        docker_sock_containers="$docker_sock_containers $c"
       fi
     fi
   done

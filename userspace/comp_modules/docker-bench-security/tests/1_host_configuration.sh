@@ -18,11 +18,7 @@ check_1_1() {
 
   totalChecks=$((totalChecks + 1))
 
-  if grep /var/lib/docker /etc/fstab >/dev/null 2>&1; then
-    pass "$check_1_1"
-    resulttestjson "PASS"
-    currentScore=$((currentScore + 1))
-  elif mountpoint -q  -- /var/lib/docker >/dev/null 2>&1; then
+  if mountpoint -q -- "$(docker info -f '{{ .DockerRootDir }}')" >/dev/null 2>&1; then
     pass "$check_1_1"
     resulttestjson "PASS"
     currentScore=$((currentScore + 1))
@@ -43,7 +39,7 @@ check_1_2() {
   totalChecks=$((totalChecks + 1))
   note "$check_1_2"
   resulttestjson "INFO"
-  currentScore=$((currentScore - 0))
+  currentScore=$((currentScore + 0))
 }
 
 # 1.3
@@ -63,13 +59,13 @@ check_1_3() {
     info "     * Using $docker_version, verify is it up to date as deemed necessary"
     info "     * Your operating system vendor may provide support and security maintenance for Docker"
     resulttestjson "INFO" "Using $docker_version"
-    currentScore=$((currentScore - 0))
+    currentScore=$((currentScore + 0))
   else
     pass "$check_1_3"
     info "     * Using $docker_version which is current"
     info "     * Check with your operating system vendor for support and security maintenance for Docker"
     resulttestjson "PASS" "Using $docker_version"
-    currentScore=$((currentScore - 0))
+    currentScore=$((currentScore + 0))
   fi
 }
 
@@ -87,7 +83,7 @@ check_1_4() {
     info "     * $u"
   done
   resulttestjson "INFO" "users" "$docker_users"
-  currentScore=$((currentScore - 0))
+  currentScore=$((currentScore + 0))
 }
 
 # 1.5

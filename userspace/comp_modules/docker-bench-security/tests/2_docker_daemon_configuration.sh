@@ -4,7 +4,7 @@ check_2() {
   logit "\n"
   id_2="2"
   desc_2="Docker daemon configuration"
-  check_2="id_2 - $desc_2"
+  check_2="$id_2 - $desc_2"
   info "$check_2"
   startsectionjson "$id_2" "$desc_2"
 }
@@ -150,39 +150,19 @@ check_2_6() {
   starttestjson "$id_2_6" "$desc_2_6"
 
   totalChecks=$((totalChecks + 1))
-  if grep -i 'tcp://' "$CONFIG_FILE" 2>/dev/null 1>&2; then
-    if [ $(get_docker_configuration_file_args '"tls":' | grep 'true') ] || \
-      [ $(get_docker_configuration_file_args '"tlsverify' | grep 'true') ] ; then
-      if get_docker_configuration_file_args 'tlskey' | grep -v '""' >/dev/null 2>&1; then
-        if get_docker_configuration_file_args 'tlsverify' | grep 'true' >/dev/null 2>&1; then
-          pass "$check_2_6"
-          resulttestjson "PASS"
-          currentScore=$((currentScore + 1))
-        else
-          warn "$check_2_6"
-          warn "     * Docker daemon currently listening on TCP with TLS, but no verification"
-          resulttestjson "WARN" "Docker daemon currently listening on TCP with TLS, but no verification"
-          currentScore=$((currentScore - 1))
-        fi
-      fi
-    else
+  if [ grep -i 'tcp://' "$CONFIG_FILE" 2>/dev/null 1>&2 ] || \
+    [ $(get_docker_cumulative_command_line_args '-H' | grep -vE '(unix|fd)://') >/dev/null 2>&1 ]; then
+    if [ $(get_docker_configuration_file_args '"tlsverify":' | grep 'true') ] || \
+        [ $(get_docker_cumulative_command_line_args '--tlsverify' | grep 'tlsverify') >/dev/null 2>&1 ]; then
+      pass "$check_2_6"
+      resulttestjson "PASS"
+      currentScore=$((currentScore + 1))
+    elif [ $(get_docker_configuration_file_args '"tls":' | grep 'true') ] || \
+        [ $(get_docker_cumulative_command_line_args '--tls' | grep 'tls$') >/dev/null 2>&1 ]; then
       warn "$check_2_6"
-      warn "     * Docker daemon currently listening on TCP without TLS"
-      resulttestjson "WARN" "Docker daemon currently listening on TCP without TLS"
+      warn "     * Docker daemon currently listening on TCP with TLS, but no verification"
+      resulttestjson "WARN" "Docker daemon currently listening on TCP with TLS, but no verification"
       currentScore=$((currentScore - 1))
-    fi
-  elif get_docker_cumulative_command_line_args '-H' | grep -vE '(unix|fd)://' >/dev/null 2>&1; then
-    if get_docker_cumulative_command_line_args '--tlskey' | grep 'tlskey=' >/dev/null 2>&1; then
-      if get_docker_cumulative_command_line_args '--tlsverify' | grep 'tlsverify' >/dev/null 2>&1; then
-        pass "$check_2_6"
-        resulttestjson "PASS"
-        currentScore=$((currentScore + 1))
-      else
-        warn "$check_2_6"
-        warn "     * Docker daemon currently listening on TCP with TLS, but no verification"
-        resulttestjson "WARN" "Docker daemon currently listening on TCP with TLS, but no verification"
-        currentScore=$((currentScore - 1))
-      fi
     else
       warn "$check_2_6"
       warn "     * Docker daemon currently listening on TCP without TLS"
@@ -252,7 +232,7 @@ check_2_9() {
   starttestjson "$id_2_9" "$desc_2_9"
 
   totalChecks=$((totalChecks + 1))
-  if get_docker_configuration_file_args 'cgroup-parent' | grep -v '""'; then
+  if get_docker_configuration_file_args 'cgroup-parent' | grep -v ''; then
     warn "$check_2_9"
     info "     * Confirm cgroup usage"
     resulttestjson "WARN" "Confirm cgroup usage"
@@ -336,24 +316,34 @@ check_2_12() {
 
 # 2.13
 check_2_13() {
+  docker_version=$(docker version | grep -i -A2 '^server' | grep ' Version:' \
+    | awk '{print $NF; exit}' | tr -d '[:alpha:]-,.' | cut -c 1-4)
+  totalChecks=$((totalChecks + 1))
+
   id_2_13="2.13"
   desc_2_13="Ensure operations on legacy registry (v1) are Disabled"
   check_2_13="$id_2_13  - $desc_2_13"
   starttestjson "$id_2_13" "$desc_2_13"
 
-  totalChecks=$((totalChecks + 1))
-  if get_docker_configuration_file_args 'disable-legacy-registry' | grep 'true' >/dev/null 2>&1; then
-    pass "$check_2_13"
-    resulttestjson "PASS"
-    currentScore=$((currentScore + 1))
-  elif get_docker_effective_command_line_args '--disable-legacy-registry' | grep "disable-legacy-registry" >/dev/null 2>&1; then
-    pass "$check_2_13"
-    resulttestjson "PASS"
-    currentScore=$((currentScore + 1))
+  if [ "$docker_version" -lt 1712 ]; then
+    if get_docker_configuration_file_args 'disable-legacy-registry' | grep 'true' >/dev/null 2>&1; then
+      pass "$check_2_13"
+      resulttestjson "PASS"
+      currentScore=$((currentScore + 1))
+    elif get_docker_effective_command_line_args '--disable-legacy-registry' | grep "disable-legacy-registry" >/dev/null 2>&1; then
+      pass "$check_2_13"
+      resulttestjson "PASS"
+      currentScore=$((currentScore + 1))
+    else
+      warn "$check_2_13"
+      resulttestjson "WARN"
+      currentScore=$((currentScore - 1))
+    fi
   else
-    warn "$check_2_13"
-    resulttestjson "WARN"
-    currentScore=$((currentScore - 1))
+    desc_2_13="$desc_2_13 (Deprecated)"
+    check_2_13="$id_2_13  - $desc_2_13"
+    info "$check_2_13"
+    resulttestjson "INFO"
   fi
 }
 
