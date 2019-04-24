@@ -7392,6 +7392,25 @@ void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
 		return;
 	}
 
+	//
+	// This code involves several assumptions. I don't like it very much,
+	// but it's what we've got so far. If the length is exactly 2000, that
+	// probably implies that a) the data were truncated and b) the user has
+	// not configured extended snaplen for the statsd port. If the length is
+	// exactly 16000, that implies that a) the data were truncated and b)
+	// the user HAS configured extended snaplen. Both of these situations
+	// will result in the loss of statsd metrics, so we're going to emit
+	// a very mild log message (mild because this is a guess).
+	//
+	if(len == 2000)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Possible statsd truncation (len = 2000)");
+	}
+	if(len == 16000)
+	{
+		g_logger.format(sinsp_logger::SEV_INFO, "Possible statsd truncation (len = 16000)");
+	}
+
 	if(!container_id.empty())
 	{
 		// Send the metric as is, so it will be aggregated by host

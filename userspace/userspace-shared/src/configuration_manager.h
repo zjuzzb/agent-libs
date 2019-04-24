@@ -1,5 +1,20 @@
 /**
  * @file
+ * The new configuration scheme provides an easy way of acquiring config values from
+ * a central location without having to pass them around, and without the central location
+ * needing to be aware of how to parse individual types.
+ *
+ * Usage:
+ *
+ * (in some cpp file)
+ *
+ * type_config<uint64_t> my_config_variable_name(some_default_value,
+ *                                               "description",
+ *                                               "key_name_in_yaml");
+ *
+ * The data is automatically populated from the yaml, and can then be freely used:
+ *
+ * my_config_variable_name.get()
  *
  * Interface to configuration_manager and configuration_unit.
  *

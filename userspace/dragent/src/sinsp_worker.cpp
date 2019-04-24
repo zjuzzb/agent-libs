@@ -7,6 +7,14 @@
 #include <grpc/grpc.h>
 #include <grpc/support/log.h>
 #include <Poco/DateTimeFormatter.h>
+#include "type_config.h"
+
+type_config<uint16_t> config_increased_snaplen_port_range_start(0,
+						   "Starting port in the range of ports to enable a larger snaplen on",
+						   "increased_snaplen_port_range_start");
+type_config<uint16_t> config_increased_snaplen_port_range_end(0,
+						   "Ending port in the range of ports to enable a larger snaplen on",
+						   "increased_snaplen_port_range_end");
 
 DRAGENT_LOGGER();
 
@@ -551,6 +559,24 @@ void sinsp_worker::init()
 		if(m_configuration->m_snaplen != 0)
 		{
 			m_inspector->set_snaplen(m_configuration->m_snaplen);
+		}
+
+		uint16_t range_start = config_increased_snaplen_port_range_start.get();
+		uint16_t range_end = config_increased_snaplen_port_range_end.get();
+
+		if(range_start > 0 && range_end > 0)
+		{
+			try
+			{
+				m_inspector->set_fullcapture_port_range(range_start, range_end);
+			}
+			catch(const sinsp_exception& e)
+			{
+				// If (for some reason) sysdig doesn't have the corresponding changes
+				// then it will throw a sinsp_exception when setting the fullcapture
+				// range. Just log an error and continue.
+				g_log->error("Could not set increased snaplen size (are you running with updated sysdig?): " + string(e.what()));
+			}
 		}
 	}
 

@@ -76,8 +76,6 @@ bool configuration_manager::is_registered(configuration_unit* config)
 	return m_config_map.find(config->get_key_string()) != m_config_map.end();
 }
 
-
-
 configuration_unit::configuration_unit(const std::string& key,
 				       const std::string& subkey,
 				       const std::string& subsubkey,
