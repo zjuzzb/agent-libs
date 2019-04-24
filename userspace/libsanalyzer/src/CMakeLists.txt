@@ -40,7 +40,7 @@ if (NOT CYGWIN)
 			COMMENT "Generate CRI grpc code"
 			DEPENDS ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
 			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --cpp_out=. ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
-			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
+			COMMAND ${PROTOC} -I ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_container.grpc.pb.cc
@@ -51,7 +51,7 @@ if (NOT CYGWIN)
 			DEPENDS container_events/containerd_container.proto
 			COMMAND mkdir -p container_events
 			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_container.proto
-			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_container.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_container.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_events.grpc.pb.cc
@@ -62,7 +62,7 @@ if (NOT CYGWIN)
 			DEPENDS container_events/containerd_events.proto
 			COMMAND mkdir -p container_events
 			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_events.proto
-			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_events.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_events.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_image.grpc.pb.cc
@@ -73,7 +73,7 @@ if (NOT CYGWIN)
 			DEPENDS container_events/containerd_image.proto
 			COMMAND mkdir -p container_events
 			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_image.proto
-			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_image.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_image.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_mount.grpc.pb.cc
@@ -84,7 +84,7 @@ if (NOT CYGWIN)
 			DEPENDS container_events/containerd_mount.proto
 			COMMAND mkdir -p container_events
 			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_mount.proto
-			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_mount.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_mount.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 	add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/container_events/containerd_task.grpc.pb.cc
@@ -95,7 +95,7 @@ if (NOT CYGWIN)
 			DEPENDS container_events/containerd_task.proto
 			COMMAND mkdir -p container_events
 			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --cpp_out=container_events ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_task.proto
-			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_task.proto
+			COMMAND ${PROTOC} -I ${CMAKE_CURRENT_SOURCE_DIR}/container_events --grpc_out=container_events --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin ${CMAKE_CURRENT_SOURCE_DIR}/container_events/containerd_task.proto
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
@@ -128,6 +128,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filter.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/filterchecks.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/gen_filter.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/grpc_channel_registry.cpp
 	heap.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_parser.c
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/http_reason.cpp

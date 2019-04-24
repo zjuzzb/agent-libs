@@ -1,6 +1,8 @@
 #ifndef CYGWING_AGENT
 #include <google/protobuf/text_format.h>
 
+#include <grpc_channel_registry.h>
+
 #include "compliance_mgr.h"
 
 using namespace std;
@@ -36,7 +38,7 @@ void compliance_mgr::init(sinsp_data_handler *sinsp_handler,
 
 	m_comp_events_queue = make_shared<tbb::concurrent_queue<sdc_internal::comp_task_event>>();
 
-	m_grpc_channel = grpc::CreateChannel(m_cointerface_sock_path, grpc::InsecureChannelCredentials());
+	m_grpc_channel = libsinsp::grpc_channel_registry::get_channel(m_cointerface_sock_path);
 
 	m_initialized = true;
 }

@@ -10,6 +10,7 @@
 #include <Poco/Net/InvalidCertificateHandler.h>
 #include <Poco/Net/SSLException.h>
 
+#include <grpc_channel_registry.h>
 
 #ifndef TCP_USER_TIMEOUT
 // Define it here because old glibc versions do not have this flag (eg, Centos6)
@@ -498,7 +499,7 @@ void connection_manager::do_run()
 				const string& url = m_configuration->m_promex_connect_url.empty() ?
 					"unix:" + m_configuration->m_root_dir + "/run/promex.sock" :
 					m_configuration->m_promex_connect_url;
-				m_prom_channel = grpc::CreateChannel(url, grpc::InsecureChannelCredentials());
+				m_prom_channel = libsinsp::grpc_channel_registry::get_channel(url);
 				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);
 			}
 #endif

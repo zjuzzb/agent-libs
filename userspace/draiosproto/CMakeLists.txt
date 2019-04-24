@@ -17,8 +17,8 @@ else()
 endif()
 if(NOT CYGWIN)
 target_link_libraries(draiosproto
-	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/libs/opt/libgrpc++_unsecure.a
-	${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/libs/opt/libgrpc_unsecure.a
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/libs/opt/libgrpc++_unsecure.a
+	${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/libs/opt/libgrpc_unsecure.a
 	${DRAIOS_DEPENDENCIES_DIR}/c-ares-${DRAIOS_CARES_VERSION}/target/lib/libcares.a
 	${DRAIOS_DEPENDENCIES_DIR}/protobuf-${DRAIOS_PROTOBUF_VERSION}/target/lib/libprotobuf.a
 	${DRAIOS_DEPENDENCIES_DIR}/zlib-${DRAIOS_ZLIB_VERSION}/libz.a
@@ -43,7 +43,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/sdc_internal.pb.cc
 	        --cpp_out=.
 		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
 	COMMAND ${PROTOC_CMDLINE}
-                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin
+                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
 		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()
@@ -54,7 +54,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/draios.pb.cc
 	COMMENT "Building draiosproto cpp sources from .proto files"
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/draios.proto
 	COMMAND ${PROTOC_CMDLINE}
-                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin
+                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
 		${CMAKE_CURRENT_SOURCE_DIR}/sdc_internal.proto
 	COMMAND ${PROTOC_CMDLINE}
                 --cpp_out=.
@@ -90,7 +90,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/promex.pb.cc
 	        --cpp_out=.
 		${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
 	COMMAND ${PROTOC_CMDLINE}
-                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-1.8.1/bins/opt/grpc_cpp_plugin
+                --grpc_out=. --plugin=protoc-gen-grpc=${DRAIOS_DEPENDENCIES_DIR}/grpc-${DRAIOS_GRPC_VERSION}/bins/opt/grpc_cpp_plugin
 		${CMAKE_CURRENT_SOURCE_DIR}/promex.proto
 	WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
 endif()

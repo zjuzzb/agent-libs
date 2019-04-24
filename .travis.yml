@@ -32,7 +32,7 @@ script:
     - sudo insmod /lib/modules/$(uname -r)/updates/dkms/sysdigcloud-probe.ko
     # These are the integration tests
     - cd /opt/draios/test
-    - sudo env -i HOME=$HOME PATH=$PATH PWD=$PWD ./tests
+    - sudo env -i GRPC_TRACE=op_failure,call_error,connectivity_state GRPC_VERBOSITY=INFO HOME=$HOME PATH=$PATH PWD=$PWD ./tests
 notifications:
   webhooks:
     urls:

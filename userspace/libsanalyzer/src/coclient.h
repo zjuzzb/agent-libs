@@ -17,6 +17,7 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "logger.h"
+#include "grpc_channel_registry.h"
 
 #include "sdc_internal.grpc.pb.h"
 
@@ -42,14 +43,14 @@
 template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url)
 {
 	g_logger.log("CONNECTING TO SOCKET " + socket_url, sinsp_logger::SEV_INFO);
-	return make_shared<Stub>(grpc::CreateChannel(socket_url, grpc::InsecureChannelCredentials()));
+	return make_shared<Stub>(libsinsp::grpc_channel_registry::get_channel(socket_url));
 }
 
 template<class Stub> std::shared_ptr<Stub> grpc_connect(const std::string& socket_url, int connect_timeout_ms)
 {
 	g_logger.log("CONNECTING TO SOCKET " + socket_url, sinsp_logger::SEV_DEBUG);
 
-	auto channel = grpc::CreateChannel(socket_url, grpc::InsecureChannelCredentials());
+	auto channel = libsinsp::grpc_channel_registry::get_channel(socket_url);
 	auto deadline = gpr_time_add(gpr_now(GPR_CLOCK_MONOTONIC), gpr_time_from_millis(connect_timeout_ms, GPR_TIMESPAN));
 	bool connected = channel->WaitForConnected(deadline);
 	if(connected)
@@ -494,7 +495,6 @@ protected:
 		std::unique_ptr<grpc::ClientAsyncReader<sdc_internal::array_congroup_update_event>> orchestrator_events_reader;
 	};
 
-	// Created by CreateChannel
 	std::unique_ptr<sdc_internal::CoInterface::Stub> m_stub;
 
 	grpc::CompletionQueue m_cq;

@@ -4,6 +4,7 @@
 #include <sys/time.h>
 #include <Poco/Process.h>
 
+#include "grpc_channel_registry.h"
 #include "coclient.h"
 #include "sdc_internal.pb.h"
 #include "sdc_internal.grpc.pb.h"
@@ -121,7 +122,7 @@ TEST_F(grpc_test, sync_grpc_stream) {
 	auto grpc_handle = Poco::Process::launch("./resources/grpc_test_server", { "unix:" + grpc_socket });
 	sleep(1);
 
-	auto channel = grpc::CreateChannel("unix://" + grpc_socket, grpc::InsecureChannelCredentials());
+	auto channel = libsinsp::grpc_channel_registry::get_channel("unix://" + grpc_socket);
 	auto cointerface = sdc_internal::CoInterface::NewStub(channel);
 
 	auto req = stream_request();
@@ -154,7 +155,7 @@ TEST_F(grpc_test, sync_grpc) {
 	auto grpc_handle = Poco::Process::launch("./resources/grpc_test_server", { "unix:" + grpc_socket });
 	sleep(1);
 
-	auto channel = grpc::CreateChannel("unix://" + grpc_socket, grpc::InsecureChannelCredentials());
+	auto channel = libsinsp::grpc_channel_registry::get_channel("unix://" + grpc_socket);
 	auto cointerface = sdc_internal::CoInterface::NewStub(channel);
 
 	sdc_internal::ping ping_req;
