@@ -15,6 +15,8 @@
 class dragent_configuration;
 class sinsp_worker;
 
+using socket_ptr = std::shared_ptr<StreamSocket>;
+
 class connection_manager : public dragent::watchdog_runnable
 {
 public:
@@ -26,7 +28,7 @@ public:
 
 	bool is_connected() const
 	{
-		return m_connected && !m_socket.isNull();
+		return m_connected && m_socket;
 	}
 
 	static const uint32_t SOCKET_TIMEOUT_DURING_CONNECT_US = 60 * 1000 * 1000;
@@ -41,7 +43,7 @@ private:
 	void do_run() override;
 	bool connect();
 	void disconnect();
-	void disconnect(SharedPtr<StreamSocket> ssp);
+	void disconnect(socket_ptr& ssp);
 	bool transmit_buffer(uint64_t now, std::shared_ptr<protocol_queue_item> &item);
 	bool receive_message();
 	void handle_dump_request_start(uint8_t* buf, uint32_t size);
@@ -69,7 +71,7 @@ private:
 	static const unsigned int SOCKET_TCP_TIMEOUT_MS = 60 * 1000;
 	static const chrono::seconds WORKING_INTERVAL_S;
 
-	SharedPtr<StreamSocket> m_socket;
+	socket_ptr m_socket;
 	bool m_connected;
 	Buffer<uint8_t> m_buffer;
 	uint32_t m_buffer_used;

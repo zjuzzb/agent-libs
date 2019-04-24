@@ -15,6 +15,8 @@ using namespace std;
 #include "connection_manager.h"
 #include "fake_collector.h"
 
+#include <Poco/Net/SSLManager.h>
+
 using namespace dragent;
 using namespace test_helpers;
 
@@ -29,8 +31,8 @@ void msleep(uint32_t milliseconds)
 {
     struct timespec ts =
     {
-    	.tv_sec = milliseconds / 1000,
-    	.tv_nsec = (milliseconds % 1000) * 1000000,
+		.tv_sec = milliseconds / 1000,
+		.tv_nsec = (milliseconds % 1000) * 1000000,
     };
     nanosleep(&ts, NULL);
 }
@@ -54,6 +56,62 @@ std::string build_test_string(uint32_t len)
 	return ss.str();
 }
 } // End namespace
+
+/**
+ * Test the case where the connection manager cannot connect to the collector.
+ * The CM should not crash or fall over.
+ */
+TEST(connection_manager_test, failure_to_connect)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Set the config for the CM
+	config.m_server_addr = "127.0.0.1";
+	config.m_server_port = 7357;
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	// Create and spin up the connection manager
+	thread t([&queue, &config]()
+	{
+	connection_manager cm(&config,
+						  &queue,
+						  nullptr,  // sinsp_worker
+						  nullptr); // capture_job_handler
+		ASSERT_NO_THROW(cm.test_run());
+	});
+
+	// Build the test data
+	std::list<std::string> test_data;
+	for(uint32_t i = 0; i < MAX_QUEUE_LEN; ++i)
+	{
+		test_data.push_back(build_test_string(32));
+	}
+
+	// Push to the queue
+	for(auto msg: test_data)
+	{
+		auto it = std::make_shared<protocol_queue_item>();
+		it->ts_ns = sinsp_utils::get_current_time_ns();
+		it->message_type = draiosproto::message_type::METRICS;
+		it->buffer = msg;
+		queue.put(it, protocol_queue::BQ_PRIORITY_HIGH);
+		msleep(100);
+	}
+
+	// Shut down the CM
+	config.m_terminate = true;
+
+	t.join();
+}
 
 TEST(connection_manager_test, connect_transmit)
 {
