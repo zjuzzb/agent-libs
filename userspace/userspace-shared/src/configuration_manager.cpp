@@ -13,24 +13,24 @@
 namespace
 {
 
-std::map<std::string, configuration_unit*>& get_map()
-{
-	static std::map<std::string, configuration_unit*>* config_map = nullptr;
-
-	if (config_map == nullptr)
-	{
-		config_map = new std::map<std::string, configuration_unit*>();
-	}
-
-	return *config_map;
-}
+configuration_manager* s_instance = nullptr;
 
 } // end namespace
 
 
+configuration_manager& configuration_manager::instance()
+{
+	if(s_instance == nullptr)
+	{
+		s_instance = new configuration_manager();
+	}
+
+	return *s_instance;
+}
+
 void configuration_manager::init_config(const yaml_configuration& raw_config)
 {
-	for (const auto& config : get_map())
+	for (const auto& config : m_config_map)
 	{
 		config.second->init(raw_config);
 	}
@@ -38,7 +38,7 @@ void configuration_manager::init_config(const yaml_configuration& raw_config)
 
 void configuration_manager::print_config(const log_delegate& logger)
 {
-	for (const auto& config : get_map())
+	for (const auto& config : m_config_map)
 	{
 		logger(config.second->to_string());
 	}
@@ -52,13 +52,13 @@ void configuration_manager::register_config(configuration_unit* config)
 		return;
 	}
 
-	if (get_map().find(config->get_key_string()) != get_map().end())
+	if (m_config_map.find(config->get_key_string()) != m_config_map.end())
 	{
 		assert(false);
 		return;
 	}
 
-	get_map().emplace(config->get_key_string(), config);
+	m_config_map.emplace(config->get_key_string(), config);
 }
 
 void configuration_manager::deregister_config(configuration_unit* config)
@@ -68,12 +68,12 @@ void configuration_manager::deregister_config(configuration_unit* config)
 		return;
 	}
 
-	get_map().erase(config->get_key_string());
+	m_config_map.erase(config->get_key_string());
 }
 
 bool configuration_manager::is_registered(configuration_unit* config)
 {
-	return get_map().find(config->get_key_string()) != get_map().end();
+	return m_config_map.find(config->get_key_string()) != m_config_map.end();
 }
 
 
@@ -100,12 +100,12 @@ configuration_unit::configuration_unit(const std::string& key,
 		m_keystring = m_key + "." + m_subkey + "." + m_subsubkey;
 	}
 
-	configuration_manager::register_config(this);
+	configuration_manager::instance().register_config(this);
 }
 
 configuration_unit::~configuration_unit()
 {
-	configuration_manager::deregister_config(this);
+	configuration_manager::instance().deregister_config(this);
 }
 
 std::string configuration_unit::to_string() const

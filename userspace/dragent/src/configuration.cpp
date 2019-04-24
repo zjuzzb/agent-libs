@@ -1299,7 +1299,7 @@ void dragent_configuration::init()
 		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
 
 	// init the configurations
-	configuration_manager::init_config(*m_config);
+	configuration_manager::instance().init_config(*m_config);
 }
 
 void dragent_configuration::print_configuration() const
@@ -1809,7 +1809,7 @@ void dragent_configuration::print_configuration() const
 
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
 
-	configuration_manager::print_config(log_config);
+	configuration_manager::instance().print_config(log_config);
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

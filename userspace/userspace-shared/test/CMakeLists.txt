@@ -36,13 +36,13 @@ target_link_libraries(unit-test-userspace-shared
 # unexpected backtraces, we'll run helgrind only for debug builds.
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_custom_target(run-unit-test-userspace-shared
-        DEPENDS unit-test-userspace-shared
+		DEPENDS unit-test-userspace-shared
 		COMMAND valgrind --gen-suppressions=all ./unit-test-userspace-shared
 		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-userspace-shared
 	)
 else()
 	add_custom_target(run-unit-test-userspace-shared
-        DEPENDS unit-test-userspace-shared
+		DEPENDS unit-test-userspace-shared
 		COMMAND valgrind --gen-suppressions=all ./unit-test-userspace-shared
 	)
 endif()

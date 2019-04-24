@@ -41,6 +41,14 @@ private:
 };
 test_helpers::scoped_temp_file* configuration_manager_test::m_config_file;
 
+TEST_F(configuration_manager_test, instance_returns_same_object)
+{
+	const configuration_manager& m1(configuration_manager::instance());
+	const configuration_manager& m2(configuration_manager::instance());
+
+	ASSERT_EQ(&m1, &m2);
+}
+
 /**
  * Ensure that type_config%s get registered with the configuration manager
  * on construction.
@@ -48,7 +56,7 @@ test_helpers::scoped_temp_file* configuration_manager_test::m_config_file;
 TEST_F(configuration_manager_test, register_config)
 {
 	type_config<bool> c(true, "description", "key");
-	ASSERT_TRUE(configuration_manager::is_registered(&c));
+	ASSERT_TRUE(configuration_manager::instance().is_registered(&c));
 }
 
 /**
@@ -64,7 +72,55 @@ TEST_F(configuration_manager_test, deregister_config)
 		c_p = &c;
 	}
 
-	ASSERT_FALSE(configuration_manager::is_registered(c_p));
+	ASSERT_FALSE(configuration_manager::instance().is_registered(c_p));
+}
+
+/**
+ * Ensure that get_config returns a pointer to the configuration object with
+ * the given name.
+ */
+TEST_F(configuration_manager_test, get_config_valid_type_valid_name)
+{
+	using config_type = bool;
+
+	const std::string key = "key";
+	type_config<config_type> c(true, "description", key);
+	const type_config<config_type>* c2 =
+			configuration_manager::instance().get_config<config_type>(key);
+
+	ASSERT_EQ(&c, c2);
+}
+
+/**
+ * Ensure that get_config returns nullptr if there exists no config with the
+ * given name.
+ */
+TEST_F(configuration_manager_test, get_config_invalid_name)
+{
+	using config_type = bool;
+
+	const type_config<config_type>* config =
+			configuration_manager::instance().get_config<config_type>("key");
+
+	ASSERT_EQ(nullptr, config);
+}
+
+/**
+ * Ensure that get_config returns nullptr if there exists config with the given
+ * name, but the given type does not match.
+ */
+TEST_F(configuration_manager_test, get_config_invalid_type_valid_name)
+{
+	using config_type = bool;
+	using bad_type = uint16_t;
+
+	const std::string key = "key";
+	type_config<config_type> c(true, "description", key);
+
+	const type_config<bad_type>* c2 =
+			configuration_manager::instance().get_config<bad_type>(key);
+
+	ASSERT_EQ(nullptr, c2);
 }
 
 /**
@@ -81,10 +137,10 @@ TEST_F(configuration_manager_test, init_config)
 	type_config<bool> c1(default_c1, "description", "key1");
 	type_config<uint16_t> c2(default_c2, "description", "key2");
 
- 	yaml_configuration config_yaml({get_conf_file()});
- 	ASSERT_EQ(0, config_yaml.errors().size());
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
 
-	configuration_manager::init_config(config_yaml);
+	configuration_manager::instance().init_config(config_yaml);
 
 	ASSERT_EQ(expected_c1, c1.get());
 	ASSERT_EQ(expected_c2, c2.get());
@@ -109,7 +165,7 @@ TEST_F(configuration_manager_test, print_config)
  	yaml_configuration config_yaml({get_conf_file()});
  	ASSERT_EQ(0, config_yaml.errors().size());
 
-	configuration_manager::print_config([&log_output](const std::string& log)
+	configuration_manager::instance().print_config([&log_output](const std::string& log)
 		{
 			log_output += log + "\n";
 		});
