@@ -12,7 +12,6 @@ sinsp_configuration::sinsp_configuration():
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
 	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;
 	set_emit_metrics_to_file(false);
-	set_compress_metrics(false);
 	m_machine_id = "<NA>";
 	m_customer_id = "<NA>";
 	m_analyzer_sample_len_ns = ANALYZER_DEFAULT_SAMPLE_LENGTH_NS;
@@ -80,16 +79,6 @@ bool sinsp_configuration::get_emit_metrics_to_file() const
 void sinsp_configuration::set_emit_metrics_to_file(bool emit)
 {
 	m_emit_metrics_to_file = emit;
-}
-
-bool sinsp_configuration::get_compress_metrics() const
-{
-	return m_compress_metrics;
-}
-
-void sinsp_configuration::set_compress_metrics(bool emit)
-{
-	m_compress_metrics = emit;
 }
 
 const string& sinsp_configuration::get_metrics_directory() const

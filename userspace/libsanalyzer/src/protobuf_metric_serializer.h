@@ -118,16 +118,6 @@ private:
 	                          uint64_t nevts,
 	                          uint64_t num_dropped_events);
 
-	/**
-	 * Determine the length of the serialized protobuf.
-	 *
-	 * @param[out] len        The length of the serialized protobuf
-	 * @param[in]  compressed Should the protobuf be compressed
-	 *
-	 * @returns true on success, false otherwise.
-	 */
-	bool serialize_to_bytebuf(uint32_t& len, bool compressed);
-
 	std::unique_ptr<data> m_data;
 	mutable std::mutex m_data_mutex;
 	std::condition_variable m_data_available_condition;
@@ -139,7 +129,6 @@ private:
 	uint64_t m_prev_sample_evtnum;
 	uint64_t m_prev_sample_time;
 	uint64_t m_prev_sample_num_drop_events;
-	std::vector<char> m_serialization_buffer;
 
 	std::thread m_thread; // Must be last
 };

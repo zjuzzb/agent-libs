@@ -281,11 +281,6 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_log_dir(m_configuration->m_log_dir);
 
 	//
-	// Configure compression in the protocol
-	//
-	m_analyzer->get_configuration()->set_compress_metrics(m_configuration->m_compression_enabled);
-
-	//
 	// Configure connection aggregation
 	//
 	m_analyzer->get_configuration()->set_aggregate_connections_in_proto(!m_configuration->m_emit_full_connections);

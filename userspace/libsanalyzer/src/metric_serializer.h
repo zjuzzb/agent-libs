@@ -116,14 +116,6 @@ public:
 	bool get_emit_metrics_to_file() const;
 
 	/**
-	 * Returns true if this metric_serializer is configured to compress
-	 * metrics that are written to file, false otherwise.  This method's
-	 * return value is meaningful only when get_emit_metrics_to_file()
-	 * returns true.
-	 */
-	bool get_compress_metrics() const;
-
-	/**
 	 * Returns the path to the directory into which this metric_serializer
 	 * will write metrics to file.  This method's return value is
 	 * meaningful only when get_emit_metrics_to_file() returns true.

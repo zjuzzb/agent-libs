@@ -13,11 +13,6 @@
 
 #include <chrono>
 #include <sstream>
-#include <google/protobuf/io/gzip_stream.h>
-#include <google/protobuf/io/zero_copy_stream_impl_lite.h>
-
-using google::protobuf::io::ArrayOutputStream;
-using google::protobuf::io::GzipOutputStream;
 
 namespace
 {
@@ -74,7 +69,6 @@ protobuf_metric_serializer::protobuf_metric_serializer(
 	m_prev_sample_evtnum(0),
 	m_prev_sample_time(0),
 	m_prev_sample_num_drop_events(0),
-	m_serialization_buffer(MIN_SERIALIZATION_BUF_SIZE_BYTES),
 	m_thread(&protobuf_metric_serializer::serialization_thread, this)
 {
 	m_protobuf_file.exceptions(std::ofstream::failbit | std::ofstream::badbit);
@@ -228,71 +222,6 @@ void protobuf_metric_serializer::drain() const
 	while(d != nullptr);
 }
 
-bool protobuf_metric_serializer::serialize_to_bytebuf(uint32_t& len,
-                                                      const bool compressed)
-{
-	// Find out how many bytes we need for the serialization
-	const size_t full_len = m_data->m_metrics.ByteSize();
-
-	// If the buffer is not big enough, expand it
-	if(m_serialization_buffer.size() < full_len)
-	{
-		if(full_len >= MAX_SERIALIZATION_BUF_SIZE_BYTES)
-		{
-			g_logger.format(sinsp_logger::SEV_ERROR,
-			                "Metrics sample too big (%zu). Dropping it.",
-			                full_len);
-			return false;
-		}
-
-		m_serialization_buffer.resize(full_len);
-	}
-
-	// Do the serialization
-	if(compressed)
-	{
-#ifdef _WIN32
-		ASSERT(false);
-		throw sinsp_exception("Compression in agent protocol is not "
-		                      "implemented under Windows");
-#else
-		ArrayOutputStream array_output(m_serialization_buffer.data(),
-		                               full_len);
-		GzipOutputStream gzip_output(&array_output);
-
-		m_data->m_metrics.SerializeToZeroCopyStream(&gzip_output);
-		gzip_output.Close();
-
-		const size_t compressed_size = array_output.ByteCount();
-		if(compressed_size > full_len)
-		{
-			ASSERT(false);
-			throw sinsp_exception(
-				g_logger.format(sinsp_logger::SEV_ERROR,
-				                "Unexpected serialization buffer size; "
-				                "compressed: %zu, full: %zu",
-				                compressed_size,
-				                full_len));
-		}
-
-		len = compressed_size;
-#endif
-	}
-	else
-	{
-		//
-		// Reserve 4 bytes at the beginning of the string for the length
-		//
-		ArrayOutputStream array_output(m_serialization_buffer.data(),
-		                               full_len);
-		m_data->m_metrics.SerializeToZeroCopyStream(&array_output);
-
-		len = full_len;
-	}
-
-	return true;
-}
-
 void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
                                                  const uint64_t nevts,
                                                  const uint64_t num_drop_events)
@@ -352,30 +281,19 @@ void protobuf_metric_serializer::emit_metrics_to_file(const scap_stats& st,
                                                       const uint64_t nevts,
                                                       const uint64_t num_drop_events)
 {
-	uint32_t buflen = 0;
-	const bool success = serialize_to_bytebuf(buflen, get_compress_metrics());
-
 	g_logger.format(sinsp_logger::SEV_INFO,
 			"to_file ts=%" PRIu64
-			", len=%" PRIu32
 			", ne=%" PRIu64
 			", de=%" PRIu64
 			", c=%.2lf"
 			", sr=%" PRIu32
 			", st=%" PRIu64,
 			m_data->m_ts / 100000000,
-			buflen,
 			nevts,
 			num_drop_events,
 			m_data->m_my_cpuload,
 			m_data->m_sampling_ratio,
-			st.n_tids_suppressed
-		);
-
-	if(!success)
-	{
-		return;
-	}
+			st.n_tids_suppressed);
 
 	const std::string dam_file = generate_dam_filename(
 			get_metrics_directory(),
@@ -387,13 +305,11 @@ void protobuf_metric_serializer::emit_metrics_to_file(const scap_stats& st,
 	}
 
 	//
-	// The agent is writing individual metrics protobufs, but we
-	// want the contents of the file to be readable as a
-	// metrics_list protobuf. So add a "metrics {" header and "}"
-	// trailer to each protobuf so it appears to be a metrics_list
-	// item (i.e., message).
+	// The agent is writing individual metrics protobufs, but we want the
+	// contents of the file to be readable as a metrics_list protobuf. So
+	// add a "metrics {" header and "}" trailer to each protobuf so it
+	// appears to be a metrics_list item (i.e., message).
 	//
-
 	const std::string header = "metrics {\n";
 	const std::string pbstr = m_data->m_metrics.DebugString();
 	const std::string footer = "}\n";

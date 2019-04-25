@@ -262,7 +262,6 @@ TEST(protobuf_metric_serializer_test, serialize)
 	// metrics to file.  Use the configuration object mainly to get
 	// the metrics directory with the required trailing path delimiter.
 	configuration.set_emit_metrics_to_file(true);
-	configuration.set_compress_metrics(false);
 	configuration.set_metrics_directory(temp_dir.get_directory());
 
 	std::unique_ptr<protobuf_metric_serializer> s(
@@ -396,7 +395,6 @@ TEST(protobuf_metric_serializer_test, back_to_back_serialization)
 	// metrics to file.  Use the configuration object mainly to get
 	// the metrics directory with the required trailing path delimiter.
 	configuration.set_emit_metrics_to_file(true);
-	configuration.set_compress_metrics(false);
 	configuration.set_metrics_directory(temp_dir.get_directory());
 
 	std::unique_ptr<protobuf_metric_serializer> s(

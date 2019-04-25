@@ -51,13 +51,11 @@ public:
 TEST(metric_serializer_test, initial_state)
 {
 	const bool EMIT_METRICS_TO_FILE = false;
-	const bool COMPRESS_METRICS = false;
 	const std::string METRICS_DIRECTORY = "./";
 
 	sinsp_configuration config;
 
 	config.set_emit_metrics_to_file(EMIT_METRICS_TO_FILE);
-	config.set_compress_metrics(COMPRESS_METRICS);
 
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
@@ -71,7 +69,6 @@ TEST(metric_serializer_test, initial_state)
 	ASSERT_EQ(int_metrics.get(), s->get_internal_metrics().get());
 	ASSERT_EQ(nullptr, s->get_sample_callback());
 	ASSERT_EQ(EMIT_METRICS_TO_FILE, s->get_emit_metrics_to_file());
-	ASSERT_EQ(COMPRESS_METRICS, s->get_compress_metrics());
 	ASSERT_EQ(METRICS_DIRECTORY, s->get_metrics_directory());
 }
 
@@ -83,13 +80,11 @@ TEST(metric_serializer_test, initial_state)
 TEST(metric_serializer_test, update_configuration)
 {
 	bool emit_metrics_to_file = false;
-	bool compress_metrics = false;
 	std::string metrics_directory = "./";
 
 	sinsp_configuration config;
 
 	config.set_emit_metrics_to_file(emit_metrics_to_file);
-	config.set_compress_metrics(compress_metrics);
 
 	capture_stats_source* stats_source = nullptr;
 	internal_metrics::sptr_t int_metrics(new internal_metrics());
@@ -99,26 +94,17 @@ TEST(metric_serializer_test, update_configuration)
 		                                 int_metrics,
 						 &config));
 
-	// Make sure that build() passed the values along as expected
-	ASSERT_EQ(emit_metrics_to_file, s->get_emit_metrics_to_file());
-	ASSERT_EQ(compress_metrics, s->get_compress_metrics());
-	ASSERT_EQ(metrics_directory, s->get_metrics_directory());
-
 	emit_metrics_to_file = true;
-	compress_metrics = true;
 	metrics_directory = "/tmp/";
 
 	sinsp_configuration new_config;
-
 	new_config.set_emit_metrics_to_file(emit_metrics_to_file);
-	new_config.set_compress_metrics(compress_metrics);
 	new_config.set_metrics_directory(metrics_directory);
 
 	s->update_configuration(&new_config);
 
 	// Make sure that update_configuration() updates the values
 	ASSERT_EQ(emit_metrics_to_file, s->get_emit_metrics_to_file());
-	ASSERT_EQ(compress_metrics, s->get_compress_metrics());
 	ASSERT_EQ(metrics_directory, s->get_metrics_directory());
 }
 

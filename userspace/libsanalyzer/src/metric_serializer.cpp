@@ -52,13 +52,6 @@ bool metric_serializer::get_emit_metrics_to_file() const
 	return m_configuration->get_emit_metrics_to_file();
 }
 
-bool metric_serializer::get_compress_metrics() const
-{
-	std::unique_lock<std::mutex> lock(m_mutex);
-
-	return m_configuration->get_compress_metrics();
-}
-
 const std::string& metric_serializer::get_metrics_directory() const
 {
 	std::unique_lock<std::mutex> lock(m_mutex);

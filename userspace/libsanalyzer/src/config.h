@@ -49,8 +49,6 @@ public:
 	void set_connection_pruning_interval_ns(uint64_t interval_ns);
 	bool get_emit_metrics_to_file() const;
 	void set_emit_metrics_to_file(bool emit);
-	bool get_compress_metrics() const;
-	void set_compress_metrics(bool compress);
 	const string& get_metrics_directory() const;
 	void set_metrics_directory(string metrics_directory);
 	const string& get_machine_id() const;
@@ -276,7 +274,6 @@ private:
 	uint64_t m_connection_pruning_interval_ns;
 	uint64_t m_connection_timeout_ns;
 	bool m_emit_metrics_to_file;
-	bool m_compress_metrics;
 	string m_machine_id;
 	string m_customer_id;
 	uint64_t m_analyzer_sample_len_ns;
