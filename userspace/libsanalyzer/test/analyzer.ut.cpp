@@ -8,7 +8,7 @@
 
 using namespace test_helpers;
 
-TEST(analyzer_test, end_to_end_basic)
+TEST(analyzer_test, DISABLED_end_to_end_basic)
 {
 	sinsp_mock inspector;
 	// Make some fake events
@@ -82,7 +82,7 @@ public:
 	std::string m_name;
 };
 
-TEST(analyzer_test, coalesce_containers_test)
+TEST(analyzer_test, DISABLED_coalesce_containers_test)
 {
 	sinsp_mock inspector;
 	sinsp_analyzer analyzer(&inspector, "/");

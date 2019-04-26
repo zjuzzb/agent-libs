@@ -42,7 +42,7 @@ void run_sinsp_worker(const sinsp::ptr &inspector, protocol_queue& queue)
 
 }
 
-TEST(sinsp_worker_test, end_to_end_basic)
+TEST(sinsp_worker_test, DISABLED_end_to_end_basic)
 {
 	std::shared_ptr<sinsp_mock> inspector = std::make_shared<sinsp_mock>();
 

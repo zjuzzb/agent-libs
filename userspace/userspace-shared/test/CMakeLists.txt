@@ -30,6 +30,11 @@ target_link_libraries(unit-test-userspace-shared
 #	${DRAIOS_DEPENDENCIES_DIR}/openssl-${DRAIOS_OPENSSL_VERSION}/target/lib/libcrypto.a
 )
 
+file(
+	COPY valgrind/helgrind.suppressions
+	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
+)
+
 # Valgrind's thread analyzer, helgrind, doesn't work well with the release
 # version of the unit test binary -- the backtraces that we want to suppress
 # don't match reality in the code.  Rather than add suppressions for these
@@ -37,13 +42,13 @@ target_link_libraries(unit-test-userspace-shared
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 	add_custom_target(run-unit-test-userspace-shared
 		DEPENDS unit-test-userspace-shared
-		COMMAND valgrind --gen-suppressions=all ./unit-test-userspace-shared
-		COMMAND valgrind --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-userspace-shared
+		COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
+		COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
 	)
 else()
 	add_custom_target(run-unit-test-userspace-shared
 		DEPENDS unit-test-userspace-shared
-		COMMAND valgrind --gen-suppressions=all ./unit-test-userspace-shared
+		COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
 	)
 endif()
 

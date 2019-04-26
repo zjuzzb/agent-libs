@@ -19,6 +19,7 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-testhelpers
 	COMMAND $(MAKE) run-unit-test-dragent
 	COMMAND $(MAKE) run-unit-test-libsanalyzer
+	COMMAND $(MAKE) run-unit-test-userspace-shared
 )
 
 

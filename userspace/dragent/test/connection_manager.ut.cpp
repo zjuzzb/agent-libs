@@ -61,7 +61,7 @@ std::string build_test_string(uint32_t len)
  * Test the case where the connection manager cannot connect to the collector.
  * The CM should not crash or fall over.
  */
-TEST(connection_manager_test, failure_to_connect)
+TEST(connection_manager_test, DISABLED_failure_to_connect)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -113,7 +113,7 @@ TEST(connection_manager_test, failure_to_connect)
 	t.join();
 }
 
-TEST(connection_manager_test, connect_transmit)
+TEST(connection_manager_test, DISABLED_connect_transmit)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object

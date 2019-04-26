@@ -22,3 +22,10 @@
    fun:pthread_cond_destroy@*
    ...
 }
+
+{
+   tcmalloc_ReleaseToSpans
+   Helgrind:Race
+   fun:_ZN8tcmalloc15CentralFreeList14ReleaseToSpansEPv
+   ...
+}
