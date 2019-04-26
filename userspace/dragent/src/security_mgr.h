@@ -52,6 +52,11 @@ public:
 	// errstr when returning false.
 	bool load_policies(const draiosproto::policies &policies, std::string &errstr);
 
+	// Reload policies using the last policies passed to
+	// load_policies(). Returns true if loaded successfully, false
+	// otherwise. Sets errstr when returning false.
+	bool reload_policies(std::string &errstr);
+
 	// Load the baselines and update the policies accordingly. Sets
 	// errstr when returning false.
 	bool load_baselines(const draiosproto::baselines &baselines, std::string &errstr);

@@ -423,6 +423,11 @@ bool security_mgr::load_policies(const draiosproto::policies &policies, std::str
 	return load(m_policies_msg, m_baselines_msg, errstr);
 }
 
+bool security_mgr::reload_policies(std::string &errstr)
+{
+	return load(m_policies_msg, m_baselines_msg, errstr);
+}
+
 bool security_mgr::event_qualifies(sinsp_evt *evt)
 {
 	// if this event is from a docker container and the process name starts with

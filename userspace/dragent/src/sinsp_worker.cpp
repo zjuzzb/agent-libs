@@ -887,6 +887,11 @@ void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts
 {
 	m_analyzer->infra_state()->receive_hosts_metadata(evts.events());
 	m_compliance_mgr->request_refresh_compliance_tasks();
+	std::string errstr;
+	if (!m_security_mgr->reload_policies(errstr))
+	{
+		g_log->error("Could not reload policies after receiving new hosts metadata: " + errstr);
+	}
 }
 #endif
 

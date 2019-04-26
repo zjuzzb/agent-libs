@@ -496,7 +496,7 @@ void sinsp_analyzer::on_capture_start()
 	if(m_configuration->get_security_enabled() || m_use_new_k8s || m_prom_conf.enabled())
 	{
 		glogf("initializing infrastructure state");
-		m_infrastructure_state->init(m_configuration->get_machine_id());
+		m_infrastructure_state->init(m_configuration->get_machine_id(), get_host_tags_with_cluster());
 
 		// Before connecting make sure all annotations we need are registered
 		// so that cointerface will know to send them

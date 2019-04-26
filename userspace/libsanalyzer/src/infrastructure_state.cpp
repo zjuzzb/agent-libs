@@ -150,9 +150,50 @@ infrastructure_state::~infrastructure_state()
 {
 }
 
-void infrastructure_state::init(const std::string& machine_id)
+void infrastructure_state::init(const std::string& machine_id, const std::string& host_tags)
 {
 	m_machine_id = machine_id;
+
+	// Add information about this agent by creating an
+	// orchestrator_events message and pushing it onto the queue.
+	draiosproto::orchestrator_events evts;
+	draiosproto::congroup_update_event *evt = evts.add_events();
+	draiosproto::container_group *obj = evt->mutable_object();
+	draiosproto::congroup_uid *uid = obj->mutable_uid();
+
+	evt->set_type(draiosproto::ADDED);
+	uid->set_kind("host");
+	uid->set_id(machine_id);
+
+	(*obj->mutable_tags())[string("host.hostName")] = sinsp_gethostname();
+	(*obj->mutable_tags())[string("host.mac")] = machine_id;
+
+	std::vector<std::string> tags = sinsp_split(host_tags, ',');
+
+	std::string tag_prefix = "agent.tag.";
+
+	for(auto &pair : tags)
+	{
+		std::vector<std::string> parts = sinsp_split(pair, ':');
+
+		if(parts.size()==2)
+		{
+			(*obj->mutable_tags())[tag_prefix + parts[0]] = parts[1];
+		}
+		else
+		{
+			glogf(sinsp_logger::SEV_ERROR,
+			      "infra_state: Could not split agent tag %s into key/value",
+			      pair.c_str());
+		}
+	}
+
+	if(g_logger.get_severity() >= sinsp_logger::SEV_DEBUG)
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "Adding local host information: %s", evts.DebugString().c_str());
+	}
+
+	receive_hosts_metadata(evts.events());
 }
 
 bool infrastructure_state::inited()
@@ -1408,7 +1449,7 @@ void infrastructure_state::refresh_hosts_metadata()
 	//
 	// Delete all cached results for policy scopes
 	//
-	m_policy_cache.clear();
+	clear_scope_cache();
 
 	glogf(sinsp_logger::SEV_INFO, "infra_state: Adding %d hosts to infrastructure state", m_host_events_queue.size());
 

@@ -31,7 +31,7 @@ public:
 
 	~infrastructure_state();
 
-	void init(const std::string& machine_id);
+	void init(const std::string& machine_id, const std::string& host_tags);
 	bool inited();
 
 	static std::string as_string(const scope_predicates &predicates);
