@@ -110,10 +110,10 @@ bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds
 	return true;
 }
 
-infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* inspector, std::string install_prefix)
+infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* inspector, std::string install_prefix, bool force_k8s_subscribed)
 	: m_inspector(inspector)
 	, m_k8s_coclient(std::move(install_prefix))
-	, m_k8s_subscribed(false)
+	, m_k8s_subscribed(force_k8s_subscribed)
 	, m_k8s_connected(false)
 	, m_k8s_refresh_interval(refresh_interval)
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
@@ -1339,6 +1339,20 @@ void infrastructure_state::on_new_container(const sinsp_container_info& containe
 		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Adding parent <host,%s> to container %s", m_machine_id.c_str(), container_info.m_id.c_str());
 	}
 
+	uid_t c_key = make_pair("container",container_info.m_id);
+	// If the container already exists; remove it first
+	if(has(c_key)) {
+		// before sending it off to be added
+		// copy event first and then remove it.
+		draiosproto::congroup_update_event evt_new;
+		evt_new.set_type(draiosproto::REMOVED);
+		auto cg_new = evt_new.mutable_object();
+		cg_new->CopyFrom(*cg);
+		
+		// Remove event
+		handle_event(&evt_new, true);
+	}
+	// Handle the container event (ADDED type)
 	handle_event(&evt, true);
 
 	scrape_mesos_env(container_info, tinfo);

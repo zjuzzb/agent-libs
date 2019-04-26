@@ -26,7 +26,8 @@ public:
 	// { host/container id : {scope hash : scope match result} }
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
-	infrastructure_state(uint64_t refresh_interval, sinsp *inspector, std::string install_prefix);
+	// Pass a 4th optional argument to turn on m_k8s_subscribed for unit tests. Need to refactor.
+	infrastructure_state(uint64_t refresh_interval, sinsp *inspector, std::string install_prefix, bool force_k8s_subscribed = false);
 	using reg_id_t = std::string;
 
 	~infrastructure_state();

@@ -6,10 +6,11 @@ class inf_state_test : public testing::Test
 public:
 	using uid_t = infrastructure_state::uid_t;
 	using cue_t = draiosproto::congroup_update_event;
+	using cg_t = draiosproto::container_group;
 	inf_state_test()
 	{
 		m_sinsp.reset(new sinsp());
-		m_infra_state.reset(new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, m_sinsp.get(), "/opt/draios"));
+		m_infra_state.reset(new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, m_sinsp.get(), "/opt/draios", true));
 	}
        	
 protected:
@@ -90,11 +91,43 @@ protected:
 		std::cout << " ==== Results End ====== " << std::endl << std::endl;
 	}
 
+	sinsp_container_info populate_docker_container_info(std::string container_id,
+							    std::string container_name)
+	{
+		sinsp_container_info container_info;
+		container_info.m_type = CT_DOCKER;
+		container_info.m_id = container_id;
+		container_info.m_name = container_name;
+		container_info.m_image = s_container_stub;
+		container_info.m_imageid = s_container_stub;
+		container_info.m_imagerepo = s_container_stub;
+		container_info.m_imagetag = s_container_stub;
+		container_info.m_imagedigest = s_container_stub;
+		container_info.m_metadata_complete = false;
+
+		return container_info;
+	}
+
+	bool has_container_child_for_pod(const cg_t& cg) {
+
+		if(cg.uid().kind() != "k8s_pod") {
+			return false;
+		}
+
+		if(cg.children().size() < 1) {
+			return false;
+		}
+		return true;
+	}
+
 	std::unique_ptr<infrastructure_state> m_infra_state;
 	std::unique_ptr<sinsp> m_sinsp;
 	std::unordered_map<std::string, int> m_map_of_counts;
 	std::vector<std::string> m_containers;
+	static std::string s_container_stub;
 };
+
+std::string inf_state_test::s_container_stub = "containertstub";
 
 TEST_F(inf_state_test, EmptyStateTest)
 {	
@@ -434,3 +467,122 @@ TEST_F(inf_state_test, ComprehensiveTest)
 	ASSERT_EQ(result.size(), 9);
 	result.Clear();
 }
+
+// Test For whether on_new_container properly handles
+// a new container vs an update container case
+// Pass a new container without pod labels; check for children.
+// Then update labels and check for children. 
+TEST_F(inf_state_test, OnNewContainerTest)
+{
+	// Add a pod
+	auto pod1 = add_congroup("k8s_pod");
+	// Add a namespace
+	auto ns1 = add_congroup("k8s_namespace");
+
+	// Link these 2
+	add_parent_link(pod1, ns1);
+
+	// add node and make parent of pod
+	auto node1 = add_congroup("k8s_node");
+	add_parent_link(pod1, node1);
+
+	// Stub of container_info
+	auto c_info = populate_docker_container_info(std::string("1"),
+						     std::string("testContainer1"));
+
+	// Pass to on_new_container
+	m_infra_state->on_new_container(c_info, nullptr); // tInfo is used only for mesos
+
+	// Tests result of infra state
+	container_groups result;
+	// when we do get_state 
+	// we should see 3 (node, ns, pod)
+	m_infra_state->get_state(&result, 0);
+	ASSERT_EQ(result.size(),3);
+	// Now verify pod DOES NOT have container child
+	for(auto &cg : result) {
+		if(cg.uid().kind() == "k8s_pod") {
+			ASSERT_FALSE(has_container_child_for_pod(cg));
+		}
+	}
+	result.Clear();
+
+	// Now update the container info
+	// with the k8s pod label and call
+	// on_new_container again.
+	c_info.m_labels[std::string("io.kubernetes.pod.uid")] = std::string("k8s_pod1");
+	m_infra_state->on_new_container(c_info, nullptr);
+	
+	// Get state and check results
+	// This should return 3
+	m_infra_state->get_state(&result, 0);
+	ASSERT_EQ(result.size(), 3);
+	// This time pod should have container child
+	for(auto &cg : result) {
+		if(cg.uid().kind() == "k8s_pod") {
+			ASSERT_TRUE(has_container_child_for_pod(cg));
+		}
+	}
+	result.Clear();
+}
+
+// This test tests for whether it is better to :
+// 1.) Send an update event when we get updated container
+// 2.) Or delete the container followed by add it again.
+// The 2nd case is better because by chacne if we get a container
+// whose pod labels are removed such that it doesn't have any pod parents
+// then the infra-state won't update correctly for solution 1.
+TEST_F(inf_state_test, UpdateVsDeleteAddTest)
+{
+	// Add a pod
+	auto pod1 = add_congroup("k8s_pod");
+	// Add a namespace
+	auto ns1 = add_congroup("k8s_namespace");
+
+	// Link these 2
+	add_parent_link(pod1, ns1);
+
+	// add node and make parent of pod
+	auto node1 = add_congroup("k8s_node");
+	add_parent_link(pod1, node1);
+
+	auto c_info = populate_docker_container_info(std::string("1"),
+						     std::string("testContainer1"));
+	// Now update the container info
+	// with the k8s pod label and call
+	// on_new_container 
+	c_info.m_labels[std::string("io.kubernetes.pod.uid")] = std::string("k8s_pod1");
+	m_infra_state->on_new_container(c_info, nullptr); 
+
+	// Tests result of infra state
+	container_groups result;
+	// when we do get_state 
+	// we should see 3 (node, ns, pod)
+	m_infra_state->get_state(&result, 0);
+	ASSERT_EQ(result.size(),3);
+	// We SHOULD see the pod having
+	// child container because of label
+	for(auto &cg : result) {
+		if(cg.uid().kind() == "k8s_pod") {
+			ASSERT_TRUE(has_container_child_for_pod(cg));
+		}
+	}
+	result.Clear();
+
+	// Now update the container info
+	/// by clearing labels and call
+	// on_new_container again.
+	c_info.m_labels.clear();
+	m_infra_state->on_new_container(c_info, nullptr); 
+
+	m_infra_state->get_state(&result, 0);
+	ASSERT_EQ(result.size(), 3);
+	// This time pod should NOT have container child
+	for(auto &cg : result) {
+		if(cg.uid().kind() == "k8s_pod") {
+			ASSERT_FALSE(has_container_child_for_pod(cg));
+		}
+	}
+	result.Clear();
+}
+
