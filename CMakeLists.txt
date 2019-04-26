@@ -7,6 +7,10 @@ project(draios)
 # creating the package.
 option(BUILD_FOR_TEST "Enable building binaries needed for testing")
 
+# When set to ON, this option will build binaries with the necessary options to
+# emit code coverage data at runtime.
+option(BUILD_FOR_COVERAGE "Enable building binaries needed for code coverage")
+
 option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
 
 # Versions of all third-party libraries used. These may be referred to
@@ -47,6 +51,9 @@ set(CMAKE_COMMON_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
 if(BUILD_WARNINGS_AS_ERRORS)
 	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
 	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
+endif()
+if(BUILD_FOR_COVERAGE)
+	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS}")
 set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS}")

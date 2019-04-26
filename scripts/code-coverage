@@ -1,0 +1,184 @@
+#!/bin/bash
+#
+# code-coverage
+#
+# Generate and manage code coverage results
+#
+set -e
+
+# We expect $(pwd) to be /code/agent/build/{debug,release}/...
+# We want /code/agent/build/{debug,release}
+readonly BASE_DIRECTORY="$(pwd | sed -s 's~\(/[^/]*/[^/]*/[^/]*/[^/]*\).*$~\1~')"
+readonly CODE_COVERAGE_DIR="${BASE_DIRECTORY}/code-coverage"
+readonly LCOV_DIR="${BASE_DIRECTORY}/lcov"
+
+#
+# usage
+#
+# Print a usage message to standard output
+#
+function usage()
+{
+    echo 1>&2 "Usage: ${0} {lcov,genhtml,clean} [options]"
+}
+readonly -f usage
+
+#
+# clean_gcda_files
+#
+# Remove all lcov-generated files from ${BASE_DIRECTORY}
+#
+function clean_gcda_files()
+{
+    find "${BASE_DIRECTORY}" -type f -name '*.gcda' -exec rm {} \;
+}
+readonly -f clean_gcda_files
+
+#
+# run_lcov
+#
+# Run lcov on the given command and produce the given tracefile.
+#
+# @param[in] ${1} The command to execute
+# @param[in] ${2} The tracefile to produce
+# @param[in] ${@} Any additional parameters are passed directly to ${1}
+#
+function run_lcov()
+{
+    if [[ $# -lt 2 ]]; then
+        echo 1>&2 "Usage: ${0} lcov <command> <tracefile> [<arg>, ...]"
+        return 1
+    fi
+
+    local -r command="${1}"
+    local -r tracefile="${LCOV_DIR}/${2}"
+    local -r tracefile_trimmed="${tracefile}.trimmed"
+
+    # Elimiate $1 and $2
+    shift 2
+
+    if [[ "${BASE_DIRECTORY}" == "" ]]; then
+        echo 1>&2 "Failed to find base directory"
+        return 1
+    fi
+
+    mkdir -p "${LCOV_DIR}"
+
+    clean_gcda_files
+    ${command} "$@"
+	lcov \
+        --capture \
+        --directory "${BASE_DIRECTORY}" \
+        --gcov-tool /opt/rh/devtoolset-2/root/usr/bin/gcov \
+        --output-file "${tracefile}" \
+        2>&1 | grep -v 'no data found for'
+
+	lcov \
+        --remove "${tracefile}" \
+        '/code/agent/dependencies/*' \
+        '/opt/rh/*' \
+        '/usr/include/*' \
+        '/build/*' \
+        '/code/sysdig/userspace/libsinsp/third-party/*' \
+        '/code/agent/userspace/libsanalyzer/src/blake2/*' \
+        '/code/agent/userspace/libsanalyzer/src/tdigest/*' \
+        '/code/oss-falco/*' \
+        -o "${tracefile_trimmed}" \
+        2>&1 | grep -v 'no data found for'
+
+    mv "${tracefile_trimmed}" "${tracefile}"
+    clean_gcda_files
+}
+readonly -f run_lcov
+
+#
+# run_genhtml
+#
+# Run genhtml on all the tracefiles in ${LCOV_DIR}.
+#
+function run_genhtml()
+{
+    # Get a list of the lcov files, minus the .lcov extension.  Change newlines
+    # to commas.  Eliminate the trailing comma.  Add spaces after the remaining
+    # commas.
+    local -r lcov_files="$(
+        cd "${LCOV_DIR}"
+        for i in $(/bin/ls); do
+            basename "${i}" .lcov
+        done | tr '\n' ',' | sed -e 's/,$//g' -e 's/,/, /g'
+    )"
+
+    rm -rf "${CODE_COVERAGE_DIR}"
+    genhtml \
+        --prefix "/code" \
+        --output-directory "${CODE_COVERAGE_DIR}" \
+        --demangle-cpp \
+        --title "${lcov_files}" \
+        ${LCOV_DIR}/*
+}
+readonly -f run_genhtml
+
+#
+# run_clean
+#
+# Remove all code coverage artifacts (gcda and tracefiles)
+#
+# @param[in] target (optional) Clean a specific subset of files. Valid
+#                   targets are gcda, lcov, and html.  If this parameter is
+#                   not supplied, this function will clean everything.
+#
+function run_clean()
+{
+    local target="${1:-""}"
+
+    if [[ "${target:-"gcda"}" == "gcda" ]]; then
+        echo "Cleaning gcda..."
+        clean_gcda_files
+    fi
+
+    if [[ "${target:-"lcov"}" == "lcov" ]]; then
+        echo "Cleaning lcov..."
+        rm -rf "${LCOV_DIR}"
+    fi
+
+    if [[ "${target:-"html"}" == "html" ]]; then
+        echo "Cleaning html..."
+        rm -rf "${CODE_COVERAGE_DIR}"
+    fi
+}
+readonly -f run_clean
+
+#
+# main
+#
+# Logical entry point to this script
+#
+function main()
+{
+    if [[ ${BASE_DIRECTORY} != /code/agent/build/* ]]; then
+        echo 1>&2 "Error: This script must be run in the agent build directory"
+        return 1
+    fi
+
+    if [[ $# -lt 1 ]]; then
+        usage
+        return 1
+    fi
+
+    local -r subtask="${1}"
+    shift
+
+    if [[ "${subtask}" == "lcov" ]]; then
+        run_lcov "$@"
+    elif [[ "${subtask}" == "genhtml" ]]; then
+        run_genhtml "$@"
+    elif [[ "${subtask}" == "clean" ]]; then
+        run_clean "$@"
+    else
+        usage
+        return 1;
+    fi
+}
+readonly -f main
+
+main "$@"

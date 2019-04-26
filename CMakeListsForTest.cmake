@@ -14,7 +14,6 @@ if(NOT CYGWIN)
 	add_subdirectory(test)
 endif()
 
-# Run all unit tests
 add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-testhelpers
 	COMMAND $(MAKE) run-unit-test-dragent
@@ -22,7 +21,16 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-userspace-shared
 )
 
+# Run all unit tests
+if(BUILD_FOR_COVERAGE)
+	add_custom_target(clean-code-coverage
+		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage clean
+	)
 
+	add_custom_target(run-code-coverage
+		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage genhtml
+	)
+endif()
 
 # Build all benchmarks.
 add_custom_target(benchmarks

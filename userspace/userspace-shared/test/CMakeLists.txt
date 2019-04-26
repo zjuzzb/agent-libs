@@ -35,21 +35,28 @@ file(
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-# Valgrind's thread analyzer, helgrind, doesn't work well with the release
-# version of the unit test binary -- the backtraces that we want to suppress
-# don't match reality in the code.  Rather than add suppressions for these
-# unexpected backtraces, we'll run helgrind only for debug builds.
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(BUILD_FOR_COVERAGE)
 	add_custom_target(run-unit-test-userspace-shared
 		DEPENDS unit-test-userspace-shared
-		COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
-		COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
+		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-userspace-shared userspace-shared.lcov
 	)
 else()
-	add_custom_target(run-unit-test-userspace-shared
+	# Valgrind's thread analyzer, helgrind, doesn't work well with the release
+	# version of the unit test binary -- the backtraces that we want to suppress
+	# don't match reality in the code.  Rather than add suppressions for these
+	# unexpected backtraces, we'll run helgrind only for debug builds.
+	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+		add_custom_target(run-unit-test-userspace-shared
 		DEPENDS unit-test-userspace-shared
-		COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
-	)
+			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
+			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
+		)
+	else()
+		add_custom_target(run-unit-test-userspace-shared
+			DEPENDS unit-test-userspace-shared
+			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-userspace-shared
+		)
+	endif()
 endif()
 
 install(TARGETS unit-test-userspace-shared
