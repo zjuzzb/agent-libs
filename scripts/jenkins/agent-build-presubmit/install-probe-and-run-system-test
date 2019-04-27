@@ -1,0 +1,39 @@
+#!/bin/bash
+
+SCRIPTS_DIR=$(dirname $(readlink -f $0))
+if [ -z "$WORKSPACE" ]
+then
+	WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
+SOURCE=$WORKSPACE
+INSTALL_DIR=$WORKSPACE/install
+OUT=$WORKSPACE/out
+BUILD=$WORKSPACE/build
+DRIVER_BUILD=$WORKSPACE/driver
+
+# The package build will create the different packages (.deb and .rpm). Also,
+# this builds and installs the package to allow dkms to build the driver.
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $INSTALL_DIR:/opt/draios -v $OUT:/out -v /var/run/docker.sock:/var/run/docker.sock -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder package
+rc=$?; if [[ $rc != 0 ]]; then echo "FAILED! Package build unsuccessful!";exit $rc; fi
+# This will generate the dragent container
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $INSTALL_DIR:/opt/draios -v $OUT:/out -v /var/run/docker.sock:/var/run/docker.sock -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder container
+rc=$?; if [[ $rc != 0 ]]; then echo "FAILED! Container build unsuccessful!";exit $rc; fi
+# This will install all of the tests to the install dir.
+docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $INSTALL_DIR:/opt/draios -v $OUT:/out -v /var/run/docker.sock:/var/run/docker.sock -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder install-test
+rc=$?; if [[ $rc != 0 ]]; then echo "FAILED! Install-Test build unsuccessful!";exit $rc; fi
+
+docker run -i --rm -v $OUT:/out busybox chown -R `id -u`:`id -g` /out
+
+# Add the probe
+sudo apt-get install -y dkms
+sudo dpkg -i $OUT/draios-0.1.1dev-x86_64-agent.deb
+sudo /etc/init.d/dragent stop
+sudo insmod /lib/modules/$(uname -r)/updates/dkms/sysdigcloud-probe.ko
+
+sudo $SCRIPTS_DIR/../run-tests $INSTALL_DIR
+rc=$?; if [[ $rc != 0 ]]; then echo "FAILED! System Tests unsuccessful!";exit $rc; fi
+
+
+# Remove the probe
+sudo rmmod sysdigcloud-probe

@@ -8,8 +8,12 @@
 
 #set -xeuo pipefail
 
-SCRIPTS_DIR=$(dirname $(readlink -f $0))
-WORKSPACE=$SCRIPTS_DIR/../../..
+if [ -z "$WORKSPACE" ]
+then
+    SCRIPTS_DIR=$(dirname $(readlink -f $0))
+    WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
 SOURCE=$WORKSPACE
 PYTHON_DEPS=$WORKSPACE/python-deps
 OUT=$WORKSPACE/out
@@ -32,8 +36,9 @@ if [ -z "$CONTENDER" ]; then
     echo "Contender not set with -c option. Setting contender to HEAD ($CONTENDER)."
 fi
 if [ -z "$BASELINE" ]; then
+    git fetch origin
     BASELINE="`git merge-base HEAD origin/dev`"
-    echo "Baseline not set with -b option. Setting baseline to the merge point between HEAD and DEV ($BASELINE)."
+    echo "Baseline not set with -b option. Setting baseline to the merge point between HEAD and dev ($BASELINE)."
 fi
 
 echo "Executing in directory:"

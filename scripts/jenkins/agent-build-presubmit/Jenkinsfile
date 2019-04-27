@@ -14,10 +14,12 @@ pipeline {
 	stages {
 		stage('Check out dependencies') {
 			steps {
-				setBuildStatus('Check For Performance Regressions', 'Comparing current benchmarks with previous benchmarks', 'PENDING')
+				// First set the statuses on github
+				setBuildStatus('Build and Unit Test', 'Building all targets and running unit tests', 'PENDING')
+				setBuildStatus('System Test', 'Installing probe and running system tests', 'PENDING')
+
 				dir('agent') {
-					// Cannot just call checkout scm because we want all of the tags to get downloaded
-					checkout([$class: 'GitSCM', branches: [[name: 'refs/heads/'+env.BRANCH_NAME]], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/agent']]])
+					checkout scm
 				}
 				dir('oss-falco') {
 					checkout([$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[credentialsId: 'github-jenkins-user-token', url: 'https://github.com/draios/oss-falco']]])
@@ -27,27 +29,46 @@ pipeline {
 				}
 			}
 		}
-		stage('Check For Performance Regressions') {
+		stage('Build and Unit Test') {
 			steps {
 				script{
 					docker.withRegistry("https://quay.io", 'QUAY') {
-						sh('./agent/scripts/jenkins/agent-build-benchmark/compare-benchmarks')
+						sh('./agent/scripts/jenkins/agent-build-presubmit/build-presubmit')
 					}
 				}
 			}
 			post {
 				success {
-					setBuildStatus('Check For Performance Regressions', 'Zero regressions found', 'SUCCESS')
+					setBuildStatus('Build and Unit Test', 'Zero problems found', 'SUCCESS')
 				}
 				failure {
-					setBuildStatus('Check For Performance Regressions', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
+					setBuildStatus('Build and Unit Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
 				}
 
+			}
+		}
+		stage('System Test') {
+			steps {
+				setBuildStatus('System Test', 'Installing probe and running system tests', 'PENDING')
+				script{
+					docker.withRegistry("https://quay.io", 'QUAY') {
+						sh('./agent/scripts/jenkins/agent-build-presubmit/install-probe-and-run-system-test')
+					}
+				}
+			}
+			post {
+				success {
+					setBuildStatus('System Test', 'Zero problems found', 'SUCCESS')
+				}
+				failure {
+					setBuildStatus('System Test', 'FAILED! See Jenkins console output for more info.', 'FAILURE')
+				}
 			}
 		}
 	}
 	post {
 		always {
+			sh('./agent/scripts/jenkins/agent-build-presubmit/cleanup')
 			cleanWs()
 		}
 	}
