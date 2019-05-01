@@ -139,13 +139,13 @@ class GoExpvar(AgentCheck):
 
                 try:
                     float(value)
-                except ValueError:
-                    self.log.warning("Unreportable value for path %s: %s" % (path, value))
+                except (TypeError, ValueError):
+                    self.log.debug("Unreportable value for path %s: %s" % (path, value))
                     continue
 
                 if count >= max_metrics:
-                    self.warning("Reporting more metrics than the allowed maximum. "
-                                 "Please contact support@sysdig.com for more information.")
+                    self.warning(("Reporting more metrics than the allowed maximum (%d). "
+                                  "Please contact support@sysdig.com for more information.") % max_metrics)
                     return
 
                 SUPPORTED_TYPES[metric_type](self, metric_name, value, metric_tags)
