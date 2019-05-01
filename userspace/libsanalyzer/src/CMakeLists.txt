@@ -118,6 +118,7 @@ set(SANALYZER_SOURCES
 	custom_container.cpp
 	delays.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/container_engine.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_common.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_info.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/dns_manager.cpp

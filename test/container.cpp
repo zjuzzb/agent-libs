@@ -330,7 +330,7 @@ TEST_F(sys_call_test, container_docker_netns_ioctl)
 	ASSERT_TRUE(done);
 }
 
-TEST_F(sys_call_test, container_docker)
+static void run_container_docker_test(bool fork_after_container_start)
 {
 	bool done = false;
 
@@ -363,6 +363,25 @@ TEST_F(sys_call_test, container_docker)
 
 		ASSERT_TRUE(system("docker kill ilovesysdig_docker > /dev/null 2>&1 || true") == 0);
 		ASSERT_TRUE(system("docker rm -v ilovesysdig_docker > /dev/null 2>&1") == 0);
+
+		if(fork_after_container_start)
+		{
+			int child_pid = fork();
+
+			ASSERT_TRUE(child_pid >= 0) << "Could not fork" << strerror(errno);
+			if (child_pid == 0)
+			{
+				// Note: intentionally not doing _exit to
+				// ensure container resolvers don't rely on
+				// globals. Of course, it depends on all other
+				// globals being able to be deleted twice.
+				exit(0);
+			}
+			else
+			{
+				wait(NULL);
+			}
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -391,6 +410,34 @@ TEST_F(sys_call_test, container_docker)
 
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	ASSERT_TRUE(done);
+}
+
+TEST_F(sys_call_test, container_docker)
+{
+	bool fork_after_container_start = false;
+
+	run_container_docker_test(fork_after_container_start);
+}
+
+// This test intentionally does a fork after starting the container
+// and then calls exit(), which closes all FILEs, calls destructors
+// for static globals, etc. Best practices recommend calling _exit()
+// in forked children instead of exit(), as _exit() skips all those
+// teardown steps, but this test verifies that even if a child calls
+// exit(), that there aren't any conflicts/races in the static
+// globals, etc.
+//
+// It may be the case someday that there are globals that we don't
+// control or have to keep global that cause conflicts on duplicate
+// exit(), in which case this test will start
+// hanging/failing/crashing. If this happens, we should remove this
+// test.
+
+TEST_F(sys_call_test, container_docker_fork)
+{
+	bool fork_after_container_start = true;
+
+	run_container_docker_test(fork_after_container_start);
 }
 
 TEST_F(sys_call_test, container_custom)
