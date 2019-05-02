@@ -7,14 +7,18 @@
 static const std::string cri_container_id = "575371e74864";
 static const std::string fake_cri_socket = "/tmp/fake-cri.sock";
 
-class container_cri : public sys_call_test {};
+class container_cri : public sys_call_test {
+protected:
+	void fake_cri_test(const std::string& pb_prefix, const std::string& runtime, const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback, bool extra_queries=true);
+};
 
 TEST_F(container_cri, fake_cri_no_server) {
-	bool done = false;
+	std::atomic<bool> done(false);
 	proc test_proc = proc("./test_helper", { "cri_container" });
 
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
+		// we never get the PPME_CONTAINER_JSON_E event if the lookup fails
 		sinsp_threadinfo* tinfo = evt->m_tinfo;
 		if(tinfo)
 		{
@@ -56,31 +60,50 @@ TEST_F(container_cri, fake_cri_no_server) {
 
 }
 
-TEST_F(container_cri, fake_cri) {
-	bool done = false;
+void container_cri::fake_cri_test(const std::string& pb_prefix, const std::string& runtime, const std::function<void(const callback_param& param, std::atomic<bool>& done)>& callback, bool extra_queries)
+{
+	std::atomic<bool> done(false);
 	proc test_proc = proc("./test_helper", { "cri_container" });
 	unlink(fake_cri_socket.c_str());
-	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, "resources/fake_cri_agent" });
+	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, pb_prefix, runtime });
+	auto start_time = time(NULL);
 
 	event_filter_t filter = [&](sinsp_evt * evt)
 	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
-		{
-			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
-		}
-
-		return false;
+		return evt->get_type() == PPME_CONTAINER_JSON_E;
 	};
 
 	run_callback_t test = [&](sinsp* inspector)
 	{
 		auto handle = start_process(&test_proc);
 		std::get<0>(handle).wait();
+		while(!done && time(NULL) < start_time + 10)
+		{
+			usleep(100000);
+		}
 	};
 
-	captured_event_callback_t callback = [&](const callback_param& param)
+	captured_event_callback_t cri_callback = [&](const callback_param& param)
 	{
+		callback(param, done);
+	};
+
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		inspector->set_cri_socket_path(fake_cri_socket);
+		inspector->set_cri_extra_queries(extra_queries);
+		inspector->set_log_callback(common_logger::sinsp_logger_callback);
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, cri_callback, filter, setup);});
+	ASSERT_TRUE(done);
+
+	Poco::Process::kill(fake_cri_handle);
+
+}
+
+TEST_F(container_cri, fake_cri) {
+	fake_cri_test("resources/fake_cri_agent", "containerd", [&](const callback_param& param, std::atomic<bool>& done) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
@@ -100,45 +123,11 @@ TEST_F(container_cri, fake_cri) {
 		EXPECT_EQ(100000, container_info->m_cpu_period);
 
 		done = true;
-	};
-
-	before_open_t setup = [&](sinsp* inspector)
-	{
-		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(common_logger::sinsp_logger_callback);
-	};
-
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
-	ASSERT_TRUE(done);
-
-	Poco::Process::kill(fake_cri_handle);
+	});
 }
 
 TEST_F(container_cri, fake_cri_crio_extra_queries) {
-	bool done = false;
-	proc test_proc = proc("./test_helper", { "cri_container" });
-	unlink(fake_cri_socket.c_str());
-	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, "resources/fake_cri_crio", "cri-o" });
-
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
-		{
-			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
-		}
-
-		return false;
-	};
-
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		auto handle = start_process(&test_proc);
-		std::get<0>(handle).wait();
-	};
-
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	fake_cri_test("resources/fake_cri_crio", "cri-o", [&](const callback_param& param, std::atomic<bool>& done) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
@@ -154,45 +143,11 @@ TEST_F(container_cri, fake_cri_crio_extra_queries) {
 		EXPECT_EQ("4e01602047d456fa783025a26b4b4c59b6527d304f9983fbd63b8d9a3bec53dc", container_info->m_imageid);
 
 		done = true;
-	};
-
-	before_open_t setup = [&](sinsp* inspector)
-	{
-		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(common_logger::sinsp_logger_callback);
-	};
-
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
-	ASSERT_TRUE(done);
-
-	Poco::Process::kill(fake_cri_handle);
+	});
 }
 
 TEST_F(container_cri, fake_cri_crio) {
-	bool done = false;
-	proc test_proc = proc("./test_helper", { "cri_container" });
-	unlink(fake_cri_socket.c_str());
-	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, "resources/fake_cri_crio", "cri-o" });
-
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
-		{
-			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
-		}
-
-		return false;
-	};
-
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		auto handle = start_process(&test_proc);
-		std::get<0>(handle).wait();
-	};
-
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	fake_cri_test("resources/fake_cri_crio", "cri-o", [&](const callback_param& param, std::atomic<bool>& done) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
@@ -208,46 +163,11 @@ TEST_F(container_cri, fake_cri_crio) {
 		EXPECT_EQ("", container_info->m_imageid); // no extra queries -> no image id
 
 		done = true;
-	};
-
-	before_open_t setup = [&](sinsp* inspector)
-	{
-		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_cri_extra_queries(false);
-		inspector->set_log_callback(common_logger::sinsp_logger_callback);
-	};
-
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
-	ASSERT_TRUE(done);
-
-	Poco::Process::kill(fake_cri_handle);
+	}, false);
 }
 
 TEST_F(container_cri, fake_cri_unknown_runtime) {
-	bool done = false;
-	proc test_proc = proc("./test_helper", { "cri_container" });
-	unlink(fake_cri_socket.c_str());
-	auto fake_cri_handle = Poco::Process::launch("./resources/fake_cri", { "unix://" + fake_cri_socket, "resources/fake_cri_agent", "unknown-runtime" });
-
-	event_filter_t filter = [&](sinsp_evt * evt)
-	{
-		sinsp_threadinfo* tinfo = evt->m_tinfo;
-		if(tinfo)
-		{
-			return tinfo->m_exe == "/bin/echo" && !tinfo->m_container_id.empty();
-		}
-
-		return false;
-	};
-
-	run_callback_t test = [&](sinsp* inspector)
-	{
-		auto handle = start_process(&test_proc);
-		std::get<0>(handle).wait();
-	};
-
-	captured_event_callback_t callback = [&](const callback_param& param)
-	{
+	fake_cri_test("resources/fake_cri_agent", "unknown-runtime", [&](const callback_param& param, std::atomic<bool>& done) {
 		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
 		ASSERT_TRUE(tinfo != NULL);
 
@@ -263,17 +183,6 @@ TEST_F(container_cri, fake_cri_unknown_runtime) {
 		EXPECT_EQ("4bc0e14060f4263acf658387e76715bd836a13b9ba44f48465bd0633a412dbd0", container_info->m_imageid);
 
 		done = true;
-	};
-
-	before_open_t setup = [&](sinsp* inspector)
-	{
-		inspector->set_cri_socket_path(fake_cri_socket);
-		inspector->set_log_callback(common_logger::sinsp_logger_callback);
-	};
-
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
-	ASSERT_TRUE(done);
-
-	Poco::Process::kill(fake_cri_handle);
+	});
 }
 
