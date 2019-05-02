@@ -39,7 +39,7 @@ func persistentVolumeEvent(pv *v1.PersistentVolume, eventType *draiosproto.Congr
 }
 
 func getPersistentVolumeType(pv *v1.PersistentVolume) string {
-	var ret string
+	ret := "Unknown"
 	source := pv.Spec.PersistentVolumeSource
 
 	if source.GCEPersistentDisk != nil {
@@ -101,7 +101,9 @@ func newPersistentVolumeCongroup(pv *v1.PersistentVolume) (*draiosproto.Containe
 	inttags := GetAnnotations(pv.ObjectMeta, internal_tag_name)
 	tags[internal_tag_name+ "storageclass"] = pv.Spec.StorageClassName
 	tags[internal_tag_name+ "status.phase"] = string(pv.Status.Phase)
-	tags[internal_tag_name+ "claim"] = pv.Spec.ClaimRef.Name
+	if (pv.Spec.ClaimRef != nil) {
+		tags[internal_tag_name+"claim"] = pv.Spec.ClaimRef.Name
+	}
 	tags[internal_tag_name+ "reclaimpolicy"] = string(pv.Spec.PersistentVolumeReclaimPolicy)
 
 	var accessMode string
@@ -143,7 +145,7 @@ func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("persistentvolumes")
-				log.Debugf("DEBUG PV: %v", obj.(*v1.PersistentVolume))
+				log.Debugf("PV: %v", obj.(*v1.PersistentVolume))
 				evtc <- persistentVolumeEvent(obj.(*v1.PersistentVolume),
 					draiosproto.CongroupEventType_ADDED.Enum())
 				addEvent("PersistentVolume", EVENT_ADD)

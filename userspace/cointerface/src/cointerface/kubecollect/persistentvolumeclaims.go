@@ -85,7 +85,7 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: func(obj interface{}) {
 				eventReceived("persistentvolumeclaims")
-				log.Debugf("DEBUG PV: %v", obj.(*v1.PersistentVolumeClaim))
+				log.Debugf("PVC: %v", obj.(*v1.PersistentVolumeClaim))
 				evtc <- persistentVolumeClaimEvent(obj.(*v1.PersistentVolumeClaim),
 					draiosproto.CongroupEventType_ADDED.Enum())
 				addEvent("PersistentVolumeClaim", EVENT_ADD)
