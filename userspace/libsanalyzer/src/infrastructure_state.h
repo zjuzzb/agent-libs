@@ -99,7 +99,15 @@ public:
 	void init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size);
 
 	void add_annotation_filter(const string &ann);
+	bool find_parent_kind(const uid_t uid, string kind, uid_t &found_id)
+	{
+		std::unordered_set<uid_t> visited;
+		return find_parent_kind(uid, kind, found_id, visited);
+	}
 
+	// Find our k8s node from our current container, any of the given container ids
+	// or from IP address, in that order, if not found already
+	void find_our_k8s_node(const std::vector<string> *container_ids);
 private:
 
 	std::unordered_map<std::string, std::string> host_children {
@@ -113,6 +121,9 @@ private:
 	void state_of(const draiosproto::container_group *grp,
 		      container_groups* state,
 		      std::unordered_set<uid_t>& visited, uint64_t ts);
+
+	bool find_parent_kind(const uid_t child_id, string kind, uid_t &found_id,
+		std::unordered_set<uid_t> &visited) const;
 
 	bool find_tag(uid_t uid, string tag, string &value, std::unordered_set<uid_t> &visited) const;
 	bool walk_and_match(draiosproto::container_group *congroup,
@@ -184,6 +195,7 @@ private:
 	int m_k8s_prev_connect_state;
 	string m_k8s_node;
 	string m_k8s_node_uid;
+	bool m_k8s_node_actual;	// True if node found from following a running container
 
 	typedef struct {
 		double val;

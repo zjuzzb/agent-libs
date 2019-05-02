@@ -1516,6 +1516,9 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 		m_flushes_since_k8_local_flush = 0;
 		g_logger.log("sinsp_analyzer:: Emitting k8s metadata for local node", sinsp_logger::SEV_DEBUG);
 
+		// Try to find out our k8s node id & name
+		m_infrastructure_state->find_our_k8s_node(&emitted_containers);
+
 		// Build the orchestrator state of the emitted containers (without metrics)
 		// This is the k8 data for the local node
 		m_metrics->mutable_orchestrator_state()->set_cluster_id(cluster_id);

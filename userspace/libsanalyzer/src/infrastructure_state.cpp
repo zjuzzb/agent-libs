@@ -118,6 +118,7 @@ infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* ins
 	, m_k8s_refresh_interval(refresh_interval)
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
 	, m_k8s_prev_connect_state(-1)
+	, m_k8s_node_actual(false)
 {
 	m_k8s_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 		k8s_generate_user_event(successful);
@@ -1719,6 +1720,154 @@ void infrastructure_state::add_annotation_filter(const string &ann)
 	m_annotation_filter.emplace(ann);
 }
 
+bool infrastructure_state::find_parent_kind(const uid_t uid, string kind,
+	uid_t &found_id, std::unordered_set<uid_t> &visited) const
+{
+	if (!has(uid) || (visited.find(uid) != visited.end())) {
+		return false;
+	}
+	visited.emplace(uid);
+
+	auto *cg = m_state.find(uid)->second.get();
+
+	if (!cg) {	// Shouldn't happen
+		return false;
+	}
+	if (cg->uid().kind() == kind)
+	{
+		found_id = make_pair(cg->uid().kind(), cg->uid().id());
+		return true;
+	}
+
+	for(const auto &p_uid : cg->parents()) {
+		auto pkey = make_pair(p_uid.kind(), p_uid.id());
+
+		if (find_parent_kind(pkey, kind, found_id, visited))
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void infrastructure_state::find_our_k8s_node(const std::vector<string> *container_ids)
+{
+	if (m_k8s_node_actual)
+		return;	// Already found authoritative answer
+
+	uid_t node_uid;
+	bool found_node = false;
+	bool found_node_through_container = false;
+	string source_name;
+
+	sinsp_threadinfo *tinfo = m_inspector->m_thread_manager->get_threads()->get(getpid());
+	if (tinfo)
+	{
+		const sinsp_container_info *container =
+			m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		if (container && !container->m_id.empty())
+		{
+			uid_t c_uid = make_pair("container", container->m_id);
+			if (find_parent_kind(c_uid, "k8s_node", node_uid))
+			{
+				source_name = "agent container";
+				found_node = true;
+				found_node_through_container = true;
+			}
+		}
+	}
+
+	if (!found_node && container_ids && !container_ids->empty())
+	{
+		// Didn't find node through agent container, try one random local container
+		// That way we don't waste too much cycles looking for a container connecting
+		// to our node, but will at least find it eventually (if there is one)
+		uid_t c_uid = make_pair("container", (*container_ids)[random() % container_ids->size()]);
+		if (find_parent_kind(c_uid, "k8s_node", node_uid))
+		{
+			source_name = "container " + c_uid.second;
+			found_node = true;
+			found_node_through_container = true;
+		}
+	}
+
+#ifdef FIND_NODE_THROUGH_IP
+	// Try and find the node through IP address
+	if (!found_node)
+	{
+		std::set<std::string> ip_addrs;
+		if (m_inspector && m_inspector->get_ifaddr_list())
+		{
+			for (const auto& iface : *m_inspector->get_ifaddr_list()->get_ipv4_list())
+			{
+				ip_addrs.emplace(iface.address());
+			}
+		}
+		if (ip_addrs.empty())
+		{
+			glogf(sinsp_logger::SEV_WARNING, "infra_state: No IP addresses found");
+		}
+		else
+		{
+			for (const auto &i : m_state)
+			{
+				if (i.first.first != "k8s_node")
+					continue;
+
+				std::string name;
+				auto cg = i.second.get();
+
+				for (auto ip : cg->ip_addresses())
+				{
+					if (ip_addrs.find(ip) != ip_addrs.end())
+					{
+						node_uid = make_pair(cg->uid().kind(), cg->uid().id());
+						found_node = true;
+						found_node_through_container = false;
+						source_name = "IP address: " + ip;
+						break;
+					}
+				}
+			}
+		}
+	}
+#endif
+
+	if (found_node && has(node_uid))
+	{
+		auto *cg = m_state.find(node_uid)->second.get();
+		auto tag = cg->tags().find("kubernetes.node.name");
+
+		m_k8s_node_uid = node_uid.second;
+		if (tag != cg->tags().end())
+		{
+			m_k8s_node = tag->second;
+
+			if (found_node_through_container)
+			{
+				// Only stop trying to find our node if we found it through a container
+				// and we have the node name
+				m_k8s_node_actual = true;
+			}
+		}
+		else
+		{
+			glogf(sinsp_logger::SEV_INFO, "infra_state: No node name found for UUID %s", node_uid.second.c_str());
+			// Use UUID instead
+			m_k8s_node = node_uid.second;
+		}
+
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Found our node %s %s through %s",
+			m_k8s_node.c_str(), m_k8s_node_actual ? "definitively" : "temporarily",
+			source_name.c_str());
+	}
+	else
+	{
+		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Couldn't find our node");
+	}
+}
+
 // Look for sysdig agent by pod name, container name or image, or daemonset
 // name or label
 bool new_k8s_delegator::has_agent(infrastructure_state *state, const infrastructure_state::uid_t uid, std::unordered_set<infrastructure_state::uid_t> *visited)
@@ -1839,8 +1988,6 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 		std::string m_uuid;
 		std::string m_ips;
 	};
-	std::set<std::string> ip_addrs;
-	std::string our_node;
 	std::map<std::string, NodeData> nodes;
 	std::map<std::string, NodeData> allnodes;
 
@@ -1850,18 +1997,14 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 		return false;
 	}
 
-	for (const auto& iface : *state->m_inspector->get_ifaddr_list()->get_ipv4_list())
-	{
-		ip_addrs.emplace(iface.address());
-	}
-
 	for (const auto &i : state->m_state)
 	{
 		if (i.first.first != "k8s_node")
 			continue;
 
 		std::ostringstream os;
-		bool found_our_node = false;
+		bool found_our_node = (!state->m_k8s_node_uid.empty() &&
+			(i.first.second == state->m_k8s_node_uid));
 
 		std::string name;
 		auto cg = i.second.get();
@@ -1880,23 +2023,11 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 		for (auto ip : cg->ip_addresses())
 		{
 			os << (os.str().empty() ? "" : " ") << ip;
-			if (our_node.empty() && (ip_addrs.find(ip) != ip_addrs.end()))
-			{
-				glogf(sinsp_logger::SEV_DEBUG, "k8s_deleg: we are node %s:%s (%s) based on IP %s", i.first.first.c_str(), i.first.second.c_str(), name.c_str(), ip.c_str());
-				our_node = i.first.second;
-				found_our_node = true;
-
-				if (state->m_k8s_node.empty())
-				{
-					state->m_k8s_node = name;
-				}
-				if (state->m_k8s_node_uid.empty())
-				{
-					state->m_k8s_node_uid = i.first.second;
-				}
-			}
 		}
 
+		if (found_our_node) {
+			glogf(sinsp_logger::SEV_INFO, "k8s_deleg: found our node: %s", name.c_str());
+		}
 		if (found_our_node || has_agent(state, i.first))
 		{
 			nodes.emplace(name, NodeData(i.first.second, os.str()));
@@ -1914,11 +2045,11 @@ bool new_k8s_delegator::is_delegated_now(infrastructure_state *state, int num_de
 	for (auto it = searchnodes->begin(); (cnt < num_delegated) &&
 		it != searchnodes->end(); it++, cnt++)
 	{
-		if (it->second.m_uuid == our_node)
+		if (it->second.m_uuid == state->m_k8s_node_uid)
 			delegated = true;
 		glogf(sinsp_logger::SEV_INFO, "k8s_deleg: delegated node %s ips: %s id: %s%s",
 			it->first.c_str(), it->second.m_ips.c_str(), it->second.m_uuid.c_str(),
-			(it->second.m_uuid == our_node) ? " (this node)" : "");
+			(it->second.m_uuid == state->m_k8s_node_uid) ? " (this node)" : "");
 	}
 
 	return delegated;
