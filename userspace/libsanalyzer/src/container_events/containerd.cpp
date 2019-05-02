@@ -1,4 +1,5 @@
 #include "containerd.h"
+#include "user_event_logger.h"
 
 #include <unordered_map>
 
@@ -140,7 +141,7 @@ void containerd_events::emit_containers_create(Envelope& event, event_scope& sco
 	std::string name = "Container created";
 	std::string desc = "namespace: " + event.namespace_() + "; ID: " + container_id + "; image: " + container_image;
 
-	emit_event(sinsp_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
+	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
 
 void containerd_events::emit_images_create(Envelope& event, event_scope& scope)
@@ -157,7 +158,7 @@ void containerd_events::emit_images_create(Envelope& event, event_scope& scope)
 	std::string name = "Image created";
 	std::string desc = "namespace: " + event.namespace_() + "; image: " + image_name;
 
-	emit_event(sinsp_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
+	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
 
 void containerd_events::emit_images_update(Envelope& event, event_scope& scope)
@@ -174,7 +175,7 @@ void containerd_events::emit_images_update(Envelope& event, event_scope& scope)
 	std::string name = "Image updated";
 	std::string desc = "namespace: " + event.namespace_() + "; image: " + image_name;
 
-	emit_event(sinsp_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
+	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
 
 void containerd_events::emit_images_delete(Envelope& event, event_scope& scope)
@@ -191,7 +192,7 @@ void containerd_events::emit_images_delete(Envelope& event, event_scope& scope)
 	std::string name = "Image deleted";
 	std::string desc = "namespace: " + event.namespace_() + "; image: " + image_name;
 
-	emit_event(sinsp_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
+	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
 
 void containerd_events::emit_tasks_oom(Envelope& event, event_scope& scope)
@@ -209,7 +210,7 @@ void containerd_events::emit_tasks_oom(Envelope& event, event_scope& scope)
 	std::string name = "Container out of memory";
 	std::string desc = "namespace: " + event.namespace_() + "; ID: " + container_id;
 
-	emit_event(sinsp_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
+	emit_event(user_event_logger::SEV_EVT_INFORMATION, event.timestamp().seconds(), scope, name, desc);
 }
 
 void containerd_events::emit_tasks_exit(Envelope& event, event_scope& scope)
@@ -223,7 +224,7 @@ void containerd_events::emit_tasks_exit(Envelope& event, event_scope& scope)
 
 	std::string container_id = trim_container_id(details.container_id());
 	int exit_status = details.exit_status();
-	sinsp_logger::event_severity log_level = sinsp_logger::SEV_EVT_INFORMATION;
+	user_event_logger::severity log_level = user_event_logger::SEV_EVT_INFORMATION;
 
 	scope.add("container.id", container_id);
 	std::string name = "Container exited";
@@ -250,13 +251,13 @@ void containerd_events::emit_tasks_exit(Envelope& event, event_scope& scope)
 		}
 		name = "Container died";
 		desc += "; ExitCode = " + to_string(exit_status);
-		log_level = sinsp_logger::SEV_EVT_WARNING;
+		log_level = user_event_logger::SEV_EVT_WARNING;
 	}
 
 	emit_event(log_level, event.timestamp().seconds(), scope, name, desc);
 }
 
-void containerd_events::emit_event(sinsp_logger::event_severity severity, uint64_t ts, event_scope& scope, std::string& name, std::string& desc)
+void containerd_events::emit_event(user_event_logger::severity severity, uint64_t ts, event_scope& scope, std::string& name, std::string& desc)
 {
 	sinsp_user_event::tag_map_t tags;
 	tags["source"] = "containerd";
@@ -264,7 +265,7 @@ void containerd_events::emit_event(sinsp_logger::event_severity severity, uint64
 	std::string evt = sinsp_user_event::to_string(
 		ts, std::move(name), std::move(desc), std::move(scope), std::move(tags));
 
-	g_logger.log(evt, severity);
+	user_event_logger::log(evt, severity);
 
 	if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 	{

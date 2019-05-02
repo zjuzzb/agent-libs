@@ -22,6 +22,7 @@ limitations under the License.
 
 #pragma once
 
+#include "user_event_logger.h"
 #include "json/json.h"
 #include "socket_collector.h"
 #include "uri.h"
@@ -114,7 +115,7 @@ private:
 
 	static const std::string DOCKER_SOCKET_FILE;
 	typedef std::vector<json_ptr_t> event_list_t;
-	typedef sinsp_logger::event_severity severity_t;
+	typedef user_event_logger::severity severity_t;
 	typedef std::unordered_map<std::string, severity_t> severity_map_t;
 	typedef std::unordered_map<std::string, std::string> name_translation_map_t;
 	typedef std::set<std::string> entity_events_t;

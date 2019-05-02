@@ -96,6 +96,7 @@ add_executable(tests
 	nodriver.cpp
 	sysdig/userspace/async/async_key_value_source.ut.cpp
 	sysdig/userspace/libsinsp/logger.ut.cpp
+	sysdig/userspace/libsinsp/user_event_logger.ut.cpp
 )
 
 target_link_libraries(tests

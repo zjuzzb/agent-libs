@@ -133,7 +133,7 @@ protected:
 			AutoPtr<Channel> null_channel(new Poco::NullChannel());
 			Logger &nullc = Logger::create("NullC", null_channel, -1);
 
-			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&nullc, &loggerc, &nullc));
+			g_log = std::unique_ptr<dragent_logger>(new dragent_logger(&nullc, &loggerc));
 		}
 
 		m_inspector = new sinsp();

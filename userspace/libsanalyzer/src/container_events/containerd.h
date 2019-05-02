@@ -6,6 +6,7 @@
 
 #include "coclient.h"
 #include "user_event.h"
+#include "user_event_logger.h"
 #include <container_events/containerd_events.grpc.pb.h>
 #include <container_events/containerd_events.pb.h>
 
@@ -49,7 +50,7 @@ private:
 	void emit_tasks_oom(containerd::services::events::v1::Envelope& event, event_scope& scope);
 	void emit_tasks_exit(containerd::services::events::v1::Envelope& event, event_scope& scope);
 
-	void emit_event(sinsp_logger::event_severity severity, uint64_t ts, event_scope& scope, std::string& name, std::string& desc);
+	void emit_event(user_event_logger::severity severity, uint64_t ts, event_scope& scope, std::string& name, std::string& desc);
 
 	std::unique_ptr<streaming_grpc_client(&containerd::services::events::v1::Events::Stub::AsyncSubscribe)> m_grpc_subscribe;
 

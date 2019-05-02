@@ -32,6 +32,8 @@ add_executable(unit-test-dragent
 	main.cpp
 	blocking_queue.ut.cpp
 	crash_handler.ut.cpp
+	dragent_memdump_logger.ut.cpp
+	dragent_user_event_callback.ut.cpp
 	logger.ut.cpp
 	sinsp_worker.ut.cpp
 	spinlock.ut.cpp

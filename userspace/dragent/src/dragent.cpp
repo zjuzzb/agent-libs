@@ -5,12 +5,15 @@
 #include "crash_handler.h"
 #include "configuration.h"
 #include "connection_manager.h"
+#include "dragent_memdump_logger.h"
+#include "dragent_user_event_callback.h"
 #include "user_event_channel.h"
 #include "blocking_queue.h"
 #include "error_handler.h"
 #include "capture_job_handler.h"
 #include "sinsp_worker.h"
 #include "logger.h"
+#include "memdump_logger.h"
 #include "monitor.h"
 #include "process_helpers.h"
 #include "utils.h"
@@ -754,7 +757,8 @@ int dragent_app::sdagent_main()
 		dragent_error_handler::m_exception = true;
 	}
 
-	g_log->set_capture_job_handler(&m_capture_job_handler);
+	memdump_logger::register_callback(
+			std::make_shared<dragent_memdump_logger>(&m_capture_job_handler));
 
 	if(!dragent_configuration::m_terminate)
 	{
@@ -827,7 +831,7 @@ int dragent_app::sdagent_main()
 	}
 
 	LOG_INFO("Terminating");
-	g_log->set_capture_job_handler(nullptr);
+	memdump_logger::register_callback(nullptr);
 	return exit_code;
 }
 
@@ -1327,10 +1331,20 @@ void dragent_app::initialize_logging()
 
 	Logger& loggerf = Logger::create("DraiosLogF", formatting_channel_file, m_configuration.m_min_file_priority);
 
-	g_log = unique_ptr<dragent_logger>(new dragent_logger(&loggerf, make_console_channel(formatter), make_event_channel()));
+	// Note: We are not responsible for managing the memory to which
+	//       event_logger points; no free()/delete needed
+	Logger* const event_logger = make_event_channel();
+	if(event_logger != nullptr)
+	{
+		user_event_logger::register_callback(
+				std::make_shared<dragent_user_event_callback>(
+					*event_logger,
+					m_configuration.m_user_events_rate,
+					m_configuration.m_user_max_burst_events));
+	}
 
-	g_log->init_user_events_throttling(m_configuration.m_user_events_rate,
-					   m_configuration.m_user_max_burst_events);
+	g_log = unique_ptr<dragent_logger>(
+			new dragent_logger(&loggerf, make_console_channel(formatter)));
 
 	g_log->set_internal_metrics(m_internal_metrics);
 }

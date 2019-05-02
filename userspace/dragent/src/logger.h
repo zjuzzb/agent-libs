@@ -2,16 +2,13 @@
 
 #include <exception>
 #include <stdarg.h>
-#include <token_bucket.h>
 #include <vector>
 #include "main.h"
-
-class capture_job_handler;
 
 class avoid_block_channel : public Poco::Channel
 {
 public:
-	avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const string& machine_id);
+	avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const std::string& machine_id);
 
 	virtual void log(const Poco::Message& message) override;
 	virtual void open() override;
@@ -19,75 +16,45 @@ public:
 
 private:
 	AutoPtr<Poco::FileChannel> m_file_channel;
-	string m_machine_id;
+	std::string m_machine_id;
 	atomic<bool> m_error_event_sent;
 };
 
 class dragent_logger
 {
 public:
-	dragent_logger(Logger* file_log, Logger* console_log, Logger* event_log = NULL);
+	dragent_logger(Logger* file_log, Logger* console_log);
 
-	void init_user_events_throttling(uint64_t rate, uint64_t max_burst);
 	void set_internal_metrics(internal_metrics::sptr_t im)
 	{
 		m_internal_metrics = im;
 	}
 
-	void set_capture_job_handler(capture_job_handler* h)
-	{
-		m_capture_job_handler = h;
-	}
-
 	// regular logging
-	void log(const string& str, uint32_t sev);
-	void trace(const string& str);
-	void debug(const string& str);
-	void information(const string& str);
-	void notice(const string& str);
-	void warning(const string& str);
-	void error(const string& str);
-	void critical(const string& str);
-	void fatal(const string& str);
+	void log(const std::string& str, uint32_t sev);
+	void trace(const std::string& str);
+	void debug(const std::string& str);
+	void information(const std::string& str);
+	void notice(const std::string& str);
+	void warning(const std::string& str);
+	void error(const std::string& str);
+	void critical(const std::string& str);
+	void fatal(const std::string& str);
 
-	void trace(string&& str);
-	void debug(string&& str);
-	void information(string&& str);
-	void notice(string&& str);
-	void warning(string&& str);
-	void error(string&& str);
-	void critical(string&& str);
-	void fatal(string&& str);
+	void trace(std::string&& str);
+	void debug(std::string&& str);
+	void information(std::string&& str);
+	void notice(std::string&& str);
+	void warning(std::string&& str);
+	void error(std::string&& str);
+	void critical(std::string&& str);
+	void fatal(std::string&& str);
 
-	// user event logging
-	void fatal_event(const string& str );
-	void critical_event(const string& str );
-	void error_event(const string& str );
-	void warning_event(const string& str );
-	void notice_event(const string& str );
-	void information_event(const string& str );
-	void debug_event(const string& str );
-	void trace_event(const string& str );
+	static void sinsp_logger_callback(std::string&& str, sinsp_logger::severity sev);
 
-	void fatal_event(string&& str);
-	void critical_event(string&& str);
-	void error_event(string&& str);
-	void warning_event(string&& str);
-	void notice_event(string&& str);
-	void information_event(string&& str);
-	void debug_event(string&& str);
-	void trace_event(string&& str);
-
-	static void sinsp_logger_callback(string&& str, uint32_t sev);
-
-	void write_to_memdump(string msg);
 private:
 	Logger* m_file_log;
 	Logger* m_console_log;
-	Logger* m_event_log;
-	capture_job_handler* m_capture_job_handler;
-
-	token_bucket m_user_events_tb;
 	internal_metrics::sptr_t m_internal_metrics;
 };
 

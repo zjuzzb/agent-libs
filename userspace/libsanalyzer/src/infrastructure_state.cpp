@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include "user_event_logger.h"
 #ifndef CYGWING_AGENT
 #include "infrastructure_state.h"
 #include "user_event.h"
@@ -341,13 +342,13 @@ void infrastructure_state::k8s_generate_user_event(const bool success)
 	}
 
 	string event_name = "Infra Connectivity", event_desc;
-	sinsp_logger::event_severity event_sev;
+	user_event_logger::severity event_sev;
 	if (success) {
-		event_sev = sinsp_logger::SEV_EVT_INFORMATION;
+		event_sev = user_event_logger::SEV_EVT_INFORMATION;
 		event_desc = "Status: OK";
 	} else {
 		// Most k8s events are INFO, so leaving this at NOTICE for now.
-		event_sev = sinsp_logger::SEV_EVT_NOTICE;
+		event_sev = user_event_logger::SEV_EVT_NOTICE;
 		event_desc = "Status: Error, check agent logs";
 		if (!host.empty()) {
 			event_desc += " for host '" + host + "'";
@@ -366,7 +367,7 @@ void infrastructure_state::k8s_generate_user_event(const bool success)
 											std::move(scope),
 											std::move(event_tags));
 	g_logger.log("Logging user event: " + event_str, sinsp_logger::SEV_DEBUG);
-	g_logger.log(event_str, event_sev);
+	user_event_logger::log(event_str, event_sev);
 }
 
 void infrastructure_state::init_k8s_limits(filter_vec_t filters, bool log, uint16_t cache_size)

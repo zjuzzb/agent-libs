@@ -180,6 +180,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_component.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_http.cpp
 	memdumper.cpp
+	memdump_logger.cpp
 	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
 	metric_limits.cpp
@@ -209,6 +210,7 @@ set(SANALYZER_SOURCES
 	transactinfo.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/tuples.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/user_event_logger.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/utils.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp

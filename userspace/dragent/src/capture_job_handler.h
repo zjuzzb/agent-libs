@@ -22,11 +22,13 @@
 #include "memdumper.h"
 
 #include "configuration.h"
+#include "infra_event_sink.h"
 #include "protocol.h"
 #include "watchdog_runnable.h"
 
 class capture_job;
-class capture_job_handler : public dragent::watchdog_runnable
+class capture_job_handler : public dragent::watchdog_runnable,
+                            public dragent::infra_event_sink
 {
 	friend class capture_job;
 public:
@@ -173,7 +175,12 @@ public:
 	// capture jobs. It will not be handled by the analyzer or
 	// sinsp_worker.
 	void push_notification(uint64_t ts, uint64_t tid, string id, string description);
-	void push_infra_event(uint64_t ts, uint64_t tid, string source, string name, string description, string scope);
+	void push_infra_event(uint64_t ts,
+	                      uint64_t tid,
+	                      const std::string& source,
+	                      const std::string& name,
+	                      const std::string& description,
+	                      const std::string& scope) override;
 
 	int64_t m_sysdig_pid;
 

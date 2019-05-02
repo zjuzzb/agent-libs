@@ -19,6 +19,7 @@
 #include <sys/resource.h>
 
 #include "configuration_manager.h"
+#include "user_event_logger.h"
 
 using namespace Poco;
 using namespace Poco::Net;
@@ -1422,9 +1423,12 @@ void dragent_configuration::print_configuration() const
 		LOG_WARNING(os.str());
 		sinsp_user_event::tag_map_t tags;
 		tags["source"] = "dragent";
-		g_logger.log(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
-					std::string("PercentileLimitExceeded"), std::string(os.str()),
-					std::string(), std::move(tags)), sinsp_logger::SEV_EVT_WARNING);
+		user_event_logger::log(sinsp_user_event::to_string(get_epoch_utc_seconds_now(),
+		                                                   std::string("PercentileLimitExceeded"),
+		                                                   std::string(os.str()),
+		                                                   std::string(),
+		                                                   std::move(tags)),
+		                       user_event_logger::SEV_EVT_WARNING);
 
 	}
 	LOG_INFO("protocols: " + bool_as_text(m_protocols_enabled));

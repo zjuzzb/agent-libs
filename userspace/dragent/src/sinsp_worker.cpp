@@ -4,6 +4,7 @@
 #include "memdumper.h"
 #include "sinsp_factory.h"
 #include "utils.h"
+#include "user_event_logger.h"
 #include <grpc/grpc.h>
 #include <grpc/support/log.h>
 #include <Poco/DateTimeFormatter.h>
@@ -710,12 +711,15 @@ void sinsp_worker::run()
 		{
 			if(m_analyzer->get_mode_switch_state() == sinsp_analyzer::MSR_REQUEST_NODRIVER)
 			{
-				g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
-																 "Agent switch to nodriver",
-																 "Agent switched to nodriver mode due to high overhead",
-										 event_scope("host.mac", m_configuration->machine_id()),
-																 { {"source", "agent"}},
-																 4));
+				user_event_logger::log(
+						sinsp_user_event::to_string(
+							ev->get_ts() / ONE_SECOND_IN_NS,
+							"Agent switch to nodriver",
+							"Agent switched to nodriver mode due to high overhead",
+							event_scope("host.mac", m_configuration->machine_id()),
+							{ {"source", "agent"} },
+							4),
+						user_event_logger::SEV_EVT_WARNING);
 				m_last_mode_switch_time = ev->get_ts();
 
 				m_inspector->close();
@@ -743,12 +747,15 @@ void sinsp_worker::run()
 					// Since we restart the agent to apply the switch back, we have to send the event
 					// few seconds before doing it otherwise there can be chances that it's not sent at all
 					full_mode_event_sent = true;
-					g_log->warning_event(sinsp_user_event::to_string(ev->get_ts() / ONE_SECOND_IN_NS,
-											 "Agent restore full mode",
-											 "Agent restarting to restore full operation mode",
-											 event_scope("host.mac", m_configuration->machine_id()),
-											 { {"source", "agent"}},
-											 4));
+					user_event_logger::log(
+							sinsp_user_event::to_string(
+								ev->get_ts() / ONE_SECOND_IN_NS,
+								"Agent restore full mode",
+								"Agent restarting to restore full operation mode",
+								event_scope("host.mac", m_configuration->machine_id()),
+								{ {"source", "agent"} },
+								4),
+							user_event_logger::SEV_EVT_WARNING);
 				}
 			}
 		}

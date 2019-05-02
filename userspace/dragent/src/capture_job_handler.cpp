@@ -1087,7 +1087,12 @@ void capture_job_handler::push_notification(uint64_t ts, uint64_t tid, string id
 	process_event(&m_notification_evt);
 }
 
-void capture_job_handler::push_infra_event(uint64_t ts, uint64_t tid, string source, string name, string description, string scope)
+void capture_job_handler::push_infra_event(uint64_t ts,
+                                           uint64_t tid,
+                                           const std::string& source,
+                                           const std::string& name,
+                                           const std::string& description,
+                                           const std::string& scope)
 {
 	uint32_t hdrlen = sizeof(struct ppm_evt_hdr) + 4 * 2;
 

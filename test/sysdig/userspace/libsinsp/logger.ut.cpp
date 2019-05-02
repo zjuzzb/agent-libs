@@ -198,7 +198,8 @@ protected:
 	 * @param[in] str The log message
 	 * @param[in] sev The log severity
 	 */
-	static void log_callback_fn(std::string&& str, const uint32_t sev)
+	static void log_callback_fn(std::string&& str,
+	                            const sinsp_logger::severity sev)
 	{
 		s_cb_output = std::move(str);
 	}

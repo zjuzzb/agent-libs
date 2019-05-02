@@ -31,6 +31,8 @@ list(APPEND targetfiles
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp
+	dragent_memdump_logger.cpp
+	dragent_user_event_callback.cpp
 	error_handler.cpp
 	logger.cpp
 	monitor.cpp

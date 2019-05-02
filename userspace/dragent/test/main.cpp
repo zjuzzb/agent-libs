@@ -16,7 +16,7 @@ private:
 
 	void setup_dragent_logger()
 	{
-		std::string logDir  = "/opt/draios/logs";
+		std::string logDir  = "/tmp";
 		File d(logDir);
 		d.createDirectories();
 		Path p;

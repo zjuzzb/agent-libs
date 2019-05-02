@@ -87,6 +87,7 @@ using namespace google::protobuf::io;
 #include "label_limits.h"
 #include "container_emitter.h"
 #include "tap.h"
+#include "user_event_logger.h"
 
 using namespace libsanalyzer;
 
@@ -3398,7 +3399,7 @@ void sinsp_analyzer::emit_aggregated_connections()
 						std::move(scope),
 						{});
 
-					g_logger.log(event_str, sinsp_logger::SEV_EVT_INFORMATION);
+					user_event_logger::log(event_str, user_event_logger::SEV_EVT_INFORMATION);
 					m_connection_truncate_report_last = (int)now;
 				}
 			}

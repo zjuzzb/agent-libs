@@ -23,6 +23,7 @@ limitations under the License.
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include <container_events/docker.h>
+#include "memdump_logger.h"
 #include "user_event.h"
 
 const std::string docker::DOCKER_SOCKET_FILE = "/var/run/docker.sock";
@@ -52,43 +53,43 @@ docker::docker(std::string url,
 		m_severity_map
 		{
 			// container
-			{ "attach",      sinsp_logger::SEV_EVT_INFORMATION },
-			{ "archive-path", sinsp_logger::SEV_EVT_INFORMATION },
-			{ "commit",      sinsp_logger::SEV_EVT_INFORMATION },
-			{ "copy",        sinsp_logger::SEV_EVT_INFORMATION },
-			{ "create",      sinsp_logger::SEV_EVT_INFORMATION },
-			{ "destroy",     sinsp_logger::SEV_EVT_WARNING     },
-			{ "die",         sinsp_logger::SEV_EVT_WARNING     },
-			{ "exec_create", sinsp_logger::SEV_EVT_INFORMATION },
-			{ "exec_start",  sinsp_logger::SEV_EVT_INFORMATION },
-			{ "export",      sinsp_logger::SEV_EVT_INFORMATION },
-			{ "kill",        sinsp_logger::SEV_EVT_WARNING     },
-			{ "oom",         sinsp_logger::SEV_EVT_WARNING     },
-			{ "pause",       sinsp_logger::SEV_EVT_INFORMATION },
-			{ "rename",      sinsp_logger::SEV_EVT_INFORMATION },
-			{ "resize",      sinsp_logger::SEV_EVT_INFORMATION },
-			{ "restart",     sinsp_logger::SEV_EVT_WARNING     },
-			{ "start",       sinsp_logger::SEV_EVT_INFORMATION },
-			{ "stop",        sinsp_logger::SEV_EVT_INFORMATION },
-			{ "top",         sinsp_logger::SEV_EVT_INFORMATION },
-			{ "unpause",     sinsp_logger::SEV_EVT_INFORMATION },
-			{ "update",      sinsp_logger::SEV_EVT_INFORMATION },
+			{ "attach",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "archive-path", user_event_logger::SEV_EVT_INFORMATION },
+			{ "commit",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "copy",         user_event_logger::SEV_EVT_INFORMATION },
+			{ "create",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "destroy",      user_event_logger::SEV_EVT_WARNING     },
+			{ "die",          user_event_logger::SEV_EVT_WARNING     },
+			{ "exec_create",  user_event_logger::SEV_EVT_INFORMATION },
+			{ "exec_start",   user_event_logger::SEV_EVT_INFORMATION },
+			{ "export",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "kill",         user_event_logger::SEV_EVT_WARNING     },
+			{ "oom",          user_event_logger::SEV_EVT_WARNING     },
+			{ "pause",        user_event_logger::SEV_EVT_INFORMATION },
+			{ "rename",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "resize",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "restart",      user_event_logger::SEV_EVT_WARNING     },
+			{ "start",        user_event_logger::SEV_EVT_INFORMATION },
+			{ "stop",         user_event_logger::SEV_EVT_INFORMATION },
+			{ "top",          user_event_logger::SEV_EVT_INFORMATION },
+			{ "unpause",      user_event_logger::SEV_EVT_INFORMATION },
+			{ "update",       user_event_logger::SEV_EVT_INFORMATION },
 
 			// image
-			{ "delete", sinsp_logger::SEV_EVT_INFORMATION },
-			{ "import", sinsp_logger::SEV_EVT_INFORMATION },
-			{ "pull",   sinsp_logger::SEV_EVT_INFORMATION },
-			{ "push",   sinsp_logger::SEV_EVT_INFORMATION },
-			{ "tag",    sinsp_logger::SEV_EVT_INFORMATION },
-			{ "untag",  sinsp_logger::SEV_EVT_INFORMATION },
+			{ "delete",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "import",       user_event_logger::SEV_EVT_INFORMATION },
+			{ "pull",         user_event_logger::SEV_EVT_INFORMATION },
+			{ "push",         user_event_logger::SEV_EVT_INFORMATION },
+			{ "tag",          user_event_logger::SEV_EVT_INFORMATION },
+			{ "untag",        user_event_logger::SEV_EVT_INFORMATION },
 
 			// volume
-			{ "mount",   sinsp_logger::SEV_EVT_INFORMATION },
-			{ "unmount", sinsp_logger::SEV_EVT_INFORMATION },
+			{ "mount",        user_event_logger::SEV_EVT_INFORMATION },
+			{ "unmount",      user_event_logger::SEV_EVT_INFORMATION },
 
 			// network
-			{ "connect",    sinsp_logger::SEV_EVT_INFORMATION },
-			{ "disconnect", sinsp_logger::SEV_EVT_INFORMATION }
+			{ "connect",      user_event_logger::SEV_EVT_INFORMATION },
+			{ "disconnect",   user_event_logger::SEV_EVT_INFORMATION }
 		},
 		m_name_translation
 		{
@@ -276,13 +277,13 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 	if(it == m_severity_map.end())
 	{
 		g_logger.log("No configured severity for docker event \"" + status + "\". Assuming SEV_EVT_INFORMATION", sinsp_logger::SEV_DEBUG);
-		severity = sinsp_logger::SEV_EVT_INFORMATION;
+		severity = user_event_logger::SEV_EVT_INFORMATION;
 	}
 	else
 	{
 		severity = it->second;
 	}
-	g_logger.log("Docker EVENT: severity for " + status + '=' + std::to_string(severity - sinsp_logger::SEV_EVT_MIN), sinsp_logger::SEV_DEBUG);
+	g_logger.log("Docker EVENT: severity for " + status + '=' + std::to_string(severity), sinsp_logger::SEV_DEBUG);
 	uint64_t epoch_time_s = static_cast<uint64_t>(~0);
 	Json::Value t = root["time"];
 	if(!t.isNull() && t.isConvertibleTo(Json::uintValue))
@@ -391,7 +392,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 			//
 			// This is where the event is sent to the backend
 			//
-			g_logger.log(evt, severity);
+			user_event_logger::log(evt, severity);
 
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 			{
@@ -411,7 +412,7 @@ void docker::emit_event(Json::Value& root, std::string type, std::string status,
 	//
 	// This is where the event is sent to the memdumper
 	//
-	g_logger.log(std::move(evt), (severity_t)sinsp_logger::SEV_EVT_MDUMP);
+	memdump_logger::log("docker", evt);
 }
 
 void docker::handle_event(Json::Value&& root)
