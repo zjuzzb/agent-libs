@@ -477,6 +477,7 @@ protected:
 	atomic<bool> m_done;
 };
 
+static std::vector<task_defs_t> no_tasks;
 static std::vector<task_defs_t> one_task = {{"PT1H", 1, "my-task-1", "test-module", "1", "0"}};
 static std::vector<task_defs_t> frequent_task = {{"PT10S", 1, "my-task-1", "test-module", "1", "0"}};
 static std::vector<task_defs_t> task_slow = {{"PT1H", 1, "my-task-1", "test-module", "1", "5"}};
@@ -554,6 +555,25 @@ TEST_F(compliance_test, multiple_start)
 	verify_metric(one_task_alt_output[0]);
 
 	stop_tasks();
+}
+
+TEST_F(compliance_test, multiple_start_empty_calendar)
+{
+	start_tasks(one_task);
+	verify_task_result(one_task[0]);
+	verify_metric(one_task[0]);
+	clear_results();
+
+	start_tasks(no_tasks);
+
+	for(uint32_t i=0; i < 30; i++)
+	{
+		Poco::Thread::sleep(100);
+
+		m_compliance_mgr->check_tasks();
+	}
+
+	ASSERT_TRUE(m_results.size() == 0);
 }
 
 TEST_F(compliance_test, start_after_stop)

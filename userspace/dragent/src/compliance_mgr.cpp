@@ -162,17 +162,22 @@ void compliance_mgr::refresh_compliance_tasks()
 		return;
 	}
 
+	// If here, the set of tasks differ. Stop any existing tasks.
+	stop_compliance_tasks();
+
 	m_cur_compliance_tasks = new_tasks;
 
-	start_compliance_tasks(start);
+	g_log->debug("New compliance tasks size " + to_string(new_tasks.size()));
+
+	if(new_tasks.size() > 0)
+	{
+		start_compliance_tasks(start);
+	}
 }
 
 void compliance_mgr::start_compliance_tasks(sdc_internal::comp_start &start)
 {
 	g_log->debug("Starting compliance tasks: " + start.DebugString());
-
-	// Stop any existing tasks.
-	stop_compliance_tasks();
 
 	// Start a thread that does the RPC and writes to the queue
 	auto work = [](std::shared_ptr<grpc::Channel> chan,
