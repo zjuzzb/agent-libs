@@ -819,7 +819,7 @@ void dragent_configuration::init()
 	m_watchdog_heap_profiling_interval_s = m_config->get_scalar<decltype(m_watchdog_heap_profiling_interval_s)>("watchdog", "heap_profiling_interval_s", 0);
 #endif
 	// Right now these two entries do not support merging between defaults and specified on config file
-	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<ProcessValue64Map>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 256U}});
+	m_watchdog_max_memory_usage_subprocesses_mb = m_config->get_scalar<ProcessValue64Map>("watchdog", "max_memory_usage_subprocesses", {{"sdchecks", 128U }, {"sdjagent", 256U}, {"mountedfs_reader", 32U}, {"statsite_forwarder", 32U}, {"cointerface", 1024U}});
 	m_watchdog_subprocesses_timeout_s = m_config->get_scalar<ProcessValue64Map>("watchdog", "subprocesses_timeout_s",
 		{
 			{"sdchecks", 60U /* This should match the default timeout in sdchecks.py */ },
