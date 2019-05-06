@@ -205,7 +205,7 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 			std::ifstream mountinfo(filename);
 			if(!mountinfo)
 			{
-				throw sinsp_exception(std::string("error opening ") + filename);
+				throw sinsp_exception(std::string("error opening ") + filename + ": " + strerror(errno));
 			}
 
 			auto devices = read_mountinfo(mountinfo);
@@ -223,7 +223,7 @@ int mounted_fs_reader::handle_mounted_fs_request(const char* root_dir, int home_
 		}
 		catch (const sinsp_exception& ex)
 		{
-			g_logger.format(sinsp_logger::SEV_WARNING, "Exception for container=%s pid=%d: %s, vpid=%d", container_proto.id().c_str(), container_proto.pid(), ex.what(), container_proto.vpid());
+			g_logger.format(sinsp_logger::SEV_DEBUG, "Exception for container=%s pid=%d, vpid=%d: %s", container_proto.id().c_str(), container_proto.pid(), container_proto.vpid(), ex.what());
 		}
 		// Back home
 		if(setns(home_fd, CLONE_NEWNS) != 0)

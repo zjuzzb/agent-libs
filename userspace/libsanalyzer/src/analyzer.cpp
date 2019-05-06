@@ -2417,6 +2417,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 							(*long_running_proc)->m_ainfo->m_root_refreshed = true;
 							(*long_running_proc)->m_root = m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
 						}
+						g_logger.format(sinsp_logger::SEV_DEBUG, "[mountedfs_reader] picked process %s (tid=%ld/%ld) for container %s (tinfo->container_id=%s)",
+								(*long_running_proc)->get_comm().c_str(),
+								(*long_running_proc)->m_tid,
+								(*long_running_proc)->m_vtid,
+								it->first.c_str(),
+								(*long_running_proc)->m_container_id.c_str());
 						containers_for_mounted_fs.push_back(*long_running_proc);
 					}
 				}
