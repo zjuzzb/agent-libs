@@ -21,6 +21,28 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <poll.h>
+#include <unordered_map>
+#include <chrono>
+
+using msecs = std::chrono::milliseconds;
+
+bool fake_collector::should_connect(int fd)
+{
+	auto start_time = wait_list.find(fd);
+
+	if(start_time == wait_list.end())
+	{
+		wait_list.insert({fd, std::chrono::system_clock::now()});
+		return false;
+	}
+	msecs m = std::chrono::duration_cast<msecs>(std::chrono::system_clock::now() - start_time->second);
+	if(m >= m_delayed_connection)
+	{
+		wait_list.erase(fd);
+		return true;
+	}
+	return false;
+}
 
 bool fake_collector::start(uint16_t port)
 {
@@ -129,6 +151,11 @@ bool fake_collector::start(uint16_t port)
 				// We have an incoming connection. Accept it, build a new socket, and add it to the list
 				if(fds[fd].fd == sock_fd)
 				{
+					if(!should_connect(fds[fd].fd))
+					{
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
+						continue;
+					}
 					agent_fd = accept(sock_fd, (struct sockaddr *)&addr, &addr_len);
 					if(agent_fd < 0)
 					{

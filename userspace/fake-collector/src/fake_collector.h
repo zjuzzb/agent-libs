@@ -4,7 +4,8 @@
 #include <queue>
 #include <string>
 #include <stdexcept>
-
+#include <chrono>
+#include <unordered_map>
 
 /**
  * Unit test mock which interfaces with the connection manager.
@@ -106,6 +107,16 @@ public:
 		return m_status;
 	}
 
+	/**
+	 * Sets an artifical delay in accepting the connection.
+	 *
+	 * @param delay   The delay before a connection is accepted.
+	 */
+	void set_connection_delay(std::chrono::milliseconds delay)
+	{
+		m_delayed_connection = delay;
+	}
+
 private:
 	const uint32_t MAX_STORED_DATAGRAMS = 32;
 	std::queue<buf> m_received_data;
@@ -116,6 +127,9 @@ private:
 	bool m_run_server; // Control variable
 
 	uint16_t m_port;   // The port the server is listening on
+
+	std::chrono::milliseconds m_delayed_connection; // Length of time to delay the connection
+	std::unordered_map<int, std::chrono::system_clock::time_point> wait_list; // Internal tracking of connect delays
 
 	/**
 	 * Reads one from the given file descriptor
@@ -128,4 +142,11 @@ private:
 	 */
 	uint32_t read_one_message(int fd, char* buffer, uint32_t buf_len);
 
+	/**
+	 * In the case of a connect delay, should the server accept a connection.
+	 *
+	 * @param fd  The file descriptor for the socket
+	 * @return  Whether the connection delay has passed
+	 */
+	bool should_connect(int fd);
 };
