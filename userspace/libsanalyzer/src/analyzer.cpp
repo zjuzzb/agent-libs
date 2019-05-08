@@ -6665,8 +6665,6 @@ void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted
 
 	auto rc = container_buffer->mutable_resource_counters();
 
-	const auto containers_info = m_inspector->m_container_manager.get_containers();
-
 	// the metrics need a couple of denominators that are maintained across calls.
 	// this is a bit ugly...
 	uint64_t opaque_denominator_a = 0;
@@ -6677,12 +6675,7 @@ void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted
 	for (const auto& container_name : unemitted_containers)
 	{
 		count++;
-		const auto& container_it = containers_info->find(container_name);
-		if (container_it == containers_info->end())
-		{
-			continue;
-		}
-		const auto& sinsp_container_data = container_it->second;
+		const auto& sinsp_container_data = m_inspector->m_container_manager.get_containers()->find(container_name)->second;
 		auto& analyzer_container_data = m_containers.find(sinsp_container_data.m_id)->second;
 
 
