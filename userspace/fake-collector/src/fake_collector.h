@@ -41,7 +41,8 @@ public:
 		m_error_code(0),
 		m_error_msg(""),
 		m_run_server(false),
-		m_port(0)
+		m_port(0),
+		m_delayed_connection(0)
 	{}
 
 	/**
