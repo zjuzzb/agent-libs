@@ -155,7 +155,7 @@ TEST(connection_manager_test, DISABLED_connection_timeout)
 	t.join();
 }
 
-TEST(connection_manager_test, connect_transmit)
+TEST(connection_manager_test, DISABLED_connect_transmit)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
