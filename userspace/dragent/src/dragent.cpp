@@ -70,7 +70,7 @@ static void g_usr2_signal_callback(int sig)
 	dragent_configuration::m_send_log_report = true;
 }
 
-static void g_winch_signal_callback(int sig)
+static void g_trace_signal_callback(int sig)
 {
 	dragent_configuration::m_enable_trace = true;
 }
@@ -364,6 +364,12 @@ int dragent_app::main(const std::vector<std::string>& args)
 	sigaddset(&sigs, SIGPIPE);
 	sigprocmask(SIG_UNBLOCK, &sigs, NULL);
 
+	// Ignore SIGSTKFLT. It's used to enable tracing (sent from watchdog to sinsp_worker)
+	// but the default action is to kill the process. Ignore this signal before setting
+	// a handler in sinsp_worker so that `killall -STKFLT dragent` can be used for testing
+	// and for manually enabling tracing
+	signal(SIGSTKFLT, SIG_IGN);
+
 #ifndef CYGWING_AGENT
 	if(m_unshare_ipcns && unshare(CLONE_NEWIPC) < 0)
 	{
@@ -404,8 +410,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 		sigaction(SIGUSR1, &sa, NULL);
 		sa.sa_handler = g_usr2_signal_callback;
 		sigaction(SIGUSR2, &sa, NULL);
-		sa.sa_handler = g_winch_signal_callback;
-		sigaction(SIGWINCH, &sa, NULL);
+		sa.sa_handler = g_trace_signal_callback;
+		sigaction(SIGSTKFLT, &sa, NULL);
 
 		if(crash_handler::initialize() == false)
 		{
@@ -875,7 +881,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_debug_timeout_s,
 			"sinsp_worker", ", enabling tracing"))
 		{
-			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGWINCH);
+			pthread_kill(m_sinsp_worker.get_pthread_id(), SIGSTKFLT);
 		}
 
 		if(timeout_expired(diff_ns, m_configuration.m_watchdog_sinsp_worker_timeout_s,
