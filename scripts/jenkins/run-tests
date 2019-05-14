@@ -17,22 +17,40 @@ set +e
 unshare -m /bin/bash -c "$SETUP_CMD && cd /opt/draios/test && ./tests $@" 2>&1 | tee $TESTS_LOG
 set -e
 
+# Check for the indication that all tests were successful. This helps if there
+# is a seg fault or some other reason the test did not finish running.
+AT_LEAST_ONE_TEST_PASSED=$(grep -F "[  PASSED  ]" $TESTS_LOG)
+# Get a list of all tests that failed.
 FAILED_TESTS=$(awk '/ FAILED / && test_list==1 { print $4 } / FAILED.*listed below:/ { test_list=1 }' < $TESTS_LOG | tr \\n :)
 rm -f $TESTS_LOG
+
+if [ -z "$AT_LEAST_ONE_TEST_PASSED" ]
+then
+    echo "Test did not finish executing"
+    exit 1
+fi
 
 if [ -n "$FAILED_TESTS" ]
 then
 	echo "Some tests failed... restarting"
 	TESTS_LOG=`mktemp /tmp/tests.log.XXXXXX`
 	unshare -m /bin/bash -c "$SETUP_CMD && cd /opt/draios/test && ./tests --gtest_filter=$FAILED_TESTS" 2>&1 | tee $TESTS_LOG
+	AT_LEAST_ONE_TEST_PASSED=$(grep -F "[  PASSED  ]" $TESTS_LOG)
 	FAILED_TESTS=$(awk '/ FAILED / && test_list==1 { print $4 } / FAILED.*listed below:/ { test_list=1 }' < $TESTS_LOG | tr \\n :)
 	rm -f $TESTS_LOG
 
+	if [ -z "$AT_LEAST_ONE_TEST_PASSED" ]
+	then
+		echo "Tests did not finish executing on rerun, returning failure"
+		exit 1
+	fi
+
 	if [ -n "$FAILED_TESTS" ]
 	then
-		echo "Tests failed again, returning failure"
+		echo "At least one test failed twice, returning failure"
 		exit 1
 	fi
 fi
 
+echo "Tests passed"
 exit 0

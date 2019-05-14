@@ -1026,7 +1026,7 @@ TEST_F(security_policies_test, falco_no_evttype)
 	check_expected_internal_metrics(metrics);
 };
 
-TEST_F(security_policies_test, falco_fqdn)
+TEST_F(security_policies_test, DISABLED_falco_fqdn)
 {
 	ASSERT_EQ(system("echo 'ping' | timeout 2 nc github.com 80 > /dev/null 2>&1"), 0);
 

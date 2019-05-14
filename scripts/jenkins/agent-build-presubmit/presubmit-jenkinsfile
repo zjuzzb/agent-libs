@@ -16,7 +16,7 @@ pipeline {
 			steps {
 				// First set the statuses on github
 				setBuildStatus('Build and Unit Test', 'Building all targets and running unit tests', 'PENDING')
-				setBuildStatus('System Test', 'Installing probe and running system tests', 'PENDING')
+				setBuildStatus('System Test', 'Waiting for build to finish', 'PENDING')
 
 				dir('agent') {
 					checkout scm
