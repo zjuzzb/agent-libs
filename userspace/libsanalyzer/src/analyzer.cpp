@@ -4639,27 +4639,30 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 #ifndef CYGWING_AGENT
 			m_host_req_metrics.to_reqprotobuf(m_metrics->mutable_hostinfo()->mutable_reqcounters(), m_sampling_ratio);
 #endif// CYGWING_AGENT
-
 			auto external_io_net = m_metrics->mutable_hostinfo()->mutable_external_io_net();
 			m_io_net.to_protobuf(external_io_net, 1, m_sampling_ratio);
 
-			// We decided to patch host network metrics using data from /proc, because using only
-			// sysdig metrics we miss kernel threads activity
-			// In this case, sampling_ratio is not evaluated
-			auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
-			if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
+			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
-				g_logger.format(sinsp_logger::SEV_DEBUG,
-						"Patching host external networking, from (%u, %u) to (%u, %u)",
-						m_io_net.m_bytes_in, m_io_net.m_bytes_out,
-						interfaces_stats.first, interfaces_stats.second);
-				// protobuf uint32 is converted to int in java. It means that numbers higher than int max
-				// are translated into negative ones. This is a problem specifically when agent loses samples
-				// and here we send current value - prev read value. It can be very high
-				// so at this point let's patch it to avoid the overflow
-				static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int32_t>::max());
-				external_io_net->set_bytes_in(std::min(interfaces_stats.first, max_int32));
-				external_io_net->set_bytes_out(std::min(interfaces_stats.second, max_int32));
+
+				// We decided to patch host network metrics using data from /proc, because using only
+				// sysdig metrics we miss kernel threads activity
+				// In this case, sampling_ratio is not evaluated
+				auto interfaces_stats = m_procfs_parser->read_network_interfaces_stats();
+				if(interfaces_stats.first > 0 || interfaces_stats.second > 0)
+				{
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+							"Patching host external networking, from (%u, %u) to (%u, %u)",
+							m_io_net.m_bytes_in, m_io_net.m_bytes_out,
+							interfaces_stats.first, interfaces_stats.second);
+					// protobuf uint32 is converted to int in java. It means that numbers higher than int max
+					// are translated into negative ones. This is a problem specifically when agent loses samples
+					// and here we send current value - prev read value. It can be very high
+					// so at this point let's patch it to avoid the overflow
+					static const auto max_int32 = static_cast<uint32_t>(std::numeric_limits<int32_t>::max());
+					external_io_net->set_bytes_in(std::min(interfaces_stats.first, max_int32));
+					external_io_net->set_bytes_out(std::min(interfaces_stats.second, max_int32));
+				}
 			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
