@@ -124,9 +124,9 @@ private:
     int64_t read_cgroup_used_memory_vmrss(const string &container_memory_cgroup);
     double read_cgroup_used_cpuacct_cpu_time(const string &container_memory_cgroup, string& last_cpuacct_cgroup, int64_t *last_cpu_time);
 
-	uint32_t m_ncpus;
-	int64_t m_physical_memory_kb;
-	bool m_is_live_capture;
+	uint32_t m_ncpus = 0;
+	int64_t m_physical_memory_kb = 0;
+	bool m_is_live_capture = false;
 
 	uint64_t m_last_in_bytes;
 	uint64_t m_last_out_bytes;

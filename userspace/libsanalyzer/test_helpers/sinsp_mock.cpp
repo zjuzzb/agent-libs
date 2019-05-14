@@ -10,6 +10,8 @@ sinsp_mock::sinsp_mock() :
 	sinsp(),
 	m_network_interfaces(this)
 {
+	m_scap_stats = {};
+
 	m_mock_machine_info.num_cpus = 4;
 	m_mock_machine_info.memory_size_bytes = 64ULL * 1024ULL * 1024ULL * 1024ULL; /*64GB*/
 	m_mock_machine_info.max_pid = 0x1FFFFFFFFFFFFFFF;
@@ -40,6 +42,7 @@ void sinsp_mock::commit_event(const sinsp_evt_wrapper::ptr& event, unsigned int 
 
 void sinsp_mock::open(uint32_t timeout_ms) /*override*/
 {
+	set_mode(SCAP_MODE_LIVE);
 	inject_machine_info(&m_mock_machine_info);
 	sinsp_network_interfaces *interfaces = new sinsp_network_interfaces(this);
 	*interfaces = m_network_interfaces;
@@ -69,6 +72,7 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 	*evt = element.event->get();
 	--element.count;
 	++m_scap_stats.n_evts;
+	(*evt)->m_evtnum = m_scap_stats.n_evts;
 
 	if(!get_thread(element.event->tid(), false /*do not query os*/, true /*lookup only*/))
 	{
@@ -80,6 +84,7 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 		// For our (current) purposes, the tid and the pid always match.
 		// This means that this is the main thread of a process.
 		tinfo->m_pid = tinfo->m_tid;
+		tinfo->m_uid = DEFAULT_UID;
 		add_thread(tinfo);
 	}
 
@@ -103,7 +108,7 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 }
 
 
-void sinsp_mock::get_capture_stats(scap_stats *stats)
+void sinsp_mock::get_capture_stats(scap_stats *stats) /*override*/
 {
 	*stats = m_scap_stats;
 }

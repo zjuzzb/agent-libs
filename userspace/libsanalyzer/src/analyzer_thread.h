@@ -227,7 +227,7 @@ public:
 	// The metrics for transaction coming from the external world
 	sinsp_transaction_counters m_external_transaction_metrics; 
 	// Process-specific information
-	sinsp_procinfo* m_procinfo;
+	sinsp_procinfo* m_procinfo = nullptr;
 	// The ratio between the number of connections waiting to be served and 
 	// the total connection queue length for this process.
 	uint32_t m_connection_queue_usage_pct;

@@ -8,7 +8,7 @@
 
 using namespace test_helpers;
 
-TEST(analyzer_test, DISABLED_end_to_end_basic)
+TEST(analyzer_test, end_to_end_basic)
 {
 	sinsp_mock inspector;
 	// Make some fake events

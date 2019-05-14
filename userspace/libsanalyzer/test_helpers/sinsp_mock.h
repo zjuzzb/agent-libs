@@ -16,6 +16,8 @@ namespace test_helpers {
 class sinsp_mock : public sinsp
 {
 public:
+	const static uint32_t DEFAULT_UID = 22;
+
 	sinsp_mock();
 	~sinsp_mock() override;
 
@@ -48,6 +50,7 @@ private:
 
 	// implement sinsp
 	void get_capture_stats(scap_stats *stats) override;
+	int /*SCAP_X*/ dynamic_snaplen(bool value) override { return SCAP_SUCCESS; }
 };
 
 }

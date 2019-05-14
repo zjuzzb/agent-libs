@@ -72,13 +72,13 @@ else()
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		add_custom_target(run-unit-test-dragent
 			DEPENDS unit-test-dragent
-			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-dragent
-			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-dragent --gtest_filter="-spinlock_test.*"
+			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
+			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-dragent --gtest_filter="-spinlock_test.*"
 		)
 	else()
 		add_custom_target(run-unit-test-dragent
 			DEPENDS unit-test-dragent
-			COMMAND valgrind --error-exitcode=1 --soname-synonyms=somalloc=tcmalloc --gen-suppressions=all ./unit-test-dragent
+			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
 		)
 	endif()
 endif()

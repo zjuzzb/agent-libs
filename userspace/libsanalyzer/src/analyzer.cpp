@@ -88,11 +88,11 @@ using namespace google::protobuf::io;
 #include "container_emitter.h"
 #include "tap.h"
 #include "user_event_logger.h"
+#include "utils/profiler.h"
 
 using namespace libsanalyzer;
 
 typedef container_emitter<sinsp_analyzer, sinsp_analyzer::flush_flags> analyzer_container_emitter;
-#include <gperftools/profiler.h>
 
 namespace
 {
@@ -232,7 +232,7 @@ sinsp_analyzer::~sinsp_analyzer()
 {
 	if(m_configuration->get_dragent_cpu_profile_enabled())
 	{
-		ProfilerStop();
+		utils::profiler::stop();
 	}
 
 	delete m_metrics;
@@ -409,7 +409,7 @@ void sinsp_analyzer::on_capture_start()
 	//
 	if(m_inspector->is_live())
 	{
-		if(scap_enable_dynamic_snaplen(m_inspector->m_h) != SCAP_SUCCESS)
+		if(m_inspector->dynamic_snaplen(true) != SCAP_SUCCESS)
 		{
 			const std::string err = scap_getlasterr(m_inspector->m_h);
 			g_logger.log("analyzer: " + err, sinsp_logger::SEV_ERROR);
@@ -4045,7 +4045,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	m_cputime_analyzer.begin_flush();
 	//g_logger.format(sinsp_logger::SEV_TRACE, "Called flush with ts=%lu is_eof=%s flushflags=%d", ts, is_eof? "true" : "false", flushflags);
 	uint32_t j;
-	uint64_t nevts_in_last_sample;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
 
 	//
@@ -4062,28 +4061,18 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		{
 			m_trace_started = true;
 			std::string filename = m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
-			ProfilerStart(filename.c_str());
+			utils::profiler::start(filename);
 			m_last_profile_flush_ns = flush_start_ns;
 		}
 		if ((flush_start_ns - m_last_profile_flush_ns) / 1000000000 > m_configuration->get_dragent_profile_time_seconds())
 		{
-			ProfilerStop();
+			utils::profiler::stop();
 			m_trace_count++;
 			m_trace_count %= m_configuration->get_dragent_total_profiles();
 			std::string filename = m_configuration->get_log_dir() + "/drcpu.prof." + to_string(m_trace_count);
-			ProfilerStart(filename.c_str());
+			utils::profiler::start(filename.c_str());
 			m_last_profile_flush_ns = flush_start_ns;
 		}
-	}
-
-
-	if(evt != NULL)
-	{
-		nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
-	}
-	else
-	{
-		nevts_in_last_sample = 0;
 	}
 
 	if(flushflags == DF_FORCE_NOFLUSH)
@@ -4848,6 +4837,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	{
 		if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
+			const uint64_t nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
 			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", nevts_in_last_sample);
 		}
 
@@ -5143,8 +5133,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flushflags)
 
 		if(do_flush)
 		{
-			//g_logger.log("Executing flush (do_flush=true)", sinsp_logger::SEV_INFO);
-			flush(evt, ts, false, flushflags);
+			flush(evt, ts, false /*not eof*/, flushflags);
 		}
 	}
 

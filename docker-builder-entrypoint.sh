@@ -128,21 +128,23 @@ build_sysdig()
 	docker build -t $SYSDIG_IMAGE -f $DOCKERFILE --pull .
 }
 
+# $1 is release/debug
+# $2 is filename
 build_single_cpp()
 {
 	# We're searching through Makefiles for the filename followed by a .o
 	# extension and a colon: "dragent.cpp.o:"
 	# Note that sometimes this can be in a folder.
 
-	# Find all Makefiles having a "$1.o" target
+	# Find all Makefiles having a "$2.o" target
 	# -F -- simple string match, not a regex
 	# -r -- recurse down directories
 	# -l -- output file names only
 	# -w -- whole word matching
-	grep -Frlw --include Makefile "$1.o:" /code/agent/build/release | while read makefilePath
+	grep -Frlw --include Makefile "$2.o:" /code/agent/build/$1 | while read makefilePath
 	do
 		# Get the full text of the target, including any directories
-		target="$(grep -Fw $1.o: $makefilePath)"
+		target="$(grep -Fw $2.o: $makefilePath)"
 		# Remove the colon
 		target=${target%?}
 
@@ -151,6 +153,28 @@ build_single_cpp()
 		echo "building $target in $builddir"
 		make -C $builddir $target
 	done
+}
+
+# $1 is release/debug
+# $2 is first argument
+# $3 is second argument
+build_target()
+{
+    if [ -z "$2" ]; then
+	    # There is no second argument so just call make all
+	    BUILD_FOR_TEST=ON bootstrap_agent $1
+	    make -j$MAKE_JOBS all
+    else
+	    if [ ${2: -4} == ".cpp" ]; then
+		    # This is a cpp file, so just build that file
+		    build_single_cpp $1 $2
+	    else
+		    # Make a specific target
+		    BUILD_FOR_TEST=ON bootstrap_agent $1
+		    make -j$MAKE_JOBS $2 $3
+	    fi
+    fi
+
 }
 
 #
@@ -209,20 +233,13 @@ case "$1" in
 		build_presubmit
 		;;
 	make)
-		if [ -z "$2" ]; then
-			# There is no second argument so just call make.
-			BUILD_FOR_TEST=ON bootstrap_agent
-			make -j$MAKE_JOBS
-		else
-			if [ ${2: -4} == ".cpp" ]; then
-				# This is a cpp file, so just build that file
-				build_single_cpp $2
-			else
-				# Make a specific target
-				BUILD_FOR_TEST=ON bootstrap_agent
-				make -j$MAKE_JOBS $2 $3
-			fi
-		fi
+		# fall through
+		;&
+	make-release)
+		build_target "release" $2 $3
+		;;
+	make-debug)
+		build_target "debug" $2 $3
 		;;
 
 	# Catch "help", no arguments, or invalid arguments

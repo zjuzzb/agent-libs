@@ -29,3 +29,13 @@
    fun:_ZN8tcmalloc15CentralFreeList14ReleaseToSpansEPv
    ...
 }
+
+{
+   protobuf_metric_serializer_atomic_store
+   Helgrind:Race
+   fun:store
+   fun:operator=
+   fun:operator=
+   fun:_ZN12libsanalyzer26protobuf_metric_serializerD1Ev
+   ...
+}

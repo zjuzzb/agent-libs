@@ -7,7 +7,9 @@
 
 sinsp_configuration::sinsp_configuration():
 	m_tracepoint_hits_threshold(N_TRACEPOINT_HITS_THRESHOLD, SWITCHER_NSECONDS),
-	m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS)
+	m_cpu_max_sr_threshold(CPU_MAX_SR_THRESHOLD, SWITCHER_NSECONDS),
+	m_procfs_scan_interval_ms(0),
+	m_procfs_scan_mem_interval_ms(0)
 {
 	set_connection_timeout_in_sec(DEFAULT_CONNECTION_TIMEOUT_SEC);
 	m_connection_pruning_interval_ns = 30 * ONE_SECOND_IN_NS;

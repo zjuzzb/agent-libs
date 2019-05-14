@@ -114,7 +114,7 @@ thread_analyzer_info::thread_analyzer_info()
 thread_analyzer_info::~thread_analyzer_info()
 {
 	delete m_procinfo;
-	m_procinfo = NULL;
+	m_procinfo = nullptr;
 	m_listening_ports.reset();
 }
 
@@ -163,7 +163,7 @@ void thread_analyzer_info::init(sinsp *inspector, sinsp_threadinfo* tinfo)
 
 const sinsp_counters* thread_analyzer_info::get_metrics()
 {
-	return (const sinsp_counters*)&m_metrics;
+	return &m_metrics;
 }
 
 void thread_analyzer_info::allocate_procinfo_if_not_present()

@@ -293,14 +293,16 @@ list(APPEND sanalyzer_common_link_libraries
 	anl)
 
 list(APPEND sanalyzer_linux_link_libraries
-		${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a
 		${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/build/lib_release/libtbb.a)
+
+list(APPEND sanalyzer_linux_production_libs
+		${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a)
 
 # Create the production library
 add_library(sanalyzer STATIC ${SANALYZER_SOURCES})
 add_dependencies(sanalyzer draiosproto)
 if(NOT CYGWIN)
-	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries} ${sanalyzer_linux_link_libraries})
+	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries} ${sanalyzer_linux_link_libraries} ${sanalyzer_linux_production_libs})
 else()
 	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries})
 endif()
