@@ -913,6 +913,7 @@ void dragent_configuration::init()
 	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
+	m_prom_conf.set_host_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "remote_services"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
 
 	// custom container engines

@@ -447,17 +447,23 @@ def prepare_prom_check(pc, port):
     # print "port:", port
     options = pc.get("options", {})
     use_https = _is_affirmative(options.get("use_https", False))
-    host = options.get("host", "localhost")
-    path = pc.get("path", "/metrics");
-    if len(path) > 0 and path[0] != '/':
-        path = "/" + path
-    newconf = {"url": ("https" if use_https else "http") + "://" + host + ":" + str(port) + path}
+    url = options.get("url", False)
+    # Construct URL if not explicitly configured
+    if not url:
+        host = options.get("host", "localhost")
+        path = pc.get("path", "/metrics");
+        if len(path) > 0 and path[0] != '/':
+            path = "/" + path
+        url = ("https" if use_https else "http") + "://" + host + ":" + str(port) + path
+    newconf = {"url": url}
     if pc.get("max_metrics") != None:
         newconf["max_metrics"] = pc["max_metrics"]
     if pc.get("max_tags") != None:
         newconf["max_tags"] = pc["max_tags"]
     if pc.get("histograms") != None:
         newconf["histograms"] = pc["histograms"]
+    if pc.get("tags") != None:
+        newconf["tags"] = pc["tags"]
     if options.get("ssl_verify") != None:
         newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
     tocopy = ("username", "password",
@@ -471,7 +477,7 @@ def prepare_prom_check(pc, port):
         "log_errors": pc.get("log_errors", True),
         "interval": pc.get("interval", 1),
         "conf": newconf,
-        "name": "prometheus." + str(port)
+        "name": "prometheus." + str(url)
     }
     newproc = {
         "check": newcheck,
@@ -481,6 +487,22 @@ def prepare_prom_check(pc, port):
         "conf_vals": {}
     }
     return newcheck, newproc
+
+def prepare_prom_checks(promchecks):
+    checks = []
+    for pc in promchecks:
+        ports = pc.get("ports")
+        # A configured url overrides the port list
+        if pc.get("options") and pc["options"].get("url"):
+            # Just set port to 0. prepare_prom_check() will figure out the right port
+            newcheck, newproc = prepare_prom_check(pc, 0)
+        else:
+            for port in ports:
+                newcheck, newproc = prepare_prom_check(pc, port)
+
+        checks.append((newcheck, newproc))
+
+    return checks
 
 class Application:
     KNOWN_INSTANCES_CLEANUP_TIMEOUT = timedelta(minutes=10)
@@ -655,15 +677,13 @@ class Application:
         nummetrics = 0
 
         # Create app_checks for prometheus
-        for pc in promchecks:
-            for port in pc["ports"]:
-                newcheck, newproc = prepare_prom_check(pc, port)
-                pidname = (newproc["pid"],newcheck["name"])
-                ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc)
-                if ran:
-                    numrun += 1
-                nummetrics += nm
-                self.heartbeat(pid);
+        for newcheck, newproc in prepare_prom_checks(promchecks):
+            pidname = (newproc["pid"],newcheck["name"])
+            ran, nm = self.run_check(promcheck_resp, pidname, newcheck, newproc, trc)
+            if ran:
+                numrun += 1
+            nummetrics += nm
+            self.heartbeat(pid);
 
         for p in processes:
             numchecks += 1

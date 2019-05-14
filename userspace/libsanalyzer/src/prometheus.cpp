@@ -55,94 +55,198 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 
 }
 
-bool prometheus_conf::match(const sinsp_threadinfo *tinfo,
-		const sinsp_threadinfo *mtinfo, const sinsp_container_info *container,
-		const infrastructure_state &infra_state,
-		set<uint16_t> &out_ports, string &out_path, map<string, string> &out_opts) const
+bool prometheus_conf::get_rule_params(const proc_filter::filter_rule &rule,
+	const sinsp_threadinfo *tinfo, const sinsp_container_info *container,
+	const infrastructure_state &infra_state, bool use_host_filter, prom_params_t &params)
+//	set<uint16_t> &out_ports, string &out_path, map<string, string> &out_options,
+//	map<string, string> &out_tags)
 {
-	return base::match(tinfo, mtinfo, container, infra_state,
-		[&](const proc_filter::filter_rule &rule) -> bool
+	// In the process_filter only include rules (that match) get applied
+	// In the host_filter all matching rules apply
+	if (!rule.m_include && !use_host_filter) return false;
+
+	infrastructure_state::uid_t c_uid;
+	if (container) {
+		c_uid = make_pair("container", container->m_id);
+	}
+
+	set<uint16_t> start_ports;
+	if (!use_host_filter)
+	{
+		start_ports = tinfo->m_ainfo->listening_ports();
+	}
+	params.ports = start_ports;
+	if (!rule.m_config.m_port.empty())
+	{
+		params.ports.clear();
+		string pstr = rule.m_config.m_port_subst ?
+				replace_tokens(rule.m_config.m_port, container, infra_state, c_uid) :
+				rule.m_config.m_port;
+		uint16_t p = atoi(pstr.c_str());
+
+		// In the host_filter, which is used to select remote endpoints we cannot
+		// check if the port is actually listened to, so we just use it.
+		if (use_host_filter)
 		{
-			if (!rule.m_include) return false;
-
-			auto start_ports = tinfo->m_ainfo->listening_ports();
-			infrastructure_state::uid_t c_uid;
-			if (container) {
-				c_uid = make_pair("container", container->m_id);
-			}
-
-			out_ports = start_ports;
-			if (!rule.m_config.m_port.empty())
+			params.ports.emplace(p);
+		}
+		else
+		{
+			// If port is non-null we assume only that port should be
+			// scanned, so a mismatch means we don't scan.
+			// If the port is 0 (because a token couldn't be resolved
+			// or otherwise) we can still try using a port-filter.
+			if (p && (start_ports.find(p) != start_ports.end()))
 			{
-				out_ports.clear();
-				string pstr = rule.m_config.m_port_subst ?
-						replace_tokens(rule.m_config.m_port, container, infra_state, c_uid) :
-						rule.m_config.m_port;
-				uint16_t p = atoi(pstr.c_str());
-				// If port is non-null we assume only that port should be
-				// scanned, so a mismatch means we don't scan.
-				// If the port is 0 (because a token couldn't be resolved
-				// or otherwise) we can still try using a port-filter.
-				if (p && (start_ports.find(p) != start_ports.end()))
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"Prometheus autodetection: process %d defined port %d found",
-						(int)tinfo->m_pid, (int)p);
-					out_ports.emplace(p);
-				}
-				else if (p)
-				{
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"Prometheus autodetection: process %d defined port %d not found, not scanning",
-						(int)tinfo->m_pid, (int)p);
-					// port is non-null but not found -> skip scan.
-					return false;
-				}
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"Prometheus autodetection: process %d defined port %d found",
+					(int)tinfo->m_pid, (int)p);
+				params.ports.emplace(p);
 			}
-			// If we found a matching configured port we skip
-			// the port-filter
-			if (!rule.m_config.m_port_rules.empty() &&
-				(rule.m_config.m_port.empty() || out_ports.empty()))
+			else if (p)
 			{
-				out_ports = filter_ports(start_ports, rule.m_config.m_port_rules);
-			}
-			if (out_ports.empty()) {
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"Prometheus autodetection: process %d defined port %d not found, not scanning",
+					(int)tinfo->m_pid, (int)p);
+				// port is non-null but not found -> skip scan.
 				return false;
 			}
-			if (!rule.m_config.m_path.empty())
+		}
+	}
+	if (use_host_filter)
+	{
+		// For remote scraping we require at least a configured port or url
+		if (params.ports.empty() && (rule.m_config.m_options.find("url") ==
+			rule.m_config.m_options.end()) && (rule.m_config.m_options.find("urls") ==
+			rule.m_config.m_options.end()))
+		{
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"Prometheus autodetection: host_filter rule is missing url,urls or host/port config");
+			return false;
+		}
+	}
+	else
+	{
+		// If we found a matching configured port we skip
+		// the port-filter
+		if (!rule.m_config.m_port_rules.empty() &&
+			(rule.m_config.m_port.empty() || params.ports.empty()))
+		{
+			params.ports = filter_ports(start_ports, rule.m_config.m_port_rules);
+		}
+		if (params.ports.empty()) {
+			return false;
+		}
+	}
+	if (!rule.m_config.m_path.empty())
+	{
+		params.path = rule.m_config.m_path_subst ?
+				replace_tokens(rule.m_config.m_path, container, infra_state, c_uid) :
+				rule.m_config.m_path;
+	}
+	if (rule.m_config.m_options_subst && !rule.m_config.m_options.empty())
+	{
+		for (const auto &option : rule.m_config.m_options)
+		{
+			string value = replace_tokens(option.second, container, infra_state, c_uid);
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"Prometheus token subst: process %d, option %s: %s = %s",
+				(int)tinfo->m_pid, option.first.c_str(), option.second.c_str(), value.c_str());
+			if (value.empty())
 			{
-				out_path = rule.m_config.m_path_subst ?
-						replace_tokens(rule.m_config.m_path, container, infra_state, c_uid) :
-						rule.m_config.m_path;
+				// Not scanning when configured option is empty because an
+				// annotation may not be available in the hierarchy yet and we
+				// don't want the appcheck to get blacklisted prematurely
+				// Seen with user/pass coming from service annotations
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"Prometheus autodetection: process %d defined option %s is empty, not scanning",
+					(int)tinfo->m_pid, option.first.c_str());
+				return false;
 			}
-			if (rule.m_config.m_options_subst && !rule.m_config.m_options.empty())
+			params.options[option.first] = move(value);
+		}
+	}
+	else
+	{
+		params.options = rule.m_config.m_options;
+	}
+	if (rule.m_config.m_tags_subst && !rule.m_config.m_tags.empty())
+	{
+		for (const auto &tag : rule.m_config.m_tags)
+		{
+			string value = replace_tokens(tag.second, container, infra_state, c_uid);
+			g_logger.format(sinsp_logger::SEV_DEBUG,
+				"Prometheus token subst: process %d, tag %s: %s = %s",
+				(int)tinfo->m_pid, tag.first.c_str(), tag.second.c_str(), value.c_str());
+			if (value.empty())
 			{
-				for (const auto &option : rule.m_config.m_options)
-				{
-					string value = replace_tokens(option.second, container, infra_state, c_uid);
-					g_logger.format(sinsp_logger::SEV_DEBUG,
-						"Prometheus token subst: process %d, option %s: %s = %s",
-						(int)tinfo->m_pid, option.first.c_str(), option.second.c_str(), value.c_str());
-					if (value.empty())
-					{
-						// Not scanning when configured option is empty because an
-						// annotation may not be available in the hierarchy yet and we
-						// don't want the appcheck to get blacklisted prematurely
-						// Seen with user/pass coming from service annotations
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"Prometheus autodetection: process %d defined option %s is empty, not scanning",
-							(int)tinfo->m_pid, option.first.c_str(), option.second.c_str());
-						return false;
-					}
-					out_opts[option.first] = move(value);
-				}
+				// Just logging when tag is empty but still scanning
+				g_logger.format(sinsp_logger::SEV_DEBUG,
+					"Prometheus autodetection: process %d defined tag %s is empty",
+					(int)tinfo->m_pid, tag.first.c_str());
 			}
-			else
+			params.tags[tag.first] = move(value);
+		}
+	}
+	else
+	{
+		params.tags = rule.m_config.m_tags;
+	}
+	return true;
+}
+
+bool prometheus_conf::match_and_fill(const sinsp_threadinfo *tinfo,
+		sinsp_threadinfo *mtinfo, const sinsp_container_info *container,
+		const infrastructure_state &infra_state, vector<prom_process> &prom_procs,
+		bool use_host_filter) const
+{
+	if (!m_enabled)
+	{
+		return false;
+	}
+
+	int rule_num = 0;
+
+	// If use_host_filter is set, use the "remote_services" host rules and
+	// apply all matching rules.
+	// Otherwise we use the process_filter rules and stop after the first match
+	for (const auto& rule: (use_host_filter) ? m_host_rules : m_rules)
+	{
+		prom_params_t params;
+
+		std::function<bool (const proc_filter::filter_rule &rule)> on_match =
+			[&](const proc_filter::filter_rule &rule) -> bool
+			{ return get_rule_params(rule, tinfo, container, infra_state, use_host_filter, params); };
+
+		std::pair<bool, bool> matched = match_rule(rule, rule_num, tinfo, mtinfo,
+            container, infra_state, on_match);
+
+		// Did rule match
+		if (matched.first)
+		{
+			// Should rule be applied
+			if (matched.second)
 			{
-				out_opts = rule.m_config.m_options;
+				prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, params.ports, params.path, params.options, params.tags);
+				prom_procs.emplace_back(pp);
+
+				mtinfo->m_ainfo->set_found_prom_check();
 			}
-			return true;
-		});
+			// If not using host_filter return after the first match
+			if (!use_host_filter)
+			{
+				return matched.second;
+			}
+		}
+		rule_num++;
+	}
+	return false;
+}
+
+void prometheus_conf::register_annotations(std::function<void (const std::string &str)> reg)
+{
+	base::register_annotations(reg);
+	base::register_annotations(reg, &m_host_rules);
 }
 
 Json::Value prom_process::to_json(const prometheus_conf &conf) const
@@ -176,6 +280,15 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 	}
 	if (!opts.empty())
 		ret["options"] = opts;
+
+	Json::Value tags = Json::Value(Json::arrayValue);
+	for (auto tag : m_tags)
+	{
+		// Transfer tag list as array
+		tags.append(tag.first + ":" + tag.second);
+	}
+	if (!tags.empty())
+		ret["tags"] = tags;
 
 	return ret;
 }

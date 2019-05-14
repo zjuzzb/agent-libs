@@ -34,10 +34,29 @@ public:
 		m_histograms(false)
 	{}
 
-	bool match(const sinsp_threadinfo* tinfo, const sinsp_threadinfo* mtinfo,
-		const sinsp_container_info *container, const infrastructure_state &is,
-		set<uint16_t> &ports, string &path, map<string, string> &opts) const;
+	typedef struct {
+		set<uint16_t> ports;
+        string path;
+        map<string, string> options;
+        map<string, string> tags;
+	} prom_params_t;
 
+	// match_and_fill() finds if the current process matches a filtering rule and
+	// if so, adds a prom_process to prom_procs.
+	// If use_host_filter is enabled multiple rules can match resulting in multiple
+	// additions to prom_procs
+	bool match_and_fill(const sinsp_threadinfo* tinfo, sinsp_threadinfo* mtinfo,
+		const sinsp_container_info *container, const infrastructure_state &is,
+		vector<prom_process> &prom_procs, bool use_host_filter) const;
+
+private:
+	// Function to get called when a filtering rule matches in order to determine
+	// the configuration parameters for this process
+	bool get_rule_params(const proc_filter::filter_rule &rule, const sinsp_threadinfo *tinfo,
+		const sinsp_container_info *container, const infrastructure_state &infra_state,
+		bool use_host_filter, prom_params_t &out_params);
+
+public:
 	bool log_errors() const { return m_log_errors; }
 	void set_log_errors(bool val) { m_log_errors = val; }
 
@@ -57,7 +76,11 @@ public:
 
 	bool histograms() const { return m_histograms; }
 	void set_histograms(bool val) { m_histograms = val; }
+	void set_host_rules(std::vector<proc_filter::filter_rule> rules) { m_host_rules = std::move(rules); }
+    const std::vector<proc_filter::filter_rule>& host_rules() const { return m_host_rules; }
 
+	// Overloaded from the base class to include host rules
+	void register_annotations(std::function<void (const std::string &str)> reg);
 private:
 	bool m_log_errors;
 	int m_interval;
@@ -65,13 +88,14 @@ private:
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
 	bool m_histograms;
+	vector<proc_filter::filter_rule> m_host_rules;
 };
 
 class prom_process
 {
 public:
-	explicit prom_process(string name, int pid, int vpid, const set<uint16_t> &ports, string path, const map<string, string> &options) :
-		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path), m_options(options) { }
+	explicit prom_process(const string name, int pid, int vpid, const set<uint16_t> &ports, const string path, const map<string, string> &options, const map<string, string> &tags) :
+		m_name(name), m_pid(pid), m_vpid(vpid), m_ports(ports), m_path(path), m_options(options), m_tags(tags) { }
 
 	Json::Value to_json(const prometheus_conf &conf) const;
 
@@ -83,6 +107,7 @@ private:
 	set<uint16_t> m_ports;
 	string m_path;
 	map<string, string> m_options;
+	map<string, string> m_tags;
 };
 
 #endif // _WIN32

@@ -919,12 +919,13 @@ VISIBILITY_PRIVATE
 	void emit_chisel_metrics();
 	void emit_user_events();
 	void match_prom_checks(sinsp_threadinfo *tinfo,
-			       sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs);
+				sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs,
+				bool use_host_filter);
 	void match_checks_list(sinsp_threadinfo *tinfo,
-			       sinsp_threadinfo *mtinfo,
-			       const vector<app_check> &checks,
-				   vector<app_process> &app_checks_processes,
-			       const char *location);
+				sinsp_threadinfo *mtinfo,
+				const vector<app_check> &checks,
+				vector<app_process> &app_checks_processes,
+				const char *location);
 	vector<long> get_n_tracepoint_diff();
 
 	template<typename SMART_PTR_T, typename vect_t, typename... Args>

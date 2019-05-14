@@ -2021,7 +2021,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				// a rule may be specified for finding an app_checks match
 				if(!have_prometheus_metrics)
 				{
-					match_prom_checks(&tinfo, mtinfo, prom_procs);
+					match_prom_checks(&tinfo, mtinfo, prom_procs, false);
 				}
 #endif // CYGWING_AGENT
 
@@ -2893,11 +2893,23 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			m_jmx_proxy->send_get_metrics(java_process_requests);
 		}
 #ifndef CYGWING_AGENT
-		if(m_app_proxy && (!app_checks_processes.empty() || !prom_procs.empty()))
+		if(m_app_proxy)
 		{
-			// Filter out duplicate prometheus scans
-			prom_process::filter_procs(prom_procs,
-				m_inspector->m_thread_manager->m_threadtable, m_app_metrics, m_prev_flush_time_ns);
+			if(!prom_procs.empty())
+			{
+				// Filter out duplicate prometheus scans
+				prom_process::filter_procs(prom_procs,
+					m_inspector->m_thread_manager->m_threadtable, m_app_metrics, m_prev_flush_time_ns);
+			}
+			// Get our own thread info to match for prometheus host_filter
+			sinsp_threadinfo *our_tinfo = m_inspector->m_thread_manager->m_threadtable.get(getpid());
+			if(!our_tinfo) {
+				g_logger.format(sinsp_logger::SEV_WARNING, "Couldn't find threadinfo for our pid %d", getpid());
+			}
+			else
+			{
+				match_prom_checks(our_tinfo, our_tinfo->get_main_thread(), prom_procs, true);
+			}
 
 			if(!app_checks_processes.empty() || !prom_procs.empty())
 			{
@@ -6889,27 +6901,15 @@ void sinsp_analyzer::emit_user_events()
 
 #ifndef CYGWING_AGENT
 void sinsp_analyzer::match_prom_checks(sinsp_threadinfo *tinfo,
-	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs)
+	sinsp_threadinfo *mtinfo, vector<prom_process> &prom_procs, bool use_host_filter)
 {
-	// TODO: Ensure we only scan a given port only once per container
-	// It's currently possible for multiple processes (with different
-	// program hashes) to both be listening to a port.
-	// Seen with nginx master and nginx worker
 	if(!m_prom_conf.enabled() || mtinfo->m_ainfo->found_prom_check())
 		return;
 
 	const sinsp_container_info *container =
 		m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
-	set<uint16_t> ports;
-	string path;
-	map<string, string> options;
-	if(m_prom_conf.match(tinfo, mtinfo, container, *infra_state(), ports, path, options)) {
-		prom_process pp(tinfo->m_comm, tinfo->m_pid, tinfo->m_vpid, ports, path, options);
-		prom_procs.emplace_back(pp);
-
-		mtinfo->m_ainfo->set_found_prom_check();
-	}
+	m_prom_conf.match_and_fill(tinfo, mtinfo, container, *infra_state(), prom_procs, use_host_filter);
 }
 #endif
 

@@ -18,7 +18,7 @@ from sdchecks import AppCheckDontRetryException
 
 class Prometheus(AgentCheck):
 
-    DEFAULT_TIMEOUT = 5
+    DEFAULT_TIMEOUT = 1
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances)
@@ -54,8 +54,9 @@ class Prometheus(AgentCheck):
             "auth_cert_path": instance.get('auth_cert_path', False),
             "auth_key_path": instance.get('auth_key_path', False)
         }
+        conf_tags = instance.get('tags', [])
 
-        metrics = self.get_prometheus_metrics(query_url, timeout, ssl_verify, auth, "prometheus")
+        metrics = self.get_prometheus_metrics(query_url, timeout, ssl_verify, auth, "prometheus", conf_tags)
         num = 0
         try:
             for family in metrics:
@@ -112,7 +113,7 @@ class Prometheus(AgentCheck):
                                 quantile = int(float(stags['quantile']) * 100)
                                 qname = '%s.%dpercentile' % (name, quantile)
                                 # logging.debug('prom: Adding quantile gauge %s' %(qname))
-                                self.gauge(qname, value, tags)
+                                self.gauge(qname, value, tags + conf_tags)
                                 num += 1
                                 continue
     
@@ -133,9 +134,9 @@ class Prometheus(AgentCheck):
                                     logging.info('prom: Descending count for %s%s' %(name, repr(tags)))
                             if val != None and not math.isnan(val):
                                 # logging.debug('prom: Adding diff-avg %s%s = %s' %(name, repr(tags), str(val)))
-                                self.gauge(name+".avg", val, tags)
+                                self.gauge(name+".avg", val, tags + conf_tags)
 
-                            self.rate(name+".count", parse_count, tags)
+                            self.rate(name+".count", parse_count, tags + conf_tags)
                             self.metric_history[name+str(tags)] = { "sum":parse_sum, "count":parse_count }
                             # reset refs to sum and count samples in order to
                             # have them point to other segments within the same
@@ -145,12 +146,12 @@ class Prometheus(AgentCheck):
                             num += 1
                     elif (family.type == 'counter') and (not math.isnan(value)):
                         # logging.debug('prom: adding counter with name %s' %(name))
-                        self.rate(name, value, tags)
+                        self.rate(name, value, tags + conf_tags)
                         num += 1
                     elif not math.isnan(value):
                         # Could be a gauge or untyped value, which we treat as a gauge for now
                         # logging.debug('prom: adding gauge with name %s' %(name))
-                        self.gauge(name, value, tags)
+                        self.gauge(name, value, tags + conf_tags)
                         num += 1
 
                 # process the histograms and submit the buckets
@@ -175,7 +176,7 @@ class Prometheus(AgentCheck):
         except Exception as ex:
             raise AppCheckDontRetryException(ex)
 
-    def get_prometheus_metrics(self, url, timeout, ssl_verify, auth, name):
+    def get_prometheus_metrics(self, url, timeout, ssl_verify, auth, name, conf_tags):
         try:
             if auth.get("auth_token_path"):
                 with open(auth["auth_token_path"], 'r') as file:
@@ -193,20 +194,20 @@ class Prometheus(AgentCheck):
             # If there's a timeout
             self.service_check(name, AgentCheck.CRITICAL,
                 message='%s timed out after %s seconds.' % (url, timeout),
-                tags = ["url:{0}".format(url)])
+                tags = ["url:{0}".format(url)] + conf_tags)
             raise Exception("Timeout when hitting %s" % url)
 
         except requests.exceptions.HTTPError:
             self.service_check(name, AgentCheck.CRITICAL,
                 message='%s returned a status of %s' % (url, r.status_code),
-                tags = ["url:{0}".format(url)])
+                tags = ["url:{0}".format(url)] + conf_tags)
             raise AppCheckDontRetryException("Got %s when hitting %s" % (r.status_code, url))
         except (ValueError, requests.exceptions.ConnectionError) as ex:
             raise AppCheckDontRetryException(ex)
 
         else:
             self.service_check(name, AgentCheck.OK,
-                tags = ["url:{0}".format(url)])
+                tags = ["url:{0}".format(url)] + conf_tags)
 
         try:
             metrics = text_string_to_metric_families(r.text)

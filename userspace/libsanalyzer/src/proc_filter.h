@@ -72,12 +72,15 @@ struct rule_config {
 	std::vector<port_filter_rule> m_port_rules;
 	std::map<std::string,std::string> m_options;
 	bool m_options_subst;	// one or more options contain {token(s)}
+	std::map<std::string,std::string> m_tags;
+	bool m_tags_subst;		// one or more tags contain {token(s)}
 };
 
 struct filter_rule {
 	explicit filter_rule() : m_include(false) { }
 
-	bool m_include;
+	std::string m_name;
+	bool m_include;		// whether or not m_name == "include"
 	std::vector<filter_condition> m_cond;
 	rule_config m_config;
 };
@@ -98,6 +101,19 @@ public:
 	const std::vector<filter_rule>& rules() const { return m_rules; }
 
 #ifndef CYGWING_AGENT
+	// match_rule() returns a boolean pair. The first indicates if the rule matched,
+	// the second is the result of on_match(), if passed in, or m_include otherwise.
+	std::pair<bool, bool> match_rule(const filter_rule &rule, int rule_num,
+		   const sinsp_threadinfo *tinfo,
+		   const sinsp_threadinfo *mtinfo,
+	           const sinsp_container_info *container,
+		   const infrastructure_state &is,
+		   std::function<bool (const filter_rule &rule)> on_match = nullptr,
+		   bool* generic_match = NULL) const;
+
+	// match() applies match_rule() to each of the rules in m_rules, stopping after
+	// the first matching rule. It returns whether or not it matched an include rule
+	// (or the result of the called on_match() callback, if defined)
 	bool match(const sinsp_threadinfo *tinfo,
 		   const sinsp_threadinfo *mtinfo,
 	           const sinsp_container_info *container,
@@ -107,7 +123,9 @@ public:
 
 	// Calls callback function for all potential annotations
 	// Used to make sure annotations will be available in infrastructure_state
-	void register_annotations(std::function<void (const std::string &str)> reg) const;
+	// Optionally pass custom rules to search for annotations
+	void register_annotations(std::function<void (const std::string &str)> reg,
+		std::vector<filter_rule> *rules = nullptr) const;
 #endif
 
 protected:
