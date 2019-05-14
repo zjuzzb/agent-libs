@@ -31,7 +31,9 @@ pipeline {
 			steps {
 				script{
 					docker.withRegistry("https://quay.io", 'QUAY') {
-						sh('./agent/scripts/jenkins/agent-build-benchmark/compare-benchmarks')
+						dir('agent') {
+							sh('./scripts/jenkins/agent-build-benchmark/compare-benchmarks')
+						}
 					}
 				}
 			}

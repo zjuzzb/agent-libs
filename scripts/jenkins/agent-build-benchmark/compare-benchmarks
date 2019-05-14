@@ -54,11 +54,21 @@ mkdir -p $BUILD
 docker pull quay.io/sysdig/agent-builder
 docker images -q -f 'dangling=true' | xargs --no-run-if-empty docker rmi -f
 
+if [ -z "$CONTENDER" ]; then
+    echo "No contender specified or generated. Quitting."
+    exit 1
+fi
+
 # Build the $CONTENDER
 git reset --hard $CONTENDER
 
 # Build the benchmarks and copy them into $OUT/bench-contender
 docker run -i --rm -e MAKE_JOBS=$(nproc) -v $SOURCE:/draios:ro -v $OUT/bench-contender:/out -v $BUILD:/code/agent/build quay.io/sysdig/agent-builder benchmarks
+
+if [ -z "$BASELINE" ]; then
+    echo "No baseline specified or generated. Quitting."
+    exit 1
+fi
 
 # Build the BASELINE
 git reset --hard $BASELINE
@@ -161,18 +171,11 @@ if ! $RAN_AT_LEAST_ONE_BENCHMARK; then
     exit 2
 fi
 
-# Handle color
-if [ $NUM_REGRESSIONS == 0 ]; then
-    COLOR="\e[92m"
-else
-    COLOR="\e[91m"
-fi
-
 # Handle tense
 if [ $NUM_REGRESSIONS == 1 ]; then
-    echo -e "$COLOR$NUM_REGRESSIONS performance regression found! (> +$REGRESSION_THRESHOLD)"
+    echo -e "$NUM_REGRESSIONS performance regression found! (> +$REGRESSION_THRESHOLD)"
 else
-    echo -e "$COLOR$NUM_REGRESSIONS performance regressions found (> +$REGRESSION_THRESHOLD)."
+    echo -e "$NUM_REGRESSIONS performance regressions found (> +$REGRESSION_THRESHOLD)."
 fi
 
 for (( i=0; i<$NUM_REGRESSIONS; i++ )); do
