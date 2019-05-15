@@ -12,6 +12,7 @@ add_executable(unit-test-userspace-shared
 	configuration_manager.ut.cpp
 	type_config.ut.cpp
 	yaml_configuration.ut.cpp
+	filter.ut.cpp
 )
 
 target_link_libraries(unit-test-userspace-shared
