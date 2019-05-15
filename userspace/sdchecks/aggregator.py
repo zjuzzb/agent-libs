@@ -113,6 +113,31 @@ class Buckets(Gauge):
         super(Buckets, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
         self.metric_type = MetricTypes.BUCKETS
 
+class PrometheusRawCounter(Gauge):
+    def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
+        super(PrometheusRawCounter, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        self.metric_type = MetricTypes.PROMETHEUS_RAW_COUNTER
+
+class PrometheusRawGauge(Gauge):
+    def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
+        super(PrometheusRawGauge, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        self.metric_type = MetricTypes.PROMETHEUS_RAW_GAUGE
+
+class PrometheusRawHistogram(Gauge):
+    def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
+        super(PrometheusRawHistogram, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        self.metric_type = MetricTypes.PROMETHEUS_RAW_HISTOGRAM
+
+class PrometheusRawSummary(Gauge):
+    def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
+        super(PrometheusRawSummary, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        self.metric_type = MetricTypes.PROMETHEUS_RAW_SUMMARY
+
+class PrometheusRawUnknown(Gauge):
+    def __init__(self, formatter, name, tags, hostname, device_name, extra_config=None):
+        super(PrometheusRawUnknown, self).__init__(formatter, name, tags, hostname, device_name, extra_config)
+        self.metric_type = MetricTypes.PROMETHEUS_RAW_UNKNOWN
+
 class Count(Metric):
     """ A metric that tracks a count. """
 
@@ -887,6 +912,11 @@ class MetricsAggregator(Aggregator):
             's': Set,
             '_dd-r': Rate,
             'b': Buckets,
+            'pr-c': PrometheusRawCounter,
+            'pr-g': PrometheusRawGauge,
+            'pr-h': PrometheusRawHistogram,
+            'pr-s': PrometheusRawSummary,
+            'pr-u': PrometheusRawUnknown,
         }
 
     def submit_metric(self, name, value, mtype, tags=None, hostname=None,
@@ -897,9 +927,9 @@ class MetricsAggregator(Aggregator):
         hostname = hostname if hostname is not None else self.hostname
 
         if tags is None:
-            context = (name, tuple(), hostname, device_name)
+            context = (name, tuple(), hostname, device_name, mtype)
         else:
-            context = (name, tuple(sorted(set(tags))), hostname, device_name)
+            context = (name, tuple(sorted(set(tags))), hostname, device_name, mtype)
         if context not in self.metrics:
             metric_class = self.metric_type_to_class[mtype]
             self.metrics[context] = metric_class(self.formatter, name, tags,
@@ -913,6 +943,16 @@ class MetricsAggregator(Aggregator):
 
     def gauge(self, name, value, tags=None, hostname=None, device_name=None, timestamp=None):
         self.submit_metric(name, value, 'g', tags, hostname, device_name, timestamp)
+
+    def prometheus_raw(self, prometheus_type, name, value, tags=None, hostname=None, device_name=None, timestamp=None):
+        pmap = {
+            'counter': 'pr-c',
+            'gauge': 'pr-g',
+            'histogram': 'pr-h',
+            'summary': 'pr-s',
+        }
+        mtype = pmap.get(prometheus_type, 'pr-u')
+        self.submit_metric(name, value, mtype, tags, hostname, device_name, timestamp)
 
     def increment(self, name, value=1, tags=None, hostname=None, device_name=None):
         self.submit_metric(name, value, 'c', tags, hostname, device_name)

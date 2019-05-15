@@ -915,6 +915,8 @@ void dragent_configuration::init()
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
 	m_prom_conf.set_host_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "remote_services"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
+	m_prom_conf.set_ingest_raw(m_config->get_scalar<bool>("prometheus", "ingest_raw", false));
+	m_prom_conf.set_ingest_calculated(m_config->get_scalar<bool>("prometheus", "ingest_calculated", true));
 
 	// custom container engines
 	try {

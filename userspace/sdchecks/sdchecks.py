@@ -464,6 +464,10 @@ def prepare_prom_check(pc, port):
         newconf["histograms"] = pc["histograms"]
     if pc.get("tags") != None:
         newconf["tags"] = pc["tags"]
+    if pc.get("ingest_raw") != None:
+        newconf["ingest_raw"] = pc["ingest_raw"]
+    if pc.get("ingest_calculated") != None:
+        newconf["ingest_calculated"] = pc["ingest_calculated"]
     if options.get("ssl_verify") != None:
         newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
     tocopy = ("username", "password",

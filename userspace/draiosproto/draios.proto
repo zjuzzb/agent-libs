@@ -568,6 +568,18 @@ enum app_metric_type {
     APP_METRIC_TYPE_GAUGE = 1;
     APP_METRIC_TYPE_RATE = 2;
     APP_METRIC_TYPE_BUCKETS = 3;
+    APP_METRIC_TYPE_PROMETHEUS_RAW = 4;
+}
+
+enum prometheus_type {
+    PROMETHEUS_TYPE_INVALID = 0;
+    PROMETHEUS_TYPE_COUNTER = 1;
+    PROMETHEUS_TYPE_GAUGE = 2;
+    PROMETHEUS_TYPE_HISTOGRAM = 3;
+    PROMETHEUS_TYPE_SUMMARY = 4;
+    // unknown is used either for prometheus "untyped" family,
+    // or any other family type we don't recognize.
+    PROMETHEUS_TYPE_UNKNOWN = 5;
 }
 
 message app_tag {
@@ -584,13 +596,17 @@ message app_metric {
     optional string name = 1;
     optional app_metric_type type = 2;
 
-    // Valid on GAUGE and RATE
+    // Valid for gauge, rate, and the prometheus raw types
     optional double value = 3;
+    reserved 103; // used for aggregration fields in backend
+
     repeated app_tag tags = 4;
 
     // Valid for BUCKETS
     repeated app_metric_bucket buckets = 5;
-    reserved 103;
+
+    // Valid when type is APP_METRIC_TYPE_PROMETHEUS_RAW
+    optional prometheus_type prometheus_type = 6;
 }
 
 enum app_check_value {

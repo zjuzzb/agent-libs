@@ -100,3 +100,9 @@ userspace/cointerface/pkg/
 # vagrant stuff
 .vagrant
 experiments/aws-vm/cloud_images.json
+
+# clion
+cmake-build-debug
+.classpath
+.project
+.settings

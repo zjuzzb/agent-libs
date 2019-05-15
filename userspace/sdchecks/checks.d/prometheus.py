@@ -44,6 +44,9 @@ class Prometheus(AgentCheck):
             max_tags = int(max_tags)
         ret_histograms = instance.get("histograms", False)
 
+        ingest_raw = instance.get("ingest_raw", False)
+        ingest_calculated = instance.get("ingest_calculated", False)
+
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
         ssl_verify = instance.get('ssl_verify', False)
@@ -72,6 +75,22 @@ class Prometheus(AgentCheck):
                     if max_metrics and num >= max_metrics:
                         break
                     (sname, stags, value) = sample
+
+                    if ingest_raw:
+                        rawtags = ['{}:{}'.format(k,v) for k,v in stags.iteritems()]
+
+                        if max_tags != None and len(rawtags) > max_tags:
+                            logging.warn('prometheus ingest_raw: capping tags %s found %d max_tags %d' % (sname, len(rawtags), max_tags))
+                            rawtags = rawtags[:max_tags]
+
+                        self.prometheus_raw(family.type, sname, value, rawtags)
+                        num += 1
+                        if max_metrics and num >= max_metrics:
+                            break
+
+                    if not ingest_calculated:
+                        continue
+
                     # convert the dictionary of tags into a list of '<name>:<val>' items
                     # also exclude 'quantile' as a key as it isn't a tag
                     reserved_tags = []

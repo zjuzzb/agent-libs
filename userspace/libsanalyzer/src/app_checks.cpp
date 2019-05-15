@@ -455,6 +455,16 @@ unsigned app_check_data::to_protobuf(draiosproto::app_info *proto, uint16_t& lim
 	return emitted_metrics;
 }
 
+const std::unordered_map<string, std::pair<app_metric::type_t, app_metric::prometheus_type_t>> app_metric::metric_type_mapping = {
+		{"gauge",   {app_metric::type_t::GAUGE,          app_metric::prometheus_type_t::INVALID}},
+		{"rate",    {app_metric::type_t::RATE,           app_metric::prometheus_type_t::INVALID}},
+		{"buckets", {app_metric::type_t::BUCKETS,        app_metric::prometheus_type_t::INVALID}},
+		{"pr-c",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::COUNTER}},
+		{"pr-g",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::GAUGE}},
+		{"pr-h",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::HISTOGRAM}},
+		{"pr-s",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::SUMMARY}},
+		{"pr-u",    {app_metric::type_t::PROMETHEUS_RAW, app_metric::prometheus_type_t::UNKNOWN}},
+};
 
 app_metric::app_metric(const Json::Value &obj):
 	m_name(obj[0].asString()),
@@ -464,22 +474,23 @@ app_metric::app_metric(const Json::Value &obj):
 	if(metadata.isMember("type"))
 	{
 		auto type = metadata["type"].asString();
-		if(type == "gauge")
-		{
-			m_type = type_t::GAUGE;
-			m_value = obj[2].asDouble();
-		}
-		else if(type == "rate")
-		{
-			m_type = type_t::RATE;
-			m_value = obj[2].asDouble();
-		} else if (type == "buckets") {
-			m_type = type_t::BUCKETS;
-			// obj[2] is a map of <label, count>
-			const auto &buckets(obj[2]);
-			const auto labels = buckets.getMemberNames();
-			for (auto &l: labels) {
-				m_buckets.emplace(l, buckets[l].asUInt64());
+		auto iter(metric_type_mapping.find(type));
+		if (iter != metric_type_mapping.end()) {
+			m_type = iter->second.first;
+
+			if (m_type == type_t::PROMETHEUS_RAW) {
+				m_prometheus_type = iter->second.second;
+			}
+
+			if (m_type != type_t::BUCKETS) {
+				m_value = obj[2].asDouble();
+			} else {
+				// obj[2] is a map of <label, count>
+				const auto &buckets(obj[2]);
+				const auto labels = buckets.getMemberNames();
+				for (auto &l: labels) {
+					m_buckets.emplace(l, buckets[l].asUInt64());
+				}
 			}
 		} else {
 			g_logger.format(sinsp_logger::SEV_ERROR, "[app_check] unknown metric type: %s",
@@ -487,6 +498,7 @@ app_metric::app_metric(const Json::Value &obj):
 			m_value = obj[2].asDouble();
 		}
 	}
+
 	if(metadata.isMember("tags"))
 	{
 		for(const auto& tag_obj : metadata["tags"])
@@ -517,6 +529,9 @@ void app_metric::to_protobuf(draiosproto::app_metric *proto) const
 			bucket->set_label(b.first);
 			bucket->set_count(b.second);
 		}
+	}
+	if (m_type == type_t::PROMETHEUS_RAW) {
+		proto->set_prometheus_type(static_cast<draiosproto::prometheus_type>(m_prometheus_type));
 	}
 	for(const auto& tag : m_tags)
 	{

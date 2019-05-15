@@ -31,7 +31,9 @@ public:
 		m_max_metrics(PROM_METRICS_HARD_LIMIT),
 		m_max_metrics_per_proc(-1),
 		m_max_tags_per_metric(-1),
-		m_histograms(false)
+		m_histograms(false),
+		m_ingest_raw(false),
+		m_ingest_calculated(false)
 	{}
 
 	typedef struct {
@@ -76,8 +78,15 @@ public:
 
 	bool histograms() const { return m_histograms; }
 	void set_histograms(bool val) { m_histograms = val; }
+
+	bool ingest_raw() const { return m_ingest_raw ; }
+	void set_ingest_raw(bool val) { m_ingest_raw = val; }
+
+	bool ingest_calculated() const { return m_ingest_calculated ; }
+	void set_ingest_calculated(bool val) { m_ingest_calculated = val; }
+
 	void set_host_rules(std::vector<proc_filter::filter_rule> rules) { m_host_rules = std::move(rules); }
-    const std::vector<proc_filter::filter_rule>& host_rules() const { return m_host_rules; }
+	const std::vector<proc_filter::filter_rule>& host_rules() const { return m_host_rules; }
 
 	// Overloaded from the base class to include host rules
 	void register_annotations(std::function<void (const std::string &str)> reg);
@@ -88,6 +97,8 @@ private:
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
 	bool m_histograms;
+	bool m_ingest_raw;
+	bool m_ingest_calculated;
 	vector<proc_filter::filter_rule> m_host_rules;
 };
 

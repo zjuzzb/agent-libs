@@ -265,6 +265,8 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 	if (conf.max_tags_per_metric() > 0)
 		ret["max_tags"] = conf.max_tags_per_metric();
 	ret["histograms"] = conf.histograms();
+	ret["ingest_raw"] = conf.ingest_raw();
+	ret["ingest_calculated"] = conf.ingest_calculated();
 	if (m_path.size() > 0)
 		ret["path"] = m_path;
 

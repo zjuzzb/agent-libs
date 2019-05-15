@@ -122,11 +122,23 @@ private:
 class app_metric
 {
 public:
+	// These must match the values of app_metric_type in draios.proto.
 	enum class type_t
 	{
-		GAUGE = 1,
-		RATE,
-		BUCKETS,
+		GAUGE           = 1,
+		RATE            = 2,
+		BUCKETS         = 3,
+		PROMETHEUS_RAW  = 4
+	};
+	// These must match the values of prometheus_type in draios.proto.
+	enum class prometheus_type_t
+	{
+		INVALID         = 0,
+		COUNTER         = 1,
+		GAUGE           = 2,
+		HISTOGRAM       = 3,
+		SUMMARY         = 4,
+		UNKNOWN         = 5
 	};
 	explicit app_metric(const Json::Value& obj);
 	void to_protobuf(draiosproto::app_metric* proto) const;
@@ -135,8 +147,11 @@ private:
 	string m_name;
 	double m_value;
 	type_t m_type;
+	prometheus_type_t m_prometheus_type;
 	map<string, string> m_tags;
 	map<string, uint64_t> m_buckets;
+
+	static const std::unordered_map<string, std::pair<type_t, prometheus_type_t>> metric_type_mapping;
 };
 
 inline const std::string& app_metric::name() const

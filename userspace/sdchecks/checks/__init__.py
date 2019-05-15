@@ -389,6 +389,9 @@ class AgentCheck(object):
         """
         self.aggregator.gauge(metric, value, tags, hostname, device_name, timestamp)
 
+    def prometheus_raw(self, prometheus_type, metric, value, tags=None, hostname=None, device_name=None, timestamp=None):
+        self.aggregator.prometheus_raw(prometheus_type, metric, value, tags, hostname, device_name, timestamp)
+
     def increment(self, metric, value=1, tags=None, hostname=None, device_name=None):
         """
         Increment a counter with optional tags, hostname and device name.
