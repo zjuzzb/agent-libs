@@ -403,6 +403,9 @@ bool connection_manager::connect()
 
 	if(waited_time_s >= wait_for_s)
 	{
+#ifdef SYSDIG_TEST
+		m_timed_out = true;
+#endif
 		LOG_WARNING("Connection attempt timed out. Retrying...");
 		disconnect();
 		return false;

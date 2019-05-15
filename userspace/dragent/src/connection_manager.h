@@ -41,6 +41,7 @@ public:
 	void set_connection_timeout(uint32_t timeout_us) { m_connect_timeout_us = timeout_us; }
 
 	uint32_t m_connect_timeout_us = SOCKET_TIMEOUT_DURING_CONNECT_US;
+	volatile bool m_timed_out = false;
 #endif
 
 private:

@@ -82,10 +82,10 @@ TEST(connection_manager_test, DISABLED_failure_to_connect)
 	// Create and spin up the connection manager
 	thread t([&queue, &config]()
 	{
-	connection_manager cm(&config,
-						  &queue,
-						  nullptr,  // sinsp_worker
-						  nullptr); // capture_job_handler
+		connection_manager cm(&config,
+		                      &queue,
+		                      nullptr,  // sinsp_worker
+		                      nullptr); // capture_job_handler
 		ASSERT_NO_THROW(cm.test_run());
 	});
 
@@ -113,7 +113,7 @@ TEST(connection_manager_test, DISABLED_failure_to_connect)
 	t.join();
 }
 
-TEST(connection_manager_test, DISABLED_connection_timeout)
+TEST(connection_manager_test, connection_timeout)
 {
 	const size_t MAX_QUEUE_LEN = 64;
 	// Build some boilerplate stuff that's needed to build a CM object
@@ -136,10 +136,10 @@ TEST(connection_manager_test, DISABLED_connection_timeout)
 	sinsp_worker* worker = nullptr;
 	capture_job_handler* capture_handler = nullptr;
 	connection_manager cm(&config,
-						  &queue,
-						  worker,
-						  capture_handler);
-	cm.set_connection_timeout(6 * 1000 * 1000);
+	                      &queue,
+	                      worker,
+	                      capture_handler);
+	cm.set_connection_timeout(4 * 1000 * 1000);
 
 	// Create and spin up the connection manager
 	std::thread t([&queue, &config, &cm]()
@@ -147,7 +147,10 @@ TEST(connection_manager_test, DISABLED_connection_timeout)
 		ASSERT_NO_FATAL_FAILURE(cm.test_run());
 	});
 
-	sleep(7);
+	while(!cm.m_timed_out)
+	{
+		msleep(100);
+	}
 
 	// Shut down all the things
 	config.m_terminate = true;
