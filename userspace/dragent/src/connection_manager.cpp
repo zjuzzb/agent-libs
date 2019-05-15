@@ -367,7 +367,7 @@ bool connection_manager::connect()
 			// SMAGENT-1617
 			// In short, this shouldn't happen but it did. Try again and hope for the best!
 			LOG_ERROR("connect():InvalidArgument: " + e.displayText());
-			LOG_ERROR("\tHost: %s, port %uh", hostname.c_str(), port);
+			LOG_ERROR("\tHost: %s, port %hu", hostname.c_str(), port);
 			sock_promise.set_value(nullptr);
 			return;
 		}
