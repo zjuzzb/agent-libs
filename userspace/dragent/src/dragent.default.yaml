@@ -1228,6 +1228,13 @@ container_filter:
   - include:
         all
 
+# Varnish VBE metric names can have timestamps embedded in them.
+# These timestamps are generated whenever vcl file is reloaded in varnish.
+# Due to these embedded timestamps, too many unique metrics end up getting stored in the backend.
+# So we exclude these VBE metrics by adding them to the metrics_filter.
+metrics_filter:
+  - exclude: varnish.VBE.*
+
 statsite_buffer_warning_length: 300
 
 cri:
