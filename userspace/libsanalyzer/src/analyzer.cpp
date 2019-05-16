@@ -87,6 +87,9 @@ using namespace google::protobuf::io;
 #include "label_limits.h"
 #include "container_emitter.h"
 #include "tap.h"
+#include "jmx_emitter.h"
+#include "app_check_emitter.h"
+#include "environment_emitter.h"
 #include "user_event_logger.h"
 #include "utils/profiler.h"
 
@@ -1595,10 +1598,8 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #ifndef _WIN32
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
-	uint16_t app_checks_limit = m_configuration->get_app_checks_limit();
 	bool can_disable_nodriver = true;
 #ifndef CYGWING_AGENT
-	uint16_t prom_metrics_limit = m_prom_conf.max_metrics();
 	vector<prom_process> prom_procs;
 #endif
 
@@ -2337,8 +2338,46 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	} else { // no smart container reporting
 		emitted_containers = emit_containers_deprecated(progtable_by_container, flushflags);
 	}
-
 	container_trc.stop();
+
+	// notify mounted_fs proxy of containers which have long-running procs
+	if(!m_inspector->is_capture() && m_mounted_fs_proxy)
+	{
+		vector<sinsp_threadinfo*> containers_for_mounted_fs;
+		for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
+		{
+			const sinsp_container_info *container_info =
+				m_inspector->m_container_manager.get_container(it->first);
+			if(container_info && !container_info->is_pod_sandbox())
+			{
+				auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
+								 {
+								 return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
+								 });
+
+				if(long_running_proc != it->second.end())
+				{
+					if(!(*long_running_proc)->m_ainfo->m_root_refreshed)
+					{
+						(*long_running_proc)->m_ainfo->m_root_refreshed = true;
+						(*long_running_proc)->m_root = m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
+					}
+
+					g_logger.format(sinsp_logger::SEV_DEBUG,
+							"[mountedfs_reader] picked process %s (tid=%ld/%ld) for container %s (tinfo->container_id=%s)",
+							(*long_running_proc)->get_comm().c_str(),
+							(*long_running_proc)->m_tid,
+							(*long_running_proc)->m_vtid,
+							it->first.c_str(),
+							(*long_running_proc)->m_container_id.c_str());
+
+					containers_for_mounted_fs.push_back(*long_running_proc);
+				}
+			}
+		}
+		m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
+	}
+
 	bool progtable_needs_filtering = false;
 
 	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -2396,59 +2435,29 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				}
 			}
 		}
-
-		if(m_mounted_fs_proxy)
-		{
-			vector<sinsp_threadinfo*> containers_for_mounted_fs;
-			for(auto it = progtable_by_container.begin(); it != progtable_by_container.end(); ++it)
-			{
-				const sinsp_container_info *container_info =
-					m_inspector->m_container_manager.get_container(it->first);
-				if(container_info && !container_info->is_pod_sandbox())
-				{
-					auto long_running_proc = find_if(it->second.begin(), it->second.end(), [this](sinsp_threadinfo* tinfo)
-					{
-						return !(tinfo->m_flags & PPM_CL_CLOSED) && (m_next_flush_time_ns - tinfo->get_main_thread()->m_clone_ts) >= ASSUME_LONG_LIVING_PROCESS_UPTIME_S*ONE_SECOND_IN_NS;
-					});
-
-					if(long_running_proc != it->second.end())
-					{
-						if(!(*long_running_proc)->m_ainfo->m_root_refreshed)
-						{
-							(*long_running_proc)->m_ainfo->m_root_refreshed = true;
-							(*long_running_proc)->m_root = m_procfs_parser->read_proc_root((*long_running_proc)->m_pid);
-						}
-						g_logger.format(sinsp_logger::SEV_DEBUG, "[mountedfs_reader] picked process %s (tid=%ld/%ld) for container %s (tinfo->container_id=%s)",
-								(*long_running_proc)->get_comm().c_str(),
-								(*long_running_proc)->m_tid,
-								(*long_running_proc)->m_vtid,
-								it->first.c_str(),
-								(*long_running_proc)->m_container_id.c_str());
-						containers_for_mounted_fs.push_back(*long_running_proc);
-					}
-				}
-			}
-			m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
-		}
 	}
 
-	// Keep track of totals of metrics sent, filtered and pre-filtered
-	unsigned num_app_check_metrics_sent = 0;
-	unsigned num_app_check_metrics_filtered = 0;
-	unsigned num_app_check_metrics_total = 0;
-	unsigned num_prometheus_metrics_sent = 0;
-	unsigned num_prometheus_metrics_filtered = 0;
-	unsigned num_prometheus_metrics_total = 0;
-
-	uint32_t num_envs_sent = 0;
 
 	///////////////////////////////////////////////////////////////////////////
 	// Second pass of the list of threads: aggregate threads into processes
 	// or programs.
 	///////////////////////////////////////////////////////////////////////////
-	auto jmx_limit = m_configuration->get_jmx_limit();
 	std::set<uint64_t> all_uids;
 	tracer_emitter at_trc("aggregate_threads", proc_trc);
+	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
+					 m_jmx_sampling,
+					 m_configuration->get_jmx_limit(),
+					 m_jmx_metrics_by_containers);
+	app_check_emitter app_check_emitter_instance(m_app_metrics,
+						     m_configuration->get_app_checks_limit(),
+						     m_prom_conf,
+						     m_app_checks_by_containers,
+						     m_prometheus_by_containers,
+						     m_prev_flush_time_ns);
+	environment_emitter environment_emitter_instance(m_sent_envs,
+							 m_prev_flush_time_ns,
+							 m_env_hash_config,
+							 *m_metrics);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
 	{
 		sinsp_threadinfo* tinfo = *it;
@@ -2487,7 +2496,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			}
 
 			if(m_track_environment && m_env_hash_config.m_send_metrics) {
-				emit_environment(prog, tinfo, num_envs_sent);
+				environment_emitter_instance.emit_environment(*tinfo, *prog);
 			}
 #else // ANALYZER_EMITS_PROGRAMS
 			draiosproto::process* proc = m_metrics->add_processes();
@@ -2587,159 +2596,11 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			// Add JMX metrics
 			if(m_jmx_proxy)
 			{
-				if((jmx_limit > 0) || metric_limits::log_enabled())
-				{
-					unsigned jmx_proc_limit = std::min(jmx_limit, JMX_METRICS_HARD_LIMIT_PER_PROC);
-					auto jmx_metrics_it = m_jmx_metrics.end();
-					for(auto pid_it = procinfo->m_program_pids.begin();
-							pid_it != procinfo->m_program_pids.end() && jmx_metrics_it == m_jmx_metrics.end();
-							++pid_it)
-					{
-						jmx_metrics_it = m_jmx_metrics.find(*pid_it);
-					}
-					if(jmx_metrics_it != m_jmx_metrics.end())
-					{
-						if(jmx_limit > 0)
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Found JMX metrics for pid %d", tinfo->m_pid);
-							auto java_proto = proc->mutable_protos()->mutable_java();
-							unsigned jmx_total = jmx_metrics_it->second.total_metrics();
-							unsigned jmx_sent = jmx_metrics_it->second.to_protobuf(java_proto, m_jmx_sampling, jmx_proc_limit,
-										"process", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT_PER_PROC));
-							jmx_limit -= jmx_sent;
-							if(jmx_limit == 0)
-							{
-								g_logger.format(sinsp_logger::SEV_WARNING,
-									"JMX metrics limit (%u) reached", m_configuration->get_jmx_limit());
-							}
-
-							proc->mutable_resource_counters()->set_jmx_sent(jmx_sent);
-							proc->mutable_resource_counters()->set_jmx_total(jmx_total);
-							if(!tinfo->m_container_id.empty())
-							{
-								std::get<0>(m_jmx_metrics_by_containers[tinfo->m_container_id]) += jmx_sent;
-								std::get<1>(m_jmx_metrics_by_containers[tinfo->m_container_id]) += jmx_total;
-							}
-							std::get<0>(m_jmx_metrics_by_containers[""]) += jmx_sent;
-							std::get<1>(m_jmx_metrics_by_containers[""]) += jmx_total;
-						}
-						else if(metric_limits::log_enabled())
-						{
-							g_logger.format(sinsp_logger::SEV_WARNING,
-								"All JMX metrics for pid %d exceed limit, will not be emitted.", tinfo->m_pid);
-							// dummy call, only to print excessive metrics
-							jmx_metrics_it->second.to_protobuf(nullptr, 0, m_configuration->get_jmx_limit(),
-										"total", std::min(m_configuration->get_jmx_limit(), JMX_METRICS_HARD_LIMIT));
-						}
-					}
-				}
+				jmx_emitter_instance.emit_jmx(*procinfo, *tinfo, *proc);
 			}
 			if(m_app_proxy)
 			{
-				// Send data for each app-check for the processes in procinfo
-				unsigned sent_app_checks_metrics = 0;
-				unsigned filtered_app_checks_metrics = 0;
-				unsigned total_app_checks_metrics = 0;
-				unsigned sent_prometheus_metrics = 0;
-				unsigned filtered_prometheus_metrics = 0;
-				unsigned total_prometheus_metrics = 0;
-				// Map of app_check data by app-check name and how long the
-				// metrics have been expired to ensure we serve the most recent
-				// metrics available
-				map<string, map<int, const app_check_data *>> app_data_to_send;
-				for(auto pid: procinfo->m_program_pids)
-				{
-					auto datamap_it = m_app_metrics.find(pid);
-					if(datamap_it == m_app_metrics.end())
-						continue;
-					for(const auto& app_data : datamap_it->second)
-					{
-						int age = (m_prev_flush_time_ns/ONE_SECOND_IN_NS) -
-									app_data.second.expiration_ts();
-						app_data_to_send[app_data.first][age] = &(app_data.second);
-					}
-				}
-
-				for(auto app_age_map : app_data_to_send)
-				{
-					bool sent = false;
-					for(auto app_data : app_age_map.second)
-					{
-						if(sent)
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG,
-								"Skipping duplicate app metrics for %d(%d),%s:exp in %d",
-								tinfo->m_pid, app_data.second->pid(),
-								app_age_map.first.c_str(), -app_data.first);
-							continue;
-						}
-						g_logger.format(sinsp_logger::SEV_DEBUG,
-							"Found app metrics for %d(%d),%s, exp in %d", tinfo->m_pid, app_data.second->pid(),
-							app_age_map.first.c_str(), -app_data.first);
-						sent = true;
-
-#ifndef CYGWING_AGENT
-						if(app_data.second->type() == app_check_data::check_type::PROMETHEUS)
-						{
-							static bool logged_metric = false;
-							unsigned metric_count;
-							metric_count = app_data.second->to_protobuf(
-								proc->mutable_protos()->mutable_prometheus(),
-								prom_metrics_limit, m_prom_conf.max_metrics());
-							sent_prometheus_metrics += metric_count;
-							if(!logged_metric && metric_count)
-							{
-								const auto metrics = app_data.second->metrics();
-								// app_check_data::to_protobuf() returns the total number of metrics
-								// and service checks, so it's possible for metrics() to be empty
-								// even when metric_count is not zero.
-								// We May want to add some logging of service checks in case we don't have metrics
-								if(!metrics.empty())
-								{
-									g_logger.log("Starting export of Prometheus metrics",
-										sinsp_logger::SEV_INFO);
-									const string &metricname = metrics[0].name();
-									g_logger.format(sinsp_logger::SEV_DEBUG,
-										"First prometheus metrics since agent start: pid %d: %d metrics including: %s",
-										app_data.second->pid(), metric_count, metricname.c_str());
-									logged_metric = true;
-								}
-							}
-							filtered_prometheus_metrics += app_data.second->num_metrics();
-							total_prometheus_metrics += app_data.second->total_metrics();
-						}
-						else
-#endif
-						{
-							sent_app_checks_metrics += app_data.second->to_protobuf(proc->mutable_protos()->mutable_app(),
-								app_checks_limit, m_configuration->get_app_checks_limit());
-							filtered_app_checks_metrics += app_data.second->num_metrics();
-							total_app_checks_metrics += app_data.second->total_metrics();
-						}
-					}
-				}
-				proc->mutable_resource_counters()->set_app_checks_sent(sent_app_checks_metrics);
-				proc->mutable_resource_counters()->set_app_checks_total(total_app_checks_metrics);
-				proc->mutable_resource_counters()->set_prometheus_sent(sent_prometheus_metrics);
-				proc->mutable_resource_counters()->set_prometheus_total(total_prometheus_metrics);
-				if(!tinfo->m_container_id.empty())
-				{
-					std::get<0>(m_app_checks_by_containers[tinfo->m_container_id]) += sent_app_checks_metrics;
-					std::get<1>(m_app_checks_by_containers[tinfo->m_container_id]) += total_app_checks_metrics;
-					std::get<0>(m_prometheus_by_containers[tinfo->m_container_id]) += sent_prometheus_metrics;
-					std::get<1>(m_prometheus_by_containers[tinfo->m_container_id]) += total_prometheus_metrics;
-				}
-				std::get<0>(m_app_checks_by_containers[""]) += sent_app_checks_metrics;
-				std::get<1>(m_app_checks_by_containers[""]) += total_app_checks_metrics;
-				std::get<0>(m_prometheus_by_containers[""]) += sent_prometheus_metrics;
-				std::get<1>(m_prometheus_by_containers[""]) += total_prometheus_metrics;
-				num_app_check_metrics_sent += sent_app_checks_metrics;
-				num_app_check_metrics_filtered += filtered_app_checks_metrics;
-				num_app_check_metrics_total += total_app_checks_metrics;
-
-				num_prometheus_metrics_sent += sent_prometheus_metrics;
-				num_prometheus_metrics_filtered += filtered_prometheus_metrics;
-				num_prometheus_metrics_total += total_prometheus_metrics;
+				app_check_emitter_instance.emit_apps(*procinfo, *tinfo, *proc);
 			}
 #endif
 
@@ -2863,28 +2724,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		container->mutable_resource_counters()->set_prometheus_total(std::get<1>(m_prometheus_by_containers[container_id]));
 	}
 
-	if(app_checks_limit == 0)
-	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "App checks metrics limit (%u) reached, %u sent of %u filtered, %u total",
-			m_configuration->get_app_checks_limit(), num_app_check_metrics_sent,
-			num_app_check_metrics_filtered, num_app_check_metrics_total);
-	} else {
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Sent %u Appcheck metrics of %u filtered, %u total",
-			num_app_check_metrics_sent, num_app_check_metrics_filtered,
-			num_app_check_metrics_total);
-	}
-#ifndef CYGWING_AGENT
-	if(prom_metrics_limit == 0)
-	{
-		g_logger.format(sinsp_logger::SEV_WARNING, "Prometheus metrics limit (%u) reached, %u sent of %u filtered, %u total",
-			m_prom_conf.max_metrics(), num_prometheus_metrics_sent,
-			num_prometheus_metrics_filtered, num_prometheus_metrics_total);
-	} else {
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Sent %u Prometheus metrics of %u filtered, %u total",
-			num_prometheus_metrics_sent, num_prometheus_metrics_filtered,
-			num_prometheus_metrics_total);
-	}
-#endif
+	app_check_emitter_instance.log_result();
 
 #ifndef _WIN32
 	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
@@ -2920,76 +2760,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 	}
 #endif
-}
-
-void sinsp_analyzer::emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent)
-{
-	auto mt_ainfo = tinfo->m_ainfo->main_thread_ainfo();
-	auto env_hash = mt_ainfo->m_env_hash.get_hash();
-	prog->set_environment_hash(env_hash.data(), env_hash.size());
-
-	auto af_flag = thread_analyzer_info::AF_IS_NET_CLIENT;
-	if(!(tinfo->m_ainfo->m_th_analysis_flags & af_flag)) {
-		return;
-	}
-
-	auto new_env = m_sent_envs.insert({mt_ainfo->m_env_hash, m_prev_flush_time_ns + m_env_hash_config.m_env_hash_ttl});
-	// new_env.first->first: env_hash
-	// new_env.first->second: last sent timestamp
-	// new_env.second: if true, insertion took place (first time we're sending this hash)
-
-	if(!new_env.second && new_env.first->second >= m_prev_flush_time_ns) {
-		return;
-	}
-
-	if(++num_envs_sent > m_env_hash_config.m_envs_per_flush) {
-		g_logger.format(sinsp_logger::SEV_INFO, "Environment flush limit reached, throttling");
-		if(new_env.second) {
-			m_sent_envs.erase(new_env.first);
-		}
-	} else {
-		size_t env_bytes_sent = 0;
-
-		auto env = m_metrics->add_environments();
-		env->set_hash(env_hash.data(), env_hash.size());
-
-		for(const auto& entry : tinfo->get_env()) {
-			if(entry.empty() || entry[0] == '=') {
-				continue;
-			}
-			bool blacklisted = false;
-			for(const auto& regex : *m_env_hash_config.m_env_blacklist) {
-				if(regex.match(entry)) {
-					blacklisted = true;
-					break;
-				}
-			}
-
-			if(blacklisted) {
-				continue;
-			}
-
-			env_bytes_sent += entry.size() + 1; // 1 for the trailing NUL
-			if(env_bytes_sent > m_env_hash_config.m_max_env_size) {
-				break;
-			}
-
-			env->add_variables(entry);
-		}
-
-		if(env_bytes_sent > m_env_hash_config.m_max_env_size) {
-			g_logger.format(sinsp_logger::SEV_INFO, "Environment of process %lu (%s) too large, truncating",
-				 tinfo->m_pid, tinfo->m_comm.c_str());
-			for(const auto& entry : tinfo->m_env) {
-				g_logger.format(sinsp_logger::SEV_DEBUG, "Environment of process %lu (%s): %s",
-					tinfo->m_pid, tinfo->m_comm.c_str(), entry.c_str());
-			}
-		}
-
-		if(!new_env.second) {
-			new_env.first->second = m_prev_flush_time_ns + m_env_hash_config.m_env_hash_ttl;
-		}
-	}
 }
 
 void sinsp_analyzer::flush_processes()

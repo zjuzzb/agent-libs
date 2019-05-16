@@ -216,8 +216,11 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/value_parser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
+	jmx_emitter.cpp
 	statsite_proxy.cpp
 	app_checks.cpp
+	app_check_emitter.cpp
+	environment_emitter.cpp
 	object_filter.cpp
 	object_filter_config.cpp
         proc_filter.cpp
