@@ -242,10 +242,13 @@ void dragent_logger::sinsp_logger_callback(std::string&& str,
 	case sinsp_logger::SEV_TRACE:
 		g_log->trace(std::move(str));
 		break;
-
-	default:
-		ASSERT(false);
 	}
+}
+
+bool dragent_logger::is_enabled(const int severity) const
+{
+	return (((m_file_log != nullptr) && (m_file_log->getLevel() >= severity)) ||
+	        ((m_console_log != nullptr) && (m_console_log->getLevel() >= severity)));
 }
 
 avoid_block_channel::avoid_block_channel(const AutoPtr<Poco::FileChannel>& file_channel, const std::string& machine_id):
@@ -301,45 +304,13 @@ void avoid_block_channel::close()
 	m_file_channel->close();
 }
 
-void log_sink::dragent_log_output::log(const std::string& message, int severity)
-{
-	g_log->log(message, severity);
-}
-
-log_sink::stream_log_output::stream_log_output(std::ostream& out) :
-	m_out(out)
-{
-}
-
-void log_sink::stream_log_output::log(const std::string& message, int severity)
-{
-	// Since this is used only for unit testint, there's no real value in
-	// translating the severity to a string
-	m_out << severity << ", " << message << std::endl;
-}
-
-log_sink::log_sink(log_output* output,
-                   const std::string& file,
+log_sink::log_sink(const std::string& file,
                    const std::string& component) :
-	m_log_output(output),
 	m_tag(component +
 	      (component.empty() ? "" : ":") +
 	      Poco::Path(file).getBaseName())
 {
 }
-
-log_sink::log_sink(const std::string& file, const std::string& component) :
-	log_sink(new dragent_log_output(), file, component)
-{
-}
-
-log_sink::log_sink(std::ostream& out,
-                   const std::string& file,
-                   const std::string& component) :
-	log_sink(new stream_log_output(out), file, component)
-{
-}
-
 
 /**
  * Attempts to write the log message described by the given line number, format
@@ -368,11 +339,11 @@ std::string::size_type log_sink::generate_log(std::vector<char>& log_buffer,
 	if(line)
 	{
 		// Try to write the prefix to log_buffer
-		prefix_length = std::snprintf(& log_buffer[0],
-		              log_buffer.capacity(),
-		              "%s:%d: ",
-		              m_tag.c_str(),
-		              line);
+		prefix_length = std::snprintf(&log_buffer[0],
+		                              log_buffer.capacity(),
+		                              "%s:%d: ",
+		                              m_tag.c_str(),
+		                              line);
 	}
 
 	char *suffix_target = nullptr;
@@ -436,7 +407,7 @@ void log_sink::log(const uint32_t severity, const int line, const char* const fm
 	std::string message = build(line, fmt, args);
 	va_end(args);
 
-	m_log_output->log(message, severity);
+	g_log->log(message, severity);
 }
 
 void log_sink::log(uint32_t severity, int line, const std::string& str) const
