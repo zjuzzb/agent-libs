@@ -1,5 +1,5 @@
 #pragma once
-#include "analyzer.h"
+#include "draios.pb.h"
 #include "sinsp.h"
 #include <unordered_map>
 #include "jmx_proxy.h"

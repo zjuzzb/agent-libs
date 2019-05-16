@@ -1451,7 +1451,7 @@ std::string sinsp_analyzer::detect_mesos(sinsp_threadinfo* main_tinfo)
 #endif// CYGWING_AGENT
 
 void
-sinsp_analyzer::update_percentile_data_serialization(const progtable_by_container_t& progtable_by_container)
+sinsp_analyzer::update_percentile_data_serialization(const analyzer_emitter::progtable_by_container_t& progtable_by_container)
 {
 	// enable/disable percentile data serialization for configured containers
 #ifndef CYGWING_AGENT
@@ -1556,7 +1556,7 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 }
 
 void
-sinsp_analyzer::clean_containers(const progtable_by_container_t& progtable_by_container)
+sinsp_analyzer::clean_containers(const analyzer_emitter::progtable_by_container_t& progtable_by_container)
 {
 	m_containers_cleaner_interval.run([this, &progtable_by_container]()
 	  {
@@ -1576,6 +1576,308 @@ sinsp_analyzer::clean_containers(const progtable_by_container_t& progtable_by_co
 	  }, m_prev_flush_time_ns);
 }
 
+void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
+					       analyzer_emitter::flush_flags flushflags,
+					       analyzer_emitter::progtable_t& progtable,
+					       analyzer_emitter::progtable_by_container_t& progtable_by_container,
+					       std::vector<std::string>& emitted_containers,
+					       tracer_emitter& proc_trc,
+					       jmx_emitter& jmx_emitter_instance,
+					       app_check_emitter& app_check_emitter_instance,
+					       environment_emitter& environment_emitter_instance)
+{
+	bool progtable_needs_filtering = false;
+
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
+	}
+
+	//
+	// Filter out the programs that didn't generate enough activity to go in the sample.
+	// Note: we only do this when we're live, because in offline captures we don't have
+	//       process CPU and memory.
+	//
+	if(!m_inspector->is_capture())
+	{
+		tracer_emitter filter_trc("filter_progtable", proc_trc);
+		progtable_needs_filtering = progtable.size() > m_top_processes_in_sample;
+		if(progtable_needs_filtering)
+		{
+			// Filter top active programs
+			filter_top_programs(progtable.begin(),
+					    progtable.end(),
+					    false,
+					    m_top_processes_in_sample);
+			// Filter top client/server programs
+			filter_top_programs(progtable.begin(),
+					    progtable.end(),
+					    true,
+					    m_top_processes_in_sample);
+			// Add at least one process per emitted_container
+			for(const auto& container_id : emitted_containers)
+			{
+				auto progs_it = progtable_by_container.find(container_id);
+				if(progs_it != progtable_by_container.end())
+				{
+					auto progs = progs_it->second;
+					filter_top_programs(progs.begin(), progs.end(), false, m_top_processes_per_container);
+				}
+			}
+			// Add all processes with appcheck metrics
+			if(m_configuration->get_app_checks_always_send())
+			{
+				for(auto prog: progtable)
+				{
+					auto datamap_it = m_app_metrics.find(prog->m_pid);
+					if(datamap_it == m_app_metrics.end())
+						continue;
+					for(const auto& app_data : datamap_it->second)
+					{
+						if((app_data.second.total_metrics() > 0) && (prog->m_ainfo->m_procinfo->m_exclude_from_sample))
+						{
+							g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
+							prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
+						}
+					}
+				}
+			}
+		}
+	}
+
+
+	///////////////////////////////////////////////////////////////////////////
+	// Second pass of the list of threads: aggregate threads into processes
+	// or programs.
+	///////////////////////////////////////////////////////////////////////////
+	tracer_emitter at_trc("aggregate_threads", proc_trc);
+	for(auto it = progtable.begin(); it != progtable.end(); ++it)
+	{
+		sinsp_threadinfo* tinfo = *it;
+
+		//
+		// If this is the main thread of a process, add an entry into the processes
+		// section too
+		//
+		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+
+		sinsp_counter_time tot;
+
+		ASSERT(procinfo != NULL);
+
+		procinfo->m_proc_metrics.get_total(&tot);
+
+		//
+		// Inclusion logic
+		//
+		// Keep:
+		//  - top 30 clients/servers
+		//  - top 30 programs that were active
+
+		if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
+		{
+			draiosproto::program* prog = m_metrics->add_programs();
+			draiosproto::process* proc = prog->mutable_procinfo();
+
+			for(const auto pid : procinfo->m_program_pids) {
+				prog->add_pids(pid);
+			}
+
+			if(m_track_environment && m_env_hash_config.m_send_metrics) {
+				environment_emitter_instance.emit_environment(*tinfo, *prog);
+			}
+
+			for(const auto uid : procinfo->m_program_uids) {
+				if(m_username_lookups) {
+					all_uids.insert(uid);
+				}
+				prog->add_uids(uid);
+			}
+
+			//
+			// Basic values
+			//
+			auto main_thread = tinfo->get_main_thread();
+			if(!main_thread)
+			{
+				g_logger.format(sinsp_logger::SEV_WARNING, "Thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
+				continue;
+			}
+
+			proc->mutable_details()->set_comm(main_thread->m_comm);
+			proc->mutable_details()->set_exe(main_thread->m_exe);
+			for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
+			    arg_it != main_thread->m_args.end(); ++arg_it)
+			{
+				if(*arg_it != "")
+				{
+					if(arg_it->size() <= ARG_SIZE_LIMIT)
+					{
+						proc->mutable_details()->add_args(*arg_it);
+					}
+					else
+					{
+						auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+						proc->mutable_details()->add_args(arg_capped);
+					}
+				}
+			}
+
+			if(!main_thread->m_container_id.empty())
+			{
+				proc->mutable_details()->set_container_id(main_thread->m_container_id);
+			}
+
+			tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
+
+			procinfo->m_files_stat.emit(proc, m_top_files_per_prog);
+			procinfo->m_devs_stat.emit(proc, m_device_map, m_top_file_devices_per_prog);
+
+			//
+			// client-server role
+			//
+			uint32_t netrole = 0;
+
+			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
+			{
+				netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
+			{
+				netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
+			{
+				netrole |= draiosproto::IS_UNIX_SERVER;
+			}
+
+			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
+			{
+				netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
+			{
+				netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
+			}
+			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
+			{
+				netrole |= draiosproto::IS_UNIX_CLIENT;
+			}
+
+			proc->set_netrole(netrole);
+
+#ifndef _WIN32
+			proc->mutable_resource_counters()->set_jmx_sent(0);
+			proc->mutable_resource_counters()->set_jmx_total(0);
+			proc->mutable_resource_counters()->set_app_checks_sent(0);
+			proc->mutable_resource_counters()->set_app_checks_total(0);
+			proc->mutable_resource_counters()->set_prometheus_sent(0);
+			proc->mutable_resource_counters()->set_prometheus_total(0);
+
+			// Add JMX metrics
+			if(m_jmx_proxy)
+			{
+				jmx_emitter_instance.emit_jmx(*procinfo, *tinfo, *proc);
+			}
+			if(m_app_proxy)
+			{
+				app_check_emitter_instance.emit_apps(*procinfo, *tinfo, *proc);
+			}
+#endif
+
+			//
+			// CPU utilization
+			//
+			if(procinfo->m_cpuload >= 0)
+			{
+				if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
+				{
+					procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
+				}
+
+				proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
+			}
+			else
+			{
+				proc->mutable_resource_counters()->set_cpu_pct(0);
+			}
+
+			if (m_procfs_scan_thread)
+			{
+				struct proc_metrics::mem_metrics pm;
+				if (m_procfs_parser->get_process_mem_metrics(tinfo->m_pid, &pm))
+				{
+					proc->mutable_resource_counters()->set_resident_memory_usage_kb(pm.vmrss_kb);
+					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(pm.vmsize_kb);
+					proc->mutable_resource_counters()->set_swap_memory_usage_kb(pm.vmswap_kb);
+					proc->mutable_resource_counters()->set_major_pagefaults(pm.pfmajor);
+					proc->mutable_resource_counters()->set_minor_pagefaults(pm.pfminor);
+				}
+			}
+			else
+			{
+				proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
+				proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
+				proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
+				proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
+				proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
+			}
+
+			proc->mutable_resource_counters()->set_threads_count(procinfo->m_threads_count);
+
+			if(tot.m_count != 0)
+			{
+				sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
+
+				//
+				// Main metrics
+
+				procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
+
+				//
+				// Transaction-related metrics
+				//
+				if(prog_delays->m_local_processing_delay_ns != -1)
+				{
+					proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
+					proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
+				}
+
+				procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
+										 proc->mutable_max_transaction_counters(),
+										 m_sampling_ratio);
+
+				proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
+				proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
+				proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
+				if(!m_inspector->is_nodriver())
+				{
+					// These metrics are not correct in nodriver mode
+					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
+					proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
+				}
+
+				//
+				// Error-related metrics
+				//
+				procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
+
+				//
+				// Protocol tables
+				//
+				proc->set_start_count(procinfo->m_start_count);
+				proc->set_count_processes(procinfo->m_proc_count);
+			}
+		}
+
+		//
+		// Clear the thread metrics, so we're ready for the next sample
+		//
+		tinfo->m_ainfo->clear_all_metrics();
+	}
+	at_trc.stop();
+}
+
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				    bool is_eof, analyzer_emitter::flush_flags flushflags,
 				    const tracer_emitter &f_trc)
@@ -1585,16 +1887,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	sinsp_evt::category* cat;
 	sinsp_evt::category tcat;
 	m_server_programs.clear();
-	auto prog_hasher = [](sinsp_threadinfo* tinfo)
-	{
-		return tinfo->get_main_thread()->m_program_hash;
-	};
-	auto prog_cmp = [](sinsp_threadinfo* lhs, sinsp_threadinfo* rhs)
-	{
-		return lhs->get_main_thread()->m_program_hash == rhs->get_main_thread()->m_program_hash;
-	};
-	unordered_set<sinsp_threadinfo*, decltype(prog_hasher), decltype(prog_cmp)> progtable(m_top_processes_in_sample, prog_hasher, prog_cmp);
-	progtable_by_container_t progtable_by_container;
+	analyzer_emitter::progtable_t progtable(m_top_processes_in_sample,
+						sinsp_threadinfo::hasher(),
+						sinsp_threadinfo::comparer());
+	analyzer_emitter::progtable_by_container_t progtable_by_container;
 #ifndef _WIN32
 	vector<sinsp_threadinfo*> java_process_requests;
 	vector<app_process> app_checks_processes;
@@ -1843,10 +2139,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #ifdef _DEBUG
 		sinsp_counter_time ttot;
 		ainfo->m_metrics.get_total(&ttot);
-//		if(!m_inspector->m_islive)
-//		{
-//			ASSERT(is_eof || ttot.m_time_ns % sample_duration == 0);
-//		}
 #endif
 
 		//
@@ -2371,72 +2663,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		m_mounted_fs_proxy->send_container_list(containers_for_mounted_fs);
 	}
 
-	bool progtable_needs_filtering = false;
-
-	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
-	{
-		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
-	}
-
-	//
-	// Filter out the programs that didn't generate enough activity to go in the sample.
-	// Note: we only do this when we're live, because in offline captures we don't have
-	//       process CPU and memory.
-	//
-	if(!m_inspector->is_capture())
-	{
-		tracer_emitter filter_trc("filter_progtable", proc_trc);
-		progtable_needs_filtering = progtable.size() > m_top_processes_in_sample;
-		if(progtable_needs_filtering)
-		{
-			// Filter top active programs
-			filter_top_programs(progtable.begin(),
-					    progtable.end(),
-					    false,
-					    m_top_processes_in_sample);
-			// Filter top client/server programs
-			filter_top_programs(progtable.begin(),
-					    progtable.end(),
-					    true,
-					    m_top_processes_in_sample);
-			// Add at least one process per emitted_container
-			for(const auto& container_id : emitted_containers)
-			{
-				auto progs_it = progtable_by_container.find(container_id);
-				if(progs_it != progtable_by_container.end())
-				{
-					auto progs = progs_it->second;
-					filter_top_programs(progs.begin(), progs.end(), false, m_top_processes_per_container);
-				}
-			}
-			// Add all processes with appcheck metrics
-			if(m_configuration->get_app_checks_always_send())
-			{
-				for(auto prog: progtable)
-				{
-					auto datamap_it = m_app_metrics.find(prog->m_pid);
-					if(datamap_it == m_app_metrics.end())
-						continue;
-					for(const auto& app_data : datamap_it->second)
-					{
-						if((app_data.second.total_metrics() > 0) && (prog->m_ainfo->m_procinfo->m_exclude_from_sample))
-						{
-							g_logger.format(sinsp_logger::SEV_DEBUG, "Added pid %d with appcheck metrics to top processes", prog->m_pid);
-							prog->m_ainfo->m_procinfo->m_exclude_from_sample = false;
-						}
-					}
-				}
-			}
-		}
-	}
-
-
-	///////////////////////////////////////////////////////////////////////////
-	// Second pass of the list of threads: aggregate threads into processes
-	// or programs.
-	///////////////////////////////////////////////////////////////////////////
 	std::set<uint64_t> all_uids;
-	tracer_emitter at_trc("aggregate_threads", proc_trc);
 	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
 					 m_jmx_sampling,
 					 m_configuration->get_jmx_limit(),
@@ -2450,231 +2677,16 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	environment_emitter environment_emitter_instance(m_prev_flush_time_ns,
 							 m_env_hash_config,
 							 *m_metrics);
-	for(auto it = progtable.begin(); it != progtable.end(); ++it)
-	{
-		sinsp_threadinfo* tinfo = *it;
 
-		//
-		// If this is the main thread of a process, add an entry into the processes
-		// section too
-		//
-		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
-
-		sinsp_counter_time tot;
-
-		ASSERT(procinfo != NULL);
-
-		procinfo->m_proc_metrics.get_total(&tot);
-
-		//
-		// Inclusion logic
-		//
-		// Keep:
-		//  - top 30 clients/servers
-		//  - top 30 programs that were active
-
-		if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
-		{
-			draiosproto::program* prog = m_metrics->add_programs();
-			draiosproto::process* proc = prog->mutable_procinfo();
-
-			for(const auto pid : procinfo->m_program_pids) {
-				prog->add_pids(pid);
-			}
-
-			if(m_track_environment && m_env_hash_config.m_send_metrics) {
-				environment_emitter_instance.emit_environment(*tinfo, *prog);
-			}
-
-			for(const auto uid : procinfo->m_program_uids) {
-				if(m_username_lookups) {
-					all_uids.insert(uid);
-				}
-				prog->add_uids(uid);
-			}
-
-			//
-			// Basic values
-			//
-			auto main_thread = tinfo->get_main_thread();
-			if(!main_thread)
-			{
-				g_logger.format(sinsp_logger::SEV_WARNING, "Thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
-				continue;
-			}
-
-			proc->mutable_details()->set_comm(main_thread->m_comm);
-			proc->mutable_details()->set_exe(main_thread->m_exe);
-			for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
-			    arg_it != main_thread->m_args.end(); ++arg_it)
-			{
-				if(*arg_it != "")
-				{
-					if(arg_it->size() <= ARG_SIZE_LIMIT)
-					{
-						proc->mutable_details()->add_args(*arg_it);
-					}
-					else
-					{
-						auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
-						proc->mutable_details()->add_args(arg_capped);
-					}
-				}
-			}
-
-			if(!main_thread->m_container_id.empty())
-			{
-				proc->mutable_details()->set_container_id(main_thread->m_container_id);
-			}
-
-			tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
-
-			procinfo->m_files_stat.emit(proc, m_top_files_per_prog);
-			procinfo->m_devs_stat.emit(proc, m_device_map, m_top_file_devices_per_prog);
-
-			//
-			// client-server role
-			//
-			uint32_t netrole = 0;
-
-			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER)
-			{
-				netrole |= draiosproto::IS_REMOTE_IPV4_SERVER;
-			}
-			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER)
-			{
-				netrole |= draiosproto::IS_LOCAL_IPV4_SERVER;
-			}
-			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_SERVER)
-			{
-				netrole |= draiosproto::IS_UNIX_SERVER;
-			}
-
-			if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)
-			{
-				netrole |= draiosproto::IS_REMOTE_IPV4_CLIENT;
-			}
-			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT)
-			{
-				netrole |= draiosproto::IS_LOCAL_IPV4_CLIENT;
-			}
-			else if(tinfo->m_ainfo->m_th_analysis_flags & thread_analyzer_info::AF_IS_UNIX_CLIENT)
-			{
-				netrole |= draiosproto::IS_UNIX_CLIENT;
-			}
-
-			proc->set_netrole(netrole);
-
-#ifndef _WIN32
-			proc->mutable_resource_counters()->set_jmx_sent(0);
-			proc->mutable_resource_counters()->set_jmx_total(0);
-			proc->mutable_resource_counters()->set_app_checks_sent(0);
-			proc->mutable_resource_counters()->set_app_checks_total(0);
-			proc->mutable_resource_counters()->set_prometheus_sent(0);
-			proc->mutable_resource_counters()->set_prometheus_total(0);
-
-			// Add JMX metrics
-			if(m_jmx_proxy)
-			{
-				jmx_emitter_instance.emit_jmx(*procinfo, *tinfo, *proc);
-			}
-			if(m_app_proxy)
-			{
-				app_check_emitter_instance.emit_apps(*procinfo, *tinfo, *proc);
-			}
-#endif
-
-			//
-			// CPU utilization
-			//
-			if(procinfo->m_cpuload >= 0)
-			{
-				if(procinfo->m_cpuload > (int32_t)(100 * m_machine_info->num_cpus))
-				{
-					procinfo->m_cpuload = (int32_t)100 * m_machine_info->num_cpus;
-				}
-
-				proc->mutable_resource_counters()->set_cpu_pct((uint32_t)(procinfo->m_cpuload * 100));
-			}
-			else
-			{
-				proc->mutable_resource_counters()->set_cpu_pct(0);
-			}
-
-			if (m_procfs_scan_thread)
-			{
-				struct proc_metrics::mem_metrics pm;
-				if (m_procfs_parser->get_process_mem_metrics(tinfo->m_pid, &pm))
-				{
-					proc->mutable_resource_counters()->set_resident_memory_usage_kb(pm.vmrss_kb);
-					proc->mutable_resource_counters()->set_virtual_memory_usage_kb(pm.vmsize_kb);
-					proc->mutable_resource_counters()->set_swap_memory_usage_kb(pm.vmswap_kb);
-					proc->mutable_resource_counters()->set_major_pagefaults(pm.pfmajor);
-					proc->mutable_resource_counters()->set_minor_pagefaults(pm.pfminor);
-				}
-			}
-			else
-			{
-				proc->mutable_resource_counters()->set_resident_memory_usage_kb(procinfo->m_vmrss_kb);
-				proc->mutable_resource_counters()->set_virtual_memory_usage_kb(procinfo->m_vmsize_kb);
-				proc->mutable_resource_counters()->set_swap_memory_usage_kb(procinfo->m_vmswap_kb);
-				proc->mutable_resource_counters()->set_major_pagefaults(procinfo->m_pfmajor);
-				proc->mutable_resource_counters()->set_minor_pagefaults(procinfo->m_pfminor);
-			}
-
-			proc->mutable_resource_counters()->set_threads_count(procinfo->m_threads_count);
-
-			if(tot.m_count != 0)
-			{
-				sinsp_delays_info* prog_delays = &procinfo->m_transaction_delays;
-
-				//
-				// Main metrics
-
-				procinfo->m_proc_metrics.to_protobuf(proc->mutable_tcounters(), m_sampling_ratio);
-
-				//
-				// Transaction-related metrics
-				//
-				if(prog_delays->m_local_processing_delay_ns != -1)
-				{
-					proc->set_transaction_processing_delay(prog_delays->m_local_processing_delay_ns * m_sampling_ratio);
-					proc->set_next_tiers_delay(prog_delays->m_merged_client_delay * m_sampling_ratio);
-				}
-
-				procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
-					proc->mutable_max_transaction_counters(),
-					m_sampling_ratio);
-
-				proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo->m_capacity_score * 100));
-				proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo->m_stolen_capacity_score * 100));
-				proc->mutable_resource_counters()->set_connection_queue_usage_pct(procinfo->m_connection_queue_usage_pct);
-				if(!m_inspector->is_nodriver())
-				{
-					// These metrics are not correct in nodriver mode
-					proc->mutable_resource_counters()->set_fd_usage_pct(procinfo->m_fd_usage_pct);
-					proc->mutable_resource_counters()->set_fd_count(procinfo->m_fd_count);
-				}
-
-				//
-				// Error-related metrics
-				//
-				procinfo->m_syscall_errors.to_protobuf(proc->mutable_syscall_errors(), m_sampling_ratio);
-
-				//
-				// Protocol tables
-				//
-				proc->set_start_count(procinfo->m_start_count);
-				proc->set_count_processes(procinfo->m_proc_count);
-			}
-		}
-
-		//
-		// Clear the thread metrics, so we're ready for the next sample
-		//
-		tinfo->m_ainfo->clear_all_metrics();
-	}
-	at_trc.stop();
+	emit_processes_deprecated(all_uids,
+				  flushflags,
+				  progtable,
+				  progtable_by_container,
+				  emitted_containers,
+				  proc_trc,
+				  jmx_emitter_instance,
+				  app_check_emitter_instance,
+				  environment_emitter_instance);
 
 	tracer_emitter user_trc("userdb_lookup", proc_trc);
 	for(const auto uid : all_uids) {
@@ -5712,7 +5724,7 @@ void sinsp_analyzer::emit_containerd_events()
 void
 sinsp_analyzer::found_emittable_containers(sinsp_analyzer& analyzer,
                                            const vector<string>& containers,
-                                           const progtable_by_container_t& progtable_by_container)
+                                           const analyzer_emitter::progtable_by_container_t& progtable_by_container)
 {
 	// This queue is initialized only if statsd is enabled and we are in nodriver mode
 	if(!analyzer.m_statsite_forwader_queue)
@@ -5785,7 +5797,7 @@ private:
 
 
 vector<string>
-sinsp_analyzer::emit_containers_deprecated(const progtable_by_container_t& progtable_by_container,
+sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& progtable_by_container,
 				analyzer_emitter::flush_flags flushflags)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract

@@ -37,6 +37,9 @@
 #include "analyzer_file_stat.h"
 #include "analyzer_callback_interface.h"
 #include "analyzer_emitter.h"
+#include "jmx_emitter.h"
+#include "app_check_emitter.h"
+#include "environment_emitter.h"
 
 namespace libsanalyzer
 {
@@ -234,7 +237,6 @@ public:
 		MSR_REQUEST_REGULAR = 3,
 	};
 
-	using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 	// only use default root_dir if you don't need coclient
 	// (it needs root_dir properly set to locate the cointerface server socket)
 	sinsp_analyzer(sinsp* inspector, std::string root_dir);
@@ -792,10 +794,9 @@ public:
 	 * of whether they actually ARE emitted. It is guaranteed to be called
 	 * before emit_container() (if emit_container() is called).
 	 */
-	static void found_emittable_containers(
-			sinsp_analyzer& m_analyzer,
-			const std::vector<std::string>& containers,
-			const progtable_by_container_t& progtable_by_container);
+	static void found_emittable_containers(sinsp_analyzer& m_analyzer,
+					       const std::vector<std::string>& containers,
+					       const analyzer_emitter::progtable_by_container_t& progtable_by_container);
 
 	/**
 	 * The container_emitter class is responsible for sorting and deciding
@@ -836,9 +837,30 @@ VISIBILITY_PRIVATE
 	void filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	template<class Iterator>
 	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
-	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
-			    bool is_eof, analyzer_emitter::flush_flags flushflags,
+
+	/**
+	 * emit most things. This function is largely misnamed as it emits far more than
+	 * just processes
+	 */
+	void emit_processes(sinsp_evt* evt,
+			    uint64_t sample_duration,
+			    bool is_eof,
+			    analyzer_emitter::flush_flags flushflags,
 			    const tracer_emitter &f_trc);
+
+	/**
+	 * emit process data. This function emits data scoped to processes. It is
+	 * deprecated as it is to be replaced by the process_emitter class
+	 */
+	void emit_processes_deprecated(std::set<uint64_t>& all_uids,
+				       analyzer_emitter::flush_flags flushflags,
+				       analyzer_emitter::progtable_t& progtable,
+				       analyzer_emitter::progtable_by_container_t& progtable_by_container,
+				       vector<std::string>& emitted_containers,
+				       tracer_emitter& proc_trc,
+				       jmx_emitter& jmx_emitter_instance,
+				       app_check_emitter& app_check_emitter_instance,
+				       environment_emitter& environment_emitter_instance);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();
@@ -884,13 +906,13 @@ VISIBILITY_PRIVATE
 	// calculated since the previous call to this method
 	void calculate_analyzer_cpu_usage();
 
-	void update_percentile_data_serialization(const progtable_by_container_t&);
+	void update_percentile_data_serialization(const analyzer_emitter::progtable_by_container_t&);
 	void gather_k8s_infrastructure_state(uint32_t flushflags,
 					     vector<string>& emitted_containers);
-	void clean_containers(const progtable_by_container_t&);
+	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
 	// deprecated in favor of smart container filtering
-	vector<string> emit_containers_deprecated(const progtable_by_container_t& active_containers,
+	vector<string> emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& active_containers,
 				       analyzer_emitter::flush_flags flushflags);
 
 

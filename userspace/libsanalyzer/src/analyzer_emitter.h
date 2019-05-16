@@ -16,4 +16,10 @@ enum flush_flags
 	DF_TIMEOUT,
 	DF_EOF,
 };
+
+using progtable_t = std::unordered_set<sinsp_threadinfo*,
+				       sinsp_threadinfo::hasher,
+				       sinsp_threadinfo::comparer>;
+
+using progtable_by_container_t = unordered_map<string, vector<sinsp_threadinfo*>>;
 }
