@@ -2,11 +2,10 @@
 #include "threadinfo.h"
 #include "analyzer_thread.h"
 
-environment_emitter::environment_emitter(std::unordered_map<env_hash, uint64_t>& sent_envs,
-					 const uint64_t prev_flush_time_ns,
+environment_emitter::environment_emitter(const uint64_t prev_flush_time_ns,
 					 const env_hash_config& the_env_hash_config,
 					 draiosproto::metrics& metrics)
-	: m_sent_envs(sent_envs),
+	: m_sent_envs(),
 	  m_prev_flush_time_ns(prev_flush_time_ns),
 	  m_env_hash_config(the_env_hash_config),
 	  m_metrics(metrics)

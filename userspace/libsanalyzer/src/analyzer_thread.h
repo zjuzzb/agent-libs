@@ -54,10 +54,8 @@ public:
 	// number of minor page faults since start
 	uint64_t m_pfminor;
 	// list of processes that are part of this program
-#ifdef ANALYZER_EMITS_PROGRAMS
 	set<int64_t> m_program_pids;
 	set<int64_t> m_program_uids;
-#endif
 	// Number of child threads or processes that served transactions
 	uint64_t m_n_transaction_threads;
 	// The metrics for transaction coming from the external world

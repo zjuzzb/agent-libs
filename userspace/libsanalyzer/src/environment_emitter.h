@@ -12,8 +12,7 @@
 class environment_emitter
 {
 public:
-	environment_emitter(std::unordered_map<env_hash, uint64_t>& sent_envs,
-			    const uint64_t prev_flush_time_ns,
+	environment_emitter(const uint64_t prev_flush_time_ns,
 			    const env_hash_config& the_env_hash_config,
 			    draiosproto::metrics& metrics);
 
@@ -25,7 +24,7 @@ public:
 
 private:
 	uint64_t m_num_envs_sent = 0;
-	std::unordered_map<env_hash, uint64_t>& m_sent_envs;
+	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 	const uint64_t m_prev_flush_time_ns;
 	const env_hash_config& m_env_hash_config;
 	draiosproto::metrics& m_metrics;

@@ -2121,10 +2121,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		ASSERT(procinfo != NULL);
 
 		procinfo->m_proc_metrics.get_total(&tot);
-//		if(!m_inspector->m_islive)
-//		{
-//			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-//		}
 
 		if(tot.m_count != 0)
 		{
@@ -2236,8 +2232,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 									"  time)proc:%.2lf%% file:%.2lf%%(in:%" PRIu32 "b/%" PRIu32" out:%" PRIu32 "b/%" PRIu32 ") net:%.2lf%% other:%.2lf%%",
-							//(double)procinfo->m_proc_metrics.m_processing.m_time_ns,
-							//(double)procinfo->m_proc_metrics.m_file.m_time_ns,
 									procinfo->m_proc_metrics.get_processing_percentage() * 100,
 									procinfo->m_proc_metrics.get_file_percentage() * 100,
 									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_in,
@@ -2245,7 +2239,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 									procinfo->m_proc_metrics.m_tot_io_file.m_bytes_out,
 									procinfo->m_proc_metrics.m_tot_io_file.m_count_out,
 									procinfo->m_proc_metrics.get_net_percentage() * 100,
-							//(double)procinfo->m_proc_metrics.m_net.m_time_ns,
 									procinfo->m_proc_metrics.get_other_percentage() * 100);
 				}
 			}
@@ -2454,8 +2447,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						     m_app_checks_by_containers,
 						     m_prometheus_by_containers,
 						     m_prev_flush_time_ns);
-	environment_emitter environment_emitter_instance(m_sent_envs,
-							 m_prev_flush_time_ns,
+	environment_emitter environment_emitter_instance(m_prev_flush_time_ns,
 							 m_env_hash_config,
 							 *m_metrics);
 	for(auto it = progtable.begin(); it != progtable.end(); ++it)
@@ -2468,16 +2460,12 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		//
 		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
 
-#ifdef ANALYZER_EMITS_PROCESSES
 		sinsp_counter_time tot;
 
 		ASSERT(procinfo != NULL);
 
 		procinfo->m_proc_metrics.get_total(&tot);
-//		if(!m_inspector->m_islive)
-//		{
-//			ASSERT(is_eof || tot.m_time_ns % sample_duration == 0);
-//		}
+
 		//
 		// Inclusion logic
 		//
@@ -2487,7 +2475,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		if(!tinfo->m_ainfo->m_procinfo->m_exclude_from_sample || !progtable_needs_filtering)
 		{
-#ifdef ANALYZER_EMITS_PROGRAMS
 			draiosproto::program* prog = m_metrics->add_programs();
 			draiosproto::process* proc = prog->mutable_procinfo();
 
@@ -2498,9 +2485,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			if(m_track_environment && m_env_hash_config.m_send_metrics) {
 				environment_emitter_instance.emit_environment(*tinfo, *prog);
 			}
-#else // ANALYZER_EMITS_PROGRAMS
-			draiosproto::process* proc = m_metrics->add_processes();
-#endif // ANALYZER_EMITS_PROGRAMS
 
 			for(const auto uid : procinfo->m_program_uids) {
 				if(m_username_lookups) {
@@ -2512,42 +2496,38 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 			//
 			// Basic values
 			//
-			if((tinfo->m_flags & PPM_CL_NAME_CHANGED) ||
-				(m_n_flushes % PROCINFO_IN_SAMPLE_INTERVAL == (PROCINFO_IN_SAMPLE_INTERVAL - 1)))
+			auto main_thread = tinfo->get_main_thread();
+			if(!main_thread)
 			{
-				auto main_thread = tinfo->get_main_thread();
-				if(!main_thread)
-				{
-					g_logger.format(sinsp_logger::SEV_WARNING, "Thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
-					continue;
-				}
+				g_logger.format(sinsp_logger::SEV_WARNING, "Thread %lu without main process %lu\n", tinfo->m_tid, tinfo->m_pid);
+				continue;
+			}
 
-				proc->mutable_details()->set_comm(main_thread->m_comm);
-				proc->mutable_details()->set_exe(main_thread->m_exe);
-				for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
-					arg_it != main_thread->m_args.end(); ++arg_it)
+			proc->mutable_details()->set_comm(main_thread->m_comm);
+			proc->mutable_details()->set_exe(main_thread->m_exe);
+			for(vector<string>::const_iterator arg_it = main_thread->m_args.begin();
+			    arg_it != main_thread->m_args.end(); ++arg_it)
+			{
+				if(*arg_it != "")
 				{
-					if(*arg_it != "")
+					if(arg_it->size() <= ARG_SIZE_LIMIT)
 					{
-						if(arg_it->size() <= ARG_SIZE_LIMIT)
-						{
-							proc->mutable_details()->add_args(*arg_it);
-						}
-						else
-						{
-							auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
-							proc->mutable_details()->add_args(arg_capped);
-						}
+						proc->mutable_details()->add_args(*arg_it);
+					}
+					else
+					{
+						auto arg_capped = arg_it->substr(0, ARG_SIZE_LIMIT);
+						proc->mutable_details()->add_args(arg_capped);
 					}
 				}
-
-				if(!main_thread->m_container_id.empty())
-				{
-					proc->mutable_details()->set_container_id(main_thread->m_container_id);
-				}
-
-				tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 			}
+
+			if(!main_thread->m_container_id.empty())
+			{
+				proc->mutable_details()->set_container_id(main_thread->m_container_id);
+			}
+
+			tinfo->m_flags &= ~PPM_CL_NAME_CHANGED;
 
 			procinfo->m_files_stat.emit(proc, m_top_files_per_prog);
 			procinfo->m_devs_stat.emit(proc, m_device_map, m_top_file_devices_per_prog);
@@ -2663,7 +2643,6 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				}
 
 				procinfo->m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
-					//proc->mutable_min_transaction_counters(),
 					proc->mutable_max_transaction_counters(),
 					m_sampling_ratio);
 
@@ -2685,12 +2664,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				//
 				// Protocol tables
 				//
-//					procinfo->m_protostate.to_protobuf(proc->mutable_protos(),
-//						m_sampling_ratio);
 				proc->set_start_count(procinfo->m_start_count);
 				proc->set_count_processes(procinfo->m_proc_count);
 			}
-#endif // ANALYZER_EMITS_PROCESSES
 		}
 
 		//
@@ -3081,7 +3057,6 @@ void sinsp_analyzer::emit_aggregated_connections()
 
 			for(uint32_t j = 0; j < conns_to_report; j++)
 			{
-				//process_tuple* pt = (process_tuple*)sortable_conns[j].first;
 
 				reduced_and_filtered_ipv4_connections[*(sortable_conns[j].first)] =
 					*(sortable_conns[j].second);
@@ -3404,9 +3379,6 @@ vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 
 void sinsp_analyzer::tune_drop_mode(analyzer_emitter::flush_flags flushflags, double threshold_metric)
 {
-	//g_logger.log("drop_upper_threshold =" + std::to_string(m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
-	//g_logger.log("drop_lower_threshold =" + std::to_string(m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
-	//g_logger.log("drop_threshold_consecutive_seconds =" + std::to_string(m_configuration->get_drop_threshold_consecutive_seconds()), sinsp_logger::SEV_DEBUG);
 	if(flushflags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		return;
@@ -3583,41 +3555,6 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 			// actually be saved.
 			m_internal_metrics->set_n_container_healthcheck_command_lines(m_num_container_healthcheck_command_lines);
 		}
-#if 0
-		uint32_t j;
-		int32_t last_pipe_head = -1;
-		//
-		// Consolidate command with pipes
-		//
-		int32_t last_pipe_head = -1;
-		for(uint32_t j = 0; j < commands->size(); j++)
-		{
-			uint32_t flags = commands->at(j).m_flags;
-
-			if(flags & sinsp_executed_command::FL_PIPE_HEAD)
-			{
-				last_pipe_head = j;
-			}
-			else if(flags & (sinsp_executed_command::FL_PIPE_MIDDLE | sinsp_executed_command::FL_PIPE_TAIL))
-			{
-				if(last_pipe_head != -1)
-				{
-					commands->at(last_pipe_head).m_cmdline += " | ";
-					commands->at(last_pipe_head).m_cmdline += commands->at(j).m_cmdline;
-					commands->at(j).m_flags |= sinsp_executed_command::FL_EXCLUDED;
-				}
-				else
-				{
-//					ASSERT(false);
-				}
-
-				if(flags & sinsp_executed_command::FL_PIPE_TAIL)
-				{
-					last_pipe_head = -1;
-				}
-			}
-		}
-#endif
 
 		//
 		// if there are too many commands, try to aggregate by command line
@@ -3736,7 +3673,6 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				}
 				else
 				{
-//fprintf(stderr, "%ld) %s\n", it->m_pid, it->m_cmdline.c_str());
 					cd->set_cmdline(it->m_cmdline);
 				}
 			}
@@ -3814,7 +3750,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 		calculate_analyzer_cpu_usage();
 	}
 	m_cputime_analyzer.begin_flush();
-	//g_logger.format(sinsp_logger::SEV_TRACE, "Called flush with ts=%lu is_eof=%s flushflags=%d", ts, is_eof? "true" : "false", flushflags);
 	uint32_t j;
 	uint64_t flush_start_ns = sinsp_utils::get_current_time_ns();
 
@@ -4175,7 +4110,6 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				host_marker.add(m_host_metrics.m_protostate);
 				host_marker.mark_top(HOST_PROTOS_LIMIT);
 				m_host_metrics.m_protostate->to_protobuf(m_metrics->mutable_protos(), m_sampling_ratio, HOST_PROTOS_LIMIT);
-				//g_logger.log(m_metrics->protos().DebugString(), sinsp_logger::SEV_TRACE);
 			}
 
 			//

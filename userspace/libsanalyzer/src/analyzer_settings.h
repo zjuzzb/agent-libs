@@ -9,18 +9,6 @@
 #define ANALYZER_DEFAULT_SAMPLE_LENGTH_NS 1000000000ULL
 
 //
-// If this is defined, the analyzer will include process information inside
-// the protocol buffers that it sends to the agent
-//
-#define ANALYZER_EMITS_PROCESSES
-
-//
-// If this is defined, the analyzer will include program information inside
-// the protocol buffers that it sends to the agent
-//
-#define ANALYZER_EMITS_PROGRAMS
-
-//
 // The min and max size for the memory buffer used as a target for protobuf 
 // serialization. Min is the starting value, while max is the growth limit.
 // This imposes a limit to the number of bytes that can be sent out by
@@ -77,16 +65,6 @@
 //
 #define MAX_HEALTH_CONCURRENCY 16
 #define CONCURRENCY_OBSERVATION_INTERVAL_NS 1000000
-
-//
-// Number of samples after which the process information *of every process* is included in the sample.
-// Usually, the sample includes only process information for processes that have been created
-// during the sample or that did an execve during the sample.
-// Every once in a while, tough, we force the inclusion of every process, to make sure the backend stays
-// in sync.
-// This constant controls after how many normal samples we include a "full process" sample.
-//
-#define PROCINFO_IN_SAMPLE_INTERVAL 1
 
 //
 // Maximum numeber of external TCP/UDP client endpoints that are reported independently.

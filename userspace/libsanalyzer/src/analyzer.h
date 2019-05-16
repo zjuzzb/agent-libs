@@ -1222,7 +1222,6 @@ VISIBILITY_PRIVATE
 
 	bool m_track_environment = false;
 	env_hash_config m_env_hash_config;
-	std::unordered_map<env_hash, uint64_t> m_sent_envs;
 
 	int m_top_files_per_prog = 0;
 	int m_top_files_per_container = 0;

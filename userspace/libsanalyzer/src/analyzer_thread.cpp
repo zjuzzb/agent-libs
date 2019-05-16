@@ -52,9 +52,7 @@ void sinsp_procinfo::clear()
 		*it = 0;
 	}
 
-#ifdef ANALYZER_EMITS_PROGRAMS
 	m_program_pids.clear();
-#endif
 
 	m_external_transaction_metrics.clear();
 
@@ -276,12 +274,10 @@ void thread_analyzer_info::add_all_metrics(thread_analyzer_info* other)
 	// If we are returning programs to the backend, add the child pid to the
 	// m_program_pids list
 	//
-#ifdef ANALYZER_EMITS_PROGRAMS
 	ASSERT(other->m_tinfo != NULL);
 
 	m_procinfo->m_program_pids.insert(other->m_tinfo->m_pid);
 	m_procinfo->m_program_uids.insert(other->m_tinfo->m_uid);
-#endif
 
 	if(other->m_transaction_metrics.get_counter()->m_count_in != 0)
 	{
