@@ -20,6 +20,7 @@ import platform
 # project
 from checks import AgentCheck
 from util import get_hostname
+from utils.subprocess_output import get_subprocess_output
 from config import _is_affirmative
 
 from sysdig_tracers import Tracer
@@ -273,7 +274,55 @@ class AppCheckInstance:
             else:
                 self.instance_conf[key] = value
 
+        self.get_os_info()
         logging.debug("Created instance of check %s with conf: %s", self.name, repr(self.instance_conf))
+
+    def switch_to_self_namespace(self):
+        setns(self.MYNET)
+        setns(self.MYMNT)
+        if self.MYROOT != "/":
+            try:
+                os.chroot(self.MYROOT)
+                os.chdir("/")
+            except OSError as ex:
+                logging.error("Error while setting root: %s" % str(ex))
+                sys.exit(1)
+        setns(self.MYUTS)
+
+    def extract_os_info(self, exec_cmd, output):
+        if "os-release" in exec_cmd:
+            for line in output.split('\n'):
+                if "NAME" in line:
+                    logging.info("Appcheck[%s] OS info %s" % (self.pid, line))
+                elif "VERSION" in line:
+                    logging.info("Appcheck[%s] OS info %s" % (self.pid, line))
+        else:
+            if len(output.strip()) > 0:
+                logging.info("Appcheck[%s] OS info %s" % (self.pid, output.strip().split('\n')[0]))
+
+    def get_os_info(self):
+        nsfd = None
+        try:
+            if self.is_on_another_container:
+                nsfd = os.open(build_ns_path(self.pid, 'mnt'), os.O_RDONLY)
+                ret = setns(nsfd)
+                if ret != 0:
+                    raise OSError("Cannot setns to pid: %d" % self.pid)
+                if os.path.isfile('/etc/os-release'):
+                    exec_cmd = "cat /etc/os-release"
+                else:
+                    exec_cmd = "cat /etc/*-release"
+                output, err, code = get_subprocess_output([exec_cmd], logging, shell=True)
+                if isinstance(output, str) and code == 0:
+                    self.extract_os_info(exec_cmd, output)
+        except Exception as ex:
+            traceback_message = traceback.format_exc()
+            ex = AppCheckException("%s\n%s" % (repr(ex), traceback_message))
+            logging.warning("Error while collecting system info: %s" % str(ex))
+        finally:
+            if self.is_on_another_container:
+                os.close(nsfd)
+                self.switch_to_self_namespace()
 
     def run(self):
         saved_ex = None
@@ -302,16 +351,7 @@ class AppCheckInstance:
             for nsfd in ns_fds:
                 os.close(nsfd)
             if self.is_on_another_container:
-                setns(self.MYNET)
-                setns(self.MYMNT)
-                if self.MYROOT != "/":
-                    try:
-                        os.chroot(self.MYROOT)
-                        os.chdir("/")
-                    except OSError as ex:
-                        logging.error("Error while setting root: %s" % str(ex))
-                        sys.exit(1)
-                setns(self.MYUTS)
+                self.switch_to_self_namespace()
             # We don't need them, but this method clears them so we avoid memory growing
             self.check_instance.get_events()
             self.check_instance.get_service_metadata()
