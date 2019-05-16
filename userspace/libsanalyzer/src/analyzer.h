@@ -36,6 +36,7 @@
 #include "procfs_scanner.h"
 #include "analyzer_file_stat.h"
 #include "analyzer_callback_interface.h"
+#include "analyzer_emitter.h"
 
 namespace libsanalyzer
 {
@@ -225,16 +226,6 @@ private:
 class SINSP_PUBLIC sinsp_analyzer
 {
 public:
-	enum flush_flags
-	{
-		DF_NONE = 0,
-		DF_FORCE_FLUSH,
-		DF_FORCE_NOFLUSH,
-		DF_FORCE_FLUSH_BUT_DONT_EMIT,
-		DF_TIMEOUT,
-		DF_EOF,
-	};
-
 	enum mode_switch_state
 	{
 		MSR_NONE = 0,
@@ -280,7 +271,7 @@ public:
 	//
 	// Processing entry point
 	//
-	void process_event(sinsp_evt* evt, flush_flags flushflags);
+	void process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flushflags);
 
 	void add_syscall_time(sinsp_counters* metrics,
 		sinsp_evt::category* cat,
@@ -773,7 +764,7 @@ public:
 	 */
 	void set_last_dropmode_switch_time(uint64_t last_dropmode_switch_time);
 
-	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flushflags);
+	void flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_emitter::flush_flags flushflags);
 
 	/**
 	 * Returns the current mode switch state.
@@ -817,7 +808,7 @@ public:
 	                    unsigned* statsd_limit,
 	                    uint64_t total_cpu_shares,
 	                    sinsp_threadinfo* tinfo, 
-	                    sinsp_analyzer::flush_flags flushflags,
+	                    analyzer_emitter::flush_flags flushflags,
 			    const std::list<uint32_t>& groups);
 
 	/**
@@ -846,7 +837,7 @@ VISIBILITY_PRIVATE
 	template<class Iterator>
 	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
 	void emit_processes(sinsp_evt* evt, uint64_t sample_duration,
-			    bool is_eof, sinsp_analyzer::flush_flags flushflags,
+			    bool is_eof, analyzer_emitter::flush_flags flushflags,
 			    const tracer_emitter &f_trc);
 	void emit_environment(draiosproto::program *prog, sinsp_threadinfo *tinfo, uint32_t &num_envs_sent);
 	void flush_processes();
@@ -901,10 +892,10 @@ VISIBILITY_PRIVATE
 
 	// deprecated in favor of smart container filtering
 	vector<string> emit_containers_deprecated(const progtable_by_container_t& active_containers,
-				       sinsp_analyzer::flush_flags flushflags);
+				       analyzer_emitter::flush_flags flushflags);
 
 
-	void tune_drop_mode(flush_flags flushflags, double threshold_metric);
+	void tune_drop_mode(analyzer_emitter::flush_flags flushflags, double threshold_metric);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
 	void get_statsd();

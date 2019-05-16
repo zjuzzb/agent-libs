@@ -90,9 +90,10 @@ using namespace google::protobuf::io;
 #include "user_event_logger.h"
 #include "utils/profiler.h"
 
+#include <gperftools/profiler.h>
 using namespace libsanalyzer;
 
-typedef container_emitter<sinsp_analyzer, sinsp_analyzer::flush_flags> analyzer_container_emitter;
+typedef container_emitter<sinsp_analyzer, analyzer_emitter::flush_flags> analyzer_container_emitter;
 
 namespace
 {
@@ -1496,7 +1497,7 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 		return;
 	}
 
-	if(flush_flags == sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flush_flags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		return;
 	}
@@ -1573,7 +1574,7 @@ sinsp_analyzer::clean_containers(const progtable_by_container_t& progtable_by_co
 }
 
 void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
-				    bool is_eof, sinsp_analyzer::flush_flags flushflags,
+				    bool is_eof, analyzer_emitter::flush_flags flushflags,
 				    const tracer_emitter &f_trc)
 {
 	tracer_emitter proc_trc("emit_processes", f_trc);
@@ -1604,7 +1605,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	// Get metrics from JMX until we found id 0 or timestamp-1
 	// with id 0, means that sdjagent is not working or metrics are not ready
 	// id = timestamp-1 are what we need now
-	if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		if(m_jmx_proxy)
 		{
@@ -1656,7 +1657,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	}
 #endif
 
-	if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"thread table size:%d",
@@ -1665,7 +1666,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 	if(m_ipv4_connections->get_n_drops() != 0)
 	{
-		if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			g_logger.format(sinsp_logger::SEV_ERROR,
 				"IPv4 table size:%d",
@@ -1681,7 +1682,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	//
 #ifndef CYGWING_AGENT
 	if(!m_inspector->is_capture() &&
-	  (flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) &&
+	  (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) &&
 	  !m_skip_proc_parsing)
 	{
 		m_procfs_parser->set_global_cpu_jiffies();
@@ -1853,7 +1854,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		uint64_t trtimeout;
 		bool is_subsampling;
 
-		if(flushflags == sinsp_analyzer::DF_NONE)
+		if(flushflags == analyzer_emitter::DF_NONE)
 		{
 			trtimeout = TRANSACTION_TIMEOUT_NS;
 			is_subsampling = false;
@@ -1871,7 +1872,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 		//
 		ainfo->m_cpuload = 0;
 
-		if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			if(tinfo.is_main_thread())
 			{
@@ -2209,7 +2210,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 				uint32_t trcountin = procinfo->m_proc_transaction_metrics.get_counter()->m_count_in;
 				uint32_t trcountout = procinfo->m_proc_transaction_metrics.get_counter()->m_count_out;
 
-				if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+				if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 									" %s (%" PRIu64 ")%" PRIu64 " h:%.2f(s:%.2f) cpu:%.2f %%f:%" PRIu32 " %%c:%" PRIu32,
@@ -2340,7 +2341,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	container_trc.stop();
 	bool progtable_needs_filtering = false;
 
-	if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
 	}
@@ -2886,7 +2887,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 #endif
 
 #ifndef _WIN32
-	if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		if(m_jmx_proxy && is_jmx_flushtime() && !java_process_requests.empty())
 		{
@@ -3631,12 +3632,12 @@ vector<long> sinsp_analyzer::get_n_tracepoint_diff()
 	return evts_per_second_by_cpu;
 }
 
-void sinsp_analyzer::tune_drop_mode(flush_flags flushflags, double threshold_metric)
+void sinsp_analyzer::tune_drop_mode(analyzer_emitter::flush_flags flushflags, double threshold_metric)
 {
 	//g_logger.log("drop_upper_threshold =" + std::to_string(m_configuration->get_drop_upper_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
 	//g_logger.log("drop_lower_threshold =" + std::to_string(m_configuration->get_drop_lower_threshold(m_machine_info->num_cpus)), sinsp_logger::SEV_DEBUG);
 	//g_logger.log("drop_threshold_consecutive_seconds =" + std::to_string(m_configuration->get_drop_threshold_consecutive_seconds()), sinsp_logger::SEV_DEBUG);
-	if(flushflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flushflags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		return;
 	}
@@ -4036,10 +4037,10 @@ void sinsp_analyzer::emit_baseline(sinsp_evt* evt, bool is_eof, const tracer_emi
 #define HIGH_EVT_THRESHOLD 300*1000
 #define HIGH_SINGLE_EVT_THRESHOLD 100*1000
 
-void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags flushflags)
+void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_emitter::flush_flags flushflags)
 {
 	tracer_emitter f_trc("analyzer_flush", flush_tracer_timeout());
-	if (flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT) {
+	if (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
 		calculate_analyzer_cpu_usage();
 	}
 	m_cputime_analyzer.begin_flush();
@@ -4075,7 +4076,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 		}
 	}
 
-	if(flushflags == DF_FORCE_NOFLUSH)
+	if(flushflags == analyzer_emitter::DF_FORCE_NOFLUSH)
 	{
 		return;
 	}
@@ -4084,8 +4085,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	for(j = 0; ; j++)
 	{
-		if(flushflags == DF_FORCE_FLUSH ||
-			flushflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		if(flushflags == analyzer_emitter::DF_FORCE_FLUSH ||
+			flushflags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			//
 			// Make sure we don't generate too many samples in case of subsampling
@@ -4140,7 +4141,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			// Calculate CPU load
 			//
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				//
 				// Make sure that there's been enough time since the previous call to justify getting
@@ -4183,7 +4184,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			//
 			m_metrics->Clear();
 
-			if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
+			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT && !m_inspector->is_capture())
 			{
 #ifndef CYGWING_AGENT
 				// Only run every 10 seconds or 5 minutes
@@ -4254,7 +4255,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// inside the func to take advantage of scoping
 			emit_processes(evt, sample_duration, is_eof, flushflags, f_trc);
 
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"IPv4 table size:%d",
@@ -4319,7 +4320,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			for(uint32_t k = 0; k < m_proc_stat.m_loads.size(); k++)
 			{
-				if((g_logger.get_severity() >= sinsp_logger::SEV_DEBUG) && (flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT))
+				if((g_logger.get_severity() >= sinsp_logger::SEV_DEBUG) && (flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT))
 				{
 					g_logger.log("CPU[" + to_string(k) +
 								 "]: us=" + to_string(m_proc_stat.m_user[k]) +
@@ -4354,8 +4355,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			// Log host syscall count
 			auto top_calls = m_host_metrics.m_syscall_count.top_calls(5);
 			auto sev = sinsp_logger::SEV_DEBUG;
-			if(flushflags == DF_FORCE_FLUSH ||
-			    flushflags == DF_FORCE_FLUSH_BUT_DONT_EMIT ||
+			if(flushflags == analyzer_emitter::DF_FORCE_FLUSH ||
+			    flushflags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT ||
 			    m_host_metrics.m_syscall_count.total_calls() > HIGH_EVT_THRESHOLD ||
 			    (top_calls.crbegin() != top_calls.crend() &&
 			     top_calls.crbegin()->first > HIGH_SINGLE_EVT_THRESHOLD))
@@ -4364,7 +4365,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			std::ostringstream call_log;
 			call_log << "Top calls";
-			if(flushflags == DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flushflags == analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				call_log << " while sampling";
 			}
@@ -4631,7 +4632,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			auto external_io_net = m_metrics->mutable_hostinfo()->mutable_external_io_net();
 			m_io_net.to_protobuf(external_io_net, 1, m_sampling_ratio);
 
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 
 				// We decided to patch host network metrics using data from /proc, because using only
@@ -4655,7 +4656,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			}
 			m_metrics->mutable_hostinfo()->mutable_external_io_net()->set_time_ns_out(0);
 
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				g_logger.format(sinsp_logger::SEV_DEBUG,
 					"sinsp cpu: %lf", m_my_cpuload);
@@ -4674,7 +4675,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 			if(m_host_transaction_counters.get_counter()->m_count_in + m_host_transaction_counters.get_counter()->m_count_out != 0)
 			{
-				if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+				if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 				{
 					g_logger.format(sinsp_logger::SEV_DEBUG,
 						" host h:%.2f(s:%.2f)",
@@ -4705,7 +4706,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 			////////////////////////////////////////////////////////
 			// Serialize everything
 			////////////////////////////////////////////////////////
-			if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+			if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 			{
 				const uint64_t evt_num =
 					(evt ? evt->get_num()
@@ -4753,7 +4754,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 	//
 	// Clear the transaction state
 	//
-	if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 	{
 		g_logger.format(sinsp_logger::SEV_DEBUG,
 			"# Client Transactions:%d",
@@ -4835,7 +4836,7 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, flush_flags
 
 	if(evt)
 	{
-		if(flushflags != DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			const uint64_t nevts_in_last_sample = evt->get_num() - m_prev_sample_evtnum;
 			g_logger.format(sinsp_logger::SEV_DEBUG, "----- %" PRIu64 "", nevts_in_last_sample);
@@ -5031,7 +5032,7 @@ void sinsp_analyzer::add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat)
 //
 // Analyzer event processing entry point
 //
-void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flushflags)
+void sinsp_analyzer::process_event(sinsp_evt* evt, analyzer_emitter::flush_flags flushflags)
 {
 	uint64_t ts;
 	uint64_t delta;
@@ -5072,7 +5073,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flushflags)
 	{
 		if(m_sampling_ratio == 1)
 		{
-			if(flushflags == DF_EOF)
+			if(flushflags == analyzer_emitter::DF_EOF)
 			{
 				ts = m_next_flush_time_ns;
 				flush(evt, ts, true, flushflags);
@@ -5084,7 +5085,7 @@ void sinsp_analyzer::process_event(sinsp_evt* evt, flush_flags flushflags)
 
 				return;
 			}
-			else if(flushflags == DF_TIMEOUT)
+			else if(flushflags == analyzer_emitter::DF_TIMEOUT)
 			{
 				if(m_inspector->is_live() && m_inspector->m_lastevent_ts != 0)
 				{
@@ -6081,7 +6082,7 @@ private:
 
 vector<string>
 sinsp_analyzer::emit_containers_deprecated(const progtable_by_container_t& progtable_by_container,
-				sinsp_analyzer::flush_flags flushflags)
+				analyzer_emitter::flush_flags flushflags)
 {
 	// Containers are ordered by cpu, mem, file_io and net_io, these lambda extract
 	// that value from analyzer_container_state
@@ -6301,7 +6302,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 			       unsigned *statsd_limit,
 			       uint64_t total_cpu_shares,
 			       sinsp_threadinfo* tinfo,
-			       sinsp_analyzer::flush_flags flushflags,
+			       analyzer_emitter::flush_flags flushflags,
 			       const std::list<uint32_t>& groups)
 {
 	const auto containers_info = m_inspector->m_container_manager.get_containers();
@@ -6501,7 +6502,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 		 * Only read cpuacct cgroup values when we really are going to emit them,
 		 * otherwise the read value gets lost and we underreport the CPU usage
 		 */
-		if(flushflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
+		if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT) {
 			const auto cgroup_cpuacct = m_procfs_parser->read_cgroup_used_cpu(cpuacct_cgroup_it->second,
 					it_analyzer->second.m_last_cpuacct_cgroup, &it_analyzer->second.m_last_cpu_time);
 			if(cgroup_cpuacct > 0)

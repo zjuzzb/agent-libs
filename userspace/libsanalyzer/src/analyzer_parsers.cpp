@@ -73,7 +73,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 			m_analyzer->simulate_drop_mode(true);
 
 			//g_logger.log("Executing flush (drop_e)", sinsp_logger::SEV_INFO);
-			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH);
+			m_analyzer->flush(evt, evt->get_ts(), false, analyzer_emitter::DF_FORCE_FLUSH);
 
 			m_last_drop_was_enter = true;
 		}
@@ -86,7 +86,7 @@ bool sinsp_analyzer_parsers::process_event(sinsp_evt* evt)
 			m_analyzer->simulate_drop_mode(false);
 
 			//g_logger.log("Executing flush (drop_x)", sinsp_logger::SEV_INFO);
-			m_analyzer->flush(evt, evt->get_ts(), false, sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT);
+			m_analyzer->flush(evt, evt->get_ts(), false, analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT);
 
 			m_last_drop_was_enter = false;
 		}

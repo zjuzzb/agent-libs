@@ -98,7 +98,7 @@ int32_t sinsp_mock::next(sinsp_evt **evt) /*override*/
 
 	if(m_analyzer)
 	{
-		m_analyzer->process_event(*evt, sinsp_analyzer::DF_NONE);
+		m_analyzer->process_event(*evt, analyzer_emitter::DF_NONE);
 
 		// Wait for async processing to complete
 		m_analyzer->flush_drain();

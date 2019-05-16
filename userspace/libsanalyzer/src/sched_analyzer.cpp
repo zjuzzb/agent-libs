@@ -394,7 +394,7 @@ void sinsp_sched_analyzer2::process_event(sinsp_evt* evt)
 	update(evt->get_thread_info(), ts, cpu, nexttid);
 }
 
-void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof, sinsp_analyzer::flush_flags flshflags)
+void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_eof, analyzer_emitter::flush_flags flshflags)
 {
 	uint32_t j;
 
@@ -436,7 +436,7 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		state.m_last_effective_sample_start = utime;
 
 #if 1
-		if(flshflags != sinsp_analyzer::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+		if(flshflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
 				"CPU %" PRIu32 " srv:%" PRIu64 " o:%" PRIu64 " u:%" PRIu64 " i:%" PRIu64 "(c:%lf i:%lf s:%lf)",
