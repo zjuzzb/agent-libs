@@ -15,6 +15,11 @@ environment_emitter::environment_emitter(const uint64_t prev_flush_time_ns,
 void environment_emitter::emit_environment(sinsp_threadinfo& tinfo,
 					   draiosproto::program& prog)
 {
+	if (!m_env_hash_config.m_send_metrics)
+	{
+		return;
+	}
+
 	auto mt_ainfo = tinfo.m_ainfo->main_thread_ainfo();
         auto env_hash = mt_ainfo->m_env_hash.get_hash();
         prog.set_environment_hash(env_hash.data(), env_hash.size());

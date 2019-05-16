@@ -40,6 +40,7 @@
 #include "jmx_emitter.h"
 #include "app_check_emitter.h"
 #include "environment_emitter.h"
+#include "process_emitter.h"
 
 namespace libsanalyzer
 {
@@ -860,7 +861,8 @@ VISIBILITY_PRIVATE
 				       tracer_emitter& proc_trc,
 				       jmx_emitter& jmx_emitter_instance,
 				       app_check_emitter& app_check_emitter_instance,
-				       environment_emitter& environment_emitter_instance);
+				       environment_emitter& environment_emitter_instance,
+				       process_emitter& process_emitter_instance);
 	void flush_processes();
 	void emit_aggregated_connections();
 	void emit_full_connections();

@@ -225,6 +225,7 @@ set(SANALYZER_SOURCES
 	object_filter_config.cpp
         proc_filter.cpp
 	prometheus.cpp
+	process_emitter.cpp
 	posix_queue.cpp
 	coclient.cpp
 	proc_config.h
