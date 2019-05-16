@@ -82,10 +82,10 @@ TEST(connection_manager_test, DISABLED_failure_to_connect)
 	// Create and spin up the connection manager
 	thread t([&queue, &config]()
 	{
-	connection_manager cm(&config,
-						  &queue,
-						  nullptr,  // sinsp_worker
-						  nullptr); // capture_job_handler
+		connection_manager cm(&config,
+		                      &queue,
+		                      nullptr,  // sinsp_worker
+		                      nullptr); // capture_job_handler
 		ASSERT_NO_THROW(cm.test_run());
 	});
 
@@ -108,6 +108,51 @@ TEST(connection_manager_test, DISABLED_failure_to_connect)
 	}
 
 	// Shut down the CM
+	config.m_terminate = true;
+
+	t.join();
+}
+
+TEST(connection_manager_test, DISABLED_connection_timeout)
+{
+	const size_t MAX_QUEUE_LEN = 64;
+	// Build some boilerplate stuff that's needed to build a CM object
+	dragent_configuration::m_terminate = false;
+	dragent_configuration config;
+	config.init();
+
+	// Set the config for the CM
+	// Note that by connecting to sysdig.com on a weird port, the firewall
+	// will drop the SYN and this will cause a connect timeout.
+	config.m_server_addr = "www.sysdig.com";
+	config.m_server_port = 81;
+	config.m_ssl_enabled = false;
+	config.m_transmitbuffer_size = DEFAULT_DATA_SOCKET_BUF_SIZE;
+	config.m_terminate = false;
+
+	// Create the shared blocking queue
+	protocol_queue queue(MAX_QUEUE_LEN);
+
+	sinsp_worker* worker = nullptr;
+	capture_job_handler* capture_handler = nullptr;
+	connection_manager cm(&config,
+	                      &queue,
+	                      worker,
+	                      capture_handler);
+	cm.set_connection_timeout(4 * 1000 * 1000);
+
+	// Create and spin up the connection manager
+	std::thread t([&queue, &config, &cm]()
+	{
+		ASSERT_NO_FATAL_FAILURE(cm.test_run());
+	});
+
+	while(!cm.m_timed_out)
+	{
+		msleep(100);
+	}
+
+	// Shut down all the things
 	config.m_terminate = true;
 
 	t.join();

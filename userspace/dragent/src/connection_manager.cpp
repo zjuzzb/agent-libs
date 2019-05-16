@@ -247,9 +247,13 @@ std::string connection_manager::find_ca_cert_path(const std::vector<std::string>
 bool connection_manager::connect()
 {
 	m_last_connection_failure = chrono::system_clock::now();
+	uint32_t connect_timeout_us = connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US;
+#ifdef SYSDIG_TEST
+	connect_timeout_us = m_connect_timeout_us;
+#endif
 
 	LOG_INFO("Initiating connection to collector (trying for %u seconds)",
-	         US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US));
+	         US_TO_S(connect_timeout_us));
 
 	std::promise<socket_ptr> sock_promise;
 	std::future<socket_ptr> future_sock = sock_promise.get_future();
@@ -261,10 +265,11 @@ bool connection_manager::connect()
 	// doesn't go out of scope until the thread ends.
 	//
 	std::thread connect_thread([&sock_promise](const string& hostname,
-	                                           uint16_t port,
+	                                           const uint16_t port,
 	                                           bool ssl_enabled,
-	                                           uint32_t transmit_buffer_size,
-	                                           uint32_t m_reconnect_interval)
+	                                           const uint32_t transmit_buffer_size,
+	                                           const uint32_t reconnect_interval,
+	                                           const uint32_t connect_timeout_us)
 	{
 		StreamSocket* ssp = nullptr;
 
@@ -279,7 +284,7 @@ bool connection_manager::connect()
 			//    reset the backoff to RECONNECT_MIN_INTERVAL_S on the next disconnect()
 			//  * last_connection_failure is updated above in the call to connect()
 			std::chrono::seconds time_slept = std::chrono::seconds(0);
-			while(time_slept < std::chrono::seconds(m_reconnect_interval))
+			while(time_slept < std::chrono::seconds(reconnect_interval))
 			{
 				std::chrono::seconds time_to_sleep = std::chrono::seconds(1);
 				std::this_thread::sleep_for(time_to_sleep);
@@ -295,13 +300,13 @@ bool connection_manager::connect()
 
 				sss->setLazyHandshake(true);
 				sss->setPeerHostName(hostname);
-				sss->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+				sss->connect(sa, connect_timeout_us);
 				//
 				// This is done to prevent getting stuck forever waiting during the handshake
 				// if the server doesn't speak to us
 				//
-				sss->setSendTimeout(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
-				sss->setReceiveTimeout(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+				sss->setSendTimeout(connect_timeout_us);
+				sss->setReceiveTimeout(connect_timeout_us);
 
 				int32_t ret = sss->completeHandshake();
 
@@ -321,7 +326,7 @@ bool connection_manager::connect()
 			else
 			{
 				ssp = new Poco::Net::StreamSocket();
-				ssp->connect(sa, connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+				ssp->connect(sa, connect_timeout_us);
 			}
 
 			// Set additional socket options post-connect
@@ -349,42 +354,34 @@ bool connection_manager::connect()
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_ERROR(":connect():IOException: " + e.displayText());
 			sock_promise.set_value(nullptr);
-			return;
 		}
 		catch(const Poco::TimeoutException& e)
 		{
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_ERROR("connect():Timeout: " + e.displayText());
 			sock_promise.set_value(nullptr);
-			return;
 		}
 		catch(const std::future_error& e)
 		{
 			LOG_ERROR("connect():future_error: %s", e.what());
 			// We can't touch sock_promise any more in this state
-			return;
 		}
 	}, std::ref(m_configuration->m_server_addr),
 	   m_configuration->m_server_port,
 	   m_configuration->m_ssl_enabled,
 	   m_configuration->m_transmitbuffer_size,
-	   m_reconnect_interval);
+	   m_reconnect_interval,
+	   connect_timeout_us);
 
 	//
 	// End thread
 	//
 
-	// Go ahead and detach. We don't need a handle for the thread, and it
-	// will keep the runtime from falling over in case the connection manager
-	// gets terminated or hits an error.
-	connect_thread.detach();
-
-	uint32_t waited_time_s;
-	// We might have to wait for the connect timeout + the reconnect backoff
-	const uint32_t wait_for_s = m_reconnect_interval + US_TO_S(connection_manager::SOCKET_TIMEOUT_DURING_CONNECT_US);
+	uint32_t waited_time_s = 0;
+	const uint32_t wait_for_s = US_TO_S(connect_timeout_us);
 
 	LOG_INFO("Waiting to connect %u s", wait_for_s);
-	for(waited_time_s = 0; waited_time_s < wait_for_s; ++waited_time_s)
+	for(waited_time_s = 0; waited_time_s <= wait_for_s; ++waited_time_s)
 	{
 		// SMAGENT-1449
 		// We can't break out of this loop even if the program is being terminated
@@ -395,10 +392,20 @@ bool connection_manager::connect()
 		{
 			break;
 		}
+		++waited_time_s;
 	}
+
+	// By calling thread.join(), we are opening up to the possibility that the join()
+	// takes so long we get killed by the watchdog. However, keeping in mind we've
+	// already waited the entire timeout duration above, if that happens then we're
+	// almost certainly hosed anyway.
+	connect_thread.join();
 
 	if(waited_time_s >= wait_for_s)
 	{
+#ifdef SYSDIG_TEST
+		m_timed_out = true;
+#endif
 		LOG_WARNING("Connection attempt timed out. Retrying...");
 		disconnect();
 		return false;
