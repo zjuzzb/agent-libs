@@ -9,6 +9,7 @@ from xml.etree.ElementTree import ElementTree
 from checks import AgentCheck
 from util import get_hostname
 
+LOGGING_INTERVAL = 300  # in secs
 
 class Skip(Exception):
     """
@@ -27,6 +28,7 @@ class Jenkins(AgentCheck):
     def __init__(self, name, init_config, agentConfig):
         AgentCheck.__init__(self, name, init_config, agentConfig)
         self.high_watermarks = {}
+        self.logging_interval = {"start_time": time.time() - LOGGING_INTERVAL}
 
     def _timestamp_from_build_file(self, dir_name, tree):
         timestamp = tree.find('timestamp')
@@ -137,6 +139,20 @@ class Jenkins(AgentCheck):
         except Exception, e:
             self.log.error("Error while working on job %s, exception: %s" % (job_name, e))
 
+    def find_jobs_dirs(self, jenkins_home, dir_name, excluded_jobs, depth=1):
+        def cal_depth(dirs):
+            dirpath, dirnames, filenames = dirs
+            if dir_name in dirpath[-4:]:
+                pathl = [dirname for dirname in dirpath.replace(
+                    os.path.join(jenkins_home, 'jobs'), '').strip().split('/') if dirname]
+                even_depth_len = pathl[1:][::2].count('jobs')
+                odd_depth_len = pathl[::2].count('jobs')
+                if depth-1 >= even_depth_len and len(dirnames):
+                    return dirpath
+                elif depth-1 <= even_depth_len and not odd_depth_len and len(dirnames):
+                    excluded_jobs.update({dirpath: even_depth_len})
+        return cal_depth
+
     def check(self, instance, create_event=True):
         if self.high_watermarks.get(instance.get('name'), None) is None:
             # On the first run of check(), prime the high_watermarks dict
@@ -149,35 +165,53 @@ class Jenkins(AgentCheck):
             self.check(instance, create_event=False)
 
         jenkins_home = instance.get('jenkins_home')
+        jobs_folder_depth = int(instance.get('jobs_folder_depth', 1))
+        excluded_jobs = {}
 
         if not jenkins_home:
             raise Exception("No jenkins_home directory set in the config file")
 
-        jenkins_jobs_dir = os.path.join(jenkins_home, 'jobs', '*')
-        job_dirs = glob(jenkins_jobs_dir)
+        jobs_paths = filter(self.find_jobs_dirs(
+            jenkins_home, 'jobs', excluded_jobs, depth=jobs_folder_depth), os.walk(jenkins_home))
+        jobs_paths = [dirpath for dirpath, dirnames, filenames in jobs_paths]
 
-        if not job_dirs:
-            raise Exception('No jobs found in `%s`! '
-                            'Check `jenkins_home` in your config' % (jenkins_jobs_dir))
+        if excluded_jobs:
+            required_jobs_depth = max(excluded_jobs.values()) + 1
+            diff_time = time.time() - self.logging_interval.get('start_time')
+            if diff_time > instance.get('logging_interval', LOGGING_INTERVAL):
+                self.logging_interval['start_time'] = time.time()
+                self.log.warn("Some Jenkins jobs dir paths are excluded from collecting metrics,"
+                              " To include these jobs, set 'jobs_folder_depth=%d' in dragent.yaml.",
+                              required_jobs_depth)
 
-        for job_dir in job_dirs:
-            for output in self._get_build_results(instance.get('name'), job_dir):
-                output['host'] = get_hostname(self.agentConfig)
-                if create_event:
-                    self.log.debug("Creating event for job: %s" % output['job_name'])
-                    self.event(output)
+        for jobs_path in jobs_paths:
 
-                    tags = [
-                        'job_name:%s' % output['job_name'],
-                        'result:%s' % output['result'],
-                        'build_number:%s' % output['number']
-                    ]
+            jenkins_jobs_dir = os.path.join(jobs_path, '*')
 
-                    if 'branch' in output:
-                        tags.append('branch:%s' % output['branch'])
-                    self.gauge("jenkins.job.duration", float(output['duration'])/1000.0, tags=tags)
+            job_dirs = glob(jenkins_jobs_dir)
 
-                    if output['result'] == 'SUCCESS':
-                        self.increment('jenkins.job.success', tags=tags)
-                    else:
-                        self.increment('jenkins.job.failure', tags=tags)
+            if not job_dirs:
+                raise Exception('No jobs found in `%s`! '
+                                'Check `jenkins_home` in your config' % (jenkins_jobs_dir))
+
+            for job_dir in job_dirs:
+                for output in self._get_build_results(instance.get('name'), job_dir):
+                    output['host'] = get_hostname(self.agentConfig)
+                    if create_event:
+                        self.log.debug("Creating event for job: %s" % output['job_name'])
+                        self.event(output)
+
+                        tags = [
+                            'job_name:%s' % output['job_name'],
+                            'result:%s' % output['result'],
+                            'build_number:%s' % output['number']
+                        ]
+
+                        if 'branch' in output:
+                            tags.append('branch:%s' % output['branch'])
+                        self.gauge("jenkins.job.duration", float(output['duration'])/1000.0, tags=tags)
+
+                        if output['result'] == 'SUCCESS':
+                            self.increment('jenkins.job.success', tags=tags)
+                        else:
+                            self.increment('jenkins.job.failure', tags=tags)
