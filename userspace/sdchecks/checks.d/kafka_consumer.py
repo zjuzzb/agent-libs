@@ -2,32 +2,33 @@
 # (C) Sysdig, Inc. 2018
 # All rights reserved
 # Licensed under Simplified BSD License (see LICENSE)
+from __future__ import division
 
-# stdlib
 import random
 from collections import defaultdict
 from time import time, sleep
 import operator
 
-# 3p
+from kafka import errors as kafka_errors
 from kafka.client import KafkaClient
-from kafka.protocol.offset import OffsetRequest, OffsetResetStrategy
-from kafka.protocol.commit import GroupCoordinatorRequest, OffsetFetchRequest
 from kafka.structs import TopicPartition
-import kafka.errors as KafkaErrors
+from kafka.protocol.commit import GroupCoordinatorRequest, OffsetFetchRequest
+from kafka.protocol.offset import OffsetRequest, OffsetResetStrategy
 from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
+from six import iteritems, itervalues, string_types, text_type
 
 # project
+from utils.containers import hash_mutable
 from checks import AgentCheck
 from config import _is_affirmative
 
 
 # Kafka Errors
-KAFKA_NO_ERROR = KafkaErrors.NoError.errno
-KAFKA_UNKNOWN_ERROR = KafkaErrors.UnknownError.errno
-KAFKA_UNKNOWN_TOPIC_OR_PARTITION = KafkaErrors.UnknownTopicOrPartitionError.errno
-KAFKA_NOT_LEADER_FOR_PARTITION = KafkaErrors.NotLeaderForPartitionError.errno
+KAFKA_NO_ERROR = kafka_errors.NoError.errno
+KAFKA_UNKNOWN_ERROR = kafka_errors.UnknownError.errno
+KAFKA_UNKNOWN_TOPIC_OR_PARTITION = kafka_errors.UnknownTopicOrPartitionError.errno
+KAFKA_NOT_LEADER_FOR_PARTITION = kafka_errors.NotLeaderForPartitionError.errno
 
 DEFAULT_KAFKA_TIMEOUT = 5
 DEFAULT_ZK_TIMEOUT = 5
@@ -39,29 +40,22 @@ CONTEXT_UPPER_BOUND = 200
 class BadKafkaConsumerConfiguration(Exception):
     pass
 
-class NoKafkaBrokersAvailable(Exception):
-    pass
 
 class KafkaCheck(AgentCheck):
     """
-    Check Consumer Lag for Kafka consumers that store their offsets in Zookeeper.
+    Check the offsets and lag of Kafka consumers.
 
     This check also returns broker highwater offsets.
     """
     NEEDED_NS = ("net", "mnt")
     SOURCE_TYPE_NAME = 'kafka'
-    LAST_ZKONLY_VERSION = (0, 8, 1, 1)
 
     def __init__(self, name, init_config, agentConfig, instances=None):
         AgentCheck.__init__(self, name, init_config, agentConfig, instances=instances)
-        self._zk_timeout = int(
-            init_config.get('zk_timeout', DEFAULT_ZK_TIMEOUT))
-        self._kafka_timeout = int(
-            init_config.get('kafka_timeout', DEFAULT_KAFKA_TIMEOUT))
-        self.context_limit = int(
-            init_config.get('max_partition_contexts', CONTEXT_UPPER_BOUND))
-        self._broker_retries = int(
-            init_config.get('kafka_retries', DEFAULT_KAFKA_RETRIES))
+        self._zk_timeout = int(init_config.get('zk_timeout', DEFAULT_ZK_TIMEOUT))
+        self._kafka_timeout = int(init_config.get('kafka_timeout', DEFAULT_KAFKA_TIMEOUT))
+        self.context_limit = int(init_config.get('max_partition_contexts', CONTEXT_UPPER_BOUND))
+        self._broker_retries = int(init_config.get('kafka_retries', DEFAULT_KAFKA_RETRIES))
         self._zk_last_ts = {}
 
         self.kafka_clients = {}
@@ -79,8 +73,7 @@ class KafkaCheck(AgentCheck):
         zk_hosts_ports = instance.get('zk_connect_str')
         zk_prefix = instance.get('zk_prefix', '')
         zk_interval = int(instance.get('zk_iteration_ival', 0))
-        get_kafka_consumer_offsets = _is_affirmative(
-            instance.get('kafka_consumer_offsets', zk_hosts_ports is None))
+        get_kafka_consumer_offsets = _is_affirmative(instance.get('kafka_consumer_offsets', zk_hosts_ports is None))
         kafka_consumer_topics = instance.get('kafka_consumer_topics')
         agg_partitions = 0
         if isinstance(kafka_consumer_topics, dict):
@@ -93,12 +86,11 @@ class KafkaCheck(AgentCheck):
         if instance.get('monitor_unlisted_consumer_groups', False):
             consumer_groups = None
         elif 'consumer_groups' in instance:
-            consumer_groups = self._read_config(instance, 'consumer_groups',
-                                                cast=self._validate_consumer_groups)
+            consumer_groups = instance.get('consumer_groups')
+            self._validate_explicit_consumer_groups(consumer_groups)
 
         zk_consumer_offsets = None
-        if zk_hosts_ports and \
-                self._should_zk(zk_hosts_ports, zk_interval, get_kafka_consumer_offsets):
+        if zk_hosts_ports and self._should_zk(zk_hosts_ports, zk_interval, get_kafka_consumer_offsets):
             zk_consumer_offsets, consumer_groups = self._get_zk_consumer_offsets(
                 zk_hosts_ports, consumer_groups, zk_prefix)
 
@@ -107,19 +99,25 @@ class KafkaCheck(AgentCheck):
 
         cli = self._get_kafka_client(instance)
         cli._maybe_refresh_metadata()
-        kafka_version = self._get_kafka_version(cli)
+
         if get_kafka_consumer_offsets:
             # For now, consumer groups are mandatory if not using ZK
             if not zk_hosts_ports and not consumer_groups:
-                raise BadKafkaConsumerConfiguration('Invalid configuration - if you\'re not collecting '
-                                'offsets from ZK you _must_ specify consumer groups')
-            if self._kafka_compatible(kafka_version):
+                raise BadKafkaConsumerConfiguration('Invalid configuration - if you are not collecting '
+                                                    'offsets from ZK you _must_ specify consumer groups')
+            # kafka-python automatically probes the cluster for broker version
+            # and then stores it. Note that this returns the first version
+            # found, so in a mixed-version cluster this will be a
+            # non-deterministic result.
+            #
+            # Kafka 0.8.2 added support for storing consumer offsets in Kafka.
+            if cli.config.get('api_version') >= (0, 8, 2):
                 kafka_consumer_offsets, topics = self._get_kafka_consumer_offsets(instance, consumer_groups)
 
         if not topics:
             # val = {'consumer_group': {'topic': [0, 1]}}
-            for _, tps in consumer_groups.iteritems():
-                for topic, partitions in tps.iteritems():
+            for _, tps in iteritems(consumer_groups):
+                for topic, partitions in iteritems(tps):
                     topics[topic].update(partitions)
 
         warn_msg = """ Discovered %s partition contexts - this exceeds the maximum
@@ -140,9 +138,8 @@ class KafkaCheck(AgentCheck):
             self.log.exception('There was a problem collecting the high watermark offsets')
             return
 
-
         # Report the broker highwater offset
-        for (topic, partition), highwater_offset in highwater_offsets.iteritems():
+        for (topic, partition), highwater_offset in iteritems(highwater_offsets):
             broker_tags = ['topic:%s' % topic, 'partition:%s' % partition] + custom_tags
             self.gauge('kafka.broker_offset', highwater_offset, tags=broker_tags)
 
@@ -162,56 +159,35 @@ class KafkaCheck(AgentCheck):
         cleanup kafka connections (to all brokers) to avoid leaving
         stale connections in older kafkas.
         """
-        for cli in self.kafka_clients.itervalues():
+        for cli in itervalues(self.kafka_clients):
             cli.close()
 
-    def _get_instance_key(self, instance):
-        servers = self._read_config(instance, 'kafka_connect_str')
-        key = None
-        if isinstance(servers, basestring):
-            key = servers
-        elif isinstance(servers, list):
-            key = ",".join(servers)
-        else:
+    def _get_kafka_client(self, instance):
+        kafka_conn_str = instance.get('kafka_connect_str')
+        if not isinstance(kafka_conn_str, (string_types, list)):
             raise BadKafkaConsumerConfiguration('kafka_connect_str should be string or list of strings')
 
-        return key
-
-
-    def _get_kafka_client(self, instance):
-        kafka_conn_str = self._read_config(instance, 'kafka_connect_str')
-        if not kafka_conn_str:
-            raise BadKafkaConsumerConfiguration('Bad instance configuration')
-
-        instance_key = self._get_instance_key(instance)
+        instance_key = tuple(kafka_conn_str)  # cast to tuple in case it's a list
         if instance_key not in self.kafka_clients:
-            cli = KafkaClient(bootstrap_servers=kafka_conn_str, client_id='dd-agent')
+            # While we check for SSL params, if not present they will default
+            # to the kafka-python values for plaintext connections
+            cli = KafkaClient(bootstrap_servers=kafka_conn_str,
+                              client_id='dd-agent',
+                              security_protocol=instance.get('security_protocol', 'PLAINTEXT'),
+                              sasl_mechanism=instance.get('sasl_mechanism'),
+                              sasl_plain_username=instance.get('sasl_plain_username'),
+                              sasl_plain_password=instance.get('sasl_plain_password'),
+                              sasl_kerberos_service_name=instance.get('sasl_kerberos_service_name', 'kafka'),
+                              sasl_kerberos_domain_name=instance.get('sasl_kerberos_domain_name'),
+                              ssl_cafile=instance.get('ssl_cafile'),
+                              ssl_check_hostname=instance.get('ssl_check_hostname', True),
+                              ssl_certfile=instance.get('ssl_certfile'),
+                              ssl_keyfile=instance.get('ssl_keyfile'),
+                              ssl_crlfile=instance.get('ssl_crlfile'),
+                              ssl_password=instance.get('ssl_password'))
             self.kafka_clients[instance_key] = cli
 
         return self.kafka_clients[instance_key]
-
-    def _kafka_compatible(self, version):
-        if not version:
-            self.log.debug("Unable to determine compatibility.")
-            return False
-
-        return version > self.LAST_ZKONLY_VERSION
-
-    def _get_random_node_id(self, client):
-        brokers = client.cluster.brokers()
-        if not brokers:
-            raise NoKafkaBrokersAvailable('No available brokers.')
-        node_id = random.sample(brokers, 1)[0].nodeId
-
-        return node_id
-
-    def _make_req_async(self, client, request, node_id=None, cb=None):
-        if node_id is None:
-            node_id = self._get_random_node_id(client)
-
-        future = client.send(node_id, request)
-        if cb:
-            future.add_callback(cb, request, node_id, self.current_ts)
 
     def _ensure_ready_node(self, client, node_id):
         if node_id is None:
@@ -220,16 +196,17 @@ class KafkaCheck(AgentCheck):
         attempts = 0
         while not client.ready(node_id):
             if attempts > DEFAULT_KAFKA_RETRIES:
-                self.log.error("unable to connect to broker id: {} after {} attempts".format(node_id, DEFAULT_KAFKA_RETRIES))
+                self.log.error("unable to connect to broker id: %i after %i attempts",
+                               node_id, DEFAULT_KAFKA_RETRIES)
                 break
             attempts = attempts + 1
-            delay = (2 ** attempts) + (random.randint(0, 1000) / 1000) * 0.01 # starting at 20 ms
+            delay = (2 ** attempts) + (random.randint(0, 1000) // 1000) * 0.01  # starting at 20 ms
 
             future = client.cluster.request_update()
             client.poll(future=future)
             if future.failed():
                 if future.retriable():
-                    if isinstance(future.exception, KafkaErrors.NodeNotReadyError):
+                    if isinstance(future.exception, kafka_errors.NodeNotReadyError):
                         self.log.debug("broker id: %s is not ready yet, sleeping for %f ms", node_id, delay * 10)
                         sleep(delay)
                         continue
@@ -238,7 +215,7 @@ class KafkaCheck(AgentCheck):
 
     def _make_blocking_req(self, client, request, node_id=None):
         if node_id is None:
-            node_id = self._get_random_node_id(client)
+            node_id = client.least_loaded_node()
 
         self._ensure_ready_node(client, node_id)
 
@@ -248,17 +225,6 @@ class KafkaCheck(AgentCheck):
         response = future.value
 
         return response
-
-    def _get_kafka_version(self, client, node_id=None):
-        if node_id is not None:
-            return client.check_version(node_id=node_id)
-
-        for broker in client.cluster.brokers():
-            version = client.check_version(node_id=broker.nodeId)
-            if version:
-                return version
-
-        return None
 
     def _get_group_coordinator(self, client, group):
         request = GroupCoordinatorRequest[0](group)
@@ -270,7 +236,7 @@ class KafkaCheck(AgentCheck):
                 try:
                     coord_resp = self._make_blocking_req(client, request, node_id=broker.nodeId)
                     # 0 means that there is no error
-                    if coord_resp and coord_resp.error_code is 0:
+                    if coord_resp and coord_resp.error_code == 0:
                         client.cluster.add_group_coordinator(group, coord_resp)
                         coord_id = client.cluster.coordinator_for_group(group)
                         if coord_id is not None and coord_id >= 0:
@@ -282,7 +248,7 @@ class KafkaCheck(AgentCheck):
 
         return coord_id
 
-    def _process_highwater_offsets(self, request, instance, node_id, response):
+    def _process_highwater_offsets(self, response):
         highwater_offsets = {}
         topic_partitions_without_a_leader = []
 
@@ -299,13 +265,14 @@ class KafkaCheck(AgentCheck):
                                    "This should never happen.", topic, partition)
                 elif error_code == KAFKA_UNKNOWN_TOPIC_OR_PARTITION:
                     self.log.warn("Kafka broker returned UNKNOWN_TOPIC_OR_PARTITION (error_code 3) for "
-                                  "topic: %s, partition: %s. This should only happen if the topic is currently being deleted.",
+                                  "topic: %s, partition: %s. This should only happen if the topic is "
+                                  "currently being deleted.",
                                   topic, partition)
                 elif error_code == KAFKA_NOT_LEADER_FOR_PARTITION:
                     self.log.warn("Kafka broker returned NOT_LEADER_FOR_PARTITION (error_code 6) for "
-                                  "topic: %s, partition: %s. This should only happen if the broker that was the partition "
-                                  "leader when kafka_client.cluster last fetched metadata is no longer the leader.",
-                                  topic, partition)
+                                  "topic: %s, partition: %s. This should only happen if the broker that "
+                                  "was the partition leader when kafka_client.cluster last fetched metadata "
+                                  "is no longer the leader.", topic, partition)
                     topic_partitions_without_a_leader.append((topic, partition))
 
         return highwater_offsets, topic_partitions_without_a_leader
@@ -335,41 +302,43 @@ class KafkaCheck(AgentCheck):
         topics_to_fetch = defaultdict(set)
         cli = self._get_kafka_client(instance)
 
-        for topic, partitions in topics.iteritems():
+        for topic, partitions in iteritems(topics):
             # if no partitions are provided
             # we're falling back to all available partitions (?)
             if len(partitions) == 0:
                 partitions = cli.cluster.available_partitions_for_topic(topic)
             topics_to_fetch[topic].update(partitions)
 
-
         leader_tp = defaultdict(lambda: defaultdict(set))
-        for topic, partitions in topics_to_fetch.iteritems():
+        for topic, partitions in iteritems(topics_to_fetch):
             for partition in partitions:
                 partition_leader = cli.cluster.leader_for_partition(TopicPartition(topic, partition))
-                if partition_leader is not None and partition_leader > -1:
-                    leader_tp[partition_leader][topic].update([partition])
+                if partition_leader is not None and partition_leader >= 0:
+                    leader_tp[partition_leader][topic].add(partition)
 
         max_offsets = 1
-        for node_id, tps in leader_tp.iteritems():
+        for node_id, tps in iteritems(leader_tp):
             # Construct the OffsetRequest
             request = OffsetRequest[0](
                 replica_id=-1,
                 topics=[
-                    (topic, [
-                        (partition, OffsetResetStrategy.LATEST, max_offsets) for partition in partitions])
-                    for topic, partitions in tps.iteritems()])
+                    (topic, [(partition, OffsetResetStrategy.LATEST, max_offsets) for partition in partitions])
+                    for topic, partitions in iteritems(tps)])
 
             response = self._make_blocking_req(cli, request, node_id=node_id)
-            offsets, unled = self._process_highwater_offsets(request, instance, node_id, response)
+            offsets, unled = self._process_highwater_offsets(response)
             highwater_offsets.update(offsets)
             topic_partitions_without_a_leader.extend(unled)
 
         return highwater_offsets, list(set(topic_partitions_without_a_leader))
 
-    def _report_consumer_metrics(self, highwater_offsets, consumer_offsets, unled_topic_partitions=[], tags=[],
+    def _report_consumer_metrics(self, highwater_offsets, consumer_offsets, unled_topic_partitions=None, tags=None,
                                  agg_partitions=False):
         topics_data = dict()
+        if unled_topic_partitions is None:
+            unled_topic_partitions = []
+        if tags is None:
+            tags = []
         for (consumer_group, topic, partition), consumer_offset in consumer_offsets.iteritems():
             # Report the consumer group offsets and consumer lag
             if (topic, partition) not in highwater_offsets:
@@ -377,8 +346,8 @@ class KafkaCheck(AgentCheck):
                               "- skipping consumer submission", consumer_group, topic, partition)
                 if (topic, partition) not in unled_topic_partitions:
                     self.log.warn("Consumer group: %s has offsets for topic: %s "
-                        "partition: %s, but that topic partition doesn't actually "
-                        "exist in the cluster.", consumer_group, topic, partition)
+                                  "partition: %s, but that topic partition doesn't actually "
+                                  "exist in the cluster.", consumer_group, topic, partition)
                 continue
 
             consumer_group_tags = ['topic:%s' % topic, 'consumer_group:%s' % consumer_group] + tags
@@ -402,7 +371,7 @@ class KafkaCheck(AgentCheck):
                     )
                 key = "{}:{}:{}".format(consumer_group, topic, partition)
                 self._send_event(title, message, consumer_group_tags, 'consumer_lag',
-                    key, severity="error")
+                                 key, severity="error")
                 self.log.debug(message)
 
             # Turn ON topic partitions level metrics
@@ -445,7 +414,7 @@ class KafkaCheck(AgentCheck):
         :param dict consumer_groups: The consumer groups, topics, and partitions
             that you want to fetch offsets for. If consumer_groups is None, will
             fetch offsets for all consumer_groups. For examples of what this
-            dict can look like, see _validate_consumer_groups().
+            dict can look like, see _validate_explicit_consumer_groups().
         """
         zk_consumer_offsets = {}
 
@@ -461,23 +430,22 @@ class KafkaCheck(AgentCheck):
             if consumer_groups is None:
                 # If consumer groups aren't specified, fetch them from ZK
                 consumer_groups = {consumer_group: None for consumer_group in
-                    self._get_zk_path_children(zk_conn, zk_path_consumer, 'consumer groups')}
+                                   self._get_zk_path_children(zk_conn, zk_path_consumer, 'consumer groups')}
 
-            for consumer_group, topics in consumer_groups.iteritems():
+            for consumer_group, topics in iteritems(consumer_groups):
                 if topics is None:
                     # If topics are't specified, fetch them from ZK
                     zk_path_topics = zk_path_topic_tmpl.format(group=consumer_group)
                     topics = {topic: None for topic in
-                        self._get_zk_path_children(zk_conn, zk_path_topics, 'topics')}
+                              self._get_zk_path_children(zk_conn, zk_path_topics, 'topics')}
                     consumer_groups[consumer_group] = topics
 
-                for topic, partitions in topics.iteritems():
+                for topic, partitions in iteritems(topics):
                     if partitions is not None:
                         partitions = set(partitions)  # defend against bad user input
                     else:
                         # If partitions aren't specified, fetch them from ZK
-                        zk_path_partitions = zk_path_partition_tmpl.format(
-                            group=consumer_group, topic=topic)
+                        zk_path_partitions = zk_path_partition_tmpl.format(group=consumer_group, topic=topic)
                         # Zookeeper returns the partition IDs as strings because
                         # they are extracted from the node path
                         partitions = [int(x) for x in self._get_zk_path_children(
@@ -506,15 +474,15 @@ class KafkaCheck(AgentCheck):
 
     def _get_kafka_consumer_offsets(self, instance, consumer_groups):
         """
-        retrieve consumer offsets via the new consumer api. Offsets in this version are stored directly in kafka (__consumer_offsets topic)
-        rather than in zookeeper
+        retrieve consumer offsets via the new consumer api. Offsets in this version are stored directly
+        in kafka (__consumer_offsets topic) rather than in zookeeper
         """
         consumer_offsets = {}
         topics = defaultdict(set)
 
         cli = self._get_kafka_client(instance)
 
-        for consumer_group, topic_partitions in consumer_groups.iteritems():
+        for consumer_group, topic_partitions in iteritems(consumer_groups):
             try:
                 coordinator_id = self._get_group_coordinator(cli, consumer_group)
                 if coordinator_id:
@@ -523,7 +491,7 @@ class KafkaCheck(AgentCheck):
                     offsets = self._get_consumer_offsets(cli, consumer_group, topic_partitions)
                     self.log.info("unable to find group coordinator for %s", consumer_group)
 
-                for (topic, partition), offset in offsets.iteritems():
+                for (topic, partition), offset in iteritems(offsets):
                     topics[topic].update([partition])
                     key = (consumer_group, topic, partition)
                     consumer_offsets[key] = offset
@@ -533,13 +501,11 @@ class KafkaCheck(AgentCheck):
         return consumer_offsets, topics
 
     def _get_consumer_offsets(self, client, consumer_group, topic_partitions, coord_id=None):
-        # version = client.check_version(coord_id)
-
         tps = defaultdict(set)
-        for topic, partitions in topic_partitions.iteritems():
+        for topic, partitions in iteritems(topic_partitions):
             if len(partitions) == 0:
                 partitions = client.cluster.available_partitions_for_topic(topic)
-            tps[topic] = tps[unicode(topic)].union(set(partitions))
+            tps[topic] = tps[text_type(topic)].union(set(partitions))
 
         consumer_offsets = {}
         if coord_id is not None and coord_id >= 0:
@@ -548,70 +514,55 @@ class KafkaCheck(AgentCheck):
             broker_ids = [b.nodeId for b in client.cluster.brokers()]
 
         for broker_id in broker_ids:
-            offset_request = self._get_consumer_offset_request(client)
-
-            request = offset_request(consumer_group, list(tps.iteritems()))
+            # Kafka protocol uses OffsetFetchRequests to retrieve consumer offsets:
+            # https://kafka.apache.org/protocol#The_Messages_OffsetFetch
+            # https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol#AGuideToTheKafkaProtocol-OffsetFetchRequest
+            request = OffsetFetchRequest[1](consumer_group, list(iteritems(tps)))
             response = self._make_blocking_req(client, request, node_id=broker_id)
             for (topic, partition_offsets) in response.topics:
                 for partition, offset, _, error_code in partition_offsets:
-                    if error_code is not 0:
+                    if error_code != 0:
                         continue
                     consumer_offsets[(topic, partition)] = offset
 
         return consumer_offsets
 
-    def _get_consumer_offset_request(self, client):
-        version = client.config.get('api_version')
-        request_idx = 1
-
-        if version < (0, 8, 2):
-            request_idx = 0
-
-        return OffsetFetchRequest[request_idx]
-
     def _should_zk(self, zk_hosts_ports, interval, kafka_collect=False):
         if not kafka_collect or not interval:
             return True
-
+        zk_hosts_ports_hash = hash_mutable(zk_hosts_ports)
         now = time()
-        last = self._zk_last_ts.get(zk_hosts_ports, 0)
+        last = self._zk_last_ts.get(zk_hosts_ports_hash, 0)
 
         should_zk = False
-        if (now-last) >= interval:
-            self._zk_last_ts[zk_hosts_ports] = last
+        if now - last >= interval:
+            self._zk_last_ts[zk_hosts_ports_hash] = last
             should_zk = True
 
         return should_zk
 
-    @staticmethod
-    def _read_config(instance, key, cast=None):
-        val = instance.get(key)
-        if val is None:
-            raise BadKafkaConsumerConfiguration('Must provide `%s` value in instance config' % key)
+    @classmethod
+    def _validate_explicit_consumer_groups(cls, val):
+        """Validate any explicitly specified consumer groups.
 
-        if cast is None:
-            return val
+        While the check does not require specifying consumer groups,
+        if they are specified this method should be used to validate them.
 
-        return cast(val)
-
-    def _validate_consumer_groups(self, val):
-        # val = {'consumer_group': {'topic': [0, 1]}}
-        # consumer groups are optional
-        assert isinstance(val, dict) or val is None
-        if val is not None:
-            for consumer_group, topics in val.iteritems():
-                assert isinstance(consumer_group, basestring)
-                # topics are optional
-                assert isinstance(topics, dict) or topics is None
-                if topics is not None:
-                    for topic, partitions in topics.iteritems():
-                        assert isinstance(topic, basestring)
-                        # partitions are optional
-                        assert isinstance(partitions, (list, tuple)) or partitions is None
-                        if partitions is not None:
-                            for partition in partitions:
-                                assert isinstance(partition, int)
-        return val
+        val = {'consumer_group': {'topic': [0, 1]}}
+        """
+        assert isinstance(val, dict)
+        for consumer_group, topics in iteritems(val):
+            assert isinstance(consumer_group, string_types)
+            # topics are optional
+            assert isinstance(topics, dict) or topics is None
+            if topics is not None:
+                for topic, partitions in iteritems(topics):
+                    assert isinstance(topic, string_types)
+                    # partitions are optional
+                    assert isinstance(partitions, (list, tuple)) or partitions is None
+                    if partitions is not None:
+                        for partition in partitions:
+                            assert isinstance(partition, int)
 
     def _send_event(self, title, text, tags, event_type, aggregation_key, severity='info'):
         """Emit an event to the Event Stream."""
