@@ -122,6 +122,9 @@ add_executable(test_helper
 target_link_libraries(test_helper
 	pthread)
 
+add_executable(vtidcollision
+	vtidcollision.c)
+
 execute_process(COMMAND "uname" "-m" OUTPUT_VARIABLE ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if("${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
@@ -151,7 +154,7 @@ install(DIRECTORY
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/resources/run
 	COMPONENT tests)
 
-install(TARGETS test_helper
+install(TARGETS test_helper vtidcollision
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/test/
 	COMPONENT tests)
 

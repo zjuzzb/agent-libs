@@ -2395,3 +2395,60 @@ TEST_F(sys_call_test, unshare_)
 	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
 	EXPECT_EQ(2, callnum);
 }
+
+TEST_F(sys_call_test, clone_tid_vtid)
+{
+	// this is racy :/ run in a loop to give the test a chance to fail
+	// see vtidcollision.c for the description of the test scenario
+
+	int loops = 10;
+	volatile bool failed = false;
+
+	while(loops --> 0 && !failed)
+	{
+		int vpid=0, pid=0, ppid=0;
+		proc test_proc = proc("./vtidcollision", {});
+		volatile bool done = false;
+
+		event_filter_t filter = [&](sinsp_evt * evt)
+		{
+			return !done && pid != 0 && evt->get_tid() == pid;
+		};
+		run_callback_t test = [&](sinsp* inspector)
+		{
+			auto test_start = time(nullptr);
+			auto handle = start_process(&test_proc);
+			char buf[256];
+			get<0>(handle).wait();
+			auto nread = get<1>(handle)->readBytes(buf, sizeof(buf));
+			EXPECT_GT(nread, 0);
+			EXPECT_LE(nread, sizeof(buf));
+			sscanf(buf, "vpid %d pid %d ppid %d", &vpid, &pid, &ppid);
+			while(!done && time(nullptr) - test_start < 5) {
+				usleep(100000);
+			}
+		};
+		captured_event_callback_t callback = [&](const callback_param& param)
+		{
+			done = true;
+			failed = true;
+
+			// look up the thread by vpid instead of pid (SMAGENT-1582)
+			auto tinfo = param.m_inspector->get_thread_ref(vpid, false, true);
+			if (tinfo != nullptr)
+			{
+				// if uid == ppid (and it's legit), we're incredibly unlucky
+				ASSERT_NE(ppid, tinfo->m_uid);
+			}
+
+			// need ASSERT_XXX above to skip this line in case of failure:
+			failed = false;
+		};
+		ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+		if(failed)
+		{
+			break;
+		}
+		fprintf(stderr, "%d runs remaining\n", loops);
+	}
+}
