@@ -54,7 +54,7 @@ public:
 private:
 	// Function to get called when a filtering rule matches in order to determine
 	// the configuration parameters for this process
-	bool get_rule_params(const proc_filter::filter_rule &rule, const sinsp_threadinfo *tinfo,
+	bool get_rule_params(const object_filter_config::filter_rule &rule, const sinsp_threadinfo *tinfo,
 		const sinsp_container_info *container, const infrastructure_state &infra_state,
 		bool use_host_filter, prom_params_t &out_params);
 
@@ -85,8 +85,8 @@ public:
 	bool ingest_calculated() const { return m_ingest_calculated ; }
 	void set_ingest_calculated(bool val) { m_ingest_calculated = val; }
 
-	void set_host_rules(std::vector<proc_filter::filter_rule> rules) { m_host_rules = std::move(rules); }
-	const std::vector<proc_filter::filter_rule>& host_rules() const { return m_host_rules; }
+	void set_host_rules(std::vector<object_filter_config::filter_rule> rules) { m_host_rules = std::move(rules); }
+	const std::vector<object_filter_config::filter_rule>& host_rules() const { return m_host_rules; }
 
 	// Overloaded from the base class to include host rules
 	void register_annotations(std::function<void (const std::string &str)> reg);
@@ -99,7 +99,7 @@ private:
 	bool m_histograms;
 	bool m_ingest_raw;
 	bool m_ingest_calculated;
-	vector<proc_filter::filter_rule> m_host_rules;
+	vector<object_filter_config::filter_rule> m_host_rules;
 };
 
 class prom_process

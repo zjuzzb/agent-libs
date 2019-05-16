@@ -295,6 +295,8 @@ private:
 	time_point_t m_last_procfs_port_scan;
 
 	static std::string ports_to_string(const set<uint16_t> &ports);
+
+	friend class test_helper;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -200,7 +200,9 @@ private:
  * courtesy filter which returns true if all of a set of filters are true
  *
  * considered high priority if all of the matching filters are high priority
- * exclude on match of sub-filters is overwritten by configured value
+ * exclude on match of sub-filters is overwritten by configured value.
+ *
+ * An and filter with no conditions always is met with high priority.
  *
  * reason string is concatenation of reasons of all subfilters
  */

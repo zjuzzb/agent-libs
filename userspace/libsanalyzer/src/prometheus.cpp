@@ -29,10 +29,10 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 			break;
 		}
 		string token = src.substr(pos+1, bc-(pos+1));
-		if (!token.compare(0, proc_filter::CONT_LABEL.size(), proc_filter::CONT_LABEL))
+		if (!token.compare(0, object_filter_config::CONTAINER_LABEL.size(), object_filter_config::CONTAINER_LABEL))
 		{
-			const string *strptr = proc_filter::get_cont_label(container,
-				token.substr(proc_filter::CONT_LABEL.size()+1, string::npos));
+			const string *strptr = object_filter_config::get_cont_label(container,
+				token.substr(object_filter_config::CONTAINER_LABEL.size()+1, string::npos));
 			if (strptr)
 			{
 				ret += *strptr;
@@ -55,7 +55,7 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 
 }
 
-bool prometheus_conf::get_rule_params(const proc_filter::filter_rule &rule,
+bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule &rule,
 	const sinsp_threadinfo *tinfo, const sinsp_container_info *container,
 	const infrastructure_state &infra_state, bool use_host_filter, prom_params_t &params)
 //	set<uint16_t> &out_ports, string &out_path, map<string, string> &out_options,
@@ -132,7 +132,7 @@ bool prometheus_conf::get_rule_params(const proc_filter::filter_rule &rule,
 		if (!rule.m_config.m_port_rules.empty() &&
 			(rule.m_config.m_port.empty() || params.ports.empty()))
 		{
-			params.ports = filter_ports(start_ports, rule.m_config.m_port_rules);
+			params.ports = proc_filter::filter_ports(start_ports, rule.m_config.m_port_rules);
 		}
 		if (params.ports.empty()) {
 			return false;
@@ -214,8 +214,8 @@ bool prometheus_conf::match_and_fill(const sinsp_threadinfo *tinfo,
 	{
 		prom_params_t params;
 
-		std::function<bool (const proc_filter::filter_rule &rule)> on_match =
-			[&](const proc_filter::filter_rule &rule) -> bool
+		std::function<bool (const object_filter_config::filter_rule &rule)> on_match =
+			[&](const object_filter_config::filter_rule &rule) -> bool
 			{ return get_rule_params(rule, tinfo, container, infra_state, use_host_filter, params); };
 
 		std::pair<bool, bool> matched = match_rule(rule, rule_num, tinfo, mtinfo,

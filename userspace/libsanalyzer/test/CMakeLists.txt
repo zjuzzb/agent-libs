@@ -6,6 +6,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
@@ -34,6 +35,7 @@ list(APPEND libsanalyzer_uts
 	analyzer.ut.cpp
 	metric_serializer.ut.cpp
 	mounted_fs.ut.cpp
+	object_filter.ut.cpp
 	parser_http.ut.cpp
 	protobuf_metric_serializer.ut.cpp
 )

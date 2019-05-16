@@ -710,12 +710,12 @@ void dragent_configuration::init()
 			proc_filter::group_pctl_conf::check_interval_default()));
 		m_group_pctl_conf->set_max_containers(m_config->get_scalar<uint32_t>("group_percentiles", "max_containers",
 			proc_filter::group_pctl_conf::max_containers_default()));
-		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("group_percentiles", "process_filter"));
+		m_group_pctl_conf->set_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("group_percentiles", "process_filter"));
 	}
 
 	m_container_filter.reset(new proc_filter::conf("container_filter"));
 	m_container_filter->set_enabled(m_config->get_scalar<bool>("use_container_filter", false));
-	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("container_filter"));
+	m_container_filter->set_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("container_filter"));
 	m_smart_container_reporting = m_config->get_scalar<bool>("smart_container_reporting", false);
 
 	m_dragent_cpu_profile_enabled = m_config->get_scalar<bool>("dragent_cpu_profile_enabled", false);
@@ -912,8 +912,8 @@ void dragent_configuration::init()
 	m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
 	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
-	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "process_filter"));
-	m_prom_conf.set_host_rules(m_config->get_first_deep_sequence<vector<proc_filter::filter_rule>>("prometheus", "remote_services"));
+	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("prometheus", "process_filter"));
+	m_prom_conf.set_host_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("prometheus", "remote_services"));
 	m_prom_conf.set_histograms(m_config->get_scalar<bool>("prometheus", "histograms", false));
 	m_prom_conf.set_ingest_raw(m_config->get_scalar<bool>("prometheus", "ingest_raw", false));
 	m_prom_conf.set_ingest_calculated(m_config->get_scalar<bool>("prometheus", "ingest_calculated", true));

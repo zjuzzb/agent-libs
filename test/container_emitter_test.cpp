@@ -20,22 +20,22 @@ public:
 		m_container_filter.reset(new proc_filter::conf("container_filter"));
 		m_container_filter->set_enabled(true);
 
-		proc_filter::filter_condition my_condition;
-		my_condition.m_param_type = proc_filter::filter_condition::container_label;
+		object_filter_config::filter_condition my_condition;
+		my_condition.m_param_type = object_filter_config::filter_condition::container_label;
 		my_condition.m_param = "container.label.com.sysdig.report";
 		my_condition.m_pattern = "true";
 
-		proc_filter::filter_rule my_rule;
+		object_filter_config::filter_rule my_rule;
 		my_rule.m_include = true;
 		my_rule.m_cond.emplace_back(my_condition);
 
-		proc_filter::filter_condition my_condition_2;
-		my_condition_2.m_param_type = proc_filter::filter_condition::all;
-		proc_filter::filter_rule my_rule_2;
+		object_filter_config::filter_condition my_condition_2;
+		my_condition_2.m_param_type = object_filter_config::filter_condition::all;
+		object_filter_config::filter_rule my_rule_2;
 		my_rule_2.m_include = true;
 		my_rule_2.m_cond.emplace_back(my_condition_2);
 
-		vector<proc_filter::filter_rule> my_rules;
+		vector<object_filter_config::filter_rule> my_rules;
 		my_rules.emplace_back(my_rule);
 		my_rules.emplace_back(my_rule_2);
 

@@ -101,7 +101,7 @@ public:
 	* single member is returned.
 	*/
 	template<typename T, typename... Args>
-	T get_first_deep_sequence(Args... args)
+	T get_first_deep_sequence(Args... args) const
 	{
 		T ret;
 		try

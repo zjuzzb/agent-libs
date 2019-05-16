@@ -191,6 +191,7 @@ set(SANALYZER_SOURCES
 	parser_postgres.cpp
 	parser_mongodb.cpp
 	parser_tls.cpp
+	process_manager.cpp
 	sqlparser.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/parsers.cpp
 	percentile.cpp
@@ -217,6 +218,8 @@ set(SANALYZER_SOURCES
 	jmx_proxy.cpp
 	statsite_proxy.cpp
 	app_checks.cpp
+	object_filter.cpp
+	object_filter_config.cpp
         proc_filter.cpp
 	prometheus.cpp
 	posix_queue.cpp
