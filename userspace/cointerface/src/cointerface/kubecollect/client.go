@@ -1,29 +1,35 @@
 package kubecollect
 
 import (
-	log "github.com/cihub/seelog"
-	kubeclient "k8s.io/client-go/kubernetes"
-	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/rest"
-	apierrs "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/apimachinery/pkg/fields"
-	"cointerface/draiosproto"
-	"cointerface/sdc_internal"
-	"cointerface/profile"
-	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"io/ioutil"
-	"time"
 	"golang.org/x/net/context"
-	"strings"
-	"sync"
+	"io/ioutil"
+	"reflect"
 	"regexp"
 	"runtime/debug"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
+	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
+	
+	apierrs "k8s.io/apimachinery/pkg/api/errors"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	kubeclient "k8s.io/client-go/kubernetes"
+	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
+
+	"cointerface/draiosproto"
+	"cointerface/profile"
+	"cointerface/sdc_internal"
+
+	log "github.com/cihub/seelog"
+	"github.com/gogo/protobuf/proto"
 )
 
 // XXX make these into one map and/or remove them if
@@ -163,12 +169,39 @@ func getResourceTypes(resources []*v1meta.APIResourceList, includeTypes []string
 	return resourceTypes
 }
 
+// Generic function used to drain any receive chan( <-chan)
+// This method ensures that by fully draining the chan,
+// we help unblock any other routines/methods that are blocked
+// on sending on these chans. This is called during cleanup
+func DrainChan(in interface{}) {
+	log.Debugf("[DrainChan]: Entering drain chan loop")
+	
+	cin := reflect.ValueOf(in)
+	if cin.Kind() != reflect.Chan {
+		log.Warnf("[DrainChan]: can't drain a : %v", cin.Kind())
+		return
+	}
+	if (cin.Type()).ChanDir() != reflect.RecvDir {
+		log.Warnf("[DrainChan]: can't drain a chan other than RecvDir Chan: %v",(cin.Type()).ChanDir().String())
+		return
+	}
+
+	for {
+		x, ok := cin.Recv()
+		if !ok {
+			log.Debugf("[DrainChan]: end of draining chan")
+			return
+		}
+		log.Debugf("[DrainChan]: draining : %v", x)
+	}
+}
+
 // The input context is passed to all goroutines created by this function.
 // The caller is responsible for draining messages from the returned channel
 // until the channel is closed, otherwise the component goroutines may block.
 // The empty struct chan notifies the caller that the initial event fetch
 // is complete by closing the chan.
-func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan draiosproto.CongroupUpdateEvent, <-chan struct{}, error) {
+func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEventsStreamCommand) (<-chan sdc_internal.ArrayCongroupUpdateEvent, <-chan struct{}, error) {
 	setErrorLogHandler()
 
 	// TODO: refactor error messages
@@ -227,6 +260,27 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 	// Caller is responsible for draining the chan
 	evtc := make(chan draiosproto.CongroupUpdateEvent, opts.GetQueueLen())
 
+	// Make a channel that takes in an Array of CongroupUpdateEvents
+	// Make it of capacity 1. At any given instance we should send
+	// only 1 event on it. This happens in batchEvents
+	// What this ensures is that the calculation for length of how
+	// many events in the queue becomes trivial in startInformers
+	// Else we will be forced to perform a deep len calculation. 
+	evtArrayChan := make(chan sdc_internal.ArrayCongroupUpdateEvent, 1)
+
+	// Batch cointerface messages options
+	// Get the config values for batching cointerface msgs and sanity check the values.
+	batchMsgsQueueLen := opts.GetBatchMsgsQueueLen()
+	if(batchMsgsQueueLen <= 0) {
+		log.Warnf("A value less than 1 entered for the orch_batch_msgs_queue_len configuration property. Setting the value to 1.")
+		batchMsgsQueueLen = 1
+	}
+	batchMsgsTickMs := opts.GetBatchMsgsTickIntervalMs()
+	if(batchMsgsTickMs <= 0) {
+		log.Warnf("A value less than 1 entered for the orch_batch_msgs_tick_interval configuration property. Setting the value to 1.")
+		batchMsgsTickMs = 1
+	}
+
 	ctx, cancel := context.WithCancel(parentCtx)
 	// Start a routine to do a watch on namespaces
 	// to detect api server connection errors because
@@ -243,9 +297,21 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 
 	fetchDone := make(chan struct{})
 	var wg sync.WaitGroup
+
+	// A var that will be accessed atomically in both
+	// batchEvents and startInformers. This var will hold
+	// the length of the sdcEvtArray at any given time.
+	queueLength := uint32(0)
+	
 	// Start informers in a separate routine so we can return the
-	// evt chan and let the caller start reading/draining events
-	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes)
+	// evt chan and let the below goroutine start reading/draining events
+	go startInformers(ctx, kubeClient, &wg, evtc, fetchDone, opts, resourceTypes, &queueLength)
+
+	// as soon as we start the go routine to start informers;
+	// we need to kick off the routine to start reading events
+	// from evtc and then batching them into an array and sending
+	// that array on the evtArrayChan
+	go batchEvents(ctx, evtArrayChan, evtc, batchMsgsQueueLen, batchMsgsTickMs, &queueLength)
 
 	if (eventCountsLogTime > 0) {
 		go func() {
@@ -256,7 +322,7 @@ func WatchCluster(parentCtx context.Context, opts *sdc_internal.OrchestratorEven
 		}()
 	}
 
-	return evtc, fetchDone, nil
+	return evtArrayChan, fetchDone, nil
 }
 
 func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeClient kubeclient.Interface) error {
@@ -326,7 +392,88 @@ func startWatchdog(parentCtx context.Context, cancel context.CancelFunc, kubeCli
 	return nil
 }
 
-func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sync.WaitGroup, evtc chan<- draiosproto.CongroupUpdateEvent, fetchDone chan<- struct{}, opts *sdc_internal.OrchestratorEventsStreamCommand, resourceTypes []string) {
+// Go routine that is responsible for reading events off the evtc chan
+// and batching them into an array of CongroupUpdateEvents. Then send this
+// array on the evtArrayChan.
+// Perform this periodically (based on a timer) or if the array is full.
+func batchEvents(
+	ctx context.Context,
+	evtArrayChan chan<- sdc_internal.ArrayCongroupUpdateEvent,
+	evtc <-chan draiosproto.CongroupUpdateEvent,
+	batchMsgsQueueLen uint32,
+	batchMsgsTickMs uint32,
+	queueLength *uint32) {
+	
+	// Periodic timer to drain the events
+	msTickTimer := time.NewTicker(time.Duration(batchMsgsTickMs) * time.Millisecond)
+	defer msTickTimer.Stop()
+
+	// before reading defer a function to completely
+	// drain evtc chan to unblock informers
+	// Also close the evtArrayChan
+	defer func() {
+		// Drain the evtc chan fully
+		DrainChan(evtc)
+		
+		// Close the evtArrayChan
+		close(evtArrayChan)
+	}()
+
+	sdcEvtArray := sdc_internal.ArrayCongroupUpdateEvent{
+		Events: make([]*draiosproto.CongroupUpdateEvent, 0, batchMsgsQueueLen)}
+
+	for {
+		timerTick := false
+		select {
+		case evt, ok := <-evtc:
+			if !ok {
+				log.Debugf("[PerformOrchestratorEventsStream] event stream is closed")
+				return
+			}
+
+			// append incoming evt to the sdcEvtArray's Event field
+			sdcEvtArray.Events = append(sdcEvtArray.Events, &evt)
+		case <-msTickTimer.C:
+			// We drain the event queue every batchMsgsTickMs milliseconds
+			// This prevents msgs that are old to wait around
+			// forever if we don't fill the event queue
+			// Here we just set a boolean flag to let the flush code (at the
+			// end of the select know that we are flushing due to timer)
+			// 
+			timerTick = true
+		case <-ctx.Done():
+			log.Debugf("[PerformOrchestratorEventsStream] context cancelled")
+			return
+		}
+
+		// We need to flush in 1 of 2 cases:
+		// 1.) Either we reached full capacity of the queue
+		// 2.) Or timer tick went off 
+		if((len(sdcEvtArray.Events) >= int(batchMsgsQueueLen)) ||
+			(timerTick && (len(sdcEvtArray.Events) > 0))) {
+			evtArrayChan <- sdcEvtArray
+			// Now reset this sdcEvtArray before reuse
+			sdcEvtArray = sdc_internal.ArrayCongroupUpdateEvent{
+				Events: make([]*draiosproto.CongroupUpdateEvent, 0, batchMsgsQueueLen)}
+
+			// Reset timerTick to false always
+			timerTick = false
+		}
+		// Write out the length before leaving this current select cycle
+		atomic.StoreUint32(queueLength, uint32(len(sdcEvtArray.Events)))
+	}
+}
+
+func startInformers(
+	ctx context.Context,
+	kubeClient kubeclient.Interface,
+	wg *sync.WaitGroup,
+	evtc chan<- draiosproto.CongroupUpdateEvent,
+	fetchDone chan<- struct{},
+	opts *sdc_internal.OrchestratorEventsStreamCommand,
+	resourceTypes []string,
+	queueLength *uint32) {
+	
 	filterEmpty := opts.GetFilterEmpty()
 
 	for _, resource := range resourceTypes {
@@ -400,7 +547,10 @@ func startInformers(ctx context.Context, kubeClient kubeclient.Interface, wg *sy
 				evtcLen := 0
 				select {
 				case lastTick = <-ticker.C:
-					evtcLen = len(evtc)
+					// Number of events is length of evtc chan
+					// plus length of events in SdcEvtArray
+					lenQueue := int(atomic.LoadUint32(queueLength))
+					evtcLen = len(evtc) + lenQueue
 				}
 
 				// XXX should use resourceReady()

@@ -1,10 +1,18 @@
 package kubecollect
 
 import (
+	"context"
+	"math/rand"
+	"strconv"
 	"testing"
 	"time"
-	"math/rand"
+	
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	
+	"cointerface/draiosproto"
+	"cointerface/sdc_internal"
+	
+	"github.com/gogo/protobuf/proto"	
 )
 
 // Return a pointer to a randomized resource list
@@ -213,4 +221,148 @@ func TestResourceTypeIncludes(t *testing.T) {
 	checkExtraResourceTypesHelper(t, resourceswithextras, "services", true)
 	checkExtraResourceTypesHelper(t, resourceswithextras, "horizontalpodautoscalers", true)
 	checkExtraResourceTypesHelper(t, resourceswithextras, "resourcequotas", true)
+}
+
+// Helper method that sets up the chan and context for
+// many of the Test methods below.
+func setupChanTestInfra() (
+	chan draiosproto.CongroupUpdateEvent,
+	chan sdc_internal.ArrayCongroupUpdateEvent,
+	context.Context) {
+	evtChan := make(chan draiosproto.CongroupUpdateEvent, 100)
+	evtArrChan := make(chan sdc_internal.ArrayCongroupUpdateEvent, 1)
+	ctx, _ := context.WithCancel(context.Background())
+
+	return evtChan, evtArrChan, ctx
+}
+
+// UT that tests the working of batchEvents method in client.go
+// Also tests whether the server.go can receive all the events correctly
+// This mimicks a bit of code in server.go to achieve this.
+// Would be nice if we can UT other methods in client.go and server.go
+func TestEvtArrayChanEvents(t* testing.T) {
+
+	// This is a test involving goroutines and channels.
+	// Skip it during normal operation
+	// Ideally the cointerface developer will comment this
+	// during sandbox testing.
+	// FUTURE Plan: Ideally we would split our testing into
+	// tests with shorting and we would do our compile time
+	// tests with shorting and then have a test suite that
+	// would run without shorting. (SMAGENT-1521)
+	t.Skip("skipping test for now during compile time.")
+	
+	evtChan , evtArrChan, ctx := setupChanTestInfra()
+
+	numNamespaces := 1000
+	queueLen := uint32(0)
+
+	go startNamespaceSends(evtChan, numNamespaces)
+	
+	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
+	go batchEvents(ctx, evtArrChan, evtChan, uint32(100), uint32(100), &queueLen)
+
+	nameSpace := 0
+
+	for {
+		evtArray, ok := <-evtArrChan
+		if !ok {
+			break // No more evtArray
+		} 
+		// Do a check of events
+		for _, item := range evtArray.Events {
+			objId, err := strconv.Atoi(*(item.Object.Uid.Id))
+			if err != nil {
+				t.Error("Error during string to int conversion")
+				t.Fail()
+			}
+			if(nameSpace != objId) {
+				t.Errorf("Mis-match in namespace check: %v and %v",nameSpace, objId)
+				t.Fail()
+			}
+			nameSpace = nameSpace + 1
+		}
+	}
+	
+	if(nameSpace != numNamespaces) {
+		t.Error("Failed to receive all namespaces")
+		t.Fail()
+	}
+}
+
+// Test the method DrainChan on a chan of type evtChan
+func TestDrainChanOnEvtChan(t* testing.T){
+	// This is a test involving goroutines and channels.
+	// Skip it during normal operation
+	t.Skip("skipping test for now during compile time.")
+	
+	evtChan , _, _ := setupChanTestInfra()
+
+	go startNamespaceSends(evtChan, 200)
+	
+	// Test the DrainChan by draining on the evtChan (receive only chan)
+	DrainChan((<-chan draiosproto.CongroupUpdateEvent)(evtChan))
+
+	// Test that the chan is empty
+	_, ok := <-evtChan
+	if ok {
+		t.Error("The evtChan should be empty by now.")
+		t.Fail()
+	}
+
+}
+
+// Test the method DrainChan on a chan of type evtArrChan
+func TestDrainChanOnEvtArrayChan(t* testing.T){
+	// This is a test involving goroutines and channels.
+	// Skip it during normal operation
+	t.Skip("skipping test for now during compile time.")
+	
+	evtChan , evtArrChan, ctx := setupChanTestInfra()
+	queueLen := uint32(0)
+
+	// Now let's do this same test with batchEvents and
+	// call drainchan on evtArrChan
+	go startNamespaceSends(evtChan, 300)
+
+	// Call the batchEvents in client.go to UT it. Use defaults for batchsizes (for now)
+	go batchEvents(ctx, evtArrChan, evtChan, uint32(100), uint32(100), &queueLen)
+
+	// Test DrainChan on evtArrChan by sending full chan
+	// This should return back without draining a single event
+	DrainChan(evtArrChan)
+
+	_, ok := <-evtArrChan
+	if !ok {
+		t.Error("The evtArrChan should not be empty yet")
+		t.Fail()
+	}
+
+	// Drain using the receive chan (cast it to a receive-only chan)
+	DrainChan((<-chan sdc_internal.ArrayCongroupUpdateEvent)(evtArrChan))
+	
+	// Now check again
+	_, ok = <-evtArrChan
+	if ok {
+		t.Error("The evtArrChan should be empty by now.")
+		t.Fail()
+	}
+}
+
+func startNamespaceSends(
+	evtc chan<- draiosproto.CongroupUpdateEvent,
+	numNamespaces int) {
+
+	for i := 0; i < numNamespaces; i++ {
+		evtc <- draiosproto.CongroupUpdateEvent {
+			Type: draiosproto.CongroupEventType_ADDED.Enum(),
+			Object: &draiosproto.ContainerGroup{
+				Uid: &draiosproto.CongroupUid{
+					Kind:proto.String("k8s_namespace"),
+					Id:proto.String(strconv.Itoa(i))},
+			},
+		}
+		
+	}
+	close(evtc)
 }
