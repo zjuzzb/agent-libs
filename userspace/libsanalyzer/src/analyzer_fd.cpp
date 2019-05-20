@@ -11,6 +11,7 @@
 #include "analyzer.h"
 #include "analyzer_thread.h"
 #include "connectinfo.h"
+#include "configuration_manager.h"
 #include "metrics.h"
 #include "draios.pb.h"
 #include "delays.h"
@@ -608,10 +609,48 @@ void sinsp_analyzer_fd_listener::on_write(sinsp_evt *evt, int64_t tid, int64_t f
 }
 
 #ifndef _WIN32
-void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt *evt, sinsp_fdinfo_t *fdinfo, const char *data, uint32_t len) const
+
+namespace
 {
-	// Support for statsd protocol
-	const uint32_t LOCALHOST_IPV4 = 0x0100007F; // network endian representation of 127.0.0.1
+
+#if 0
+void log_statsd_message(const sinsp_fdinfo_t* const fdinfo,
+			const std::string& container_id)
+{
+	const uint32_t client_ip = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip;
+	const uint16_t client_port = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport;
+	const uint32_t server_ip = fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip;
+	const uint16_t server_port = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport;
+
+	g_logger.format(sinsp_logger::SEV_DEBUG,
+	                "Detected statsd message ipv4: %u.%u.%u.%u:%u -> "
+			"%u.%u.%u.%u:%u container: %s",
+			client_ip & 0xFF,
+			(client_ip >>  8) & 0xFF,
+			(client_ip >> 16) & 0xFF,
+			(client_ip >> 24) & 0xFF,
+			client_port,
+			server_ip & 0xFF,
+			(server_ip >>  8) & 0xFF,
+			(server_ip >> 16) & 0xFF,
+			(server_ip >> 24) & 0xFF,
+			server_port,
+			container_id.c_str());
+
+}
+
+#    define LOG_STATSD_MESSAGE(...) log_statsd_message(__VA_ARGS__)
+#else
+#    define LOG_STATSD_MESSAGE(...)
+#endif
+
+} // end namespace
+
+void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt* const evt,
+                                                     sinsp_fdinfo_t* const fdinfo,
+                                                     const char* const data,
+                                                     const uint32_t len) const
+{
 	const uint16_t STATSD_PORT = 8125;
 
 	if(m_analyzer->has_statsite_proxy() &&
@@ -619,36 +658,31 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt *evt, sinsp_fdinf
 	   fdinfo->is_udp_socket() &&
 	   fdinfo->get_serverport() == STATSD_PORT)
 	{
+		const static bool use_forwarder =
+			configuration_manager::instance().get_config<bool>(
+					"statsd.use_forwarder")->get();
+
 		auto tinfo = evt->get_thread_info(false);
-
-#if 0
-		// This log line it's useful to debug, but it's not suitable for enabling it always
-		uint32_t client_ip = fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sip;
-		uint32_t server_ip = fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip;
-		g_logger.format(sinsp_logger::SEV_DEBUG, "Detected statsd message ipv4: %u.%u.%u.%u:%u -> %u.%u.%u.%u:%u container: %s",
-				client_ip & 0xFF,
-				(client_ip >>  8) & 0xFF,
-				(client_ip >> 16) & 0xFF,
-				(client_ip >> 24) & 0xFF,
-				fdinfo->m_sockinfo.m_ipv4info.m_fields.m_sport,
-				server_ip & 0xFF,
-				(server_ip >>  8) & 0xFF,
-				(server_ip >> 16) & 0xFF,
-				(server_ip >> 24) & 0xFF,
-				fdinfo->m_sockinfo.m_ipv4info.m_fields.m_dport,
-				tinfo ? tinfo->m_container_id.c_str() : "<no data>");
-#endif
-
 		const std::string container_id = (tinfo != nullptr)
 		                               ? tinfo->m_container_id
 		                               : "";
 
-		m_analyzer->inject_statsd_metric(
-				container_id,
-				(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip == LOCALHOST_IPV4),
-				m_sinsp_config->get_use_host_statsd(),
-				data,
-				len);
+		LOG_STATSD_MESSAGE(fdinfo, container_id);
+
+		// If we're not using statsite_forwarder for container statsd
+		// messages or if this is the host (i.e., not a container)
+		if(!use_forwarder || container_id.empty())
+		{
+			// network endian representation of 127.0.0.1
+			const uint32_t LOCALHOST_IPV4 = 0x0100007F;
+
+			m_analyzer->inject_statsd_metric(
+					container_id,
+					(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip == LOCALHOST_IPV4),
+					m_sinsp_config->get_use_host_statsd(),
+					data,
+					len);
+		}
 	}
 }
 #endif

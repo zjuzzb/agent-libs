@@ -16,6 +16,7 @@
 #include "memdump_logger.h"
 #include "monitor.h"
 #include "process_helpers.h"
+#include "type_config.h"
 #include "utils.h"
 #ifndef CYGWING_AGENT
 #include <gperftools/malloc_extension.h>
@@ -32,10 +33,18 @@
 using namespace std;
 using namespace dragent;
 
+// local helper functions
+namespace
+{
+
 DRAGENT_LOGGER();
 
-// local helper functions
-namespace {
+type_config<bool> s_use_statsite_forwarder(
+		false,
+		"Use statsite_forwarder instead of system call trace for container statsd metrics",
+		"statsd",
+		"use_forwarder");
+
 string compute_sha1_digest(SHA1Engine &engine, const string &path)
 {
 	engine.reset();
@@ -52,8 +61,6 @@ string compute_sha1_digest(SHA1Engine &engine, const string &path)
 // processes. This was chosen arbitrarily to be after the processes had time
 // to start.
 const uint32_t TIME_TO_UPDATE_PROCESS_PRIORITY = 5;
-
-};
 
 static void g_signal_callback(int sig)
 {
@@ -74,6 +81,8 @@ static void g_trace_signal_callback(int sig)
 {
 	dragent_configuration::m_enable_trace = true;
 }
+
+} // end namespace
 
 dragent_app::dragent_app():
 	m_help_requested(false),
@@ -505,18 +514,22 @@ int dragent_app::main(const std::vector<std::string>& args)
 			}
 			return (EXIT_FAILURE);
 		});
-		if(m_configuration.m_mode == dragent_mode_t::NODRIVER)
+
+		if(s_use_statsite_forwarder.get() ||
+		   (m_configuration.m_mode == dragent_mode_t::NODRIVER))
 		{
 			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
 			auto state = &m_subprocesses_state["statsite_forwarder"];
 			state->set_name("statsite_forwarder");
-			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(), sinsp_logger_parser("statsite_forwarder"), state);
+			m_subprocesses_logger.add_logfd(m_statsite_forwarder_pipe->get_file(),
+			                                sinsp_logger_parser("statsite_forwarder"),
+			                                state);
 			monitor_process.emplace_process("statsite_forwarder", [this]() -> int
 			{
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
-						       m_configuration.m_statsd_port,
-						       m_configuration.m_statsite_check_format);
+				                       m_configuration.m_statsd_port,
+				                       m_configuration.m_statsite_check_format);
 				return fwd.run();
 			});
 		}

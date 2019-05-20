@@ -1,4 +1,5 @@
 #include "sinsp_worker.h"
+#include "configuration_manager.h"
 #include "error_handler.h"
 #include "logger.h"
 #include "memdumper.h"
@@ -110,7 +111,13 @@ void sinsp_worker::init()
 
 	if(m_statsite_pipes)
 	{
-		m_analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds(), m_configuration->m_mode == dragent_mode_t::NODRIVER);
+		const bool enable_statsite_forwarder =
+			configuration_manager::instance().get_config<bool>(
+					"statsd.use_forwarder")->get() ||
+			(m_configuration->m_mode == dragent_mode_t::NODRIVER);
+
+		m_analyzer->set_statsd_iofds(m_statsite_pipes->get_io_fds(),
+		                             enable_statsite_forwarder);
 	}
 
 	m_inspector->m_analyzer = m_analyzer;
