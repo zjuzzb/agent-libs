@@ -241,6 +241,7 @@ set(SANALYZER_SOURCES
 if(NOT CYGWIN)
 list(APPEND SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cri.cpp
+	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/bpm.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/cri.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/docker_linux.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/container_engine/libvirt_lxc.cpp
