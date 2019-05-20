@@ -308,6 +308,7 @@ bool connection_manager::connect()
 				sss->setSendTimeout(connect_timeout_us);
 				sss->setReceiveTimeout(connect_timeout_us);
 
+				LOG_INFO("Performing SSL handshake");
 				int32_t ret = sss->completeHandshake();
 
 				if (ret == 1)
@@ -360,6 +361,15 @@ bool connection_manager::connect()
 			// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 			LOG_ERROR("connect():Timeout: " + e.displayText());
 			sock_promise.set_value(nullptr);
+		}
+		catch(const Poco::InvalidArgumentException& e)
+		{
+			// SMAGENT-1617
+			// In short, this shouldn't happen but it did. Try again and hope for the best!
+			LOG_ERROR("connect():InvalidArgument: " + e.displayText());
+			LOG_ERROR("\tHost: %s, port %hu", hostname.c_str(), port);
+			sock_promise.set_value(nullptr);
+			return;
 		}
 		catch(const std::future_error& e)
 		{
