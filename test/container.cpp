@@ -1772,5 +1772,68 @@ TEST_F(sys_call_test, docker_container_healthcheck_cmd_overlap_trace)
 				     true);
 }
 
+TEST_F(sys_call_test, docker_container_large_json)
+{
+	bool saw_container_evt = false;
 
+	if(!dutils_check_docker())
+	{
+		return;
+	}
 
+	dutils_kill_container("large_container_ut");
+	dutils_kill_image("large_container_ut_img");
+
+	ASSERT_TRUE(system("cd resources/large_container_dockerfiles && docker build -t large_container_ut_img -f Dockerfile.long_labels . > /dev/null") == 0);
+
+	event_filter_t filter = [&](sinsp_evt * evt)
+	{
+		return evt->get_type() == PPME_CONTAINER_JSON_E;
+	};
+
+	run_callback_t test = [&](sinsp* inspector)
+	{
+		// --network=none speeds up the container setup a bit.
+		int rc = system("docker run --rm --network=none --name large_container_ut large_container_ut_img /bin/sh -c '/bin/sleep 3' > /dev/null 2>&1");
+
+		ASSERT_TRUE(rc == 0);
+	};
+
+	captured_event_callback_t callback = [&](const callback_param& param)
+	{
+		saw_container_evt = true;
+
+		sinsp_threadinfo* tinfo = param.m_evt->m_tinfo;
+		ASSERT_TRUE(tinfo != NULL);
+
+		const sinsp_container_info *container_info =
+			param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
+		ASSERT_TRUE(container_info);
+		ASSERT_EQ(container_info->m_type, CT_DOCKER);
+
+		ASSERT_STREQ(container_info->m_name.c_str(), "large_container_ut");
+		ASSERT_STREQ(container_info->m_image.c_str(), "large_container_ut_img");
+
+		std::unordered_set<std::string> labels = {
+			"url2",
+			"summary2",
+			"vcs-type2",
+			"vcs-ref2",
+			"description2",
+			"io.k8s.description2",
+		};
+
+		const std::string aaaaaa(4096, 'a');
+
+		for(const auto& label : container_info->m_labels) {
+			EXPECT_EQ(1, labels.erase(label.first));
+			EXPECT_EQ(4096, label.second.size());
+			EXPECT_EQ(aaaaaa, label.second);
+		}
+
+		EXPECT_TRUE(labels.empty());
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	ASSERT_TRUE(saw_container_evt);
+}
