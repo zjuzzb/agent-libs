@@ -522,7 +522,7 @@ TEST_F(sys_call_test, container_docker_bad_socket)
 
 TEST_F(sys_call_test, container_custom)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container"});
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -540,6 +540,11 @@ TEST_F(sys_call_test, container_custom)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -578,7 +583,7 @@ TEST_F(sys_call_test, container_custom)
 
 TEST_F(sys_call_test, container_custom_env_match)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container"});
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -596,6 +601,11 @@ TEST_F(sys_call_test, container_custom_env_match)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -637,7 +647,7 @@ TEST_F(sys_call_test, container_custom_env_match)
 
 TEST_F(sys_call_test, container_custom_env_match_last)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container"});
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -655,6 +665,11 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -696,7 +711,7 @@ TEST_F(sys_call_test, container_custom_env_match_last)
 
 TEST_F(sys_call_test, container_custom_env_match_all)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container"});
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -714,6 +729,11 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -756,7 +776,7 @@ TEST_F(sys_call_test, container_custom_env_match_all)
 
 TEST_F(sys_call_test, container_custom_env_match_flipped)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container"});
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -774,6 +794,11 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -816,7 +841,7 @@ TEST_F(sys_call_test, container_custom_env_match_flipped)
 
 TEST_F(sys_call_test, container_custom_halfnhalf)
 {
-	bool done = false;
+	volatile bool done = false;
 	string container_name, container_image;
 	proc test_proc = proc("./test_helper", { "custom_container", "halfnhalf" });
 
@@ -835,6 +860,11 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -881,7 +911,7 @@ TEST_F(sys_call_test, container_custom_halfnhalf)
 /// of time to do it
 TEST_F(sys_call_test, container_custom_huge_env)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container", "huge_env" });
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -899,6 +929,11 @@ TEST_F(sys_call_test, container_custom_huge_env)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -946,7 +981,7 @@ TEST_F(sys_call_test, container_custom_huge_env)
 /// We don't read the environment from /proc in this test but we still should have the initial 4K available
 TEST_F(sys_call_test, container_custom_huge_env_echo)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_echo" });
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -964,6 +999,11 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -1009,7 +1049,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo)
 /// but we still should have the initial 4K available
 TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_echo" });
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -1027,6 +1067,11 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
@@ -1078,7 +1123,7 @@ TEST_F(sys_call_test, container_custom_huge_env_echo_proc)
 /// (we won't be able to read the environment before the process exits)
 TEST_F(sys_call_test, container_custom_huge_env_at_end)
 {
-	bool done = false;
+	volatile bool done = false;
 	proc test_proc = proc("./test_helper", { "custom_container", "huge_env_at_end" });
 
 	event_filter_t filter = [&](sinsp_evt * evt)
@@ -1096,6 +1141,11 @@ TEST_F(sys_call_test, container_custom_huge_env_at_end)
 	{
 		auto handle = start_process(&test_proc);
 		get<0>(handle).wait();
+		auto time_started = sinsp_utils::get_current_time_ns();
+		while (!done && sinsp_utils::get_current_time_ns() - time_started <= 1000000000)
+		{
+			usleep(100000);
+		}
 	};
 
 	captured_event_callback_t callback = [&](const callback_param& param)
