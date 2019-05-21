@@ -330,6 +330,7 @@ public:
 	bool m_enable_coredump;
 	bool m_auto_config;
 	bool m_emit_tracers = false;
+	bool m_enable_grpc_tracing = false;
 	unsigned long m_rlimit_msgqueue;
 
 	bool m_enable_falco_engine;

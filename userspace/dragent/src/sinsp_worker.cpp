@@ -44,7 +44,7 @@ sinsp_worker::sinsp_worker(dragent_configuration* configuration,
 	m_last_loop_ns(0),
 	m_statsd_capture_localhost(false),
 	m_app_checks_enabled(false),
-	m_trace_enabled(false),
+	m_grpc_trace_enabled(false),
 	m_next_iflist_refresh_ns(0),
 	m_aws_metadata_refresher(*configuration),
 	m_internal_metrics(im)
@@ -920,6 +920,26 @@ void sinsp_worker::receive_hosts_metadata(draiosproto::orchestrator_events &evts
 }
 #endif
 
+void sinsp_worker::do_grpc_tracing()
+{
+	if(m_grpc_trace_enabled)
+	{
+		m_grpc_trace_enabled = false;
+		m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_default_report_log_size_b;
+		g_log->information("Received SIGSTKFLT, disabling gRPC tracing");
+		grpc_tracer_set_enabled("all", 0);
+		gpr_set_log_verbosity(GPR_LOG_SEVERITY_ERROR);
+	}
+	else
+	{
+		m_grpc_trace_enabled = true;
+		m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_trace_report_log_size_b;
+		g_log->information("Received SIGSTKFLT, enabling gRPC tracing");
+		grpc_tracer_set_enabled("all", 1);
+		gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);
+	}
+}
+
 // Receive job requests and pass them along to the capture job
 // handler, adding a sinsp_dumper object associated with our
 // inspector.
@@ -953,21 +973,9 @@ void sinsp_worker::process_job_requests()
 	if(dragent_configuration::m_enable_trace)
 	{
 		dragent_configuration::m_enable_trace = false;
-		if(m_trace_enabled)
-		{
-			m_trace_enabled = false;
-			m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_default_report_log_size_b;
-			g_log->information("Received SIGSTKFLT, disabling gRPC tracing");
-			grpc_tracer_set_enabled("all", 0);
-			gpr_set_log_verbosity(GPR_LOG_SEVERITY_ERROR);
-		}
-		else
-		{
-			m_trace_enabled = true;
-			m_configuration->m_dirty_shutdown_report_log_size_b = m_configuration->m_dirty_shutdown_trace_report_log_size_b;
-			g_log->information("Received SIGSTKFLT, enabling gRPC tracing");
-			grpc_tracer_set_enabled("all", 1);
-			gpr_set_log_verbosity(GPR_LOG_SEVERITY_DEBUG);
+
+		if (m_configuration->m_enable_grpc_tracing) {
+			do_grpc_tracing();
 		}
 	}
 

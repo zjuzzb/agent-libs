@@ -1146,6 +1146,7 @@ void dragent_configuration::init()
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
 	m_emit_tracers = m_config->get_scalar("emit_tracers", true);
+	m_enable_grpc_tracing = m_config->get_scalar("enable_grpc_tracing", false);
 
 #ifndef CYGWING_AGENT
 	auto mode_s = m_config->get_scalar<string>("run_mode", "standard");

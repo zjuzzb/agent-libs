@@ -115,6 +115,7 @@ public:
 
 private:
 	void init();
+	void do_grpc_tracing();
 	void process_job_requests();
 	void check_autodrop(uint64_t ts_ns);
 
@@ -143,7 +144,7 @@ private:
 	shared_ptr<pipe_manager> m_statsite_pipes;
 	bool m_statsd_capture_localhost;
 	bool m_app_checks_enabled;
-	bool m_trace_enabled;
+	bool m_grpc_trace_enabled;
 	uint64_t m_last_mode_switch_time;
 
 	static const uint64_t IFLIST_REFRESH_FIRST_TIMEOUT_NS = 30*ONE_SECOND_IN_NS;
