@@ -114,9 +114,12 @@ private:
 	/**
 	 * Writes the dam file during serialization.
 	 */
-	void emit_metrics_to_file(const scap_stats& st,
-	                          uint64_t nevts,
-	                          uint64_t num_dropped_events);
+	void emit_metrics_to_file();
+
+	/**
+	 * Writes the metrics to individual JSON files during serialization.
+	 */
+	void emit_metrics_to_json_file() const;
 
 	std::unique_ptr<data> m_data;
 	mutable std::mutex m_data_mutex;

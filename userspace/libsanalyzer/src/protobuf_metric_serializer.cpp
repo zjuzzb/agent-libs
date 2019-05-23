@@ -10,12 +10,19 @@
 #include "analyzer_callback_interface.h"
 #include "config.h"
 #include "tracer_emitter.h"
-
+#include "type_config.h"
 #include <chrono>
+#include <google/protobuf/util/json_util.h>
 #include <sstream>
 
 namespace
 {
+
+type_config<bool> s_emit_protobuf_json(
+		false,
+		"If true, emit each protobuf as a separate JSON file",
+		"metricsfile",
+		"json");
 
 /**
  * Generate a log on destruction that includes the object's lifetime in
@@ -178,7 +185,28 @@ void protobuf_metric_serializer::do_serialization()
 
 	if(get_emit_metrics_to_file())
 	{
-		emit_metrics_to_file(st, nevts, num_drop_events);
+		g_logger.format(sinsp_logger::SEV_INFO,
+				"to_file ts=%" PRIu64
+				", ne=%" PRIu64
+				", de=%" PRIu64
+				", c=%.2lf"
+				", sr=%" PRIu32
+				", st=%" PRIu64,
+				m_data->m_ts / 100000000,
+				nevts,
+				num_drop_events,
+				m_data->m_my_cpuload,
+				m_data->m_sampling_ratio,
+				st.n_tids_suppressed);
+
+		if(s_emit_protobuf_json.get())
+		{
+			emit_metrics_to_json_file();
+		}
+		else
+		{
+			emit_metrics_to_file();
+		}
 	}
 
 	clear_data();
@@ -277,30 +305,14 @@ void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
 							 st.n_tids_suppressed);
 }
 
-void protobuf_metric_serializer::emit_metrics_to_file(const scap_stats& st,
-                                                      const uint64_t nevts,
-                                                      const uint64_t num_drop_events)
+void protobuf_metric_serializer::emit_metrics_to_file()
 {
-	g_logger.format(sinsp_logger::SEV_INFO,
-			"to_file ts=%" PRIu64
-			", ne=%" PRIu64
-			", de=%" PRIu64
-			", c=%.2lf"
-			", sr=%" PRIu32
-			", st=%" PRIu64,
-			m_data->m_ts / 100000000,
-			nevts,
-			num_drop_events,
-			m_data->m_my_cpuload,
-			m_data->m_sampling_ratio,
-			st.n_tids_suppressed);
-
-	const std::string dam_file = generate_dam_filename(
-			get_metrics_directory(),
-			m_data->m_ts);
-
 	if(!m_protobuf_file.is_open())
 	{
+		const std::string dam_file = generate_dam_filename(
+				get_metrics_directory(),
+				m_data->m_ts);
+
 		m_protobuf_file.open(dam_file);
 	}
 
@@ -315,6 +327,35 @@ void protobuf_metric_serializer::emit_metrics_to_file(const scap_stats& st,
 	const std::string footer = "}\n";
 
 	m_protobuf_file << header << pbstr << footer << std::flush;
+}
+
+void protobuf_metric_serializer::emit_metrics_to_json_file() const
+{
+	// Don't generate a zero-named file
+	if(m_data->m_evt_num == metric_serializer::NO_EVENT_NUMBER)
+	{
+		return;
+	}
+
+	const std::string dam_file = generate_dam_filename(
+			get_metrics_directory(),
+			m_data->m_ts) + ".json";
+
+	std::ofstream out(dam_file.c_str());
+
+	if(out)
+	{
+		std::string json_string;
+
+		google::protobuf::util::MessageToJsonString(m_data->m_metrics,
+							    &json_string);
+		out << json_string;
+
+		const std::string symbolic_link = get_metrics_directory() +
+						  "latest.dams.json";
+		unlink(symbolic_link.c_str());
+		symlink(dam_file.c_str(), symbolic_link.c_str());
+	}
 }
 
 uint64_t protobuf_metric_serializer::get_prev_sample_evtnum() const
