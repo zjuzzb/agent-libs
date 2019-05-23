@@ -82,6 +82,23 @@ public:
 	std::string m_name;
 };
 
+// for SMAGENT-1599, ensure we work if the container info is null
+TEST(analyzer_test, DISABLED_coalesce_containers_null)
+{
+	sinsp_mock inspector;
+	sinsp_analyzer analyzer(&inspector, "/");
+	vector<std::string> emitted_containers;
+	container_stuff unemitted_container_1(inspector, analyzer, "unemitted_container_1");
+	container_stuff unemitted_container_2(inspector, analyzer, "unemitted_container_2");
+
+	// remove container from container manager to simulate it getting deleted
+	test_helper::get_inspector_containers(inspector).erase(unemitted_container_2.m_name);
+
+	// coalesce. should crash if broken
+	test_helper::coalesce(analyzer, emitted_containers);
+	EXPECT_EQ(1, test_helper::get_metrics(analyzer)->unreported_counters().names().size());
+}
+
 TEST(analyzer_test, DISABLED_coalesce_containers_test)
 {
 	sinsp_mock inspector;
