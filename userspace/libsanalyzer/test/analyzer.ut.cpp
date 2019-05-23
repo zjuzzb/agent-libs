@@ -83,7 +83,7 @@ public:
 };
 
 // for SMAGENT-1599, ensure we work if the container info is null
-TEST(analyzer_test, coalesce_containers_null)
+TEST(analyzer_test, DISABLED_coalesce_containers_null)
 {
 	sinsp_mock inspector;
 	sinsp_analyzer analyzer(&inspector, "/");
@@ -99,7 +99,7 @@ TEST(analyzer_test, coalesce_containers_null)
 	EXPECT_EQ(1, test_helper::get_metrics(analyzer)->unreported_counters().names().size());
 }
 
-TEST(analyzer_test, coalesce_containers_test)
+TEST(analyzer_test, DISABLED_coalesce_containers_test)
 {
 	sinsp_mock inspector;
 	sinsp_analyzer analyzer(&inspector, "/");
