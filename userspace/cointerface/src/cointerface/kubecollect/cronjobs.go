@@ -1,18 +1,20 @@
 package kubecollect
 
 import (
-	// "os"
-	// "encoding/json"
-	"cointerface/draiosproto"
 	"context"
 	"sync"
-	"github.com/gogo/protobuf/proto"
-	kubeclient "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
-	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
+
 	v1batch "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v2alpha1"
+	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/client-go/tools/cache"
+	kubeclient "k8s.io/client-go/kubernetes"
+
+	"cointerface/draiosproto"
+
+	log "github.com/cihub/seelog"
+	"github.com/gogo/protobuf/proto"
 )
 
 // make this a library function?
@@ -127,8 +129,26 @@ func watchCronJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("Cronjob", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.ReplicaSet))
-				evtc <- cronJobEvent(obj.(*v2alpha1.CronJob),
+				oldCronJob := (*v2alpha1.CronJob)(nil)
+				switch obj.(type) {
+				case *v2alpha1.CronJob:
+					oldCronJob = obj.(*v2alpha1.CronJob)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v2alpha1.CronJob)
+					if ok {
+						oldCronJob = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without cronjob object")
+					}
+				default:
+					log.Warn("Unknown object type in cronjob DeleteFunc")
+				}
+				if oldCronJob == nil {
+					return
+				}
+
+				evtc <- cronJobEvent(oldCronJob,
 					draiosproto.CongroupEventType_REMOVED.Enum())
 				addEvent("Cronjob", EVENT_DELETE)
 			},

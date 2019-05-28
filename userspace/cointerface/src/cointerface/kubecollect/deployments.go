@@ -199,7 +199,24 @@ func watchDeployments(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldDeployment := obj.(*v1beta1.Deployment)
+				oldDeployment := (*v1beta1.Deployment)(nil)
+				switch obj.(type) {
+				case *v1beta1.Deployment:
+					oldDeployment = obj.(*v1beta1.Deployment)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1beta1.Deployment)
+					if ok {
+						oldDeployment = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without deployment object")
+					}
+				default:
+					log.Warn("Unknown object type in deployment DeleteFunc")
+				}
+				if oldDeployment == nil {
+					return
+				}
 				clearDeploySelectorCache(oldDeployment)
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),

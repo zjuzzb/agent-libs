@@ -126,8 +126,26 @@ func watchHorizontalPodAutoscalers(evtc chan<- draiosproto.CongroupUpdateEvent) 
 				addEvent("HPA", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping HorizontalPodAutoscaler: %v", obj.(*v1as.HorizontalPodAutoscaler))
-				evtc <- horizontalPodAutoscalerEvent(obj.(*v1as.HorizontalPodAutoscaler),
+				oldHPA := (*v1as.HorizontalPodAutoscaler)(nil)
+				switch obj.(type) {
+				case *v1as.HorizontalPodAutoscaler:
+					oldHPA = obj.(*v1as.HorizontalPodAutoscaler)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1as.HorizontalPodAutoscaler)
+					if ok {
+						oldHPA = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without hpa object")
+					}
+				default:
+					log.Warn("Unknown object type in hpa DeleteFunc")
+				}
+				if oldHPA == nil {
+					return
+				}
+
+				evtc <- horizontalPodAutoscalerEvent(oldHPA,
 					draiosproto.CongroupEventType_REMOVED.Enum())
 				addEvent("HPA", EVENT_DELETE)
 			},

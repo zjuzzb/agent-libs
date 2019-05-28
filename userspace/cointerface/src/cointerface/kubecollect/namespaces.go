@@ -121,7 +121,25 @@ func watchNamespaces(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("Namespace", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldNS := obj.(*v1.Namespace)
+				oldNS := (*v1.Namespace)(nil)
+				switch obj.(type) {
+				case *v1.Namespace:
+					oldNS = obj.(*v1.Namespace)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1.Namespace)
+					if ok {
+						oldNS = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without namespace object")
+					}
+				default:
+					log.Warn("Unknown object type in namespace DeleteFunc")
+				}
+				if oldNS == nil {
+					return
+				}
+
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{

@@ -100,7 +100,26 @@ func watchPersistentVolumeClaims(evtc chan <- draiosproto.CongroupUpdateEvent) {
 				addEvent("PersistentVolumeClaim", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				evtc <- persistentVolumeClaimEvent(obj.(*v1.PersistentVolumeClaim),
+				oldPVC := (*v1.PersistentVolumeClaim)(nil)
+				switch obj.(type) {
+				case *v1.PersistentVolumeClaim:
+					oldPVC = obj.(*v1.PersistentVolumeClaim)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1.PersistentVolumeClaim)
+					if ok {
+						oldPVC = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without pvc object")
+					}
+				default:
+					log.Warn("Unknown object type in pvc DeleteFunc")
+				}
+				if oldPVC == nil {
+					return
+				}
+
+				evtc <- persistentVolumeClaimEvent(oldPVC,
 					draiosproto.CongroupEventType_REMOVED.Enum())
 				addEvent("PersistentVolumeClaim", EVENT_DELETE)
 			},

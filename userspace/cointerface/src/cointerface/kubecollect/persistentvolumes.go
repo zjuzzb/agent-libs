@@ -160,7 +160,26 @@ func watchPersistentVolumes(evtc chan <- draiosproto.CongroupUpdateEvent) {
 				addEvent("PersistentVolume", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				evtc <- persistentVolumeEvent(obj.(*v1.PersistentVolume),
+				oldPV := (*v1.PersistentVolume)(nil)
+				switch obj.(type) {
+				case *v1.PersistentVolume:
+					oldPV = obj.(*v1.PersistentVolume)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1.PersistentVolume)
+					if ok {
+						oldPV = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without pv object")
+					}
+				default:
+					log.Warn("Unknown object type in pv DeleteFunc")
+				}
+				if oldPV == nil {
+					return
+				}
+
+				evtc <- persistentVolumeEvent(oldPV,
 					draiosproto.CongroupEventType_REMOVED.Enum())
 				addEvent("PersistentVolume", EVENT_DELETE)
 			},

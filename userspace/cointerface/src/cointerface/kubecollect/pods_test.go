@@ -3,9 +3,13 @@ package kubecollect
 import (
 	"testing"
 	. "test_helpers"
+
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	v1meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/tools/cache"
+
+	"cointerface/draiosproto"
 )
 
 // Creates two pod objects that are DeepEqual
@@ -276,4 +280,45 @@ func Test_parseContainerID (t *testing.T) {
 	result,err = parseContainerID("docker:/0123456789abbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef")
 	AssertEqual(t, "docker:/0123456789abbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef", result)
 	AssertEqual(t, "Unknown containerID format", err.Error())
+}
+
+func podDeleteFuncHelper(t *testing.T, obj interface{}, evtExpected bool) {
+	evtReceiver := make(chan draiosproto.CongroupUpdateEvent, 1)
+	podEvtcHandle = evtReceiver
+
+	podDeleteFunc(obj)
+	evtReceived := false
+	select {
+	case _, ok := <-evtReceiver:
+		if !ok {
+			t.Log("podEvtcHandle was closed unexpectedly")
+			t.Fail()
+		}
+		evtReceived = true
+	default:
+		t.Log("Pod delete event wasn't created")
+	}
+	if evtExpected != evtReceived {
+		t.Fail()
+	}
+}
+
+func TestPodDeleteFunc(t *testing.T) {
+	oldPod, _ := createPodCopies()
+	podDeleteFuncHelper(t, oldPod, true)
+}
+
+func TestPodDeleteFuncDeletedFinalStateUnknown(t *testing.T) {
+	oldPod, _ := createPodCopies()
+	unk := cache.DeletedFinalStateUnknown{
+		//Key: "" // XXX do we need to set/use this?
+		Obj: oldPod,
+	}
+	podDeleteFuncHelper(t, unk, true)
+}
+
+func TestPodDeleteFuncBadType(t *testing.T) {
+	podDeleteFuncHelper(t, nil, false)
+	var someInt int = 0
+	podDeleteFuncHelper(t, someInt, false)
 }

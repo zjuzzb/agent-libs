@@ -134,8 +134,26 @@ func watchStatefulSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("StatefulSet", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping StatefulSet: %v", obj.(*v1beta1.StatefulSet))
-				evtc <- statefulSetEvent(obj.(*v1beta1.StatefulSet),
+				oldSet := (*v1beta1.StatefulSet)(nil)
+				switch obj.(type) {
+				case *v1beta1.StatefulSet:
+					oldSet = obj.(*v1beta1.StatefulSet)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1beta1.StatefulSet)
+					if ok {
+						oldSet = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without statefulset object")
+					}
+				default:
+					log.Warn("Unknown object type in statefulset DeleteFunc")
+				}
+				if oldSet == nil {
+					return
+				}
+
+				evtc <- statefulSetEvent(oldSet,
 					draiosproto.CongroupEventType_REMOVED.Enum())
 				addEvent("StatefulSet", EVENT_DELETE)
 			},

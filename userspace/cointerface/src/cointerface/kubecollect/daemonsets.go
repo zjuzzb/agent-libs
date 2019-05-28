@@ -176,8 +176,25 @@ func watchDaemonSets(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping DaemonSet: %v", obj.(*v1beta1.DaemonSet))
-				ds := obj.(*v1beta1.DaemonSet)
+				ds := (*v1beta1.DaemonSet)(nil)
+				switch obj.(type) {
+				case *v1beta1.DaemonSet:
+					ds = obj.(*v1beta1.DaemonSet)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1beta1.DaemonSet)
+					if ok {
+						ds = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without daemonset object")
+					}
+				default:
+					log.Warn("Unknown object type in daemonset DeleteFunc")
+				}
+				if ds == nil {
+					return
+				}
+
 				clearDsSelectorCache(ds)
 				evtc <- daemonSetEvent(ds,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)

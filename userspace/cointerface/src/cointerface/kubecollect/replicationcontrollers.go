@@ -230,7 +230,25 @@ func watchReplicationControllers(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				rc := obj.(*v1.ReplicationController)
+				rc := (*v1.ReplicationController)(nil)
+				switch obj.(type) {
+				case *v1.ReplicationController:
+					rc = obj.(*v1.ReplicationController)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1.ReplicationController)
+					if ok {
+						rc = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without replicationcontroller object")
+					}
+				default:
+					log.Warn("Unknown object type in replicationcontroller DeleteFunc")
+				}
+				if rc == nil {
+					return
+				}
+
 				if rcFiltered(rc) {
 					return
 				}

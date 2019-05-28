@@ -19,6 +19,7 @@ import (
 )
 
 var podInf cache.SharedInformer
+var podEvtcHandle chan<- draiosproto.CongroupUpdateEvent
 
 // container IDs from k8s are of the form <scheme>://<container_id>
 // runc-based runtimes (Docker, containerd, CRI-o) use 64 hex digits as the ID
@@ -32,10 +33,10 @@ var podInf cache.SharedInformer
 var containerIDRegex = regexp.MustCompile("^([a-z0-9-]+)://([0-9a-fA-F]{12})[0-9a-fA-F]*$")
 
 // pods get their own special version because they send events for containers too
-func sendPodEvents(evtc chan<- draiosproto.CongroupUpdateEvent, pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
+func sendPodEvents(pod *v1.Pod, eventType draiosproto.CongroupEventType, oldPod *v1.Pod, setLinks bool)  {
 	updates := newPodEvents(pod, eventType, oldPod, setLinks)
 	for _, evt := range updates {
-		evtc <- *evt
+		podEvtcHandle <- *evt
 	}
 }
 
@@ -561,13 +562,44 @@ func startPodsSInformer(ctx context.Context, kubeClient kubeclient.Interface, wg
 
 	wg.Add(1)
 	go func() {
-		watchPods(evtc)
+		podEvtcHandle = evtc
+		watchPods()
 		podInf.Run(ctx.Done())
 		wg.Done()
 	}()
 }
 
-func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
+// XXX For pods, this is broken out as a separate function as an example of how
+// we can do it generically and also UT it, but not copying to other resources
+// until we refactor the generic bits
+func podDeleteFunc(obj interface{}) {
+	oldPod := (*v1.Pod)(nil)
+
+	switch obj.(type) {
+	case *v1.Pod:
+		oldPod = obj.(*v1.Pod)
+	case cache.DeletedFinalStateUnknown:
+		d := obj.(cache.DeletedFinalStateUnknown)
+		p, ok := (d.Obj).(*v1.Pod)
+		if ok {
+			oldPod = p
+		} else {
+			log.Warn("DeletedFinalStateUnknown without pod object")
+		}
+	default:
+		log.Warn("Unknown object type in pod DeleteFunc")
+	}
+
+	if oldPod == nil {
+		return
+	}
+
+	// we have to call the function in this case because it will remove the containers too
+	sendPodEvents(oldPod, draiosproto.CongroupEventType_REMOVED, nil, true)
+	addEvent("Pod", EVENT_DELETE)
+}
+
+func watchPods() {
 	log.Debugf("In WatchPods()")
 
 	podInf.AddEventHandler(
@@ -575,7 +607,7 @@ func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 			AddFunc: func(obj interface{}) {
 				eventReceived("pods")
 				newPod := obj.(*v1.Pod)
-				sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_ADDED, nil, true)
+				sendPodEvents(newPod, draiosproto.CongroupEventType_ADDED, nil, true)
 				addEvent("Pod", EVENT_ADD)
 			},
 			UpdateFunc: func(oldObj, newObj interface{}) {
@@ -584,18 +616,13 @@ func watchPods(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				if oldPod.GetResourceVersion() != newPod.GetResourceVersion() {
 					sameEntity, sameLinks := podEquals(oldPod, newPod)
 					if !sameEntity || !sameLinks {
-						sendPodEvents(evtc, newPod, draiosproto.CongroupEventType_UPDATED, oldPod, !sameLinks)
+						sendPodEvents(newPod, draiosproto.CongroupEventType_UPDATED, oldPod, !sameLinks)
 						addEvent("Pod", EVENT_UPDATE_AND_SEND)
 					}
 				}
 				addEvent("Pod", EVENT_UPDATE)
 			},
-			DeleteFunc: func(obj interface{}) {
-				oldPod := obj.(*v1.Pod)
-				// we have to call the function in this case because it will remove the containers too
-				sendPodEvents(evtc, oldPod, draiosproto.CongroupEventType_REMOVED, nil, true)
-				addEvent("Pod", EVENT_DELETE)
-			},
+			DeleteFunc: podDeleteFunc,
 		},
 	)
 }

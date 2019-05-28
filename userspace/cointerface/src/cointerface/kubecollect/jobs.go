@@ -180,8 +180,25 @@ func watchJobs(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				}
 			},
 			DeleteFunc: func(obj interface{}) {
-				//log.Debugf("DeleteFunc dumping ReplicaSet: %v", obj.(*v1.Job))
-				job := obj.(*v1batch.Job)
+				job := (*v1batch.Job)(nil)
+				switch obj.(type) {
+				case *v1batch.Job:
+					job = obj.(*v1batch.Job)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1batch.Job)
+					if ok {
+						job = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without job object")
+					}
+				default:
+					log.Warn("Unknown object type in job DeleteFunc")
+				}
+				if job == nil {
+					return
+				}
+
 				clearJobSelectorCache(job)
 				evtc <- jobEvent(job,
 					draiosproto.CongroupEventType_REMOVED.Enum(), false)

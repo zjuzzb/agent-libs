@@ -224,7 +224,25 @@ func watchServices(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("Service", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldService := obj.(*v1.Service)
+				oldService := (*v1.Service)(nil)
+				switch obj.(type) {
+				case *v1.Service:
+					oldService = obj.(*v1.Service)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1.Service)
+					if ok {
+						oldService = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without service object")
+					}
+				default:
+					log.Warn("Unknown object type in service DeleteFunc")
+				}
+				if oldService == nil {
+					return
+				}
+
 				// We may not have an unresolved port, but delete is still safe
 				portmapMutex.Lock()
 				delete(unresolvedPorts, oldService.GetUID())

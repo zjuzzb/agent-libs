@@ -180,7 +180,25 @@ func watchNodes(evtc chan<- draiosproto.CongroupUpdateEvent) {
 				addEvent("Node", EVENT_UPDATE)
 			},
 			DeleteFunc: func(obj interface{}) {
-				oldNode := obj.(*v1.Node)
+				oldNode := (*v1.Node)(nil)
+				switch obj.(type) {
+				case *v1.Node:
+					oldNode = obj.(*v1.Node)
+				case cache.DeletedFinalStateUnknown:
+					d := obj.(cache.DeletedFinalStateUnknown)
+					o, ok := (d.Obj).(*v1.Node)
+					if ok {
+						oldNode = o
+					} else {
+						log.Warn("DeletedFinalStateUnknown without node object")
+					}
+				default:
+					log.Warn("Unknown object type in node DeleteFunc")
+				}
+				if oldNode == nil {
+					return
+				}
+
 				evtc <- draiosproto.CongroupUpdateEvent {
 					Type: draiosproto.CongroupEventType_REMOVED.Enum(),
 					Object: &draiosproto.ContainerGroup{
