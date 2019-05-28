@@ -185,6 +185,10 @@ func getSwarmState(ctx context.Context, cmd *sdc_internal.SwarmStateCommand) (*s
 	tasks, err := cli.TaskList(ctx, types.TaskListOptions{Filters: args})
 	if err == nil {
 		for _, task := range tasks {
+			if task.Status.ContainerStatus == nil {
+				log.Infof("Skipping Swarm task with no ContainerStatus: id=%s service_id=%s node_id=%s status.state=%s\n", task.ID, task.ServiceID, task.NodeID, task.Status.State)
+				continue
+			}
 			m.Tasks = append(m.Tasks, taskToProtobuf(task, servicemap))
 			// fmt.Printf("task id=%s name=%s service=%s node=%s status=%s containerid=%s\n", task.ID, task.Name, task.ServiceID, task.NodeID, task.Status.State, task.Status.ContainerStatus.ContainerID[:12])
 			if task.Status.State == swarm.TaskStateRunning && len(task.ServiceID) > 0 {
