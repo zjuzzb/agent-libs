@@ -57,7 +57,7 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 
 bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule &rule,
 	const sinsp_threadinfo *tinfo, const sinsp_container_info *container,
-	const infrastructure_state &infra_state, bool use_host_filter, prom_params_t &params)
+	const infrastructure_state &infra_state, bool use_host_filter, prom_params_t &params) const
 //	set<uint16_t> &out_ports, string &out_path, map<string, string> &out_options,
 //	map<string, string> &out_tags)
 {

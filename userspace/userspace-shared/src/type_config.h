@@ -12,6 +12,7 @@
 #include <sstream>
 #include <type_traits>
 #include <vector>
+#include <functional>
 
 class yaml_configuration;
 

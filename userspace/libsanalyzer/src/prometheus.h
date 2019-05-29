@@ -56,7 +56,7 @@ private:
 	// the configuration parameters for this process
 	bool get_rule_params(const object_filter_config::filter_rule &rule, const sinsp_threadinfo *tinfo,
 		const sinsp_container_info *container, const infrastructure_state &infra_state,
-		bool use_host_filter, prom_params_t &out_params);
+		bool use_host_filter, prom_params_t &out_params) const;
 
 public:
 	bool log_errors() const { return m_log_errors; }
