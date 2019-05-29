@@ -65,22 +65,12 @@ if(BUILD_FOR_COVERAGE)
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-dragent dragent.lcov
 	)
 else()
-	# Valgrind's thread analyzer, helgrind, doesn't work well with the release
-	# version of the unit test binary -- the backtraces that we want to suppress
-	# don't match reality in the code.  Rather than add suppressions for these
-	# unexpected backtraces, we'll run helgrind only for debug builds.
-	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-		add_custom_target(run-unit-test-dragent
-			DEPENDS unit-test-dragent
-			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
-			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind ./unit-test-dragent --gtest_filter="-spinlock_test.*"
-		)
-	else()
-		add_custom_target(run-unit-test-dragent
-			DEPENDS unit-test-dragent
-			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
-		)
-	endif()
+	# Since dragentl includes tcmalloc, helgrind doesn't play well with it.
+	# So we just run valgrind.
+	add_custom_target(run-unit-test-dragent
+		DEPENDS unit-test-dragent
+		COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all ./unit-test-dragent
+	)
 endif()
 
 install(TARGETS unit-test-dragent
