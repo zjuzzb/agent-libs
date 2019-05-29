@@ -20,6 +20,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../userspace-shared/src)
+include_directories(${PROJECT_BINARY_DIR}/driver/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/include)
 
 if(CYGWIN)
