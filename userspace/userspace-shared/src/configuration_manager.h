@@ -92,7 +92,7 @@ public:
 	/**
 	 * Returns true if the given config is registered, false otherwise.
 	 */
-	bool is_registered(configuration_unit* config);
+	bool is_registered(configuration_unit *config);
 
 	/**
 	 * Get the config object with the given name.  If there is no config
@@ -105,8 +105,26 @@ public:
 	 * @param[in] name The name (key) for the configuration.
 	 */
 	template<typename config_type>
-	const type_config<config_type>* get_config(const std::string& name);
+	const type_config<config_type>* get_config(const std::string& name) const;
 
+	/**
+	 * Get the config object with the given name.  If there is no config
+	 * with the given name, or if the config with the given name isn't
+	 * of the given config_type, then this will return nullptr.  Client
+	 * code is responsible for ensuring that these parameters are correct.
+	 * Only use this if you need a non-const config.
+	 *
+	 * @tparam config_type The underlying type of the configuration's value
+	 *
+	 * @param[in] name The name (key) for the configuration.
+	 */
+	template<typename config_type>
+	type_config<config_type>* get_mutable_config(const std::string& name);
+
+	/**
+	 * Generate a yaml from the registered configuration.
+	 */
+	std::string to_yaml() const;
 private:
 	using config_map_t = std::map<std::string, configuration_unit*>;
 

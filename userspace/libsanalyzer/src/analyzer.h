@@ -347,13 +347,12 @@ public:
 			     m_configuration->get_labels_cache());
 	}
 
-	inline void enable_jmx(bool print_json, unsigned sampling, unsigned limit)
+	inline void enable_jmx(bool print_json, unsigned sampling)
 	{
 		check_metric_limits();
 		m_jmx_proxy = make_unique<jmx_proxy>();
 		m_jmx_proxy->m_print_json = print_json;
 		m_jmx_sampling = sampling;
-		m_configuration->set_jmx_limit(limit);
 	}
 
 	void set_statsd_iofds(const pair<FILE*, FILE*>& iofds, bool forwarder);
@@ -789,6 +788,12 @@ public:
 	 * Returns true if the analyzer has a statsite proxy, false otherwise.
 	 */
 	bool has_statsite_proxy() const;
+
+	/**
+	 * Return the limit for statsd metrics. This includes a bump if
+	 * security is enabled.
+	 */
+	unsigned int get_statsd_limit() const;
 
 	/**
 	 * Called on all containers that are eligible to be emitted, regardless

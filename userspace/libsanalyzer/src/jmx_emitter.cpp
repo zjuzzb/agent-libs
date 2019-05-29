@@ -1,6 +1,7 @@
 #include "jmx_emitter.h"
 #include "draios.pb.h"
 #include "analyzer_thread.h"
+#include "metric_forwarding_configuration.h"
 
 jmx_emitter::jmx_emitter(const unordered_map<int, java_process>& jmx_metrics,
 			 const uint32_t jmx_sampling,
@@ -68,7 +69,7 @@ void jmx_emitter::emit_jmx(sinsp_procinfo& procinfo,
 								   0,
 								   m_jmx_limit,
 								   "total",
-								   std::min(m_jmx_limit, JMX_METRICS_HARD_LIMIT));
+								   m_jmx_limit);
 			}
 		}
 	}

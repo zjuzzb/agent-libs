@@ -1,6 +1,7 @@
 add_subdirectory(resources)
 
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/test-helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/test_helpers/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
@@ -10,15 +11,18 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 add_executable(unit-test-userspace-shared
 	main.cpp
 	configuration_manager.ut.cpp
+	filter.ut.cpp
+	scoped_config.ut.cpp
+	scoped_configuration.ut.cpp
 	type_config.ut.cpp
 	yaml_configuration.ut.cpp
-	filter.ut.cpp
 )
 
 target_link_libraries(unit-test-userspace-shared
 	userspace-shared
 	rt
 	test_helpers
+	test-helpers-userspace-shared
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/lib/libPocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a

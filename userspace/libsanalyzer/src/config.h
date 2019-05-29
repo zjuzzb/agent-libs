@@ -91,8 +91,6 @@ public:
 	void set_blacklisted_ports(const vector<uint16_t> & v);
 	void set_blacklisted_ports(const ports_set & v);
 	const ports_set & get_blacklisted_ports() const;
-	unsigned get_statsd_limit() const;
-	void set_statsd_limit(unsigned value);
 	bool get_use_host_statsd() const;
 	void set_use_host_statsd(bool value);
 #ifndef CYGWING_AGENT
@@ -193,8 +191,6 @@ public:
 	void set_capture_dragent_events(bool enabled);
 	uint64_t get_memdump_size() const;
 	void set_memdump_size(uint64_t size);
-	unsigned get_jmx_limit() const;
-	void set_jmx_limit(unsigned limit);
 	const std::set<double>& get_percentiles() const;
 	shared_ptr<proc_filter::group_pctl_conf> get_group_pctl_conf() const;
 	void set_percentiles(const std::set<double>&, shared_ptr<proc_filter::group_pctl_conf>);
@@ -218,8 +214,6 @@ public:
 	bool get_statsite_check_format() const;
 	void set_statsite_check_format(bool enabled);
 
-	unsigned get_app_checks_limit() const;
-	void set_app_checks_limit(unsigned value);
 	bool get_app_checks_always_send() const;
 	void set_app_checks_always_send(bool);
 	bool get_security_enabled() const;
@@ -297,7 +291,6 @@ private:
 	ports_set m_blacklisted_ports;
 
 	std::set<double> m_percentiles;
-	unsigned m_statsd_limit;
 	bool m_use_host_statsd;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
@@ -370,8 +363,6 @@ private:
 	filter_vec_t m_mounts_filter;
 	unsigned m_mounts_limit_size;
 
-	unsigned m_jmx_limit;
-	unsigned m_app_checks_limit;
 	bool m_app_checks_always_send;
 
 	bool m_detect_stress_tools;

@@ -14,6 +14,7 @@
 #include "analyzer_settings.h"
 #include "proc_filter.h"
 #include "app_checks.h"
+#include "metric_forwarding_configuration.h"
 
 Json::Value yaml_to_json(const YAML::Node& node);
 class sinsp_container_info;
@@ -28,7 +29,6 @@ public:
 		base("Prometheus autodetection"),
 		m_log_errors(true),
 		m_interval(-1),
-		m_max_metrics(PROM_METRICS_HARD_LIMIT),
 		m_max_metrics_per_proc(-1),
 		m_max_tags_per_metric(-1),
 		m_histograms(false),
@@ -65,10 +65,11 @@ public:
 	int interval() const { return m_interval; }
 	void set_interval(int val) { m_interval = val; }
 
-	unsigned max_metrics() const { return m_max_metrics; }
-	void set_max_metrics(int i) {
-		m_max_metrics = ((i<0) ? PROM_METRICS_HARD_LIMIT : min((unsigned)i, PROM_METRICS_HARD_LIMIT));
-	}
+	/**
+	 * Returns the the maximum number of prometheus metrics to
+	 * forward.
+	 */
+	unsigned max_metrics() const { return static_cast<unsigned>(metric_forwarding_configuration::c_prometheus_max->get()); }
 
 	int max_metrics_per_proc() const { return m_max_metrics_per_proc; }
 	void set_max_metrics_per_proc(int val) { m_max_metrics_per_proc = val; }
@@ -93,7 +94,6 @@ public:
 private:
 	bool m_log_errors;
 	int m_interval;
-	unsigned m_max_metrics;
 	int m_max_metrics_per_proc;
 	int m_max_tags_per_metric;
 	bool m_histograms;

@@ -19,6 +19,7 @@ namespace
 const bool DEFAULT_BOOL = true;
 const std::string DEFAULT_DESCRIPTION = "some default description";
 const std::vector<uint16_t> INT_VECTOR_VALUE = { 5, 7, 27 };
+const int INT_12345_VALUE = 12345;
 
 const char* bool_to_string(const bool value)
 {
@@ -372,3 +373,102 @@ TEST_F(type_config_test, config_vector_uint16)
 
 	ASSERT_EQ(expected_value, some_config.get());
 }
+
+TEST_F(type_config_test, builder_defaults)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+
+	type_config<int>::mutable_ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+	   .get_mutable();
+
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
+
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
+	ASSERT_FALSE(some_config->hidden());
+}
+
+TEST_F(type_config_test, builder_hidden)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+
+	type_config<int>::ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.hidden()
+		.get();
+
+	ASSERT_TRUE(some_config->hidden());
+}
+
+TEST_F(type_config_test, builder_min)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+	const int MIN = INT_12345_VALUE + 10;
+
+	type_config<int>::mutable_ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.min(MIN)
+		.get_mutable();
+
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	ASSERT_EQ(MIN, some_config->get());
+	ASSERT_EQ(MIN, some_config->configured());
+}
+
+TEST_F(type_config_test, builder_max)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+	const int MAX = INT_12345_VALUE - 10;
+
+	type_config<int>::mutable_ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.max(MAX)
+		.get_mutable();
+
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	ASSERT_EQ(MAX, some_config->get());
+	ASSERT_EQ(MAX, some_config->configured());
+}
+
+TEST_F(type_config_test, builder_post_init)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+	const int FORCED = 99;
+
+	type_config<int>::mutable_ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.post_init([](type_config<int>& config)
+		{
+			config.get() = FORCED;
+		})
+		.get_mutable();
+
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	ASSERT_EQ(FORCED, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
+}
+
+
+

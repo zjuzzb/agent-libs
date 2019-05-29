@@ -33,8 +33,6 @@ sinsp_configuration::sinsp_configuration():
 #ifndef CYGWING_AGENT
 	m_mesos_autodetect = true;
 #endif
-	m_jmx_limit = 500;
-	m_app_checks_limit = 500;
 	m_app_checks_always_send = false;
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;
@@ -397,16 +395,6 @@ void sinsp_configuration::set_blacklisted_ports(const ports_set &v)
 const ports_set & sinsp_configuration::get_blacklisted_ports() const
 {
 	return m_blacklisted_ports;
-}
-
-unsigned sinsp_configuration::get_statsd_limit() const
-{
-	return m_statsd_limit;
-}
-
-void sinsp_configuration::set_statsd_limit(unsigned value)
-{
-	m_statsd_limit = min(value, STATSD_METRIC_HARD_LIMIT);
 }
 
 bool sinsp_configuration::get_use_host_statsd() const
@@ -888,16 +876,6 @@ void sinsp_configuration::set_metrics_cache(unsigned sz)
 	m_metrics_cache = sz;
 }
 
-unsigned sinsp_configuration::get_jmx_limit() const
-{
-	return m_jmx_limit;
-}
-
-void sinsp_configuration::set_jmx_limit(unsigned limit)
-{
-	m_jmx_limit = std::min(limit, JMX_METRICS_HARD_LIMIT);
-}
-
 const std::set<double>& sinsp_configuration::get_percentiles() const
 {
 	return m_percentiles;
@@ -983,16 +961,6 @@ void sinsp_configuration::set_log_dir(const string& dir)
 string& sinsp_configuration::get_log_dir()
 {
 	return m_log_dir;
-}
-
-unsigned sinsp_configuration::get_app_checks_limit() const
-{
-	return m_app_checks_limit;
-}
-
-void sinsp_configuration::set_app_checks_limit(unsigned value)
-{
-	m_app_checks_limit = min(value, APP_METRICS_HARD_LIMIT);
 }
 
 bool sinsp_configuration::get_app_checks_always_send() const

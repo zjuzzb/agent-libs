@@ -258,12 +258,10 @@ dragent_configuration::dragent_configuration()
 	m_sysdig_capture_transmit_rate = 1024 * 1024;
 	m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
 	m_statsd_enabled = true;
-	m_statsd_limit = 100;
 	m_statsd_port = 8125;
 	m_statsd_tcp_port = m_statsd_port;
 	m_use_host_statsd = false;
 	m_sdjagent_enabled = true;
-	m_jmx_limit = 500;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
 	m_rlimit_msgqueue = posix_queue::min_msgqueue_limit();
@@ -296,7 +294,6 @@ dragent_configuration::dragent_configuration()
 	m_user_max_burst_events = 1000;
 	m_load_error = false;
 	m_mode = dragent_mode_t::STANDARD;
-	m_app_checks_limit = 500;
 	m_app_checks_always_send = false;
 	m_detect_stress_tools = false;
 	m_cointerface_enabled = true;
@@ -872,7 +869,6 @@ void dragent_configuration::init()
 		m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
 	}
 	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", !is_windows);
-	m_statsd_limit = m_config->get_scalar<unsigned>("statsd", "limit", 100);
 	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
 	m_statsd_tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
 	m_use_host_statsd = m_config->get_scalar<bool>("statsd", "use_host_statsd", false);
@@ -887,7 +883,6 @@ void dragent_configuration::init()
 	}
 
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", !is_windows);
-	m_jmx_limit = m_config->get_scalar<unsigned>("jmx", "limit", 500);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
 
 	// Filter out disabled checks
@@ -909,7 +904,6 @@ void dragent_configuration::init()
 	m_prom_conf.set_enabled(m_config->get_scalar<bool>("prometheus", "enabled", false));
 	m_prom_conf.set_log_errors(m_config->get_scalar<bool>("prometheus", "log_errors", false));
 	m_prom_conf.set_interval(m_config->get_scalar<int>("prometheus", "interval", -1));
-	m_prom_conf.set_max_metrics(m_config->get_scalar<int>("prometheus", "max_metrics", -1));
 	m_prom_conf.set_max_metrics_per_proc(m_config->get_scalar<int>("prometheus", "max_metrics_per_process", -1));
 	m_prom_conf.set_max_tags_per_metric(m_config->get_scalar<int>("prometheus", "max_tags_per_metric", -1));
 	m_prom_conf.set_rules(m_config->get_first_deep_sequence<vector<object_filter_config::filter_rule>>("prometheus", "process_filter"));
@@ -963,7 +957,6 @@ void dragent_configuration::init()
 	}
 
 	m_app_checks_enabled = m_config->get_scalar<bool>("app_checks_enabled", !is_windows);
-	m_app_checks_limit = m_config->get_scalar<unsigned>("app_checks_limit", 500);
 	m_app_checks_always_send = m_config->get_scalar<bool>("app_checks_always_send", false);
 
 	m_containers_limit = m_config->get_scalar<uint32_t>("containers", "limit", 200);
@@ -1085,12 +1078,6 @@ void dragent_configuration::init()
 			m_host_tags += ",";
 		}
 		m_host_tags += "sysdig_secure.enabled:true";
-
-		// Also increase the limit on the number of statsd
-		// metrics by 100. When compliance is enabled, up to
-		// 88 new metrics can be emitted when running
-		// docker-bench/k8s-bench tasks.
-		m_statsd_limit += 100;
 	}
 	m_security_policies_file = m_config->get_scalar<string>("security", "policies_file", "");
 	m_security_baselines_file = m_config->get_scalar<string>("security", "baselines_file", "");
@@ -1439,7 +1426,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("protocols_truncation_size: " + NumberFormatter::format(m_protocols_truncation_size));
 	LOG_INFO("remotefs: " + bool_as_text(m_remotefs_enabled));
 	LOG_INFO("jmx.sampling: " + NumberFormatter::format(m_jmx_sampling));
-	LOG_INFO("jmx.limit: " + NumberFormatter::format(m_jmx_limit));
 	// The following message was provided to Goldman Sachs (Oct 2018). Do not change.
 	LOG_INFO("java detected: " + bool_as_text(java_present()));
 	LOG_INFO("java_binary: " + m_java_binary);
@@ -1452,7 +1438,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("sysdig capture.transmit rate (bytes/sec): " + NumberFormatter::format(m_sysdig_capture_transmit_rate));
 	LOG_INFO("sysdig capture.compression level: " + NumberFormatter::format(m_sysdig_capture_compression_level));
 	LOG_INFO("statsd enabled: " + bool_as_text(m_statsd_enabled));
-	LOG_INFO("statsd limit: " + std::to_string(m_statsd_limit));
 	LOG_INFO("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 #ifndef CYGWING_AGENT
 	LOG_INFO("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
@@ -1852,6 +1837,7 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
 
 	configuration_manager::instance().print_config(log_config);
+	metric_forwarding_configuration::print();
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

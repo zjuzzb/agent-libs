@@ -183,15 +183,11 @@ typedef sinsp_fdinfo<sinsp_partial_transaction> sinsp_fdinfo_t;
 #undef SIMULATE_DROP_MODE
 
 static const uint32_t CONTAINERS_HARD_LIMIT = 200;
-static const unsigned STATSD_METRIC_HARD_LIMIT = 1000;
 
 static const size_t CONTAINERS_PROTOS_TOP_LIMIT = 15;
 static const size_t HOST_PROTOS_LIMIT = 15;
 static const auto ARG_SIZE_LIMIT = 100;
 static const auto ASSUME_LONG_LIVING_PROCESS_UPTIME_S = 10;
-static const unsigned PROM_METRICS_HARD_LIMIT = 3000;
-static const unsigned APP_METRICS_HARD_LIMIT = 3000;
-static const unsigned JMX_METRICS_HARD_LIMIT = 3000;
 static const unsigned JMX_METRICS_HARD_LIMIT_PER_PROC = 1500;
 static const unsigned CUSTOM_METRICS_FILTERS_HARD_LIMIT = 100;
 static const unsigned CUSTOM_METRICS_CACHE_HARD_LIMIT = 100000;

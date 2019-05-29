@@ -220,7 +220,6 @@ public:
 	bool m_remotefs_enabled;
 	string m_java_binary;
 	string m_sdjagent_opts;
-	unsigned m_jmx_limit;
 	bool m_agent_installed;
 	bool m_sysdig_capture_enabled;
 	uint32_t m_max_sysdig_captures;
@@ -228,7 +227,6 @@ public:
 	int32_t m_sysdig_capture_compression_level;
 
 	bool m_statsd_enabled;
-	unsigned m_statsd_limit;
 	uint16_t m_statsd_port;
 	uint16_t m_statsd_tcp_port;
 	bool m_use_host_statsd;
@@ -237,7 +235,6 @@ public:
 	vector<app_check> m_app_checks;
 	string m_python_binary;
 	bool m_app_checks_enabled;
-	unsigned m_app_checks_limit;
 	bool m_app_checks_always_send;
 	uint32_t m_containers_limit;
 	uint32_t m_containers_labels_max_len;

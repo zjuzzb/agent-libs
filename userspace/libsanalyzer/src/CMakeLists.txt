@@ -183,6 +183,7 @@ set(SANALYZER_SOURCES
 	memdump_logger.cpp
 	mesos_proto.cpp
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
+	metric_forwarding_configuration.cpp
 	metric_limits.cpp
 	metrics.cpp
 	mounted_fs.cpp
@@ -223,7 +224,7 @@ set(SANALYZER_SOURCES
 	environment_emitter.cpp
 	object_filter.cpp
 	object_filter_config.cpp
-        proc_filter.cpp
+	proc_filter.cpp
 	prometheus.cpp
 	process_emitter.cpp
 	posix_queue.cpp

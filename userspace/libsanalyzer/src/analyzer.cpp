@@ -65,6 +65,7 @@ using namespace google::protobuf::io;
 #include "k8s_delegator.h"
 #include "k8s_state.h"
 #include "k8s_proto.h"
+#include "metric_forwarding_configuration.h"
 #include "mesos.h"
 #include "mesos_state.h"
 #include "mesos_proto.h"
@@ -2424,7 +2425,7 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 
 		analyzer_container_emitter emitter(*this,
 						   m_containers,
-						   m_configuration->get_statsd_limit(),
+						   get_statsd_limit(),
 						   progtable_by_container,
 						   m_container_patterns,
 						   flushflags,
@@ -2484,10 +2485,10 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	std::set<uint64_t> all_uids;
 	jmx_emitter jmx_emitter_instance(m_jmx_metrics,
 					 m_jmx_sampling,
-					 m_configuration->get_jmx_limit(),
+					 metric_forwarding_configuration::c_jmx_max->get(),
 					 m_jmx_metrics_by_containers);
 	app_check_emitter app_check_emitter_instance(m_app_metrics,
-						     m_configuration->get_app_checks_limit(),
+						     metric_forwarding_configuration::c_app_checks_max->get(),
 						     m_prom_conf,
 						     m_app_checks_by_containers,
 						     m_prometheus_by_containers,
@@ -4078,8 +4079,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 				statsd_total += std::get<1>(m_statsd_metrics.at(""));
 				statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at("")),
 					m_metrics->mutable_protos()->mutable_statsd(),
-					m_configuration->get_statsd_limit(),
-					m_configuration->get_statsd_limit(),
+					get_statsd_limit(),
+					get_statsd_limit(),
 					"host=" + sinsp_gethostname());
 				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(statsd_sent);
 				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(statsd_total);
@@ -5764,7 +5765,7 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
-	unsigned statsd_limit = m_configuration->get_statsd_limit();
+	unsigned statsd_limit = get_statsd_limit();
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit,
 	                                  &emitted_containers, &total_cpu_shares, &progtable_by_container,
 	                                  flushflags]
@@ -6165,7 +6166,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 		unsigned statsd_total = std::get<1>(m_statsd_metrics.at(it->second.m_id));
 		auto statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at(it->second.m_id)),
 										container->mutable_protos()->mutable_statsd(),
-										*statsd_limit, m_configuration->get_statsd_limit(),
+										*statsd_limit, get_statsd_limit(),
 										"container=" + it->second.m_name + " (id=" + it->second.m_id + ")");
 		*statsd_limit -= statsd_sent;
 		container->mutable_resource_counters()->set_statsd_sent(statsd_sent);
@@ -7059,7 +7060,6 @@ void sinsp_analyzer::add_executed_command(const std::string& container_id,
 	m_executed_commands[container_id].push_back(command);
 }
 
-
 uint32_t sinsp_analyzer::get_sampling_ratio() const
 {
 	return m_sampling_ratio;
@@ -7088,6 +7088,21 @@ uint64_t sinsp_analyzer::get_prev_flush_time_ns() const
 bool sinsp_analyzer::has_statsite_proxy() const
 {
 	return m_statsite_proxy != nullptr;
+}
+
+unsigned int sinsp_analyzer::get_statsd_limit() const
+{
+
+	int limit = metric_forwarding_configuration::c_statsd_max->get();
+
+	// If security is enabled the increase the limit on the number of
+	// statsd metrics by 100. When compliance is enabled, up to 88 new
+	// metrics can be emitted when running docker-bench/k8s-bench tasks.
+	if(m_configuration->get_security_enabled())
+	{
+		limit += 100;
+	}
+	return  limit;
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

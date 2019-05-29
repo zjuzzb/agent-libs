@@ -106,7 +106,7 @@ void sinsp_worker::init()
 
 	if(m_configuration->java_present() && m_configuration->m_sdjagent_enabled)
 	{
-		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling, m_configuration->m_jmx_limit);
+		m_analyzer->enable_jmx(m_configuration->m_print_protobuf, m_configuration->m_jmx_sampling);
 	}
 
 	if(m_statsite_pipes)
@@ -385,9 +385,7 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
-	m_analyzer->get_configuration()->set_statsd_limit(m_configuration->m_statsd_limit);
 	m_analyzer->get_configuration()->set_use_host_statsd(m_configuration->m_use_host_statsd);
-	m_analyzer->get_configuration()->set_app_checks_limit(m_configuration->m_app_checks_limit);
 	m_analyzer->get_configuration()->set_app_checks_always_send(m_configuration->m_app_checks_always_send);
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);

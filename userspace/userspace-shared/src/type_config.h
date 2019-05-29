@@ -7,6 +7,7 @@
  */
 #pragma once
 
+#include <memory>
 #include <string>
 #include <sstream>
 #include <type_traits>
@@ -15,16 +16,24 @@
 class yaml_configuration;
 
 /**
- * The new configuration scheme provides an easy way of acquiring config values
- * from a central location without having to pass them around, and without the
- * central location needing to be aware of how to parse individual types.
+ * This configuration scheme provides an easy way of acquiring
+ * config values from a central location without having to pass
+ * them around, and without the central location needing to be
+ * aware of how to parse individual types.
  *
  * Usage:
  *
  * (in some cpp file)
  *
  * type_config<uint64_t> my_config_variable_name(some_default_value,
- *                                               "key_name_in_yaml")
+ *                                               "key_name_in_yaml");
+ *
+ * OR if using the optional fields (like min and max)
+ *
+ *
+ * type_config<uint64_t>::ptr  my_config_variable_name =
+ *      type_config_builder<int>(some_default_value, "key_name_in_yaml")
+ *          .min(10).max(50).get();
  *
  * The data is automatically populated from the yaml, and can then be freely
  * used:
@@ -49,9 +58,9 @@ class configuration_unit
 public:
 	/**
 	 * Our yaml interface has three levels of keys possible. If a given
-	 * value only requries fewer values, set the other strings to "". This
-	 * constructor should register this object with the configuration_manager
-	 * class.
+	 * value requires fewer values, set the other strings to "".
+	 * This constructor should register this object with the
+	 * configuration_manager class.
 	 */
 	configuration_unit(const std::string& key,
 			   const std::string& subkey,
@@ -83,7 +92,7 @@ public:
 	 *                   data
 	 */
 	virtual void init(const yaml_configuration& raw_config) = 0;
-	
+
 	/**
 	 * Return the canonical string for the config.
 	 *
@@ -105,6 +114,15 @@ public:
 
 	/** Returns the description for this configuration_unit. */
 	const std::string& get_description() const;
+
+	/** Stop this configuration value from showing up in logs */
+	void hidden(bool value) { m_hidden = value; }
+	
+	 /** Returns whether the value is hidden from logs */
+	 bool hidden() const { return m_hidden; }
+
+	/** Called after all configuration params have been init'd */
+	virtual void post_init() = 0;
 
 protected:
 	/**
@@ -153,6 +171,7 @@ private:
 	const std::string m_subsubkey;
 	const std::string m_description;
 	std::string m_keystring;
+	bool m_hidden;
 };
 
 /**
@@ -192,6 +211,9 @@ class type_config : public configuration_unit
 	static_assert(!std::is_same<data_type, int8_t>::value,
 	              "data_type = int8_t is not supported");
 public:
+	using ptr = std::shared_ptr<const type_config<data_type>>;
+	using mutable_ptr = std::shared_ptr<type_config<data_type>>;
+
 	/**
 	 * Our yaml interface has three levels of keys possible. If a given
 	 * value only requries fewer values, set the other strings to "". This
@@ -214,22 +236,143 @@ public: // stuff for configuration_unit
 public: // other stuff
 
 	/**
-	 * Returns a reference to the current value of this type_config.
-	 *
-	 * @return the value of this config
-	 */
-	data_type& get();
-
-	/**
 	 * Returns a const reference to the current value of this type_config.
 	 *
 	 * @return the value of this config
 	 */
 	const data_type& get() const;
 
+	/**
+	 * Returns a non-const reference to the current value of this
+	 * type_config.
+	 *
+	 * @return the value of this config
+	 */
+	data_type& get();
+
+	/**
+	 * Returns a the value configured in the yaml (or the default).
+	 * This is useful to get what the value was before the
+	 * post_init() function changes the value.
+	 *
+	 * @return the value of this config
+	 */
+	const data_type& configured() const;
+
+	/**
+	 * Set the minimum value.
+	 */
+	void min(const data_type& value);
+
+	/**
+	 * Set the maximum value.
+	 */
+	void max(const data_type& value);
+
+	/**
+	 * Set the post_init delegate. This allows the configration
+	 * value to be changed after all init functions are called for
+	 * all configuration parameters. This is useful if one value
+	 * depends on another.
+	 */
+	using post_init_delegate = std::function<void(type_config<data_type> &)>;
+	void post_init(const post_init_delegate& value);
+
+	/**
+	 *  Call the post_init delegate if it was provided
+	 */
+	void post_init() override;
+
 private:
 	const data_type m_default;
 	data_type m_data;
+	data_type m_configured;
+
+	// Using unique_ptr in lieu of std::optional
+	std::unique_ptr<data_type> m_min;
+	std::unique_ptr<data_type> m_max;
+	post_init_delegate m_post_init;
+};
+
+/**
+ * Helper to create a (usually static) instance of an
+ * type_config by calling functions to set the appropriate
+ * characteristics. This keeps us from having many different
+ * constructors for the type_config
+ */
+template<typename data_type>
+class type_config_builder
+{
+public:
+	type_config_builder(const data_type& default_value,
+			    const std::string& description,
+			    const std::string& key,
+			    const std::string& subkey = "",
+			    const std::string& subsubkey = "") :
+	   m_type_config(new type_config<data_type>(default_value, description, key, subkey, subsubkey))
+	{}
+
+	/**
+	 * Set the max configuration value
+	 */
+	type_config_builder& max(const data_type& value)
+	{
+		m_type_config->max(value);
+		return *this;
+	}
+
+	/**
+	 * Set the min configuration value
+	 */
+	type_config_builder& min(const data_type& value)
+	{
+		m_type_config->min(value);
+		return *this;
+	}
+
+	/**
+	 * Keep the config from showing up in logs
+	 */
+	type_config_builder& hidden()
+	{
+		m_type_config->hidden(true);
+		return *this;
+	}
+
+	/**
+	 * Set a delegate that will be called after all of the
+	 * configurables are init'd. This is useful if one config
+	 * depends on another.
+	 */
+	type_config_builder& post_init(const typename type_config<data_type>::post_init_delegate& value)
+	{
+		m_type_config->post_init(value);
+		return *this;
+
+	}
+
+	/**
+	 * Return the generated instance
+	 */
+	typename type_config<data_type>::ptr get()
+	{
+		return m_type_config;
+	}
+
+	/**
+	 * Return a mutable version of the generated instance. Since
+	 * these configs are meant to only be changed during static
+	 * init, make sure you know what you are doing if you use this.
+	 */
+	typename type_config<data_type>::mutable_ptr get_mutable()
+	{
+		return m_type_config;
+	}
+
+private:
+	typename type_config<data_type>::mutable_ptr m_type_config;
+
 };
 
 #include "type_config.hpp"
+

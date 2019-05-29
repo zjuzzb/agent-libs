@@ -147,6 +147,41 @@ TEST_F(configuration_manager_test, init_config)
 }
 
 /**
+ * Ensure that init_config() calls post_init.
+ */
+TEST_F(configuration_manager_test, init_config_post_init)
+{
+	const bool configured_c1 = true;
+	const bool default_c1 = !configured_c1;
+
+	const uint16_t configured_c2 = 123;
+	const uint16_t default_c2 = ~configured_c2;
+
+	type_config<bool> c1(default_c1, "description", "key1");
+	c1.post_init([](type_config<bool>& config)
+		{
+			config.get() = !config.get();
+		});
+	type_config<uint16_t> c2(default_c2, "description", "key2");
+	c2.post_init([](type_config<uint16_t>& config)
+		{
+			config.get() = config.get() + 1;
+		});
+
+	yaml_configuration config_yaml({ get_conf_file() });
+	ASSERT_EQ(0, config_yaml.errors().size());
+
+	configuration_manager::instance().init_config(config_yaml);
+
+	// This is inverted
+	ASSERT_EQ(configured_c1,  c1.configured());
+	ASSERT_EQ(!c1.get(), c1.configured());
+	// This is +1
+	ASSERT_EQ(c2.configured() + 1, c2.get());
+	ASSERT_EQ(configured_c2, c2.configured());
+}
+
+/**
  * Ensure that print_config() writes all the configs to the given handler
  * function.
  */
@@ -157,9 +192,12 @@ TEST_F(configuration_manager_test, print_config)
 
 	const uint16_t expected_c2 = 123;
 	const uint16_t default_c2 = ~expected_c2;
+	const uint16_t default_c3 = expected_c2;
 
 	type_config<bool> c1(default_c1, "description", "key1");
 	type_config<uint16_t> c2(default_c2, "description", "key2");
+	type_config<uint16_t> c3(default_c3, "description", "key3");
+	c3.hidden(true);
 	std::string log_output;
 
  	yaml_configuration config_yaml({get_conf_file()});
@@ -175,4 +213,39 @@ TEST_F(configuration_manager_test, print_config)
 	// are in the output.
 	ASSERT_NE(log_output.find(c1.to_string()), std::string::npos);
 	ASSERT_NE(log_output.find(c2.to_string()), std::string::npos);
+
+	// The hidden field should not print.
+	ASSERT_EQ(log_output.find(c3.to_string()), std::string::npos);
+}
+
+
+TEST_F(configuration_manager_test, to_yaml)
+{
+	// Initialize out of order
+	type_config<uint16_t> c5(5, "description", "key4", "subkey4A");
+	type_config<uint16_t> c6(6, "description", "key4", "subkey4B");
+	type_config<uint16_t> c7(7, "description", "key5", "subkey5A", "subsubkey5AA");
+	type_config<bool> c1(true, "description", "key1", "subkey1A");
+	type_config<uint16_t> c2(2, "description", "key1", "subkey1B", "subsubkey1BA");
+	type_config<uint16_t> c3(3, "description", "key1", "subkey1B", "subsubkey1BB");
+	type_config<uint16_t> c4(4, "description", "key3");
+
+	std::string expected = R"(
+key1:
+  subkey1A: true
+  subkey1B:
+    subsubkey1BA: 2
+    subsubkey1BB: 3
+key3: 4
+key4:
+  subkey4A: 5
+  subkey4B: 6
+key5:
+  subkey5A:
+    subsubkey5AA: 7
+)";
+
+	std::string yaml = configuration_manager::instance().to_yaml();
+	ASSERT_EQ(expected, yaml);
+	printf(yaml.c_str());
 }

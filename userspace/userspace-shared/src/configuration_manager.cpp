@@ -34,13 +34,21 @@ void configuration_manager::init_config(const yaml_configuration& raw_config)
 	{
 		config.second->init(raw_config);
 	}
+
+	for(const auto& config : m_config_map)
+	{
+		config.second->post_init();
+	}
 }
 
 void configuration_manager::print_config(const log_delegate& logger)
 {
 	for (const auto& config : m_config_map)
 	{
-		logger(config.second->to_string());
+		if(!config.second->hidden())
+		{
+			logger(config.second->to_string());
+		}
 	}
 }
 
@@ -76,6 +84,53 @@ bool configuration_manager::is_registered(configuration_unit* config)
 	return m_config_map.find(config->get_key_string()) != m_config_map.end();
 }
 
+std::string configuration_manager::to_yaml() const
+{
+	std::string yaml;
+	yaml.reserve(1024);
+
+	const std::string *previous_key = nullptr;
+	const std::string *previous_subkey = nullptr;
+	const std::string *previous_subsubkey = nullptr;
+
+	for(const auto& value : m_config_map)
+	{
+		const configuration_unit &config = *value.second;
+
+		if(!previous_key || config.get_key() != *previous_key)
+		{
+			yaml += "\n" + config.get_key() + ":";
+			previous_key = &config.get_key();
+			previous_subkey = nullptr;
+			previous_subsubkey = nullptr;
+		}
+
+		if(!config.get_subkey().empty())
+		{
+			if(!previous_subkey || config.get_subkey() != *previous_subkey)
+			{
+				yaml += "\n  " + config.get_subkey() + ":";
+				previous_subkey = &config.get_subkey();
+				previous_subsubkey = nullptr;
+			}
+		}
+
+		if(!config.get_subsubkey().empty())
+		{
+			if(!previous_subsubkey || config.get_subsubkey() != *previous_subsubkey)
+			{
+				previous_subsubkey = &config.get_subsubkey();
+				yaml += "\n    " + config.get_subsubkey() + ":";
+			}
+		}
+
+		yaml += " " + config.value_to_string();
+	}
+
+	yaml += "\n";
+	return yaml;
+}
+
 configuration_unit::configuration_unit(const std::string& key,
 				       const std::string& subkey,
 				       const std::string& subsubkey,
@@ -83,7 +138,8 @@ configuration_unit::configuration_unit(const std::string& key,
 	m_key(key),
 	m_subkey(subkey),
 	m_subsubkey(subsubkey),
-	m_description(description)
+	m_description(description),
+	m_hidden(false)
 {
 	if (m_subkey.empty())
 	{

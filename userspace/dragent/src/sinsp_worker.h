@@ -121,6 +121,8 @@ private:
 
 	void get_internal_metrics();
 
+	bool get_statsd_limit() const;
+
 	static const string m_name;
 
 	run_on_interval m_job_requests_interval;

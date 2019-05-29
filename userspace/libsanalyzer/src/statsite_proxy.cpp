@@ -1,7 +1,3 @@
-//
-// Created by Luca Marturana on 30/03/15.
-//
-
 #include "sinsp.h"
 #include "sinsp_int.h"
 #include "analyzer_int.h"

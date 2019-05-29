@@ -7,6 +7,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-par
 include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/test-helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
@@ -34,6 +35,7 @@ list(APPEND libsanalyzer_uts
 	main.cpp
 	analyzer.ut.cpp
 	metric_serializer.ut.cpp
+	metric_forwarding_configuration.ut.cpp
 	mounted_fs.ut.cpp
 	object_filter.ut.cpp
 	parser_http.ut.cpp
@@ -49,7 +51,8 @@ target_link_libraries(unit-test-libsanalyzer
 	sanalyzer.test
 	draiosproto
 	test-helpers-libsanalyzer
-    test_helpers
+	test-helpers-userspace-shared
+	test_helpers
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
 
