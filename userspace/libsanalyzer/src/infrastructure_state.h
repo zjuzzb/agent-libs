@@ -3,6 +3,7 @@
 #define INFRASTRUCTURE_STATE_H
 
 #include <map>
+#include <set>
 
 #include "sinsp.h"
 #include "sinsp_int.h"
@@ -14,6 +15,18 @@
 #include "k8s_limits.h"
 #include "sdc_internal.pb.h"
 #include "type_config.h"
+
+namespace std
+{
+	template<>
+	struct less<draiosproto::pod_status_count>
+	{
+		bool operator()(const draiosproto::pod_status_count &l, const draiosproto::pod_status_count &r) const
+		{
+			return l.status() < r.status();
+		}
+	};
+}
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
@@ -184,7 +197,7 @@ private:
 	void update_parent_child_links(const uid_t& uid);
 
 	void handle_event(const draiosproto::congroup_update_event *evt, bool overwrite = false);
-	
+
 	void refresh_hosts_metadata();
 
 	void connect(infrastructure_state::uid_t& key);
@@ -212,6 +225,9 @@ private:
 	bool match_scope_all_containers(const scope_predicates &predicates);
 
 	std::map<uid_t, std::unique_ptr<draiosproto::container_group>> m_state;
+
+	using pod_status_set_t = std::set<draiosproto::pod_status_count, std::less<draiosproto::pod_status_count>>;
+	std::map<std::string, pod_status_set_t> m_pod_status;
 	std::unordered_map<uid_t, std::vector<uid_t>> m_orphans;
 	std::unordered_map<uid_t, std::unordered_set<uid_t>> m_parents;
 
@@ -292,6 +308,7 @@ public: // configs
 	static type_config<uint32_t> c_orchestrator_batch_messages_tick_interval_ms;
 	static type_config<bool> c_k8s_ssl_verify_certificate;
 	static type_config<std::vector<std::string>> c_k8s_include_types;
+	static type_config<std::vector<std::string>> c_k8s_pod_status_wl;
 	static type_config<uint32_t> c_k8s_event_counts_log_time;
 	static type_config<uint64_t> c_k8s_timeout_s;
 	static type_config<std::string>::ptr c_k8s_ssl_key_password;

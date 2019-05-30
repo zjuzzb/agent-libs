@@ -133,7 +133,7 @@ void coclient::prepare(google::protobuf::Message *request_msg,
 bool coclient::process_queue()
 {
 	int32_t total_evts = 0,	curr_count_evts = 0;
-	
+
 	while (total_evts < m_max_loop_evts)
 	{
 		curr_count_evts = next();

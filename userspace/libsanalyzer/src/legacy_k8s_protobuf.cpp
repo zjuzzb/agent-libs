@@ -247,4 +247,27 @@ template<> const unordered_map<string, setter_t<k8s_resourcequota>> K8sResource<
 		{"kubernetes.resourcequota.services.nodeports.used", SETTER(k8s_resourcequota, set_services_nodeports_used)},
 		{"kubernetes.resourcequota.secrets.used", SETTER(k8s_resourcequota, set_secrets_used)},
 	});
+
+template<>
+void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents, const draiosproto::container_group* src, draiosproto::pod_status_count* obj)
+{
+	for(auto& tag : src->tags())
+	{
+		if(tag.first == "kubernetes.podstatuscounter.label.status")
+		{
+			obj->set_status(tag.second);
+			break;
+		}
+	}
+
+	for(auto& metric : src->metrics())
+	{
+		if(metric.name() == "kubernetes.podstatuscounter.count")
+		{
+			obj->set_count(metric.value());
+			break;
+		}
+	}
+}
+
 }

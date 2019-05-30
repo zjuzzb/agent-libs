@@ -45,4 +45,9 @@ void export_k8s_object(const uid_set_t& parents, const draiosproto::container_gr
 		}
 	}
 }
+
+template<>
+void export_k8s_object<draiosproto::pod_status_count>(const uid_set_t& parents, const draiosproto::container_group* src, draiosproto::pod_status_count* obj);
+
+
 }

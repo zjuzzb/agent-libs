@@ -346,6 +346,8 @@ field_extension = {
                  26: LIMITED,
                  41: LIMITED,
                  42: LIMITED},
+    "pod_status_count" : {1:PRIMARY_KEY,
+                          2:100},
 }
 
 # This set describes types which we will skip. We won't generate any aggregation
