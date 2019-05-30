@@ -22,7 +22,7 @@ from six import iteritems, itervalues, string_types, text_type
 from utils.containers import hash_mutable
 from checks import AgentCheck
 from config import _is_affirmative
-
+from utils.decorator import required_config
 
 # Kafka Errors
 KAFKA_NO_ERROR = kafka_errors.NoError.errno
@@ -60,6 +60,7 @@ class KafkaCheck(AgentCheck):
 
         self.kafka_clients = {}
 
+    @required_config('kafka_connect_str', 'zk_connect_str')
     def check(self, instance):
         # For calculating lag, we have to fetch offsets from both kafka and
         # zookeeper. There's a potential race condition because whichever one we
