@@ -454,17 +454,17 @@ int dragent_app::main(const std::vector<std::string>& args)
 				args[j++] = opt.c_str();
 			}
 
-			const string java_library_path = string("-Djava.library.path=") + m_configuration.c_root_dir.get() + "/lib";
+			const string java_library_path = string("-Djava.library.path=") + m_configuration.m_root_dir + "/lib";
 			args[j++] = java_library_path.c_str();
 			args[j++] = "-Dsun.rmi.transport.connectionTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.handshakeTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.responseTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-Dsun.rmi.transport.tcp.readTimeout=" SDJAGENT_JMX_TIMEOUT;
 			args[j++] = "-jar";
-			File sdjagent_jar(m_configuration.c_root_dir.get() + "/share/sdjagent.jar");
+			File sdjagent_jar(m_configuration.m_root_dir + "/share/sdjagent.jar");
 
 			std::string jar_file = sdjagent_jar.exists() ?
-				(m_configuration.c_root_dir.get() + "/share/sdjagent.jar") :
+				(m_configuration.m_root_dir + "/share/sdjagent.jar") :
 				"../sdjagent/java/sdjagent-1.0-jar-with-dependencies.jar";
 
 			args[j++] = jar_file.c_str();
@@ -504,8 +504,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 			this->m_statsite_pipes->attach_child_stdio();
 			if(this->m_configuration.m_agent_installed)
 			{
-				execl((m_configuration.c_root_dir.get() + "/bin/statsite").c_str(), "statsite", "-f",
-					(m_configuration.c_root_dir.get() + "/etc/statsite.ini").c_str(), (char*)NULL);
+				execl((m_configuration.m_root_dir + "/bin/statsite").c_str(), "statsite", "-f",
+					(m_configuration.m_root_dir + "/etc/statsite.ini").c_str(), (char*)NULL);
 			}
 			else
 			{
@@ -546,9 +546,9 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			this->m_sdchecks_pipes->attach_child();
 
-			setenv("LD_LIBRARY_PATH", (m_configuration.c_root_dir.get() + "/lib").c_str(), 1);
+			setenv("LD_LIBRARY_PATH", (m_configuration.m_root_dir + "/lib").c_str(), 1);
 			const char *python = this->m_configuration.m_python_binary.c_str();
-			execl(python, python, (m_configuration.c_root_dir.get() + "/bin/sdchecks").c_str(), "run", NULL);
+			execl(python, python, (m_configuration.m_root_dir + "/bin/sdchecks").c_str(), "run", NULL);
 
 			return (EXIT_FAILURE);
 		});
@@ -595,14 +595,14 @@ int dragent_app::main(const std::vector<std::string>& args)
 			if(m_configuration.m_cointerface_cpu_profile_enabled)
 			{
 				string logfile = m_configuration.m_log_dir + "/cpu.prof";
-				execl((m_configuration.c_root_dir.get() + "/bin/cointerface").c_str(), "cointerface",
+				execl((m_configuration.m_root_dir + "/bin/cointerface").c_str(), "cointerface",
 				      "-cpuprofile", logfile.c_str(),
 				      "-eventspertrace", to_string(m_configuration.m_cointerface_events_per_profile).c_str(),
 				      "-keeptraces", to_string(m_configuration.m_cointerface_total_profiles).c_str(),
 				      "-memprofile", m_configuration.m_cointerface_mem_profile_enabled ? "true" : "false",
 				      (char *) NULL);
 			} else {
-				execl((m_configuration.c_root_dir.get() + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
+				execl((m_configuration.m_root_dir + "/bin/cointerface").c_str(), "cointerface", (char *) NULL);
 			}
 
 			return (EXIT_FAILURE);
@@ -620,7 +620,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 		{
 			m_promex_pipes->attach_child_stdio();
 
-			execl((m_configuration.c_root_dir.get() + "/bin/promex").c_str(), "promex",
+			execl((m_configuration.m_root_dir + "/bin/promex").c_str(), "promex",
 			      "-prom-addr", m_configuration.m_promex_url.c_str(),
 			      "-container-labels", m_configuration.m_promex_container_labels.c_str(),
 			      (char *) NULL);
@@ -980,7 +980,7 @@ void dragent_app::watchdog_check(uint64_t uptime_s)
 	{
 		if(!m_coclient) {
 			// Actually allocate the coclient object
-			m_coclient = make_unique<coclient>(m_configuration.c_root_dir.get());
+			m_coclient = make_unique<coclient>(m_configuration.m_root_dir);
 		}
 
 		// Ping every 5 seconds. If it's ever more than

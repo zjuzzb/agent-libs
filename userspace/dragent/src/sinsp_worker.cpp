@@ -79,7 +79,7 @@ void sinsp_worker::init()
 	m_initialized = true;
 
 	m_inspector = sinsp_factory::build();
-	m_analyzer = new sinsp_analyzer(m_inspector.get(), m_configuration->c_root_dir.get());
+	m_analyzer = new sinsp_analyzer(m_inspector.get(), m_configuration->m_root_dir);
 
 	m_analyzer->set_procfs_scan_thread(m_configuration->m_procfs_scan_thread);
 	m_analyzer->get_configuration()->set_procfs_scan_delay_ms(m_configuration->m_procfs_scan_delay_ms);
@@ -437,7 +437,7 @@ void sinsp_worker::init()
 			LOGGED_THROW(sinsp_exception, "Security capabilities depend on cointerface, but cointerface is disabled.");
 		}
 
-		m_security_mgr = new security_mgr(m_configuration->c_root_dir.get());
+		m_security_mgr = new security_mgr(m_configuration->m_root_dir);
 		m_security_mgr->init(m_inspector.get(),
 				     &m_sinsp_handler,
 				     m_analyzer,
@@ -468,7 +468,7 @@ void sinsp_worker::init()
 
 	if(m_configuration->m_cointerface_enabled)
 	{
-		std::string run_dir = m_configuration->c_root_dir.get() + "/run";
+		std::string run_dir = m_configuration->m_root_dir + "/run";
 		m_compliance_mgr = new compliance_mgr(run_dir);
 		m_compliance_mgr->init(&m_sinsp_handler,
 				       m_analyzer,
