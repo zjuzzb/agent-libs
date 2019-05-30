@@ -89,7 +89,7 @@ void security_mgr::init(sinsp *inspector,
 	// Only check the above every second
 	m_check_periodic_tasks_interval = make_unique<run_on_interval>(1000000000);
 
-	m_coclient = make_shared<coclient>(configuration->m_root_dir);
+	m_coclient = make_shared<coclient>(configuration->c_root_dir.get());
 
 	m_actions.init(this, m_coclient);
 
@@ -265,7 +265,7 @@ bool security_mgr::load(const draiosproto::policies &policies, const draiosproto
 		}
 	}
 
-	m_falco_engine = make_shared<falco_engine>(true, m_configuration->m_root_dir + "/share/lua/");
+	m_falco_engine = make_shared<falco_engine>(true, m_configuration->c_root_dir.get() + "/share/lua/");
 	m_falco_engine->set_inspector(m_inspector);
 	m_falco_engine->set_sampling_multiplier(m_configuration->m_falco_engine_sampling_multiplier);
 

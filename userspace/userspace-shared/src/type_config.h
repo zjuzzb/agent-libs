@@ -233,7 +233,10 @@ public: // stuff for configuration_unit
 	std::string value_to_string() const override;
 	void init(const yaml_configuration& raw_config) override;
 
-public: // other stuff
+	/**
+	 * sets the value of this config to input value
+	 */
+	virtual void set(const data_type& value);
 
 	/**
 	 * Returns a const reference to the current value of this type_config.
@@ -243,13 +246,14 @@ public: // other stuff
 	const data_type& get() const;
 
 	/**
-	 * Returns a non-const reference to the current value of this
-	 * type_config.
-	 *
-	 * @return the value of this config
-	 */
-	data_type& get();
+         * Returns a non-const reference to the current value of this
+         * type_config.
+         *
+         * @return the value of this config
+         */
+        data_type& get();
 
+public: // other stuff
 	/**
 	 * Returns a the value configured in the yaml (or the default).
 	 * This is useful to get what the value was before the
@@ -375,6 +379,5 @@ public:
 private:
 	typename type_config<data_type>::mutable_ptr m_type_config;
 };
-
 #include "type_config.hpp"
 

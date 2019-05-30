@@ -125,7 +125,13 @@ public:
 	Message::Priority m_min_event_priority;
 	bool m_curl_debug;
 
-	string m_root_dir;
+	// the operation of the root dir is a bit hokey.
+	// we have a "default" root dir that is the effectively the install dir. we use that
+	// to find a few things, like the yaml files. afterwards, we generate the configured
+	// root dir (c_root_dir) from the yaml, or otherwise set it to the default.
+	static type_config<std::string> c_root_dir;
+	std::string m_default_root_dir;
+
 	string m_conf_file;
 	unique_ptr<yaml_configuration> m_config;
 
