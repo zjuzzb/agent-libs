@@ -838,11 +838,20 @@ VISIBILITY_PRIVATE
 	void chisels_on_capture_end();
 	void chisels_do_timeout(sinsp_evt* ev);
 	template<class Iterator>
-	void filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	void filter_top_programs_normaldriver_deprecated(Iterator progtable_begin,
+							 Iterator progtable_end,
+							 bool cs_only,
+							 uint32_t howmany);
 	template<class Iterator>
-	void filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	void filter_top_programs_simpledriver_deprecated(Iterator progtable_begin,
+							 Iterator progtable_end,
+							 bool cs_only,
+							 uint32_t howmany);
 	template<class Iterator>
-	inline void filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany);
+	inline void filter_top_programs_deprecated(Iterator progtable_begin,
+						   Iterator progtable_end, 
+						   bool cs_only, 
+						   uint32_t howmany);
 
 	/**
 	 * emit most things. This function is largely misnamed as it emits far more than
@@ -1301,6 +1310,8 @@ VISIBILITY_PRIVATE
 
 	std::unique_ptr<libsanalyzer::metric_serializer> m_serializer;
 	bool m_async_serialize_enabled;
+
+	process_manager m_process_manager;
 
 	//
 	// Please do not add any friends.

@@ -32,13 +32,15 @@ list(APPEND libsanalyzer_test_helpers_uts
 
 list(APPEND libsanalyzer_uts
 	analyzer_file_stat.ut.cpp
-	main.cpp
 	analyzer.ut.cpp
+	main.cpp
 	metric_serializer.ut.cpp
 	metric_forwarding_configuration.ut.cpp
 	mounted_fs.ut.cpp
 	object_filter.ut.cpp
 	parser_http.ut.cpp
+	process_emitter.ut.cpp
+	process_manager.ut.cpp
 	protobuf_metric_serializer.ut.cpp
 )
 

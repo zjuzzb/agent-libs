@@ -363,6 +363,7 @@ private:
 	filter_vec_t m_mounts_filter;
 	unsigned m_mounts_limit_size;
 
+	unsigned m_jmx_limit;
 	bool m_app_checks_always_send;
 
 	bool m_detect_stress_tools;

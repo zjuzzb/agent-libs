@@ -33,6 +33,7 @@ sinsp_configuration::sinsp_configuration():
 #ifndef CYGWING_AGENT
 	m_mesos_autodetect = true;
 #endif
+	m_jmx_limit = 500;
 	m_app_checks_always_send = false;
 	m_memdump_size = 0;
 	m_falco_baselining_enabled = FALCO_BASELINING_ENABLED;

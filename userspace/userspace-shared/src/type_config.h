@@ -286,12 +286,15 @@ public: // other stuff
 private:
 	const data_type m_default;
 	data_type m_data;
+
 	data_type m_configured;
 
 	// Using unique_ptr in lieu of std::optional
 	std::unique_ptr<data_type> m_min;
 	std::unique_ptr<data_type> m_max;
 	post_init_delegate m_post_init;
+
+	friend class test_helper;
 };
 
 /**
@@ -371,7 +374,6 @@ public:
 
 private:
 	typename type_config<data_type>::mutable_ptr m_type_config;
-
 };
 
 #include "type_config.hpp"

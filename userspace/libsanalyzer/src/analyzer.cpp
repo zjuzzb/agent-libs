@@ -815,7 +815,7 @@ sinsp_connection* sinsp_analyzer::get_connection(const ipv4tuple& tuple, uint64_
 }
 
 template<class Iterator>
-void sinsp_analyzer::filter_top_programs_normaldriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs_normaldriver_deprecated(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
@@ -963,7 +963,7 @@ void sinsp_analyzer::filter_top_programs_normaldriver(Iterator progtable_begin, 
 // As a consequence, process filtering needs to use simpler criteria.
 //
 template<class Iterator>
-void sinsp_analyzer::filter_top_programs_simpledriver(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs_simpledriver_deprecated(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	uint32_t j;
 
@@ -1060,15 +1060,15 @@ void sinsp_analyzer::filter_top_programs_simpledriver(Iterator progtable_begin, 
 }
 
 template<class Iterator>
-void sinsp_analyzer::filter_top_programs(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
+void sinsp_analyzer::filter_top_programs_deprecated(Iterator progtable_begin, Iterator progtable_end, bool cs_only, uint32_t howmany)
 {
 	if(m_simpledriver_enabled)
 	{
-		filter_top_programs_simpledriver(progtable_begin, progtable_end, cs_only, howmany);
+		filter_top_programs_simpledriver_deprecated(progtable_begin, progtable_end, cs_only, howmany);
 	}
 	else
 	{
-		filter_top_programs_normaldriver(progtable_begin, progtable_end, cs_only, howmany);
+		filter_top_programs_normaldriver_deprecated(progtable_begin, progtable_end, cs_only, howmany);
 
 	}
 }
@@ -1607,12 +1607,12 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 		if(progtable_needs_filtering)
 		{
 			// Filter top active programs
-			filter_top_programs(progtable.begin(),
+			filter_top_programs_deprecated(progtable.begin(),
 					    progtable.end(),
 					    false,
 					    m_top_processes_in_sample);
 			// Filter top client/server programs
-			filter_top_programs(progtable.begin(),
+			filter_top_programs_deprecated(progtable.begin(),
 					    progtable.end(),
 					    true,
 					    m_top_processes_in_sample);
@@ -1623,11 +1623,14 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 				if(progs_it != progtable_by_container.end())
 				{
 					auto progs = progs_it->second;
-					filter_top_programs(progs.begin(), progs.end(), false, m_top_processes_per_container);
+					filter_top_programs_deprecated(progs.begin(),
+								       progs.end(),
+								       false,
+								       m_top_processes_per_container);
 				}
 			}
 			// Add all processes with appcheck metrics
-			if(m_configuration->get_app_checks_always_send())
+			if(process_manager::c_always_send_app_checks.get())
 			{
 				for(auto prog: progtable)
 				{
@@ -2496,7 +2499,9 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	environment_emitter environment_emitter_instance(m_prev_flush_time_ns,
 							 m_env_hash_config,
 							 *m_metrics);
-	process_emitter process_emitter_instance(m_simpledriver_enabled,
+	process_emitter process_emitter_instance(m_process_manager,
+						 *m_inspector,
+						 m_simpledriver_enabled,
 						 m_inspector->is_nodriver(),
 						 proc_trc,
 						 m_top_files_per_prog,
@@ -2513,17 +2518,28 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 						 environment_emitter_instance,
 						 jmx_emitter_instance,
 						 app_check_emitter_instance);
-
-	emit_processes_deprecated(all_uids,
-				  flushflags,
-				  progtable,
-				  progtable_by_container,
-				  emitted_containers,
-				  proc_trc,
-				  jmx_emitter_instance,
-				  app_check_emitter_instance,
-				  environment_emitter_instance,
-				  process_emitter_instance);
+	if (process_manager::c_process_flush_filter_enabled.get())
+	{
+		std::set<sinsp_threadinfo*> emitted_processes;
+		process_emitter_instance.emit_processes(flushflags,
+							progtable,
+							progtable_by_container,
+							emitted_containers,
+							*m_metrics,
+							all_uids,
+							emitted_processes);
+	} else {
+		emit_processes_deprecated(all_uids,
+					  flushflags,
+					  progtable,
+					  progtable_by_container,
+					  emitted_containers,
+					  proc_trc,
+					  jmx_emitter_instance,
+					  app_check_emitter_instance,
+					  environment_emitter_instance,
+					  process_emitter_instance);
+	}
 
 	tracer_emitter user_trc("userdb_lookup", proc_trc);
 	for(const auto uid : all_uids) {

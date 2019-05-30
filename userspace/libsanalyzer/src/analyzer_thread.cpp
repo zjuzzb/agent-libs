@@ -103,15 +103,19 @@ void main_thread_analyzer_info::hash_environment(sinsp_threadinfo *tinfo, const 
 ///////////////////////////////////////////////////////////////////////////////
 
 thread_analyzer_info::thread_analyzer_info()
-	: m_prom_check_found(false)
-	, m_last_port_scan(time_point_t::min())
-	, m_last_procfs_port_scan(time_point_t::min())
+	: m_procinfo(nullptr),
+	  m_prom_check_found(false),
+	  m_last_port_scan(time_point_t::min()),
+	  m_last_procfs_port_scan(time_point_t::min())
 {
 }
 
 thread_analyzer_info::~thread_analyzer_info()
 {
-	delete m_procinfo;
+	if (m_procinfo)
+	{
+		delete m_procinfo;
+	}
 	m_procinfo = nullptr;
 	m_listening_ports.reset();
 }
@@ -732,6 +736,7 @@ bool threadinfo_cmp_evtcnt(sinsp_threadinfo* src , sinsp_threadinfo* dst)
 	sinsp_counter_time tot;
 	src->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
 	uint64_t srctot = tot.m_count;
+	tot.clear();
 	dst->m_ainfo->m_procinfo->m_proc_metrics.get_total(&tot);
 	uint64_t dsttot = tot.m_count;
 

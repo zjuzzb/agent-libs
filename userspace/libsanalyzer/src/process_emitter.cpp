@@ -2,7 +2,9 @@
 #include "analyzer_thread.h"
 #include "tracer_emitter.h"
 
-process_emitter::process_emitter(const bool simpledriver_enabled,
+process_emitter::process_emitter(const process_manager& the_process_manager,
+				 sinsp& inspector,
+				 const bool simpledriver_enabled,
 				 const bool nodriver,
 				 tracer_emitter& proc_trc,
 				 const uint32_t top_files_per_prog,
@@ -19,24 +21,353 @@ process_emitter::process_emitter(const bool simpledriver_enabled,
 				 environment_emitter& the_environment_emitter,
 				 jmx_emitter& the_jmx_emitter,
 				 app_check_emitter& the_app_check_emitter)
-	: m_simpledriver_enabled(simpledriver_enabled),
-	  m_nodriver(nodriver),
-	  m_proc_trc(proc_trc),
-	  m_top_files_per_prog(top_files_per_prog),
-	  m_device_map(device_map),
-	  m_username_lookups(username_lookups),
-	  m_track_environment(track_environment),
-	  m_top_file_devices_per_prog(top_file_devices_per_prog),
-	  m_jmx_proxy(jmx_proxy),
-	  m_app_proxy(app_proxy),
-	  m_procfs_scan_thread(procfs_scan_thread),
-	  m_procfs_parser(procfs_parser),
-	  m_sampling_ratio(sampling_ratio),
-	  m_num_cpus(num_cpus),
-	  m_environment_emitter(the_environment_emitter),
-	  m_jmx_emitter(the_jmx_emitter),
-	  m_app_check_emitter(the_app_check_emitter)
+	: m_process_manager(the_process_manager),
+	m_inspector(inspector),
+	m_simpledriver_enabled(simpledriver_enabled),
+	m_nodriver(nodriver),
+	m_proc_trc(proc_trc),
+	m_top_files_per_prog(top_files_per_prog),
+	m_device_map(device_map),
+	m_username_lookups(username_lookups),
+	m_track_environment(track_environment),
+	m_top_file_devices_per_prog(top_file_devices_per_prog),
+	m_jmx_proxy(jmx_proxy),
+	m_app_proxy(app_proxy),
+	m_procfs_scan_thread(procfs_scan_thread),
+	m_procfs_parser(procfs_parser),
+	m_sampling_ratio(sampling_ratio),
+	m_num_cpus(num_cpus),
+	m_environment_emitter(the_environment_emitter),
+	m_jmx_emitter(the_jmx_emitter),
+	m_app_check_emitter(the_app_check_emitter)
 {
+}
+
+template<class Iterator> void process_emitter::filter_top_programs(Iterator progtable_begin,
+								   Iterator progtable_end,
+								   bool cs_only,
+								   uint32_t how_many,
+								   const std::set<sinsp_threadinfo*>& blacklist,
+								   std::set<sinsp_threadinfo*>& processes_to_emit)
+{
+	// build the list of things we can emit here based on cs_only and driver type
+	vector<sinsp_threadinfo*> prog_sortable_list;
+
+	for (auto ptit = progtable_begin; ptit != progtable_end; ++ptit)
+	{
+		if (blacklist.find(*ptit) != blacklist.end()) {
+			continue;
+		}
+
+		if(m_simpledriver_enabled &&
+		   (!cs_only ||
+		    (*ptit)->m_ainfo->m_procinfo->m_proc_metrics.m_net.m_count != 0))
+		{
+			prog_sortable_list.push_back(*ptit);
+		}
+
+		if (!m_simpledriver_enabled &&
+		    (!cs_only ||
+		     (*ptit)->m_ainfo->m_th_analysis_flags &
+		     (thread_analyzer_info::AF_IS_LOCAL_IPV4_SERVER | // this should probably be defined by thread_analyzer_info
+		      thread_analyzer_info::AF_IS_REMOTE_IPV4_SERVER |
+		      thread_analyzer_info::AF_IS_LOCAL_IPV4_CLIENT |
+		      thread_analyzer_info::AF_IS_REMOTE_IPV4_CLIENT)))
+		{
+			prog_sortable_list.push_back(*ptit);
+		}
+	}
+
+	if(prog_sortable_list.size() <= how_many)
+	{
+		for(uint32_t i = 0; i < prog_sortable_list.size(); i++)
+		{
+			processes_to_emit.insert(prog_sortable_list[i]);
+		}
+
+		return;
+	}
+
+	//
+	// Mark the top CPU consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		     prog_sortable_list.begin() + how_many,
+		     prog_sortable_list.end(),
+		     (cs_only) ? threadinfo_cmp_cpu_cs : threadinfo_cmp_cpu);
+
+	// the zero check here does not use the same value as the comparator, which uses
+	// m_ainfo->m_procinfo->m_cpuload. This is probably wrong, but it's how legacy code
+	// did it.
+	for(uint32_t i = 0; i < how_many && prog_sortable_list[i]->m_ainfo->m_cpuload > 0; i++)
+	{
+		processes_to_emit.insert(prog_sortable_list[i]);
+	}
+
+	//
+	// Mark the top memory consumers
+	//
+	partial_sort(prog_sortable_list.begin(),
+		     prog_sortable_list.begin() + how_many,
+		     prog_sortable_list.end(),
+		     (cs_only) ? threadinfo_cmp_memory_cs : threadinfo_cmp_memory);
+
+	// the zero check here does not use the same value as the comparator, which uses
+	// m_ainfo->m_procinfo->m_vmrss_kb. This is probably wrong, but it's how legacy code
+	// did it.
+	for(uint32_t i = 0; i < how_many && prog_sortable_list[i]->m_vmsize_kb > 0; i++)
+	{
+		processes_to_emit.insert(prog_sortable_list[i]);
+	}
+
+	//
+	// Mark the top network I/O consumers
+	//
+	// does not work on NODRIVER mode
+	if(!m_nodriver)
+	{
+		partial_sort(prog_sortable_list.begin(),
+			     prog_sortable_list.begin() + how_many,
+			     prog_sortable_list.end(),
+			     (cs_only) ? threadinfo_cmp_net_cs : threadinfo_cmp_net);
+
+		for(uint32_t i = 0; i < how_many && prog_sortable_list[i]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0; i++)
+		{
+			processes_to_emit.insert(prog_sortable_list[i]);
+		}
+	}
+
+	if (m_simpledriver_enabled)
+	{
+		//
+		// Mark the top syscall producers
+		//
+		partial_sort(prog_sortable_list.begin(),
+			     prog_sortable_list.begin() + how_many,
+			     prog_sortable_list.end(),
+			     threadinfo_cmp_evtcnt);
+
+		// not sure why we just use net io for the 0 check.
+		for(uint32_t i = 0; i < how_many && prog_sortable_list[i]->m_ainfo->m_procinfo->m_proc_metrics.m_io_net.get_tot_bytes() > 0; i++)
+		{
+			processes_to_emit.insert(prog_sortable_list[i]);
+		}
+	}
+	else
+	{
+		//
+		// Mark the top disk I/O consumers
+		//
+		partial_sort(prog_sortable_list.begin(),
+			     prog_sortable_list.begin() + how_many,
+			     prog_sortable_list.end(),
+			     (cs_only) ? threadinfo_cmp_io_cs : threadinfo_cmp_io);
+
+		for(uint32_t i = 0; i < how_many && prog_sortable_list[i]->m_ainfo->m_procinfo->m_proc_metrics.m_io_file.get_tot_bytes() > 0; i++)
+		{
+			processes_to_emit.insert(prog_sortable_list[i]);
+		}
+	}
+}
+
+void process_emitter::filter_process(sinsp_threadinfo* tinfo,
+				     const sinsp_container_info* container_info,
+				     std::set<sinsp_threadinfo*>& high_priority_processes,
+				     std::set<sinsp_threadinfo*>& low_priority_processes,
+				     std::set<sinsp_threadinfo*>& blacklist_processes)
+{
+	// already matched this process. bail.
+	if (high_priority_processes.find(tinfo) != high_priority_processes.end() ||
+	    low_priority_processes.find(tinfo) != low_priority_processes.end() ||
+	    blacklist_processes.find(tinfo) != blacklist_processes.end())
+	{
+		return;
+	}
+
+	bool generic_match;
+	if (m_process_manager.get_flush_filter().matches(tinfo,
+							 tinfo,
+							 container_info,
+							 NULL,
+							 &generic_match,
+							 NULL))
+	{
+		if (generic_match)
+		{
+			low_priority_processes.insert(tinfo);
+		}
+		else
+		{
+			high_priority_processes.insert(tinfo);
+		}
+	}
+	else
+	{
+		blacklist_processes.insert(tinfo);
+	}
+}
+
+void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
+				     const analyzer_emitter::progtable_t& progtable,
+				     const analyzer_emitter::progtable_by_container_t& progtable_by_container,
+				     const vector<std::string>& emitted_containers,
+				     draiosproto::metrics& metrics,
+				     std::set<uint64_t>& all_uids,
+				     std::set<sinsp_threadinfo*>& emitted_processes)
+{
+	if(flushflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
+	{
+		g_logger.format(sinsp_logger::SEV_DEBUG, "progtable size: %u", progtable.size());
+	}
+
+	std::set<sinsp_threadinfo*>& processes_to_emit = emitted_processes;
+
+	std::set<sinsp_threadinfo*> high_priority_processes;
+	std::set<sinsp_threadinfo*> low_priority_processes;
+	std::set<sinsp_threadinfo*> blacklist_processes;
+
+	// first step: get list of emittable processes
+	for(auto container_it = progtable_by_container.begin(); container_it != progtable_by_container.end(); ++container_it)
+	{
+		const sinsp_container_info* container_info = m_inspector.m_container_manager.get_container(container_it->first);
+		for (auto thread_it = container_it->second.begin(); thread_it != container_it->second.end(); ++thread_it)
+		{
+			sinsp_threadinfo* thread_info = *thread_it;
+			filter_process(thread_info,
+				       container_info,
+				       high_priority_processes,
+				       low_priority_processes,
+				       blacklist_processes);
+		}
+	}
+
+	// have to also go through the progtable for processes that AREN'T in the
+	// container progtable. filter_process deals with duplicates for us.
+	for(auto thread_it : progtable)
+	{
+		filter_process(thread_it,
+			       nullptr,
+			       high_priority_processes,
+			       low_priority_processes,
+			       blacklist_processes);
+	}
+
+	// Next: get the top processes on the host in each stat category
+	if(!m_inspector.is_capture())
+	{
+		tracer_emitter filter_trc("filter_progtable", m_proc_trc);
+
+		// Filter top active programs
+		filter_top_programs(progtable.begin(),
+				    progtable.end(),
+				    false, //!cs_only
+				    process_manager::c_top_processes_per_host.get(),
+				    blacklist_processes,
+				    processes_to_emit);
+
+		// Filter top client/server programs
+		filter_top_programs(progtable.begin(),
+				    progtable.end(),
+				    true, //cs_only
+				    process_manager::c_top_processes_per_host.get(),
+				    blacklist_processes,
+				    processes_to_emit);
+	}
+
+	// Next: grab the whitelisted processes. If you whitelist too many processes, too bad for you.
+	for(const auto it : high_priority_processes)
+	{
+		if(processes_to_emit.size() >= process_manager::c_process_limit.get())
+		{
+			break;
+		}
+
+		processes_to_emit.insert(it);
+	}
+
+	// Next: grab processes at the top of each stat category in each container.
+	if(!m_inspector.is_capture())
+	{
+		// Add at least one process per emitted_container
+		for(const auto& container_id : emitted_containers)
+		{
+			if(processes_to_emit.size() >= process_manager::c_process_limit.get())
+			{
+				break;
+			}
+
+			auto progs_it = progtable_by_container.find(container_id);
+			if(progs_it != progtable_by_container.end())
+			{
+				auto progs = progs_it->second;
+				filter_top_programs(progs.begin(),
+						    progs.end(),
+						    false, //!cs_only
+						    process_manager::c_top_processes_per_container.get(),
+						    blacklist_processes,
+						    processes_to_emit);
+			}
+		}
+	}
+
+	// Last: fill up the list with processes from the host
+	if(!m_inspector.is_capture() && processes_to_emit.size() < process_manager::c_process_limit.get())
+	{
+		// Filter top active programs
+		filter_top_programs(progtable.begin(),
+				    progtable.end(),
+				    false, //!cs_only
+				    (process_manager::c_process_limit.get() - processes_to_emit.size()) / 8,
+				    blacklist_processes,
+				    processes_to_emit);
+
+		// Filter top client/server programs
+		filter_top_programs(progtable.begin(),
+				    progtable.end(),
+				    true, //cs_only
+				    (process_manager::c_process_limit.get() - processes_to_emit.size()) / 8,
+				    blacklist_processes,
+				    processes_to_emit);
+	}
+
+	///////////////////////////////////////////////////////////////////////////
+	// Second pass of the list of threads: aggregate threads into processes
+	// or programs.
+	///////////////////////////////////////////////////////////////////////////
+	tracer_emitter at_trc("aggregate_threads", m_proc_trc);
+	for(auto it = progtable.begin(); it != progtable.end(); ++it)
+	{
+		sinsp_threadinfo* tinfo = *it;
+		if (!tinfo)
+		{
+			continue;
+		}
+
+		//
+		// If this is the main thread of a process, add an entry into the processes
+		// section too
+		//
+		sinsp_procinfo* procinfo = tinfo->m_ainfo->m_procinfo;
+
+		sinsp_counter_time tot;
+
+		ASSERT(procinfo != NULL);
+
+		procinfo->m_proc_metrics.get_total(&tot);
+
+		if(processes_to_emit.find(tinfo) != processes_to_emit.end())
+		{
+
+			draiosproto::program* prog = metrics.add_programs();
+			emit_process(*tinfo, *prog, progtable_by_container, *procinfo, tot, metrics, all_uids);
+		}
+
+		//
+		// Clear the thread metrics, so we're ready for the next sample
+		//
+		tinfo->m_ainfo->clear_all_metrics();
+	}
+	at_trc.stop();
 }
 
 void process_emitter::emit_process(sinsp_threadinfo& tinfo,
@@ -211,8 +542,8 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 		}
 
 		procinfo.m_proc_transaction_metrics.to_protobuf(proc->mutable_transaction_counters(),
-								 proc->mutable_max_transaction_counters(),
-								 m_sampling_ratio);
+								proc->mutable_max_transaction_counters(),
+								m_sampling_ratio);
 
 		proc->mutable_resource_counters()->set_capacity_score((uint32_t)(procinfo.m_capacity_score * 100));
 		proc->mutable_resource_counters()->set_stolen_capacity_score((uint32_t)(procinfo.m_stolen_capacity_score * 100));
