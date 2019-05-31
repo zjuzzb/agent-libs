@@ -109,8 +109,8 @@ EOF
 function configure_debian_repo {
 	DEB_BASEARCH=$(dpkg --print-architecture)
 
-	RCPATHNAME=$REPO_NAME_RC/deb/$REPO_DIR/$PATHNAME
-	PATHNAME=$REPO_NAME/deb/$REPO_DIR/$PATHNAME
+	RCPATHNAME=$REPO_NAME_RC/deb/stable-$DEB_BASEARCH
+	PATHNAME=$REPO_NAME/deb/stable-$DEB_BASEARCH
 
 	mkdir -p $REPO_DIR/$PATHNAME
 	pushd $REPO_DIR/$REPO_NAME/deb
