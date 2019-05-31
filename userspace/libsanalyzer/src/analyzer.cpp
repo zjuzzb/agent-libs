@@ -1689,7 +1689,8 @@ void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 							      *procinfo,
 							      tot,
 							      *m_metrics,
-							      all_uids);
+							      all_uids,
+							      false /*legacy reporting doesn't support priorities*/);
 		}
 
 		//

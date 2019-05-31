@@ -200,9 +200,12 @@ TEST(process_emitter_test, emit_process)
 				*hi_stats1.m_ainfo->m_procinfo,
 				tot,
 				emitter.m_metrics,
-				all_uids);
+				all_uids,
+				false /*not high priority*/);
 
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
+	// low priority process doesn't get a group
+	EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
 }
 
 // there are a set of checks before we attempt to sort programs
@@ -442,7 +445,6 @@ TEST(process_emitter_test, top_per_host)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 						sinsp_threadinfo::hasher(),
 						sinsp_threadinfo::comparer());
@@ -503,7 +505,6 @@ TEST(process_emitter_test, high_priority)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 						sinsp_threadinfo::hasher(),
 						sinsp_threadinfo::comparer());
@@ -604,7 +605,6 @@ TEST(process_emitter_test, container_procs)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 						sinsp_threadinfo::hasher(),
 						sinsp_threadinfo::comparer());
@@ -657,7 +657,6 @@ TEST(process_emitter_test, other_procs)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 						sinsp_threadinfo::hasher(),
 						sinsp_threadinfo::comparer());
@@ -703,7 +702,6 @@ TEST(process_emitter_test, main_loop)
 {
 	easy_process_emitter emitter(false, false);
 
-	std::set<sinsp_threadinfo*> blacklist;
 	analyzer_emitter::progtable_t progtable(10,
 						sinsp_threadinfo::hasher(),
 						sinsp_threadinfo::comparer());
@@ -748,4 +746,65 @@ TEST(process_emitter_test, main_loop)
 
 	// validates that protobuf was actually populated
 	EXPECT_EQ(emitter.m_metrics.programs()[0].procinfo().details().comm(), "my_process_name");
+}
+
+// checks that we set reporting group correctly based on priority
+TEST(process_emitter_test, reporting_group)
+{
+	easy_process_emitter emitter(false, false);
+
+	analyzer_emitter::progtable_t progtable(10,
+						sinsp_threadinfo::hasher(),
+						sinsp_threadinfo::comparer());
+	std::set<sinsp_threadinfo*> processes_to_emit;
+
+	std::string proc_only_filter = R"(
+process:
+  flush_filter:
+    - include:
+        process.name: my_process_name
+    - include:
+        all
+    )";
+	yaml_configuration config_yaml(proc_only_filter);
+	emitter.m_process_manager.c_process_filter.init(config_yaml);
+	ASSERT_EQ(0, config_yaml.errors().size());
+	test_helper::set_proc_filter_rules(emitter.m_process_manager, emitter.m_process_manager.c_process_filter.get());
+
+	fake_thread matched_process;
+	matched_process.m_ainfo->m_cpuload = 1;
+	matched_process.m_comm = "my_process_name";
+	progtable.insert(&matched_process);
+
+	fake_thread unmatched_process;
+	unmatched_process.m_ainfo->m_cpuload = 1;
+	unmatched_process.m_comm = "something else";
+	progtable.insert(&unmatched_process);
+
+	analyzer_emitter::progtable_by_container_t progtable_by_container;
+	std::vector<std::string> emitted_containers;
+
+	test_helper::set_config(process_manager::c_process_limit, 100);
+
+	std::set<uint64_t> all_uids;
+	std::set<sinsp_threadinfo*> emitted_processes;
+	(*emitter).emit_processes(analyzer_emitter::DF_NONE,
+				  progtable,
+				  progtable_by_container,
+				  emitted_containers,
+				  emitter.m_metrics,
+				  all_uids,
+				  emitted_processes);
+
+	EXPECT_EQ(emitted_processes.size(), 2);
+	if (emitter.m_metrics.programs()[0].procinfo().details().comm() == "my_process_name")
+	{
+		EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 1);
+		EXPECT_EQ(emitter.m_metrics.programs()[1].program_reporting_group_id().size(), 0);
+	}
+	else
+	{
+		EXPECT_EQ(emitter.m_metrics.programs()[0].program_reporting_group_id().size(), 0);
+		EXPECT_EQ(emitter.m_metrics.programs()[1].program_reporting_group_id().size(), 1);
+	}
 }

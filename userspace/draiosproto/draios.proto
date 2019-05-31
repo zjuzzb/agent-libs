@@ -737,6 +737,8 @@ message program {
     repeated uint64 pids = 2; // The list of processes that are part of this program
     repeated uint64 uids = 3; // The list of user ids that are running the processes forming this program
     optional bytes environment_hash = 4; // the hash of all environment variables
+
+    repeated uint32 program_reporting_group_id = 5; // maps to the group under which this program was reported
 }
 
 message id_map {

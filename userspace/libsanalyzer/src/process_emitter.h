@@ -56,7 +56,8 @@ public:
 			  sinsp_procinfo& procinfo,
 			  const sinsp_counter_time& tot,
 			  draiosproto::metrics& metrics,
-			  std::set<uint64_t>& all_uids);
+			  std::set<uint64_t>& all_uids,
+			  bool high_priority);
 
 
 private:

@@ -359,7 +359,14 @@ void process_emitter::emit_processes(analyzer_emitter::flush_flags flushflags,
 		{
 
 			draiosproto::program* prog = metrics.add_programs();
-			emit_process(*tinfo, *prog, progtable_by_container, *procinfo, tot, metrics, all_uids);
+			emit_process(*tinfo,
+				     *prog,
+				     progtable_by_container,
+				     *procinfo,
+				     tot,
+				     metrics,
+				     all_uids,
+				     high_priority_processes.find(tinfo) != high_priority_processes.end());
 		}
 
 		//
@@ -376,7 +383,8 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 				   sinsp_procinfo& procinfo,
 				   const sinsp_counter_time& tot,
 				   draiosproto::metrics& metrics,
-				   std::set<uint64_t>& all_uids)
+				   std::set<uint64_t>& all_uids,
+				   bool high_priority)
 {
 	auto main_thread = tinfo.get_main_thread();
 	if(!main_thread)
@@ -400,6 +408,12 @@ void process_emitter::emit_process(sinsp_threadinfo& tinfo,
 		prog.add_uids(uid);
 	}
 
+	// only one group right now....whitelist...so just need to add something
+	// to the groups for the backend
+	if (high_priority)
+	{
+		prog.add_program_reporting_group_id(1);
+	}
 
 	draiosproto::process* proc = prog.mutable_procinfo();
 
