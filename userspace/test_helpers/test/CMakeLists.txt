@@ -30,6 +30,7 @@ add_executable(unit-test-testhelpers
 	main.cpp
 	scoped_file_descriptor.ut.cpp
 	scoped_pipe.ut.cpp
+	scoped_stdout_capture.ut.cpp
 	scoped_temp_directory.ut.cpp
 	scoped_temp_file.ut.cpp
 )

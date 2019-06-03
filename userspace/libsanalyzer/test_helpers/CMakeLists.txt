@@ -25,6 +25,7 @@ add_definitions( -DHAS_ANALYZER )
 
 add_library(test-helpers-libsanalyzer STATIC
 	run.cpp
+	scoped_sinsp_logger_capture.cpp
 	sinsp_evt_wrapper.cpp
 	sinsp_mock.cpp
 )

@@ -1837,7 +1837,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("Extra internal metrics: " + bool_as_text(m_extra_internal_metrics));
 
 	configuration_manager::instance().print_config(log_config);
-	metric_forwarding_configuration::print();
 
 	// Dump warnings+errors after the main config so they're more visible
 	// Always keep these at the bottom

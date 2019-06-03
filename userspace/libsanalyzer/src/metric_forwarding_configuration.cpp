@@ -1,4 +1,6 @@
 #include "metric_forwarding_configuration.h"
+#include <logger.h>
+#include <Poco/Path.h>
 #include <type_config.h>
 
 namespace
@@ -8,7 +10,6 @@ const unsigned LEGACY_PROM_METRICS_HARD_LIMIT = 3000;
 const unsigned LEGACY_STATSD_METRIC_HARD_LIMIT = 1000;
 const unsigned LEGACY_APP_METRICS_HARD_LIMIT = 3000;
 const unsigned LEGACY_JMX_METRICS_HARD_LIMIT = 3000;
-
 
 type_config<bool>::ptr c_feature_flag =
    type_config_builder<bool>(false /*default*/,
@@ -22,9 +23,17 @@ type_config<int>::ptr c_metric_forwarding_sum =
 			    "The maxiumum total of all prometheus, jmx, statsd and app check metrics.",
 			    "metric_forwarding_limit")
 	.min(0)
-	.max(15000)
+	.max(10000)
 	.hidden()
 	.get();
+
+int configured_limit_sum()
+{
+	return metric_forwarding_configuration::c_prometheus_max->configured() +
+	       metric_forwarding_configuration::c_jmx_max->configured() +
+	       metric_forwarding_configuration::c_statsd_max->configured() +
+	       metric_forwarding_configuration::c_app_checks_max->configured();
+}
 
 /**
  * The sum of all of the metrics must be below the
@@ -41,11 +50,9 @@ float metric_divisor()
 		return 0;
 	}
 
-	float divisor = static_cast<float>(metric_forwarding_configuration::c_prometheus_max->configured() +
-					   metric_forwarding_configuration::c_jmx_max->configured() +
-					   metric_forwarding_configuration::c_statsd_max->configured() +
-					   metric_forwarding_configuration::c_app_checks_max->configured()) /
-					   static_cast<float>(c_metric_forwarding_sum->configured());
+
+	float divisor = static_cast<float>(configured_limit_sum()) /
+			static_cast<float>(c_metric_forwarding_sum->configured());
 
 	if(divisor < 1.0)
 	{
@@ -138,8 +145,38 @@ void print()
 		return;
 	}
 
-// todo bryan SMAGENT-1633
-// print appropriate based on the spec
+	const float divisor = metric_divisor();
+	if(divisor > 1.0)
+	{
+		SINSP_WARNING("%s:%d: Limits have been adjusted.\n"
+			      "Your total allowed metric limit is %d per agent sample for this node, but it is currently configured to %d. The limits have been adjusted as follows:\n"
+			      "Prometheus (%s): %d -> %d\n"
+			      "StatsD (%s): %d -> %d\n"
+			      "AppChecks (%s): %d -> %d\n"
+			      "JMX (%s): %d -> %d",
+			      Poco::Path(__FILE__).getBaseName().c_str(), __LINE__,
+			      c_metric_forwarding_sum->get(), configured_limit_sum(),
+			      c_prometheus_max->get_key_string().c_str(), c_prometheus_max->configured(), c_prometheus_max->get(),
+			      c_statsd_max->get_key_string().c_str(), c_statsd_max->configured(), c_statsd_max->get(),
+			      c_app_checks_max->get_key_string().c_str(), c_app_checks_max->configured(), c_app_checks_max->get(),
+			      c_jmx_max->get_key_string().c_str(), c_jmx_max->configured(), c_jmx_max->get());
+	}
+	else
+	{
+		// These values already exist in the log, but print them out as a group
+		// for supportability.
+		SINSP_INFO("%s:%d: The total allowed metric limit per agent sample for this node is %d. Metric limits are configured as follows:\n"
+			   "Prometheus (%s): %d\n"
+			   "StatsD (%s): %d\n"
+			   "AppChecks (%s): %d\n"
+			   "JMX (%s): %d",
+			   Poco::Path(__FILE__).getBaseName().c_str(), __LINE__,
+			   c_metric_forwarding_sum->get(),
+			   c_prometheus_max->get_key_string().c_str(), c_prometheus_max->get(),
+			   c_statsd_max->get_key_string().c_str(), c_statsd_max->get(),
+			   c_app_checks_max->get_key_string().c_str(), c_app_checks_max->get(),
+			   c_jmx_max->get_key_string().c_str(), c_jmx_max->get());
+	}
 
 }
 
