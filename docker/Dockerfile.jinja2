@@ -144,7 +144,11 @@ RUN rm -rf /usr/bin/clang \
 RUN curl -s https://s3.amazonaws.com/download.draios.com/DRAIOS-GPG-KEY.public | apt-key add - \
  && curl -s -o /etc/apt/sources.list.d/draios.list http://download.draios.com/$SYSDIG_REPOSITORY/deb/draios.list \
  && apt-get update -o Acquire::Check-Valid-Until=false \
+{% if p.build_kernel_module %}
  && apt-get install -y --no-install-recommends draios-agent \
+{% else %}
+ && apt-get install -y --no-install-recommends draios-agent-slim \
+{% endif %}
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 

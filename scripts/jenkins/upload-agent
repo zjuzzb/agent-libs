@@ -44,6 +44,9 @@ function configure_rpm_repo {
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr $REPOSITORY_DIR/rpm/$RPM_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*fake-collector* | xargs -d '\n' rm -f || true
+	ls -1tdr $REPOSITORY_DIR/rpm/$BASEARCH/*unit-test* | xargs -d '\n' rm -f || true
 
 	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.rpm' -print -quit)"
 	then
@@ -86,6 +89,9 @@ function configure_debian_repo {
 	ls -1tdr stable-$DEB_BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
 	ls -1tdr stable-$DEB_BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*fake-collector* | xargs -d '\n' rm -f || true
+	ls -1tdr stable-$DEB_BASEARCH/*unit-test* | xargs -d '\n' rm -f || true
 
 	if test -n "$(find $PACKAGES_DIR -maxdepth 1 -name '*.deb' -print -quit)"
 	then
@@ -130,6 +136,9 @@ function configure_tgz_repo {
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*agent-kmodule* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*sysdig* | head -n -5 | xargs -d '\n' rm -f || true
 		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*falco* | head -n -5 | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*Unspecified* | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*fake-collector* | xargs -d '\n' rm -f || true
+		ls -1tdr $REPOSITORY_DIR/tgz/$BASEARCH/*unit-test* | xargs -d '\n' rm -f || true
 
 		cp $PACKAGES_DIR/*tar.gz $REPOSITORY_DIR/tgz/$BASEARCH
 		aws s3 sync $REPOSITORY_DIR/tgz/$BASEARCH/ $S3_BUCKET/$REPOSITORY_NAME/tgz/$BASEARCH --acl public-read --delete --exact-timestamps
@@ -144,9 +153,9 @@ function configure_installers {
 	# install-script. Allow for them to skip this without failing
 	if [[ ! ( ${SKIP_OVERWRITE_SCRIPTS-} == 'yes' ) ]]
 	then
-	    sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-agent
-	    aws s3 cp $REPOSITORY_DIR/install-agent $S3_BUCKET/$REPOSITORY_NAME/ --acl public-read
-	    aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
+		sed -i s/_REPOSITORY_NAME_/${REPOSITORY_NAME}/g ${REPOSITORY_DIR}/install-agent
+		aws s3 cp $REPOSITORY_DIR/install-agent $S3_BUCKET/$REPOSITORY_NAME/ --acl public-read
+		aws s3 cp $SCRIPTS_DIR/smoke-tests $S3_BUCKET/ --acl public-read
 	fi
 }
 
@@ -160,9 +169,9 @@ function upload_binaries {
 
 function trigger_docker_builds {
 
-        if [[ "${DOCKER_HUB_ROOT}" == "" ]]; then
-               DOCKER_HUB_ROOT="sysdig"
-        fi
+	if [[ "${DOCKER_HUB_ROOT}" == "" ]]; then
+		DOCKER_HUB_ROOT="sysdig"
+	fi
 
 	# Blow away all existing docker images for sysdig/agent*
 	docker images -q 'sysdig/agent*' | uniq | xargs --no-run-if-empty docker rmi -f
@@ -181,26 +190,25 @@ function trigger_docker_builds {
 
 	for IMAGE_NAME in agent-kmodule agent-slim agent; do
 
-	    pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
+		pushd "${DOCKERFILES_ROOT_DIR}/opt/draios/docker/${IMAGE_NAME}/${REPOSITORY_BASENAME}"
 
-	    VERSION_SUFFIX=""
-	    if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then
-		VERSION_SUFFIX="-rc"
-	    fi
+		VERSION_SUFFIX=""
+		if [[ "${REPOSITORY_BASENAME}" == "rc" ]]; then
+			VERSION_SUFFIX="-rc"
+		fi
 
-	    VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
-	    DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
+		VERSIONED_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:${AGENT_VERSION}${VERSION_SUFFIX}"
+		DEV_IMAGE="${DOCKER_HUB_ROOT}/${IMAGE_NAME}:dev"
 
-	    docker build -t "${VERSIONED_IMAGE}" --pull .
-	    docker push "${VERSIONED_IMAGE}"
+		docker build -t "${VERSIONED_IMAGE}" --pull .
+		docker push "${VERSIONED_IMAGE}"
 
-	    if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
-	        docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}"
-	        docker push "${DEV_IMAGE}"
-	    fi
+		if [[ "${REPOSITORY_BASENAME}" == "dev" ]]; then
+			docker tag "${VERSIONED_IMAGE}" "${DEV_IMAGE}"
+			docker push "${DEV_IMAGE}"
+		fi
 
-	    popd
-
+		popd
 	done
 }
 
