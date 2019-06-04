@@ -291,14 +291,11 @@ class AppCheckInstance:
 
     def extract_os_info(self, exec_cmd, output):
         if "os-release" in exec_cmd:
-            for line in output.split('\n'):
-                if "NAME" in line:
-                    logging.info("Appcheck[%s] OS info %s" % (self.pid, line))
-                elif "VERSION" in line:
-                    logging.info("Appcheck[%s] OS info %s" % (self.pid, line))
+            output = [line for line in output.split('\n') if "NAME" in line or "VERSION" in line]
+            logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, ", ".join(output)))
         else:
             if len(output.strip()) > 0:
-                logging.info("Appcheck[%s] OS info %s" % (self.pid, output.strip().split('\n')[0]))
+                logging.info("Appcheck[%s][%s] OS info %s" % (self.name, self.pid, output.strip().split('\n')[0]))
 
     def get_os_info(self):
         nsfd = None
