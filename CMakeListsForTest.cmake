@@ -10,6 +10,8 @@ add_subdirectory(userspace/test_helpers/src)
 add_subdirectory(userspace/test_helpers/test)
 add_subdirectory(userspace/userspace-shared/test)
 add_subdirectory(userspace/userspace-shared/test-helpers)
+add_subdirectory(userspace/librest/test)
+add_subdirectory(userspace/librest/test_helpers)
 
 if(NOT CYGWIN)
 	add_subdirectory(test)
@@ -19,6 +21,7 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-testhelpers
 	COMMAND $(MAKE) run-unit-test-dragent
 	COMMAND $(MAKE) run-unit-test-libsanalyzer
+	COMMAND $(MAKE) run-unit-test-librest
 	COMMAND $(MAKE) run-unit-test-userspace-shared
 )
 

@@ -13,6 +13,11 @@ option(BUILD_FOR_COVERAGE "Enable building binaries needed for code coverage")
 
 option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
 
+# When set to ON, this option will cause the agent to spin up a REST server
+# that exposes an API to provide tests with visibility into the state of the
+# Agent
+option(ENABLE_REST_SERVER "Enable built-in REST server")
+
 # Versions of all third-party libraries used. These may be referred to
 # in lower CMakeLists.txt files.
 set(DRAIOS_OPENSSL_VERSION "1.0.2n")
@@ -48,6 +53,11 @@ set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
 #set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
 
 set(CMAKE_COMMON_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
+
+if(ENABLE_REST_SERVER)
+	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -DENABLE_REST_SERVER")
+endif()
+
 if(BUILD_WARNINGS_AS_ERRORS)
 	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
 	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
@@ -135,6 +145,7 @@ add_subdirectory(userspace/comp_modules)
 add_subdirectory(userspace/dragent/src)
 add_subdirectory(userspace/draiosproto)
 add_subdirectory(userspace/libsanalyzer/src)
+add_subdirectory(userspace/librest/src)
 add_subdirectory(userspace/userspace-shared/src)
 if(NOT CYGWIN)
 	add_subdirectory(userspace/sdjagent)

@@ -5,6 +5,7 @@ include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/async)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libscap)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp)
 include_directories(${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/third-party/jsoncpp)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/../../draiosproto)
@@ -98,7 +99,9 @@ target_link_libraries(dragent
 	pthread
 	sanalyzer
 	dragentl
-	draiosproto)
+	draiosproto
+	librestl
+)
 
 if(NOT CYGWIN)
 	target_link_libraries(dragent

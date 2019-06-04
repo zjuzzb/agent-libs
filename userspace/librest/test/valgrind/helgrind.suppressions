@@ -1,0 +1,23 @@
+{
+   https://bugs.kde.org/show_bug.cgi?id=307082
+   Helgrind:Misc
+   fun:pthread_cond_destroy_WRK
+   fun:pthread_cond_destroy@*
+   ...
+}
+
+
+{
+   poco_tcp_server_uses_a_boolean_unguarded_stop
+   Helgrind:Race
+   fun:_ZN4Poco3Net9TCPServer4stopEv
+   ...
+}
+
+{
+   poco_tcp_server_uses_a_boolean_unguarded_run
+   Helgrind:Race
+   fun:_ZN4Poco3Net9TCPServer3runEv
+   fun:_ZN4Poco10ThreadImpl13runnableEntryEPv
+   ...
+}

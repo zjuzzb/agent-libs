@@ -16,6 +16,8 @@
 #include "memdump_logger.h"
 #include "monitor.h"
 #include "process_helpers.h"
+#include "rest_request_handler_factory.h"
+#include "rest_server.h"
 #include "type_config.h"
 #include "utils.h"
 #ifndef CYGWING_AGENT
@@ -39,11 +41,19 @@ namespace
 
 DRAGENT_LOGGER();
 
-type_config<bool> s_use_statsite_forwarder(
+type_config<bool> c_use_statsite_forwarder(
 		false,
 		"Use statsite_forwarder instead of system call trace for container statsd metrics",
 		"statsd",
 		"use_forwarder");
+
+type_config<uint16_t>::ptr c_rest_port = type_config_builder<uint16_t>(
+		24482, 
+		"TCP port on which the Agent REST server listens for connections",
+		"reset_server",
+		"tcp_port")
+	.hidden() // Hidden until feature is released
+	.get();
 
 string compute_sha1_digest(SHA1Engine &engine, const string &path)
 {
@@ -80,6 +90,46 @@ static void g_usr2_signal_callback(int sig)
 static void g_trace_signal_callback(int sig)
 {
 	dragent_configuration::m_enable_trace = true;
+}
+
+std::unique_ptr<librest::rest_server> s_rest_server;
+
+/**
+ * Enable the REST server (if enabled); otherwise, do nothing.
+ */
+void enable_rest_server()
+{
+#if defined(ENABLE_REST_SERVER)
+	if(s_rest_server)
+	{
+		return;
+	}
+
+	Poco::SharedPtr<librest::rest_request_handler_factory> factory(
+			new librest::rest_request_handler_factory());
+
+	// Eventually register path handlers with the factory...
+
+	s_rest_server = make_unique<librest::rest_server>(factory,
+	                                                  c_rest_port->get());
+	s_rest_server->start();
+#endif
+}
+
+/**
+ * Disable the REST server (if enabled); otherwise, do nothing.
+ */
+void disable_rest_server()
+{
+#if defined(ENABLE_REST_SERVER)
+	if(s_rest_server.get() == nullptr)
+	{
+		return;
+	}
+
+	s_rest_server->stop();
+	s_rest_server.reset();
+#endif
 }
 
 } // end namespace
@@ -515,7 +565,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			return (EXIT_FAILURE);
 		});
 
-		if(s_use_statsite_forwarder.get() ||
+		if(c_use_statsite_forwarder.get() ||
 		   (m_configuration.m_mode == dragent_mode_t::NODRIVER))
 		{
 			m_statsite_forwarder_pipe = make_unique<errpipe_manager>();
@@ -650,6 +700,8 @@ int dragent_app::main(const std::vector<std::string>& args)
 				coclient::cleanup();
 #endif
 			});
+
+
 	return monitor_process.run();
 #else // _WIN32
 	return sdagent_main();
@@ -789,6 +841,8 @@ int dragent_app::sdagent_main()
 
 	uint64_t uptime_s = 0;
 
+	enable_rest_server();
+
 	while(!dragent_configuration::m_terminate)
 	{
 		if(m_configuration.m_watchdog_enabled)
@@ -815,6 +869,8 @@ int dragent_app::sdagent_main()
 		Thread::sleep(1000);
 		++uptime_s;
 	}
+
+	disable_rest_server();
 
 #ifndef CYGWING_AGENT
 	if(m_configuration.m_watchdog_heap_profiling_interval_s > 0)
