@@ -519,7 +519,7 @@ void connection_manager::do_run()
 			if(m_configuration->m_promex_enabled)
 			{
 				const string& url = m_configuration->m_promex_connect_url.empty() ?
-					"unix:" + m_configuration->m_root_dir + "/run/promex.sock" :
+					"unix:" + m_configuration->c_root_dir.get() + "/run/promex.sock" :
 					m_configuration->m_promex_connect_url;
 				m_prom_channel = libsinsp::grpc_channel_registry::get_channel(url);
 				m_prom_conn = make_shared<promex_pb::PrometheusExporter::Stub>(m_prom_channel);

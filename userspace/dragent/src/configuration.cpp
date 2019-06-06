@@ -32,6 +32,11 @@ std::atomic<bool> dragent_configuration::m_terminate(false);
 std::atomic<bool> dragent_configuration::m_send_log_report(false);
 std::atomic<bool> dragent_configuration::m_config_update(false);
 
+type_config<std::string> dragent_configuration::c_root_dir(
+	"/",
+	"the root directory for all logs and other artifacts",
+	"rootdir");
+
 namespace {
 
 std::string bool_as_text(bool b)
@@ -368,7 +373,7 @@ void dragent_configuration::normalize_path(const std::string& file_path, std::st
 		else
 		{
 			Path path(file_path);
-			path.makeAbsolute(m_root_dir);
+			path.makeAbsolute(c_root_dir.get());
 			normalized_path = path.toString();
 		}
 	}
@@ -560,22 +565,22 @@ void dragent_configuration::init(Application* app, bool use_installed_dragent_ya
 	if(package_dir.exists() && use_installed_dragent_yaml)
 	{
 		m_agent_installed = true;
-		m_root_dir = install_prefix;
-		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
-		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
+		m_default_root_dir = install_prefix;
+		m_conf_file = Path(m_default_root_dir).append("etc").append("dragent.yaml").toString();
+		m_defaults_conf_file = Path(m_default_root_dir).append("etc").append("dragent.default.yaml").toString();
 	}
 	else
 	{
 #ifndef CYGWING_AGENT
 		m_agent_installed = false;
-		m_root_dir = Path::current();
-		m_conf_file = Path(m_root_dir).append("dragent.yaml").toString();
-		m_defaults_conf_file = Path(m_root_dir).append("dragent.default.yaml").toString();
+		m_default_root_dir =Path::current();
+		m_conf_file = Path(m_default_root_dir).append("dragent.yaml").toString();
+		m_defaults_conf_file = Path(m_default_root_dir).append("dragent.default.yaml").toString();
 #else
 		m_agent_installed = true;
-		m_root_dir = windows_helpers::get_executable_parent_dir();
-		m_conf_file = Path(m_root_dir).append("etc").append("dragent.yaml").toString();
-		m_defaults_conf_file = Path(m_root_dir).append("etc").append("dragent.default.yaml").toString();
+		m_default_root_dir = windows_helpers::get_executable_parent_dir();
+		m_conf_file = Path(m_default_root_dir).append("etc").append("dragent.yaml").toString();
+		m_defaults_conf_file = Path(m_default_root_dir).append("etc").append("dragent.default.yaml").toString();
 #endif
 	}
 
@@ -590,9 +595,9 @@ void dragent_configuration::init()
 	bool is_windows = false;
 #endif
 
-	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_root_dir).append("etc").toString()));
+	unique_ptr<dragent_auto_configuration> autocfg(new dragent_yaml_auto_configuration(Path(m_default_root_dir).append("etc").toString()));
 
-	const string kubernetes_dragent_yaml = m_root_dir + "/etc/kubernetes/config/dragent.yaml";
+	const string kubernetes_dragent_yaml = m_default_root_dir + "/etc/kubernetes/config/dragent.yaml";
 	if(m_auto_config)
 	{
 		m_config.reset(new yaml_configuration({ m_conf_file, kubernetes_dragent_yaml, autocfg->config_path(), m_defaults_conf_file }));
@@ -610,21 +615,24 @@ void dragent_configuration::init()
 
 	m_supported_auto_configs[string("dragent.auto.yaml")] = unique_ptr<dragent_auto_configuration>(std::move(autocfg));
 
+	c_root_dir.set_default(m_default_root_dir);
 
-	m_root_dir = m_config->get_scalar<string>("rootdir", m_root_dir);
+
+	// init the configurations
+	configuration_manager::instance().init_config(*m_config);
 
 	if(!m_config->get_scalar<string>("metricsfile", "location", "").empty())
 	{
-		m_metrics_dir = Path(m_root_dir).append(m_config->get_scalar<string>("metricsfile", "location", "")).toString();
+		m_metrics_dir = Path(c_root_dir.get()).append(m_config->get_scalar<string>("metricsfile", "location", "")).toString();
 	}
 
-	m_log_dir = Path(m_root_dir).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
+	m_log_dir = Path(c_root_dir.get()).append(m_config->get_scalar<string>("log", "location", "logs")).toString();
 
 	m_log_rotate = m_config->get_scalar("log", "rotate", 10);
 
 	m_max_log_size = m_config->get_scalar("log", "max_size", 10);
 
-	ifstream kubernetes_access_key(m_root_dir + "/etc/kubernetes/secrets/access-key");
+	ifstream kubernetes_access_key(c_root_dir.get() + "/etc/kubernetes/secrets/access-key");
 	if(kubernetes_access_key.good())
 	{
 		kubernetes_access_key >> m_customer_id;
@@ -731,7 +739,7 @@ void dragent_configuration::init()
 	m_transmitbuffer_size = m_config->get_scalar<uint32_t>("transmitbuffer_size", DEFAULT_DATA_SOCKET_BUF_SIZE);
 	m_ssl_enabled = m_config->get_scalar<bool>("ssl", true);
 	m_ssl_verify_certificate = m_config->get_scalar<bool>("ssl_verify_certificate", true);
-	m_ssl_ca_certificate = Path(m_root_dir).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
+	m_ssl_ca_certificate = Path(c_root_dir.get()).append(m_config->get_scalar<string>("ca_certificate", "root.cert")).toString();
 
 	m_ssl_ca_cert_paths = m_config->get_first_deep_sequence<vector<string>>("ca_cert_paths");
 	std::string ssl_ca_cert_dir = m_config->get_scalar<string>("ca_cert_dir", "");
@@ -1192,7 +1200,7 @@ void dragent_configuration::init()
 	{
 		if (file.find('/') != 0)
 		{
-			file = m_root_dir + '/' + file;
+			file = c_root_dir.get() + '/' + file;
 		}
 		m_monitor_files.insert(file);
 	}
@@ -1298,15 +1306,13 @@ void dragent_configuration::init()
 	m_procfs_scan_interval = m_config->get_scalar<uint32_t>("procfs_scan_interval",
 		DEFAULT_PROCFS_SCAN_INTERVAL_SECS );
 
-	// init the configurations
-	configuration_manager::instance().init_config(*m_config);
 }
 
 void dragent_configuration::print_configuration() const
 {
 	LOG_INFO("Distribution: " + get_distribution());
 	LOG_INFO("machine id: " + m_machine_id_prefix + m_machine_id);
-	LOG_INFO("rootdir: " + m_root_dir);
+	LOG_INFO("rootdir: " + c_root_dir.get());
 	LOG_INFO("conffile: " + m_conf_file);
 	LOG_INFO("metricsfile.location: " + m_metrics_dir);
 	LOG_INFO("log.location: " + m_log_dir);
@@ -2001,7 +2007,7 @@ void dragent_configuration::write_statsite_configuration()
 		statsite_ini.append("quantiles = ").append(os.str());
 	}
 
-	string filename(m_root_dir + "/etc/statsite.ini");
+	string filename(c_root_dir.get() + "/etc/statsite.ini");
 
 	if(!m_agent_installed)
 	{

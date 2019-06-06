@@ -63,7 +63,13 @@ const data_type& type_config<data_type>::get() const
 template<typename data_type>
 data_type& type_config<data_type>::get()
 {
-	return m_data;
+        return m_data;
+}
+
+template<typename data_type>
+void type_config<data_type>::set(const data_type& value)
+{
+	m_data = value;
 }
 
 template<typename data_type>
@@ -76,6 +82,12 @@ template<typename data_type>
 std::string type_config<data_type>::value_to_string() const
 {
 	return get_value_string(m_data);
+}
+
+template<typename data_type>
+void type_config<data_type>::set_default(const data_type& value)
+{
+	m_default = value;
 }
 
 template<typename data_type>
