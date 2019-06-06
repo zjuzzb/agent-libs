@@ -150,6 +150,7 @@ object_filter_config_data::object_filter_config_data(const std::string& descript
 	: configuration_unit(key, subkey, subsubkey, description),
 	  m_data()
 {
+	hidden(true);
 }
 
 std::string object_filter_config_data::value_to_string() const

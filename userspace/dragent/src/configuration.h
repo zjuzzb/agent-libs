@@ -261,16 +261,6 @@ public:
 	typedef std::set<std::string>      k8s_ext_list_t;
 	typedef shared_ptr<k8s_ext_list_t> k8s_ext_list_ptr_t;
 
-	std::string m_k8s_api_server;
-	bool m_k8s_autodetect;
-	string m_k8s_ssl_cert_type;
-	string m_k8s_ssl_cert;
-	string m_k8s_ssl_key;
-	string m_k8s_ssl_key_password;
-	string m_k8s_ssl_ca_certificate;
-	bool m_k8s_ssl_verify_certificate;
-	uint64_t m_k8s_timeout_s;
-	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes = 0;
 	k8s_ext_list_t m_k8s_extensions;
 	bool m_use_new_k8s;
@@ -287,10 +277,7 @@ public:
 	 */
 	uint16_t m_k8s_cluster_update_frequency = 1;
 
-	std::multimap<sinsp_logger::severity, std::string> m_k8s_logs;
 	std::string m_k8s_cluster_name;
-	vector<string> m_k8s_include_types;
-	uint32_t m_k8s_event_counts_log_time_s;
 
 	string m_mesos_state_uri;
 	vector<string> m_marathon_uris;
@@ -423,16 +410,6 @@ public:
 	uint16_t m_monitor_files_freq_sec = 0;
 	std::set<std::string> m_monitor_files;
 
-	uint32_t m_orch_queue_len;
-	int32_t m_orch_gc;
-	uint32_t m_orch_inf_wait_time_s;
-	uint32_t m_orch_tick_interval_ms;
-	uint32_t m_orch_low_ticks_needed;
-	uint32_t m_orch_low_evt_threshold;
-	bool m_orch_filter_empty;
-	uint32_t m_orch_batch_msgs_queue_len;
-	uint32_t m_orch_batch_msgs_tick_interval_ms;
-
 	/**
 	 * When a tid is looked up in the thread table and not found we
 	 * will explicitly search '/proc' to try to find it.  This value
@@ -564,9 +541,7 @@ private:
 	inline static bool is_executable(const string& path);
 	inline static bool is_socket(const string &path);
 	void write_statsite_configuration();
-	void normalize_path(const std::string& file_path, std::string& normalized_path);
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
-	void configure_k8s_from_env();
 	void add_percentiles();
 	std::string get_install_prefix(const Application* app);
 	void sanitize_limits(filter_vec_t& filters);

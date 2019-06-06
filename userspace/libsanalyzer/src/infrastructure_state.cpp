@@ -7,8 +7,169 @@
 #include "logger.h"
 #include "utils.h"
 #include "analyzer.h"
+#include "Poco/File.h"
+#include "Poco/Path.h"
+#include "configuration_manager.h"
 
 #define DEFAULT_CONNECT_INTERVAL (60 * ONE_SECOND_IN_NS)
+
+type_config<uint32_t> infrastructure_state::c_orchestrator_queue_len(
+	10000,
+	"set the number of events to queue in cointerface before we drop",
+	"orch_queue_len");
+type_config<int32_t> infrastructure_state::c_orchestrator_gc(
+	10,
+	"GC percentage for cointerface",
+	"orch_gc");
+type_config<uint32_t> infrastructure_state::c_orchestrator_informer_wait_time_s(
+	5,
+	"orchestrator informer wait time [sec]",
+	"orch_inf_wait_time_s");
+type_config<uint32_t> infrastructure_state::c_orchestrator_tick_interval_ms(
+	100,
+	"orchestrator tick interval (ms)",
+	"orch_tick_interval_ms");
+type_config<uint32_t> infrastructure_state::c_orchestrator_low_ticks_needed(
+	10,
+	"orchestrator events low ticks needed",
+	"orch_low_ticks_needed");
+type_config<uint32_t> infrastructure_state::c_orchestrator_low_event_threshold(
+	50,
+	"orchestrator events low threshold",
+	"orch_low_evt_threshold");
+type_config<bool> infrastructure_state::c_orchestrator_filter_empty(
+	true,
+	"orchestrator events filter empty resources",
+	"orch_filter_empty");
+type_config<uint32_t> infrastructure_state::c_orchestrator_batch_messages_queue_length(
+	100,
+	"size of batch queue before sending messages through the grpc pipe",
+	"orch_batch_msgs_queue_len");
+type_config<uint32_t> infrastructure_state::c_orchestrator_batch_messages_tick_interval_ms(
+	100,
+	"set interval before sending messages through grpc pipe",
+	"orch_batch_msgs_tick_interval_ms");
+type_config<bool> infrastructure_state::c_k8s_ssl_verify_certificate(
+	false,
+	"K8S certificate verification enabled",
+	"k8s_ssl_verify_certificate");
+type_config<std::string> infrastructure_state::c_k8s_bt_auth_token(
+	"",
+	"path to K8S bearer token authorization",
+	"k8s_bt_auth_token");
+type_config<std::vector<std::string>> infrastructure_state::c_k8s_include_types(
+	{},
+	"list of extra k8s types to resquest beyond the default",
+	"k8s_extra_resources",
+	"include");
+type_config<uint32_t> infrastructure_state::c_k8s_event_counts_log_time(
+	0,
+	"",
+	"k8s_event_counts_log_time");
+type_config<std::string> infrastructure_state::c_k8s_url(
+	"",
+	"URL of k8s api server",
+	"k8s_uri");
+type_config<std::string> infrastructure_state::c_k8s_ca_certificate(
+	"",
+	"K8S CA certificate",
+	"k8s_ca_certificate");
+type_config<std::string> infrastructure_state::c_k8s_ssl_certificate(
+	"",
+	"K8S certificate",
+	"k8s_ssl_cert");
+type_config<std::string> infrastructure_state::c_k8s_ssl_key(
+	"",
+	"K8S SLL key",
+	"k8s_ssl_key");
+type_config<uint64_t> infrastructure_state::c_k8s_timeout_s(
+	60,
+	"K8S connection timeout [sec]",
+	"k8s_timeout_s");
+type_config<std::string>::ptr infrastructure_state::c_k8s_ssl_key_password =
+	type_config_builder<std::string>("",
+					 "K8S SSL key password",
+					 "k8s_ssl_key_password")
+					 .hidden().get();
+type_config<std::string> infrastructure_state::c_k8s_ssl_certificate_type(
+	"PEM",
+	"K8S certificate type",
+	"k8s_ssl_cert_type");
+type_config<bool> infrastructure_state::c_k8s_autodetect(
+	true,
+	"K8S autodetect enabled",
+	"k8s_autodetect");
+type_config<uint64_t> infrastructure_state::c_k8s_refresh_interval(
+	ONE_SECOND_IN_NS / 500,
+	"time between reattempting connection to cointerface",
+	"infra_state",
+	"cointerface_reconnect_interval");
+
+std::string infrastructure_state::normalize_path(const std::string& path) const
+{
+	if (path.size() != 0 && path[0] != '/')
+	{
+		return Poco::Path(path).makeAbsolute(m_root_dir).toString();
+	}
+
+	return path;
+}
+
+void infrastructure_state::configure_k8s_environment()
+{
+	static const string k8s_ca_crt = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
+        static const string k8s_bearer_token_file_name = "/var/run/secrets/kubernetes.io/serviceaccount/token";
+        if(m_k8s_url.empty())
+        {
+                // K8s API server not set by user, try to auto-discover.
+                // This will work only when agent runs in a K8s pod.
+                char* sh = getenv("KUBERNETES_SERVICE_HOST");
+                if(sh && strlen(sh))
+                {
+                        char* sp = getenv("KUBERNETES_SERVICE_PORT_HTTPS");
+                        if(sp && strlen(sp)) // secure
+                        {
+                                m_k8s_url = "https://";
+                                m_k8s_url.append(sh).append(1, ':').append(sp);
+                                if(m_k8s_bt_auth_token.empty())
+                                {
+                                        if(Poco::File(k8s_bearer_token_file_name).exists())
+                                        {
+                                                m_k8s_bt_auth_token = k8s_bearer_token_file_name;
+                                        }
+                                        else
+                                        {
+                                                glogf(sinsp_logger::SEV_WARNING,
+						      "Bearer token not found at default location (%s), authentication may not work. If needed, please specify the location using k8s_bt_auth_token config entry.",
+						      k8s_bearer_token_file_name.c_str());
+                                        }
+                                }
+                                if(c_k8s_ssl_verify_certificate.get() && m_k8s_ca_certificate.empty())
+                                {
+                                        if(Poco::File(k8s_ca_crt).exists())
+                                        {
+                                                m_k8s_ca_certificate = k8s_ca_crt;
+                                        }
+                                        else
+                                        {
+						glogf(sinsp_logger::SEV_WARNING,
+						      "CA certificate verification configured, but CA certificate not specified nor found at default location (%s), server authentication will not work. If server authentication is desired, please specify the CA certificate file location using k8s_ca_certificate config entry.",
+						      k8s_ca_crt.c_str());
+                                        }
+                                }
+                        }
+                        else
+                        {
+                                sp = getenv("KUBERNETES_SERVICE_PORT");
+                                if(sp && strlen(sp))
+                                {
+                                        m_k8s_url = "http://";
+                                        m_k8s_url.append(sh).append(1, ':').append(sp);
+                                }
+                        }
+                }
+        }
+}
 
 bool infrastructure_state::get_cached_result(const std::string &entity_id, size_t h, bool *res)
 {
@@ -111,16 +272,29 @@ bool evaluate_on(draiosproto::container_group *congroup, scope_predicates &preds
 	return true;
 }
 
-infrastructure_state::infrastructure_state(uint64_t refresh_interval, sinsp* inspector, std::string install_prefix, bool force_k8s_subscribed)
+infrastructure_state::infrastructure_state(sinsp* inspector,
+					   const std::string& rootdir,
+					   bool force_k8s_subscribed)
 	: m_inspector(inspector)
-	, m_k8s_coclient(std::move(install_prefix))
+	, m_k8s_coclient(rootdir)
 	, m_k8s_subscribed(force_k8s_subscribed)
 	, m_k8s_connected(false)
-	, m_k8s_refresh_interval(refresh_interval)
+	, m_k8s_refresh_interval(c_k8s_refresh_interval.get())
 	, m_k8s_connect_interval(DEFAULT_CONNECT_INTERVAL)
 	, m_k8s_prev_connect_state(-1)
 	, m_k8s_node_actual(false)
+	, m_root_dir(rootdir)
+	, m_k8s_url(normalize_path(c_k8s_url.get()))
+	, m_k8s_bt_auth_token(normalize_path(c_k8s_bt_auth_token.get()))
+	, m_k8s_ca_certificate(normalize_path(c_k8s_ca_certificate.get()))
+	, m_k8s_ssl_certificate(normalize_path(c_k8s_ssl_certificate.get()))
+	, m_k8s_ssl_key(normalize_path(c_k8s_ssl_key.get()))
 {
+	if (c_k8s_autodetect.get())
+	{
+		configure_k8s_environment();
+	}
+
 	m_k8s_callback = [this] (bool successful, google::protobuf::Message *response_msg) {
 		k8s_generate_user_event(successful);
 
@@ -218,20 +392,15 @@ std::string infrastructure_state::as_string(const scope_predicates &predicates)
 	return preds_str;
 }
 
-void infrastructure_state::subscribe_to_k8s(string url, string ca_cert,
-					    string client_cert, string client_key,
-					    uint64_t timeout_s)
+void infrastructure_state::subscribe_to_k8s()
 {
 	ASSERT(!m_k8s_connected);
 
 	glogf(sinsp_logger::SEV_INFO,
 	      "infra_state: Subscribe to k8s orchestrator events, api server: %s, reconnect interval: %d sec",
-	      url.c_str(), timeout_s);
-	m_k8s_url = std::move(url);
-	m_k8s_ca_cert = std::move(ca_cert);
-	m_k8s_client_cert = std::move(client_cert);
-	m_k8s_client_key = std::move(client_key);
-	m_k8s_connect_interval.interval(timeout_s * ONE_SECOND_IN_NS);
+	      m_k8s_url.c_str(),
+	      c_k8s_timeout_s.get());
+	m_k8s_connect_interval.interval(c_k8s_timeout_s.get() * ONE_SECOND_IN_NS);
 
 	connect_to_k8s();
 }
@@ -253,27 +422,26 @@ void infrastructure_state::connect_to_k8s(uint64_t ts)
 			      "infra_state: Connect to k8s orchestrator events.");
 			sdc_internal::orchestrator_events_stream_command cmd;
 			cmd.set_url(m_k8s_url);
-			cmd.set_ca_cert(m_k8s_ca_cert);
-			cmd.set_client_cert(m_k8s_client_cert);
-			cmd.set_client_key(m_k8s_client_key);
-			cmd.set_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_queue_len());
-			cmd.set_startup_gc(m_inspector->m_analyzer->m_configuration->get_orch_gc());
-			cmd.set_startup_inf_wait_time_s(m_inspector->m_analyzer->m_configuration->get_orch_inf_wait_time_s());
-			cmd.set_startup_tick_interval_ms(m_inspector->m_analyzer->m_configuration->get_orch_tick_interval_ms());
-			cmd.set_startup_low_ticks_needed(m_inspector->m_analyzer->m_configuration->get_orch_low_ticks_needed());
-			cmd.set_startup_low_evt_threshold(m_inspector->m_analyzer->m_configuration->get_orch_low_evt_threshold());
-			cmd.set_filter_empty(m_inspector->m_analyzer->m_configuration->get_orch_filter_empty());
-			cmd.set_batch_msgs_queue_len(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_queue_len());
-			cmd.set_batch_msgs_tick_interval_ms(m_inspector->m_analyzer->m_configuration->get_orch_batch_msgs_tick_interval_ms());
-			cmd.set_ssl_verify_certificate(m_inspector->m_analyzer->m_configuration->get_k8s_ssl_verify_certificate());
-			cmd.set_auth_token(m_inspector->m_analyzer->m_configuration->get_k8s_bt_auth_token());
+			cmd.set_ca_cert(m_k8s_ca_certificate);
+			cmd.set_client_cert(m_k8s_ssl_certificate);
+			cmd.set_client_key(m_k8s_ssl_key);
+			cmd.set_queue_len(c_orchestrator_queue_len.get());
+			cmd.set_startup_gc(c_orchestrator_gc.get());
+			cmd.set_startup_inf_wait_time_s(c_orchestrator_informer_wait_time_s.get());
+			cmd.set_startup_tick_interval_ms(c_orchestrator_tick_interval_ms.get());
+			cmd.set_startup_low_ticks_needed(c_orchestrator_low_ticks_needed.get());
+			cmd.set_startup_low_evt_threshold(c_orchestrator_low_event_threshold.get());
+			cmd.set_filter_empty(c_orchestrator_filter_empty.get());
+			cmd.set_batch_msgs_queue_len(c_orchestrator_batch_messages_queue_length.get());
+			cmd.set_batch_msgs_tick_interval_ms(c_orchestrator_batch_messages_tick_interval_ms.get());
+			cmd.set_ssl_verify_certificate(c_k8s_ssl_verify_certificate.get());
+			cmd.set_auth_token(m_k8s_bt_auth_token);
 			for (const auto &annot : m_annotation_filter)
 			{
 				cmd.add_annotation_filter(annot);
 			}
-			const vector<string> &include_types = m_inspector->m_analyzer->m_configuration->get_k8s_include_types();
-			*cmd.mutable_include_types() = {include_types.begin(), include_types.end()};
-			cmd.set_event_counts_log_time(m_inspector->m_analyzer->m_configuration->get_k8s_event_counts_log_time());
+			*cmd.mutable_include_types() = {c_k8s_include_types.get().begin(), c_k8s_include_types.get().end()};
+			cmd.set_event_counts_log_time(c_k8s_event_counts_log_time.get());
 
 			m_k8s_subscribed = true;
 			m_k8s_connected = true;
@@ -305,14 +473,14 @@ void infrastructure_state::k8s_generate_user_event(const bool success)
 
 	// Gather config info to be included in the event description.
 	string config_info;
-	if (!m_k8s_ca_cert.empty()) {
-		config_info += ", k8s_ca_cert: " + m_k8s_ca_cert;
+	if (!m_k8s_ca_certificate.empty()) {
+		config_info += ", k8s_ca_cert: " + m_k8s_ca_certificate;
 	}
-	if (!m_k8s_client_cert.empty()) {
-		config_info += ", k8s_client_cert: " + m_k8s_client_cert;
+	if (!m_k8s_ssl_certificate.empty()) {
+		config_info += ", k8s_client_cert: " + m_k8s_ssl_certificate;
 	}
-	if (!m_k8s_client_key.empty()) {
-		config_info += ", k8s_client_key: " + m_k8s_client_key;
+	if (!m_k8s_ssl_key.empty()) {
+		config_info += ", k8s_client_key: " + m_k8s_ssl_key;
 	}
 
 	event_scope scope;
@@ -1867,6 +2035,31 @@ void infrastructure_state::find_our_k8s_node(const std::vector<string> *containe
 	{
 		glogf(sinsp_logger::SEV_DEBUG, "infra_state: Couldn't find our node");
 	}
+}
+
+const std::string& infrastructure_state::get_k8s_url()
+{
+	return m_k8s_url;
+}
+
+const std::string& infrastructure_state::get_k8s_ca_certificate()
+{
+	return m_k8s_ca_certificate;
+}
+
+const std::string& infrastructure_state::get_k8s_bt_auth_token()
+{
+	return m_k8s_bt_auth_token;
+}
+
+const std::string& infrastructure_state::get_k8s_ssl_certificate()
+{
+	return m_k8s_ssl_certificate;
+}
+
+const std::string& infrastructure_state::get_k8s_ssl_key()
+{
+	return m_k8s_ssl_key;
 }
 
 // Look for sysdig agent by pod name, container name or image, or daemonset

@@ -181,44 +181,6 @@ void sinsp_worker::init()
 	// kubernetes
 	//
 #ifndef CYGWING_AGENT
-	if(!m_configuration->m_k8s_api_server.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_api_server(m_configuration->m_k8s_api_server);
-	}
-
-	if(!m_configuration->m_k8s_ssl_cert_type.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_ssl_cert_type(m_configuration->m_k8s_ssl_cert_type);
-	}
-
-	if(!m_configuration->m_k8s_ssl_cert.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_ssl_cert(m_configuration->m_k8s_ssl_cert);
-	}
-
-	if(!m_configuration->m_k8s_ssl_key.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_ssl_key(m_configuration->m_k8s_ssl_key);
-	}
-
-	if(!m_configuration->m_k8s_ssl_key_password.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_ssl_key_password(m_configuration->m_k8s_ssl_key_password);
-	}
-
-	if(!m_configuration->m_k8s_ssl_ca_certificate.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_ssl_ca_certificate(m_configuration->m_k8s_ssl_ca_certificate);
-	}
-
-	if(!m_configuration->m_k8s_bt_auth_token.empty())
-	{
-		m_analyzer->get_configuration()->set_k8s_bt_auth_token(m_configuration->m_k8s_bt_auth_token);
-	}
-
-	m_analyzer->get_configuration()->set_k8s_ssl_verify_certificate(m_configuration->m_k8s_ssl_verify_certificate);
-
-	m_analyzer->get_configuration()->set_k8s_timeout_s(m_configuration->m_k8s_timeout_s);
 
 	m_analyzer->get_configuration()->set_k8s_delegated_nodes(m_configuration->m_k8s_delegated_nodes);
 
@@ -233,9 +195,6 @@ void sinsp_worker::init()
 		m_analyzer->set_k8s_cluster_update_frequency(m_configuration->m_k8s_cluster_update_frequency);
 	}
 	m_analyzer->get_configuration()->set_k8s_cluster_name(m_configuration->m_k8s_cluster_name);
-
-	m_analyzer->get_configuration()->set_k8s_include_types(m_configuration->m_k8s_include_types);
-	m_analyzer->get_configuration()->set_k8s_event_counts_log_time(m_configuration->m_k8s_event_counts_log_time_s);
 
 	//
 	// mesos
@@ -405,16 +364,6 @@ void sinsp_worker::init()
 	}
 	m_analyzer->set_custom_container_conf(move(m_configuration->m_custom_container));
 #endif
-
-	m_analyzer->get_configuration()->set_orch_queue_len(m_configuration->m_orch_queue_len);
-	m_analyzer->get_configuration()->set_orch_gc(m_configuration->m_orch_gc);
-	m_analyzer->get_configuration()->set_orch_inf_wait_time_s(m_configuration->m_orch_inf_wait_time_s);
-	m_analyzer->get_configuration()->set_orch_tick_interval_ms(m_configuration->m_orch_tick_interval_ms);
-	m_analyzer->get_configuration()->set_orch_low_ticks_needed(m_configuration->m_orch_low_ticks_needed);
-	m_analyzer->get_configuration()->set_orch_low_evt_threshold(m_configuration->m_orch_low_evt_threshold);
-	m_analyzer->get_configuration()->set_orch_filter_empty(m_configuration->m_orch_filter_empty);
-	m_analyzer->get_configuration()->set_orch_batch_msgs_queue_len(m_configuration->m_orch_batch_msgs_queue_len);
-	m_analyzer->get_configuration()->set_orch_batch_msgs_tick_interval_ms(m_configuration->m_orch_batch_msgs_tick_interval_ms);
 
 	m_analyzer->get_configuration()->set_procfs_scan_procs(m_configuration->m_procfs_scan_procs, m_configuration->m_procfs_scan_interval);
 

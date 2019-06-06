@@ -63,7 +63,7 @@ const data_type& type_config<data_type>::get() const
 template<typename data_type>
 data_type& type_config<data_type>::get()
 {
-        return m_data;
+	return m_data;
 }
 
 template<typename data_type>

@@ -181,7 +181,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 
 	m_tap = nullptr;
 #ifndef CYGWING_AGENT
-	m_infrastructure_state = new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, inspector, root_dir);
+	m_infrastructure_state = new infrastructure_state(inspector, root_dir);
 #endif
 
 	//
@@ -524,13 +524,8 @@ void sinsp_analyzer::on_capture_start()
 		}
 
 		// K8s url to use
-		string k8s_url = m_configuration->get_k8s_api_server();
-		if(!k8s_url.empty()) {
-			m_infrastructure_state->subscribe_to_k8s(k8s_url,
-								 m_configuration->get_k8s_ssl_ca_certificate(),
-								 m_configuration->get_k8s_ssl_cert(),
-								 m_configuration->get_k8s_ssl_key(),
-								 m_configuration->get_k8s_timeout_s());
+		if(!m_infrastructure_state->get_k8s_url().empty()) {
+			m_infrastructure_state->subscribe_to_k8s();
 			glogf("infrastructure state is now subscribed to k8s API server");
 		}
 	}
@@ -1300,15 +1295,15 @@ void sinsp_analyzer::init_k8s_ssl(const uri& url)
 {
 	if(url.is_secure() && !m_k8s_ssl)
 	{
-		const std::string& cert      = m_configuration->get_k8s_ssl_cert();
-		const std::string& key       = m_configuration->get_k8s_ssl_key();
-		const std::string& key_pwd   = m_configuration->get_k8s_ssl_key_password();
-		const std::string& ca_cert   = m_configuration->get_k8s_ssl_ca_certificate();
-		bool verify_cert             = m_configuration->get_k8s_ssl_verify_certificate();
-		const std::string& cert_type = m_configuration->get_k8s_ssl_cert_type();
+		const std::string& cert      = m_infrastructure_state->get_k8s_ssl_certificate();
+		const std::string& key       = m_infrastructure_state->get_k8s_ssl_key();
+		const std::string& key_pwd   = infrastructure_state::c_k8s_ssl_key_password->get();
+		const std::string& ca_cert   = m_infrastructure_state->get_k8s_ca_certificate();
+		bool verify_cert             = infrastructure_state::c_k8s_ssl_verify_certificate.get();
+		const std::string& cert_type = infrastructure_state::c_k8s_ssl_certificate_type.get();
 		m_k8s_ssl = std::make_shared<sinsp_ssl>(cert, key, key_pwd, ca_cert, verify_cert, cert_type);
 	}
-	const std::string& bt_auth_token = m_configuration->get_k8s_bt_auth_token();
+	const std::string& bt_auth_token = m_infrastructure_state->get_k8s_bt_auth_token();
 	if(!bt_auth_token.empty() && !m_k8s_bt)
 	{
 		m_k8s_bt = std::make_shared<sinsp_bearer_token>(bt_auth_token);
@@ -5075,7 +5070,7 @@ void sinsp_analyzer::collect_k8s(const std::string& k8s_api)
 
 void sinsp_analyzer::emit_k8s()
 {
-	std::string k8s_api = m_configuration->get_k8s_api_server();
+	std::string k8s_api = m_infrastructure_state->get_k8s_url();
 	if(k8s_api.empty())
 	{
 		return;
@@ -5397,7 +5392,7 @@ void sinsp_analyzer::log_timed_error(time_t& last_attempt, const std::string& er
 
 bool sinsp_analyzer::check_k8s_delegation()
 {
-	const std::string& k8s_uri = m_configuration->get_k8s_api_server();
+	const std::string& k8s_uri = m_infrastructure_state->get_k8s_url();
 	int delegated_nodes = m_configuration->get_k8s_delegated_nodes();
 
 	if(m_use_new_k8s)

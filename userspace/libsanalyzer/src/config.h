@@ -94,34 +94,12 @@ public:
 	bool get_use_host_statsd() const;
 	void set_use_host_statsd(bool value);
 #ifndef CYGWING_AGENT
-	void set_k8s_api_server(const string& k8s_api);
-	const string & get_k8s_api_server() const;
-	void set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type);
-	const string & get_k8s_ssl_cert_type() const;
-	void set_k8s_ssl_cert(const string& k8s_ssl_cert);
-	const string & get_k8s_ssl_cert() const;
-	void set_k8s_ssl_key(const string& k8s_ssl_key);
-	const string & get_k8s_ssl_key() const;
-	void set_k8s_ssl_key_password(const string& k8s_ssl_key_password);
-	const string & get_k8s_ssl_key_password() const;
-	void set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert);
-	const string & get_k8s_ssl_ca_certificate() const;
-	void set_k8s_ssl_verify_certificate(bool k8s_ssl_ca_cert);
-	bool get_k8s_ssl_verify_certificate() const;
-	void set_k8s_timeout_s(uint64_t k8s_timeout_s);
-	uint64_t get_k8s_timeout_s() const;
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
-	void set_k8s_bt_auth_token(const string& k8s_bt_auth_token);
-	const string & get_k8s_bt_auth_token() const;
 	void set_k8s_extensions(const std::set<std::string>& k8s_extensions);
 	const std::set<std::string>& get_k8s_extensions() const;
 	void set_k8s_cluster_name(const std::string &k8s_cluster_name);
 	const std::string& get_k8s_cluster_name() const;
-	void set_k8s_include_types(const vector<string> &types);
-	const vector<string> & get_k8s_include_types() const;
-	void set_k8s_event_counts_log_time(uint32_t log_time);
-	uint32_t get_k8s_event_counts_log_time() const;
 	string get_mesos_state_uri() const;
 	void set_mesos_state_uri(const string & uri);
 	string get_mesos_state_original_uri() const;
@@ -305,20 +283,9 @@ private:
 	bool m_statsite_check_format;
 
 #ifndef CYGWING_AGENT	
-	string m_k8s_api;
-	string m_k8s_ssl_cert_type;
-	string m_k8s_ssl_cert;
-	string m_k8s_ssl_key;
-	string m_k8s_ssl_key_password;
-	string m_k8s_ssl_ca_certificate;
-	bool m_k8s_ssl_verify_certificate;
-	uint64_t m_k8s_timeout_s;
-	string m_k8s_bt_auth_token;
 	int m_k8s_delegated_nodes;
 	std::set<std::string> m_k8s_extensions;
 	std::string m_k8s_cluster_name;
-	vector<string> m_k8s_include_types;
-	uint32_t m_k8s_event_counts_log_time;
 
 	string m_mesos_state_uri;
 	string m_mesos_state_original_uri;
@@ -375,14 +342,6 @@ private:
 
 	pair<long, unsigned> m_tracepoint_hits_threshold;
 	pair<double, unsigned> m_cpu_max_sr_threshold;
-
-	uint32_t m_orch_queue_len;
-	int32_t m_orch_gc;
-	uint32_t m_orch_inf_wait_time_s;
-	uint32_t m_orch_tick_interval_ms;
-	uint32_t m_orch_low_ticks_needed;
-	uint32_t m_orch_low_evt_threshold;
-	bool m_orch_filter_empty;
 
 	uint32_t m_procfs_scan_delay_ms;
 	uint32_t m_procfs_scan_interval_ms;

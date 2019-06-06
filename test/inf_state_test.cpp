@@ -10,7 +10,7 @@ public:
 	inf_state_test()
 	{
 		m_sinsp.reset(new sinsp());
-		m_infra_state.reset(new infrastructure_state(ORCHESTRATOR_EVENTS_POLL_INTERVAL, m_sinsp.get(), "/opt/draios", true));
+		m_infra_state.reset(new infrastructure_state(m_sinsp.get(), "/opt/draios", true));
 	}
        	
 protected:

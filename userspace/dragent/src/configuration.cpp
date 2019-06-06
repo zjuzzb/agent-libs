@@ -361,24 +361,6 @@ Message::Priority dragent_configuration::string_to_priority(const string& priost
 	}
 }
 
-void dragent_configuration::normalize_path(const std::string& file_path, std::string& normalized_path)
-{
-	normalized_path.clear();
-	if(file_path.size())
-	{
-		if(file_path[0] == '/')
-		{
-			normalized_path = file_path;
-		}
-		else
-		{
-			Path path(file_path);
-			path.makeAbsolute(c_root_dir.get());
-			normalized_path = path.toString();
-		}
-	}
-}
-
 void dragent_configuration::add_percentiles()
 {
 	// TODO?
@@ -468,65 +450,6 @@ void dragent_configuration::add_event_filter(user_event_filter_t::ptr_t& flt, co
 	}
 }
 
-void dragent_configuration::configure_k8s_from_env()
-{
-	static const string k8s_ca_crt = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt";
-	static const string k8s_bearer_token_file_name = "/var/run/secrets/kubernetes.io/serviceaccount/token";
-	if(m_k8s_api_server.empty())
-	{
-		// K8s API server not set by user, try to auto-discover.
-		// This will work only when agent runs in a K8s pod.
-		char* sh = getenv("KUBERNETES_SERVICE_HOST");
-		if(sh && strlen(sh))
-		{
-			char* sp = getenv("KUBERNETES_SERVICE_PORT_HTTPS");
-			if(sp && strlen(sp)) // secure
-			{
-				m_k8s_api_server = "https://";
-				m_k8s_api_server.append(sh).append(1, ':').append(sp);
-				if(m_k8s_bt_auth_token.empty())
-				{
-					if(File(k8s_bearer_token_file_name).exists())
-					{
-						m_k8s_bt_auth_token = k8s_bearer_token_file_name;
-					}
-					else
-					{
-						m_k8s_logs.insert({sinsp_logger::SEV_WARNING, "Bearer token not found at default location (" + k8s_bearer_token_file_name +
-									 "), authentication may not work. "
-									 "If needed, please specify the location using k8s_bt_auth_token config entry."});
-					}
-				}
-				if(m_k8s_ssl_verify_certificate && m_k8s_ssl_ca_certificate.empty())
-				{
-					if(File(k8s_ca_crt).exists())
-					{
-						m_k8s_ssl_ca_certificate = k8s_ca_crt;
-					}
-					else
-					{
-						m_k8s_logs.insert({sinsp_logger::SEV_WARNING, "CA certificate verification configured, but CA certificate "
-									 "not specified nor found at default location (" + k8s_ca_crt +
-									 "), server authentication will not work. If server authentication "
-									 "is desired, please specify the CA certificate file location using "
-									 "k8s_ca_certificate config entry."});
-					}
-				}
-			}
-			else
-			{
-				sp = getenv("KUBERNETES_SERVICE_PORT");
-				if(sp && strlen(sp))
-				{
-					m_k8s_api_server = "http://";
-					m_k8s_api_server.append(sh).append(1, ':').append(sp);
-				}
-			}
-		}
-	}
-}
-
-
 string dragent_configuration::get_install_prefix(const Application* app)
 {
 #ifdef CYGWING_AGENT
@@ -554,7 +477,6 @@ string dragent_configuration::get_install_prefix(const Application* app)
 	return "";
 #endif
 }
-
 
 void dragent_configuration::init(Application* app, bool use_installed_dragent_yaml)
 {
@@ -1008,16 +930,6 @@ void dragent_configuration::init()
 
 #ifndef CYGWING_AGENT
 	// K8s
-	m_k8s_api_server = m_config->get_scalar<string>("k8s_uri", "");
-	m_k8s_autodetect = m_config->get_scalar<bool>("k8s_autodetect", true);
-	m_k8s_ssl_cert_type = m_config->get_scalar<string>("k8s_ssl_cert_type", "PEM");
-	normalize_path(m_config->get_scalar<string>("k8s_ssl_cert", ""), m_k8s_ssl_cert);
-	normalize_path(m_config->get_scalar<string>("k8s_ssl_key", ""), m_k8s_ssl_key);
-	m_k8s_ssl_key_password = m_config->get_scalar<string>("k8s_ssl_key_password", "");
-	normalize_path(m_config->get_scalar<string>("k8s_ca_certificate", ""), m_k8s_ssl_ca_certificate);
-	m_k8s_ssl_verify_certificate = m_config->get_scalar<bool>("k8s_ssl_verify_certificate", false);
-	m_k8s_timeout_s = m_config->get_scalar<uint64_t>("k8s_timeout_s", 60);
-	normalize_path(m_config->get_scalar<string>("k8s_bt_auth_token", ""), m_k8s_bt_auth_token);
 	// new_k8s takes precedence over dev_new_k8s but still turn it on
 	// if all they specify is "dev_new_k8s: true"
 	m_use_new_k8s = m_config->get_scalar<bool>("dev_new_k8s", false);
@@ -1025,10 +937,6 @@ void dragent_configuration::init()
 	m_k8s_cluster_name = m_config->get_scalar<string>("k8s_cluster_name", "");
 	m_k8s_local_update_frequency = m_config->get_scalar<uint16_t>("k8s_local_update_frequency", 1);
 	m_k8s_cluster_update_frequency = m_config->get_scalar<uint16_t>("k8s_cluster_update_frequency", 1);
-	if (m_k8s_api_server.empty() && m_k8s_autodetect)
-	{
-		configure_k8s_from_env();
-	}
 	// >0 to set the number of delegated nodes
 	// 0 to disable delegation
 	// <0 to force delegation
@@ -1037,8 +945,6 @@ void dragent_configuration::init()
 	auto k8s_extensions_v = m_config->get_merged_sequence<k8s_ext_list_t::value_type>("k8s_extensions");
 	m_k8s_extensions = k8s_ext_list_t(k8s_extensions_v.begin(), k8s_extensions_v.end());
 
-	m_k8s_include_types = m_config->get_scalar<vector<string>>("k8s_extra_resources", "include", {});
-	m_k8s_event_counts_log_time_s = m_config->get_scalar<uint32_t>("k8s_event_counts_log_time", 0);
 	// End K8s
 
 	// Mesos
@@ -1205,16 +1111,7 @@ void dragent_configuration::init()
 		m_monitor_files.insert(file);
 	}
 
-	m_orch_queue_len = m_config->get_scalar<uint32_t>("orch_queue_len", 10000);
-	m_orch_gc = m_config->get_scalar<int32_t>("orch_gc", 10);
-	m_orch_inf_wait_time_s = m_config->get_scalar<uint32_t>("orch_inf_wait_time_s", 5);
-	m_orch_tick_interval_ms = m_config->get_scalar<uint32_t>("orch_tick_interval_ms", 100);
-	m_orch_low_ticks_needed = m_config->get_scalar<uint32_t>("orch_low_ticks_needed", 10);
-	m_orch_low_evt_threshold = m_config->get_scalar<uint32_t>("orch_low_evt_threshold", 50);
-	m_orch_filter_empty = m_config->get_scalar<bool>("orch_filter_empty", true);
 	// options related to batching of cointerface msgs
-	m_orch_batch_msgs_queue_len = m_config->get_scalar<uint32_t>("orch_batch_msgs_queue_len", 100);
-	m_orch_batch_msgs_tick_interval_ms = m_config->get_scalar<uint32_t>("orch_batch_msgs_tick_interval_ms", 100);
 
 	m_max_n_proc_lookups = m_config->get_scalar<int32_t>("max_n_proc_lookups", 1);
 	m_max_n_proc_socket_lookups = m_config->get_scalar<int32_t>("max_n_proc_socket_lookups", 1);
@@ -1464,49 +1361,9 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("python binary: " + m_python_binary);
 	LOG_INFO("known_ports: " + NumberFormatter::format(m_known_server_ports.count()));
 	LOG_INFO("Kernel supports containers: " + bool_as_text(m_system_supports_containers));
-	for(const auto& log_entry : m_k8s_logs)
-	{
-		g_log->log(log_entry.second, log_entry.first);
-	}
-	LOG_INFO("K8S autodetect enabled: " + bool_as_text(m_k8s_autodetect));
-	LOG_INFO("K8S connection timeout [sec]: " + std::to_string(m_k8s_timeout_s));
-
-	if (!m_k8s_api_server.empty())
-	{
-		LOG_INFO("K8S API server: " + uri(m_k8s_api_server).to_string(false));
-	}
 	if (m_k8s_delegated_nodes)
 	{
 		LOG_INFO("K8S delegated nodes: " + std::to_string(m_k8s_delegated_nodes));
-	}
-	if (!m_k8s_ssl_cert_type.empty())
-	{
-		LOG_INFO("K8S certificate type: " + m_k8s_ssl_cert_type);
-	}
-	if (!m_k8s_ssl_cert.empty())
-	{
-		LOG_INFO("K8S certificate: " + m_k8s_ssl_cert);
-	}
-	if (!m_k8s_ssl_key.empty())
-	{
-		LOG_INFO("K8S SSL key: " + m_k8s_ssl_key);
-	}
-	if (!m_k8s_ssl_key_password.empty())
-	{
-		LOG_INFO("K8S key password specified.");
-	}
-	else
-	{
-		LOG_INFO("K8S key password not specified.");
-	}
-	if (!m_k8s_ssl_ca_certificate.empty())
-	{
-		LOG_INFO("K8S CA certificate: " + m_k8s_ssl_ca_certificate);
-	}
-	LOG_INFO("K8S certificate verification enabled: " + bool_as_text(m_k8s_ssl_verify_certificate));
-	if (!m_k8s_bt_auth_token.empty())
-	{
-		LOG_INFO("K8S bearer token authorization: " + m_k8s_bt_auth_token);
 	}
 	if(!m_k8s_extensions.empty())
 	{
@@ -1760,16 +1617,6 @@ void dragent_configuration::print_configuration() const
 	for (auto const& path : m_monitor_files) {
 		LOG_INFO("   " + path);
 	}
-
-	LOG_INFO("Orch events queue len: " + to_string(m_orch_queue_len));
-	LOG_INFO("Orch events GC percent: " + to_string(m_orch_gc));
-	LOG_INFO("Orch events informer wait time (s): " + to_string(m_orch_inf_wait_time_s));
-	LOG_INFO("Orch events tick interval (ms): " + to_string(m_orch_tick_interval_ms));
-	LOG_INFO("Orch events low ticks needed: " + to_string(m_orch_low_ticks_needed));
-	LOG_INFO("Orch events low threshold: " + to_string(m_orch_low_evt_threshold));
-	LOG_INFO("Orch events filter empty resources: " + bool_as_text(m_orch_filter_empty));
-	LOG_INFO("Orch events batch messages queue len: " + to_string(m_orch_batch_msgs_queue_len));
-	LOG_INFO("Orch events batch messages tick interval (ms): " + to_string(m_orch_batch_msgs_tick_interval_ms));
 
 	LOG_INFO("Process lookups config: " + std::to_string(m_max_n_proc_lookups) + ", sockets: " + to_string(m_max_n_proc_socket_lookups));
 

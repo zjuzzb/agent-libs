@@ -119,8 +119,8 @@ public:
 	/** Stop this configuration value from showing up in logs */
 	void hidden(bool value) { m_hidden = value; }
 	
-	 /** Returns whether the value is hidden from logs */
-	 bool hidden() const { return m_hidden; }
+	/** Returns whether the value is hidden from logs */
+	bool hidden() const { return m_hidden; }
 
 	/** Called after all configuration params have been init'd */
 	virtual void post_init() = 0;

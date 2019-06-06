@@ -409,86 +409,6 @@ void sinsp_configuration::set_use_host_statsd(const bool value)
 }
 
 #ifndef CYGWING_AGENT
-void sinsp_configuration::set_k8s_api_server(const string& k8s_api)
-{
-	m_k8s_api = k8s_api;
-}
-
-const string & sinsp_configuration::get_k8s_api_server() const
-{
-	return m_k8s_api;
-}
-
-void sinsp_configuration::set_k8s_ssl_cert_type(const string& k8s_ssl_cert_type)
-{
-	m_k8s_ssl_cert_type = k8s_ssl_cert_type;
-}
-
-const string & sinsp_configuration::get_k8s_ssl_cert_type() const
-{
-	return m_k8s_ssl_cert_type;
-}
-
-void sinsp_configuration::set_k8s_ssl_cert(const string& k8s_ssl_cert)
-{
-	m_k8s_ssl_cert = k8s_ssl_cert;
-}
-
-const string & sinsp_configuration::get_k8s_ssl_cert() const
-{
-	return m_k8s_ssl_cert;
-}
-
-void sinsp_configuration::set_k8s_ssl_key(const string& k8s_ssl_key)
-{
-	m_k8s_ssl_key = k8s_ssl_key;
-}
-
-const string & sinsp_configuration::get_k8s_ssl_key() const
-{
-	return m_k8s_ssl_key;
-}
-
-void sinsp_configuration::set_k8s_ssl_key_password(const string& k8s_ssl_key_password)
-{
-	m_k8s_ssl_key_password = k8s_ssl_key_password;
-}
-
-const string & sinsp_configuration::get_k8s_ssl_key_password() const
-{
-	return m_k8s_ssl_key_password;
-}
-
-void sinsp_configuration::set_k8s_ssl_ca_certificate(const string& k8s_ssl_ca_cert)
-{
-	m_k8s_ssl_ca_certificate = k8s_ssl_ca_cert;
-}
-
-const string & sinsp_configuration::get_k8s_ssl_ca_certificate() const
-{
-	return m_k8s_ssl_ca_certificate;
-}
-
-void sinsp_configuration::set_k8s_ssl_verify_certificate(bool k8s_ssl_verify_cert)
-{
-	m_k8s_ssl_verify_certificate = k8s_ssl_verify_cert;
-}
-
-bool sinsp_configuration::get_k8s_ssl_verify_certificate() const
-{
-	return m_k8s_ssl_verify_certificate;
-}
-
-void sinsp_configuration::set_k8s_timeout_s(uint64_t k8s_timeout_s)
-{
-	m_k8s_timeout_s = k8s_timeout_s;
-}
-
-uint64_t sinsp_configuration::get_k8s_timeout_s() const
-{
-	return m_k8s_timeout_s;
-}
-
 void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 {
 	m_k8s_delegated_nodes = k8s_delegated_nodes;
@@ -497,16 +417,6 @@ void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 int sinsp_configuration::get_k8s_delegated_nodes() const
 {
 	return m_k8s_delegated_nodes;
-}
-
-void sinsp_configuration::set_k8s_bt_auth_token(const string& k8s_bt_auth_token)
-{
-	m_k8s_bt_auth_token = k8s_bt_auth_token;
-}
-
-const string & sinsp_configuration::get_k8s_bt_auth_token() const
-{
-	return m_k8s_bt_auth_token;
 }
 
 void sinsp_configuration::set_k8s_extensions(const std::set<std::string>& k8s_extensions)
@@ -527,26 +437,6 @@ void sinsp_configuration::set_k8s_cluster_name(const std::string &k8s_cluster_na
 const std::string& sinsp_configuration::get_k8s_cluster_name() const
 {
 	return m_k8s_cluster_name;
-}
-
-void sinsp_configuration::set_k8s_include_types(const vector<string> &types)
-{
-	m_k8s_include_types = types;
-}
-
-const vector<string>& sinsp_configuration::get_k8s_include_types() const
-{
-	return m_k8s_include_types;
-}
-
-void sinsp_configuration::set_k8s_event_counts_log_time(uint32_t log_time)
-{
-	m_k8s_event_counts_log_time = log_time;
-}
-
-uint32_t sinsp_configuration::get_k8s_event_counts_log_time() const
-{
-	return m_k8s_event_counts_log_time;
 }
 
 string sinsp_configuration::get_mesos_uri(const std::string& sought_url) const
@@ -1044,69 +934,6 @@ void sinsp_configuration::set_cpu_max_sr_threshold(double threshold, unsigned nt
 	m_cpu_max_sr_threshold = make_pair(threshold, ntimes);
 }
 
-uint32_t sinsp_configuration::get_orch_queue_len() const
-{
-	return m_orch_queue_len;
-}
-void sinsp_configuration::set_orch_queue_len(uint32_t queue_len)
-{
-	m_orch_queue_len = queue_len;
-}
-
-int32_t sinsp_configuration::get_orch_gc() const
-{
-	return m_orch_gc;
-}
-void sinsp_configuration::set_orch_gc(int32_t gc)
-{
-	m_orch_gc = gc;
-}
-
-uint32_t sinsp_configuration::get_orch_inf_wait_time_s() const
-{
-	return m_orch_inf_wait_time_s;
-}
-void sinsp_configuration::set_orch_inf_wait_time_s(uint32_t inf_wait_time_s)
-{
-	m_orch_inf_wait_time_s = inf_wait_time_s;
-}
-
-uint32_t sinsp_configuration::get_orch_tick_interval_ms() const
-{
-	return m_orch_tick_interval_ms;
-}
-void sinsp_configuration::set_orch_tick_interval_ms(uint32_t tick_interval_ms)
-{
-	m_orch_tick_interval_ms = tick_interval_ms;
-}
-
-uint32_t sinsp_configuration::get_orch_low_ticks_needed() const
-{
-	return m_orch_low_ticks_needed;
-}
-void sinsp_configuration::set_orch_low_ticks_needed(uint32_t low_ticks_needed)
-{
-	m_orch_low_ticks_needed = low_ticks_needed;
-}
-
-uint32_t sinsp_configuration::get_orch_low_evt_threshold() const
-{
-	return m_orch_low_evt_threshold;
-}
-void sinsp_configuration::set_orch_low_evt_threshold(uint32_t low_evt_threshold)
-{
-	m_orch_low_evt_threshold = low_evt_threshold;
-}
-
-bool sinsp_configuration::get_orch_filter_empty() const
-{
-	return m_orch_filter_empty;
-}
-void sinsp_configuration::set_orch_filter_empty(bool filter_empty)
-{
-	m_orch_filter_empty = filter_empty;
-}
-
 void sinsp_configuration::set_procfs_scan_delay_ms(uint32_t scan_delay_ms)
 {
 	m_procfs_scan_delay_ms = scan_delay_ms;
@@ -1135,24 +962,6 @@ void sinsp_configuration::set_procfs_scan_mem_interval_ms(uint32_t scan_interval
 uint32_t sinsp_configuration::get_procfs_scan_mem_interval_ms() const
 {
 	return m_procfs_scan_mem_interval_ms;
-}
-
-uint32_t sinsp_configuration::get_orch_batch_msgs_queue_len() const
-{
-	return m_orch_batch_msgs_queue_len;
-}
-void sinsp_configuration::set_orch_batch_msgs_queue_len(uint32_t batch_queue_len)
-{
-	m_orch_batch_msgs_queue_len = batch_queue_len;
-}
-
-uint32_t sinsp_configuration::get_orch_batch_msgs_tick_interval_ms() const
-{
-	return m_orch_batch_msgs_tick_interval_ms;
-}
-void sinsp_configuration::set_orch_batch_msgs_tick_interval_ms(uint32_t batch_tick_interval_ms)
-{
-	m_orch_batch_msgs_tick_interval_ms = batch_tick_interval_ms;
 }
 
 void sinsp_configuration::set_procfs_scan_procs(const set<string> &procs, uint32_t interval)

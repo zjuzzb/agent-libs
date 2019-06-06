@@ -13,6 +13,7 @@
 #include "coclient.h"
 #include "k8s_limits.h"
 #include "sdc_internal.pb.h"
+#include "type_config.h"
 
 typedef google::protobuf::RepeatedPtrField<draiosproto::scope_predicate> scope_predicates;
 typedef google::protobuf::RepeatedPtrField<draiosproto::container_group> container_groups;
@@ -27,7 +28,9 @@ public:
 	using policy_cache_t = std::unordered_map<std::string, std::unordered_map<size_t, bool>>;
 
 	// Pass a 4th optional argument to turn on m_k8s_subscribed for unit tests. Need to refactor.
-	infrastructure_state(uint64_t refresh_interval, sinsp *inspector, std::string install_prefix, bool force_k8s_subscribed = false);
+	infrastructure_state(sinsp *inspector,
+			     const std::string& rootdir,
+			     bool force_k8s_subscribed = false);
 	using reg_id_t = std::string;
 
 	~infrastructure_state();
@@ -37,9 +40,7 @@ public:
 
 	static std::string as_string(const scope_predicates &predicates);
 
-	void subscribe_to_k8s(string url, string ca_cert,
-			      string client_cert, string client_key,
-			      uint64_t timeout_s);
+	void subscribe_to_k8s();
 
 	bool subscribed();
 
@@ -108,7 +109,15 @@ public:
 	// Find our k8s node from our current container, any of the given container ids
 	// or from IP address, in that order, if not found already
 	void find_our_k8s_node(const std::vector<string> *container_ids);
+
+	const std::string& get_k8s_url();
+	const std::string& get_k8s_ca_certificate();
+	const std::string& get_k8s_bt_auth_token();
+	const std::string& get_k8s_ssl_certificate();
+	const std::string& get_k8s_ssl_key();
 private:
+
+	void configure_k8s_environment();
 
 	std::unordered_map<std::string, std::string> host_children {
 		{"k8s_node", "kubernetes.node.name"}
@@ -182,10 +191,6 @@ private:
 
 	coclient m_k8s_coclient;
 	coclient::response_cb_t m_k8s_callback;
-	string m_k8s_url;
-	string m_k8s_ca_cert;
-	string m_k8s_client_cert;
-	string m_k8s_client_key;
 	bool m_k8s_subscribed;   // True if we're supposed to connect to k8s
 	bool m_k8s_connected;    // True if we have an active RPC connection
 	k8s_limits m_k8s_limits;
@@ -206,7 +211,53 @@ private:
 	std::unordered_map<uid_t, std::map<string, rate_metric_state_t>> m_rate_metric_state;
 	std::set<std::string> m_annotation_filter;
 
+	std::string m_root_dir;
+
+	// the config value, c_k8s_url, only represents what we get out of the
+	// config. We do some post processing to get the value we actually use and store
+	// it here.
+	std::string m_k8s_url;
+	std::string m_k8s_bt_auth_token;
+	std::string m_k8s_ca_certificate;
+	std::string m_k8s_ssl_certificate;
+	std::string m_k8s_ssl_key;
+
+private:
+	/**
+	 * adjusts path for changes in configured root dir
+	 */
+	std::string normalize_path(const std::string& path) const;
+
+public: // configs
+	static type_config<uint32_t> c_orchestrator_queue_len;
+	static type_config<int32_t> c_orchestrator_gc;
+	static type_config<uint32_t> c_orchestrator_informer_wait_time_s;
+	static type_config<uint32_t> c_orchestrator_tick_interval_ms;
+	static type_config<uint32_t> c_orchestrator_low_ticks_needed;
+	static type_config<uint32_t> c_orchestrator_low_event_threshold;
+	static type_config<bool> c_orchestrator_filter_empty;
+	static type_config<uint32_t> c_orchestrator_batch_messages_queue_length;
+	static type_config<uint32_t> c_orchestrator_batch_messages_tick_interval_ms;
+	static type_config<bool> c_k8s_ssl_verify_certificate;
+	static type_config<std::vector<std::string>> c_k8s_include_types;
+	static type_config<uint32_t> c_k8s_event_counts_log_time;
+	static type_config<uint64_t> c_k8s_timeout_s;
+	static type_config<std::string>::ptr c_k8s_ssl_key_password;
+	static type_config<std::string> c_k8s_ssl_certificate_type;
+	static type_config<bool> c_k8s_autodetect;
+	static type_config<uint64_t> c_k8s_refresh_interval;
+
+private: // configs which have non-static fields that we actually use. You probably don't
+	 // want these. In almost all cases, you'll probably want to use the normalized
+	 // member variables.
+	static type_config<std::string> c_k8s_url;
+	static type_config<std::string> c_k8s_bt_auth_token;
+	static type_config<std::string> c_k8s_ca_certificate;
+	static type_config<std::string> c_k8s_ssl_certificate;
+	static type_config<std::string> c_k8s_ssl_key;
+
 	friend class new_k8s_delegator;
+	friend class test_helper;
 };
 
 class new_k8s_delegator
