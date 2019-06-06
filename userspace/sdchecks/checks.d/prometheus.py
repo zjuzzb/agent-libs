@@ -30,6 +30,12 @@ class Prometheus(AgentCheck):
             logging.info('[%s]: %s' % (repr(k), repr(keyvals[k])))
         logging.info('======== %s ========' % (desc))
 
+    def __check_metric_limits(self, max_metrics, num_metrics, pid, url)
+        if num_metrics >= max_metrics:
+            logging.info('Prometheus "max_metrics_per_process" limit(%d) exceeded for process:%d with url:%s ' % (max_metrics, pid, url))
+            return True
+        return False
+
     def check(self, instance):
         if 'url' not in instance:
             raise Exception('Prometheus instance missing "url" value.')
@@ -58,6 +64,7 @@ class Prometheus(AgentCheck):
             "auth_key_path": instance.get('auth_key_path', False)
         }
         conf_tags = instance.get('tags', [])
+        pid = instance.get('pid',0)
 
         metrics = self.get_prometheus_metrics(query_url, timeout, ssl_verify, auth, "prometheus", conf_tags)
         num = 0
@@ -65,14 +72,14 @@ class Prometheus(AgentCheck):
             for family in metrics:
                 parse_sum = None
                 parse_count = None
-                if max_metrics and num >= max_metrics:
+                if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
                     break
 
                 name = family.name
                 hists = dict()
 
                 for sample in family.samples:
-                    if max_metrics and num >= max_metrics:
+                    if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
                         break
                     (sname, stags, value) = sample
 
@@ -85,7 +92,7 @@ class Prometheus(AgentCheck):
 
                         self.prometheus_raw(family.type, sname, value, rawtags)
                         num += 1
-                        if max_metrics and num >= max_metrics:
+                        if max_metrics and self.__check_metric_limits(max_metrics, num, pid, query_url):
                             break
 
                     if not ingest_calculated:

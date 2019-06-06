@@ -507,6 +507,9 @@ def prepare_prom_check(pc, port):
         newconf["ingest_calculated"] = pc["ingest_calculated"]
     if options.get("ssl_verify") != None:
         newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
+    # pack pid into newconf to use with logging in prometheus.py
+    if pc.get("pid") != None:
+        newconf["pid"] = pc["pid"]
     tocopy = ("username", "password",
         "auth_token_path", "auth_cert_path", "auth_key_path")
     for key in tocopy:
