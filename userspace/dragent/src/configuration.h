@@ -87,8 +87,22 @@ private:
 };
 
 enum class dragent_mode_t {
+	/**
+	 * Include all data, including system call data, in metrics
+	 * protobuf.
+	 */
 	STANDARD,
+	/**
+	 * Do not use system call data. This will get process data from
+	 * /proc instead of from system calls.
+	 */
 	NODRIVER,
+	/**
+	 * This tells the driver to only process the subset of syscalls.
+	 * This is useful for customers that are mostly interested in
+	 * prometheus or statsd and don't want the processor overhead of
+	 * syscall handling.
+	 */
 	SIMPLEDRIVER
 };
 

@@ -41,6 +41,10 @@ void event_capture::capture()
 
 	m_before_open(m_inspector);
 
+	ASSERT_FALSE(m_inspector->is_capture());
+	ASSERT_FALSE(m_inspector->is_live());
+	ASSERT_FALSE(m_inspector->is_nodriver());
+
 	try
 	{
 		if(m_mode == SCAP_MODE_NODRIVER)
