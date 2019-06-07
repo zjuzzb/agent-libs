@@ -716,15 +716,17 @@ void sinsp_worker::run()
 			}
 		}
 
+		const bool should_dump = handle_signal_dump();
+
 		//
 		// Update the time
 		//
 		ts = ev->get_ts();
 		m_last_loop_ns = ts;
 
-		m_job_requests_interval.run([this]()
+		m_job_requests_interval.run([this, should_dump]()
 		{
-			process_job_requests();
+			process_job_requests(should_dump);
 		}, ts);
 
 		check_autodrop(ts);
@@ -770,6 +772,20 @@ void sinsp_worker::run()
 	}
 
 	g_log->information("sinsp_worker: Terminating");
+}
+
+bool sinsp_worker::handle_signal_dump()
+{
+	if(!dragent_configuration::m_signal_dump)
+	{
+		return false;
+	}
+
+	dragent_configuration::m_signal_dump = false;
+
+	m_analyzer->dump_infrastructure_state_on_next_flush();
+
+	return true;
 }
 
 void sinsp_worker::queue_job_request(std::shared_ptr<capture_job_handler::dump_job_request> job_request)
@@ -893,13 +909,12 @@ void sinsp_worker::do_grpc_tracing()
 // handler, adding a sinsp_dumper object associated with our
 // inspector.
 
-void sinsp_worker::process_job_requests()
+void sinsp_worker::process_job_requests(bool should_dump)
 {
 	string errstr;
 
-	if(dragent_configuration::m_signal_dump)
+	if(should_dump)
 	{
-		dragent_configuration::m_signal_dump = false;
 		g_log->information("Received SIGUSR1, starting dump");
 
 		std::shared_ptr<capture_job_handler::dump_job_request> job_request

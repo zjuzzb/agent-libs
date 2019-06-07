@@ -116,8 +116,9 @@ public:
 private:
 	void init();
 	void do_grpc_tracing();
-	void process_job_requests();
+	void process_job_requests(bool should_dump);
 	void check_autodrop(uint64_t ts_ns);
+	bool handle_signal_dump();
 
 	void get_internal_metrics();
 

@@ -24,6 +24,7 @@
 #ifndef _WIN32
 #include <google/protobuf/io/gzip_stream.h>
 #endif
+#include <google/protobuf/util/json_util.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 #include <google/protobuf/io/zero_copy_stream_impl_lite.h>
 using namespace google::protobuf::io;
@@ -1546,6 +1547,7 @@ sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
 		m_metrics->mutable_global_orchestrator_state()->set_cluster_name(cluster_name);
 		// if this agent is a delegated node, build & send the complete orchestrator state too (with metrics this time)
 		m_infrastructure_state->get_state(m_metrics->mutable_global_orchestrator_state()->mutable_groups(), m_prev_flush_time_ns);
+		check_dump_infrastructure_state(*m_metrics->mutable_global_orchestrator_state());
 	}
 #endif
 }
@@ -5643,6 +5645,43 @@ private:
 	Extractor m_extractor;
 };
 
+void sinsp_analyzer::check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state)
+{
+	if(!m_dump_infrastructure_state_on_next_flush) {
+		return;
+	}
+
+ 	m_dump_infrastructure_state_on_next_flush = false;
+
+ 	g_logger.log("Dumping infrastructure state... STARTED", sinsp_logger::SEV_INFO);
+
+ 	time_t rawtime;
+	struct tm * timeinfo;
+	char time_buffer[80];
+
+ 	// Build the file name
+	time (&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(time_buffer, sizeof(time_buffer), "%Y-%d-%m_%H-%M-%S", timeinfo);
+
+	std::ostringstream oss;
+	oss << m_configuration->get_log_dir() + "/";
+	oss << time_buffer;
+	oss << "_orchestrator_state_t.json";
+	const std::string fileName = oss.str();
+
+
+ 	// Dump the file
+	std::ofstream out(fileName);
+
+ 	std::string jsonString;
+	google::protobuf::util::MessageToJsonString(state, &jsonString);
+	out << jsonString;
+
+ 	out.close();
+
+ 	g_logger.log("Dumping infrastructure state... COMPLETE", sinsp_logger::SEV_INFO);
+}
 
 vector<string>
 sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& progtable_by_container,
@@ -6897,6 +6936,12 @@ void sinsp_analyzer::enable_audit_tap(bool emit_local_connections)
 	                      m_configuration->get_machine_id(),
 	                      emit_local_connections);
 	m_threadtable_listener->set_audit_tap(m_tap);
+}
+
+void sinsp_analyzer::dump_infrastructure_state_on_next_flush()
+{
+	g_logger.log("Will dump infrastructure state on next flush", sinsp_logger::SEV_INFO);
+	m_dump_infrastructure_state_on_next_flush = true;
 }
 
 void sinsp_analyzer::flush_drain() const

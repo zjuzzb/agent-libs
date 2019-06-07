@@ -606,6 +606,11 @@ public:
 		return m_tap != nullptr;
 	}
 
+	/**
+	 * Dump the infrastructure state to a file in the log directory.
+	 */
+	void dump_infrastructure_state_on_next_flush();
+
 	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
 
 	void incr_num_container_healthcheck_command_lines() { m_num_container_healthcheck_command_lines++; }
@@ -925,6 +930,8 @@ VISIBILITY_PRIVATE
 	void gather_k8s_infrastructure_state(uint32_t flushflags,
 					     vector<string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
+
+	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state);
 
 	// deprecated in favor of smart container filtering
 	vector<string> emit_containers_deprecated(const analyzer_emitter::progtable_by_container_t& active_containers,
@@ -1295,6 +1302,13 @@ VISIBILITY_PRIVATE
 	 * determine how often k8s metadata should be added.
 	 */
 	uint16_t m_flushes_since_k8_cluster_flush = 0;
+
+	/**
+	 * Set to true to dump the infrastructure state to a file on
+	 * next flush. This is expected to be called from signal handler
+	 * so it is not atomic.
+	 */
+	bool m_dump_infrastructure_state_on_next_flush = false;
 
 	audit_tap* m_tap;
 
