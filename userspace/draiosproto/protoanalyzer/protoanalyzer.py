@@ -386,7 +386,7 @@ class DeepAnalysis(object):
 
         # print out paths of top 20
         for k,v in most_savings:
-            print "Potential Savings: ", v/self.count, " bytes per message
+            print "Potential Savings: ", v/self.count, " bytes per message"
             print "Data:"
             print ""
             print self.subtree_data_hr[k]
