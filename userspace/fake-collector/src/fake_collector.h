@@ -67,9 +67,9 @@ public:
 	 *
 	 * @return  The client data
 	 */
-	buf& pop_data()
+	buf pop_data()
 	{
-		buf&& ret = std::move(m_received_data.front());
+		buf ret = m_received_data.front();
 
 		m_received_data.pop();
 		return ret;

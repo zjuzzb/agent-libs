@@ -206,6 +206,11 @@ bool fake_collector::start(uint16_t port)
 void fake_collector::stop()
 {
 	m_run_server = false;
+
+	while(m_status == server_status::RUNNING)
+	{
+	    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+	}
 }
 
 uint32_t fake_collector::read_one_message(int fd, char* buffer, uint32_t buf_len)
