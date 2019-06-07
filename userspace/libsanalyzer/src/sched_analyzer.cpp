@@ -1,7 +1,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
-#ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
@@ -435,7 +434,6 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 		state.m_sample_effective_length_ns = utime - state.m_last_effective_sample_start;
 		state.m_last_effective_sample_start = utime;
 
-#if 1
 		if(flshflags != analyzer_emitter::DF_FORCE_FLUSH_BUT_DONT_EMIT)
 		{
 			g_logger.format(sinsp_logger::SEV_DEBUG, 
@@ -449,8 +447,5 @@ void sinsp_sched_analyzer2::flush(sinsp_evt* evt, uint64_t flush_time, bool is_e
 				m_inspector->m_analyzer->has_cpu_idle_data() ? m_inspector->m_analyzer->get_cpu_idle_data(j) : 0,
 				m_inspector->m_analyzer->has_cpu_steal_data() ? m_inspector->m_analyzer->get_cpu_steal_data(j) : 0);
 		}
-#endif
 	}
 }
-
-#endif

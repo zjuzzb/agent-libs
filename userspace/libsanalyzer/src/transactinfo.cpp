@@ -9,7 +9,6 @@
 
 #include "sinsp.h"
 #include "sinsp_int.h"
-#ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "analyzer.h"
 #include "analyzer_int.h"
@@ -584,5 +583,3 @@ void sinsp_partial_transaction::mark_inactive()
 {
 	m_is_active = false;
 }
-
-#endif

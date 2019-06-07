@@ -7,11 +7,9 @@
 #include <sinsp.h>
 #include <sinsp_int.h>
 #include "utils.h"
-#ifdef HAS_ANALYZER
 #include "draios.pb.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
-#endif
 #include <memdumper.h>
 
 #include <sys/mman.h>

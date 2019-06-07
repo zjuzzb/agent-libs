@@ -6,7 +6,6 @@
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
 
-#ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
@@ -433,5 +432,3 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 		m_analyzer->set_sampling_ratio(*(int32_t*)parinfo->m_val);
 	}
 }
-
-#endif // HAS_ANALYZER

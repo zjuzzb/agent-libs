@@ -3,8 +3,6 @@
 #include "analyzer_int.h"
 #include "parser_http.h"
 
-#ifdef HAS_ANALYZER
-
 #define PARSE_REQUEST_N_TO_EXTRACT 2
 
 sinsp_protocol_parser::sinsp_protocol_parser()
@@ -379,5 +377,3 @@ sinsp_protocol_parser::msg_type sinsp_http_parser::should_parse(sinsp_fdinfo_t* 
 	return sinsp_protocol_parser::MSG_NONE;
 
 }
-
-#endif // HAS_ANALYZER

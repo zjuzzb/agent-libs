@@ -52,7 +52,6 @@ class audit_tap;
 
 typedef void (*sinsp_analyzer_callback)(char* buffer, uint32_t buflen);
 
-#ifdef HAS_ANALYZER
 class sinsp_scores;
 class mounted_fs;
 class sinsp_procfs_parser;
@@ -1317,5 +1316,3 @@ VISIBILITY_PRIVATE
 	// Please do not add any friends.
 	//
 };
-
-#endif // HAS_ANALYZER

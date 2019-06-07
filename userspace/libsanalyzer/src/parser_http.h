@@ -1,5 +1,3 @@
-#ifdef HAS_ANALYZER
-
 #pragma once
 
 #include "protostate.h"
@@ -81,5 +79,3 @@ private:
 	friend class test_helper;
 
 };
-
-#endif // HAS_ANALYZER

@@ -4,7 +4,6 @@
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
 
-#ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
@@ -511,5 +510,3 @@ void sinsp_delays::compute_host_container_delays(sinsp_transaction_counters* tra
 
 	return;
 }
-
-#endif // HAS_ANALYZER

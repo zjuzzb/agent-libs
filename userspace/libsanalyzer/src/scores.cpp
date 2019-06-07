@@ -4,7 +4,6 @@
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
 
-#ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "analyzer.h"
 #include "connectinfo.h"
@@ -687,5 +686,3 @@ sinsp_score_info sinsp_scores::get_process_capacity_score(sinsp_threadinfo* main
 
 	return res;
 }
-
-#endif // HAS_ANALYZER

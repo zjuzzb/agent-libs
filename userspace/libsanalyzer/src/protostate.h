@@ -1,5 +1,3 @@
-#ifdef HAS_ANALYZER
-
 #pragma once
 
 #include <functional> 
@@ -1042,4 +1040,3 @@ private:
 
         friend class test_helper;
 };
-#endif // HAS_ANALYZER

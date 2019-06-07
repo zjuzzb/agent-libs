@@ -4,8 +4,6 @@
 #include "analyzer.h"
 #include "connectinfo.h"
 
-#ifdef HAS_ANALYZER
-
 sinsp_connection::sinsp_connection()
 {
 	m_timestamp = 0;
@@ -156,4 +154,3 @@ bool sinsp_connection_aggregator::operator<(const sinsp_connection_aggregator &o
 
 	return tot < other_tot;
 }
-#endif // HAS_ANALYZER

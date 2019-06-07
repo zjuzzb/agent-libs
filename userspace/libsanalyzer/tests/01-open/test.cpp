@@ -92,7 +92,6 @@ void export_draios_metrics(int fd, draios::metrics* metrics)
 }
 */
 
-#ifdef HAS_ANALYZER
 class sample_collector: public analyzer_callback_interface
 {
 public:
@@ -126,7 +125,6 @@ public:
 
 sample_collector g_sample_collector;
 
-#endif // HAS_ANALYZER
 
 //
 // Event processing loop
@@ -493,10 +491,8 @@ int main(int argc, char **argv)
 
 	{
 		g_inspector = new sinsp();
-#ifdef HAS_ANALYZER
 		sinsp_analyzer* analyzer = new sinsp_analyzer(g_inspector, "/opt/draios");
 		g_inspector->m_analyzer = analyzer;
-#endif
 
 		//
 		// Parse the args
@@ -522,23 +518,18 @@ int main(int argc, char **argv)
 				g_inspector->set_max_thread_table_size(atoi(optarg));
 				break;
 			case 'C':
-#ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_customer_id(optarg);
-#endif
 				break;
 			case 'd':
 				drop_ratio = atoi(optarg);
 				break;
 			case 'e':
-#ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_connection_timeout_in_sec(atoi(optarg));
-#endif
 				break;
 			case 'j':
 				emitjson = true;
 				break;
 			case 'l':
-#ifdef HAS_ANALYZER
 				if(string(optarg) == "stdout")
 				{
 					g_logger.add_stdout_log();
@@ -573,18 +564,13 @@ int main(int argc, char **argv)
 					delete g_inspector;
 					return EXIT_FAILURE;
 				}
-#endif
 				break;
 			case 'm':
-#ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_emit_metrics_to_file(true);
 				analyzer->get_configuration()->set_metrics_directory(optarg);
-#endif
 				break;
 			case 'M':
-#ifdef HAS_ANALYZER
 				analyzer->get_configuration()->set_machine_id(optarg);
-#endif
 				break;
 			case 'n':
 				cnt = atoi(optarg);
@@ -592,9 +578,7 @@ int main(int argc, char **argv)
 				{
 					fprintf(stderr, "invalid packet count %s\n", optarg);
 					delete g_inspector;
-#ifdef HAS_ANALYZER
 					delete analyzer;
-#endif
 					return EXIT_FAILURE;
 				}
 				break;
@@ -630,9 +614,7 @@ int main(int argc, char **argv)
 			default:
 				usage(argv[0]);
 				delete g_inspector;
-#ifdef HAS_ANALYZER
 				delete analyzer;
-#endif
 				return EXIT_SUCCESS;
 			}
 		}
@@ -683,9 +665,7 @@ int main(int argc, char **argv)
 		{
 			fprintf(stderr, "An error occurred while setting a signal handler.\n");
 			delete g_inspector;
-#ifdef HAS_ANALYZER
 			delete analyzer;
-#endif
 			return EXIT_FAILURE;
 		}
 
@@ -697,16 +677,12 @@ int main(int argc, char **argv)
 		{
 			fprintf(stderr, "An error occurred while setting a signal handler.\n");
 			delete g_inspector;
-#ifdef HAS_ANALYZER
 			delete analyzer;
-#endif
 			return EXIT_FAILURE;
 		}
 #endif // _WIN32
 
-#ifdef HAS_ANALYZER
 		analyzer->set_sample_callback(&g_sample_collector);
-#endif
 
 		//
 		// Launch the inspeciotn
@@ -793,9 +769,7 @@ int main(int argc, char **argv)
 #endif
 
 		delete g_inspector;
-#ifdef HAS_ANALYZER
 		delete analyzer;
-#endif
 	}
 
 #ifdef _WIN32

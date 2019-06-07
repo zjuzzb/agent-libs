@@ -66,8 +66,6 @@ private:
 using filter_vec_t = std::vector<user_configured_filter>;
 
 
-#ifdef HAS_ANALYZER
-
 namespace YAML
 {
 	template<>
@@ -91,9 +89,6 @@ namespace YAML
 		}
 	};
 }
-
-#endif // HAS_ANALYZER
-
 
 class user_configured_limits
 {

@@ -2,8 +2,6 @@
 #include "sinsp_int.h"
 #include "analyzer_int.h"
 
-#ifdef HAS_ANALYZER
-
 //#define SQL_DEBUG_SLICE 1
 
 /// this struct represents a C string slice with an explicit length
@@ -636,4 +634,3 @@ inline void sinsp_sql_parser::add_table(str_slice&& table)
 
 	m_tables.emplace(table.start, table.len());
 }
-#endif

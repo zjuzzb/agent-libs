@@ -6,7 +6,6 @@ using namespace google::protobuf::io;
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
 
-#ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "metrics.h"
 #undef min
@@ -1388,5 +1387,3 @@ void sinsp_host_metrics::set_serialize_pctl_data(bool val)
 {
 	m_metrics.set_serialize_pctl_data(val);
 }
-
-#endif // HAS_ANALYZER

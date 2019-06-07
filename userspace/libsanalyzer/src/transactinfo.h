@@ -1,5 +1,3 @@
-#ifdef HAS_ANALYZER
-
 #pragma once
 
 #include <stack>
@@ -364,10 +362,5 @@ private:
 	bool is_transaction_server(sinsp_threadinfo *ptinfo);
 
 	sinsp* m_inspector;
-#if 0
-	std::unordered_map<int64_t, vector<sinsp_transaction>> m_table;
-#endif
 	friend class sinsp_partial_transaction;
 };
-
-#endif

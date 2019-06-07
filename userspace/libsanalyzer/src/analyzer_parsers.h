@@ -1,7 +1,5 @@
 #pragma once
 
-#ifdef HAS_ANALYZER
-
 class sinsp_analyzer;
 class sinsp_evt;
 class sinsp_sched_analyzer2;
@@ -28,6 +26,3 @@ private:
 	sinsp_sched_analyzer2* m_sched_analyzer2;
 	bool m_last_drop_was_enter;
 };
-
-#endif // HAS_ANALYZER
-

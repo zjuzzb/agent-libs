@@ -1,4 +1,3 @@
-#ifdef HAS_ANALYZER
 #pragma once
 
 #include <set>
@@ -81,5 +80,3 @@ private:
 	template<const char *TOK, const char *TOK2, const char *...Args> inline const char* match_token_impl(
 		str_slice &slice);
 };
-
-#endif // HAS_ANALYZER

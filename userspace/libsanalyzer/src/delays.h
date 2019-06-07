@@ -1,6 +1,5 @@
-#ifdef HAS_ANALYZER
-
 #pragma once
+
 #include "metrics.h" /*for sinsp_transaction_counters*/
 
 class sinsp_percpu_delays
@@ -61,5 +60,3 @@ VISIBILITY_PRIVATE
 
 	int32_t m_num_cpus;
 };
-
-#endif // HAS_ANALYZER

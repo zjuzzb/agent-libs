@@ -5,7 +5,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
-#ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
@@ -1236,5 +1235,3 @@ void sinsp_analyzer_fd_listener::set_ipv4_connection_manager(
 {
 	m_ipv4_connections = ipv4_connection_manager;
 }
-
-#endif // HAS_ANALYZER

@@ -8,7 +8,6 @@
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
 
-#ifdef HAS_ANALYZER
 #include "parsers.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
@@ -797,5 +796,3 @@ bool threadinfo_cmp_transactions_cs(sinsp_threadinfo* src , sinsp_threadinfo* ds
 
 	return (s > d); 
 }
-
-#endif // HAS_ANALYZER

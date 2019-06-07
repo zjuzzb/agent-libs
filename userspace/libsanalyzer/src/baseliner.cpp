@@ -3,11 +3,9 @@
 #include <sinsp_int.h>
 #include <filterchecks.h>
 #include "utils.h"
-#ifdef HAS_ANALYZER
 #include "draios.pb.h"
 #include "analyzer_int.h"
 #include "analyzer.h"
-#endif
 #include <baseliner.h>
 
 #undef AVOID_FDS_FROM_THREAD_TABLE
@@ -68,10 +66,6 @@ sinsp_baseliner::sinsp_baseliner():
 	m_ifaddr_list(nullptr),
 	m_progtable(),
 	m_container_table(),
-#ifndef HAS_ANALYZER
-	m_hostname(),
-	m_hostid(0),
-#endif
 #ifdef ASYNC_PROC_PARSING
 	m_procparser_thread(nullptr),
 	m_procparser_state(nullptr),
@@ -111,12 +105,6 @@ void sinsp_baseliner::init(sinsp* inspector)
 	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAMEAT_X, absp);
 	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAME_X, arg2);
 	m_nofd_fs_extractors.emplace(PPME_SYSCALL_RENAMEAT_X, absdst);
-
-#ifndef HAS_ANALYZER
-	const scap_machine_info* minfo = m_inspector->get_machine_info();
-	m_hostname = minfo->hostname;
-	m_hostid = 12345;	// XXX implement this
-#endif
 
 	m_do_baseline_calculation = false;
 }
@@ -623,15 +611,9 @@ void sinsp_baseliner::serialize_json(string filename)
 
 	root["containers"] = ctable;
 
-#ifndef HAS_ANALYZER
-	root["machine"]["hostname"] = m_hostname;
-	root["machine"]["hostid"] = to_string(m_hostid);
-#endif
-
 	ofs << root << std::endl;
 }
 
-#ifdef HAS_ANALYZER
 void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 {
 	//
@@ -755,7 +737,6 @@ void sinsp_baseliner::serialize_protobuf(draiosproto::falco_baseline* pbentry)
 		}
 	}
 }
-#endif
 
 #ifdef ASYNC_PROC_PARSING
 void sinsp_baseliner::merge_proc_data()
@@ -806,28 +787,6 @@ void sinsp_baseliner::merge_proc_data()
 }
 #endif
 
-#ifndef HAS_ANALYZER
-void sinsp_baseliner::emit_as_json(uint64_t time)
-{
-#ifdef ASYNC_PROC_PARSING
-	merge_proc_data();
-#endif
-
-	//
-	// Perform the serialization
-	//
-	serialize_json(string("bline/") + to_string(m_hostid) + "_" + to_string(time) + ".json");
-
-	//
-	// Get ready for the new sample
-	//
-	if(m_inspector->is_live())
-	{
-		clear_tables();
-		load_tables(time);
-	}
-}
-#else
 void sinsp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry)
 {
 #ifdef ASYNC_PROC_PARSING
@@ -843,7 +802,6 @@ void sinsp_baseliner::emit_as_protobuf(uint64_t time, draiosproto::falco_baselin
 		load_tables(time);
 	}
 }
-#endif
 
 inline blprogram* sinsp_baseliner::get_program(sinsp_threadinfo* tinfo)
 {

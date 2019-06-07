@@ -33,10 +33,8 @@ void user_configured_limits::insert(const std::string& target, const user_config
 		}
 		else
 		{
-	#ifdef HAS_ANALYZER
 			g_logger.format(sinsp_logger::SEV_WARNING, "Metric limit cache full, metric [%s] "
 					  "will not be cached.", target.c_str());
-	#endif // HAS_ANALYZER
 		}
 	}
 }
@@ -75,7 +73,6 @@ void user_configured_limits::log( const std::string& target,
 {
 	if(log_enabled)
 	{
-#ifdef HAS_ANALYZER
 		g_logger.format(sinsp_logger::SEV_INFO, "%c[%s] %s %s: %s (%s)",
 				(inc ? '+' : '-'),
 				type.c_str(),
@@ -83,7 +80,6 @@ void user_configured_limits::log( const std::string& target,
 				(inc ? "included" : "excluded"),
 				target.c_str(),
 				filter.c_str());
-#endif
 	}
 }
 
@@ -151,13 +147,11 @@ bool user_configured_limits::allow(const std::string& target, std::string& filte
 		}
 		else if(FNM_NOMATCH != m)
 		{
-#ifdef HAS_ANALYZER
 			g_logger.format(sinsp_logger::SEV_WARNING,
 					"%s limits: error glob matching [%s] with pattern [%s]",
 					m_target_type_name.c_str(),
 					target.c_str(),
 					f.to_string().c_str());
-#endif // HAS_ANALYZER
 		}
 	}
 

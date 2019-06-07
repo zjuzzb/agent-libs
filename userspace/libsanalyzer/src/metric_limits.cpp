@@ -21,7 +21,6 @@ metric_limits::metric_limits(const filter_vec_t& filters,
 
 void metric_limits::sanitize_filters()
 {
-#ifdef HAS_ANALYZER
 	// Cases when we refuse to create object:
 	// 1) empty filters
 	// 2) filter list with first pattern being "allow all"
@@ -50,8 +49,6 @@ void metric_limits::sanitize_filters()
 			<< ") exceeded, reduced to " << CUSTOM_METRICS_CACHE_HARD_LIMIT;
 		g_logger.log(os.str(), sinsp_logger::SEV_WARNING);
 	}
-#endif // HAS_ANALYZER
-
 }
 
 INITIALIZE_LOG(metric_limits);

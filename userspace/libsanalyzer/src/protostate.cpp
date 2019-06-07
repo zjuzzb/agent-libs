@@ -5,7 +5,6 @@
 #include "sinsp.h"
 #include "sinsp_int.h"
 
-#ifdef HAS_ANALYZER
 #include "analyzer_int.h"
 #include "analyzer.h"
 #include "analyzer_int.h"
@@ -750,5 +749,3 @@ sinsp_url_groups::update_group_set(const set<string>& groups)
 		m_matched_groups.insert(pair<string, shared_ptr<sinsp_url_group>>(*it, make_shared<sinsp_url_group>(*it)));
 	}
 }
-
-#endif // HAS_ANALYZER

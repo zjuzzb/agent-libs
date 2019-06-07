@@ -1,6 +1,5 @@
-#ifdef HAS_ANALYZER
-
 #pragma once
+
 #include <bitset>
 #ifdef max
 #undef max
@@ -353,5 +352,3 @@ private:
 	set<string> m_procfs_scan_procs;
 	uint32_t m_procfs_scan_interval;
 };
-
-#endif // HAS_ANALYZER

@@ -7,8 +7,6 @@
 #include "sinsp.h"
 #include "assert.h"
 
-#ifdef HAS_ANALYZER
-
 //
 // Forward declarations
 //
@@ -465,5 +463,3 @@ inline int sinsp_host_metrics::get_process_start_count() const
 {
 	return m_proc_start_count;
 }
-
-#endif // HAS_ANALYZER

@@ -36,7 +36,6 @@ using namespace google::protobuf::io;
 #include "sinsp_int.h"
 #include "../../driver/ppm_ringbuffer.h"
 
-#ifdef HAS_ANALYZER
 #include "json_query.h"
 #include "parsers.h"
 #include "analyzer_int.h"
@@ -7217,4 +7216,3 @@ bool analyzer_container_state::should_report_container(const sinsp_configuration
 		(m_filter_state == FILT_INCL) ? "include" : "exclude");
 	return m_filter_state == FILT_INCL;
 }
-#endif // HAS_ANALYZER

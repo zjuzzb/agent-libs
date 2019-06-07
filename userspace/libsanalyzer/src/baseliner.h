@@ -246,7 +246,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_r.size() != 0)
@@ -309,7 +308,6 @@ public:
 			}
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -421,7 +419,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_startup_table.has_data())
@@ -436,7 +433,6 @@ public:
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -493,7 +489,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_p.size() != 0)
@@ -508,7 +503,6 @@ public:
 			}
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -585,7 +579,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_p.size() != 0)
@@ -600,7 +593,6 @@ public:
 			}
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -652,7 +644,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_startup_table.has_data())
@@ -667,7 +658,6 @@ public:
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -804,7 +794,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		if(m_l_tcp.size() != 0)
@@ -855,7 +844,6 @@ public:
 			}
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -985,7 +973,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_startup_table.has_data())
@@ -1000,7 +987,6 @@ public:
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -1119,7 +1105,6 @@ public:
 		return ip & 0x00FFFFFF;
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_subcategory_container* cat)
 	{
 		char addrbuff[32];
@@ -1161,7 +1146,6 @@ public:
 		}
 
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -1266,7 +1250,6 @@ public:
 		}
 	}
 
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_category* cat)
 	{
 		if(m_startup_table.has_data())
@@ -1281,7 +1264,6 @@ public:
 			m_regular_table.serialize_protobuf(sc);
 		}
 	}
-#endif
 
 	void serialize_json(Json::Value& element)
 	{
@@ -1383,12 +1365,8 @@ public:
 #ifdef ASYNC_PROC_PARSING
 	void merge_proc_data();
 #endif
-#ifdef HAS_ANALYZER
 	void serialize_protobuf(draiosproto::falco_baseline* pbentry);
 	void emit_as_protobuf(uint64_t time, draiosproto::falco_baseline* pbentry);
-#else
-	void emit_as_json(uint64_t time);
-#endif
 
 	void on_file_open(sinsp_evt *evt, string& name, uint32_t openflags);
 	void on_new_proc(sinsp_evt *evt, sinsp_threadinfo* tinfo);
@@ -1413,10 +1391,6 @@ private:
 	sinsp_network_interfaces* m_ifaddr_list;
 	unordered_map<size_t, blprogram*> m_progtable;
 	unordered_map<string, blcontainer> m_container_table;
-#ifndef HAS_ANALYZER
-	std::string m_hostname;
-	uint64_t m_hostid;
-#endif
 #ifdef ASYNC_PROC_PARSING
 	std::thread* m_procparser_thread;
 	proc_parser_state* m_procparser_state;
