@@ -51,7 +51,7 @@ class Prometheus(AgentCheck):
         ret_histograms = instance.get("histograms", False)
 
         ingest_raw = instance.get("ingest_raw", False)
-        ingest_calculated = instance.get("ingest_calculated", False)
+        ingest_calculated = instance.get("ingest_calculated", not ingest_raw)
 
         default_timeout = self.init_config.get('default_timeout', self.DEFAULT_TIMEOUT)
         timeout = float(instance.get('timeout', default_timeout))
