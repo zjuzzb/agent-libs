@@ -93,6 +93,7 @@ using namespace google::protobuf::io;
 #include "environment_emitter.h"
 #include "user_event_logger.h"
 #include "utils/profiler.h"
+#include "statsite_config.h"
 
 #include <gperftools/profiler.h>
 using namespace libsanalyzer;
@@ -7026,7 +7027,6 @@ uint32_t sinsp_analyzer::get_num_dropped_ipv4_connections() const
 
 void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
                                           const bool dest_is_ipv4_localhost,
-                                          const bool use_host_statsd,
                                           const char* const data,
                                           const uint32_t len)
 {
@@ -7062,7 +7062,7 @@ void sinsp_analyzer::inject_statsd_metric(const std::string& container_id,
 	}
 	else if(m_statsd_capture_localhost.load(memory_order_relaxed) ||
 	        !dest_is_ipv4_localhost ||
-		use_host_statsd)
+		statsite_config::use_host_statsd())
 	{
 		m_statsite_proxy->send_metric(data, len);
 	}

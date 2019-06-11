@@ -207,7 +207,7 @@ app_checks_limit: 4000
 	ASSERT_FALSE(is_enabled());
 	ASSERT_EQ(3000, metric_forwarding_configuration::c_prometheus_max->get() );
 	ASSERT_EQ(3000, metric_forwarding_configuration::c_jmx_max->get());
-	ASSERT_EQ(1000, metric_forwarding_configuration::c_statsd_max->get());
+	ASSERT_EQ(3000, metric_forwarding_configuration::c_statsd_max->get());
 	ASSERT_EQ(3000, metric_forwarding_configuration::c_app_checks_max->get());
 }
 

@@ -7,7 +7,7 @@ namespace
 {
 
 const unsigned LEGACY_PROM_METRICS_HARD_LIMIT = 3000;
-const unsigned LEGACY_STATSD_METRIC_HARD_LIMIT = 1000;
+const unsigned LEGACY_STATSD_METRIC_HARD_LIMIT = 3000;
 const unsigned LEGACY_APP_METRICS_HARD_LIMIT = 3000;
 const unsigned LEGACY_JMX_METRICS_HARD_LIMIT = 3000;
 

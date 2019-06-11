@@ -246,11 +246,6 @@ public:
 	double m_sysdig_capture_transmit_rate;
 	int32_t m_sysdig_capture_compression_level;
 
-	bool m_statsd_enabled;
-	uint16_t m_statsd_port;
-	uint16_t m_statsd_tcp_port;
-	bool m_use_host_statsd;
-
 	bool m_sdjagent_enabled;
 	vector<app_check> m_app_checks;
 	string m_python_binary;

@@ -44,6 +44,7 @@ list(APPEND libsanalyzer_uts
 	process_manager.ut.cpp
 	protobuf_metric_serializer.ut.cpp
 	scoped_sinsp_logger_capture.ut.cpp
+	statsite_config.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library

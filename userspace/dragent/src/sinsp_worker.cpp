@@ -6,10 +6,11 @@
 #include "sinsp_factory.h"
 #include "utils.h"
 #include "user_event_logger.h"
+#include "type_config.h"
+#include "statsite_config.h"
 #include <grpc/grpc.h>
 #include <grpc/support/log.h>
 #include <Poco/DateTimeFormatter.h>
-#include "type_config.h"
 
 type_config<uint16_t> config_increased_snaplen_port_range_start(0,
 						   "Starting port in the range of ports to enable a larger snaplen on",
@@ -344,7 +345,6 @@ void sinsp_worker::init()
 	m_analyzer->get_configuration()->set_instance_id(m_configuration->m_aws_metadata.m_instance_id);
 	m_analyzer->get_configuration()->set_known_ports(m_configuration->m_known_server_ports);
 	m_analyzer->get_configuration()->set_blacklisted_ports(m_configuration->m_blacklisted_ports);
-	m_analyzer->get_configuration()->set_use_host_statsd(m_configuration->m_use_host_statsd);
 	m_analyzer->get_configuration()->set_app_checks_always_send(m_configuration->m_app_checks_always_send);
 	m_analyzer->get_configuration()->set_protocols_truncation_size(m_configuration->m_protocols_truncation_size);
 	m_analyzer->set_fs_usage_from_external_proc(m_configuration->m_system_supports_containers);
@@ -527,6 +527,24 @@ void sinsp_worker::init()
 				// then it will throw a sinsp_exception when setting the fullcapture
 				// range. Just log an error and continue.
 				g_log->error("Could not set increased snaplen size (are you running with updated sysdig?): " + string(e.what()));
+			}
+		}
+
+		const uint16_t statsd_port = libsanalyzer::statsite_config::get_udp_port();
+
+		if(statsd_port != libsanalyzer::statsite_config::DEFAULT_STATSD_PORT)
+		{
+			try
+			{
+				m_inspector->set_statsd_port(statsd_port);
+			}
+			catch(const sinsp_exception& e)
+			{
+				// The version of sysdig we're working with doesn't
+				// support this operation.
+				g_log->error("Could not set statsd port in driver (are "
+					     "you running with updated sysdig?): " +
+					     string(e.what()));
 			}
 		}
 	}

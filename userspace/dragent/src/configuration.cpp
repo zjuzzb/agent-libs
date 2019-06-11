@@ -20,6 +20,7 @@
 
 #include "configuration_manager.h"
 #include "user_event_logger.h"
+#include "statsite_config.h"
 
 using namespace Poco;
 using namespace Poco::Net;
@@ -262,10 +263,6 @@ dragent_configuration::dragent_configuration()
 	m_max_sysdig_captures = 1;
 	m_sysdig_capture_transmit_rate = 1024 * 1024;
 	m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
-	m_statsd_enabled = true;
-	m_statsd_port = 8125;
-	m_statsd_tcp_port = m_statsd_port;
-	m_use_host_statsd = false;
 	m_sdjagent_enabled = true;
 	m_app_checks_enabled = true;
 	m_enable_coredump = false;
@@ -798,19 +795,6 @@ void dragent_configuration::init()
 			       + ". Setting to " + std::to_string(Z_DEFAULT_COMPRESSION) + ".");
 		m_sysdig_capture_compression_level = Z_DEFAULT_COMPRESSION;
 	}
-	m_statsd_enabled = m_config->get_scalar<bool>("statsd", "enabled", !is_windows);
-	m_statsd_port = m_config->get_scalar<uint16_t>("statsd", "udp_port", 8125);
-	m_statsd_tcp_port = m_config->get_scalar<uint16_t>("statsd", "tcp_port", 8125);
-	m_use_host_statsd = m_config->get_scalar<bool>("statsd", "use_host_statsd", false);
-
-	if(m_use_host_statsd)
-	{
-		// If we're using the host's statsd, then override the port
-		// settings so that our statsite implementation doesn't listen
-		// on any ports.
-		m_statsd_port = 0;
-		m_statsd_tcp_port = 0;
-	}
 
 	m_sdjagent_enabled = m_config->get_scalar<bool>("jmx", "enabled", !is_windows);
 	m_app_checks = m_config->get_merged_sequence<app_check>("app_checks");
@@ -1040,10 +1024,7 @@ void dragent_configuration::init()
 	File nsfile("/proc/self/ns/mnt");
 	m_system_supports_containers = (m_mounts_limit_size > 0) && nsfile.exists();
 
-	if(m_statsd_enabled)
-	{
-		write_statsite_configuration();
-	}
+	write_statsite_configuration();
 
 	m_auto_config = m_config->get_scalar("auto_config", true);
 	m_emit_tracers = m_config->get_scalar("emit_tracers", true);
@@ -1340,7 +1321,6 @@ void dragent_configuration::print_configuration() const
 	LOG_INFO("sysdig capture.max outstanding: " + NumberFormatter::format(m_max_sysdig_captures));
 	LOG_INFO("sysdig capture.transmit rate (bytes/sec): " + NumberFormatter::format(m_sysdig_capture_transmit_rate));
 	LOG_INFO("sysdig capture.compression level: " + NumberFormatter::format(m_sysdig_capture_compression_level));
-	LOG_INFO("statsd enabled: " + bool_as_text(m_statsd_enabled));
 	LOG_INFO("app_checks enabled: " + bool_as_text(m_app_checks_enabled));
 #ifndef CYGWING_AGENT
 	LOG_INFO("prometheus autodetection enabled: " + bool_as_text(m_prom_conf.enabled()));
@@ -1811,60 +1791,24 @@ string dragent_configuration::get_distribution()
 
 void dragent_configuration::write_statsite_configuration()
 {
-	std::string statsite_ini =
-		"# WARNING: File generated automatically, don't edit. Please use \"dragent.yaml\" instead\n"
-				"[statsite]\nbind_address = 127.0.0.1\n";
+	using namespace libsanalyzer;
 
-	auto udp_port = m_statsd_port;
-	uint16_t flush_interval = m_config->get_scalar<uint16_t>("statsd", "flush_interval", 1);
-
-	// convert our loglevel to statsite one
-	// our levels: trace, debug, info, notice, warning, error, critical, fatal
-	// statsite levels: DEBUG, INFO, WARN, ERROR, CRITICAL
-	auto loglevel = m_config->get_scalar<string>("log", "file_priority", "info");
-	static const unordered_map<string, string> conversion_map{ { "trace", "DEBUG" }, { "debug", "DEBUG" }, { "info", "INFO" },
-															   { "notice", "WARN" }, { "warning", "WARN"}, { "error", "ERROR"},
-															   { "critical", "CRITICAL"}, { "fatal", "CRITICAL"}};
-	if (conversion_map.find(loglevel) != conversion_map.end())
+	if(!statsite_config::is_enabled())
 	{
-		loglevel = conversion_map.at(loglevel);
-	}
-	else
-	{
-		loglevel = "INFO";
+		return;
 	}
 
-	statsite_ini.append("port = ").append(std::to_string(m_statsd_tcp_port)).append(1, '\n');
-	statsite_ini.append("udp_port = ").append(std::to_string(udp_port)).append(1, '\n');
-	statsite_ini.append("log_level = ").append(loglevel).append(1, '\n');
-	statsite_ini.append("flush_interval = ").append(std::to_string(flush_interval)).append(1, '\n');
-	statsite_ini.append("parse_stdin = 1").append(1, '\n');
-	if(m_percentiles.size())
-	{
-		std::ostringstream os;
-		for(const auto& p : m_percentiles)
-		{
-			os << p/100.0 << ',';
-		}
-		if(os.str().size())
-		{
-			os.seekp(-1, os.cur);
-			os << '\n';
-		}
-		statsite_ini.append("quantiles = ").append(os.str());
-	}
+	const std::string statsite_ini = (m_agent_installed)
+	                                 ? c_root_dir.get() + "/etc/statsite.ini"
+	                                 : "statsite.ini";
+	const std::string loglevel =
+		m_config->get_scalar<std::string>("log",
+		                                  "file_priority",
+		                                  "info");
 
-	string filename(c_root_dir.get() + "/etc/statsite.ini");
-
-	if(!m_agent_installed)
-	{
-		filename = "statsite.ini";
-	}
-	std::ofstream ostr(filename);
-	if(ostr.good())
-	{
-		ostr << statsite_ini;
-	}
+	statsite_config::write_statsite_configuration(statsite_ini,
+	                                              loglevel,
+	                                              m_percentiles);
 }
 
 void dragent_configuration::refresh_machine_id()

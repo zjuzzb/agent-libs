@@ -19,27 +19,35 @@
 #include "sinsp_errno.h"
 #include "sched_analyzer.h"
 #include "analyzer_fd.h"
+#include "statsite_config.h"
 #include "statsite_proxy.h"
 #include "baseliner.h"
+
+using namespace libsanalyzer;
+
+namespace
+{
 
 ///////////////////////////////////////////////////////////////////////////////
 // sinsp_proto_detector implementation
 ///////////////////////////////////////////////////////////////////////////////
-const char* sql_querystart_toks[] = {
-		"select",
-		"insert",
-		"set ",
-		"create",
-		"delete",
-		"drop",
-		"replace",
-		"update",
-		"use ",
-		"show",
-		"lock",
-		"unlock",
-		"alter"
+const char* const sql_querystart_toks[] = {
+	"select",
+	"insert",
+	"set ",
+	"create",
+	"delete",
+	"drop",
+	"replace",
+	"update",
+	"use ",
+	"show",
+	"lock",
+	"unlock",
+	"alter"
 };
+
+} // end namespace
 
 sinsp_proto_detector::sinsp_proto_detector(sinsp_configuration* config)
 {
@@ -650,12 +658,10 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt* const evt,
                                                      const char* const data,
                                                      const uint32_t len) const
 {
-	const uint16_t STATSD_PORT = 8125;
-
 	if(m_analyzer->has_statsite_proxy() &&
 	   fdinfo->is_role_client() &&
 	   fdinfo->is_udp_socket() &&
-	   fdinfo->get_serverport() == STATSD_PORT)
+	   fdinfo->get_serverport() == statsite_config::get_udp_port())
 	{
 		const static bool use_forwarder =
 			configuration_manager::instance().get_config<bool>(
@@ -678,7 +684,6 @@ void sinsp_analyzer_fd_listener::handle_statsd_write(sinsp_evt* const evt,
 			m_analyzer->inject_statsd_metric(
 					container_id,
 					(fdinfo->m_sockinfo.m_ipv4serverinfo.m_ip == LOCALHOST_IPV4),
-					m_sinsp_config->get_use_host_statsd(),
 					data,
 					len);
 		}

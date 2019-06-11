@@ -396,16 +396,6 @@ const ports_set & sinsp_configuration::get_blacklisted_ports() const
 	return m_blacklisted_ports;
 }
 
-bool sinsp_configuration::get_use_host_statsd() const
-{
-	return m_use_host_statsd;
-}
-
-void sinsp_configuration::set_use_host_statsd(const bool value)
-{
-	m_use_host_statsd = value;
-}
-
 #ifndef CYGWING_AGENT
 void sinsp_configuration::set_k8s_delegated_nodes(int k8s_delegated_nodes)
 {

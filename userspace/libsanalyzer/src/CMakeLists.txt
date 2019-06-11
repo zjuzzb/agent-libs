@@ -219,6 +219,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/viewinfo.cpp
 	jmx_proxy.cpp
 	jmx_emitter.cpp
+	statsite_config.cpp
 	statsite_proxy.cpp
 	app_checks.cpp
 	app_check_emitter.cpp

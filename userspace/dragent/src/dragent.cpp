@@ -18,6 +18,7 @@
 #include "process_helpers.h"
 #include "rest_request_handler_factory.h"
 #include "rest_server.h"
+#include "statsite_config.h"
 #include "type_config.h"
 #include "utils.h"
 #ifndef CYGWING_AGENT
@@ -281,7 +282,7 @@ void dragent_app::handleOption(const std::string& name, const std::string& value
 		m_configuration.m_cointerface_enabled = false;
 		m_configuration.m_system_supports_containers = false;
 		m_configuration.m_app_checks_enabled = false;
-		m_configuration.m_statsd_enabled = false;
+		libsanalyzer::statsite_config::set_enabled(false);
 		m_configuration.m_sdjagent_enabled = false;
 		m_configuration.m_config_test = true;
 	}
@@ -528,7 +529,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 	}
 
 	// Configure statsite subprocess
-	if(m_configuration.m_statsd_enabled)
+	if(libsanalyzer::statsite_config::is_enabled())
 	{
 		m_statsite_pipes = make_shared<pipe_manager>();
 		m_subprocesses_logger.add_logfd(m_statsite_pipes->get_err_fd(), [this](const string& data)
@@ -578,7 +579,7 @@ int dragent_app::main(const std::vector<std::string>& args)
 			{
 				m_statsite_forwarder_pipe->attach_child();
 				statsite_forwarder fwd(this->m_statsite_pipes->get_io_fds(),
-				                       m_configuration.m_statsd_port,
+				                       libsanalyzer::statsite_config::get_udp_port(),
 				                       m_configuration.m_statsite_check_format);
 				return fwd.run();
 			});

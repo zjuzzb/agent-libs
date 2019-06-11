@@ -713,14 +713,11 @@ public:
 	 *                            string if there is no container id.
 	 * @param[in] dest_is_ipv4_localhost true if the destination is
 	 *                            127.0.0.1, false otherwise.
-	 * @param[in] use_host_statsd true if the host is running its own
-	 *                            statsd server, false otherwise.
 	 * @param[in] data            The stat
 	 * @param[in] len             The length of data
 	 */
 	void inject_statsd_metric(const std::string& container_id,
 	                          bool dest_is_ipv4_localhost,
-	                          bool use_host_statsd,
 	                          const char* data,
 	                          uint32_t len);
 

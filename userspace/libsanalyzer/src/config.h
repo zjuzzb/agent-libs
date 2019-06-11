@@ -90,8 +90,6 @@ public:
 	void set_blacklisted_ports(const vector<uint16_t> & v);
 	void set_blacklisted_ports(const ports_set & v);
 	const ports_set & get_blacklisted_ports() const;
-	bool get_use_host_statsd() const;
-	void set_use_host_statsd(bool value);
 #ifndef CYGWING_AGENT
 	void set_k8s_delegated_nodes(int k8s_delegated_nodes);
 	int get_k8s_delegated_nodes() const;
@@ -268,7 +266,6 @@ private:
 	ports_set m_blacklisted_ports;
 
 	std::set<double> m_percentiles;
-	bool m_use_host_statsd;
 	shared_ptr<proc_filter::group_pctl_conf> m_group_pctl_conf;
 	shared_ptr<proc_filter::conf> m_container_filter;
 	bool m_smart_container_reporting = false;
