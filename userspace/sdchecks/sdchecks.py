@@ -505,6 +505,8 @@ def prepare_prom_check(pc, port):
         newconf["ingest_raw"] = pc["ingest_raw"]
     if pc.get("ingest_calculated") != None:
         newconf["ingest_calculated"] = pc["ingest_calculated"]
+    if pc.get("timeout") != None:
+        newconf["timeout"] = pc["timeout"]
     if options.get("ssl_verify") != None:
         newconf["ssl_verify"] = _is_affirmative(options["ssl_verify"])
     # pack pid into newconf to use with logging in prometheus.py

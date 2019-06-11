@@ -55,6 +55,19 @@ string replace_tokens(const string src, const sinsp_container_info *container,
 
 }
 
+// Statically initialize the prometheus timeout config
+// Min value : 01 sec
+// Max value : 60 sec
+// Default   : 01 sec
+type_config<uint32_t>::ptr prometheus_conf::c_prometheus_timeout =
+	type_config_builder<uint32_t>(1 /*default value of 1 second*/,
+				      "The value in seconds we wait to scrape prometheus endpoints before timing out.",
+				      "prometheus",
+				      "timeout")
+	.min(1)
+	.max(60)
+	.get();
+
 bool prometheus_conf::get_rule_params(const object_filter_config::filter_rule &rule,
 	const sinsp_threadinfo *tinfo, const sinsp_container_info *container,
 	const infrastructure_state &infra_state, bool use_host_filter, prom_params_t &params) const
@@ -267,6 +280,7 @@ Json::Value prom_process::to_json(const prometheus_conf &conf) const
 	ret["histograms"] = conf.histograms();
 	ret["ingest_raw"] = conf.ingest_raw();
 	ret["ingest_calculated"] = conf.ingest_calculated();
+	ret["timeout"] = prometheus_conf::c_prometheus_timeout->get();
 	if (m_path.size() > 0)
 		ret["path"] = m_path;
 

@@ -30,7 +30,7 @@ class Prometheus(AgentCheck):
             logging.info('[%s]: %s' % (repr(k), repr(keyvals[k])))
         logging.info('======== %s ========' % (desc))
 
-    def __check_metric_limits(self, max_metrics, num_metrics, pid, url)
+    def __check_metric_limits(self, max_metrics, num_metrics, pid, url):
         if num_metrics >= max_metrics:
             logging.info('Prometheus "max_metrics_per_process" limit(%d) exceeded for process:%d with url:%s ' % (max_metrics, pid, url))
             return True
