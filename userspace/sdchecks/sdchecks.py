@@ -26,9 +26,13 @@ from config import _is_affirmative
 from sysdig_tracers import Tracer
 
 # 3rd party
-import yaml
 import simplejson as json
 import posix_ipc
+import yaml
+try:
+    from yaml import FullLoader as yLoader
+except ImportError:
+    from yaml import Loader as yLoader
 
 import requests
 from requests.exceptions import ConnectionError
@@ -87,7 +91,7 @@ class YamlConfig:
         for path in paths:
             try:
                 with open(path, "r") as config_file:
-                    self._roots.append(yaml.load(config_file.read()))
+                    self._roots.append(yaml.load(config_file.read(), Loader=yLoader))
             except IOError as ex:
                 # Cannot use logging because it's not initialized yet
                 sys.stderr.write("%d:DEBUG:Cannot read config file %s: %s\n" % (os.getpid(), path, ex))

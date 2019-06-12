@@ -6,7 +6,7 @@ add_custom_target(agent-kmodule-dockerfile-${repo} ALL
 	DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile)
 
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
-	COMMAND ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/python ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image agent-kmodule --repo ${repo} > ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
+	COMMAND ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.16/target/bin/python ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py --image agent-kmodule --repo ${repo} > ${CMAKE_CURRENT_BINARY_DIR}/${repo}/Dockerfile
 	DEPENDS jinja
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../generate_agent_docker.py
 	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/../Dockerfile.jinja2

@@ -1,15 +1,18 @@
+set(PYTHON27 "Python-2.7.16")
+set(PYTHON26 "Python-2.6.9")
+
 add_custom_target(sdchecks-deps ALL DEPENDS
 		${CMAKE_CURRENT_BINARY_DIR}/deps
 		${CMAKE_CURRENT_BINARY_DIR}/deps2.7
 		${CMAKE_CURRENT_BINARY_DIR}/deps2.6)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps
-		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt
+		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements.txt)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps2.7
-		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/Python-2.7.14/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps2.7 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.7.txt
+		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON27}/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps2.7 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.7.txt
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.7.txt)
 add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/deps2.6
-		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/Python-2.6.9/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/Python-2.6.9/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps2.6 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.6.txt
+		COMMAND ${CMAKE_COMMAND} -E env PATH="${DRAIOS_DEPENDENCIES_DIR}/postgresql-9.4.15/target/bin:$ENV{PATH}" ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON26}/target/bin/python ${DRAIOS_DEPENDENCIES_DIR}/${PYTHON26}/target/bin/pip install -I --target=${CMAKE_CURRENT_BINARY_DIR}/deps2.6 --upgrade -r ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.6.txt
 		DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/requirements-native-2.6.txt)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/
