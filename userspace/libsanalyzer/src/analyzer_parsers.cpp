@@ -342,14 +342,12 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 		return true;
 	}
 
-	if(tinfo->m_is_container_healthcheck)
-	{
-		m_analyzer->incr_num_container_healthcheck_command_lines();
+	m_analyzer->incr_command_lines_category(convert_category(tinfo->m_category));
 
-		if(!sinsp_conf->get_command_lines_include_container_healthchecks())
-		{
-			return true;
-		}
+	if(tinfo->is_health_probe() &&
+	   !sinsp_conf->get_command_lines_include_container_healthchecks())
+	{
+		return true;
 	}
 
 	//
@@ -374,7 +372,7 @@ bool sinsp_analyzer_parsers::parse_execve_exit(sinsp_evt* evt)
 	cmdinfo.m_uid = tinfo->m_uid;
 	cmdinfo.m_cwd = tinfo->m_cwd;
 	cmdinfo.m_tty = tinfo->m_tty;
-	cmdinfo.m_is_container_healthcheck = tinfo->m_is_container_healthcheck;
+	cmdinfo.m_category = convert_category(tinfo->m_category);
 
 	//
 	// Build the arguments string
@@ -432,3 +430,34 @@ void sinsp_analyzer_parsers::parse_drop(sinsp_evt* evt)
 		m_analyzer->set_sampling_ratio(*(int32_t*)parinfo->m_val);
 	}
 }
+
+draiosproto::command_category sinsp_analyzer_parsers::convert_category(sinsp_threadinfo::command_category &tcat)
+{
+	// Explicitly converting to point out mismatches
+	draiosproto::command_category cat;
+
+	switch(tcat)
+	{
+	case sinsp_threadinfo::CAT_NONE:
+		cat = draiosproto::CAT_NONE;
+		break;
+	case sinsp_threadinfo::CAT_CONTAINER:
+		cat = draiosproto::CAT_CONTAINER;
+		break;
+	case sinsp_threadinfo::CAT_HEALTHCHECK:
+		cat = draiosproto::CAT_HEALTHCHECK;
+		break;
+	case sinsp_threadinfo::CAT_LIVENESS_PROBE:
+		cat = draiosproto::CAT_LIVENESS_PROBE;
+		break;
+	case sinsp_threadinfo::CAT_READINESS_PROBE:
+		cat = draiosproto::CAT_READINESS_PROBE;
+		break;
+	default:
+		g_logger.format(sinsp_logger::SEV_ERROR, "Unknown command category %d, using CAT_NONE", tcat);
+		cat = draiosproto::CAT_NONE;
+	}
+
+	return cat;
+}
+

@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "internal_metrics.h"
 
 internal_metrics::internal_metrics()
@@ -85,6 +87,32 @@ void internal_metrics::add_ext_source(ext_source *src)
 	m_ext_sources.push_back(src);
 }
 
+void internal_metrics::send_command_categories(draiosproto::statsd_info* statsd_info)
+{
+	for(auto &pair : m_analyzer.m_command_categories)
+	{
+		if(pair.first == draiosproto::CAT_HEALTHCHECK)
+		{
+			// Keeping this as-is as it was a previously emitted metric
+			write_metric(statsd_info, "dragent.analyzer.n_container_healthcheck_command_lines", draiosproto::STATSD_GAUGE, pair.second);
+		}
+
+		const google::protobuf::EnumDescriptor *descriptor = draiosproto::command_category_descriptor();
+
+		std::string name = descriptor->FindValueByNumber(pair.first)->name();
+
+		// Drop the leading CAT_ and convert to lower case
+		if(name.find("CAT_", 0) == 0)
+		{
+			name.erase(0, 4);
+		}
+
+		std::transform(name.begin(), name.end(), name.begin(), ::tolower);
+
+		write_metric(statsd_info, "dragent.analyzer.command_line_cats.n_" + name, draiosproto::STATSD_GAUGE, pair.second);
+	}
+}
+
 bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 {
 	bool ret = false;
@@ -115,7 +143,8 @@ bool internal_metrics::send_all(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.analyzer.n_preemptions", draiosproto::STATSD_GAUGE,  m_analyzer.n_preemptions);
 
 		write_metric(statsd_info, "dragent.analyzer.n_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_command_lines);
-		write_metric(statsd_info, "dragent.analyzer.n_container_healthcheck_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_container_healthcheck_command_lines);
+
+		send_command_categories(statsd_info);
 
 		// subprocesses
 		write_metric(statsd_info, "dragent.subproc.agent.cpu.pct100", draiosproto::STATSD_GAUGE,  m_analyzer.agent_cpu);
@@ -156,7 +185,8 @@ bool internal_metrics::send_some(draiosproto::statsd_info* statsd_info)
 		write_metric(statsd_info, "dragent.analyzer.n_drops_buffer", draiosproto::STATSD_GAUGE,  m_analyzer.n_drops_buffer);
 
 		write_metric(statsd_info, "dragent.analyzer.n_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_command_lines);
-		write_metric(statsd_info, "dragent.analyzer.n_container_healthcheck_command_lines", draiosproto::STATSD_GAUGE, m_analyzer.n_container_healthcheck_command_lines);
+
+		send_command_categories(statsd_info);
 
 		write_metric(statsd_info, "dragent.subproc.cointerface.memory.kb", draiosproto::STATSD_GAUGE,  m_analyzer.cointerface_memory);
 

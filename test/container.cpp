@@ -23,6 +23,7 @@
 #include <memory>
 #include <atomic>
 #include "scap-int.h"
+#include <dragent/src/logger.h>
 #include "docker_utils.h"
 
 TEST_F(sys_call_test, container_cgroups)
@@ -1462,13 +1463,13 @@ TEST_F(sys_call_test, nsenter_fail)
 class container_state {
 public:
 	container_state() :
-		container_w_healthcheck(false),
+		container_w_health_probe(false),
 		root_cmd_seen(false),
 		second_cmd_seen(false),
 		healthcheck_seen(false) {};
 	virtual ~container_state() {};
 
-	bool container_w_healthcheck;
+	bool container_w_health_probe;
 	bool root_cmd_seen;
 	bool second_cmd_seen;
 	bool healthcheck_seen;
@@ -1489,7 +1490,8 @@ static std::string capture_stats(sinsp *inspector)
 	return ss.str();
 }
 
-static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_state &cstate)
+static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_state &cstate,
+				   sinsp_threadinfo::command_category expected_cat)
 {
 	sinsp_threadinfo* tinfo = evt->m_tinfo;
 
@@ -1507,9 +1509,9 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 
 		sinsp_threadinfo::populate_cmdline(cmdline, tinfo);
 
-		if(container_info->m_has_healthcheck)
+		if(!container_info->m_health_probes.empty())
 		{
-			cstate.container_w_healthcheck = true;
+			cstate.container_w_health_probe = true;
 		}
 
 		// This is the container's initial command. In the test case
@@ -1521,11 +1523,12 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 			if(!cstate.root_cmd_seen)
 			{
 				cstate.root_cmd_seen = true;
-				ASSERT_FALSE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+
+				ASSERT_EQ(tinfo->m_category, sinsp_threadinfo::CAT_CONTAINER) << capture_stats(inspector);
 			}
 			else
 			{
-				ASSERT_TRUE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+				ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
 				cstate.healthcheck_seen = true;
 			}
 		}
@@ -1537,12 +1540,12 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 			if(!cstate.second_cmd_seen)
 			{
 				cstate.second_cmd_seen = true;
-				ASSERT_FALSE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+				ASSERT_EQ(tinfo->m_category, sinsp_threadinfo::CAT_CONTAINER) << capture_stats(inspector);
 			}
 			else
 			{
 				// Should inherit container healthcheck property from parent.
-				ASSERT_TRUE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+				ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
 			}
 		}
 
@@ -1552,7 +1555,7 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 		{
 			cstate.healthcheck_seen = true;
 
-			ASSERT_TRUE(tinfo->m_is_container_healthcheck) << capture_stats(inspector);
+			ASSERT_EQ(tinfo->m_category, expected_cat) << capture_stats(inspector);
 		}
 	}
 
@@ -1562,10 +1565,11 @@ static void update_container_state(sinsp *inspector, sinsp_evt *evt, container_s
 // state of the initial command for the container, a child proces of
 // that initial command, and a health check (if one is configured).
 static void healthcheck_helper(const char *dockerfile,
-			       bool expect_healthcheck)
+			       bool expect_healthcheck,
+			       sinsp_threadinfo::command_category expected_cat=sinsp_threadinfo::CAT_HEALTHCHECK)
 {
 	container_state cstate;
-	bool exited_early;
+	bool exited_early = false;
 
 	if(!dutils_check_docker())
 	{
@@ -1603,7 +1607,7 @@ static void healthcheck_helper(const char *dockerfile,
 
 	captured_event_callback_t callback = [&](const callback_param& param)
 	{
-		update_container_state(param.m_inspector, param.m_evt, cstate);
+		update_container_state(param.m_inspector, param.m_evt, cstate, expected_cat);
 
 		// Exit as soon as we've seen all the initial commands
 		// and the health check (if expecting one)
@@ -1617,15 +1621,22 @@ static void healthcheck_helper(const char *dockerfile,
 		}
 	};
 
-	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter);});
+	before_open_t setup = [&](sinsp* inspector)
+	{
+		inspector->set_log_callback(dragent_logger::sinsp_logger_callback);
+	};
+
+	ASSERT_NO_FATAL_FAILURE({event_capture::run(test, callback, filter, setup);});
+
 	ASSERT_TRUE(cstate.root_cmd_seen);
 	ASSERT_TRUE(cstate.second_cmd_seen);
-	ASSERT_EQ(cstate.container_w_healthcheck, expect_healthcheck);
+	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck);
 	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
 }
 
 static void healthcheck_tracefile_helper(const char *dockerfile,
-					 bool expect_healthcheck)
+					 bool expect_healthcheck,
+					 sinsp_threadinfo::command_category expected_cat=sinsp_threadinfo::CAT_HEALTHCHECK)
 {
 	container_state cstate;
 	std::unique_ptr<sinsp> inspector;
@@ -1702,14 +1713,14 @@ static void healthcheck_tracefile_helper(const char *dockerfile,
 		}
 		ASSERT_TRUE(res == SCAP_SUCCESS);
 
-		update_container_state(inspector.get(), ev, cstate);
+		update_container_state(inspector.get(), ev, cstate, expected_cat);
 	}
 
 	inspector->close();
 
 	ASSERT_TRUE(cstate.root_cmd_seen);
 	ASSERT_TRUE(cstate.second_cmd_seen);
-	ASSERT_EQ(cstate.container_w_healthcheck, expect_healthcheck);
+	ASSERT_EQ(cstate.container_w_health_probe, expect_healthcheck);
 	ASSERT_EQ(cstate.healthcheck_seen, expect_healthcheck);
 
 	unlink(dumpfile);
@@ -1758,6 +1769,22 @@ TEST_F(sys_call_test, docker_container_healthcheck_shell)
 			   true);
 }
 
+// A health check where the container has docker labels that make it
+// look like it was started in k8s.
+TEST_F(sys_call_test, docker_container_liveness_probe)
+{
+	healthcheck_helper("Dockerfile.healthcheck_liveness",
+			   true,
+			   sinsp_threadinfo::CAT_LIVENESS_PROBE);
+}
+
+TEST_F(sys_call_test, docker_container_readiness_probe)
+{
+	healthcheck_helper("Dockerfile.healthcheck_readiness",
+			   true,
+			   sinsp_threadinfo::CAT_READINESS_PROBE);
+}
+
 // Identical to above tests, but read events from a trace file instead
 // of live. Only doing selected cases.
 TEST_F(sys_call_test, docker_container_healthcheck_trace)
@@ -1770,6 +1797,20 @@ TEST_F(sys_call_test, docker_container_healthcheck_cmd_overlap_trace)
 {
 	healthcheck_tracefile_helper("Dockerfile.healthcheck_cmd_overlap",
 				     true);
+}
+
+TEST_F(sys_call_test, docker_container_liveness_probe_trace)
+{
+	healthcheck_tracefile_helper("Dockerfile.healthcheck_liveness",
+				     true,
+				     sinsp_threadinfo::CAT_LIVENESS_PROBE);
+}
+
+TEST_F(sys_call_test, docker_container_readiness_probe_trace)
+{
+	healthcheck_tracefile_helper("Dockerfile.healthcheck_readiness",
+				     true,
+				     sinsp_threadinfo::CAT_READINESS_PROBE);
 }
 
 TEST_F(sys_call_test, docker_container_large_json)

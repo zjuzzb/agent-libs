@@ -21,6 +21,8 @@ public:
 
 	void set_sched_analyzer2(sinsp_sched_analyzer2* sched_analyzer2);
 
+	static draiosproto::command_category convert_category(sinsp_threadinfo::command_category &tcat);
+
 private:
 	sinsp_analyzer* m_analyzer;
 	sinsp_sched_analyzer2* m_sched_analyzer2;

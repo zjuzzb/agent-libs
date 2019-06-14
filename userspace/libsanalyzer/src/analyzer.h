@@ -162,7 +162,7 @@ public:
 	uint64_t m_uid; // user ID
 	string m_cwd; // process' current working directory
 	uint32_t m_tty; // tty
-	bool m_is_container_healthcheck;
+	draiosproto::command_category m_category;
 };
 
 #ifndef _WIN32
@@ -613,7 +613,7 @@ public:
 
 	void set_extra_internal_metrics(bool val) { m_extra_internal_metrics = val; }
 
-	void incr_num_container_healthcheck_command_lines() { m_num_container_healthcheck_command_lines++; }
+	void incr_command_lines_category(draiosproto::command_category cat, uint64_t delta=1);
 
 	/**
 	 * Ensure that any async processing associated with flush() is complete
@@ -1273,8 +1273,8 @@ VISIBILITY_PRIVATE
 	int m_top_file_devices_per_host = 0;
 
 	bool m_extra_internal_metrics = false;
-	uint64_t m_num_container_healthcheck_command_lines = 0;
 
+	std::map<draiosproto::command_category,uint64_t> m_command_categories;
 
 	/**
 	 * Configurable number of flushes between each time that k8

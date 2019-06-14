@@ -68,7 +68,7 @@ public:
 	void set_n_preemptions(int64_t val);
 
 	void set_n_command_lines(int64_t val);
-	void set_n_container_healthcheck_command_lines(int64_t val);
+	void set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats);
 
 	int64_t get_process() const;
 	int64_t get_thread() const;
@@ -88,7 +88,7 @@ public:
 	int64_t get_n_preemptions() const;
 
 	int64_t get_n_command_lines() const;
-	int64_t get_n_container_healthcheck_command_lines() const;
+	std::map<draiosproto::command_category,uint64_t> &get_command_categories() const;
 
 	// subprocesses-related interface
 	void set_agent_cpu(int64_t val);
@@ -241,7 +241,7 @@ private:
 		int64_t n_preemptions = -1;
 
 		int64_t n_command_lines = -1;
-		int64_t n_container_healthcheck_command_lines = -1;
+		std::map<draiosproto::command_category,uint64_t> m_command_categories;
 
 		int64_t agent_cpu;
 		int64_t agent_memory;
@@ -262,6 +262,8 @@ private:
 
 		std::unordered_map<pid_t, uint64_t> subprocs_old_jiffies;
 	};
+
+	void send_command_categories(draiosproto::statsd_info* statsd_info);
 
 	analyzer m_analyzer;
 	std::list<ext_source *> m_ext_sources;
@@ -408,9 +410,9 @@ inline void internal_metrics::set_n_command_lines(int64_t val)
 	m_analyzer.n_command_lines = val;
 }
 
-inline void internal_metrics::set_n_container_healthcheck_command_lines(int64_t val)
+inline void internal_metrics::set_command_categories(std::map<draiosproto::command_category,uint64_t> &cats)
 {
-	m_analyzer.n_container_healthcheck_command_lines = val;
+	m_analyzer.m_command_categories = cats;
 }
 
 inline int64_t internal_metrics::get_process() const
@@ -491,11 +493,6 @@ inline int64_t internal_metrics::get_n_preemptions() const
 inline int64_t internal_metrics::get_n_command_lines() const
 {
 	return m_analyzer.n_command_lines;
-}
-
-inline int64_t internal_metrics::get_n_container_healthcheck_command_lines() const
-{
-	return m_analyzer.n_container_healthcheck_command_lines;
 }
 
 inline int64_t internal_metrics::get_agent_cpu() const

@@ -3413,10 +3413,10 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 		{
 			m_internal_metrics->set_n_command_lines(commands->size());
 
-			// healthcheck command lines count stored separately as
-			// based on config, the healthcheck commands may not
+			// command line categories stored separately as
+			// based on config, the commands themselves may not
 			// actually be saved.
-			m_internal_metrics->set_n_container_healthcheck_command_lines(m_num_container_healthcheck_command_lines);
+			m_internal_metrics->set_command_categories(m_command_categories);
 		}
 
 		//
@@ -3528,7 +3528,7 @@ void sinsp_analyzer::emit_executed_commands(draiosproto::metrics* host_dest, dra
 				cd->set_uid(it->m_uid);
 				cd->set_cwd(it->m_cwd);
 				cd->set_tty(it->m_tty);
-				cd->set_is_healthcheck(it->m_is_container_healthcheck);
+				cd->set_category(it->m_category);
 
 				if(it->m_flags & sinsp_executed_command::FL_EXEONLY)
 				{
@@ -6943,6 +6943,18 @@ void sinsp_analyzer::dump_infrastructure_state_on_next_flush()
 {
 	g_logger.log("Will dump infrastructure state on next flush", sinsp_logger::SEV_INFO);
 	m_dump_infrastructure_state_on_next_flush = true;
+}
+
+void sinsp_analyzer::incr_command_lines_category(draiosproto::command_category cat, uint64_t delta)
+{
+	if(m_command_categories.find(cat) == m_command_categories.end())
+	{
+		m_command_categories.insert(std::pair<draiosproto::command_category,uint64_t>(cat, delta));
+	}
+	else
+	{
+		m_command_categories[cat] = m_command_categories[cat] + delta;
+	}
 }
 
 void sinsp_analyzer::flush_drain() const
