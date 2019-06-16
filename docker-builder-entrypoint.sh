@@ -30,6 +30,8 @@ if [[ "`uname -m`" == "s390x" ]]; then
 
 		cd /code/agent
 		./bootstrap-agent
+		# bootstrap-agent creates a folder for every build target, so
+		# we just switch into the appropriate folder
 		cd "/code/agent/build/${build_target}"
 	}
 else
@@ -39,6 +41,8 @@ else
 
 		cd /code/agent
 		scl enable devtoolset-2 ./bootstrap-agent
+		# bootstrap-agent creates a folder for every build target, so
+		# we just switch into the appropriate folder
 		cd "/code/agent/build/${build_target}"
 	}
 fi
@@ -58,9 +62,9 @@ build_docker_image()
 
 build_benchmarks()
 {
-	local build_target="${1:-"release"}"
+	local build_target="${1:-"release-internal"}"
 
-	BUILD_FOR_TEST=ON bootstrap_agent "${build_target}"
+	bootstrap_agent "${build_target}"
 	make -j$MAKE_JOBS benchmarks
 
 	# Copy all files that start with "benchmark-" to /out
@@ -72,7 +76,7 @@ build_benchmarks()
 
 build_package()
 {
-	local build_target="${1:-"release"}"
+	local build_target="release"
 
 	bootstrap_agent "${build_target}"
 	make -j$MAKE_JOBS package
@@ -98,14 +102,14 @@ build_release()
 {
 	mkdir -p /out/{debug,release}
 
-	BUILD_FOR_TEST=ON bootstrap_agent
+	bootstrap_agent
 	make -j$MAKE_JOBS install package
 
 	cd ../debug
 	make -j$MAKE_JOBS package
 
 	# see comment in build_package above
-	BUILD_FOR_TEST=ON COMBINED_PACKAGE=OFF bootstrap_agent
+	COMBINED_PACKAGE=OFF bootstrap_agent
 	make -j$MAKE_JOBS package
 
 	cp *.deb *.rpm *.tar.gz /out/release
@@ -162,7 +166,7 @@ build_target()
 {
     if [ -z "$2" ]; then
 	    # There is no second argument so just call make all
-	    BUILD_FOR_TEST=ON bootstrap_agent $1
+	    bootstrap_agent $1
 	    make -j$MAKE_JOBS all
     else
 	    if [ ${2: -4} == ".cpp" ]; then
@@ -170,7 +174,7 @@ build_target()
 		    build_single_cpp $1 $2
 	    else
 		    # Make a specific target
-		    BUILD_FOR_TEST=ON bootstrap_agent $1
+		    bootstrap_agent $1
 		    make -j$MAKE_JOBS $2 $3
 	    fi
     fi
@@ -182,13 +186,9 @@ build_target()
 # we submit.
 build_presubmit()
 {
-	local target=""
-
-	for target in release debug; do
-		echo "Building ${target}"
-		(BUILD_FOR_TEST=ON bootstrap_agent "${target}" && make -j${MAKE_JOBS} all run-unit-tests) || \
-			(echo "Building target '${target}' failed" && false)
-	done
+	# Use the debug-internal build because it has the toughest valgrind
+	(bootstrap_agent "debug-internal" && make -j${MAKE_JOBS} all run-unit-tests) || \
+		(echo "Building presubmit failed" && false)
 }
 readonly -f build_presubmit
 
@@ -202,7 +202,7 @@ readonly -f bold
 
 case "$1" in
 	bash)
-		BUILD_FOR_TEST=ON bootstrap_agent "${2:-"release"}"
+		bootstrap_agent "${2:-"release-internal"}"
 		bash
 		;;
 	container)
@@ -214,14 +214,14 @@ case "$1" in
 		make -j$MAKE_JOBS install
 		;;
 	install-test)
-		BUILD_FOR_TEST=ON bootstrap_agent "${2:-"release"}"
+		bootstrap_agent "${2:-"release-internal"}"
 		make -j$MAKE_JOBS install
 		;;
 	benchmarks)
 		build_benchmarks
 		;;
 	package)
-		build_package "${2:-"release"}"
+		build_package
 		;;
 	release)
 		build_release
@@ -232,14 +232,23 @@ case "$1" in
 	presubmit)
 		build_presubmit
 		;;
-	make)
-		# fall through
-		;&
 	make-release)
 		build_target "release" $2 $3
 		;;
 	make-debug)
 		build_target "debug" $2 $3
+		;;
+	make)
+		# fall through to make-release-internal
+		;&
+	make-release-internal)
+		build_target "release-internal" $2 $3
+		;;
+	make-debug-internal)
+		build_target "debug-internal" $2 $3
+		;;
+	make-debug-internal-code-coverage)
+		build_target "debug-internal-code-coverage" $2 $3
 		;;
 
 	# Catch "help", no arguments, or invalid arguments
