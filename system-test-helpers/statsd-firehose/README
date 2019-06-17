@@ -1,0 +1,11 @@
+To build the container, cd into the statsd-firehose directory and call
+
+> docker build -t statsd-firehose:latest .
+
+To run the container, call
+
+> docker run -d statsd-firehose
+
+In your logs you should see something like...
+
+"Added 5 statsd metrics for container=compassionate_tereshkova"

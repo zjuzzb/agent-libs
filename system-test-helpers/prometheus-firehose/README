@@ -1,0 +1,25 @@
+To build the container, cd into the prometheus-firehose directory and call
+
+> docker build -t prometheus-firehose:latest .
+
+Add this to your config
+
+prometheus:
+  enabled: true
+  process_filter:
+    - include:
+        port: 5005
+
+and run
+
+> docker run -d -p 5005:5005 prometheus-firehose
+
+
+OR alternatively add just this to your config
+
+prometheus:
+  enabled: true
+
+and run
+
+> docker run -d -p 5005:5005 -l io.prometheus.scrape=true -l io.prometheus.port=5005 prometheus-firehose
