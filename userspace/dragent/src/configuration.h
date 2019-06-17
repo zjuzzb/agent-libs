@@ -451,9 +451,6 @@ public:
 	uint32_t m_procfs_scan_delay_ms;
 
 	bool m_query_docker_image_info;
-	std::string m_cri_socket_path;
-	int64_t m_cri_timeout_ms = 1000;
-	bool m_cri_extra_queries;
 
 	uint64_t m_flush_log_time;
 	uint64_t m_flush_log_time_duration;
@@ -556,7 +553,6 @@ public:
 
 private:
 	inline static bool is_executable(const std::string& path);
-	inline static bool is_socket(const std::string &path);
 	void write_statsite_configuration();
 	void add_event_filter(user_event_filter_t::ptr_t& flt, const std::string& system, const std::string& component);
 	void add_percentiles();

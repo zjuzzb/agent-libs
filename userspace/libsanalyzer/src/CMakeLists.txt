@@ -116,6 +116,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/cyclewriter.cpp
 	connectinfo.cpp 
 	config.cpp
+	container_config.cpp
 	container_events/docker.cpp
 	custom_container.cpp
 	delays.cpp

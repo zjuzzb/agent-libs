@@ -1,6 +1,7 @@
 #include "sinsp_worker.h"
 #include "common_logger.h"
 #include "configuration_manager.h"
+#include "container_config.h"
 #include "error_handler.h"
 #include "infrastructure_state.h"
 #include "memdumper.h"
@@ -460,9 +461,20 @@ void sinsp_worker::init()
 	}
 
 	m_inspector->set_query_docker_image_info(m_configuration->m_query_docker_image_info);
-	m_inspector->set_cri_socket_path(m_configuration->m_cri_socket_path);
-	m_inspector->set_cri_timeout(m_configuration->m_cri_timeout_ms);
-	m_inspector->set_cri_extra_queries(m_configuration->m_cri_extra_queries);
+	m_inspector->set_cri_socket_path(c_cri_socket_path->get());
+	m_inspector->set_cri_timeout(c_cri_timeout_ms.get());
+	m_inspector->set_cri_extra_queries(c_cri_extra_queries.get());
+	m_inspector->set_cri_async(c_cri_async.get());
+	m_inspector->set_cri_async_limits(c_cri_async_limits.get());
+
+	if(c_cri_socket_path->get().empty())
+	{
+		LOG_INFO("CRI support disabled.");
+	}
+	else
+	{
+		LOG_INFO("CRI support enabled, socket: %s", c_cri_socket_path->get().c_str());
+	}
 
 	m_analyzer->set_track_environment(m_configuration->m_track_environment);
 	m_analyzer->set_envs_per_flush(m_configuration->m_envs_per_flush);
