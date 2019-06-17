@@ -306,26 +306,20 @@ list(APPEND sanalyzer_common_link_libraries
 list(APPEND sanalyzer_linux_link_libraries
 		${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/build/lib_release/libtbb.a)
 
-list(APPEND sanalyzer_linux_production_libs
-		${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a)
-
-# Create the production library
 add_library(sanalyzer STATIC ${SANALYZER_SOURCES})
 add_dependencies(sanalyzer draiosproto)
-if(NOT CYGWIN)
-	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries} ${sanalyzer_linux_link_libraries} ${sanalyzer_linux_production_libs})
+
+if(INCLUDE_INTERNAL_TEST_CODE)
+	target_compile_definitions(sanalyzer PUBLIC SYSDIG_TEST)
 else()
-	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries})
+		# tcmalloc doesn't play well with valgrind/helgrind so we keep it out
+		# of the internal builds.
+		list(APPEND sanalyzer_linux_link_libraries
+				${DRAIOS_DEPENDENCIES_DIR}/gperftools-${DRAIOS_GPERFTOOLS_VERSION}/target/lib/libtcmalloc_and_profiler.a)
 endif()
 
-if(BUILD_FOR_TEST)
-	# Create the test library with the extra SYSDIG_TEST definition
-	add_library(sanalyzer.test STATIC ${SANALYZER_SOURCES})
-	target_compile_definitions(sanalyzer.test PUBLIC SYSDIG_TEST)
-	add_dependencies(sanalyzer.test draiosproto)
-	if(NOT CYGWIN)
-		target_link_libraries(sanalyzer.test ${sanalyzer_common_link_libraries} ${sanalyzer_linux_link_libraries})
-	else()
-		target_link_libraries(sanalyzer.test ${sanalyzer_common_link_libraries})
-	endif()
+if(NOT CYGWIN)
+	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries} ${sanalyzer_linux_link_libraries})
+else()
+	target_link_libraries(sanalyzer ${sanalyzer_common_link_libraries})
 endif()

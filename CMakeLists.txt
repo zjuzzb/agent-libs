@@ -2,21 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 
 project(draios)
 
-# This option adds the test targets so that they can be built. The main use case
-# is to avoid the test libraries being build when CPACK runs 'make all' before
-# creating the package.
-option(BUILD_FOR_TEST "Enable building binaries needed for testing")
-
-# When set to ON, this option will build binaries with the necessary options to
-# emit code coverage data at runtime.
-option(BUILD_FOR_COVERAGE "Enable building binaries needed for code coverage")
-
 option(BUILD_WARNINGS_AS_ERRORS "Enable building with -Wextra -Werror flags")
-
-# When set to ON, this option will cause the agent to spin up a REST server
-# that exposes an API to provide tests with visibility into the state of the
-# Agent
-option(ENABLE_REST_SERVER "Enable built-in REST server")
 
 # Versions of all third-party libraries used. These may be referred to
 # in lower CMakeLists.txt files.
@@ -49,29 +35,8 @@ if(NOT CYGWIN)
 endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 
-set(DRAIOS_DEBUG_FLAGS "-D_DEBUG")
-#set(DRAIOS_FEATURE_FLAGS "-DPPM_ENABLE_SENTINEL")
-
-set(CMAKE_COMMON_FLAGS "-Wall -ggdb ${DRAIOS_FEATURE_FLAGS}")
-
-if(ENABLE_REST_SERVER)
-	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -DENABLE_REST_SERVER")
-endif()
-
-if(BUILD_WARNINGS_AS_ERRORS)
-	set(CMAKE_SUPPRESSED_WARNINGS "-Wno-unused-parameter -Wno-missing-field-initializers -Wno-sign-compare -Wno-type-limits")
-	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -Wextra -Werror ${CMAKE_SUPPRESSED_WARNINGS}")
-endif()
-if(BUILD_FOR_COVERAGE)
-	set(CMAKE_COMMON_FLAGS "${CMAKE_COMMON_FLAGS} -fprofile-arcs -ftest-coverage")
-endif()
-set(CMAKE_C_FLAGS "-std=gnu11 ${CMAKE_COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "--std=c++0x ${CMAKE_COMMON_FLAGS}")
-set(CMAKE_C_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
-set(CMAKE_CXX_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
-# Add "-fno-inline -fno-omit-frame-pointer" for perf
-set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
+# Set up the different flavors of agent binaries
+include(CMakeConfigurationTypes.cmake)
 
 add_definitions(-DPLATFORM_NAME="${CMAKE_SYSTEM_NAME}")
 add_definitions(-DHAS_CAPTURE)
@@ -154,9 +119,17 @@ if(NOT CYGWIN)
 	add_subdirectory(docker)
 endif()
 
-if(BUILD_FOR_TEST)
+if(ADD_INTERNAL_TEST_TARGETS)
 	include(CMakeListsForTest.cmake)
 endif()
+
+# The /test tests and associated test-helpers run in the release jenkins job.
+# That uses the production (non-internal) build.
+if(NOT CYGWIN)
+	add_subdirectory(test)
+endif()
+add_subdirectory(userspace/test_helpers/src)
+add_subdirectory(userspace/test_helpers/test)
 
 install(PROGRAMS ${DRAIOS_DEPENDENCIES_DIR}/statsite-private-${STATSITE_VERSION}/statsite
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/bin

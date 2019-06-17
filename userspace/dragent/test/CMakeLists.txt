@@ -42,8 +42,8 @@ add_executable(unit-test-dragent
 )
 
 target_link_libraries(unit-test-dragent
-	sanalyzer.test
-	dragentl.test
+	sanalyzer
+	dragentl
 	draiosproto
 	fake-collector-core
 	test_helpers
@@ -59,7 +59,7 @@ file(
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if(BUILD_FOR_COVERAGE)
+if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(run-unit-test-dragent
 		DEPENDS unit-test-dragent
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-dragent dragent.lcov

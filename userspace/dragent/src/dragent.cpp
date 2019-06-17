@@ -48,6 +48,15 @@ type_config<bool> c_use_statsite_forwarder(
 		"statsd",
 		"use_forwarder");
 
+
+type_config<bool>::ptr c_rest_feature_flag =
+    type_config_builder<bool>(false /*default*/,
+			      "Feature flag to turn on the REST server.",
+			      "feature_flag_rest_server")
+	.hidden()
+	.mutable_only_in_internal_build()
+	.get();
+
 type_config<uint16_t>::ptr c_rest_port = type_config_builder<uint16_t>(
 		24482, 
 		"TCP port on which the Agent REST server listens for connections",
@@ -100,7 +109,11 @@ std::unique_ptr<librest::rest_server> s_rest_server;
  */
 void enable_rest_server()
 {
-#if defined(ENABLE_REST_SERVER)
+	if(!c_rest_feature_flag.get())
+	{
+		return;
+	}
+
 	if(s_rest_server)
 	{
 		return;
@@ -114,7 +127,6 @@ void enable_rest_server()
 	s_rest_server = make_unique<librest::rest_server>(factory,
 	                                                  c_rest_port->get());
 	s_rest_server->start();
-#endif
 }
 
 /**
@@ -122,7 +134,6 @@ void enable_rest_server()
  */
 void disable_rest_server()
 {
-#if defined(ENABLE_REST_SERVER)
 	if(s_rest_server.get() == nullptr)
 	{
 		return;
@@ -130,7 +141,6 @@ void disable_rest_server()
 
 	s_rest_server->stop();
 	s_rest_server.reset();
-#endif
 }
 
 } // end namespace

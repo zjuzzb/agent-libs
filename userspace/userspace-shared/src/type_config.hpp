@@ -17,18 +17,29 @@ type_config<data_type>::type_config(const data_type& default_value,
 				    const std::string& subsubkey)
         : configuration_unit(key, subkey, subsubkey, description),
           m_default(default_value),
-          m_data(default_value)
+          m_data(default_value),
+	  m_configured(default_value),
+	  m_mutable_only_in_internal(false)
 {
 }
 
 template<typename data_type>
 void type_config<data_type>::init(const yaml_configuration& raw_config)
 {
-        if (get_subkey().empty())
+
+#ifndef SYSDIG_TEST
+	// Some configuration params are only available on internal test builds.
+	if(m_mutable_only_in_internal)
+	{
+		return;
+	}
+#endif
+
+        if(get_subkey().empty())
         {
                 m_data = raw_config.get_scalar<data_type>(get_key(), m_default);
         }
-        else if (get_subsubkey().empty())
+        else if(get_subsubkey().empty())
         {
 		m_data = raw_config.get_scalar<data_type>(get_key(),
 							  get_subkey(),

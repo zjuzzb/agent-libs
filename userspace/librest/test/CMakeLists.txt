@@ -27,7 +27,7 @@ file(
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if(BUILD_FOR_COVERAGE)
+if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(run-unit-test-librest
 		DEPENDS unit-test-librest
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-librest librest.lcov

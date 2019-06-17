@@ -407,7 +407,7 @@ TEST_F(type_config_test, builder_hidden)
 	ASSERT_TRUE(some_config->hidden());
 }
 
-TEST_F(type_config_test, builder_min)
+TEST_F(type_config_test, builder_min_over)
 {
 	const std::string key = "int_12345";
 	const int default_value = 10000;
@@ -427,7 +427,27 @@ TEST_F(type_config_test, builder_min)
 	ASSERT_EQ(MIN, some_config->configured());
 }
 
-TEST_F(type_config_test, builder_max)
+TEST_F(type_config_test, builder_min_under)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+	const int MIN = INT_12345_VALUE - 10;
+
+	type_config<int>::mutable_ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.min(MIN)
+		.get_mutable();
+
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
+}
+
+TEST_F(type_config_test, builder_max_under)
 {
 	const std::string key = "int_12345";
 	const int default_value = 10000;
@@ -445,6 +465,46 @@ TEST_F(type_config_test, builder_max)
 
 	ASSERT_EQ(MAX, some_config->get());
 	ASSERT_EQ(MAX, some_config->configured());
+}
+
+TEST_F(type_config_test, builder_max_over)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+	const int MAX = INT_12345_VALUE + 10;
+
+	type_config<int>::mutable_ptr some_config =
+	   type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.max(MAX)
+		.get_mutable();
+
+	yaml_configuration config_yaml({get_conf_file()});
+	ASSERT_EQ(0, config_yaml.errors().size());
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	ASSERT_EQ(INT_12345_VALUE, some_config->get());
+	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
+}
+
+TEST_F(type_config_test, mutable_only_in_internal_build)
+{
+	const std::string key = "int_12345";
+	const int default_value = 10000;
+
+	type_config<int>::mutable_ptr some_config =
+	    type_config_builder<int>(default_value, DEFAULT_DESCRIPTION, key)
+		.mutable_only_in_internal_build()
+		.get_mutable();
+
+	yaml_configuration config_yaml({ get_conf_file() });
+	ASSERT_EQ(0, config_yaml.errors().size());
+	some_config->init(config_yaml);
+	some_config->post_init();
+
+	// Since this ut is part of an internal build, we can only check that
+	// the value was written.
+	ASSERT_EQ(INT_12345_VALUE, some_config->get());
 }
 
 TEST_F(type_config_test, builder_post_init)

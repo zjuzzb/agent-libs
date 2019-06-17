@@ -6,17 +6,12 @@ add_subdirectory(userspace/libsanalyzer/benchmark)
 add_subdirectory(userspace/libsanalyzer/test)
 add_subdirectory(userspace/libsanalyzer/tests)
 add_subdirectory(userspace/libsanalyzer/test_helpers)
-add_subdirectory(userspace/test_helpers/src)
-add_subdirectory(userspace/test_helpers/test)
 add_subdirectory(userspace/userspace-shared/test)
 add_subdirectory(userspace/userspace-shared/test-helpers)
 add_subdirectory(userspace/librest/test)
 add_subdirectory(userspace/librest/test_helpers)
 
-if(NOT CYGWIN)
-	add_subdirectory(test)
-endif()
-
+# Run all unit tests
 add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-testhelpers
 	COMMAND $(MAKE) run-unit-test-dragent
@@ -25,8 +20,7 @@ add_custom_target(run-unit-tests
 	COMMAND $(MAKE) run-unit-test-userspace-shared
 )
 
-# Run all unit tests
-if(BUILD_FOR_COVERAGE)
+if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(clean-code-coverage
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage clean
 	)

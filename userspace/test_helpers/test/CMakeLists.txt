@@ -49,7 +49,6 @@ target_link_libraries(unit-test-testhelpers
 	test_helpers
 	pthread
 	rt
-	sanalyzer.test
 	${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/${POCO_LIB_DIR}/${POCO_LIB_PREFIX}PocoFoundation.a
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 )
@@ -59,7 +58,7 @@ file(
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if(BUILD_FOR_COVERAGE)
+if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(run-unit-test-testhelpers
 		DEPENDS unit-test-testhelpers
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-testhelpers testhelpers.lcov

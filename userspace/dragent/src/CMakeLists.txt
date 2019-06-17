@@ -79,17 +79,11 @@ list(APPEND dragent_link_libraries
 	rt
 	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a)
 
-# Create the production library
 add_library(dragentl STATIC ${targetfiles})
 target_link_libraries(dragentl falco_engine ${dragent_link_libraries})
 
-if(BUILD_FOR_TEST)
-	# Create the test library with the extra SYSDIG_TEST definition
-	add_library(dragentl.test STATIC ${targetfiles})
-	target_compile_definitions(dragentl.test PUBLIC SYSDIG_TEST)
-	# Ideally, we make a test version of falco_engine since it currently depends
-	# on the production version of libsanalyzer
-	target_link_libraries(dragentl.test falco_engine ${dragent_link_libraries})
+if(INCLUDE_INTERNAL_TEST_CODE)
+	target_compile_definitions(dragentl PUBLIC SYSDIG_TEST)
 endif()
 
 add_executable(dragent

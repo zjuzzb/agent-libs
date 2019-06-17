@@ -54,7 +54,7 @@ add_executable(unit-test-libsanalyzer
 		${libsanalyzer_uts})
 
 target_link_libraries(unit-test-libsanalyzer
-	sanalyzer.test
+	sanalyzer
 	draiosproto
 	test-helpers-libsanalyzer
 	test-helpers-userspace-shared
@@ -69,7 +69,7 @@ file(
 	DESTINATION ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if(BUILD_FOR_COVERAGE)
+if(RUN_UNIT_TEST_UNDER_CODE_COVERAGE)
 	add_custom_target(run-unit-test-libsanalyzer
 		DEPENDS unit-test-libsanalyzer
 		COMMAND ${PROJECT_SOURCE_DIR}/scripts/code-coverage lcov ./unit-test-libsanalyzer libsanalyzer.lcov
@@ -79,7 +79,7 @@ else()
 	# version of the unit test binary -- the backtraces that we want to suppress
 	# don't match reality in the code.  Rather than add suppressions for these
 	# unexpected backtraces, we'll run helgrind only for debug builds.
-	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+	if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
 		add_custom_target(run-unit-test-libsanalyzer
 			DEPENDS unit-test-libsanalyzer
 			COMMAND valgrind --error-exitcode=1 --track-origins=yes --gen-suppressions=all  ./unit-test-libsanalyzer

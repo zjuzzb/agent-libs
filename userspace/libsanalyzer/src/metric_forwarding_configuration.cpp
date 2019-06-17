@@ -16,11 +16,12 @@ type_config<bool>::ptr c_feature_flag =
 			     "Feature flag to turn on metric forwarding. This can be deleted once the feature is validated.",
 			     "feature_flag_metric_forwarding_configuration")
 	.hidden()
+	.mutable_only_in_internal_build()
 	.get();
 
 type_config<int>::ptr c_metric_forwarding_sum =
    type_config_builder<int>(10000 /*default*/,
-			    "The maxiumum total of all prometheus, jmx, statsd and app check metrics.",
+			    "The maximum total of all prometheus, jmx, statsd and app check metrics.",
 			    "metric_forwarding_limit")
 	.min(0)
 	.max(10000)

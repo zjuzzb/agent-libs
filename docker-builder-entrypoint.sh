@@ -206,30 +206,32 @@ case "$1" in
 		bash
 		;;
 	container)
-		bootstrap_agent "${2:-"release"}"
+		bootstrap_agent "${2:-"release-internal"}"
 		build_container
 		;;
-	install)
-		bootstrap_agent "${2:-"release"}"
-		make -j$MAKE_JOBS install
-		;;
 	install-test)
+		;& # deprecated; just fall through
+	install)
 		bootstrap_agent "${2:-"release-internal"}"
 		make -j$MAKE_JOBS install
 		;;
 	benchmarks)
+		# used by the agent-build-benchmarks jenkins job
 		build_benchmarks
 		;;
 	package)
 		build_package
 		;;
 	release)
+		# used by the agent-build-docker-dev and agent-build-docker-rc
+		# jenkins jobs
 		build_release
 		;;
 	sysdig)
 		build_sysdig
 		;;
 	presubmit)
+		# used by the agent-build-presubmit jenkins job
 		build_presubmit
 		;;
 	make-release)
@@ -239,8 +241,7 @@ case "$1" in
 		build_target "debug" $2 $3
 		;;
 	make)
-		# fall through to make-release-internal
-		;&
+		;& # fall through to make-release-internal
 	make-release-internal)
 		build_target "release-internal" $2 $3
 		;;
@@ -257,14 +258,22 @@ case "$1" in
 		cat << EOF
 	This is the entry point for the Sysdig agent-builder.
 
+	5 Build variants are supported:
+	1. debug
+	2. release
+	3. debug-internal
+	4. release-internal
+	5. debug-internal-code-coverage
+	Most commands have a default variant and most support passing a
+	specific variant.
+
 	To build and generate the agent container:
 	$(bold "> agent-builder container")
+	$(bold "> agent-builder container <variant>")
 
-	To build and generate the agent container with the debug agent:
-	$(bold "> agent-builder container debug")
-
-	To build the agent and install to the local machine:
+	To build the release-internal agent and install to the local machine:
 	$(bold "> agent-builder install")
+	$(bold "> agent-builder install <variant>")
 
 	To build a particular target or file:
 	$(bold "> agent-builder make")
@@ -276,6 +285,9 @@ case "$1" in
 
 	To get a bash shell inside the builder:
 	$(bold "> agent-builder bash")
+
+	To build a particular target or file for a specific variant:
+	$(bold "> agent-builder make-debug-internal unit-test-dragent")
 EOF
         set -x
 		;;

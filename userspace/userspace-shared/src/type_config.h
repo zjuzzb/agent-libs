@@ -282,7 +282,19 @@ public: // other stuff
 	void max(const data_type& value);
 
 	/**
-	 * Set the post_init delegate. This allows the configration
+	 * Set whether the param can be changed from the default outside
+	 * of an internal build
+	 */
+	void mutable_only_in_internal_build(bool value) { m_mutable_only_in_internal = value; }
+
+	/**
+	 * Get whether the param can be changed from the default outside of an
+	 * internal build
+	 */
+	bool mutable_only_in_internal_build() { return m_mutable_only_in_internal; }
+
+	/**
+	 * Set the post_init delegate. This allows the configuration
 	 * value to be changed after all init functions are called for
 	 * all configuration parameters. This is useful if one value
 	 * depends on another.
@@ -300,6 +312,7 @@ private:
 	data_type m_data;
 
 	data_type m_configured;
+	bool m_mutable_only_in_internal;
 
 	// Using unique_ptr in lieu of std::optional
 	std::unique_ptr<data_type> m_min;
@@ -351,6 +364,16 @@ public:
 	type_config_builder& hidden()
 	{
 		m_type_config->hidden(true);
+		return *this;
+	}
+
+	/**
+	 * Only allow the default value to be overridden in an internal test
+	 * build
+	 */
+	type_config_builder& mutable_only_in_internal_build()
+	{
+		m_type_config->mutable_only_in_internal_build(true);
 		return *this;
 	}
 

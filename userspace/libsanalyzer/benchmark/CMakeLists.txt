@@ -29,7 +29,7 @@ add_executable(benchmark-libsanalyzer
 add_definitions(-DHAS_ANALYZER)
 
 target_link_libraries(benchmark-libsanalyzer
-	sanalyzer.test
+	sanalyzer
 	draiosproto
 	test-helpers-libsanalyzer
 	${DRAIOS_DEPENDENCIES_DIR}/benchmark/build/src/libbenchmark.a
