@@ -51,6 +51,15 @@ TEST(statsite_config_test, default_tcp_port)
 }
 
 /**
+ * Ensure that by default, get_ip_address() returns DEFAULT_IP_ADDRESS.
+ */
+TEST(statsite_config_test, default_ip_address)
+{
+	ASSERT_EQ(statsite_config::DEFAULT_IP_ADDRESS,
+	          statsite_config::get_ip_address());
+}
+
+/**
  * Ensure that by default, use_host_statsd() returns DEFAULT_USE_HOST_STATSD.
  */
 TEST(statsite_config_test, default_use_host_statsd)
@@ -120,6 +129,22 @@ statsd:
 
 	ASSERT_TRUE(enabled_config.loaded());
 	ASSERT_EQ(18125, statsite_config::get_tcp_port());
+}
+
+/*
+ * Ensure that if the statsite IP address is configured, get_ip_address()
+ * returns the configured value.
+ */
+TEST(statsite_config_test, config_ip_address)
+{
+	const std::string config = R"EOF(
+statsd:
+  ip_address: 1.2.3.4
+)EOF";
+	test_helpers::scoped_configuration enabled_config(config);
+
+	ASSERT_TRUE(enabled_config.loaded());
+	ASSERT_EQ("1.2.3.4", statsite_config::get_ip_address());
 }
 
 /**

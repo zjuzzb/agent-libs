@@ -25,6 +25,9 @@ extern const bool DEFAULT_ENABLED;
 /** The default statsd port: 8125 */
 extern const uint16_t DEFAULT_STATSD_PORT;
 
+/** The default address to which statsite will bind. */
+extern const std::string DEFAULT_IP_ADDRESS;
+
 /** Expect a statsd server on the host? false. */
 extern const bool DEFAULT_USE_HOST_STATSD;
 
@@ -59,6 +62,12 @@ uint16_t get_tcp_port();
  * Returns the UDP port on which statsite will listen for statsd messages.
  */
 uint16_t get_udp_port();
+
+/**
+ * Returns the IP address to which statsite will bind to receive incoming
+ * TCP/UDP messages.
+ */
+std::string get_ip_address();
 
 /**
  * Returns true if we expect that the host is running its own statsd server,

@@ -16,14 +16,15 @@ namespace libsanalyzer {
 namespace statsite_config {
 
 #if defined(CYGWING_AGENT)
-const bool     DEFAULT_ENABLED         = false;
+const bool        DEFAULT_ENABLED         = false;
 #else
-const bool     DEFAULT_ENABLED         = true;
+const bool        DEFAULT_ENABLED         = true;
 #endif
 
-const uint16_t DEFAULT_STATSD_PORT     = 8125;
-const bool     DEFAULT_USE_HOST_STATSD = false;
-const uint16_t DEFAULT_FLUSH_INTERVAL  = 1;
+const uint16_t    DEFAULT_STATSD_PORT     = 8125;
+const std::string DEFAULT_IP_ADDRESS      = "127.0.0.1";
+const bool        DEFAULT_USE_HOST_STATSD = false;
+const uint16_t    DEFAULT_FLUSH_INTERVAL  = 1;
 
 } // namespace statsite_config
 } // namespace libsanalyzer
@@ -73,8 +74,15 @@ type_config<uint16_t>::ptr c_tcp_port = type_config_builder<uint16_t>(
 	.post_init(set_port_to_zero_if_using_host_statsd)
         .get();
 
+type_config<std::string> c_ip_address(
+		libsanalyzer::statsite_config::DEFAULT_IP_ADDRESS,
+		"The IP address to which statsite will bind when listening for "
+		"incoming network messages",
+		"statsd",
+		"ip_address");
+
 type_config<uint16_t> c_flush_interval(
-		1,
+		libsanalyzer::statsite_config::DEFAULT_FLUSH_INTERVAL,
 		"How frequently, in seconds, statsite should flush metrics to the Agent",
 		"statsd",
 		"flush_interval");
@@ -107,6 +115,11 @@ uint16_t statsite_config::get_tcp_port()
 uint16_t statsite_config::get_udp_port()
 {
 	return c_udp_port->get();
+}
+
+std::string statsite_config::get_ip_address()
+{
+	return c_ip_address.get();
 }
 
 bool statsite_config::use_host_statsd()
@@ -143,7 +156,6 @@ void statsite_config::write_statsite_configuration(std::ostream& ini,
 		(conversion_map.find(loglevel) != conversion_map.end())
 		? conversion_map.at(loglevel)
 		: "INFO";
-	const std::string address = "127.0.0.1";
 	const int parse_stdin = 1;
 
 	ini << "#"                                           << std::endl;
@@ -151,7 +163,7 @@ void statsite_config::write_statsite_configuration(std::ostream& ini,
 	ini << "Please use \"dragent.yaml\" instead"         << std::endl;
 	ini << "#"                                           << std::endl;
 	ini << "[statsite]"                                  << std::endl;
-	ini << "bind_address = "   << address                << std::endl;
+	ini << "bind_address = "   << c_ip_address.get()     << std::endl;
 	ini << "port = "           << c_tcp_port->get()      << std::endl;
 	ini << "udp_port = "       << c_udp_port->get()      << std::endl;
 	ini << "log_level = "      << statsite_loglevel      << std::endl;
