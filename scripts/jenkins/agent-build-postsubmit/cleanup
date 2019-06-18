@@ -1,0 +1,19 @@
+#!/bin/bash
+
+SCRIPTS_DIR=$(dirname $(readlink -f $0))
+if [ -z "$WORKSPACE" ]
+then
+	WORKSPACE=$SCRIPTS_DIR/../../../..
+fi
+
+SOURCE=$WORKSPACE
+INSTALL_DIR=$WORKSPACE/install
+OUT=$WORKSPACE/out
+BUILD=$WORKSPACE/build
+DRIVER_BUILD=$WORKSPACE/driver
+
+# Cleanup after the build
+sudo rm -rf $INSTALL_DIR
+sudo rm -rf $OUT
+sudo rm -rf $BUILD
+sudo rm -rf $DRIVER_BUILD
