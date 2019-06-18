@@ -273,7 +273,8 @@ statsite_proxy::statsite_proxy(pair<FILE*, FILE*> const &fds,
 }
 
 #ifndef _WIN32
-unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::read_metrics(metric_limits::cref_sptr_t ml)
+statsd_stats_source::container_statsd_map statsite_proxy::read_metrics(
+		metric_limits::cref_sptr_t ml)
 {
 	// Sample data from statsite
 	// counts.statsd.test.1|1.000000|1441746724
@@ -283,7 +284,7 @@ unordered_map<string, tuple<vector<statsd_metric>, unsigned>> statsite_proxy::re
 	// 1. bunch of metrics with different timestamps are not separated by each other
 	// 2. more lines sometimes are parsed to a single metric (eg. histograms)
 
-	unordered_map<string, tuple<statsd_metric::list_t, unsigned>> ret;
+	statsd_stats_source::container_statsd_map ret;
 	uint64_t timestamp = 0;
 	unsigned metric_count = 0;
 	const std::size_t DEFAULT_BUFFER_SIZE = 300;

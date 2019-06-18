@@ -221,6 +221,10 @@ set(SANALYZER_SOURCES
 	jmx_emitter.cpp
 	statsite_config.cpp
 	statsite_proxy.cpp
+	statsite_statsd_emitter.cpp
+	null_statsd_emitter.cpp
+	statsd_emitter_factory.cpp
+	statsd_emitter.cpp
 	app_checks.cpp
 	app_check_emitter.cpp
 	environment_emitter.cpp

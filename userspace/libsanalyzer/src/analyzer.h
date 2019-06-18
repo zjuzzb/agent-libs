@@ -41,6 +41,7 @@
 #include "app_check_emitter.h"
 #include "environment_emitter.h"
 #include "process_emitter.h"
+#include "statsd_emitter.h"
 
 namespace libsanalyzer
 {
@@ -791,12 +792,6 @@ public:
 	bool has_statsite_proxy() const;
 
 	/**
-	 * Return the limit for statsd metrics. This includes a bump if
-	 * security is enabled.
-	 */
-	unsigned int get_statsd_limit() const;
-
-	/**
 	 * Called on all containers that are eligible to be emitted, regardless
 	 * of whether they actually ARE emitted. It is guaranteed to be called
 	 * before emit_container() (if emit_container() is called).
@@ -938,7 +933,6 @@ VISIBILITY_PRIVATE
 	void tune_drop_mode(analyzer_emitter::flush_flags flushflags, double threshold_metric);
 	void add_wait_time(sinsp_evt* evt, sinsp_evt::category* cat);
 	void emit_executed_commands(draiosproto::metrics* host_dest, draiosproto::container* container_dest, vector<sinsp_executed_command>* commands);
-	void get_statsd();
 
 #ifndef _WIN32
 	static unsigned emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
@@ -1155,6 +1149,8 @@ VISIBILITY_PRIVATE
 	vector<statsd_metric> m_chisel_metrics;
 	bool m_run_chisels;
 
+	libsanalyzer::statsd_emitter::ptr m_statsd_emitter;
+
 #ifndef _WIN32
 	unique_ptr<jmx_proxy> m_jmx_proxy;
 	unsigned int m_jmx_sampling;
@@ -1163,10 +1159,9 @@ VISIBILITY_PRIVATE
 	// sent and total jmx metrics indexed by container (empty string if host)
 	unordered_map<string, tuple<unsigned, unsigned>> m_jmx_metrics_by_containers;
 
-	unique_ptr<statsite_proxy> m_statsite_proxy;
+	std::shared_ptr<statsite_proxy> m_statsite_proxy;
 	unique_ptr<posix_queue> m_statsite_forwader_queue;
-	// indexed by container id (empty string if host), stores metrics and their total size
-	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> m_statsd_metrics;
+
 	// sent and total app checks indexed by container (empty string if host)
 	unordered_map<string, tuple<unsigned, unsigned>> m_app_checks_by_containers;
 	unordered_map<string, tuple<unsigned, unsigned>> m_prometheus_by_containers;

@@ -24,6 +24,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 add_definitions( -DHAS_ANALYZER )
 
 add_library(test-helpers-libsanalyzer STATIC
+	dummy_statsd_stats_source.cpp
 	run.cpp
 	scoped_sinsp_logger_capture.cpp
 	sinsp_evt_wrapper.cpp

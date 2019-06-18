@@ -24,26 +24,6 @@ TEST(analyzer_test, end_to_end_basic)
 	// TODO bryan NOW WHAT?!?!?
 }
 
-TEST(analyzer_test, statsd_limit)
-{
-	scoped_config<int> config("statsd.limit", 350);
-
-	sinsp_mock inspector;
-	sinsp_analyzer analyzer(&inspector, "/" /*root dir*/);
-
-	ASSERT_EQ(350, analyzer.get_statsd_limit());
-}
-
-TEST(analyzer_test, statsd_limit_with_security)
-{
-	scoped_config<int> config("statsd.limit", 350);
-
-	sinsp_mock inspector;
-	sinsp_analyzer analyzer(&inspector, "/" /*root dir*/);
-	analyzer.get_configuration()->set_security_enabled(true);
-	ASSERT_EQ(450, analyzer.get_statsd_limit());
-}
-
 class test_helper
 {
 public:

@@ -94,8 +94,11 @@ using namespace google::protobuf::io;
 #include "user_event_logger.h"
 #include "utils/profiler.h"
 #include "statsite_config.h"
+#include "statsd_emitter_factory.h"
+#include "null_statsd_emitter.h"
 
 #include <gperftools/profiler.h>
+
 using namespace libsanalyzer;
 
 typedef container_emitter<sinsp_analyzer, analyzer_emitter::flush_flags> analyzer_container_emitter;
@@ -122,6 +125,7 @@ sinsp_analyzer::sinsp_analyzer(sinsp* inspector, std::string root_dir):
 	m_last_total_evts_by_cpu(sinsp::num_possible_cpus(), 0),
 	m_total_evts_switcher("driver overhead"),
 	m_very_high_cpu_switcher("agent cpu usage with sr=128"),
+	m_statsd_emitter(new null_statsd_emitter()),
 	m_serializer(metric_serializer_factory::build(
 				m_inspector,
 				m_internal_metrics,
@@ -2422,17 +2426,19 @@ void sinsp_analyzer::emit_processes(sinsp_evt* evt, uint64_t sample_duration,
 	vector<string> emitted_containers;
 	if(m_configuration->get_smart_container_reporting())
 	{
+		const bool security_enabled = m_configuration->get_security_enabled();
 		update_percentile_data_serialization(progtable_by_container);
 
-		analyzer_container_emitter emitter(*this,
-						   m_containers,
-						   get_statsd_limit(),
-						   progtable_by_container,
-						   m_container_patterns,
-						   flushflags,
-						   m_containers_limit,
-						   m_inspector->is_nodriver(),
-						   emitted_containers);
+		analyzer_container_emitter emitter(
+				*this,
+				m_containers,
+				statsd_emitter::get_limit(security_enabled),
+				progtable_by_container,
+				m_container_patterns,
+				flushflags,
+				m_containers_limit,
+				m_inspector->is_nodriver(),
+				emitted_containers);
 		emitter.emit_containers();
 		coalesce_unemitted_stats(emitted_containers);
 
@@ -3798,7 +3804,8 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 #endif
 
 				tracer_emitter gs_trc("get_statsd", f_trc);
-				get_statsd();
+				m_statsd_emitter->fetch_metrics(m_prev_flush_time_ns);
+
 				if(m_mounted_fs_proxy)
 				{
 					// Get last filesystem stats, list of containers is sent on emit_processes
@@ -4082,23 +4089,10 @@ void sinsp_analyzer::flush(sinsp_evt* evt, uint64_t ts, bool is_eof, analyzer_em
 			m_fd_listener->m_devs_stat.clear();
 #endif // CYGWING_AGENT
 
-#ifndef _WIN32
-			// statsd metrics
-			unsigned statsd_total = 0, statsd_sent = 0;
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(0);
-			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(0);
+			m_statsd_emitter->emit(m_metrics->mutable_hostinfo(),
+			                       m_metrics->mutable_protos()->mutable_statsd());
 
-			if(m_statsd_metrics.find("") != m_statsd_metrics.end())
-			{
-				statsd_total += std::get<1>(m_statsd_metrics.at(""));
-				statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at("")),
-					m_metrics->mutable_protos()->mutable_statsd(),
-					get_statsd_limit(),
-					get_statsd_limit(),
-					"host=" + sinsp_gethostname());
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_sent(statsd_sent);
-				m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_statsd_total(statsd_total);
-			}
+#ifndef _WIN32
 
 			// jmx metrics for the host
 			m_metrics->mutable_hostinfo()->mutable_resource_counters()->set_jmx_sent(0);
@@ -5816,7 +5810,8 @@ sinsp_analyzer::emit_containers_deprecated(const analyzer_emitter::progtable_by_
 
 	const auto containers_limit_by_type = m_containers_limit/4;
 	const auto containers_limit_by_type_remainder = m_containers_limit % 4;
-	unsigned statsd_limit = get_statsd_limit();
+	const bool security_enabled = m_configuration->get_security_enabled();
+	unsigned statsd_limit = statsd_emitter::get_limit(security_enabled);
 	auto check_and_emit_containers = [&containers_ids, this, &statsd_limit,
 	                                  &emitted_containers, &total_cpu_shares, &progtable_by_container,
 	                                  flushflags]
@@ -6190,41 +6185,39 @@ sinsp_analyzer::emit_container(const string &container_id,
 #ifndef CYGWING_AGENT
 	if(m_protocols_enabled)
 	{
-		it_analyzer->second.m_metrics.m_protostate->to_protobuf(container->mutable_protos(), m_sampling_ratio, CONTAINERS_PROTOS_TOP_LIMIT);
+		it_analyzer->second.m_metrics.m_protostate->to_protobuf(
+				container->mutable_protos(),
+				m_sampling_ratio,
+				CONTAINERS_PROTOS_TOP_LIMIT);
 	}
 
-	it_analyzer->second.m_req_metrics.to_reqprotobuf(container->mutable_reqcounters(), m_sampling_ratio);
+	it_analyzer->second.m_req_metrics.to_reqprotobuf(
+			container->mutable_reqcounters(),
+			m_sampling_ratio);
 
-	it_analyzer->second.m_transaction_counters.to_protobuf(container->mutable_transaction_counters(),
-														   container->mutable_max_transaction_counters(),
-														   m_sampling_ratio);
+	it_analyzer->second.m_transaction_counters.to_protobuf(
+			container->mutable_transaction_counters(),
+			container->mutable_max_transaction_counters(),
+			m_sampling_ratio);
 
-	m_delay_calculator->compute_host_container_delays(&it_analyzer->second.m_transaction_counters,
-													  &it_analyzer->second.m_client_transactions, &it_analyzer->second.m_server_transactions,
-													  &it_analyzer->second.m_transaction_delays);
+	m_delay_calculator->compute_host_container_delays(
+			&it_analyzer->second.m_transaction_counters,
+			&it_analyzer->second.m_client_transactions,
+			&it_analyzer->second.m_server_transactions,
+			&it_analyzer->second.m_transaction_delays);
 
 	if(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns != -1)
 	{
 		container->set_transaction_processing_delay(it_analyzer->second.m_transaction_delays.m_local_processing_delay_ns * m_sampling_ratio);
 		container->set_next_tiers_delay(it_analyzer->second.m_transaction_delays.m_merged_client_delay * m_sampling_ratio);
 	}
-#ifndef _WIN32
-	container->mutable_resource_counters()->set_statsd_sent(0);
-	container->mutable_resource_counters()->set_statsd_total(0);
-
-	if(m_statsd_metrics.find(it->second.m_id) != m_statsd_metrics.end())
-	{
-		unsigned statsd_total = std::get<1>(m_statsd_metrics.at(it->second.m_id));
-		auto statsd_sent = emit_statsd(std::get<0>(m_statsd_metrics.at(it->second.m_id)),
-										container->mutable_protos()->mutable_statsd(),
-										*statsd_limit, get_statsd_limit(),
-										"container=" + it->second.m_name + " (id=" + it->second.m_id + ")");
-		*statsd_limit -= statsd_sent;
-		container->mutable_resource_counters()->set_statsd_sent(statsd_sent);
-		container->mutable_resource_counters()->set_statsd_total(statsd_total);
-	}
-#endif // _WIN32
 #endif // CYGWING_AGENT
+
+	*statsd_limit = m_statsd_emitter->emit(it->second.m_id,
+	                                       it->second.m_name,
+	                                       container,
+	                                       *statsd_limit);
+
 	auto fs_list = m_mounted_fs_map.find(it->second.m_id);
 	if(fs_list != m_mounted_fs_map.end())
 	{
@@ -6234,6 +6227,7 @@ sinsp_analyzer::emit_container(const string &container_id,
 			it->to_protobuf(proto_fs);
 		}
 	}
+
 #ifndef CYGWING_AGENT
 	auto thread_count = it_analyzer->second.m_metrics.m_threads_count;
 	container->mutable_resource_counters()->set_threads_count(thread_count);
@@ -6356,36 +6350,6 @@ void sinsp_analyzer::coalesce_unemitted_stats(const vector<std::string>& emitted
 	g_logger.format(sinsp_logger::SEV_DEBUG, "Total Containers Found: %d, Emitted: %d, Unemitted: %d, Coalesced: %d", m_containers.size(), emitted_containers.size(), unemitted_containers.size(), count);
 }
 
-void sinsp_analyzer::get_statsd()
-{
-#ifndef _WIN32
-	if(m_statsite_proxy)
-	{
-		// Look for statsite sample m_prev_flush_time_ns (now) - 1s which should be
-		// always ready
-		auto look_for_ts = ((m_prev_flush_time_ns - ONE_SECOND_IN_NS) / ONE_SECOND_IN_NS);
-		if(m_statsd_metrics.empty())
-		{
-			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
-		}
-
-		while(!m_statsd_metrics.empty()) {
-			auto metrics = std::get<0>(m_statsd_metrics.begin()->second);
-			if(metrics.empty())
-			{
-				break;
-			}
-
-			if(metrics.at(0).timestamp() >= look_for_ts)
-			{
-				break;
-			}
-
-			m_statsd_metrics = m_statsite_proxy->read_metrics(m_metric_limits);
-		}
-	}
-#endif
-}
 
 #ifndef _WIN32
 unsigned sinsp_analyzer::emit_statsd(const vector <statsd_metric> &statsd_metrics, draiosproto::statsd_info *statsd_info,
@@ -6870,14 +6834,25 @@ void sinsp_analyzer::set_internal_metrics(internal_metrics::sptr_t im)
 }
 
 #ifndef _WIN32
-void sinsp_analyzer::set_statsd_iofds(pair<FILE *, FILE *> const &iofds, bool forwarder)
+void sinsp_analyzer::set_statsd_iofds(const std::pair<FILE*, FILE*>& iofds,
+                                      const bool forwarder)
 {
 	check_metric_limits();
-	m_statsite_proxy = make_unique<statsite_proxy>(iofds,
-						       m_configuration->get_statsite_check_format());
+	m_statsite_proxy = std::make_shared<statsite_proxy>(
+			iofds,
+			m_configuration->get_statsite_check_format());
+
+	m_statsd_emitter = statsd_emitter_factory::create(
+			m_configuration->get_security_enabled(),
+			m_statsite_proxy,
+			m_metric_limits);
+
 	if(forwarder)
 	{
-		m_statsite_forwader_queue = make_unique<posix_queue>("/sdc_statsite_forwarder_in", posix_queue::SEND, 1);
+		m_statsite_forwader_queue =
+			make_unique<posix_queue>("/sdc_statsite_forwarder_in",
+			                         posix_queue::SEND,
+			                         1);
 	}
 }
 #endif // _WIN32
@@ -7156,21 +7131,6 @@ uint64_t sinsp_analyzer::get_prev_flush_time_ns() const
 bool sinsp_analyzer::has_statsite_proxy() const
 {
 	return m_statsite_proxy != nullptr;
-}
-
-unsigned int sinsp_analyzer::get_statsd_limit() const
-{
-
-	int limit = metric_forwarding_configuration::c_statsd_max->get();
-
-	// If security is enabled the increase the limit on the number of
-	// statsd metrics by 100. When compliance is enabled, up to 88 new
-	// metrics can be emitted when running docker-bench/k8s-bench tasks.
-	if(m_configuration->get_security_enabled())
-	{
-		limit += 100;
-	}
-	return  limit;
 }
 
 uint64_t self_cputime_analyzer::read_cputime()

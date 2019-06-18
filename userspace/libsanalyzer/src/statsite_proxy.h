@@ -7,6 +7,7 @@
 #include "percentile.h"
 #include "posix_queue.h"
 #include "metric_limits.h"
+#include "statsite_proxy.h"
 #include <Poco/Net/SocketReactor.h>
 #include <Poco/Net/DatagramSocket.h>
 #include <Poco/Net/SocketNotification.h>
@@ -37,7 +38,11 @@ public:
 #endif
 	enum class type_t
 	{
-	NONE=0, COUNT=1, HISTOGRAM=2, GAUGE=3, SET=4
+		NONE = 0,
+		COUNT = 1,
+		HISTOGRAM = 2,
+		GAUGE = 3,
+		SET = 4,
 	};
 
 	void to_protobuf(draiosproto::statsd_metric* proto) const;
@@ -72,6 +77,43 @@ public:
 	inline double sum() const
 	{
 		return m_sum;
+	}
+	
+	inline double mean() const
+	{
+		return m_mean;
+	}
+
+	inline double min() const
+	{
+		return m_min;
+	}
+
+	inline double max() const
+	{
+		return m_max;
+	}
+
+	inline double count() const
+	{
+		return m_count;
+	}
+
+	inline double stdev() const
+	{
+		return m_stdev;
+	}
+
+	inline double percentile(int index) const
+	{
+		auto i = m_percentiles.find(index);
+
+		if(i == m_percentiles.end())
+		{
+			return 0.0;
+		}
+
+		return i->second;
 	}
 
 	bool percentile(int pct, double& val)
@@ -116,7 +158,29 @@ private:
 	friend class lua_cbacks;
 };
 
-class statsite_proxy
+/**
+ * Interface to an object that can generate statsd statsd.
+ */
+class statsd_stats_source
+{
+public:
+	using ptr = std::shared_ptr<statsd_stats_source>;
+
+	/** List of metrics */
+	using statsd_metric_list = std::vector<statsd_metric>;
+
+	/** <List of metrics, count> */
+	using statsd_list_tuple = std::tuple<statsd_metric_list, unsigned>;
+
+	/** container_id -> <List of metrics, count> */
+	using container_statsd_map = std::unordered_map<std::string, statsd_list_tuple>;
+
+	virtual ~statsd_stats_source() = default;
+
+	virtual container_statsd_map read_metrics(metric_limits::cref_sptr_t ml = nullptr) = 0;
+};
+
+class statsite_proxy : public statsd_stats_source
 {
 private:
 	bool validate_buffer(const char *buf, uint64_t len);
@@ -125,7 +189,8 @@ public:
 
 	statsite_proxy(const pair<FILE*, FILE*>& pipes,
 		       bool check_format);
-	unordered_map<string, tuple<vector<statsd_metric>, unsigned>> read_metrics(metric_limits::cref_sptr_t ml = nullptr);
+	statsd_stats_source::container_statsd_map read_metrics(
+			metric_limits::cref_sptr_t ml = nullptr) override;
 	void send_metric(const char *buf, uint64_t len);
 	void send_container_metric(const string& container_id, const char* data, uint64_t len);
 

@@ -26,6 +26,7 @@ include_directories(${DRAIOS_DEPENDENCIES_DIR}/tbb-${DRAIOS_TBB_VERSION}/include
 add_definitions( -DHAS_ANALYZER )
 
 list(APPEND libsanalyzer_test_helpers_uts
+	dummy_statsd_stats_source.ut.cpp
 	event_builder.ut.cpp
 	sinsp_mock.ut.cpp
 )
@@ -38,6 +39,7 @@ list(APPEND libsanalyzer_uts
 	metric_serializer.ut.cpp
 	metric_forwarding_configuration.ut.cpp
 	mounted_fs.ut.cpp
+	null_statsd_emitter.ut.cpp
 	object_filter.ut.cpp
 	parser_http.ut.cpp
 	process_emitter.ut.cpp
@@ -45,7 +47,10 @@ list(APPEND libsanalyzer_uts
 	prometheus.ut.cpp
 	protobuf_metric_serializer.ut.cpp
 	scoped_sinsp_logger_capture.ut.cpp
+	statsd_emitter.ut.cpp
+	statsd_emitter_factory.ut.cpp
 	statsite_config.ut.cpp
+	statsite_statsd_emitter.ut.cpp
 )
 
 # We test both the libanalyzer itself and its test helpers in this library
