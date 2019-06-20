@@ -28,7 +28,9 @@ list(APPEND targetfiles
 	baseline_mgr.cpp
 	capture_job_handler.cpp
 	compliance_mgr.cpp
+	configlist_rest_request_handler.cpp
 	configuration.cpp
+	config_rest_request_handler.cpp
 	connection_manager.cpp
 	crash_handler.cpp
 	dragent.cpp

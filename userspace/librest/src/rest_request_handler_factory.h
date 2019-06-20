@@ -47,6 +47,40 @@ public:
 	void register_path_handler(const std::string& path,
 	                           path_handler_factory handler);
 
+
+	/**
+	 * Convenience method to register a path handler based only on the
+	 * type.
+	 *
+	 * @tparam handler_type The type of the path handler factory.  The
+	 *                      expectation is that this type will expose
+	 *                      three static method: get_path(),
+	 *                      get_versioned_path(), and create().  get_path()
+	 *                      will return the non-versioned path to register.
+	 *                      get_versioned_path() will return the versioned
+	 *                      path to register.  create() is the factory
+	 *                      method that will be registered to create new
+	 *                      instances.
+	 */
+	template<typename handler_type>
+	void register_path_handler()
+	{
+		const std::string path = handler_type::get_path();
+
+		if(!path.empty())
+		{
+			register_path_handler(path, handler_type::create);
+		}
+
+		const std::string versioned_path = handler_type::get_versioned_path();
+
+		if(!versioned_path.empty())
+		{
+			register_path_handler(versioned_path,
+			                      handler_type::create);
+		}
+	}
+
 private:
 	using path_handler_map = std::map<std::string, path_handler_factory>;
 

@@ -530,5 +530,22 @@ TEST_F(type_config_test, builder_post_init)
 	ASSERT_EQ(INT_12345_VALUE, some_config->configured());
 }
 
+/**
+ * Ensure that to_json() returns a JSON-based representation of the given
+ * object.
+ */
+TEST_F(type_config_test, to_json)
+{
+	const type_config<bool> c(false, "some description", "some_test_key");
+	const std::string json = c.to_json();
 
+	const std::string expected_json = R"EOF({
+   "some_test_key" : {
+      "description" : "some description",
+      "value" : "false"
+   }
+}
+)EOF";
 
+      	ASSERT_EQ(expected_json, json);
+}

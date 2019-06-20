@@ -10,6 +10,7 @@
 #include "dummy_server_response.h"
 #include <assert.h>
 #include <istream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <gtest.h>
@@ -60,9 +61,10 @@ TEST(rest_request_handler_factory_test, unknown_path_null_request_handler)
 {
 	rest_request_handler_factory factory;
 	dummy_server_request request("/this/is/some/example/path/");
-	Poco::Net::HTTPRequestHandler* handler = factory.createRequestHandler(request);
+	std::unique_ptr<Poco::Net::HTTPRequestHandler> handler(
+			factory.createRequestHandler(request));
 
-	ASSERT_NE(handler, nullptr);
+	ASSERT_NE(handler.get(), nullptr);
 
 	dummy_server_request request2("/my/uri");
 	dummy_server_response response;
@@ -81,7 +83,8 @@ TEST(rest_request_handler_factory_test, path_missing_leading_slash_null_request_
 {
 	rest_request_handler_factory factory;
 	dummy_server_request request("this/is/some/example/path/");
-	Poco::Net::HTTPRequestHandler* handler = factory.createRequestHandler(request);
+	std::unique_ptr<Poco::Net::HTTPRequestHandler> handler(
+			factory.createRequestHandler(request));
 
 	ASSERT_NE(handler, nullptr);
 
@@ -106,11 +109,12 @@ TEST(rest_request_handler_factory_test, registered_path_handler_valid)
 
 	factory.register_path_handler(path, test_request_handler::create);
 
-	Poco::Net::HTTPRequestHandler* handler = factory.createRequestHandler(request);
+	std::unique_ptr<Poco::Net::HTTPRequestHandler> handler(
+			factory.createRequestHandler(request));
 	ASSERT_NE(handler, nullptr);
 
 	// Make sure it's the right type
-	test_request_handler* trh = dynamic_cast<test_request_handler*>(handler);
+	test_request_handler* trh = dynamic_cast<test_request_handler*>(handler.get());
 	ASSERT_NE(trh, nullptr);
 }
 
@@ -128,10 +132,11 @@ TEST(rest_request_handler_factory_test, registered_prefix_path_handler_valid)
 
 	factory.register_path_handler(prefix, test_request_handler::create);
 
-	Poco::Net::HTTPRequestHandler* handler = factory.createRequestHandler(request);
+	std::unique_ptr<Poco::Net::HTTPRequestHandler> handler(
+			factory.createRequestHandler(request));
 	ASSERT_NE(handler, nullptr);
 
 	// Make sure it's the right type
-	test_request_handler* trh = dynamic_cast<test_request_handler*>(handler);
+	test_request_handler* trh = dynamic_cast<test_request_handler*>(handler.get());
 	ASSERT_NE(trh, nullptr);
 }

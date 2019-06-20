@@ -1,7 +1,10 @@
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/test_helpers)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/fused-src/gtest)
 include_directories(${DRAIOS_DEPENDENCIES_DIR}/poco-${DRAIOS_POCO_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/include)
+include_directories(${DRAIOS_DEPENDENCIES_DIR}/boost_${DRAIOS_BOOST_VERSION})
 
 add_executable(unit-test-librest
 	main.cpp
@@ -14,11 +17,12 @@ add_executable(unit-test-librest
 )
 
 target_link_libraries(unit-test-librest
-	userspace-shared
-	rt
-	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	librestl
 	test-helpers-librest
+	userspace-shared
+	rt
+	${DRAIOS_DEPENDENCIES_DIR}/yaml-${DRAIOS_YAML_VERSION}/target/lib/libyaml-cpp.a
+	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a
 	pthread
 )
 
@@ -40,13 +44,13 @@ else()
 	if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 		add_custom_target(run-unit-test-librest
 		DEPENDS unit-test-librest
-			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
+			COMMAND valgrind --error-exitcode=1 --leak-check=full --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
 			COMMAND valgrind --error-exitcode=1 --suppressions=./helgrind.suppressions --gen-suppressions=all --tool=helgrind --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
 		)
 	else()
 		add_custom_target(run-unit-test-librest
 			DEPENDS unit-test-librest
-			COMMAND valgrind --error-exitcode=1 --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
+			COMMAND valgrind --error-exitcode=1 --leak-check=full --gen-suppressions=all --soname-synonyms=somalloc=tcmalloc ./unit-test-librest
 		)
 	endif()
 endif()

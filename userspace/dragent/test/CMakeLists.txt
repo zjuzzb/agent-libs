@@ -9,6 +9,8 @@ include_directories(${PROJECT_SOURCE_DIR}/userspace)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/dragent/src)
 include_directories(${PROJECT_BINARY_DIR}/userspace/dragent/src) # for dragent_config.h
 include_directories(${PROJECT_BINARY_DIR}/userspace/draiosproto)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/src)
+include_directories(${PROJECT_SOURCE_DIR}/userspace/librest/test_helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/src)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/libsanalyzer/test_helpers)
 include_directories(${PROJECT_SOURCE_DIR}/userspace/userspace-shared/src)
@@ -31,6 +33,8 @@ add_definitions( -DHAS_ANALYZER )
 add_executable(unit-test-dragent
 	main.cpp
 	blocking_queue.ut.cpp
+	configlist_rest_request_handler.ut.cpp
+	config_rest_request_handler.ut.cpp
 	crash_handler.ut.cpp
 	dragent_memdump_logger.ut.cpp
 	dragent_user_event_callback.ut.cpp
@@ -46,7 +50,9 @@ target_link_libraries(unit-test-dragent
 	dragentl
 	draiosproto
 	fake-collector-core
+	librestl
 	test_helpers
+	test-helpers-librest
 	test-helpers-libsanalyzer
 	userspace-shared
 	${DRAIOS_DEPENDENCIES_DIR}/gtest-${DRAIOS_GTEST_VERSION}/libgtest.a

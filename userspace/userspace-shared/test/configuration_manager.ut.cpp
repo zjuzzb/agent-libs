@@ -10,6 +10,7 @@
 #include "type_config.h"
 #include <fstream>
 #include <gtest.h>
+#include <json/json.h>
 
 class configuration_manager_test : public testing::Test
 {
@@ -218,7 +219,6 @@ TEST_F(configuration_manager_test, print_config)
 	ASSERT_EQ(log_output.find(c3.to_string()), std::string::npos);
 }
 
-
 TEST_F(configuration_manager_test, to_yaml)
 {
 	// Initialize out of order
@@ -248,4 +248,66 @@ key5:
 	std::string yaml = configuration_manager::instance().to_yaml();
 	ASSERT_EQ(expected, yaml);
 	printf(yaml.c_str());
+}
+
+/**
+ * Ensure that get_configuration_unit() will return a pointer to a configuration
+ * unit with a given name.
+ */
+TEST_F(configuration_manager_test, get_configuration_unit)
+{
+	configuration_unit* unit = nullptr;
+
+	{
+		type_config<bool> c(true, "description", "test", "subkey", "subsubkey");
+
+		unit = &c;
+
+		ASSERT_EQ(unit,
+			  configuration_manager::instance().get_configuration_unit("test.subkey.subsubkey"));
+	}
+
+	ASSERT_EQ(nullptr,
+		  configuration_manager::instance().get_configuration_unit("test.subkey.subsubkey"));
+
+}
+
+/**
+ * Ensure that get_mutable_configuration_unit() will return a const pointer to
+ * a configuration unit with a given name.
+ */
+TEST_F(configuration_manager_test, get_mutable_configuration_unit)
+{
+	const configuration_unit* unit = nullptr;
+
+	{
+		type_config<bool> c(true, "description", "test", "subkey", "subsubkey");
+
+		unit = &c;
+
+		ASSERT_EQ(unit,
+			  configuration_manager::instance().get_mutable_configuration_unit("test.subkey.subsubkey"));
+	}
+
+	ASSERT_EQ(nullptr,
+		  configuration_manager::instance().get_mutable_configuration_unit("test.subkey.subsubkey"));
+}
+
+/**
+ * Ensure that to_json() returns a json document with all the configuraiton.
+ */
+TEST_F(configuration_manager_test, to_json)
+{
+	type_config<bool> c(true, "some description", "test", "subkey", "subsubkey");
+
+	const std::string json = configuration_manager::instance().to_json();
+
+	Json::Value value;
+	Json::Reader reader;
+
+	// Make sure that the returned value is valid JSON
+	ASSERT_TRUE(reader.parse(json, value));
+
+	ASSERT_NE(json.find("test.subkey.subsubkey"), std::string::npos);
+	ASSERT_NE(json.find("some description"), std::string::npos);
 }

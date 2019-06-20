@@ -9,6 +9,7 @@
 #include "type_config.h"
 #include <assert.h>
 #include <map>
+#include <json/json.h>
 
 namespace
 {
@@ -131,63 +132,74 @@ std::string configuration_manager::to_yaml() const
 	return yaml;
 }
 
-configuration_unit::configuration_unit(const std::string& key,
-				       const std::string& subkey,
-				       const std::string& subsubkey,
-				       const std::string& description) :
-	m_key(key),
-	m_subkey(subkey),
-	m_subsubkey(subsubkey),
-	m_description(description),
-	m_hidden(false)
+std::string configuration_manager::to_json() const
 {
-	if (m_subkey.empty())
+	Json::Value result;
+	Json::Value config_list;
+	int i = 0;
+
+	for(const auto& itr : m_config_map)
 	{
-		m_keystring = m_key;
+		Json::Value value;
+		Json::Reader reader;
+
+		if(reader.parse(itr.second->to_json(), value))
+		{
+			config_list[i++] = value;
+		}
+		else
+		{
+			fprintf(stderr,
+			        "[%s]:%d: Failed to parse '%s' into JSON",
+			        __FUNCTION__,
+			        __LINE__,
+			        itr.second->to_json().c_str());
+		}
 	}
-	else if (m_subsubkey.empty())
+
+	result["configs"] = config_list;
+
+	return result.toStyledString();
+}
+
+const configuration_unit* configuration_manager::get_configuration_unit(
+		const std::string& name) const
+{
+	configuration_unit* config = nullptr;
+	config_map_t::const_iterator itr = m_config_map.find(name);
+	
+	if(itr != m_config_map.end())
 	{
-		m_keystring = m_key + "." + m_subkey;
+		config = itr->second;
 	}
-	else
+
+	if(config == nullptr)
 	{
-		m_keystring = m_key + "." + m_subkey + "." + m_subsubkey;
+		printf("[%s]:%d: Warning: config should not be nullptr\n",
+		       __FILE__,
+		       __LINE__);
 	}
 
-	configuration_manager::instance().register_config(this);
+	return config;
 }
 
-configuration_unit::~configuration_unit()
+configuration_unit* configuration_manager::get_mutable_configuration_unit(
+		const std::string& name)
 {
-	configuration_manager::instance().deregister_config(this);
-}
+	configuration_unit* config = nullptr;
+	config_map_t::const_iterator itr = m_config_map.find(name);
+	
+	if(itr != m_config_map.end())
+	{
+		config = itr->second;
+	}
 
-std::string configuration_unit::to_string() const
-{
-	return get_key_string() + ": " + value_to_string();
-}
+	if(config == nullptr)
+	{
+		printf("[%s]:%d: Warning: config should not be nullptr\n",
+		       __FILE__,
+		       __LINE__);
+	}
 
-const std::string& configuration_unit::get_key_string() const
-{
-	return m_keystring;
-}
-
-const std::string& configuration_unit::get_key() const
-{
-	return m_key;
-}
-
-const std::string& configuration_unit::get_subkey() const
-{
-	return m_subkey;
-}
-
-const std::string& configuration_unit::get_subsubkey() const
-{
-	return m_subsubkey;
-}
-
-const std::string& configuration_unit::get_description() const
-{
-	return m_description;
+	return config;
 }

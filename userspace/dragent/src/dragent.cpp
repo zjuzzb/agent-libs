@@ -4,6 +4,8 @@
 #include "dragent.h"
 #include "crash_handler.h"
 #include "configuration.h"
+#include "config_rest_request_handler.h"
+#include "configlist_rest_request_handler.h"
 #include "connection_manager.h"
 #include "dragent_memdump_logger.h"
 #include "dragent_user_event_callback.h"
@@ -60,7 +62,7 @@ type_config<bool>::ptr c_rest_feature_flag =
 type_config<uint16_t>::ptr c_rest_port = type_config_builder<uint16_t>(
 		24482, 
 		"TCP port on which the Agent REST server listens for connections",
-		"reset_server",
+		"rest_server",
 		"tcp_port")
 	.hidden() // Hidden until feature is released
 	.get();
@@ -122,7 +124,9 @@ void enable_rest_server()
 	Poco::SharedPtr<librest::rest_request_handler_factory> factory(
 			new librest::rest_request_handler_factory());
 
-	// Eventually register path handlers with the factory...
+	// Register path handlers with the factory...
+	factory->register_path_handler<configlist_rest_request_handler>();
+	factory->register_path_handler<config_rest_request_handler>();
 
 	s_rest_server = make_unique<librest::rest_server>(factory,
 	                                                  c_rest_port->get());

@@ -117,13 +117,18 @@ public:
 	const std::string& get_description() const;
 
 	/** Stop this configuration value from showing up in logs */
-	void hidden(bool value) { m_hidden = value; }
-	
+	void hidden(bool value);
+
 	/** Returns whether the value is hidden from logs */
-	bool hidden() const { return m_hidden; }
+	bool hidden() const;
 
 	/** Called after all configuration params have been init'd */
 	virtual void post_init() = 0;
+
+	/**
+	 * Returns a JSON-formatted representation of this configuration_unit.
+	 */
+	std::string to_json() const;
 
 protected:
 	/**

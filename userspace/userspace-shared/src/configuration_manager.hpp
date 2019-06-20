@@ -10,14 +10,14 @@ template<typename config_type>
 const type_config<config_type>* configuration_manager::get_config(
 		const std::string& name) const
 {
-	config_map_t::const_iterator itr = m_config_map.find(name);
+	const configuration_unit* const config_unit = get_configuration_unit(name);
 	const type_config<config_type>* config = nullptr;
 	
-	if(itr != m_config_map.end())
+	if(config_unit != nullptr)
 	{
-		config = dynamic_cast<type_config<config_type>*>(itr->second);
+		config = dynamic_cast<const type_config<config_type>*>(config_unit);
 	}
-
+	
 	if(config == nullptr)
 	{
 		printf("[%s]:%d: Warning: config should not be nullptr\n",
@@ -32,14 +32,14 @@ template<typename config_type>
 type_config<config_type>* configuration_manager::get_mutable_config(
    const std::string& name)
 {
-	config_map_t::const_iterator itr = m_config_map.find(name);
-	type_config<config_type> *config = nullptr;
-
-	if(itr != m_config_map.end())
+	configuration_unit* config_unit = get_mutable_configuration_unit(name);
+	type_config<config_type>* config = nullptr;
+	
+	if(config_unit != nullptr)
 	{
-		config = dynamic_cast<type_config<config_type> *>(itr->second);
+		config = dynamic_cast<type_config<config_type>*>(config_unit);
 	}
-
+	
 	if(config == nullptr)
 	{
 		printf("[%s]:%d: Warning: config should not be nullptr\n",

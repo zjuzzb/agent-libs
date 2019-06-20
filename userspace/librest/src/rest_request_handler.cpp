@@ -50,6 +50,7 @@ void rest_request_handler::handleRequest(
 
 		// Set a default response; subclasses can override this value.
 		response.setContentType("application/json");
+		response.setStatusAndReason(HTTPResponse::HTTPStatus::HTTP_OK);
 
 		if(request.getMethod() == HTTPRequest::HTTP_GET)
 		{
@@ -92,7 +93,6 @@ void rest_request_handler::handleRequest(
 			response_str = handle_custom_request(request, response);
 		}
 
-		response.setStatusAndReason(HTTPResponse::HTTPStatus::HTTP_OK);
 		response.send() << response_str;
 
 		request_complete(request);

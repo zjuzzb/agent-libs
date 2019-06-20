@@ -95,6 +95,24 @@ public:
 	bool is_registered(configuration_unit *config);
 
 	/**
+	 * Returns a read-only pointer to the configuration_unit with the given
+	 * name.  If no configuration_unit with the given name exists, returns
+	 * nullptr.
+	 *
+	 * @param[in] name The dot-delimited configuration name.
+	 */
+	const configuration_unit* get_configuration_unit(const std::string& name) const;
+
+	/**
+	 * Returns a pointer to the configuration_unit with the given
+	 * name.  If no configuration_unit with the given name exists, returns
+	 * nullptr.
+	 *
+	 * @param[in] name The dot-delimited configuration name.
+	 */
+	configuration_unit* get_mutable_configuration_unit(const std::string& name);
+
+	/**
 	 * Get the config object with the given name.  If there is no config
 	 * with the given name, or if the config with the given name isn't
 	 * of the given config_type, then this will return nullptr.  Client
@@ -125,6 +143,12 @@ public:
 	 * Generate a yaml from the registered configuration.
 	 */
 	std::string to_yaml() const;
+
+	/**
+	 * Generates a JSON string from the registered configuration.
+	 */
+	std::string to_json() const;
+
 private:
 	using config_map_t = std::map<std::string, configuration_unit*>;
 
