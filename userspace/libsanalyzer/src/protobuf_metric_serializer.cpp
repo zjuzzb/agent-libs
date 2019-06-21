@@ -9,6 +9,7 @@
 #include "protobuf_metric_serializer.h"
 #include "analyzer_callback_interface.h"
 #include "config.h"
+#include "metric_store.h"
 #include "tracer_emitter.h"
 #include "type_config.h"
 #include <chrono>
@@ -271,19 +272,19 @@ void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
 		if(m_data->m_extra_internal_metrics)
 		{
 			sent = get_internal_metrics()->send_all(
-					m_data->m_metrics.mutable_protos()->mutable_statsd());
+					m_data->m_metrics->mutable_protos()->mutable_statsd());
 		}
 		else
 		{
 			sent = get_internal_metrics()->send_some(
-					m_data->m_metrics.mutable_protos()->mutable_statsd());
+					m_data->m_metrics->mutable_protos()->mutable_statsd());
 		}
 
 		if(sent)
 		{
 			if(g_logger.get_severity() >= sinsp_logger::SEV_TRACE)
 			{
-				g_logger.log(m_data->m_metrics.protos().statsd().DebugString(),
+				g_logger.log(m_data->m_metrics->protos().statsd().DebugString(),
 					     sinsp_logger::SEV_TRACE);
 			}
 		}
@@ -293,11 +294,12 @@ void protobuf_metric_serializer::invoke_callback(const scap_stats& st,
 				     sinsp_logger::SEV_WARNING);
 		}
 	}
+	metric_store::store(m_data->m_metrics);
 	m_data->m_metrics_sent.exchange(true);
 	get_sample_callback()->sinsp_analyzer_data_ready(m_data->m_ts,
 							 nevts,
 							 num_drop_events,
-							 &m_data->m_metrics,
+							 m_data->m_metrics.get(),
 							 m_data->m_sampling_ratio,
 							 m_data->m_my_cpuload,
 							 m_data->m_prev_flush_cpu_pct,
@@ -323,7 +325,7 @@ void protobuf_metric_serializer::emit_metrics_to_file()
 	// appears to be a metrics_list item (i.e., message).
 	//
 	const std::string header = "metrics {\n";
-	const std::string pbstr = m_data->m_metrics.DebugString();
+	const std::string pbstr = m_data->m_metrics->DebugString();
 	const std::string footer = "}\n";
 
 	m_protobuf_file << header << pbstr << footer << std::flush;
@@ -347,7 +349,7 @@ void protobuf_metric_serializer::emit_metrics_to_json_file() const
 	{
 		std::string json_string;
 
-		google::protobuf::util::MessageToJsonString(m_data->m_metrics,
+		google::protobuf::util::MessageToJsonString(*m_data->m_metrics,
 							    &json_string);
 		out << json_string;
 

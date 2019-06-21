@@ -59,7 +59,7 @@ public:
 		std::atomic<bool>& m_metrics_sent;
 		const double m_my_cpuload;
 		const bool m_extra_internal_metrics;
-		draiosproto::metrics m_metrics;
+		std::shared_ptr<draiosproto::metrics> m_metrics;
 	};
 
 

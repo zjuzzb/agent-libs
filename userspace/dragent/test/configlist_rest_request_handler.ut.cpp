@@ -51,7 +51,7 @@ TEST(configlist_rest_request_handler_test, create)
  * should include all configs.  This test creates a couple and ensures that the
  * returned document includes those configs.
  */
-TEST(configconfiglist_rest_request_handler_test, path_contains_configs)
+TEST(configlist_rest_request_handler_test, path_contains_configs)
 {
 	const std::string path = configlist_rest_request_handler::get_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_GET;
@@ -85,7 +85,7 @@ TEST(configconfiglist_rest_request_handler_test, path_contains_configs)
  * configs.  It should include all configs.  This test creates a couple and
  * ensures that the returned document includes those configs.
  */
-TEST(configconfiglist_rest_request_handler_test, versioned_path_contains_configs)
+TEST(configlist_rest_request_handler_test, versioned_path_contains_configs)
 {
 	const std::string path = configlist_rest_request_handler::get_versioned_path();
 	const std::string& method = Poco::Net::HTTPRequest::HTTP_GET;

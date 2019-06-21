@@ -28,6 +28,7 @@ add_definitions( -DHAS_ANALYZER )
 list(APPEND libsanalyzer_test_helpers_uts
 	dummy_statsd_stats_source.ut.cpp
 	event_builder.ut.cpp
+	scoped_metric_store.ut.cpp
 	sinsp_mock.ut.cpp
 )
 
@@ -37,6 +38,7 @@ list(APPEND libsanalyzer_uts
 	infrastructure_state.ut.cpp
 	main.cpp
 	metric_serializer.ut.cpp
+	metric_store.ut.cpp
 	metric_forwarding_configuration.ut.cpp
 	mounted_fs.ut.cpp
 	null_statsd_emitter.ut.cpp

@@ -38,6 +38,7 @@ list(APPEND targetfiles
 	dragent_user_event_callback.cpp
 	error_handler.cpp
 	logger.cpp
+	metrics_rest_request_handler.cpp
 	monitor.cpp
 	protocol.cpp
 	security_action.cpp

@@ -16,6 +16,7 @@
 #include "sinsp_worker.h"
 #include "logger.h"
 #include "memdump_logger.h"
+#include "metrics_rest_request_handler.h"
 #include "monitor.h"
 #include "process_helpers.h"
 #include "rest_request_handler_factory.h"
@@ -127,6 +128,7 @@ void enable_rest_server()
 	// Register path handlers with the factory...
 	factory->register_path_handler<configlist_rest_request_handler>();
 	factory->register_path_handler<config_rest_request_handler>();
+	factory->register_path_handler<metrics_rest_request_handler>();
 
 	s_rest_server = make_unique<librest::rest_server>(factory,
 	                                                  c_rest_port->get());

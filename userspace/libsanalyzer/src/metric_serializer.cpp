@@ -34,7 +34,7 @@ metric_serializer::data::data(const uint64_t evt_num,
 	m_metrics_sent(metrics_sent),
 	m_my_cpuload(my_cpuload),
 	m_extra_internal_metrics(extra_internal_metrics),
-	m_metrics(metrics)
+	m_metrics(std::make_shared<draiosproto::metrics>(metrics))
 { }
 
 metric_serializer::metric_serializer(const internal_metrics::sptr_t& internal_metrics,

@@ -186,6 +186,7 @@ set(SANALYZER_SOURCES
 	${PROJECT_SOURCE_DIR}/../sysdig/userspace/libsinsp/mesos_state.cpp
 	metric_forwarding_configuration.cpp
 	metric_limits.cpp
+	metric_store.cpp
 	metrics.cpp
 	mounted_fs.cpp
 	parser_http.cpp
