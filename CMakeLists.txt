@@ -35,6 +35,10 @@ if(NOT CYGWIN)
 endif()
 set(DRAIOS_NJSON_VERSION "3.3.0")
 
+# Add path for custom CMake modules used to build dependencies from sysdig (libscap, libsinsp)
+list(APPEND CMAKE_MODULE_PATH
+	"${PROJECT_SOURCE_DIR}/../sysdig/cmake/modules")
+
 # Set up the different flavors of agent binaries
 include(CMakeConfigurationTypes.cmake)
 
