@@ -120,6 +120,7 @@ if [ ! -z "$RUN_MODE" ]; then
 fi
 
 mount_cgroup_subsys memory
+mount_cgroup_subsys cpu
 mount_cgroup_subsys cpuacct
 
 if [ $# -eq 0 ]; then
