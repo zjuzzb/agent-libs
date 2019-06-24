@@ -39,8 +39,8 @@ TEST_F(container_cri, fake_cri_no_server) {
 
 		const sinsp_container_info* container_info = param.m_inspector->m_container_manager.get_container(tinfo->m_container_id);
 
-		// This can either be null or a container with incomplete metadata
-		EXPECT_TRUE((container_info == nullptr || container_info->m_metadata_complete == false));
+		// This can either be null or a container reporting a failed lookup
+		EXPECT_TRUE((container_info == nullptr || !container_info->m_successful));
 
 		done = true;
 	};
