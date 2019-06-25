@@ -29,12 +29,10 @@ set(CMAKE_C_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-strict-aliasing -DNDEBUG")
 
 # Setup debug build
-set(CMAKE_DEBUG_POSTFIX ".debug")
 set(CMAKE_C_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${DRAIOS_DEBUG_FLAGS}")
 
 # Setup debug internal build
-set(CMAKE_DEBUGINTERNAL_POSTFIX ".debug.internal")
 set(CMAKE_C_FLAGS_DEBUGINTERNAL "${CMAKE_C_FLAGS_DEBUG}")
 set(CMAKE_CXX_FLAGS_DEBUGINTERNAL "${CMAKE_CXX_FLAGS_DEBUG}")
 if(CMAKE_BUILD_TYPE STREQUAL "DebugInternal")
@@ -47,7 +45,6 @@ endif()
 # Setup release internal build
 # The release internal build is an optimized release build that includes
 # features that only available for internal testing purposes.
-set(CMAKE_RELEASEINTERNAL_POSTFIX ".release.internal")
 set(CMAKE_C_FLAGS_RELEASEINTERNAL "${CMAKE_C_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_RELEASEINTERNAL "${CMAKE_CXX_FLAGS_RELEASE}")
 if(CMAKE_BUILD_TYPE STREQUAL "ReleaseInternal")
@@ -58,7 +55,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "ReleaseInternal")
 endif()
 
 # Setup debug internal code coverage build
-set(CMAKE_DEBUGINTERNALCODECOVERAGE_POSTFIX ".debug.internal.cov")
 set(CMAKE_C_FLAGS_DEBUGINTERNALCODECOVERAGE "${CMAKE_C_FLAGS_DEBUG}")
 set(CMAKE_CXX_FLAGS_DEBUGINTERNALCODECOVERAGE "${CMAKE_CXX_FLAGS_DEBUG}")
 if(CMAKE_BUILD_TYPE STREQUAL "DebugInternalCodeCoverage")
