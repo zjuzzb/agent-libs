@@ -460,7 +460,7 @@ void sinsp_baseliner::init_programs(sinsp* inspector, uint64_t time, bool skip_f
 
 void sinsp_baseliner::init_containers()
 {
-	const std::unordered_map<std::string, sinsp_container_info>* containers = m_inspector->m_container_manager.get_containers();
+	auto containers = m_inspector->m_container_manager.get_containers();
 
 	for(auto& it : *containers)
 	{
