@@ -1488,7 +1488,7 @@ sinsp_analyzer::update_percentile_data_serialization(const analyzer_emitter::pro
 
 void
 sinsp_analyzer::gather_k8s_infrastructure_state(uint32_t flush_flags,
-						vector<string>& emitted_containers)
+						const vector<string>& emitted_containers)
 {
 #ifndef CYGWING_AGENT
 	if(!m_use_new_k8s)
@@ -1580,9 +1580,9 @@ sinsp_analyzer::clean_containers(const analyzer_emitter::progtable_by_container_
 
 void sinsp_analyzer::emit_processes_deprecated(std::set<uint64_t>& all_uids,
 					       analyzer_emitter::flush_flags flushflags,
-					       analyzer_emitter::progtable_t& progtable,
-					       analyzer_emitter::progtable_by_container_t& progtable_by_container,
-					       std::vector<std::string>& emitted_containers,
+					       const analyzer_emitter::progtable_t& progtable,
+					       const analyzer_emitter::progtable_by_container_t& progtable_by_container,
+					       const std::vector<std::string>& emitted_containers,
 					       tracer_emitter& proc_trc,
 					       jmx_emitter& jmx_emitter_instance,
 					       app_check_emitter& app_check_emitter_instance,
@@ -5614,7 +5614,7 @@ template<typename Extractor>
 class containers_cmp_deprecated
 {
 public:
-	containers_cmp_deprecated(unordered_map<string, analyzer_container_state>* containers, Extractor&& extractor):
+	containers_cmp_deprecated(const unordered_map<string, analyzer_container_state>* containers, Extractor&& extractor):
 		m_containers(containers),
 		m_extractor(extractor)
 {}
@@ -5636,7 +5636,7 @@ public:
 		return cmp_lhs > cmp_rhs;
 	}
 private:
-	unordered_map<string, analyzer_container_state>* m_containers;
+	const unordered_map<string, analyzer_container_state>* m_containers;
 	Extractor m_extractor;
 };
 

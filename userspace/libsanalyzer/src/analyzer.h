@@ -865,9 +865,9 @@ VISIBILITY_PRIVATE
 	 */
 	void emit_processes_deprecated(std::set<uint64_t>& all_uids,
 				       analyzer_emitter::flush_flags flushflags,
-				       analyzer_emitter::progtable_t& progtable,
-				       analyzer_emitter::progtable_by_container_t& progtable_by_container,
-				       vector<std::string>& emitted_containers,
+				       const analyzer_emitter::progtable_t& progtable,
+				       const analyzer_emitter::progtable_by_container_t& progtable_by_container,
+				       const vector<std::string>& emitted_containers,
 				       tracer_emitter& proc_trc,
 				       jmx_emitter& jmx_emitter_instance,
 				       app_check_emitter& app_check_emitter_instance,
@@ -920,7 +920,7 @@ VISIBILITY_PRIVATE
 
 	void update_percentile_data_serialization(const analyzer_emitter::progtable_by_container_t&);
 	void gather_k8s_infrastructure_state(uint32_t flushflags,
-					     vector<string>& emitted_containers);
+					     const vector<string>& emitted_containers);
 	void clean_containers(const analyzer_emitter::progtable_by_container_t&);
 
 	void check_dump_infrastructure_state(const draiosproto::orchestrator_state_t& state);
